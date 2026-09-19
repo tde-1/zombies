@@ -1,0 +1,73 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_asylum",
+  "title": "Verruckt",
+  "source": "stock",
+  "fs_game": null,
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc": "c2a0a43fedfdff00b9c837b9b8a56848e531259df103639c228f1c10971a9d28"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [
+    {
+      "id": "power_on",
+      "label": "Power turned on",
+      "when": {
+        "flag": "electric_switch_used"
+      }
+    },
+    {
+      "id": "power_on_alt",
+      "label": "Master switch",
+      "when": {
+        "notify": {
+          "ent": "level",
+          "name": "master_switch_activated"
+        }
+      }
+    },
+    {
+      "id": "both_doors",
+      "label": "Teams linked up",
+      "when": {
+        "flag": "both_doors_opened"
+      }
+    },
+    {
+      "id": "box_used",
+      "label": "Magic box used",
+      "when": {
+        "notify": {
+          "ent": "any",
+          "name": "user_grabbed_weapon"
+        }
+      }
+    },
+    {
+      "id": "perk_bought",
+      "label": "Perk machines on",
+      "when": {
+        "notify": {
+          "ent": "level",
+          "name": "specialty_quickrevive_power_on"
+        }
+      }
+    }
+  ],
+  "confidence": "read",
+  "notes": "No easter egg, no buyable ending. Power: flag_set('electric_switch_used') at nazi_zombie_asylum.gsc:1640, then level notify('master_switch_activated') at :1655 and the four specialty_*_power_on notifies. Game over is a direct end_game() call, no notify - use level.intermission.",
+  "event_model": "signal ids follow IW4MAdmin feature/zombie-stats EventLogType where one exists; see docs/kickstart/referee.md section 6"
+}

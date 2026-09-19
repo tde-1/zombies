@@ -1,0 +1,48 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_prototype",
+  "title": "Nacht der Untoten",
+  "source": "stock",
+  "fs_game": null,
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc": "9a260a45270fc7119342ce16ea867762352bc6a94affee531dc3f0a16305d031"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [
+    {
+      "id": "box_used",
+      "label": "Magic box used",
+      "when": {
+        "notify": {
+          "ent": "any",
+          "name": "user_grabbed_weapon"
+        }
+      }
+    },
+    {
+      "id": "door_bought",
+      "label": "Door bought",
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door"
+        }
+      }
+    }
+  ],
+  "confidence": "read",
+  "notes": "No easter egg, no power, no perks, no buyable ending. round_think() increments level.round_number then fires level notify('between_round_over') (_zombiemode.gsc:1224-1226). Game over is a direct end_game() call - there is NO 'end_game' notify on this map - so detect level.intermission == true.",
+  "event_model": "signal ids follow IW4MAdmin feature/zombie-stats EventLogType where one exists; see docs/kickstart/referee.md section 6"
+}

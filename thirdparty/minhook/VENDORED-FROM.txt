@@ -1,0 +1,2 @@
+8af6b4acae5a9388fd742b56fa79ece89d96f823
+https://github.com/TsudaKageyu/minhook.git (BSD-2-Clause), vendored 2026-09-20 by the foundation agent; only include/, src/ and the licence files.

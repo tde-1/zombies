@@ -1,0 +1,107 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ali",
+  "title": "Nazi Zombie Ali (ZCT)",
+  "source": "custom",
+  "author": "nikfar1, 2012; ships the ZCT MOD2_MW mod alongside",
+  "fs_game": "mods/nazi_zombie_ali",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc": "5d2342bb982d544919a2ecdee3e7fb86d19eea3432120f3b80eaceaf3cf07efb",
+    "maps/_zombiemode.gsc@nazi_zombie_ali.iwd": "90ad6f625dc1d8e35c21ff3a7f1c18f21eda598f5193756450c004f9056a5d9e",
+    "maps/_zombiemode.gsc@fastfile": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "any": [
+          {
+            "level_var": {
+              "name": "tom_victory",
+              "equals": true
+            }
+          },
+          {
+            "all": [
+              {
+                "trigger_used": {
+                  "targetname": "end_game"
+                }
+              },
+              {
+                "level_var": {
+                  "name": "intermission",
+                  "equals": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [
+    {
+      "id": "zone2",
+      "label": "Zone 2 opened",
+      "when": {
+        "flag": "enter_zone2"
+      }
+    },
+    {
+      "id": "big_door",
+      "label": "50k door bought",
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 50000
+        }
+      }
+    },
+    {
+      "id": "buy_powerup",
+      "label": "Powerup bought",
+      "when": {
+        "trigger_used": {
+          "targetname": "buy_powerup"
+        }
+      }
+    },
+    {
+      "id": "pap_used",
+      "label": "Weapon upgraded",
+      "when": {
+        "trigger_used": {
+          "targetname": "weapon_upgrade"
+        }
+      }
+    },
+    {
+      "id": "box_used",
+      "label": "Magic box used",
+      "when": {
+        "notify": {
+          "ent": "any",
+          "name": "user_grabbed_weapon"
+        }
+      }
+    }
+  ],
+  "confidence": "read",
+  "notes": "THE ENDING IS IN THE CO-SHIPPED MOD, NOT THE MAP. The folder holds three different maps/_zombiemode.gsc: one in nazi_zombie_ali.ff, one in nazi_zombie_ali.iwd, and one in zombie_clinic.iwd (the ZCT MOD2_MW mod the README says the map needs). The engine printed zombie_clinic.iwd FIRST on the search path, so its 69,495 B copy is the one that runs. Only that copy contains the ending: _zombiemode.gsc:114 threads end_game_trig(), which finds every trigger_use with targetname 'end_game' and runs end_game_trigger() - a 20,000-point 'GET OUT OF CLINIC' purchase (the cost is hardcoded in script, NOT a zombie_cost key) that sets level.tom_victory = true and calls end_game(). end_game() then sets level.intermission AND level.finalcutscene and shows 'YOU WON' instead of 'GAME OVER'. So the detector is level.tom_victory, with the trigger+intermission pair as a fallback. The map's own 50,000-point zombie_door (target auto215) is just an expensive door - a plausible-looking false positive that cost me an hour before referee/scan_map.py found the real one. The advertised '6 piece of amulet' quest still does not exist in any script: not detectable, deliberately not listed as an easter_egg. zombie_clinic.iwd also overrides maps/_callbackglobal.gsc, _laststand.gsc, _loadout.gsc and _gameskill.gsc, so re-verify the generic down/revive/score events on this map. The mod folder ships gift.exe - never run it (dev-box.md rule 3).",
+  "event_model": "signal ids follow IW4MAdmin feature/zombie-stats EventLogType where one exists; see docs/kickstart/referee.md section 6"
+}

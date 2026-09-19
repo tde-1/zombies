@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ENW Zombies host</title>
+<style>
+  :root{
+    --bg:#0d0f12; --panel:#161a20; --panel2:#11141a; --line:#262c36; --fg:#e7eaef; --dim:#8a93a2;
+    --acc:#7fd1a4; --acc2:#6aa9e0; --warn:#e5a94d; --bad:#e2685f; --zomb:#a4713f;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 ui-monospace,"Cascadia Mono",Consolas,monospace}
+  header{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel2);position:sticky;top:0;z-index:5}
+  h1{font-size:14px;margin:0;font-weight:700;letter-spacing:.02em}
+  .dim{color:var(--dim)} .acc{color:var(--acc)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:11px;color:var(--dim)}
+  .pill.on{color:var(--acc);border-color:#2f5c47}
+  .pill.off{color:var(--bad);border-color:#5c2f2f}
+  main{display:grid;grid-template-columns:330px minmax(0,1fr) 340px;gap:12px;padding:12px;align-items:start}
+  @media (max-width:1200px){ main{grid-template-columns:1fr} }
+  section{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 11px;min-width:0}
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .inst{border:1px solid var(--line);border-radius:7px;padding:8px;margin-bottom:8px;background:var(--panel2);cursor:pointer}
+  .inst.sel{border-color:#3d6b57;box-shadow:inset 0 0 0 1px #24402f}
+  .inst .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .inst b{font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:var(--dim);font-weight:500;padding:2px 4px 2px 0;font-size:11px}
+  td{padding:2px 4px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar{height:4px;background:#222833;border-radius:3px;overflow:hidden;margin-top:5px}
+  .bar i{display:block;height:100%;background:var(--acc)}
+  canvas{width:100%;background:#0a0c0f;border:1px solid var(--line);border-radius:7px;display:block}
+  #log{height:290px;overflow:auto;font-size:11.5px}
+  #log div{padding:1px 0;border-bottom:1px solid #191d24;white-space:pre-wrap;word-break:break-word}
+  #chat{height:170px;overflow:auto;font-size:12px;margin-bottom:6px}
+  #chat div{padding:1px 0}
+  form{display:flex;gap:6px}
+  input,button,select{font:inherit;background:#0a0d11;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+  input{flex:1;min-width:0} button{cursor:pointer} button:hover{border-color:#41505f}
+  .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .k{color:var(--dim)}
+  .tag{font-size:10px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--warn)}
+  .mono{font-variant-numeric:tabular-nums}
+  #replays div.r{border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:6px;background:var(--panel2)}
+  .ok{color:var(--acc)} .no{color:var(--bad)}
+</style>
+</head>
+<body>
+<header>
+  <h1>ENW Zombies — host agent</h1>
+  <span class="pill" id="box">box …</span>
+  <span class="pill" id="linkp">link …</span>
+  <span class="pill" id="sitep">site …</span>
+  <span class="pill" id="tokp">tokens …</span>
+  <span class="dim" id="hostinfo"></span>
+</header>
+
+<main>
+  <section>
+    <h2>Instances <button id="bootbtn" title="boot a simulated game">+ sim</button></h2>
+    <div id="instances" class="dim">none</div>
+    <h2 style="margin-top:12px">Replays</h2>
+    <div id="replays" class="dim">none</div>
+  </section>
+
+  <section>
+    <h2><span>Live view <span class="dim" id="viewwhat"></span></span>
+      <span id="playbar" class="dim"></span></h2>
+    <canvas id="map" width="900" height="600"></canvas>
+    <div class="row">
+      <span class="k">round</span><b id="vround" class="mono">–</b>
+      <span class="k">phase</span><b id="vphase">–</b>
+      <span class="k">zombies</span><b id="vzomb" class="mono">–</b>
+      <span class="k">time</span><b id="vtime" class="mono">–</b>
+      <span class="k">cap left</span><b id="vcap" class="mono">–</b>
+      <span id="vflags"></span>
+    </div>
+    <div class="row" id="vplayers"></div>
+    <div class="row" id="controls"></div>
+  </section>
+
+  <section>
+    <h2>Chat <span class="dim">local + global</span></h2>
+    <div id="chat"></div>
+    <form id="sayf"><input id="saytext" placeholder="say to every game on this box + the network…" autocomplete="off"><button>Say</button></form>
+    <h2 style="margin-top:12px">Event log</h2>
+    <div id="log"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id)
+let state = null, sel = null, playback = null
+
+// ---- live stream -----------------------------------------------------------
+const es = new EventSource('/api/stream')
+es.onmessage = (m) => {
+  const { kind, data } = JSON.parse(m.data)
+  if (kind === 'state') { state = data; renderState() }
+  else if (kind === 'event') logEvent(data)
+  else if (kind === 'chat') logChat(data)
+  else if (kind === 'summary') logLine(`SUMMARY ${data.summary.map} round ${data.summary.rounds} finish=${data.summary.finish?.kind||'none'} flags=[${data.summary.flags.join(',')}]`, 'acc')
+}
+es.onerror = () => { $('sitep').textContent = 'stream lost'; $('sitep').className = 'pill off' }
+
+function fmtDur(ms){ if(ms==null) return '–'; const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60
+  return h? `${h}h${String(m).padStart(2,'0')}m` : m? `${m}m${String(x).padStart(2,'0')}s` : `${x}s` }
+function fmtBytes(n){ if(n==null) return '–'; return n<1024?n+' B':n<1048576?(n/1024).toFixed(0)+' KiB':(n/1048576).toFixed(2)+' MiB' }
+
+function renderState(){
+  $('box').textContent = `box ${state.box} · key ${state.key_id.slice(0,8)}`
+  $('linkp').textContent = `link :${state.link.port} · ${state.link.conns.length} conn`
+  $('linkp').className = 'pill ' + (state.link.conns.length ? 'on' : '')
+  $('sitep').textContent = state.site ? `site ${state.site.online?'online':'OFFLINE'} · ${state.site.polls} polls · chat ${state.site.chatIn}/${state.site.chatOut}` : 'standalone'
+  $('sitep').className = 'pill ' + (state.site ? (state.site.online?'on':'off') : '')
+  $('tokp').textContent = `tokens ${state.token_checks.required?'enforced':'advisory'} · ${state.token_checks.allowed} ok / ${state.token_checks.denied} denied`
+  $('tokp').className = 'pill ' + (state.token_checks.denied ? 'off' : 'on')
+  $('hostinfo').textContent = `${state.host.cpu} · ${state.host.cores} cores · node ${state.host.node}`
+
+  const box = $('instances')
+  if (!state.instances.length) { box.innerHTML = '<span class="dim">none — press “+ sim”</span>' }
+  else {
+    box.innerHTML = ''
+    for (const i of state.instances) {
+      const g = i.game
+      const d = document.createElement('div')
+      d.className = 'inst' + (sel === i.id ? ' sel' : '')
+      const cores = i.usage.cores_now
+      d.innerHTML = `
+        <div class="top"><b>${i.id}</b><span class="dim">${i.kind} · ${i.state}${i.pid?' · pid '+i.pid:''}</span></div>
+        <div class="dim">${g ? `${g.map_name||g.map||'?'} · ${g.mode} · round ${g.round}` : (i.finished?'finished':'…')}</div>
+        <div class="dim mono">cpu ${cores==null?'–':cores.toFixed(2)} core${i.usage.cores_avg!=null?` (avg ${i.usage.cores_avg.toFixed(2)})`:''} · rss ${fmtBytes(i.usage.rss_bytes)} · peak ${fmtBytes(i.usage.rss_peak_bytes)}</div>
+        <div class="bar"><i style="width:${Math.min(100,(cores||0)*100)}%;background:${(cores||0)>0.5?'var(--warn)':'var(--acc)'}"></i></div>
+        ${g ? `<div class="dim">${g.players.filter(p=>p.connected).length} players${g.flags.length?` · <span class="tag">${g.flags.join(' ')}</span>`:''}</div>` : ''}`
+      d.onclick = () => { sel = i.id; playback = null; renderState() }
+      box.appendChild(d)
+    }
+  }
+  if (!sel || !state.instances.find(i => i.id === sel)) sel = state.instances.find(i => i.game)?.id || state.instances[0]?.id || null
+  if (!playback) renderLive()
+}
+
+// ---- 2D live view ------------------------------------------------------------
+const cv = $('map'), ctx = cv.getContext('2d')
+// WaW map units; a real map is roughly this box. The view auto-fits what it is given.
+let W = { x0:-2000, x1:2000, y0:-1600, y1:1600 }
+
+function fit(points){
+  if (!points.length) return
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9
+  for (const p of points){ x0=Math.min(x0,p[0]); x1=Math.max(x1,p[0]); y0=Math.min(y0,p[1]); y1=Math.max(y1,p[1]) }
+  const pad = 300
+  W = { x0:Math.min(W.x0,x0-pad), x1:Math.max(W.x1,x1+pad), y0:Math.min(W.y0,y0-pad), y1:Math.max(W.y1,y1+pad) }
+}
+const sx = (x) => (x - W.x0) / (W.x1 - W.x0) * cv.width
+const sy = (y) => cv.height - (y - W.y0) / (W.y1 - W.y0) * cv.height
+
+const PCOL = ['#7fd1a4','#6aa9e0','#e5a94d','#c98fe0','#e2685f']
+
+function draw(players, zombies, label){
+  ctx.clearRect(0,0,cv.width,cv.height)
+  ctx.fillStyle = '#0a0c0f'; ctx.fillRect(0,0,cv.width,cv.height)
+  // grid
+  ctx.strokeStyle = '#151a21'; ctx.lineWidth = 1
+  for (let gx=Math.ceil(W.x0/500)*500; gx<W.x1; gx+=500){ ctx.beginPath(); ctx.moveTo(sx(gx),0); ctx.lineTo(sx(gx),cv.height); ctx.stroke() }
+  for (let gy=Math.ceil(W.y0/500)*500; gy<W.y1; gy+=500){ ctx.beginPath(); ctx.moveTo(0,sy(gy)); ctx.lineTo(cv.width,sy(gy)); ctx.stroke() }
+  // zombies
+  ctx.fillStyle = '#a4713f'
+  for (const z of zombies||[]){
+    if (!z.pos) continue
+    ctx.beginPath(); ctx.arc(sx(z.pos[0]), sy(z.pos[1]), 4, 0, 7); ctx.fill()
+  }
+  // players
+  ;(players||[]).forEach((p,i)=>{
+    if (!p.pos) return
+    const c = PCOL[p.slot % PCOL.length]
+    const x = sx(p.pos[0]), y = sy(p.pos[1])
+    if (p.ang){ const yaw = p.ang[1]*Math.PI/180
+      ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+Math.cos(yaw)*22, y-Math.sin(yaw)*22); ctx.stroke() }
+    ctx.fillStyle = p.down ? '#e2685f' : (p.alive===false ? '#4a5260' : c)
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill()
+    ctx.fillStyle = '#cfd6e0'; ctx.font = '11px ui-monospace,Consolas,monospace'
+    ctx.fillText(`${p.name ?? 'slot'+p.slot}${p.score!=null?' '+p.score:''}`, x+10, y-8)
+    if (p.down){ ctx.fillStyle='#e2685f'; ctx.fillText('DOWN', x+10, y+6) }
+  })
+  ctx.fillStyle = '#5b6472'; ctx.font = '11px ui-monospace,Consolas,monospace'
+  ctx.fillText(label || '', 8, 14)
+}
+
+function renderLive(){
+  const i = state?.instances.find(x => x.id === sel)
+  const g = i?.game
+  $('viewwhat').textContent = i ? `— ${i.id}${g?` ${g.map_name||g.map||''}`:''}` : ''
+  $('playbar').textContent = ''
+  if (!g){ draw([], [], i ? `${i.id}: ${i.state}` : 'no instance selected'); $('vround').textContent='–'; $('controls').innerHTML=''; $('vplayers').innerHTML=''; return }
+  fit([...(g.players||[]).map(p=>p.pos).filter(Boolean), ...(g.zombies||[]).map(z=>z.pos).filter(Boolean)])
+  draw(g.players, g.zombies, `${g.map||''} round ${g.round}`)
+  $('vround').textContent = g.round
+  $('vphase').textContent = g.phase + (g.paused ? ` (${g.pause_reason||'paused'})` : '')
+  $('vzomb').textContent = (g.zombies||[]).length
+  $('vtime').textContent = fmtDur(g.elapsed_ms)
+  $('vcap').textContent = g.cap_left_ms==null ? 'uncapped' : fmtDur(g.cap_left_ms)
+  $('vflags').innerHTML = (g.flags||[]).map(f=>`<span class="tag">${f}</span>`).join(' ') + (g.finish?` <span class="tag" style="color:var(--acc)">${g.finish.kind}</span>`:'')
+  $('vplayers').innerHTML = '<table><tr><th>slot</th><th>name</th><th>score</th><th>hp</th><th>downs</th><th>rev</th><th>idle</th><th></th></tr>' +
+    (g.players||[]).map(p=>`<tr><td>${p.slot}</td><td style="color:${PCOL[p.slot%PCOL.length]}">${p.name}</td><td class="mono">${p.score}</td><td class="mono">${p.health}</td><td class="mono">${p.downs}</td><td class="mono">${p.revives}</td><td class="mono ${p.idle_ms>300000?'warn':''}">${fmtDur(p.idle_ms)}</td><td>${p.late?'<span class="tag">late</span>':''}${p.afk_warned?'<span class="tag">afk</span>':''}${!p.connected?'<span class="tag">gone</span>':''}</td></tr>`).join('') + '</table>'
+  $('controls').innerHTML = `
+    <button onclick="act('${i.id}','${g.paused?'resume':'pause'}')">${g.paused?'Resume':'Pause'}</button>
+    <button onclick="act('${i.id}','end')">End cleanly</button>
+    <button onclick="act('${i.id}','stop')">Stop process</button>
+    <span class="dim">perf ${g.perf?`p50 ${g.perf.p50}ms p99 ${g.perf.p99}ms`:'–'}</span>`
+}
+window.act = async (id, what) => { await fetch(`/api/instance/${id}/${what}`, {method:'POST',headers:{'content-type':'application/json'},body:'{}'}); }
+
+// ---- log + chat ---------------------------------------------------------------
+function logLine(text, cls){
+  const l = $('log'); const d = document.createElement('div')
+  d.className = cls||''; d.textContent = `${new Date().toISOString().slice(11,19)} ${text}`
+  l.appendChild(d); while (l.children.length > 400) l.removeChild(l.firstChild)
+  l.scrollTop = l.scrollHeight
+}
+function logEvent({instance, ev}){
+  let s = `${instance} ${ev.t}`
+  if (ev.t==='round') s += ` ${ev.n}`
+  else if (ev.t==='chat') return
+  else if (ev.t==='points') s += ` slot${ev.slot} ${ev.score} (${ev.delta>0?'+':''}${ev.delta} ${ev.why||''})`
+  else if (ev.t==='notify') s += ` ${ev.name}${ev.args?' '+JSON.stringify(ev.args):''}`
+  else if (ev.t==='referee') s += ` ${ev.kind} ${JSON.stringify(ev).slice(0,140)}`
+  else if (ev.t==='perf') s += ` p50=${ev.frame_ms_p50} p99=${ev.frame_ms_p99}`
+  else s += ' ' + JSON.stringify(ev).slice(0,160)
+  logLine(s, ev.t==='referee'?'warn':(ev.t==='game_over'?'acc':''))
+}
+function logChat(c){
+  const box = $('chat'); const d = document.createElement('div')
+  d.innerHTML = `<span class="${c.network?'warn':'acc'}">[${c.origin}]</span> <b></b>: <span></span>`
+  d.querySelector('b').textContent = c.from; d.querySelector('span:last-child').textContent = c.text
+  box.appendChild(d); while (box.children.length > 200) box.removeChild(box.firstChild)
+  box.scrollTop = box.scrollHeight
+}
+$('sayf').onsubmit = async (e) => { e.preventDefault(); const i=$('saytext'); if(!i.value.trim())return
+  await fetch('/api/say',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({from:'ENW',text:i.value})}); i.value='' }
+
+$('bootbtn').onclick = async () => {
+  await fetch('/api/boot',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({players:2+Math.floor(Math.random()*3), timescale:1, max_round:20, ee_round:12})})
+}
+
+// ---- replays ------------------------------------------------------------------
+async function loadReplays(){
+  try {
+    const rs = await (await fetch('/api/replays')).json()
+    const box = $('replays')
+    box.innerHTML = rs.length ? '' : '<span class="dim">none yet</span>'
+    for (const r of rs){
+      const d = document.createElement('div'); d.className = 'r'
+      if (r.error) {
+        // An unfinished file: the host was killed before the footer was signed. Without a
+        // signed footer it is not a replay at all, so say so rather than half-showing it.
+        d.innerHTML = `<div><b>${r.file}</b></div><div class="no">unreadable: ${r.error}</div>
+          <div class="dim mono">${fmtBytes(r.size)} on disk — no signed footer, so nothing can be proved from it</div>`
+      } else {
+        d.innerHTML = `<div><b>${r.map_name||r.map||r.file}</b> <span class="dim">${r.file}</span></div>
+          <div class="dim mono">${fmtBytes(r.size)} · ${r.chunks} chunks · ${r.events} events · ${fmtDur(r.duration_ms)}${r.summary?` · round ${r.summary.rounds} · ${r.summary.finish?.kind||'no finish'}`:''}</div>
+          <div class="row"><button data-p="${r.file}">Play</button><button data-v="${r.file}">Verify</button><span data-s="${r.file}" class="dim"></span></div>`
+      }
+      box.appendChild(d)
+    }
+    box.querySelectorAll('[data-v]').forEach(b => b.onclick = async () => {
+      const s = box.querySelector(`[data-s="${b.dataset.v}"]`); s.textContent = 'checking…'
+      const v = await (await fetch(`/api/replay/${encodeURIComponent(b.dataset.v)}/verify`)).json()
+      s.className = v.ok ? 'ok' : 'no'
+      s.textContent = v.ok ? `VALID · signed by ${v.keyId.slice(0,8)}` : `INVALID: ${v.errors[0]}`
+    })
+    box.querySelectorAll('[data-p]').forEach(b => b.onclick = () => startPlayback(b.dataset.p))
+  } catch {}
+  setTimeout(loadReplays, 5000)
+}
+loadReplays()
+
+async function startPlayback(file){
+  playback = { file, stop:false }
+  const meta = await (await fetch(`/api/replay/${encodeURIComponent(file)}`)).json()
+  $('viewwhat').textContent = `— PLAYBACK ${file} (${meta.header.map_name||meta.header.map})`
+  const players = new Map()
+  let zombies = []
+  for (const ch of meta.index){
+    if (playback.stop || playback.file !== file) return
+    $('playbar').textContent = `chunk ${ch.i+1}/${meta.index.length} · byte offset ${ch.off} (one HTTP Range read)`
+    // ONE chunk at a time, by its index offset: this is exactly the range read a browser
+    // viewer makes against R2. Nothing else in the file is touched.
+    const c = await (await fetch(`/api/replay/${encodeURIComponent(file)}/chunk?i=${ch.i}`)).json()
+    let last = c.events[0]?.ms ?? 0
+    for (const ev of c.events){
+      if (playback.stop || playback.file !== file) return
+      if (ev.t === 'player_connect') players.set(ev.slot, { slot:ev.slot, name:ev.name, score:0, health:100 })
+      if (ev.t === 'points'){ const p = players.get(ev.slot); if (p) p.score = ev.score }
+      if (ev.t === 'down'){ const p = players.get(ev.slot); if (p) p.down = true }
+      if (ev.t === 'revive'){ const p = players.get(ev.slot); if (p) p.down = false }
+      if (ev.t === 'snap'){
+        for (const s of ev.players||[]){ const p = players.get(s.slot) || {slot:s.slot,name:'slot'+s.slot}; Object.assign(p, s); players.set(s.slot,p) }
+        if (ev.zombies) zombies = ev.zombies
+        fit([...[...players.values()].map(p=>p.pos).filter(Boolean), ...zombies.map(z=>z.pos).filter(Boolean)])
+        draw([...players.values()], zombies, `PLAYBACK ${meta.header.map||''} t=${fmtDur(ev.ms)}`)
+        const dt = Math.min(200, Math.max(0, (ev.ms - last)))
+        last = ev.ms
+        await new Promise(r => setTimeout(r, dt / (Number($('speed')?.value)||4)))
+      }
+    }
+  }
+  $('playbar').textContent = 'playback finished — click an instance to go back to live'
+}
+</script>
+</body>
+</html>

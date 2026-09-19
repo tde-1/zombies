@@ -18,3 +18,11 @@ infra/host-agent/data/
 # local
 *.log
 .vs/
+# Third-party CHECKOUTS belong in ZombiesDev\thirdparty, not here (dev-box.md
+# rule 9), so this folder is ignored by default...
+thirdparty/*
+# ...but code we VENDOR under its licence must be committed, or the repo will
+# not build on a fresh clone. MinHook is BSD-2-Clause; LICENSE.txt, AUTHORS.txt
+# and VENDORED-FROM.txt (the upstream commit) are kept next to the sources.
+!thirdparty/minhook/
+ZombiesDev/

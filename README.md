@@ -14,5 +14,6 @@ Status: **kickstart prototype** (server-side viability). See `docs/kickstart/`.
 | `referee/` | GSC overlays, per-map manifests | AGPL-3.0 |
 | `infra/host-agent/` | runs game instances, replays, chat hub | AGPL-3.0 |
 | `tools/` | dev and RE scripts | AGPL-3.0 |
+| `thirdparty/` | vendored dependencies only (MinHook, BSD-2-Clause) | upstream's |
 
 No game files, dumps or Activision code are ever committed.

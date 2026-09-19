@@ -1,0 +1,20 @@
+{
+  "name": "@enw-zombies/host-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ENW Zombies host agent: runs game-server instances on a game box, referees them, records signed replays, bridges chat, and reports to the site over the pull protocol.",
+  "engines": { "node": ">=24" },
+  "bin": {
+    "enw-host": "./host.js"
+  },
+  "scripts": {
+    "host": "node host.js",
+    "site": "node mock-site/site.js",
+    "verify": "node tools/verify.js",
+    "measure": "node tools/measure-replay.js",
+    "test": "node test/run-all.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

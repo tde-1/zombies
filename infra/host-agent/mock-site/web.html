@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ENW Zombies — mock site</title>
+<style>
+  :root { --bg:#0e1013; --panel:#171a1f; --line:#272c34; --fg:#e6e8ec; --dim:#8b93a1; --acc:#7fd1a4; --warn:#e0a458; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 ui-monospace,Consolas,monospace; }
+  header { padding:12px 16px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap }
+  h1 { font-size:15px; margin:0; font-weight:600 }
+  .dim { color:var(--dim) }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px; align-items:start }
+  @media (max-width:820px){ main { grid-template-columns:1fr } }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; min-width:0 }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:0 0 8px }
+  #chat { height:340px; overflow:auto; font-size:13px }
+  #chat div { padding:2px 0; border-bottom:1px solid #1e222a; word-break:break-word }
+  .origin { color:var(--acc) }
+  .web { color:var(--warn) }
+  form { display:flex; gap:8px; margin-top:8px }
+  input, button { font:inherit; background:#0b0d10; color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:7px 10px }
+  input { flex:1; min-width:0 }
+  button { cursor:pointer }
+  pre { margin:0; font-size:12px; max-height:340px; overflow:auto; white-space:pre-wrap; word-break:break-word; color:#c6ccd6 }
+</style>
+</head>
+<body>
+<header>
+  <h1>ENW Zombies — mock site (the website half)</h1>
+  <span class="dim">boxes poll this; it never connects out</span>
+</header>
+<main>
+  <section>
+    <h2>Global chat (web view)</h2>
+    <div id="chat"></div>
+    <form id="say">
+      <input id="text" placeholder="say something to every game server…" autocomplete="off">
+      <button>Send</button>
+    </form>
+  </section>
+  <section>
+    <h2>State — boxes, leases, results</h2>
+    <pre id="state">loading…</pre>
+  </section>
+</main>
+<script>
+const chat = document.getElementById('chat')
+function line(e) {
+  const d = document.createElement('div')
+  const who = e.origin === 'web' ? 'web' : e.origin
+  d.innerHTML = `<span class="${e.origin === 'web' ? 'web' : 'origin'}">[${who}]</span> <b></b>: <span></span>`
+  d.querySelector('b').textContent = e.from
+  d.querySelector('span:last-child').textContent = e.text
+  chat.appendChild(d)
+  chat.scrollTop = chat.scrollHeight
+}
+const es = new EventSource('/api/site/chat/stream')
+es.onmessage = (m) => {
+  const e = JSON.parse(m.data)
+  if (e.kind === 'backlog') e.events.forEach(line)
+  else line(e)
+}
+document.getElementById('say').onsubmit = async (ev) => {
+  ev.preventDefault()
+  const i = document.getElementById('text')
+  if (!i.value.trim()) return
+  await fetch('/api/site/chat', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from:'web', text:i.value }) })
+  i.value = ''
+}
+async function poll() {
+  try {
+    const s = await (await fetch('/admin/state')).json()
+    document.getElementById('state').textContent = JSON.stringify(s, (k,v) => k === 'chat' ? undefined : v, 2)
+  } catch {}
+  setTimeout(poll, 2000)
+}
+poll()
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_factory",
+  "title": "Der Riese",
+  "source": "stock",
+  "fs_game": null,
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Fly Trap",
+      "priority": 1,
+      "solo_ok": true,
+      "requires": {
+        "flag": "hide_and_seek"
+      },
+      "when": {
+        "all": [
+          {
+            "flag": "ee_exp_monkey"
+          },
+          {
+            "flag": "ee_bowie_bear"
+          },
+          {
+            "flag": "ee_perk_bear"
+          }
+        ]
+      },
+      "step_keys": {
+        "ee_exp_monkey": "t4_factory_flytrap_monkey",
+        "ee_bowie_bear": "t4_factory_flytrap_bowie_bear",
+        "ee_perk_bear": "t4_factory_flytrap_perk_bear"
+      },
+      "start_step_key": "t4_factory_flytrap_start",
+      "complete_key": "t4_factory_flytrap"
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [
+    {
+      "id": "power_on",
+      "label": "Power turned on",
+      "when": {
+        "flag": "electricity_on"
+      }
+    },
+    {
+      "id": "ee_started",
+      "label": "Anti-gravity",
+      "when": {
+        "flag": "hide_and_seek"
+      },
+      "step_key": "t4_factory_flytrap_start"
+    },
+    {
+      "id": "teleporters",
+      "label": "All pads linked",
+      "when": {
+        "all": [
+          {
+            "flag": "teleporter_pad_link_1"
+          },
+          {
+            "flag": "teleporter_pad_link_2"
+          },
+          {
+            "flag": "teleporter_pad_link_3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bridge",
+      "label": "Catwalk down",
+      "when": {
+        "flag": "bridge_down"
+      }
+    },
+    {
+      "id": "pap_used",
+      "label": "Pack-a-Punch used",
+      "when": {
+        "notify": {
+          "ent": "any",
+          "name": "perk_used"
+        }
+      }
+    },
+    {
+      "id": "box_used",
+      "label": "Magic box used",
+      "when": {
+        "notify": {
+          "ent": "any",
+          "name": "user_grabbed_weapon"
+        }
+      }
+    },
+    {
+      "id": "game_over",
+      "label": "Game over",
+      "when": {
+        "notify": {
+          "ent": "level",
+          "name": "end_game"
+        }
+      }
+    }
+  ],
+  "confidence": "read",
+  "notes": "Fly Trap: nazi_zombie_factory.gsc flytrap() (line 1495) does flag_init('hide_and_seek'), threads three hide_and_seek_target()s, waits for trig_ee_flytrap to take damage from an upgraded weapon, fires achievement_notify('DLC3_ZOMBIE_ANTI_GRAVITY') + ClientNotify('ag1'), then flag_set('hide_and_seek') and flag_waits ee_exp_monkey / ee_bowie_bear / ee_perk_bear. All three set = egg complete. Der Riese is the ONLY stock map with level notify('end_game') (_zombiemode.gsc:2653); the other three call end_game() directly.",
+  "event_model": "signal ids follow IW4MAdmin feature/zombie-stats EventLogType where one exists; see docs/kickstart/referee.md section 6"
+}

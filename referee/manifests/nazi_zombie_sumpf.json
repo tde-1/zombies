@@ -1,0 +1,97 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_sumpf",
+  "title": "Shi No Numa",
+  "source": "stock",
+  "fs_game": null,
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc": "dc45be34db16badbfcb1624d5b0c3b94b273149526ff3c11ee384ab2dfa14552"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [
+    {
+      "id": "hut_ne",
+      "label": "NE hut opened",
+      "when": {
+        "flag": "northeast_building_unlocked"
+      }
+    },
+    {
+      "id": "hut_nw",
+      "label": "NW hut opened",
+      "when": {
+        "flag": "northwest_building_unlocked"
+      }
+    },
+    {
+      "id": "hut_se",
+      "label": "SE hut opened",
+      "when": {
+        "flag": "southeast_building_unlocked"
+      }
+    },
+    {
+      "id": "hut_sw",
+      "label": "SW hut opened",
+      "when": {
+        "flag": "southwest_building_unlocked"
+      }
+    },
+    {
+      "id": "all_huts",
+      "label": "All four huts",
+      "when": {
+        "all": [
+          {
+            "flag": "northeast_building_unlocked"
+          },
+          {
+            "flag": "northwest_building_unlocked"
+          },
+          {
+            "flag": "southeast_building_unlocked"
+          },
+          {
+            "flag": "southwest_building_unlocked"
+          }
+        ]
+      }
+    },
+    {
+      "id": "box_used",
+      "label": "Magic box used",
+      "when": {
+        "notify": {
+          "ent": "any",
+          "name": "user_grabbed_weapon"
+        }
+      }
+    },
+    {
+      "id": "nuke",
+      "label": "Nuke",
+      "when": {
+        "notify": {
+          "ent": "level",
+          "name": "nuke_triggered"
+        }
+      }
+    }
+  ],
+  "confidence": "read",
+  "notes": "No easter egg with a completion flag and no buyable ending; the radios/comic are flavour. No power switch - nazi_zombie_sumpf_perks.gsc:63 fires level notify('master_switch_activated') during init, so do NOT treat that notify as 'power on' generically. Game over is a direct end_game() call - use level.intermission.",
+  "event_model": "signal ids follow IW4MAdmin feature/zombie-stats EventLogType where one exists; see docs/kickstart/referee.md section 6"
+}
