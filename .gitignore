@@ -12,6 +12,10 @@ out/
 *.ff
 *.iwd
 dumps/
+# python (tools/re, referee/)
+__pycache__/
+*.pyc
+
 # node
 node_modules/
 infra/host-agent/data/

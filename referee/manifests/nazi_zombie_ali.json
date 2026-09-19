@@ -103,5 +103,21 @@
   ],
   "confidence": "read",
   "notes": "THE ENDING IS IN THE CO-SHIPPED MOD, NOT THE MAP. The folder holds three different maps/_zombiemode.gsc: one in nazi_zombie_ali.ff, one in nazi_zombie_ali.iwd, and one in zombie_clinic.iwd (the ZCT MOD2_MW mod the README says the map needs). The engine printed zombie_clinic.iwd FIRST on the search path, so its 69,495 B copy is the one that runs. Only that copy contains the ending: _zombiemode.gsc:114 threads end_game_trig(), which finds every trigger_use with targetname 'end_game' and runs end_game_trigger() - a 20,000-point 'GET OUT OF CLINIC' purchase (the cost is hardcoded in script, NOT a zombie_cost key) that sets level.tom_victory = true and calls end_game(). end_game() then sets level.intermission AND level.finalcutscene and shows 'YOU WON' instead of 'GAME OVER'. So the detector is level.tom_victory, with the trigger+intermission pair as a fallback. The map's own 50,000-point zombie_door (target auto215) is just an expensive door - a plausible-looking false positive that cost me an hour before referee/scan_map.py found the real one. The advertised '6 piece of amulet' quest still does not exist in any script: not detectable, deliberately not listed as an easter_egg. zombie_clinic.iwd also overrides maps/_callbackglobal.gsc, _laststand.gsc, _loadout.gsc and _gameskill.gsc, so re-verify the generic down/revive/score events on this map. The mod folder ships gift.exe - never run it (dev-box.md rule 3).",
-  "event_model": "signal ids follow IW4MAdmin feature/zombie-stats EventLogType where one exists; see docs/kickstart/referee.md section 6"
+  "event_model": "signal ids follow IW4MAdmin feature/zombie-stats EventLogType where one exists; see docs/kickstart/referee.md section 6",
+  "discrepancies": [
+    {
+      "claim": "you have to find 6 piece of amulet to open main door",
+      "source": "README.txt shipped with the map, and an in-game pregame iPrintLnBold",
+      "reality": "No script in nazi_zombie_ali.ff, mod.ff, nazi_zombie_ali.iwd or zombie_clinic.iwd contains the word amulet, or any flag, notify or variable for the quest. It is sethintstring hints and geometry.",
+      "detectable": false,
+      "decision": "Not listed as a finish. The map badge comes from the Buyable Ending, which is real and detectable. Recorded here rather than acted on - see docs/kickstart/questions.md Q-ref-1."
+    },
+    {
+      "claim": "the map's headline purchase is the 50,000-point main door",
+      "source": "a reasonable reading of the entity list - it is the only 50,000 cost on the map and everything else is 50-3500",
+      "reality": "That is an ordinary door. The Buyable Ending is a 20,000-point trigger_use targetname=end_game handled by end_game_trigger() in the ZCT mod's copy of _zombiemode.gsc (zombie_clinic.iwd), which sets level.tom_victory.",
+      "detectable": true,
+      "decision": "Corrected. This one was my own hand analysis, caught by referee/scan_map.py - which is the argument for the scanner being authoritative over both release posts and human reading."
+    }
+  ]
 }

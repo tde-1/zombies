@@ -93,6 +93,11 @@
 <script>
 const $ = (id) => document.getElementById(id)
 let state = null, sel = null, playback = null
+// The state stream is 4 Hz. Rebuilding a list's DOM at 4 Hz throws away scroll position
+// and makes its buttons unclickable (a click lands after the node it was aimed at is
+// gone). So each list keeps a signature and only rebuilds when that actually changes;
+// the numbers inside are patched in place.
+let instSig = '', replaySig = ''
 
 // ---- live stream -----------------------------------------------------------
 const es = new EventSource('/api/stream')
@@ -120,23 +125,34 @@ function renderState(){
   $('hostinfo').textContent = `${state.host.cpu} · ${state.host.cores} cores · node ${state.host.node}`
 
   const box = $('instances')
-  if (!state.instances.length) { box.innerHTML = '<span class="dim">none — press “+ sim”</span>' }
-  else {
-    box.innerHTML = ''
+  const sig = state.instances.map((i) => `${i.id}:${i.state}:${i.id===sel}`).join('|')
+  if (sig !== instSig) {
+    instSig = sig
+    box.innerHTML = state.instances.length ? '' : '<span class="dim">none — press “+ sim”</span>'
     for (const i of state.instances) {
-      const g = i.game
       const d = document.createElement('div')
       d.className = 'inst' + (sel === i.id ? ' sel' : '')
-      const cores = i.usage.cores_now
-      d.innerHTML = `
-        <div class="top"><b>${i.id}</b><span class="dim">${i.kind} · ${i.state}${i.pid?' · pid '+i.pid:''}</span></div>
-        <div class="dim">${g ? `${g.map_name||g.map||'?'} · ${g.mode} · round ${g.round}` : (i.finished?'finished':'…')}</div>
-        <div class="dim mono">cpu ${cores==null?'–':cores.toFixed(2)} core${i.usage.cores_avg!=null?` (avg ${i.usage.cores_avg.toFixed(2)})`:''} · rss ${fmtBytes(i.usage.rss_bytes)} · peak ${fmtBytes(i.usage.rss_peak_bytes)}</div>
-        <div class="bar"><i style="width:${Math.min(100,(cores||0)*100)}%;background:${(cores||0)>0.5?'var(--warn)':'var(--acc)'}"></i></div>
-        ${g ? `<div class="dim">${g.players.filter(p=>p.connected).length} players${g.flags.length?` · <span class="tag">${g.flags.join(' ')}</span>`:''}</div>` : ''}`
-      d.onclick = () => { sel = i.id; playback = null; renderState() }
+      d.dataset.id = i.id
+      d.innerHTML = `<div class="top"><b>${i.id}</b><span class="dim">${i.kind} · <span data-f="state"></span>${i.pid?' · pid '+i.pid:''}</span></div>
+        <div class="dim" data-f="where"></div>
+        <div class="dim mono" data-f="usage"></div>
+        <div class="bar"><i data-f="bar"></i></div>
+        <div class="dim" data-f="players"></div>`
+      d.onclick = () => { sel = i.id; instSig = ''; playback = null; renderState() }
       box.appendChild(d)
     }
+  }
+  for (const i of state.instances) {
+    const d = box.querySelector(`[data-id="${i.id}"]`); if (!d) continue
+    const g = i.game, cores = i.usage.cores_now
+    const f = (k) => d.querySelector(`[data-f="${k}"]`)
+    f('state').textContent = i.state
+    f('where').textContent = g ? `${g.map_name||g.map||'?'} · ${g.mode} · round ${g.round}` : (i.finished?'finished':'…')
+    f('usage').textContent = `cpu ${cores==null?'–':cores.toFixed(2)} core${i.usage.cores_avg!=null?` (avg ${i.usage.cores_avg.toFixed(2)})`:''} · rss ${fmtBytes(i.usage.rss_bytes)} · peak ${fmtBytes(i.usage.rss_peak_bytes)}`
+    const bar = f('bar')
+    bar.style.width = `${Math.min(100,(cores||0)*100)}%`
+    bar.style.background = (cores||0) > 0.5 ? 'var(--warn)' : 'var(--acc)'
+    f('players').innerHTML = g ? `${g.players.filter(p=>p.connected).length} players${g.flags.length?` · <span class="tag">${g.flags.join(' ')}</span>`:''}` : ''
   }
   if (!sel || !state.instances.find(i => i.id === sel)) sel = state.instances.find(i => i.game)?.id || state.instances[0]?.id || null
   if (!playback) renderLive()
@@ -250,6 +266,9 @@ $('bootbtn').onclick = async () => {
 async function loadReplays(){
   try {
     const rs = await (await fetch('/api/replays')).json()
+    const sig = rs.map((r) => `${r.file}:${r.size}:${r.error||''}`).join('|')
+    if (sig === replaySig) return setTimeout(loadReplays, 5000)
+    replaySig = sig
     const box = $('replays')
     box.innerHTML = rs.length ? '' : '<span class="dim">none yet</span>'
     for (const r of rs){

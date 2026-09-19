@@ -51,9 +51,22 @@ function start(name, script, argv) {
   return p
 }
 
+// On Windows `child.kill('SIGTERM')` is TerminateProcess: the host's shutdown handler
+// never runs, so any game still in progress loses its replay footer. That is a real
+// production case too (a box crash), and tools/recover.js exists for it — but the demo
+// should not manufacture it, so ask every box to end its games cleanly first.
 async function stopAll() {
+  try {
+    const s = await get('/admin/state')
+    for (const b of s.boxes || []) for (const i of b.instances || []) {
+      if (i.state !== 'running') continue
+      const dash = b.name === 'box-a' ? 8791 : 8792
+      await fetch(`http://127.0.0.1:${dash}/api/instance/${i.id}/end`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => {})
+    }
+    await delay(2500)
+  } catch { /* the site may already be gone */ }
   for (const p of procs) { try { p.kill('SIGTERM') } catch { /* gone */ } }
-  await delay(1200)
+  await delay(1500)
   for (const p of procs) { if (p.exitCode == null) { try { p.kill('SIGKILL') } catch { /* gone */ } } }
 }
 
@@ -108,12 +121,12 @@ try {
     ],
     // The EE fires on round 6; the manifest still needs the four Der Riese flags in
     // the right order, and the sim emits exactly those.
-    sim: { timescale: 8, max_round: 14, ee_round: 6 },
+    sim: { timescale: 20, max_round: 10, ee_round: 6 },
   })
   const leaseB = await post('/admin/lease', {
     box: 'box-b', map: 'nazi_zombie_ali', fs_game: 'mods/nazi_zombie_ali', mode: 'custom',
     players: [{ steamid: '76561198000000011', name: 'Takeo' }, { steamid: '76561198000000012', name: 'Richtofen' }],
-    sim: { timescale: 8, max_round: 12, ending_round: 8 },
+    sim: { timescale: 20, max_round: 9, ending_round: 6 },
   })
   okmsg(`leased ${leaseA.assignment.match_id} (Der Riese, 4 invites) to box-a`)
   okmsg(`leased ${leaseB.assignment.match_id} (nazi_zombie_ali, 2 invites) to box-b`)
@@ -158,7 +171,7 @@ try {
   const games = await waitFor('two results', async () => {
     const s = await get('/admin/state')
     return s.games.length >= 2 ? s.games : null
-  }, 180_000)
+  }, 300_000)
   for (const g of games || []) {
     const s = g.summary
     console.log(`       ${g.box}  ${s.map.padEnd(20)} round ${String(s.rounds).padStart(3)}  finish=${s.finish?.kind || 'none'}  ${(s.duration_ms / 60000).toFixed(1)} min  flags=[${s.flags.join(',')}]  eligible=${s.records_eligible}`)
@@ -173,13 +186,13 @@ try {
     box: 'box-a', map: 'nazi_zombie_prototype', mode: 'custom',
     players: [{ steamid: '76561198000000021', name: 'Peters' }, { steamid: '76561198000000022', name: 'Sleeper' }],
     settings: { referee: { capMs: 8 * 60_000, capWarnMs: [5 * 60_000, 3 * 60_000, 60_000], afkWarnMs: 2 * 60_000, afkKickMs: 4 * 60_000, allAfkPauseMs: 60 * 60_000 } },
-    sim: { timescale: 12, max_round: 99, afk_slot: 1 },
+    sim: { timescale: 20, max_round: 99, afk_slot: 1 },
   })
   okmsg(`leased ${capLease.assignment.match_id} with an 8-minute cap and a 2/4-minute AFK ladder`)
   const capDone = await waitFor('the capped game to end itself', async () => {
     const s = await get('/admin/state')
     return s.games.find((g) => g.summary?.match_id === capLease.assignment.match_id)
-  }, 180_000)
+  }, 300_000)
   if (capDone) {
     const s = capDone.summary
     console.log(`       ended: reason=${s.end_reason} round=${s.rounds} flags=[${s.flags.join(',')}] duration=${(s.duration_ms / 60000).toFixed(1)} min`)

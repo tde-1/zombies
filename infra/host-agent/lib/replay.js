@@ -319,6 +319,12 @@ export function verifyFile(file, { expectPub = null } = {}) {
     durationMs: f.duration_ms,
     keyId: f.key_id,
     pub: f.pub,
+    // A replay rebuilt by tools/recover.js after a host crash. It verifies, but the
+    // signature was applied AFTER the fact, so it proves only that nothing changed since
+    // recovery. Anything that grades evidence must read this flag, not just `ok`.
+    recovered: !!f.recovered,
+    partial: !!f.partial,
+    recoveredNote: f.recovered_note || null,
     signedAt: f.signed_at,
     header: head.header,
     eventCounts: f.event_counts,

@@ -17,9 +17,12 @@
 //
 // GRAMMAR. The `J;`/`Q;`/`K;`/`D;`/`say;`/`InitGame:`/`ExitLevel:` lines follow B3's
 // canonical cod5 grammar (b3/parsers/cod5.py), which is what IW4MAdmin's T4 parser
-// expects. The zombies-specific lines use our own `ENWZombie;` prefix in IW4MAdmin's
-// semicolon shape: their T4ZM stat emitter is a closed premium plugin, so we cannot match
-// its prefixes, and inventing lines under THEIR prefix would be worse than being distinct.
+// expects. The zombies-specific lines carry a configurable PREFIX in IW4MAdmin's
+// semicolon shape; the default is `ENWZombie` because their T4ZM stat emitter is a closed
+// premium plugin whose exact prefixes we cannot match, and inventing lines under theirs
+// would be worse than being distinct. The referee agent has proposed `GSE` (IW4MAdmin's
+// generic game-script-event prefix) for the DLL side — whichever wins, both halves must
+// use the same string, so it is one option here rather than a literal.
 import fs from 'node:fs'
 import path from 'node:path'
 import { mkdirp } from './util.js'
@@ -27,9 +30,13 @@ import { mkdirp } from './util.js'
 const clean = (s) => String(s ?? '').replace(/[;\r\n]/g, ' ')
 
 export class GameLog {
-  constructor({ file, enabled = true }) {
+  constructor({ file, enabled = true, prefix = 'ENWZombie' }) {
     this.enabled = enabled
     this.file = file
+    // The zombies-line prefix. Configurable because the referee agent has proposed `GSE`
+    // (IW4MAdmin's own game-script-event prefix) for the DLL side — the two halves must
+    // agree, and whichever we settle on, both ends use this one string. See the board.
+    this.p = prefix
     if (!enabled) return
     mkdirp(path.dirname(file))
     this.fd = fs.openSync(file, 'a')
@@ -68,33 +75,33 @@ export class GameLog {
         this.write(ev.ms, `say;${guid(ev.slot)};${ev.slot};${name(ev.slot)};${clean(ev.text)}`)
         break
       case 'round':
-        this.write(ev.ms, `ENWZombie;round;${ev.n}`)
+        this.write(ev.ms, `${this.p};round;${ev.n}`)
         break
       case 'down':
-        this.write(ev.ms, `ENWZombie;down;${guid(ev.slot)};${ev.slot}`)
+        this.write(ev.ms, `${this.p};down;${guid(ev.slot)};${ev.slot}`)
         break
       case 'revive':
-        this.write(ev.ms, `ENWZombie;revive;${guid(ev.slot)};${ev.slot};${ev.by != null ? guid(ev.by) : ''}`)
+        this.write(ev.ms, `${this.p};revive;${guid(ev.slot)};${ev.slot};${ev.by != null ? guid(ev.by) : ''}`)
         break
       case 'bleedout':
         // D;/K; is the damage/kill grammar; a bleedout is the zombies equivalent of a death.
         this.write(ev.ms, `K;${guid(ev.slot)};${ev.slot};allies;${name(ev.slot)};;-1;axis;zombie;none;0;MOD_UNKNOWN;none`)
-        this.write(ev.ms, `ENWZombie;bleedout;${guid(ev.slot)};${ev.slot}`)
+        this.write(ev.ms, `${this.p};bleedout;${guid(ev.slot)};${ev.slot}`)
         break
       case 'points':
-        this.write(ev.ms, `ENWZombie;points;${guid(ev.slot)};${ev.slot};${ev.score};${ev.delta ?? ''};${clean(ev.why || '')}`)
+        this.write(ev.ms, `${this.p};points;${guid(ev.slot)};${ev.slot};${ev.score};${ev.delta ?? ''};${clean(ev.why || '')}`)
         break
       case 'notify':
-        this.write(ev.ms, `ENWZombie;notify;${clean(ev.ent || 'level')};${clean(ev.name)}${ev.args ? ';' + clean(JSON.stringify(ev.args)) : ''}`)
+        this.write(ev.ms, `${this.p};notify;${clean(ev.ent || 'level')};${clean(ev.name)}${ev.args ? ';' + clean(JSON.stringify(ev.args)) : ''}`)
         break
       case 'level_var':
-        this.write(ev.ms, `ENWZombie;level_var;${clean(ev.name)};${clean(ev.value)}`)
+        this.write(ev.ms, `${this.p};level_var;${clean(ev.name)};${clean(ev.value)}`)
         break
       case 'dvar':
-        this.write(ev.ms, `ENWZombie;dvar;${clean(ev.name)};${clean(ev.value)}`)
+        this.write(ev.ms, `${this.p};dvar;${clean(ev.name)};${clean(ev.value)}`)
         break
       case 'game_over':
-        this.write(ev.ms, `ENWZombie;game_over;${ev.round ?? ''};${clean(ev.reason || '')}`)
+        this.write(ev.ms, `${this.p};game_over;${ev.round ?? ''};${clean(ev.reason || '')}`)
         this.write(ev.ms, 'ExitLevel: executed')
         break
       default: break   // snap / input / perf / hello / reply have no log-grammar line
@@ -104,9 +111,9 @@ export class GameLog {
   /** One final line carrying the whole summary, so a tailer needs no other source. */
   onSummary(s) {
     if (!this.enabled) return
-    this.write(s.duration_ms, `ENWZombie;match;${clean(s.match_id)};${clean(s.map)};${s.rounds};${clean(s.finish?.kind || 'none')};${s.duration_ms};${s.player_count};${clean(s.flags.join('+') || 'none')}`)
+    this.write(s.duration_ms, `${this.p};match;${clean(s.match_id)};${clean(s.map)};${s.rounds};${clean(s.finish?.kind || 'none')};${s.duration_ms};${s.player_count};${clean(s.flags.join('+') || 'none')}`)
     for (const p of s.players) {
-      this.write(s.duration_ms, `ENWZombie;client;${clean(p.steamid)};${clean(p.name)};${p.score};${p.kills};${p.downs};${p.revives};${p.rounds_played};${p.stats?.points_earned ?? ''};${p.stats?.points_spent ?? ''};${p.stats?.headshots ?? ''};${p.stats?.time_alive_ms ?? ''}`)
+      this.write(s.duration_ms, `${this.p};client;${clean(p.steamid)};${clean(p.name)};${p.score};${p.kills};${p.downs};${p.revives};${p.rounds_played};${p.stats?.points_earned ?? ''};${p.stats?.points_spent ?? ''};${p.stats?.headshots ?? ''};${p.stats?.time_alive_ms ?? ''}`)
     }
   }
 

@@ -6,6 +6,7 @@ they can be added to the build without anyone editing a shared list.
 | Folder | Emits / accepts (game-link v0) | Owner |
 |---|---|---|
 | `referee/` | `round`, `game_over`, `notify`, `points`, `down`; accepts `snapshot_state`, `end` | referee |
+| `referee/logprint_mirror.*` | optional `GSE;…` lines in the game log (`enw_logprint_events`, default 0) | referee |
 | `replay/` | `snap` | referee |
 | `chat/` | `chat`; accepts `say`, `tell` | referee |
 | `afk/` | `input` | referee |

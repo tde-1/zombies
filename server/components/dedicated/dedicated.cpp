@@ -46,17 +46,46 @@ namespace {
 
 #ifdef ENW_HAVE_T4_ADDRESSES
 
-// T4 dvar flags. The names are the engine family's; `re` still has to confirm the bit
-// values against our dump. SetSavedDvar() is the one that matters -- GSC rejects any
-// dvar without it (probe p07/p08).
-enum dvar_flags : int {
-    DVAR_SAVED      = 0x0001,
-    DVAR_USERINFO   = 0x0002,
-    DVAR_SERVERINFO = 0x0004,
-    DVAR_INIT       = 0x0010,
-    DVAR_ROM        = 0x0040,
-    DVAR_CHEAT      = 0x0080,
-    DVAR_LATCH      = 0x0800,
+// ---------------------------------------------------------------------------
+// dvar_s layout, derived from a live headless boot (probe p16, 2026-09-20).
+// Not guessed and not copied from anywhere: six dvars whose properties we already
+// knew from the engine's own console output were dumped and compared.
+//
+//   +0x00  const char* name          (verified: the slot that points back at the name)
+//   +0x04  const char* description
+//   +0x08  uint16 flags | uint16 type
+//   +0x10  current value  (16 bytes: int / float / char* / vec)
+//   +0x20  latched value  (same shape)
+//
+// Evidence for the split at +0x08, low half flags / high half type:
+//   com_maxfps              0x0005'0001   int,    in config.cfg  -> SAVED set
+//   logfile                 0x0005'0000   int,    never archived -> SAVED clear
+//   dedicated               0x0006'0060   enum,   "dedicated is read only"
+//   fs_homepath             0x0007'0210   string, "fs_homepath is write protected"
+//   con_typewriterColorBase 0x0007'4000   string, created by our own +set (external)
+// and the values confirm it: com_maxfps +0x10 = 0x55 (85), logfile +0x10 = 2,
+// dedicated +0x10 = 1, fs_homepath +0x10 = a char* to the path we passed.
+//
+// So DVAR_SAVED is bit 0 -- exactly the bit that differs between com_maxfps and
+// logfile, which is the pair we chose for that purpose.
+namespace dvar {
+constexpr size_t off_name  = 0x00;
+constexpr size_t off_desc  = 0x04;
+constexpr size_t off_flags = 0x08;   // uint16
+constexpr size_t off_type  = 0x0A;   // uint16
+constexpr size_t off_value = 0x10;
+}  // namespace dvar
+
+enum dvar_flags : uint16_t {
+    DVAR_SAVED    = 0x0001,  // [V] what SetSavedDvar() insists on
+    DVAR_ROM      = 0x0040,  // [C] set on `dedicated`
+    DVAR_EXTERNAL = 0x4000,  // [C] set on dvars created from the command line
+};
+
+enum dvar_type : uint16_t {
+    DVAR_TYPE_INT    = 0x0005,  // [C] com_maxfps, logfile
+    DVAR_TYPE_ENUM   = 0x0006,  // [C] dedicated
+    DVAR_TYPE_STRING = 0x0007,  // [C] fs_homepath, and anything made by +set
 };
 
 using Dvar_FindVar_t = void*(__cdecl*)(const char* name);
@@ -192,16 +221,47 @@ private:
         }
     }
 
-    // Step 1: the thing actually blocking a headless map load today.
+    // Step 1: the thing actually blocking a headless map load.
+    //
+    // We do NOT call a registration function. `+set <name> <value>` on the command line
+    // already creates the dvar (probe p07) -- it just comes out as DVAR_EXTERNAL with no
+    // SAVED bit, which is precisely what GSC's SetSavedDvar() refuses. So we set one bit
+    // on a dvar the engine itself created. That is a two-byte write and needs no verified
+    // function signature, which is why it is the right first move rather than guessing at
+    // Dvar_RegisterVec3.
+    //
+    // The launcher must pass `+set <name> <value>` for each of these; if one is missing we
+    // say so loudly rather than inventing it.
     void register_missing_saved_dvars(Dvar_FindVar_t find) {
         for (const auto& d : kWantedDvars) {
-            void* existing = find(d.name);
-            ENW_WARN("dedicated: TODO register '%s' = \"%s\" with DVAR_SAVED (%s); currently %s. "
-                     "Blocked on Dvar_RegisterVec3/Dvar_RegisterString from `re` "
-                     "(only Dvar_RegisterBool 0x%08X is mapped).",
-                     d.name, d.value, d.why,
-                     existing ? "present but unflagged" : "ABSENT",
-                     static_cast<unsigned>(t4::fn::Dvar_RegisterBool));
+            void* dv = find(d.name);
+            if (!dv) {
+                ENW_ERROR("dedicated: '%s' ABSENT (%s). Launch with `+set %s \"%s\"` so the engine "
+                          "creates it and we can flag it.", d.name, d.why, d.name, d.value);
+                continue;
+            }
+            const auto a = reinterpret_cast<uintptr_t>(dv);
+            uint16_t flags = 0, type = 0;
+            if (!memory::read(a + dvar::off_flags, &flags) ||
+                !memory::read(a + dvar::off_type, &type)) {
+                ENW_ERROR("dedicated: could not read dvar_s('%s') @ %p", d.name, dv);
+                continue;
+            }
+            if (flags & DVAR_SAVED) {
+                ENW_INFO("dedicated: '%s' already SAVED (flags 0x%04X type 0x%04X)",
+                         d.name, flags, type);
+                continue;
+            }
+            const uint16_t want = static_cast<uint16_t>(flags | DVAR_SAVED);
+            if (!memory::write<uint16_t>(a + dvar::off_flags, want)) {
+                ENW_ERROR("dedicated: failed to set DVAR_SAVED on '%s' @ %p", d.name, dv);
+                continue;
+            }
+            uint16_t after = 0;
+            memory::read(a + dvar::off_flags, &after);
+            ENW_INFO("dedicated: '%s' flags 0x%04X -> 0x%04X (type 0x%04X) %s  [%s]",
+                     d.name, flags, after, type,
+                     (after & DVAR_SAVED) ? "SAVED set" : "SET FAILED", d.why);
         }
     }
 

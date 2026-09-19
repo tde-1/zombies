@@ -19,6 +19,7 @@
 
 #include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/logger.hpp"
+#include "logprint_mirror.hpp"
 #include "t4_bind.hpp"
 
 #include <algorithm>
@@ -88,7 +89,17 @@ public:
         referee::bind();
         referee::on_notify([this](const notify_event& ev) { on_notify(ev); });
         referee::on_frame([this](uint32_t ms) { on_frame(ms); });
-        ENW_INFO("referee: armed (%s)", referee::bound().describe().c_str());
+
+        // Degraded-mode transport, off unless asked for (coordinator approved
+        // 2026-09-20). NDJSON over TCP stays the contract; this mirrors the event
+        // subset as IW4MAdmin GSE lines so an ENW server is readable by a log
+        // tailer when no socket is available. Never mirrors snap or input.
+        if (auto v = referee::dvar_get("enw_logprint_events")) {
+            referee::set_logprint_enabled(*v == "1" || *v == "on" || *v == "true");
+        }
+        ENW_INFO("referee: armed (%s), logprint mirror %s",
+                 referee::bound().describe().c_str(),
+                 referee::logprint_enabled() ? "on" : "off");
     }
 
 private:
@@ -137,6 +148,14 @@ private:
         w.str("name", ev.name);
 
         game_link::get().send(w);
+
+        // A level notify that is not one of the generic names is, by construction
+        // (referee.md 2.8), a flag_set() -- i.e. a step of whatever this map calls
+        // progress. Mirror those as EE steps; the host's manifest decides which
+        // ones actually mean something.
+        if (!always && ev.who == notify_event::owner::level) {
+            referee::lp_easter_egg_step(ev.name);
+        }
 
         if (ev.name == "end_game") emit_game_over("end_game notify");
     }
@@ -201,6 +220,7 @@ private:
                 json::writer w;
                 w.str("t", "round").integer("ms", ms).integer("n", round_);
                 game_link::get().send(w);
+                referee::lp_round_complete(round_);
             }
         }
 
@@ -251,6 +271,7 @@ private:
         json::writer w;
         w.str("t", "game_over").integer("ms", game_ms_).integer("round", round_).str("reason", reason);
         game_link::get().send(w);
+        referee::lp_player_event(-1, "match_end", std::to_string(round_));
         ENW_INFO("referee: game over at round %d (%s); %zu distinct notifies seen, %llu suppressed",
                  round_, reason, seen_.size(), static_cast<unsigned long long>(suppressed_));
     }

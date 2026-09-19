@@ -62,6 +62,31 @@ content):
 
 ---
 
+## 1b. Corrections to the vault — facts in `11 - Implementation Reference` that are wrong
+
+Every one of these was checked against the real extracted scripts, not against another document.
+The coordinator is folding them into note 11; recorded here with the evidence so the correction is
+auditable.
+
+| Vault `11` §4 says | Actually | Evidence |
+|---|---|---|
+| "The round tracker uses `new_zombie_round`" | **`new_zombie_round` does not exist in any stock WaW script.** Grep across all four stock maps + `common.ff` + `nazi_zombie_ali`: zero hits. It is a *Plutonium* notify, from JezuzLizard's T4ZM round tracker, which is what the vault's source was describing. Waiting on it would hang forever. | `grep -rn "new_zombie_round" ZombiesDev\scripts\` → nothing |
+| "`level notify("end_game")` when all are down" | **Only Der Riese does that.** `nazi_zombie_prototype`, `_asylum`, `_sumpf` and `nazi_zombie_ali` call `end_game()` **directly** from the damage callback with no notify at all. A referee that waits on the notify detects game over on one map in five. | factory `_zombiemode.gsc:2653` has the notify; prototype `:1685`, asylum `:2204`, ali `:1688` are direct calls |
+| (not in the vault) | **The portable game-over signal is `level.intermission = true`**, the first statement of `end_game()` on every map including the custom one. This is what the referee should watch. | all five copies of `end_game()` |
+| "Der Riese EE: flags `hide_and_seek`, `ee_*`" | Right, and now exact: `hide_and_seek` is the **start** (anti-gravity), completion is **all three** of `ee_exp_monkey`, `ee_bowie_bear`, `ee_perk_bear`. | `nazi_zombie_factory.gsc:1495` `flytrap()` |
+| "Every map ships its own copy of `_zombiemode.gsc`, so always read the map's copy" | True but **not sufficient**, and this is the expensive one. A map can ship *several* copies across its `.ff` and its `.iwd` files, and a co-shipped mod's copy can win the search path. `nazi_zombie_ali` has three; the one that runs is in `zombie_clinic.iwd`, not in the map. "The map's copy" is not a well-defined thing. | §4 |
+| (not in the vault) | **`flag_set()` fires `level notify(<flag name>)`** — `common_scripts/utility.gsc:435`. This is the single most useful fact for the referee and it was not recorded anywhere. | §2.8 |
+| Vault `11` §2 lists `g_mem` size sites `0x5F5492/0x5F54D1/0x5F54DB` | `re` found those land mid-instruction; the real operand starts are `0x5F5491/0x5F54CB/0x5F54D5`, and the stock value is `0x12C00000`, not `0x19600000`. Not my finding — noting it here because it is the same note being corrected. | `docs/re/t4-sp-map.md` |
+
+One vault fact I could **not** confirm and one I disproved at runtime, both outside §4:
+
+* `11 §2` tags `Com_Frame` `0x59E330` as verified and "called once per WinMain loop iter".
+  **It is never called** — see §8.4. Three independent measurements.
+* `11 §6`'s pause pitfalls are all real and all visible in the scripts (the stuck-zombie watchdog is
+  `round_spawn_failsafe()`); nothing to correct there.
+
+---
+
 ## 2. Hook points, from the real scripts
 
 Line numbers are in the extracted copies under `ZombiesDev\scripts\<map>\`.
@@ -310,12 +335,42 @@ Round N and the generic events for free. For the minority with a real finish, th
 reading and a human spends a couple of minutes confirming. Budget **an afternoon per hundred
 interesting maps**, not a person-week per map.
 
+### 3.5b How often does the scanner need a human? — measured on everything reachable
+Only five zombies maps exist on this box, so I ran it over **all 20 local fastfiles**, using WaW's
+15 single-player campaign maps as an adversarial negative control. That turned out to be the useful
+half of the experiment.
+
+**First run — the scanner failed badly on the campaign maps: 10 of 15 wrong** (7 false
+`easter_egg`, 3 false `manual`). Campaign scripts are full of flags named after radio towers, clock
+towers and collapsing towers — `ber1` proposed `clock_tower_battle_timeout`, `see2` proposed
+`radio tower destroyed`, `pel2` proposed `flame_tree_*` off 140 flags. And the hints are not wrong
+to match those: "tower" and "radio" *are* real easter-egg words in zombies (Shi No Numa's radios).
+The heuristic cannot separate them and should not try.
+
+**The fix is a gate, not better hints**: a zombies map loads `maps\_zombiemode`; a campaign map does
+not. With that gate:
+
+| Population | n | Correct | Needed a human |
+|---|---|---|---|
+| Zombies maps (4 stock + `nazi_zombie_ali`) | 5 | **5** | 0 |
+| Campaign maps (adversarial negative) | 15 | **15** (all `not_a_zombies_map`) | 0 |
+
+20/20. Results in `C:\Users\b\ZombiesDev\scripts\scan-results\*.json`.
+
+What this does and does not tell us. It says the scanner is **safe to point at a whole archive** —
+it will not invent an easter egg on something that is not a zombies map, which was the failure mode
+that would actually cost us a wrongly awarded badge. It does **not** yet say how often it needs help
+on *real custom zombies maps*, because n=1 (`nazi_zombie_ali`, which it got right where I did not).
+That number needs the archive. My expectation, from the shape of the five: the common cases are
+"no easter egg → Round N" and "one conspicuous purchase → buyable ending", both of which it nails;
+the human cost is concentrated in maps that *do* have a multi-step quest, where the scanner names
+the flags and a person still has to decide whether "done" means all of them, the last one, or a count.
+
 Two caveats that are not nothing:
-* The scanner's heuristics were tuned on five maps. Expect to keep adding hint words; it has already
-  been narrowed once because `rise_anim_finished` matched "finish" and produced two false "needs a
-  human" verdicts on stock maps. A false "manual" costs five minutes of reading; a false
-  `easter_egg` would cost a wrongly awarded badge, which is why the scanner *proposes* and never
-  commits.
+* The heuristics were tuned on a handful of maps and have already been narrowed twice — once because
+  `rise_anim_finished` matched "finish", once by the zombies gate above. Expect to keep tuning. A
+  false "manual" costs five minutes of reading; a false `easter_egg` would cost a wrongly awarded
+  badge, which is why the scanner *proposes* and never commits.
 * A map that overrides common scripts (ali overrides four) needs a smoke test that the *generic*
   events still fire on it. That is a test run, not authoring, and the scanner flags which maps need it.
 
@@ -506,7 +561,7 @@ event logs are comparable.
    referee should emit a `zombies` event on change, at most every few seconds.
 5. We drop their T6/T7-only types (bank, weapon locker, gobble gum) and `PerformanceCluster`.
 
-### 6.4 Should we also emit their `LogPrint` lines? — yes, as a fallback, off by default
+### 6.4 The `LogPrint` mirror — approved and built, off by default
 The case for: it is a **proven** T4 transport, it needs no socket, it survives the DLL's TCP link
 being down or absent, and it makes an ENW server readable by an existing, maintained, MIT admin tool
 that people already run. `libcod` does not support WaW, so `LogPrint` into the log is genuinely the
@@ -517,11 +572,15 @@ events, no backpressure, no framing for a 1.2 KB 20 Hz `snap`, and the line goes
 engine's console formatting. For replays and records — the things badges and bans hang off — we want
 the socket.
 
-**Recommendation**: keep NDJSON-over-TCP as the contract, and add a `knobs`-style dvar
-(`enw_logprint_events 0|1`, default 0) that mirrors the *event* subset (not `snap`, not `input`) as
-`GSE;…` lines. It is perhaps fifty lines in the referee component, it costs nothing when off, and it
-buys a working degraded mode plus IW4MAdmin compatibility. Filed as an ask for B/coordinator rather
-than built now, because it is a protocol addition, not a referee finding.
+**Decided (coordinator, 2026-09-20) and built.** NDJSON over TCP stays the contract; dvar
+`enw_logprint_events` (default `0`) mirrors the *event* subset — never `snap`, never `input` — as
+`GSE;…` lines. `server/components/referee/logprint_mirror.{hpp,cpp}`, documented in
+`docs/protocol/game-link-v0.md`.
+
+One extension: `GSE;ZW;buyable_ending;<round>;<map>`. Their parser throws on an unknown `ZW` kind
+and drops the line with a warning, so it is safe against a stock IW4MAdmin. Fields are sanitised
+(`;`, CR, LF → `_`, 128 chars) because a custom map's flag name is author-supplied and their parser
+has no unescape step — a `;` in a flag name would silently shift every field after it.
 
 ## 7. Open asks
 
@@ -548,7 +607,7 @@ For **B** (in `questions.md`): none blocking.
 ### 8.1 fs_game / script precedence
 Answered by `dedi` p09/p10, written up in §3.4. My own probe (`homes/referee/mods/enw_fs_test/`)
 was staged and then stood down rather than duplicate the launch. The follow-up probe
-(`<fs_homepath>\main\maps\_load.gsc` + an *empty* `fs_game` mod) is staged; see §7.4.
+(`<fs_homepath>\main\maps\_load.gsc` + an *empty* `fs_game` mod) is staged; see §8.5.
 
 ### 8.2 Search path, measured
 Printed by the engine with `+set fs_game mods/enw_fs_test`
@@ -568,12 +627,74 @@ count on the stock curve with no between-round lull, `sv_fps 20`:
 | 4 players | 85.1 MB/game-hour | 13.2 MB | **12.1 MB** | 1,239 B |
 | solo | 44.9 MB/game-hour | 6.5 MB | **5.8 MB** | 654 B |
 
-So **~12 MB per co-op game-hour compressed**, on the v0 NDJSON-in-zstd format. The columnar CBOR
-format of vault 99 §5.4 should roughly halve that again (positions become delta-coded int columns
-instead of decimal text), which puts a 4-player hour around 5–7 MB. These are estimates with a
-stated method, not measurements; replace them the moment a real game can be captured.
+So **~12 MB per co-op game-hour compressed**, on the v0 NDJSON-in-zstd format — roughly **double the
+vault's 5 MB/hour assumption**. These are estimates with a stated method, not measurements; replace
+them the moment a real game can be captured.
 
-### 8.4 Still to run
-* `<fs_homepath>\main` + empty mod (§3.4 follow-up) — staged.
-* Everything that needs the loader: notify hook, round/game-over from the live `level`, real replay
-  capture, chat in/out, AFK, knobs, pause.
+#### What it would cost to halve it
+Measured, not guessed — `estimate_snap_bytes.py --compare` runs each trade-off through the same
+encoder (4 players, 30 min, zstd-10):
+
+| Variant | MB/game-hour | vs v0 | What you give up |
+|---|---|---|---|
+| v0 (players 20 Hz, zombies 10 Hz, 0.1 unit) | 11.56 | 100% | — |
+| players 10 Hz | 10.07 | 87% | record fidelity, for almost nothing |
+| delta positions (in text) | 10.91 | 94% | nothing — but zstd already found it |
+| **1-unit positions** | 7.50 | **65%** | nothing visible: 1 WaW unit ≈ 1 inch |
+| **zombies 5 Hz** | 7.36 | **64%** | slightly steppier zombie paths in the viewer |
+| **1-unit + delta + zombies 5 Hz** | 4.72 | **41%** | the two above, together |
+| no zombie tracks at all | 2.65 | 23% | the 2D view is players-only |
+
+**The headline: zombie tracks are ~77% of the bytes.** Everything else is rounding error by
+comparison — halving the *player* rate saves 13% and costs exactly the thing records depend on.
+
+My recommendation, in order:
+1. **Quantise positions to 1 unit everywhere, now.** 35% off, costs nothing anyone can see, and it
+   applies to the columnar format too.
+2. **Zombies at 5 Hz for ordinary games, 10 Hz for record and Verified games.** Another ~35%, and
+   the games where zombie paths matter for verification are exactly the ones we would keep at 10 Hz.
+3. **Never drop the player track or its rate.** It is the cheap part and the one that carries records.
+4. Delta coding is not worth doing in the text format — zstd already captures it. It *will* pay in
+   the columnar CBOR format (99 §5.4), where positions become int columns.
+
+1+2 gives **~4.7 MB per co-op game-hour**, under the vault's assumption, before the columnar format.
+Solo is 2.0 MB/hour on the same settings. The one thing I would not do is drop zombie tracks
+entirely: a replay with no zombies cannot show *why* a round went wrong, which is most of what a
+zombies replay is for.
+
+### 8.4 The components run in a real game — and the frame source is the blocker
+All six components build into `enw_t4.dll` and load in a live dedicated game
+(`+set dedicated 1 +set zombiemode 1 +map nazi_zombie_prototype`, `logs/referee/enw-*.log`):
+
+```
+components registered: 9 ... post_load done (9 of 9 ok) ... post_unpack done (9 of 9 ok)
+referee/bind: notify=no scriptvars=no entities=no clients=no servercmd=no dvars=no frame=yes
+referee: armed / replay: sampler armed / afk: client_s not bound / chat: ... not bound
+referee: first frame tick
+```
+
+Chasing the tick turned up the DLL's biggest single blocker, measured three ways:
+
+1. **`Com_Frame` 0x59E330 is never called**, despite being `[V]` in `shared/t4/addresses.hpp`. A
+   MinHook detour created and enabled on it logged nothing across two 50–75 s runs, and a read-back
+   of the target 20 s in showed `E9 1B 51 9F …` — **our jmp still present**, so this is not SteamStub
+   re-encrypting the page behind us; the function is simply not on the path. `foundation`'s
+   `main_thread` pump moved to the same address in the same hour and logged
+   `0 pump calls (queued=27 ran=0 dropped=0)`.
+2. On the older `Dvar_FindVar` detour the same pump got **96 calls in 0.3 s**, and my tick ran
+   continuously — I had to rate-limit it down from ~9,000/s, which is why `t4_bind` now gates itself
+   to 50 ms (`sv_fps 20`) instead of trusting the pump's own rate.
+3. The pump is now `Dvar_FindVar (startup only)`, so **after startup nothing in the process ticks at
+   all**. Over a 150 s run my tick fired exactly once, during startup.
+
+Everything runtime-shaped waits on this: the replay sampler, AFK input, the score/round poll, and
+`game_link::pump()` — which means every host→game command (`say`, `tell`, `pause`, `set`,
+`snapshot_state`) too. Candidates for `re`: whatever `WinMain` 0x5FF600 actually calls in its loop
+body, `SV_Frame`, `G_RunFrame`, and `Sys_DedicatedConsolePump` 0x69DAA0 (already known to run each
+frame when `com_dedicated != 0` — that one alone would give the dedicated server a tick today).
+
+### 8.5 Still to run
+* `<fs_homepath>\main` + a mod (§3.4 follow-up) — staged, blocked because `fs_game` makes
+  `BG_LoadWeaponDef` fail before GSC compiles (`dedi` p13 is on it).
+* Everything that needs the notify hook and script-VM access: round/game-over from the live `level`,
+  real replay capture, chat in/out, AFK, knobs, pause.

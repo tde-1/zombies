@@ -55,3 +55,77 @@ disassembler that makes 5-byte detours safe rather than a coin flip.
 **Assumed:** vendored at `thirdparty/minhook/` with `LICENSE.txt`, `AUTHORS.txt` and a
 `VENDORED-FROM.txt` recording the upstream commit, so the build is self-contained. Easily reversed
 -- delete the folder and point CMake at `ZombiesDev\thirdparty\minhook` instead.
+
+---
+
+## referee — two questions for B
+
+### Q-ref-1: `nazi_zombie_ali` advertises a 6-piece amulet quest that does not exist in script.
+Its README promises "you have to find 6 piece of amulet to open main door". Having read every GSC in
+the map's `.ff`, its `mod.ff` and both its `.iwd` files, **no script mentions an amulet, and there is
+no flag, notify or variable for it.** It is hints and geometry. The map *does* have a real, detectable
+Buyable Ending (a 20,000-point "GET OUT OF CLINIC" trigger that sets `level.tom_victory`), so the map
+badge is covered.
+
+The question is what the platform should say about the *quest*. Options:
+1. **Silence** — the map badge is the Buyable Ending, the amulet is never mentioned. Simplest, and
+   what the manifest does today.
+2. **A staff-reviewable claim** — a player says "I did the amulet run", staff watch the replay and
+   tick it. Honest, costs staff time, and there will be a long tail of maps like this.
+3. **A tick we cannot verify** — never. An unverifiable tick next to verified ones devalues both.
+
+Recommend 1 now, 2 later if players ask. **Not blocking** — say so whenever.
+
+### Q-ref-2: should our server also emit IW4MAdmin's `LogPrint("GSE;…")` event lines?
+Coordinator's ask, answered in `docs/kickstart/referee.md` §6.4. Short version: their format is MIT,
+proven on T4, needs no socket, and would make an ENW server readable by an existing admin tool.
+Our own NDJSON-over-TCP link is better for replays and records (ordering, backpressure, framing for a
+1.2 KB 20 Hz snap). Recommendation is **both**: keep NDJSON as the contract, add
+`enw_logprint_events 0|1` (default 0) mirroring the *event* subset as `GSE;…` lines. ~50 lines, free
+when off, buys a degraded mode and IW4MAdmin compatibility. It is a protocol addition, so it wants a
+yes before it is built. **Not blocking.**
+
+---
+
+## host — three questions for B (2026-09-20)
+
+None of these block anything; the assumption I carried on with is stated each time.
+
+### Q-host-1: are non-VIP players allowed to download their own full replays?
+Vault 99 §4.7 says "Players can download their own replays", and §10 says VIP gets the 3D viewer
+and keeps replays forever while non-VIP full tracks are kept 90 days. The measured numbers make the
+storage question moot (a typical game is 5-9 MB, $1/month stores about 10,000 of them), so this is
+purely a product choice. The wrinkle is that a downloadable signed replay is also a downloadable
+**dataset of where four people were, at 20 Hz, for an hour** — fine between friends, less fine when
+someone downloads a stranger's public game to study their training route.
+
+**Assumed:** every game is recorded and verifiable, everyone can download **their own** games, and
+someone else's full tracks need either VIP or that game being public. The signed summary and event
+log are public for everyone, always, because that is what makes a record checkable.
+
+### Q-host-2: what happens to a game when the box loses the website?
+Today the box keeps playing, keeps refereeing and keeps recording, and the result POST simply fails
+and is lost. That is the wrong half to drop: the game is the expensive part and the POST is one
+HTTP request.
+
+**Assumed for the prototype:** nothing — the result is lost if the site is down. For the real build
+I would spool results and replay pointers to disk and retry until the site takes them, which also
+covers the site being redeployed mid-game. Worth confirming you want that (it means a box holds
+unreported games, and a reaped cloud box must not be destroyed until its spool is empty).
+
+### Q-host-3: should a box refuse to run at all when it cannot reach the site's invite key?
+An invite-token check that cannot run has to fail one way or the other. It currently **fails
+closed**: a box that has not fetched the site's public key refuses every join, so a network problem
+produces an empty server rather than an open one. The cost is that a site outage at the wrong
+moment makes a booted game unjoinable, and players see a server they cannot get into — which is
+precisely the failure the CS:GO box skill warns about, in the other direction.
+
+**Assumed:** fail closed, and cache the key on disk so a box that has ever talked to the site keeps
+working through an outage. Say if you would rather a box with a *valid lease* admitted the
+whitelisted SteamIDs without a token as a fallback.
+
+### Note for referee (not a question for B): one prefix, please
+`referee/docs` proposes `GSE;...` for the DLL's `LogPrint` mirror; the host currently writes
+`ENWZombie;...` for the same events from the host side. Both are now one configurable string
+(`--game-log-prefix`, `lib/gamelog.js`). Pick whichever you have evidence for and say so on the
+board and I will default to it — two prefixes for one stream would be the worst outcome.

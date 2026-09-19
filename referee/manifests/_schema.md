@@ -62,3 +62,11 @@ badge is worse than a missing one.
 `referee/scan_map.py` proposes a manifest for a map from its fastfiles and iwds. On the five maps we
 have it gets the finish right 5/5 with no hand work, including finding the `nazi_zombie_ali` ending
 that a manual read of the map's own scripts missed (it is in a co-shipped mod's iwd).
+
+## `discrepancies[]` (optional)
+Where a map's README, release post or in-game text claims a finish that the scripts do not
+implement — or where our own earlier reading was wrong. Each entry: `claim`, `source`, `reality`,
+`detectable` (bool), `decision`. **`nazi_zombie_ali` is the worked example of both.** This is
+deliberately part of the manifest and not a side note: the archive will be full of maps whose
+advertised quest does not exist, and the record of "we looked, here is what is actually there"
+is what keeps a badge trustworthy.

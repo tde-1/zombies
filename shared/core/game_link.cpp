@@ -7,6 +7,7 @@
 #include <ws2tcpip.h>
 
 #include <cstdarg>
+#include <algorithm>
 #include <deque>
 #include <map>
 #include <mutex>
@@ -32,9 +33,14 @@ const uint32_t g_start_tick = ::GetTickCount();
 
 }  // namespace
 
+struct outgoing {
+    std::string data;
+    bool droppable = false;
+};
+
 struct game_link::impl {
     std::mutex out_mutex;
-    std::deque<std::string> out;
+    std::deque<outgoing> out;
 
     std::mutex in_mutex;
     std::deque<json::value> in;
@@ -136,25 +142,67 @@ game_link::stats game_link::snapshot_stats() const {
     std::lock_guard<std::mutex> lk(impl_->stats_mutex);
     stats s = impl_->st;
     s.connected = connected_.load(std::memory_order_relaxed);
+    {
+        std::lock_guard<std::mutex> q(impl_->out_mutex);
+        s.queued = impl_->out.size();
+    }
     return s;
 }
 
-bool game_link::send_line(std::string obj) {
+bool game_link::type_is_droppable(std::string_view t) {
+    // The only three the protocol lets us lose (game-link-v0, revised by `host`).
+    return t == "snap" || t == "input" || t == "perf";
+}
+
+bool game_link::send_line(std::string obj, bool droppable) {
     if (!impl_ || cfg_.port == 0) return false;
     obj.push_back('\n');
-    size_t dropped_now = 0;
+
+    size_t shed = 0;
+    size_t shed_evidence = 0;
+    size_t depth = 0;
     {
         std::lock_guard<std::mutex> lk(impl_->out_mutex);
-        impl_->out.emplace_back(std::move(obj));
+        impl_->out.push_back({std::move(obj), droppable});
+
+        // Over the soft limit: shed the OLDEST RESAMPLEABLE message. Fresh state
+        // beats stale state, and the next snap is 50 ms away.
         while (impl_->out.size() > cfg_.out_queue_max) {
-            impl_->out.pop_front();  // drop OLDEST: fresh state beats stale state
-            ++dropped_now;
+            auto it = std::find_if(impl_->out.begin(), impl_->out.end(),
+                                   [](const outgoing& m) { return m.droppable; });
+            if (it == impl_->out.end()) break;  // nothing but evidence left: keep it
+            impl_->out.erase(it);
+            ++shed;
         }
+
+        // Over the hard ceiling: the host has been unreachable for a long time
+        // and we are choosing between losing evidence and exhausting memory.
+        // Lose it, but never quietly.
+        while (impl_->out.size() > cfg_.out_queue_hard) {
+            impl_->out.pop_front();
+            ++shed_evidence;
+        }
+        depth = impl_->out.size();
     }
-    if (dropped_now) {
+
+    if (shed || shed_evidence) {
         std::lock_guard<std::mutex> lk(impl_->stats_mutex);
-        impl_->st.dropped += dropped_now;
+        impl_->st.dropped += shed;
+        impl_->st.dropped_evidence += shed_evidence;
     }
+    if (shed_evidence) {
+        ENW_ERROR("game-link: DROPPED %u EVIDENCE MESSAGES - the outbound queue hit its hard "
+                  "ceiling (%u) with nothing resampleable left to shed. Any replay covering this "
+                  "window is incomplete. Is the host agent alive?",
+                  static_cast<unsigned>(shed_evidence), static_cast<unsigned>(cfg_.out_queue_hard));
+    }
+    // One warning as we cross into "growing past the soft limit" territory.
+    if (!droppable && depth == cfg_.out_queue_max + 1) {
+        ENW_WARN("game-link: outbound queue past its soft limit (%u) and holding non-droppable "
+                 "messages; growing rather than losing them.",
+                 static_cast<unsigned>(cfg_.out_queue_max));
+    }
+
     if (impl_->wake) ::SetEvent(impl_->wake);
     return true;
 }
@@ -376,7 +424,7 @@ void game_link::worker() {
                 if (pending.empty()) {
                     std::lock_guard<std::mutex> lk(impl_->out_mutex);
                     if (!impl_->out.empty()) {
-                        pending = std::move(impl_->out.front());
+                        pending = std::move(impl_->out.front().data);
                         impl_->out.pop_front();
                     }
                 }

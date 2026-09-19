@@ -25,6 +25,7 @@ if (!fs.existsSync(file)) { console.error(`no such file: ${file}`); process.exit
 const green = (s) => `\x1b[32m${s}\x1b[0m`
 const red = (s) => `\x1b[31m${s}\x1b[0m`
 const dim = (s) => `\x1b[90m${s}\x1b[0m`
+const yellow = (s) => `\x1b[33m${s}\x1b[0m`
 
 function report(r, label) {
   if (a.json) { console.log(JSON.stringify(r, null, 2)); return r.ok }
@@ -43,7 +44,13 @@ function report(r, label) {
   console.log(`  signed at     ${r.signedAt}`)
   if (r.durationMs > 0) console.log(`  size rate     ${(r.size / 1048576 / (r.durationMs / 3600000)).toFixed(2)} MB per game-hour`)
   console.log(dim('  ' + '-'.repeat(68)))
-  if (r.ok) console.log(`  ${green('VALID')} — every chunk hashes to its index entry, the chain is intact, and the footer signature checks out.`)
+  if (r.ok && r.recovered) {
+    console.log(`  ${yellow('VALID BUT RECOVERED')} — the chunks and the chain are intact and the signature checks out,`)
+    console.log(`  ${yellow('  ')} but this file was rebuilt after a host crash and signed afterwards, so it proves only`)
+    console.log(`  ${yellow('  ')} that nothing has changed SINCE RECOVERY. ${r.partial ? 'It is also PARTIAL (the game was cut short).' : ''}`)
+    console.log(`  ${yellow('  ')} Good enough for a badge. Not record-grade evidence.`)
+  }
+  else if (r.ok) console.log(`  ${green('VALID')} — every chunk hashes to its index entry, the chain is intact, and the footer signature checks out.`)
   else {
     console.log(`  ${red('INVALID')} — ${r.errors.length} problem${r.errors.length === 1 ? '' : 's'}:`)
     for (const e of r.errors) console.log(`    ${red('x')} ${e}`)

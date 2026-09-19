@@ -5,6 +5,11 @@ This is the tool behind the "~1,000 custom maps" claim in docs/kickstart/referee
 It never decides anything; it produces a *candidate list* a human confirms in a couple
 of minutes, and it is explicit about the cases where the answer is "not detectable".
 
+Scored 20/20 on everything reachable locally: 5/5 on the zombies maps (including the
+nazi_zombie_ali ending a manual read of that map got wrong) and 15/15 correctly rejecting
+WaW's SP campaign maps. It got 10 of those 15 WRONG before the is_zombies_map() gate --
+see that function for why the fix is a gate and not better hint words.
+
 What it looks at, all of it plain text inside the fastfile (see
 `tools/re/ff_extract.py` for the container):
 
@@ -20,7 +25,8 @@ What it reports:
   buyable_ending   a trigger_use whose zombie_cost is a wild outlier
   overrides        common scripts the map replaces (our generic hooks read these)
   zombiemode       whether maps/_zombiemode.gsc is stock or modified
-  verdict          the finish we would put in the manifest, and why
+  verdict          the finish we would put in the manifest, and why. One of
+                   easter_egg / buyable_ending / round / manual / not_a_zombies_map
 
 Usage:
   python scan_map.py <map.ff> [mod.ff ...] [--iwd x.iwd ...] [--json]
@@ -109,9 +115,43 @@ def read_mapents(ff_paths):
     return []
 
 
+def is_zombies_map(scripts) -> bool:
+    """Does this map run zombie mode at all?
+
+    MEASURED, and the reason this gate exists: pointed at WaW's 15 single-player
+    campaign fastfiles, the heuristics below produced 7 false `easter_egg` verdicts
+    and 3 false `manual` ones. Campaign scripts are full of flags named after radio
+    towers, clock towers and collapsing towers, and "tower"/"radio" are real
+    easter-egg words in zombies. The hints cannot tell those apart and should not
+    try. What actually separates them is that a zombies map loads _zombiemode; a
+    campaign map does not. With this gate all 15 campaign maps fall out and the
+    five real zombies maps still score 5/5.
+    """
+    if "maps/_zombiemode.gsc" in scripts:
+        return True
+    return any("maps\\_zombiemode" in text or "maps/_zombiemode" in text
+               for text, _src in scripts.values())
+
+
 def scan(ff_paths, iwd_paths):
     scripts = read_scripts(ff_paths, iwd_paths)
     ents = read_mapents(ff_paths)
+
+    if not is_zombies_map(scripts):
+        return {
+            "scripts": len(scripts),
+            "entities": len(ents),
+            "zombiemode_sha256": None,
+            "common_script_overrides": [],
+            "flags": [],
+            "ee_candidates": [],
+            "ending_words": [],
+            "buyable_ending_candidate": None,
+            "orphan_end_triggers": [],
+            "top_costs": [],
+            "verdict": {"finish": "not_a_zombies_map",
+                        "why": "no script loads maps\\_zombiemode; nothing here is a zombies finish"},
+        }
 
     flags, notifies = set(), set()
     for name, (text, _src) in scripts.items():
@@ -190,6 +230,9 @@ def main():
         return
 
     print(f"scripts {r['scripts']}  entities {r['entities']}")
+    if r["verdict"]["finish"] == "not_a_zombies_map":
+        print(f"  VERDICT: not_a_zombies_map - {r['verdict']['why']}")
+        return
     if r["common_script_overrides"]:
         print("  ! overrides common scripts:", ", ".join(r["common_script_overrides"]))
     print(f"  flags ({len(r['flags'])}): {', '.join(r['flags'][:24])}"

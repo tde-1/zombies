@@ -377,3 +377,167 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   **Your top priority for me is now the client-init re-entry call site (crash 1), then a per-frame
   hook.** `shared/t4/structs.hpp` has no `dvar_s` yet — if T4SP's headers give you one, that saves me
   the derivation.
+- 00:45 referee: follow-up, and this is now the **single biggest blocker in the DLL**: after
+  foundation's change the pump is `Dvar_FindVar (startup only)`, so once startup finishes **there is
+  no per-frame mechanism in the process at all**. Measured over a 150 s dedicated run: my tick fired
+  exactly once (at 00:41:43.996, during startup) and never again. Chain of three measurements:
+  Com_Frame 0x59E330 never called -> pump moved back to Dvar_FindVar -> Dvar_FindVar detour removed
+  after startup -> nothing ticks. Everything runtime-shaped depends on this: the replay sampler, AFK
+  input, the score/round poll, `game_link::pump()` (so every host->game command: say, tell, pause,
+  set, snapshot_state), and dedi's frame pacing. **`re`: finding the real per-frame function is the
+  highest-value single address left.** Candidates worth a look in the dump: whatever WinMain 0x5FF600
+  actually calls in its loop body, `SV_Frame`, `G_RunFrame`, and `Sys_DedicatedConsolePump` 0x69DAA0
+  (already known to be run each frame by WinMain when com_dedicated != 0 — that one alone would give
+  the dedicated server a tick today).
+- 00:45 referee: my components no longer hook anything; `t4_bind.cpp` rides
+  `scheduler::run_on_main` and rate-limits itself to 50 ms (sv_fps 20). Verified end to end in a real
+  dedicated game: all six components load, `referee: first frame tick` fires, and with the old
+  always-on Dvar_FindVar pump the tick ran continuously (I had to rate-limit it down from ~9,000/s).
+  So the plumbing is proven; it just needs a real frame source.
+- 00:48 dedi: **STOP — `waw-base` IS A BAD COPY. 28 files differ from the Steam install, including 8
+  `.iwd`s.** I sampled 8 x 64 KB blocks per file across all 333 files of the Steam install against
+  `waw-base`: 305 match, these do not:
+  `main\iw_06.iwd`, `iw_08.iwd`, `iw_14.iwd`, `iw_20.iwd`, `iw_23.iwd`, `iw_27.iwd`,
+  `localized_english_iw03.iwd`, `localized_english_iw04.iwd`, plus `version.inf`, 14 `DirectX\*.cab`,
+  `installers\pbsvc.exe` and 4 `pb\*` files. **Sizes all match; the contents are zeros.**
+  `iw_20/23/27` are 100% zero in the copy and NOT zero in Steam. **The Steam install is fine** —
+  `appmanifest_10090.acf` says `StateFlags 4`, `BytesDownloaded == BytesToDownload`. This is the copy.
+  Likely cause: `robocopy /MT:16` reported 5.468 GB copied in **1 second** (its own log,
+  `logs\robocopy-base.log`) — that is block-clone/sparse behaviour, not a real read-write copy.
+  **foundation: please re-make `waw-base` with verification** (`robocopy /MT:1 /Z` or a hash pass, and
+  compare sizes AND content afterwards). Everyone else: your probes since 23:52 ran against a damaged
+  game.
+- 00:49 dedi: what that already explains, and what it means for my crash table:
+  * `images/sun_flare.iwi` (the missing image that froze the rendered client in my p04) lives in
+    **`iw_08.iwd`** — damaged.
+  * `accuracy/aivsai/mp44.accu` (the warning right before the weapon error) lives in **`iw_14.iwd`** —
+    damaged.
+  * So **crash site 3 (`BG_LoadWeaponDef: Could not find default weapon`) is now suspect** — it may be
+    a broken install, not a dedicated-mode bug. I am demoting it to "unverified" until it is retested
+    on a good copy. My earlier statement that "`weapons/sp/*` is in no stock iwd" is also unsafe: I
+    raw-scanned the files, and the missing data would not contain the strings.
+  * `referee`: this probably also explains your independent repro.
+  Crash count therefore stands at **2 confirmed + 1 suspect**, not 3.
+- 00:46 referee: handing over. Tree builds clean with all six of my components
+  (`build.ps1 -Name referee` -> enw_t4.dll 1,202,688 B). Nothing of mine hooks anything any more, so
+  no contention. Deliverables: `tools/re/ff_extract.py`, `referee/scan_map.py`,
+  `referee/manifests/{5 maps}.json` + `_schema.md`, `server/components/{referee,replay,chat,afk,knobs,pause}/`,
+  `server/components/replay/estimate_snap_bytes.py`, `docs/kickstart/referee.md` (the full write-up),
+  two non-blocking questions in `questions.md`. Extracted scripts stay in `ZombiesDev\scripts\`.
+  IW4MAdmin (MIT) cloned read-only to `ZombiesDev\thirdparty\iw4m-admin-zombiestats`.
+- 00:47 dedi: **`dvar_s` layout, derived live (probe p16) — `re`, please fold this into
+  `shared/t4/structs.hpp`.** Six dvars whose properties we already knew from the engine's own console
+  output were dumped and compared inside a headless boot:
+  ```
+  +0x00  const char* name          (verified: the slot that points back at the name)
+  +0x04  const char* description
+  +0x08  uint16 flags | uint16 type
+  +0x10  current value  (16 bytes: int / float / char* / vec)
+  +0x20  latched value  (same shape)
+  ```
+  ```
+  com_maxfps               0x0005'0001   int,    in config.cfg   -> SAVED set     value +0x10 = 0x55 (85)
+  logfile                  0x0005'0000   int,    never archived  -> SAVED clear   value +0x10 = 2
+  dedicated                0x0006'0060   enum,   "read only"                      value +0x10 = 1
+  fs_homepath              0x0007'0210   string, "write protected"                value +0x10 = char*
+  con_typewriterColorBase  0x0007'4000   string, created by +set (external)       value +0x10 = char*
+  ```
+  So **`DVAR_SAVED = 0x0001`**, `DVAR_ROM = 0x0040`, `DVAR_EXTERNAL = 0x4000` (command-line-created),
+  and types: int `0x0005`, enum `0x0006`, string `0x0007`.
+- 00:47 dedi: consequence — **crash site 2 needs no registration function at all.** `+set` makes the
+  dvar, our DLL ORs bit 0 into `+0x08`, and `SetSavedDvar` is satisfied. Two-byte write, no guessed
+  signature. Testing now with **no `fs_game`**, which is the clean run the coordinator asked for.
+- 01:15 re: **dvar-register answer for dedi (ask 1).** `SetSavedDvar` = **0x516990**; it errors "the dvar %s does not exist" (your crash) and also requires the dvar to carry **DVAR_FLAG_SAVED = 0x200**. `con_typewriterColorBase` is registered only inside the **client CG-init `CG_RegisterDvars`-style fn 0x4708C0**, which never runs headless — hence absent. **Fix:** from our DLL, after Com_Init/before the map GSC runs, register it with SAVED set. Register funcs (shared internal `Dvar_Register` 0x5EEB50): **String 0x5EED90** [V sv_hostname/net_ip/rate], **Bool 0x5EEE20** [V], **Int 0x5EEEA0** [V], **Float 0x5EEF10** [V], **Vec3 0x5EEFA0** [C], **Vec4/Color 0x5EF040** [C], **Enum 0x5EF150** [V]. `con_typewriterColorBase` itself is registered via **0x5EED90** with flags 0x1000; register it the same way but OR in 0x200. Added to `shared/t4/addresses.hpp`.
+- 23:55 host: HOST AGENT READY. `infra/host-agent/` (Node 24, zero dependencies). Run it all:
+  `cd infra/host-agent && node test/demo-network.js` (mock site + 2 boxes + 2 games: pull protocol,
+  invite tokens, cross-server chat, signed replays). Rules + format checks: `node test/run-all.js`
+  (37, green). One box with a dashboard on http://127.0.0.1:8787: `node host.js --boot 2`.
+  Design, how to run it and all measured numbers: `docs/kickstart/host.md`.
+- 23:55 host: PROTOCOL CHANGE (`docs/protocol/game-link-v0.md`), three edits, all additive except 3.
+  (1) new game-to-host events `dvar {name,value}` and `level_var {name,value}` — the manifest schema
+  grew `{"dvar":...}` and `{"level_var":...}` conditions and v0 had nothing that could satisfy them;
+  `level_var` is required for nazi_zombie_ali (its ending sets `level.tom_victory`, which never
+  notifies, so the DLL must POLL a short allow-list at ~1 Hz). (2) pinned the trigger notify shape:
+  `{t:"notify", name:"trigger", args:{targetname, zombie_cost, ...}}`. (3) "drop oldest on overflow"
+  is WRONG: only `snap`/`input`/`perf` may ever be dropped, everything else is evidence and must
+  block the sender thread instead (never the game frame). Found by saturating the link — the host
+  saw a game stuck at round 21 while the game was past it, and the badge, summary and record would
+  all have been silently wrong. Same split the other way: `say`/`tell` droppable,
+  `auth`/`kick`/`end`/`pause`/`resume`/`exec`/`set` not.
+- 23:55 host: `input` clarified, not changed: "at most 10 Hz, only on change" = on a change of the
+  moved/turned/fire state plus a 1 Hz heartbeat while active. It is still ~9% of replay bytes.
+- 23:55 host: MEASURED REPLAY SIZES (1 simulated game-hour, 20 Hz players / 10 Hz zombies, real
+  signed files, zstd-10): 1p 0.30 MB/h, 2p 2.69, 4p 5.98 (11.8x compression at 4p; 90% of the raw
+  bytes are `snap`). The vault's ~4-5 MB per 4-player game-hour is RIGHT; solo is 5x cheaper than
+  estimated. R2 at $0.015/GB-month with 90-day retention: $4.73/mo at 25 concurrent games, $18.92
+  at 100, $75.67 at 400. B's "don't store the zombies" idea would save 3.09 MB/h (52%) = $0.045/mo
+  per 1000 game-hours, so keep the zombies. The keep-forever event-log-only tier is 0.06 MB/h.
+- 23:55 host: referee — your `referee/manifests/` and `_schema.md` are consumed as-is; the whole
+  `enw.referee.manifest/0` evaluator is in `infra/host-agent/lib/manifests.js` (flag, notify,
+  round_at_least, trigger_used, dvar, level_var, all, any, seq, count, requires, solo_ok, manual).
+  `{"manual":true}` never awards and is logged loudly at map load. A map with no file gets the
+  built-in Round-20 default. Tested against your real files: Der Riese's `requires` ordering, the
+  nazi_zombie_ali 50k-door decoy staying a signal, and Nacht refusing a fabricated EE notify.
+- 23:55 host: foundation — `tools/dev/launch.ps1` does not exist yet, so nothing real has ever been
+  on the other end of the game link. The instance manager is already written against it
+  (`-Instance -Port -Map -FsGame`), takes `game.lock` for real launches only, kills ONLY PIDs it
+  started, and samples CPU+RAM per instance. When launch.ps1 lands,
+  `node host.js --game --map <map>` is the one-liner that produces the real per-game core/RAM
+  number the cost model in vault 14 is waiting for.
+- 23:55 host: every box also writes an optional IW4MAdmin/B3-readable `games_mp.log` mirror
+  alongside the socket protocol (`lib/gamelog.js`, `--game-log off`), and the per-player summary
+  block now uses IW4MAdmin `ZombieClientStat` field names (MIT, feature/zombie-stats). Deliberate
+  differences are listed in `docs/kickstart/host.md` section 8. Server-side `.dm_6` demo recording:
+  short spike done, recommendation DO NOT pursue now (client-side only, T4 zombies unsupported per
+  R13, and a demo is not evidence) — filed as a future spike for dedi instead.
+- 00:50 referee: **`enw_logprint_events` built** (coordinator approved Q-ref-2).
+  `server/components/referee/logprint_mirror.{hpp,cpp}`, dvar default **0**, mirrors the *event*
+  subset only (never `snap`, never `input`) as IW4MAdmin `GSE;…` lines in the game log. Documented in
+  `docs/protocol/game-link-v0.md`. **host: NDJSON is still the contract — this is a degraded mode, not
+  a second source of truth.** One ENW extension, `GSE;ZW;buyable_ending;<round>;<map>`: their 34
+  EventLogType values have no slot for a buyable ending (Treyarch maps do not have one), and an
+  unknown ZW kind is dropped with a warning by their parser, so it is safe against a stock IW4MAdmin.
+- 00:55 referee: **scanner run over every map on the box (20 fastfiles), and it failed the negative
+  control first.** Pointed at WaW's 15 SP *campaign* maps it produced **10 wrong verdicts** (7 false
+  `easter_egg`, 3 false `manual`) — campaign scripts are full of flags about radio towers and clock
+  towers, and "tower"/"radio" are legitimate easter-egg words in zombies, so no amount of hint-tuning
+  separates them. Fixed with a gate, not better hints: a zombies map loads `maps\_zombiemode`, a
+  campaign map does not. **Now 20/20: 5/5 on the zombies maps, 15/15 `not_a_zombies_map`.** Results in
+  `ZombiesDev\scripts\scan-results\*.json`. The honest caveat for the archive plan: n=1 for real
+  *custom* zombies maps, so "how often it needs a human" is still unmeasured — but it is now safe to
+  point at a whole archive, which was the failure mode that would have cost us a wrong badge.
+- 00:55 referee: **replay size trade-offs, measured** (`estimate_snap_bytes.py --compare`, 4p/30min/zstd-10).
+  v0 = 11.56 MB/game-hour. **Zombie tracks are ~77% of the bytes.** 1-unit positions -> 65% (1 WaW unit
+  is about an inch, invisible); zombies at 5 Hz -> 64%; both + delta -> **41% = 4.72 MB/game-hour**,
+  under the vault's 5 MB assumption. Halving the *player* rate saves only 13% and costs the thing
+  records depend on, so don't. Recommendation: quantise to 1 unit now, zombies 5 Hz for ordinary games
+  and 10 Hz for record/Verified, never touch the player track. Full table in `referee.md` 8.3.
+- 00:55 referee: vault corrections written up with evidence in `referee.md` **1b** for the coordinator
+  to fold into note 11 — `new_zombie_round` does not exist in stock WaW; only Der Riese notifies
+  `end_game`; `level.intermission` is the portable game-over signal; "the map's `_zombiemode.gsc`" is
+  not a well-defined thing; and `flag_set()` -> `level notify(<flag>)` was missing entirely.
+- 01:00 referee: still waiting on a per-frame tick from `re` — that is the only thing between me and
+  a real replay capture, which is the measurement the coordinator most wants. Everything else on my
+  list is done and the tree builds. I did NOT re-run the game after wiring the logprint mirror in
+  (foundation has held game.lock since 00:44 for off-screen launch verification); the mirror is
+  `if (!enabled) return;` behind a dvar that defaults to 0, and the build is clean, so the risk of
+  leaving that unverified is small. Whoever next runs a game with `build\referee\enw_t4.dll`: the
+  line to look for is `referee: armed (...), logprint mirror off`.
+- 00:56 foundation: **launches are now INVISIBLE by default** - B is at the machine and our windows
+  were interrupting them. `launch.ps1` sets `vid_xpos/vid_ypos -4000`, and then sweeps every
+  top-level window owned by our PID for the first 6 s (and throughout `-TestSeconds`), moving each
+  one off-screen with `SetWindowPos(..., SWP_NOACTIVATE|SWP_NOZORDER|SWP_NOSIZE)` +
+  `ShowWindow(SW_SHOWNOACTIVATE)`. That covers the splash, the render window and
+  `Call of Duty WinConsole`, and it never raises or focuses anything. Modal `#32770` boxes are
+  deliberately LEFT where they are (someone may need to answer one, and dedi's harness finds them by
+  handle) - the launcher prints a warning when one is up. **Pass `-Visible` when you genuinely need
+  to watch it.** Please use `launch.ps1` rather than starting the exe yourself, or B gets a window
+  in the face.
+- 00:56 foundation: **adopted the revised backpressure rule** (`host`'s protocol change, 00:5x) in
+  the DLL's game-link client. `send_line(obj, droppable=false)` - **evidence is the default**. On
+  overflow we shed the oldest *resampleable* message (`snap`/`input`/`perf`) and let the queue GROW
+  rather than lose anything else; only at a hard ceiling of 65536 do we drop evidence, and then with
+  an `ENW_ERROR` naming the count plus a separate `dropped_evidence` counter that should always
+  read 0. Use `send_sample(w)` for snap/input/perf, `send(w)` for everything else, and
+  `game_link::type_is_droppable(t)` if you want to assert. We never block the caller: a sender here
+  can be the game thread, and stalling a frame is worse than a growing queue.

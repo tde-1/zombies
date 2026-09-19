@@ -46,9 +46,20 @@ Useful switches:
 | `build.ps1 -Clean` / `-Config Debug` | as they sound |
 | `deploy.ps1 <name> -Revert` | put the stock `binkw32.dll` back |
 | `launch.ps1 -DryRun` | print the command line, start nothing |
+| `launch.ps1 -Visible` | show the window. **Off by default** — see below |
 | `launch.ps1 -TestSeconds N` | launch, report, kill our own PID, release the lock |
 | `launch.ps1 -HomePath default` | use B's real profile dir instead of `homes\<name>` |
 | `$env:ENW_LAUNCH_OK=0` | **kill switch** — `launch.ps1` then refuses to start the game at all |
+
+**Launches are invisible by default.** B works at this machine, so `launch.ps1` sets
+`vid_xpos/vid_ypos -4000` and then sweeps every top-level window owned by our PID — for the first
+6 s and again throughout `-TestSeconds` — moving each one off-screen with
+`SetWindowPos(SWP_NOACTIVATE|SWP_NOZORDER|SWP_NOSIZE)` and `ShowWindow(SW_SHOWNOACTIVATE)`. Nothing
+is ever raised or focused. That covers the splash (`CoD Splash Screen`), the render window and the
+dedicated console (`Call of Duty WinConsole`); the repeated sweep also catches a window recreated by
+a `vid_restart`. Modal `#32770` dialogs are deliberately left in place — someone may need to answer
+one — and the launcher warns when one is up. Use `-Visible` only when you must watch it, and prefer
+`launch.ps1` over starting the exe by hand.
 
 Logs land in two places, and you want both:
 
@@ -168,8 +179,15 @@ not hand-rolling a 5-byte detour that corrupts whatever straddles byte 5.
 `docs/protocol/game-link-v0.md`, game side. Tested end to end against a real NDJSON server before it
 ever went near the game.
 
-* One background thread; `send()` never touches the socket, just a bounded queue (4096) that **drops
-  oldest** on overflow and counts the drops.
+* One background thread; `send()` never touches the socket, just a queue.
+* **Backpressure follows the protocol's revised rule** (`host`, 2026-09-20): only `snap`, `input`
+  and `perf` are resampleable and may be shed. Everything else is EVIDENCE — dropping a `round`
+  makes the referee award the wrong badge, silently — so `send_line(obj, droppable=false)` defaults
+  to keeping it. Past the soft limit (4096) we shed the oldest *resampleable* message and otherwise
+  let the queue grow; only at a hard ceiling (65536) is evidence dropped, with an `ENW_ERROR` and a
+  separate `dropped_evidence` counter that should always read 0. Use `send_sample(w)` for the three
+  droppable types. We never block the caller — it can be the game thread, and stalling a frame is
+  worse than a growing queue.
 * Reconnect with exponential backoff, 250 ms → 10 s. `hello` on every connect.
 * `hello` carries `v, t, ms, instance, role, pid, exe_sha256, dll_build` — the SHA-256 is of the live
   exe, computed on the link thread, so the host can prove what is running.

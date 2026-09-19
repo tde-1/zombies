@@ -27,6 +27,10 @@
   'own'     - +set fs_homepath ZombiesDev\homes\<Name>   (per-instance user data)
   'default' - leave it alone (uses %LOCALAPPDATA%\Activision\CoDWaW, B's real profile)
 
+.PARAMETER Visible
+  Show the game window. OFF BY DEFAULT -- B uses this PC, so launches are parked
+  at -4000,-4000 and never take focus. Pass this only when you must watch it.
+
 .PARAMETER TestSeconds
   Smoke-test mode: wait this long, print what happened (alive? which image? child
   processes? log tail?), then kill the process we started and release the lock.
@@ -63,6 +67,11 @@ param(
 
     # Print the command line and exit without starting anything.
     [switch]$DryRun,
+
+    # Show the game window on screen. OFF BY DEFAULT: B uses this PC and our
+    # windows interrupt them, so every launch is parked off-screen and never
+    # takes focus unless you ask for it.
+    [switch]$Visible,
 
     [string]$GameDir = '',
     [string]$DevRoot = 'C:\Users\b\ZombiesDev',
@@ -106,6 +115,66 @@ if ($launchOk -ne '1' -and -not $DryRun) {
     Write-Host '  ##########################################################' -ForegroundColor Red
     Write-Host ''
     throw 'ENW_LAUNCH_OK is not 1 - refusing to start CoDWaW.exe.'
+}
+
+# ------------------------------------------------------- keeping off-screen --
+# B works at this machine. A game window popping up and stealing focus in the
+# middle of their day is not acceptable, so unless -Visible is passed we park
+# every window the process owns far off-screen without ever activating it.
+#
+# `vid_xpos`/`vid_ypos` handle the main render window, but not the splash
+# ("CoD Splash Screen"), the dedicated-server console ("Call of Duty WinConsole")
+# or the modal #32770 boxes, so we sweep by PID as well.
+Add-Type -Namespace EnwWin -Name Native -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc cb, IntPtr p);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+[DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+[DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int max);
+public delegate bool EnumWindowsProc(IntPtr h, IntPtr p);
+'@ -ErrorAction SilentlyContinue
+
+# SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE  -- move only, never raise, never focus.
+$script:SWP_MOVE_ONLY = 0x0001 -bor 0x0004 -bor 0x0010
+$script:SW_SHOWNOACTIVATE = 4
+
+function Hide-GameWindows {
+    param([int]$OwnerPid, [switch]$Report)
+    $moved = @()
+    $cb = [EnwWin.Native+EnumWindowsProc] {
+        param($h, $p)
+        $wpid = 0
+        [void][EnwWin.Native]::GetWindowThreadProcessId($h, [ref]$wpid)
+        if ($wpid -eq $OwnerPid) {
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][EnwWin.Native]::GetClassName($h, $sb, $sb.Capacity)
+            $cls = $sb.ToString()
+            # Never move a modal dialog out of reach - someone may need to answer
+            # it, and dedi's harness finds them by handle. Just record it.
+            if ($cls -eq '#32770') {
+                $script:dialogsSeen += $cls
+            }
+            else {
+                [void][EnwWin.Native]::ShowWindow($h, $script:SW_SHOWNOACTIVATE)
+                [void][EnwWin.Native]::SetWindowPos($h, [IntPtr]::Zero, -4000, -4000, 0, 0, $script:SWP_MOVE_ONLY)
+                $script:movedWindows += $cls
+            }
+        }
+        return $true
+    }
+    $script:movedWindows = @()
+    $script:dialogsSeen = @()
+    [void][EnwWin.Native]::EnumWindows($cb, [IntPtr]::Zero)
+    if ($Report) {
+        if ($script:movedWindows.Count) {
+            Write-Host "  parked off-screen: $((($script:movedWindows | Sort-Object -Unique) -join ', '))" -ForegroundColor DarkGray
+        }
+        if ($script:dialogsSeen.Count) {
+            Write-Host "  MODAL DIALOG present (#32770) - left where it is, it will block startup" -ForegroundColor Yellow
+        }
+    }
+    return $script:movedWindows.Count
 }
 
 # ---------------------------------------------------------------- game lock --
@@ -182,8 +251,10 @@ try {
     $defaults = @(
         '+set', 'r_fullscreen', '0',
         '+set', 'r_mode', '800x600',
-        '+set', 'vid_xpos', '20',
-        '+set', 'vid_ypos', '20',
+        # Off-screen unless -Visible. The engine's own dvars do most of the work;
+        # Hide-GameWindows below catches anything that ignores them.
+        '+set', 'vid_xpos', $(if ($Visible) { '20' } else { '-4000' }),
+        '+set', 'vid_ypos', $(if ($Visible) { '20' } else { '-4000' }),
         '+set', 'snd_volume', '0',
         '+set', 'snd_menu_master', '0',
         '+set', 'com_introPlayed', '1',
@@ -215,7 +286,7 @@ try {
     $errLog = Join-Path $logDir "$stamp-stderr.log"
 
     Write-Host "Launching $exe" -ForegroundColor Cyan
-    Write-Host "  role=$Role instance=$Instance host=$EnwHost homepath=$HomePath"
+    Write-Host "  role=$Role instance=$Instance host=$EnwHost homepath=$HomePath window=$(if ($Visible) { 'VISIBLE' } else { 'off-screen, no focus' })"
     Write-Host "  args: $($a -join ' ')" -ForegroundColor DarkGray
 
     if ($DryRun) {
@@ -232,9 +303,23 @@ try {
     $proc = Start-Process -FilePath $exe -ArgumentList $a -WorkingDirectory $GameDir `
         -RedirectStandardOutput $outLog -RedirectStandardError $errLog -PassThru
 
-    Start-Sleep -Milliseconds 1500
+    # Sweep repeatedly for the first few seconds: the splash, the render window
+    # and the console each appear at different moments, and we want each one gone
+    # the instant it exists rather than after it has flashed at B.
+    if (-not $Visible) {
+        $sweepUntil = (Get-Date).AddSeconds(6)
+        while ((Get-Date) -lt $sweepUntil -and -not $proc.HasExited) {
+            [void](Hide-GameWindows -OwnerPid $proc.Id)
+            Start-Sleep -Milliseconds 150
+        }
+        [void](Hide-GameWindows -OwnerPid $proc.Id -Report)
+    }
+    else {
+        Start-Sleep -Milliseconds 1500
+    }
+
     $record = [ordered]@{
-        name = $Name; role = $Role; instance = $Instance; pid = $proc.Id
+        name = $Name; role = $Role; instance = $Instance; pid = $proc.Id; visible = [bool]$Visible
         exe = $exe; args = ($a -join ' '); started = (Get-Date -Format o)
         homepath = $(if ($HomePath -eq 'own') { $homeDir } else { "$env:LOCALAPPDATA\Activision\CoDWaW" })
         stdout = $outLog; stderr = $errLog
@@ -258,6 +343,9 @@ try {
     while ((Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 700
         if ($proc.HasExited) { break }
+        # Keep sweeping: the render window can be created (or recreated by a
+        # vid_restart) long after startup.
+        if (-not $Visible) { [void](Hide-GameWindows -OwnerPid $proc.Id) }
     }
     $proc.Refresh()
 

@@ -34,17 +34,20 @@ public:
         uint16_t port = 0;         // 0 => no ENW_HOST, stay dormant
         std::string instance;
         std::string role = "solo";
-        size_t out_queue_max = 4096;
+        size_t out_queue_max = 4096;   // soft: beyond this, droppable messages go
+        size_t out_queue_hard = 65536; // hard: beyond this even evidence goes, loudly
         size_t in_queue_max = 1024;
         size_t max_line = 1 << 20;  // a peer that never sends \n gets dropped
     };
 
     struct stats {
         uint64_t sent = 0;
-        uint64_t dropped = 0;
+        uint64_t dropped = 0;           // resampleable messages shed under load: expected
+        uint64_t dropped_evidence = 0;  // MUST STAY ZERO. Non-zero invalidates a replay.
         uint64_t received = 0;
         uint64_t bad_lines = 0;
         uint64_t connects = 0;
+        size_t queued = 0;
         bool connected = false;
     };
 
@@ -62,10 +65,28 @@ public:
     const config& settings() const { return cfg_; }
 
     // --- game -> host ---
-    // Queues one NDJSON line. `obj` must be a complete JSON object without a
-    // trailing newline. Returns false only if the link is off.
-    bool send_line(std::string obj);
-    bool send(json::writer& w) { return send_line(w.done()); }
+    //
+    // BACKPRESSURE (protocol v0, revised 2026-09-20 by `host`): only `snap`,
+    // `input` and `perf` may be discarded on overflow -- they are resampleable
+    // and the next one is 50 ms away. EVERY OTHER MESSAGE IS EVIDENCE. Dropping
+    // a `round` makes the referee award the wrong badge, silently.
+    //
+    // So `droppable` defaults to FALSE. Pass true (or use send_sample) only for
+    // those three. Evidence is never silently discarded: the queue is allowed to
+    // grow well past the soft limit, and if it ever hits the hard ceiling we
+    // drop with a loud ENW_ERROR and a counter, rather than quietly.
+    //
+    // We never block, on any thread. The protocol note says a sender may block,
+    // but in here the caller can be the game thread, and stalling a frame is
+    // worse than any of this.
+    bool send_line(std::string obj, bool droppable = false);
+    bool send(json::writer& w, bool droppable = false) { return send_line(w.done(), droppable); }
+
+    // For `snap` / `input` / `perf` only.
+    bool send_sample(json::writer& w) { return send_line(w.done(), /*droppable=*/true); }
+
+    // True for the three resampleable types. Public so components can assert.
+    static bool type_is_droppable(std::string_view t);
 
     // Convenience for the common shapes.
     bool send_log(const char* level, const char* fmt, ...);

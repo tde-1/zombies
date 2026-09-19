@@ -53,6 +53,7 @@ const cfg = {
   chunkMs: Number(a['chunk-ms'] ?? 60_000),
   zstdLevel: Number(a['zstd-level'] ?? 10),
   gameLog: a['game-log'] !== 'off',   // the IW4MAdmin/B3-readable games_mp.log mirror
+  gameLogPrefix: a['game-log-prefix'] || 'ENWZombie',
   referee: {
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
     ...(a['cap-warn-ms'] ? { capWarnMs: String(a['cap-warn-ms']).split(',').map(Number) } : {}),
@@ -92,7 +93,7 @@ class Game extends EventEmitter {
     for (const k of ['cap_warning', 'afk_warn', 'afk_kick', 'finish', 'signal', 'paused', 'resumed']) {
       this.referee.on(k, (d) => this.recordHostEvent({ t: 'referee', kind: k, ...(typeof d === 'object' ? d : { value: d }) }))
     }
-    this.gameLog = new GameLog({ file: path.join(cfg.logDir, `${instance.id}.games_mp.log`), enabled: cfg.gameLog })
+    this.gameLog = new GameLog({ file: path.join(cfg.logDir, `${instance.id}.games_mp.log`), enabled: cfg.gameLog, prefix: cfg.gameLogPrefix })
     this.tickTimer = setInterval(() => this.referee.tick(), 1000)
     this.tickTimer.unref?.()
   }

@@ -38,14 +38,23 @@ def zombies_alive(round_no: int, players: int) -> int:
 
 
 def make_snap(ms: int, players: list[dict], zoms: list[dict], zombie_frame: bool,
-              prev: dict) -> str:
-    """Byte-for-byte the shape replay.cpp emits."""
+              prev: dict, v: dict | None = None) -> str:
+    """Byte-for-byte the shape replay.cpp emits, with the trade-off variants applied."""
+    v = v or {}
+    nd = v.get("quant", 1)         # decimal places for positions/angles
+    delta = v.get("delta", False)  # send position deltas, not absolutes
     pl = []
     for p in players:
+        if delta and "pos" in prev.setdefault(p["slot"], {}):
+            pp = prev[p["slot"]]["pos"]
+            pos = [round(p["pos"][i] - pp[i], nd) for i in range(3)]
+        else:
+            pos = [round(p["pos"][i], nd) for i in range(3)]
+        prev.setdefault(p["slot"], {})["pos"] = list(p["pos"])
         o = {
             "slot": p["slot"],
-            "pos": [round(p["pos"][i], 1) for i in range(3)],
-            "ang": [round(p["ang"][0], 1), round(p["ang"][1], 1)],
+            "pos": pos,
+            "ang": [round(p["ang"][0], nd), round(p["ang"][1], nd)],
         }
         q = prev.setdefault(p["slot"], {})
         if q.get("health") != p["health"]:
@@ -63,15 +72,29 @@ def make_snap(ms: int, players: list[dict], zoms: list[dict], zombie_frame: bool
         pl.append(o)
 
     snap = {"t": "snap", "ms": ms, "players": pl}
-    if zombie_frame and zoms:
+    if zombie_frame and zoms and not v.get("no_zombies"):
         snap["zombies"] = [
-            {"id": z["id"], "pos": [round(z["pos"][i], 1) for i in range(3)], "health": z["health"]}
+            {"id": z["id"], "pos": [round(z["pos"][i], nd) for i in range(3)], "health": z["health"]}
             for z in zoms
         ]
     return json.dumps(snap, separators=(",", ":"))
 
 
-def run(minutes: int, nplayers: int, seed: int = 1) -> None:
+# The trade-offs we can actually make, measured rather than guessed.
+VARIANTS = {
+    "v0":            {},
+    "zombies 5 Hz":  {"zrate": 4},
+    "no zombies":    {"no_zombies": True},
+    "players 10 Hz": {"prate": 2},
+    "1-unit pos":    {"quant": 0},
+    "delta pos":     {"delta": True},
+    "1-unit+delta":  {"quant": 0, "delta": True},
+    "1u+delta+z5":   {"quant": 0, "delta": True, "zrate": 4},
+}
+
+
+def run(minutes: int, nplayers: int, seed: int = 1, variant: str = "v0",
+        quiet: bool = False) -> tuple[int, int, float]:
     rng = random.Random(seed)
     frames = minutes * 60 * SV_FPS
 
@@ -90,6 +113,10 @@ def run(minutes: int, nplayers: int, seed: int = 1) -> None:
     zoms: list[dict] = []
     next_id = 100
     prev: dict = {}
+
+    v = VARIANTS[variant]
+    prate = v.get("prate", 1)
+    zrate = v.get("zrate", 2)
 
     total = 0
     lines: list[str] = []
@@ -124,7 +151,9 @@ def run(minutes: int, nplayers: int, seed: int = 1) -> None:
             z["pos"][0] += rng.uniform(-10, 10)
             z["pos"][1] += rng.uniform(-10, 10)
 
-        line = make_snap(ms, players, zoms, (f % 2) == 0, prev)
+        if f % prate:
+            continue
+        line = make_snap(ms, players, zoms, (f % zrate) == 0, prev, v)
         lines.append(line)
         total += len(line) + 1
 
@@ -137,17 +166,22 @@ def run(minutes: int, nplayers: int, seed: int = 1) -> None:
         zs = None
 
     hours = minutes / 60
+    best = zs if zs is not None else gz
+    if quiet:
+        return total, best, best / hours / 1024 / 1024
+
     def per_hour(n: int) -> str:
         return f"{n / hours / 1024 / 1024:8.1f} MB/game-hour"
 
-    print(f"{nplayers} players, {minutes} min, {frames} frames, sv_fps {SV_FPS}")
+    print(f"{nplayers} players, {minutes} min, {len(lines)} snaps, sv_fps {SV_FPS}, variant {variant}")
     print(f"  raw NDJSON   {total:>12,} B   {per_hour(total)}")
     print(f"  gzip -6      {gz:>12,} B   {per_hour(gz)}   ({gz/total:.1%})")
     if zs is not None:
         print(f"  zstd -10     {zs:>12,} B   {per_hour(zs)}   ({zs/total:.1%})")
     else:
         print("  zstd         (pip install zstandard for the real chunk size)")
-    print(f"  mean snap    {total/frames:8.1f} B")
+    print(f"  mean snap    {total/len(lines):8.1f} B")
+    return total, best, best / hours / 1024 / 1024
 
 
 def main() -> None:
@@ -155,8 +189,21 @@ def main() -> None:
     ap.add_argument("--minutes", type=int, default=60)
     ap.add_argument("--players", type=int, default=4)
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--variant", default="v0", choices=list(VARIANTS))
+    ap.add_argument("--compare", action="store_true",
+                    help="run every variant and print the trade-off table")
     args = ap.parse_args()
-    run(args.minutes, args.players, args.seed)
+    if not args.compare:
+        run(args.minutes, args.players, args.seed, args.variant)
+        return
+    base = None
+    print(f"{args.players} players, {args.minutes} min, sv_fps {SV_FPS}, zstd-10")
+    print(f"{'variant':16} {'MB/game-hour':>13} {'vs v0':>8}")
+    for name in VARIANTS:
+        _, _, mb = run(args.minutes, args.players, args.seed, name, quiet=True)
+        if base is None:
+            base = mb
+        print(f"{name:16} {mb:13.2f} {mb/base:7.0%}")
 
 
 if __name__ == "__main__":
