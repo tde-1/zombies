@@ -1,0 +1,20 @@
+# build output
+build/
+out/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+# never commit game files or dumps
+*.ff
+*.iwd
+dumps/
+# node
+node_modules/
+infra/host-agent/data/
+# local
+*.log
+.vs/
