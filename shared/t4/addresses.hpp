@@ -55,7 +55,9 @@ namespace t4
         constexpr std::uintptr_t CL_FramePump_nonDedicated  = 0x69DAA0; // [V] runs only when com_dedicated == 0
 
         // ---- fatal error path (why a headless server appears to hang) ---------------
-        constexpr std::uintptr_t Com_Error                  = 0x59AC50; // [V] cdecl void(errorParm_t code, const char* fmt, ...); 515 callers; calls Sys_Error
+        // Com_Error is declared above (0x59AC50): cdecl void(errorParm_t code, const char* fmt,
+        // ...). 515 callers; calls Sys_Error. Hook args: code=[esp+4], fmt=[esp+8],
+        // first vararg=[esp+0xC], REAL error site = return address at [esp].
         constexpr std::uintptr_t Sys_Error_park             = 0x5FE8C0; // [V] void(const char* fmt, ...); parks the main thread in a
         // terminal TranslateMessage/DispatchMessageA/GetMessageA loop at 0x5FE960..0x5FE97D
         // (0x5FE97B = the `test eax,eax` after GetMessageA). Exits only on WM_QUIT -> _exit(0)

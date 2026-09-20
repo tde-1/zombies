@@ -13,6 +13,25 @@ and repaired it from the read-only Steam install; B's Steam install is fine). **
 taken from a process launched from the Steam install, so it is unaffected** (all addresses
 above stand). Anything that relied on `waw-base` assets should be re-checked.
 
+## The headless "hang" is a fatal error, not a wait (2026-09-20)
+`dedi` suspended the main thread: `EIP = win32u!NtUserGetMessage+0xC` with an identical ESP on
+every sample, innermost engine frame **0x5FE97B inside `Sys_Error` 0x5FE8C0**. So the dedicated
+server **hits a fatal error and Sys_Error parks the main thread forever** — that is why Com_Init
+never returns, no frames run, no packets are handled and no dialog appears (it uses WinConsole).
+- **`Sys_Error` = 0x5FE8C0** [V]. Terminal loop **0x5FE960..0x5FE97D**:
+  `TranslateMessage([0x7EB300])` → `DispatchMessageA([0x7EB2E4])` → `GetMessageA([0x7EB2CC])` →
+  **0x5FE97B `test eax,eax`** → `jne 0x5FE960`. Falls out only on WM_QUIT, then `_exit(0)`
+  (0x7AC431). **A WM_NULL nudge cannot break it.**
+- **`Com_Error` = 0x59AC50** [V] — 515 callers, calls Sys_Error directly. cdecl
+  `void Com_Error(errorParm_t code, const char* fmt, ...)`; in a hook: `code=[esp+4]`,
+  `fmt=[esp+8]`, first vararg `[esp+0xC]`, **real error site = return address at `[esp]`**.
+  Also hook `Sys_Error` itself — it has many direct callers that bypass Com_Error.
+- **0x410830 is NOT a return address** — it lands mid-instruction (inside the 7-byte
+  `mov word ptr [edi+0xa0], cx` at 0x41082D); its function 0x4107C0 is renderer/material state
+  setup and calls neither error function. Stale stack data — do not chase it. (Same false-positive
+  class as my earlier 0x5FF4E0 claim, which I withdraw: stack-scanned return addresses are only
+  trustworthy when validated as following a `call`.)
+
 ## Runtime cross-checks landed (from the referee/foundation)
 - **`gentity_s.currentOrigin = +0x160` confirmed** — the referee **withdrew its DISAGREE**: its
   sliding-window method scores +0x15C/+0x160/+0x164 identically (a 4-byte window over a 3-float
@@ -103,10 +122,10 @@ bytes — they point into the right instructions but not at the operand). Use th
 | `SV_Frame` | 0x635CC0 | [V] | server frame; runs the game world each frame. Better tick home for server-only work (round/score) since it doesn't run pre-map |
 | `G_RunFrame` | 0x503AB0 | [V] | game-logic frame; calls G_ClientDoPerFrameNotifies |
 | `Sys_RenderInit_preloop` | 0x5FF4E0 | [V] | **the renderer/D3D bring-up run BEFORE WinMain's frame loop** (call site 0x5FF799, after Com_Init). NOT gated by com_dedicated → the dedicated server gets stuck here (verified by sampling live dedi server pid 25144: every stack rooted at 0x5FF4E0, never the loop). Calls 0x75A9A2 (D3D). **Skip/stub in dedicated so the frame loop — and Com_Frame — can run.** |
-| dedicated console pump | 0x69DAA0 | [C] | called after Com_Frame each loop iteration when `com_dedicated` set; small (console input only, not the frame) |
+| non-dedicated per-frame call | 0x69DAA0 | [V] | **CORRECTED (was labelled 'dedicated console pump' — inverted).** WinMain's branch at 0x5FF7C7/0x5FF7CB *skips* this call when `com_dedicated != 0`; it runs only when the dvar is null or 0. So it is a **client-side** per-frame call. |
 | `Sys_Milliseconds` | 0x603D40 | [V] | wraps `timeGetTime` (IAT 0x7EB39C), caches base |
 | `Com_InitDvars` | 0x59C8B0 | [C] | registers `com_maxfps`, `developer_script`, `dedicated` |
-| `dedicated` dvar (enum) | reg at 0x59C8B0 via `Dvar_RegisterEnum` 0x5EF150 | [V] | enum {0 "listen server", 1 "dedicated LAN server", 2 "dedicated internet server"}, flags 0x40; ptr → com_dedicated 0x212B2F4. WinMain reads value each frame (0x5FF7C2) and calls the dedicated console pump 0x69DAA0 when non-zero — **the SP exe has a real dedicated path** |
+| `dedicated` dvar (enum) | reg at 0x59C8B0 via `Dvar_RegisterEnum` 0x5EF150 | [V] | enum {0 "listen server", 1 "dedicated LAN server", 2 "dedicated internet server"}, flags 0x40; ptr → com_dedicated 0x212B2F4. WinMain reads the value each frame (0x5FF7C2); the 0x69DAA0 call is **skipped** when it is non-zero (see the corrected row above). The SP exe does have a dedicated code path, but the headless blocker is the fatal-error park, not this call. |
 
 ### Commands / dvars
 | Function | Addr | Conf | Evidence |
