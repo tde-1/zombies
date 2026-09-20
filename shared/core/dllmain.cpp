@@ -15,6 +15,7 @@
 #include "enw.hpp"
 
 #include "component.hpp"
+#include "frame.hpp"
 #include "game.hpp"
 #include "game_link.hpp"
 #include "hook.hpp"
@@ -156,6 +157,24 @@ DWORD WINAPI loader_thread(LPVOID) {
     if (!game::console_available()) return 0;
     game::console_print("^2[ENW]^7 enw_t4 ready - build %s %s, pid %lu\n", __DATE__, __TIME__,
                         static_cast<unsigned long>(::GetCurrentProcessId()));
+
+    // Is the per-frame tick actually running? This is the one number that says
+    // whether WinMain reached its loop, so print it where everyone can see it.
+    ::Sleep(2000);
+    const uint64_t frames = frame::count();
+    const auto st = scheduler::snapshot();
+    game::console_print("^7[ENW] frames=%llu subs=%u  main-thread jobs ran=%llu dropped=%llu\n",
+                        static_cast<unsigned long long>(frames),
+                        static_cast<unsigned>(frame::subscriber_count()),
+                        static_cast<unsigned long long>(st.ran),
+                        static_cast<unsigned long long>(st.dropped));
+    if (frames > 0) {
+        ENW_INFO("enw_t4: PER-FRAME TICK IS LIVE (%llu frames). Steady-state "
+                 "scheduler::run_on_main() and game-link commands now work.",
+                 static_cast<unsigned long long>(frames));
+    } else {
+        ENW_WARN("enw_t4: still zero frames - WinMain has not reached its loop (0x5FF4E0).");
+    }
     link.send_log("info", "enw_t4 ready");
     return 0;
 }

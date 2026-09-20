@@ -1,0 +1,29 @@
+{
+  "name": "enw-zombies-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ENW Zombies — the website at zombies.enw.gg. A port of ENW Movement (CSGO-Matchmaker/server + movement-client) with the nouns changed.",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node server/index.js",
+    "start": "node server/index.js",
+    "seed": "node server/db/seed.js",
+    "reseed": "node server/db/seed.js --reset",
+    "build": "npm --prefix client install && npm --prefix client run build",
+    "client": "npm --prefix client run dev",
+    "check": "node test/run-all.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "socket.io": "^4.8.1"
+  },
+  "optionalDependencies": {
+    "passport": "^0.7.0",
+    "passport-steam": "^1.0.18"
+  }
+}

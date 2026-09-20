@@ -1,6 +1,7 @@
 # Foundation: build, deploy, launch, and what the game actually does
 
-Owner: the **foundation** agent. Milestone **E1 — our DLL prints in the game console — is done.**
+Owner: the **foundation** agent. Milestone **E1 — our DLL prints in the game console — is done**,
+and as of 01:35 **a solo game reaches a playable state with our per-frame tick running.**
 
 Evidence, from `C:\Users\b\ZombiesDev\homes\foundation\main\console.log` (the *engine's* own log,
 written by the game, not by us):
@@ -30,8 +31,21 @@ which is the line you can rely on:
  185: [ENW]^7 enw_t4 ready - build Sep 20 2026 01:11:13, pid 26240
 ```
 
-Nine components in both runs — ours plus `dedi`'s, `referee`'s and `host`'s, all picked up by the
-CMake glob with no shared file edited by anybody.
+Nine components in those runs — eleven by the end — ours plus `dedi`'s, `referee`'s and `host`'s,
+all picked up by the CMake glob with no shared file edited by anybody.
+
+And the run that got all the way in:
+
+```
+ 256: [ENW]^7 enw_t4 online - 11 components
+ 265: [ENW]^7 enw_t4 loaded - build Sep 20 2026 01:32:31, pid 21400
+2520: [ENW]^7 enw_t4 ready  - build Sep 20 2026 01:32:31, pid 21400
+2681: [ENW] frames=301 subs=1  main-thread jobs ran=23 dropped=0
+```
+
+`console.log` went from 12 KB to 242 KB in that run: D3D device created, the
+`code_post_gfx`/`ui`/`localized_common`/`common`/`patch` fastfiles loaded, render targets, static
+model cache and particle buffer initialised, main menu ticking.
 
 ---
 
@@ -139,39 +153,42 @@ Four concrete gotchas:
    If you need a line to be *seen*, emit it after the churn: the loader re-announces once, three
    seconds after `post_init`, for exactly this reason.
 
-### The main-thread pump, and its limit
+### The per-frame tick (core-owned) and the main-thread pump
 
-`shared/core/components/main_thread.cpp` detours **`Dvar_FindVar` (0x5EDE30)** — verified,
-trivially `__cdecl dvar*(const char*)` — and drains the scheduler and the game-link inbound queue
-from it.
+**`shared/core/frame.hpp` owns the tick. Components subscribe; nobody hooks `Com_Frame`.**
+That is now rule 12 in `docs/dev-box.md`, because MinHook allows exactly one hook per target and the
+loser only finds out from a log line — I cost `referee` four minutes of their frame binding proving
+it.
 
-**Measured limit: the engine calls it ~90 times while booting and then essentially stops.** So this
-is a *startup* pump, not a steady one. It is reliable enough that `post_init` always runs on the
-game thread, but work queued with `scheduler::run_on_main()` after the game settles at the menu may
-sit there indefinitely (the queue is bounded at 256 and drops oldest). Host commands (`exec`, `set`,
-`pause`) will need something better.
+```cpp
+#include "frame.hpp"
+enw::frame::subscribe("my_thing", [](uint64_t n) { /* main thread, frame boundary */ });
+```
 
-**`Com_Frame` (0x59E330) measured zero calls — and the reason is the interesting bit.** I hooked
-it; MinHook created and enabled the detour cleanly, the `E9` was verifiably still at the entry 20 s
-later, and it ran **zero times**. `re` then found why (board 01:35, from live thread-stack samples
-plus a static WinMain trace): **WinMain never reaches its loop.** `0x5FF4E0`, called at
-`WinMain+0x199` right after `Com_Init` and *before* the loop at `0x5FF7B1`, runs renderer/D3D
-bring-up unconditionally and is not gated by `com_dedicated`. Our solo runs stall in the same place,
-on the *"Set Optimal Settings?"* modal. So there is **no per-frame tick of any kind, in any mode,
-until that init is unblocked** — which is also `dedi`'s Stage C blocker. The address is right; the
-loop is just never entered. `ENW_PUMP=frame` re-runs the experiment; it is off by default.
+**How the core takes it, and why that matters to you:** we do *not* detour `Com_Frame`. We retarget
+WinMain's `call Com_Frame` instruction at **0x5FF7BD** (the call site `re` published) to our own
+stub, which calls the real `Com_Frame` and then dispatches to subscribers. `Com_Frame`'s own bytes
+are untouched, so `dedicated`'s MinHook detour on it keeps working alongside us. Rewriting one rel32
+cannot collide with anything and relocates no instructions — it is the safer primitive and this is
+exactly what it is for.
 
-That attempt also cost the `referee` agent four minutes of silent breakage: **MinHook allows exactly
-one hook per target address**, so my `MH_CreateHook(0x59E330)` won and theirs failed with
-`already created`, turning their frame binding off with nothing but a log line to show for it.
-Reverted; `frame=yes` confirmed back.
+Callbacks are SEH-guarded. One that faults is logged once and **unsubscribed**, rather than being
+allowed to fault every frame forever.
 
-> **The two open items here.** (1) Bypass `0x5FF4E0` so WinMain reaches its loop — `re` has the
-> exact site and `dedi` needs the same fix; then `Com_Frame` starts ticking and this whole caveat
-> goes away. (2) The core should own that single hook and expose `on_frame(fn)` so components
-> subscribe rather than race for the address — about 40 lines, and it makes this class of collision
-> impossible. I have deliberately *not* built it unilaterally, because switching it on takes
-> `Com_Frame` away from `referee` again. Nothing else depends on where `pump()` is called from.
+Measured: **301 frames by t+5.5 s** in a solo run, `main-thread jobs ran=23 dropped=0`. Steady-state
+`scheduler::run_on_main()` and inbound game-link commands work off this.
+
+**When it does not tick.** `post_init` runs ~200 ms in, while the renderer is still coming up, so
+zero frames at that point is normal and the log says so. It is *permanently* zero in **dedicated**
+mode: `0x5FF4E0` (renderer/D3D bring-up, called at `WinMain+0x199`, before the loop, and **not**
+gated by `com_dedicated`) never completes, so WinMain never reaches its loop. That is `dedi`'s
+Stage C blocker and `re` has the exact site.
+
+**The startup pump.** Before the frame loop runs there is still work to marshal (`post_init` itself),
+so `components/main_thread.cpp` also detours **`Dvar_FindVar`** — verified, trivially
+`__cdecl dvar*(const char*)`, called ~2000 times while the engine boots and then essentially never.
+It is a startup pump only, and it exists purely to get `post_init` onto the game thread. Everything
+after that should use `frame::subscribe`.
 
 ## 4. Addresses verified on B's exe
 
@@ -198,11 +215,14 @@ Everything else in vault §2 is still unverified — that is `re`'s job.
 | `hook.hpp/.cpp` | RAII wrapper over MinHook; refuses to hook anything that does not look like code |
 | `logger.hpp/.cpp` | file + `OutputDebugString` + game console, flushed per line |
 | `scheduler.hpp/.cpp` | `run_on_main()` + `pump()` |
+| `frame.hpp/.cpp` | **the core-owned per-frame tick**; `subscribe()`/`unsubscribe()` |
 | `game_link.hpp/.cpp` | the TCP NDJSON client |
 | `json.hpp/.cpp`, `sha256.hpp/.cpp` | no-dependency helpers |
 | `game.hpp/.cpp` | the two verified addresses, `console_print`, `find_dvar`, the verification report |
 | `components/hello.cpp` | proof of life + the worked example to copy |
-| `components/main_thread.cpp` | the pump |
+| `components/main_thread.cpp` | the startup pump (Dvar_FindVar) |
+| `components/frame_dispatch.cpp` | installs the tick and reports on it |
+| `components/instance_paths.cpp` | per-instance profile via an IAT patch (off by default) |
 
 `thirdparty/minhook/` is vendored verbatim (BSD-2-Clause, `LICENSE.txt` and `VENDORED-FROM.txt`
 kept, upstream `8af6b4ac`). It brings its own length disassembler, which is the whole reason we are
@@ -255,24 +275,78 @@ Pre-create `<fs_homepath>\main\` or you may get no `console.log` at all: two run
 `+set logfile 2` differed only in whether that folder already existed, and the one without it wrote
 nothing. Unproven as cause, but the fix is free and both scripts now do it.
 
-**Blocking dialogs**, both Win32 `#32770`:
+**Blocking dialogs — solved, and they were the reason no solo run ever reached the game.**
+`launch.ps1` now answers them by default (`-KeepDialogs` opts out). It reads each `#32770`'s title,
+body text and button ids, picks the most conservative button available (**No > Cancel > OK**) and
+`PostMessage`s `WM_COMMAND`. PostMessage is asynchronous, so a wedged UI thread cannot hang us.
 
-* *"Set Optimal Settings?"*. **`+set sys_configureGHz 1` does NOT suppress it** — I claimed it would
-  and I was wrong. The engine overwrites the dvar with its own measured value
-  (`dvar set sys_configureGHz 0.0297…` is the last line of console.log in every run) and shows the
-  box anyway. **Every solo run so far has been sitting on this dialog**; the game never reaches the
-  main menu. It does not block the DLL work — load, decrypt, verify, hook and print all happen
-  around it — but do not assume you have a *running game*. `launch.ps1` now reports
-  `MODAL DIALOG up (#32770 x1)` when one is present.
+```
+dialog answered: 'Set Optimal Settings?' >> No [6:Yes 7:No]
+```
+
+* *"Set Optimal Settings?"* on first run. **`+set sys_configureGHz 1` does NOT suppress it** — I
+  claimed it would and I was wrong; the engine overwrites the dvar with its own measured value.
+  Answering No keeps the settings we passed on the command line. Once answered, the engine persists
+  the result and does not ask again.
 * *"Run In Safe Mode?"* after an unclean exit. The marker is
   **`%LOCALAPPDATA%\Activision\CoDWaW\__CoDWaW`, a 4-byte file holding the PID** of the running
-  instance, written at startup and deleted on a clean exit (found by `dedi`). `launch.ps1` deletes it
-  when the PID inside is dead — and **refuses to launch** when that PID is a live `CoDWaW`, which is
-  also our cheapest guard against two instances.
-* `dedi` also has a harness that answers either box with `PostMessage(hwnd, WM_COMMAND, IDNO=7, 0)`.
+  instance, written at startup and deleted on a clean exit (found by `dedi`). `launch.ps1` deletes
+  it when the PID inside is dead — and **refuses to launch** when that PID is a live `CoDWaW`,
+  which is also our cheapest guard against two instances.
 
-**Two instances at once: still untested**, and `__CoDWaW` being a single-instance marker is a
+**The other thing in the way was ours.** With `+set developer 1`, a missing-asset *warning* becomes
+a fatal modal error, and stock WaW is missing `images/sun_flare.iwi`. Startup died there every
+single run, right after the D3D device came up. `developer` is now **0 by default**; `-Developer`
+opts in. This is rule 13 in `docs/dev-box.md`. I had flagged `developer 1` as an unchecked risk in
+my own open-items list several hours before it bit me, which is its own lesson.
+
+All window handling is time-boxed at 2 s. Past that the launcher disables it for the rest of the
+run and says so loudly, rather than holding `game.lock` (see §9).
+
+**Two instances at once: still untested****Two instances at once: still untested**, and `__CoDWaW` being a single-instance marker is a
 reason to expect trouble. Do not assume it works.
+
+
+### Per-instance user data (designed, implemented, NOT yet proven)
+
+`fs_homepath` only moves `main/`, and setting `LOCALAPPDATA` does nothing because the engine asks
+the shell, not the environment. Several games per box is in the cost model, so this needs solving.
+
+**The mechanism.** `CoDWaW.exe` imports **`SHGetFolderPathA`** from SHELL32 (confirmed in the
+import table) and appends the literal `\Activision\CoDWaW` to whatever it returns (that string is
+at `0x47EC90`). So we replace that one import-table entry and hand back a per-instance directory
+for the AppData CSIDLs. The engine then builds `<ours>\Activision\CoDWaW\players\...` itself, and
+the profile, `mods/` and the `__CoDWaW` marker all become per-instance for free.
+
+**Why an IAT patch rather than a detour, and why this is the only thing that can work.** The IAT
+lives in `.rdata`, which SteamStub does not encrypt, and the Windows loader fills it in *before* the
+PE entry point runs. So it can be installed at `post_load` \u2014 before the game's code is decrypted
+and before any engine code executes. That matters, because the profile path is resolved during very
+early init, quite possibly before `post_unpack`. Nothing that needs decrypted code could get there
+in time. It is also a single pointer write with no prologue to relocate, and trivially reversible.
+
+Implemented in `shared/core/components/instance_paths.cpp`, plus `memory::hook_import()` /
+`memory::find_import()`. **Off by default**: set `ENW_PRIVATE_PROFILE=1` and
+`ENW_INSTANCE_APPDATA=<dir>`.
+
+**How confident am I?**
+
+* *Mechanism \u2014 high.* The import is really there, the suffix string is really there, IAT patching
+  before the entry point is standard and we already do PE parsing for `.text`/`.bind`. The component
+  counts its own hits and says plainly if the engine never came through `SHGetFolderPathA`, so a
+  wrong assumption reports itself instead of silently sharing a profile.
+* *Completeness \u2014 medium.* I have not proven the engine resolves the profile *only* this way. It
+  may cache the path elsewhere, or use the registry `installpath`, or the Demonware/profile code may
+  have its own route. The hit counter will tell us on the first real run.
+* *Second-order effects \u2014 low confidence, and this is the part to watch.* A fresh AppData means **no
+  profile**, which will trigger whatever first-run profile flow exists (possibly another modal).
+  The directory should be seeded by copying B's existing `players\` on first use; `new-copy.ps1`
+  does not do that yet. And making `__CoDWaW` per-instance removes the single-instance interlock,
+  which is probably what unblocks several games per box \u2014 but "probably" is doing real work in that
+  sentence, and it is also the interlock that currently stops two agents colliding.
+
+**Untested end to end**, because until the startup dialogs were being answered no run ever reached a
+state where the profile mattered. It is ready to test on the next run that wants it.
 
 ## 8. Does any of this need the Steam client?
 
@@ -330,19 +404,34 @@ This deserves a decision from B before anyone designs the leasing flow. Logged i
   dialog, does not answer. The launcher sat there for **703 seconds** with the game still up and the
   game lock still held. `SWP_ASYNCWINDOWPOS` + `ShowWindowAsync` post instead of send; the whole
   sweep now takes 1–4 ms. If you ever touch another process's windows, use the async forms.
+* **`+set developer 1` cost me the whole evening.** It promotes a missing-asset *warning* to a
+  fatal modal error, and stock WaW is missing `images/sun_flare.iwi` — so startup died right after
+  the D3D device came up, every single run, and I spent hours reading that as "the engine stalls
+  during init". The worst part: I had listed `developer 1` as an unchecked risk in my own open-items
+  section hours earlier and did not go back to it. When something fails in a way you cannot explain,
+  re-read the flags you yourself added before theorising about the other party's code.
+* **A dialog nobody can see still blocks everything.** Parking windows off-screen was right for B,
+  but it also meant the modal that was stopping every run was invisible to me; I only found it
+  because the launcher counted `#32770` windows. Reading the dialog's title, body and button ids
+  turned a week-long mystery into one line: `'Set Optimal Settings?' >> No [6:Yes 7:No]`. If you
+  automate a GUI into invisibility, make it narrate.
 * **The component glob works better than expected.** `dedi`, `referee` and the others dropped files
   into `server/components/` and they were compiling into the DLL within minutes, with no shared file
   touched and no coordination. 9 components at last run.
 
 ## 10. Open items
 
-1. **Bypass the renderer init at `0x5FF4E0`** so WinMain reaches its frame loop. Until then there is
-   no per-frame tick at all and our pump is startup-only (§3). Shared blocker with `dedi`'s Stage C;
-   `re` has the exact site.
-2. **A core-owned frame hook with `on_frame(fn)` subscribers**, so components stop competing for one
-   address under MinHook's one-hook-per-target rule. (foundation, on request)
-2. **Two instances on one box** — untested, and `__CoDWaW` suggests it may fight.
-3. **Per-instance profiles** — `fs_homepath` does not cover `players/`.
-4. **Steam client per game box** — needs a decision from B (§8).
-5. `launch.ps1` passes `+set developer 1` and `con_minicon 1`; nobody has checked whether those
-   change engine behaviour in ways we would not want in a real server.
+1. **Bypass the renderer init at `0x5FF4E0`** so WinMain reaches its loop in *dedicated* mode. Solo
+   gets there fine now (301 frames measured), but a dedicated server never does. Shared blocker with
+   `dedi`'s Stage C; `re` has the exact site.
+2. **Prove the per-instance profile** (§7). Implemented, off by default, never run. Needs the
+   directory seeding first, and it is the thing several-games-per-box depends on.
+3. **Two instances on one box** — still untested. `__CoDWaW` is a single-instance marker; item 2
+   probably removes that obstacle, but nobody has tried.
+4. **Steam client per game box** — with B as a business decision (§8). Nobody is to test offline
+   mode; that is B's to do.
+5. **`referee` and `dedi` to migrate to `frame::subscribe`** when convenient. No rush and no
+   collision either way: the core holds the call site, not `Com_Frame` itself.
+6. `con_minicon 1` is still passed by `launch.ps1` and nobody has checked what it changes. The
+   other suspect in that line, `developer 1`, turned out to cost us the whole evening — so this one
+   deserves five minutes from somebody.

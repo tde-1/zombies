@@ -201,6 +201,34 @@ void __cdecl sv_frame_detour() {
 using SV_GameSendServerCommand_t = void(__fastcall*)(int clientNum, int edx, int type,
                                                      const char* text);
 
+// ------------------------------------------------------------ chat capture --
+// G_Say(gentity_s* ent, gentity_s* target, int mode, const char* chatText) --
+// the "%s: " formatter both `say` and `say_team` land in. Hooking here rather
+// than ClientCommand gets us the text as a plain argument instead of needing
+// Cmd_Argv, which is not published.
+enw::hook g_say_hook;
+using G_Say_t = void(__cdecl*)(void* ent, void* target, int mode, const char* text);
+chat_sink g_chat_sink;
+
+int entnum_of(void* ent) {
+    const uintptr_t base = at(t4::var::g_entities);
+    const uintptr_t p = reinterpret_cast<uintptr_t>(ent);
+    if (p < base) return -1;
+    const uintptr_t off = p - base;
+    if (off % t4::gentity_off::stride) return -1;
+    const int n = static_cast<int>(off / t4::gentity_off::stride);
+    return n >= 0 && n < 1024 ? n : -1;
+}
+
+void __cdecl g_say_detour(void* ent, void* target, int mode, const char* text) {
+    if (g_chat_sink && text) {
+        // mode: EXE_SAY vs EXE_SAYTEAM. The enum value is not published, so report
+        // the raw mode alongside a best-guess bool rather than pretend to know.
+        g_chat_sink(entnum_of(ent), text, mode != 0);
+    }
+    g_say_hook.original<G_Say_t>()(ent, target, mode, text);
+}
+
 }  // namespace
 
 std::string binding_report::describe() const {
@@ -215,6 +243,7 @@ std::string binding_report::describe() const {
     add("entities", entities);
     add("clients", clients);
     add("servercmd", server_cmd);
+    add("chatin", chat_capture);
     add("dvars", dvars);
     add("frame", frame_hook);
     return s;
@@ -243,6 +272,18 @@ const binding_report& bind() {
     g_report.server_cmd =
         memory::is_readable(reinterpret_cast<void*>(at(t4::fn::SV_GameSendServerCommand)), 16);
 
+    // --- chat in: DISABLED, the address is wrong ---
+    // MEASURED 2026-09-20 01:34: hooking 0x473F10 as
+    // G_Say(ent, target, mode, text) fires ~60 times a second in an idle game with
+    // an empty text pointer and an unresolvable entity -- so it is NOT G_Say, or
+    // not that signature. G_Say is only called when someone types. The hook was
+    // producing a flood of empty `chat` events (130 KB in the first 40 s of a
+    // capture, drowning everything else), which is exactly the "silently wrong"
+    // failure we are trying to avoid, so it is off until `re` re-checks the site.
+    // `re`: 0x473F10 was derived from the "%s: " formatter string; that string is
+    // probably shared with something on the frame path.
+    g_report.chat_capture = false;
+
     ENW_INFO("referee/bind: %s", g_report.describe().c_str());
     if (!g_report.script_vars && !g_report.notify_hook) {
         ENW_WARN("referee/bind: no script-VM access and no notify hook yet, so rounds, flags and "
@@ -256,6 +297,11 @@ const binding_report& bound() { return g_report; }
 void on_notify(notify_sink sink) {
     std::lock_guard<std::mutex> lk(g_sinks_mutex);
     g_notify_sinks.push_back(std::move(sink));
+}
+
+void on_chat(chat_sink sink) {
+    std::lock_guard<std::mutex> lk(g_sinks_mutex);
+    g_chat_sink = std::move(sink);
 }
 
 void on_frame(frame_sink sink) {
@@ -339,7 +385,7 @@ std::optional<ent_view> player_ent(int slot) {
     uintptr_t gclient = 0;
     if (!peek(ent + t4::gentity_off::client, &gclient) || gclient == 0) return std::nullopt;
 
-    find_origin_offset(ent);
+    find_origin_offset();
     if (g_origin_off < 0) return std::nullopt;
 
     ent_view v;

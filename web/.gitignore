@@ -1,0 +1,9 @@
+# The SQLite database and its WAL. Seeded from the repo's own artefacts with `npm run seed`,
+# so it is always rebuildable and never belongs in git.
+data/
+# Dev key material. The site's invite-signing private key is generated on first boot; it is a
+# development key and must never be committed or reused in production.
+keys/
+node_modules/
+client/node_modules/
+client/dist/

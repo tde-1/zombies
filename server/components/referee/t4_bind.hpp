@@ -25,12 +25,13 @@ struct binding_report {
     bool entities = false;      // g_entities / gentity_s
     bool clients = false;       // svs.clients / client_s (name, usercmd)
     bool server_cmd = false;    // SV_SendServerCommand
+    bool chat_capture = false;  // G_Say hook (what a player types)
     bool dvars = false;         // Dvar_FindVar / set
     bool frame_hook = false;    // a per-server-frame callback
 
     bool any() const {
         return notify_hook || script_vars || entities || clients || server_cmd || dvars ||
-               frame_hook;
+               frame_hook || chat_capture;
     }
     std::string describe() const;
 };
@@ -55,6 +56,14 @@ struct notify_event {
 // cheap and must not re-enter script.
 using notify_sink = std::function<void(const notify_event&)>;
 void on_notify(notify_sink sink);
+
+// ------------------------------------------------------------ chat capture --
+
+// Called on the game thread from inside G_Say, BEFORE the engine echoes the line,
+// so a host that wants to suppress a message has the chance to.
+// slot is the speaker's entity/client number, or -1 if it could not be resolved.
+using chat_sink = std::function<void(int slot, const std::string& text, bool team)>;
+void on_chat(chat_sink sink);
 
 // ---------------------------------------------------------- frame callback --
 

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:;">
+<title>ENW Zombies</title>
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand"><span class="enw">ENW</span><span class="zm">ZOMBIES</span></div>
+  <div class="nav">
+    <button id="navBack" title="Back">&#8592;</button>
+    <button id="navFwd" title="Forward">&#8594;</button>
+    <button id="navReload" title="Reload">&#8635;</button>
+  </div>
+  <span class="pill" id="sitePill" title="Which site the launcher is showing. Click to change.">site: …</span>
+  <div class="spacer"></div>
+  <span class="pill" id="setupPill" title="Where the ENW client is installed">client: …</span>
+  <span class="pill" id="accountPill">Sign in</span>
+  <span class="pill" id="settingsPill">Settings</span>
+</div>
+
+<!-- The wrapped site is a native view underneath; these screens replace it, never
+     cover it. There is no overlay anywhere in this app. -->
+
+<div class="screen wide" id="firstRun">
+  <h1>Set up ENW Zombies</h1>
+  <p class="lede">One screen. We find your copy of World at War, install the ENW client into
+    our own folder, and leave your game exactly as it is.</p>
+  <div id="frBody"></div>
+  <div class="actions" id="frActions"></div>
+</div>
+
+<div class="screen wide" id="boot">
+  <div class="art"><div class="label">
+    <div class="mode" id="bootMode">Custom</div>
+    <div class="name" id="bootMap">—</div>
+  </div></div>
+  <div class="flow">
+    <div class="steps" id="bootSteps"></div>
+    <div class="actions">
+      <button id="bootCancel">Cancel</button>
+      <button id="bootClose" class="ghost" style="display:none">Back to the site</button>
+    </div>
+    <div id="bootNotes" style="margin-top:18px"></div>
+  </div>
+</div>
+
+<div class="screen" id="settings">
+  <h1>Settings</h1>
+  <p class="lede">These are saved to your ENW account and applied over the top when the game
+    starts. Your own World at War config is never modified.</p>
+  <div id="settingsBody"></div>
+  <h2>Where things are</h2>
+  <div id="pathsBody"></div>
+  <div class="actions">
+    <button id="openRoot">Open the ENW folder</button>
+    <button id="openLogs">Open logs</button>
+    <button id="btnUninstall">Remove the ENW client</button>
+    <button class="ghost" id="settingsClose">Close</button>
+  </div>
+</div>
+
+<div class="screen" id="detail">
+  <h1 id="detailTitle">Detection</h1>
+  <div id="detailBody"></div>
+  <div class="actions"><button id="detailClose">Close</button></div>
+</div>
+
+<div id="rail">
+  <div class="rail-scroll">
+    <div id="cornerCard">
+      <div class="card-art" id="cardArt"><div class="label">
+        <div class="mode" id="cardMode">Custom</div>
+        <div class="name" id="cardMap">No map selected</div>
+        <div class="sub" id="cardSub">Pick a map to play</div>
+      </div></div>
+      <div class="card-actions">
+        <button class="primary" id="playBtn" disabled>Play</button>
+        <div class="row">
+          <button id="playLocalBtn" disabled title="Runs on your own PC. Nothing is tracked.">Play Local</button>
+          <button id="modeBtn" title="Verified games are stock and count for records. Custom games do not.">Custom</button>
+        </div>
+        <div class="card-note" id="cardNote"></div>
+      </div>
+    </div>
+
+    <div class="rail-section">
+      <h3>Maps</h3>
+      <div class="maplist" id="mapList"></div>
+    </div>
+
+    <div class="rail-section">
+      <h3>Status</h3>
+      <div id="statusBody"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script type="module" src="shell.js"></script>
+</body>
+</html>

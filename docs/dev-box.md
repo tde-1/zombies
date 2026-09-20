@@ -51,6 +51,19 @@ Steam exe facts: `CoDWaW.exe` 1.7, 5,902,336 bytes, SHA-256
     board.
 11. Keep the shared C++ tree compiling. Build into your own build dir (`build\<name>`), never a shared
     one.
+12. **Hooks are owned, not shared. MinHook allows exactly ONE hook per target address**, and the
+    loser only finds out from a log line, so two components hooking the same function means one of
+    them silently stops working. Before you hook anything, check whether the core already offers it:
+    - **per-frame tick**: `#include "frame.hpp"` and `enw::frame::subscribe("you", fn)`.
+      **Never hook `Com_Frame` yourself.** The core owns it (by retargeting WinMain's call site,
+      which deliberately leaves `Com_Frame`'s own bytes free) and dispatches to subscribers.
+    - **main-thread work** from another thread: `enw::scheduler::run_on_main(fn)`.
+    If you need a hook on a function another component may also want, say so on the board first and
+    put the shared version in `shared/core/`. Prefer `memory::retarget_call()` on a known call site
+    over an inline detour: it cannot collide and it relocates nothing.
+13. **Never pass `+set developer 1` to a game you want to keep running.** It promotes missing-asset
+    warnings to fatal modal errors, and stock WaW is missing at least one image
+    (`images/sun_flare.iwi`). `tools\dev\launch.ps1` has it off by default; `-Developer` opts in.
 
 ## Game copies
 - `waw-base` is a full copy of the Steam folder (made once by the foundation agent).

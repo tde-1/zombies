@@ -52,16 +52,21 @@ public:
 
     void post_unpack() override {
         referee::bind();
-        if (!referee::bound().server_cmd) {
-            ENW_WARN("chat: SV_SendServerCommand/Cmd_AddCommand not bound; capture and inject are off");
+        if (!referee::bound().server_cmd && !referee::bound().chat_capture) {
+            ENW_WARN("chat: neither G_Say nor SV_GameSendServerCommand bound; chat is off");
             return;
         }
-        // BIND: hook the `say`/`say_team` client command here and call on_say().
-        ENW_INFO("chat: armed");
+        referee::on_chat([this](int slot, const std::string& text, bool team) {
+            on_say(slot, text, team);
+        });
+        ENW_INFO("chat: armed (capture %s, inject %s)",
+                 referee::bound().chat_capture ? "on" : "off",
+                 referee::bound().server_cmd ? "on" : "off");
     }
 
     // Called from the say hook, on the game thread, BEFORE the engine echoes.
     // Returns true to let the engine print it, false to swallow it.
+public:
     bool on_say(int slot, const std::string& text, bool team) {
         json::writer w;
         w.str("t", "chat")
@@ -71,6 +76,7 @@ public:
             .boolean("team", team);
         game_link::get().send(w);
         ++captured_;
+        ENW_INFO("chat: captured from slot %d%s: %s", slot, team ? " (team)" : "", text.c_str());
         // v0 always lets it through. Suppression needs a host round trip, which
         // means holding the line for a frame; that is a v1 change to the protocol
         // (a `chat` with an `id` and an `auth`-style reply).

@@ -40,12 +40,16 @@ public:
                  static_cast<unsigned>(frame::subscriber_count()),
                  static_cast<unsigned long long>(frame::count()));
         if (frame::count() == 0) {
-            // Expected today, and worth saying plainly every run so nobody
-            // mistakes "subscribed" for "ticking".
-            ENW_WARN("frame_dispatch: ZERO frames so far. WinMain has not reached its loop - "
-                     "0x5FF4E0 (renderer/D3D bring-up, called before the loop and not gated by "
-                     "com_dedicated) is still in the way. Nothing that needs a frame tick works "
-                     "until that is bypassed.");
+            // Normal at this point: post_init runs ~200 ms in, while the renderer
+            // is still coming up, and WinMain only reaches its loop after that.
+            // In a solo run the tick starts a few seconds later (measured: 301
+            // frames by t+5.5 s). If it is STILL zero once the game is at the
+            // menu, that is dedi's 0x5FF4E0 blocker -- renderer/D3D bring-up runs
+            // before the loop and is not gated by com_dedicated, so a dedicated
+            // server never gets there at all.
+            ENW_INFO("frame_dispatch: no frames yet - WinMain has not reached its loop. Normal "
+                     "this early in a solo run; permanent in dedicated mode until 0x5FF4E0 is "
+                     "bypassed.");
         }
     }
 

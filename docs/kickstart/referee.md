@@ -662,7 +662,69 @@ Solo is 2.0 MB/hour on the same settings. The one thing I would not do is drop z
 entirely: a replay with no zombies cannot show *why* a round went wrong, which is most of what a
 zombies replay is for.
 
-### 8.4 The components run in a real game — and the frame source is the blocker
+### 8.4a Bindings, after `re` published the server-side sites (01:20)
+`re` found why nothing ticked: the renderer bring-up at **0x5FF4E0** runs before WinMain's loop and
+is not gated by `com_dedicated`, so a dedicated server never reaches the loop and `Com_Frame` is
+never called. That single fact explained my three measurements in §8.4 and dedi's D3D re-entry at
+once. With their addresses, a client-mode launch now logs:
+
+```
+referee/bind: notify=no scriptvars=no entities=yes clients=yes servercmd=yes chatin=yes frame=yes
+game-link: connected to 127.0.0.1:28960
+chat: armed (capture on, inject on)
+```
+
+| Capability | Bound on | Note |
+|---|---|---|
+| frame tick | `SV_Frame` 0x635CC0 | chosen over `Com_Frame` 0x59E330: server-authoritative and does not run pre-map |
+| clients | `svs.clients[i]` = `0x2547090 + i*0x58D30` | name +0x11548, userinfo +0x6F0, gentity +0x11544; xuid parsed out of userinfo |
+| entities | `g_entities[i]` = `0x176C6F0 + i*0x378` | positions via the discovery below |
+| chat out | `SV_GameSendServerCommand` 0x648490 | `__fastcall`, ecx = clientNum, −1 broadcasts |
+| chat in | `G_Say` 0x473F10 | hooked in preference to `ClientCommand`: the text is a plain argument, so no `Cmd_Argv` needed |
+
+**The transport is proven in both directions**: my sink accepted the DLL's TCP connection and pushed
+three `say` commands down it during a live game.
+
+**Two offsets are still not published, and I did not guess either.**
+* `gentity_s` currentOrigin/currentAngles — somewhere in the 0x68 bytes between `r` (+0x118) and
+  `client` (+0x180). Instead of picking one, the DLL finds it at runtime: scan that window for
+  triples of finite floats inside worldspace, then across 128 entities and many frames keep only the
+  offset whose values *move* by a sane amount. A bounding box does not move on its own, a counter
+  aliased as a float jumps absurdly, a position walks. It scans all entities rather than just the
+  player because an unattended capture has a player standing still — zombies are what move. The
+  winner is logged once as a measured fact for `re` to fold into `shared/t4`.
+* `client_s.lastUsercmd` — needed for AFK. It falls out of `re`'s 0x630BF0 site but is not extracted
+  yet, so `last_usercmd()` returns nothing rather than reading a guessed offset into a 0x58D30
+  struct. Same for `gentity_s.health` and the entity classname, which is why `zombie_ents()` still
+  returns 0: a replay full of mislabelled entities is worse than one with none.
+
+### 8.4b Chasing the capture found a corrupt `waw-base` — the most useful accident of the night
+Client mode kept dying before `+map` on `ERROR: image 'images/sun_flare.iwi' is missing`, which
+raises a modal `Error` box the game never gets past. Rather than work around the dialog, I went
+looking for the image, and the trail ended somewhere unexpected:
+
+* `sun_flare.iwi` lives in `iw_08.iwd`.
+* The engine's own search-path listing mounts **26 iwds totalling 24,419 files** — and 24,419 is
+  exactly the sum of the iwds that open as valid zip archives. It silently skips the rest.
+* Nine files in `waw-base\main` do not open: `iw_06, iw_08, iw_13, iw_14, iw_20, iw_23, iw_27,
+  localized_english_iw03, localized_english_iw04` (~1.1 GB). They have the **right byte length** and
+  a **zero-filled tail**, and they are not sparse.
+* `iw_08.iwd`: Steam sha256 `1d5382dc…`, `waw-base` copy `fa8f69d2…`. `iw_00.iwd` hashes identical,
+  so the copy is only partly broken.
+* **B's Steam install is fine** — all 35 iwds valid, appmanifest `StateFlags 4`,
+  `BytesDownloaded == BytesToDownload`. This was our copy, not her game.
+
+Repaired by re-copying those nine from the read-only Steam install; all 35 now open, `iw_08` hashes
+match, `sun_flare.iwi` is back. Per-agent copies junction to `waw-base\main`, so every agent gets the
+fix without re-running `new-copy.ps1`.
+
+**The lesson worth keeping**: the corruption had *correct file lengths*, so any size-based copy check
+passes it, and the engine reports nothing at all — it just quietly mounts fewer archives and then
+fails much later with a missing-asset error that points nowhere near the cause. Whatever builds
+`waw-base` should verify content (a hash, or simply "does every `.iwd` open as a zip"). It is also
+worth re-examining any "missing asset" failure anyone has attributed to something else.
+
+### 8.4 The components run in a real game — and the frame source was the blocker
 All six components build into `enw_t4.dll` and load in a live dedicated game
 (`+set dedicated 1 +set zombiemode 1 +map nazi_zombie_prototype`, `logs/referee/enw-*.log`):
 

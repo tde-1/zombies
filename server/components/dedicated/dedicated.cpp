@@ -37,6 +37,7 @@
 #include "hook.hpp"
 
 #include <cstdlib>
+#include <thread>
 
 #if __has_include("t4/addresses.hpp")
 #include "t4/addresses.hpp"
@@ -162,26 +163,24 @@ __declspec(naked) void renderer_bringup_stub() {
 }
 
 // ---- frame counting ------------------------------------------------------------
+// Two candidates, counted side by side so we can see which one is the real tick.
+// `re`'s static chain says WinMain -> Com_Frame 0x59E330 -> ... -> SV_Frame 0x635CC0,
+// but probe p28 showed Com_Frame at zero even with no map loaded (when WinMain's loop
+// must be turning), and `referee` reports SV_Frame as the tick that actually fires.
+// Counting both settles it instead of arguing about it.
 enw::hook g_com_frame_hook;
-volatile long long g_frames = 0;
-unsigned long g_frame_window_start = 0;
-long long     g_frame_window_base = 0;
+enw::hook g_sv_frame_hook;
+volatile long long g_frames = 0;     // Com_Frame
+volatile long long g_sv_frames = 0;  // SV_Frame
 
 void __cdecl com_frame_stub() {
     ++g_frames;
-    const unsigned long now = ::GetTickCount();
-    if (g_frame_window_start == 0) {
-        g_frame_window_start = now;
-        g_frame_window_base = g_frames;
-    } else if (now - g_frame_window_start >= 5000) {
-        const double secs = (now - g_frame_window_start) / 1000.0;
-        const long long n = g_frames - g_frame_window_base;
-        ENW_INFO("dedicated: frame loop RUNNING - %lld frames in %.1f s = %.1f Hz (total %lld)",
-                 n, secs, n / secs, static_cast<long long>(g_frames));
-        g_frame_window_start = now;
-        g_frame_window_base = g_frames;
-    }
     g_com_frame_hook.original<void(__cdecl*)()>()();
+}
+
+void __cdecl sv_frame_stub() {
+    ++g_sv_frames;
+    g_sv_frame_hook.original<void(__cdecl*)()>()();
 }
 
 // Read the engine's `dedicated` dvar without knowing dvar_s's layout: com_dedicated is a
@@ -240,6 +239,7 @@ public:
         dump_dvar_layout(find);
         skip_renderer_bringup();
         install_frame_counter();
+        start_liveness_monitor();
         // The gamer-profile dvars that let us derive DVAR_SAVED do not exist yet at
         // post_init (probe p18: r_gamma / takeCoverWarnings / mis_01 / cheat_points /
         // mis_difficulty all NOT FOUND), but the engine does print
@@ -336,16 +336,28 @@ private:
                       memory::hex_dump(enw::at(t4::fn::Com_Frame), 8).c_str());
             return;
         }
-        if (!g_com_frame_hook.create(enw::at(t4::fn::Com_Frame), &com_frame_stub, "Com_Frame")) {
-            ENW_ERROR("dedicated: could not hook Com_Frame");
-            return;
+        if (g_com_frame_hook.create(enw::at(t4::fn::Com_Frame), &com_frame_stub, "Com_Frame") &&
+            g_com_frame_hook.enable())
+            ENW_INFO("dedicated: Com_Frame hooked at 0x%08X", static_cast<unsigned>(t4::fn::Com_Frame));
+        else
+            ENW_ERROR("dedicated: could not hook Com_Frame at 0x%08X",
+                      static_cast<unsigned>(t4::fn::Com_Frame));
+
+        // SV_Frame: `referee` reports this is the tick that actually fires. It is also the
+        // right one for us -- server-authoritative and it does not run before a map.
+        constexpr uintptr_t kSV_Frame = 0x635CC0;
+        if (!memory::looks_like_function(enw::at(kSV_Frame))) {
+            ENW_ERROR("dedicated: SV_Frame 0x%08X does not look like a function (%s)",
+                      static_cast<unsigned>(kSV_Frame),
+                      memory::hex_dump(enw::at(kSV_Frame), 8).c_str());
+        } else if (g_sv_frame_hook.create(enw::at(kSV_Frame), &sv_frame_stub, "SV_Frame") &&
+                   g_sv_frame_hook.enable()) {
+            ENW_INFO("dedicated: SV_Frame hooked at 0x%08X; both ticks logged every 5 s",
+                     static_cast<unsigned>(kSV_Frame));
+        } else {
+            ENW_ERROR("dedicated: could not hook SV_Frame at 0x%08X",
+                      static_cast<unsigned>(kSV_Frame));
         }
-        if (!g_com_frame_hook.enable()) {
-            ENW_ERROR("dedicated: could not enable the Com_Frame hook");
-            return;
-        }
-        ENW_INFO("dedicated: Com_Frame hooked at 0x%08X; frame rate will be logged every 5 s",
-                 static_cast<unsigned>(t4::fn::Com_Frame));
     }
 
     static constexpr int kMaxSavedFixAttempts = 200000;
@@ -476,6 +488,31 @@ private:
                      d.name, flags, after, type,
                      ((after & saved_bit) == saved_bit) ? "SAVED bits set" : "SET FAILED", d.why);
         }
+    }
+
+    // Is the main thread alive at all?
+    //
+    // p21-p24: the headless server loads the map, runs zombiemode GSC, then sits at
+    // EXACTLY 0% CPU and Com_Frame never fires. Flat CPU means a blocking wait, not a
+    // spin, so before hunting for the wait we need to know whether the main thread is
+    // executing engine code at all. foundation's scheduler pump is driven from a detour
+    // on Dvar_FindVar, so a rising pump count means the engine is running and our
+    // Com_Frame address is wrong; a frozen pump count means the main thread is parked.
+    void start_liveness_monitor() {
+        std::thread([] {
+            for (int i = 0; i < 600; ++i) {
+                ::Sleep(5000);
+                const auto s = scheduler::snapshot();
+                static long long last_sv = 0;
+                const long long sv = g_sv_frames;
+                ENW_INFO("dedicated: liveness t=%ds  SV_Frame=%lld (+%lld in 5s = %.1f Hz)  "
+                         "Com_Frame=%lld  pumps=%llu",
+                         (i + 1) * 5, sv, sv - last_sv, (sv - last_sv) / 5.0,
+                         static_cast<long long>(g_frames),
+                         static_cast<unsigned long long>(s.pumps));
+                last_sv = sv;
+            }
+        }).detach();
     }
 
     void report_pending_work() {

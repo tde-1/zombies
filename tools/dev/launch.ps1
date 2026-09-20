@@ -35,6 +35,10 @@
   Do not answer the modal startup boxes ("Set Optimal Settings?", "Run In Safe
   Mode?"). They block startup forever, so this is off by default.
 
+.PARAMETER Developer
+  Pass `+set developer 1`. Off by default -- it makes missing assets fatal
+  ("ERROR: image 'images/sun_flare.iwi' is missing") and stops startup.
+
 .PARAMETER TestSeconds
   Smoke-test mode: wait this long, print what happened (alive? which image? child
   processes? log tail?), then kill the process we started and release the lock.
@@ -81,6 +85,10 @@ param(
     # indefinitely, which is why no solo run ever reached the game. Only useful
     # if you want to inspect one.
     [switch]$KeepDialogs,
+
+    # +set developer 1. OFF BY DEFAULT: it promotes missing-asset warnings to
+    # fatal error dialogs, and stock WaW is missing at least one image.
+    [switch]$Developer,
 
     [string]$GameDir = '',
     [string]$DevRoot = 'C:\Users\b\ZombiesDev',
@@ -231,14 +239,26 @@ public static class EnwWindows
             var seen = new List<string>();
             bool hasNo = false, hasCancel = false, hasOk = false;
 
+            var body = new List<string>();
             EnumChildWindows(h, delegate(IntPtr c, IntPtr _)
             {
-                if (ClassOf(c) != "Button") return true;
-                int id = GetDlgCtrlID(c);
-                seen.Add(id + ":" + TextOf(c).Replace("&", ""));
-                if (id == IDNO) hasNo = true;
-                if (id == IDCANCEL) hasCancel = true;
-                if (id == IDOK) hasOk = true;
+                string ccls = ClassOf(c);
+                if (ccls == "Button")
+                {
+                    int id = GetDlgCtrlID(c);
+                    seen.Add(id + ":" + TextOf(c).Replace("&", ""));
+                    if (id == IDNO) hasNo = true;
+                    if (id == IDCANCEL) hasCancel = true;
+                    if (id == IDOK) hasOk = true;
+                }
+                else if (ccls == "Static")
+                {
+                    // The message itself. Worth having: the one we hit said
+                    // "image 'images/sun_flare.iwi' is missing", which told us
+                    // straight away that it was our own +set developer 1.
+                    string t = TextOf(c).Replace("\r", " ").Replace("\n", " ").Trim();
+                    if (t.Length > 0) body.Add(t);
+                }
                 return true;
             }, IntPtr.Zero);
 
@@ -247,7 +267,8 @@ public static class EnwWindows
             PostMessage(h, WM_COMMAND, (IntPtr)pick, IntPtr.Zero);
 
             report.Add("'" + title + "' >> " + pickName +
-                       " [" + string.Join(" ", seen.ToArray()) + "]");
+                       " [" + string.Join(" ", seen.ToArray()) + "]" +
+                       (body.Count > 0 ? "  msg: " + string.Join(" / ", body.ToArray()) : ""));
             return true;
         }, IntPtr.Zero);
         return string.Join("\n", report.ToArray());
@@ -404,7 +425,10 @@ try {
         '+set', 'ui_autoContinue', '1',
         '+set', 'cl_allowDownload', '0',
         '+set', 'logfile', '2',
-        '+set', 'developer', '1',
+        # developer 1 turns a missing-asset WARNING into a fatal error dialog.
+        # It cost a run: "ERROR: image 'images/sun_flare.iwi' is missing" stopped
+        # the game dead just after the D3D device came up. Opt in with -Developer.
+        '+set', 'developer', $(if ($Developer) { '1' } else { '0' }),
         '+set', 'con_minicon', '1'
     )
     $defaults | ForEach-Object { $a.Add($_) }
