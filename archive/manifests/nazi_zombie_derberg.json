@@ -4,16 +4,52 @@
   "title": "DER BERG",
   "source": "custom",
   "author": "c.h.n",
-  "released": "February 10, 2017, 05:35:07 pm",
+  "released": "2017-02-11",
   "fs_game": "mods/nazi_zombie_derberg",
   "script_fingerprints": {
     "maps/_zombiemode.gsc@nazi_zombie_derberg.ff": "6a63e9be58806f60175cf561b8525255e5f0398184e8b34b695f3140009698f7"
   },
   "badge": {
-    "main_finish": "round",
+    "main_finish": "buyable_ending",
     "round_n": 20
   },
   "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "dog_roundfx_ending"
+        }
+      },
+      "candidates": [
+        "dog_roundfx_ending",
+        "teleport_left_lf",
+        "teleport_left_single_zone",
+        "teleport_left_single_zone_spawners",
+        "teleport_left_zone",
+        "teleport_left_zone_spawners",
+        "teleport_left_zone_spawners_dog",
+        "teleport_left_zone_spawners_goal_0",
+        "teleport_right_lf",
+        "teleport_right_rt",
+        "teleport_right_spawners_goal_1",
+        "teleport_right_zone",
+        "teleport_right_zone_spawners",
+        "teleport_right_zone_spawners_dog",
+        "teleport_right_zone_spawners_goal_0"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
     {
       "id": "round",
       "label": "Round 20",
@@ -24,18 +60,20 @@
     }
   ],
   "signals": [],
-  "confidence": "guess",
-  "needs_human": true,
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
   "scanner": {
+    "tool": "referee/scan_map.py",
     "verdict": "buyable_ending",
-    "why": "crawler_round_ending, dog_roundfx_ending, end_game, teleport_left_lf, teleport_left_single_zone, teleport_left_single_zone_spawners name an ending and are this map's own; script hardcodes cost 5000",
+    "why": "dog_roundfx_ending, teleport_left_lf, teleport_left_single_zone, teleport_left_single_zone_spawners, teleport_left_zone, teleport_left_zone_spawners name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
     "scripts": 104,
+    "script_count": 104,
     "entities": 2900,
     "ee_candidates": [],
     "ending_words": [
-      "crawler_round_ending",
       "dog_roundfx_ending",
-      "end_game",
       "teleport_left_lf",
       "teleport_left_single_zone",
       "teleport_left_single_zone_spawners",
@@ -50,6 +88,15 @@
       "teleport_right_zone_spawners",
       "teleport_right_zone_spawners_dog",
       "teleport_right_zone_spawners_goal_0"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
     ],
     "orphan_end_triggers": [
       "trigger_teleport_pad_0",
@@ -83,6 +130,7 @@
         "outside_end_door"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "maps/_callbackglobal.gsc",
       "maps/_gameskill.gsc",
@@ -91,46 +139,15 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "6a63e9be58806f60175cf561b8525255e5f0398184e8b34b695f3140009698f7",
-    "script_count": 104,
-    "verdict_raw": "buyable_ending",
-    "verdict_debiased": "manual",
-    "why_debiased": "map-specific names suggest an ending (dog_roundfx_ending, teleport_left_lf, teleport_left_single_zone, teleport_left_single_zone_spawners, teleport_left_zone, teleport_left_zone_spawners) but nothing decidable",
-    "verdict_entities": "manual",
-    "why_entities": "map-specific names suggest an ending (dog_roundfx_ending, teleport_left_lf, teleport_left_single_zone, teleport_left_single_zone_spawners, teleport_left_zone, teleport_left_zone_spawners) but nothing decidable",
-    "entity_evidence": {
-      "ee_flags": [],
-      "ee_entities": [],
-      "end_entities": []
-    },
     "map_specific_triggers": [
-      "auto113984",
-      "auto114031",
       "breath_trigger",
       "trig_bridge_zone",
       "zapper_damage_bridge"
     ],
-    "ee_candidates_own": [],
-    "ending_words_own": [
-      "dog_roundfx_ending",
-      "teleport_left_lf",
-      "teleport_left_single_zone",
-      "teleport_left_single_zone_spawners",
-      "teleport_left_zone",
-      "teleport_left_zone_spawners",
-      "teleport_left_zone_spawners_dog",
-      "teleport_left_zone_spawners_goal_0",
-      "teleport_right_lf",
-      "teleport_right_rt",
-      "teleport_right_spawners_goal_1",
-      "teleport_right_zone",
-      "teleport_right_zone_spawners",
-      "teleport_right_zone_spawners_dog",
-      "teleport_right_zone_spawners_goal_0"
-    ],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -141,13 +158,14 @@
     "source_page": "https://zwr.gg/custom-downloads/waw",
     "fetched": "2026-09-20T00:49:12Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "nsis",
     "shipped_executables": [
       "$PLUGINSDIR/System.dll",
       "$PLUGINSDIR/nsDialogs.dll"
     ],
     "catalogue_tags": [],
-    "catalogue_description": "[Release] Der Berg in Map Releases - Page 1 of 8 UGX-Mods Login \u00d7 Close Accountname (or Email) Password Remember Me Login / Activate issues? Forgot your password? Wrong email or nothing received? --> or login with an authentication provider below Sign In with Google Sign In with Twitter Sign In with Discord Sign In with Steam Sign In with Facebook Sign In with Twitch Login Issues Forgot password? Activate Issues Account activation email not received? Wrong account activation email used? Other Problems? Contact Support - Help Center Get help on the UGX Discord. Join it now! Back UGX-Mods Home UGX-Mods Forum UGX-Mods Scripting Reference UGX-Mods Wiki UGX-Mods Jira Cloud UGX-Mods Statuspage UGX-Mods UGX-Mods Forum View Index Black Ops 3 World at War Black Ops 1 View Recent Posts Search Blog Modding Help Modding Wiki Apps/Tools Scripting Reference Zombie Maps How to Play UGX-Mods UGX Map Manager UGX-Mods Official Maps Black Ops 3 Community Maps BO3 Community Mods BO3 Black Ops 1 Community Maps BO1 Community Mods BO1 World at War Community Maps WaW Community Mods WaW Discord Sign In Sign Up UGX-Mods \u00bb Call of Duty 5: World at War \u00bb Custom Maps, Mods & Tools \u00bb Map Releases \u00bb [Release] Der Berg Forum This topic This Board Members Advanced Search No connection: It looks like you are offline. You can use a precached version of this website but some actions might not work. Warning: Please enable JavaScript for best experience. How To Enable JavaScript [Release] Der Berg Topic Locked: T"
+    "catalogue_description": "Der Berg is the back door of Der Riese. A similar place that is built on a different place on the same world."
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

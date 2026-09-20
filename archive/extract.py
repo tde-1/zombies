@@ -35,7 +35,6 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib import catalogue  # noqa: E402
 
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 ORIGINALS = os.path.join(WORK, "originals")
@@ -278,10 +277,21 @@ def main():
                   % (norm, r["installer_kind"],
                      ",".join(m["map"] for m in r["mods"]) or "-",
                      len(r["executables"]), "; ".join(r["errors"])))
+    # MERGE, never overwrite: `--norm one-map` used to replace the whole report
+    # with a single entry (and `--norm typo` with an empty one), which silently
+    # emptied the results table in docs/kickstart/archive.md.
     path = os.path.join(WORK, "reports", "extract.json")
+    existing = []
+    if os.path.exists(path):
+        try:
+            existing = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            existing = []
+    by = {e["norm"]: e for e in existing}
+    by.update({e["norm"]: e for e in report})
     with open(path, "w", encoding="utf-8") as fh:
-        json.dump(report, fh, indent=2)
-    print("\nwrote", path)
+        json.dump([by[k] for k in sorted(by)], fh, indent=2)
+    print("\nwrote %s (%d maps)" % (path, len(by)))
 
 
 if __name__ == "__main__":

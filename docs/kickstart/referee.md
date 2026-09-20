@@ -335,7 +335,48 @@ Round N and the generic events for free. For the minority with a real finish, th
 reading and a human spends a couple of minutes confirming. Budget **an afternoon per hundred
 interesting maps**, not a person-week per map.
 
-### 3.5b How often does the scanner need a human? — measured on everything reachable
+### 3.5a The scanner scored 0/14 on real custom maps, and what fixed it
+**This is the most important correction in this document.** The 20/20 below was measured on stock
+maps and one custom map. The `archive` agent ran the same tool against **14 real third-party maps
+and it decided none of them** — 12 returned `manual` and 2 guessed. Everything I claimed about
+"near-zero per-map work" rested on a sample that did not contain the failure mode.
+
+The failure was structural, not a tuning problem. On a stock install the shared zombie scripts live
+in `common.ff`/`patch.ff`, which the scanner is never handed — it only gets `nazi_zombie_<x>.ff`. A
+**custom** map ships its own copy of that whole script set inside `mod.ff`, so Treyarch's
+`arcademode_ending_complete`, `dog_round_ending` and `ee_bowie_bear` appear *inside the map* and the
+hint lists fire on Treyarch's code. Twelve maps failed on the same three words.
+
+Four fixes, each measured against the corpus:
+
+| Fix | Why | Effect |
+|---|---|---|
+| **Subtract a stock baseline** (`archive/stock-baseline.json`, 827 names) | makes "hint" mean "this map's own", which is all it ever meant to mean | the whole 12/14 `manual` block |
+| **Token matching, not substring** | `vending_mulekick` contains "ending"; `floor_three_zone` contains "ee_" | removes the false hits, and makes short hints safe — "win" cannot match "window" |
+| **Run hints over `MapEnts` targetnames too** | Leviathan has no EE flag in any of its 120 scripts; its quest is `ee_step_1_switch` / `ee_testtube_activate_trig`. MW2 Rust's ending is a trigger named `end_game` | finds the entity-only maps |
+| **Gate corpus-common names, don't drop them** | `end_game` survives the baseline and appears on 14/14. Dropping it costs three maps their real ending; keeping it makes every map identical | a corpus-common name counts only if **this map's scripts look it up** — the same orphan test that found the `nazi_zombie_ali` ending |
+
+Plus one rule that is **not a word list**, and generalises better than one: `numbered_series()`.
+City of Hell's quest is `city_part01..05`; Minecraft Village's is `gumball_switch1..5`. Neither map
+contains a single easter-egg-shaped *word*, so no hint list would ever find them — but the *shape*
+is unmistakable. It finds `<stem><number>` families of ≥3, excludes structural furniture by stem
+(zone/spawner/clip/node/…) and requires the stem to name a plausible quest object. Left
+unconstrained it fired on 14/14 and said `easter_egg` about everything, which is the same
+worthless-because-universal failure the baseline was introduced to fix.
+
+**Result: 0/14 → 10/12** against the community's own finish tags, with verdicts that discriminate
+(4 buyable_ending, 8 easter_egg, 2 round) rather than all agreeing. The two remaining misses are
+honest: `nazi_zombie_orbit` has only `orbitron_lock`/`orbitron_switch` (not numbered, no quest word)
+and `sanatorium` has no own flags or quest-shaped entity names at all.
+
+**And a regression the re-run caught:** subtracting the baseline from a *stock* map erases that
+map's own evidence — Der Riese flipped `easter_egg` → `buyable_ending` because `ee_bowie_bear` is
+*in* the baseline (which is built from the stock zones, Der Riese included). Fixed with a rule
+correct for both cases: a name written in the map's **own** map script (`maps/<bsp>.gsc`, as opposed
+to the shared `_zombiemode`/common set) is the map's own whatever the baseline says. Re-verified:
+5/5 on the original stock maps, 15/15 campaign maps still rejected, 10/12 on the real corpus.
+
+### 3.5b How often does the scanner need a human? — measured on stock maps only (superseded by §3.5a)
 Only five zombies maps exist on this box, so I ran it over **all 20 local fastfiles**, using WaW's
 15 single-player campaign maps as an adversarial negative control. That turned out to be the useful
 half of the experiment.

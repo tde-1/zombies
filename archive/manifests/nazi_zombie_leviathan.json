@@ -21,26 +21,7 @@
       "when": {
         "manual": true
       },
-      "candidate_flags": [
-        "ee_exit_struct",
-        "ee_radio",
-        "ee_song_struct",
-        "ee_step_1_switch",
-        "ee_step_1_trigs",
-        "ee_step_2_crystal_fx",
-        "ee_step_2_pickup",
-        "ee_step_3_blue",
-        "ee_step_3_trig",
-        "ee_step_4_buttons",
-        "ee_step_4_light_trail",
-        "ee_step_5_model_spawn",
-        "ee_step_6_soul_collectors",
-        "ee_step_8_hack",
-        "ee_test_tube_guy",
-        "ee_testtube_activate_trig",
-        "ee_testtube_room_trigger"
-      ],
-      "candidate_entities": [
+      "candidates": [
         "ee_exit_struct",
         "ee_radio",
         "ee_song_struct",
@@ -72,10 +53,14 @@
   "signals": [],
   "confidence": "guess",
   "needs_human": true,
+  "health": null,
   "scanner": {
+    "tool": "referee/scan_map.py",
     "verdict": "easter_egg",
     "why": "ee_exit_struct, ee_radio, ee_song_struct, ee_step_1_switch, ee_step_1_trigs, ee_step_2_crystal_fx look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
     "scripts": 120,
+    "script_count": 120,
     "entities": 4303,
     "ee_candidates": [
       "ee_exit_struct",
@@ -97,9 +82,16 @@
       "ee_testtube_room_trigger"
     ],
     "ending_words": [
-      "crawler_round_ending",
-      "end_game",
       "teleport_spots"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -129,6 +121,7 @@
         "door1"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "maps/_callbackglobal.gsc",
       "maps/_gameskill.gsc",
@@ -137,53 +130,6 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "8eb1fd068315625abb3056a9739871aa40cbd0df686c19403a81656daf1b6ba4",
-    "script_count": 120,
-    "verdict_raw": "easter_egg",
-    "verdict_debiased": "easter_egg",
-    "why_debiased": "flags ee_exit_struct, ee_radio, ee_song_struct, ee_step_1_switch, ee_step_1_trigs, ee_step_2_crystal_fx, ee_step_2_pickup, ee_step_3_blue, ee_step_3_trig, ee_step_4_buttons, ee_step_4_light_trail, ee_step_5_model_spawn, ee_step_6_soul_collectors, ee_step_8_hack, ee_test_tube_guy, ee_testtube_activate_trig, ee_testtube_room_trigger look like easter-egg state and are NOT stock or community boilerplate",
-    "verdict_entities": "easter_egg",
-    "why_entities": "easter-egg state found in flags ee_exit_struct, ee_radio, ee_song_struct, ee_step_1_switch, ee_step_1_trigs, ee_step_2_crystal_fx, ee_step_2_pickup, ee_step_3_blue, ee_step_3_trig, ee_step_4_buttons, ee_step_4_light_trail, ee_step_5_model_spawn, ee_step_6_soul_collectors, ee_step_8_hack, ee_test_tube_guy, ee_testtube_activate_trig, ee_testtube_room_trigger and entities ee_exit_struct, ee_radio, ee_song_struct, ee_step_1_switch, ee_step_1_trigs, ee_step_2_crystal_fx",
-    "entity_evidence": {
-      "ee_flags": [
-        "ee_exit_struct",
-        "ee_radio",
-        "ee_song_struct",
-        "ee_step_1_switch",
-        "ee_step_1_trigs",
-        "ee_step_2_crystal_fx",
-        "ee_step_2_pickup",
-        "ee_step_3_blue",
-        "ee_step_3_trig",
-        "ee_step_4_buttons",
-        "ee_step_4_light_trail",
-        "ee_step_5_model_spawn",
-        "ee_step_6_soul_collectors",
-        "ee_step_8_hack",
-        "ee_test_tube_guy",
-        "ee_testtube_activate_trig",
-        "ee_testtube_room_trigger"
-      ],
-      "ee_entities": [
-        "ee_exit_struct",
-        "ee_radio",
-        "ee_song_struct",
-        "ee_step_1_switch",
-        "ee_step_1_trigs",
-        "ee_step_2_crystal_fx",
-        "ee_step_2_pickup",
-        "ee_step_3_blue",
-        "ee_step_3_trig",
-        "ee_step_4_buttons",
-        "ee_step_4_light_trail",
-        "ee_step_5_model_spawn",
-        "ee_step_6_soul_collectors",
-        "ee_step_8_hack",
-        "ee_test_tube_guy",
-        "ee_testtube_activate_trig",
-        "ee_testtube_room_trigger"
-      ],
-      "end_entities": []
-    },
     "map_specific_triggers": [
       "chest_hack",
       "claymore_purchase",
@@ -204,16 +150,6 @@
       "moon_bounce_test",
       "pap_sub_trigger",
       "pes_trig",
-      "pf4_auto304",
-      "pf4_auto306",
-      "pf4_auto308",
-      "pf4_auto310",
-      "pf4_auto318",
-      "pf4_auto319",
-      "pf9346_auto157",
-      "pf9346_auto158",
-      "pf9346_auto159",
-      "pf9346_auto160",
       "pipeTrapDeathTrigger",
       "pipeTrapTrigger1",
       "pipeTrapTrigger2",
@@ -223,32 +159,10 @@
       "underwater_trig",
       "weapon_hack"
     ],
-    "ee_candidates_own": [
-      "ee_exit_struct",
-      "ee_radio",
-      "ee_song_struct",
-      "ee_step_1_switch",
-      "ee_step_1_trigs",
-      "ee_step_2_crystal_fx",
-      "ee_step_2_pickup",
-      "ee_step_3_blue",
-      "ee_step_3_trig",
-      "ee_step_4_buttons",
-      "ee_step_4_light_trail",
-      "ee_step_5_model_spawn",
-      "ee_step_6_soul_collectors",
-      "ee_step_8_hack",
-      "ee_test_tube_guy",
-      "ee_testtube_activate_trig",
-      "ee_testtube_room_trigger"
-    ],
-    "ending_words_own": [
-      "teleport_spots"
-    ],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -259,6 +173,7 @@
     "source_page": "https://callofdutyrepo.com/2015/03/22/leviathan/",
     "fetched": "2026-09-20T00:48:53Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "nsis",
     "shipped_executables": [
       "$PLUGINSDIR/System.dll",
@@ -272,5 +187,5 @@
     ],
     "catalogue_description": "Map Description Aquatic experiments, deep-sea excavations, swarms of undead scientists. Find the leader to escape and send them back to the abyss! Features \u2013 Underwater Base and Environment \u2013 Underwater Realism, low gravity and drowning \u2013 Excavators from Moon \u2013 PES system which prevents drowning \u2013 Breachable rooms \u2013 Boss Zombie \u2013 Huge and complex map layout \u2013 Bounce Pads \u2013 Black Ops Mod Credits \u2013 Tom_Bmx \u2013 RDV \u2013 UGX Treminaor \u2013 YaPh1l \u2013 Mrhankey91 \u2013 Swazzy \u2013 DuaLVII \u2013 aokmikey \u2013 Hammy der gebissene \u2013 Offthewall Beta Testers \u2013 P0TZ \u2013 TheScotchGuy \u2013 RamboBadass \u2013 RDV \u2013 Nukem \u2013 Fatkidslovecake \u2013 MrSlagovich \u2013 UGX Treminaor \u2013 HitmanVere (If we forgot anyone on either list please let us know) Known Issues \u2013 In rare cases the moon doors will not change to green when opened, player models in coop will be invisible, hud shaders will not show up, and FX will not play. This seems to be due to a problem with the engine when trying to load files. A simple map restart should fix this. \u2013 In semi-rare cases players will spawn with their gun floating in their face. A simple map restart should fix this. \u2013 If you get a missing file error restart the map until you load in successfully, this error is due to World at War not being able to load the file. The file does exist."
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). Scanner found easter-egg-looking flags but cannot know which combination means done; a human must read the scripts. The Round 20 fallback still applies meanwhile. "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
 }

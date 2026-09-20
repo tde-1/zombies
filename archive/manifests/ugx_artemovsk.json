@@ -21,27 +21,18 @@
       "when": {
         "manual": true
       },
-      "candidate_flags": [
+      "candidates": [
+        "hacker_part_0",
+        "hacker_part_1",
         "meteor_path_start",
         "meteor_piece",
         "meteor_stop_1",
         "meteor_stop_2",
         "meteor_stop_3",
         "meteor_stop_4",
+        "no_boss_spawn",
         "ugx_meteor_large",
         "ugx_meteor_largest"
-      ],
-      "candidate_entities": [
-        "meteor_path_start",
-        "meteor_piece",
-        "meteor_stop_1",
-        "meteor_stop_2",
-        "meteor_stop_3",
-        "meteor_stop_4",
-        "ugx_meteor_large",
-        "ugx_meteor_largest",
-        "ugx_soul_tube",
-        "ugx_soul_tube_fill"
       ]
     },
     {
@@ -56,24 +47,38 @@
   "signals": [],
   "confidence": "guess",
   "needs_human": true,
+  "health": null,
   "scanner": {
+    "tool": "referee/scan_map.py",
     "verdict": "easter_egg",
-    "why": "meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "why": "hacker_part_0, hacker_part_1, meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
     "scripts": 138,
+    "script_count": 138,
     "entities": 2226,
     "ee_candidates": [
+      "hacker_part_0",
+      "hacker_part_1",
       "meteor_path_start",
       "meteor_piece",
       "meteor_stop_1",
       "meteor_stop_2",
       "meteor_stop_3",
       "meteor_stop_4",
+      "no_boss_spawn",
       "ugx_meteor_large",
       "ugx_meteor_largest"
     ],
-    "ending_words": [
-      "crawler_round_ending",
-      "end_game"
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -103,6 +108,7 @@
         "auto313"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "common_scripts/utility.gsc",
       "maps/_callbackglobal.gsc",
@@ -114,45 +120,7 @@
       "maps/_utility.gsc"
     ],
     "zombiemode_sha256": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1",
-    "script_count": 138,
-    "verdict_raw": "easter_egg",
-    "verdict_debiased": "easter_egg",
-    "why_debiased": "flags meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4, ugx_meteor_large, ugx_meteor_largest look like easter-egg state and are NOT stock or community boilerplate",
-    "verdict_entities": "easter_egg",
-    "why_entities": "easter-egg state found in flags meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4, ugx_meteor_large, ugx_meteor_largest and entities meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4",
-    "entity_evidence": {
-      "ee_flags": [
-        "meteor_path_start",
-        "meteor_piece",
-        "meteor_stop_1",
-        "meteor_stop_2",
-        "meteor_stop_3",
-        "meteor_stop_4",
-        "ugx_meteor_large",
-        "ugx_meteor_largest"
-      ],
-      "ee_entities": [
-        "meteor_path_start",
-        "meteor_piece",
-        "meteor_stop_1",
-        "meteor_stop_2",
-        "meteor_stop_3",
-        "meteor_stop_4",
-        "ugx_meteor_large",
-        "ugx_meteor_largest",
-        "ugx_soul_tube",
-        "ugx_soul_tube_fill"
-      ],
-      "end_entities": []
-    },
     "map_specific_triggers": [
-      "auto244",
-      "auto245",
-      "auto265",
-      "auto278",
-      "auto285",
-      "auto375",
-      "auto407",
       "axe_shed",
       "barn_boards_trig",
       "barn_door_kick_trig",
@@ -187,21 +155,10 @@
       "ugx_wallweapon",
       "ugxm_trap_machine"
     ],
-    "ee_candidates_own": [
-      "meteor_path_start",
-      "meteor_piece",
-      "meteor_stop_1",
-      "meteor_stop_2",
-      "meteor_stop_3",
-      "meteor_stop_4",
-      "ugx_meteor_large",
-      "ugx_meteor_largest"
-    ],
-    "ending_words_own": [],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -212,6 +169,7 @@
     "source_page": "https://callofdutyrepo.com/2015/10/16/ugx-requiem/",
     "fetched": "2026-09-20T00:52:42Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "nsis",
     "shipped_executables": [
       "$PLUGINSDIR/System.dll",
@@ -227,5 +185,5 @@
     ],
     "catalogue_description": "This map features UGX Mod v1.1! For a full list of features, click here . It\u2019s finally here! UGX Requiem is the latest map from the UGX-Mods team \u2013 featuring UGX Mod v1.1."
   },
-  "notes": "This map replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). Scanner found easter-egg-looking flags but cannot know which combination means done; a human must read the scripts. The Round 20 fallback still applies meanwhile. "
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
 }

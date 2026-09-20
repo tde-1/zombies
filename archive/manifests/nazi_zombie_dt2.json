@@ -21,11 +21,24 @@
       "when": {
         "manual": true
       },
-      "candidate_flags": [],
-      "candidate_entities": [
-        "radio1_trigger",
-        "radio2_trigger",
-        "radio3_trigger"
+      "candidates": [
+        "barrel_part_trig03",
+        "bottle_part_trig04",
+        "bread_part_trig01",
+        "city_parts_spawned",
+        "flashlight_part_trig05",
+        "gener_part_trig02",
+        "parts_finished",
+        "place_part_city01",
+        "place_part_city01_trig",
+        "place_part_city02",
+        "place_part_city02_trig",
+        "place_part_city03",
+        "place_part_city03_trig",
+        "place_part_city04",
+        "place_part_city04_trig",
+        "place_part_city05",
+        "place_part_city05_trig"
       ]
     },
     {
@@ -40,16 +53,50 @@
   "signals": [],
   "confidence": "guess",
   "needs_human": true,
+  "health": null,
   "scanner": {
-    "verdict": "buyable_ending",
-    "why": "crawler_round_ending, end_game, ending_parts_placed name an ending and are this map's own; script hardcodes cost 50000",
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "barrel_part_trig03, bottle_part_trig04, bread_part_trig01, city_parts_spawned, flashlight_part_trig05, gener_part_trig02 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
     "scripts": 172,
+    "script_count": 172,
     "entities": 7624,
-    "ee_candidates": [],
+    "ee_candidates": [
+      "barrel_part_trig03",
+      "bottle_part_trig04",
+      "bread_part_trig01",
+      "city_parts_spawned",
+      "flashlight_part_trig05",
+      "gener_part_trig02",
+      "parts_finished",
+      "place_part_city01",
+      "place_part_city01_trig",
+      "place_part_city02",
+      "place_part_city02_trig",
+      "place_part_city03",
+      "place_part_city03_trig",
+      "place_part_city04",
+      "place_part_city04_trig",
+      "place_part_city05",
+      "place_part_city05_trig"
+    ],
     "ending_words": [
-      "crawler_round_ending",
-      "end_game",
       "ending_parts_placed"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      4000,
+      5000,
+      8000,
+      9000,
+      10000,
+      50000
     ],
     "orphan_end_triggers": [
       "trigger_teleport_pad_0",
@@ -83,6 +130,7 @@
         "pf9316_auto2"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "maps/_callbackglobal.gsc",
       "maps/_gameskill.gsc",
@@ -91,21 +139,6 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "69bb12f7bf2da853371d53f61591fa49e343793552e4f67d7c58f4145f39513d",
-    "script_count": 172,
-    "verdict_raw": "buyable_ending",
-    "verdict_debiased": "manual",
-    "why_debiased": "map-specific names suggest an ending (ending_parts_placed) but nothing decidable",
-    "verdict_entities": "easter_egg",
-    "why_entities": "easter-egg state found in entities radio1_trigger, radio2_trigger, radio3_trigger",
-    "entity_evidence": {
-      "ee_flags": [],
-      "ee_entities": [
-        "radio1_trigger",
-        "radio2_trigger",
-        "radio3_trigger"
-      ],
-      "end_entities": []
-    },
     "map_specific_triggers": [
       "ammo_trig1",
       "barrel_part_trig03",
@@ -148,14 +181,10 @@
       "gen_trig03",
       "gen_trig04"
     ],
-    "ee_candidates_own": [],
-    "ending_words_own": [
-      "ending_parts_placed"
-    ],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -166,6 +195,7 @@
     "source_page": "https://zwr.gg/custom-downloads/waw",
     "fetched": "2026-09-20T00:55:38Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "rar",
     "shipped_executables": [
       "City of Hell.exe"
@@ -176,5 +206,5 @@
     ],
     "catalogue_description": "* TURN OFF THE SPECULAR MAP OPTION. go to options and controls > graphics > specular map to > No why ? because if you have it on the map will look like to much shinny and other things will ook bad, it was happends when I use the ignore.csv file because to many images (error: exceeded of 2400 image asset) but that is solved and you will only need to do that with the specular map. * this is the last version that I will upload because my computer is crashed and you guys got lucky that I have already finished the map and I\u2019m not lost the files * there are some little bugs over there but I can\u2019t fix that because my modtools didn\u2019t work anymore. * I have fixed a large bug that I have found that is also the point why I\u2019m reinstalling my computer again I hope you enjoy my map and have fun with it Storyline After the Black day , the City has for a while no power. It is 10 years later where 4 survivors sleeping into a hotel and when they wake up because a strange sound outside. but now the 4 survivors need to stay alive and survive from the undead zombies."
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 1 executable(s): City of Hell.exe. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 1 executable(s): City of Hell.exe. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
 }

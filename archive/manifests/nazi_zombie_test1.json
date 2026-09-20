@@ -23,8 +23,19 @@
           "targetname": "end_game"
         }
       },
-      "candidate_entities": [
+      "candidates": [
         "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        10000,
+        100000
       ]
     },
     {
@@ -39,15 +50,29 @@
   "signals": [],
   "confidence": "read",
   "needs_human": false,
+  "health": null,
   "scanner": {
+    "tool": "referee/scan_map.py",
     "verdict": "buyable_ending",
-    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
     "scripts": 109,
+    "script_count": 109,
     "entities": 478,
     "ee_candidates": [],
     "ending_words": [
-      "crawler_round_ending",
       "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      10000,
+      100000
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -57,6 +82,7 @@
         "magic_box_lid_1"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "maps/_callbackglobal.gsc",
       "maps/_gameskill.gsc",
@@ -65,38 +91,22 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "9e01476194b03d2765739a7ad38ad9dc04a6e5653ef18f4b07cff614d86684c4",
-    "script_count": 109,
-    "verdict_raw": "buyable_ending",
-    "verdict_debiased": "round",
-    "why_debiased": "no easter egg or ending found; default Round 20",
-    "verdict_entities": "buyable_ending",
-    "why_entities": "entity named like an ending: end_game (the cost is hardcoded in script, as on nazi_zombie_ali, so there is no zombie_cost outlier to find)",
-    "entity_evidence": {
-      "ee_flags": [],
-      "ee_entities": [],
-      "end_entities": [
-        "end_game"
-      ]
-    },
     "map_specific_triggers": [
       "b1",
       "b2",
       "blunder_trigg",
       "box",
       "c4_purchase",
-      "end_game",
       "rounds_survive_doors",
       "secret_trigger",
       "secret_trigger1",
       "secret_trigger2",
       "tomahawk_spawn"
     ],
-    "ee_candidates_own": [],
-    "ending_words_own": [],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -107,6 +117,7 @@
     "source_page": "https://zwr.gg/custom-downloads/waw",
     "fetched": "2026-09-20T00:55:27Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "nsis",
     "shipped_executables": [
       "$PLUGINSDIR/System.dll",
@@ -117,5 +128,5 @@
     ],
     "catalogue_description": "hi people today i bring you my new custom map Zombie Desert or Desert Zombie i don\u2019t know how you write. well this is a map of a single room the map is heavy because of the videos enjoy Features: *boss *custom perks shaders *verruct runners *custom pap camo *pap powerup *nuketown style perks *custom powerups *c4 *guns cod4, cod waw, bo, bo2, ghost y custom *10 perks *dogs from mp *tomahawk *special guns: thundergun, scavenger, mark2, blundergat, plasma pistol *end game *shi no numa zombies *videos *no monkey boms *mw3 intro *hitmarkers"
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

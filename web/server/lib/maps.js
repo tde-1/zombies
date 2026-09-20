@@ -203,15 +203,43 @@ function detail(key, { me = null } = {}) {
   }
 }
 
-function authors() {
+// The PLAYABLE pool's authors and years, not the crawl's. The crawl knows about nine
+// hundred authors, none of whose maps can be played yet, and a dropdown with nine hundred
+// entries is not a filter. `all: true` is for the creator index, which does want them.
+function authors({ all = false } = {}) {
+  const where = all ? 'hidden=0' : `hidden=0 AND health IN ('verified','playable','custom-only')`
   return db.prepare(`SELECT author AS name, COUNT(*) AS maps, SUM(plays) AS plays
-                       FROM maps WHERE author IS NOT NULL AND author <> '' AND hidden=0
+                       FROM maps WHERE author IS NOT NULL AND author <> '' AND ${where}
                       GROUP BY author ORDER BY maps DESC, name`).all()
 }
 
-function years() {
-  return db.prepare(`SELECT year, COUNT(*) AS maps FROM maps WHERE year IS NOT NULL GROUP BY year ORDER BY year`).all()
+function years({ all = false } = {}) {
+  const where = all ? '1=1' : `health IN ('verified','playable','custom-only')`
+  return db.prepare(`SELECT year, COUNT(*) AS maps FROM maps WHERE year IS NOT NULL AND ${where}
+                      GROUP BY year ORDER BY year`).all()
 }
+
+/** Headline numbers for the Archive page. All counted, none typed. */
+function archiveStats() {
+  const n = (sql, ...a) => db.prepare(sql).get(...a).c
+  return {
+    catalogued: n("SELECT COUNT(*) c FROM maps"),
+    playable: n("SELECT COUNT(*) c FROM maps WHERE hidden=0 AND health IN ('verified','playable','custom-only')"),
+    crawled_only: n("SELECT COUNT(*) c FROM maps WHERE health='catalogued'"),
+    broken: n("SELECT COUNT(*) c FROM maps WHERE health='broken'"),
+    originals_held: n("SELECT COUNT(*) c FROM map_files WHERE kind='original'"),
+    links: n('SELECT COUNT(*) c FROM archive_sources'),
+    links_alive: n("SELECT COUNT(*) c FROM archive_sources WHERE status IN ('alive','fetched')"),
+    links_dead: n("SELECT COUNT(*) c FROM archive_sources WHERE status='dead'"),
+    links_unchecked: n("SELECT COUNT(*) c FROM archive_sources WHERE status NOT IN ('alive','fetched','dead','blocked')"),
+  }
+}
+
+/** The download links and their health, for a map page's archive block. */
+const sourcesFor = (mapKey) => db.prepare(`SELECT url, site, kind, status, note, last_checked
+                                             FROM archive_sources WHERE map_key=? ORDER BY
+                                             CASE status WHEN 'fetched' THEN 0 WHEN 'alive' THEN 1 ELSE 2 END, id`)
+  .all(String(mapKey))
 
 function tagCloud() {
   return db.prepare(`SELECT t.slug, t.label, t.kind, COUNT(mt.map_id) AS maps
@@ -257,6 +285,6 @@ const favouritesOf = (steamId) => db.prepare(`SELECT m.* FROM favourites f JOIN 
 const count = () => db.prepare(`SELECT COUNT(*) c FROM maps WHERE hidden=0 AND health IN ('verified','playable','custom-only')`).get().c
 
 module.exports = {
-  project, byKey, bySlug, list, detail, authors, years, tagCloud,
+  project, byKey, bySlug, list, detail, authors, years, tagCloud, archiveStats, sourcesFor,
   rate, recountRatings, favourite, favouritesOf, count, ratingOf, tagsFor, LIST_HEALTH,
 }

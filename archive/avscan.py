@@ -25,7 +25,6 @@ import datetime
 import json
 import os
 import subprocess
-import sys
 
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 ORIGINALS = os.path.join(WORK, "originals")

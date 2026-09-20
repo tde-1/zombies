@@ -23,8 +23,15 @@
           "targetname": "end_game"
         }
       },
-      "candidate_entities": [
+      "candidates": [
         "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        100000,
+        500000
       ]
     },
     {
@@ -39,15 +46,25 @@
   "signals": [],
   "confidence": "read",
   "needs_human": false,
+  "health": null,
   "scanner": {
+    "tool": "referee/scan_map.py",
     "verdict": "buyable_ending",
-    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 500000",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 500000",
+    "verdict_stock_baseline_only": "buyable_ending",
     "scripts": 125,
+    "script_count": 125,
     "entities": 479,
     "ee_candidates": [],
     "ending_words": [
-      "crawler_round_ending",
       "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      100000,
+      500000
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -77,6 +94,7 @@
         "?"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "maps/_callbackglobal.gsc",
       "maps/_gameskill.gsc",
@@ -85,29 +103,13 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "fdcd5925d09bd31dd3a5258ab05b5ab60f6c3b892013ef2fc098bb2ef389903d",
-    "script_count": 125,
-    "verdict_raw": "buyable_ending",
-    "verdict_debiased": "round",
-    "why_debiased": "no easter egg or ending found; default Round 20",
-    "verdict_entities": "buyable_ending",
-    "why_entities": "entity named like an ending: end_game (the cost is hardcoded in script, as on nazi_zombie_ali, so there is no zombie_cost outlier to find)",
-    "entity_evidence": {
-      "ee_flags": [],
-      "ee_entities": [],
-      "end_entities": [
-        "end_game"
-      ]
-    },
     "map_specific_triggers": [
-      "end_game",
       "harrybo21_perk_trigger"
     ],
-    "ee_candidates_own": [],
-    "ending_words_own": [],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -118,6 +120,7 @@
     "source_page": "https://callofdutyrepo.com/2016/06/12/mw2-rust-zombies/",
     "fetched": "2026-09-20T00:52:02Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "nsis",
     "shipped_executables": [
       "$PLUGINSDIR/System.dll",
@@ -129,5 +132,5 @@
     ],
     "catalogue_description": "Features: \u2013 Does not require T4M! \u2013 Harry\u2019s Perks (11 perks) *No Vulture aid and Tombstone* \u2013 100,000 Buyable Ending \u2013 No Dogs \u2013 No grabbing zombies \u2013 All MW2 weapons except the explosives \u2013 No Perk Limit -NIGHTMARE MODE (Provides an extreme challenge) -FUN MODE (For those looking for a casual game, includes faster speed and increased points to name a few features) *The end game when in fun mode is 500,000 because it\u2019s fun mode, not grind to the end mode, survive until you die. * *You can combine these modes* *Select the modes by going in coop host settings* 1.01 Changes -Buyable ending now 65,000 (Was 100,000) -Increased knifing speed -Buffed the Vibrator -Zombies no longer spawn miles out of play (To speed up the early rounds) -Fixed other shit Credits: -Tom-Bmx -Harry Bo21 -HitmanVere -ricko0z -JR-Imagine -Treminaor -Rorke -DamianoTBM -Make-Cents -Scobalula -DidUKnowIPwn -RDV -steviewonder87 -JBird632 -Bluntstuffy -DuaLVII -If I missed you plz"
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

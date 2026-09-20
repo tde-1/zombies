@@ -26,6 +26,12 @@ const SITE = a.site || 'http://127.0.0.1:3200'
 const SECRET = a.secret || 'devkey-a'
 const BOX = a.box || 'box-a'
 const RUN = mkdirp(path.join(os.tmpdir(), 'enw-integration-' + Date.now().toString(36)))
+const BOX_KEYS = a['key-dir'] || path.join(process.env.ZOMBIES_DEV || 'C:/Users/b/ZombiesDev', 'keys')
+// Ports nobody else is on. Three agents drive host agents on this box tonight, and a
+// port clash makes our child exit at boot while SOMEBODY ELSE's box quietly takes the
+// lease — which looks exactly like our box working until you read the artifacts folder
+// and find it empty. Unique ports plus the boot check below make that impossible to miss.
+const PORTS = { link: Number(a['link-port'] || 38851), base: Number(a['base-port'] || 29400), dash: Number(a['dash-port'] || 8851) }
 
 const ADMIN = '76561190000000001'
 const MATE = '76561190000000002'
@@ -70,9 +76,14 @@ let host = null
 function startHost() {
   host = spawn(process.execPath, [path.join(ROOT, 'host.js'),
     '--site', SITE, '--secret', SECRET, '--box', BOX,
-    '--link-port', '38790', '--base-port', '29160', '--dash-port', '8795',
+    '--link-port', String(PORTS.link), '--base-port', String(PORTS.base), '--dash-port', String(PORTS.dash),
     '--replay-dir', path.join(RUN, 'replays'), '--log-dir', path.join(RUN, 'logs'),
-    '--key-dir', path.join(RUN, 'keys'), '--spool-dir', path.join(RUN, 'spool'),
+    // The box's replay key is its IDENTITY, so it is the box's REAL key dir, not a
+    // per-run one. A fresh key each run is (correctly) treated by the site as an
+    // impostor: it stays pending until an admin accepts it, and every replay written in
+    // the meantime is stored unpinned. That is the behaviour, not a bug — it just means
+    // a test must not manufacture a new identity every time it runs.
+    '--key-dir', BOX_KEYS, '--spool-dir', path.join(RUN, 'spool'),
     '--sim-timescale', '300', '--sim-max-round', '12',
   ], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
   host.out = ''
@@ -101,10 +112,18 @@ try {
 
   step('1. the box comes up and pins its replay key')
   startHost()
-  await waitFor('the box to fetch the invite key', () => /site invite key .* loaded/.test(host.out))
-  ok('the box fetched the site invite key and is enforcing token checks')
-  const pinned = await waitFor('the key pin', () => /replay key \w+ is PINNED/.exec(host.out), 40_000)
-  if (pinned) ok(`the site pinned the box's replay key from the status heartbeat: ${pinned[0].match(/key (\w+)/)[1]}`)
+  const up = await waitFor('the box to come up', () => /host agent up:/.test(host.out), 25_000)
+  if (!up) {
+    for (const l of host.out.split(String.fromCharCode(10)).filter(Boolean).slice(-6)) info(l.trimEnd())
+    throw new Error(`our host agent did not start (ports ${PORTS.link}/${PORTS.dash}). If another box is already using this site with the same secret, give this run its own --secret and --box.`)
+  }
+  ok(`our box is up on link :${PORTS.link}, dash :${PORTS.dash}`)
+  if (await waitFor('the invite key', () => /site invite key .* loaded/.test(host.out), 20_000)) {
+    ok('the box fetched the site invite key and is enforcing token checks')
+  }
+  const pinned = await waitFor('the key pin', () => /replay key (\w+) is PINNED/.exec(host.out), 40_000)
+  if (pinned) ok(`the site pinned the box's replay key from the status heartbeat: ${pinned[1]}`)
+  else if (/KEY MISMATCH/.test(host.out)) bad('the site has a DIFFERENT key pinned for this box — an admin must accept the new one (Admin -> Boxes)')
   else bad('the site never confirmed the replay-key pin')
 
   step('2. two players make a party and press Start (the real path, not a hand lease)')
@@ -135,9 +154,10 @@ try {
   else { bad(`launch: ${JSON.stringify(launched).slice(0, 300)}`); throw new Error('no lease') }
 
   step('3. the box takes the lease, boots and admits the invited players')
-  await waitFor('the lease to reach the box', () => host.out.includes(matchId))
-  ok('the box saw the lease on its next /api/gs/assignment poll (the site never connected out)')
-  await waitFor('the auth decisions', () => (host.out.match(/auth slot \d/g) || []).length >= 2)
+  if (await waitFor('the lease to reach the box', () => host.out.includes(matchId), 60_000)) {
+    ok('the box saw the lease on its next /api/gs/assignment poll (the site never connected out)')
+  }
+  await waitFor('the auth decisions', () => (host.out.match(/auth slot \d/g) || []).length >= 2, 90_000)
   for (const m of host.out.matchAll(/auth slot (\d) (\S*) (\d+): (ALLOW|DENY) \(([^)]+)\)/g)) {
     info(`slot ${m[1]} ${m[2].padEnd(10)} ${m[3]}  ${m[4] === 'ALLOW' ? '\x1b[32mALLOW\x1b[0m' : '\x1b[31mDENY\x1b[0m'} (${m[5]})`)
   }
@@ -158,12 +178,13 @@ try {
   else bad(`a forged token was not refused: ${JSON.stringify(v)}`)
 
   step('5. the game plays out and the box posts the result')
-  await waitFor('the game to end', () => /SUMMARY /.test(host.out), 240_000)
+  const ended = await waitFor('the game to end', () => /SUMMARY /.test(host.out), 300_000)
   const sum = /SUMMARY (.+)/.exec(host.out)
-  info(sum ? sum[1] : '(no summary line)')
   const rep = /replay closed: (.+)/.exec(host.out)
-  info(rep ? `replay: ${rep[1]}` : '(no replay line)')
-  ok('the referee called the game and the box closed and signed the replay')
+  if (sum) info(sum[1])
+  if (rep) info(`replay: ${rep[1]}`)
+  if (ended && sum && rep) ok('the referee called the game and the box closed and signed the replay')
+  else bad('the box did not finish the game (see the artifacts folder)')
 
   step('6. what the site now holds')
   const g = await waitFor('the game row', async () => {
@@ -186,9 +207,11 @@ try {
 
   step('7. the replay on disk verifies, and against the pinned key')
   const dir = path.join(RUN, 'replays')
-  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.enwr'))) {
+  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((x) => x.endsWith('.enwr')) : []
+  if (!files.length) bad(`no replay in ${dir} — our box wrote nothing, so the game above was somebody else's`)
+  for (const f of files) {
     const full = path.join(dir, f)
-    const key = JSON.parse(fs.readFileSync(path.join(RUN, 'keys', `host-${BOX}.json`), 'utf8'))
+    const key = JSON.parse(fs.readFileSync(path.join(BOX_KEYS, `host-${BOX}.json`), 'utf8'))
     const plain = verifyFile(full)
     const pinnedCheck = verifyFile(full, { expectPub: key.pub })
     if (plain.ok && pinnedCheck.ok) ok(`${f}: VALID against the pinned key — ${plain.chunks} chunks, ${plain.events} events`)

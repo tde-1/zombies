@@ -201,7 +201,14 @@ export class ZombiesSim extends EventEmitter {
     if (this.buyableEndingRound && n === this.buyableEndingRound) this.scheduleEnding = this.ms + 20_000
   }
 
+  /** Everyone who has been admitted (including the downed and the bled-out). */
   livePlayers() { return [...this.players.values()].filter((p) => p.authed) }
+
+  /** Everyone who can actually shoot: admitted, alive, on their feet. */
+  shooters() { return [...this.players.values()].filter((p) => p.authed && p.alive && !p.down && !p.afk) }
+
+  /** Anyone still in the game at all — up, or down and revivable. */
+  standingOrDown() { return [...this.players.values()].filter((p) => p.authed && (p.alive || p.down)) }
 
   // ---- the loop ----------------------------------------------------------------
   /** Advance the simulation by one 50 ms tick and emit everything that happened. */
@@ -222,6 +229,8 @@ export class ZombiesSim extends EventEmitter {
     this.combat()
     this.chatter()
     this.scripted()
+    this.wipeCheck()
+    if (this.over) return false
     this.snapshot()
     this.perf()
     this.roundTransition()
@@ -252,7 +261,7 @@ export class ZombiesSim extends EventEmitter {
       const yaw = Math.atan2(ny - p.pos[1], nx - p.pos[0]) * 180 / Math.PI
       p.pos = [round2(nx), round2(ny), round2(32 + Math.sin(p.phase * 2) * 4)]
       p.ang = [round2(-6 + Math.sin(p.phase * 5) * 9), round2(yaw + (this.rng() - 0.5) * 6)]
-      p.health = Math.min(100, p.health + 6)
+      p.health = Math.min(100, p.health + 1.5)   // ~3 s to full, WaW-ish, not 0.8 s
       this.reportInput(p, { moved: true, turned: true, buttons: this.rng() < 0.4 ? 1 : 0 })
     }
   }
@@ -275,7 +284,7 @@ export class ZombiesSim extends EventEmitter {
     if (this.betweenUntil > this.ms) return
     while (this.spawnQueue > 0 && this.zombies.length < this.maxAlive && this.ms >= this.nextSpawnMs) {
       const sp = this.spawnPoints[Math.floor(this.rng() * this.spawnPoints.length)]
-      const targets = this.livePlayers().filter((p) => !p.down)
+      const targets = this.shooters()
       if (!targets.length) return
       const tgt = targets[Math.floor(this.rng() * targets.length)]
       this.zombies.push({
@@ -296,8 +305,8 @@ export class ZombiesSim extends EventEmitter {
     const dt = TICK_MS / 1000
     for (const z of this.zombies) {
       let t = this.players.get(z.target)
-      if (!t || !t.authed || t.down) {
-        const alt = this.livePlayers().filter((p) => !p.down)
+      if (!t || !t.authed || t.down || !t.alive) {
+        const alt = this.shooters()
         if (!alt.length) continue
         t = alt[Math.floor(this.rng() * alt.length)]
         z.target = t.slot
@@ -312,7 +321,7 @@ export class ZombiesSim extends EventEmitter {
   }
 
   combat() {
-    const shooters = this.livePlayers().filter((p) => !p.down && !p.afk)
+    const shooters = this.shooters()
     if (!shooters.length || !this.zombies.length) return
     // [approx] Kill rate falls as zombie health climbs, so from the mid rounds the
     // spawn rate wins and a full train of 24 builds up and STAYS up. Getting this wrong
@@ -334,11 +343,18 @@ export class ZombiesSim extends EventEmitter {
       this.emitEv({ t: 'points', slot: killer.slot, score: killer.score, delta, why: head ? 'headshot' : 'kill' })
       if (this.rng() < 0.02) this.emitEv({ t: 'notify', ent: 'level', name: 'powerup_drop', args: { kind: ['max_ammo', 'insta_kill', 'double_points', 'nuke', 'carpenter'][Math.floor(this.rng() * 5)] } })
     }
-    // A zombie reaching a player hurts; enough of that is a down.
+    // A zombie reaching a player hurts. PER HIT, not per tick: a zombie swings about once
+    // a second, so applying a full hit 20 times a second (which the first version did)
+    // killed a 4-player team by round 14 every time and made the measured game-hour a
+    // third of an hour. ~1.1 s between swings is the WaW-ish figure.
+    const swing = (TICK_MS / 1000) / 1.1
     for (const p of shooters) {
-      const near = this.zombies.filter((z) => Math.hypot(z.pos[0] - p.pos[0], z.pos[1] - p.pos[1]) < 45).length
+      // At most four bodies can reach you at once, however many are in the train. Without
+      // this cap the conga line stacks on the player's exact position and a solo run dies
+      // at round 11 every time, which is not what solo zombies looks like.
+      const near = Math.min(4, this.zombies.filter((z) => Math.hypot(z.pos[0] - p.pos[0], z.pos[1] - p.pos[1]) < 45).length)
       if (!near) continue
-      p.health -= near * (6 + this.round * 0.7)
+      p.health -= near * (6 + this.round * 0.7) * swing
       if (p.health <= 0 && !p.down) this.goDown(p)
     }
     // Buys, doors and the box, at a plausible trickle.
@@ -359,13 +375,33 @@ export class ZombiesSim extends EventEmitter {
     }
   }
 
+  // EVERYONE DOWN OR DEAD = THE GAME IS OVER. Without this the simulation deadlocks:
+  // with no shooters left nothing kills a zombie, so the round never ends, so the
+  // bled-out never respawn, and the clock runs forever at round 9. That is also what
+  // actually happens in WaW — a team wipe ends the game — and the referee has to see the
+  // `game_over` rather than a game that simply stops producing rounds.
+  wipeCheck() {
+    if (this.phase !== 'live' || this.over) return
+    const inPlay = this.livePlayers()
+    if (!inPlay.length) return
+    if (this.shooters().length) { this.wipeSince = null; return }
+    // A downed player with a revive on the way is not a wipe yet.
+    const revivable = this.standingOrDown().some((p) => p.down) && (this.reviveAt?.length > 0)
+    if (revivable) { this.wipeSince = null; return }
+    // Every AFK player still counts as a body; a lobby of nothing but AFK players is the
+    // referee's problem (it pauses then closes), not a wipe.
+    if (inPlay.every((p) => p.afk)) { this.wipeSince = null; return }
+    if (this.wipeSince == null) this.wipeSince = this.ms
+    if (this.ms - this.wipeSince > 5000) this.endGame('all_players_down')
+  }
+
   goDown(p) {
     p.down = true
     p.health = 0
     p.downUntil = this.ms + 30_000
     this.emitEv({ t: 'down', slot: p.slot })
     // A team-mate usually gets there.
-    const helpers = this.livePlayers().filter((x) => x.slot !== p.slot && !x.down && !x.afk)
+    const helpers = this.shooters().filter((x) => x.slot !== p.slot)
     if (helpers.length && this.rng() < 0.8) {
       const by = helpers[Math.floor(this.rng() * helpers.length)]
       const at = this.ms + 3000 + this.rng() * 8000
@@ -390,7 +426,7 @@ export class ZombiesSim extends EventEmitter {
     // their idle timer through the referee's `chat` -> touch path and meant the AFK kick
     // never fired — a real bug in the SIMULATOR, but exactly the kind of "activity" the
     // real scoring has to get right.)
-    const ps = this.livePlayers().filter((p) => !p.afk); if (!ps.length) return
+    const ps = this.livePlayers().filter((p) => !p.afk && (p.alive || p.down)); if (!ps.length) return
     const p = ps[Math.floor(this.rng() * ps.length)]
     this.emitEv({ t: 'chat', slot: p.slot, text: CHATTER[Math.floor(this.rng() * CHATTER.length)], team: false })
   }
@@ -454,8 +490,11 @@ export class ZombiesSim extends EventEmitter {
     if (this.spawnQueue > 0 || this.zombies.length > 0) return
     if (this.betweenUntil > this.ms) return
     if (!this.betweenUntil || this.betweenUntil <= this.ms) {
-      // respawn anyone who bled out
-      for (const p of this.players.values()) if (p.respawnRound && p.respawnRound <= this.round + 1) { p.alive = true; p.health = 100; p.respawnRound = null; p.score = Math.max(p.score, 500) }
+      // Respawn anyone who bled out — in WaW you come back at the start of the next round.
+      for (const p of this.players.values()) if (p.respawnRound && p.respawnRound <= this.round + 1) {
+        p.alive = true; p.down = false; p.health = 100; p.respawnRound = null; p.score = Math.max(p.score, 500)
+        this.emitEv({ t: 'player_spawn', slot: p.slot })
+      }
       this.emitEv({ t: 'notify', ent: 'level', name: 'between_round_over' })
       if (this.round >= this.maxRound) return this.endGame('round_target')
       this.betweenUntil = this.ms + 9000

@@ -40,7 +40,13 @@ crawlers/ugx.py          board 29 index -> release threads: name, AUTHOR, real r
 crawlers/moddb.py        addons page 1 (the rest is robots-disallowed) + per-addon size/MD5
 crawlers/archiveorg.py   search + /metadata/<id> -> exact sizes and hashes, no bytes moved
 
+probe.py                 one-off recon: robots.txt + one index page per source, run
+                         BEFORE writing a crawler so it is written against what the
+                         site actually serves
+fetch_ugx_threads.py     UGX release-post bodies for the shortlist only
+
 check_links.py           per-host probes -> alive / dead / blocked / unknown + size
+fixups.py                offline verdict corrections, each with its evidence (no traffic)
 report.py [--md|--maps]  the link report
 export.py                catalogue.json for the site
 
@@ -50,7 +56,9 @@ extract.py                   7-Zip / innoextract -> mods/<bsp>/ + per-file hashe
 stock_baseline.py            the flag/notify/entity names that are Treyarch's, not the map's
 scan_maps.py                 referee/scan_map.py + baselines -> archive/manifests/<map>.json
 evaluate.py                  score those verdicts against the community's own finish tags
+install_map.py               junction a normalised map into an fs_homepath, ready to boot
 make_doc.py                  regenerate this document
+finish_run.sh                drain the remaining link checks, then regenerate everything
 ```
 
 Politeness is in `lib/net.py` and is not optional: **one request at a time per host**, a 6 s delay
@@ -112,7 +120,12 @@ Per map we keep, beside each other and never mixed up:
 - `originals/<map>/<file>` — the exact released file, byte for byte, plus `<file>.meta.json` with
   its **sha256, size, the page it came from, the URL, the fetch time, our user agent and the AV
   result**. Rule 1 of the archive.
-- `extract/<map>/` — 7-Zip's output exactly as it landed, including the installer's own junk.
+- `extract/<map>/` — 7-Zip's output exactly as it landed, including the installer's own junk
+  and anything that sits *outside* the mod folder. Readmes live here (vault 04 rule 4 keeps
+  them as shipped): only one of the fourteen ships one, Clinic of Evil's `readme.txt`. Thirteen
+  NSIS installers carry their text in the installer UI instead, which the extractor does not
+  recover — a gap worth closing, since rule 14 makes the release post and readme the map's
+  description on its page.
 - `mods/<bsp>/` — the normalised install, every file hashed.
 - `archive/manifests/<bsp>.json` — a proposed referee manifest in the `referee/manifests/_schema.md`
   shape, carrying the scanner's evidence and its provenance.
@@ -145,63 +158,96 @@ map's title** — Alcatraz is `water`, Zombie Desert is `nazi_zombie_test1`, Cli
 ## 4. The scanner on real custom maps
 
 This is the number the plan rests on, and the referee agent could only test it on n=1.
+It changed twice tonight, so here is the whole sequence.
 
-**`referee/scan_map.py` as shipped: {{decided_raw}} of {{n_scanned}} decided without a human.**
+**01:50 — `referee/scan_map.py` as it stood: 0 of 14 decided, and 1 of 12 agreeing with
+the community's own finish tags.**
 
-Not a bug in the tool — a gap in what it had ever seen. On a stock install the common zombie scripts
-live in `common.ff` and `patch.ff`, which the scanner is never handed; it only gets
-`nazi_zombie_factory.ff`. A **custom** map ships its own copy of the whole common script set inside
-`mod.ff`, so Treyarch's own names — `arcademode_ending_complete`, `dog_round_ending`,
-`ee_bowie_bear` — suddenly appear *inside the map* and the hint lists fire on them. Twelve of
-fourteen maps returned `manual` for the same three words, and the two `easter_egg` verdicts were
-Der Riese's teddy bears.
+Not a bug in the tool — a gap in what it had ever seen. On a stock install the common
+zombie scripts live in `common.ff` and `patch.ff`, which the scanner is never handed; it
+only gets `nazi_zombie_factory.ff`. A **custom** map ships its own copy of that whole
+script set inside `mod.ff`, so Treyarch's own names — `arcademode_ending_complete`,
+`dog_round_ending`, `ee_bowie_bear` — suddenly appear *inside the map* and the hint lists
+fire on them. Twelve of fourteen maps returned `manual` for the same three words, and both
+`easter_egg` verdicts were Der Riese's teddy bears.
 
-Two additions, both written in `archive/` so nothing of the referee's is touched:
+**02:20 — two fixes went on the board**, with the evidence:
 
-1. **A stock + corpus baseline** (`stock_baseline.py`). Read every flag, notify and entity name out
-   of WaW's own zone files (827 names), and additionally treat any name shared by ≥60% of the maps
-   in the corpus as community boilerplate — that catches `crawler_round_ending`, which is not stock
-   but rides in on the community script set that half the scene builds on. A name counts as the
-   map's own only if it is in neither set.
-   → **{{decided_debiased}} of {{n_scanned}}** decided. But most of those were "Round 20" for maps
-   that demonstrably have an ending, which is a confident wrong answer.
-2. **Look at the entity list, not just the scripts.** This is the real finding.
+1. **Subtract a baseline of names that are not the map's.** `archive/stock_baseline.py`
+   reads every flag, notify and entity name out of WaW's own zone files
+   ({{stock_names}} names) into `archive/stock-baseline.json`. On top of that, any name
+   shared by ≥60% of the corpus is community boilerplate rather than evidence — that
+   catches `crawler_round_ending`, which is not Treyarch's but rides in on the community
+   script set half the scene builds on. ({{corpus_ignored}} names met that bar here.)
+2. **Read the Radiant entity list, not just the scripts.** This was the real finding.
    **Leviathan has no easter-egg flag in any of its 120 scripts** — its quest is
-   `ee_step_1_switch`, `ee_step_3_trig`, `ee_testtube_activate_trig`, sitting in plain sight in the
-   Radiant entity list. **MW2 Rust has four trigger targetnames and one of them is `end_game`** —
-   that is its buyable ending, the `nazi_zombie_ali` shape, and the `zombie_cost` outlier test
-   cannot see it because the cost is hardcoded in script. Entity names need **token** matching, not
-   substring: `vending_mulekick` contains "ending" and `floor_three_zone` contains "ee_".
+   `ee_step_1_switch`, `ee_step_3_trig`, `ee_testtube_activate_trig`, in plain sight in
+   MapEnts. **MW2 Rust has four trigger targetnames and one of them is `end_game`** — the
+   `nazi_zombie_ali` shape, invisible to the `zombie_cost` outlier test because the price
+   is hardcoded in script. That test fired on **0 of 14** maps. And entity names need
+   **token** matching, not substring: `vending_mulekick` contains "ending",
+   `floor_three_zone` contains "ee_".
 
-**With both, the verdicts are {{verdicts_entities}}** — so **{{finish_found}} of {{n_scanned}}
-maps now have a finish identified** at all, and **{{decided_entities}} of {{n_scanned}} need no
-human judgement to award a badge** (the buyable endings, plus the Round-20 defaults where there
-really is nothing else).
+**02:25 — the referee agent rewrote `scan_map.py` to do both**, reading the baseline this
+agent generates and taking an `ignore` set for corpus boilerplate, plus a
+`cost = <4-6 digits>` script scan for the hardcoded prices. `archive/scan_maps.py` no
+longer duplicates any of that: it builds the two inputs, calls their
+`scan_map.corpus_common()`, and measures the result.
 
-The honest accuracy check is not "did it decide" but "did it decide *right*", so
-`evaluate.py` scores every verdict against callofdutyrepo's own Easter-egg and Buyable-ending tag
-lists — an independent, human-made label for the same maps:
+**Now, on the same 14 maps: {{finish_found}} of {{n_scanned}} have a finish identified,
+and {{decided}} of {{n_scanned}} need no human judgement to award a badge.** Verdicts:
+{{verdicts}}.
 
-| | scanner as shipped | with both additions |
+The accuracy check that matters is not "did it decide" but "did it decide *right*", so
+`evaluate.py` scores every verdict against callofdutyrepo's own Easter-egg and
+Buyable-ending tag lists — an independent, human-made label for the same maps:
+
+| | 01:50, as it stood | now |
 |---|---|---|
 | Agreed with the community tag | 1 / 12 | **{{agree}} / {{tagged}}** |
 | Silently defaulted to Round 20 | 7 | {{missed}} |
 
+### The same string means everything or nothing, depending on where it was found
+
+The `end_game` name is worth its own section, because checking it by hand produced the
+sharpest result of the night:
+
+| | `trigger_use` named `end_game` | `notify("end_game")` in a script |
+|---|---|---|
+| MW2 Rust, BO2 Hijacked, Zombie Desert, Octagonal Ascension | **yes** | yes |
+| the other ten, incl. Minecraft Village, Leviathan, ORBiT, Clinic of Evil | no | **yes** |
+
+`notify("end_game")` is in **14 of 14** maps — it is a line in the shared community
+`_zombiemode.gsc` that nearly every custom map ships, and it means nothing. The **entity**
+is in 4 of 14, has **no `zombie_cost` key at all**, and is the real buyable ending every
+time; `nazi_zombie_ali` makes five. So a name's **source has to travel with it**: a
+targetname on a `trigger_use` is evidence, the identical string inside a script is
+furniture. Flags, notifies and entity names are still unioned before the hint test, which
+throws that distinction away — it briefly made Minecraft Village a `buyable_ending` on
+nothing but that notify. It is the last structural thing wrong with the heuristic.
+
+*Measured against `referee/scan_map.py` sha256 `{{tool_sha}}` ({{tool_mtime}}); that file
+was being improved while this ran, so every run records which version it scored.*
+
 ### Where a human is still needed
 
-- **Every Easter Egg.** The scanner finds the flags and entities; *which combination means done* is
-  a judgement the manifest schema says must never be automated. Those manifests carry
-  `{"manual": true}` and the candidate names, so the human reads six entity names instead of
-  120 scripts.
-- **The three silent misses** — Clinic of Evil, ORBiT and Minecraft Village Remastered all have a
-  finish the community documents and nothing in their scripts or entities names it.
-- **Every buyable ending before it awards a badge.** `{"trigger_used": {"targetname": "end_game"}}`
-  is decidable from the event stream, but "this trigger is the ending" is still an inference until a
-  game is played.
+- **Every Easter Egg.** The scanner finds the state; *which combination means done* is a
+  judgement the manifest schema says must never be automated. Those manifests carry
+  `{"manual": true}` plus the candidate names, so the human reads six entity names rather
+  than 120 scripts.
+- **The two silent misses.** ORBiT and Clinic of Evil both have a finish the community
+  documents and nothing in their scripts or entities names it. For exactly this case every
+  manifest now carries `scanner.map_specific_triggers` — the triggers no other map in the
+  corpus has. ORBiT's are `keycards`, `orbitron_lock`, `orbitron_switch`, `planet1trig`,
+  `nekrogun`, `welderreward`: twenty seconds of reading instead of 199 scripts.
+- **Every buyable ending, before it awards a badge.**
+  `{"trigger_used": {"targetname": "end_game"}}` is decidable from the event stream, but
+  "this trigger is the ending" stays an inference until a game is played.
 
-`referee/scan_map.py` was **not modified** — it is the referee agent's tool. The suggested change
-there is small and stated plainly: take an optional baseline set, and run the hint words over
-`read_mapents()` targetnames as well as over script flags.
+**One caution for `referee`:** `teleport` is in the new `END_TOKENS`, and Der Berg is now
+called a buyable ending on `teleport_left_lf` / `teleport_left_single_zone`. Teleporters
+are ordinary furniture in these maps. It is untagged so this run cannot score it, but that
+token looks like the next false positive.
 
 ## 5. What the pipeline still cannot do
 
@@ -260,6 +306,20 @@ that prompted it.
 10. **The link checker and the fetcher both wanted MediaFire.** Same problem, spotted
     before it happened: `check_links.py --exclude-host mediafire.com` exists so the
     checker can work on everything else while the fetcher has the host to itself.
+11. **Not every link on a map's row is a download of that map.** ZWR lists the UGX Map
+    Manager installer against 29 maps the Manager can install, and UGX release threads
+    link UGX Mod Standalone as a prerequisite. Counted naively, one installer became 29
+    "live download links" and 29 "recoverable maps". They are now `kind='prerequisite'`
+    and excluded from every figure in section 2.
+12. **A one-map re-run wiped the fourteen-map report.** `extract.py --norm <one>` wrote
+    its results over the whole of `extract.json` instead of merging, so a smoke test with
+    a name that matched nothing emptied the results table in this document. It merges by
+    map now, like `fetch.py` already did. Worth checking wherever a tool writes a report
+    it did not fully regenerate.
+13. **A verdict is only as good as the tool version it was measured against.** The
+    referee agent rewrote `scan_map.py` twice while this document was being written, so
+    `scan_maps.py` now records that file's sha256 and mtime in every run. A ratio without
+    the version it belongs to is not a measurement.
 
 ## 7. Where things are
 

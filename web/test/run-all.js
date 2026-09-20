@@ -54,6 +54,8 @@ const assignments = require('../server/lib/assignments')
 const parties = require('../server/lib/parties')
 const bans = require('../server/lib/bans')
 const chat = require('../server/lib/chatNetwork')
+const live = require('../server/lib/live')
+const replays = require('../server/lib/replays')
 const tokens = require('../server/lib/tokens')
 const achievements = require('../server/lib/achievements')
 const { canonical } = require('../server/lib/util')
@@ -383,6 +385,115 @@ async function main() {
 
   check('a party cannot exceed World at War’s four client slots', () => {
     eq(parties.MAX_PLAYERS, 4)
+  })
+
+  // ── replays: is it evidence, and who may have it ───────────────────────────
+  check('a replay signed by the pinned key is record-grade; one signed by anything else is not', () => {
+    const g = db.prepare("SELECT id FROM games WHERE match_id='m_ingest1'").get()
+    // m_ingest1 was ingested with key_id = the pinned key.
+    const good = replays.grade(replays.rowFor('m_ingest1'))
+    eq(good.grade, 'signed'); truthy(good.ok)
+    const bad = replays.grade(replays.rowFor('m_unpinned'))
+    eq(bad.grade, 'unpinned'); eq(bad.ok, false)
+    truthy(/integrity is not authorship/.test(bad.reason), 'and it says why')
+    void g
+  })
+
+  check('a replay whose key the box never told us is graded unknown, not good', () => {
+    db.prepare(`INSERT OR REPLACE INTO replays (match_id, game_id, box, file, size, key_id, key_pinned, created_at)
+                VALUES ('m_nokey', NULL, 'test-box', 'x.enwr', 10, NULL, 0, ?)`).run(now())
+    const g = replays.grade(replays.rowFor('m_nokey'))
+    eq(g.grade, 'unknown-key')
+    eq(g.ok, false)
+  })
+
+  check('a recovered replay is good enough for a badge and not for a record', () => {
+    db.prepare(`INSERT OR REPLACE INTO replays (match_id, game_id, box, file, size, key_id, key_pinned, recovered, created_at)
+                VALUES ('m_rec', NULL, 'test-box', 'x.enwr', 10, 'key0000000000002', 1, 1, ?)`).run(now())
+    const g = replays.grade(replays.rowFor('m_rec'))
+    eq(g.grade, 'recovered')
+    eq(g.ok, false)
+    truthy(/badge/.test(g.reason))
+  })
+
+  check('Q-host-1: your own game always, a stranger needs VIP or a public game', () => {
+    const row = replays.rowFor('m_ingest1')
+    const mine = users.byId('76561198000000001')   // played m_ingest1
+    const other = users.byId('76561198000000004')  // did not
+    eq(replays.mayDownload(row, null).ok, false, 'signed out')
+    truthy(replays.mayDownload(row, mine).ok, 'their own game')
+    eq(replays.mayDownload(row, other).ok, false, 'a stranger, no VIP, not a public game')
+    db.prepare('UPDATE users SET vip_is=1 WHERE steam_id=?').run('76561198000000004')
+    truthy(replays.mayDownload(row, users.byId('76561198000000004')).ok, 'a stranger with VIP')
+    db.prepare('UPDATE users SET vip_is=0 WHERE steam_id=?').run('76561198000000004')
+  })
+
+  check('the verify command names the pinned key, never a bare verify', () => {
+    const d = replays.describe('m_ingest1', users.byId('76561198000000001'))
+    truthy(/--pub /.test(d.verify_command) || /no key pinned/.test(d.verify_command),
+      `expected a --pub or an explicit "no key pinned", got: ${d.verify_command}`)
+  })
+
+  check('a file path from a box cannot escape the replay directory', () => {
+    // The stored path comes from a game box, and a box is not trusted to name a path.
+    for (const evil of ['../../../../Windows/System32/config/SAM', 'C:\\Windows\\win.ini', '..\\..\\secrets.enwr']) {
+      eq(replays.localPath({ file: evil }), null, evil)
+    }
+    eq(replays.localPath({ file: 'notareplay.txt' }), null, 'and it must be a .enwr')
+  })
+
+  // ── the live view ──────────────────────────────────────────────────────────
+  check('a live frame is stored and downsampled, and the box is never told off for it', () => {
+    const f = (round) => ({
+      instance: 'inst-01',
+      match_id: 'm_live',
+      state: {
+        phase: 'live', mode: 'verified', map: 'nazi_zombie_test', round, maxRound: round,
+        players: [{ slot: 0, steamid: '76561198000000003', name: 'gamma', score: 500, health: 100, alive: true, connected: true, pos: [10, 20, 30], ang: [0, 90] }],
+        zombies: [{ id: 1, pos: [40, 50, 30], health: 150 }],
+        signals: ['box_used'], flags: [],
+      },
+    })
+    truthy(live.push('test-box', f(5)), 'the first frame is taken')
+    eq(live.push('test-box', f(6)), false, 'a frame 0 ms later is dropped')
+    eq(live.get('m_live').state.round, 5, 'and the stored frame is the one that was taken')
+    truthy(live.get('m_live').state.players[0].pos, 'positions survive')
+  })
+
+  check('a frame claiming more players or zombies than the engine has is clamped', () => {
+    const many = { instance: 'i', match_id: 'm_big', state: { players: Array.from({ length: 40 }, (_, i) => ({ slot: i, name: 'p' + i, pos: [i, i, 0] })), zombies: Array.from({ length: 500 }, (_, i) => ({ id: i, pos: [i, i, 0] })), signals: [], flags: [] } }
+    live.push('test-box', many)
+    const s = live.get('m_big').state
+    eq(s.players.length, 4, 'World at War has four client slots')
+    truthy(s.zombies.length <= 64, 'zombies are bounded')
+  })
+
+  check('a game with no frames for a while stops being live', () => {
+    live.push('test-box', { instance: 'i', match_id: 'm_stale', state: { players: [], zombies: [], signals: [], flags: [] } })
+    truthy(live.get('m_stale'), 'live now')
+    // Reach into the stored frame's timestamp rather than sleeping for the TTL.
+    live.get('m_stale').at = Date.now() - live.TTL_MS - 1
+    eq(live.get('m_stale'), null, 'and not live later')
+  })
+
+  check("a stranger cannot watch a private lobby, and it is not in their list either", () => {
+    // Give the live game a private party.
+    const b = boxes.byName('test-box')
+    const r = assignments.lease({ box: b, mapKey: 'nazi_zombie_test', players: [{ steamid: '76561198000000003', name: 'gamma' }], matchId: 'm_priv' })
+    truthy(r.ok, r.error)
+    const p = parties.create('76561198000000003', { visibility: 'private' })
+    db.prepare('UPDATE assignments SET party_id=? WHERE match_id=?').run(p.id, 'm_priv')
+    live.push('test-box', { instance: 'i', match_id: 'm_priv', state: { map: 'nazi_zombie_test', players: [], zombies: [], signals: [], flags: [] } })
+
+    eq(live.canWatch('m_priv', null).ok, false, 'a signed-out stranger')
+    eq(live.canWatch('m_priv', '76561198000000004').ok, false, 'a signed-in stranger')
+    truthy(live.canWatch('m_priv', '76561198000000003').ok, 'a member')
+    eq(live.list(null).some((g) => g.match_id === 'm_priv'), false, 'and it is absent from the list, not blanked in it')
+    parties.leave('76561198000000003')
+  })
+
+  check('a game with no party behind it is public — there is nobody whose privacy it could be', () => {
+    truthy(live.canWatch('m_live', null).ok)
   })
 
   // ── chat ───────────────────────────────────────────────────────────────────

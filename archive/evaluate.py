@@ -54,20 +54,24 @@ def main():
             outcome = "missed-but-flagged"
         else:
             outcome = "missed-silently"
-        rows.append({"map": r["map"], "title": title, "verdict_raw": r["verdict_raw"],
+        rows.append({"map": r["map"], "title": title,
+                     "verdict_stock_only": r.get("verdict_stock_only"),
                      "verdict": v, "tags": tags, "outcome": outcome,
-                     "ending_words_own": r["ending_words_own"],
-                     "ee_candidates_own": r["ee_candidates_own"]})
+                     "ending_words": r.get("ending_words", []),
+                     "ee_candidates": r.get("ee_candidates", []),
+                     "map_specific_triggers": r.get("map_specific_triggers", [])})
     counts = {}
     for r in rows:
         counts[r["outcome"]] = counts.get(r["outcome"], 0) + 1
-    print("%-24s %-16s %-14s %-20s %s" % ("map", "verdict", "outcome", "tags", "own ending words"))
+    print("%-22s %-16s %-19s %-26s %s"
+          % ("map", "verdict", "outcome", "community tag", "evidence"))
     for r in rows:
-        print("%-24s %-16s %-14s %-20s %s"
+        ev = (r["ee_candidates"] or r["ending_words"])[:3]
+        print("%-22s %-16s %-19s %-26s %s"
               % (r["map"], r["verdict"], r["outcome"],
                  ",".join(t for t in r["tags"] if t in
                           ("easter_egg", "buyable_ending", "bossfight_ending")) or "-",
-                 ", ".join(r["ending_words_own"][:3]) or "-"))
+                 ", ".join(ev) or "-"))
     print("\n", counts)
     tagged = [r for r in rows if r["outcome"] != "untagged"]
     if tagged:

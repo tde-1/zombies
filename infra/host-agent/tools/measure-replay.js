@@ -68,8 +68,12 @@ function runOne({ players, hours, level, tier }) {
 
   const stats = w.close({ measure: { players, tier, level, hours } })
   const v = verifyFile(file)
+  // Rate off the ACTUAL sim time, not the requested hours: a team wipe ends the game
+  // early (as it does in WaW), and dividing by the hour we asked for would under-report
+  // every run that did not survive it.
+  const actualHours = Math.max(1 / 3600, (sim.ms || 1) / 3_600_000)
   return {
-    players, tier, level, hours,
+    players, tier, level, hours, actual_hours: Number(actualHours.toFixed(3)), wiped: sim.over,
     round_reached: sim.round,
     size: stats.size,
     raw: stats.rawBytes,
@@ -77,7 +81,7 @@ function runOne({ players, hours, level, tier }) {
     events: stats.events,
     chunks: stats.chunks,
     ratio: stats.rawBytes / stats.size,
-    mb_per_hour: stats.size / 1048576 / hours,
+    mb_per_hour: stats.size / 1048576 / actualHours,
     verified: v.ok,
     zombies_avg: zombieSamples ? zombieSum / zombieSamples : 0,
     zombies_max: zombieMax,
@@ -97,7 +101,7 @@ for (const players of PLAYER_COUNTS) {
       const r = runOne({ players, hours: HOURS, level, tier })
       r.wall_ms = Date.now() - t0
       results.push(r)
-      console.log(`  ${String(players) + 'p'} ${tier.padEnd(12)} zstd-${String(level).padEnd(2)}  ${fmtBytes(r.size).padStart(10)}  ${r.mb_per_hour.toFixed(2).padStart(6)} MB/h  ${r.ratio.toFixed(1).padStart(5)}x  round ${r.round_reached}  ${r.verified ? 'verified' : 'VERIFY FAILED'}  (${(r.wall_ms / 1000).toFixed(1)}s)`)
+      console.log(`  ${String(players) + 'p'} ${tier.padEnd(12)} zstd-${String(level).padEnd(2)}  ${fmtBytes(r.size).padStart(10)}  ${r.mb_per_hour.toFixed(2).padStart(6)} MB/h  ${r.ratio.toFixed(1).padStart(5)}x  round ${String(r.round_reached).padStart(2)}  ${r.actual_hours.toFixed(2)}h${r.wiped ? ' (wiped)' : ''}  ${r.verified ? 'verified' : 'VERIFY FAILED'}  (${(r.wall_ms / 1000).toFixed(1)}s)`)
     }
   }
 }

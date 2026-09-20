@@ -7,20 +7,20 @@
 ## The headline
 
 **2276 distinct maps catalogued (1811 from the community sites),
-2492 download links, and a measurement of WaW custom-zombies link rot — which
+2806 download links, and a measurement of WaW custom-zombies link rot — which
 `R3 - Map archive, legal and community` records as never having been measured.**
 
-- **Link rot on the community sites: 25.6%** of the links we could check are dead.
-  (Across all sources, including archive.org's pre-verified mirror, 12.3%.)
-- **767 maps have at least one live link** — those are recoverable today.
-  **55 maps have links and every one of them is dead.**
-- **137.3 GB** of originals measured across 766 maps (largest live mirror each), mean
-  **183.5 MB** a map. That projects to **137.5 GB** for everything recoverable and
-  **324.6 GB** for the whole community catalogue. The archive keeps the original *and* a
+- **Link rot on the community sites: 23.3%** of the links we could check are dead.
+  (Across all sources, including archive.org's pre-verified mirror, 13.5%.)
+- **924 maps have at least one live link** — those are recoverable today.
+  **70 maps have links and every one of them is dead.**
+- **178.3 GB** of originals measured across 923 maps (largest live mirror each), mean
+  **197.9 MB** a map. That projects to **178.5 GB** for everything recoverable and
+  **349.9 GB** for the whole community catalogue. The archive keeps the original *and* a
   normalised install (vault 04 rule 3), so roughly double those for the real storage bill. That
   lands inside the vault's 0.2–0.6 TB estimate, near its lower half.
 - Two caveats on these counts, both of them "not yet" rather than "unknowable":
-  1050 links were still being checked when this was generated, and 842 catalogued
+  993 links were still being checked when this was generated, and 815 catalogued
   maps have **no link recorded yet** — overwhelmingly callofdutyrepo posts whose per-map page has
   not been fetched (the download buttons are only on the post). Both are bounded, resumable work:
   `crawlers/codrepo.py --pass c --posts N`, then `check_links.py`, then `make_doc.py`.
@@ -40,7 +40,13 @@ crawlers/ugx.py          board 29 index -> release threads: name, AUTHOR, real r
 crawlers/moddb.py        addons page 1 (the rest is robots-disallowed) + per-addon size/MD5
 crawlers/archiveorg.py   search + /metadata/<id> -> exact sizes and hashes, no bytes moved
 
+probe.py                 one-off recon: robots.txt + one index page per source, run
+                         BEFORE writing a crawler so it is written against what the
+                         site actually serves
+fetch_ugx_threads.py     UGX release-post bodies for the shortlist only
+
 check_links.py           per-host probes -> alive / dead / blocked / unknown + size
+fixups.py                offline verdict corrections, each with its evidence (no traffic)
 report.py [--md|--maps]  the link report
 export.py                catalogue.json for the site
 
@@ -50,7 +56,9 @@ extract.py                   7-Zip / innoextract -> mods/<bsp>/ + per-file hashe
 stock_baseline.py            the flag/notify/entity names that are Treyarch's, not the map's
 scan_maps.py                 referee/scan_map.py + baselines -> archive/manifests/<map>.json
 evaluate.py                  score those verdicts against the community's own finish tags
+install_map.py               junction a normalised map into an fs_homepath, ready to boot
 make_doc.py                  regenerate this document
+finish_run.sh                drain the remaining link checks, then regenerate everything
 ```
 
 Politeness is in `lib/net.py` and is not optional: **one request at a time per host**, a 6 s delay
@@ -70,42 +78,42 @@ installer was executed.
 | Catalogue rows crawled | 3455 |
 | Distinct maps (all sources) | **2276** |
 | Distinct maps (community sites only) | **1811** |
-| Download links catalogued (distinct URLs) | **2492** |
-| Links alive | **964** |
-| Links dead | **135** |
-| Links blocked (host will not answer a robot) | 341 |
-| Links unknown | 4 |
-| Links unchecked | 1050 |
-| **Link rot**, all sources (dead / [dead+alive]) | **12.3%** |
-| **Link rot on the community sites** (excl. archive.org) | **25.6%** |
-| Maps whose only host is MEGA or Drive (catalogued, not fetchable by us) | 112 |
-| Maps with at least one live link (**recoverable**) | **767** |
-| Maps whose every link is dead (**lost so far**) | **55** |
-| Maps we could not decide | 612 |
-| Maps with no download link at all | 842 |
-| Maps with a measured size | 766 |
-| **Measured bytes** (largest live mirror per map) | **137.3 GB** |
+| Download links catalogued (distinct URLs) | **2806** |
+| Links alive | **1182** |
+| Links dead | **185** |
+| Links blocked (host will not answer a robot) | 449 |
+| Links unknown | 3 |
+| Links unchecked | 993 |
+| **Link rot**, all sources (dead / [dead+alive]) | **13.5%** |
+| **Link rot on the community sites** (excl. archive.org) | **23.3%** |
+| Maps whose only host is MEGA or Drive (catalogued, not fetchable by us) | 107 |
+| Maps with at least one live link (**recoverable**) | **924** |
+| Maps whose every link is dead (**lost so far**) | **70** |
+| Maps we could not decide | 467 |
+| Maps with no download link at all | 815 |
+| Maps with a measured size | 923 |
+| **Measured bytes** (largest live mirror per map) | **178.3 GB** |
 | of which Drive-rounded | 0.0 B |
-| Mean map size | 183.5 MB |
-| Projected: every recoverable map | **137.5 GB** |
-| Projected: the whole community catalogue | **324.6 GB** |
+| Mean map size | 197.9 MB |
+| Projected: every recoverable map | **178.5 GB** |
+| Projected: the whole community catalogue | **349.9 GB** |
 
 | Host | Links | Alive | Dead | Blocked | Unknown | Unchecked |
 |---|---:|---:|---:|---:|---:|---:|
-| mediafire.com | 997 | 248 | 3 | 1 | 0 | 747 |
+| mediafire.com | 1114 | 391 | 6 | 1 | 0 | 722 |
+| mega.nz | 608 | 219 | 173 | 0 | 0 | 216 |
 | archive.org | 572 | 572 | 0 | 0 | 0 | 0 |
-| mega.nz | 533 | 144 | 126 | 0 | 0 | 263 |
-| onedrive.live.com | 280 | 0 | 0 | 249 | 0 | 31 |
-| drive.google.com | 82 | 0 | 0 | 74 | 0 | 8 |
+| onedrive.live.com | 394 | 0 | 0 | 357 | 0 | 37 |
+| drive.google.com | 92 | 0 | 0 | 74 | 0 | 18 |
 | downloads.gamefront.com | 10 | 0 | 0 | 10 | 0 | 0 |
 | papy.cod-france.com | 5 | 0 | 5 | 0 | 0 | 0 |
 | docs.google.com | 2 | 0 | 0 | 2 | 0 | 0 |
 | 1drv.ms | 2 | 0 | 0 | 2 | 0 | 0 |
-| ugx-mods.com | 1 | 0 | 0 | 0 | 0 | 1 |
-| moddb.com | 1 | 0 | 0 | 0 | 1 | 0 |
 | dropbox.com | 1 | 0 | 0 | 1 | 0 | 0 |
 | download855.mediafire.com | 1 | 0 | 1 | 0 | 0 | 0 |
 | download1971.mediafire.com | 1 | 0 | 0 | 0 | 1 | 0 |
+| download1655.mediafire.com | 1 | 0 | 0 | 1 | 0 | 0 |
+| download1608.mediafire.com | 1 | 0 | 0 | 0 | 1 | 0 |
 
 ### What each source gave us
 
@@ -120,24 +128,24 @@ Rows crawled per source: codrepo 1399 · zwr 936 · ugx 605 · archive.org 496 �
 | **archive.org** | Exact byte sizes and hashes from `/metadata/<id>` — **the size question answered with zero bytes transferred** | ~60 requests | Its items are file dumps, so its "maps" are filenames, not releases |
 | **ZombieModding** | — | 1 request (`robots.txt`) | **`Disallow: /` for everyone but Googlebot.** Not crawled at all. See Q-arc-1 |
 
-Community finish tags recovered: buyable_ending 244 · challenge 105 · top100 100 · easter_egg 97 · top_100 94 · ugx_mod 34 · ugx_modded 29 · t4m_req 22 · moddb 19 · christmas_map 18 · prefab 15 · bossfight_ending 8 · leaderboard 8 · multiplayer_map 2 · bo3_buyable_ending 1 · singleplayer_map 1 · weapon_skin 1.
+Community finish tags recovered: buyable_ending 245 · challenge 105 · top100 100 · top_100 100 · easter_egg 97 · ugx_mod 34 · ugx_modded 34 · t4m_req 32 · christmas_map 21 · moddb 19 · prefab 15 · leaderboard 9 · bossfight_ending 8 · multiplayer_map 2 · bo3_buyable_ending 1 · singleplayer_map 1 · weapon_skin 1.
 
 ### The three link verdicts that are not "alive" or "dead"
 
 Counting a link we cannot see as dead would inflate the rot figure with fiction, so:
 
-- **Google Drive** (84 links).
+- **Google Drive** (94 links).
   `drive.usercontent.google.com/robots.txt` is `Disallow: /`, and `drive.google.com` allows `/file`
   but that endpoint returns **401 to anything without a signed-in browser**. Unverifiable politely
   and account-free. Recorded `blocked`.
 - **OneDrive.** Every one of callofdutyrepo's OneDrive mirrors answers 404 to a HEAD and redirects a
   GET to `login.live.com`: Microsoft retired the `?cid=…&resid=…&authkey=…` URL shape. The files may
-  well still exist. Recorded `blocked` — the first version of the checker called all 282
+  well still exist. Recorded `blocked` — the first version of the checker called all 396
   of them dead, which would have put a couple of hundred imaginary corpses in the headline number.
 - **GameFront.** Serves a bot "Security Check" page (HTTP 403). No CAPTCHA was attempted. The ten
   links also carry `expires=1586…` signatures from April 2020, so they are dead in practice too.
 
-**112 maps have nothing but MEGA and Google Drive links** — catalogued, plausibly
+**107 maps have nothing but MEGA and Google Drive links** — catalogued, plausibly
 alive, and beyond this pipeline's reach until one of those two is solved.
 
 ## 3. The MVP maps
@@ -152,10 +160,10 @@ alive, and beyond this pipeline's reach until one of those two is solved.
 | BO2 Hijacked Zombies | `BO2_Hijacked_Zombies_v1.1.exe` | 189.2 MB | nsis | `nazi_zombie_hijacked` | `nazi_zombie_hijacked` | buyable_ending | buyable_ending | agree |
 | City of Hell | `City_of_Hell_zm.rar` | 259.5 MB | rar | `nazi_zombie_dt2` | `nazi_zombie_dt2` | easter_egg | easter_egg,buyable_ending | agree |
 | Clinic of Evil | `_clinic_of_evil_by_IZaRTaX_05_11_2018.rar` | 443.4 MB | rar | `sanatorium` | `sanatorium` | round | easter_egg,buyable_ending | missed-silently |
-| Der Berg | `Derberg.exe` | 515.8 MB | nsis | `nazi_zombie_derberg` | `nazi_zombie_derberg` | manual | - | untagged |
+| Der Berg | `Derberg.exe` | 515.8 MB | nsis | `nazi_zombie_derberg` | `nazi_zombie_derberg` | buyable_ending | - | untagged |
 | Zombie Desert | `Zombie_Desert.exe` | 292.5 MB | nsis | `nazi_zombie_test1` | `nazi_zombie_test1` | buyable_ending | buyable_ending | agree |
 | Leviathan | `nazi_zombie_leviathan_v1.2.exe` | 432.1 MB | nsis | `nazi_zombie_leviathan` | `nazi_zombie_leviathan` | easter_egg | easter_egg,buyable_ending | agree |
-| Minecraft Village Remastered | `minecraft_village.exe` | 592.9 MB | nsis | `nazi_zombie_fear_mc_2` | `nazi_zombie_fear_mc_2` | round | easter_egg,buyable_ending,bossfight_ending | missed-silently |
+| Minecraft Village Remastered | `minecraft_village.exe` | 592.9 MB | nsis | `nazi_zombie_fear_mc_2` | `nazi_zombie_fear_mc_2` | easter_egg | easter_egg,buyable_ending,bossfight_ending | agree |
 | MW2 Rust Zombies | `MW2RustZombies_1.0.exe` | 294.3 MB | nsis | `mw2rust` | `mw2rust` | buyable_ending | buyable_ending | agree |
 | OCTAGONAL ASCENSION | `nazi_zombie_octogonal_1.3.0.exe` | 395.7 MB | nsis | `nazi_zombie_octogonal` | `nazi_zombie_octogonal` | buyable_ending | - | untagged |
 | Orbit | `ORBiT_v1.2.exe` | 455.8 MB | nsis | `nazi_zombie_orbit` | `nazi_zombie_orbit` | round | easter_egg,buyable_ending | missed-silently |
@@ -167,7 +175,12 @@ Per map we keep, beside each other and never mixed up:
 - `originals/<map>/<file>` — the exact released file, byte for byte, plus `<file>.meta.json` with
   its **sha256, size, the page it came from, the URL, the fetch time, our user agent and the AV
   result**. Rule 1 of the archive.
-- `extract/<map>/` — 7-Zip's output exactly as it landed, including the installer's own junk.
+- `extract/<map>/` — 7-Zip's output exactly as it landed, including the installer's own junk
+  and anything that sits *outside* the mod folder. Readmes live here (vault 04 rule 4 keeps
+  them as shipped): only one of the fourteen ships one, Clinic of Evil's `readme.txt`. Thirteen
+  NSIS installers carry their text in the installer UI instead, which the extractor does not
+  recover — a gap worth closing, since rule 14 makes the release post and readme the map's
+  description on its page.
 - `mods/<bsp>/` — the normalised install, every file hashed.
 - `archive/manifests/<bsp>.json` — a proposed referee manifest in the `referee/manifests/_schema.md`
   shape, carrying the scanner's evidence and its provenance.
@@ -200,71 +213,104 @@ map's title** — Alcatraz is `water`, Zombie Desert is `nazi_zombie_test1`, Cli
 ## 4. The scanner on real custom maps
 
 This is the number the plan rests on, and the referee agent could only test it on n=1.
+It changed twice tonight, so here is the whole sequence.
 
-**`referee/scan_map.py` as shipped: 0 of 14 decided without a human.**
+**01:50 — `referee/scan_map.py` as it stood: 0 of 14 decided, and 1 of 12 agreeing with
+the community's own finish tags.**
 
-Not a bug in the tool — a gap in what it had ever seen. On a stock install the common zombie scripts
-live in `common.ff` and `patch.ff`, which the scanner is never handed; it only gets
-`nazi_zombie_factory.ff`. A **custom** map ships its own copy of the whole common script set inside
-`mod.ff`, so Treyarch's own names — `arcademode_ending_complete`, `dog_round_ending`,
-`ee_bowie_bear` — suddenly appear *inside the map* and the hint lists fire on them. Twelve of
-fourteen maps returned `manual` for the same three words, and the two `easter_egg` verdicts were
-Der Riese's teddy bears.
+Not a bug in the tool — a gap in what it had ever seen. On a stock install the common
+zombie scripts live in `common.ff` and `patch.ff`, which the scanner is never handed; it
+only gets `nazi_zombie_factory.ff`. A **custom** map ships its own copy of that whole
+script set inside `mod.ff`, so Treyarch's own names — `arcademode_ending_complete`,
+`dog_round_ending`, `ee_bowie_bear` — suddenly appear *inside the map* and the hint lists
+fire on them. Twelve of fourteen maps returned `manual` for the same three words, and both
+`easter_egg` verdicts were Der Riese's teddy bears.
 
-Two additions, both written in `archive/` so nothing of the referee's is touched:
+**02:20 — two fixes went on the board**, with the evidence:
 
-1. **A stock + corpus baseline** (`stock_baseline.py`). Read every flag, notify and entity name out
-   of WaW's own zone files (827 names), and additionally treat any name shared by ≥60% of the maps
-   in the corpus as community boilerplate — that catches `crawler_round_ending`, which is not stock
-   but rides in on the community script set that half the scene builds on. A name counts as the
-   map's own only if it is in neither set.
-   → **8 of 14** decided. But most of those were "Round 20" for maps
-   that demonstrably have an ending, which is a confident wrong answer.
-2. **Look at the entity list, not just the scripts.** This is the real finding.
+1. **Subtract a baseline of names that are not the map's.** `archive/stock_baseline.py`
+   reads every flag, notify and entity name out of WaW's own zone files
+   (2408 names) into `archive/stock-baseline.json`. On top of that, any name
+   shared by ≥60% of the corpus is community boilerplate rather than evidence — that
+   catches `crawler_round_ending`, which is not Treyarch's but rides in on the community
+   script set half the scene builds on. (42 names met that bar here.)
+2. **Read the Radiant entity list, not just the scripts.** This was the real finding.
    **Leviathan has no easter-egg flag in any of its 120 scripts** — its quest is
-   `ee_step_1_switch`, `ee_step_3_trig`, `ee_testtube_activate_trig`, sitting in plain sight in the
-   Radiant entity list. **MW2 Rust has four trigger targetnames and one of them is `end_game`** —
-   that is its buyable ending, the `nazi_zombie_ali` shape, and the `zombie_cost` outlier test
-   cannot see it because the cost is hardcoded in script. Entity names need **token** matching, not
-   substring: `vending_mulekick` contains "ending" and `floor_three_zone` contains "ee_".
+   `ee_step_1_switch`, `ee_step_3_trig`, `ee_testtube_activate_trig`, in plain sight in
+   MapEnts. **MW2 Rust has four trigger targetnames and one of them is `end_game`** — the
+   `nazi_zombie_ali` shape, invisible to the `zombie_cost` outlier test because the price
+   is hardcoded in script. That test fired on **0 of 14** maps. And entity names need
+   **token** matching, not substring: `vending_mulekick` contains "ending",
+   `floor_three_zone` contains "ee_".
 
-**With both, the verdicts are easter_egg 6, buyable_ending 4, round 3, manual 1** — so **10 of 14
-maps now have a finish identified** at all, and **7 of 14 need no
-human judgement to award a badge** (the buyable endings, plus the Round-20 defaults where there
-really is nothing else).
+**02:25 — the referee agent rewrote `scan_map.py` to do both**, reading the baseline this
+agent generates and taking an `ignore` set for corpus boilerplate, plus a
+`cost = <4-6 digits>` script scan for the hardcoded prices. `archive/scan_maps.py` no
+longer duplicates any of that: it builds the two inputs, calls their
+`scan_map.corpus_common()`, and measures the result.
 
-The honest accuracy check is not "did it decide" but "did it decide *right*", so
-`evaluate.py` scores every verdict against callofdutyrepo's own Easter-egg and Buyable-ending tag
-lists — an independent, human-made label for the same maps:
+**Now, on the same 14 maps: 12 of 14 have a finish identified,
+and 7 of 14 need no human judgement to award a badge.** Verdicts:
+easter_egg 7, buyable_ending 5, round 2.
 
-| | scanner as shipped | with both additions |
+The accuracy check that matters is not "did it decide" but "did it decide *right*", so
+`evaluate.py` scores every verdict against callofdutyrepo's own Easter-egg and
+Buyable-ending tag lists — an independent, human-made label for the same maps:
+
+| | 01:50, as it stood | now |
 |---|---|---|
-| Agreed with the community tag | 1 / 12 | **9 / 12** |
-| Silently defaulted to Round 20 | 7 | 3 |
+| Agreed with the community tag | 1 / 12 | **10 / 12** |
+| Silently defaulted to Round 20 | 7 | 2 |
+
+### The same string means everything or nothing, depending on where it was found
+
+The `end_game` name is worth its own section, because checking it by hand produced the
+sharpest result of the night:
+
+| | `trigger_use` named `end_game` | `notify("end_game")` in a script |
+|---|---|---|
+| MW2 Rust, BO2 Hijacked, Zombie Desert, Octagonal Ascension | **yes** | yes |
+| the other ten, incl. Minecraft Village, Leviathan, ORBiT, Clinic of Evil | no | **yes** |
+
+`notify("end_game")` is in **14 of 14** maps — it is a line in the shared community
+`_zombiemode.gsc` that nearly every custom map ships, and it means nothing. The **entity**
+is in 4 of 14, has **no `zombie_cost` key at all**, and is the real buyable ending every
+time; `nazi_zombie_ali` makes five. So a name's **source has to travel with it**: a
+targetname on a `trigger_use` is evidence, the identical string inside a script is
+furniture. Flags, notifies and entity names are still unioned before the hint test, which
+throws that distinction away — it briefly made Minecraft Village a `buyable_ending` on
+nothing but that notify. It is the last structural thing wrong with the heuristic.
+
+*Measured against `referee/scan_map.py` sha256 `c7fa04e14b91` (2026-09-20T02:31:00); that file
+was being improved while this ran, so every run records which version it scored.*
 
 ### Where a human is still needed
 
-- **Every Easter Egg.** The scanner finds the flags and entities; *which combination means done* is
-  a judgement the manifest schema says must never be automated. Those manifests carry
-  `{"manual": true}` and the candidate names, so the human reads six entity names instead of
-  120 scripts.
-- **The three silent misses** — Clinic of Evil, ORBiT and Minecraft Village Remastered all have a
-  finish the community documents and nothing in their scripts or entities names it.
-- **Every buyable ending before it awards a badge.** `{"trigger_used": {"targetname": "end_game"}}`
-  is decidable from the event stream, but "this trigger is the ending" is still an inference until a
-  game is played.
+- **Every Easter Egg.** The scanner finds the state; *which combination means done* is a
+  judgement the manifest schema says must never be automated. Those manifests carry
+  `{"manual": true}` plus the candidate names, so the human reads six entity names rather
+  than 120 scripts.
+- **The two silent misses.** ORBiT and Clinic of Evil both have a finish the community
+  documents and nothing in their scripts or entities names it. For exactly this case every
+  manifest now carries `scanner.map_specific_triggers` — the triggers no other map in the
+  corpus has. ORBiT's are `keycards`, `orbitron_lock`, `orbitron_switch`, `planet1trig`,
+  `nekrogun`, `welderreward`: twenty seconds of reading instead of 199 scripts.
+- **Every buyable ending, before it awards a badge.**
+  `{"trigger_used": {"targetname": "end_game"}}` is decidable from the event stream, but
+  "this trigger is the ending" stays an inference until a game is played.
 
-`referee/scan_map.py` was **not modified** — it is the referee agent's tool. The suggested change
-there is small and stated plainly: take an optional baseline set, and run the hint words over
-`read_mapents()` targetnames as well as over script flags.
+**One caution for `referee`:** `teleport` is in the new `END_TOKENS`, and Der Berg is now
+called a buyable ending on `teleport_left_lf` / `teleport_left_single_zone`. Teleporters
+are ordinary furniture in these maps. It is untagged so this run cannot score it, but that
+token looks like the next false positive.
 
 ## 5. What the pipeline still cannot do
 
 | Gap | Size of it | Fix |
 |---|---|---|
-| **MEGA downloads** | 533 links, 98 maps have nothing else | Client-side AES-CTR decrypt with the key from the URL fragment. The *health and size* probe already works (MEGA's public API answers without an account), so only the download is missing. Half a day. |
-| **Google Drive, at all** | 84 links | Needs a signed-in browser. B's call, because it means an account. |
-| **OneDrive legacy links** | 282 links | Microsoft retired the URL shape. Possibly recoverable via the modern share-link API; more likely these want re-hosting from another mirror. |
+| **MEGA downloads** | 608 links, 94 maps have nothing else | Client-side AES-CTR decrypt with the key from the URL fragment. The *health and size* probe already works (MEGA's public API answers without an account), so only the download is missing. Half a day. |
+| **Google Drive, at all** | 94 links | Needs a signed-in browser. B's call, because it means an account. |
+| **OneDrive legacy links** | 396 links | Microsoft retired the URL shape. Possibly recoverable via the modern share-link API; more likely these want re-hosting from another mirror. |
 | **ZombieModding** | the most-downloaded maps in the scene | `robots.txt` forbids it. Needs permission or an export — outreach, which needs B. |
 | **ModDB beyond page 1** | ~30 of maybe 900 addons catalogued | `robots.txt` disallows `/*?`. Needs their API or permission. |
 | **Boot-testing a map** | 0 of 14 | The pipeline stops at "extracted and scanned". `health` in every manifest is therefore unset: nothing here has been proved to *run*, let alone to survive a mid-game join. That is the dedi agent's lock to take. |
@@ -315,6 +361,20 @@ that prompted it.
 10. **The link checker and the fetcher both wanted MediaFire.** Same problem, spotted
     before it happened: `check_links.py --exclude-host mediafire.com` exists so the
     checker can work on everything else while the fetcher has the host to itself.
+11. **Not every link on a map's row is a download of that map.** ZWR lists the UGX Map
+    Manager installer against 29 maps the Manager can install, and UGX release threads
+    link UGX Mod Standalone as a prerequisite. Counted naively, one installer became 29
+    "live download links" and 29 "recoverable maps". They are now `kind='prerequisite'`
+    and excluded from every figure in section 2.
+12. **A one-map re-run wiped the fourteen-map report.** `extract.py --norm <one>` wrote
+    its results over the whole of `extract.json` instead of merging, so a smoke test with
+    a name that matched nothing emptied the results table in this document. It merges by
+    map now, like `fetch.py` already did. Worth checking wherever a tool writes a report
+    it did not fully regenerate.
+13. **A verdict is only as good as the tool version it was measured against.** The
+    referee agent rewrote `scan_map.py` twice while this document was being written, so
+    `scan_maps.py` now records that file's sha256 and mtime in every run. A ratio without
+    the version it belongs to is not a measurement.
 
 ## 7. Where things are
 

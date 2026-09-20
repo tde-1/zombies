@@ -31,6 +31,12 @@ contextBridge.exposeInMainWorld('enw', {
   setup: (opts) => call('setup', opts),
   uninstall: (opts) => call('uninstall', opts),
   storage: () => call('storage'),
+
+  // The map library.
+  maps: () => call('maps'),
+  installMap: (bsp) => call('installMap', bsp),
+  removeMap: (bsp) => call('removeMap', bsp),
+  onMapProgress: (fn) => on('mapProgress', fn),
   installViaSteam: () => call('installViaSteam'),
   getOnSteam: () => call('getOnSteam'),
 

@@ -209,3 +209,15 @@ code { font-family: Consolas, monospace; font-size: 12px; color: var(--bone-dim)
 #bootClose.on { display: inline-block; }
 #bootCancel.off { display: none; }
 #bootNotes { margin-top: 18px; }
+
+/* The map rail: title first, bsp small underneath. The bsp matters (it is what the
+   folder and the original download are called) but it is not the map's name. */
+.maplist button { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 6px 8px; }
+.maplist .mapname { grid-column: 1; color: inherit; }
+.maplist button.sel .mapname { color: var(--bone); }
+.maplist .tag { grid-column: 2; grid-row: 1; float: none; align-self: center; }
+.maplist .tag.needs { color: var(--warn); }
+.maplist .bsp {
+  grid-column: 1 / -1; font-family: Consolas, monospace; font-size: 10px;
+  color: var(--text-dim); opacity: .7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

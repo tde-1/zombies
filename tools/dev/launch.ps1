@@ -37,7 +37,7 @@
 
 .PARAMETER PrivateProfile
   Redirect this instance's AppData (profile, mods, the safe-mode marker) into
-  ZombiesDev\homes\<name>ppdata. new-copy.ps1 seeds it from B's profile.
+  ZombiesDev\homes\<name>\appdata. new-copy.ps1 seeds it from B's profile.
 
 .PARAMETER Companion
   Run as the SECOND instance of an experiment that already holds game.lock (a
@@ -370,6 +370,34 @@ function Dismiss-GameDialogs {
 
 # ---------------------------------------------------------------- game lock --
 $lockTaken = $false
+function Beat-GameLock {
+    param([int]$OwnerPid)
+    if (-not $script:lockTaken) { return }
+    $line = '{0} {1} {2} {3}' -f $Name, $OwnerPid, (Get-Date -Format o), $Why
+    try {
+        if (Test-Path -LiteralPath $lockFile) {
+            # Only ever re-assert OUR OWN lock. If someone else now holds it we
+            # leave it completely alone and say so once.
+            $cur = (Get-Content -LiteralPath $lockFile -Raw).Trim()
+            if ($cur -notmatch "^$([regex]::Escape($Name))\s") {
+                if (-not $script:lockStolenWarned) {
+                    Write-Host "  WARNING: game.lock now belongs to someone else ($cur); not touching it" -ForegroundColor Yellow
+                    $script:lockStolenWarned = $true
+                }
+                return
+            }
+            Set-Content -LiteralPath $lockFile -Value $line -Encoding ascii
+        }
+        else {
+            # Gone while we still hold it -- someone deleted it out from under us.
+            Set-Content -LiteralPath $lockFile -Value $line -Encoding ascii
+            Write-Host '  game.lock had vanished while we held it; restored' -ForegroundColor Yellow
+        }
+    }
+    catch { }
+}
+
+$script:lockStolenWarned = $false
 function Release-GameLock {
     if ($script:lockTaken -and (Test-Path -LiteralPath $lockFile)) {
         Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
@@ -433,10 +461,16 @@ elseif (-not $NoLock -and -not $DryRun) {
             $stale = $false
             $age = [TimeSpan]::Zero
             try { $age = (Get-Date) - (Get-Item -LiteralPath $lockFile).LastWriteTime } catch {}
-            if ($age.TotalMinutes -gt 15) { $stale = $true }
+            # A LIVE PID IS NEVER STALE, however old the lock is. dev-box rule 5's
+            # 15 minutes was written for short experiments; a referee replay run
+            # is hours, and ageing out a lock whose owner is plainly still alive
+            # is how two instances end up fighting.
+            $ownerAlive = $false
             if ($parts.Count -ge 2 -and $parts[1] -match '^\d+$') {
-                if (-not (Get-Process -Id ([int]$parts[1]) -ErrorAction SilentlyContinue)) { $stale = $true }
+                $ownerAlive = [bool](Get-Process -Id ([int]$parts[1]) -ErrorAction SilentlyContinue)
+                if (-not $ownerAlive) { $stale = $true }
             }
+            elseif ($age.TotalMinutes -gt 15) { $stale = $true }
             elseif ($parts.Count -ge 2 -and $parts[1] -eq 'starting' -and $age.TotalMinutes -gt 2) {
                 # A launcher that died between taking the lock and writing its PID.
                 $stale = $true
@@ -541,7 +575,16 @@ try {
     # Only the FILENAME is ever in argv.
     if ($AuthToken) { $a.Add('+exec'); $a.Add('enw_auth.cfg') }
 
-    $GameArgs | Where-Object { $_ -ne '' } | ForEach-Object { $a.Add($_) }
+    # Be forgiving about how GameArgs arrived. `powershell -File launch.ps1
+    # -GameArgs '+map','x'` does NOT evaluate PowerShell syntax, so the whole
+    # thing lands as one literal token "+map,x" and the engine then reports
+    # `Unknown command "map,nazi_zombie_prototype"`. Cost me a run. Split on
+    # commas and whitespace so every calling style works.
+    $GameArgs | Where-Object { $_ -ne '' } | ForEach-Object {
+        foreach ($piece in ($_ -split '[,\s]+')) {
+            if ($piece -ne '') { $a.Add($piece) }
+        }
+    }
 
     # ------------------------------------------------------------ environment --
     # game-link v0 hands the DLL its host/instance/role through the environment.
@@ -569,6 +612,23 @@ try {
     # *Steam* folder instead. steam_appid.txt in the copy (new-copy.ps1) as well.
     $env:SteamAppId = '10090'
     $env:SteamGameId = '10090'
+
+    # WHERE THE ENGINE PUTS console.log: under <fs_homepath>\<fs_game>\, NOT main\,
+    # whenever fs_game is set. The launcher agent found this the hard way -- 12,813
+    # lines in the mod folder while we reported main\console.log as 0 bytes.
+    # Also: the engine TRUNCATES it on every launch, so anything that tails it must
+    # reset to offset 0 when the file shrinks.
+    $fsGame = ''
+    for ($i = 0; $i -lt $a.Count - 1; $i++) {
+        if ($a[$i] -eq 'fs_game') { $fsGame = $a[$i + 1]; break }
+    }
+    $logRoot = if ($HomePath -eq 'own') { $homeDir } else { "$env:LOCALAPPDATA\Activision\CoDWaW" }
+    $consoleLog = if ($fsGame) {
+        Join-Path $logRoot ($fsGame.Replace('/', '\') + '\console.log')
+    } else {
+        Join-Path $logRoot 'main\console.log'
+    }
+    if ($fsGame) { Write-Host "  fs_game=$fsGame -> console log at $consoleLog" -ForegroundColor DarkGray }
 
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $outLog = Join-Path $logDir "$stamp-stdout.log"
@@ -617,7 +677,7 @@ try {
         exe = $exe; args = ($a -join ' '); started = (Get-Date -Format o)
         homepath = $(if ($HomePath -eq 'own') { $homeDir } else { "$env:LOCALAPPDATA\Activision\CoDWaW" })
         stdout = $outLog; stderr = $errLog
-        console_log = $(if ($HomePath -eq 'own') { Join-Path $homeDir 'main\console.log' } else { "$env:LOCALAPPDATA\Activision\CoDWaW\main\console.log" })
+        console_log = $consoleLog
     }
     ($record | ConvertTo-Json) | Set-Content -LiteralPath (Join-Path $logDir "$stamp-launch.json") -Encoding utf8
 
@@ -633,6 +693,7 @@ try {
     }
 
     # ------------------------------------------------------------ smoke test --
+    $script:nextBeat = (Get-Date).AddSeconds(60)
     $deadline = (Get-Date).AddSeconds($TestSeconds)
     while ((Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 700
@@ -642,6 +703,11 @@ try {
         if (-not $Visible) { [void](Hide-GameWindows -OwnerPid $proc.Id) }
         # A dialog can appear later too (vid_restart, a mid-run error box).
         if (-not $KeepDialogs) { [void](Dismiss-GameDialogs -OwnerPid $proc.Id) }
+        # Keep our lock's timestamp fresh, and restore it if something deleted it.
+        if ((Get-Date) -ge $script:nextBeat) {
+            Beat-GameLock -OwnerPid $proc.Id
+            $script:nextBeat = (Get-Date).AddSeconds(60)
+        }
     }
     $proc.Refresh()
 
@@ -658,13 +724,58 @@ try {
         $tag = if ($before -contains $p.Id) { 'pre-existing' } elseif ($p.Id -eq $proc.Id) { 'OURS' } else { 'NEW (not ours!)' }
         Write-Host ("  CoDWaW pid {0,-6} {1,-16} {2}" -f $p.Id, $tag, $p.Path)
     }
-    foreach ($f in @($outLog, $errLog, $record.console_log)) {
+    foreach ($f in @($outLog, $errLog, $consoleLog)) {
         if ((Test-Path -LiteralPath $f) -and (Get-Item -LiteralPath $f).Length -gt 0) {
             Write-Host "--- $f ---" -ForegroundColor DarkGray
             Get-Content -LiteralPath $f -Tail 25 | ForEach-Object { Write-Host "  $_" }
         }
     }
     Write-Host '=============================================' -ForegroundColor Cyan
+
+    # ------------------------------------------------ did it keep ticking? --
+    # A capture that silently stops after a minute is the worst kind of failure:
+    # the referee lost two 420 s runs to it and only noticed because both came
+    # out at exactly 65.2 s. The DLL logs "heartbeat: still ticking at Ns"; if
+    # the last one is far short of the run, say so loudly.
+    # NOTE: the game still has this file open, so it must be read share-all, and
+    # the whole check must be non-fatal. The first version used Select-String,
+    # which opens deny-write, threw under ErrorActionPreference=Stop, and so
+    # skipped the kill below -- leaving the game running and the lock held. A
+    # diagnostic that can break the run it is diagnosing is worse than none.
+    if ($TestSeconds -ge 30) {
+      try {
+        $dllLog = Get-ChildItem -LiteralPath $logDir -Filter "enw-$($proc.Id).log" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($dllLog) {
+            $text = ''
+            try {
+                $fs = [IO.File]::Open($dllLog.FullName, [IO.FileMode]::Open, [IO.FileAccess]::Read,
+                                      [IO.FileShare]::ReadWrite)
+                $sr = New-Object IO.StreamReader($fs)
+                $text = $sr.ReadToEnd()
+                $sr.Close(); $fs.Close()
+            }
+            catch { Write-Host "  (could not read the DLL log: $_)" -ForegroundColor DarkGray }
+            $beats = [regex]::Matches($text, 'still ticking at ([\d.]+) s')
+            if ($beats.Count -eq 0) {
+                Write-Host '  NO HEARTBEAT AT ALL. The game never reached a frame tick, or the DLL did not load.' -ForegroundColor Red
+            }
+            else {
+                $lastTick = [double]($beats[$beats.Count - 1].Groups[1].Value)
+                # Allow for startup before the first frame plus one interval.
+                if ($lastTick -lt ($TestSeconds - 25)) {
+                    Write-Host "  *** THE GAME STOPPED TICKING ***" -ForegroundColor Red
+                    Write-Host ("  last heartbeat at {0:N0} s of a {1} s run. Anything measured after that point is missing." -f $lastTick, $TestSeconds) -ForegroundColor Red
+                    Write-Host '  Check focus_guard armed (ENW_FOCUS_GUARD), and see docs/kickstart/foundation.md.' -ForegroundColor Red
+                }
+                else {
+                    Write-Host ("  still ticking at {0:N0} s (of {1} s) - good" -f $lastTick, $TestSeconds) -ForegroundColor Green
+                }
+            }
+        }
+      }
+      catch { Write-Host "  (heartbeat check failed: $_)" -ForegroundColor DarkGray }
+    }
 
     if (-not $proc.HasExited) {
         Write-Host "Killing our PID $($proc.Id)" -ForegroundColor DarkGray

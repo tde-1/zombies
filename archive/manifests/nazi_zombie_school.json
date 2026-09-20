@@ -21,18 +21,10 @@
       "when": {
         "manual": true
       },
-      "candidate_flags": [
+      "candidates": [
         "ee_toilet_trigger",
         "fuse_step",
         "meteor_trig",
-        "roof_ee_door",
-        "roof_ee_fire",
-        "roof_ee_trigger"
-      ],
-      "candidate_entities": [
-        "ee_toilet_trigger",
-        "meteor_trig",
-        "radio_trigger",
         "roof_ee_door",
         "roof_ee_fire",
         "roof_ee_trigger"
@@ -50,10 +42,14 @@
   "signals": [],
   "confidence": "guess",
   "needs_human": true,
+  "health": null,
   "scanner": {
+    "tool": "referee/scan_map.py",
     "verdict": "easter_egg",
     "why": "ee_toilet_trigger, fuse_step, meteor_trig, roof_ee_door, roof_ee_fire, roof_ee_trigger look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
     "scripts": 135,
+    "script_count": 135,
     "entities": 1543,
     "ee_candidates": [
       "ee_toilet_trigger",
@@ -64,11 +60,18 @@
       "roof_ee_trigger"
     ],
     "ending_words": [
-      "crawler_round_ending",
-      "end_game",
       "ending_survived",
       "surviveEnding_begun",
       "zombie_teleport_struct"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -98,6 +101,7 @@
         "gymnasium_exit_door"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "maps/_callbackglobal.gsc",
       "maps/_gameskill.gsc",
@@ -106,33 +110,7 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "1eec19b284cbb727603f816178e91d14681c683250548fec39846a7995411b17",
-    "script_count": 135,
-    "verdict_raw": "easter_egg",
-    "verdict_debiased": "easter_egg",
-    "why_debiased": "flags ee_toilet_trigger, fuse_step, meteor_trig, roof_ee_door, roof_ee_fire, roof_ee_trigger look like easter-egg state and are NOT stock or community boilerplate",
-    "verdict_entities": "easter_egg",
-    "why_entities": "easter-egg state found in flags ee_toilet_trigger, fuse_step, meteor_trig, roof_ee_door, roof_ee_fire, roof_ee_trigger and entities ee_toilet_trigger, meteor_trig, radio_trigger, roof_ee_door, roof_ee_fire, roof_ee_trigger",
-    "entity_evidence": {
-      "ee_flags": [
-        "ee_toilet_trigger",
-        "fuse_step",
-        "meteor_trig",
-        "roof_ee_door",
-        "roof_ee_fire",
-        "roof_ee_trigger"
-      ],
-      "ee_entities": [
-        "ee_toilet_trigger",
-        "meteor_trig",
-        "radio_trigger",
-        "roof_ee_door",
-        "roof_ee_fire",
-        "roof_ee_trigger"
-      ],
-      "end_entities": []
-    },
     "map_specific_triggers": [
-      "auto113569",
       "claymore_purchase",
       "ee_toilet_trigger",
       "electric_gate_trigger",
@@ -153,23 +131,10 @@
       "teleporter_stage_trigger",
       "zombie_stage_trigger"
     ],
-    "ee_candidates_own": [
-      "ee_toilet_trigger",
-      "fuse_step",
-      "meteor_trig",
-      "roof_ee_door",
-      "roof_ee_fire",
-      "roof_ee_trigger"
-    ],
-    "ending_words_own": [
-      "ending_survived",
-      "surviveEnding_begun",
-      "zombie_teleport_struct"
-    ],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -180,6 +145,7 @@
     "source_page": "https://zwr.gg/custom-downloads/waw",
     "fetched": "2026-09-20T00:57:33Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "nsis",
     "shipped_executables": [
       "$PLUGINSDIR/System.dll",
@@ -193,5 +159,5 @@
     ],
     "catalogue_description": "Abandoned School Patch 1.01: \u2013 Prevented players from buying perks while they have the death machine powerup \u2013 Mule Kick now removes 3rd gun on loss of the perk \u2013 Door dropping down into hallway zone doesn\u2019t skip rounds anymore \u2013 Replaced double trigger door with a zombie traversal to prevent zombies from glitching \u2013 Added Thompson, FMG, and Spas12 to Gungame \u2013 Aligned Thompson\u2019s ads \u2013 though the gun\u2019s bullet shoots slightly lower than the iron sight \u2013 Quickrevive machine completely disappears after 3 uses on solo \u2013 Nerfed the Jetgun and Zomnado \u2013 Packapunched wall weapons can now have ammo purchased normally \u2013 Host should be able to use the mystery box now on a coop match \u2013 Hintstrings can\u2019t be seen through walls now \u2013 Fixed some bushes that were see through Abandoned School Patch 1.02 \u2013 Various easter egg bugs/issues fixed \u2013 Hud added when player is holding an item \u2013 Items now drop properly when the player is downed, killed or disconnected from the game \u2013 Effect is now played on items that the player dropped to make them easy to find \u2013 Fixed Crossbow, Titus and Semtex breaking the box and having a revive symbol \u2013 Removed Feet from door shoulder anim \u2013 Semtex ammo is fixed \u2013 Reduced damage the scrake takes from electric cherry \u2013 Teleporter Cool down changed from round based to time based (120 second cooldown) Credits: Awesome Pieman \u2013 boss zombie, and general scripting help Treminaor \u2013 menu and general scripting help RadimaX \u2013 RadixhaX mirrors and RadihaX temple Tom_BMX \u2013 li"
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). Scanner found easter-egg-looking flags but cannot know which combination means done; a human must read the scripts. The Round 20 fallback still applies meanwhile. "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
 }

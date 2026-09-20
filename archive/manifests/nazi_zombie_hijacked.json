@@ -23,8 +23,18 @@
           "targetname": "end_game"
         }
       },
-      "candidate_entities": [
+      "candidates": [
         "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        100000
       ]
     },
     {
@@ -39,15 +49,28 @@
   "signals": [],
   "confidence": "read",
   "needs_human": false,
+  "health": null,
   "scanner": {
+    "tool": "referee/scan_map.py",
     "verdict": "buyable_ending",
-    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
     "scripts": 117,
+    "script_count": 117,
     "entities": 2562,
     "ee_candidates": [],
     "ending_words": [
-      "crawler_round_ending",
       "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      100000
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -77,6 +100,7 @@
         "door12"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "maps/_callbackglobal.gsc",
       "maps/_gameskill.gsc",
@@ -85,22 +109,8 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "4d17ad37b8c40f41f951c8066f1e6141c2ad2005f454ee822a6b014cf35477a2",
-    "script_count": 117,
-    "verdict_raw": "buyable_ending",
-    "verdict_debiased": "round",
-    "why_debiased": "no easter egg or ending found; default Round 20",
-    "verdict_entities": "buyable_ending",
-    "why_entities": "entity named like an ending: end_game (the cost is hardcoded in script, as on nazi_zombie_ali, so there is no zombie_cost outlier to find)",
-    "entity_evidence": {
-      "ee_flags": [],
-      "ee_entities": [],
-      "end_entities": [
-        "end_game"
-      ]
-    },
     "map_specific_triggers": [
       "buy_perk_slot",
-      "end_game",
       "handle_build_trig",
       "handle_pick_trig",
       "panel_build_trig",
@@ -110,12 +120,10 @@
       "wire_build_trig",
       "wire_pick_trig"
     ],
-    "ee_candidates_own": [],
-    "ending_words_own": [],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -126,6 +134,7 @@
     "source_page": "https://callofdutyrepo.com/2015/07/17/bo2-hijacked-zombies/",
     "fetched": "2026-09-20T00:52:14Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "nsis",
     "shipped_executables": [
       "$PLUGINSDIR/System.dll",
@@ -138,5 +147,5 @@
     ],
     "catalogue_description": "Hello UGX, this is FinalKill and I am uploading my third map to this site. This map is a zombies remake of the well known black ops 2 multiplayer map, Hijacked. It took about a month to develop, and it has turned out well. Survivng Hijacked 1. Hijacked Rounds As a replacement for dog rounds, every five rounds a \u2018Hijacked Round\u2019 will occur. Essentially, on Hijacked Rounds, each player is forced to use a random wall weapon for the round. You cannot hit the box, buy another wall weapon, or purchase perks during the round. If you get down, there is a chance that you may lose a random weapon that you had before the hijacked round. At the end of the round, the perks will fly back down onto the boat and you will get your weapons back. A perk called \u2018Hijacked Aid\u2019 will help you with Hijacked Rounds. Hijacked Aid is discussed below. 2. Hijacked Aid To help you with Hijacked Rounds, a perk called Hijacked Aid (Cost: 2500) will carry you through the round. Every 20 seconds, during Hijacked Rounds, the ammo in your weapon will be replenished, and you can pack-a-punch for 2500 points (But remember, you lose that weapon at the end of the round!). 3. Building the Power In order to get the power turned on in this map, you must build it. Parts and where to build it is shown below: 4. Perk Limit After buying four perks, you will have to buy another perk slot. You can buy a perk slot at anytime at the table near electric cherry on the upper floor for the second cabin. Each perk slot costs 1,250"
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

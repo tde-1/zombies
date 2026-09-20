@@ -36,10 +36,22 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     db = catalogue.connect()
+    # Not map downloads: the UGX Map Manager installer (ZWR lists it against 29 maps
+    # that the Manager can install) and UGX Mod Standalone (a prerequisite several
+    # release threads link). Counting either as a map's download link inflates both
+    # the link total and the "recoverable" count.
+    PREREQ = (
+        "UPDATE links SET kind='prerequisite' "
+        "WHERE url LIKE '%UpdaterExe%' OR url LIKE '%ugx-mod-standalone%' "
+        "OR url LIKE '%/map-manager/%'")
     todo = [
+        ("prerequisites, not map downloads", PREREQ, ()),
         ("onedrive.live.com / 1drv.ms",
          "UPDATE links SET verdict='blocked', error=? "
-         "WHERE (host LIKE '%onedrive.live.com%' OR host LIKE '%1drv.ms%') "
+         # Only the LEGACY shape, which is the one we proved is unverifiable. A modern
+         # OneDrive share link would answer normally and must still be checked.
+         "WHERE ((host LIKE '%onedrive.live.com%' AND url LIKE '%cid=%') "
+         "       OR host LIKE '%1drv.ms%') "
          "AND (verdict IN ('dead','unknown') OR verdict IS NULL)",
          (ONEDRIVE_REASON,)),
         ("downloads.gamefront.com",

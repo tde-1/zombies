@@ -26,6 +26,7 @@ const { attach } = require('./middleware/auth')
 const presence = require('./lib/presence')
 const chat = require('./lib/chatNetwork')
 const live = require('./lib/live')
+const { SqliteStore } = require('./lib/sessionStore')
 const achievements = require('./lib/achievements')
 const mapRecords = require('./lib/mapRecords')
 const users = require('./lib/users')
@@ -54,8 +55,13 @@ const secret = (() => {
 const sessionMw = session({
   name: 'zm.sid',
   secret,
+  // Sessions live in SQLite, not in memory: the default MemoryStore signs everybody out on
+  // every restart, which makes `node --watch` unusable and makes a redeploy look like an
+  // outage. It also cannot work behind more than one process.
+  store: new SqliteStore(),
   resave: false,
   saveUninitialized: false,
+  rolling: true,
   cookie: { httpOnly: true, sameSite: 'lax', maxAge: 30 * 86400_000, secure: process.env.NODE_ENV === 'production' },
 })
 app.use(sessionMw)
@@ -71,6 +77,7 @@ app.use('/auth', authRoutes.router())
 app.use('/api/me', require('./routes/me').router())
 app.use('/api/maps', require('./routes/maps').router())
 app.use('/api/players', require('./routes/players').router())
+app.use('/api/launcher', require('./routes/launcher').router())
 app.use('/api/admin', require('./routes/admin').router())
 app.use('/api', require('./routes/site').router())
 

@@ -97,9 +97,58 @@ export default function MapPage() {
       <div className="grid c2" style={{ alignItems: 'start' }}>
         <div>
           <Section title="About">
-            {m.description ? <p>{m.description}</p> : <Empty>No description yet. The archived release post goes here.</Empty>}
+            {/* 13 §3: the archived release post and readme ARE the description. */}
+            {m.description ? <p style={{ whiteSpace: 'pre-wrap' }}>{m.description}</p>
+              : <Empty>No description yet. The archived release post goes here once the crawl has one.</Empty>}
+            {m.release_post && (
+              <p className="tiny">
+                From the original release post: <a href={m.release_post} target="_blank" rel="noreferrer noopener">{hostOf(m.release_post)}</a>
+              </p>
+            )}
             {m.readme && <pre className="block" style={{ whiteSpace: 'pre-wrap' }}>{m.readme}</pre>}
           </Section>
+
+          {m.health === 'catalogued' && (
+            <div className="card warn" style={{ marginBottom: 22 }}>
+              <div className="eyebrow">Catalogued, not rescued</div>
+              <p className="sub" style={{ margin: 0 }}>
+                We know this map existed and where it was posted. Nobody has fetched it, hashed it or
+                booted it, so it is not on the Maps list and cannot be played here yet.
+              </p>
+            </div>
+          )}
+
+          {d.sources && d.sources.length > 0 && (
+            <Section title="Where it came from" sub="The original, and whether those links still work">
+              <div className="card">
+                <table className="data">
+                  <tbody>
+                    {d.sources.map((s2, i) => (
+                      <tr key={i}>
+                        <td className="tiny">{s2.kind === 'page' ? 'Release post' : 'Download'}</td>
+                        <td className="mono tiny" style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <a href={s2.url} target="_blank" rel="noreferrer noopener">{s2.site || s2.url}</a>
+                        </td>
+                        <td><LinkHealth status={s2.status} /></td>
+                        <td className="tiny">{s2.note || ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+          )}
+
+          {d.map.files && d.map.files.filter((f) => f.kind === 'original').length > 0 && (
+            <Section title="The original" sub="Kept exactly as it was released">
+              {d.map.files.filter((f) => f.kind === 'original').map((f) => (
+                <div className="card" key={f.path} style={{ marginBottom: 8 }}>
+                  <div className="mono tiny">{f.path}</div>
+                  <div className="tiny">{f.size ? `${(f.size / 1048576).toFixed(1)} MB · ` : ''}sha256 <code>{f.sha256}</code></div>
+                </div>
+              ))}
+            </Section>
+          )}
 
           <Section title="What counts as beating it" sub="From the referee manifest — the same rules the server applies">
             {d.map.finishes.length === 0 ? <Empty>No manifest for this map yet; it gets the default, Round 20.</Empty> : (
@@ -184,6 +233,18 @@ export default function MapPage() {
       </div>
     </div>
   )
+}
+
+const hostOf = (u) => { try { return new URL(u).host } catch { return u } }
+
+// The link checker's verdict, as it found it. `fetched` means we have the bytes, which is
+// the only status that survives the link going dead.
+function LinkHealth({ status }) {
+  if (status === 'fetched') return <span className="chip on" title="We hold this file">Held</span>
+  if (status === 'alive') return <span className="chip good">Alive</span>
+  if (status === 'dead') return <span className="chip be">Dead</span>
+  if (status === 'blocked') return <span className="chip">Blocked</span>
+  return <span className="chip">Unchecked</span>
 }
 
 // Board order and the empty ones.

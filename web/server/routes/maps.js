@@ -20,14 +20,24 @@ function router() {
   r.get('/', (req, res) => {
     const me = req.me ? req.me.steam_id : null
     const q = req.query
+    const archive = q.archive === '1'
+    // The playable list is a few dozen maps and is sent whole; the ARCHIVE is the whole
+    // crawl — 2,284 rows and 1.1 MB of JSON if you ask for it in one go, which is a page
+    // nobody can use and a tab that janks. So the archive view paginates by default and
+    // the caller has to ask for more.
     const out = maps.list({
       q: q.q, finish: q.finish, author: q.author, year: q.year ? Number(q.year) : null,
       tag: q.tag, progress: q.progress, sort: q.sort, source: q.source,
-      includeBroken: q.archive === '1',
-      me, limit: q.limit ? Number(q.limit) : null, offset: q.offset ? Number(q.offset) : 0,
+      includeBroken: archive,
+      me,
+      limit: q.limit ? Math.min(500, Number(q.limit)) : (archive ? 60 : null),
+      offset: q.offset ? Number(q.offset) : 0,
     })
     res.json({
       ...out,
+      offset: q.offset ? Number(q.offset) : 0,
+      // The filter lists describe the PLAYABLE pool even on the archive view: an author
+      // dropdown with 900 names in it is not a filter, it is a scrolling exercise.
       filters: {
         authors: maps.authors(),
         years: maps.years(),
@@ -61,6 +71,9 @@ function router() {
       lobbies: parties.publicLobbies(d.key),
       live: assignments.live().filter((g) => g.map === d.key),
       recent: require('../lib/results').recent({ mapKey: d.key, limit: 8 }),
+      // Where the original came from and whether those links still work (04). On a
+      // catalogued-only map this is the whole page.
+      sources: maps.sourcesFor(d.key),
       // "Beaten by N players", and which of your friends are among them (05).
       friends_beaten: me ? friendsBeaten(me, d.key) : [],
     })

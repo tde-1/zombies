@@ -21,7 +21,6 @@ import argparse
 import json
 import os
 import subprocess
-import sys
 
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 MODS = os.path.join(WORK, "mods")

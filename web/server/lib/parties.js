@@ -234,12 +234,23 @@ function launchInfo(steamId) {
   }
 }
 
+// The string the player's game dials. Two halves, from two different places on purpose:
+//
+//   the PORT comes from the box's status, because only the box knows which instance got
+//   which port;
+//   the ADDRESS comes from `boxes.address`, which is provision-time data, and only falls
+//   back to the box's own `host.public_ip` when nobody has set one.
+//
+// That asymmetry is the point. A box that can name its own connect address can name
+// somebody else's, and this string is what a client connects to — so the site prefers the
+// value an operator wrote down over the value a box asserts.
 function connectFor(a) {
-  const st = safeJson((db.prepare('SELECT last_status_json FROM boxes WHERE id=?').get(a.box_id) || {}).last_status_json, null)
+  const box = db.prepare('SELECT address, last_status_json FROM boxes WHERE id=?').get(a.box_id) || {}
+  const st = safeJson(box.last_status_json, null)
   if (!st || !Array.isArray(st.instances)) return null
   const inst = st.instances.find((i) => i.match_id === a.match_id) || st.instances[0]
   if (!inst || !inst.port) return null
-  const host = st.host && st.host.public_ip ? st.host.public_ip : null
+  const host = box.address || (st.host && st.host.public_ip) || null
   return host ? `${host}:${inst.port}` : null
 }
 

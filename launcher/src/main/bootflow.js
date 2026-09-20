@@ -202,6 +202,7 @@ export class BootFlow extends EventEmitter {
       host: null,                 // never both +map and +connect
       token: null,                // untracked: there is nothing to authorise
       map: o.localMap,
+      fsGame: o.fsGame,
       settings: o.settings,
       stealth: !!o.stealth,
       instance: `local-${o.localMap}`,

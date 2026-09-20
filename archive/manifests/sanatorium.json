@@ -26,15 +26,26 @@
   "signals": [],
   "confidence": "read",
   "needs_human": false,
+  "health": null,
   "scanner": {
-    "verdict": "buyable_ending",
-    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 15000",
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
     "scripts": 128,
+    "script_count": 128,
     "entities": 2923,
     "ee_candidates": [],
-    "ending_words": [
-      "crawler_round_ending",
-      "end_game"
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      6000,
+      15000
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -64,6 +75,7 @@
         "pf9716_auto4"
       ]
     ],
+    "buyable_ending_candidate": null,
     "common_script_overrides": [
       "maps/_callbackglobal.gsc",
       "maps/_gameskill.gsc",
@@ -72,17 +84,6 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "4ff2b22357eadfbbee16e3ac8f2587ad457f07891d0dc1b9769644ed08272e8b",
-    "script_count": 128,
-    "verdict_raw": "buyable_ending",
-    "verdict_debiased": "round",
-    "why_debiased": "no easter egg or ending found; default Round 20",
-    "verdict_entities": "round",
-    "why_entities": "no easter egg or ending found in scripts or entities; default Round 20",
-    "entity_evidence": {
-      "ee_flags": [],
-      "ee_entities": [],
-      "end_entities": []
-    },
     "map_specific_triggers": [
       "acid_gat_build_trig",
       "acidgat_pick_trigg",
@@ -125,12 +126,10 @@
       "enter_gon1",
       "enter_gon2"
     ],
-    "ee_candidates_own": [],
-    "ending_words_own": [],
     "baseline": {
-      "stock_names": 827,
-      "corpus_common": 254,
-      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
     }
   },
   "archive": {
@@ -141,6 +140,7 @@
     "source_page": "https://zwr.gg/custom-downloads/waw",
     "fetched": "2026-09-20T00:49:32Z",
     "av": "clean",
+    "av_ran": true,
     "installer_kind": "rar",
     "shipped_executables": [
       "Clinic Of Evil.exe"
@@ -153,5 +153,5 @@
     ],
     "catalogue_description": "Clinic of Evil (Original idea based on a real urban exploration) In the summer of 2015 I went in an urbex with a lot of friends. So I thought why not make a map like this based on a sanatorium. This map has many features: \u2013 Mob of the Dead Style environment \u2013 Variety of weapons (BO2, AW, Custom) \u2013 Gondola \u2013 Acid Gat \u2013 Brutus \u2013 Shield \u2013 EE \u2013 Endgame \u2013 And much more\u2026 Credit: Treyarch (CodWaw mod tools) IZaRTaX (map,level documentation,level design,game design,scripts,fx\u2019s,sound,textures,models,lights) RDV (elevator,gondola,character zombies,acidkit,shield,hud,Pause Menu,brutus,hintstrig,scripts) ElTitoPricus (weapons,character players,character sound) Andy Whelan (photoshop template) Harry Bo21 (shield, electric cherry,hintstrig) DidUknowiPwn (t6 hud) DuaLVII (rotating doors,zmb spawn system) Tom_BMX (tools) Wollowizzy (beta tester)"
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 1 executable(s): Clinic Of Evil.exe. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 1 executable(s): Clinic Of Evil.exe. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: acid_gat_build_trig, acidgat_pick_trigg, activ_trap, amb_citadel, amb_g1, area_grotte, area_killer, avion_trig, blood_place, blood_place_w, blood_trig, bonus. "
 }

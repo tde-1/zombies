@@ -172,11 +172,32 @@ function BanControls({ who, onDone }) {
   )
 }
 
+const GRADE_LABEL = {
+  signed: "signed by the box's pinned key",
+  unpinned: 'UNPINNED KEY',
+  'unknown-key': 'key unknown',
+  recovered: 'recovered after a crash',
+  none: 'no replay',
+}
+
 function RecordReview() {
   const [d, setD] = useState(null)
+  const [checked, setChecked] = useState({})
+  const [busy, setBusy] = useState(null)
   const load = useCallback(() => api.get('/api/admin/records/review').then(setD).catch(() => {}), [])
   useEffect(() => { load() }, [load])
   if (!d) return <p className="sub">Loading.</p>
+
+  const verify = async (id) => {
+    setBusy(id)
+    try {
+      const out = await api.post(`/api/admin/records/${id}/verify`)
+      setChecked((c) => ({ ...c, [id]: out }))
+    } catch (e) {
+      setChecked((c) => ({ ...c, [id]: { ok: false, error: e.message } }))
+    } finally { setBusy(null) }
+  }
+
   return (
     <Section title="Record review" sub="A signature proves a replay is unmodified. It does not prove who signed it — that is what the key pin is for.">
       {d.records.length === 0 ? <Empty>No records yet.</Empty> : (
@@ -184,25 +205,51 @@ function RecordReview() {
           <table className="data">
             <thead><tr><th>Map</th><th>Category</th><th>Players</th><th className="num">Result</th><th>Rules</th><th>Replay</th><th></th></tr></thead>
             <tbody>
-              {d.records.map((r) => (
-                <tr key={r.id}>
-                  <td><Link to={`/m/${r.map_key}`}>{r.map_key.replace('nazi_zombie_', '')}</Link></td>
-                  <td className="tiny">{r.category} · {r.player_count === 1 ? 'solo' : `${r.player_count}p`} · {r.profile}</td>
-                  <td className="tiny">{r.players.map((p) => p.name).join(', ')}</td>
-                  <td className="num">{r.round ? `R${r.round}` : clock(r.value_ms)}</td>
-                  <td className="tiny">{r.profile_ok ? 'ok' : <span className="hot" title={r.profile_note}>mismatch</span>}</td>
-                  <td className="tiny">
-                    {!r.replay ? '—' : (
-                      <span className={r.replay.key_pinned && !r.replay.recovered ? '' : 'hot'} title={r.replay.verify}>
-                        {r.replay.grade}
-                      </span>
-                    )}
-                  </td>
-                  <td><button className="btn small ghost" onClick={async () => { await api.post(`/api/admin/records/${r.id}/void`); load() }}>Void</button></td>
-                </tr>
-              ))}
+              {d.records.map((r) => {
+                const c = checked[r.id]
+                return (
+                  <tr key={r.id}>
+                    <td><Link to={`/m/${r.map_key}`}>{r.map_key.replace('nazi_zombie_', '')}</Link></td>
+                    <td className="tiny">{r.category} · {r.player_count === 1 ? 'solo' : `${r.player_count}p`} · {r.profile}</td>
+                    <td className="tiny">{r.players.map((p) => p.name).join(', ')}</td>
+                    <td className="num">{r.round ? `R${r.round}` : clock(r.value_ms)}</td>
+                    <td className="tiny">{r.profile_ok ? 'ok' : <span className="hot" title={r.profile_note}>mismatch</span>}</td>
+                    <td className="tiny" style={{ maxWidth: 260 }}>
+                      {!r.replay ? '—' : (
+                        <>
+                          <span className={r.replay.ok ? '' : 'hot'} title={r.replay.reason}>{GRADE_LABEL[r.replay.grade] || r.replay.grade}</span>
+                          {/* The verification is a real re-read of the file against the
+                              box's pinned key, not a re-statement of what we stored. */}
+                          {c && (
+                            <div className={c.ok ? 'good' : 'hot'} style={{ marginTop: 4 }}>
+                              {c.verdict || c.error}
+                              {c.errors && c.errors.length > 0 && <div className="tiny">{c.errors.join('; ')}</div>}
+                              {c.ok && <div className="tiny">{c.chunks} chunks, {num(c.events)} events</div>}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </td>
+                    <td>
+                      <div className="row" style={{ gap: 4 }}>
+                        {r.replay && r.replay.available && (
+                          <button className="btn small ghost" disabled={busy === r.id} onClick={() => verify(r.id)}>
+                            {busy === r.id ? '…' : 'Verify'}
+                          </button>
+                        )}
+                        <button className="btn small ghost" onClick={async () => { await api.post(`/api/admin/records/${r.id}/void`); load() }}>Void</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
+          <p className="tiny" style={{ marginTop: 8 }}>
+            Verify re-reads every chunk from disk, rehashes the chain and checks the footer signature
+            <b> against the key pinned for that box</b>. A replay signed by any other key fails here however
+            valid it is on its own terms.
+          </p>
         </div>
       )}
     </Section>

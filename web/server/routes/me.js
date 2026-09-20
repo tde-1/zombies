@@ -40,6 +40,13 @@ function router() {
     })
   })
 
+  // The launcher's `syncFromSite()` looks for exactly this path (launcher.md §4). It is
+  // the same object `/api/me` embeds, served on its own so a settings sync is not a
+  // full session fetch.
+  r.get('/settings', requireUser, (req, res) => {
+    res.json({ settings: users.settings(req.me.steam_id), defaults: users.DEFAULT_SETTINGS })
+  })
+
   r.put('/settings', requireUser, (req, res) => {
     res.json({ ok: true, settings: users.saveSettings(req.me.steam_id, req.body || {}) })
   })

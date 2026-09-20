@@ -18,6 +18,7 @@ the whole thing, and it works end to end (§4).
 cd web
 npm install                       # 153 packages, all from npm, nothing global
 npm run seed -- --reset --demo    # build the database from referee/manifests + demo players
+npm run import:archive            # the archive agent's 14 pipeline maps  (--catalogue for all 2,276)
 npm run build                     # build the React client into client/dist
 npm run dev                       # http://127.0.0.1:3200
 ```
@@ -34,8 +35,26 @@ npm run client                    # http://127.0.0.1:5173
 Checks:
 
 ```bash
-npm run check                     # 40 in-process checks, a few seconds, no server needed
+npm run check                     # 51 in-process checks, a few seconds, no server needed
 ```
+
+**A live game on the site in twenty seconds** — a real host agent, a real referee, real frames:
+
+```bash
+# terminal 2 — a box. Pick ports nobody else is on; four agents share this machine.
+cd infra/host-agent
+node host.js --site http://127.0.0.1:3200 --secret devkey-a --box box-a              --dash-port 8797 --link-port 38791 --base-port 29170              --sim-timescale 60 --sim-players 3 --sim-max-round 40
+
+# terminal 3 — the dev shim that stands in for the box posting frames (§4e)
+cd web && npm run live-bridge -- --dash http://127.0.0.1:8797
+```
+
+then sign in, Admin → *Lease a game by hand*, and open `/live`.
+
+**If you run your own host agent, give it its own box row.** Every agent's default is
+`box-a`/`devkey-a` and each signs with its own key, so the pin will refuse yours and every replay
+you write will be stored ungradeable. `POST /api/admin/boxes {name, match_key}`, or add a row to
+the seed. §4d is what that looks like when it happens.
 
 Everything is under `web/`. The database is `web/data/zombies.db` (gitignored, always rebuildable
 from `npm run seed`); the site's Ed25519 invite key is generated on first boot into `web/keys/`
@@ -66,10 +85,12 @@ web/
     db/database.js        the schema (99 §5.5), additive migrations only
     db/seed.js            seeds from referee/manifests/*.json and the scanner's verdicts
     lib/                  the data layer (below)
-    routes/               auth · me · maps · players · site · admin · gameserver
+    routes/               auth · me · maps · players · site · launcher · admin · gameserver
     middleware/auth.js    req.me, and the two different guards (signed in vs may play)
+    routes/               auth · me · maps · players · site · launcher · admin · gameserver
   client/                 Vite + React 18 + react-router 6
-  test/run-all.js         40 checks
+  tools/live-bridge.js    a dev shim: the box's dashboard -> /api/gs/live (see §4e)
+  test/run-all.js         51 checks
 ```
 
 ### The data layer, and where each piece came from
@@ -88,12 +109,15 @@ web/
 | `lib/records.js` | `leaderboard.js` + vault 10 | boards, rule profiles, submission |
 | `lib/xp.js` | new | 65 levels/prestige, unlimited prestige, active time |
 | `lib/enw.js` | new | **the only two runtime links to ENW**, both stubbed |
+| `lib/live.js` | Movement has no equivalent | live frames, in memory, per-game socket rooms, the watch rule (§4e) |
+| `lib/replays.js` | new | the evidence grade, the download rule and verification against the pin (§4f) |
+| `lib/sessionStore.js` | new | sessions in SQLite, so a restart is not a logout |
 | `lib/tokens.js`, `lib/siteKeys.js` | mirrors of `infra/host-agent/lib/*` | byte-compatible by test |
 
 ### Pages
 `/` home · `/maps` · `/m/<map>` · `/archive` · `/records` · `/badges` + `/badges/<slug>` ·
 `/playlists` + `/playlists/<slug>` · `/id/<who>` · `/creator/<name>` · `/game/<match>` ·
-`/custom` · `/admin`.
+`/custom` · `/live` + `/live/<match>` · `/admin`.
 
 `/m/<map>` is the deep link for YouTube descriptions (13 §2d) and must never change.
 
@@ -229,6 +253,195 @@ twice. XP is guarded by its own ledger, badges by their composite key. Tested.
 
 ---
 
+### 4d. The key pin is now wired on BOTH sides
+
+The host agent added the two lines the same night: `reportStatus()` sends `pub` and `key_id`,
+`/api/gs/result`'s replay block carries `key_id`, and the box reads our `{key_pinned,
+pinned_key_id}` back and logs its own error when they disagree. **No shim is involved any more.**
+
+It caught something real within the hour. Three processes on this machine claimed to be `box-a`
+(they all share the dev secret `devkey-a`) and signed with three different keys:
+
+```
+01:24:01  box.key.pinned   box-a  {"key_id":"21b77dd1cc691669"}
+01:24:25  box.key.changed  box-a  {"was":"21b77dd1cc691669","now":"d6506a40e16dd6da"}   refused
+01:26:54  box.key.changed  box-a  {"was":"21b77dd1cc691669","now":"7e9a0b0621f3c345"}   refused
+01:31:32  box.key.accepted 7656119…001  {"box":"box-a","key_id":"7e9a0b0621f3c345"}
+```
+
+and the box's own log said, correctly:
+
+```
+error host  KEY MISMATCH: the site has 21b77dd1cc691669 pinned for this box but we sign with
+            7e9a0b0621f3c345. Every replay we write is being stored unpinned.
+```
+
+Two keys were refused and parked, every replay from them was stored `key_pinned = 0`, and the pin
+only moved when an authenticated admin accepted it. That is the production failure — a
+decommissioned box whose secret still works — happening by accident on a dev box, and being caught.
+
+**Note for anyone running a host agent against this site:** you share `box-a` with the other
+agents. Give yours its own row (`POST /api/admin/boxes`, or add one to the seed) or your replays
+will be stored unpinned and your log will fill with KEY MISMATCH.
+
+---
+
+## 4e. The live view (web spectating)
+
+`/live` lists what you can watch; `/live/<match_id>` is the game: round, players, points, downs,
+health, the cap countdown, which manifest signals have fired, and a **top-down canvas** of every
+player and zombie. **It uses no game slot** — which is the whole reason it is a web page and not
+in-game spectating, because on a four-slot engine a spectator costs somebody their seat.
+
+```
+box ──POST /api/gs/live {instances:[{instance, match_id, state}]}──► site
+                                                    │  in memory, never SQLite
+                                     socket room `live:<match_id>` ──► every watcher
+```
+
+Three decisions, all in `web/server/lib/live.js`:
+
+* **Frames never touch SQLite.** 4 Hz of positions that are stale in 250 ms, on the same file that
+  serves every page, and the durable copy already exists — it is the signed replay on the box.
+  Frames live in a Map with a 30-second TTL and die with the process.
+* **The box pushes; the site still never dials out.** This is the one feature that tempts you to
+  poll a box, and the fleet design says no.
+* **Downsampled on arrival** to ~4.5 Hz. Faster frames are accepted and dropped — accepted so the
+  box is never made to care about our rate, dropped so a misconfigured box cannot make us do its
+  work.
+
+Visibility is Movement's joinability rule applied to watching: a **private** lobby is members only,
+**friends** adds the leader's friends, **public** is anybody signed in or not (it is the page a
+YouTuber links). A game the viewer cannot watch is **absent from the list**, not present with its
+map blanked — the map name is itself information about a private game. A moderator can watch
+anything and it is logged.
+
+The canvas has no map geometry, because nothing has parsed a `.bsp` yet. It autoscales to a running
+bounding box of every position seen, which has one honest consequence: **it zooms out when somebody
+opens a new area and never zooms back in.** Rescaling per frame was the alternative and it makes
+the map lurch every time anyone moves. When bounds exist, it becomes a fixed frame.
+
+**The host agent does not post frames yet.** `web/tools/live-bridge.js` is a dev shim that polls its
+local dashboard (`GET /api/state`) and posts them, so the feature is real and proven against a real
+referee today; the ask is in `questions.md`, and it is either one line in `reportStatus()` or a
+4 Hz timer. The site reads frames out of the status heartbeat too, so the one-line version works
+with no new call at all.
+
+---
+
+## 4f. Replays: is it evidence, and who may have it
+
+`web/server/lib/replays.js` keeps three questions apart, because conflating them is the bug:
+
+| Question | Answered by |
+|---|---|
+| Is the file intact? | the Ed25519 footer — a property of the bytes, checkable by anyone |
+| Who signed it? | **the site's pin**, not the footer. A footer says whatever its author wants |
+| May this person download it? | Q-host-1, as the coordinator confirmed |
+
+`GET /api/replays/<match>` is **public** — the pointer, the grade, the reason and the exact verify
+command, because a record nobody can check is a record nobody should believe. The command always
+names the pinned key:
+
+```
+node infra/host-agent/tools/verify.js "…/m_2e346de4.enwr" --pub S9Gh3BHj9D8mpmn2V2jqdrHx0QmfvhALlEpAJdGt_DI
+```
+
+`GET /api/replays/<match>/download` streams the bytes under the Q-host-1 rule: your own game
+always, a moderator, VIP, or a game whose lobby was public; anyone else gets the reason. The stored
+path comes from a box and a box is not trusted to name a path, so it is basenamed into
+`ZM_REPLAY_DIR` and must end `.enwr` — there is a test that walks it through `../../../Windows`.
+
+**Admin → records → Verify** re-reads every chunk from disk, rehashes the chain and checks the
+signature **against the box's pinned key**. Proven against a real replay the host agent wrote:
+
+```
+VALID — signed by this box’s pinned key      6 chunks, 12,758 events
+```
+
+and, on a copy of the same file with **one bit flipped** in the middle of a chunk (same size, same
+index, same genuine signature):
+
+```
+INVALID
+  chunk 2: content hash mismatch (bytes were modified)
+  chunk 2: hash chain broken … chunk 5: hash chain broken
+  final chain hash mismatch
+```
+
+A download was also taken through the site and re-verified with the community tool outside it —
+344,012 bytes in, 344,012 bytes out, still VALID.
+
+In production the bytes come from R2 and this file hands out a signed URL. That is the only part
+of it that changes; `object_key` is the seam and is null everywhere today.
+
+---
+
+## 4g. The launcher seam
+
+`docs/protocol/launcher-v0.md` is the contract, agreed against what the launcher agent has already
+built (it probes `127.0.0.1:3200` and wraps the site in a `WebContentsView`). Implemented:
+`GET /api/launcher/hello`, `GET|POST /api/launcher/play`, `POST /api/launcher/cancel`,
+`POST /api/launcher/state`, `POST /api/launcher/report`, and `GET /api/me/settings` — which is the
+exact path their `syncFromSite()` was already looking for.
+
+**The one thing that had to change: `POST /admin/lease` is gone.** The launcher calls the mock
+site's version of it today, which has no auth at all. A client that can lease a box turns the fleet
+into free hosting and lets the caller name its own Verified roster. So the flow inverts, to the one
+13 §4b describes anyway: the player presses Play, **the site** leases, and the launcher watches for
+a match and launches. `POST /api/launcher/play` is the corner card's button and runs the same code
+path as pressing Start in the rail, with the same guards.
+
+Two site-side fixes came out of writing it down:
+
+* **`boxes.address`.** The connect string was `null` forever on a local box, because it was built
+  from `host.public_ip` which a dev box does not have — so the launcher could never have launched.
+  The port still comes from the box (only it knows which instance got which), but the **address is
+  provision-time data**: a box that can name its own connect address can name somebody else's.
+* **Sessions in SQLite** (`lib/sessionStore.js`). The default MemoryStore signed everyone out on
+  every restart, so the launcher would have hit a surprise 401 after every redeploy and
+  `node --watch` was unusable. Verified: restart the server, the cookie still resolves.
+
+## 4h. The archive, wired in
+
+`npm run import:archive` reads the **archive** agent's work and keeps two very different things
+apart, because conflating them would be the whole bug:
+
+| Source | What it is | Becomes |
+|---|---|---|
+| `archive/manifests/*.json` | **14 maps the pipeline took end to end** — fetched, hashed, AV-scanned, extracted without running an installer, normalised to `mods/<map>/`, scanned for a finish | a playable map row, a version, the **original's sha256 and size**, its source URL and release post, its tags, and a referee manifest |
+| `<work>/reports/catalogue.json` | **the crawl: 2,276 maps**, their names, authors, tags, release posts and 2,112 download links with the checker's alive/dead verdict | a `catalogued` row the Maps list hides and the Archive page shows, plus its links in `archive_sources` |
+
+Calling a crawl result playable would put maps in the browser nobody has ever booted, so it does
+not. Health is assigned honestly too: **nothing imported here is `verified`**, because that word
+means somebody watched it run. A map the scanner could not decide (`needs_human`, or a `manual`
+verdict) is `custom-only` — it will probably run, but we cannot referee a finish on it, so it must
+not offer Verified play.
+
+The Archive page (`/archive`) is now the real thing: the story, the counted numbers, which hosts
+the archive rests on, the maps that do not run here, and a searchable, paginated list of
+everything. It is a **list, not a wall of cards** — two thousand cards is a scrolling exercise, and
+what a visitor wants here is to search one map and find out whether it still exists anywhere.
+
+Today, from the live database:
+
+```
+catalogued 2,284 · playable here 19 · originals held 14
+links 2,112 · alive 662 · dead 50 · still being checked 1,308
+mediafire.com 846 (44 alive) · archive.org 572 (572 alive) · mega.nz 399 (18 alive)
+```
+
+Two things it changed elsewhere: `/api/maps?archive=1` now paginates (60 a page — it was 1.1 MB in
+one response), and the author/year dropdowns describe the **playable** pool, because a filter with
+nine hundred authors in it is not a filter.
+
+It is re-runnable and idempotent, which found a real bug on the second run: `INSERT OR IGNORE`
+into `map_files` had **nothing to conflict with**, so it was a plain INSERT and every re-import
+duplicated every file row (63 rows where 35 were expected). There is a unique index on
+`(map_version_id, path)` now and the migration de-dupes what was already there.
+
+---
+
 ## 5. What is real and what is scaffolded
 
 ### Real
@@ -246,6 +459,13 @@ twice. XP is guarded by its own ledger, badges by their composite key. Tested.
   kind), the map of the week and its weekly runs.
 * Privacy: hideable history, always-public records and badges, deletion-as-anonymisation.
 * The theme (three palettes) and the option-A lockup.
+* **The live view**: frames from a real referee, a top-down canvas, per-game socket rooms, the
+  private/friends/public rule, and the list of what you can watch.
+* **Replays**: the public grade and verify command, the gated download, and admin verification
+  against the pinned key — proven VALID on a real file and INVALID on a one-bit tamper.
+* **The launcher API** and its contract doc, including the connect string and SQLite sessions.
+* **The archive import**: 14 pipeline maps with their originals' hashes and source URLs, and the
+  2,265-map crawl index behind the Archive page.
 
 ### Stubbed, with the seam in one place
 | Thing | Where | What it does today | What it needs |
@@ -253,13 +473,17 @@ twice. XP is guarded by its own ledger, badges by their composite key. Tested.
 | **Steam OpenID** | `routes/auth.js` | a local-only mock sign-in page, refused entirely when `NODE_ENV=production` | `STEAM_API_KEY` + `ZM_PUBLIC_URL`, then `ZM_AUTH=steam`. The code path is written and uses `passport-steam` (an *optional* dependency, so a missing one does not stop the server) |
 | **The ENW name (SSO)** | `lib/enw.js` `refreshName` | returns the cached value; falls back to the Steam persona | `ZM_ENW_BASE` + `ZM_ENW_TOKEN`, and the real path (`/internal/name?steamid=`) confirmed |
 | **VIP** | `lib/enw.js` `refreshVip` | reads the cached column; `ZM_VIP_FORCE` and the admin toggle set it locally | the same two env vars and the real path |
-| **Map art** | `maps.art` | null everywhere, so cards show the engine name instead of a broken image | the archive pipeline's media step (04) |
-| **Replay download / 3D viewer** | `pages/Misc.jsx` | shows the pointer, the size and the evidence grade | R2, and the VIP viewer is a separate build |
+| **Map art** | `maps.art` | null everywhere, so cards show the engine name instead of a broken image | the archive pipeline's media step (04); the column and the renderer are ready |
+| **Replay bytes in production** | `lib/replays.js` `localPath()` | served from the local replay directory, which works because the dev box IS this machine | R2, and one function changes |
+| **The 3D replay viewer** | — | not started; the 2D live view is the prototype | Husky/C2M map export + three.js, a port of Movement's viewer, VIP-gated |
+| **Live frames from the box** | `tools/live-bridge.js` | a dev shim polls the box's dashboard and posts them | one line in the host agent's `reportStatus()`, or a 4 Hz timer |
 | **Play Local / launcher** | map page button | says the launcher is not installed | the launcher agent's deep-link handler |
 | **Map downloads** | map page link | says so | the archive workers + a Steam login gate |
 
 ### Not built
 * OG/link-preview images and share cards (13 §2d).
+* Map downloads. The archive holds 14 originals with their hashes and 2,112 source links; nothing
+  serves the bytes, and 04 rule 8 wants a Steam login gate first.
 * Creator claims beyond the page and the row (`creators` table exists, no claim flow).
 * The archive pipeline's own surfaces beyond `/archive` (crawl status, link health — the
   `archive_sources` table is there and empty).
@@ -267,8 +491,6 @@ twice. XP is guarded by its own ledger, badges by their composite key. Tested.
   URL when there is one, and Movement's `src/badgeForge/` is the thing to port when there is art to
   make.
 * Friend suggestions from Steam ("Find Steam friends on ENW") — needs the Steam API key.
-* Session storage is express-session's default MemoryStore: fine for one process, **not fine behind
-  more than one**. A SQLite session store is ten lines when it matters.
 
 ---
 
@@ -301,17 +523,18 @@ Each of these took the most reversible option and is one edit to change.
 
 ## 7. What I would do next
 
-1. **Ask the host agent for `pub` + `key_id` in its status heartbeat** (one line in
-   `reportStatus()`), and for `key_id` in the `replay` block of a result. Until then a box has to
-   POST `/api/gs/key` once, and every replay is stored unpinned — which is safe but useless for
-   grading records. This is written up in `questions.md`.
-2. **Wire the launcher**: `/api/party` already returns the player's own invite token and the connect
-   string once the box says ready. That is everything the launcher needs.
-3. **Badge art.** The shelf and the directory are the two most visual pages and both are currently
-   hexagons full of text.
-4. **OG images** for `/m/<map>` and a run card, because the funnel is YouTube descriptions.
-5. **A SQLite session store** before anything runs on more than one process.
-6. **Map art and the archive pipeline's rows** — the tables are there and empty.
+1. **Live frames straight from the host agent**, retiring `tools/live-bridge.js`. One line or one
+   timer on their side; the site takes them either way already.
+2. **Badge art.** The shelf and the badges directory are the two most visual pages and both are
+   currently hexagons with the engine name in them. Movement's `src/badgeForge/` is the thing to
+   port when there is art to make.
+3. **OG images** for `/m/<map>` and a run card. The funnel is YouTube descriptions, so the link
+   preview is the first impression and it is currently a bare title.
+4. **Map art** from the archive's media step, which is the single biggest visual change available.
+5. **The 3D replay viewer** (VIP). The live view's canvas and the chunked, seekable replay format
+   are both already there; this is the third piece.
+6. **Re-run `npm run import:archive` as the crawl finishes.** 1,308 links were still being checked
+   when this was written, so the alive/dead split on the Archive page will move.
 
 ---
 

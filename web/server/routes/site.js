@@ -17,6 +17,7 @@ const parties = require('../lib/parties')
 const results = require('../lib/results')
 const chat = require('../lib/chatNetwork')
 const live = require('../lib/live')
+const replays = require('../lib/replays')
 const users = require('../lib/users')
 const { safeJson } = require('../lib/util')
 const { db } = require('../db/database')
@@ -92,8 +93,26 @@ function router() {
     res.json({ playlist: p })
   })
 
+  // ---- the archive page ---------------------------------------------------------
+  // The story and the numbers, all counted rather than typed. The map list itself comes
+  // from /api/maps?archive=1, which paginates.
+  r.get('/archive', (req, res) => {
+    res.json({
+      stats: maps.archiveStats(),
+      broken: maps.list({ includeBroken: true, sort: 'name' }).maps.filter((m) => m.health === 'broken').slice(0, 50),
+      newest: maps.list({ sort: 'newest', limit: 8 }).maps,
+      // Where the links point, so the page can say which sites the archive actually rests
+      // on rather than claiming a number.
+      hosts: db.prepare(`SELECT site, COUNT(*) n,
+                                SUM(CASE WHEN status IN ('alive','fetched') THEN 1 ELSE 0 END) alive,
+                                SUM(CASE WHEN status='dead' THEN 1 ELSE 0 END) dead
+                           FROM archive_sources WHERE site IS NOT NULL
+                          GROUP BY site ORDER BY n DESC LIMIT 12`).all(),
+    })
+  })
+
   // ---- creators -------------------------------------------------------------------
-  r.get('/creators', (req, res) => res.json({ creators: maps.authors() }))
+  r.get('/creators', (req, res) => res.json({ creators: maps.authors({ all: true }) }))
 
   r.get('/creators/:name', (req, res) => {
     const name = decodeURIComponent(req.params.name)
@@ -184,6 +203,35 @@ function router() {
   // ---- live games and the live view --------------------------------------------------
   // `/api/live` is the lobby-level list (what has been leased); `/api/live/watch` is the
   // list of games actually sending frames, which is the one the spectator list wants.
+  // ---- replays ------------------------------------------------------------------
+  // The pointer and the evidence grade are PUBLIC for every game: 99 §4.7 rests records
+  // on a signed replay, and a record nobody can check is a record nobody should believe.
+  // The bytes are gated (Q-host-1).
+  r.get('/replays/:matchId', (req, res) => {
+    const d = replays.describe(req.params.matchId, req.me)
+    if (!d) return res.status(404).json({ error: 'no replay for that game' })
+    res.json({ replay: d })
+  })
+
+  r.get('/replays/:matchId/download', (req, res) => {
+    const row = replays.rowFor(req.params.matchId)
+    const may = replays.mayDownload(row, req.me)
+    if (!may.ok) return res.status(row ? 403 : 404).json({ error: may.reason })
+    const f = replays.fileFor(req.params.matchId)
+    if (!f) {
+      return res.status(503).json({
+        error: 'the file is on the game box and there is no object store yet',
+        // Say where it is rather than pretending it does not exist — on a dev box the
+        // person asking can just go and get it.
+        file: row.file || null,
+      })
+    }
+    res.setHeader('content-type', 'application/octet-stream')
+    res.setHeader('content-length', f.size)
+    res.setHeader('content-disposition', `attachment; filename="${f.name}"`)
+    require('fs').createReadStream(f.path).pipe(res)
+  })
+
   r.get('/live', (req, res) => res.json({
     live: assignments.live(),
     watchable: live.list(req.me ? req.me.steam_id : null),

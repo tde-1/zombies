@@ -21,6 +21,9 @@ const seconds = Number(val('--seconds', '45'))
 const stealth = has('--stealth') || !has('--visible')
 const host = val('--host', null)
 const siteUrl = val('--site', 'http://127.0.0.1:8099')
+// A custom map IS its own mod, so fs_game is mods/<bsp>, not mods/enw. Our DLL rides
+// in on the binkw32 proxy, not on fs_game, so it does not care which mod is loaded.
+const fsGame = val('--fs-game', null)
 
 if (has('--dry-run')) {
   // Local play never gets a +connect: the engine would leave the map for the server
@@ -28,6 +31,7 @@ if (has('--dry-run')) {
   const args = buildArgs({
     host: has('--local') ? null : host || '127.0.0.1:28960',
     map: has('--local') ? map : null,
+    ...(fsGame ? { fsGame } : {}),
     stealth,
     settings: { fov: 80, maxFps: 125 },
   })
@@ -51,6 +55,7 @@ const flow = new BootFlow({
   siteUrl,
   host,
   localMap: has('--local') ? map : null,
+  fsGame,
   stealth,
   useGameLock: !has('--no-lock'),
   lockName: 'launcher',

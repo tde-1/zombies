@@ -21,7 +21,7 @@ const LiveList = lazy(() => import('./pages/Live').then((m) => ({ default: m.Liv
 const Admin = lazy(() => import('./pages/Admin'))
 const Creator = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Creator })))
 const Game = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Game })))
-const Archive = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Archive })))
+const Archive = lazy(() => import('./pages/Archive'))
 const NotFound = lazy(() => import('./pages/Misc').then((m) => ({ default: m.NotFound })))
 
 export default function App() {

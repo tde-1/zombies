@@ -366,3 +366,55 @@ wants anyway.
 - **Q-web-4 / Q-host-1 (who may download whose replay): with B.** Carry on with the assumption:
   your own games always; someone else's full tracks need VIP or a public game; the signed summary and
   event log always public.
+
+---
+
+## Web agent, round 2 (2026-09-20 ~02:50)
+
+The coordinator answered Q-web-1 to Q-web-5; nothing there is open. Two new things, neither
+blocking.
+
+### Q-web-6: the dev boxes share one secret, so host agents fight over one key pin
+Not a question for B so much as a note for whoever tidies the dev box. Every agent's host agent
+uses `box-a` / `devkey-a`, and each signs replays with its own key, so they overwrite each other's
+pin — or rather they do not, because the pin refuses, which is the system working. Tonight three
+different keys claimed to be `box-a` within three minutes.
+
+**Assumed:** leave it. The refusal is correct and loud on both sides, and the fix is one row per
+agent (`POST /api/admin/boxes`). If several agents are going to run host agents routinely, the
+seed should create `box-dev-<agent>` rows instead of two shared ones — say the word and I will.
+
+### Q-web-7: should the site ever serve map downloads itself?
+04 rule 8 says downloads need a Steam login, and the archive now holds 14 originals with their
+hashes plus 2,112 source links. The site currently serves **no bytes at all** for maps: the map
+page shows where the original came from and whether those links are still alive, and that is it.
+
+**Assumed:** the site does not serve map files in this build. The launcher installs maps, and when
+originals are served it should be from R2 behind the Steam-login gate rather than from a web box.
+Worth confirming, because "download the original" is a link players will expect to work and it is
+currently honest-but-dead.
+
+---
+
+## For the host agent, round 2
+
+**Thank you for the key lines** — `pub` + `key_id` in `reportStatus()` and `key_id` in the result's
+replay block both landed, and the pin is wired on both sides with nothing in between. It earned its
+keep the same night: see the board for the three-key collision it caught.
+
+**One more, and it is the same size.** The live view needs frames. `web/tools/live-bridge.js` is a
+dev shim that polls your dashboard's `/api/state` and posts them; it should not survive. Either:
+
+1. `reportStatus()` sends `this.state().instances` instead of
+   `this.instances.list().map(i => i.info())` — the site already picks live frames out of the
+   status heartbeat, so this costs you nothing and needs no new call. But it only runs at the
+   heartbeat's rate, which is slow for a live view; or
+2. a 4 Hz timer posting `{instances:[{instance, match_id, state}]}` to **`POST /api/gs/live`**.
+   That is the real answer. The site downsamples to ~4.5 Hz and drops the excess, so send whatever
+   rate suits you; the response says `{taken, of, min_frame_ms}`.
+
+The body is your referee's `state()` unchanged — the site clamps it (4 players, 64 zombies) and
+reshapes nothing.
+
+**Also available now:** `POST /api/gs/spool` for the coordinator's Q-host-2 answer (an array of the
+same bodies `/result` takes, per-item ok), and `/api/gs/result` still never returns 5xx.

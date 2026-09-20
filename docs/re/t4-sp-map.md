@@ -118,7 +118,7 @@ bytes — they point into the right instructions but not at the operand). Use th
 | `Dvar_RegisterBool` | 0x5EEE20 | [V] | `cl_voice` etc.; T4SP |
 | `Dvar_RegisterInt` | 0x5EEEA0 | [V] | `ui_serverStatusTimeOut` |
 | `Dvar_RegisterFloat` | 0x5EEF10 | [V] | `cg_hudGrenadeIconWidth`, `bg_bobMax`, `phys_gravity` |
-| `Dvar_RegisterString` | 0x5EED90 | [V] | `sv_hostname`, `net_ip`, `rate` |
+| `Dvar_RegisterVariant` (generic; NOT a 4-arg string register) | 0x5EED90 | [V] | used by string/color/vec dvars (sv_hostname/net_ip/rate/con_typewriterColorBase). **Prototype: `Dvar_RegisterVariant(const char* name /*+8*/, int type /*+0xC*/, int flags /*+0x10*/, DvarValue value /*+0x14, 8B by-value*/, DvarLimits domain /*+0x1C, ~0x18B by-value*/)`.** String: type=7, flags per need (USERINFO=0x2), value={defaultStr,0}, domain=0. Calls Dvar_FindVar then inner register 0x5EEA20. (Earlier "Dvar_RegisterString" label was wrong — there is no clean 4-arg string register.) |
 | `Dvar_RegisterVec3` | 0x5EEFA0 | [C] | 3-float wrapper (Vec4/Color = 0x5EF040) |
 | `Dvar_RegisterEnum` | 0x5EF150 | [V] | used for `dedicated` |
 | `SetSavedDvar` | 0x516990 | [V] | errors "the dvar %s does not exist" / requires the SAVED flag. **Flag test at 0x516B15: `test word ptr [dvar+8], 0x1000` — so DVAR_SAVED = 0x1000 (NOT 0x200; T4SP enum is wrong for our build), and dvar flags = 16-bit word at dvar_s+0x8.** `con_typewriterColorBase` crash: registered only in client CG-init 0x4708C0 → absent headless. Fix: pre-register with flags\|=0x1000 |

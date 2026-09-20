@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -66,14 +65,19 @@ def main():
         "proj_all": report.human(r["bytes_projected_whole_catalogue"]),
         "only_unfetchable": r["maps_only_unfetchable_hosts"],
         "n_scanned": scan.get("maps", 0),
-        "decided_raw": scan.get("decided_raw", 0),
-        "decided_debiased": scan.get("decided_debiased", 0),
-        "decided_entities": scan.get("decided_entities", 0),
-        "verdicts_entities": ", ".join(
+        "tool_sha": (scan.get("tool") or {}).get("sha256", "?")[:12],
+        "tool_mtime": (scan.get("tool") or {}).get("mtime", "?"),
+        "decided": scan.get("decided", 0),
+        "finish_found": scan.get("finish_found", 0),
+        "needs_human": scan.get("needs_human", 0),
+        "stock_names": scan.get("stock_names", 0),
+        "corpus_ignored": scan.get("corpus_ignored_n", 0),
+        "verdicts": ", ".join(
             "%s %d" % (k, v) for k, v in sorted(
-                scan.get("verdicts_entities", {}).items(), key=lambda kv: -kv[1])),
-        "finish_found": len([x for x in scan["rows"]
-                             if x["verdict"] in ("easter_egg", "buyable_ending")]),
+                scan.get("verdicts", {}).items(), key=lambda kv: -kv[1])),
+        "verdicts_stock_only": ", ".join(
+            "%s %d" % (k, v) for k, v in sorted(
+                scan.get("verdicts_stock_only", {}).items(), key=lambda kv: -kv[1])),
         "tagged": len(tagged),
         "agree": len([x for x in tagged if x["outcome"] == "agree"]),
         "missed": len([x for x in tagged if x["outcome"].startswith("missed")]),

@@ -15,14 +15,19 @@ const S = {
   screen: null,
 }
 
-// The MVP maps. Until the site serves a real list this is the rail's content, and it
-// is labelled as a placeholder rather than pretending to be the catalogue.
-const MAPS = [
-  { id: 'nazi_zombie_prototype', name: 'Nacht der Untoten', tag: 'stock' },
-  { id: 'nazi_zombie_asylum', name: 'Verrückt', tag: 'stock' },
-  { id: 'nazi_zombie_sumpf', name: 'Shi No Numa', tag: 'stock' },
-  { id: 'nazi_zombie_factory', name: 'Der Riese', tag: 'stock' },
-  { id: 'nazi_zombie_ali', name: 'Tomb of Ali', tag: 'custom' },
+// The map list. Real, from the archive agent's normalised maps via window.enw.maps().
+//
+// THE BSP NAME IS NOT THE TITLE. `water` is "Alcatraz", `nazi_zombie_test` is "Project
+// Viking". The player sees the title everywhere; the bsp is engine detail, shown small
+// and only because it is what a map's folder and its old download are called.
+let MAPS = []
+
+// Stock maps ship with World at War, so they are always playable and never installed.
+const STOCK = [
+  { bsp: 'nazi_zombie_prototype', title: 'Nacht der Untoten', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
+  { bsp: 'nazi_zombie_asylum', title: 'Verrückt', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
+  { bsp: 'nazi_zombie_sumpf', title: 'Shi No Numa', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
+  { bsp: 'nazi_zombie_factory', title: 'Der Riese', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
 ]
 
 // ------------------------------------------------------------------- screens --
@@ -41,29 +46,48 @@ function toast(text, kind = 'info') {
 
 // ------------------------------------------------------------------ the rail --
 
+const mb = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`)
+
+async function loadMaps() {
+  let cat = { maps: [] }
+  try { cat = await window.enw.maps() } catch {}
+  // Stock first (always playable), then the archive by title.
+  MAPS = [...STOCK, ...cat.maps]
+  renderMaps()
+  if (!S.map) selectMap(MAPS[0]?.bsp)
+  return cat
+}
+
 function renderMaps() {
   const list = $('mapList')
   list.replaceChildren()
   for (const m of MAPS) {
-    const b = el('button', S.map === m.id ? 'sel' : '')
-    b.append(document.createTextNode(m.name))
-    const tag = el('span', 'tag', m.tag)
+    const b = el('button', S.map === m.bsp ? 'sel' : '')
+    const name = el('span', 'mapname', m.title)
+    b.append(name)
+    // The state a player cares about: can I press Play, and if not what is in the way.
+    const tag = el('span', 'tag', m.stock ? 'stock' : m.installed ? 'installed' : mb(m.bytes))
+    if (!m.stock && !m.installed) tag.classList.add('needs')
     b.append(tag)
-    b.title = m.id
-    b.onclick = () => selectMap(m.id)
+    // The bsp, small — it is what the folder and the original download are called, and
+    // people searching for a map will have seen it.
+    b.append(el('span', 'bsp', m.bsp))
+    b.title = `${m.title}
+${m.bsp}${m.author ? `
+by ${m.author}` : ''}`
+    b.onclick = () => selectMap(m.bsp)
     list.append(b)
   }
-  const note = el('div', 'card-note')
-  note.style.marginTop = '8px'
-  note.textContent = 'Placeholder list. The real catalogue comes from the site.'
-  list.append(note)
+  if (!MAPS.length) list.append(el('div', 'card-note', 'No maps yet.'))
 }
 
-function selectMap(id) {
-  S.map = id
-  const m = MAPS.find((x) => x.id === id)
-  $('cardMap').textContent = m ? m.name : id
-  $('cardSub').textContent = id
+function selectMap(bsp) {
+  if (!bsp) return
+  S.map = bsp
+  const m = MAPS.find((x) => x.bsp === bsp)
+  S.selected = m || null
+  $('cardMap').textContent = m ? m.title : bsp
+  $('cardSub').textContent = m && m.author ? `${m.bsp}  ·  by ${m.author}` : bsp
   renderMaps()
   updatePlay()
 }
@@ -71,16 +95,55 @@ function selectMap(id) {
 function updatePlay() {
   const ready = !!S.status?.setup?.installed
   const busy = !!S.boot && !S.boot.done && !S.boot.failed
-  $('playBtn').disabled = !S.map || !ready || busy
-  $('playLocalBtn').disabled = !S.map || !ready || busy
-  $('cardMode').textContent = S.mode === 'verified' ? 'Verified' : 'Custom'
+  const m = S.selected
+  const needsInstall = !!m && !m.stock && !m.installed
+  const installing = !!S.installing
+
   $('modeBtn').textContent = S.mode === 'verified' ? 'Verified' : 'Custom'
+  $('cardMode').textContent = S.mode === 'verified' ? 'Verified' : 'Custom'
+
+  // One button, three jobs, and it says which. A map you have not downloaded cannot be
+  // played, so offering Play and failing would be the wrong thing.
+  const play = $('playBtn')
+  if (needsInstall) {
+    play.textContent = installing ? `Installing… ${S.installPct || 0}%` : `Install (${mb(m.bytes)})`
+    play.disabled = !ready || installing
+    play.onclick = () => installSelected()
+  } else {
+    play.textContent = 'Play'
+    play.disabled = !S.map || !ready || busy || installing
+    play.onclick = () => play_(false)
+  }
+  $('playLocalBtn').disabled = !S.map || !ready || busy || needsInstall || installing
   $('cardNote').textContent =
     !ready ? 'The ENW client is not installed yet.'
-      : busy ? 'A game is starting.'
-        : !S.map ? 'Pick a map.'
-          : S.mode === 'verified' ? 'Stock settings. Records and badges count.'
-            : 'Any settings. Nothing is tracked.'
+      : installing ? (S.installFile || 'Copying the map into your ENW library.')
+        : busy ? 'A game is starting.'
+          : !S.map ? 'Pick a map.'
+            : needsInstall ? `${m.title} is in the archive but not on this PC yet.`
+              : S.mode === 'verified' ? 'Stock settings. Records and badges count.'
+                : 'Any settings. Nothing is tracked.'
+}
+
+async function installSelected() {
+  const m = S.selected
+  if (!m) return
+  S.installing = m.bsp
+  S.installPct = 0
+  S.installFile = null
+  updatePlay()
+  try {
+    const rec = await window.enw.installMap(m.bsp)
+    toast(`${rec.title} installed — ${rec.files.length} files, every one checked against the archive's hash.`)
+    await loadMaps()
+    selectMap(m.bsp)
+  } catch (e) {
+    toast(e.message, 'error')
+  } finally {
+    S.installing = null
+    S.installFile = null
+    updatePlay()
+  }
 }
 
 function renderStatus() {
@@ -286,8 +349,8 @@ function renderBoot(snap) {
   show('boot')
   $('bootCancel').classList.remove('off')
   $('bootClose').classList.remove('on')
-  const m = MAPS.find((x) => x.id === snap.map)
-  $('bootMap').textContent = m ? m.name : snap.map || '—'
+  const m = MAPS.find((x) => x.bsp === snap.map)
+  $('bootMap').textContent = m ? m.title : snap.map || '—'
   $('bootMode').textContent = snap.mode === 'verified' ? 'Verified' : 'Custom'
 
   const order = ['reserving', 'loading', 'ready', 'launching', 'in_game']
@@ -327,10 +390,10 @@ function renderBoot(snap) {
   updatePlay()
 }
 
-async function play(local) {
+async function play_(local) {
   if (!S.map) return
   try {
-    const snap = await window.enw.play({ map: S.map, mode: S.mode, local })
+    const snap = await window.enw.play({ map: S.map, mode: S.mode, local, fsGame: S.selected?.fsGame || null })
     renderBoot(snap)
   } catch (e) { toast(e.message, 'error') }
 }
@@ -448,8 +511,7 @@ function wire() {
     }
     refresh()
   }
-  $('playBtn').onclick = () => play(false)
-  $('playLocalBtn').onclick = () => play(true)
+  $('playLocalBtn').onclick = () => play_(true)
   $('modeBtn').onclick = () => { S.mode = S.mode === 'verified' ? 'custom' : 'verified'; updatePlay() }
   $('bootCancel').onclick = () => window.enw.cancelPlay()
   $('bootClose').onclick = () => { window.enw.closeBoot(); hideAll() }
@@ -471,24 +533,29 @@ function wire() {
     $('bootCancel').classList.add('off')
     $('bootClose').classList.add('on')
   })
+  window.enw.onMapProgress((p) => {
+    if (p.bsp !== S.installing) return
+    S.installPct = p.total ? Math.round((p.done / p.total) * 100) : 0
+    S.installFile = `${p.file} (${S.installPct}%)`
+    updatePlay()
+  })
   window.enw.onToast((t) => toast(t.text, t.kind))
   window.enw.onSession(() => refresh())
   window.enw.onSettings(() => refresh())
   window.enw.onSite(() => refresh())
   window.enw.onDeepLink((link) => {
     if (link.kind === 'map' || link.kind === 'play') {
-      if (!MAPS.some((m) => m.id === link.map)) MAPS.unshift({ id: link.map, name: link.map, tag: 'link' })
+      if (!MAPS.some((m) => m.bsp === link.map)) MAPS.unshift({ bsp: link.map, title: link.map, stock: false, installed: false, available: false, bytes: 0 })
       selectMap(link.map)
       toast(`Opened from a link: ${link.map}`)
-      if (link.kind === 'play') play(false)
+      if (link.kind === 'play') play_(false)
     }
   })
 }
 
 ;(async () => {
   wire()
-  renderMaps()
   const st = await refresh()
+  await loadMaps()
   if (!st.setup?.installed) { await renderFirstRun(); show('firstRun') }
-  else selectMap(MAPS[0].id)
 })()

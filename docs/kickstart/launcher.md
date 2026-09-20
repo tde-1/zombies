@@ -329,6 +329,61 @@ alone). On a machine with no `ZombiesDev` the whole thing is a no-op, which is t
 
 ---
 
+## 3b. The map library
+
+`launcher/src/main/library.js`, `maps-cli.js`. Source today: the archive agent's 14 normalised maps
+at `ZombiesDev\archive\mods\<bsp>\`, with titles from `archive/manifests/<bsp>.json` and the file
+list + per-file SHA-256 from `ZombiesDev\archive\reports\extract.json`. In production this becomes a
+download from the site; `install()` takes a source directory and a file list, so the shape does not
+change.
+
+```
+node src/main/maps-cli.js list          # every map, with the title AND the bsp
+node src/main/maps-cli.js install water # "Alcatraz"
+node src/main/maps-cli.js installed
+node src/main/maps-cli.js verify
+node src/main/maps-cli.js remove water
+```
+
+**The bsp name is not the title**, and it is not close: `water` is *Alcatraz*,
+`nazi_zombie_test` is *Project Viking*, `sanatorium` is *CLINIC OF EVIL*, `nazi_zombie_test1` is
+*DESERT*. The rail shows the title with the bsp small underneath — the bsp still matters, because
+it is what the folder and the original download are called and what someone searching will have
+seen — but a player is never shown a bsp as a name.
+
+Install is **verified, not hopeful**: every file is checked against the SHA-256 the archive
+recorded, and a mismatch deletes the file and aborts rather than leaving a half-map. BO2 Hijacked:
+12 files, 198 MB, 0.4 s, all hashes matched. **No executable is ever copied** — `.exe`, `.dll`,
+`.bat` and friends are refused with a line in the manifest, not filtered quietly (dev-box rule 3).
+
+Maps install straight to `<fs_homepath>\mods\<bsp>`, which is both the ENW library and the folder
+the engine reads. There is no junction between them: an earlier version kept `ENW_ROOT\maps` and
+linked each map into `mods\`, and a junction whose link *and* target were both inside our folder
+resolved to nothing on this machine — `fsutil reparsepoint query` showed data identical to a working
+junction, and the same junction with either end outside the folder was fine. Rather than ship
+something resting on a behaviour I could not explain, the need for it is gone.
+
+### The UTF-8 BOM that makes a map unplayable
+
+**2 of the 14 maps cannot be launched as shipped**, and the error points somewhere else entirely.
+
+`mod.arena` is the file that registers a custom map with the engine. `nazi_zombie_hijacked` and
+`nazi_zombie_fear_mc_2` both ship it with a UTF-8 byte-order mark in front of the first `{`. T4's
+info-file parser does not skip a BOM, so:
+
+```
+Missing { in info file
+A mod is required for custom maps
+Error: Can't find map "nazi_zombie_hijacked".
+```
+
+which reads like a missing fastfile and is not — the 53 MB `nazi_zombie_hijacked.ff` is right there.
+`library.js` strips the BOM at install time: **after** the archive hash is verified, only on
+`.arena`, recording both hashes and the reason in `.enw-installed.json`. The other 12 maps are
+clean, so this is a per-map defect rather than a convention.
+
+---
+
 ## 4. The shell
 
 `src/main/main.js` + `src/renderer/`. Electron 38, `contextIsolation` on, `nodeIntegration` off, one
@@ -390,7 +445,8 @@ preload (`src/preload/preload.cjs`) that is the entire API surface.
 | The map list in the rail | **Placeholder**, and labelled as one in the UI |
 | Map art | **Placeholder** (gradient); comes from the site |
 | Storage page (folder and per-map sizes) | **Real**; junctions are reported as links, not counted, so the ENW folder does not "weigh" the player's 12 GB install |
-| Map downloads | **Not built** |
+| Real map installs (14 maps, hash-verified) | **Real**; refuses executables, repairs the BOM defect, records everything in a per-map manifest |
+| Map downloads over the network | **Not built** — installs copy from the archive on this box |
 | Uninstall asks whether to keep maps | **Real** (a three-way dialog: keep maps / remove everything / cancel) |
 | In-game toasts (badge, invite, friend moments) | **Not built** — they belong in the DLL |
 | Party / ready check | **Not built** |

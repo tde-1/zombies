@@ -21,6 +21,7 @@ const achievements = require('../lib/achievements')
 const mapRecords = require('../lib/mapRecords')
 const presence = require('../lib/presence')
 const enw = require('../lib/enw')
+const replays = require('../lib/replays')
 const { db, now } = require('../db/database')
 const { requireMod, requireAdmin } = require('../middleware/auth')
 
@@ -130,19 +131,24 @@ function router() {
           profile_ok: !!r2.profile_ok, profile_note: r2.profile_note, verified: !!r2.verified,
           match_id: r2.match_id, mode: r2.mode,
           players: (JSON.parse(r2.roster || '[]')).map((s) => users.publicById(s)).filter(Boolean),
-          replay: replay ? {
-            file: replay.file, size: replay.size, chunks: replay.chunks, key_id: replay.key_id,
-            key_pinned: !!replay.key_pinned, recovered: !!replay.recovered, partial: !!replay.partial,
-            // The one sentence a reviewer needs. host.md §5: integrity is not authorship,
-            // and a recovered replay is good enough for a badge, not record-grade evidence.
-            grade: !replay.key_pinned ? 'UNPINNED KEY — not record-grade evidence'
-              : replay.recovered ? 'recovered after a host crash — good enough for a badge, not for a record'
-                : 'signed by this box’s pinned key',
-            verify: `node infra/host-agent/tools/verify.js "${replay.file || '<file>'}" --pub <the box’s pinned key>`,
-          } : null,
+          // The grade and the exact verify command come from lib/replays.js, which is
+          // also what /api/replays/<match> serves publicly — one source for "is this
+          // evidence", so a reviewer and a rival are reading the same verdict.
+          replay: replay ? replays.describe(replay.match_id, req.me) : null,
         }
       }),
     })
+  })
+
+  // Verify the actual file, against the box's PINNED key. This is the review action: it
+  // re-reads every chunk, rehashes the chain, checks the footer signature, and refuses a
+  // file signed by a key that is not the pin however valid that file is on its own terms.
+  r.post('/records/:id/verify', requireMod, async (req, res) => {
+    const rec = db.prepare('SELECT * FROM records WHERE id=?').get(Number(req.params.id))
+    if (!rec) return res.status(404).json({ error: 'no such record' })
+    const g = rec.game_id ? db.prepare('SELECT match_id FROM games WHERE id=?').get(rec.game_id) : null
+    if (!g) return res.status(404).json({ error: 'that record has no game attached' })
+    res.json(await replays.verify(g.match_id))
   })
 
   r.post('/records/:id/void', requireMod, (req, res) => {

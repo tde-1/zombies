@@ -65,7 +65,56 @@ NOTIFY_RE = re.compile(r'notify\s*\(\s*"([^"]{1,64})"')
 # a hint has to match a WHOLE token. That also makes short hints safe: "win" no
 # longer matches "window", because "window" is one token.
 EE_TOKENS = {"ee", "easter", "egg", "quest", "amulet", "relic", "shard", "pylon",
-             "meteor", "ritual", "step", "rune", "totem", "obelisk"}
+             "meteor", "ritual", "step", "rune", "totem", "obelisk",
+             # collect-the-pieces quests name their pieces
+             "part", "parts", "piece", "pieces", "fragment", "boss"}
+
+# Stems that are structural map furniture, not quest items. A numbered series of
+# these means "the mapper numbered their zones", not "collect five of something".
+SERIES_BLOCK = {"zone", "spawn", "spawner", "spawners", "clip", "node", "light",
+                "lights", "fx", "sound", "wall", "window", "door", "path", "struct",
+                "origin", "target", "model", "anim", "rise", "trig", "trigger",
+                "block", "blocker", "barrier", "chunk", "debris", "rubble", "volume",
+                "corner", "point", "loc", "location", "start", "stop", "col", "vent"}
+
+_NUM_TAIL = re.compile(r"^(.*?)[_-]?(\d{1,3})(?:[_-]?(?:trig|trigger|trg))?$", re.I)
+
+
+# A numbered series only means "collect N of these" if the thing being numbered is
+# a plausible quest object. Without this the rule fires on all 14 maps and says
+# easter_egg about everything -- the same worthless-because-universal failure the
+# stock baseline was introduced to fix.
+SERIES_QUEST_TOKENS = {"part", "parts", "piece", "pieces", "step", "rune", "orb",
+                       "crystal", "skull", "book", "gumball", "fuse", "valve",
+                       "lever", "tube", "canister", "sample", "shard", "fragment",
+                       "relic", "totem", "egg", "ee"}
+
+
+def numbered_series(names, min_len=3):
+    """Find <stem><number> families -- the structural signature of a collect-N quest.
+
+    MEASURED on the real corpus: City of Hell's quest is `city_part01..05` plus
+    `bread_part01` / `bottle_part04` / `barrel_part03` with `_trig` twins, and
+    Minecraft Village's is `gumball_switch1..5`. Neither map has a single
+    easter-egg-shaped WORD in it, so no hint list would ever find them -- but the
+    SHAPE is unmistakable and it generalises to maps nobody has looked at.
+    Structural furniture (zone01, spawner3, ...) is excluded by stem.
+    """
+    fams = {}
+    for n in names:
+        m = _NUM_TAIL.match(n)
+        if not m:
+            continue
+        stem, num = m.group(1), m.group(2)
+        if not stem or len(stem) < 3:
+            continue
+        toks = {t.lower() for t in _TOKEN_SPLIT.split(stem) if t}
+        if toks & SERIES_BLOCK:
+            continue
+        if not (toks & SERIES_QUEST_TOKENS):
+            continue
+        fams.setdefault(stem.lower(), set()).add(int(num))
+    return {stem: sorted(v) for stem, v in fams.items() if len(v) >= min_len}
 END_TOKENS = {"ending", "escape", "endgame", "victory", "buyable", "exfil",
               "win", "won", "finale", "teleport"}
 # Whole names that mean an ending regardless of how they tokenise. `end_game` is
@@ -204,6 +253,27 @@ def scan(ff_paths, iwd_paths, baseline_path=None, ignore=None):
     baseline_names, baseline_ents = load_baseline(baseline_path)
     ignore = {n.lower() for n in (ignore or [])}
     scripts = read_scripts(ff_paths, iwd_paths)
+
+    # REGRESSION GUARD, found by re-running the original five after adding the
+    # baseline: Der Riese flipped from easter_egg to buyable_ending, because the
+    # baseline is built from the stock zones and therefore CONTAINS Der Riese's own
+    # `ee_bowie_bear` / `ee_exp_monkey` / `ee_perk_bear`. Subtracting it from a stock
+    # map erases exactly the evidence we want.
+    #
+    # The fix is a rule that is right for both: a name written in the map's OWN map
+    # script (maps/<bsp>.gsc and friends, as opposed to the shared _zombiemode /
+    # common set) is the map's own by definition, whatever the baseline says.
+    stems = {os.path.splitext(os.path.basename(p))[0].lower() for p in ff_paths}
+    stems = {st for st in stems if st not in ("mod",)}
+    map_script_names = set()
+    for name, (text, _src) in scripts.items():
+        base = os.path.basename(name).lower()
+        if base.startswith("_") or not base.endswith(".gsc"):
+            continue
+        if not any(base.startswith(st.replace("_patch", "")) for st in stems):
+            continue
+        map_script_names.update(FLAG_RE.findall(text))
+        map_script_names.update(NOTIFY_RE.findall(text))
     ents = read_mapents(ff_paths)
 
     if not is_zombies_map(scripts):
@@ -241,14 +311,43 @@ def scan(ff_paths, iwd_paths, baseline_path=None, ignore=None):
     ent_names = {n for n in ent_names if n}
 
     def own(names, base):
-        return {n for n in names if n not in base and n.lower() not in ignore}
+        return {n for n in names if n not in base or n in map_script_names}
 
     own_flags = own(flags, baseline_names)
     own_notifies = own(notifies, baseline_names)
     own_ents = own(ent_names, baseline_ents)
 
-    ee = sorted({n for n in (own_flags | own_ents) if hit(n, EE_TOKENS)})
-    endish = sorted({n for n in (own_flags | own_notifies | own_ents) if hit(n, END_TOKENS)})
+    # Which names this map's own scripts actually look up. Used twice below.
+    looked_up = set()
+    for text, _src in scripts.values():
+        looked_up.update(re.findall(r'get_?ent(?:array)?\s*\(\s*"([^"]{1,64})"', text, re.I))
+        looked_up.update(re.findall(r'flag_(?:set|wait|clear)\s*\(\s*"([^"]{1,64})"', text))
+
+    # CORPUS-COMMON names are not automatically evidence -- but they are not
+    # automatically noise either, and that distinction is the whole game.
+    #
+    # MEASURED: after the stock baseline, `end_game` still appears on 14/14 maps,
+    # because nearly every custom map is built from the same community script set
+    # and inherits the trigger. Dropping it outright costs MW2 Rust, Hijacked and
+    # test1 their real ending (5/12). Keeping it makes every map look identical
+    # (8/12 but for the wrong reason). What separates a real ending from an
+    # inherited leftover is whether THIS map's scripts actually wire it up --
+    # exactly the orphan test that found the nazi_zombie_ali ending. So a
+    # corpus-common name survives only if the map looks it up.
+    def evidence(names):
+        out = set()
+        for n in names:
+            if n.lower() in ignore:
+                if n in looked_up:
+                    out.add(n)
+            else:
+                out.add(n)
+        return out
+
+    ee = sorted({n for n in evidence(own_flags | own_ents) if hit(n, EE_TOKENS)})
+    series = numbered_series(evidence(own_ents) | evidence(own_flags))
+    endish = sorted({n for n in evidence(own_flags | own_notifies | own_ents)
+                     if hit(n, END_TOKENS)})
 
     # Every one of the 14 real maps hardcodes its ending price in script rather than
     # in a zombie_cost key, so the entity-cost outlier below fired 0/14. Catch the
@@ -273,13 +372,17 @@ def scan(ff_paths, iwd_paths, baseline_path=None, ignore=None):
     # calls count. Matching the bare string would be fooled by, say, a
     # level notify("end_game") that has nothing to do with the entity.
     named = {e.get("targetname") for e in ents if e.get("classname") == "trigger_use"}
-    looked_up = set()
-    for text, _src in scripts.values():
-        looked_up.update(re.findall(r'get_?ent(?:array)?\s*\(\s*"([^"]{1,64})"', text, re.I))
     orphans = sorted(n for n in named
                      if n and hit(n, END_TOKENS) and n not in looked_up)
 
-    if ee:
+    if not ee and series:
+        # No quest-shaped word, but a quest-shaped structure.
+        biggest = max(series.items(), key=lambda kv: len(kv[1]))
+        verdict = ("easter_egg",
+                   f"no easter-egg wording, but a numbered series {biggest[0]}"
+                   f"{biggest[1][0]}..{biggest[1][-1]} ({len(biggest[1])} members) and "
+                   f"{len(series)} series overall - the shape of a collect-N quest; confirm")
+    elif ee:
         verdict = ("easter_egg", f"{', '.join(ee[:6])} look like easter-egg state (map's own, after "
                                  f"subtracting {len(baseline_names)} stock names); confirm which "
                                  f"combination means 'done'")
@@ -305,6 +408,7 @@ def scan(ff_paths, iwd_paths, baseline_path=None, ignore=None):
         "ee_candidates": ee,
         "ending_words": endish,
         "hardcoded_costs": hardcoded,
+        "numbered_series": {k: v for k, v in sorted(series.items())[:40]},
         "buyable_ending_candidate": buyable,
         "orphan_end_triggers": orphans,
         "top_costs": costs[:5],

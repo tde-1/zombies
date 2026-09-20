@@ -270,11 +270,29 @@ export function removeGameFolder() {
 export function uninstall({ keepMaps = true } = {}) {
   const done = []
   if (fs.existsSync(P.game)) { removeGameFolder(); done.push(`removed ${P.game}`) }
-  for (const d of [P.home, P.logs, P.updates, P.crashes, P.state]) {
+  // The map library lives INSIDE home (P.maps = <home>\mods), so home cannot be
+  // deleted wholesale when the player asked to keep their maps. Remove its children
+  // one at a time and step around the library.
+  if (fs.existsSync(P.home)) {
+    if (keepMaps) {
+      for (const e of fs.readdirSync(P.home, { withFileTypes: true })) {
+        const full = path.join(P.home, e.name)
+        if (path.resolve(full).toLowerCase() === path.resolve(P.maps).toLowerCase()) continue
+        fs.rmSync(assertWritable(full), { recursive: true, force: true })
+      }
+      done.push(`emptied ${P.home} (kept the map library)`)
+    } else {
+      fs.rmSync(assertWritable(P.home), { recursive: true, force: true })
+      done.push(`removed ${P.home}`)
+    }
+  }
+  for (const d of [P.logs, P.updates, P.crashes, P.state]) {
     if (fs.existsSync(d)) { fs.rmSync(assertWritable(d), { recursive: true, force: true }); done.push(`removed ${d}`) }
   }
-  if (!keepMaps && fs.existsSync(P.maps)) { fs.rmSync(assertWritable(P.maps), { recursive: true, force: true }); done.push(`removed ${P.maps}`) }
-  else if (fs.existsSync(P.maps)) done.push(`kept your downloaded maps in ${P.maps}`)
+  if (fs.existsSync(P.maps)) {
+    if (keepMaps) done.push(`kept your downloaded maps in ${P.maps}`)
+    else { fs.rmSync(assertWritable(P.maps), { recursive: true, force: true }); done.push(`removed ${P.maps}`) }
+  }
   // Leave the root only if the maps are still in it.
   try { fs.rmdirSync(P.root); done.push(`removed ${P.root}`) } catch {}
   done.push('your copy of World at War was not touched')

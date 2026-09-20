@@ -24,6 +24,7 @@ import * as crash from './crash.js'
 import * as lock from './gamelock.js'
 import { Updater, IdleGate, applyPending, pending } from './updates.js'
 import { BootFlow } from './bootflow.js'
+import * as library from './library.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -268,6 +269,20 @@ function wireIpc() {
     } finally { state.gate.unblock('setup') }
   })
   handle('storage', () => setup.storage())
+
+  // The real map library (archive agent's 14 normalised maps). The rail shows `title`;
+  // only the engine ever sees `bsp`.
+  handle('maps', () => library.catalogue())
+  handle('installMap', async (bsp) => {
+    state.gate.block('mapinstall', 'a map is installing')
+    try {
+      return library.install(bsp, { onProgress: (p) => push('mapProgress', { bsp, ...p }) })
+    } catch (e) {
+      await reportCrash('map_failed', e, { bsp })
+      throw e
+    } finally { state.gate.unblock('mapinstall') }
+  })
+  handle('removeMap', (bsp) => library.uninstall(bsp))
 
   // Spec 13 §2: "Uninstall ... asks whether to keep the downloaded maps."
   handle('uninstall', async ({ keepMaps } = {}) => {

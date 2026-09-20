@@ -7,12 +7,18 @@
 // `auth {slot, allow, reason}` over the game link.
 //
 // NEVER ON THE COMMAND LINE. A command line is readable by every process on the
-// box (and lands in our own logs, and in `ps` output, and in crash dumps). We
-// take it from the environment, which is per-process and which we can then
-// scrub. The launcher sets `ENW_AUTH_TOKEN`; this component reads it once in
-// post_load and immediately clears the variable so it is not inherited by any
-// child process and not visible to anything that walks our environment block
-// afterwards.
+// box, and lands in our own logs, in `ps` output and in crash dumps.
+//
+// Three sources, in order of preference, all read once in post_load:
+//   1. `ENW_TOKEN_PIPE` -- the ENW launcher's one-shot named pipe. The variable
+//      holds only the pipe's random per-launch NAME; the token itself is in
+//      neither argv nor the environment. We connect once and read one NDJSON
+//      line `{"v":0,"token":"..."}`. This is the production path.
+//   2. `ENW_TOKEN` -- the launcher's opt-in environment fallback.
+//   3. `ENW_AUTH_TOKEN` -- what tools\dev\launch.ps1 passes for local tests.
+// Whichever we use, we clear the variable immediately so it is not inherited by
+// any child process and not visible to anything that walks our environment
+// block afterwards.
 //
 // HOW IT REACHES USERINFO. `re` gave us DVAR_FLAG_USERINFO = 0x2 and
 // Dvar_RegisterString at 0x5EED90, but that function's prologue shows eight-plus
@@ -23,7 +29,9 @@
 // and why the token still never appears in argv.
 #include "../../shared/core/component.hpp"
 
+#include "../../shared/core/frame.hpp"
 #include "../../shared/core/game.hpp"
+#include "../../shared/core/json.hpp"
 #include "../../shared/core/game_link.hpp"
 #include "../../shared/core/logger.hpp"
 
@@ -125,11 +133,14 @@ std::string fingerprint(const std::string& t) {
 
 }  // namespace
 
+std::string read_token_pipe_public(const std::string& p) { return read_token_pipe(p); }
+
 bool have_token() { return g_present; }
 const std::string& token() { return g_token; }
 
 // Where we drop the one-line config the engine execs for us. Instance-private.
 std::string g_cfg_path;
+int g_frame_token = 0;
 
 // Put the token into userinfo.
 //
@@ -148,7 +159,10 @@ std::string g_cfg_path;
 // starts (post_load runs before any engine code) and the launcher passes
 // `+exec enw_auth.cfg`. THE TOKEN IS STILL NOT ON THE COMMAND LINE -- argv
 // carries only the filename. The file lives in this instance's private homepath
-// and we delete it in post_init, as soon as the engine has read it.
+// and we delete it once the game is actually running -- NOT at post_init, which
+// happens before the command buffer flushes the command line's `+exec`. Deleting
+// it at post_init means deleting it before the engine ever reads it, which is
+// exactly the bug the first version had.
 //
 // When `re` hands over the full Dvar_RegisterString prototype this becomes a
 // direct call and the file goes away.
@@ -200,18 +214,44 @@ public:
     const char* name() const override { return "auth_token"; }
 
     void post_load() override {
+        std::string t;
+        const char* source = nullptr;
+
         char buf[2048]{};
-        const DWORD n = ::GetEnvironmentVariableA("ENW_AUTH_TOKEN", buf, sizeof(buf));
-        if (n == 0 || n >= sizeof(buf)) {
-            ENW_DEBUG("auth: no ENW_AUTH_TOKEN in the environment (fine for a solo run)");
-            return;
+
+        // 1. The launcher's one-shot pipe. Preferred: the token is in neither
+        //    the command line nor the environment.
+        DWORD n = ::GetEnvironmentVariableA("ENW_TOKEN_PIPE", buf, sizeof(buf));
+        if (n > 0 && n < sizeof(buf)) {
+            const std::string pipe_path(buf, n);
+            SecureZeroMemory(buf, sizeof(buf));
+            ::SetEnvironmentVariableA("ENW_TOKEN_PIPE", nullptr);
+            t = auth::read_token_pipe_public(pipe_path);
+            if (!t.empty()) source = "the launcher's one-shot pipe";
         }
 
-        std::string t(buf, n);
-        // Scrub our own copy of the buffer and the environment variable straight
-        // away, whatever happens next.
+        // 2. Environment fallbacks. ENW_TOKEN is the launcher's opt-in name;
+        //    ENW_AUTH_TOKEN is what tools\dev\launch.ps1 uses. Either way we
+        //    clear it immediately.
+        if (t.empty()) {
+            for (const char* var : {"ENW_TOKEN", "ENW_AUTH_TOKEN"}) {
+                SecureZeroMemory(buf, sizeof(buf));
+                n = ::GetEnvironmentVariableA(var, buf, sizeof(buf));
+                if (n > 0 && n < sizeof(buf)) {
+                    t.assign(buf, n);
+                    SecureZeroMemory(buf, sizeof(buf));
+                    ::SetEnvironmentVariableA(var, nullptr);
+                    source = var;
+                    break;
+                }
+            }
+        }
         SecureZeroMemory(buf, sizeof(buf));
-        ::SetEnvironmentVariableA("ENW_AUTH_TOKEN", nullptr);
+
+        if (t.empty()) {
+            ENW_DEBUG("auth: no invite token offered (fine for a solo run)");
+            return;
+        }
 
         if (!auth::looks_like_token(t)) {
             ENW_ERROR("auth: ENW_AUTH_TOKEN is not shaped like an invite token "
@@ -222,7 +262,7 @@ public:
 
         auth::g_token = std::move(t);
         auth::g_present = true;
-        ENW_INFO("auth: invite token accepted %s; cleared from the environment",
+        ENW_INFO("auth: invite token accepted from %s %s", source ? source : "?",
                  auth::fingerprint(auth::g_token).c_str());
 
         // Must happen here, before the engine starts, so `+exec enw_auth.cfg`
@@ -246,21 +286,33 @@ public:
     void post_init() override {
         if (!auth::g_present) return;
 
-        // Delete the file the moment the engine has had its chance to exec it.
-        auth::remove_userinfo_cfg();
+        // DO NOT delete the config here, and do not check for the dvar here.
+        // post_init runs when the dvar system is up (~sys_gpu), which is EARLIER
+        // than the command buffer flushing the command line's `+exec`. The first
+        // version deleted the file at this point and then complained that
+        // enw_token had not registered -- it had deleted the file before the
+        // engine ever read it. Wait for the game to be actually running.
+        auth::g_frame_token = frame::subscribe("auth_token", [](uint64_t n) {
+            // ~2 s at 60 fps: long past the startup command buffer.
+            if (n < 120) return;
+            check_and_clean();
+            frame::unsubscribe(auth::g_frame_token);
+        });
+        ENW_DEBUG("auth: waiting for the frame tick before checking enw_token");
+    }
 
-        // Verify rather than assume: if the dvar exists, `setu` ran and the
-        // token is in userinfo. find_dvar is the one dvar call we have proven.
+    static void check_and_clean() {
         if (game::find_dvar("enw_token") != nullptr) {
             auth::g_installed = true;
             ENW_INFO("auth: enw_token is registered - the token is in userinfo");
             game_link::get().send_log("info", "invite token installed in userinfo");
-            return;
+        } else {
+            ENW_WARN("auth: enw_token did NOT register. Check the launcher passed "
+                     "'+exec enw_auth.cfg' and that the config was written.");
+            game_link::get().send_log("warn", "invite token did not reach userinfo");
         }
-        ENW_WARN("auth: enw_token did NOT register. Either the launcher did not pass "
-                 "'+exec enw_auth.cfg', or the engine execs it later than post_init. The server "
-                 "will see a connect with no token.");
-        game_link::get().send_log("warn", "invite token did not reach userinfo");
+        // Now it is safe to remove: the engine has long since exec'd it.
+        auth::remove_userinfo_cfg();
     }
 
     void pre_destroy() override {

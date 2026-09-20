@@ -747,6 +747,26 @@ function migrate() {
   // A creator page is a row so a claim can be recorded against it (05: claims by staff
   // judgement → the Map Maker badge). Maps still carry their author string; this table is
   // only for the ones somebody has claimed or that staff have written a page for.
+  // The address players are told to connect to for games on this box.
+  //
+  // It is PROVISION-TIME data, deliberately not something the box asserts about itself: a
+  // box reports `host.public_ip` in its status and the site will use that when this is
+  // null, but a box that can name its own connect address can also name somebody else's,
+  // and the connect string is what a player's game dials. For a dev box on this machine
+  // it is `127.0.0.1`.
+  addColumn('boxes', 'address', 'TEXT')
+
+  // One row per (version, path). Without this, the `INSERT OR IGNORE` that both the seeder
+  // and the archive importer use has nothing to conflict WITH, so it is a plain INSERT and
+  // every re-import duplicates every file row. Found by running the importer twice and
+  // counting (63 rows where 35 were expected).
+  //
+  // The de-dupe keeps the LOWEST id per (version, path) — the first time we recorded the
+  // file, which is the one whose `fetched_at` is true.
+  db.exec(`DELETE FROM map_files WHERE id NOT IN (
+             SELECT MIN(id) FROM map_files GROUP BY map_version_id, path)`)
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_map_files_unique ON map_files(map_version_id, path)')
+
   db.exec(`CREATE TABLE IF NOT EXISTS creators (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     slug        TEXT UNIQUE NOT NULL,

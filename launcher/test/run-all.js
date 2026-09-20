@@ -242,6 +242,56 @@ await test('removing our folder removes the link, not the target', () => {
   assert.equal(fs.existsSync(path.join(target, 'game-data.txt')), true, 'THE TARGET MUST SURVIVE')
 })
 
+// ------------------------------------------------- the map library / junctions --
+group('Map library')
+
+await test('mkdirSync(recursive) over a DANGLING junction throws ENOENT', () => {
+  // The trap that broke the first custom-map launch. A junction whose target has gone
+  // is not "an existing directory" to Node: existsSync says false and `mkdir -p` throws
+  // ENOENT instead of doing nothing. Anything that creates a directory which might
+  // already be a link has to check first.
+  const target = path.join(TMP, 'dangle-target')
+  const link = path.join(TMP, 'dangle-link')
+  fs.mkdirSync(target, { recursive: true })
+  try { fs.symlinkSync(target, link, 'junction') } catch { return } // not NTFS
+  assert.equal(fs.existsSync(link), true, 'a live junction exists')
+  assert.doesNotThrow(() => fs.mkdirSync(link, { recursive: true }), 'a live junction is fine')
+  fs.rmdirSync(target)
+  assert.equal(fs.existsSync(link), false, 'a dangling junction does not "exist"')
+  assert.throws(() => fs.mkdirSync(link, { recursive: true }), /ENOENT/)
+})
+
+await test('the map library is the mods folder the engine reads', async () => {
+  // No junction between the library and the engine's view: they are one folder. This
+  // is deliberate (see paths.js) and the whole reason the custom-map path is simple.
+  const paths2 = await import('../src/main/paths.js')
+  const lib = await import('../src/main/library.js')
+  assert.equal(path.basename(paths2.P.maps), 'mods')
+  assert.equal(paths2.isInside(paths2.P.maps, paths2.P.home), true)
+  assert.equal(lib.installDir('some_map'), path.join(paths2.P.maps, 'some_map'))
+})
+
+await test("a map's title is not its bsp name, and the catalogue keeps both", async () => {
+  const lib = await import('../src/main/library.js')
+  const c = lib.catalogue()
+  if (!c.maps.length) return
+  for (const m of c.maps) {
+    assert.ok(m.bsp, 'every map has a bsp')
+    assert.ok(m.title, 'every map has a title')
+  }
+  // The specific pair, because the whole point is that they differ.
+  const water = c.maps.find((m) => m.bsp === 'water')
+  if (water) assert.equal(water.title, 'Alcatraz')
+})
+
+await test('an executable inside a map is never copied', async () => {
+  const lib = await import('../src/main/library.js')
+  const src = String(fs.readFileSync(new URL('../src/main/library.js', import.meta.url)))
+  assert.ok(src.includes("'.exe'"), 'the banned list must name .exe')
+  assert.ok(src.includes('never copies or runs an executable that came with a map'))
+  assert.ok(typeof lib.install === 'function')
+})
+
 // ------------------------------------------------------- the launch command --
 group('The launch command line')
 

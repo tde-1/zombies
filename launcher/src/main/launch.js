@@ -204,7 +204,13 @@ export class GameLaunch extends EventEmitter {
     // that a missing <fs_homepath>\main gave no console log at all, and with fs_game
     // set the engine uses the mod folder instead (see watchConsoleLog).
     fs.mkdirSync(path.join(homeDir, 'main'), { recursive: true })
-    fs.mkdirSync(path.join(homeDir, ...String(o.fsGame || MOD_NAME).split('/')), { recursive: true })
+    // NOT an unconditional recursive mkdir. An installed custom map's mod folder is a
+    // JUNCTION into the ENW map library, and `fs.mkdirSync(<junction>, {recursive:true})`
+    // throws ENOENT on Windows rather than treating it as an existing directory — it
+    // failed the first launch of a custom map outright. existsSync follows the link, so
+    // check first and only create what is genuinely absent.
+    const modDir = path.join(homeDir, ...String(o.fsGame || MOD_NAME).split('/'))
+    if (!fs.existsSync(modDir)) fs.mkdirSync(modDir, { recursive: true })
 
     // The dev-box lock. A player's machine has none and this is a no-op.
     if (o.useGameLock !== false) {

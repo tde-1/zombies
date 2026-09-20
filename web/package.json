@@ -2,7 +2,7 @@
   "name": "enw-zombies-web",
   "version": "0.1.0",
   "private": true,
-  "description": "ENW Zombies — the website at zombies.enw.gg. A port of ENW Movement (CSGO-Matchmaker/server + movement-client) with the nouns changed.",
+  "description": "ENW Zombies \u2014 the website at zombies.enw.gg. A port of ENW Movement (CSGO-Matchmaker/server + movement-client) with the nouns changed.",
   "license": "AGPL-3.0-or-later",
   "engines": {
     "node": ">=20"
@@ -14,7 +14,9 @@
     "reseed": "node server/db/seed.js --reset",
     "build": "npm --prefix client install && npm --prefix client run build",
     "client": "npm --prefix client run dev",
-    "check": "node test/run-all.js"
+    "check": "node test/run-all.js",
+    "import:archive": "node server/db/import-archive.js",
+    "live-bridge": "node tools/live-bridge.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",

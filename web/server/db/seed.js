@@ -342,12 +342,12 @@ function seedPresets() {
 // --secret devkey-a --box box-a` finds a lease waiting for it without anyone editing rows by
 // hand. The secret is the host agent's own default dev key and is worth nothing anywhere else.
 function seedBox() {
-  db.prepare(`INSERT OR IGNORE INTO boxes (name, match_key, region, note, enabled, max_instances, created_at)
-              VALUES (?,?,?,?,?,?,?)`)
-    .run('box-a', process.env.ZM_DEV_BOX_KEY || 'devkey-a', 'dev', "B's PC — the host agent's default dev box", 1, 4, now())
-  db.prepare(`INSERT OR IGNORE INTO boxes (name, match_key, region, note, enabled, max_instances, created_at)
-              VALUES (?,?,?,?,?,?,?)`)
-    .run('box-b', 'devkey-b', 'dev', 'second dev box, for the two-box demo', 1, 4, now())
+  const insBox = db.prepare(`INSERT OR IGNORE INTO boxes (name, match_key, region, address, note, enabled, max_instances, created_at)
+              VALUES (?,?,?,?,?,?,?,?)`)
+  // `address` is what a player's game is told to dial. On a dev box that is loopback; a
+  // real box gets its address at provisioning, never from what the box says about itself.
+  insBox.run('box-a', process.env.ZM_DEV_BOX_KEY || 'devkey-a', 'dev', '127.0.0.1', "B's PC — the host agent's default dev box", 1, 4, now())
+  insBox.run('box-b', 'devkey-b', 'dev', '127.0.0.1', 'second dev box, for the two-box demo', 1, 4, now())
 }
 
 function seedWeek(entries) {

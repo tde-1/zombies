@@ -25,8 +25,18 @@ export const P = {
   game: path.join(ENW_ROOT, 'game'),
   // fs_homepath for our instance: profile/config/console.log land here, not in theirs.
   home: path.join(ENW_ROOT, 'home'),
-  // Downloaded maps (spec 13 §2: "a separate ENW library folder, never inside the WaW install").
-  maps: path.join(ENW_ROOT, 'maps'),
+  // Downloaded maps (spec 13 §2: "a separate ENW library folder, never inside the WaW
+  // install"). On World at War the map library IS the mods folder, so this is
+  // `<home>\mods` — the exact path the engine reads with our `fs_homepath`.
+  //
+  // It was `<ENW_ROOT>\maps` with a junction per map into `<home>\mods\<bsp>`, which is
+  // tidier on paper and does not survive contact: a junction whose link AND target are
+  // both inside our folder resolved to nothing here, while the same junction with
+  // either end outside worked. Structurally identical reparse data (checked with
+  // `fsutil reparsepoint query`), so it is a filesystem-layer quirk rather than
+  // anything we did wrong — and depending on a behaviour I cannot explain is worse than
+  // not needing it. One folder, no reparse points, works everywhere.
+  maps: path.join(ENW_ROOT, 'home', 'mods'),
   logs: path.join(ENW_ROOT, 'logs'),
   state: path.join(ENW_ROOT, 'state'),
   crashes: path.join(ENW_ROOT, 'crashes'),

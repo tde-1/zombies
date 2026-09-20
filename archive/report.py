@@ -54,11 +54,19 @@ def build(db):
     r["distinct_maps_community"] = db.execute(
         "SELECT COUNT(DISTINCT norm) FROM maps WHERE source<>'archive.org'").fetchone()[0]
 
-    r["links_total"] = db.execute("SELECT COUNT(*) FROM links").fetchone()[0]
-    r["links_distinct"] = db.execute("SELECT COUNT(DISTINCT url) FROM links").fetchone()[0]
+    # Only real map downloads count. `kind='prerequisite'` is the UGX Map Manager
+    # installer and UGX Mod Standalone, which several sources list against every map
+    # they apply to; counting them would inflate both the link total and "recoverable".
+    r["links_total"] = db.execute(
+        "SELECT COUNT(*) FROM links WHERE kind='download'").fetchone()[0]
+    r["links_distinct"] = db.execute(
+        "SELECT COUNT(DISTINCT url) FROM links WHERE kind='download'").fetchone()[0]
+    r["links_prerequisite"] = db.execute(
+        "SELECT COUNT(DISTINCT url) FROM links WHERE kind<>'download'").fetchone()[0]
 
     verdicts = collections.Counter()
-    for row in db.execute("SELECT verdict, COUNT(DISTINCT url) c FROM links GROUP BY verdict"):
+    for row in db.execute("SELECT verdict, COUNT(DISTINCT url) c FROM links "
+                          "WHERE kind='download' GROUP BY verdict"):
         verdicts[row["verdict"] or "unchecked"] = row["c"]
     r["link_verdicts"] = dict(verdicts)
 
@@ -69,7 +77,7 @@ def build(db):
         " SUM(CASE WHEN verdict='blocked' THEN 1 ELSE 0 END) blocked,"
         " SUM(CASE WHEN verdict='unknown' THEN 1 ELSE 0 END) unknown,"
         " SUM(CASE WHEN verdict IS NULL THEN 1 ELSE 0 END) unchecked"
-        " FROM (SELECT DISTINCT url, host, verdict FROM links)"
+        " FROM (SELECT DISTINCT url, host, verdict FROM links WHERE kind='download')"
         " GROUP BY host ORDER BY links DESC")]
 
     # ---- per map: best verdict and best known size
@@ -77,7 +85,8 @@ def build(db):
     for row in db.execute(
             "SELECT m.norm norm, l.url url, l.verdict verdict, l.size size,"
             "       l.size_exact size_exact, l.host host"
-            "  FROM maps m JOIN links l ON l.map_key = m.key"):
+            "  FROM maps m JOIN links l ON l.map_key = m.key"
+            " WHERE l.kind='download'"):
         d = per_map.setdefault(row["norm"], {"alive": 0, "dead": 0, "blocked": 0,
                                              "unknown": 0, "unchecked": 0,
                                              "best": 0, "approx": False, "hosts": set()})
