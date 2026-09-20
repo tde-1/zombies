@@ -11,13 +11,14 @@
 //   POST /api/gs/result       the game summary + where the replay went
 //   GET  /api/gs/chat-feed    long-poll drain of the cross-server chat ring
 //   POST /api/gs/chat         a player said something in one of our games
+//   POST /api/gs/live         a frame of each live game, for the site's spectator view
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import path from 'node:path'
 import { makeLog, sleep, mkdirp } from './util.js'
 
 export class SiteClient extends EventEmitter {
-  constructor({ base, secret, boxName = 'box', pollMs = 3000, chatWaitS = 20, spoolDir = null, spoolMs = 15_000, log } = {}) {
+  constructor({ base, secret, boxName = 'box', pollMs = 3000, chatWaitS = 20, spoolDir = null, spoolMs = 15_000, liveHz = 4, log } = {}) {
     super()
     this.base = String(base).replace(/\/$/, '')
     this.secret = secret
@@ -26,13 +27,17 @@ export class SiteClient extends EventEmitter {
     this.chatWaitS = chatWaitS
     this.spoolDir = spoolDir
     this.spoolMs = spoolMs
+    // 4 Hz. The site drops anything faster than one frame per 220 ms per game and still
+    // answers 200 ("rate is our problem"), so this is a courtesy, not a requirement.
+    this.liveMs = Math.max(200, Math.round(1000 / Math.max(0.5, liveHz)))
+    this.liveFrames = null       // set by the host: () => [{ instance, match_id, state }]
     if (spoolDir) mkdirp(spoolDir)
     this.log = log || makeLog('site')
     this.nonce = null
     this.chatSince = 0
     this.running = false
     this.online = false
-    this.stats = { polls: 0, errors: 0, chatIn: 0, chatOut: 0, results: 0, spooled: 0, lastError: null }
+    this.stats = { polls: 0, errors: 0, chatIn: 0, chatOut: 0, results: 0, spooled: 0, liveSent: 0, liveDropped: 0, lastError: null }
   }
 
   async req(pathname, { method = 'GET', body = null, timeoutMs = 30_000 } = {}) {
@@ -61,6 +66,7 @@ export class SiteClient extends EventEmitter {
     this.loopAssignment()
     this.loopChat()
     this.loopSpool()
+    this.loopLive()
     const held = this.spoolList().length
     if (held) this.log.warn(`${held} result(s) held in the spool from a previous run — draining`)
   }
@@ -202,6 +208,31 @@ export class SiteClient extends EventEmitter {
         this.stats.errors++
         this.log.debug(`chat drain: ${e.message}`)
         await sleep(2000)
+      }
+    }
+  }
+
+  // ---- live frames -----------------------------------------------------------------
+  // The site's /live page draws the same 2D view the box's own dashboard does, from the
+  // same referee `state()`. The box already has every byte; this just sends it. Frames are
+  // FIRE AND FORGET: a live view is worth nothing a second later, so a failed post is
+  // counted and dropped, never spooled and never retried.
+  async loopLive() {
+    while (this.running) {
+      await sleep(this.liveMs)
+      if (!this.liveFrames) continue
+      let frames
+      try { frames = this.liveFrames() } catch { continue }
+      if (!frames?.length) continue
+      try {
+        // The site takes at most 16 per post; a box with more live games than that has a
+        // bigger problem than its spectator view.
+        const r = await this.req('/api/gs/live', { method: 'POST', body: { instances: frames.slice(0, 16) }, timeoutMs: 2500 })
+        this.stats.liveSent += r?.taken || 0
+        this.stats.liveDropped += Math.max(0, (r?.of ?? frames.length) - (r?.taken || 0))
+      } catch (e) {
+        this.stats.liveDropped += frames.length
+        this.log.debug(`live frame: ${e.message}`)
       }
     }
   }

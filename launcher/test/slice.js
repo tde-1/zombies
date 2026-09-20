@@ -35,11 +35,21 @@ const step = (n, t) => say(`\n${n}. ${t}\n${'-'.repeat(t.length + 3)}`)
 
 // A cookie jar for the CLI. In the app this is the wrapped page's session; here we
 // sign in through the site's own mock endpoint, which is the same session either way.
+// `/auth/mock` is a FORM post with a steam_id, not JSON — and it answers with a 302,
+// so `redirect: 'manual'` is what lets us read the Set-Cookie.
 let JAR = ''
+const STEAMID = val('--steamid', '76561198126330106')
 async function signIn() {
-  const res = await fetch(`${SITE}/auth/mock`, { method: 'POST', redirect: 'manual', headers: { 'content-type': 'application/json' }, body: JSON.stringify({}) })
-  const set = res.headers.getSetCookie?.() || []
-  JAR = set.map((c) => c.split(';')[0]).join('; ')
+  const res = await fetch(`${SITE}/auth/mock`, {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: `steam_id=${encodeURIComponent(STEAMID)}`,
+  })
+  for (const c of res.headers.getSetCookie?.() || []) {
+    if (c.startsWith('zm.sid=')) JAR = c.split(';')[0]
+  }
+  if (!JAR) throw new Error(`no session cookie from /auth/mock (${res.status})`)
   return JAR
 }
 

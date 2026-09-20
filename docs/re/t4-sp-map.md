@@ -32,6 +32,22 @@ never returns, no frames run, no packets are handled and no dialog appears (it u
   class as my earlier 0x5FF4E0 claim, which I withdraw: stack-scanned return addresses are only
   trustworthy when validated as following a `call`.)
 
+## The dedicated fatal: ERR_MAPLOADERRORSUMMARY in SV_SpawnServer (2026-09-20)
+`dedi`'s Com_Error hook trapped it: **`Com_Error(7, "")` at 0x62B7AD**, return address 0x62B7B2.
+- **errorParm_t 7 = `ERR_MAPLOADERRORSUMMARY`** — read independently from T4SP `enums.hpp` and
+  KisakCOD `qcommon.h` (both: FATAL 0, DROP 1, SERVERDISCONNECT 2, DISCONNECT 3, SCRIPT 4,
+  SCRIPT_DROP 5, LOCALIZATION 6, **MAPLOADERRORSUMMARY 7**).
+- **Both 0x62B7B2 and 0x62B4B0 are inside `SV_SpawnServer` 0x62B3E0** — they do not name two
+  different steps. Frames below (0x594AF0 / 0x594B40 / 0x594360) are the Cmd_* path, i.e. `+map`
+  from the command buffer inside Com_Init. So the summary is raised at the end of the map load.
+- **`0x840FF0` is the shared empty-string literal `""`** (hundreds of referents). The
+  `CS_VISIONSET_*` names after it are literal-pool adjacency — a red herring, not a table.
+- `com_errorMessage` is empty because Com_Error sets it from the empty fmt; the preceding
+  `call 0x5EDA40` sets a 1-char flag ("1"/""), not the message. **The accumulated list was empty**,
+  so the dedicated path trips the summary check rather than missing a specific asset.
+- **Fix:** skip the `call` at **0x62B7AD** in dedicated mode (5-byte NOP or short-circuit the
+  guard). Then `Sys_Error`'s park (0x5FE8C0) is never entered, Com_Init returns, and frames start.
+
 ## Behaviour note: the foreground-app check (2026-09-20)
 The engine throttles hard when it believes it is not the foreground app — it calls
 `GetActiveWindow`/`GetForegroundWindow` through the IAT, and parking windows off-screen (as our

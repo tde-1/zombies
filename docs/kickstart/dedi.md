@@ -25,21 +25,19 @@ with one small DLL it loads and runs a stock zombies map headlessly.
 left the dedicated path in the SP tree. That is the single most important finding of this spike and
 it is the direct answer to `R12 §4c`'s "cheapest decisive experiment": not vestigial, functional.
 
-**Crash sites: 2 cleared, 1 open, 1 retracted** (§4). Predicted total for a complete Stage C:
+**Crash sites: 3 cleared, 1 open, 1 retracted** (§4). Predicted total for a complete Stage C:
 **12–30, central ~18**. Both the vault's ~110 (from iw4x/h1-mod) and R12's 50–70 (from KisakCOD's
 CoD4 SP tree) assume we must author the dedicated branch points. We do not.
 
-**The whole remaining blocker is one fatal error, now trapped.** `Com_Error` is called with
-code **7** and an **empty message** from `0x62B7B2` at the end of the `+map` path, and `Sys_Error`
-then parks the main thread in `win32u!NtUserGetMessage` for ever. `Com_Init` (0x59D710) never
-returns in dedicated mode, so WinMain never reaches its frame loop: no frame tick, no network poll, no connectionless
-replies, no join. Everything we have watched — the map load, zombies GSC — happens *inside*
-Com_Init, because `+map` runs from the command buffer there. Proved by elimination with counters on
-every call that follows it in WinMain (§4, site 3).
+**The server now boots, runs frames and reads packets.** Suppressing a spurious
+`ERR_MAPLOADERRORSUMMARY` (raised with an empty error list from `SV_SpawnServer+0x3CD`) makes
+`Com_Init` return; the frame loop starts and `SV_PacketEvent` / `SV_ConnectionlessPacket` /
+`SV_DirectConnect` all fire for the first time. It then stops after ~2 frames on a **new** blocker:
+the main thread parks in `win32u!NtGdiExtTextOutW`, drawing text from `0x49414E` (§4, site 5).
 
-Once that returns, four things should come alive together: frames, `sv_fps` pacing, the network poll,
-and the loopback join. And the join is cheaper than feared — R14 says T4 SP has no party layer
-(plain `connect <ip>:<port>`), and `re` found that the Demonware `getAuthTicket` block is skipped
+That last hop is what stands between us and the join — and the join is cheaper than feared. R14 says
+T4 SP has no party layer (plain `connect <ip>:<port>`), and `re` found the Demonware `getAuthTicket`
+block is skipped
 entirely for `NA_LOOPBACK`, so a two-instance test on this box needs no auth patching at all.
 
 **One question only B can answer**: whether a game box needs a logged-in Steam client (§8).
@@ -185,7 +183,8 @@ map, then zombies GSC setting `g_spawnai 1`, `ai_disableSpawn 0`, `dynEnt_spawne
 |---|---|---|---|
 | 1 | `WinMain` 0x5FF799 → 0x5FF4E0 | the renderer/D3D bring-up is called before the frame loop and is **not** gated by `com_dedicated`; in a headless process it drags a D3D device in | **CLEARED.** `re` found it; our DLL retargets that one call (verified `E8 42 FD FF FF` → 0x5FF4E0, no argument pushes before it, so a naked no-arg stub is safe), and refuses to patch if the target is not what we expect |
 | 2 | `maps/_load.gsc:3767` via `:324` | stock GSC calls `SetSavedDvar` on `con_typewriterColorBase`, a client-only dvar. `+set` creates it but without the SAVED flag; `seta` does not help | **CLEARED, but crudely.** Our DLL ORs flag bits into the existing `dvar_s`. See the honesty note below |
-| 3 | `Sys_Error`-shaped function at `0x5FE8C0`, reached inside `Com_Init` 0x59D710 | **The main thread is parked in a blocking `win32u!NtUserGetMessage`** — same EIP and ESP on every sample, innermost engine frame `0x5FE97B` inside `0x5FE8C0` (`re`'s `Sys_Error`), caller `0x410830`. So the headless server hits a **fatal error** and the error handler parks the thread in its own message loop for ever. That is why `Com_Init` never returns, why there are no frames, no network poll and no OOB replies, why no dialog appears (it uses the WinConsole, not a MessageBox), and why the console tail shows `com_errorTitle Error` with an empty `com_errorMessage`. It also explains why posting `WM_NULL` did nothing: waking `GetMessage` just loops it | **OPEN. Error now trapped: `Com_Error(errParm=7, fmt="")` from `0x62B7B2`, tail-calling `Sys_Error("%s", ...)` from `0x59AA4C`. The message is genuinely empty, which matches the console log's empty `com_errorMessage`. Waiting on `re` for what caller `0x62B7B2` / `0x62B4B0` are and what error code 7 is** |
+| 3 | `ERR_MAPLOADERRORSUMMARY` raised from `SV_SpawnServer+0x3CD` (call at `0x62B7AD`) | The dedicated path tripped the map-load error summary **with an empty accumulated list**, and `Com_Error(7, "")` tail-called `Sys_Error`, which parked the main thread in `win32u!NtUserGetMessage` for ever inside `Com_Init`. Found by suspending the thread and reading its context; confirmed by trapping `Com_Error` | **CLEARED.** Our DLL retargets that one call to a stub that logs and returns. `Com_Init` now returns, the frame loop starts, and the server dispatches packets (`SV_PacketEvent`/`SV_ConnectionlessPacket`/`SV_DirectConnect` all fired) |
+| 5 | text draw at `0x49414E` | after ~2 frames the main thread parks in `win32u!NtGdiExtTextOutW`, same EIP/ESP every sample. Different address, different API and different ESP from site 3, so it is a new site rather than the old one recurring. Most likely the WinConsole / loading text drawn from the frame loop with nothing pumping that window | **OPEN. The only thing between us and the loopback join test.** Likely the same one-call short-circuit; we need no console output, `logfile 2` covers it |
 | 4 | `BG_LoadWeaponDef` | `Could not find default weapon`, reached only with `fs_game` active | **RETRACTED.** On repaired data `main\iw_14.iwd` holds **220 `weapons/sp/*` and 55 `accuracy/*` files**, and `iw_14.iwd` was one of the zero-filled ones — so those 275 files were simply invisible. Not a dedicated-mode bug and not an `fs_game` bug. Confirmation run pending |
 | — | UDP 3074 | the party socket is bound with no dvar to move it | not a crash; blocks several instances per box |
 

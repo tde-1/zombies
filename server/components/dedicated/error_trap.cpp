@@ -132,6 +132,37 @@ ENW_ERROR_STUB(sys_error_stub, on_sys_error, g_sys_error_tramp);
 enw::hook g_com_error_hook;
 enw::hook g_sys_error_hook;
 
+// ---- the fix -------------------------------------------------------------------
+// `re` confirmed errorParm_t 7 = ERR_MAPLOADERRORSUMMARY from two independent sources,
+// and that both addresses in our chain are inside SV_SpawnServer (0x62B3E0): the call
+// itself is at 0x62B7AD, `push 0x840FF0; push 7; call Com_Error`, where 0x840FF0 is the
+// shared empty-string literal (the configstring names next to it were a red herring).
+// The accumulated error list is EMPTY -- the dedicated path trips the summary check
+// with nothing in it -- so short-circuiting the call hides nothing.
+//
+// We retarget that one call rather than NOPing it, so the stub can log every time the
+// summary would have fired. If a real map ever accumulates errors we will see the
+// suppression in the log instead of losing the information silently.
+volatile long g_summaries_suppressed = 0;
+
+void __cdecl on_summary_suppressed() {
+    if (++g_summaries_suppressed <= 5)
+        ENW_WARN("dedi_error_trap: ERR_MAPLOADERRORSUMMARY suppressed at SV_SpawnServer+0x3CD "
+                 "(#%ld). The engine's accumulated map-load error list was empty; if a map ever "
+                 "genuinely fails to load, look here first.", g_summaries_suppressed);
+}
+
+// Com_Error is cdecl, so the caller cleans up its two pushed arguments: a plain `ret`
+// is the correct way to not-call it.
+__declspec(naked) void summary_suppress_stub() {
+    __asm { pushfd }
+    __asm { pushad }
+    __asm { call on_summary_suppressed }
+    __asm { popad }
+    __asm { popfd }
+    __asm { ret }
+}
+
 class error_trap_component final : public component {
 public:
     const char* name() const override { return "dedi_error_trap"; }
@@ -139,9 +170,34 @@ public:
     void post_init() override {
         install(t4::fn::Com_Error, &com_error_stub, g_com_error_hook, g_com_error_tramp, "Com_Error");
         install(0x5FE8C0,          &sys_error_stub, g_sys_error_hook, g_sys_error_tramp, "Sys_Error");
+        suppress_map_load_error_summary();
     }
 
 private:
+    // Only in dedicated mode: a client should still see a real map-load error summary.
+    static void suppress_map_load_error_summary() {
+        if (!std::getenv("ENW_DEDI_SUPPRESS_MAPSUMMARY")) {
+            ENW_INFO("dedi_error_trap: ERR_MAPLOADERRORSUMMARY suppression OFF "
+                     "(set ENW_DEDI_SUPPRESS_MAPSUMMARY=1)");
+            return;
+        }
+        constexpr uintptr_t kCallSite = 0x62B7AD;
+        const uintptr_t target = memory::call_target(enw::at(kCallSite));
+        if (target != enw::at(t4::fn::Com_Error)) {
+            ENW_ERROR("dedi_error_trap: NOT patching 0x%08X: it calls 0x%08X, expected Com_Error "
+                      "0x%08X", static_cast<unsigned>(kCallSite), static_cast<unsigned>(target),
+                      static_cast<unsigned>(enw::at(t4::fn::Com_Error)));
+            return;
+        }
+        if (!memory::retarget_call(enw::at(kCallSite), &summary_suppress_stub)) {
+            ENW_ERROR("dedi_error_trap: retarget_call on 0x%08X failed",
+                      static_cast<unsigned>(kCallSite));
+            return;
+        }
+        ENW_INFO("dedi_error_trap: ERR_MAPLOADERRORSUMMARY call at 0x%08X short-circuited; "
+                 "Com_Init should now return", static_cast<unsigned>(kCallSite));
+    }
+
     static void install(uintptr_t addr, void* stub, enw::hook& h, void*& tramp, const char* label) {
         const uintptr_t live = enw::at(addr);
         if (!memory::looks_like_function(live)) {

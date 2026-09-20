@@ -56,6 +56,7 @@ const cfg = {
   zstdLevel: Number(a['zstd-level'] ?? 10),
   gameLog: a['game-log'] !== 'off',   // the IW4MAdmin/B3-readable games_mp.log mirror
   gameLogPrefix: a['game-log-prefix'] || 'ENWZombie',
+  liveHz: Number(a['live-hz'] ?? 4),   // frames per second to the site's spectator view
   referee: {
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
     ...(a['cap-warn-ms'] ? { capWarnMs: String(a['cap-warn-ms']).split(',').map(Number) } : {}),
@@ -271,12 +272,17 @@ class HostAgent {
     }
 
     if (cfg.site) {
-      this.site = new SiteClient({ base: cfg.site, secret: cfg.secret, boxName: cfg.boxName, spoolDir: cfg.spoolDir, log: log.child('site') })
+      this.site = new SiteClient({ base: cfg.site, secret: cfg.secret, boxName: cfg.boxName, spoolDir: cfg.spoolDir, liveHz: cfg.liveHz, log: log.child('site') })
       try {
         const k = await this.site.fetchKeys()
         this.tokenGuard.setPublicKey(keys.publicFromRaw(k.invite_pub))
         log.info(`site invite key ${k.key_id} loaded — token checks ${cfg.requireToken ? 'ENFORCED' : 'advisory'}`)
       } catch (e) { log.warn(`could not fetch the site invite key (${e.message}); joins will be refused until it is available`) }
+      // The live spectator view: the same referee state() the local dashboard draws,
+      // pushed to the site ~4x a second. This is what replaces web/tools/live-bridge.js.
+      this.site.liveFrames = () => [...this.byInstance.values()]
+        .filter((g) => !g.finished && g.referee.phase !== 'boot')
+        .map((g) => ({ instance: g.instance.id, match_id: g.matchId, state: g.referee.state() }))
       this.site.on('assignment', (asg) => this.onAssignment(asg))
       this.site.on('chat', (e) => this.onNetworkChat(e))
       this.site.start()
@@ -449,6 +455,11 @@ class HostAgent {
       box: cfg.boxName,
       key_id: this.hostKey.keyId,
       host: hostInfo(),
+      // The agent's OWN footprint. Per box, not per game — the number that says whether
+      // the thing doing the refereeing, recording and reporting is free or not.
+      agent_rss_bytes: process.memoryUsage().rss,
+      agent_heap_bytes: process.memoryUsage().heapUsed,
+      agent_uptime_s: Math.round(process.uptime()),
       link: { host: cfg.linkHost, port: this.link.port, conns: this.link.stats() },
       site: this.site ? { base: cfg.site, online: this.site.online, ...this.site.stats } : null,
       token_checks: { required: cfg.requireToken, ...this.tokenGuard.stats },
