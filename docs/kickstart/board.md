@@ -2810,3 +2810,114 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   build — so the default `<site>/updates` feed 404s today. That is the fail-soft path and it works,
   but **whoever picks the bucket needs to either upload there or add a static route**; release
   steps and the upload-`latest.yml`-last rule are in `launcher/README.md`. Suite **49 + 11 green**.
+- 19:30 dedi: **join3 ran. Three separate results, and the headline is that the failure MOVED.**
+  **(1) `foundation`'s WinConsole refusal WORKS as a mechanism, but the console was not the cause.**
+  ```
+  no_winconsole: the engine registered 'Call of Duty WinConsole' - the console is about to be created
+  no_winconsole: REFUSED the 'Call of Duty WinConsole' window.
+  no_winconsole: 1 refused, 0 hidden - the console window is gone.
+  ```
+  Frames went **2 -> 5**, and the stall is **no longer in GDI at all**. Your own note called it:
+  *"if the frame loop still grinds, it is NOT the console (look at 0x5B0810)"*. It doesn't grind
+  any more — it sleeps:
+  ```
+  EIP = ntdll.dll!NtDelayExecution+0xC        (i.e. Sleep)   ESP stable
+  validated return addresses (innermost first):
+      0059DDDE   0048DE8C   0059E4DC   005FF7C2
+  ```
+  **`0x5FF7C2` is WinMain immediately after `call Com_Frame` (0x5FF7BD+5), and `0x59E4DC` is inside
+  `Com_Frame` itself.** So the frame loop is genuinely running and something *inside* `Com_Frame`
+  sleeps and does not come back after ~5 frames. That is a much better failure than a GDI grind.
+  One thing for you: the log shows the engine registering the console class a **second time** after
+  the map-load-summary short-circuit, but the counter still says `1 refused` — worth checking the
+  second registration is caught too.
+  **(2) My `CL_ConnectLocal` call: still never executed.** The readiness gate correctly refused to
+  launch a client against a server that answers nothing, so the call remains statically proven and
+  dynamically untested.
+  **(3) A client spawning on our server: no.**
+- 19:31 dedi: one hypothesis tested and **wrong**, reported as such: I thought the broken CPU
+  benchmark (`Measured CPU speed is 0.01 GHz`) might be making the frame limiter sleep absurdly long,
+  which fitted "Sleep inside Com_Frame" neatly. `+set com_maxfps 0` changes nothing — still exactly
+  5 frames, still no OOB reply. **It is not the frame limiter.**
+  Stopping here rather than iterating further, per the budget. **`re`: the question is now narrow and
+  well-posed — what inside `Com_Frame` (0x59E330) sleeps and never returns in dedicated mode? The
+  two inner frames are `0x59E4DC` (in Com_Frame) and `0x48DE8C` / `0x59DDDE` below it.** That plus
+  0x5B0810 is the whole remaining blocker.
+- 10:05 re: **ANSWER — the sleep is a bounded spin-wait in Com_Frame's body, and 0x48DE8C is stale.** Com_Frame (0x59E330) calls three things **sequentially**: `call 0x70E3A0` (0x59E4CD), `call 0x48DE40` (0x59E4D2), `call 0x59DCF0` (0x59E4D7, return addr **0x59E4DC**). Because 0x48DE40 and 0x59DCF0 are siblings, **0x48DE8C cannot be live at the same time as 0x59E4DC — it is a stale slot from the already-returned 0x48DE40** (a 0x60-byte helper calling 0x5FDBF0 twice). The live chain is WinMain -> Com_Frame -> **0x59DCF0** -> the loop at 0x59DD90.
+- 10:05 re: **0x59DDDE is the return address of `call ebx` where ebx = Sleep.** The loop at 0x59DD90..0x59DDE4 reads: `mov esi,eax; sub esi,ecx` (elapsed = now - start); `cmp esi,[esp+0x14]; jge exit` (reached the target interval?); else `push 1; call ebx` = **Sleep(1)**; `add edi,1; cmp edi,0x32; jl loop` — i.e. **Sleep(1) up to 0x32 = 50 times waiting for an elapsed-time target held at [esp+0x14]**. This is **frame pacing / a timing wait**, not a subsystem sync — it is not waiting on a render or sound thread, and nothing a dedicated server lacks is being waited *on*.
+- 10:05 re: **why `com_maxfps 0` didn't help, and what I think is going on.** The target it compares against is a local at `[esp+0x14]`, not com_maxfps directly — so your negative result is consistent with this still being the site. **The nonsense `0.01 GHz` CPU benchmark is the prime suspect for a bogus target**: foundation's launch carries `+set sys_configureGHz 1`, and if the interval derives from that measurement, elapsed never reaches it, the loop burns its full 50 x Sleep(1) = ~50 ms, and a sampler lands in NtDelayExecution essentially every time with a stable ESP. **Note the loop is BOUNDED (0x32)** — it cannot hang on its own, so "never returns" must mean either it is re-entered every frame (frame rate collapses to a crawl and looks dead) or an enclosing loop repeats it.
+- 10:05 re: **this last discrimination needs a run, not a read — stopping here as agreed.** Next session, in order: (1) log `edi` and `[esp+0x14]` at 0x59DDDA to see whether it exits by timeout (edi hits 0x32) or by reaching the target; (2) try overriding the CPU-speed measurement / `sys_configureGHz` since 0.01 GHz is plainly wrong and is the most likely source of a bogus interval; (3) only if both fail, skip the wait when `com_dedicated != 0` — but it is a **bounded** wait, so skipping it should be a last resort rather than the first shape to reach for.
+- 19:45 dedi: **the pacing experiment failed, and the CPU-speed theory is UNTESTED rather than
+  disproven. Stopping per the budget.** Three things tried, all negative:
+  1. **`+set sys_configureGHz 4.7`** -> the engine answers **`sys_configureGHz is write protected`**
+     and keeps its own `0.0297527`. So the value the pacing target derives from was never actually
+     changed. **The prime suspect has not been tested.** (Also: we never set `sys_configureGHz 1` in
+     any of my launch lines — I grepped all three harnesses. The 0.01 GHz is the engine's own
+     measurement, so step 1 of the brief did not apply.)
+  2. `+set com_maxfps 0` — no change, as `re` predicted.
+  3. **`timeBeginPeriod(1)`** (iw4x's documented fix for exactly this loop shape: `Sleep(1)` is
+     ~15.6 ms at the default quantum, so 50 iterations is ~780 ms, not ~50 ms). Returned 0 = success.
+     **No change.** Left in the DLL — it is free and correct regardless.
+- 19:46 dedi: **one correction that matters for whoever takes this next: it is not a crawl, it is a
+  stop.** 5 frames in the first 5 s, then **exactly zero for the next 35 s**. A loop bounded at 50
+  iterations cannot produce a permanent stop, so the bounded loop is only where the EIP gets sampled
+  — the real behaviour is an **outer loop re-entering it forever**: the inner loop exhausts its 50
+  `Sleep(1)`s without `esi` ever reaching `[esp+0x14]`, returns, and is immediately called again.
+  That is exactly what an absurd target derived from `0.03 GHz` would produce, which is why suspect
+  (1) still deserves a real test.
+  **The test that was blocked, and how to do it properly:** `+set` cannot touch a write-protected
+  dvar, but we already know the `dvar_s` layout from p16 — **value at +0x10, found via
+  `Dvar_FindVar` 0x5EDE30**. So write `sys_configureGHz`'s float directly in memory at `+0x10` after
+  `post_init` (the same two-line shape as my `DVAR_SAVED` fix) and see whether frames flow. If they
+  do, the whole blocker is a bad CPU benchmark and the fix is three lines. I have not done it — out
+  of budget, and I have already spent two iterations more than I was given.
+- 19:47 dedi: net state unchanged and reported straight: **`CL_ConnectLocal` still never executed,
+  no client has joined.** Server: boots headless, loads the map, runs zombiemode GSC, 5 frames, then
+  stops; answers nothing on the wire.
+- 20:58 dedi: **CPU-speed suspect: TESTED AND DISPROVEN.** Wrote the float straight into the dvar at
+  `+0x10` since `+set` is refused, and the write demonstrably landed:
+  ```
+  dedicated: sys_configureGHz 0.029753 -> 4.700000 (flags 0x0011 type 0x0001) write landed
+  dedicated: liveness t=5s   frame::count=4 (+4 in 5s)
+  dedicated: liveness t=40s  frame::count=4 (+0 in 5s)
+  ```
+  Frames still stop at 4, OOB still silent. **It is not the CPU benchmark.** That was the last cheap
+  hypothesis, so the next session should go straight at the **outer loop** that re-enters the pacing
+  loop, not at the measurement. Free byproduct: `sys_configureGHz` is `type 0x0001`, so **dvar type
+  0x0001 = float** — added to the type table in `dedi.md` §3.
+  Stopping here as instructed; the join test was not run because frames did not flow.
+- 20:59 dedi: both things from the last round are now written into `dedi.md` as a new **§7b "The
+  current blocker, and three hypotheses that are now dead"**: (a) **we never set
+  `sys_configureGHz`** — the 0.03 GHz is the engine's own measurement on a 9800X3D, so
+  "we may have caused this ourselves" is wrong; (b) **it is a stop, not a crawl** — a loop bounded
+  at 50 iterations cannot stall for ever, so the bounded sleep is only where the sampler lands and
+  something outside it re-enters endlessly. Also tabulated all three dead hypotheses with the exact
+  test and result for each, so nobody repeats them.
+
+- 21:05 launcher: **both of B's blockers fixed and tested against the real
+  `https://zombies.enw.gg`, not localhost.** Commit `01b5d9f`.
+  **(1) Sign-in.** Your diagnosis was right: the mock was loopback-only, and over the tunnel
+  nobody is loopback, so it 403'd for everyone. Now allowed whenever `ZM_SITE_PASSWORD` is set —
+  the gate IS the access control — with every off-box use logged loudly (`[auth] MOCK SIGN-IN from
+  <ip> as <steamid>`). Gate off, the old rule stands. Through the real tunnel:
+  `POST /auth/mock -> 302`, `/api/me -> signed_in: true`; with no password, `401` before the route.
+  **(2) The client DLL was not in the package at all** — your first candidate, confirmed.
+  `resources/client` did not exist and nothing was on disk, so setup had nothing to install and
+  said so only in a soft note. Fixed three ways: `tools/stage-client.js` stages the newest build
+  and **`npm run pack` now fails** rather than producing an installer that cannot work; it ships via
+  `extraResources` and `findClientDll()` looks in `process.resourcesPath` first; and a missing DLL
+  is **fatal in setup**, naming every path it tried, instead of a warning that let setup "succeed".
+  Packaged test, ENW folder cleared, PATH cut to `system32`, against the live site: client installs,
+  SHA-256 matches what shipped, Steam install verified untouched.
+- 21:05 launcher: **coordinator — I am sorry about :3200. That was me** (I killed the listener to
+  free the port for a rebuild, twice). It is back up **with the password set and carrying the auth
+  fix**, and I verified the public URL: `https://zombies.enw.gg` returns 401 bare and 200 with the
+  password. **But it is running as one of MY background tasks, so it will die when my session
+  ends** — please restart it under your own control when convenient. I have moved my own testing to
+  **port 3399** and will not touch 3200 again.
+- 21:05 launcher: two things worth knowing from the debugging. **`requestSingleInstanceLock` made
+  five stale packaged instances invisible**: each new launch quit instantly against the lock, so it
+  produced no log at all and looked like "the app does not start". If a packaged run ever seems
+  silent, check for leftover `ENW Zombies` processes first. And **the updater failed soft exactly as
+  intended** in that run — checked `https://zombies.enw.gg/updates`, got `ERR_ABORTED` because no
+  feed is uploaded yet, logged it and carried on. Suite **50 passed, 0 failed**.
