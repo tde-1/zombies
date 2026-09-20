@@ -428,6 +428,22 @@ await test('nothing downloaded means nothing to apply', async () => {
   assert.equal(u.applyIfSafe(), false)
 })
 
+await test('a build with no client DLL is refused, loudly', async () => {
+  // The first packaged build shipped with no enw_t4.dll. Setup then "succeeded" with a
+  // soft warning and the launcher said "not installed yet" forever with no reason.
+  // Now it throws, naming every path it looked in.
+  const setupSrc = String(fs.readFileSync(new URL('../src/main/setup.js', import.meta.url)))
+  assert.ok(setupSrc.includes('is missing from this build'), 'the error must say the build is at fault')
+  assert.ok(setupSrc.includes('Looked in:'), 'and must list where it looked')
+  assert.ok(setupSrc.includes('process.resourcesPath'), 'and must look where a PACKAGED app keeps it')
+  // The build itself refuses rather than producing an installer that cannot work.
+  const stage = String(fs.readFileSync(new URL('../tools/stage-client.js', import.meta.url)))
+  assert.ok(stage.includes('process.exit(1)'))
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.match(pkg.scripts.pack, /stage-client/, 'pack must stage the client first')
+  assert.ok((pkg.build.extraResources || []).some((r) => String(r.to) === 'client'), 'the DLL must ship as a real file')
+})
+
 // ------------------------------------------------------- the launch command --
 group('The launch command line')
 

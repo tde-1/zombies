@@ -17,7 +17,9 @@
     "play": "node src/main/play-cli.js",
     "maps": "node src/main/maps-cli.js",
     "slice": "node test/slice.js",
-    "pack": "electron-builder --win --publish never"
+    "pack": "node tools/stage-client.js && electron-builder --win --publish never",
+    "stage-client": "node tools/stage-client.js",
+    "prepack": "node tools/stage-client.js"
   },
   "devDependencies": {
     "electron": "^38.8.6",
@@ -61,7 +63,13 @@
       "createStartMenuShortcut": true,
       "artifactName": "ENW-Zombies-Launcher-Setup-${version}.exe",
       "shortcutName": "ENW Zombies"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "resources/client",
+        "to": "client"
+      }
+    ]
   },
   "dependencies": {
     "electron-updater": "^6.8.9"

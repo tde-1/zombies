@@ -34,3 +34,5 @@ ZombiesDev/
 
 # packaged launcher builds (85 MB per build; rebuild with `npm run pack`)
 launcher/dist/
+# staged client DLL for packaging (a build artefact; `npm run pack` re-stages it)
+launcher/resources/client/

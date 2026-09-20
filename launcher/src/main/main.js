@@ -688,6 +688,23 @@ if (!single) {
           })
           await new Promise((r) => setTimeout(r, 400))
         }
+        // ENW_SMOKE_SETUP=1: press the first-run Install button, the way a player
+        // does. This is the path that shipped broken — the package had no client DLL,
+        // so setup had nothing to install and the rail just said "not installed yet".
+        if (process.env.ENW_SMOKE_SETUP) {
+          report.setup_click = await state.win?.webContents.executeJavaScript(
+            `(async () => {
+               const btn = [...document.querySelectorAll('#frActions button')]
+                 .find((b) => /Install the ENW client/i.test(b.textContent))
+               if (!btn) return 'no install button; first-run screen shows: ' +
+                 (document.getElementById('frBody').innerText || '').slice(0, 200)
+               btn.click()
+               await new Promise((r) => setTimeout(r, 8000))
+               return (document.getElementById('frBody').innerText || '').replace(/\s+/g, ' ').slice(0, 400)
+             })()`
+          ).catch((e) => `ERROR ${e.message}`)
+        }
+
         // ENW_SMOKE_SCREEN=settings|detail: open that screen before the screenshot.
         if (process.env.ENW_SMOKE_SCREEN) {
           const id = { settings: 'settingsPill', detect: 'setupPill' }[process.env.ENW_SMOKE_SCREEN] || 'settingsPill'

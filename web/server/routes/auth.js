@@ -47,13 +47,13 @@ function router() {
   // ---- the mock provider -----------------------------------------------------------
   if (effectiveMode() === 'mock') {
     r.get('/mock', (req, res) => {
-      if (!localOnly(req)) return res.status(403).send('the mock sign-in is local-only')
+      if (!localOnly(req)) return res.status(403).send('the mock sign-in is not available on this site')
       const list = devIdentities()
       res.type('html').send(mockPage(list, String(req.query.next || '/')))
     })
 
     r.post('/mock', express.urlencoded({ extended: false }), (req, res) => {
-      if (!localOnly(req)) return res.status(403).send('the mock sign-in is local-only')
+      if (!localOnly(req)) return res.status(403).send('the mock sign-in is not available on this site')
       const sid = String(req.body.steam_id || '').trim()
       if (!/^\d{5,20}$/.test(sid)) return res.status(400).send('that is not a SteamID')
       const name = String(req.body.username || '').trim() || null
@@ -62,6 +62,11 @@ function router() {
       // developer to edit a row to see the admin page is friction for no safety.
       const count = db.prepare('SELECT COUNT(*) c FROM users').get().c
       if (count === 1) db.prepare('UPDATE users SET is_admin=1, is_mod=1, approved=1 WHERE steam_id=?').run(sid)
+      if (!isLoopback(req)) {
+        // Worth shouting about: this is a real account being created or signed into
+        // from off-box, with only the shared password in front of it.
+        console.warn(`[auth] MOCK SIGN-IN from ${req.ip} as ${sid} — allowed because the shared-password gate is on`)
+      }
       req.session.steam_id = u.steam_id
       db.prepare('UPDATE users SET last_seen=? WHERE steam_id=?').run(now(), sid)
       res.redirect(String(req.body.next || '/'))
@@ -115,11 +120,29 @@ function effectiveMode() {
   return 'mock'
 }
 
-function localOnly(req) {
-  if (process.env.NODE_ENV === 'production') return false
+function isLoopback (req) {
   const ip = String(req.ip || req.connection.remoteAddress || '')
   return ip.includes('127.0.0.1') || ip.includes('::1') || ip === '::ffff:127.0.0.1'
 }
+
+// Who may use the mock sign-in.
+//
+// It used to be loopback-only, which was right when the site only ever ran on a dev
+// box. The closed beta is served at zombies.enw.gg through a Cloudflare tunnel, so
+// nobody is loopback any more and the mock was refused for everyone — with no Steam
+// key yet, that left the site with no way in at all.
+//
+// So: the shared-password gate IS the access control for the beta. If you got here you
+// already typed it, and a stranger cannot. When the gate is on, the mock is allowed and
+// every use of it is logged loudly. With the gate off we are back to the old rule —
+// loopback only, never in production — because then nothing is protecting it.
+function mockAllowed (req) {
+  if (process.env.ZM_SITE_PASSWORD) return true
+  if (process.env.NODE_ENV === 'production') return false
+  return isLoopback(req)
+}
+
+function localOnly (req) { return mockAllowed(req) }
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
@@ -157,7 +180,7 @@ function mockPage(list, next) {
     <input type="text" name="steam_id" placeholder="76561198000000000" pattern="\\d{5,20}" required>
     <button type="submit">Sign in</button>
   </form>
-  <div class="note">This page is served only to 127.0.0.1 and is refused entirely when NODE_ENV=production.
+  <div class="note">During the closed beta this is behind the shared site password. It is refused entirely when that password is not set and you are not on the machine itself.
   It creates a local account row; it does not talk to Steam, to ENW, or to anything else.</div>
 </main>`
 }

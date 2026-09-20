@@ -57,6 +57,7 @@ function diffFingerprints(before, after) {
 export function findClientDll({ repoRoot = null, explicit = null } = {}) {
   const tried = []
   const consider = (p, via) => {
+    if (!p) return null
     tried.push({ path: p, via, exists: fs.existsSync(p) })
     return fs.existsSync(p) ? { path: p, via, mtime: fs.statSync(p).mtimeMs } : null
   }
@@ -65,8 +66,16 @@ export function findClientDll({ repoRoot = null, explicit = null } = {}) {
 
   const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))
   const launcherRoot = path.resolve(here, '..', '..')
-  const bundled = path.join(launcherRoot, 'resources', 'client', 'enw_t4.dll')
-  const h0 = consider(bundled, 'bundled with the launcher')
+
+  // PACKAGED: electron-builder puts extraResources next to the app, outside app.asar.
+  // This is the one that matters for a player — everything below it is development.
+  // `process.resourcesPath` only exists under Electron, hence the guard.
+  if (process.resourcesPath) {
+    const h = consider(path.join(process.resourcesPath, 'client', 'enw_t4.dll'), 'shipped with the launcher')
+    if (h) hits.push(h)
+  }
+  // Staged but not yet packaged (running from the repo with `npm start`).
+  const h0 = consider(path.join(launcherRoot, 'resources', 'client', 'enw_t4.dll'), 'staged in the launcher folder')
   if (h0) hits.push(h0)
 
   const repo = repoRoot || path.resolve(launcherRoot, '..')
@@ -167,7 +176,16 @@ export function install({ gameDir, dllPath = null, repoRoot = null, force = fals
   // 5. The proxy DLL. Stock binkw32.dll -> binkw32_org.dll, ours in its place.
   const found = dllPath ? { dll: { path: path.resolve(dllPath), via: 'given explicitly' }, tried: [] } : findClientDll({ repoRoot })
   if (!found.dll) {
-    step('client_dll', `no enw_t4.dll found (looked in: ${found.tried.map((t) => t.path).join(', ')})`, false)
+    const where = found.tried
+      .map((t) => `  ${t.exists ? 'found  ' : 'missing'}  ${t.path}  (${t.via})`)
+      .join('\n')
+    step('client_dll', 'no enw_t4.dll anywhere', false)
+    // Fatal. Previously this was a warning and setup carried on, so the launcher
+    // reported success and then said "not installed yet" with no reason given.
+    throw new Error(
+      'The ENW client (enw_t4.dll) is missing from this build, so there is nothing to install. ' +
+      'This is a packaging fault, not something you did - please tell B.\n\nLooked in:\n' + where
+    )
   } else {
     const proxy = assertWritable(path.join(dest, 'binkw32.dll'))
     const original = assertWritable(path.join(dest, 'binkw32_org.dll'))
