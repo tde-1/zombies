@@ -28,8 +28,13 @@ import { mkdirp, parseArgs } from '../lib/util.js'
 const args = parseArgs(process.argv.slice(2))
 const ROOT = path.resolve(import.meta.dirname, '..')
 const RUN = mkdirp(path.join(os.tmpdir(), 'enw-demo-' + Date.now().toString(36)))
-const SITE = 'http://127.0.0.1:8099'
+const SITE = `http://127.0.0.1:${PORT_SITE}`
 const VERBOSE = !!args.verbose
+// Several agents run tools on this machine tonight and two of them already collided with
+// the ports this demo used to hard-code. Everything here is on one uncommon block, and
+// overridable.
+const PORT_SITE = Number(args.port || 8809)
+const P = { linkA: 38861, linkB: 38862, dashA: 8861, dashB: 8862, baseA: 29500, baseB: 29600 }
 
 const procs = []
 let failures = 0
@@ -60,7 +65,7 @@ async function stopAll() {
     const s = await get('/admin/state')
     for (const b of s.boxes || []) for (const i of b.instances || []) {
       if (i.state !== 'running') continue
-      const dash = b.name === 'box-a' ? 8791 : 8792
+      const dash = b.name === 'box-a' ? P.dashA : P.dashB
       await fetch(`http://127.0.0.1:${dash}/api/instance/${i.id}/end`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => {})
     }
     await delay(2500)
@@ -88,7 +93,7 @@ async function waitFor(what, fn, ms = 30_000, every = 300) {
 
 try {
   step('1. the site comes up')
-  start('site', 'mock-site/site.js', ['--port', '8099', '--key-dir', path.join(RUN, 'site-keys')])
+  start('site', 'mock-site/site.js', ['--port', String(PORT_SITE), '--key-dir', path.join(RUN, 'site-keys')])
   await waitFor('the site', async () => (await get('/admin/state')).invite_key)
   okmsg(`mock site on ${SITE} (invite key ${(await get('/admin/state')).invite_key})`)
 
@@ -101,9 +106,13 @@ try {
     // Small rule windows so the whole demo runs in a couple of minutes.
     '--cap-ms', String(45 * 60_000), '--cap-warn-ms', '1800000,600000,60000',
   ]
-  const A = start('box-a', 'host.js', common('box-a', 'devkey-a', 38731, 8791, 29100))
-  const B = start('box-b', 'host.js', common('box-b', 'devkey-b', 38732, 8792, 29200))
-  await waitFor('both boxes polling', async () => (await get('/admin/state')).boxes.length === 2)
+  const A = start('box-a', 'host.js', common('box-a', 'devkey-a', P.linkA, P.dashA, P.baseA))
+  const B = start('box-b', 'host.js', common('box-b', 'devkey-b', P.linkB, P.dashB, P.baseB))
+  const bothUp = await waitFor('both boxes polling', async () => (await get('/admin/state')).boxes.length === 2, 40_000)
+  if (!bothUp) {
+    for (const p of [A, B]) for (const l of p.out.split(String.fromCharCode(10)).filter(Boolean).slice(-4)) console.log(`       [${p.name}] ${l.trimEnd()}`)
+    throw new Error('a box did not come up — check the port block at the top of this file for a clash')
+  }
   okmsg('box-a and box-b are polling /api/gs/assignment (the site never connects out)')
   for (const [p, n] of [[A, 'box-a'], [B, 'box-b']]) {
     if (/invite key .* loaded/.test(p.out)) okmsg(`${n} fetched the site invite key`)

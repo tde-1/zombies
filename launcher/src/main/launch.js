@@ -118,8 +118,11 @@ export function buildArgs({
   settings = {},
   homeDir = P.home,
   stealth = false,
+  windowMode = null,
   extra = [],
 } = {}) {
+  // `stealth: true` is the old spelling of windowMode 'offscreen'.
+  windowMode = windowMode || (stealth ? 'offscreen' : 'player')
   const a = []
 
   // Our own home path: profile, config and console.log land in the ENW folder.
@@ -138,12 +141,27 @@ export function buildArgs({
   a.push('+set', 'cl_allowDownload', '0')
   a.push('+set', 'logfile', '2')
 
-  // Dev: windowed, small, muted, parked off-screen (dev-box.md rule 6). A player gets
-  // their own settings instead.
-  if (stealth) {
+  // Three window modes, and the difference matters more than it looks.
+  //
+  //   'player'    the player's own settings. What ships.
+  //   'small'     windowed 800x600 and muted, ON SCREEN. dev-box rule 6 without the
+  //               off-screen part.
+  //   'offscreen' 'small' plus parked at -4000,-4000 and never focused.
+  //
+  // **Prefer 'small' over 'offscreen' for anything that has to run for more than a
+  // minute.** The referee measured the game's tick stopping at 65.2 s, twice, when its
+  // window was off-screen and unfocused — Windows throttles it and it looks exactly
+  // like a crash at the one-minute mark. foundation is fixing it in the DLL; until
+  // then, a run that needs a live game needs a window on the screen.
+  if (windowMode === 'offscreen' || windowMode === 'small') {
     a.push('+set', 'r_fullscreen', '0', '+set', 'r_mode', '800x600')
-    a.push('+set', 'vid_xpos', '-4000', '+set', 'vid_ypos', '-4000')
     a.push('+set', 'snd_volume', '0', '+set', 'snd_menu_master', '0')
+    if (windowMode === 'offscreen') {
+      a.push('+set', 'vid_xpos', '-4000', '+set', 'vid_ypos', '-4000')
+    } else {
+      // Bottom-right, out of the way of whatever B is doing, but on screen.
+      a.push('+set', 'vid_xpos', '40', '+set', 'vid_ypos', '40')
+    }
   } else {
     a.push(...settingsArgs(settings))
   }
@@ -232,6 +250,7 @@ export class GameLaunch extends EventEmitter {
         settings: o.settings,
         homeDir,
         stealth: !!o.stealth,
+        windowMode: o.windowMode || null,
         extra: o.extraArgs || [],
       })
 
@@ -314,7 +333,7 @@ export class GameLaunch extends EventEmitter {
       '-SinceUnixMs', String(spawnAt),
       '-Seconds', String(this.opts.nannySeconds || 300),
     ]
-    if (this.opts.stealth) args.push('-Park')
+    if ((this.opts.windowMode || (this.opts.stealth ? 'offscreen' : 'player')) === 'offscreen') args.push('-Park')
     const n = spawn(PWSH, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
     this.nanny = n
     let buf = ''

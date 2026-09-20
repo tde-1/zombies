@@ -25,18 +25,24 @@ export const P = {
   game: path.join(ENW_ROOT, 'game'),
   // fs_homepath for our instance: profile/config/console.log land here, not in theirs.
   home: path.join(ENW_ROOT, 'home'),
-  // Downloaded maps (spec 13 §2: "a separate ENW library folder, never inside the WaW
-  // install"). On World at War the map library IS the mods folder, so this is
-  // `<home>\mods` — the exact path the engine reads with our `fs_homepath`.
+  // Downloaded maps. This is the ONE path we write that is not ours, and it is not a
+  // choice — it is the only place World at War loads a custom map from.
   //
-  // It was `<ENW_ROOT>\maps` with a junction per map into `<home>\mods\<bsp>`, which is
-  // tidier on paper and does not survive contact: a junction whose link AND target are
-  // both inside our folder resolved to nothing here, while the same junction with
-  // either end outside worked. Structurally identical reparse data (checked with
-  // `fsutil reparsepoint query`), so it is a filesystem-layer quirk rather than
-  // anything we did wrong — and depending on a behaviour I cannot explain is worse than
-  // not needing it. One folder, no reparse points, works everywhere.
-  maps: path.join(ENW_ROOT, 'home', 'mods'),
+  // dedi measured all three candidates:
+  //     <fs_homepath>\mods\<bsp>                      fails silently
+  //     <game copy>\mods\<bsp>                        fails silently
+  //     %LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>   works
+  //
+  // and "fails silently" is the dangerous part: the `.iwd`s mount, the printed search
+  // path looks right, and the install looks complete — but `mod.ff` is a ZONE, not a
+  // filesystem asset, so putting its directory on the search path never loads it.
+  // `Loading fastfile 'mod'` simply never happens and `+map` never runs.
+  //
+  // Because this folder is the PLAYER'S (B's own `nazi_zombie_ali` lives in it), the
+  // rules in library.js are stricter than anywhere else we write: never overwrite a
+  // map we did not install, record every file we add, and remove exactly those on
+  // uninstall — never the directory wholesale.
+  maps: path.join(LOCAL, 'Activision', 'CoDWaW', 'mods'),
   logs: path.join(ENW_ROOT, 'logs'),
   state: path.join(ENW_ROOT, 'state'),
   crashes: path.join(ENW_ROOT, 'crashes'),
@@ -91,9 +97,14 @@ export function assertWritable(target) {
       )
     }
   }
-  // Second belt: everything we create must be under ENW_ROOT.
-  if (!isInside(abs, ENW_ROOT)) {
-    throw new Error(`Refusing to write outside the ENW folder: ${abs} (ENW root is ${ENW_ROOT})`)
+  // Second belt: everything we create must be under ENW_ROOT — with one deliberate
+  // exception, the map library. World at War only loads custom maps from the player's
+  // own `%LOCALAPPDATA%\Activision\CoDWaW\mods` (see P.maps), so installing a map
+  // means writing there. It is allowed by name, one level deep, and library.js adds
+  // the rules that make it safe: never overwrite a map we did not install, and remove
+  // only the files we recorded.
+  if (!isInside(abs, ENW_ROOT) && !isInside(abs, P.maps)) {
+    throw new Error(`Refusing to write outside the ENW folder: ${abs} (ENW root is ${ENW_ROOT}, map library is ${P.maps})`)
   }
   return abs
 }

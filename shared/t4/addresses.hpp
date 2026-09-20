@@ -50,7 +50,16 @@ namespace t4
         constexpr std::uintptr_t Dvar_RegisterBool          = 0x5EEE20; // [H]
         constexpr std::uintptr_t Com_InitDvars              = 0x59C8B0; // [C] registers com_maxfps, developer_script, dedicated
         constexpr std::uintptr_t Dvar_RegisterEnum          = 0x5EF150; // [V] used to register `dedicated` (0=listen,1=LAN,2=internet)
-        constexpr std::uintptr_t Sys_DedicatedConsolePump   = 0x69DAA0; // [C] run each frame by WinMain when com_dedicated != 0
+        // CORRECTED: this is a NON-dedicated (client) per-frame call. WinMain's branch
+        // (0x5FF7C7/0x5FF7CB) *skips* it when com_dedicated != 0. Not a dedicated console pump.
+        constexpr std::uintptr_t CL_FramePump_nonDedicated  = 0x69DAA0; // [V] runs only when com_dedicated == 0
+
+        // ---- fatal error path (why a headless server appears to hang) ---------------
+        constexpr std::uintptr_t Com_Error                  = 0x59AC50; // [V] cdecl void(errorParm_t code, const char* fmt, ...); 515 callers; calls Sys_Error
+        constexpr std::uintptr_t Sys_Error_park             = 0x5FE8C0; // [V] void(const char* fmt, ...); parks the main thread in a
+        // terminal TranslateMessage/DispatchMessageA/GetMessageA loop at 0x5FE960..0x5FE97D
+        // (0x5FE97B = the `test eax,eax` after GetMessageA). Exits only on WM_QUIT -> _exit(0)
+        // at 0x7AC431 — which is why a WM_NULL nudge does nothing.
 
         // ---- commands -------------------------------------------------------------
         // 0x594DB0 is the name-keyed command routine: 190 (name, funcptr) registration

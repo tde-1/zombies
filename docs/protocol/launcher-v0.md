@@ -180,3 +180,82 @@ today, so the launcher may send it now and it will start meaning something witho
 3. **`install_known: false` everywhere** until the archive import lands. Decide whether your first
    run should refuse to launch a map it cannot verify, or launch and let the box's hash check
    refuse — I would suggest the second, because the box's check is the one that matters.
+
+---
+
+## 6. Local games (added 2026-09-20, implemented)
+
+A Local game (13 §4) runs on the player's own PC: no lease, no box, no invite token, no server.
+It is **solo only** and **untracked** — no badge, no record, no XP — and the site enforces that
+rather than trusting anybody to send the right flags.
+
+### There is no box secret on a player's PC, ever
+
+`x-match-secret` is what lets a process post a result *as a game box*. A player holding one makes
+every board on the site whatever they feel like typing. So these three are authenticated by the
+**ordinary session cookie** the launcher already has from the wrapped view, and everything through
+them is stamped `self_reported`.
+
+### `POST /api/launcher/local/start` *(signed in)*
+```json
+{ "map_key": "nazi_zombie_leviathan" }
+```
+→
+```json
+{ "ok": true, "match_id": "l_288b1351", "solo": true,
+  "map": { "key":"nazi_zombie_leviathan", "title":"Leviathan", "fs_game":"mods/nazi_zombie_leviathan",
+           "version":"1.2", "files":[{"path":"…","sha256":"…","size":453077300,"kind":"original"}],
+           "install_known": true, "readme":"…" },
+  "settings": { "fov":80, "max_fps":125, … },
+  "notice": "Local game — untracked. No badges, no records and no XP." }
+```
+`notice` is there so the boot screen shows the site's wording rather than inventing its own.
+
+### `POST /api/launcher/local/live` *(signed in)*
+```json
+{ "match_id": "l_288b1351", "state": { …the referee's state() straight through… } }
+```
+~4 Hz while the game runs. The site downsamples and drops the excess; send whatever suits you.
+Only the player whose game it is may push frames for it. This is what makes `/live/<match_id>`
+work for a local game, so a friend can watch without using a game slot.
+
+### `POST /api/launcher/local/result` *(signed in)*
+```json
+{ "summary": { …the referee's summary, with match_id set to the one from /start… },
+  "replay":  { "file":"…m_10fdde2f.enwr", "size":4255305, "chunks":42, "events":98313, "key_id":"…" } }
+```
+→ `{ ok, game_id, match_id, tracked: false, notice }`.
+
+**The roster is overridden to the session's player.** Whatever the summary says, the game is filed
+against the account that started it — otherwise a local game could write rows against other
+people's accounts.
+
+### What the site does with it
+
+Stores it, and counts it for nothing:
+
+```
+mode=local  records_eligible=0  xp_multiplier=0  self_reported=1
+0 records · 0 XP · 0 badges · map_progress played=1 beaten=0 best_round=0
+```
+
+The replay is stored and its integrity is checkable, but it is **not evidence** — the grade is
+`local`, with the reason *"it ran on the player's own PC with the console available, so the
+signature proves the recording is unedited, not that the run is real."* Note that on a dev box the
+local host agent **is** `box-a`, so the signing key is the pinned one and every key check passes;
+the mode decides this, not the key.
+
+### A working reference implementation of your side
+
+**`web/tools/local-run.js`** drives all of the above against the real site over HTTP, in the order
+you will: sign in, `/local/start`, relay frames from a host agent's dashboard, `/local/result`.
+Read it, then delete it. A real run of it is in `docs/kickstart/web.md` §4i.
+
+### Still open for you
+
+* **`window.enw.playLocal(session)`** — the site's Play Local button calls this when it detects it
+  is inside the launcher (`window.enw` present) and passes the whole `/local/start` response. Name
+  it something else and I will change the call; it is one line in `web/client/src/pages/MapPage.jsx`.
+* **How you signal "I am the launcher"** more generally. `window.enw` is the current sniff. A
+  request header on the wrapped view's navigations would be cleaner for server-rendered decisions;
+  say which you prefer.

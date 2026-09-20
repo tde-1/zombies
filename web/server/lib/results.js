@@ -37,13 +37,37 @@ const boxes = require('./boxes')
 
 const FINISH_LABEL = { easter_egg: 'Easter Egg', buyable_ending: 'Buyable Ending', round: 'Round' }
 
+// May this game's numbers appear as a player's ACHIEVEMENT — a best round, a career high —
+// rather than merely in their history? Only a Verified game we refereed on our own box.
+// Local is the player's PC with cheats; Custom can start at round 100 by design; a
+// self-reported result did not come from a box at all.
+const eligibleForStats = (game) => game.mode === 'verified' && !game.self_reported
+
 /**
  * @param {object} body  the box's POST body: { box, instance, summary, replay }
  * @returns {object} { ok, game_id, match_id, awarded, records, repeat }
  */
-function ingest(body) {
+function ingest(body, { selfReported = false } = {}) {
   const summary = body && body.summary
   if (!summary || !summary.match_id) return { ok: false, error: 'no summary' }
+
+  // ── THE LOCAL DOWNGRADE ─────────────────────────────────────────────────────────
+  // 13 §4: a Local game runs on the player's own PC "as just a normal client", with the
+  // full console and cheats, and nothing is tracked — "if they want their stuff tracked,
+  // they have to play through our servers."
+  //
+  // The referee already sets `records_eligible: false` and `xp_multiplier: 0` for a local
+  // game, and it is right to. This does it AGAIN, here, and it is not redundant: rule 1 of
+  // this file is that the box decides what happened and the site decides what it is worth,
+  // and "worth nothing" is the one verdict the site must not be able to be talked out of.
+  // A box that sends `mode: 'local', records_eligible: true` — through a bug, a fork, or
+  // because somebody's PC is posting it — gets zero anyway.
+  const isLocal = String(summary.mode || '') === 'local'
+  const untrusted = isLocal || selfReported
+  if (untrusted) {
+    summary.records_eligible = false
+    summary.xp_multiplier = 0
+  }
 
   const existing = db.prepare('SELECT * FROM games WHERE match_id=?').get(String(summary.match_id))
   const map = db.prepare('SELECT * FROM maps WHERE key=?').get(String(summary.map || ''))
@@ -78,6 +102,7 @@ function ingest(body) {
     started_at: summary.started_at ? Date.parse(summary.started_at) : null,
     ended_at: summary.ended_at ? Date.parse(summary.ended_at) : now(),
     received_at: now(),
+    self_reported: untrusted ? 1 : 0,
     summary_json: JSON.stringify(summary),
   }
 
@@ -93,11 +118,11 @@ function ingest(body) {
   const info = db.prepare(`INSERT INTO games (match_id, box, instance, mode, map_key, map_id, map_version_id, fs_game,
       party_id, settings_json, fingerprint, rounds, finish_kind, finish_label, badge_earned, player_count, solo,
       duration_ms, duration_rta_ms, paused_ms, flags, records_eligible, xp_multiplier, end_reason,
-      started_at, ended_at, received_at, summary_json)
+      started_at, ended_at, received_at, self_reported, summary_json)
     VALUES (@match_id,@box,@instance,@mode,@map_key,@map_id,@map_version_id,@fs_game,@party_id,@settings_json,
       @fingerprint,@rounds,@finish_kind,@finish_label,@badge_earned,@player_count,@solo,@duration_ms,
       @duration_rta_ms,@paused_ms,@flags,@records_eligible,@xp_multiplier,@end_reason,@started_at,@ended_at,
-      @received_at,@summary_json)`).run(row)
+      @received_at,@self_reported,@summary_json)`).run(row)
   const game = db.prepare('SELECT * FROM games WHERE id=?').get(info.lastInsertRowid)
 
   const insP = db.prepare(`INSERT OR REPLACE INTO game_players (game_id, steam_id, slot, name, score, kills, headshots,
@@ -185,8 +210,21 @@ function applyProgressAndBadges(game, summary, seated) {
                   last_played=excluded.last_played`)
       .run(sid, game.map_key, game.duration_ms || 0, now(), now())
 
-    db.prepare(`UPDATE map_progress SET best_round = MAX(best_round, ?) WHERE steam_id=? AND map_key=?`)
-      .run(game.rounds || 0, sid, game.map_key)
+    // BEST ROUND IS A VERIFIED-ONLY NUMBER, and this is the whole reason it is guarded
+    // here rather than written with the rest of the history above.
+    //
+    // A Local game runs on the player's own PC with the console open, so "round 255" costs
+    // one command. A Custom game can be *started* at round 100 by its own knobs (13 §4c).
+    // Neither is a lie the player told — both are the mode working as designed — but
+    // either one landing in `best_round` would put a number on the map shelf and on the
+    // profile's career strip that reads as an achievement and is not one.
+    //
+    // The row above still records that the game was PLAYED, because the shelf is a history.
+    // This is the one field on it that is a claim.
+    if (eligibleForStats(game)) {
+      db.prepare(`UPDATE map_progress SET best_round = MAX(best_round, ?) WHERE steam_id=? AND map_key=?`)
+        .run(game.rounds || 0, sid, game.map_key)
+    }
 
     if (!eligible || !finish) continue
 
@@ -257,6 +295,7 @@ function project(game, { withPlayers = true } = {}) {
     paused_ms: game.paused_ms,
     flags: safeJson(game.flags, []) || [],
     records_eligible: !!game.records_eligible,
+    self_reported: !!game.self_reported,
     fingerprint: game.fingerprint,
     started_at: game.started_at,
     ended_at: game.ended_at,
@@ -294,8 +333,15 @@ function recent({ limit = 20, mapKey = null, steamId = null } = {}) {
 /** The career stats strip (05 "Profile additions"). */
 function careerFor(steamId) {
   const sid = String(steamId)
-  const g = db.prepare(`SELECT COUNT(*) games, COALESCE(SUM(g.duration_ms),0) ms, COALESCE(MAX(g.rounds),0) best
+  // Games and hours count every mode — they are a history. The HIGHEST ROUND does not:
+  // see eligibleForStats above. Two queries rather than one because they are answering two
+  // different questions, and merging them is how the wrong one gets the wrong filter.
+  const g = db.prepare(`SELECT COUNT(*) games, COALESCE(SUM(g.duration_ms),0) ms
                           FROM game_players gp JOIN games g ON g.id=gp.game_id WHERE gp.steam_id=?`).get(sid)
+  const best = db.prepare(`SELECT COALESCE(MAX(g.rounds),0) best
+                             FROM game_players gp JOIN games g ON g.id=gp.game_id
+                            WHERE gp.steam_id=? AND g.mode='verified' AND COALESCE(g.self_reported,0)=0
+                              AND gp.late=0`).get(sid)
   const p = db.prepare(`SELECT COALESCE(SUM(kills),0) kills, COALESCE(SUM(downs),0) downs,
                                COALESCE(SUM(revives),0) revives, COALESCE(SUM(headshots),0) headshots
                           FROM game_players WHERE steam_id=?`).get(sid)
@@ -303,7 +349,7 @@ function careerFor(steamId) {
   const ee = db.prepare('SELECT COUNT(*) c FROM map_progress WHERE steam_id=? AND ee=1').get(sid).c
   const total = require('./maps').count()
   return {
-    games: g.games, time_ms: g.ms, best_round: g.best,
+    games: g.games, time_ms: g.ms, best_round: best.best,
     kills: p.kills, downs: p.downs, revives: p.revives, headshots: p.headshots,
     maps_beaten: beaten, maps_total: total, easter_eggs: ee,
   }

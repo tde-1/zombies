@@ -253,32 +253,64 @@ twice. XP is guarded by its own ledger, badges by their composite key. Tested.
 
 ---
 
-### 4d. The key pin is now wired on BOTH sides
+### 4d. The key pin, and a worked example of it earning its keep
 
 The host agent added the two lines the same night: `reportStatus()` sends `pub` and `key_id`,
 `/api/gs/result`'s replay block carries `key_id`, and the box reads our `{key_pinned,
-pinned_key_id}` back and logs its own error when they disagree. **No shim is involved any more.**
+pinned_key_id}` back and logs its own error when they disagree. **No shim is involved.**
 
-It caught something real within the hour. Three processes on this machine claimed to be `box-a`
-(they all share the dev secret `devkey-a`) and signed with three different keys:
+#### What happened
 
-```
-01:24:01  box.key.pinned   box-a  {"key_id":"21b77dd1cc691669"}
-01:24:25  box.key.changed  box-a  {"was":"21b77dd1cc691669","now":"d6506a40e16dd6da"}   refused
-01:26:54  box.key.changed  box-a  {"was":"21b77dd1cc691669","now":"7e9a0b0621f3c345"}   refused
-01:31:32  box.key.accepted 7656119…001  {"box":"box-a","key_id":"7e9a0b0621f3c345"}
-```
-
-and the box's own log said, correctly:
+Three processes on this machine were running host agents. They all default to the box name
+`box-a` and the dev secret `devkey-a`, and each had generated **its own** Ed25519 replay-signing
+key in its own key directory. None of them was malicious; nobody had done anything wrong. The
+site's `activity_log`:
 
 ```
+01:24:01  box.key.pinned    box-a         {"key_id":"21b77dd1cc691669"}
+01:24:25  box.key.changed   box-a         {"was":"21b77dd1cc691669","now":"d6506a40e16dd6da"}
+01:26:54  box.key.changed   box-a         {"was":"21b77dd1cc691669","now":"7e9a0b0621f3c345"}
+01:31:32  box.key.accepted  7656119…001   {"box":"box-a","key_id":"7e9a0b0621f3c345"}
+```
+
+and, at the same moment, one of the boxes' own logs:
+
+```
+error host  SITE: this box presented a different replay key; results are stored unpinned
+            until an admin confirms it
 error host  KEY MISMATCH: the site has 21b77dd1cc691669 pinned for this box but we sign with
             7e9a0b0621f3c345. Every replay we write is being stored unpinned.
 ```
 
-Two keys were refused and parked, every replay from them was stored `key_pinned = 0`, and the pin
-only moved when an authenticated admin accepted it. That is the production failure — a
-decommissioned box whose secret still works — happening by accident on a dev box, and being caught.
+The first key was pinned on sight. The second and third were **refused and parked** — not
+rejected, not silently accepted, parked, with the box told `key_pinned: false` on its very next
+heartbeat. Every replay those two boxes posted was stored `key_pinned = 0`, which makes record
+review say *"UNPINNED KEY — not record-grade evidence"* and stops the run counting. The pin only
+moved at 01:31:32, when an authenticated admin looked at the warning on the admin page and
+accepted it — and that accept is in the log with the actor's SteamID beside it.
+
+#### Why this is the case the pin exists for
+
+The same thing in production is not three developers. It is:
+
+* **a decommissioned cloud box whose secret was never rotated.** The box is gone; the secret works.
+  Anything holding it can POST a result and a replay, and `verify.js` will call that replay VALID,
+  because it *is* valid — it is correctly signed, by a key of the attacker's own making.
+* **a box that was reimaged** and generated a fresh key. Benign, and indistinguishable from the
+  above without a pin.
+
+`docs/kickstart/host.md` §5 put it exactly right: *integrity is not authorship*. A signature proves
+nothing has changed since signing. It says nothing about who signed, and a footer says whatever its
+author wants it to. The only thing that can answer "who" is a key the site learned **out of band
+and refuses to move** — which is why `boxes.replay_pub` is trust-on-first-use with an
+admin-confirmed change, and why the pin is deliberately the same shape as an SSH host-key warning.
+It is the same problem.
+
+#### What it cost, and what it would have cost
+
+It cost one admin click and a warning banner. Without it, two boxes' replays would have been
+silently graded record-quality, and the only trace would have been a key id nobody was comparing
+against anything.
 
 **Note for anyone running a host agent against this site:** you share `box-a` with the other
 agents. Give yours its own row (`POST /api/admin/boxes`, or add one to the seed) or your replays
@@ -439,6 +471,95 @@ It is re-runnable and idempotent, which found a real bug on the second run: `INS
 into `map_files` had **nothing to conflict with**, so it was a plain INSERT and every re-import
 duplicated every file row (63 rows where 35 were expected). There is a unique index on
 `(map_version_id, path)` now and the migration de-dupes what was already there.
+
+---
+
+## 4i. Local games, and the site refusing to count them
+
+13 §4: a Local game runs on the player's own PC "as just a normal client", with the full console
+and cheats, and nothing is tracked — *"if they want their stuff tracked, they have to play through
+our servers."* Implementing that honestly turned out to be the most interesting boundary on the
+site.
+
+### There is no box, so there is no box secret
+
+A local game has no lease, no invite token and no server. It also must have **no
+`x-match-secret`**: that header is what lets a process post a result *as a game box*, and a player
+holding one makes every board on the site whatever they feel like typing. So local games get their
+own door, authenticated as the **player** by the ordinary session cookie:
+
+```
+POST /api/launcher/local/start   {map_key}      -> {match_id, map{fs_game, files, install_known,
+                                                    readme}, settings, notice}
+POST /api/launcher/local/live    {match_id, state}   ~4 Hz while it runs
+POST /api/launcher/local/result  {summary, replay}
+```
+
+Everything through that door is stamped `games.self_reported = 1`, and the roster on a result is
+**overridden** to the session's player — otherwise a local game could write rows against other
+people's accounts.
+
+### The downgrade is applied twice, on purpose
+
+The referee already returns `records_eligible: false, xp_multiplier: 0` for a local game.
+`lib/results.js` does it **again** on arrival, and that is not redundant: rule 1 of that file is
+that the box decides what happened and the site decides what it is worth, and *"worth nothing"* is
+the one verdict the site must not be talkable out of. A result claiming `mode: 'local',
+records_eligible: true` — through a bug, a fork, or a player's PC — gets zero regardless. There is
+a test that posts exactly that.
+
+### What the run produced
+
+A real one, tonight, driven by `web/tools/local-run.js` (which is also the reference
+implementation of the launcher's side):
+
+```
+signed in as Dexter
+local game l_288b1351 on Leviathan          <- one of archive's 14 pipeline maps
+  install known: true, fs_game mods/nazi_zombie_leviathan
+  settings to apply: fov 80, max_fps 125
+  watch it at http://127.0.0.1:3200/live/l_288b1351
+  … 340 frames relayed, rounds 1 → 22 …
+game over: round 22, Round 20
+  site says: mode=local records_eligible=false self_reported=true
+  replay: local — a Local game: it ran on the player's own PC …
+```
+
+and in the database afterwards:
+
+| | |
+|---|---|
+| game | stored — `mode=local`, `records_eligible=0`, `xp_multiplier=0`, `self_reported=1` |
+| records | **0** |
+| XP ledger rows | **0** |
+| badges | **0** |
+| `map_progress` | `played=1`, **`beaten=0`**, **`best_round=0`** — after a round 22 game |
+| replay | real: 4.06 MB, 42 chunks, 98,313 events |
+
+### Two holes it found
+
+1. **`best_round` was computed over every game.** A local round (console open) or a Custom round
+   (a knob can *start* you at round 100) would land on the map shelf and in the profile's career
+   strip, where it reads as an achievement. Both are Verified-only now. The game still appears in
+   history, because the shelf is a history — `best_round` is the one field on it that is a claim.
+2. **A local game's live frames carried the box name `local:<steamid>`,** and the box name is
+   rendered, so the host's account id was on a page anyone could watch. It is `local` now; who
+   owns the game stays server-side.
+
+### The replay is VALID and is not evidence
+
+Both of these are true of tonight's file and the site says both:
+
+```
+tools/verify.js   VALID — every chunk hashes to its index entry, the chain is intact,
+                  and the footer signature checks out.
+the site          a Local game: it ran on the player's own PC with the console available, so
+                  the signature proves the recording is unedited, not that the run is real.
+```
+
+On a development box the local host agent **is** `box-a`, so the signing key is the pinned one and
+every key check in §4f passes. The **mode** decides this, not the key — which is the same lesson as
+§4d one turn further on: integrity is not authorship, and authorship is not legitimacy.
 
 ---
 

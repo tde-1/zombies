@@ -29,8 +29,8 @@ it is the direct answer to `R12 §4c`'s "cheapest decisive experiment": not vest
 **12–30, central ~18**. Both the vault's ~110 (from iw4x/h1-mod) and R12's 50–70 (from KisakCOD's
 CoD4 SP tree) assume we must author the dedicated branch points. We do not.
 
-**The whole remaining blocker is one function.** `Com_Init` (0x59D710) never returns in dedicated
-mode, so WinMain never reaches its frame loop: no frame tick, no network poll, no connectionless
+**The whole remaining blocker is one fatal error we cannot yet read.** `Com_Init` (0x59D710) never
+returns in dedicated mode, so WinMain never reaches its frame loop: no frame tick, no network poll, no connectionless
 replies, no join. Everything we have watched — the map load, zombies GSC — happens *inside*
 Com_Init, because `+map` runs from the command buffer there. Proved by elimination with counters on
 every call that follows it in WinMain (§4, site 3).
@@ -183,7 +183,7 @@ map, then zombies GSC setting `g_spawnai 1`, `ai_disableSpawn 0`, `dynEnt_spawne
 |---|---|---|---|
 | 1 | `WinMain` 0x5FF799 → 0x5FF4E0 | the renderer/D3D bring-up is called before the frame loop and is **not** gated by `com_dedicated`; in a headless process it drags a D3D device in | **CLEARED.** `re` found it; our DLL retargets that one call (verified `E8 42 FD FF FF` → 0x5FF4E0, no argument pushes before it, so a naked no-arg stub is safe), and refuses to patch if the target is not what we expect |
 | 2 | `maps/_load.gsc:3767` via `:324` | stock GSC calls `SetSavedDvar` on `con_typewriterColorBase`, a client-only dvar. `+set` creates it but without the SAVED flag; `seta` does not help | **CLEARED, but crudely.** Our DLL ORs flag bits into the existing `dvar_s`. See the honesty note below |
-| 3 | `Com_Init` 0x59D710, called from WinMain at 0x5FF77E | **`Com_Init` never returns in dedicated mode.** Counters on both following calls (`0x5FF794 -> 0x594200`, `0x5FF799 -> 0x5FF4E0`) and on the loop's `Com_Frame` call all read **0** for a whole run while the server has loaded the map and run zombiemode GSC. So everything observed happens *inside* Com_Init (`+map` runs from the command buffer there), and nothing downstream ever happens: no frame tick, no network poll, no OOB reply, no join | **OPEN, and precisely located. The whole remaining blocker.** |
+| 3 | `Sys_Error`-shaped function at `0x5FE8C0`, reached inside `Com_Init` 0x59D710 | **The main thread is parked in a blocking `win32u!NtUserGetMessage`** — same EIP and ESP on every sample, innermost engine frame `0x5FE97B` inside `0x5FE8C0` (`re`'s `Sys_Error`), caller `0x410830`. So the headless server hits a **fatal error** and the error handler parks the thread in its own message loop for ever. That is why `Com_Init` never returns, why there are no frames, no network poll and no OOB replies, why no dialog appears (it uses the WinConsole, not a MessageBox), and why the console tail shows `com_errorTitle Error` with an empty `com_errorMessage`. It also explains why posting `WM_NULL` did nothing: waking `GetMessage` just loops it | **OPEN, but now a different and much smaller question: *what error?* Hook `Com_Error` 0x59AC50 / `Sys_Error` 0x5FE8C0 and log the format string before it parks** |
 | 4 | `BG_LoadWeaponDef` | `Could not find default weapon`, reached only with `fs_game` active | **RETRACTED.** On repaired data `main\iw_14.iwd` holds **220 `weapons/sp/*` and 55 `accuracy/*` files**, and `iw_14.iwd` was one of the zero-filled ones — so those 275 files were simply invisible. Not a dedicated-mode bug and not an `fs_game` bug. Confirmation run pending |
 | — | UDP 3074 | the party socket is bound with no dvar to move it | not a crash; blocks several instances per box |
 
@@ -304,6 +304,39 @@ the window, the render thread, the `ui` fastfile and the client console, and `r_
 (~3–5 including the hardcoded 3074), client 0 (~2–3), frame pacing (~1–3), config (~2–3), and the
 category the probes actually found and no prior art measures — **client-only dvars and client-only
 state that stock GSC touches** (≥1, plausibly 5–10 across stock and custom maps).
+
+---
+
+## 6b. Custom maps on the server (feature 6)
+
+**They load headless, and the install location is the whole trick.** `water` (Alcatraz) boots in
+dedicated mode with `mod.ff` and the map fastfile loading, no errors, peak RSS **377 MB**.
+
+But only when the mod lives in **WaW's own mod root, `%LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>`**:
+
+| Location | Result |
+|---|---|
+| `<fs_homepath>\mods\<bsp>` | **fails silently** |
+| `<game copy>\mods\<bsp>` | **fails silently** |
+| `%LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>` | **works** |
+
+The failure mode is nasty: the mod's `.iwd` files mount and show up in the printed search path, so it
+looks installed, but `Loading fastfile 'mod'` never appears and `+map` never runs — the process falls
+through to client init and dies on the `snddriverglobals` singleton. `mod.ff` is a *zone*, not a
+filesystem asset, so putting the directory on the search path with `fs_game` is not enough; the zone
+loader only looks in the mod root. **That is where the launcher must install maps.**
+
+Method for the sweep, so it is reproducible and safe: each map gets a throwaway directory in the mod
+root filled with **hardlinks** to `ZombiesDevrchive\mods\<bsp>\`, which is deleted afterwards.
+No writes to the archive, and the game's `console.log` lands in the throwaway. Any map whose name
+already exists in the mod root is skipped, so B's installed `nazi_zombie_ali` is never touched.
+Harness: `mapboot.ps1`; summaries in `ZombiesDev\logs\dedi\maps\`.
+
+Classification: `Server: <bsp>` + `Loading fastfile '<bsp>'` + a GSC-driven dvar set, with no script
+error and no asset-limit error, is a pass. **Caveat found in the first good run**: `g_spawnai` is a
+stock-map marker and custom maps do not necessarily set it, so "LOADS (no gsc marker)" is not a
+failure — the per-map GSC evidence needs a better signal before these become manifest `health`
+values.
 
 ---
 

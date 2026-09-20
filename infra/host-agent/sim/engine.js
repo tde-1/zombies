@@ -134,6 +134,7 @@ export class ZombiesSim extends EventEmitter {
       centre: [(this.rng() - 0.5) * 900, (this.rng() - 0.5) * 700],
       pos: [0, 0, 32],
       ang: [0, 0],
+      trail: [],                                   // recent positions, for zombie chase lag
       lastInputState: null,
       lastInputMs: -99999,
       authed: spec.token == null,                  // no token flow => already in
@@ -260,6 +261,10 @@ export class ZombiesSim extends EventEmitter {
       const ny = clamp(y, this.bounds.y[0], this.bounds.y[1])
       const yaw = Math.atan2(ny - p.pos[1], nx - p.pos[0]) * 180 / Math.PI
       p.pos = [round2(nx), round2(ny), round2(32 + Math.sin(p.phase * 2) * 4)]
+      // Keep ~2 s of history: a zombie chases where you WERE, which is what turns a
+      // crowd into a conga line behind a training player instead of a pile on top of one.
+      p.trail.push(p.pos)
+      if (p.trail.length > 40) p.trail.shift()
       p.ang = [round2(-6 + Math.sin(p.phase * 5) * 9), round2(yaw + (this.rng() - 0.5) * 6)]
       p.health = Math.min(100, p.health + 1.5)   // ~3 s to full, WaW-ish, not 0.8 s
       this.reportInput(p, { moved: true, turned: true, buttons: this.rng() < 0.4 ? 1 : 0 })
@@ -294,7 +299,7 @@ export class ZombiesSim extends EventEmitter {
         maxHealth: this.zombieHealth(this.round),
         speed: this.zombieSpeed(this.round) * (0.85 + this.rng() * 0.3),
         target: tgt.slot,
-        lag: this.rng() * 0.5,
+        lag: 0.15 + this.rng() * 0.85,   // seconds of chase lag; spreads the train out
       })
       this.spawnQueue--
       this.nextSpawnMs = this.ms + 400 + this.rng() * 700
@@ -312,8 +317,12 @@ export class ZombiesSim extends EventEmitter {
         z.target = t.slot
       }
       // Chase the player's position from a moment ago -> the conga line a trainer sees.
-      const dx = t.pos[0] - z.pos[0]
-      const dy = t.pos[1] - z.pos[1]
+      // z.lag is 0–0.5 s, so the tail of a train is spread over half a second of the
+      // player's path rather than standing in it.
+      const back = Math.min(t.trail.length - 1, Math.round((z.lag * 1000) / TICK_MS))
+      const aim = back > 0 ? t.trail[t.trail.length - 1 - back] : t.pos
+      const dx = aim[0] - z.pos[0]
+      const dy = aim[1] - z.pos[1]
       const d = Math.hypot(dx, dy) || 1
       const step = z.speed * dt
       z.pos = [round2(z.pos[0] + (dx / d) * step), round2(z.pos[1] + (dy / d) * step), 32]

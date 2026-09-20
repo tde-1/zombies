@@ -29,6 +29,7 @@ const parties = require('../lib/parties')
 const maps = require('../lib/maps')
 const presence = require('../lib/presence')
 const enw = require('../lib/enw')
+const live = require('../lib/live')
 const { db, now } = require('../db/database')
 const { safeJson } = require('../lib/util')
 const { requireUser, requireApproved } = require('../middleware/auth')
@@ -37,6 +38,15 @@ const { requireUser, requireApproved } = require('../middleware/auth')
 // it changes every few hundred milliseconds, and it is meaningless once the process is gone.
 const launcherState = new Map()
 const STATE_TTL_MS = 120_000
+
+// Local games in flight, keyed by match id. In memory, like the frames: a local game is
+// one player's PC and one launcher process, and if the site restarts mid-game the right
+// answer is that the launcher starts a new one.
+const localGames = new Map()
+const LOCAL_TTL_MS = 26 * 3600_000
+setInterval(() => {
+  for (const [id, g] of localGames) if (now() - g.started > LOCAL_TTL_MS) localGames.delete(id)
+}, 3600_000).unref?.()
 
 const PROTOCOL_VERSION = 0
 
@@ -62,6 +72,9 @@ function router() {
         state: true,             // POST /api/launcher/state
         reports: true,           // POST /api/launcher/report
         live_view: true,         // /live/<match> in the wrapped site
+        // Local games: start / live / result, session-authenticated, no box secret.
+        // Everything through them is stamped self-reported and counts for nothing.
+        local: true,
         deep_links: ['/m/:map', '/live/:match', '/id/:who'],
         // Not built. Listed so the launcher can grey a button instead of calling and
         // getting a 404 it has to explain to the player.
@@ -170,6 +183,100 @@ function router() {
     if (!u) return res.status(404).json({ error: 'no such player' })
     const s = launcherState.get(u.steam_id)
     res.json({ state: s && now() - s.at < STATE_TTL_MS ? s : null })
+  })
+
+  // ══ LOCAL GAMES ══════════════════════════════════════════════════════════════════
+  //
+  // A Local game (13 §4) runs on the player's own PC. There is no lease, no box, no invite
+  // token and no server — and, crucially, **no box secret**. A player's machine must never
+  // hold one: `x-match-secret` is what lets a process post a result as a game box, and the
+  // moment a player has one, every board on the site is whatever they feel like typing.
+  //
+  // So local games get their own door, authenticated as the PLAYER by the ordinary session
+  // cookie, and everything through it is stamped `self_reported`. The site stores it — you
+  // should be able to see that you played Leviathan for forty minutes — and it is worth
+  // exactly nothing: no badge, no record, no XP, and its replay is not evidence. That is
+  // not a limitation of this implementation, it is 13 §4: "if they want their stuff
+  // tracked, they have to play through our servers."
+
+  /** Start one. Returns the match id the launcher uses for frames and the result. */
+  r.post('/local/start', requireUser, (req, res) => {
+    const b = req.body || {}
+    const mapKey = String(b.map_key || '')
+    const m = mapKey ? maps.byKey(mapKey) : null
+    if (!m) return res.status(400).json({ error: 'which map?' })
+    const matchId = 'l_' + require('crypto').randomBytes(4).toString('hex')
+    localGames.set(matchId, { steam_id: req.me.steam_id, map: m.key, started: now() })
+    db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('local.start', ?, ?, ?)")
+      .run(req.me.steam_id, JSON.stringify({ match_id: matchId, map: m.key }), now())
+    res.json({
+      ok: true,
+      match_id: matchId,
+      // Local is solo only (13 §4, decided). The launcher should not offer a party here.
+      solo: true,
+      map: mapPayload(m),
+      settings: users.settings(req.me.steam_id),
+      // Said plainly so the launcher can put it on the boot screen rather than inventing
+      // its own wording.
+      notice: 'Local game — untracked. No badges, no records and no XP.',
+    })
+  })
+
+  /** Live frames for a local game, so a friend can watch it on the site. */
+  r.post('/local/live', requireUser, (req, res) => {
+    const b = req.body || {}
+    const g = localGames.get(String(b.match_id || ''))
+    // Only the player whose game it is may push frames for it — otherwise anybody could
+    // paint anything onto anybody's live view.
+    if (!g || g.steam_id !== req.me.steam_id) return res.status(404).json({ error: 'not your game' })
+    if (!b.state) return res.status(400).json({ error: 'no state' })
+    // The "box" is the player's own PC. It is labelled `local` and NOT `local:<steamid>`:
+    // the frame is broadcast to everyone watching, and the box label is rendered, so a
+    // SteamID in it would put the host's account id on a public page. Who owns the game is
+    // in `localGames`, which is server-side and is what the guard above reads.
+    const taken = live.push('local', {
+      instance: 'local',
+      match_id: b.match_id,
+      state: { ...b.state, mode: 'local', map: b.state.map || g.map },
+    })
+    res.json({ ok: true, taken, min_frame_ms: live.MIN_FRAME_MS })
+  })
+
+  /** The summary and the replay pointer for a finished local game. */
+  r.post('/local/result', requireUser, (req, res) => {
+    const b = req.body || {}
+    const s = b.summary
+    if (!s || !s.match_id) return res.status(400).json({ error: 'no summary' })
+    const g = localGames.get(String(s.match_id))
+    if (!g || g.steam_id !== req.me.steam_id) return res.status(404).json({ error: 'not your game' })
+
+    // The roster is the ONE thing the site overrides rather than trusts. Local is solo, so
+    // the only player who can be in it is the one holding the session — otherwise a local
+    // game could write rows against other people's accounts.
+    const me = users.pub(req.me)
+    const mine = (s.players || []).find((p) => String(p.steamid) === String(req.me.steam_id)) || (s.players || [])[0] || {}
+    const summary = {
+      ...s,
+      mode: 'local',
+      solo: true,
+      player_count: 1,
+      players: [{ ...mine, slot: 0, steamid: req.me.steam_id, name: me.name }],
+      records_eligible: false,
+      xp_multiplier: 0,
+    }
+
+    const out = require('../lib/results').ingest(
+      { box: null, instance: 'local', summary, replay: b.replay || null },
+      { selfReported: true },
+    )
+    live.drop(String(s.match_id))
+    localGames.delete(String(s.match_id))
+    if (!out.ok) return res.status(400).json(out)
+    res.json({
+      ...out,
+      tracked: false,
+      notice: 'Stored as a Local game. It earns no badge, no record and no XP, and its replay is not record evidence.',
+    })
   })
 
   // ---- silent error reports (99 §4.3) -------------------------------------------

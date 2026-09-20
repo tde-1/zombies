@@ -62,11 +62,10 @@ export default function MapPage() {
                 {d.live.length ? 'Join' : 'Play'}
               </button>
               {/* Play Local is the honest second button: it launches WaW straight into the
-                  map on the player's own PC, and nothing about it is tracked (13 §3). */}
-              <button className="btn" title="Launches this map offline on your PC. Nothing is tracked."
-                onClick={() => setErr('Play Local needs the launcher — it is not installed.')}>
-                Play Local
-              </button>
+                  map on the player's own PC, and nothing about it is tracked (13 §3). In a
+                  browser there is nothing to launch, so it says so; inside the launcher it
+                  starts a local session the launcher then plays. */}
+              <PlayLocal mapKey={m.key} onError={setErr} />
             </div>
             <div className="row">
               {signedIn && (
@@ -221,7 +220,7 @@ export default function MapPage() {
                 {d.recent.map((g) => (
                   <Link className="maprow" key={g.id} to={`/game/${g.match_id}`}>
                     <div className="name"><b>Round {g.rounds}</b><span>{g.players.map((p) => p.name).join(', ')}</span></div>
-                    <span className="chip">{g.mode}</span>
+                    <span className={`chip ${g.mode === 'local' || g.self_reported ? 'be' : ''}`}>{g.mode}</span>
                     <span className="tiny">{g.finish ? g.finish.label : ''}</span>
                     <span className="tiny">{ago(g.ended_at)}</span>
                   </Link>
@@ -236,6 +235,38 @@ export default function MapPage() {
 }
 
 const hostOf = (u) => { try { return new URL(u).host } catch { return u } }
+
+// Play Local (13 §3, §4). Untracked by definition: it runs on the player's own PC with the
+// console and cheats available, so nothing from it can earn a badge, a record or a point
+// of XP — and the button says so before it is pressed rather than after.
+//
+// `window.enw` is the launcher's preload bridge (launcher.md §4). In a plain browser it is
+// absent and there is nothing to launch, which is the honest thing to say; the site does
+// not pretend to have started a game it cannot start.
+function PlayLocal({ mapKey, onError }) {
+  const [busy, setBusy] = useState(false)
+  const inLauncher = typeof window !== 'undefined' && !!window.enw
+
+  const go = async () => {
+    if (!inLauncher) { onError('Play Local needs the launcher. In a browser there is nothing to launch.'); return }
+    setBusy(true)
+    try {
+      const s = await api.post('/api/launcher/local/start', { map_key: mapKey })
+      // The launcher takes it from here: install the map if it needs to, launch World at
+      // War with fs_game and the account's settings, and post frames and the result back
+      // against s.match_id.
+      await window.enw.playLocal(s)
+    } catch (e) { onError(e.message) } finally { setBusy(false) }
+  }
+
+  return (
+    <button className="btn" disabled={busy}
+      title="Launches this map on your own PC. Untracked: no badges, no records, no XP."
+      onClick={go}>
+      {busy ? 'Starting' : 'Play Local'}
+    </button>
+  )
+}
 
 // The link checker's verdict, as it found it. `fetched` means we have the bytes, which is
 // the only status that survives the link going dead.

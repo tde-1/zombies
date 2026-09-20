@@ -24,12 +24,54 @@
 #include "scheduler.hpp"
 
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <thread>
 #include <vector>
 
 namespace enw::dedi {
 namespace {
+
+// Name the address: which module, and the nearest export below it. Turns
+// "EIP=74DB11DC, some system DLL" into "user32.dll!MessageBoxA+0x2c", which is the
+// difference between a clue and an answer.
+std::string describe(uintptr_t addr) {
+    char out[256];
+    HMODULE mod = nullptr;
+    if (!::GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                              GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                              reinterpret_cast<LPCSTR>(addr), &mod) || !mod) {
+        std::snprintf(out, sizeof out, "%08X <no module>", static_cast<unsigned>(addr));
+        return out;
+    }
+    char path[MAX_PATH] = {};
+    ::GetModuleFileNameA(mod, path, MAX_PATH);
+    const char* base = std::strrchr(path, '\\');
+    base = base ? base + 1 : path;
+
+    // Nearest export at or below addr, from the module's own export directory.
+    const auto m = reinterpret_cast<uintptr_t>(mod);
+    const char* best = nullptr;
+    uintptr_t   bestAddr = 0;
+    const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(m);
+    const auto* nt  = reinterpret_cast<const IMAGE_NT_HEADERS*>(m + dos->e_lfanew);
+    const auto  dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (dir.VirtualAddress && dir.Size) {
+        const auto* ed = reinterpret_cast<const IMAGE_EXPORT_DIRECTORY*>(m + dir.VirtualAddress);
+        const auto* names = reinterpret_cast<const uint32_t*>(m + ed->AddressOfNames);
+        const auto* ords  = reinterpret_cast<const uint16_t*>(m + ed->AddressOfNameOrdinals);
+        const auto* funcs = reinterpret_cast<const uint32_t*>(m + ed->AddressOfFunctions);
+        for (uint32_t i = 0; i < ed->NumberOfNames; ++i) {
+            const uintptr_t fa = m + funcs[ords[i]];
+            if (fa <= addr && fa > bestAddr) { bestAddr = fa; best = reinterpret_cast<const char*>(m + names[i]); }
+        }
+    }
+    if (best) std::snprintf(out, sizeof out, "%08X %s!%s+0x%X", static_cast<unsigned>(addr), base,
+                            best, static_cast<unsigned>(addr - bestAddr));
+    else      std::snprintf(out, sizeof out, "%08X %s+0x%X", static_cast<unsigned>(addr), base,
+                            static_cast<unsigned>(addr - m));
+    return out;
+}
 
 struct sample {
     uintptr_t eip = 0;
@@ -88,9 +130,9 @@ public:
                     std::snprintf(buf, sizeof buf, "%08X ", static_cast<unsigned>(a));
                     chain += buf;
                 }
-                ENW_INFO("dedi_whereis: t=%ds  EIP=%08X ESP=%08X  stack-text: %s",
-                         (i + 1) * 4, static_cast<unsigned>(s.eip),
-                         static_cast<unsigned>(s.esp), chain.c_str());
+                ENW_INFO("dedi_whereis: t=%ds  EIP=%s  ESP=%08X", (i + 1) * 4,
+                         describe(s.eip).c_str(), static_cast<unsigned>(s.esp));
+                ENW_INFO("dedi_whereis:        stack-text: %s", chain.c_str());
             }
         }).detach();
     }

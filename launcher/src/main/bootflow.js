@@ -100,6 +100,10 @@ export class BootFlow extends EventEmitter {
     // the local map and go to the server the moment it loaded.
     if (o.localMap) return this.runLocal()
 
+    // The site path (launcher-v0). `POST /admin/lease` against the mock site is gone:
+    // a client must never be able to lease a box.
+    if (o.api) return this.runViaSite(o.api)
+
     // ---------------------------------------------------------- reserving --
     this.step('reserving', 'active', `asking ${siteUrl} for a server`)
     let token = null
@@ -160,6 +164,7 @@ export class BootFlow extends EventEmitter {
       token,
       settings: o.settings,
       stealth: !!o.stealth,
+      windowMode: o.windowMode || null,
       instance: matchId,
       role: 'client',
       linkHost: o.linkHost,
@@ -188,6 +193,115 @@ export class BootFlow extends EventEmitter {
     return this.snapshot()
   }
 
+  // The site-driven path (launcher-v0). The launcher presses Play and then watches:
+  // the SITE leases the box, because it is the thing that knows the party, the map,
+  // the mode and who is ready. `state` comes from the site so the boot screen and the
+  // site can never disagree about what is happening.
+  async runViaSite(api) {
+    const o = this.opts
+    const { PlayWatcher } = await import('./siteapi.js')
+
+    this.step('reserving', 'active', 'asking the site for a server')
+    const started = await api.startPlay({ mapKey: o.map, mode: o.mode || 'custom' })
+    if (!started.ok) {
+      // 409/403 messages are written for a player to read.
+      this.step('reserving', 'failed', started.error)
+      return this.snapshot()
+    }
+
+    const watcher = new PlayWatcher(api)
+    watcher.setFast(true)
+    this.watcher = watcher
+
+    const SITE_STEP = {
+      idle: ['reserving', 'active', 'waiting for the site'],
+      selected: ['reserving', 'active', 'the map is selected'],
+      'ready-check': ['reserving', 'active', 'waiting for everyone to be ready'],
+      reserving: ['reserving', 'active', 'the site is picking a server'],
+      loading: ['loading', 'active', 'the server is loading the map'],
+      ready: ['ready', 'done', 'the server is ready'],
+      'in-game': ['in_game', 'done', 'in game'],
+    }
+
+    const done = await new Promise((resolve) => {
+      const until = Date.now() + (o.serverTimeoutMs ?? 120000)
+      watcher.on('change', (p) => {
+        if (!p || p.signedOut) { resolve({ error: 'you are signed out on the site' }); return }
+        const s = SITE_STEP[p.state]
+        if (s) this.step(s[0], s[1], s[2])
+        if (p.state === 'loading') this.step('reserving', 'done', `match ${p.match?.match_id || ''}`)
+        if (p.match?.connect) {
+          this.matchId = p.match.match_id
+          this.host = p.match.connect
+          this.step('reserving', 'done', `match ${p.match.match_id}${p.match.token ? ', invite token issued' : ''}`)
+          this.step('loading', 'done', 'the server loaded the map')
+          this.step('ready', 'done', `the server is ready on ${p.match.connect}`)
+          resolve({ play: p })
+        }
+      })
+      watcher.on('error', () => {})
+      const timer = setInterval(() => {
+        if (this.cancelled) { clearInterval(timer); resolve({ error: 'cancelled' }); return }
+        if (Date.now() > until) { clearInterval(timer); resolve({ error: 'the server did not become ready in time' }) }
+      }, 1000)
+      watcher.start()
+    })
+    watcher.stop()
+
+    if (done.error) {
+      const stepId = this.steps.find((s) => s.state === 'active')?.id || 'ready'
+      this.step(stepId, 'failed', done.error)
+      return this.snapshot()
+    }
+
+    const p = done.play
+    if (o.launch === false) return this.snapshot()
+    if (this.cancelled) return this.snapshot()
+
+    this.step('launching', 'active', 'starting World at War')
+    const l = new GameLaunch({
+      host: p.match.connect,
+      token: p.match.token,
+      fsGame: p.match.fs_game || p.map?.fs_game || undefined,
+      settings: o.settings,
+      stealth: !!o.stealth,
+      windowMode: o.windowMode || null,
+      instance: p.match.match_id,
+      role: 'client',
+      linkHost: o.linkHost,
+      lockName: o.lockName || 'launcher',
+      why: `launcher: ${o.map}`,
+      useGameLock: o.useGameLock,
+      nannySeconds: o.nannySeconds,
+    })
+    this.launch = l
+    this.wireLaunch(l)
+    try {
+      const st = await l.start()
+      this.step('launching', 'done', `World at War is running (process ${st.pid})`)
+      this.emit('launched', st)
+    } catch (e) {
+      this.step('launching', 'failed', e.message)
+      return this.snapshot()
+    }
+
+    this.step('in_game', 'active', 'waiting for the game to connect')
+    watcher.setFast(true)
+    const joined = await new Promise((resolve) => {
+      const until = Date.now() + (o.connectTimeoutMs ?? 90000)
+      watcher.on('poll', (x) => { if (x?.state === 'in-game') resolve(true) })
+      const timer = setInterval(() => {
+        if (this.cancelled || l.ended || Date.now() > until) { clearInterval(timer); resolve(false) }
+      }, 1000)
+      watcher.start()
+    })
+    watcher.stop()
+    this.step('in_game', joined ? 'done' : 'active',
+      joined ? 'connected' : 'the game is running; the site has not seen you join yet',
+      { simulated: !joined })
+    return this.snapshot()
+  }
+
   // Play Local: no server, no token, no tracking. Two steps, both real.
   async runLocal() {
     const o = this.opts
@@ -205,6 +319,7 @@ export class BootFlow extends EventEmitter {
       fsGame: o.fsGame,
       settings: o.settings,
       stealth: !!o.stealth,
+      windowMode: o.windowMode || null,
       instance: `local-${o.localMap}`,
       role: 'solo',
       // No host agent for a local game, so the game-link stays dormant rather than
@@ -238,9 +353,14 @@ export class BootFlow extends EventEmitter {
       const cleanup = () => { clearInterval(timer); l.off('map_up', onUp) }
       l.on('map_up', onUp)
     })
-    this.step('in_game', loaded ? 'done' : 'active',
-      loaded ? `the map is loading on your PC: ${loaded}` : 'the game is running; the engine has not reported a map yet',
-      { simulated: !loaded, label: 'In game (untracked)' })
+    // If a custom map does not come up, the FIRST thing anyone needs to know is where
+    // we installed it — World at War loads custom maps from exactly one folder and a
+    // wrong location fails silently, looking for all the world like a broken map.
+    let detail
+    if (loaded) detail = `the map is loading on your PC: ${loaded}`
+    else if (o.installDir) detail = `the game is running but has not reported the map. ENW installed it to ${o.installDir} — World at War only loads custom maps from there, so that is the first thing to check.`
+    else detail = 'the game is running; the engine has not reported a map yet'
+    this.step('in_game', loaded ? 'done' : 'active', detail, { simulated: !loaded, label: 'In game (untracked)' })
     return this.snapshot()
   }
 

@@ -25,6 +25,7 @@ import * as lock from './gamelock.js'
 import { Updater, IdleGate, applyPending, pending } from './updates.js'
 import { BootFlow } from './bootflow.js'
 import * as library from './library.js'
+import { SiteApi, electronCookieProvider } from './siteapi.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -147,6 +148,25 @@ async function createWindow() {
   log('site', state.siteInfo.url, state.siteInfo.what)
   await wc.loadURL(state.siteInfo.url).catch((e) => log('site load failed', e.message))
 
+  // The site API shares the page's cookie jar, so a signed-in page means signed-in API
+  // calls from the main process — one session, no second auth path, nothing to leak
+  // (launcher-v0 §1). Without a site we simply have no api and Play stays local-only.
+  state.api = null
+  if (!state.siteInfo.placeholder) {
+    const api = new SiteApi({
+      baseUrl: state.siteInfo.url,
+      cookieProvider: electronCookieProvider(electronSession.defaultSession),
+      appVersion: app.getVersion(),
+    })
+    try {
+      const hello = await api.sayHello()
+      state.api = api
+      log('site hello', `protocol ${hello.protocol}, auth ${hello.auth}, signed in as ${hello.you?.name || 'nobody'}`)
+    } catch (e) {
+      log('site hello failed', e.message)
+    }
+  }
+
   win.once('ready-to-show', () => win.show())
   win.show()
 
@@ -243,6 +263,7 @@ function wireIpc() {
     pendingUpdate: pending(),
     gameLock: lock.enabled() ? lock.read() : { held: false, note: 'not a dev box' },
     lastError: state.lastError,
+    site_api: state.api ? { protocol: 0, auth: state.api.hello?.auth, you: state.api.who, capabilities: state.api.hello?.capabilities } : null,
   }))
 
   handle('detect', (opts) => detect.detect(opts || {}))
@@ -329,6 +350,9 @@ function wireIpc() {
     const flow = new BootFlow({
       map: opts.map,
       mode: opts.mode || 'custom',
+      // launcher-v0: when the site is there, IT leases and we watch. The old
+      // mock-site lease path stays only for a machine with no site running.
+      api: opts.local ? null : state.api,
       siteUrl: opts.hostApi || conf.hostApi,
       hostDashboard: conf.hostDashboard,
       linkHost: conf.linkHost,
@@ -338,6 +362,7 @@ function wireIpc() {
       stealth: conf.stealthLaunch,
       useGameLock: conf.useGameLock,
       localMap: opts.local ? opts.map : null,
+      fsGame: opts.fsGame || undefined,
       lockName: 'launcher',
     })
     state.flow = flow

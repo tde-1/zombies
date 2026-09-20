@@ -55,7 +55,23 @@ export function Game() {
           {d.flags.map((f) => <span className="chip be" key={f}>{f.replace(/_/g, ' ')}</span>)}
           {!d.records_eligible && <span className="chip be">no records from this game</span>}
         </div>
-        {d.fingerprint && <p className="tiny" style={{ marginTop: 8 }}>Run fingerprint <code>ENW-{d.fingerprint}</code> · finished {ago(d.ended_at)} on {d.box}</p>}
+        {/* 13 §4: a Local game ran on the player's own PC with the console available.
+            Saying so on the game itself, not only in a tooltip, is the difference between
+            a history and a scoreboard. */}
+        {(d.mode === 'local' || d.self_reported) && (
+          <p className="tiny hot" style={{ marginTop: 8 }}>
+            {d.mode === 'local' ? 'Local game' : 'Self-reported'} — untracked. It earns no badge,
+            no record and no XP, and its replay is not record evidence. Tracking needs our servers.
+          </p>
+        )}
+        {d.fingerprint && (
+          <p className="tiny" style={{ marginTop: 8 }}>
+            Run fingerprint <code>ENW-{d.fingerprint}</code> · finished {ago(d.ended_at)}
+            {/* A local game has no box — it ran on the player's own PC — so it says that
+                rather than trailing an "on" with nothing after it. */}
+            {d.box ? ` on ${d.box}` : d.mode === 'local' ? ' on the player’s own PC' : ''}
+          </p>
+        )}
       </div>
 
       <Section title="Players">

@@ -756,6 +756,20 @@ function migrate() {
   // it is `127.0.0.1`.
   addColumn('boxes', 'address', 'TEXT')
 
+  // A game the SITE did not referee on a box it controls.
+  //
+  // A Local game (13 §4) runs on the player's own PC with the console and cheats available,
+  // and its result reaches us from that same PC. We store it — a player should be able to
+  // see they played Leviathan for forty minutes — but it is **self-reported**, and this
+  // column is what stops that ever being forgotten downstream. Nothing self-reported earns
+  // a badge, a record or a point of XP, and the grader refuses to call its replay evidence
+  // however well signed it is.
+  //
+  // It is a column rather than an inference from `mode` because the two can come apart: a
+  // Verified game posted through a door that does not prove a box sent it would also be
+  // self-reported, and that is the case worth being able to name.
+  addColumn('games', 'self_reported', 'INTEGER DEFAULT 0')
+
   // One row per (version, path). Without this, the `INSERT OR IGNORE` that both the seeder
   // and the archive importer use has nothing to conflict WITH, so it is a plain INSERT and
   // every re-import duplicates every file row. Found by running the importer twice and

@@ -387,6 +387,70 @@ async function main() {
     eq(parties.MAX_PLAYERS, 4)
   })
 
+  // ── Local is untracked, and the site enforces it rather than trusting the box ──
+  check('a LOCAL game is stored, and earns nothing at all', () => {
+    // Count the MAP badge's holders, not every badge in the table: ingest also runs the
+    // held-record reconciliation, which legitimately moves `kind:'record'` badges around
+    // when a board's top row changes. A loose count here fails for the right reason at
+    // the wrong time and teaches you to ignore it.
+    const mapBadge = db.prepare("SELECT id FROM badges WHERE slug='map-nazi_zombie_test'").get()
+    const holders = () => db.prepare('SELECT COUNT(*) c FROM badge_awards WHERE badge_id=?').get(mapBadge.id).c
+    const before = {
+      badges: holders(),
+      records: db.prepare('SELECT COUNT(*) c FROM records').get().c,
+      xp: db.prepare('SELECT xp_total FROM users WHERE steam_id=?').get('76561198000000001').xp_total,
+    }
+    const out = results_.ingest({
+      box: null, instance: 'local',
+      summary: summary({ match_id: 'm_local1', mode: 'local', rounds: 99, finish: { kind: 'easter_egg', label: 'Egg' } }),
+    })
+    truthy(out.ok, out.error)
+    const g = db.prepare("SELECT * FROM games WHERE match_id='m_local1'").get()
+    truthy(g, 'the game IS stored — a player should see they played it')
+    eq(g.mode, 'local')
+    eq(g.records_eligible, 0)
+    eq(g.xp_multiplier, 0)
+    eq(g.self_reported, 1)
+    eq(holders(), before.badges, 'no map badge')
+    eq(db.prepare('SELECT COUNT(*) c FROM records').get().c, before.records, 'no record')
+    eq(db.prepare('SELECT xp_total FROM users WHERE steam_id=?').get('76561198000000001').xp_total, before.xp, 'no XP')
+  })
+
+  check('a local result claiming to be eligible is downgraded anyway', () => {
+    // The box says what happened; the SITE says what it is worth, and "worth nothing" is
+    // the verdict it must not be talkable out of.
+    const s = summary({ match_id: 'm_liar_local', mode: 'local', rounds: 255, finish: { kind: 'easter_egg', label: 'Egg' } })
+    s.records_eligible = true
+    s.xp_multiplier = 1
+    results_.ingest({ summary: s })
+    const g = db.prepare("SELECT * FROM games WHERE match_id='m_liar_local'").get()
+    eq(g.records_eligible, 0, 'refused')
+    eq(g.xp_multiplier, 0, 'refused')
+    eq(db.prepare('SELECT COUNT(*) c FROM xp_ledger WHERE game_id=?').get(g.id).c, 0, 'not a single ledger row')
+  })
+
+  check('a cheated local round never becomes a best round on the shelf or the profile', () => {
+    // 255 rounds on a local game costs one console command. It must not show up as an
+    // achievement anywhere — but the map must still show as PLAYED, because that is history.
+    const p = db.prepare('SELECT * FROM map_progress WHERE steam_id=? AND map_key=?').get('76561198000000001', 'nazi_zombie_test')
+    truthy(p.played, 'played')
+    truthy(p.best_round < 255, `best_round leaked a local round: ${p.best_round}`)
+    const career = results_.careerFor('76561198000000001')
+    truthy(career.best_round < 255, `career best_round leaked a local round: ${career.best_round}`)
+    truthy(career.games > 0, 'and the games still count as history')
+  })
+
+  check('a local game’s replay is not evidence however well it is signed', () => {
+    const g = db.prepare("SELECT id FROM games WHERE match_id='m_local1'").get()
+    db.prepare(`INSERT OR REPLACE INTO replays (match_id, game_id, box, file, size, key_id, key_pinned, created_at)
+                VALUES ('m_local1', ?, 'test-box', 'x.enwr', 10, 'key0000000000002', 1, ?)`).run(g.id, now())
+    const grade = replays.grade(replays.rowFor('m_local1'))
+    // The key IS the pinned one — on a dev box the local host agent is the box — and it
+    // still is not evidence, because the mode decides this and not the key.
+    eq(grade.grade, 'local')
+    eq(grade.ok, false)
+  })
+
   // ── replays: is it evidence, and who may have it ───────────────────────────
   check('a replay signed by the pinned key is record-grade; one signed by anything else is not', () => {
     const g = db.prepare("SELECT id FROM games WHERE match_id='m_ingest1'").get()

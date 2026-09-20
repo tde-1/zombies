@@ -258,8 +258,16 @@ class HostAgent {
     this.reaper = setInterval(() => this.instances.reap(), 15_000); this.reaper.unref?.()
 
     if (cfg.dash) {
+      // The dashboard is an operator convenience; refereeing games is the job. A busy
+      // port must not take the box down with it — that turned a port clash with another
+      // tool on this machine into a box that silently never booted while the site happily
+      // leased games to it.
       this.dash = new Dashboard({ port: cfg.dashPort, host: this, replayDir: cfg.replayDir, log: log.child('dash') })
-      await this.dash.listen()
+      try { await this.dash.listen() }
+      catch (e) {
+        log.warn(`dashboard disabled: ${e.code === 'EADDRINUSE' ? `port ${cfg.dashPort} is already in use (--dash-port to move it, --dash off to silence this)` : e.message}`)
+        this.dash = null
+      }
     }
 
     if (cfg.site) {

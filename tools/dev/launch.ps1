@@ -732,16 +732,25 @@ try {
     }
     Write-Host '=============================================' -ForegroundColor Cyan
 
+    if (-not $proc.HasExited) {
+        Write-Host "Killing our PID $($proc.Id)" -ForegroundColor DarkGray
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 800
+    }
+
     # ------------------------------------------------ did it keep ticking? --
     # A capture that silently stops after a minute is the worst kind of failure:
     # the referee lost two 420 s runs to it and only noticed because both came
     # out at exactly 65.2 s. The DLL logs "heartbeat: still ticking at Ns"; if
     # the last one is far short of the run, say so loudly.
-    # NOTE: the game still has this file open, so it must be read share-all, and
-    # the whole check must be non-fatal. The first version used Select-String,
-    # which opens deny-write, threw under ErrorActionPreference=Stop, and so
-    # skipped the kill below -- leaving the game running and the lock held. A
-    # diagnostic that can break the run it is diagnosing is worse than none.
+    # THIS RUNS AFTER THE KILL, deliberately. Two earlier versions ran it while
+    # the game still held the log open: the first used Select-String (deny-write)
+    # and threw under ErrorActionPreference=Stop, which skipped the kill and left
+    # the game running with the lock held; the second read share-all and still
+    # came back empty, reporting "NO HEARTBEAT" for a run that had seven of them.
+    # Reading a file the game has closed is simply the right answer. The whole
+    # check is still wrapped, because a diagnostic must never break the run it is
+    # diagnosing.
     if ($TestSeconds -ge 30) {
       try {
         $dllLog = Get-ChildItem -LiteralPath $logDir -Filter "enw-$($proc.Id).log" -ErrorAction SilentlyContinue |
@@ -777,11 +786,6 @@ try {
       catch { Write-Host "  (heartbeat check failed: $_)" -ForegroundColor DarkGray }
     }
 
-    if (-not $proc.HasExited) {
-        Write-Host "Killing our PID $($proc.Id)" -ForegroundColor DarkGray
-        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Milliseconds 800
-    }
     Write-Output $proc.Id
 }
 finally {

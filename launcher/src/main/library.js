@@ -16,11 +16,16 @@
 //   * **Never copy or run an executable that came with a map** (rule 3). A map is
 //     data: .ff, .iwd, .arena, .csv. An .exe in a mod folder is refused, loudly.
 //
-// Maps live in the ENW library, never in the WaW install. On World at War the library
-// IS the mods folder (`P.maps` = `<fs_homepath>\mods`), so a map is installed straight
-// to the path the engine reads: one copy on disk, no reparse points, nothing to repair.
-// (The first version kept a separate `maps\` folder and junctioned each map into
-// `mods\`; see paths.js for why that is gone.)
+// WHERE MAPS GO, and it is not where you would want it to be: World at War loads a
+// custom map ONLY from `%LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>` (dedi measured
+// all three candidates; the other two fail *silently*, with the .iwds mounted and the
+// search path looking right). `mod.ff` is a zone, not a filesystem asset, so `fs_game`
+// pointing at a directory is not enough to load it.
+//
+// That folder belongs to the PLAYER — B's own `nazi_zombie_ali` is in it — so this is
+// the one place we write that is not ours, and it has stricter rules than anywhere
+// else: never overwrite a map we did not install (`ownership()`), record every file we
+// add, and on uninstall remove exactly those files and nothing else.
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
@@ -170,13 +175,44 @@ function repair(file, rel) {
 
 // ------------------------------------------------------------------- install --
 
-// The library and the engine's view are the same folder.
+// The library and the engine's view are the same folder — and it is the PLAYER'S
+// folder (`%LOCALAPPDATA%\Activision\CoDWaW\mods`), not ours.
 export const installDir = (bsp) => path.join(P.maps, bsp)
 export const modLink = (bsp) => installDir(bsp)
 
+const RECORD = '.enw-installed.json'
+
 export function isInstalled(bsp) {
   const d = installDir(bsp)
-  try { return fs.existsSync(path.join(d, '.enw-installed.json')) && fs.readdirSync(d).length > 1 } catch { return false }
+  try { return fs.existsSync(path.join(d, RECORD)) && fs.readdirSync(d).length > 1 } catch { return false }
+}
+
+// A map in that folder that we did not put there belongs to the player. B's own
+// `nazi_zombie_ali` is exactly this case, and overwriting it — or deleting it on an
+// uninstall — would be destroying something of theirs.
+export function ownership(bsp) {
+  const dir = installDir(bsp)
+  if (!fs.existsSync(dir)) return { state: 'absent', dir }
+  let rec = null
+  try { rec = JSON.parse(fs.readFileSync(path.join(dir, RECORD), 'utf8')) } catch {}
+  if (rec) return { state: 'ours', dir, record: rec }
+  let files = []
+  try { files = fs.readdirSync(dir) } catch {}
+  return { state: 'theirs', dir, files: files.length }
+}
+
+// Maps already in the player's folder that we did not install. Shown in the UI so it
+// is obvious we can see them and are leaving them alone.
+export function foreignMaps() {
+  const out = []
+  try {
+    for (const e of fs.readdirSync(P.maps, { withFileTypes: true })) {
+      if (!e.isDirectory()) continue
+      const o = ownership(e.name)
+      if (o.state === 'theirs') out.push({ bsp: e.name, dir: o.dir, files: o.files })
+    }
+  } catch {}
+  return out
 }
 
 export function installedMaps() {
@@ -194,11 +230,21 @@ export function installedMaps() {
 
 // Copy a map into the ENW library, verifying every file against the hash the archive
 // recorded, then expose it to the engine as <fs_homepath>\mods\<bsp>.
-export function install(bsp, { homeDir = P.home, onProgress = () => {}, verify = true } = {}) {
+export function install(bsp, { homeDir = P.home, onProgress = () => {}, verify = true, force = false } = {}) {
   const cat = catalogue()
   const entry = cat.maps.find((m) => m.bsp === bsp)
   if (!entry) throw new Error(`No map called ${bsp} in the archive.`)
   if (!entry.available) throw new Error(`${entry.title} is not on this machine yet (looked in ${entry.source}).`)
+
+  // This writes into the player's own mods folder, so before anything: is there
+  // already a map of this name that is not ours? If so it is theirs and we stop.
+  const own = ownership(bsp)
+  if (own.state === 'theirs' && !force) {
+    throw new Error(
+      `${entry.title} is already installed in your own World at War mods folder (${own.dir}, ${own.files} files), ` +
+      'and ENW did not put it there. Leaving it alone — delete it yourself if you want ENW to manage it.'
+    )
+  }
 
   ensureDirs()
   const src = entry.source
@@ -281,15 +327,32 @@ export function install(bsp, { homeDir = P.home, onProgress = () => {}, verify =
   return record
 }
 
+// Removes ONLY the files we recorded installing, then the folder if it is empty. The
+// folder is the player's, so a recursive delete is not an option: a map we did not
+// install is never touched, and anything the player added next to ours survives.
 export function uninstall(bsp) {
   const done = []
-  const dir = installDir(bsp)
-  if (fs.existsSync(dir)) {
-    fs.rmSync(assertWritable(dir), { recursive: true, force: true })
-    done.push(`removed ${dir}`)
-  } else {
-    done.push(`${bsp} was not installed`)
+  const own = ownership(bsp)
+  if (own.state === 'absent') return [`${bsp} was not installed`]
+  if (own.state === 'theirs') {
+    return [`left ${own.dir} alone — that map is yours, ENW did not install it`]
   }
+
+  const dir = own.dir
+  let removed = 0
+  let kept = 0
+  for (const f of own.record.files || []) {
+    const p = path.join(dir, f.rel)
+    try { if (fs.existsSync(p)) { fs.unlinkSync(assertWritable(p)); removed++ } } catch { kept++ }
+  }
+  try { fs.unlinkSync(assertWritable(path.join(dir, RECORD))) } catch {}
+  done.push(`removed ${removed} file(s) ENW installed${kept ? `, ${kept} could not be removed` : ''}`)
+
+  // Only if nothing of the player's is left in it.
+  let left = []
+  try { left = fs.readdirSync(dir) } catch {}
+  if (!left.length) { try { fs.rmdirSync(dir); done.push(`removed ${dir}`) } catch {} }
+  else done.push(`kept ${dir} — ${left.length} file(s) there are not ours`)
   return done
 }
 

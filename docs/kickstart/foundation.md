@@ -77,6 +77,56 @@ The block costs one IAT slot (`WSOCK32` ordinal 52, `gethostbyname`) and no engi
 
 ---
 
+## 0b. The 65-second freeze: an unfocused game stops ticking
+
+**If you take one operational fact from this document, take this one.**
+
+Parking the game window off-screen (§1) so it never interrupts B made the engine decide it was not
+the foreground application, and **it stopped ticking about 65 seconds after spawn**. The referee ran
+two 420-second captures and both produced *exactly* 65.2 s of gameplay and then silence: player
+frozen at spawn on full health, zombies still at round-1 health, snaps and DLL log simply stopping.
+Nothing errored. Nothing crashed. The process stayed alive.
+
+Every unattended measurement on this project was silently capped at about a minute, and the only
+reason it was caught is that two independent runs produced identical durations.
+
+**The fix.** `CoDWaW.exe` imports `GetActiveWindow` and `GetForegroundWindow` from USER32 **by
+name** (IAT slots 0x7EB338 and 0x7EB31C) — that is how it decides whether it has focus.
+`shared/core/components/focus_guard.cpp` replaces both and answers with the game's own window
+handle, so the engine always believes it is the active foreground application. No engine addresses,
+nothing to re-verify when the binary moves, armed in `post_load` before any engine instruction runs.
+It is not throwaway harness glue either: a trusted host running games nobody is looking at needs
+exactly this behaviour.
+
+Measured, before and after:
+
+| | before | after |
+|---|---|---|
+| gameplay captured | 65.2 s, twice, identically | 150 s and counting |
+| frame counter | stops | 745 → 9184, no gap |
+| rate | — | steady 62.5 fps |
+
+`ENW_FOCUS_GUARD=0` restores stock behaviour if you are ever chasing a focus-related bug.
+
+**And a heartbeat, so this can never be silent again.**
+`shared/core/components/heartbeat.cpp` logs one line every 15 s —
+`heartbeat: still ticking at 45 s - 2636 frames total, 62.5 fps over the last 15 s` — and sends a
+`perf` message over the game link. `launch.ps1` asserts on it: any run of 30 s or more whose last
+heartbeat falls more than 25 s short prints `*** THE GAME STOPPED TICKING ***` in red with the
+second it died. The referee needed two identical 420 s runs to notice the freeze; this needs one.
+
+> Three bugs of mine while building that assert, all the same shape — **a diagnostic must never be
+> able to break the run it is diagnosing**:
+> 1. it first read the DLL log with `Select-String`, which opens deny-write. The game still had the
+>    file open, so it threw, and under `ErrorActionPreference = 'Stop'` that skipped the kill —
+>    leaving the game running and the lock held.
+> 2. reading share-all still came back empty while the game held the file, so it reported
+>    "NO HEARTBEAT" for a run that had seven of them. It now runs **after** the kill, when the file
+>    is definitely closed, inside its own try/catch.
+> 3. `powershell -File launch.ps1 -GameArgs '+map','x'` does not evaluate PowerShell syntax: the
+>    whole thing arrives as one literal token and the engine says `Unknown command "map,x"`.
+>    `launch.ps1` now splits GameArgs on commas and whitespace.
+
 ## 1. The commands
 
 ### From cold, on a machine that has none of this
@@ -293,6 +343,8 @@ Everything else in vault §2 is still unverified — that is `re`'s job.
 | `components/frame_dispatch.cpp` | installs the tick and reports on it |
 | `components/instance_paths.cpp` | per-instance profile via an IAT patch (off by default) |
 | `components/huffman_guard.cpp` | **the bounded compressed-message decode** (§11) |
+| `components/focus_guard.cpp` | **keeps the engine ticking when unfocused** (see the top) |
+| `components/heartbeat.cpp` | one "still ticking" line every 15 s, and a `perf` message |
 | `components/userinfo_guard.cpp` | sanitises player names and userinfo every frame (§11) |
 
 `thirdparty/minhook/` is vendored verbatim (BSD-2-Clause, `LICENSE.txt` and `VENDORED-FROM.txt`

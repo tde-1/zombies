@@ -9,6 +9,7 @@
 // --dry-run prints the exact command line and environment and starts nothing.
 import { BootFlow } from './bootflow.js'
 import { buildArgs } from './launch.js'
+import path from 'node:path'
 import { P } from './paths.js'
 import * as lock from './gamelock.js'
 
@@ -18,7 +19,11 @@ const val = (f, d = null) => { const i = argv.indexOf(f); return i >= 0 ? argv[i
 
 const map = val('--map', 'nazi_zombie_prototype')
 const seconds = Number(val('--seconds', '45'))
-const stealth = has('--stealth') || !has('--visible')
+// --window offscreen|small|player. `--visible` is shorthand for `small`: on screen,
+// 800x600, muted. Use it for anything longer than a minute — off-screen and unfocused
+// the game's tick dies at ~65 s (referee, two identical captures).
+const windowMode = val('--window', has('--visible') ? 'small' : has('--stealth') ? 'offscreen' : 'offscreen')
+const stealth = windowMode === 'offscreen'
 const host = val('--host', null)
 const siteUrl = val('--site', 'http://127.0.0.1:8099')
 // A custom map IS its own mod, so fs_game is mods/<bsp>, not mods/enw. Our DLL rides
@@ -32,7 +37,7 @@ if (has('--dry-run')) {
     host: has('--local') ? null : host || '127.0.0.1:28960',
     map: has('--local') ? map : null,
     ...(fsGame ? { fsGame } : {}),
-    stealth,
+    windowMode,
     settings: { fov: 80, maxFps: 125 },
   })
   console.log(`exe : ${P.game}\\CoDWaW.exe`)
@@ -56,7 +61,8 @@ const flow = new BootFlow({
   host,
   localMap: has('--local') ? map : null,
   fsGame,
-  stealth,
+  windowMode,
+  installDir: fsGame ? path.join(P.maps, fsGame.split('/').pop()) : null,
   useGameLock: !has('--no-lock'),
   lockName: 'launcher',
   hostDashboard: val('--dash', 'http://127.0.0.1:8787'),

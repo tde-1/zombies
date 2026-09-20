@@ -81,6 +81,25 @@ function localPath(row) {
  */
 function grade(row) {
   if (!row) return { grade: 'none', ok: false, reason: 'no replay was recorded for this game' }
+
+  // A LOCAL GAME'S REPLAY IS NEVER EVIDENCE, however well it is signed.
+  //
+  // This matters and is easy to get wrong: on a development box the local host agent IS
+  // `box-a`, so a local game's replay is signed by the pinned key and every check below
+  // would pass it. But the game ran on the player's own PC with the console open, so what
+  // the signature proves is that nobody edited the recording of whatever they did — which
+  // is not the same as the run being real. The mode decides this, not the key.
+  const g = row.game_id ? db.prepare('SELECT mode, self_reported FROM games WHERE id=?').get(row.game_id) : null
+  if (g && (g.mode === 'local' || g.self_reported)) {
+    return {
+      grade: 'local',
+      ok: false,
+      reason: g.mode === 'local'
+        ? 'a Local game: it ran on the player’s own PC with the console available, so the signature proves the recording is unedited, not that the run is real'
+        : 'self-reported: this did not come from a game box we control',
+    }
+  }
+
   if (!row.key_id) {
     return {
       grade: 'unknown-key',
