@@ -1,9 +1,9 @@
 {
   "name": "@enw-zombies/launcher",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "ENW Zombies launcher: finds World at War, installs the ENW client into its own folder, launches and connects, and wraps the site.",
+  "description": "ENW Zombies launcher",
   "main": "src/main/main.js",
   "engines": {
     "node": ">=24"
@@ -16,9 +16,38 @@
     "test:launch": "node test/launch-harness.js",
     "play": "node src/main/play-cli.js",
     "maps": "node src/main/maps-cli.js",
-    "slice": "node test/slice.js"
+    "slice": "node test/slice.js",
+    "pack": "electron-builder --win portable --publish never"
   },
   "devDependencies": {
-    "electron": "^38.8.6"
+    "electron": "^38.8.6",
+    "electron-builder": "^26.15.3"
+  },
+  "author": {
+    "name": "ENW"
+  },
+  "build": {
+    "appId": "gg.enw.zombies.launcher",
+    "productName": "ENW Zombies",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "tools/**/*",
+      "resources/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "src/renderer/assets/icon-256.png"
+    },
+    "portable": {
+      "artifactName": "ENW-Zombies-Launcher-${version}.exe"
+    },
+    "compression": "maximum",
+    "asar": true
   }
 }

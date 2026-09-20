@@ -1,0 +1,138 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_octogonal",
+  "title": "OCTAGONAL ASCENSION",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/nazi_zombie_octogonal",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_octogonal.iwd": "549a71c10e7c3ac1f066af80138fa8accad878fab38d76905f435b9d82bf6f4a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        60000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 60000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 117,
+    "script_count": 117,
+    "entities": 1938,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      60000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "floor12"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "floor11"
+      ],
+      [
+        5000,
+        "pf611_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf28_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "floor9"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "549a71c10e7c3ac1f066af80138fa8accad878fab38d76905f435b9d82bf6f4a",
+    "map_specific_triggers": [
+      "enter",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_octogonal_1.3.0.exe",
+    "original_sha256": "152e77bbec8222b73fd49643f32406b1bae43a85846072d3a3fc430087aa01f7",
+    "original_size": 414916747,
+    "source_url": "https://www.mediafire.com/file/8db04fchsdjucxr/nazi_zombie_octogonal_1.3.0.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-20T00:48:12Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+}

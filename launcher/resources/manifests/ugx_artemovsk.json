@@ -1,0 +1,189 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ugx_artemovsk",
+  "title": "UGX Requiem",
+  "source": "custom",
+  "author": "treminaor",
+  "released": "2015-10-16",
+  "fs_game": "mods/ugx_artemovsk",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@fastcompile.iwd": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "hacker_part_0",
+        "hacker_part_1",
+        "meteor_path_start",
+        "meteor_piece",
+        "meteor_stop_1",
+        "meteor_stop_2",
+        "meteor_stop_3",
+        "meteor_stop_4",
+        "no_boss_spawn",
+        "ugx_meteor_large",
+        "ugx_meteor_largest"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "hacker_part_0, hacker_part_1, meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 138,
+    "script_count": 138,
+    "entities": 2226,
+    "ee_candidates": [
+      "hacker_part_0",
+      "hacker_part_1",
+      "meteor_path_start",
+      "meteor_piece",
+      "meteor_stop_1",
+      "meteor_stop_2",
+      "meteor_stop_3",
+      "meteor_stop_4",
+      "no_boss_spawn",
+      "ugx_meteor_large",
+      "ugx_meteor_largest"
+    ],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "auto271"
+      ],
+      [
+        2000,
+        "barn_door_kick_trig",
+        "auto218"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto314"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto313"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto313"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1",
+    "map_specific_triggers": [
+      "axe_shed",
+      "barn_boards_trig",
+      "barn_door_kick_trig",
+      "barracks_entry",
+      "bedroom_area",
+      "buildables_fuse",
+      "buildables_power",
+      "buildables_station_power",
+      "buildables_switch",
+      "double_tap_shed",
+      "electric_dmg_trig",
+      "garage",
+      "gersch_fire_trig",
+      "gravity_hint",
+      "hacker_panel",
+      "hacker_part_0",
+      "hacker_part_1",
+      "house_stairs",
+      "house_upstairs",
+      "house_yard",
+      "house_yard_2",
+      "meteor_piece",
+      "redeemer_start",
+      "redeemer_trig",
+      "satchel_charge",
+      "satchel_charge_place",
+      "satchel_det",
+      "train_trap_trig",
+      "trapped_trig",
+      "traps_keys",
+      "ugx_axe",
+      "ugx_wallweapon",
+      "ugxm_trap_machine"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "ugx_requiem.exe",
+    "original_sha256": "0890048ea79798467fb36fd3aa8a653eb12af458a19398792923473e8f7fa0c7",
+    "original_size": 409482179,
+    "source_url": "http://www.mediafire.com/file/k8zgyd5o45djtcr/ugx_requiem_public_v1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/10/16/ugx-requiem/",
+    "fetched": "2026-09-20T00:52:42Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "ugx_mod",
+      "top_100",
+      "ugx_modded"
+    ],
+    "catalogue_description": "This map features UGX Mod v1.1! For a full list of features, click here . It\u2019s finally here! UGX Requiem is the latest map from the UGX-Mods team \u2013 featuring UGX Mod v1.1."
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
+}

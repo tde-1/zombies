@@ -1,0 +1,233 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "water",
+  "title": "Alcatraz",
+  "source": "custom",
+  "author": "whippytrout",
+  "released": "2017-06-05",
+  "fs_game": "mods/water",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@water.iwd": "c5a28d766b5f3adf4815b65812d4e1016794e6e738a50636d57818133236f50f"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boat_part_build_trig",
+        "boat_part_pickup_trig",
+        "boss_crazy_trig",
+        "brutus_boss",
+        "dark_knight_boss_tele1",
+        "dark_knight_boss_tele2",
+        "dark_knight_boss_tele3",
+        "dark_knight_boss_tele4",
+        "enter_zone_boss",
+        "final_boss_four",
+        "final_boss_one",
+        "final_boss_three",
+        "final_boss_two",
+        "freeze_boss",
+        "genie_rune_one",
+        "genie_rune_three",
+        "genie_rune_two",
+        "go_to_green_boss",
+        "go_to_purple_boss",
+        "go_to_red_boss",
+        "goto_dark_boss_trig",
+        "green_part",
+        "green_part_trig",
+        "orange_rune",
+        "purple_rune_tele",
+        "red_quest_end",
+        "snake_boss_trigger",
+        "start_boss_battle",
+        "zone_boss",
+        "zone_boss_spawners"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boat_part_build_trig, boat_part_pickup_trig, boss_crazy_trig, brutus_boss, dark_knight_boss_tele1, dark_knight_boss_tele2 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 160,
+    "script_count": 160,
+    "entities": 6674,
+    "ee_candidates": [
+      "boat_part_build_trig",
+      "boat_part_pickup_trig",
+      "boss_crazy_trig",
+      "brutus_boss",
+      "dark_knight_boss_tele1",
+      "dark_knight_boss_tele2",
+      "dark_knight_boss_tele3",
+      "dark_knight_boss_tele4",
+      "enter_zone_boss",
+      "final_boss_four",
+      "final_boss_one",
+      "final_boss_three",
+      "final_boss_two",
+      "freeze_boss",
+      "genie_rune_one",
+      "genie_rune_three",
+      "genie_rune_two",
+      "go_to_green_boss",
+      "go_to_purple_boss",
+      "go_to_red_boss",
+      "goto_dark_boss_trig",
+      "green_part",
+      "green_part_trig",
+      "orange_rune",
+      "purple_rune_tele",
+      "red_quest_end",
+      "snake_boss_trigger",
+      "start_boss_battle",
+      "zone_boss",
+      "zone_boss_spawners"
+    ],
+    "ending_words": [
+      "boat_escape_floor",
+      "boat_start_escape",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "auto3500"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto3499"
+      ],
+      [
+        1500,
+        "weapon_upgrade",
+        "bo2_tommy"
+      ],
+      [
+        1500,
+        "weapon_upgrade",
+        "bo2_tommy"
+      ],
+      [
+        1250,
+        "weapon_upgrade",
+        "vector"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "c5a28d766b5f3adf4815b65812d4e1016794e6e738a50636d57818133236f50f",
+    "map_specific_triggers": [
+      "acid_damage",
+      "acid_trig",
+      "alien_return_trig",
+      "blue_filljar_trig",
+      "blue_jar_spot_trig",
+      "blue_packa_jar_trig",
+      "blue_packasplat",
+      "boat_part_build_trig",
+      "boat_part_pickup_trig",
+      "boat_start_escape",
+      "boss_crazy_trig",
+      "call_down",
+      "call_up",
+      "car_run_trig",
+      "crusader_trig",
+      "elevator_freeze",
+      "elevator_trigger_down",
+      "elevator_trigger_up",
+      "evil_book_find_trig",
+      "fan_damage",
+      "fan_trig",
+      "gas_1_trig",
+      "gas_2_trig",
+      "gas_3_trig",
+      "gas_can",
+      "gas_cantrue",
+      "genie_lamp",
+      "genie_lamptrue",
+      "go_to_green_boss",
+      "go_to_purple_boss",
+      "go_to_red_boss",
+      "gondola_call_trigger",
+      "gondola_inside_trigger",
+      "gondola_trigger",
+      "goto_dark_boss_trig",
+      "green_part_trig",
+      "helmet1",
+      "jeep_run_trig",
+      "jukebox_record_trig",
+      "jukebox_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Alcatraz.exe",
+    "original_sha256": "f6f43085c73e326f84f2b102dc944fe3f33a50911f6c978756f793a8dfc58a62",
+    "original_size": 999420017,
+    "source_url": "https://www.mediafire.com/file/ceo8uk41r1x1it6/Alcatraz.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/06/05/alcatraz-by-whippytrout/",
+    "fetched": "2026-09-20T00:56:35Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "bossfight_ending",
+      "top_100"
+    ],
+    "catalogue_description": "Story: March 21, 1963 The year Alcatraz Federal Penitentiary closed. President John F. Kennedy had scheduled a political trip to Dallas, Texas in order to smooth over frictions in the [/img]Democratic Party. He decided beforehand he would attend the shutting down of Alcatraz and visit the prison one last time while it was still operational. As JFK docked at Alcatraz Prison he was greeted by three strange men. One was wearing prisoners clothing (Sal) and was covered in blood. The second was a short Mexican with a mustache and red bandanna. He claimed to be an top notch mercenary and expert with a machete. (Danny Trejo AKA Machete) The last man was a tall well groomed man with slicked back hair and a black leather jacket. (David Hasselhoff) He referred to himself in the third person a lot and seemed to think he had been kidnapped and was the center of a twisted experiment deep within the depths of Alcatraz. As the unlikely group of men began investigating Alcatraz it became pretty clear that something evil had taken over the prison. A zombie outbreak of some kind had spread throughout the prison infecting prisoners and guards alike. No sign of the warden could be found but Sal spoke of a beast of a man named Brutus who was the head guard of Alcatraz. Sal said Brutus was pure evil and had sacrificed the warden in some sort of ritual deep beneath Alcatraz. Brutus was obsessed with the pursuit of mystical items. He believed they contained powers, powers that could manipulate the v"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
+}

@@ -66,8 +66,12 @@ function renderMaps() {
     const name = el('span', 'mapname', m.title)
     b.append(name)
     // The state a player cares about: can I press Play, and if not what is in the way.
-    const tag = el('span', 'tag', m.stock ? 'stock' : m.installed ? 'installed' : mb(m.bytes))
-    if (!m.stock && !m.installed) tag.classList.add('needs')
+    // "not on this PC" is a real state and has to look different from "download me":
+    // nothing serves the rescued map files yet, so on a friend's machine most of this
+    // list cannot be installed at all. Saying "453 MB" there would be a lie.
+    const tag = el('span', 'tag',
+      m.stock ? 'stock' : m.installed ? 'installed' : m.available ? mb(m.bytes) : 'not available yet')
+    if (!m.stock && !m.installed) tag.classList.add(m.available ? 'needs' : 'absent')
     b.append(tag)
     // The bsp, small — it is what the folder and the original download are called, and
     // people searching for a map will have seen it.
@@ -96,7 +100,8 @@ function updatePlay() {
   const ready = !!S.status?.setup?.installed
   const busy = !!S.boot && !S.boot.done && !S.boot.failed
   const m = S.selected
-  const needsInstall = !!m && !m.stock && !m.installed
+  const needsInstall = !!m && !m.stock && !m.installed && m.available
+  const unavailable = !!m && !m.stock && !m.installed && !m.available
   const installing = !!S.installing
 
   $('modeBtn').textContent = S.mode === 'verified' ? 'Verified' : 'Custom'
@@ -105,7 +110,11 @@ function updatePlay() {
   // One button, three jobs, and it says which. A map you have not downloaded cannot be
   // played, so offering Play and failing would be the wrong thing.
   const play = $('playBtn')
-  if (needsInstall) {
+  if (unavailable) {
+    play.textContent = 'Not available yet'
+    play.disabled = true
+    play.onclick = null
+  } else if (needsInstall) {
     play.textContent = installing ? `Installing… ${S.installPct || 0}%` : `Install (${mb(m.bytes)})`
     play.disabled = !ready || installing
     play.onclick = () => installSelected()
@@ -114,13 +123,14 @@ function updatePlay() {
     play.disabled = !S.map || !ready || busy || installing
     play.onclick = () => play_(false)
   }
-  $('playLocalBtn').disabled = !S.map || !ready || busy || needsInstall || installing
+  $('playLocalBtn').disabled = !S.map || !ready || busy || needsInstall || unavailable || installing
   $('cardNote').textContent =
     !ready ? 'The ENW client is not installed yet.'
       : installing ? (S.installFile || 'Copying the map into your ENW library.')
         : busy ? 'A game is starting.'
           : !S.map ? 'Pick a map.'
-            : needsInstall ? `${m.title} is in the archive but not on this PC yet.`
+            : unavailable ? `${m.title} is in the archive, but the files are not on this PC and nothing serves them yet. The four stock maps work.`
+              : needsInstall ? `${m.title} is in the archive but not on this PC yet.`
               : S.mode === 'verified' ? 'Stock settings. Records and badges count.'
                 : 'Any settings. Nothing is tracked.'
 }

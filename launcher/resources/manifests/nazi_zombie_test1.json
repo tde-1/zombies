@@ -1,0 +1,132 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_test1",
+  "title": "DESERT",
+  "source": "custom",
+  "author": "Cod_ne",
+  "released": "2015-03-24",
+  "fs_game": "mods/nazi_zombie_test1",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_test1.iwd": "9e01476194b03d2765739a7ad38ad9dc04a6e5653ef18f4b07cff614d86684c4"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        10000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 478,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      10000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9e01476194b03d2765739a7ad38ad9dc04a6e5653ef18f4b07cff614d86684c4",
+    "map_specific_triggers": [
+      "b1",
+      "b2",
+      "blunder_trigg",
+      "box",
+      "c4_purchase",
+      "rounds_survive_doors",
+      "secret_trigger",
+      "secret_trigger1",
+      "secret_trigger2",
+      "tomahawk_spawn"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Zombie_Desert.exe",
+    "original_sha256": "79270d54784f85b736d170ca742f0c371f7f4613aea2daa3635da68ea45e747d",
+    "original_size": 306660387,
+    "source_url": "http://www.mediafire.com/file/5y7jaihbifwxd9r/Zombie_Desert.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-20T00:55:27Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "hi people today i bring you my new custom map Zombie Desert or Desert Zombie i don\u2019t know how you write. well this is a map of a single room the map is heavy because of the videos enjoy Features: *boss *custom perks shaders *verruct runners *custom pap camo *pap powerup *nuketown style perks *custom powerups *c4 *guns cod4, cod waw, bo, bo2, ghost y custom *10 perks *dogs from mp *tomahawk *special guns: thundergun, scavenger, mark2, blundergat, plasma pistol *end game *shi no numa zombies *videos *no monkey boms *mw3 intro *hitmarkers"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+}

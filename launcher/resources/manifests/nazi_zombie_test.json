@@ -1,0 +1,204 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_test",
+  "title": "Project Viking",
+  "source": "custom",
+  "author": "Redspace200",
+  "released": "2014-11-23",
+  "fs_game": "mods/nazi_zombie_test",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_test.iwd": "15caa784603bfb641c8f85305e58fe7dbed26d66c4ee87181ca3c9d987e4db75"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "acid_parts",
+        "afterlife_egg_skull",
+        "boss_spawn_player_0",
+        "boss_spawn_player_1",
+        "boss_spawn_player_2",
+        "boss_spawn_player_3",
+        "boss_zone",
+        "boss_zone_spawners",
+        "boss_zone_spawners_dog",
+        "boss_zone_spawners_rise",
+        "keeper_boss_spawn",
+        "woof_parts"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "acid_parts, afterlife_egg_skull, boss_spawn_player_0, boss_spawn_player_1, boss_spawn_player_2, boss_spawn_player_3 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 132,
+    "script_count": 132,
+    "entities": 2493,
+    "ee_candidates": [
+      "acid_parts",
+      "afterlife_egg_skull",
+      "boss_spawn_player_0",
+      "boss_spawn_player_1",
+      "boss_spawn_player_2",
+      "boss_spawn_player_3",
+      "boss_zone",
+      "boss_zone_spawners",
+      "boss_zone_spawners_dog",
+      "boss_zone_spawners_rise",
+      "keeper_boss_spawn",
+      "woof_parts"
+    ],
+    "ending_words": [
+      "endgame_pad_loc",
+      "intermission_win",
+      "moab endgame",
+      "teleport_trigger_a"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      1950,
+      2000,
+      2150,
+      2500,
+      3000,
+      4000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_1"
+    ],
+    "top_costs": [
+      [
+        1250,
+        "zombie_door",
+        "enter_vback_area"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "enter_vback_area"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "enter_fri_area"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "enter_fri_area"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "enter_elv_area"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "15caa784603bfb641c8f85305e58fe7dbed26d66c4ee87181ca3c9d987e4db75",
+    "map_specific_triggers": [
+      "afterlife_use",
+      "back_area_song_trigger",
+      "bos_area",
+      "bottommost_level",
+      "dig_trigger",
+      "elevator_area_a",
+      "elevator_area_a_push",
+      "elevator_area_b",
+      "elevator_top_level",
+      "gamemode_block_area",
+      "generator_area_a",
+      "generator_area_b",
+      "generator_area_c",
+      "generator_area_d",
+      "generator_area_e",
+      "generator_area_f",
+      "generator_area_g",
+      "hind_mask",
+      "hind_safe_area",
+      "keeper_mask",
+      "kill_area",
+      "kill_area_zap",
+      "mech_hitbox",
+      "middle_zone_trigger",
+      "nograb_area",
+      "nojump_area",
+      "o_bos_damage",
+      "packa_switch",
+      "screecher_mask",
+      "screecher_spawn_area",
+      "screecher_spawn_area_b",
+      "slide_area",
+      "slovel_trigger",
+      "slow_area",
+      "song_area_a",
+      "song_trigger",
+      "teleport_trigger_a",
+      "throwback_area",
+      "toggle_generator_a",
+      "toggle_generator_b"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Project_Viking_Final.exe",
+    "original_sha256": "664b49f913f452a4dcdabbdaa8b8f6656b77511a76d36ee2b35a6cc6927586c0",
+    "original_size": 528622052,
+    "source_url": "http://www.mediafire.com/file/j215ru3rir33ish/Project_Viking_Final.exe",
+    "source_page": "https://callofdutyrepo.com/2014/11/23/project-viking/",
+    "fetched": "2026-09-20T00:58:28Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "top100",
+      "challenge",
+      "bossfight_ending",
+      "top_100"
+    ],
+    "catalogue_description": "Project Viking V1.1 Update. I have decided to update my map which was released roughly 2 years ago, Project Viking! This update will feature some bug fixes, and modifications to the map overall. One of the main additions to this map is a full easter egg for classic mode. Many people have been constantly requesting that I add a easter egg which can be completed to earn victory on classic mode. Previously, the only way to \u201cbeat\u201d the map was to play a specific gamemode and detonate a moab without going down. Now, players can earn victory by completing a series of steps in the map. I won\u2019t reveal all these steps instantly, however I will say that most of the sidequests (such as filling up chests, collecting afterlife skulls, riding crane, boy of silence), are now all apart of the main easter egg. Since I wanted to add some final features into my map, that ment I had to sacrafice some of the older features not much people liked or used. Aside from the easter egg, a series of other things have been updated. Heres a small list of some of the changes: Removed beta message Removed ability to hold out bowie knife Removed deadshot Fixed beta G_SPAWN error. (Implemented debug system to track ents) Fixed logic for vulture and widows drops (only player who has perk can see and colled drops) Fixed series of bugs which occured in beta version Added gravity spikes/Ragnarok dg4, obtained in a step of ee. Allowed players to release themself from panzer after fully retracted Allowed panzer to sp"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
+}

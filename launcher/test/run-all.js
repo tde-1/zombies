@@ -346,6 +346,26 @@ await test('an executable inside a map is never copied', async () => {
   assert.ok(typeof lib.install === 'function')
 })
 
+// ------------------------------------------------------------- site + password --
+group('Site URL and the closed-beta password')
+
+await test('the site resolves production first, then local', async () => {
+  const cfg = await import('../src/main/config.js')
+  assert.equal(cfg.PRODUCTION_SITE, 'https://zombies.enw.gg')
+  assert.equal(cfg.DEFAULTS.siteCandidates[0].url, cfg.PRODUCTION_SITE)
+  assert.match(cfg.DEFAULTS.siteCandidates[1].url, /127\.0\.0\.1:3200/)
+})
+
+await test('config.save exists and round-trips', async () => {
+  // It did not, for one commit: an edit to load() took save() with it and storing the
+  // password crashed with "cfg.save is not a function". Caught from a log, not a test.
+  const cfg = await import('../src/main/config.js')
+  assert.equal(typeof cfg.save, 'function')
+  cfg.save({ sitePassword: 'round-trip' })
+  assert.equal(cfg.load().sitePassword, 'round-trip')
+  cfg.save({ sitePassword: null })
+})
+
 // ------------------------------------------------------- the launch command --
 group('The launch command line')
 

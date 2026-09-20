@@ -79,6 +79,15 @@ export function load() {
   return cached
 }
 
+export function save(patch) {
+  const next = { ...load(), ...patch }
+  cached = next
+  let onDisk = {}
+  try { onDisk = JSON.parse(fs.readFileSync(P.config, 'utf8')) } catch {}
+  fs.writeFileSync(P.config, JSON.stringify({ ...onDisk, ...patch }, null, 2))
+  return next
+}
+
 // A site that answers at all — INCLUDING a 401. The closed-beta gate challenges every
 // request, so treating 401 as "down" would send every packaged launcher to the dev
 // fallback and then to the placeholder. A 401 means the site is there and wants the

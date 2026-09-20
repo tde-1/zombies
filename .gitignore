@@ -31,3 +31,6 @@ thirdparty/*
 !thirdparty/minhook/
 ZombiesDev/
 .dev-keys/
+
+# packaged launcher builds (85 MB per build; rebuild with `npm run pack`)
+launcher/dist/

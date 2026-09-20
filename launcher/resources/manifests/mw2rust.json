@@ -1,0 +1,136 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "mw2rust",
+  "title": "MW2 Rust Zombies",
+  "source": "custom",
+  "author": "Psh",
+  "released": "2016-06-12",
+  "fs_game": "mods/mw2rust",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mw2rust.iwd": "fdcd5925d09bd31dd3a5258ab05b5ab60f6c3b892013ef2fc098bb2ef389903d"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        100000,
+        500000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 500000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 125,
+    "script_count": 125,
+    "entities": 479,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      100000,
+      500000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf1150_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf1127_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1158_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1154_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1134_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "fdcd5925d09bd31dd3a5258ab05b5ab60f6c3b892013ef2fc098bb2ef389903d",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 42,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "MW2RustZombies_1.0.exe",
+    "original_sha256": "a4189b063833d8966a794b4e6df3a51a345a0c3f7bd53af9675339812022943e",
+    "original_size": 308557180,
+    "source_url": "http://www.mediafire.com/file/okwcwp21eg8ihhg/MW2RustZombies_1.0.exe",
+    "source_page": "https://callofdutyrepo.com/2016/06/12/mw2-rust-zombies/",
+    "fetched": "2026-09-20T00:52:02Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Features: \u2013 Does not require T4M! \u2013 Harry\u2019s Perks (11 perks) *No Vulture aid and Tombstone* \u2013 100,000 Buyable Ending \u2013 No Dogs \u2013 No grabbing zombies \u2013 All MW2 weapons except the explosives \u2013 No Perk Limit -NIGHTMARE MODE (Provides an extreme challenge) -FUN MODE (For those looking for a casual game, includes faster speed and increased points to name a few features) *The end game when in fun mode is 500,000 because it\u2019s fun mode, not grind to the end mode, survive until you die. * *You can combine these modes* *Select the modes by going in coop host settings* 1.01 Changes -Buyable ending now 65,000 (Was 100,000) -Increased knifing speed -Buffed the Vibrator -Zombies no longer spawn miles out of play (To speed up the early rounds) -Fixed other shit Credits: -Tom-Bmx -Harry Bo21 -HitmanVere -ricko0z -JR-Imagine -Treminaor -Rorke -DamianoTBM -Make-Cents -Scobalula -DidUKnowIPwn -RDV -steviewonder87 -JBird632 -Bluntstuffy -DuaLVII -If I missed you plz"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+}

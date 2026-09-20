@@ -33,7 +33,12 @@ import { P, assertWritable, ensureDirs } from './paths.js'
 
 const ARCHIVE = process.env.ENW_ARCHIVE || path.join(process.env.ENW_DEV_ROOT || 'C:\\Users\\b\\ZombiesDev', 'archive')
 const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))
-const MANIFEST_DIR = path.resolve(HERE, '..', '..', '..', 'archive', 'manifests')
+// Bundled with the app first, then the repo. A packaged launcher on a friend's PC
+// has no repo above it, so a repo-relative path alone means an empty map list.
+const MANIFEST_DIRS = [
+  path.resolve(HERE, '..', '..', 'resources', 'manifests'),
+  path.resolve(HERE, '..', '..', '..', 'archive', 'manifests'),
+]
 
 // Data only. Anything else in a mod folder is a reason to stop, not to filter quietly.
 const ALLOWED_EXT = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc', '.json', '.png', '.jpg', '.dds'])
@@ -57,13 +62,15 @@ const sha256 = (file) => {
 
 function readManifests() {
   const out = new Map()
-  let files = []
-  try { files = fs.readdirSync(MANIFEST_DIR).filter((f) => f.endsWith('.json')) } catch {}
-  for (const f of files) {
-    try {
-      const m = JSON.parse(fs.readFileSync(path.join(MANIFEST_DIR, f), 'utf8'))
-      if (m.map) out.set(m.map, m)
-    } catch {}
+  for (const dir of MANIFEST_DIRS) {
+    let files = []
+    try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')) } catch { continue }
+    for (const f of files) {
+      try {
+        const m = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
+        if (m.map && !out.has(m.map)) out.set(m.map, m)
+      } catch {}
+    }
   }
   return out
 }
@@ -135,7 +142,7 @@ export function catalogue() {
   try { for (const d of fs.readdirSync(path.join(ARCHIVE, 'mods'), { withFileTypes: true })) if (d.isDirectory()) add(d.name) } catch {}
 
   out.sort((a, b) => a.title.localeCompare(b.title))
-  return { archive: ARCHIVE, manifestDir: MANIFEST_DIR, maps: out }
+  return { archive: ARCHIVE, manifestDirs: MANIFEST_DIRS, maps: out }
 }
 
 function listDir(dir) {

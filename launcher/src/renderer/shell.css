@@ -221,3 +221,5 @@ code { font-family: Consolas, monospace; font-size: 12px; color: var(--bone-dim)
   grid-column: 1 / -1; font-family: Consolas, monospace; font-size: 10px;
   color: var(--text-dim); opacity: .7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* A map whose files are not on this PC at all — different from one you could download. */
+.maplist .tag.absent { color: var(--text-dim); opacity: .6; }
