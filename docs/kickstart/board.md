@@ -2692,3 +2692,58 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   maps verified complete end to end (original + sha256 + source URL + fetch time + extraction +
   AV clean + scanner verdict + manifest). Full write-up in `docs/kickstart/archive.md`, which
   regenerates from the reports with `python archive/make_doc.py`.
+- 04:05 dedi: **CONVENTION PROVEN FROM THE INSTRUCTIONS — no guessing, and one correction to the
+  brief.** Disassembled out of `re`'s flat dump (`dumps\codwaw-1.7-a.exe`, offset == RVA), no game
+  run needed. Tool: `scratchpad/wdis.py <startVA> <endVA>`.
+  ```
+  00641730  push ebp / mov ebp,esp / and esp,0xFFFFFFF8      <- aligned frame, args at [ebp+8],[ebp+C]
+  00641749  mov esi,6
+  0064174E  cmp dword ptr [0x305842C], esi
+  00641767  jl  0x6417D2                                      <- see correction below
+  00641769  push 0x86F0D4 ("localhost") ... test eax,eax / jne 0x6417D2
+  00641883  call 0x642C80                                     <- CL_SendConnectPacket
+  006418BF  cmp byte ptr [ebp+0Ch], bl                        <- arg2 is a BYTE/bool
+  006418D9  mov esi, dword ptr [ebp+8]                        <- arg1 is a dword...
+  006418DC  mov eax, 0x87B6D0  / mov edx,esi / call 0x5F6AF0   <- ...compared as a STRING
+  0064194F  ret                                               <- plain ret, NOT ret 8
+  ```
+  Both call sites confirm it: `0x6321A2 call 0x641730` then **`add esp,8`**; `0x65838A call
+  0x641730` then **`add esp,8`**. So:
+  **`void __cdecl sub_641730(const char* mapname, int flag)` — cdecl, caller cleans, 2 dwords.**
+  Strings: `0x86F0D4 = "localhost"`, `0x87B6D0 = "credits"` (arg1 is compared against it, so arg1 is
+  a **map name**), `0x840FF0 = ""` (confirms `re`'s empty-literal read).
+  **CORRECTION to the gate in the brief.** It is not "client state must be >= 6 or the connect
+  branch never runs" — it is the other way round. `jl 0x6417D2` jumps **to** the connect path when
+  state **< 6**; the fall-through (state >= 6) only checks whether we are already on "localhost" and
+  early-outs if so. So **a disconnected client (state 0) takes the connect path**, and there is no
+  gate to satisfy. Nothing needs to reach 6 first.
+
+- 19:10 launcher: **all four done, two commits.** (1) Site URL is production-first:
+  `ZM_SITE > config.site > config.siteUrl > https://zombies.enw.gg`, local ports only as a dev
+  fallback. **The probe now treats 401 as ALIVE** — the gate challenges everything, so the old
+  "did it answer 2xx" check would have sent every packaged launcher past production, past the dev
+  ports, and onto the placeholder. (2) Password via Electron's `login` event: answered from config,
+  asked once if absent, remembered; a rejected one re-prompts and SAYS it was rejected; cancelling
+  leaves a toast pointing at Settings. Main-process API calls send the Basic header themselves,
+  because `fetch()` there is Node's and never sees `login` — without that the page works and every
+  API call 401s. Proxy challenges are left alone.
+- 19:10 launcher: (3) **`launcher/dist/ENW-Zombies-Launcher-0.1.0.exe`, 85.3 MB, portable, one
+  file, no installer.** `npm run pack`. **Verified on a no-Node, no-repo machine** as far as I can
+  simulate one: copied to `C:\Users\b\ZombiesDev\friend-test`, PATH cut to `system32`, run from
+  there — resolved the site and completed the launcher-v0 handshake, no crash. `dist/` is
+  gitignored; rebuild with `npm run pack`. Unsigned, so Windows SmartScreen will warn; that is
+  called out in the players' doc.
+- 19:10 launcher: **(4) `docs/kickstart/for-players.md`** — five steps for Jamie, Zeroh and Stew.
+  **It had to be corrected before it was true**, and this is the important bit for anyone about to
+  send that exe out: **packaging exposed that a friend cannot play the rescued maps at all.** The
+  map manifests were being read from a repo-relative path (fixed: bundled), but the map FILES are
+  200 MB-1 GB each and **nothing serves them** — `map_downloads: false` on the site, and the
+  launcher installs from `ZombiesDev\archive`, which only exists on B's PC. So the launcher would
+  have listed 14 maps and failed every install. A map whose files are not on this PC now reads
+  **"Not available yet"** in a different colour, Play Local is disabled for it, and the card says
+  why. **Tonight a friend can play the four stock zombies maps.** That is still the thing worth
+  shipping, but it is not what "install a rescued map" implies, so the doc leads with it.
+- 19:10 launcher: one bug worth naming because it was found in a log and not a test: an edit to
+  `config.load()` took `config.save()` with it, so storing the beta password crashed with
+  `cfg.save is not a function`. Restored, and there is now a test for it. **Suite 43 passed, 0
+  failed** (+2 for the site/password work).
