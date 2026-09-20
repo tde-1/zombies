@@ -111,6 +111,88 @@ std::string sl_string_safe(unsigned id, size_t max = 96) {
     return out;
 }
 
+// ------------------------------------------------- level.* enumeration ----
+//
+// Goal (coordinator 02:20): read level.round_number directly, and dump every
+// level.* name once per game so we learn what each map exposes.
+//
+// I do NOT know the exact bit layout of the variable entry, and after the G_Say
+// incident I am not going to chase pointers through a struct I am guessing at.
+// So this is written as a HYPOTHESIS TEST that is read-only and self-validating:
+//
+//   * childVariables is a hash table: FindVariable(parent, name) hashes to a slot
+//     and chains by nextSibling. If that is right, then for a child of `level`
+//     living in slot i, some simple hash of (name, levelId) must equal i.
+//   * the entry is 0x10 bytes with a 24-bit name field at +8, but which bits is
+//     unknown -- so try four plausible extractions.
+//   * a correct guess yields NAMES THAT ARE REAL SCRIPT IDENTIFIERS
+//     ("round_number", "zombie_health", ...). A wrong one yields garbage, which
+//     the printable check rejects. The count of hash-consistent, printable names
+//     is the score, and the log shows the samples so a human can judge too.
+//
+// Nothing here writes, dereferences a chased pointer, or is trusted unless it
+// scores. If no extraction scores, we say so and level.* stays unavailable.
+constexpr size_t kChildVarsOffset = 0x60000;
+constexpr uint32_t kChildVarsCount = 0x10000;   // (0x160000-0x60000)/0x10
+constexpr size_t kVarEntrySize = 0x10;
+
+bool g_levelvars_done = false;
+int g_levelvars_extraction = -1;   // which name-bit extraction won, or -1
+
+uint32_t extract_name(uint32_t w, int mode) {
+    switch (mode) {
+        case 0: return w & 0xFFFFFFu;
+        case 1: return (w >> 8) & 0xFFFFFFu;
+        case 2: return w & 0xFFFFu;
+        default: return (w >> 16) & 0xFFFFu;
+    }
+}
+
+void dump_level_vars(uint32_t levelId) {
+    if (g_levelvars_done || levelId == 0) return;
+    g_levelvars_done = true;
+
+    const uintptr_t child_base = at(t4::var::gScrVarGlob) + kChildVarsOffset;
+    if (!memory::is_readable(reinterpret_cast<void*>(child_base), 0x1000)) {
+        ENW_WARN("referee/levelvars: childVariables at %08X not readable; level.* unavailable",
+                 static_cast<unsigned>(child_base));
+        return;
+    }
+
+    int best_mode = -1, best_hits = 0;
+    std::string best_sample;
+    for (int mode = 0; mode < 4; ++mode) {
+        int hits = 0;
+        std::string sample;
+        for (uint32_t i = 0; i < kChildVarsCount; ++i) {
+            const uintptr_t e = child_base + static_cast<size_t>(i) * kVarEntrySize;
+            uint32_t w = 0;
+            if (!peek(e + 8, &w)) continue;
+            const uint32_t name = extract_name(w, mode);
+            if (name == 0 || name > kMaxScrStringId) continue;
+            // The hash identity we are testing: slot == (name + (parent << 8)) mod size.
+            if (((name + (levelId << 8)) & (kChildVarsCount - 1)) != i) continue;
+            const std::string n = sl_string_safe(name, 48);
+            if (n.size() < 3) continue;
+            ++hits;
+            if (sample.size() < 240) { sample += n; sample += ' '; }
+        }
+        ENW_INFO("referee/levelvars: extraction %d -> %d hash-consistent printable names", mode, hits);
+        if (hits > best_hits) { best_hits = hits; best_mode = mode; best_sample = sample; }
+    }
+
+    if (best_hits < 5) {
+        ENW_WARN("referee/levelvars: no extraction scored (best %d). The entry layout or the hash "
+                 "is not what I assumed -- level.* stays UNAVAILABLE rather than guessed. "
+                 "re: childVars base %08X, levelId %08X, entry 0x10 bytes, name field at +8.",
+                 best_hits, static_cast<unsigned>(child_base), levelId);
+        return;
+    }
+    g_levelvars_extraction = best_mode;
+    ENW_INFO("referee/levelvars: WINNER extraction %d with %d names. level.* = %s", best_mode,
+             best_hits, best_sample.c_str());
+}
+
 // ------------------------------------------------------- origin discovery --
 //
 // gentity_s.r (entityShared_t) is at +0x118 and gentity_s.client at +0x180, so
@@ -342,10 +424,37 @@ uint64_t g_notify_total = 0;
 uint64_t g_notify_level = 0;
 
 int g_notify_logged = 0;
+uint32_t g_level_id_learned = 0;   // self-calibrated; see below
+
+// MEASURED 02:08: *(u32*)0x3882BC8 reads ZERO throughout a live game, so the
+// published levelId global cannot be used to tell a `level notify` from an entity
+// one. The thunk itself is fine -- instance is 0/1 as expected, ownerIds are small
+// plausible object ids, and stringValues resolve to real names.
+//
+// So learn it instead of trusting it: several notifies are only ever fired on
+// `level` by the stock scripts, so the first time one of those arrives its ownerId
+// IS the level object id. Self-calibrating, verifiable in the log, and it does not
+// care whether the global is wrong or simply populated somewhere else.
+const char* const kLevelOnlyNotifies[] = {
+    "all_players_connected", "between_round_over", "end_game", "intermission",
+    "zombie_init_done", "scriptgen_done",
+};
 
 void __cdecl vm_notify_observe(int instance, int ownerId, int stringValue) {
     ++g_notify_total;
-    const uint32_t levelId = *reinterpret_cast<uint32_t*>(at(t4::var::levelId_server));
+    // `re` 2026-09-20: levelId is PER SCRIPT INSTANCE --
+    //   *(u32*)(gScrVarPub + instance*0x18048 + 0x20)
+    // A client-mode game runs script on instance 1, so comparing against the
+    // server levelId can never match. Read the one belonging to the instance we
+    // were actually called on.
+    uint32_t levelId = 0;
+    if (instance >= 0 && instance <= 1) {
+        const uintptr_t p = at(t4::var::gScrVarPub) +
+                            static_cast<size_t>(instance) * t4::var::gScrVarPub_stride + 0x20;
+        if (memory::is_readable(reinterpret_cast<void*>(p), 4)) {
+            levelId = *reinterpret_cast<uint32_t*>(p);
+        }
+    }
     // MEASURED 01:53: the hook fires (10,119 notifies in one minute) but NOTHING
     // matched ownerId == levelId, so one of three assumptions is wrong: the stack
     // offsets in the thunk, EAX being the script instance, or levelId_server being
@@ -361,7 +470,29 @@ void __cdecl vm_notify_observe(int instance, int ownerId, int stringValue) {
     ev.game_ms = game_link::now_ms();
     ev.name_id = stringValue;
     ev.name = sl_string_safe(static_cast<unsigned>(stringValue));
-    if (instance == 0 && static_cast<uint32_t>(ownerId) == levelId) {
+    if (g_notify_logged == 0) {
+        const uintptr_t s0 = at(t4::var::gScrVarPub) + 0x20;
+        const uintptr_t s1 = at(t4::var::gScrVarPub) + t4::var::gScrVarPub_stride + 0x20;
+        ENW_INFO("referee/bind: levelId[server]=0x%08X levelId[client]=0x%08X (per-instance, re 02:10)",
+                 memory::is_readable(reinterpret_cast<void*>(s0), 4) ? *reinterpret_cast<uint32_t*>(s0) : 0xDEADu,
+                 memory::is_readable(reinterpret_cast<void*>(s1), 4) ? *reinterpret_cast<uint32_t*>(s1) : 0xDEADu);
+    }
+    if (g_level_id_learned == 0 && !ev.name.empty()) {
+        for (const char* n : kLevelOnlyNotifies) {
+            if (ev.name == n) {
+                g_level_id_learned = static_cast<uint32_t>(ownerId);
+                dump_level_vars(static_cast<uint32_t>(ownerId));
+                ENW_INFO("referee/bind: learned level object id = 0x%08X from notify '%s' "
+                         "(published global 0x3882BC8 reads 0x%08X). re: that global looks wrong.",
+                         g_level_id_learned, n, levelId);
+                break;
+            }
+        }
+    }
+    // Prefer the engine's own value; fall back to the learned one only if it is 0.
+    if (levelId && !g_levelvars_done) dump_level_vars(levelId);
+    const uint32_t effective_level = levelId ? levelId : g_level_id_learned;
+    if (effective_level && static_cast<uint32_t>(ownerId) == effective_level) {
         ev.who = notify_event::owner::level;
         ++g_notify_level;
     } else {

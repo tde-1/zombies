@@ -39,7 +39,7 @@ if (args.has('--reset')) {
 }
 
 const { db, now } = require('./database')
-const { slugify, shortCode, weekStart } = require('../lib/util')
+const { slugify, weekStart } = require('../lib/util')
 
 const MANIFEST_DIR = path.join(REPO, 'referee', 'manifests')
 const SCAN_DIR = process.env.ZM_SCAN_DIR || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'scripts', 'scan-results')
@@ -287,7 +287,6 @@ function seedBadges(entries) {
   ins.run('archivist', 'Archivist', 'Rescues maps into the archive.', 'Awarded by staff.', 'staff', null, 'staff', null, 700, now(), 'seed')
   ins.run('map-maker', 'Map Maker', 'Made a map in the archive.', 'Awarded by staff once a creator claim is verified.', 'staff', null, 'staff', null, 701, now(), 'seed')
   ins.run('content-creator', 'Content Creator', 'Makes videos about custom zombies.', 'Awarded by staff.', 'staff', null, 'staff', null, 702, now(), 'seed')
-  console.log(`badges ${db.prepare('SELECT COUNT(*) c FROM badges').get().c}`)
 }
 
 // ---- playlists ---------------------------------------------------------------------
@@ -322,7 +321,6 @@ function seedPlaylists(entries) {
       .run(`by-${slugify(author)}`, `Maps by ${author}`, null, 'creator', author, 'live', 50, now(), 'seed')
     db.prepare('INSERT OR IGNORE INTO creators (slug, name, created_at) VALUES (?,?,?)').run(slugify(author), author, now())
   }
-  console.log(`playlists ${db.prepare('SELECT COUNT(*) c FROM playlists').get().c}`)
 }
 
 function seedPresets() {
@@ -331,10 +329,12 @@ function seedPresets() {
   for (const [slug, name, blurb, knobs] of CHALLENGES) {
     ins.run(slug.toUpperCase().replace(/-/g, ''), null, name, blurb, JSON.stringify(knobs), 1, 1, now())
   }
-  // Two ordinary Custom presets, so the share-code path has something real in it.
-  ins.run(shortCode(6), null, 'Sprinters', 'Everything runs from round 1. Stock everything else.',
+  // Two ordinary Custom presets, so the share-code path has something real in it. Their
+  // codes are FIXED rather than shortCode()d: a random code makes `npm run seed` non-
+  // idempotent, and a top-up run would add two more presets every time.
+  ins.run('SPRINT', null, 'Sprinters', 'Everything runs from round 1. Stock everything else.',
     JSON.stringify({ zombies: { speed: 'sprint' } }), 0, 1, now())
-  ins.run(shortCode(6), null, 'Round 30 start', 'Start at round 30 with 10,000 points and the power on.',
+  ins.run('R30GO', null, 'Round 30 start', 'Start at round 30 with 10,000 points and the power on.',
     JSON.stringify({ start: { round: 30, points: 10000 }, perks: { power_on: true } }), 0, 0, now())
 }
 
@@ -468,4 +468,7 @@ seedBox()
 seedWeek(entries)
 if (args.has('--demo') || process.env.ZM_SEED_DEMO === '1') seedDemo(entries)
 
-console.log('seeded.')
+// Counted at the END, after the playlists have bound their collection badges — a count
+// printed mid-run made a second `seed` look like it had created a badge it had not.
+const c = (t) => db.prepare(`SELECT COUNT(*) c FROM ${t}`).get().c
+console.log(`seeded: ${c('maps')} maps, ${c('boards')} boards, ${c('badges')} badges, ${c('playlists')} playlists, ${c('presets')} presets`)

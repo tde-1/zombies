@@ -299,6 +299,21 @@ and **the game reaches a playable zombies level**. `AUTOSAVE_LEVELSTART` is the 
 screen now uses for "In game" — not "Loading fastfile", which the engine emits a dozen times for
 `code_post_gfx`, `ui`, `common` and friends long before any map exists.
 
+Three tailing bugs stood between the launcher and seeing that for itself. They are all in the same
+40 lines and all worth knowing for anything else that reads the engine's log:
+
+1. **With `fs_game` set, the engine writes `console.log` under the MOD folder.**
+   `<fs_homepath>\mods\enw\console.log` had 12,813 lines while `<fs_homepath>\main\console.log`
+   was 0 bytes. `tools\dev\launch.ps1` reports `main\console.log`, so every run with a mod loaded
+   is being watched at an empty file. We now watch both and take whichever grows.
+2. **Never truncate it to get a clean read.** The engine has already opened it, so everything it
+   writes afterwards lands past the truncation point and the file looks empty for the whole run.
+3. **The engine truncates it itself, on every launch** (`logfile opened on ...` is always line 1).
+   So remembering the previous run's length and reading forward skips the entire new run: a launch
+   that really did reach `AUTOSAVE_LEVELSTART` at line 7,587 was reported as "no map yet", because
+   7,587 lines was fewer bytes than the file had held before. A watched file that has **shrunk**
+   has been rewritten -- reset to offset 0.
+
 **No modal dialog appeared on either run.** Every unattended run the other agents describe sat on
 "Set Optimal Settings?"; these did not, and reached a live frame tick in about six seconds. The
 difference is most likely `+map <map>` on the command line, which skips the front end the box

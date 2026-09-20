@@ -104,7 +104,7 @@ web/
 | Spec | Where | State |
 |---|---|---|
 | **Schema** 99 §5.5 | `server/db/database.js` | every table named in §5.5, plus `boxes`, `assignments`, `chat_network`, `map_of_week`, `map_progress`, `creators` |
-| **Seeded from the real artefacts** | `server/db/seed.js` | 5 maps from `referee/manifests/*.json`, sizes from the scanner's entity counts, 128 boards, 22 badges, 3 playlists, 6 presets |
+| **Seeded from the real artefacts** | `server/db/seed.js` | 5 maps from `referee/manifests/*.json`, sizes from the scanner's entity counts, 128 boards, 23 badges, 3 playlists, 6 presets |
 | **Pull protocol** | `routes/gameserver.js` | real, proven against the host agent (§4) |
 | **Box key pinning** | `lib/boxes.js` | real, TOFU with an admin-confirmed change (§4b) |
 | **Home** 13 §3 | `pages/Home.jsx` | live games, friends online, map of the week + runs, featured, the records/badges feed. **No rescued counter** |

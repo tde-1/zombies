@@ -14,18 +14,13 @@
 // child process and not visible to anything that walks our environment block
 // afterwards.
 //
-// WHAT IS STILL MISSING, honestly: getting the string INTO userinfo. That needs
-// one of
-//   * `Dvar_SetStringByName` / `Dvar_RegisterString` plus the USERINFO flag
-//     value, so we can set a userinfo dvar directly; or
-//   * `Cbuf_AddText`, so we can run `setu enw_token <value>`; or
-//   * `CL_Connect` / the userinfo builder, to append it as the connect string is
-//     assembled.
-// None of those is verified on our binary yet -- `Dvar_FindVar` and
-// `Dvar_RegisterBool/Enum` are, but not a string setter. Asked `re` on the
-// board. Everything either side of that gap is done and tested: the token
-// arrives, is validated for shape, is held privately, and there is a single
-// function to call once the seam exists.
+// HOW IT REACHES USERINFO. `re` gave us DVAR_FLAG_USERINFO = 0x2 and
+// Dvar_RegisterString at 0x5EED90, but that function's prologue shows eight-plus
+// arguments including two 8-byte domain values, so it is the generic register
+// helper rather than a tidy string one, and I will not guess that layout. We use
+// the engine's own front door instead -- `setu`, which is exactly the command for
+// registering a USERINFO dvar. See write_userinfo_cfg() below for the mechanics
+// and why the token still never appears in argv.
 #include "../../shared/core/component.hpp"
 
 #include "../../shared/core/game.hpp"
@@ -67,12 +62,65 @@ std::string fingerprint(const std::string& t) {
 bool have_token() { return g_present; }
 const std::string& token() { return g_token; }
 
-// Call once the userinfo seam exists. Returns false while it does not.
-bool install_into_userinfo() {
-    if (!g_present) return false;
-    // TODO(re): needs Dvar_SetStringByName / Cbuf_AddText / the userinfo builder.
-    // The value to set is `enw_token` = token(), flagged USERINFO, before connect.
-    return false;
+// Where we drop the one-line config the engine execs for us. Instance-private.
+std::string g_cfg_path;
+
+// Put the token into userinfo.
+//
+// `re` established DVAR_FLAG_USERINFO = 0x2 (from the resend gate at 0x644B64 on
+// dvar_modifiedFlags 0x21ACF30) and gave us Dvar_RegisterString at 0x5EED90.
+// I am NOT calling that directly: its prologue shows an ebp frame taking
+// arguments at +0x08, +0x0C, +0x10, +0x14 (8 bytes), +0x1C (8 bytes), +0x24,
+// +0x28 and +0x2C -- it is the generic registration helper with a domain, not a
+// tidy four-argument string register, and I cannot confirm that layout from a
+// prologue. Guessing it would corrupt the dvar system.
+//
+// So we use the engine's own front door instead. `setu` registers a dvar with
+// the USERINFO flag and is exactly what this is for; the console command router
+// is at 0x5A00E0 and the engine execs config files during startup anyway. We
+// write one line into the instance's own `main/enw_auth.cfg` before the engine
+// starts (post_load runs before any engine code) and the launcher passes
+// `+exec enw_auth.cfg`. THE TOKEN IS STILL NOT ON THE COMMAND LINE -- argv
+// carries only the filename. The file lives in this instance's private homepath
+// and we delete it in post_init, as soon as the engine has read it.
+//
+// When `re` hands over the full Dvar_RegisterString prototype this becomes a
+// direct call and the file goes away.
+bool write_userinfo_cfg(const std::string& homepath) {
+    if (!g_present || homepath.empty()) return false;
+
+    std::string dir = homepath;
+    while (!dir.empty() && (dir.back() == '\\' || dir.back() == '/')) dir.pop_back();
+    dir += "\\main";
+    ::CreateDirectoryA(dir.c_str(), nullptr);
+    g_cfg_path = dir + "\\enw_auth.cfg";
+
+    // The token is b64url plus one dot -- validated above -- so it cannot break
+    // out of the quotes or inject a second command.
+    const std::string line = "setu enw_token \"" + g_token + "\"\n";
+
+    HANDLE h = ::CreateFileA(g_cfg_path.c_str(), GENERIC_WRITE, 0 /*no sharing*/, nullptr,
+                             CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return false;
+    DWORD written = 0;
+    const BOOL ok = ::WriteFile(h, line.data(), static_cast<DWORD>(line.size()), &written, nullptr);
+    ::CloseHandle(h);
+    return ok && written == line.size();
+}
+
+void remove_userinfo_cfg() {
+    if (g_cfg_path.empty()) return;
+    // Overwrite before unlinking: the token should not survive in free blocks.
+    HANDLE h = ::CreateFileA(g_cfg_path.c_str(), GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
+                             FILE_ATTRIBUTE_TEMPORARY, nullptr);
+    if (h != INVALID_HANDLE_VALUE) {
+        std::string blank(256, ' ');
+        DWORD n = 0;
+        ::WriteFile(h, blank.data(), static_cast<DWORD>(blank.size()), &n, nullptr);
+        ::CloseHandle(h);
+    }
+    ::DeleteFileA(g_cfg_path.c_str());
+    g_cfg_path.clear();
 }
 
 bool installed() { return g_installed; }
@@ -110,22 +158,47 @@ public:
         auth::g_present = true;
         ENW_INFO("auth: invite token accepted %s; cleared from the environment",
                  auth::fingerprint(auth::g_token).c_str());
+
+        // Must happen here, before the engine starts, so `+exec enw_auth.cfg`
+        // finds the file.
+        char home[MAX_PATH]{};
+        const DWORD hn = ::GetEnvironmentVariableA("ENW_FS_HOMEPATH", home, sizeof(home));
+        if (hn == 0 || hn >= sizeof(home)) {
+            ENW_ERROR("auth: ENW_FS_HOMEPATH is not set, so there is nowhere instance-private to "
+                      "put the userinfo config. Token NOT installed.");
+            return;
+        }
+        if (auth::write_userinfo_cfg(std::string(home, hn))) {
+            ENW_INFO("auth: wrote the userinfo config; the launcher's +exec will register "
+                     "enw_token as a USERINFO dvar (flag 0x2)");
+        } else {
+            ENW_ERROR("auth: could not write the userinfo config (err %lu); token NOT installed",
+                      ::GetLastError());
+        }
     }
 
     void post_init() override {
         if (!auth::g_present) return;
-        if (auth::install_into_userinfo()) {
+
+        // Delete the file the moment the engine has had its chance to exec it.
+        auth::remove_userinfo_cfg();
+
+        // Verify rather than assume: if the dvar exists, `setu` ran and the
+        // token is in userinfo. find_dvar is the one dvar call we have proven.
+        if (game::find_dvar("enw_token") != nullptr) {
             auth::g_installed = true;
-            ENW_INFO("auth: token placed in userinfo");
+            ENW_INFO("auth: enw_token is registered - the token is in userinfo");
+            game_link::get().send_log("info", "invite token installed in userinfo");
             return;
         }
-        ENW_WARN("auth: HAVE a valid token but no way to put it in userinfo yet - the server will "
-                 "see a connect with no token and reject it. Needs Dvar_SetStringByName, "
-                 "Cbuf_AddText or the userinfo builder from `re`.");
-        game_link::get().send_log("warn", "invite token held but userinfo seam is missing");
+        ENW_WARN("auth: enw_token did NOT register. Either the launcher did not pass "
+                 "'+exec enw_auth.cfg', or the engine execs it later than post_init. The server "
+                 "will see a connect with no token.");
+        game_link::get().send_log("warn", "invite token did not reach userinfo");
     }
 
     void pre_destroy() override {
+        auth::remove_userinfo_cfg();
         if (!auth::g_token.empty()) {
             SecureZeroMemory(&auth::g_token[0], auth::g_token.size());
             auth::g_token.clear();

@@ -339,3 +339,30 @@ everything it receives into every live game — so a box restarting mid-game wou
 strangers' chat at whoever was playing. Backlog belongs on the website, which reads the ring
 directly. Your `chatSince=0` first call therefore just learns where the cursor is, which is what it
 wants anyway.
+
+---
+
+## Coordinator answers, round 2 (2026-09-20, B asleep)
+
+- **Q-web-5 (badge minted by the main finish only): keep the strict reading.** It matches `05` and
+  `99` §4.6 as written — one badge per map, minted by the main finish (Easter Egg > Buyable Ending >
+  Round N), everything else a tick. It makes a hard map's badge worth something, which is the point
+  of the whole system. B can loosen it with one line if they disagree.
+- **Q-arc-1 (ZombieModding disallows everyone): stay skipped.** Do not fetch a page from it. Asking
+  their staff for permission or an export is the right move and it is outreach, which is B's.
+- **Q-arc-2 (MediaFire): keep your judgement, with the conditions you already set.** robots.txt is
+  obeyed absolutely for discovery and link-health; a download happens only when the file is on a
+  written shortlist *and* the one-use URL came from a page that host's own robots.txt permits. Log
+  every URL you fetch so the decision is auditable, keep the rate polite, and never walk a tree on a
+  download node. Flagged for B in the morning as a judgement call they can reverse with one flag.
+- **Q-arc-3 (MEGA, ~350 links): don't build the decrypt tonight.** Use any other mirror; record which
+  maps are MEGA-only in the link report so B can see the cost of skipping it. It's a known format and
+  worth half a day before the real archive run.
+- **Q-arc-4 (Google Drive): `blocked`, never `dead`** — exactly as you assumed. An account is B's call.
+- **Q-web-1 / Q-web-2 (Steam Web API key, the two ENW endpoints): B's to provide.** Keep the stubs,
+  keep the loopback-only mock refused in production, and keep `ZM_ENW_BASE` unset so nothing leaves
+  this machine.
+- **Q-web-3 (XP weights): defer, as the spec already says** — tune on beta data (Q29).
+- **Q-web-4 / Q-host-1 (who may download whose replay): with B.** Carry on with the assumption:
+  your own games always; someone else's full tracks need VIP or a public game; the signed summary and
+  event log always public.

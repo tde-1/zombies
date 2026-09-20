@@ -39,6 +39,10 @@
   Redirect this instance's AppData (profile, mods, the safe-mode marker) into
   ZombiesDev\homes\<name>ppdata. new-copy.ps1 seeds it from B's profile.
 
+.PARAMETER Companion
+  Run as the SECOND instance of an experiment that already holds game.lock (a
+  server + client test). Requires a live lock; does not take or release one.
+
 .PARAMETER Developer
   Pass `+set developer 1`. Off by default -- it makes missing assets fatal
   ("ERROR: image 'images/sun_flare.iwi' is missing") and stops startup.
@@ -74,6 +78,12 @@ param(
 
     # Steal a lock held by someone else even if it looks fresh. Avoid.
     [switch]$ForceLock,
+
+    # Join an experiment that already holds the lock, instead of taking one.
+    # This is the supported way to run a SECOND instance (the client half of a
+    # server+client test): it requires a live lock to exist, so it cannot be used
+    # to bypass the interlock, and it leaves the lock for the holder to release.
+    [switch]$Companion,
 
     [int]$TestSeconds = 0,
 
@@ -366,7 +376,23 @@ function Release-GameLock {
         Write-Host 'Released game.lock' -ForegroundColor DarkGray
     }
 }
-if (-not $NoLock -and -not $DryRun) {
+if ($Companion -and -not $DryRun) {
+    # A companion needs a REAL, live experiment to join -- otherwise it is just
+    # -NoLock with a nicer name, and the interlock stops meaning anything.
+    if (-not (Test-Path -LiteralPath $lockFile)) {
+        throw '-Companion needs an experiment already holding game.lock. There is no lock. ' +
+              'Start the first instance normally.'
+    }
+    $held = (Get-Content -LiteralPath $lockFile -Raw).Trim()
+    $heldAge = (Get-Date) - (Get-Item -LiteralPath $lockFile).LastWriteTime
+    if ($heldAge.TotalMinutes -gt 15) {
+        throw "-Companion: the lock is stale ($held, $([int]$heldAge.TotalMinutes) min). " +
+              'Clear it and start the experiment again.'
+    }
+    Write-Host "Joining the experiment holding game.lock: $held" -ForegroundColor Cyan
+    Write-Host '  (not taking the lock; the holder releases it)' -ForegroundColor DarkGray
+}
+elseif (-not $NoLock -and -not $DryRun) {
     # THE INTERLOCK. Until now the real thing stopping two agents launching at
     # once was `__CoDWaW` -- the engine's own single-instance marker -- and
     # game.lock was advisory on top of it. Per-instance profiles
@@ -440,7 +466,9 @@ try {
     # marker moves with it. Clear whichever one this launch will actually use --
     # and the machine-wide one too, since a previous non-private run may have
     # left it behind.
-    $markers = @("$env:LOCALAPPDATA\Activision\CoDWaW\__CoDWaW")
+    # A dry run inspects, it never mutates and never refuses: you must be able to
+    # ask "what would this launch do?" while someone else has the game.
+    $markers = if ($DryRun) { @() } else { @("$env:LOCALAPPDATA\Activision\CoDWaW\__CoDWaW") }
     if ($PrivateProfile) {
         $markers += (Join-Path $homeDir 'appdata\Activision\CoDWaW\__CoDWaW')
     }
@@ -457,13 +485,20 @@ try {
         # game -- belt and braces costs nothing.
         $owner = if ($stalePid -gt 0) { Get-Process -Id $stalePid -ErrorAction SilentlyContinue } else { $null }
         if ($owner -and $owner.ProcessName -like 'CoDWaW*') {
+            if ($Companion) {
+                # The first instance of this experiment legitimately owns the
+                # marker. Leave it alone -- it is theirs to clean up -- and do not
+                # treat it as a collision.
+                Write-Host "  (marker belongs to the experiment's first instance, pid $stalePid)" -ForegroundColor DarkGray
+                continue
+            }
             throw "__CoDWaW marker names LIVE pid $stalePid ($($owner.ProcessName)). Not launching."
         }
         Remove-Item -LiteralPath $marker -Force -ErrorAction SilentlyContinue
         Write-Host "  cleared stale safe-mode marker (dead pid $stalePid)" -ForegroundColor DarkGray
     }
     # Belt and braces: safemode.cfg is what the engine execs instead of config.cfg.
-    foreach ($root in @($homeDir, $GameDir, "$env:LOCALAPPDATA\Activision\CoDWaW")) {
+    foreach ($root in $(if ($DryRun) { @() } else { @($homeDir, $GameDir, "$env:LOCALAPPDATA\Activision\CoDWaW") })) {
         foreach ($rel in @('main\safemode.cfg', 'players\safemode.cfg', 'safemode.cfg')) {
             $p = Join-Path $root $rel
             if (Test-Path -LiteralPath $p) {
@@ -501,6 +536,11 @@ try {
         '+set', 'con_minicon', '1'
     )
     $defaults | ForEach-Object { $a.Add($_) }
+    # The invite token arrives via a one-line config the DLL writes into this
+    # instance's own homepath before the engine starts, and deletes straight after.
+    # Only the FILENAME is ever in argv.
+    if ($AuthToken) { $a.Add('+exec'); $a.Add('enw_auth.cfg') }
+
     $GameArgs | Where-Object { $_ -ne '' } | ForEach-Object { $a.Add($_) }
 
     # ------------------------------------------------------------ environment --
@@ -521,6 +561,9 @@ try {
     # readable by any process on the box and ends up in logs and crash dumps.
     # The DLL reads it once and clears it (client-dll/components/auth_token.cpp).
     if ($AuthToken) { $env:ENW_AUTH_TOKEN = $AuthToken } else { $env:ENW_AUTH_TOKEN = $null }
+    # The DLL writes <fs_homepath>\main\enw_auth.cfg before the engine starts and
+    # deletes it straight after; argv carries only the FILENAME, never the token.
+    $env:ENW_FS_HOMEPATH = $homeDir
     # SteamStub (board 00:35, dedi): without these the copy exits(0) after ~1.5 s
     # having written nothing - the stub asks Steam to relaunch app 10090 from the
     # *Steam* folder instead. steam_appid.txt in the copy (new-copy.ps1) as well.

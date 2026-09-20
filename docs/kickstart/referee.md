@@ -755,6 +755,49 @@ Everything runtime-shaped waits on this: the replay sampler, AFK input, the scor
 body, `SV_Frame`, `G_RunFrame`, and `Sys_DedicatedConsolePump` 0x69DAA0 (already known to run each
 frame when `com_dedicated != 0` — that one alone would give the dedicated server a tick today).
 
+### 8.6 MEASURED IN A REAL GAME (2026-09-20 02:08)
+
+`ZombiesDev\captures\nazi_zombie_prototype-20260920-020759.ndjson`, client-mode solo, Nacht.
+
+| What | Measured | Note |
+|---|---|---|
+| snap rate | **19.5 Hz** | the designed 20 Hz, off `SV_Frame`; 1,269 snaps in 65.2 s |
+| player rows | 1,269, slot 0 only | after gating on `client(slot).active` |
+| zombie rows | **2,060** | via `classname` starting `actor` + `health > 0` |
+| player positions | bbox x −37..0, y 0..424, z 0..18 | sane for Nacht |
+| zombie sample | `{"id":254,"pos":[-59.0,-1645.3,13.4],"health":150}` | **health 150 is exactly stock round-1 zombie health** — independent confirmation that `classname` and `health` are both right |
+| notify names | `scriptgen_done`, `end_respawn`, `all_players_connected`, `spawned_player`, `weapon_change_complete`, `intro_hud_done`, `zombie_init_done`, `endTeleportThread` | `re`'s string-table formula **confirmed working** in a live game |
+| chat capture | 0 in an idle game | the assertion that caught the bad `G_Say`; now logged by the DLL itself |
+| AFK `input` | 4 events in 5 minutes idle | correct behaviour, not a broken hook |
+| bytes | **11.80 MB/h raw, 1.19 gzip, 1.06 zstd-10** | see the caveat below |
+
+#### The byte number, honestly
+`estimate_snap_bytes.py` predicts **40.2 MB/h raw / 5.2 zstd** for solo; the measurement is
+**11.80 / 1.06**, so the model over-predicts by ~3.4x raw. That is not the encoder disagreeing with
+itself — mean snap measured 176.6 B against a modelled 585.7 B, and the capture averaged ~1.6 zombie
+rows per snap where the model assumed ~8 alive. **The difference is almost entirely zombie count**,
+which is exactly what §8.3 said dominates. So:
+
+* the model is a sound **upper bound**, and its shape is confirmed;
+* **this measurement is round 1 with one idle player and a handful of zombies — it is not a
+  game-hour** and must not be quoted as one. A late-round 4-player game will land well above it;
+* the safe planning number remains the model's, with the §8.3 trade-offs applied.
+
+#### The `currentOrigin` cross-check
+**AGREE.** With the tie-break fixed to discriminate by Z-flatness (a real origin's third component
+is far flatter than its X and Y), runtime motion analysis over 128 entities independently selected
+**+0x160**, matching `shared/t4`. My earlier "DISAGREE" was withdrawn: a 4-byte sliding window over a
+3-float triple overlaps itself, so +0x15C/+0x160/+0x164 tied and the old tie-break took the lowest.
+
+#### `VM_Notify`: `re`'s convention was right, the global was not
+The hook fires (10,197 notifies/minute) but nothing matched `ownerId == levelId`. The 24-tuple dump
+settles which assumption was wrong: `instance` is clean (0 and 1), `ownerId` is small and plausible
+(3, 4, 0x5DF, 0x794), and `stringValue` **resolves to real names** — so EAX-is-instance, the argument
+order, and the thunk's stack offsets are all confirmed. The fault is `levelId`, which read
+**0x00000000** at 0x3882BC8 throughout. Now reading it per instance
+(`gScrVarPub + instance*0x18048 + 0x20`) with a self-calibrating fallback: the first notify whose
+name is level-only defines the id, so flag detection no longer rests on one global being right.
+
 ### 8.5 Still to run
 * `<fs_homepath>\main` + a mod (§3.4 follow-up) — staged, blocked because `fs_game` makes
   `BG_LoadWeaponDef` fail before GSC compiles (`dedi` p13 is on it).

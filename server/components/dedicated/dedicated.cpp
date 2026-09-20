@@ -186,6 +186,29 @@ volatile long g_bringup_calls = 0;
 
 void __cdecl bringup_count() { ++g_bringup_calls; }
 
+// WinMain, from the live scan (probe p33):
+//     5FF77E  call 59D710   Com_Init
+//     5FF794  call 594200   <- the only call between Com_Init and the bring-up
+//     5FF799  call 5FF4E0   renderer bring-up  (our stub: NEVER HIT)
+// So either Com_Init or 0x594200 does not return. Counting entry to 0x594200
+// separates them: if this fires, Com_Init returned and 0x594200 is the blocker;
+// if it does not, Com_Init is. The stub counts and then tail-jumps to the real
+// function, so WinMain still gets whatever it was going to get.
+volatile long g_mid_calls = 0;
+void* g_mid_target = nullptr;
+void __cdecl mid_count() { ++g_mid_calls; }
+
+__declspec(naked) void mid_stub() {
+    __asm {
+        pushfd
+        pushad
+        call mid_count
+        popad
+        popfd
+        jmp  dword ptr [g_mid_target]
+    }
+}
+
 __declspec(naked) void renderer_bringup_stub() {
     __asm {
         pushfd
@@ -338,11 +361,41 @@ private:
         // Dump the instruction stream from just before the bring-up call to past the
         // loop entry. p29/p30 show the loop body never executes even with the call
         // skipped and with either return value, so this window is where the answer is.
-        ENW_INFO("dedicated: WinMain disassembly window 0x5FF790..0x5FF7E0 (loop entry is 0x5FF7B1, "
-                 "call Com_Frame is 0x5FF7BD):");
+        // Where is Com_Init called from, and is it really before the bring-up call?
+        // Our stub at 0x5FF799 is never hit (probe p32), so WinMain stops earlier; this
+        // finds every E8 in WinMain and names the ones we care about, which turns
+        // "Com_Init probably does not return" into a fact with an address on it.
+        ENW_INFO("dedicated: scanning WinMain 0x5FF600..0x5FF7C0 for calls");
+        for (uintptr_t a = 0x5FF600; a < 0x5FF7C0; ++a) {
+            uint8_t op = 0;
+            if (!memory::read(enw::at(a), &op) || op != 0xE8) continue;
+            int32_t rel = 0;
+            if (!memory::read(enw::at(a) + 1, &rel)) continue;
+            const uintptr_t tgt = a + 5 + rel;
+            const char* what = "";
+            if (tgt == t4::fn::Com_Init)  what = "  <== Com_Init";
+            if (tgt == 0x5FF4E0)          what = "  <== renderer bring-up (we retarget this)";
+            if (tgt == t4::fn::Com_Frame) what = "  <== Com_Frame";
+            ENW_INFO("dedicated:   call at %08X -> %08X%s",
+                     static_cast<unsigned>(a), static_cast<unsigned>(tgt), what);
+        }
+        ENW_INFO("dedicated: WinMain window 0x5FF790..0x5FF7E0 (loop top 0x5FF7B1, "
+                 "call Com_Frame 0x5FF7BD):");
         for (uintptr_t a = 0x5FF790; a < 0x5FF7E0; a += 16)
             ENW_INFO("dedicated:   %08X  %s", static_cast<unsigned>(a),
                      memory::hex_dump(enw::at(a), 16).c_str());
+
+        // Instrument the call between Com_Init and the bring-up.
+        constexpr uintptr_t kMidSite = 0x5FF794;
+        const uintptr_t mid = memory::call_target(enw::at(kMidSite));
+        if (mid == enw::at(0x594200)) {
+            g_mid_target = reinterpret_cast<void*>(mid);
+            if (memory::retarget_call(enw::at(kMidSite), &mid_stub))
+                ENW_INFO("dedicated: counting WinMain's call at 0x5FF794 -> 0x594200");
+        } else {
+            ENW_WARN("dedicated: 0x5FF794 targets 0x%08X, not 0x594200; not counting it",
+                     static_cast<unsigned>(mid));
+        }
 
         const uintptr_t actual = memory::call_target(enw::at(kCallSite));
         if (actual != enw::at(kTarget)) {
@@ -522,11 +575,11 @@ private:
                 static uint64_t last = 0;
                 const uint64_t n = enw::frame::count();
                 ENW_INFO("dedicated: liveness t=%ds  frame::count=%llu (+%llu in 5s = %.1f Hz) "
-                         "installed=%s  ours=%lld  bringup_stub_hits=%ld  pumps=%llu",
+                         "installed=%s  ours=%lld  mid(0x594200)_hits=%ld  bringup_hits=%ld  pumps=%llu",
                          (i + 1) * 5, static_cast<unsigned long long>(n),
                          static_cast<unsigned long long>(n - last), (n - last) / 5.0,
                          enw::frame::installed() ? "yes" : "NO",
-                         static_cast<long long>(g_frames), g_bringup_calls,
+                         static_cast<long long>(g_frames), g_mid_calls, g_bringup_calls,
                          static_cast<unsigned long long>(s.pumps));
                 last = n;
             }

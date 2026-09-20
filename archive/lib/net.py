@@ -35,6 +35,23 @@ LOG_ROOT = os.environ.get("ENW_ARCHIVE_LOGS", r"C:\Users\b\ZombiesDev\archive\lo
 DEFAULT_DELAY = 6.0          # seconds between requests to one host
 MAX_CONSEC_ERRORS = 2        # then the host is dropped for the run
 REQUEST_TIMEOUT = 45
+LOCK_DIR = os.path.join(os.path.dirname(CACHE_ROOT.rstrip("\\/")), "archive", "hostlocks") \
+    if False else os.path.join(CACHE_ROOT, "..", "hostlocks")
+LOCK_STALE = 30 * 60         # a lock older than this is assumed abandoned
+
+
+def _pid_alive(pid):
+    if pid <= 0:
+        return False
+    try:
+        import ctypes
+        h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)
+        if not h:
+            return False
+        ctypes.windll.kernel32.CloseHandle(h)
+        return True
+    except Exception:
+        return True          # cannot tell -> assume alive, i.e. stay polite
 
 
 _META_CHARSET = __import__("re").compile(
@@ -115,7 +132,60 @@ class PoliteSession:
             st = HostState(h)
             st.delay = self.default_delay
             self.hosts[h] = st
+            self._claim_host(st)
         return st
+
+    def _claim_host(self, st):
+        """Cross-process guard: one of OUR processes per host, ever.
+
+        The in-process lock keeps threads apart, but overnight this repo runs several
+        of these tools at once from different shells. MEASURED: two `codrepo.py`
+        processes were briefly started together and made four simultaneous requests to
+        the same WordPress site before being killed. A per-host lockfile makes that
+        impossible rather than merely unlikely; a stale lock (dead pid, or older than
+        LOCK_STALE) is taken over.
+        """
+        os.makedirs(LOCK_DIR, exist_ok=True)
+        path = os.path.join(LOCK_DIR, st.host.replace(":", "_") + ".lock")
+        st.lockfile = path
+        mypid = os.getpid()
+        for _ in range(2):
+            try:
+                fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.write(fd, ("%d %f\n" % (mypid, time.time())).encode())
+                os.close(fd)
+                return
+            except FileExistsError:
+                try:
+                    pid, ts = open(path).read().split()
+                    pid, ts = int(pid), float(ts)
+                except Exception:
+                    pid, ts = -1, 0.0
+                if pid == mypid:
+                    return
+                if time.time() - ts > LOCK_STALE or not _pid_alive(pid):
+                    self.log("[lock] %s: taking over a stale lock from pid %d"
+                             % (st.host, pid))
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+                    continue
+                self.drop(st, "another ENW process (pid %d) is already talking to this "
+                              "host; refusing to double up" % pid)
+                return
+
+    def release(self):
+        """Drop every host lock this session holds. Safe to call twice."""
+        for st in self.hosts.values():
+            path = getattr(st, "lockfile", None)
+            if not path or not os.path.exists(path):
+                continue
+            try:
+                if open(path).read().split()[0] == str(os.getpid()):
+                    os.remove(path)
+            except Exception:
+                pass
 
     def _load_robots(self, st, scheme):
         rp = urllib.robotparser.RobotFileParser()

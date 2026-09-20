@@ -382,7 +382,14 @@ export class GameLaunch extends EventEmitter {
       for (const file of candidates) {
         try {
           const st = fs.statSync(file)
-          const from = pos.get(file)
+          let from = pos.get(file)
+          // THE ENGINE TRUNCATES console.log ON EVERY LAUNCH ("logfile opened on …" is
+          // always line 1). Remembering the previous run's length and reading forward
+          // therefore skips the whole of this run: a launch that really did reach
+          // `AUTOSAVE_LEVELSTART` at line 7,587 was reported as "no map yet" because
+          // 7,587 lines was still fewer bytes than the file had before. A file that
+          // has shrunk has been rewritten — start again from the beginning.
+          if (st.size < from) { from = 0; pos.set(file, 0) }
           if (st.size <= from) continue
           const fd = fs.openSync(file, 'r')
           const buf = Buffer.alloc(st.size - from)
