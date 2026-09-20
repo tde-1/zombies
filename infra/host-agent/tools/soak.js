@@ -25,7 +25,7 @@ const started = Date.now()
 let first = null
 let rows = 0
 
-const HEAD = 'elapsed_s,instances,live,agent_rss_mib,inst_rss_total_mib,inst_rss_max_mib,cores_total,cores_per_game,rounds_total,events_total,replay_bytes_total,frame_p99_max,link_rx_total,link_dropped\n'
+const HEAD = 'elapsed_s,instances,live,agent_rss_mib,agent_heap_mib,inst_rss_total_mib,inst_rss_max_mib,cores_total,cores_per_game,rounds_total,events_total,replay_bytes_total,frame_p99_max,link_rx_total,link_dropped\n'
 if (!fs.existsSync(OUT)) fs.writeFileSync(OUT, HEAD)
 
 async function sample() {
@@ -44,6 +44,10 @@ async function sample() {
     instances: s.instances.length,
     live: live.length,
     agent_rss_mib: Number(((s.agent_rss_bytes || 0) / 1048576).toFixed(1)),
+    // RSS alone cannot tell a leak from a buffer arena. The JS heap can: if heapUsed is
+    // flat while RSS climbs, the growth is native (Buffers — and the replay path concats
+    // and zstd-compresses ~500 KB per chunk per game), which reuses rather than leaks.
+    agent_heap_mib: Number(((s.agent_heap_bytes || 0) / 1048576).toFixed(1)),
     inst_rss_total_mib: Number(rssEach.reduce((x, y) => x + y, 0).toFixed(1)),
     inst_rss_max_mib: Number(Math.max(0, ...rssEach).toFixed(1)),
     cores_total: Number(coresEach.reduce((x, y) => x + y, 0).toFixed(3)),
@@ -61,12 +65,12 @@ async function sample() {
   } catch { /* ignore */ }
 
   if (!first) first = row
-  fs.appendFileSync(OUT, `${row.elapsed_s},${row.instances},${row.live},${row.agent_rss_mib},${row.inst_rss_total_mib},${row.inst_rss_max_mib},${row.cores_total},${row.cores_per_game},${row.rounds_total},${row.events_total},${row.replay_bytes_total},${row.frame_p99_max},${row.link_rx_total},${row.link_dropped}\n`)
+  fs.appendFileSync(OUT, `${row.elapsed_s},${row.instances},${row.live},${row.agent_rss_mib},${row.agent_heap_mib},${row.inst_rss_total_mib},${row.inst_rss_max_mib},${row.cores_total},${row.cores_per_game},${row.rounds_total},${row.events_total},${row.replay_bytes_total},${row.frame_p99_max},${row.link_rx_total},${row.link_dropped}\n`)
   rows++
 
   const grow = first.inst_rss_total_mib ? ((row.inst_rss_total_mib / first.inst_rss_total_mib - 1) * 100).toFixed(1) : '0.0'
   const agentGrow = first.agent_rss_mib ? ((row.agent_rss_mib / first.agent_rss_mib - 1) * 100).toFixed(1) : '0.0'
-  console.log(`[soak ${fmtDur(Date.now() - started).padStart(7)}] ${row.live} live · games ${row.inst_rss_total_mib} MiB (${grow}%) max ${row.inst_rss_max_mib} · agent ${row.agent_rss_mib} MiB (${agentGrow}%) · ${row.cores_total} cores (${row.cores_per_game}/game) · rounds ${row.rounds_total} · p99 ${row.frame_p99_max} ms · ${(row.link_rx_total / 1000).toFixed(0)}k events · ${row.link_dropped} dropped`)
+  console.log(`[soak ${fmtDur(Date.now() - started).padStart(7)}] ${row.live} live · games ${row.inst_rss_total_mib} MiB (${grow}%) max ${row.inst_rss_max_mib} · agent ${row.agent_rss_mib} MiB rss / ${row.agent_heap_mib} heap (${agentGrow}%) · ${row.cores_total} cores (${row.cores_per_game}/game) · rounds ${row.rounds_total} · p99 ${row.frame_p99_max} ms · ${(row.link_rx_total / 1000).toFixed(0)}k events · ${row.link_dropped} dropped`)
 }
 
 console.log(`[soak] watching ${DASH} every ${EVERY / 1000}s -> ${OUT}`)

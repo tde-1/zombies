@@ -252,6 +252,10 @@ export class Instance extends EventEmitter {
 
   /** Stop by PID — ours, and only ours. */
   stop(reason = 'stop', { graceMs = 4000 } = {}) {
+    // A FOREIGN instance (Play Local: the launcher launched the game, we only referee it)
+    // is not ours to kill. dev-box.md rule 4 is about not killing other agents' game
+    // processes; the same reasoning covers a player's own game on their own PC.
+    if (this.foreign) { this.log.info(`not stopping ${this.id}: we did not start it (${reason})`); this.state = 'exited'; this.exitedAt = Date.now(); return Promise.resolve() }
     if (!this.child || this.state === 'exited') return Promise.resolve()
     this.state = 'exiting'
     this.log.info(`stopping: ${reason}`)
@@ -339,6 +343,8 @@ export class InstanceManager extends EventEmitter {
   startSampling() {
     if (this.sampleTimer) return
     const run = async () => {
+      // Foreign instances are sampled too — knowing what a real game costs is the point —
+      // we just never kill them.
       const live = [...this.instances.values()].filter((i) => i.pid && i.state === 'running')
       if (live.length) {
         const map = await this.sampler.sample(live.map((i) => i.pid))

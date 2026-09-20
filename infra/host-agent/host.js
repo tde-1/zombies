@@ -60,6 +60,14 @@ const cfg = {
   zstdLevel: Number(a['zstd-level'] ?? 10),
   gameLog: a['game-log'] !== 'off',   // the IW4MAdmin/B3-readable games_mp.log mirror
   gameLogPrefix: a['game-log-prefix'] || 'ENWZombie',
+  // ---- LOCAL MODE (Play Local; the launcher owns the process, we are the referee) -----
+  // On a player's own PC the launcher launches the game and the host agent runs beside it.
+  // That is the opposite of a game box, and the two must never be confused, so it is off
+  // by default and refuses to engage while this box holds a lease.
+  //   --local        accept a game we were TOLD to expect (POST /api/local/expect)
+  //   --adopt-local  additionally accept a `hello` we were told nothing about
+  local: !!a.local || !!a['adopt-local'],
+  adoptLocal: !!a['adopt-local'],
   liveHz: Number(a['live-hz'] ?? 4),   // frames per second to the site's spectator view
   referee: {
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
@@ -75,7 +83,7 @@ const cfg = {
 
 /** One game: an instance, its link connection, its referee and its replay writer. */
 class Game extends EventEmitter {
-  constructor(host, instance, { matchId, mode, vip, assignment, tokens, refereeConfig }) {
+  constructor(host, instance, { matchId, mode, vip, assignment, tokens, refereeConfig, selfReported = false }) {
     super()
     this.host = host
     this.instance = instance
@@ -84,6 +92,9 @@ class Game extends EventEmitter {
     this.vip = !!vip
     this.assignment = assignment || null
     this.tokens = tokens || {}
+    // A game this box did not launch. Everything it produces says so, all the way to the
+    // site, and nothing can un-say it later.
+    this.selfReported = !!selfReported
     this.conn = null
     this.pending = []
     this.writer = null
@@ -212,6 +223,7 @@ class Game extends EventEmitter {
       knobs: this.assignment?.settings?.knobs || {},
       players: this.assignment?.players || null,
       protocol: 'game-link-v0',
+      self_reported: this.selfReported,
       host_info: hostInfo(),
     }
     this.writer = new ReplayWriter({
@@ -246,6 +258,13 @@ class Game extends EventEmitter {
     // The game is decided; a restart now would be a new, empty game on a dead match.
     this.instance.maxRestarts = 0
     summary.fingerprint = this.fingerprint || null
+    if (this.selfReported) {
+      // Belt and braces on top of mode 'local' already zeroing both of these.
+      summary.self_reported = true
+      summary.records_eligible = false
+      summary.xp_multiplier = 0
+      if (!summary.flags.includes('self_reported')) summary.flags.push('self_reported')
+    }
     let replay = null
     if (this.writer) {
       const stats = this.writer.close({ summary })
@@ -278,6 +297,7 @@ class HostAgent {
   constructor() {
     this.games = new Map()          // matchId -> { summary, replay }
     this.byInstance = new Map()     // instanceId -> Game
+    this.expected = new Map()       // instanceId -> { match_id, map, at } (local mode)
     mkdirp(cfg.replayDir); mkdirp(cfg.logDir); mkdirp(cfg.keyDir)
     this.hostKey = keys.loadOrCreate(path.join(cfg.keyDir, `host-${cfg.boxName}.json`))
     this.manifests = new ManifestStore([
@@ -297,8 +317,9 @@ class HostAgent {
     await this.link.listen()
     this.instances.linkPort = this.link.port
     this.link.on('hello', (conn, msg) => {
-      const g = this.byInstance.get(conn.instance)
-      if (!g) return log.warn(`hello from unknown instance ${conn.instance} — ignoring`)
+      let g = this.byInstance.get(conn.instance)
+      if (!g) g = this.acceptLocal(conn, msg)
+      if (!g) return
       log.info(`instance ${conn.instance} linked (pid ${msg.pid}, ${msg.dll_build})`)
       g.attach(conn)
       g.referee.onEvent(msg)
@@ -338,6 +359,17 @@ class HostAgent {
       this.statusTimer = setInterval(() => this.reportStatus(), 10_000); this.statusTimer.unref?.()
     }
 
+    if (cfg.local && cfg.site) {
+      log.error('REFUSING TO START: --local/--adopt-local cannot be combined with --site. ' +
+        'A box attached to the site serves leased games and must never adopt processes off its own loopback. ' +
+        'Play Local runs a separate agent with no --site; the launcher is what talks to the site.')
+      process.exit(2)
+    }
+    if (cfg.local) {
+      log.warn(`LOCAL MODE is on (${cfg.adoptLocal ? 'adopt ANY hello' : 'expected instances only'}). ` +
+        'Games adopted here are stamped self-reported: no XP, no records, no badges. Never run this on a game box.')
+    }
+
     log.info(`host agent up: box=${cfg.boxName} link=${cfg.linkHost}:${this.link.port} dash=${cfg.dash ? `http://127.0.0.1:${cfg.dashPort}` : 'off'} key=${this.hostKey.keyId}`)
     log.info(`host: ${hostInfo().cpu} (${hostInfo().cores} cores)`)
 
@@ -360,6 +392,65 @@ class HostAgent {
         },
       })
     }
+  }
+
+  localEnabled() { return !!cfg.local }
+  /**
+   * The gate on adoption, and it is deliberately blunt: **a box that can serve leases is
+   * a game box and never adopts**, whatever its flags say. Having a site configured at
+   * all is enough — not "is currently leased", because the window between leases is
+   * exactly when a race would slip through. A Play Local agent has no site: the launcher
+   * is the thing that talks to the site.
+   */
+  leaseHeld() { return !!cfg.site || [...this.byInstance.values()].some((x) => x.assignment && !x.finished) }
+  linkAddress() { return `${cfg.linkHost}:${this.link.port}` }
+
+  /**
+   * A `hello` from a process we did not launch. Play Local: the launcher owns the game,
+   * we are the referee and the replay writer beside it.
+   *
+   * THREE THINGS KEEP THIS FROM BECOMING A HOLE.
+   *  1. It is off by default and needs `--local` (expected instances only) or
+   *     `--adopt-local` (anything). A plain game box ignores the hello exactly as before.
+   *  2. It is REFUSED while this box holds a lease. A box serving Verified games must
+   *     never also be adopting processes off its own loopback, whatever its flags say.
+   *  3. Everything it produces is stamped `self_reported` and forced to mode `local`:
+   *     no XP, no records, no badges, and the flag travels into the summary, the signed
+   *     replay header and the result POST. The site refuses to grade local games anyway;
+   *     this is the second lock on the same door.
+   */
+  acceptLocal(conn, msg) {
+    const id = conn.instance
+    const expected = this.expected.get(id)
+    if (!cfg.local && !expected) { log.warn(`hello from unknown instance ${id} — ignoring (local mode is off; --local to accept expected instances)`); return null }
+    // Expired registrations are not registrations.
+    if (expected && Date.now() - expected.at > 10 * 60_000) { this.expected.delete(id); log.warn(`the registration for ${id} expired; treating it as unexpected`); return this.acceptLocal(conn, msg) }
+    const leased = this.leaseHeld()
+    if (leased) { log.error(`REFUSING to adopt ${id}: this box holds a lease. A box serving leased games never adopts local processes.`); return null }
+    if (!expected && !cfg.adoptLocal) { log.warn(`hello from unexpected instance ${id} — ignoring (--local accepts only instances registered with POST /api/local/expect; --adopt-local to accept any)`); return null }
+    this.expected.delete(id)
+
+    const game = new Game(this, this.localInstance(id, msg), {
+      matchId: expected?.match_id || id,
+      mode: 'local',
+      selfReported: true,
+    })
+    this.byInstance.set(id, game)
+    log.warn(`ADOPTED a local game: instance ${id}, match ${game.matchId}, pid ${msg.pid}, ${msg.dll_build} — ` +
+      `${expected ? 'registered in advance' : 'BLIND (--adopt-local)'}. Marked self-reported: no XP, no records, no badges.`)
+    return game
+  }
+
+  /** A stand-in Instance for a process the launcher owns: we watch it, we never kill it. */
+  localInstance(id, msg) {
+    const inst = this.instances.create({ id, kind: 'local', role: msg.role || 'solo', matchId: id, port: 0 })
+    inst.state = 'running'
+    inst.startedAt = Date.now()
+    // Sample its CPU and RAM, but do NOT add it to ownedPids: we did not start it, so
+    // `stop()` must never kill it (dev-box.md rule 4). The launcher owns the lifetime.
+    inst.pid = msg.pid || null
+    inst.foreign = true
+    return inst
   }
 
   /** Boot one game-server instance and wire a referee + replay to it. */
@@ -450,6 +541,7 @@ class HostAgent {
       state: this.byInstance.size ? 'live' : 'idle',
       instances: this.instances.list().map((i) => i.info()),
       host: hostInfo(),
+      local_mode: cfg.local ? (cfg.adoptLocal ? 'adopt' : 'expect') : false,
       // Offer our replay-signing PUBLIC key on every heartbeat. The site pins it on first
       // sight and answers { key_pinned, pinned_key_id }; a box whose key stopped matching
       // then finds out within seconds instead of at the end of a game.
@@ -512,9 +604,10 @@ class HostAgent {
       link: { host: cfg.linkHost, port: this.link.port, conns: this.link.stats() },
       site: this.site ? { base: cfg.site, online: this.site.online, ...this.site.stats } : null,
       token_checks: { required: cfg.requireToken, ...this.tokenGuard.stats },
+      local: { enabled: cfg.local, mode: cfg.adoptLocal ? 'adopt-any' : 'expected-only', lease_held: this.leaseHeld(), expected: [...this.expected.keys()] },
       instances: this.instances.list().map((i) => {
         const g = this.byInstance.get(i.id)
-        return { ...i.info(), game: g && !g.finished ? g.referee.state() : null, finished: !!g?.finished, replay: g?.replayFile || null }
+        return { ...i.info(), game: g && !g.finished ? g.referee.state() : null, finished: !!g?.finished, replay: g?.replayFile || null, self_reported: !!g?.selfReported }
       }),
       games: [...this.games.entries()].map(([k, v]) => ({ match_id: k, summary: v.summary, replay: v.replay })),
       manifests: this.manifests.list().map((m) => ({ map: m.map, title: m.title, confidence: m.confidence, source: m._source })),

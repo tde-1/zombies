@@ -82,6 +82,23 @@ export class Dashboard {
       return json(200, { ok: true })
     }
 
+    // ---- Play Local: tell the agent to expect a game the launcher is about to start ----
+    // The inverted, preferred shape: the launcher knows the instance id before it
+    // launches (it sets ENW_INSTANCE), so the `hello` is matched against something we
+    // were TOLD to expect rather than accepted blind. 127.0.0.1 only, like everything here.
+    if (p === '/api/local/expect' && req.method === 'POST') {
+      const b = await body()
+      const id = String(b.instance || b.match_id || '').trim()
+      if (!id) return json(400, { error: 'send {instance, match_id, map}' })
+      if (!this.host.localEnabled()) return json(409, { error: 'this agent is not in local mode — start it with --local' })
+      if (this.host.leaseHeld()) return json(409, { error: 'this box holds a lease; it will not adopt local games' })
+      this.host.expected.set(id, { match_id: String(b.match_id || id), map: b.map || null, at: Date.now() })
+      this.log.info(`expecting a local game: instance ${id} match ${b.match_id || id} map ${b.map || '?'}`)
+      return json(200, { ok: true, instance: id, match_id: String(b.match_id || id), link: `${this.host.linkAddress()}`, expires_in_ms: 10 * 60_000 })
+    }
+
+    if (p === '/api/local/expected') return json(200, { local: this.host.localEnabled(), lease_held: this.host.leaseHeld(), expected: [...this.host.expected.entries()].map(([k, v]) => ({ instance: k, ...v })) })
+
     if (p === '/api/boot' && req.method === 'POST') {
       const b = await body()
       const g = this.host.boot({

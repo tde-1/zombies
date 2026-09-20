@@ -343,6 +343,42 @@ Frames are **fire and forget**. A live view is worth nothing a second later, so 
 counted (`liveDropped`) and thrown away — never spooled, never retried. That is the opposite of
 the result path, and deliberately so: one is a picture, the other is the record.
 
+### 3h. The soak: does the agent drift?
+
+`node host.js --box soak --boot 6 --sim-players 4` plus `node tools/soak.js`, left running while
+everything else in this document was being done. Not the 20 hours vault 14 T5 asks for, but the
+only continuous evidence we have, and it found something.
+
+| | at 0 s | at 20 min | verdict |
+|---|---|---|---|
+| Game processes (6 × 4p) | 308.0 MiB | 315.3 MiB | **+2.4% — flat** |
+| Agent RSS | 64.7 MiB | ~150 MiB, oscillating 148–161 | **grew, then found a band** |
+| Agent JS heap | — | **11.6–15.0 MiB, flat** | **no JS leak** |
+| CPU | 0.016 core total | 0.016 core total | flat |
+| Game link | — | 454,000 events | **0 dropped** |
+| Simulated frame p99 | 22.9 ms | 31–47 ms | within the 60 ms target |
+
+**The agent's RSS more than doubled and then stopped.** The important measurement is the split:
+`heapUsed` sits at 11.6–15.0 MiB and does not move, so ~139 MiB of the RSS is **native, not JS** —
+Buffers. That is the replay path: every chunk flush concatenates ~500 KB of NDJSON and hands it to
+`zstdCompressSync`, six games at a time. Node's allocator reuses that arena rather than returning
+it, which is why the figure *oscillates* (161 → 148 → 154 → 149) instead of climbing monotonically.
+The density ramp agrees from the other direction: twenty games reached 145 MiB in a few minutes,
+six games reached ~150 MiB in twenty — the band is set by buffer churn, not by game count or time.
+
+**So: no leak found, and a number to design against.** Budget ~150–200 MiB for the agent on a busy
+box and do not be alarmed by the first twenty minutes. Two things would still be worth doing before
+anyone trusts a 20-hour game: run this for the actual 20 hours, and make the chunk writer compress
+incrementally instead of concatenating, which would cut the arena to almost nothing.
+
+Running this again is one command each; `tools/soak.js` now records `agent_heap_mib` beside
+`agent_rss_mib` so the JS-vs-native question is answered by the CSV rather than by hand.
+
+One unbounded array was found by inspection while reading for the leak and fixed: `Referee.send()`
+appended every command it ever issued to an array nothing read. Harmless in a twenty-minute test,
+not harmless in a twenty-hour game, and the referee is the one object guaranteed to live as long as
+the longest game. It is a 200-entry ring now.
+
 ### 3g. Two failures worth keeping in front of you
 
 Both are the same shape: **the system was working correctly and the operator could not tell**,
@@ -464,6 +500,46 @@ real simulator, a drop captures state (`holding state for 7656…`) and a return
 six in-process checks covering the SteamID match, the stale window, the reservation and the
 record-game refusal.
 
+### Play Local: a game this agent did not launch
+
+On a player's own PC the launcher owns the game process and the host agent runs beside it as
+referee and replay writer. That is the exact inverse of a game box, and "accept a connection I did
+not start" is the kind of thing that becomes a hole later, so it is built as three locks rather
+than a flag.
+
+**The shape is inverted from the obvious one.** Rather than adopting any `hello` that turns up, the
+launcher — which knows the instance id before it launches, because it sets `ENW_INSTANCE` — tells
+the agent to expect it:
+
+```
+POST /api/local/expect { instance: "l_21a50db2", match_id: "l_21a50db2", map: "nazi_zombie_leviathan" }
+  -> { ok: true, instance, match_id, link: "127.0.0.1:38905", expires_in_ms: 600000 }
+```
+
+Then it launches, the game says hello as `l_21a50db2`, and the agent matches it against something
+it was told to expect. The site's own local match id is used throughout, so the site, the box and
+the replay all name the game the same thing.
+
+| Lock | What it does |
+|---|---|
+| `--local` off by default | Without it, a `hello` from an unknown instance is ignored exactly as before, with a log line saying how to enable it |
+| Registration required | `--local` accepts **only** instances registered in advance, and a registration expires after 10 minutes. `--adopt-local` additionally accepts a blind `hello`, and says `BLIND` in the log when it does |
+| **Never on a game box** | `--local` combined with `--site` is refused **at startup**, with an explanation. Not "not while leased" — having a site configured at all is enough, because the gap between leases is exactly when a race would slip through. A second check refuses adoption while any leased game is live |
+
+Everything an adopted game produces is stamped **`self_reported`**: the flag is on the summary, in
+the `flags` array, and **inside the signed replay header**, so the marking travels with the
+evidence and cannot be added or removed afterwards by whatever posts it. The mode is forced to
+`local`, which independently zeroes XP and sets `records_eligible: false`. The site refuses to
+grade local games anyway — this is the second lock on the same door, as it should be.
+
+The adopted process is also marked **foreign**: it is sampled for CPU and RAM (knowing what a real
+game costs is the point) but `stop()` will never kill it. We did not start it, so it is not ours to
+end — dev-box.md rule 4's reasoning, applied to a player's own game on their own PC.
+
+`node test/demo-local.js` proves all five behaviours, including the two refusals. The last run
+adopted `l_21a50db2`, refereed it to round 8, and wrote a signed replay whose header says
+`self_reported: true`.
+
 ### Manifests
 `referee/manifests/` belongs to the **referee agent**; the host only reads it. `lib/manifests.js`
 implements the `enw.referee.manifest/0` evaluator: `flag`, `notify`, `round_at_least`,
@@ -557,7 +633,12 @@ cleanly before killing it, so the demo stops manufacturing the crash case.
 | **Pull protocol** | **Works, against the real site.** | Lease → boot → `status=ready` → play → `POST /api/gs/result`, proven twice: two boxes against the mock, and one box against `web/` on :3200 driven by its own party rail (§3c). Results survive the site being down (spool + `POST /api/gs/spool`). |
 | **Live view / spectating** | **Works.** | `http://127.0.0.1:8787` — instances with live CPU/RAM, round, players, a 2D top-down canvas of player and zombie positions at 4 Hz, event log, chat, and playback of a recorded replay chunk-by-chunk. This is the prototype of the web live view in 99 §4.4 and of phase 2 of the replay roadmap. |
 | **Instance manager** | **Works, against the real game.** | Start/stop/restart/reap, per-instance logs, one port and id each, `ENW_HOST`/`ENW_INSTANCE`/`ENW_ROLE`, CPU+RAM sampling, PID-scoped kills only. Verified against a real `CoDWaW.exe` at 01:02: the DLL connected and the manager adopted the game's PID. It refuses cleanly when another agent holds `game.lock` (*"game.lock is held by dedi (probe p19-saved-retry) — not launching"*) without touching the lock file. |
-| **Referee state machine** | **Works.** | 37 in-process checks, all green, against the referee agent's real manifests. |
+| **Referee state machine** | **Works.** | 41 in-process checks, all green, against the referee agent's real manifests. |
+| **Crash recovery** | **The host's half works; the game's half needs the DLL.** | State is captured on the drop, held against the SteamID with the limited weapons reserved, and handed back on return with a resume countdown; a record-profile game gets the pause and no restore. Proven against a real agent + simulator, plus six in-process checks. What cannot be verified here is whether the DLL's builtins can actually restore downed state and per-player flags (vault 10 §5 lists those as hard). |
+| **Play Local** | **Works, and refuses in all the right places.** | `test/demo-local.js`: ignored by default, refused unregistered, adopted when registered, refereed and recorded with `self_reported` inside the signed header, and refused outright on a box with `--site`. |
+| **Live spectator frames** | **Works; the site's shim can be deleted.** | 87 frames in 22 s to the real site, 0 dropped; `GET /api/live/<match>` returns real player positions. |
+| **Density** | **The agent is not the constraint.** | 20 simulated games on one agent: 0.05 core total, flat per-game cost, 1,215 events/s, nothing dropped, ~4.9 MiB of agent memory per game. |
+| **Soak** | **No leak; a number to design against.** | 20 minutes, 6 games, 454k events, 0 dropped. Game processes flat; agent RSS settles in a 148–161 MiB band with a flat 12–15 MiB JS heap, i.e. native buffer churn in the replay path. |
 
 ---
 
@@ -688,9 +769,11 @@ agent touches it.
   logs and carries on — refereeing games is the job); a busy **game-link** port still does, correctly.
   Both test harnesses now fail loudly with the port in the message instead of letting somebody
   else's box quietly take the lease.
-* **Not tested**: more than 2 instances at once, a link peer that lies, a full 24-hour soak at 1×,
-  or the crash-recovery *state restore* (the host asks for `snapshot_state` and the sim answers, but
-  nothing puts the state back — that needs the DLL).
+* **The 20-hour soak still has not been run**, only 20 minutes of it (§3h). The two things it would
+  settle are whether the native buffer band really is a band, and whether a single game's referee
+  and replay writer drift over a full day.
+* **Not tested**: a link peer that lies, the restore of downed state and per-player flags,
+  and whether the DLL's builtins can put back everything the snapshot holds.
 * ~~Results are lost if the site is down~~ — **done**: spooled to disk and drained through
   `POST /api/gs/spool` (§3b). A box with a non-empty spool must not be destroyed.
 * **The `games_mp.log` prefix is not settled.** The referee agent proposes `GSE;` for the DLL side;

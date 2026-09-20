@@ -76,7 +76,8 @@ std::string describe(uintptr_t addr) {
 struct sample {
     uintptr_t eip = 0;
     uintptr_t esp = 0;
-    std::vector<uintptr_t> chain;
+    std::vector<uintptr_t> chain;   // validated: a `call` immediately precedes them
+    std::vector<uintptr_t> raw;     // point into .text but are NOT return addresses
     bool ok = false;
 };
 
@@ -121,10 +122,17 @@ sample probe_main_thread(unsigned long tid) {
         // Crude return-address chain: anything on the top of the stack that points
         // into .text is very likely a return address. Good enough to name callers.
         const auto text = memory::text_section();
-        for (uintptr_t p = s.esp; p < s.esp + 0x400 && s.chain.size() < 12; p += 4) {
+        // Scan a long way: a stall inside user32/GDI puts many system frames between
+        // ESP and the first engine frame, and a 1 KB window missed them entirely
+        // (probe p41 returned an empty validated chain, which is no information at
+        // all). Keep the unvalidated hits too -- a validated chain that comes back
+        // empty should not silently look like "nothing on the stack".
+        for (uintptr_t p = s.esp; p < s.esp + 0x4000 && s.chain.size() < 16; p += 4) {
             uintptr_t v = 0;
             if (!memory::read(p, &v)) break;
-            if (text.contains(v) && preceded_by_call(v)) s.chain.push_back(v);
+            if (!text.contains(v)) continue;
+            if (preceded_by_call(v)) s.chain.push_back(v);
+            else if (s.raw.size() < 16) s.raw.push_back(v);
         }
     }
     ::ResumeThread(h);
@@ -155,7 +163,15 @@ public:
                 }
                 ENW_INFO("dedi_whereis: t=%ds  EIP=%s  ESP=%08X", (i + 1) * 4,
                          describe(s.eip).c_str(), static_cast<unsigned>(s.esp));
-                ENW_INFO("dedi_whereis:        validated return addresses: %s", chain.c_str());
+                std::string rawchain;
+                for (const uintptr_t a : s.raw) {
+                    std::snprintf(buf, sizeof buf, "%08X ", static_cast<unsigned>(a));
+                    rawchain += buf;
+                }
+                ENW_INFO("dedi_whereis:        validated return addresses: %s",
+                         chain.empty() ? "(none)" : chain.c_str());
+                ENW_INFO("dedi_whereis:        unvalidated .text values (NOT callers): %s",
+                         rawchain.c_str());
             }
         }).detach();
     }
