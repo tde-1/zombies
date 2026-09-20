@@ -200,7 +200,11 @@ export class GameLaunch extends EventEmitter {
     if (path.basename(exe).toLowerCase() === 'codwawmp.exe') throw new Error('ENW never launches the multiplayer executable.')
 
     ensureDirs()
+    // Pre-create both places the engine may open console.log in. foundation measured
+    // that a missing <fs_homepath>\main gave no console log at all, and with fs_game
+    // set the engine uses the mod folder instead (see watchConsoleLog).
     fs.mkdirSync(path.join(homeDir, 'main'), { recursive: true })
+    fs.mkdirSync(path.join(homeDir, ...String(o.fsGame || MOD_NAME).split('/')), { recursive: true })
 
     // The dev-box lock. A player's machine has none and this is a no-op.
     if (o.useGameLock !== false) {
@@ -231,11 +235,16 @@ export class GameLaunch extends EventEmitter {
         ...process.env,
         SteamAppId: '10090',
         SteamGameId: '10090',
-        ENW_HOST: o.linkHost || '127.0.0.1:28960',
         ENW_INSTANCE: o.instance || 'launcher',
         ENW_ROLE: o.role || 'client',
         ENW_LOGDIR: P.logs,
       }
+      // Only point the game-link somewhere when there is something to point it at.
+      // A local game has no host agent, and the DLL's documented behaviour for an
+      // absent ENW_HOST is to stay dormant — better than 20 failed connects and a
+      // backoff ladder in the log of every offline game.
+      if (o.linkHost) env.ENW_HOST = o.linkHost
+      else delete env.ENW_HOST
 
       // The token. Pipe first; env only if explicitly allowed.
       if (o.token) {
@@ -267,11 +276,14 @@ export class GameLaunch extends EventEmitter {
       this.pids.add(this.child.pid)
       this.commandLine = `"${exe}" ${args.join(' ')}`
       this.emit('spawn', { pid: this.child.pid, exe, args, commandLine: this.commandLine, stdout: outLog, stderr: errLog })
-      if (this.holdsLock) lock.update(this.lockName, this.child.pid, o.why || 'launcher: play')
+      if (this.holdsLock) {
+        lock.update(this.lockName, this.child.pid, o.why || 'launcher: play')
+        this.startLockHeartbeat(o.why || 'launcher: play')
+      }
 
       this.child.on('exit', (code, signal) => {
         this.emit('exit', { pid: this.child?.pid, code, signal })
-        this.finish(code === 0 ? 'ended' : 'ended', `the game exited (code ${code ?? signal})`)
+        this.finish('ended', `the game exited (code ${code ?? signal})`)
       })
       this.child.on('error', (e) => {
         this.emit('error', e)
@@ -341,36 +353,74 @@ export class GameLaunch extends EventEmitter {
   // Follow the engine's own console.log to know when the map is up. This is the same
   // file foundation reads; it is the only signal available until the DLL's game-link
   // reports map_loaded.
+  // Follow the engine's own console.log to know what the game is doing.
+  //
+  // TWO THINGS THAT COST A RUN EACH, both worth keeping written down:
+  //
+  //  1. **With `fs_game` set, the engine writes `console.log` under the MOD folder,
+  //     not `main/`.** `<fs_homepath>\mods\enw\console.log` had 12,813 lines while
+  //     `<fs_homepath>\main\console.log` sat at 0 bytes. Anything watching only
+  //     `main\console.log` (tools/dev/launch.ps1 does) sees nothing whenever a mod is
+  //     loaded — which for us is always. So we watch both and take whichever grows.
+  //  2. **Never truncate it.** The first version wrote '' to get a clean read, after
+  //     the engine had already opened the file; every subsequent line went past the
+  //     truncation point and the file stayed empty for a whole 60 s run. Record the
+  //     starting length instead.
   watchConsoleLog(homeDir) {
-    const file = path.join(homeDir, 'main', 'console.log')
-    try { fs.writeFileSync(file, '') } catch {}
-    let pos = 0
+    const candidates = [
+      path.join(homeDir, ...String(this.opts.fsGame || MOD_NAME).split('/'), 'console.log'),
+      path.join(homeDir, 'main', 'console.log'),
+    ]
+    const pos = new Map()
+    for (const f of candidates) {
+      let n = 0
+      try { n = fs.statSync(f).size } catch {}
+      pos.set(f, n)
+    }
     const tick = () => {
       if (this.ended) return
-      try {
-        const st = fs.statSync(file)
-        if (st.size > pos) {
+      for (const file of candidates) {
+        try {
+          const st = fs.statSync(file)
+          const from = pos.get(file)
+          if (st.size <= from) continue
           const fd = fs.openSync(file, 'r')
-          const buf = Buffer.alloc(st.size - pos)
-          fs.readSync(fd, buf, 0, buf.length, pos)
+          const buf = Buffer.alloc(st.size - from)
+          fs.readSync(fd, buf, 0, buf.length, from)
           fs.closeSync(fd)
-          pos = st.size
+          pos.set(file, st.size)
+          if (!this._logSource) { this._logSource = file; this.note(`reading the game's own log at ${file}`) }
           for (const line of buf.toString('latin1').split(/\r?\n/)) {
             if (line.trim()) this.onConsoleLine(line)
           }
-        }
-      } catch {}
+        } catch {}
+      }
       this._logTimer = setTimeout(tick, 400)
     }
     tick()
   }
 
+  // The lines that actually mean something, verified against a real 12,813-line run of
+  // nazi_zombie_prototype. "Loading fastfile <x>" is NOT one of them: the engine loads
+  // a dozen (code_post_gfx, ui, common, patch…) long before any map, so matching it
+  // reports a map that is not there yet.
   onConsoleLine(line) {
     this.emit('console', line)
-    if (/Server Initialization/i.test(line)) this.setPhase('loading', 'the map is loading')
-    else if (/\.d3dbsp/i.test(line)) this.setPhase('loading', line.trim().slice(0, 120))
-    else if (/enw_t4 (online|ready)/i.test(line)) this.note('the ENW client is running inside the game')
-    else if (/Com_Init|Connecting to/i.test(line)) this.setPhase('launching', line.trim().slice(0, 120))
+    if (/^Server:\s*(\S+)/i.test(line)) {
+      this.mapName = line.match(/^Server:\s*(\S+)/i)[1]
+      this.setPhase('loading', `the server is bringing up ${this.mapName}`)
+    } else if (/^LOADING\.\.\.\s*maps\//i.test(line) || /Waited .* for asset 'maps\/.*d3dbsp'/i.test(line)) {
+      this.setPhase('loading', line.trim().slice(0, 120))
+    } else if (/AUTOSAVE_LEVELSTART/i.test(line)) {
+      // zombies writes this the moment the level is up and playable.
+      this.mapUp = true
+      this.emit('map_up', { map: this.mapName || null, line: line.trim() })
+      this.setPhase('in_game', `the map is up${this.mapName ? `: ${this.mapName}` : ''}`)
+    } else if (/enw_t4 (online|ready|loaded)/i.test(line)) {
+      this.note('the ENW client is running inside the game')
+    } else if (/Connecting to/i.test(line)) {
+      this.setPhase('launching', line.trim().slice(0, 120))
+    }
   }
 
   // Only ever stops processes we started or adopted (dev-box.md rule 4).
@@ -392,7 +442,24 @@ export class GameLaunch extends EventEmitter {
     this.emit('finished', { phase, detail, dialogs: this.dialogs, notes: this.notes })
   }
 
+  // Keep the shared lock alive for as long as OUR game is. See gamelock.heartbeat():
+  // a lock goes stale after 15 minutes and a real game runs for hours, so without this
+  // another agent would rightly take it mid-game.
+  startLockHeartbeat(why) {
+    clearInterval(this._lockTimer)
+    this._lockTimer = setInterval(() => {
+      if (this.ended || !this.holdsLock) return
+      const livePid = [...this.pids].find((p) => { try { process.kill(p, 0); return true } catch (e) { return e.code === 'EPERM' } })
+      if (!livePid) return
+      const r = lock.heartbeat(this.lockName, livePid, why)
+      if (r.action === 'restored' || r.action === 'taken_by_other') this.note(r.detail)
+      if (r.action === 'taken_by_other') this.emit('lock_conflict', r)
+    }, 60_000)
+    this._lockTimer.unref?.()
+  }
+
   releaseLock() {
+    clearInterval(this._lockTimer)
     if (!this.holdsLock) return
     this.holdsLock = false
     const r = lock.release(this.lockName)

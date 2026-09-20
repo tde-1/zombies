@@ -267,7 +267,29 @@ function wireIpc() {
       throw e
     } finally { state.gate.unblock('setup') }
   })
-  handle('uninstall', ({ keepMaps } = {}) => setup.uninstall({ keepMaps: keepMaps !== false }))
+  handle('storage', () => setup.storage())
+
+  // Spec 13 §2: "Uninstall ... asks whether to keep the downloaded maps."
+  handle('uninstall', async ({ keepMaps } = {}) => {
+    if (keepMaps === undefined) {
+      const st = setup.storage()
+      const mb = (st.folders.maps.bytes / 1e6).toFixed(0)
+      const r = await dialog.showMessageBox(state.win, {
+        type: 'question',
+        buttons: ['Keep my maps', 'Remove everything', 'Cancel'],
+        defaultId: 0,
+        cancelId: 2,
+        title: 'Remove the ENW client',
+        message: 'Remove the ENW client?',
+        detail:
+          `Your copy of World at War is not touched either way — we never wrote to it.\n\n` +
+          `Downloaded maps: ${st.maps.length} (${mb} MB) in ${st.folders.maps.path}`,
+      })
+      if (r.response === 2) return ['cancelled']
+      keepMaps = r.response === 0
+    }
+    return setup.uninstall({ keepMaps: keepMaps !== false })
+  })
 
   handle('signIn', async () => {
     // MOCK. Real sign-in is Steam OpenID in a browser window against the site; there is
@@ -479,6 +501,13 @@ if (!single) {
             dialogs: [],
           })
           await new Promise((r) => setTimeout(r, 400))
+        }
+        // ENW_SMOKE_SCREEN=settings|detail: open that screen before the screenshot.
+        if (process.env.ENW_SMOKE_SCREEN) {
+          const id = { settings: 'settingsPill', detect: 'setupPill' }[process.env.ENW_SMOKE_SCREEN] || 'settingsPill'
+          await state.win?.webContents.executeJavaScript(`document.getElementById(${JSON.stringify(id)}).click()`).catch(() => {})
+          showSite(false)
+          await new Promise((r) => setTimeout(r, 900))
         }
         if (process.env.ENW_SMOKE_SHOT) {
           // The site lives in a native child view, so the window's own webContents

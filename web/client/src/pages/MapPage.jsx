@@ -142,7 +142,7 @@ export default function MapPage() {
 
         <div>
           <Section title="Boards">
-            {d.boards.length === 0 ? <Empty>No boards yet.</Empty> : d.boards.map((b) => <Board key={b.category} board={b} />)}
+            <Boards boards={d.boards} />
           </Section>
 
           {d.friends_beaten.length > 0 && (
@@ -168,6 +168,35 @@ export default function MapPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Board order and the empty ones.
+//
+// Every map carries the four ZWR challenge brackets (No Power, No Perks, No Jug, First
+// Room) as well as its own categories, and on a map nobody has run yet that is six boards
+// all saying "nobody has set one yet". So: the headline boards render in full, and empty
+// challenge brackets collapse to one line that still names them — they exist, they are
+// open, and saying so in a sentence is more use than six empty tables.
+const ORDER = ['round', 'ee_speedrun', 'buyable_speedrun', 'no_power', 'no_perks', 'no_jug', 'first_room']
+const CHALLENGE = new Set(['no_power', 'no_perks', 'no_jug', 'first_room'])
+const hasRuns = (b) => b.counts.some((c) => c.rows.length)
+
+function Boards({ boards }) {
+  if (!boards.length) return <Empty>No boards yet.</Empty>
+  const sorted = [...boards].sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.category))
+  const shown = sorted.filter((b) => !CHALLENGE.has(b.category) || hasRuns(b))
+  const emptyChallenges = sorted.filter((b) => CHALLENGE.has(b.category) && !hasRuns(b))
+  return (
+    <>
+      {shown.map((b) => <Board key={b.category} board={b} />)}
+      {emptyChallenges.length > 0 && (
+        <p className="tiny">
+          Open with nobody on them: {emptyChallenges.map((b) => b.label).join(', ')}. Each is a locked
+          Verified preset with its own board.
+        </p>
+      )}
+    </>
   )
 }
 

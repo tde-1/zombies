@@ -10,10 +10,23 @@
     "maps/_zombiemode.gsc@mw2rust.iwd": "fdcd5925d09bd31dd3a5258ab05b5ab60f6c3b892013ef2fc098bb2ef389903d"
   },
   "badge": {
-    "main_finish": "round",
+    "main_finish": "buyable_ending",
     "round_n": 20
   },
   "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidate_entities": [
+        "end_game"
+      ]
+    },
     {
       "id": "round",
       "label": "Round 20",
@@ -24,8 +37,8 @@
     }
   ],
   "signals": [],
-  "confidence": "guess",
-  "needs_human": true,
+  "confidence": "read",
+  "needs_human": false,
   "scanner": {
     "verdict": "manual",
     "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death) but nothing decidable",
@@ -75,7 +88,26 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "fdcd5925d09bd31dd3a5258ab05b5ab60f6c3b892013ef2fc098bb2ef389903d",
-    "script_count": 125
+    "script_count": 125,
+    "verdict_raw": "manual",
+    "verdict_debiased": "round",
+    "why_debiased": "no easter egg or ending found; default Round 20",
+    "verdict_entities": "buyable_ending",
+    "why_entities": "entity named like an ending: end_game (the cost is hardcoded in script, as on nazi_zombie_ali, so there is no zombie_cost outlier to find)",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [],
+      "end_entities": [
+        "end_game"
+      ]
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
   },
   "archive": {
     "original": "MW2RustZombies_1.0.exe",

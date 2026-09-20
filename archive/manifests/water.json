@@ -1,0 +1,150 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "water",
+  "title": "Alcatraz",
+  "source": "custom",
+  "author": "whippytrout",
+  "released": "2017-06-05",
+  "fs_game": "mods/water",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@water.iwd": "c5a28d766b5f3adf4815b65812d4e1016794e6e738a50636d57818133236f50f"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidate_flags": [],
+      "candidate_entities": [
+        "harrybo21_soul_chest",
+        "red_quest_end",
+        "red_skull",
+        "skull_collect",
+        "soul_chest_area"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "scanner": {
+    "verdict": "manual",
+    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death, player_escaped_claw) but nothing decidable",
+    "scripts": 160,
+    "entities": 6674,
+    "ee_candidates": [],
+    "ending_words": [
+      "arcademode_ending_complete",
+      "crawler_round_ending",
+      "dog_round_ending",
+      "end_game",
+      "ending_extended_death",
+      "player_escaped_claw"
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "auto3500"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto3499"
+      ],
+      [
+        1500,
+        "weapon_upgrade",
+        "bo2_tommy"
+      ],
+      [
+        1500,
+        "weapon_upgrade",
+        "bo2_tommy"
+      ],
+      [
+        1250,
+        "weapon_upgrade",
+        "vector"
+      ]
+    ],
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "c5a28d766b5f3adf4815b65812d4e1016794e6e738a50636d57818133236f50f",
+    "script_count": 160,
+    "verdict_raw": "manual",
+    "verdict_debiased": "manual",
+    "why_debiased": "map-specific names suggest an ending (player_escaped_claw) but nothing decidable",
+    "verdict_entities": "easter_egg",
+    "why_entities": "easter-egg state found in entities harrybo21_soul_chest, red_quest_end, red_skull, skull_collect, soul_chest_area",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [
+        "harrybo21_soul_chest",
+        "red_quest_end",
+        "red_skull",
+        "skull_collect",
+        "soul_chest_area"
+      ],
+      "end_entities": [
+        "boat_escape_floor",
+        "boat_start_escape",
+        "mech_escape_trigger"
+      ]
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [
+      "player_escaped_claw"
+    ],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
+  },
+  "archive": {
+    "original": "Alcatraz.exe",
+    "original_sha256": "f6f43085c73e326f84f2b102dc944fe3f33a50911f6c978756f793a8dfc58a62",
+    "original_size": 999420017,
+    "source_url": "https://www.mediafire.com/file/ceo8uk41r1x1it6/Alcatraz.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/06/05/alcatraz-by-whippytrout/",
+    "fetched": "2026-09-20T00:56:35Z",
+    "av": "clean",
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "bossfight_ending",
+      "top_100"
+    ],
+    "catalogue_description": "Story: March 21, 1963 The year Alcatraz Federal Penitentiary closed. President John F. Kennedy had scheduled a political trip to Dallas, Texas in order to smooth over frictions in the [/img]Democratic Party. He decided beforehand he would attend the shutting down of Alcatraz and visit the prison one last time while it was still operational. As JFK docked at Alcatraz Prison he was greeted by three strange men. One was wearing prisoners clothing (Sal) and was covered in blood. The second was a short Mexican with a mustache and red bandanna. He claimed to be an top notch mercenary and expert with a machete. (Danny Trejo AKA Machete) The last man was a tall well groomed man with slicked back hair and a black leather jacket. (David Hasselhoff) He referred to himself in the third person a lot and seemed to think he had been kidnapped and was the center of a twisted experiment deep within the depths of Alcatraz. As the unlikely group of men began investigating Alcatraz it became pretty clear that something evil had taken over the prison. A zombie outbreak of some kind had spread throughout the prison infecting prisoners and guards alike. No sign of the warden could be found but Sal spoke of a beast of a man named Brutus who was the head guard of Alcatraz. Sal said Brutus was pure evil and had sacrificed the warden in some sort of ritual deep beneath Alcatraz. Brutus was obsessed with the pursuit of mystical items. He believed they contained powers, powers that could manipulate the v"
+  },
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+}

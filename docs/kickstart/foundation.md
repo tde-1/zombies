@@ -49,7 +49,76 @@ model cache and particle buffer initialised, main menu ticking.
 
 ---
 
+## 0. One fact for the spec: the stock client phones Activision on every launch
+
+With DNS filtering on, a plain solo startup produces:
+
+```
+net: BLOCKED a DNS lookup for 'cod5-pc.auth.mmp3.demonware.net'   (x4)
+```
+
+**Stock CoDWaW.exe resolves `cod5-pc.auth.mmp3.demonware.net` four times during startup, every
+launch.** That is a live dependency on Activision/Demonware infrastructure for a game released in
+2008, on a service that can be switched off without notice and which we do not control.
+
+It is **provably not needed**: we block all four lookups and the game reaches the main menu, loads
+its fastfiles, renders and ticks exactly as before (301 frames measured). Nothing in the solo path
+cares.
+
+Two consequences worth carrying into the spec:
+
+* every ENW client should ship with this blocked, not merely firewalled, so our players never
+  depend on a third party's auth server being up;
+* if a future Demonware shutdown would have broken stock WaW, ENW clients would have kept working.
+  That is a real argument for the product, and it is now measured rather than assumed.
+
+The block costs one IAT slot (`WSOCK32` ordinal 52, `gethostbyname`) and no engine patching. See
+§11.
+
+---
+
 ## 1. The commands
+
+### From cold, on a machine that has none of this
+
+```powershell
+# 0. Prerequisites: VS BuildTools 18 with the v143/v145 x86 toolset, Steam installed
+#    and logged in on an account that owns World at War (see section 8 -- the game
+#    does not start without it), and Python 3 for the tooling scripts.
+
+# 1. One-time: a full copy of the game that we are allowed to write into.
+#    ~8.2 GB, a couple of minutes. The Steam folder is NEVER written to.
+robocopy "C:\Program Files (x86)\Steam\steamapps\common\Call of Duty World at War" `
+         "C:\Users\b\ZombiesDev\waw-base" /S /E /DCOPY:DA /COPY:DAT /MT:16 /R:1 /W:1
+
+# 2. Your own game copy: ~12 MB, junctions into waw-base for the big folders.
+powershell -ExecutionPolicy Bypass -File tools\dev\new-copy.ps1 <yourname>
+
+# 3. Build, deploy, run.
+powershell -ExecutionPolicy Bypass -File tools\dev\build.ps1  -Name <yourname>
+powershell -ExecutionPolicy Bypass -File tools\dev\deploy.ps1 <yourname>
+powershell -ExecutionPolicy Bypass -File tools\dev\launch.ps1 <yourname> -Role solo -TestSeconds 35
+```
+
+You should see `[ENW]^7 enw_t4 ready` in
+`C:\Users\b\ZombiesDev\homes\<yourname>\main\console.log`. If you do, the whole chain works.
+
+**Two things will bite you if you skip them.** The game must not already be running (the launcher
+refuses, by design -- one game at a time). And if `build.ps1` fails on a file you did not write,
+`-CoreOnly` excludes everyone else's components so you are not blocked by someone else's WIP.
+
+**To develop without launching the game at all** -- which is most of the time --
+`build\<name>\loadtest.exe` loads the DLL in a bare console process. Copy
+`waw-base\binkw32.dll` next to it as `binkw32_org.dll` first (every export forwards there):
+
+```powershell
+.\build\<name>\loadtest.exe .\build\<name>\enw_t4.dll 5
+```
+
+Components register, logging works and the game-link connects; `steamstub` correctly reports
+`.bind absent` and declines to touch memory. No game lock, no window, no Steam.
+
+### Reference
 
 ```powershell
 # once per agent: a ~12 MB game copy (junctions into waw-base for the big folders)
@@ -224,6 +293,7 @@ Everything else in vault §2 is still unverified — that is `re`'s job.
 | `components/frame_dispatch.cpp` | installs the tick and reports on it |
 | `components/instance_paths.cpp` | per-instance profile via an IAT patch (off by default) |
 | `components/huffman_guard.cpp` | **the bounded compressed-message decode** (§11) |
+| `components/userinfo_guard.cpp` | sanitises player names and userinfo every frame (§11) |
 
 `thirdparty/minhook/` is vendored verbatim (BSD-2-Clause, `LICENSE.txt` and `VENDORED-FROM.txt`
 kept, upstream `8af6b4ac`). It brings its own length disassembler, which is the whole reason we are
@@ -304,9 +374,26 @@ my own open-items list several hours before it bit me, which is its own lesson.
 All window handling is time-boxed at 2 s. Past that the launcher disables it for the rest of the
 run and says so loudly, rather than holding `game.lock` (see §9).
 
-**Two instances at once: still untested****Two instances at once: still untested**, and `__CoDWaW` being a single-instance marker is a
-reason to expect trouble. Do not assume it works.
+### The interlock (changed — read this if you launch the game)
 
+`__CoDWaW` used to be doing two jobs: the safe-mode crash marker *and*, in practice, the only thing
+stopping two agents launching at once. That was fine until per-instance profiles moved it, which
+would have removed the guard silently. **`game.lock` now does the job properly**, and it no longer
+depends on any engine behaviour:
+
+1. **a live `CoDWaW`/`CoDWaWmp` process anywhere on the box refuses the launch**, found by
+   enumerating processes rather than by reading a file the game owns — so it works whatever the
+   profile layout is. The refusal names the offending PID;
+2. **the lock is acquired atomically** (`FileMode.CreateNew`, which fails if the file exists)
+   instead of the old test-then-write, which two launchers could both win;
+3. a lock whose PID is dead, or that is older than 15 minutes, or that is stuck on `starting` for
+   more than 2 minutes (a launcher that died between taking the lock and writing its PID), is
+   stale and gets taken once, loudly.
+
+The `__CoDWaW` check is still there as belt and braces, and now clears the per-instance copy too.
+
+**Two instances at once: still untested.** The interlock is what would have to be relaxed to try
+it, and it is deliberately the one place to change.
 
 ### Per-instance user data (designed, implemented, NOT yet proven)
 
@@ -321,7 +408,7 @@ the profile, `mods/` and the `__CoDWaW` marker all become per-instance for free.
 
 **Why an IAT patch rather than a detour, and why this is the only thing that can work.** The IAT
 lives in `.rdata`, which SteamStub does not encrypt, and the Windows loader fills it in *before* the
-PE entry point runs. So it can be installed at `post_load` \u2014 before the game's code is decrypted
+PE entry point runs. So it can be installed at `post_load` — before the game's code is decrypted
 and before any engine code executes. That matters, because the profile path is resolved during very
 early init, quite possibly before `post_unpack`. Nothing that needs decrypted code could get there
 in time. It is also a single pointer write with no prologue to relocate, and trivially reversible.
@@ -332,18 +419,18 @@ Implemented in `shared/core/components/instance_paths.cpp`, plus `memory::hook_i
 
 **How confident am I?**
 
-* *Mechanism \u2014 high.* The import is really there, the suffix string is really there, IAT patching
+* *Mechanism — high.* The import is really there, the suffix string is really there, IAT patching
   before the entry point is standard and we already do PE parsing for `.text`/`.bind`. The component
   counts its own hits and says plainly if the engine never came through `SHGetFolderPathA`, so a
   wrong assumption reports itself instead of silently sharing a profile.
-* *Completeness \u2014 medium.* I have not proven the engine resolves the profile *only* this way. It
+* *Completeness — medium.* I have not proven the engine resolves the profile *only* this way. It
   may cache the path elsewhere, or use the registry `installpath`, or the Demonware/profile code may
   have its own route. The hit counter will tell us on the first real run.
-* *Second-order effects \u2014 low confidence, and this is the part to watch.* A fresh AppData means **no
+* *Second-order effects — low confidence, and this is the part to watch.* A fresh AppData means **no
   profile**, which will trigger whatever first-run profile flow exists (possibly another modal).
   The directory should be seeded by copying B's existing `players\` on first use; `new-copy.ps1`
   does not do that yet. And making `__CoDWaW` per-instance removes the single-instance interlock,
-  which is probably what unblocks several games per box \u2014 but "probably" is doing real work in that
+  which is probably what unblocks several games per box — but "probably" is doing real work in that
   sentence, and it is also the interlock that currently stops two agents colliding.
 
 **Untested end to end**, because until the startup dialogs were being answered no run ever reached a
@@ -422,33 +509,37 @@ This deserves a decision from B before anyone designs the leasing flow. Logged i
 
 ## 10. Open items
 
-1. **Bypass the renderer init at `0x5FF4E0`** so WinMain reaches its loop in *dedicated* mode. Solo
-   gets there fine (301 frames measured); a dedicated server never does. Shared blocker with
-   `dedi`'s Stage C; `re` has the exact site.
-2. **`re`: a userinfo write seam** — `Dvar_SetStringByName`, `Dvar_RegisterString` + the USERINFO
-   flag, or `Cbuf_AddText`. This is the single blocker on invite-token joins (§11).
-3. **`re`: argument lists for `CL_ConnectionlessPacket` (0x643380), `SV_ConnectionlessPacket`
-   (0x634E90) and `SV_DirectConnect` (0x62E3A0)**, so the OOB lockdown and direct connect can be
-   hooked rather than guessed at (§11).
-4. **`dedi`: a listener**, then the two-instance test as one experiment under one lock.
-5. **Prove the per-instance profile.** Implemented and now seeded by `new-copy.ps1`, but never run.
-   **Replace the `__CoDWaW` interlock first** — turning on `ENW_PRIVATE_PROFILE=1` moves that file
-   per-instance and silently disables the only thing currently stopping two launches colliding.
-   `game.lock` should take that job properly.
-6. **Two instances on one box** — still untested, and gated on item 5.
-7. **Steam client per game box** — with B as a business decision (§8). Nobody is to test offline
+Blocked on `re`, in the order they unblock things:
+
+1. **What does the server licence check at 0x48A250 compare?** (`CHALLENGERESPONSE: Got server
+   licenseid %llx`.) If that cannot be satisfied legitimately it is the real obstacle in the
+   product, not a detail. Highest priority.
+2. **A userinfo write seam** — `Dvar_SetStringByName`, `Dvar_RegisterString` plus the USERINFO bit
+   proven from an instruction, or `Cbuf_AddText`. Single blocker on invite-token joins.
+3. **Argument lists for `CL_ConnectionlessPacket` (0x643380), `SV_ConnectionlessPacket` (0x634E90)
+   and `SV_DirectConnect` (0x62E3A0)**, for the OOB lockdown and direct connect.
+4. **The `dvar_s` layout**, for the saved-dvar / `activeAction` / `bind` guard (security item 5).
+5. **Bypass the renderer init at 0x5FF4E0** so WinMain reaches its loop in *dedicated* mode. Solo
+   gets there (301 frames measured); a dedicated server never does. Shared with `dedi`.
+
+Ours:
+
+6. **Prove the per-instance profile.** Implemented, seeded by `new-copy.ps1`, and now safe to try:
+   `game.lock` is the interlock, so `-PrivateProfile` no longer removes the collision guard.
+7. **Two instances on one box** — still untested; the interlock is the one place to relax.
+8. **Steam client per game box** — with B as a business decision (§8). Nobody is to test offline
    mode; that is B's to do.
-8. **`referee` and `dedi` to migrate to `frame::subscribe`** when convenient. No collision either
+9. **`referee` and `dedi` to migrate to `frame::subscribe`** when convenient. No collision either
    way: the core holds the call site, not `Com_Frame` itself.
-9. `con_minicon 1` is still passed by `launch.ps1` and nobody has checked what it changes. Its
-   neighbour `developer 1` cost us the evening, so this deserves five minutes.
+10. **`con_minicon 1`** is still passed by `launch.ps1` and nobody has checked what it changes. Its
+    neighbour `developer 1` cost us the evening, so this deserves five minutes.
 
 ## 11. Client side: joining (started)
 
 `client-dll/` is mine; `server/components/` stays `dedi`'s and `referee`'s. Everything here reuses
 `shared/core` rather than forking it.
 
-### Security 1 \u2014 the bounded Huffman decode (done, armed)
+### Security 1 — the bounded Huffman decode (done, armed)
 
 `shared/core/components/huffman_guard.cpp`. It lives in the shared core because it protects the
 server *and* the client with one hook.
@@ -468,13 +559,13 @@ from both callers but ignores it". It receives no such argument. Reading 0x6751D
 ```
 
 So the real signature is `int f(int src_len /*eax*/, const void* src /*ecx*/, void* dst /*[esp+4]*/)`
-\u2014 three parameters, compiler-chosen convention, every `ret` is `C3` so the caller cleans the one
+— three parameters, compiler-chosen convention, every `ret` is `C3` so the caller cleans the one
 stack argument. That makes it *worse* than the audit says: the function cannot bound its output
 even in principle, so the fix has to be outside it.
 
 **What we do:** interpose with a naked stub (no C++ convention can express eax/ecx/stack), decode
 into our own scratch instead of the caller's buffer, and copy back at most 0x20000. The scratch is
-8\u00d7 the maximum input \u2014 the provable worst case, since a symbol is at least one bit \u2014 and is
+8× the maximum input — the provable worst case, since a symbol is at least one bit — and is
 followed by a `PAGE_NOACCESS` guard page, so if that reasoning is ever wrong we take a clean access
 violation inside our own allocation instead of silently corrupting the game's `.data`. An overlong
 decode copies nothing, returns 0 and logs loudly; failing closed is right, because a message that
@@ -484,7 +575,7 @@ expands past the window is not one we want parsed.
 
 `client-dll/components/network.cpp`.
 
-**Every socket function in the exe is imported by ORDINAL, not by name** \u2014 WSOCK32 ordinals
+**Every socket function in the exe is imported by ORDINAL, not by name** — WSOCK32 ordinals
 2,3,4,9,10,12,14,16,17,19,20,21,23,52,57,111,115 plus five from WS2_32. A name-based IAT hook finds
 nothing, which is why `memory::hook_import_ordinal()` now exists. **Ordinal 52 is `gethostbyname`**,
 and it is the single chokepoint for every name the game resolves. Replacing that one slot needs no
@@ -501,10 +592,61 @@ The client tries to reach Activision's auth infrastructure on every launch. `*.a
 `*.demonware.net` and `*.treyarch.com` are blocked unconditionally; `-StrictNet` denies anything
 not in `-AllowedHosts` (default `.enw.gg`); every lookup is logged either way.
 
-**Not done:** the OOB packet filter (`CL_ConnectionlessPacket` 0x643380) and the
-`connect`/`reconnect` lockdown. I read the prologue \u2014 a 0x464-byte frame, register-passed state
-and at least one stack argument \u2014 and stopped. A wrong detour on the connectionless path is an
-intermittent crash hours later, so I want the argument list from `re` first.
+### Locking where the game may talk (vault security item 4, done)
+
+Same component, same technique, ordinals **20 (`sendto`)** and **4 (`connect`)**. Every outbound
+packet leaves through one of those two, so enforcing there is **strictly stronger than locking the
+`connect` console command**: it does not matter how the game is persuaded to connect — a console
+command, a menu, a redirect inside a `connectResponse`, a stray `reconnect` — traffic only goes to
+addresses the launcher named (`-AllowedAddrs`, plus loopback always).
+
+Permissive by default: every new destination is logged once, so we learn what the game actually
+talks to before we start dropping anything. `-StrictNet` enforces. A blocked `sendto` returns the
+length as if it had sent, rather than an error, because error paths in the engine are code we have
+not audited and a silent drop is the safer refusal.
+
+This also blunts most of what the OOB filter is for: a hostile connectionless packet from an
+address we do not talk to cannot get a reply out of us.
+
+### No in-game downloads (item 6)
+
+`cl_allowDownload 0` on the launcher's command line, and the destination lockdown above means a
+download could not reach a non-allow-listed host even if something re-enabled it. iw4x's
+`Download.cpp` extension/path checks are not ported and are not needed while the transport is
+closed; they become relevant if we ever turn FastDL on.
+
+### Names and userinfo (item 7, done)
+
+`shared/core/components/userinfo_guard.cpp`. A connecting client controls its own `name` and its
+whole `userinfo`, and both end up in console prints, the scoreboard, the game log, and in
+backslash-delimited info strings that other code re-parses. The classic Q3-lineage bugs are a quote
+or a backslash in a name (injects a key into an info string), a control character or newline
+(forges a line in the game log — and IW4MAdmin-style parsers read that log), and a `%` (reaches a
+printf-family format eventually).
+
+We sanitise from the **frame tick**, sweeping the four client slots, because we have verified
+offsets (`svs` 0x23D5C80, `svs.clients` +0x171410, stride 0x58D30, `userinfo` +0x6F0, `name`
++0x11548) but no verified signature for `SV_DirectConnect`. A hostile name therefore exists for at
+most one frame before it is fixed, and this needs no new addresses. When `re` lands
+`SV_DirectConnect`, the same check should move earlier; the sanitiser itself will not change.
+
+**The safety rule in that file matters:** it only ever replaces bytes in place or shortens, never
+grows a string. We do not know either buffer's exact capacity, so nothing there can overflow one
+even if an offset turns out to be wrong — the worst case is a few harmless characters written over
+something that was not what we thought. Backslashes are scrubbed from **names** (they are
+structural in info strings) but deliberately **not** from `userinfo`, where they are the separators.
+
+### Still not done, and why
+
+* **The OOB packet filter** (`CL_ConnectionlessPacket` 0x643380). I read the prologue — a
+  0x464-byte frame, register-passed state, at least one stack argument — and stopped. A wrong
+  detour on the connectionless path is an intermittent crash hours later, so I want the argument
+  list from `re` first.
+* **The saved-dvar / `activeAction` / `bind` guard (item 5).** This one genuinely needs something
+  we do not have: the `dvar_s` layout, or a dvar setter. `re` established that an enum dvar's value
+  sits at `+0x10` (WinMain reads `com_dedicated` that way), which is a start, but I am not writing
+  into dvar internals off a single offset inferred from a single call site. Needs
+  `Dvar_SetStringByName` / `Dvar_RegisterString`, or `dvar_s` in `shared/t4/structs.hpp`.
 
 ### The invite token (plumbed, one gap)
 
@@ -512,7 +654,7 @@ intermittent crash hours later, so I want the argument list from `re` first.
 **environment**, never argv: a command line is readable by every other process on the box and ends
 up in logs and crash dumps. The DLL reads it once in `post_load`, checks the `<b64url>.<b64url>`
 shape, and then **clears the environment variable** so it is neither inherited by a child nor
-visible to anything walking our environment afterwards. It is never logged \u2014 only fingerprinted
+visible to anything walking our environment afterwards. It is never logged — only fingerprinted
 (`eyJ2Ij...VzdA (122 chars)`), and it is zeroed at shutdown.
 
 **The gap:** getting it into userinfo. That needs `Dvar_SetStringByName`, or `Dvar_RegisterString`
@@ -520,17 +662,17 @@ plus the USERINFO flag value, or `Cbuf_AddText` (to run `setu enw_token <v>`). `
 `Dvar_RegisterBool/Enum` are verified; none of those are. The component warns every run rather
 than failing quietly.
 
-### Direct connect (not started \u2014 blocked)
+### Direct connect (not started — blocked)
 
 Blocked on two things, neither of them mine to decide: the signatures above, and `dedi` having a
 listener. The T4 handshake, from strings in the exe:
 
 | Direction | String | Address |
 |---|---|---|
-| client \u2192 server | `getchallenge 0 "%s"` | 0x48A14C |
-| server \u2192 client | `challengeResponse %i %s` | 0x486B98 |
-| client \u2192 server | `connect ` + userinfo | 0x48A1AC |
-| server \u2192 client | `connectResponse %s` | 0x48705C |
+| client → server | `getchallenge 0 "%s"` | 0x48A14C |
+| server → client | `challengeResponse %i %s` | 0x486B98 |
+| client → server | `connect ` + userinfo | 0x48A1AC |
+| server → client | `connectResponse %s` | 0x48705C |
 | server reject | `rejected connect from protocol version %i (should be %i)` | 0x486D2C |
 
 The one that stands out: `CHALLENGERESPONSE: Got server licenseid %llx` (0x48A250). The T4 client

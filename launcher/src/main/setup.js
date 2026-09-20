@@ -281,6 +281,61 @@ export function uninstall({ keepMaps = true } = {}) {
   return done
 }
 
+// What is on disk, for the Storage page (spec 13 §2: "a Storage page shows sizes per
+// map"). Bounded: it walks our own folders only, and a junction is reported as a link
+// rather than followed — the ENW game folder would otherwise "weigh" the player's
+// whole 12 GB install.
+export function storage() {
+  const measure = (dir) => {
+    let bytes = 0
+    let files = 0
+    let links = 0
+    const walk = (d, depth) => {
+      if (depth > 12) return
+      let entries = []
+      try { entries = fs.readdirSync(d, { withFileTypes: true }) } catch { return }
+      for (const e of entries) {
+        const p = path.join(d, e.name)
+        let st
+        try { st = fs.lstatSync(p) } catch { continue }
+        if (st.isSymbolicLink()) { links++; continue }
+        if (st.isDirectory()) walk(p, depth + 1)
+        else { bytes += st.size; files++ }
+      }
+    }
+    if (fs.existsSync(dir)) walk(dir, 0)
+    return { path: dir, exists: fs.existsSync(dir), bytes, files, links }
+  }
+
+  const maps = []
+  if (fs.existsSync(P.maps)) {
+    for (const e of fs.readdirSync(P.maps, { withFileTypes: true })) {
+      if (!e.isDirectory()) continue
+      const m = measure(path.join(P.maps, e.name))
+      let lastPlayed = null
+      try { lastPlayed = fs.statSync(path.join(P.maps, e.name)).atime.toISOString() } catch {}
+      maps.push({ id: e.name, ...m, lastPlayed })
+    }
+    maps.sort((a, b) => b.bytes - a.bytes)
+  }
+
+  const folders = {
+    game: measure(P.game),
+    home: measure(P.home),
+    maps: measure(P.maps),
+    logs: measure(P.logs),
+    crashes: measure(P.crashes),
+    updates: measure(P.updates),
+  }
+  return {
+    root: P.root,
+    folders,
+    maps,
+    total: Object.values(folders).reduce((n, f) => n + f.bytes, 0),
+    note: 'Linked folders point at your own copy of World at War and are not counted here.',
+  }
+}
+
 export function status() {
   let manifest = null
   try { manifest = JSON.parse(fs.readFileSync(P.setupManifest, 'utf8')) } catch {}

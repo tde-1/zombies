@@ -63,6 +63,8 @@ private:
         json::array players;
         const int n = referee::max_clients();
         for (int slot = 0; slot < n && slot < kMaxPlayers; ++slot) {
+            auto c = referee::client(slot);
+            if (!c || !c->active) continue;   // a listen server leaves gclient set on unused slots
             auto e = referee::player_ent(slot);
             if (!e) continue;
             auto& prev = players_[slot];

@@ -23,8 +23,10 @@ const host = val('--host', null)
 const siteUrl = val('--site', 'http://127.0.0.1:8099')
 
 if (has('--dry-run')) {
+  // Local play never gets a +connect: the engine would leave the map for the server
+  // the moment it loaded.
   const args = buildArgs({
-    host: host || '127.0.0.1:28960',
+    host: has('--local') ? null : host || '127.0.0.1:28960',
     map: has('--local') ? map : null,
     stealth,
     settings: { fov: 80, maxFps: 125 },

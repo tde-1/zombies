@@ -22,7 +22,7 @@ import hashlib
 import json
 import os
 import re
-import subprocess
+
 import sys
 import time
 import urllib.parse
@@ -33,7 +33,6 @@ from lib import catalogue, linkcheck, net  # noqa: E402
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 QUARANTINE = os.path.join(WORK, "quarantine")
 ORIGINALS = os.path.join(WORK, "originals")
-MPCMDRUN = r"C:\Program Files\Windows Defender\MpCmdRun.exe"
 
 # Hosts we can actually pull bytes from, in preference order.
 HOST_RANK = {"mediafire.com": 0, "archive.org": 1, "onedrive.live.com": 2, "1drv.ms": 2,
@@ -115,21 +114,14 @@ def sha256_of(path):
 
 
 def av_scan(path):
-    """Windows Defender, on demand, on one file. Recorded either way."""
-    if not os.path.exists(MPCMDRUN):
-        return {"scanner": None, "result": "no scanner available"}
-    try:
-        r = subprocess.run([MPCMDRUN, "-Scan", "-ScanType", "3", "-File", path,
-                            "-DisableRemediation"],
-                           capture_output=True, text=True, timeout=900)
-        out = (r.stdout or "") + (r.stderr or "")
-        clean = "found no threats" in out.lower() or r.returncode == 0
-        return {"scanner": "Windows Defender MpCmdRun", "returncode": r.returncode,
-                "result": "clean" if clean else "THREAT OR ERROR",
-                "output": out.strip()[-2000:]}
-    except Exception as exc:
-        return {"scanner": "Windows Defender MpCmdRun",
-                "result": "scan failed: %s: %s" % (exc.__class__.__name__, exc)}
+    """Delegate to archive/avscan.py.
+
+    The obvious call, `MpCmdRun.exe -Scan -ScanType 3 -File <path>`, returns exit 0
+    with "was skipped" when it is not elevated -- so the first version of this
+    function recorded fourteen unscanned files as clean. See avscan.py.
+    """
+    import avscan
+    return avscan.scan(path)
 
 
 def filename_for(url, resp, fallback):

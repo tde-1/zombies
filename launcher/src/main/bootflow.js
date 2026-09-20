@@ -201,7 +201,9 @@ export class BootFlow extends EventEmitter {
       stealth: !!o.stealth,
       instance: `local-${o.localMap}`,
       role: 'solo',
-      linkHost: o.linkHost,
+      // No host agent for a local game, so the game-link stays dormant rather than
+      // retrying a connection that will never succeed.
+      linkHost: null,
       lockName: o.lockName || 'launcher',
       why: `launcher: local ${o.localMap}`,
       useGameLock: o.useGameLock,
@@ -218,17 +220,17 @@ export class BootFlow extends EventEmitter {
       return this.snapshot()
     }
     this.step('in_game', 'active', 'loading the map on your PC', { label: 'In game (untracked)' })
-    // The only honest confirmation for a local game is the engine's own log.
+    // The only honest confirmation for a local game is the engine's own log, and the
+    // line that means "playable" is the zombies level-start autosave — not "Loading
+    // fastfile", which fires a dozen times before any map exists.
     const loaded = await new Promise((resolve) => {
       const until = Date.now() + (o.connectTimeoutMs ?? 90000)
-      const onLine = (line) => {
-        if (/Loading fastfile|\.d3dbsp|Server Initialization/i.test(line)) { cleanup(); resolve(line.trim().slice(0, 120)) }
-      }
+      const onUp = (ev) => { cleanup(); resolve(ev.map ? `${ev.map} is up and playable` : 'the map is up and playable') }
       const timer = setInterval(() => {
         if (this.cancelled || l.ended || Date.now() > until) { cleanup(); resolve(null) }
       }, 500)
-      const cleanup = () => { clearInterval(timer); l.off('console', onLine) }
-      l.on('console', onLine)
+      const cleanup = () => { clearInterval(timer); l.off('map_up', onUp) }
+      l.on('map_up', onUp)
     })
     this.step('in_game', loaded ? 'done' : 'active',
       loaded ? `the map is loading on your PC: ${loaded}` : 'the game is running; the engine has not reported a map yet',

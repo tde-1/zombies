@@ -91,6 +91,14 @@ namespace t4
         constexpr std::uintptr_t clientchat_send            = 0x655C80; // [V] sends "0clientchat %s" (client->server chat transport)
         constexpr std::uintptr_t hostchat_send              = 0x65B630; // [V] sends "0hostchat %s %s"
 
+        // ---- connect / licence (foundation) ----------------------------------------
+        constexpr std::uintptr_t CL_SendConnectPacket       = 0x642C80; // [V] builds `connect` infostring (protocol/challenge/qport/bdTicket/invited); calls Demonware getAuthTicket
+        constexpr std::uintptr_t DW_GetAuthTicket           = 0x57C0E0; // [V] Demonware auth; failure -> Com_Error "PATCH_SERVER_AUTHFAIL". Skipped for NA_LOOPBACK/NA_BOT. Short-circuit for own-client remote connect.
+        constexpr std::uintptr_t CL_SetUserInfo             = 0x644B20; // [V] resends userinfo when dvar_modifiedFlags & USERINFO(0x2)
+        constexpr std::uintptr_t set_cmd_dispatch           = 0x5A00E0; // [V] handles set/setu/sets/seta console commands
+        constexpr std::uintptr_t dvar_modifiedFlags         = 0x21ACF30;// [V] byte/word OR'd with a changed dvar's flags; USERINFO bit (0x2) gates userinfo resend
+        constexpr std::uintptr_t serverLicenseId            = 0x3051608;// [V] 64-bit; parsed from challengeResponse, echoed in connect. Client does NOT validate the id.
+
         // ---- script VM (referee: rounds, EE flags, score, knobs) -------------------
         constexpr std::uintptr_t Scr_NotifyNum          = 0x698CC0; // [V] every notify funnels here. EAX=scriptInstance(0=server); stack: entnum, classnum, stringValue(notify-name strId), paramcount. 98 callers.
         constexpr std::uintptr_t VM_Notify              = 0x698670; // [V] deepest chokepoint (2 callers). EAX=scriptInstance; stack: notifyListOwnerId, stringValue, top. `level notify(x)`: ownerId==gScrVarPub[0].levelId. BEST notify hook.
@@ -136,7 +144,9 @@ namespace t4
     // dvar_s flags are a 16-bit word at dvar_s + 0x8 (verified in SetSavedDvar).
     namespace dvar_flag
     {
-        constexpr std::uint16_t SAVED = 0x1000; // [V] the bit SetSavedDvar requires (NOT 0x200)
+        constexpr std::uint16_t SAVED    = 0x1000; // [V] SetSavedDvar test @0x516B15 (NOT the T4SP-enum 0x200)
+        constexpr std::uint16_t USERINFO = 0x0002; // [V] userinfo-resend gate @0x644B64 on dvar_modifiedFlags(0x21ACF30)
+        // Other bits NOT re-verified — do NOT trust T4SP's flag enum without an instruction check.
     }
 
     // ---- memory reserve patch sites (T4M-Enhanced facts; re-implement, don't copy) ------

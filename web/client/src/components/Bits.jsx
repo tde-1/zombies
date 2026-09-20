@@ -82,15 +82,21 @@ export function Level({ standing, showBar = false }) {
 // ---- badges -------------------------------------------------------------------------
 // The map badge is Movement's glass hexagon with the map art, gold while the holder holds a
 // record on that map (05). `locked` is the shelf's greyed-out slot.
-export function Hex({ badge, size = 58, gold = false, locked = false, label = null }) {
+// With no art, the hexagon shows the map's ENGINE NAME stem — FACTORY, PROTOTYPE, ALI —
+// not a truncated copy of the title that is already printed underneath it. The stem is what
+// the community and every filename call the map anyway, and it is short enough to read at
+// 56px, which the title is not.
+export function Hex({ badge, size = 58, gold = false, locked = false, label = null, code = null }) {
   const nm = label || (badge && badge.name) || ''
+  const stem = code || stemOf(badge)
   return (
     <span className={`hex ${gold ? 'gold' : ''} ${locked ? 'locked' : ''}`} style={{ '--size': `${size}px` }} title={nm}>
-      {badge && badge.art ? <img src={badge.art} alt="" /> : <span>{shortName(nm)}</span>}
+      {badge && badge.art ? <img src={badge.art} alt="" /> : <span>{stem || shortName(nm)}</span>}
     </span>
   )
 }
 
+const stemOf = (b) => (b && b.map_key ? String(b.map_key).replace(/^nazi_zombie_/, '').toUpperCase().slice(0, 9) : null)
 const shortName = (s) => String(s || '').split(/\s+/).slice(0, 2).map((w) => w.slice(0, 6)).join(' ')
 
 export function BadgeTile({ badge, gold = false }) {

@@ -3,17 +3,30 @@
   "map": "nazi_zombie_hijacked",
   "title": "BO2 Hijacked Zombies",
   "source": "custom",
-  "author": null,
-  "released": null,
+  "author": "FinalKill9175",
+  "released": "2015-07-17",
   "fs_game": "mods/nazi_zombie_hijacked",
   "script_fingerprints": {
     "maps/_zombiemode.gsc@hijacked.iwd": "4d17ad37b8c40f41f951c8066f1e6141c2ad2005f454ee822a6b014cf35477a2"
   },
   "badge": {
-    "main_finish": "round",
+    "main_finish": "buyable_ending",
     "round_n": 20
   },
   "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidate_entities": [
+        "end_game"
+      ]
+    },
     {
       "id": "round",
       "label": "Round 20",
@@ -24,8 +37,8 @@
     }
   ],
   "signals": [],
-  "confidence": "guess",
-  "needs_human": true,
+  "confidence": "read",
+  "needs_human": false,
   "scanner": {
     "verdict": "manual",
     "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death) but nothing decidable",
@@ -75,7 +88,26 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "4d17ad37b8c40f41f951c8066f1e6141c2ad2005f454ee822a6b014cf35477a2",
-    "script_count": 117
+    "script_count": 117,
+    "verdict_raw": "manual",
+    "verdict_debiased": "round",
+    "why_debiased": "no easter egg or ending found; default Round 20",
+    "verdict_entities": "buyable_ending",
+    "why_entities": "entity named like an ending: end_game (the cost is hardcoded in script, as on nazi_zombie_ali, so there is no zombie_cost outlier to find)",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [],
+      "end_entities": [
+        "end_game"
+      ]
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
   },
   "archive": {
     "original": "BO2_Hijacked_Zombies_v1.1.exe",
@@ -90,8 +122,12 @@
       "$PLUGINSDIR/System.dll",
       "$PLUGINSDIR/nsDialogs.dll"
     ],
-    "catalogue_tags": [],
-    "catalogue_description": null
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Hello UGX, this is FinalKill and I am uploading my third map to this site. This map is a zombies remake of the well known black ops 2 multiplayer map, Hijacked. It took about a month to develop, and it has turned out well. Survivng Hijacked 1. Hijacked Rounds As a replacement for dog rounds, every five rounds a \u2018Hijacked Round\u2019 will occur. Essentially, on Hijacked Rounds, each player is forced to use a random wall weapon for the round. You cannot hit the box, buy another wall weapon, or purchase perks during the round. If you get down, there is a chance that you may lose a random weapon that you had before the hijacked round. At the end of the round, the perks will fly back down onto the boat and you will get your weapons back. A perk called \u2018Hijacked Aid\u2019 will help you with Hijacked Rounds. Hijacked Aid is discussed below. 2. Hijacked Aid To help you with Hijacked Rounds, a perk called Hijacked Aid (Cost: 2500) will carry you through the round. Every 20 seconds, during Hijacked Rounds, the ammo in your weapon will be replenished, and you can pack-a-punch for 2500 points (But remember, you lose that weapon at the end of the round!). 3. Building the Power In order to get the power turned on in this map, you must build it. Parts and where to build it is shown below: 4. Perk Limit After buying four perks, you will have to buy another perk slot. You can buy a perk slot at anytime at the table near electric cherry on the upper floor for the second cabin. Each perk slot costs 1,250"
   },
   "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

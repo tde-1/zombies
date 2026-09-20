@@ -1,0 +1,118 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "sanatorium",
+  "title": "CLINIC OF EVIL",
+  "source": "custom",
+  "author": "IZaRTaX",
+  "released": "2016-06-22",
+  "fs_game": "mods/sanatorium",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "4ff2b22357eadfbbee16e3ac8f2587ad457f07891d0dc1b9769644ed08272e8b"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "scanner": {
+    "verdict": "manual",
+    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death) but nothing decidable",
+    "scripts": 128,
+    "entities": 2923,
+    "ee_candidates": [],
+    "ending_words": [
+      "arcademode_ending_complete",
+      "crawler_round_ending",
+      "dog_round_ending",
+      "end_game",
+      "ending_extended_death"
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "rotating_door",
+        "pf2806_auto3"
+      ],
+      [
+        1250,
+        "rotating_door",
+        "pf1_auto423"
+      ],
+      [
+        1250,
+        "rotating_door",
+        "pf1_auto423"
+      ],
+      [
+        1000,
+        "rotating_door_2",
+        "pf9716_auto9"
+      ],
+      [
+        1000,
+        "rotating_door_2",
+        "pf9716_auto4"
+      ]
+    ],
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "4ff2b22357eadfbbee16e3ac8f2587ad457f07891d0dc1b9769644ed08272e8b",
+    "script_count": 128,
+    "verdict_raw": "manual",
+    "verdict_debiased": "round",
+    "why_debiased": "no easter egg or ending found; default Round 20",
+    "verdict_entities": "round",
+    "why_entities": "no easter egg or ending found in scripts or entities; default Round 20",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [],
+      "end_entities": []
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
+  },
+  "archive": {
+    "original": "_clinic_of_evil_by_IZaRTaX_05_11_2018.rar",
+    "original_sha256": "9bed0520ef841105220f7760566327194fab7ea3e3f7e587ab12d23ebf9ffd29",
+    "original_size": 464957481,
+    "source_url": "http://www.mediafire.com/file/2g927xr3x6fdxax/_clinic_of_evil_by_IZaRTaX_05_11_2018.rar/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-20T00:49:32Z",
+    "av": "clean",
+    "installer_kind": "rar",
+    "shipped_executables": [
+      "Clinic Of Evil.exe"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Clinic of Evil (Original idea based on a real urban exploration) In the summer of 2015 I went in an urbex with a lot of friends. So I thought why not make a map like this based on a sanatorium. This map has many features: \u2013 Mob of the Dead Style environment \u2013 Variety of weapons (BO2, AW, Custom) \u2013 Gondola \u2013 Acid Gat \u2013 Brutus \u2013 Shield \u2013 EE \u2013 Endgame \u2013 And much more\u2026 Credit: Treyarch (CodWaw mod tools) IZaRTaX (map,level documentation,level design,game design,scripts,fx\u2019s,sound,textures,models,lights) RDV (elevator,gondola,character zombies,acidkit,shield,hud,Pause Menu,brutus,hintstrig,scripts) ElTitoPricus (weapons,character players,character sound) Andy Whelan (photoshop template) Harry Bo21 (shield, electric cherry,hintstrig) DidUknowiPwn (t6 hud) DuaLVII (rotating doors,zmb spawn system) Tom_BMX (tools) Wollowizzy (beta tester)"
+  },
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 1 executable(s): Clinic Of Evil.exe. NEVER RUN THEM (dev-box.md rule 3). "
+}

@@ -198,7 +198,7 @@ table.data td.num, table.data th.num { text-align: right; font-family: var(--num
 }
 .mapcard:hover { border-color: var(--accent-2); }
 .mapcard .art {
-  aspect-ratio: 16 / 9; border-radius: var(--radius-sm); background: var(--panel-2);
+  aspect-ratio: 16 / 9; max-height: 240px; border-radius: var(--radius-sm); background: var(--panel-2);
   display: flex; align-items: center; justify-content: center; overflow: hidden;
   color: var(--faint); font-family: var(--display); font-size: 12px; letter-spacing: .08em;
   text-transform: uppercase; border: 1px solid var(--line);

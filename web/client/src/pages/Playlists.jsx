@@ -37,7 +37,7 @@ function Row({ p }) {
   return (
     <Link className="card" to={`/playlists/${p.slug}`}>
       <h3>{p.name}</h3>
-      <p className="sub" style={{ margin: '4px 0 8px' }}>{p.blurb || `${p.map_count} maps`}</p>
+      <p className="sub" style={{ margin: '4px 0 8px' }}>{p.blurb || `${p.map_count} map${p.map_count === 1 ? '' : 's'}`}</p>
       <div className="row wrap" style={{ gap: 5 }}>
         {p.maps.slice(0, 6).map((m) => <span className="chip" key={m.key}>{m.title}</span>)}
         {p.map_count > 6 && <span className="chip">+{p.map_count - 6}</span>}

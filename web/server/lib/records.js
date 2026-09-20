@@ -172,6 +172,12 @@ function submitFromGame(game, summary) {
     // marked, because vault 10 wants the mismatch shown rather than the run hidden.
     if (profile === 'ENW-Verified' && problems.length) continue
     for (const c of cats) {
+      // An external profile only gets the categories it actually has. ZWR and
+      // speedrun.com run highest-round and the two speedruns; the four ENW challenge
+      // brackets are ours, and minting a "ZWR No Jug" board would be inventing a category
+      // on somebody else's behalf — and would put the same run on three boards that all
+      // say the same thing.
+      if (profile !== 'ENW-Verified' && !['round', 'ee_speedrun', 'buyable_speedrun'].includes(c.category)) continue
       const board = ensureBoard({ mapKey: game.map_key, versionId: game.map_version_id, category: c.category, playerCount: pc, profile })
       if (!board || board.frozen) continue
       const rec = insertRun(board, {
@@ -225,18 +231,30 @@ function hub({ category = null, playerCount = null, profile = 'ENW-Verified', li
   return out.slice(0, limit)
 }
 
+// What this player currently holds. DEDUPED by (map, category, player count): the same run
+// stands on the ENW board and on the ZWR and speedrun.com boards, and listing it three
+// times on a profile says nothing the first line did not. ENW-Verified wins because it is
+// the board this site owns; the others are shown on the map page where the profile filter
+// is a visible control.
 function heldBy(steamId) {
   const sid = String(steamId)
   const rows = db.prepare(`SELECT r.*, b.map_key, b.category, b.player_count, b.profile, b.sort, m.title
                              FROM records r JOIN boards b ON b.id=r.board_id JOIN maps m ON m.key=b.map_key
-                            WHERE r.current=1 AND r.verified=1 AND r.roster LIKE ?`).all(`%"${sid}"%`)
+                            WHERE r.current=1 AND r.verified=1 AND r.roster LIKE ?
+                            ORDER BY CASE b.profile WHEN 'ENW-Verified' THEN 0 ELSE 1 END`).all(`%"${sid}"%`)
   const held = []
+  const seen = new Set()
   for (const r of rows) {
+    const key = `${r.map_key}|${r.category}|${r.player_count}`
+    if (seen.has(key)) continue
     const top = rowsFor(r.board_id, 1)[0]
-    if (top && top.id === r.id) held.push({
-      map_key: r.map_key, map_title: r.title, category: r.category, label: CATEGORY_LABEL[r.category] || r.category,
-      player_count: r.player_count, profile: r.profile, round: r.round, value_ms: r.value_ms, at: r.created_at,
-    })
+    if (top && top.id === r.id) {
+      seen.add(key)
+      held.push({
+        map_key: r.map_key, map_title: r.title, category: r.category, label: CATEGORY_LABEL[r.category] || r.category,
+        player_count: r.player_count, profile: r.profile, round: r.round, value_ms: r.value_ms, at: r.created_at,
+      })
+    }
   }
   return held
 }

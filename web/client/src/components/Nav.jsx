@@ -37,6 +37,7 @@ export default function Nav() {
       <NavLink to="/records" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Records</NavLink>
       <NavLink to="/badges" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Badges</NavLink>
       <NavLink to="/playlists" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Playlists</NavLink>
+      <NavLink to="/custom" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Custom</NavLink>
       {isMod && <NavLink to="/admin" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Admin</NavLink>}
 
       <div className="spacer" />

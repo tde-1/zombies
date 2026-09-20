@@ -372,6 +372,7 @@ function renderSettings() {
 
   const p = $('pathsBody')
   p.replaceChildren()
+  renderStorage()
   const st = S.status
   const row = (k, v) => { const d = el('div', 'kv'); d.append(el('span', 'k', k)); d.append(el('span', 'v mono', v || '—')); p.append(d) }
   row('ENW folder', st?.enwRoot)
@@ -380,13 +381,40 @@ function renderSettings() {
   row('Site', st?.site?.url)
   const siteIn = document.createElement('input')
   siteIn.value = st?.config?.siteUrl || ''
-  siteIn.placeholder = 'http://127.0.0.1:8099 — leave blank to detect'
+  siteIn.placeholder = 'http://127.0.0.1:3200 — leave blank to detect'
   siteIn.onchange = () => window.enw.setConfig({ siteUrl: siteIn.value || null }).then(refresh)
   const f = el('div', 'field')
   f.append(el('label', null, 'Site URL'))
   f.append(siteIn)
   f.append(el('div', 'hint', 'Where the launcher loads the site from. Blank means: try the usual local ports.'))
   p.append(f)
+}
+
+async function renderStorage() {
+  const box = $('storageBody')
+  box.replaceChildren()
+  let st
+  try { st = await window.enw.storage() } catch { return }
+  const mb = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} GB` : `${(n / 1e6).toFixed(1)} MB`)
+  const row = (k, v, sub) => {
+    const d = el('div', 'kv')
+    d.append(el('span', 'k', k))
+    d.append(el('span', 'v', v))
+    box.append(d)
+    if (sub) box.append(el('div', 'muted mono', sub))
+  }
+  for (const [name, f] of Object.entries(st.folders)) {
+    if (!f.exists) continue
+    row(name, `${mb(f.bytes)}${f.links ? ` + ${f.links} linked folder(s)` : ''}`)
+  }
+  row('total', mb(st.total))
+  box.append(el('div', 'muted', st.note))
+  if (st.maps.length) {
+    box.append(el('h2', null, 'Maps'))
+    for (const m of st.maps) row(m.id, mb(m.bytes))
+  } else {
+    box.append(el('div', 'muted', 'No maps downloaded yet. Map downloads are not built.'))
+  }
 }
 
 // ------------------------------------------------------------------- wiring --
@@ -430,7 +458,9 @@ function wire() {
   $('openRoot').onclick = () => window.enw.openFolder('root')
   $('openLogs').onclick = () => window.enw.openFolder('logs')
   $('btnUninstall').onclick = async () => {
-    const lines = await window.enw.uninstall({ keepMaps: true })
+    // No keepMaps: the main process asks the player, which is B's rule for uninstall.
+    const lines = await window.enw.uninstall({})
+    if (lines[0] === 'cancelled') return
     toast(lines.join(' '))
     refresh()
   }

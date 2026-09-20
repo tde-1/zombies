@@ -1,13 +1,13 @@
 {
   "schema": "enw.referee.manifest/0",
-  "map": "nazi_zombie_octogonal",
-  "title": "OCTAGONAL ASCENSION",
+  "map": "nazi_zombie_test1",
+  "title": "DESERT",
   "source": "custom",
-  "author": null,
-  "released": null,
-  "fs_game": "mods/nazi_zombie_octogonal",
+  "author": "Cod_ne",
+  "released": "2015-03-24",
+  "fs_game": "mods/nazi_zombie_test1",
   "script_fingerprints": {
-    "maps/_zombiemode.gsc@nazi_zombie_octogonal.iwd": "549a71c10e7c3ac1f066af80138fa8accad878fab38d76905f435b9d82bf6f4a"
+    "maps/_zombiemode.gsc@nazi_zombie_test1.iwd": "9e01476194b03d2765739a7ad38ad9dc04a6e5653ef18f4b07cff614d86684c4"
   },
   "badge": {
     "main_finish": "buyable_ending",
@@ -42,8 +42,8 @@
   "scanner": {
     "verdict": "manual",
     "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death) but nothing decidable",
-    "scripts": 117,
-    "entities": 1938,
+    "scripts": 109,
+    "entities": 478,
     "ee_candidates": [],
     "ending_words": [
       "arcademode_ending_complete",
@@ -55,29 +55,9 @@
     "orphan_end_triggers": [],
     "top_costs": [
       [
-        5000,
-        "zombie_debris",
-        "floor12"
-      ],
-      [
-        5000,
-        "zombie_debris",
-        "floor11"
-      ],
-      [
-        5000,
-        "pf611_auto1",
-        "?"
-      ],
-      [
-        4000,
-        "pf28_auto1",
-        "?"
-      ],
-      [
-        3000,
-        "zombie_debris",
-        "floor9"
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
       ]
     ],
     "common_script_overrides": [
@@ -87,8 +67,8 @@
       "maps/_load.gsc",
       "maps/_loadout.gsc"
     ],
-    "zombiemode_sha256": "549a71c10e7c3ac1f066af80138fa8accad878fab38d76905f435b9d82bf6f4a",
-    "script_count": 117,
+    "zombiemode_sha256": "9e01476194b03d2765739a7ad38ad9dc04a6e5653ef18f4b07cff614d86684c4",
+    "script_count": 109,
     "verdict_raw": "manual",
     "verdict_debiased": "round",
     "why_debiased": "no easter egg or ending found; default Round 20",
@@ -110,20 +90,22 @@
     }
   },
   "archive": {
-    "original": "nazi_zombie_octogonal_1.3.0.exe",
-    "original_sha256": "152e77bbec8222b73fd49643f32406b1bae43a85846072d3a3fc430087aa01f7",
-    "original_size": 414916747,
-    "source_url": "https://www.mediafire.com/file/8db04fchsdjucxr/nazi_zombie_octogonal_1.3.0.exe/file",
+    "original": "Zombie_Desert.exe",
+    "original_sha256": "79270d54784f85b736d170ca742f0c371f7f4613aea2daa3635da68ea45e747d",
+    "original_size": 306660387,
+    "source_url": "http://www.mediafire.com/file/5y7jaihbifwxd9r/Zombie_Desert.exe/file",
     "source_page": "https://zwr.gg/custom-downloads/waw",
-    "fetched": "2026-09-20T00:48:12Z",
+    "fetched": "2026-09-20T00:55:27Z",
     "av": "clean",
     "installer_kind": "nsis",
     "shipped_executables": [
       "$PLUGINSDIR/System.dll",
       "$PLUGINSDIR/nsDialogs.dll"
     ],
-    "catalogue_tags": [],
-    "catalogue_description": null
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "hi people today i bring you my new custom map Zombie Desert or Desert Zombie i don\u2019t know how you write. well this is a map of a single room the map is heavy because of the videos enjoy Features: *boss *custom perks shaders *verruct runners *custom pap camo *pap powerup *nuketown style perks *custom powerups *c4 *guns cod4, cod waw, bo, bo2, ghost y custom *10 perks *dogs from mp *tomahawk *special guns: thundergun, scavenger, mark2, blundergat, plasma pistol *end game *shi no numa zombies *videos *no monkey boms *mw3 intro *hitmarkers"
   },
   "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

@@ -31,6 +31,8 @@ proposals for the referee agent, not a replacement for referee/manifests/.
 from __future__ import annotations
 
 import argparse
+import collections
+import hashlib
 import glob
 import json
 import os
@@ -43,7 +45,16 @@ sys.path.insert(0, os.path.join(REPO, "referee"))
 sys.path.insert(0, os.path.join(REPO, "tools", "re"))
 
 import scan_map  # noqa: E402  the referee agent's tool, used as-is
+import stock_baseline  # noqa: E402
 from lib import catalogue  # noqa: E402
+
+# A name present in this fraction of the corpus is community boilerplate, not a map's
+# own signal. MEASURED: `crawler_round_ending` is not in stock WaW 1.7 but appears in
+# 12 of our first 14 custom maps -- it rides in on the community script set (UGX Mod
+# Standalone and the BO1-backport `_zombiemode_spawner.gsc`) that half the scene builds
+# on. A stock baseline alone does not catch those; a corpus baseline does, and it gets
+# sharper every time the archive grows.
+CORPUS_COMMON_FRACTION = 0.6
 
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 MODS = os.path.join(WORK, "mods")
@@ -52,6 +63,98 @@ OUT = os.path.join(HERE, "manifests")
 
 DECIDED = {"buyable_ending", "round"}
 NEEDS_HUMAN = {"easter_egg", "manual"}
+
+
+# Entity names need TOKEN matching, not the substring matching that works on flags.
+# MEASURED: substring hints turned `vending_mulekick` into an ending (it contains
+# "ending"), `floor_three_zone` into an easter egg (it contains "ee_"), and
+# `packboyee_spawner` likewise. Requiring the hint to start at a word boundary kills
+# all three without losing `ee_step_1_switch`, `radio1_trigger` or `end_game`.
+ENT_EE = __import__("re").compile(
+    r"(?:^|_)(ee|easter|egg|quest|amulet|relic|shard|soul|ritual|pylon|skull|meteor|"
+    r"radio)s?(?:_|\d|$)", __import__("re").I)
+ENT_END = __import__("re").compile(
+    r"(?:^|_)(end_?game|ending|escaped?|exfil|victory|buyable|buy_?end|game_?won|"
+    r"map_?complete)(?:_|\d|$)", __import__("re").I)
+# Perk machines. Every WaW custom map has a pile of them, community perk packs add
+# more (`vending_mulekick`, `vending_electric_cherry`, `harrybo21_vending`), and not
+# one of them is a finish.
+PERK_ENT = __import__("re").compile(r"vending", __import__("re").I)
+
+
+def _re_compile():
+    import re
+    return re.compile(r"^(pf\\d+_)?auto\\d+$", re.I)
+
+
+def reclassify(result, boilerplate):
+    """Re-run the scanner's own decision with boilerplate names removed.
+
+    Same precedence as `scan_map.scan`: easter egg beats buyable ending beats a named
+    ending we cannot decide beats the Round-N default. The ONLY change is which names
+    count as the map's own. Nothing in referee/ is touched.
+    """
+    low = str.lower
+    ee = [f for f in result["ee_candidates"] if f not in boilerplate]
+    endish = [w for w in result["ending_words"] if w not in boilerplate]
+    buyable = result["buyable_ending_candidate"]
+    if ee:
+        return "easter_egg", ("flags %s look like easter-egg state and are NOT stock or "
+                              "community boilerplate" % ", ".join(ee)), ee, endish
+    if buyable:
+        return "buyable_ending", ("one purchase trigger at %d points, next highest is %d"
+                                  % (buyable["zombie_cost"], buyable["next_highest"])), ee, endish
+    if endish:
+        return "manual", ("map-specific names suggest an ending (%s) but nothing "
+                          "decidable" % ", ".join(endish[:6])), ee, endish
+    return "round", "no easter egg or ending found; default Round %d" % scan_map.DEFAULT_ROUND_N, ee, endish
+
+
+def classify_with_entities(result, ent_names, boilerplate_names, boilerplate_ents):
+    """Third tier: apply the same hint words to the Radiant ENTITY list.
+
+    MEASURED on the first 14 real custom maps, and the single biggest gap found:
+
+      * **Leviathan** has no easter-egg flag in any of its 120 scripts, and its easter
+        egg is sitting in plain sight in the entity list -- `ee_step_1_switch`,
+        `ee_step_1_trigs`, `ee_step_3_trig`, `ee_testtube_activate_trig`.
+      * **MW2 Rust** has exactly four trigger targetnames and one of them is
+        `end_game`. That is its buyable ending, the same shape as `nazi_zombie_ali`.
+        The `zombie_cost` outlier test cannot see it, because the cost is hardcoded in
+        script rather than keyed on the entity -- the lesson `nazi_zombie_ali` already
+        taught, generalised.
+
+    So: hint words against entity targetnames, with the same stock/corpus subtraction,
+    and a trigger named like an ending counts as a buyable-ending candidate on its own.
+    """
+    ee = [f for f in result["ee_candidates"] if f not in boilerplate_names]
+    endish = [w for w in result["ending_words"] if w not in boilerplate_names]
+    own_ents = [n for n in ent_names
+                if n not in boilerplate_ents and not PERK_ENT.search(n)]
+    ee_ents = sorted({n for n in own_ents if ENT_EE.search(n)})
+    end_ents = sorted({n for n in own_ents if ENT_END.search(n)})
+    buyable = result["buyable_ending_candidate"]
+    ev = {"ee_flags": ee, "ee_entities": ee_ents, "end_entities": end_ents}
+    if ee or ee_ents:
+        why = "easter-egg state found in %s%s%s" % (
+            ("flags " + ", ".join(ee)) if ee else "",
+            " and " if ee and ee_ents else "",
+            ("entities " + ", ".join(ee_ents[:6])) if ee_ents else "")
+        return "easter_egg", why, ev
+    if buyable:
+        return "buyable_ending", (
+            "one purchase trigger at %d points, next highest is %d"
+            % (buyable["zombie_cost"], buyable["next_highest"])), ev
+    if end_ents:
+        return "buyable_ending", (
+            "entity named like an ending: %s (the cost is hardcoded in script, as on "
+            "nazi_zombie_ali, so there is no zombie_cost outlier to find)"
+            % ", ".join(end_ents[:4])), ev
+    if endish:
+        return "manual", ("map-specific names suggest an ending (%s) but nothing "
+                          "decidable" % ", ".join(endish[:6])), ev
+    return "round", ("no easter egg or ending found in scripts or entities; default "
+                     "Round %d" % scan_map.DEFAULT_ROUND_N), ev
 
 
 def provenance(norm):
@@ -91,15 +194,26 @@ def manifest_for(mapname, result, extract_entry, meta, db):
         "easter_egg" if v == "easter_egg" else "round")
 
     tags, author, released, desc, src = [], None, None, None, None
+    # Link to the catalogue by the ORIGINAL's normalised name, not by the bsp. A map's
+    # bsp is often nothing like its title (`water` is Alcatraz, `nazi_zombie_test1` is
+    # Zombie Desert, `ugx_artemovsk` is UGX Requiem), so matching on the bsp silently
+    # dropped the author, the description and the finish tags for most of the corpus.
+    norm = (extract_entry or {}).get("norm") or catalogue.normalise(mapname)
     if db is not None:
         row = db.execute(
             "SELECT name,author,released,description,source_url,tags FROM maps "
-            "WHERE norm=? AND (author IS NOT NULL OR description IS NOT NULL) LIMIT 1",
-            (catalogue.normalise(mapname.replace("nazi_zombie_", "")),)).fetchone()
+            "WHERE norm=? ORDER BY (tags IS NULL), (author IS NULL), "
+            "(description IS NULL) LIMIT 1", (norm,)).fetchone()
         if row:
             author, released, desc, src = (row["author"], row["released"],
                                            row["description"], row["source_url"])
-            tags = json.loads(row["tags"] or "[]")
+        for r2 in db.execute("SELECT tags,author,description FROM maps WHERE norm=?",
+                             (norm,)):
+            for t in json.loads(r2["tags"] or "[]"):
+                if t not in tags:
+                    tags.append(t)
+            author = author or r2["author"]
+            desc = desc or r2["description"]
 
     m = {
         "schema": "enw.referee.manifest/0",
@@ -161,6 +275,7 @@ def manifest_for(mapname, result, extract_entry, meta, db):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mods", default=MODS)
+    ap.add_argument("--corpus-fraction", type=float, default=CORPUS_COMMON_FRACTION)
     a = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
     try:
@@ -174,7 +289,14 @@ def main():
             for mm in e.get("mods", []):
                 extract_report[mm["map"]] = e
 
-    rows = []
+    base = stock_baseline.load()
+    if base is None:
+        base = stock_baseline.build()
+    stock_names = set(base["flags"]) | set(base["notifies"])
+    print("stock baseline: %d names from %d zones" % (len(stock_names), len(base["zones"])))
+
+    # ---------------------------------------------------------------- pass 1: scan
+    maps = []
     for mapname in sorted(os.listdir(a.mods)) if os.path.isdir(a.mods) else []:
         d = os.path.join(a.mods, mapname)
         if not os.path.isdir(d):
@@ -184,46 +306,139 @@ def main():
         if not ffs and not iwds:
             continue
         try:
+            scripts = scan_map.read_scripts(ffs, iwds)
             res = scan_map.scan(ffs, iwds)
         except Exception as exc:
-            rows.append({"map": mapname, "verdict": "scanner error",
-                         "why": "%s: %s" % (exc.__class__.__name__, exc)})
+            maps.append({"map": mapname, "error": "%s: %s" % (exc.__class__.__name__, exc)})
             print("%-28s SCANNER ERROR %s" % (mapname, exc))
             continue
+        names = set()
+        for _n, (text, _src) in scripts.items():
+            names.update(scan_map.FLAG_RE.findall(text))
+            names.update(scan_map.NOTIFY_RE.findall(text))
+        fps = {}
+        for name, (text, src) in sorted(scripts.items()):
+            if name.endswith("_zombiemode.gsc"):
+                fps["%s@%s" % (name, src)] = hashlib.sha256(
+                    text.encode("latin-1")).hexdigest()
+        ent_names = set()
+        for e in scan_map.read_mapents(ffs):
+            for k in ("targetname", "script_noteworthy", "script_label"):
+                if e.get(k):
+                    ent_names.add(e[k])
+        maps.append({"map": mapname, "res": res, "names": names, "fps": fps,
+                     "ent_names": ent_names,
+                     "script_count": len(scripts), "ffs": ffs, "iwds": iwds})
+
+    real = [m for m in maps if "res" in m]
+
+    # ------------------------------------------------- corpus-common boilerplate
+    counts = collections.Counter()
+    for m in real:
+        counts.update(m["names"])
+    threshold = max(2, int(round(a.corpus_fraction * len(real))))
+    corpus_common = {n for n, c in counts.items() if c >= threshold}
+    boilerplate = stock_names | corpus_common
+    ent_counts = collections.Counter()
+    for m in real:
+        ent_counts.update(m["ent_names"])
+    corpus_common_ents = {n for n, c in ent_counts.items() if c >= threshold}
+    boilerplate_ents = set(base.get("entity_names", [])) | corpus_common_ents
+    # Radiant auto-names (auto1234, pf1266_auto301) mean nothing and differ per map,
+    # so they never reach the corpus threshold; drop them by shape instead.
+    auto_re = _re_compile()
+    print("corpus baseline: %d names seen in >= %d of %d maps (%d of them not stock)"
+          % (len(corpus_common), threshold, len(real), len(corpus_common - stock_names)))
+
+    # ------------------------------------------------------- pass 2: reclassify
+    rows = []
+    for m in real:
+        res, mapname = m["res"], m["map"]
+        v_raw = res["verdict"]["finish"]
+        v2, why2, ee2, endish2 = reclassify(res, boilerplate)
+        own_ents = {n for n in m["ent_names"] if not auto_re.match(n)}
+        v3, why3, ent_ev = classify_with_entities(res, own_ents, boilerplate,
+                                                  boilerplate_ents)
         ee = extract_report.get(mapname)
         meta = provenance(ee["norm"]) if ee else None
         man = manifest_for(mapname, res, ee, meta, db)
-        # fingerprints of the scripts as actually loaded
-        fps = {}
-        try:
-            import hashlib
-            scripts = scan_map.read_scripts(ffs, iwds)
-            for name, (text, src) in sorted(scripts.items()):
-                if name in ("maps/_zombiemode.gsc",) or name.endswith("_zombiemode.gsc"):
-                    fps["%s@%s" % (name, src)] = hashlib.sha256(
-                        text.encode("latin-1")).hexdigest()
-            man["script_fingerprints"] = fps
-            man["scanner"]["script_count"] = len(scripts)
-        except Exception:
-            pass
+        man["script_fingerprints"] = m["fps"]
+        man["scanner"]["script_count"] = m["script_count"]
+        man["scanner"]["verdict_raw"] = v_raw
+        man["scanner"]["verdict_debiased"] = v2
+        man["scanner"]["why_debiased"] = why2
+        man["scanner"]["verdict_entities"] = v3
+        man["scanner"]["why_entities"] = why3
+        man["scanner"]["entity_evidence"] = ent_ev
+        man["scanner"]["ee_candidates_own"] = ee2
+        man["scanner"]["ending_words_own"] = endish2
+        man["scanner"]["baseline"] = {
+            "stock_names": len(stock_names), "corpus_common": len(corpus_common),
+            "note": ("A name is treated as this map's own only if it is absent from "
+                     "WaW's stock zones AND from the boilerplate shared by most maps "
+                     "in the corpus. See archive/stock_baseline.py."),
+        }
+        # The entity-aware verdict is the one we act on; the other two stay on record
+        # so the referee agent can see exactly what each tier bought.
+        man["badge"]["main_finish"] = ("buyable_ending" if v3 == "buyable_ending"
+                                       else "easter_egg" if v3 == "easter_egg" else "round")
+        man["confidence"] = "guess" if v3 in NEEDS_HUMAN else "read"
+        man["needs_human"] = v3 in NEEDS_HUMAN
+        if v3 == "easter_egg":
+            man["finishes"] = [f for f in man["finishes"] if f["id"] != "easter_egg"]
+            man["finishes"].insert(0, {
+                "id": "easter_egg", "label": "Easter Egg", "priority": 1,
+                "when": {"manual": True},
+                "candidate_flags": ent_ev["ee_flags"],
+                "candidate_entities": ent_ev["ee_entities"]})
+        if v3 == "buyable_ending" and ent_ev["end_entities"] and not res[
+                "buyable_ending_candidate"]:
+            man["finishes"] = [f for f in man["finishes"] if f["id"] != "buyable_ending"]
+            man["finishes"].insert(0, {
+                "id": "buyable_ending", "label": "Buyable Ending", "priority": 2,
+                "when": {"trigger_used": {"targetname": ent_ev["end_entities"][0]}},
+                "candidate_entities": ent_ev["end_entities"]})
         with open(os.path.join(OUT, mapname + ".json"), "w", encoding="utf-8") as fh:
             json.dump(man, fh, indent=2)
-        v = res["verdict"]["finish"]
-        rows.append({"map": mapname, "verdict": v,
-                     "decided": v in DECIDED, "needs_human": v in NEEDS_HUMAN,
+        rows.append({"map": mapname, "verdict_raw": v_raw, "verdict_debiased": v2,
+                     "verdict": v3, "why": why3, "why_debiased": why2,
+                     "entity_evidence": ent_ev,
+                     "decided": v3 in DECIDED, "needs_human": v3 in NEEDS_HUMAN,
                      "scripts": res["scripts"], "entities": res["entities"],
-                     "ee_candidates": res["ee_candidates"],
+                     "ee_candidates_raw": res["ee_candidates"], "ee_candidates_own": ee2,
+                     "ending_words_own": endish2,
                      "buyable": res["buyable_ending_candidate"],
-                     "why": res["verdict"]["why"]})
-        print("%-28s %-18s scripts=%-4d ents=%-5d %s"
-              % (mapname, v, res["scripts"], res["entities"], res["verdict"]["why"][:70]))
+                     "top_costs": res["top_costs"]})
+        print("%-22s raw=%-10s debiased=%-14s +entities=%-14s %s"
+              % (mapname, v_raw, v2, v3, why3[:46]))
 
-    real = [r for r in rows if r.get("verdict") in DECIDED | NEEDS_HUMAN]
-    dec = [r for r in real if r["decided"]]
-    print("\nscanner on %d real custom maps: %d decided without a human, %d need one"
-          % (len(real), len(dec), len(real) - len(dec)))
+    dec_raw = [r for r in rows if r["verdict_raw"] in DECIDED]
+    dec2 = [r for r in rows if r["verdict_debiased"] in DECIDED]
+    dec = [r for r in rows if r["decided"]]
+    n = len(rows)
+    print("")
+    print("scanner as shipped        : %d/%d decided without a human (%.0f%%)"
+          % (len(dec_raw), n, 100.0 * len(dec_raw) / n if n else 0))
+    print("+ stock/corpus baselines  : %d/%d (%.0f%%)"
+          % (len(dec2), n, 100.0 * len(dec2) / n if n else 0))
+    print("+ entity names            : %d/%d (%.0f%%)"
+          % (len(dec), n, 100.0 * len(dec) / n if n else 0))
+    summary = {
+        "maps": n,
+        "decided_raw": len(dec_raw), "decided_debiased": len(dec2),
+        "decided_entities": len(dec),
+        "needs_human_raw": n - len(dec_raw), "needs_human_entities": n - len(dec),
+        "verdicts_raw": dict(collections.Counter(r["verdict_raw"] for r in rows)),
+        "verdicts_debiased": dict(collections.Counter(r["verdict_debiased"] for r in rows)),
+        "verdicts_entities": dict(collections.Counter(r["verdict"] for r in rows)),
+        "corpus_common_entities": len(corpus_common_ents),
+        "stock_names": len(stock_names), "corpus_common": len(corpus_common),
+        "corpus_common_not_stock": sorted(corpus_common - stock_names)[:80],
+        "threshold_maps": threshold,
+        "rows": rows,
+    }
     with open(os.path.join(WORK, "reports", "scan.json"), "w", encoding="utf-8") as fh:
-        json.dump(rows, fh, indent=2)
+        json.dump(summary, fh, indent=2)
 
 
 if __name__ == "__main__":

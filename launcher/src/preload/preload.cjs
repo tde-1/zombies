@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('enw', {
   validate: (dir) => call('validate', dir),
   setup: (opts) => call('setup', opts),
   uninstall: (opts) => call('uninstall', opts),
+  storage: () => call('storage'),
   installViaSteam: () => call('installViaSteam'),
   getOnSteam: () => call('getOnSteam'),
 

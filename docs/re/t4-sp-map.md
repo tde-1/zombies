@@ -13,6 +13,22 @@ and repaired it from the read-only Steam install; B's Steam install is fine). **
 taken from a process launched from the Steam install, so it is unaffected** (all addresses
 above stand). Anything that relied on `waw-base` assets should be re-checked.
 
+## Runtime cross-checks landed (from the referee/foundation)
+- **`gentity_s.currentOrigin = +0x160` confirmed** — the referee **withdrew its DISAGREE**: its
+  sliding-window method scores +0x15C/+0x160/+0x164 identically (a 4-byte window over a 3-float
+  triple overlaps itself, so it can't discriminate at that granularity), and +0x168 onward is
+  angle-shaped — exactly where `currentAngles` (r+0x54 = gentity+0x16C) belongs if origin is at
+  0x160. So the measurement is consistent with +0x160. Positions (1,271 snaps) and AFK input
+  (5,084 rows) both flow from these offsets in a live capture.
+- **Huffman**: foundation's reading strengthened it — the decoder takes **no capacity argument**
+  (`int f(int src_len /*EAX*/, const void* src /*ECX*/, void* dst /*[esp+4]*/)`), so no
+  in-function patch can bound it; they armed a guard-paged scratch decode. See security-audit.md.
+- **Sockets imported by ORDINAL not name** (ordinal 52 = `gethostbyname`); name-based IAT hooks
+  miss them. Blocking caught the client hitting `cod5-pc.auth.mmp3.demonware.net` 4×/launch.
+- **Server licence check worked out** (see security-audit.md §4): a Demonware getAuthTicket gate
+  (0x57C0E0) that Com_Errors `PATCH_SERVER_AUTHFAIL`, **skipped for loopback** — not a blocker
+  for the own-client + own-server model.
+
 ## Lesson applied to this map
 A string cross-reference identifies a *caller*, not necessarily the wanted function; a wrong
 `[C]` can pass a smoke test then emit garbage (e.g. the 0x473F10 "G_Say" misID fired 60 Hz).

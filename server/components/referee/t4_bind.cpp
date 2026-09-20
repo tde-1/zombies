@@ -74,6 +74,43 @@ std::string peek_string(uintptr_t addr, size_t max) {
     return std::string(p, n);
 }
 
+// -------------------------------------------------------- script strings --
+// `re` 2026-09-20: SL_ConvertToString is inlined everywhere, so there is no
+// function to call -- read the table. From the inlined copy inside SetSavedDvar:
+//     name = id ? *(char**)0x3702390 + id*0xC + 4 : NULL
+// (mt_buffer pointer at 0x3702390, node size 12, text at node+4).
+constexpr uintptr_t kScrStringTablePtr = 0x3702390;
+constexpr unsigned kMaxScrStringId = 0x10000;   // sanity bound on a script-string id
+
+const char* sl_string(unsigned id) {
+    if (id == 0 || id > kMaxScrStringId) return nullptr;
+    const uintptr_t pp = at(kScrStringTablePtr);
+    if (!memory::is_readable(reinterpret_cast<void*>(pp), sizeof(void*))) return nullptr;
+    char* buf = *reinterpret_cast<char**>(pp);
+    if (!buf) return nullptr;
+    char* node = buf + static_cast<size_t>(id) * 0xC + 4;
+    if (!memory::is_readable(node, 2)) return nullptr;
+    return node;
+}
+
+// A bounded, printable copy. The table is engine data, but an out-of-range id
+// would walk us into arbitrary memory, so never trust it past the first NUL or
+// past a sane length, and reject anything that is not text.
+std::string sl_string_safe(unsigned id, size_t max = 96) {
+    const char* p = sl_string(id);
+    if (!p) return {};
+    if (!memory::is_readable(const_cast<char*>(p), max)) max = 32;
+    if (!memory::is_readable(const_cast<char*>(p), max)) return {};
+    std::string out;
+    for (size_t i = 0; i < max; ++i) {
+        const unsigned char c = static_cast<unsigned char>(p[i]);
+        if (c == 0) break;
+        if (c < 0x20 || c > 0x7E) return {};   // not a script string
+        out.push_back(static_cast<char>(c));
+    }
+    return out;
+}
+
 // ------------------------------------------------------- origin discovery --
 //
 // gentity_s.r (entityShared_t) is at +0x118 and gentity_s.client at +0x180, so
@@ -201,15 +238,28 @@ void find_origin_offset() {
     // origin roams thousands of units across a map. So once motion has done its
     // job, pick by spread and log both so `re` can check the pair, not just the winner.
     if (g_passes >= kNeedPasses) {
+        // A 4-byte sliding window over a 3-float triple OVERLAPS ITSELF, so the
+        // true origin and its two neighbours all score the same max-spread. First
+        // run reported +0x15C purely because the tie-break took the lowest offset.
+        // Discriminate properly: for a real origin the THIRD component is Z, which
+        // is much flatter than X and Y in any playable map, whereas a window shifted
+        // by one float has a large value in that slot.
         int winner = -1;
-        float winner_spread = 0.0f;
+        float winner_spread = 0.0f, winner_score = -1.0f;
         int alive_n = 0;
         for (int i = 0; i < g_cand_count; ++i) {
             if (!g_cand_valid[i] || g_cand_hits[i] < kNeedHits) continue;
             ++alive_n;
-            const float sp = spread(i);
-            if (sp > winner_spread) {
-                winner_spread = sp;
+            const float r0 = g_cand_hi[i][0] - g_cand_lo[i][0];
+            const float r1 = g_cand_hi[i][1] - g_cand_lo[i][1];
+            const float r2 = g_cand_hi[i][2] - g_cand_lo[i][2];
+            const float xy = r0 > r1 ? r0 : r1;
+            if (xy <= kMinOriginSpread) continue;
+            if (r2 >= 0.6f * xy) continue;            // third slot is not a Z
+            const float score = (r0 < r1 ? r0 : r1);  // both horizontals should be wide
+            if (score > winner_score) {
+                winner_score = score;
+                winner_spread = spread(i);
                 winner = i;
             }
         }
@@ -224,7 +274,21 @@ void find_origin_offset() {
                              static_cast<unsigned>(g_cand_off[i] - t4::gentity_off::r), spread(i),
                              g_cand_hits[i], i == winner ? "   <== ORIGIN" : "   (angles?)");
                 }
+                // Also say whether re's offset was among the tied candidates at all:
+                // "my method cannot discriminate" and "my method disagrees" are very
+                // different claims and only one of them is worth their time.
+                bool in_tie_set = false;
+                for (int i = 0; i < g_cand_count; ++i) {
+                    if (g_cand_valid[i] && g_cand_hits[i] >= kNeedHits &&
+                        g_cand_off[i] == t4::gentity_off::currentOrigin) {
+                        in_tie_set = true;
+                    }
+                }
                 const bool agrees = g_origin_off == static_cast<int>(t4::gentity_off::currentOrigin);
+                if (!agrees && in_tie_set) {
+                    ENW_WARN("referee/bind: NOTE my pick and shared/t4 both survived the motion "
+                             "filter -- treat this as 'cannot discriminate', not 'disagree'.");
+                }
                 ENW_INFO("referee/bind: CROSS-CHECK gentity_s currentOrigin: runtime motion+spread "
                          "says +0x%X, shared/t4 says +0x%X -> %s  (%d moving candidates, spread "
                          "%.0f units, %d entities, %d passes)",
@@ -296,6 +360,7 @@ void __cdecl vm_notify_observe(int instance, int ownerId, int stringValue) {
     notify_event ev;
     ev.game_ms = game_link::now_ms();
     ev.name_id = stringValue;
+    ev.name = sl_string_safe(static_cast<unsigned>(stringValue));
     if (instance == 0 && static_cast<uint32_t>(ownerId) == levelId) {
         ev.who = notify_event::owner::level;
         ++g_notify_level;
@@ -329,13 +394,23 @@ no_trampoline:
 }
 
 // ------------------------------------------------------------ chat capture --
+// CORRECTED PATH (`re`, 2026-09-20): T4 co-op has no classic say -> G_Say at all;
+// chat rides the party/lobby reliable-command system. My first attempt hooked
+// 0x473F10 as G_Say and it fired 60x/second in an idle game with empty text --
+// retracted. The verifiable route is the function we already use for injection,
+// SV_GameSendServerCommand, filtered for the chat token: the server relays player
+// chat through it, so it only fires on chat and carries the text.
+//
+// SANITY CHECK THIS THE SAME WAY: it must stay SILENT in an idle game. The DLL
+// logs its capture count, so a non-zero count with nobody typing means wrong again.
 // G_Say(gentity_s* ent, gentity_s* target, int mode, const char* chatText) --
 // the "%s: " formatter both `say` and `say_team` land in. Hooking here rather
 // than ClientCommand gets us the text as a plain argument instead of needing
 // Cmd_Argv, which is not published.
-enw::hook g_say_hook;
-using G_Say_t = void(__cdecl*)(void* ent, void* target, int mode, const char* text);
+enw::hook g_svcmd_hook;
+void* g_svcmd_trampoline = nullptr;
 chat_sink g_chat_sink;
+uint64_t g_chat_captured = 0;
 
 int entnum_of(void* ent) {
     const uintptr_t base = at(t4::var::g_entities);
@@ -347,13 +422,43 @@ int entnum_of(void* ent) {
     return n >= 0 && n < 1024 ? n : -1;
 }
 
-void __cdecl g_say_detour(void* ent, void* target, int mode, const char* text) {
-    if (g_chat_sink && text) {
-        // mode: EXE_SAY vs EXE_SAYTEAM. The enum value is not published, so report
-        // the raw mode alongside a best-guess bool rather than pretend to know.
-        g_chat_sink(entnum_of(ent), text, mode != 0);
+// Observe one outgoing reliable command. `clientNum` -1 is a broadcast.
+void __cdecl svcmd_observe(int clientNum, const char* text) {
+    if (!text || !g_chat_sink) return;
+    if (!memory::is_readable(const_cast<char*>(text), 4)) return;
+    // The chat relays are "0clientchat <...>" / "0hostchat <...>" (re: 0x655C80 /
+    // 0x65B630). Everything else through this function is a normal server command
+    // and must not be reported as chat.
+    const char* p = text;
+    while (*p == '0' || *p == ' ') ++p;      // the leading channel digit
+    const bool is_client = std::strncmp(p, "clientchat", 10) == 0;
+    const bool is_host = std::strncmp(p, "hostchat", 8) == 0;
+    if (!is_client && !is_host) return;
+    const char* body = std::strchr(p, ' ');
+    if (!body) return;
+    ++body;
+    ++g_chat_captured;
+    g_chat_sink(clientNum, std::string(body), /*team=*/false);
+}
+
+// SV_GameSendServerCommand(ecx = clientNum, stack: type, text).
+__declspec(naked) void svcmd_detour() {
+    __asm {
+        pushad
+        pushfd
+        mov  edx, [esp + 0x2C]      // arg1: the command text
+        push edx
+        push ecx                    // clientNum, in ecx
+        call svcmd_observe
+        add  esp, 8
+        popfd
+        popad
+        cmp  dword ptr [g_svcmd_trampoline], 0
+        je   svcmd_none
+        jmp  [g_svcmd_trampoline]
+svcmd_none:
+        ret
     }
-    g_say_hook.original<G_Say_t>()(ent, target, mode, text);
 }
 
 }  // namespace
@@ -414,7 +519,19 @@ const binding_report& bind() {
         ENW_WARN("referee/bind: could not hook VM_Notify at %08X", static_cast<unsigned>(vm_notify));
     }
 
-    // --- chat in: DISABLED, the address is wrong ---
+    // --- chat in: SV_GameSendServerCommand, filtered for the chat token ---
+    const uintptr_t svcmd = at(t4::fn::SV_GameSendServerCommand);
+    if (memory::is_readable(reinterpret_cast<void*>(svcmd), 16) &&
+        g_svcmd_hook.create(svcmd, reinterpret_cast<void*>(&svcmd_detour), "SV_GameSendServerCommand")) {
+        g_svcmd_trampoline = g_svcmd_hook.original<void*>();
+    }
+    if (g_svcmd_trampoline && g_svcmd_hook.enable()) {
+        g_report.chat_capture = true;
+    } else {
+        ENW_WARN("referee/bind: could not hook SV_GameSendServerCommand for chat capture");
+    }
+
+    // --- old chat note ---
     // MEASURED 2026-09-20 01:34: hooking 0x473F10 as
     // G_Say(ent, target, mode, text) fires ~60 times a second in an idle game with
     // an empty text pointer and an unresolvable entity -- so it is NOT G_Say, or
@@ -424,7 +541,6 @@ const binding_report& bind() {
     // failure we are trying to avoid, so it is off until `re` re-checks the site.
     // `re`: 0x473F10 was derived from the "%s: " formatter string; that string is
     // probably shared with something on the frame path.
-    g_report.chat_capture = false;
 
     ENW_INFO("referee/bind: %s", g_report.describe().c_str());
     if (!g_report.script_vars && !g_report.notify_hook) {
@@ -440,6 +556,8 @@ void on_notify(notify_sink sink) {
     std::lock_guard<std::mutex> lk(g_sinks_mutex);
     g_notify_sinks.push_back(std::move(sink));
 }
+
+uint64_t chat_capture_count() { return g_chat_captured; }
 
 void on_chat(chat_sink sink) {
     std::lock_guard<std::mutex> lk(g_sinks_mutex);
@@ -551,16 +669,52 @@ std::optional<ent_view> player_ent(int slot) {
 }
 
 size_t zombie_ents(ent_view* out, size_t max) {
-    // Needs the entity's classname/type and health offsets to tell a zombie from a
-    // door. Neither is published, and a replay full of mislabelled entities is
-    // worse than one with none.
-    (void)out;
-    (void)max;
-    return 0;
+    if (!g_report.entities || !out || max == 0) return 0;
+    size_t n = 0;
+    // Entities 0..3 are the players. T4 AI classnames are actor_* (the zombie
+    // spawner on the stock maps is actor_axis_zombie_*), so classname is the
+    // discriminator now that script strings resolve.
+    for (int e = kMaxClients; e < 1024 && n < max; ++e) {
+        const uintptr_t ent = gentity_at(e);
+        uint16_t cls = 0;
+        if (!peek(ent + t4::gentity_off::classname, &cls) || cls == 0) continue;
+        const char* name = sl_string(cls);
+        if (!name || !memory::is_readable(const_cast<char*>(name), 6)) continue;
+        if (std::strncmp(name, "actor", 5) != 0) continue;
+        int health = 0;
+        if (!peek(ent + t4::gentity_off::health, &health) || health <= 0) continue;
+        ent_view v;
+        v.entnum = e;
+        if (!peek(ent + t4::gentity_off::currentOrigin, &v.origin)) continue;
+        v.health = health;
+        v.alive = true;
+        out[n++] = v;
+    }
+    return n;
 }
 
-std::optional<std::string> ent_string_field(int, const char*) { return std::nullopt; }
-std::optional<int> ent_int_field(int, const char*) { return std::nullopt; }
+std::optional<std::string> ent_string_field(int entnum, const char* field) {
+    if (!g_report.entities || entnum < 0 || entnum >= 1024) return std::nullopt;
+    size_t off = 0;
+    if (!std::strcmp(field, "classname")) off = t4::gentity_off::classname;
+    else if (!std::strcmp(field, "targetname")) off = t4::gentity_off::targetname;
+    else return std::nullopt;   // script-side fields need the variable system
+    uint16_t id = 0;
+    if (!peek(gentity_at(entnum) + off, &id) || id == 0) return std::nullopt;
+    std::string s = sl_string_safe(id);
+    if (s.empty()) return std::nullopt;
+    return s;
+}
+
+std::optional<int> ent_int_field(int entnum, const char* field) {
+    if (!g_report.entities || entnum < 0 || entnum >= 1024) return std::nullopt;
+    if (!std::strcmp(field, "health")) {
+        int h = 0;
+        if (!peek(gentity_at(entnum) + t4::gentity_off::health, &h)) return std::nullopt;
+        return h;
+    }
+    return std::nullopt;   // zombie_cost etc. are script fields
+}
 
 // ---------------------------------------------------------------------------
 // Output

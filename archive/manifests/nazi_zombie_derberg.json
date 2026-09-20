@@ -76,7 +76,26 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "6a63e9be58806f60175cf561b8525255e5f0398184e8b34b695f3140009698f7",
-    "script_count": 104
+    "script_count": 104,
+    "verdict_raw": "manual",
+    "verdict_debiased": "manual",
+    "why_debiased": "map-specific names suggest an ending (dog_roundfx_ending) but nothing decidable",
+    "verdict_entities": "manual",
+    "why_entities": "map-specific names suggest an ending (dog_roundfx_ending) but nothing decidable",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [],
+      "end_entities": []
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [
+      "dog_roundfx_ending"
+    ],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
   },
   "archive": {
     "original": "Derberg.exe",

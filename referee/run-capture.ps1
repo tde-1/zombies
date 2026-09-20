@@ -90,6 +90,10 @@ function Answer-Dialogs {
     return $script:hit
 }
 
+# Only ever release a lock we actually took. An earlier version removed it
+# unconditionally in `finally`, so a launch that failed for an unrelated reason
+# (another agent's game already running) would delete SOMEONE ELSE'S lock.
+$tookLock = $false
 $gamePid = $null
 try {
     Write-Host '== game ==' -ForegroundColor Cyan
@@ -99,6 +103,7 @@ try {
     $gamePid = & (Join-Path $repo 'tools\dev\launch.ps1') referee -Role solo -GameArgs $args `
         -Why "referee replay capture $Map"
     $gamePid = [int]($gamePid | Select-Object -Last 1)
+    $tookLock = $true
     Write-Host "  pid $gamePid, recording $Seconds s -> $out"
 
     $seen = @{}
@@ -120,8 +125,12 @@ finally {
     }
     Start-Sleep -Seconds 3
     if (-not $sink.HasExited) { Stop-Process -Id $sink.Id -Force -ErrorAction SilentlyContinue }
-    Remove-Item $lock -ErrorAction SilentlyContinue
-    Write-Host '  released game.lock'
+    if ($tookLock) {
+        Remove-Item $lock -ErrorAction SilentlyContinue
+        Write-Host '  released game.lock'
+    } else {
+        Write-Host '  did not take game.lock; leaving it alone'
+    }
 }
 
 Write-Host "`n== the two lines that matter ==" -ForegroundColor Cyan

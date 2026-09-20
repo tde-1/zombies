@@ -116,6 +116,26 @@ def build(db):
     checked = sum(v for k, v in verdicts.items() if k in ("alive", "dead"))
     r["dead_rate_of_checked"] = (verdicts["dead"] / checked) if checked else None
 
+    # Community links only: archive.org's file list is pre-verified and 572 rows of it
+    # would drown the rot figure that actually matters.
+    com = [h for h in r["by_host"] if h["host"] != "archive.org"]
+    ca, cd = sum(h["alive"] or 0 for h in com), sum(h["dead"] or 0 for h in com)
+    r["community_links"] = sum(h["links"] for h in com)
+    r["community_alive"] = ca
+    r["community_dead"] = cd
+    r["community_dead_rate"] = (cd / (ca + cd)) if (ca + cd) else None
+
+    # Maps we could catalogue but could not fetch even though a link is alive.
+    unfetchable_hosts = {"mega.nz", "mega.co.nz", "drive.google.com", "docs.google.com"}
+    only_unfetchable = []
+    for n, d in per_map.items():
+        hosts = {h for h in d["hosts"] if h}
+        if hosts and hosts <= unfetchable_hosts:
+            only_unfetchable.append(n)
+    r["maps_only_unfetchable_hosts"] = len(only_unfetchable)
+    r["maps_only_mega"] = len([n for n, d in per_map.items()
+                               if d["hosts"] and all(h and "mega" in h for h in d["hosts"])])
+
     r["tags"] = {}
     for row in db.execute("SELECT tags FROM maps WHERE tags IS NOT NULL"):
         for t in json.loads(row["tags"]):
@@ -139,8 +159,13 @@ def to_md(r):
     A("| Links unknown | %d |" % v.get("unknown", 0))
     A("| Links unchecked | %d |" % v.get("unchecked", 0))
     if r["dead_rate_of_checked"] is not None:
-        A("| **Link rot** (dead / [dead+alive]) | **%.1f%%** |"
+        A("| **Link rot**, all sources (dead / [dead+alive]) | **%.1f%%** |"
           % (100 * r["dead_rate_of_checked"]))
+    if r["community_dead_rate"] is not None:
+        A("| **Link rot on the community sites** (excl. archive.org) | **%.1f%%** |"
+          % (100 * r["community_dead_rate"]))
+    A("| Maps whose only host is MEGA or Drive (catalogued, not fetchable by us) | %d |"
+      % r["maps_only_unfetchable_hosts"])
     A("| Maps with at least one live link (**recoverable**) | **%d** |" % r["maps_recoverable"])
     A("| Maps whose every link is dead (**lost so far**) | **%d** |" % r["maps_lost"])
     A("| Maps we could not decide | %d |" % r["maps_unknown"])
@@ -163,10 +188,41 @@ def to_md(r):
     return "\n".join(L)
 
 
+def maps_table():
+    """The per-map results table for docs/kickstart/archive.md."""
+    def load(name):
+        p = os.path.join(WORK, "reports", name)
+        return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
+    fetch = {r["norm"]: r for r in (load("fetch.json") or [])}
+    extract = load("extract.json") or []
+    scan = load("scan.json") or {"rows": []}
+    ev = {r["map"]: r for r in (load("evaluate.json") or {"rows": []})["rows"]}
+    byscan = {r["map"]: r for r in scan["rows"]}
+    L = ["| Map | Original | Size | Installer | mods/ | bsp | Scanner verdict | Community tag | Match |",
+         "|---|---|---|---:|---|---|---|---|---|"]
+    for e in sorted(extract, key=lambda e: e["norm"]):
+        f = fetch.get(e["norm"], {})
+        for m in e["mods"]:
+            s = byscan.get(m["map"], {})
+            v = ev.get(m["map"], {})
+            tags = ",".join(t for t in v.get("tags", [])
+                            if t in ("easter_egg", "buyable_ending", "bossfight_ending"))
+            L.append("| %s | `%s` | %s | %s | `%s` | `%s` | %s | %s | %s |"
+                     % (f.get("name") or e["norm"], e["original"],
+                        human(e["original_size"]), e["installer_kind"],
+                        m["map"], m.get("bsp"),
+                        s.get("verdict", "-"), tags or "-", v.get("outcome", "-")))
+    return "\n".join(L)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--md", action="store_true")
+    ap.add_argument("--maps", action="store_true")
     a = ap.parse_args()
+    if a.maps:
+        print(maps_table())
+        return
     db = catalogue.connect()
     r = build(db)
     os.makedirs(os.path.join(WORK, "reports"), exist_ok=True)

@@ -35,6 +35,10 @@
   Do not answer the modal startup boxes ("Set Optimal Settings?", "Run In Safe
   Mode?"). They block startup forever, so this is off by default.
 
+.PARAMETER PrivateProfile
+  Redirect this instance's AppData (profile, mods, the safe-mode marker) into
+  ZombiesDev\homes\<name>ppdata. new-copy.ps1 seeds it from B's profile.
+
 .PARAMETER Developer
   Pass `+set developer 1`. Off by default -- it makes missing assets fatal
   ("ERROR: image 'images/sun_flare.iwi' is missing") and stops startup.
@@ -89,6 +93,11 @@ param(
     # +set developer 1. OFF BY DEFAULT: it promotes missing-asset warnings to
     # fatal error dialogs, and stock WaW is missing at least one image.
     [switch]$Developer,
+
+    # Give this instance its own profile directory (shared/core/components/
+    # instance_paths.cpp). Needs new-copy.ps1 to have seeded it. Safe now that
+    # game.lock, not __CoDWaW, is the interlock.
+    [switch]$PrivateProfile,
 
     # Invite token, passed to the game through the environment (never argv).
     [string]$AuthToken = '',
@@ -358,24 +367,63 @@ function Release-GameLock {
     }
 }
 if (-not $NoLock -and -not $DryRun) {
-    if (Test-Path -LiteralPath $lockFile) {
-        $raw = (Get-Content -LiteralPath $lockFile -Raw).Trim()
-        $parts = $raw -split '\s+'
-        $stale = $false
-        $age = (Get-Date) - (Get-Item -LiteralPath $lockFile).LastWriteTime
-        if ($age.TotalMinutes -gt 15) { $stale = $true }
-        if ($parts.Count -ge 2 -and $parts[1] -match '^\d+$') {
-            if (-not (Get-Process -Id ([int]$parts[1]) -ErrorAction SilentlyContinue)) { $stale = $true }
+    # THE INTERLOCK. Until now the real thing stopping two agents launching at
+    # once was `__CoDWaW` -- the engine's own single-instance marker -- and
+    # game.lock was advisory on top of it. Per-instance profiles
+    # (ENW_PRIVATE_PROFILE=1) move that marker into the instance's own AppData,
+    # so it stops being machine-wide and that guard silently disappears. This is
+    # the replacement, and it does not depend on any engine behaviour:
+    #
+    #   1. a LIVE CoDWaW process anywhere on the box blocks a launch, found by
+    #      enumerating processes rather than by reading a file the game owns;
+    #   2. game.lock is acquired ATOMICALLY (CreateNew, which fails if the file
+    #      exists) instead of test-then-write, which two launchers could both win.
+
+    # (1) Is the game already running, whoever started it?
+    $running = @(Get-Process -Name 'CoDWaW', 'CoDWaWmp' -ErrorAction SilentlyContinue)
+    if ($running.Count -gt 0 -and -not $ForceLock) {
+        $who = ($running | ForEach-Object { "$($_.ProcessName):$($_.Id)" }) -join ', '
+        throw "CoDWaW is already running ($who). One game at a time (dev-box.md rule 5). " +
+              'Wait for it, or -ForceLock if you are certain it is abandoned.'
+    }
+
+    # (2) Take the lock atomically, retrying once if we clear a stale one.
+    for ($attempt = 0; $attempt -lt 2; $attempt++) {
+        try {
+            $fs = [IO.File]::Open($lockFile, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write,
+                                  [IO.FileShare]::Read)
+            $bytes = [Text.Encoding]::ASCII.GetBytes(
+                ('{0} starting {1} {2}' -f $Name, (Get-Date -Format o), $Why))
+            $fs.Write($bytes, 0, $bytes.Length)
+            $fs.Close()
+            $lockTaken = $true
+            break
         }
-        if ($stale -or $ForceLock) {
-            Write-Host "Taking stale lock (was: $raw)" -ForegroundColor Yellow
-        }
-        else {
+        catch [IO.IOException] {
+            # Someone holds it. Decide whether it is stale, then retry ONCE.
+            $raw = ''
+            try { $raw = (Get-Content -LiteralPath $lockFile -Raw -ErrorAction Stop).Trim() } catch {}
+            $parts = $raw -split '\s+'
+            $stale = $false
+            $age = [TimeSpan]::Zero
+            try { $age = (Get-Date) - (Get-Item -LiteralPath $lockFile).LastWriteTime } catch {}
+            if ($age.TotalMinutes -gt 15) { $stale = $true }
+            if ($parts.Count -ge 2 -and $parts[1] -match '^\d+$') {
+                if (-not (Get-Process -Id ([int]$parts[1]) -ErrorAction SilentlyContinue)) { $stale = $true }
+            }
+            elseif ($parts.Count -ge 2 -and $parts[1] -eq 'starting' -and $age.TotalMinutes -gt 2) {
+                # A launcher that died between taking the lock and writing its PID.
+                $stale = $true
+            }
+            if (($stale -or $ForceLock) -and $attempt -eq 0) {
+                Write-Host "Taking stale lock (was: $raw)" -ForegroundColor Yellow
+                Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
+                continue
+            }
             throw "game.lock held: $raw  (age $([int]$age.TotalMinutes) min). Wait, or -ForceLock if you are sure."
         }
     }
-    Set-Content -LiteralPath $lockFile -Value ("{0} starting {1} {2}" -f $Name, (Get-Date -Format o), $Why) -Encoding ascii
-    $lockTaken = $true
+    if (-not $lockTaken) { throw 'could not acquire game.lock' }
 }
 
 try {
@@ -388,17 +436,28 @@ try {
     # It doubles as a single-instance marker, so it is also why two instances are
     # doubtful. We only delete it when the PID inside it is dead - never yank it
     # out from under a live game another agent is running.
-    $marker = "$env:LOCALAPPDATA\Activision\CoDWaW\__CoDWaW"
-    if (Test-Path -LiteralPath $marker) {
+    # With ENW_PRIVATE_PROFILE=1 the engine's AppData is redirected, so the
+    # marker moves with it. Clear whichever one this launch will actually use --
+    # and the machine-wide one too, since a previous non-private run may have
+    # left it behind.
+    $markers = @("$env:LOCALAPPDATA\Activision\CoDWaW\__CoDWaW")
+    if ($PrivateProfile) {
+        $markers += (Join-Path $homeDir 'appdata\Activision\CoDWaW\__CoDWaW')
+    }
+    foreach ($marker in $markers) {
+        if (-not (Test-Path -LiteralPath $marker)) { continue }
         $stalePid = -1
         try {
             $bytes = [IO.File]::ReadAllBytes($marker)
             if ($bytes.Length -eq 4) { $stalePid = [BitConverter]::ToInt32($bytes, 0) }
         }
         catch {}
+        # The interlock is game.lock plus the live-process check above; this is
+        # now only about the safe-mode prompt. Still refuse if it names a live
+        # game -- belt and braces costs nothing.
         $owner = if ($stalePid -gt 0) { Get-Process -Id $stalePid -ErrorAction SilentlyContinue } else { $null }
         if ($owner -and $owner.ProcessName -like 'CoDWaW*') {
-            throw "__CoDWaW marker names LIVE pid $stalePid ($($owner.ProcessName)) - another instance is running. Not launching."
+            throw "__CoDWaW marker names LIVE pid $stalePid ($($owner.ProcessName)). Not launching."
         }
         Remove-Item -LiteralPath $marker -Force -ErrorAction SilentlyContinue
         Write-Host "  cleared stale safe-mode marker (dead pid $stalePid)" -ForegroundColor DarkGray
@@ -453,6 +512,7 @@ try {
     # Per-instance profile (shared/core/components/instance_paths.cpp). The DLL
     # only acts on this when ENW_PRIVATE_PROFILE=1; new-copy.ps1 seeds the tree.
     $env:ENW_INSTANCE_APPDATA = Join-Path $homeDir 'appdata'
+    if ($PrivateProfile) { $env:ENW_PRIVATE_PROFILE = '1' } else { $env:ENW_PRIVATE_PROFILE = '0' }
     # ENW-only networking (client-dll/components/network.cpp). Activision and
     # Demonware are always blocked; strict mode denies everything else too.
     $env:ENW_ALLOWED_HOSTS = $AllowedHosts

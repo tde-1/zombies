@@ -66,6 +66,8 @@ void on_notify(notify_sink sink);
 // slot is the speaker's entity/client number, or -1 if it could not be resolved.
 using chat_sink = std::function<void(int slot, const std::string& text, bool team)>;
 void on_chat(chat_sink sink);
+// How many lines the capture hook has reported. MUST stay 0 in an idle game.
+uint64_t chat_capture_count();
 
 // ---------------------------------------------------------- frame callback --
 

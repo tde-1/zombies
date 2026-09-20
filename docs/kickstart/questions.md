@@ -246,3 +246,96 @@ account-free.
 **Assumed:** counted as `blocked`, never as dead — a Drive link may well be fine. They
 need either a human with a browser or a signed-in fetcher, which is your call since it
 means an account.
+
+---
+
+## Web agent, 2026-09-20
+
+Each of these took the most reversible option and carried on; every one is a small edit to change.
+
+### Q-web-1: the Steam Web API key (blocks real sign-in, nothing else)
+Steam OpenID proves *who* somebody is, but turning that into a persona name and avatar needs a
+**Steam Web API key** (`passport-steam` fetches the player summary). I have not made one and will
+not — no accounts, no credentials.
+
+**Assumed:** `ZM_AUTH=mock`, a **loopback-only** dev sign-in page that is refused outright when
+`NODE_ENV=production`. The real path is written (`web/server/routes/auth.js`) and turns on with
+`STEAM_API_KEY` + `ZM_PUBLIC_URL` + `ZM_AUTH=steam`. **You need to create the key** at
+steamcommunity.com/dev/apikey against whichever account should own it, and decide whether it is the
+same one ENW already uses or a separate one (§0.2 says Zombies holds no credential that reaches the
+CS systems — an API key is read-only and does not, but it is your call).
+
+### Q-web-2: the two ENW endpoints — what are their real paths and shapes?
+`lib/enw.js` is the *only* place Zombies talks to ENW, and it currently calls two paths I inferred
+from vault 11 §9 (`/internal/name*`):
+
+```
+GET {ZM_ENW_BASE}/internal/name?steamid=<id>   ->  { name }
+GET {ZM_ENW_BASE}/internal/vip?steamid=<id>    ->  { vip: bool }
+```
+
+**Assumed:** those shapes, both stubbed (unset base = no request leaves the machine), both cached
+on the user row with a fallback that keeps the site rendering during an ENW outage. Tell me the
+real paths, the auth header ENW wants, and whether VIP should be read per-request or pushed to us
+by a webhook — and I will change two functions.
+
+### Q-web-3: XP weights (this is Q29, and I need beta data, not an answer now)
+XP is active time: Verified full, Custom 25%, Local none, paused never. The **risk/trust score**
+over aim/movement/damage/points/round progression (05) needs signals only the game box has, and the
+box does not compute it yet.
+
+**Assumed, deliberately mean:** a player is credited with `time_alive_ms` capped at the game's own
+length, minus paused time, and **zero for a game they were AFK-kicked from**. It under-credits
+rather than over-credits, which is the right way to be wrong when the worry is XP farming on a
+rented server. The curve is 8 active minutes for the first level rising to ~28 at level 65, so a
+prestige is about 20 hours of active play. Both are constants in `web/server/lib/xp.js`.
+
+### Q-web-4: who may download whose replay — same as Q-host-1
+I built what the host agent assumed and the coordinator confirmed: everyone may download their own
+games; someone else's full tracks need VIP or a public game; **the signed summary and event log are
+public for everyone, always**, because that is what makes a record checkable. The site currently
+shows the pointer and the evidence grade and offers no download at all (there is no R2). No change
+needed unless you disagree with the rule.
+
+### Q-web-5: is a map badge minted by the main finish only?
+05 says "one badge per map, earned by its **main finish**: Easter Egg > Buyable Ending > Round N",
+and "other finishes are ticks".
+
+**Assumed the strict reading:** on Der Riese, whose main finish is the Fly Trap, surviving to round
+20 ticks the shelf and the badge's hover card but **does not mint the badge**. You only get Der
+Riese's badge by doing the egg. The looser reading — any listed finish mints it — is one line in
+`lib/results.js`. The strict one makes the badge mean more and makes a hard map's badge rare, which
+reads like what you wanted; say if not.
+
+---
+
+## For the host agent (not a question for B)
+
+**Two one-line changes and the key pin is complete.** The site pins each box's replay-signing
+public key on first sight and refuses to move it without an admin (`docs/kickstart/web.md` §4b) —
+because your own §5 finding is that a replay re-signed with a different key is internally
+consistent, so integrity is not authorship. The site already reads the key from three places; you
+send it from none of them yet.
+
+1. **`reportStatus()`** — add `pub: this.hostKey.pub, key_id: this.hostKey.keyId` to the status
+   body. `POST /api/gs/status` pins on it and answers `{key_pinned, pinned_key_id}` so you can log
+   a mismatch at the box too.
+2. **The `replay` block of a result** — add `key_id: stats.keyId` (you already pass `keyId` into
+   `ReplayWriter`). `POST /api/gs/result` stamps `replays.key_pinned` from it, and that one flag is
+   what grades a record as evidence.
+
+There is also `POST /api/gs/key` (`{pub, key_id}`) if you would rather do it once at boot; the site
+accepts all three paths. Until one of them is wired, every replay is stored **unpinned** and record
+review says "UNPINNED KEY — not record-grade evidence", which is correct but useless.
+
+**Also built for you:** `POST /api/gs/spool` takes an array of the same bodies `/api/gs/result`
+takes and answers per item, for the coordinator's Q-host-2 answer (spool and retry, never destroy a
+box with a non-empty spool). And `/api/gs/result` **never returns 5xx** — a failure is logged to
+`activity_log` and surfaced on the admin page, because a box that gets a 500 retries forever.
+
+**One difference from `mock-site/site.js` you should know about:** `GET /api/gs/chat-feed?since=0`
+returns the cursor and **no events**. The mock returns the whole ring, and `onNetworkChat` pushes
+everything it receives into every live game — so a box restarting mid-game would print an hour of
+strangers' chat at whoever was playing. Backlog belongs on the website, which reads the ring
+directly. Your `chatSince=0` first call therefore just learns where the cursor is, which is what it
+wants anyway.

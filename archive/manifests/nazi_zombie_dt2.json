@@ -3,17 +3,31 @@
   "map": "nazi_zombie_dt2",
   "title": "CITY OF HELL",
   "source": "custom",
-  "author": null,
-  "released": null,
+  "author": "gamer9294",
+  "released": "2015-08-20",
   "fs_game": "mods/nazi_zombie_dt2",
   "script_fingerprints": {
     "maps/_zombiemode.gsc@nazi_zombie_dt2.iwd": "69bb12f7bf2da853371d53f61591fa49e343793552e4f67d7c58f4145f39513d"
   },
   "badge": {
-    "main_finish": "round",
+    "main_finish": "easter_egg",
     "round_n": 20
   },
   "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidate_flags": [],
+      "candidate_entities": [
+        "radio1_trigger",
+        "radio2_trigger",
+        "radio3_trigger"
+      ]
+    },
     {
       "id": "round",
       "label": "Round 20",
@@ -76,7 +90,30 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "69bb12f7bf2da853371d53f61591fa49e343793552e4f67d7c58f4145f39513d",
-    "script_count": 172
+    "script_count": 172,
+    "verdict_raw": "manual",
+    "verdict_debiased": "manual",
+    "why_debiased": "map-specific names suggest an ending (ending_parts_placed) but nothing decidable",
+    "verdict_entities": "easter_egg",
+    "why_entities": "easter-egg state found in entities radio1_trigger, radio2_trigger, radio3_trigger",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [
+        "radio1_trigger",
+        "radio2_trigger",
+        "radio3_trigger"
+      ],
+      "end_entities": []
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [
+      "ending_parts_placed"
+    ],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
   },
   "archive": {
     "original": "City_of_Hell_zm.rar",
@@ -90,8 +127,11 @@
     "shipped_executables": [
       "City of Hell.exe"
     ],
-    "catalogue_tags": [],
-    "catalogue_description": null
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending"
+    ],
+    "catalogue_description": "* TURN OFF THE SPECULAR MAP OPTION. go to options and controls > graphics > specular map to > No why ? because if you have it on the map will look like to much shinny and other things will ook bad, it was happends when I use the ignore.csv file because to many images (error: exceeded of 2400 image asset) but that is solved and you will only need to do that with the specular map. * this is the last version that I will upload because my computer is crashed and you guys got lucky that I have already finished the map and I\u2019m not lost the files * there are some little bugs over there but I can\u2019t fix that because my modtools didn\u2019t work anymore. * I have fixed a large bug that I have found that is also the point why I\u2019m reinstalling my computer again I hope you enjoy my map and have fun with it Storyline After the Black day , the City has for a while no power. It is 10 years later where 4 survivors sleeping into a hotel and when they wake up because a strange sound outside. but now the 4 survivors need to stay alive and survive from the undead zombies."
   },
   "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 1 executable(s): City of Hell.exe. NEVER RUN THEM (dev-box.md rule 3). "
 }

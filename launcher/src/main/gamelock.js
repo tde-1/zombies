@@ -53,6 +53,33 @@ export function update(name, pid, why) {
   try { fs.writeFileSync(LOCK_FILE, `${name} ${pid} ${new Date().toISOString()} ${why}`) } catch {}
 }
 
+// Re-assert a lock we hold, while our game is still running. Two reasons this has to
+// exist:
+//
+//   1. dev-box.md rule 5 makes a lock STALE after 15 minutes. A real zombies game runs
+//      for hours, so without a heartbeat another agent would correctly conclude our
+//      lock was abandoned and take it — while the game was still up.
+//   2. A lock can be deleted out from under us. It happened on 2026-09-20: our launch
+//      took the lock, the file was gone by the time we released it, and from outside
+//      that looks exactly like a game running with no lock at all.
+//
+// Returns what it did, so the caller can say so rather than doing it silently. It
+// never overwrites a lock that names somebody else — that is their game, and two
+// holders is worse than none.
+export function heartbeat(name, pid, why) {
+  if (!enabled()) return { action: 'none' }
+  const cur = read()
+  if (!cur.held) {
+    update(name, pid, why)
+    return { action: 'restored', detail: 'the shared game lock had been removed while our game was running; put it back' }
+  }
+  if (cur.name !== name) {
+    return { action: 'taken_by_other', detail: `another agent (${cur.name}, pid ${cur.pid}) holds the game lock while our game is running` }
+  }
+  update(name, pid, why)
+  return { action: 'refreshed' }
+}
+
 // Only ever releases OUR lock: if someone else has taken it since, leave it alone.
 export function release(name) {
   if (!enabled()) return { released: false, reason: 'no lock in use' }

@@ -295,6 +295,9 @@ private:
         // The identification aid for `re` and the host: which level-notify ids fired,
         // and how often. An id with a count equal to the round count is
         // between_round_over; an id that fired once near the end is end_game.
+        ENW_INFO("referee: chat captured so far: %llu (MUST be 0 in an idle game - that is the "
+                 "sanity check that caught the bad G_Say hook)",
+                 static_cast<unsigned long long>(referee::chat_capture_count()));
         ENW_INFO("referee: %llu level notifies over %zu distinct ids (%llu emitted, %llu suppressed)",
                  static_cast<unsigned long long>(level_notify_count_), id_counts_.size(),
                  static_cast<unsigned long long>(level_notify_emitted_),

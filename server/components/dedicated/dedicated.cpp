@@ -81,14 +81,24 @@ constexpr size_t off_value = 0x10;
 }  // namespace dvar
 
 enum dvar_flags : uint16_t {
-    // `re` read the constant out of the SetSavedDvar builtin itself (0x516990) on
-    // 2026-09-20: it tests 0x200. My own bit-0 guess was wrong (probe p17 set it and
-    // GSC still refused); 0x200 is the bit I had mislabelled "write protected" after
-    // seeing fs_homepath = 0x0210.
-    DVAR_ARCHIVE  = 0x0001,  // [V] config.cfg archive (com_maxfps has it, logfile does not)
-    DVAR_ROM      = 0x0040,  // [C] set on `dedicated`
-    DVAR_SAVED    = 0x0200,  // [V, re] what SetSavedDvar (0x516990) tests
-    DVAR_EXTERNAL = 0x4000,  // [C] set on dvars created from the command line
+    // DVAR_SAVED is proved from the instruction, not from a header: `re` read the gate
+    // inside the SetSavedDvar builtin at 0x516B15 as `test word ptr [dvar+8], 0x1000`.
+    // Three wrong answers preceded it and all three are worth remembering:
+    //   * my bit-0 guess (probe p17: written and read back, GSC still refused);
+    //   * T4SP's enum, which calls 0x200 SAVED and 0x1000 CHANGEABLE_RESET -- wrong for
+    //     this build, and a reminder that T4SP has been right about struct sizes and
+    //     wrong about this enum, so treat its constants as hypotheses;
+    //   * my own working mask 0xBDAE, which only worked *because* it happens to contain
+    //     0x1000. It also set ~10 other bits, at least one of them cheat-ish, which is
+    //     not something to ship on a server that certifies records.
+    //
+    // The other three below are [inferred] from observed behaviour in probe p16, not
+    // read out of an instruction. Do not promote them to fact without the same
+    // treatment DVAR_SAVED got.
+    DVAR_ARCHIVE  = 0x0001,  // [inferred] com_maxfps is in config.cfg, logfile is not
+    DVAR_ROM      = 0x0040,  // [inferred] set on `dedicated`, which prints "read only"
+    DVAR_SAVED    = 0x1000,  // [VERIFIED, re] tested at 0x516B15
+    DVAR_EXTERNAL = 0x4000,  // [inferred] set on dvars created from the command line
 };
 
 enum dvar_type : uint16_t {
@@ -161,9 +171,28 @@ int  g_dedicated_value = 0;
 // never turning even with the bring-up skipped (probe p29). Runtime-settable via
 // ENW_DEDI_BRINGUP_RET so trying both costs a probe, not a rebuild.
 long g_bringup_ret = 1;
+// Counting our own stub is the decisive test for where WinMain actually stops.
+// WinMain around the loop (dumped live, probe p31):
+//   5FF799  call 5FF4E0        <- retargeted to this stub
+//   5FF79E  mov ecx,[22C1BE4] / push ecx / call SetFocus     (returns immediately)
+//   5FF7AB  mov esi,[Sleep]
+//   5FF7B1  cmp [22C1BF0], ebx        <- LOOP TOP
+//   5FF7B7  je 5FF7BD  /  push 5 / call esi   (Sleep(5))
+//   5FF7BD  call Com_Frame            <- foundation's tick, reads 0
+// Nothing between the stub and the loop can block: SetFocus returns. So if this
+// counter stays at 0, WinMain never even reaches 0x5FF799 -- meaning Com_Init
+// (which is where `+map` runs, and where our post_init fires) never returns.
+volatile long g_bringup_calls = 0;
+
+void __cdecl bringup_count() { ++g_bringup_calls; }
 
 __declspec(naked) void renderer_bringup_stub() {
     __asm {
+        pushfd
+        pushad
+        call bringup_count
+        popad
+        popfd
         mov eax, dword ptr [g_bringup_ret]
         ret
     }
@@ -493,11 +522,11 @@ private:
                 static uint64_t last = 0;
                 const uint64_t n = enw::frame::count();
                 ENW_INFO("dedicated: liveness t=%ds  frame::count=%llu (+%llu in 5s = %.1f Hz) "
-                         "installed=%s  ours=%lld  pumps=%llu",
+                         "installed=%s  ours=%lld  bringup_stub_hits=%ld  pumps=%llu",
                          (i + 1) * 5, static_cast<unsigned long long>(n),
                          static_cast<unsigned long long>(n - last), (n - last) / 5.0,
                          enw::frame::installed() ? "yes" : "NO",
-                         static_cast<long long>(g_frames),
+                         static_cast<long long>(g_frames), g_bringup_calls,
                          static_cast<unsigned long long>(s.pumps));
                 last = n;
             }

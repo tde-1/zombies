@@ -231,7 +231,28 @@ def _generic(ps, url):
     return out, "alive"
 
 
+# --------------------------------------------------------------------- OneDrive
+def probe_onedrive(ps, url):
+    """OneDrive's legacy `?cid=...&resid=...&authkey=...` download endpoint.
+
+    MEASURED: every one of callofdutyrepo's 121 OneDrive mirrors answers HTTP 404 to a
+    HEAD, but a following GET lands on `login.live.com`. Microsoft retired that URL
+    shape, so the file may well still exist under the current one -- we simply cannot
+    see it without a Microsoft account. Recording these as "dead" would have put a
+    fictitious 121 dead links into the headline rot figure; they are `blocked`.
+    """
+    out, verdict = _generic(ps, url)
+    if verdict == "alive":
+        return out, verdict
+    out["error"] = ("OneDrive legacy /download?cid= endpoint: answers 404 to a HEAD and "
+                    "redirects a GET to login.live.com. Microsoft retired this URL "
+                    "shape; unverifiable without a Microsoft account.")
+    return out, "blocked"
+
+
 HOSTS = {
+    "onedrive.live.com": probe_onedrive,
+    "1drv.ms": probe_onedrive,
     "mediafire.com": probe_mediafire,
     "mega.nz": probe_mega,
     "mega.co.nz": probe_mega,

@@ -10,10 +10,38 @@
     "maps/_zombiemode.gsc@mod.ff": "8eb1fd068315625abb3056a9739871aa40cbd0df686c19403a81656daf1b6ba4"
   },
   "badge": {
-    "main_finish": "round",
+    "main_finish": "easter_egg",
     "round_n": 20
   },
   "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidate_flags": [],
+      "candidate_entities": [
+        "ee_exit_struct",
+        "ee_radio",
+        "ee_song_struct",
+        "ee_step_1_switch",
+        "ee_step_1_trigs",
+        "ee_step_2_crystal_fx",
+        "ee_step_2_pickup",
+        "ee_step_3_blue",
+        "ee_step_3_trig",
+        "ee_step_4_buttons",
+        "ee_step_4_light_trail",
+        "ee_step_5_model_spawn",
+        "ee_step_6_soul_collectors",
+        "ee_step_8_hack",
+        "ee_test_tube_guy",
+        "ee_testtube_activate_trig",
+        "ee_testtube_room_trigger"
+      ]
+    },
     {
       "id": "round",
       "label": "Round 20",
@@ -75,7 +103,42 @@
       "maps/_loadout.gsc"
     ],
     "zombiemode_sha256": "8eb1fd068315625abb3056a9739871aa40cbd0df686c19403a81656daf1b6ba4",
-    "script_count": 120
+    "script_count": 120,
+    "verdict_raw": "manual",
+    "verdict_debiased": "round",
+    "why_debiased": "no easter egg or ending found; default Round 20",
+    "verdict_entities": "easter_egg",
+    "why_entities": "easter-egg state found in entities ee_exit_struct, ee_radio, ee_song_struct, ee_step_1_switch, ee_step_1_trigs, ee_step_2_crystal_fx",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [
+        "ee_exit_struct",
+        "ee_radio",
+        "ee_song_struct",
+        "ee_step_1_switch",
+        "ee_step_1_trigs",
+        "ee_step_2_crystal_fx",
+        "ee_step_2_pickup",
+        "ee_step_3_blue",
+        "ee_step_3_trig",
+        "ee_step_4_buttons",
+        "ee_step_4_light_trail",
+        "ee_step_5_model_spawn",
+        "ee_step_6_soul_collectors",
+        "ee_step_8_hack",
+        "ee_test_tube_guy",
+        "ee_testtube_activate_trig",
+        "ee_testtube_room_trigger"
+      ],
+      "end_entities": []
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
   },
   "archive": {
     "original": "nazi_zombie_leviathan_v1.2.exe",

@@ -1,0 +1,160 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ugx_artemovsk",
+  "title": "UGX Requiem",
+  "source": "custom",
+  "author": "treminaor",
+  "released": "2015-10-16",
+  "fs_game": "mods/ugx_artemovsk",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@fastcompile.iwd": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidate_flags": [],
+      "candidate_entities": [
+        "meteor_path_start",
+        "meteor_piece",
+        "meteor_stop_1",
+        "meteor_stop_2",
+        "meteor_stop_3",
+        "meteor_stop_4",
+        "ugx_meteor_large",
+        "ugx_meteor_largest",
+        "ugx_soul_tube",
+        "ugx_soul_tube_fill"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "scanner": {
+    "verdict": "manual",
+    "why": "names suggest an ending (crawler_round_ending, dog_round_ending, end_game, end_game_chaos, ending_extended_death, vending_item_power_on) but nothing decidable",
+    "scripts": 138,
+    "entities": 2226,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "dog_round_ending",
+      "end_game",
+      "end_game_chaos",
+      "ending_extended_death",
+      "vending_item_power_on"
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "auto271"
+      ],
+      [
+        2000,
+        "barn_door_kick_trig",
+        "auto218"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto314"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto313"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto313"
+      ]
+    ],
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1",
+    "script_count": 138,
+    "verdict_raw": "manual",
+    "verdict_debiased": "manual",
+    "why_debiased": "map-specific names suggest an ending (end_game_chaos, vending_item_power_on) but nothing decidable",
+    "verdict_entities": "easter_egg",
+    "why_entities": "easter-egg state found in entities meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [
+        "meteor_path_start",
+        "meteor_piece",
+        "meteor_stop_1",
+        "meteor_stop_2",
+        "meteor_stop_3",
+        "meteor_stop_4",
+        "ugx_meteor_large",
+        "ugx_meteor_largest",
+        "ugx_soul_tube",
+        "ugx_soul_tube_fill"
+      ],
+      "end_entities": []
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [
+      "end_game_chaos",
+      "vending_item_power_on"
+    ],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
+  },
+  "archive": {
+    "original": "ugx_requiem.exe",
+    "original_sha256": "0890048ea79798467fb36fd3aa8a653eb12af458a19398792923473e8f7fa0c7",
+    "original_size": 409482179,
+    "source_url": "http://www.mediafire.com/file/k8zgyd5o45djtcr/ugx_requiem_public_v1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/10/16/ugx-requiem/",
+    "fetched": "2026-09-20T00:52:42Z",
+    "av": "clean",
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "ugx_mod",
+      "top_100",
+      "ugx_modded"
+    ],
+    "catalogue_description": "This map features UGX Mod v1.1! For a full list of features, click here . It\u2019s finally here! UGX Requiem is the latest map from the UGX-Mods team \u2013 featuring UGX Mod v1.1."
+  },
+  "notes": "This map replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+}

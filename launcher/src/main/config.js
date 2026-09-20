@@ -16,9 +16,13 @@ export const PLACEHOLDER = path.resolve(HERE, '..', 'renderer', 'placeholder.htm
 
 export const DEFAULTS = {
   // In probe order. Each is tried once, briefly, at startup.
+  // Ports read from the other agents' code, not guessed: web/server/index.js listens
+  // on 3200 (PORT/ZM_PORT), web/client/vite.config.js dev-serves on 5173,
+  // infra/host-agent/mock-site on 8080, its dashboard on 8787.
   siteCandidates: [
-    { url: 'http://127.0.0.1:8099', what: 'the ENW Zombies site (web/)' },
-    { url: 'http://127.0.0.1:3000', what: 'the ENW Zombies site (web/, dev server)' },
+    { url: 'http://127.0.0.1:3200', what: 'the ENW Zombies site (web/)' },
+    { url: 'http://127.0.0.1:5173', what: 'the ENW Zombies site (web/client, Vite dev server)' },
+    { url: 'http://127.0.0.1:8099', what: 'the ENW Zombies site (alternate port)' },
     { url: 'http://127.0.0.1:8080', what: 'the mock site (infra/host-agent/mock-site)' },
     { url: 'http://127.0.0.1:8787', what: "the host agent's dashboard" },
   ],

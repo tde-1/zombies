@@ -1,0 +1,119 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_orbit",
+  "title": "ORBIT",
+  "source": "custom",
+  "author": "MakeCents",
+  "released": "2016-05-04",
+  "fs_game": "mods/nazi_zombie_orbit",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "5811a5aa8a4cf9a78f0369b3e29ba33f665e403ef4763b9171498db9ab9a7508"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "scanner": {
+    "verdict": "manual",
+    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death) but nothing decidable",
+    "scripts": 199,
+    "entities": 4727,
+    "ee_candidates": [],
+    "ending_words": [
+      "arcademode_ending_complete",
+      "crawler_round_ending",
+      "dog_round_ending",
+      "end_game",
+      "ending_extended_death"
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_vending",
+        "pf6659_auto1"
+      ],
+      [
+        3000,
+        "zombie_vending",
+        "pf2784_auto1"
+      ],
+      [
+        3000,
+        "zombie_vending",
+        "pf2706_auto1"
+      ],
+      [
+        2500,
+        "zombie_vending",
+        "pf7904_auto1"
+      ],
+      [
+        2500,
+        "zombie_vending",
+        "pf1687_auto1"
+      ]
+    ],
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5811a5aa8a4cf9a78f0369b3e29ba33f665e403ef4763b9171498db9ab9a7508",
+    "script_count": 199,
+    "verdict_raw": "manual",
+    "verdict_debiased": "round",
+    "why_debiased": "no easter egg or ending found; default Round 20",
+    "verdict_entities": "round",
+    "why_entities": "no easter egg or ending found in scripts or entities; default Round 20",
+    "entity_evidence": {
+      "ee_flags": [],
+      "ee_entities": [],
+      "end_entities": []
+    },
+    "ee_candidates_own": [],
+    "ending_words_own": [],
+    "baseline": {
+      "stock_names": 827,
+      "corpus_common": 254,
+      "note": "A name is treated as this map's own only if it is absent from WaW's stock zones AND from the boilerplate shared by most maps in the corpus. See archive/stock_baseline.py."
+    }
+  },
+  "archive": {
+    "original": "ORBiT_v1.2.exe",
+    "original_sha256": "e4bf3065e4456a93421e36f83fa63619cc95535e068aee9a7f547b4d2073cd85",
+    "original_size": 477987950,
+    "source_url": "https://www.mediafire.com/file/f5g8w0cuigzwo8o/ORBiT_v1.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-20T00:47:50Z",
+    "av": "clean",
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Back Story They thought they developed an endless source of safe power from things found floating in space. They created the GRAVITRON, which seemed to emit harmless radiation\u2026 or so they thought. After the accidental death on the station they found out different. That worker didn\u2019t stay dead\u2026 The scientist attempted to lock it up in Sector 9 and escape to earth, but they didn\u2019t know they and the entire earth were already infected. Three of the scientist teleported to earth while one stayed back to disable the space station. Little did they know what we know now. We must reverse the GRAVITRON. This should cure the earth and stop the infection from growing. First power up the teleporters and then go retrieve the keycards from where the scientist teleported and unlock sector 9. We can\u2019t access Sector 9 without them. Then reverse the GRAVITRON. It\u2019s up to you\u2026 Or just play gun game, that\u2019s fun too. Features \u2013 Campaign style map with beatable (not buyable) ending. \u2013 Mod designed for: \u2013 Replayability, randomizing spawns, players, starting pistols, events, perk locations, weapon locations, and more\u2026 \u2013 Coop with extra options, trade weapons with other players, share points, or share the box weapons, and more\u2026 \u2013 All players, with three difficulty levels adjusting boss health, number of sprinters, and power up times, and more\u2026 \u2013 Custom guns, perks, box, zombies, ees, knife, and everything else. Yeah pretty much everything is custom. \u2013 Gun game with options Credits"
+  },
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+}

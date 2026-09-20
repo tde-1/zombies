@@ -95,7 +95,7 @@ export default function Profile() {
           {d.shelf.map((s) => (
             <Link className={`slot ${s.beaten ? 'beaten' : ''}`} key={s.key} to={`/m/${s.key}`}
               title={s.beaten ? `Beaten${s.solo ? ' solo' : ''}${s.best_round ? ` · best round ${s.best_round}` : ''}` : s.played ? `Played · best round ${s.best_round}` : 'Not played'}>
-              <Hex label={s.title} size={56} gold={s.gold} locked={!s.beaten} />
+              <Hex label={s.title} code={s.key.replace('nazi_zombie_', '').toUpperCase().slice(0, 9)} size={56} gold={s.gold} locked={!s.beaten} />
               <div className="nm tiny">{s.title}</div>
               <div className="ticks">
                 {s.ee ? 'EE ' : ''}{s.buyable ? 'BE ' : ''}{s.best_round ? `R${s.best_round}` : ''}{s.solo ? ' · solo' : ''}

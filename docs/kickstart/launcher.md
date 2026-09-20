@@ -17,6 +17,7 @@ cd launcher
 npm install                                   # Electron 38 (see §8 if the binary does not extract)
 
 npm test                                      # 35 in-process checks, no Electron, no game
+npm run test:launch                           # spawns a stand-in "game" and checks what it received
 node src/main/detect-cli.js                   # find World at War and explain every step
 node src/main/detect-cli.js --browse "C:\..." # the forgiving browse fallback, from a folder
 node src/main/detect-cli.js --json            # the same as a machine-readable report
@@ -24,7 +25,7 @@ node src/main/setup-cli.js install            # install the ENW client into %LOC
 node src/main/setup-cli.js status
 node src/main/setup-cli.js uninstall          # --delete-maps to drop the map library too
 node src/main/play-cli.js --dry-run           # the exact command line, nothing started
-node src/main/play-cli.js --map nazi_zombie_prototype --seconds 40   # takes game.lock
+node src/main/play-cli.js --map nazi_zombie_prototype --local --seconds 60 --stealth   # takes game.lock
 
 npm start                                     # the actual app
 ENW_SMOKE_MS=5000 npx electron .              # boot it, report what came up, quit (no window)
@@ -226,6 +227,84 @@ World at War → In game**, over map art. Each step is a real call:
 **Anything that cannot be reached is marked `SIMULATED` in the UI, by name.** The boot screen says
 which steps were not real rather than showing a green tick for a server that does not exist.
 
+### Proving the launch without the game
+
+Four agents contend for `game.lock` on this box and the game is the one thing this code does not
+control, so `test/launch-harness.js` builds a fake game folder whose `CoDWaW.exe` is a copy of
+`node.exe`, runs the **real** `GameLaunch` against it, and checks what the child actually received.
+All eleven checks pass:
+
+```
+ok   the three arguments from the brief
+ok   the account settings, applied over the top
+ok   fs_homepath points at the ENW folder, with no space in it
+ok   THE TOKEN IS NOT IN THE COMMAND LINE THE CHILD SEES
+ok   the token IS delivered over the pipe
+ok   the token is not in the environment either (pipe mode)
+ok   SteamStub hints are set (a copied exe exits without them)
+ok   game-link v0 environment is set
+ok   the working directory is our game folder
+ok   the game lock is released afterwards
+ok   the token pipe is closed afterwards
+```
+
+It does **not** prove that the engine likes the arguments, that our `binkw32` proxy loads, or that
+the map comes up. Those need the real exe and the lock.
+
+It found three things worth recording:
+
+1. **The first run was refused**, correctly: *"World at War is already running (process 25236).
+   Close it first."* — the `__CoDWaW` marker named another agent's live game. The guard that stops a
+   player launching a second instance is also what stopped this harness stepping on referee's
+   capture. The harness now uses its own `LOCALAPPDATA`.
+2. **`serveToken()` reported itself open forever.** It returned `{...state, …}`, so `closed` was
+   frozen at `false` while `close()` updated the inner object. Harmless today, and exactly the kind
+   of thing that later convinces someone a pipe has leaked. Now getters.
+3. **Play Local would have passed both `+map` and `+connect`.** The engine would have loaded the
+   local map and then left it for the server. Play Local is now its own path through the boot flow
+   (`runLocal()`): no lease, no token, no `+connect`, relabelled steps ("Playing locally", "In game
+   (untracked)"), because "Reserving server" is a lie on a game that runs on your own PC.
+
+### The real launch: it reaches a playable zombies map
+
+`node src/main/play-cli.js --map nazi_zombie_prototype --local --seconds 60 --stealth`, out of
+`%LOCALAPPDATA%\ENWZombies\game`, with the game lock held. From our DLL's own log inside the game
+(`logs/enw-31680.log`):
+
+```
+enw_t4 build Sep 20 2026 01:34:03
+  dll : C:\Users\b\AppData\Local\ENWZombies\game\binkw32.dll
+  exe : C:\Users\b\AppData\Local\ENWZombies\game\CoDWaW.exe
+  cmd : …CoDWaW.exe +set fs_homepath …\ENWZombies\home +set com_introPlayed 1
+        +set fs_game mods/enw … +map nazi_zombie_prototype
+game-link: exe sha256 732900d158982c33e3121f0b86d22230be79839bbcbfe3bdfc1238f408a7d64d
+steamstub: decrypted after 141 ms (66 polls)
+components: post_init done (12 of 12 ok)
+enw_t4: PER-FRAME TICK IS LIVE (27 frames)
+```
+
+and from the engine's own log:
+
+```
+------ Server Initialization ------
+Server: nazi_zombie_prototype
+Waited 281 msec for asset 'maps/nazi_zombie_prototype.d3dbsp' of type 'col_map_mp'
+LOADING... maps/nazi_zombie_prototype.d3dbsp
+G_WriteGame 'nazi_zombie_prototype-zombie_start' 'AUTOSAVE_LEVELSTART'
+```
+
+So the folder the launcher built runs, SteamStub is satisfied by it, the exe is byte-identical to
+the verified one, our proxy DLL loads and all twelve components come up, the per-frame tick runs,
+and **the game reaches a playable zombies level**. `AUTOSAVE_LEVELSTART` is the signal the boot
+screen now uses for "In game" — not "Loading fastfile", which the engine emits a dozen times for
+`code_post_gfx`, `ui`, `common` and friends long before any map exists.
+
+**No modal dialog appeared on either run.** Every unattended run the other agents describe sat on
+"Set Optimal Settings?"; these did not, and reached a live frame tick in about six seconds. The
+difference is most likely `+map <map>` on the command line, which skips the front end the box
+belongs to. Worth confirming, because if it holds it is a cheaper answer than answering the dialog.
+The nanny is still there and still needed for the paths that do go through the menu.
+
 ### The game lock
 
 `gamelock.js` honours `ZombiesDev\locks\game.lock` exactly as `dev-box.md` rule 5 describes: takes
@@ -241,10 +320,11 @@ alone). On a machine with no `ZombiesDev` the whole thing is a no-op, which is t
 preload (`src/preload/preload.cjs`) that is the entire API surface.
 
 * **It wraps the site.** The site is a native `WebContentsView`; our chrome is a normal page around
-  it. At startup the launcher probes, in order: `127.0.0.1:8099`, `:3000` (the `web/` agent),
-  `:8080` (the mock site), `:8787` (the host agent's dashboard), and falls back to a bundled
-  placeholder page that says so. Pin one in Settings or with `ENW_SITE_URL` — **no rebuild needed to
-  point it anywhere.**
+  it. At startup the launcher probes, in order: `127.0.0.1:3200` (the `web/` agent's server),
+  `:5173` (its Vite dev server), `:8099`, `:8080` (the mock site), `:8787` (the host agent's
+  dashboard), and falls back to a bundled placeholder page that says so. Those ports were read out
+  of `web/server/index.js` and `web/client/vite.config.js`, not guessed. Pin one in Settings or with
+  `ENW_SITE_URL` — **no rebuild needed to point it anywhere.**
 * **No overlay, ever.** B was emphatic, so the architecture makes it impossible rather than merely
   avoided: the boot screen and first-run wizard **hide** the site view and take the window; they
   never draw over it. Nothing is ever drawn over the game.
@@ -281,18 +361,22 @@ preload (`src/preload/preload.cjs`) that is the entire API surface.
 | Ownership signal | **Real** as far as a local Steam install can be; not a licence check |
 | Install into the ENW folder, junctions, proxy DLL | **Real**, 7.7 MB, source verified unchanged |
 | Uninstall, junction-safe | **Real**, tested |
-| Command line + environment | **Real** |
-| Token over a named pipe | **Real launcher-side**; the DLL does not read it yet |
+| Command line + environment | **Real**, and checked against what a child process actually receives (`test/launch-harness.js`) |
+| **Play Local, end to end** | **Real and proven**: the launcher's own game folder boots, our DLL loads, and the game reaches `AUTOSAVE_LEVELSTART` on `nazi_zombie_prototype` |
+| Game lock, with a heartbeat | **Real**; re-asserted every 60 s so a multi-hour game is never mistaken for a stale 15-minute lock |
+| Token over a named pipe | **Real launcher-side** (a real child read it back); the DLL does not read it yet |
 | Dialog answering, SteamStub pid adoption | **Real** (ported from launch.ps1 + referee's fix) |
-| Game lock | **Real** |
 | Reserving a server + invite token | **Real** against `mock-site`; no production site exists |
-| "Loading map" / "Ready" / "In game" confirmations | **Real when a host agent answers**, otherwise labelled SIMULATED in the UI |
+| "Loading map" / "Ready" confirmations | **Real when a host agent answers** (verified against a live box), otherwise labelled SIMULATED in the UI |
+| **Play (our server), end to end** | **Blocked, not faked.** Everything up to and including "Ready" is real; the client cannot actually join because no WaW dedicated server accepts clients yet (dedi's Stage C). The box the launcher reserved runs `sim-instance.js`, which speaks the protocol but is not a game a client can connect to |
 | Electron shell, tray, deep links, settings, idle-gated refresh | **Real** |
 | Crash reporting | **Real**, to a local endpoint |
 | Sign-in | **Mocked.** It reads the SteamID this PC is signed into, so the ID is real; Steam OpenID needs the site and a secret we do not have locally |
 | The map list in the rail | **Placeholder**, and labelled as one in the UI |
 | Map art | **Placeholder** (gradient); comes from the site |
-| Map downloads / Storage page | **Not built** |
+| Storage page (folder and per-map sizes) | **Real**; junctions are reported as links, not counted, so the ENW folder does not "weigh" the player's 12 GB install |
+| Map downloads | **Not built** |
+| Uninstall asks whether to keep maps | **Real** (a three-way dialog: keep maps / remove everything / cancel) |
 | In-game toasts (badge, invite, friend moments) | **Not built** — they belong in the DLL |
 | Party / ready check | **Not built** |
 | Auto-update server, code signing, installer | **Deliberately not built** (overnight rules: no cloud, no publishing, no signing) |
