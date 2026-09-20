@@ -43,6 +43,13 @@ to count it even if something claims otherwise.
 
 Full detail, including what to do if Electron misbehaves: `launcher/README.md`, `web/README.md`.
 
+## If you actually play for a few minutes, you finish something we couldn't
+The one thing no agent could do is **be at the keyboard**. An unattended game sits at round 0 with
+nobody spawning, so the zombies script never starts — every capture tonight was a player standing
+still. If you press Play, load in and play a few rounds, the referee records it and the site should
+show the game, the round, the live view and a signed replay. That would be the first complete run of
+the whole chain, and the honest test of whether rounds and finishes are detected in a real game.
+
 ## What is real and what is not
 - **Real**: map catalogue and archive, map pages, profiles, records, badges, playlists, parties,
   comments, admin/moderation, live spectating, signed replays and their verification, map install
