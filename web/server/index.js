@@ -64,6 +64,9 @@ const sessionMw = session({
   rolling: true,
   cookie: { httpOnly: true, sameSite: 'lax', maxAge: 30 * 86400_000, secure: process.env.NODE_ENV === 'production' },
 })
+// The closed-beta front door. Off unless ZM_SITE_PASSWORD is set; exempts /api/gs
+// (game boxes carry their own secret and cannot type a password) and /healthz.
+app.use(require('./middleware/gate').gate())
 app.use(sessionMw)
 app.use(express.json({ limit: '256kb' }))
 app.use(attach)
