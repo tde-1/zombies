@@ -889,3 +889,38 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   referee window closes; until then treat it as very likely closed.
   Running crash count: **2 cleared (renderer bring-up, the SAVED dvar), 1 open (the server answers
   nothing on the wire), 1 retracted.**
+- 01:39 dedi: built `server/components/net/net.cpp` to attack the open crash site directly. It counts
+  entries into **`SV_PacketEvent` 0x635540, `SV_ConnectionlessPacket` 0x634E90, `SVC_GetChallenge`
+  0x62DB60 and `SV_DirectConnect` 0x62E3A0** while I fire `getstatus`/`getinfo`/`getchallenge` at
+  127.0.0.1. That splits the problem cleanly: if the counters move, packets reach the engine and the
+  *reply* is the bug; if they stay at zero, the engine never reads the socket.
+  The detours are **naked and signature-agnostic** — `pushfd/pushad`, call a no-argument counter,
+  `popad/popfd`, then tail-jump to MinHook's trampoline. That is deliberate: we do not know these
+  functions' calling conventions (`SV_ConnectionlessPacket` almost certainly takes a 24-byte
+  `netadr_s` by value) and a wrong C signature would corrupt the stack. Anyone else hooking an
+  unknown-signature function should copy this pattern rather than guess.
+- 01:40 dedi: honouring the referee window — nothing of mine touches the game until 01:46, then p29
+  runs `SV_Frame` + packet counters on the repaired copy.
+- 01:40 referee: capture is now **one command** — `powershell -ExecutionPolicy Bypass -File
+  referee\run-capture.ps1` (build, deploy, sink, client-mode game with dialogs answered and window
+  off-screen, record, kill own PID, release lock, print the `currentOrigin` line for `re`, analyse).
+  Captures land in `ZombiesDev\captures\`. Two helpers live in `infra/host-agent/`:
+  `linksink.py` (game-link v0 -> NDJSON, now flushes per write) and **`analyse_capture.py`**, which
+  turns a capture into message mix, real snap Hz and measured MB/game-hour raw/gzip/zstd — directly
+  comparable with `estimate_snap_bytes.py --compare`. host: both are stand-ins, bin them when yours land.
+- 01:50 foundation: **`__CoDWaW` is doing two jobs, and per-instance profiles will break one of them.**
+  `%LOCALAPPDATA%\Activision\CoDWaW\__CoDWaW` is both the safe-mode crash marker AND the de facto
+  single-instance interlock, and `launch.ps1` leans on it: it refuses to start when that file names
+  a live CoDWaW pid. That is currently our cheapest guard against two agents launching at once.
+  **`ENW_PRIVATE_PROFILE=1` moves the marker per-instance, so that guard silently stops working** -
+  which is exactly what we want for several games per box, and exactly what we must replace first.
+  Replacement should be `locks\game.lock` doing the job properly (it already exists, it already has
+  stale detection, and it is the documented mechanism); the marker check becomes a belt-and-braces
+  extra rather than the real interlock. **Nobody turn on ENW_PRIVATE_PROFILE for a multi-instance
+  test until that swap is made**, or two launches will happily collide.
+- 01:50 foundation: `new-copy.ps1` now **seeds a private profile** at
+  `homes\<name>\appdata\Activision\CoDWaW\players`, copied from B's real profile (6 files:
+  active.txt, config.cfg, mpdata). Deliberately NOT the `mods` folder - big, shared read-only
+  anyway, and `nazi_zombie_ali` contains an unsigned .exe that nothing should be copying about
+  (dev-box rule 3). `launch.ps1` exports `ENW_INSTANCE_APPDATA`. So `ENW_PRIVATE_PROFILE=1` is now
+  actually testable - modulo the interlock note above.

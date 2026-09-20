@@ -1,0 +1,260 @@
+'use strict'
+
+// `/api/admin` — the mod tools at launch (99 §4.9): the reports queue, infractions and
+// bans, and record review with the replay. Plus the operator surfaces the site needs to run
+// at all: the boxes and their key pins, the map of the week, playlists, badges, and leasing
+// a game by hand.
+//
+// Everything destructive is logged to `activity_log` with the actor, because "a moderator
+// decided case by case" (05) only works if you can see who decided what.
+
+const express = require('express')
+const bans = require('../lib/bans')
+const boxes = require('../lib/boxes')
+const badges = require('../lib/badges')
+const users = require('../lib/users')
+const maps = require('../lib/maps')
+const mapWeek = require('../lib/mapWeek')
+const playlists = require('../lib/playlists')
+const assignments = require('../lib/assignments')
+const achievements = require('../lib/achievements')
+const mapRecords = require('../lib/mapRecords')
+const presence = require('../lib/presence')
+const enw = require('../lib/enw')
+const { db, now } = require('../db/database')
+const { requireMod, requireAdmin } = require('../middleware/auth')
+
+function router() {
+  const r = express.Router()
+
+  // ---- overview -------------------------------------------------------------------
+  r.get('/', requireMod, (req, res) => {
+    res.json({
+      counts: {
+        ...bans.counts(),
+        users: db.prepare('SELECT COUNT(*) c FROM users WHERE deleted=0').get().c,
+        waiting: db.prepare('SELECT COUNT(*) c FROM users WHERE approved=0 AND deleted=0').get().c,
+        maps: maps.count(),
+        games: db.prepare('SELECT COUNT(*) c FROM games').get().c,
+        records: db.prepare('SELECT COUNT(*) c FROM records WHERE current=1').get().c,
+      },
+      boxes: boxes.list(),
+      presence: presence.stats(),
+      enw: enw.status(),
+      sweeps: { achievements: achievements.lastSweep() },
+      recent_activity: db.prepare('SELECT * FROM activity_log ORDER BY logged_at DESC LIMIT 40').all(),
+      // A box whose replay key changed is the loudest thing on this page for a reason.
+      key_warnings: boxes.list().filter((b) => b.key.pending),
+    })
+  })
+
+  // ---- reports queue ----------------------------------------------------------------
+  r.get('/reports', requireMod, (req, res) => res.json({ reports: bans.queue(String(req.query.status || 'new')) }))
+
+  r.post('/reports/:id/resolve', requireMod, (req, res) => {
+    res.json(bans.resolve(Number(req.params.id), { status: (req.body && req.body.status) || 'closed', note: (req.body && req.body.note) || null, by: req.me.steam_id }))
+  })
+
+  // ---- infractions and bans ----------------------------------------------------------
+  r.get('/player/:who', requireMod, (req, res) => {
+    const u = users.resolve(req.params.who)
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    res.json({
+      player: users.pub(u),
+      infractions: bans.infractionsFor(u.steam_id),
+      bans: bans.bansFor(u.steam_id),
+      badges: badges.forPlayer(u.steam_id),
+      games: require('../lib/results').recent({ steamId: u.steam_id, limit: 25 }),
+    })
+  })
+
+  r.post('/player/:who/infract', requireMod, (req, res) => {
+    const u = users.resolve(req.params.who)
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    res.json(bans.infract({ steamId: u.steam_id, kind: (req.body && req.body.kind) || 'other', note: (req.body && req.body.note) || null, by: req.me.steam_id }))
+  })
+
+  r.post('/player/:who/ban', requireMod, (req, res) => {
+    const u = users.resolve(req.params.who)
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    const b = req.body || {}
+    // Griefing is a public-play ban by default (05). The moderator can override, but the
+    // default is the policy so nobody has to remember it.
+    const scope = b.scope || (b.kind === 'griefing' ? 'public' : 'site')
+    res.json(bans.ban({
+      steamId: u.steam_id, scope, reason: b.reason || null,
+      cheating: !!b.cheating || b.kind === 'cheating',
+      by: req.me.steam_id, expiresAt: b.expires_at || null,
+    }))
+  })
+
+  r.post('/ban/:id/lift', requireMod, (req, res) => res.json(bans.unban(Number(req.params.id), req.me.steam_id)))
+
+  r.post('/player/:who/approve', requireMod, (req, res) => {
+    const u = users.resolve(req.params.who)
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    db.prepare('UPDATE users SET approved=? WHERE steam_id=?').run((req.body && req.body.approved) === false ? 0 : 1, u.steam_id)
+    db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('user.approve', ?, ?, ?)")
+      .run(req.me.steam_id, JSON.stringify({ steam_id: u.steam_id }), now())
+    res.json({ ok: true })
+  })
+
+  r.get('/waitlist', requireMod, (req, res) => {
+    res.json({ users: db.prepare('SELECT * FROM users WHERE approved=0 AND deleted=0 ORDER BY created_at').all().map(users.pub) })
+  })
+
+  r.post('/player/:who/role', requireAdmin, (req, res) => {
+    const u = users.resolve(req.params.who)
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    const b = req.body || {}
+    for (const [k, col] of [['admin', 'is_admin'], ['mod', 'is_mod'], ['archivist', 'is_archivist'], ['vip', 'vip_is']]) {
+      if (b[k] !== undefined) db.prepare(`UPDATE users SET ${col}=? WHERE steam_id=?`).run(b[k] ? 1 : 0, u.steam_id)
+    }
+    res.json({ ok: true, player: users.publicById(u.steam_id) })
+  })
+
+  // ---- record review -------------------------------------------------------------
+  // 99 §4.9: "record review with the replay". The row, the game, the roster and the replay
+  // pointer in one payload, plus the one thing that decides whether it is evidence at all —
+  // whether the replay's signing key matched the box's pin.
+  r.get('/records/review', requireMod, (req, res) => {
+    const rows = db.prepare(`SELECT r.*, b.map_key, b.category, b.player_count, b.profile, g.match_id, g.mode, g.ended_at
+                               FROM records r JOIN boards b ON b.id=r.board_id LEFT JOIN games g ON g.id=r.game_id
+                              WHERE r.current=1 ORDER BY r.created_at DESC LIMIT 100`).all()
+    res.json({
+      records: rows.map((r2) => {
+        const replay = r2.game_id ? db.prepare('SELECT * FROM replays WHERE game_id=?').get(r2.game_id) : null
+        return {
+          id: r2.id, map_key: r2.map_key, category: r2.category, player_count: r2.player_count,
+          profile: r2.profile, round: r2.round, value_ms: r2.value_ms, at: r2.created_at,
+          profile_ok: !!r2.profile_ok, profile_note: r2.profile_note, verified: !!r2.verified,
+          match_id: r2.match_id, mode: r2.mode,
+          players: (JSON.parse(r2.roster || '[]')).map((s) => users.publicById(s)).filter(Boolean),
+          replay: replay ? {
+            file: replay.file, size: replay.size, chunks: replay.chunks, key_id: replay.key_id,
+            key_pinned: !!replay.key_pinned, recovered: !!replay.recovered, partial: !!replay.partial,
+            // The one sentence a reviewer needs. host.md §5: integrity is not authorship,
+            // and a recovered replay is good enough for a badge, not record-grade evidence.
+            grade: !replay.key_pinned ? 'UNPINNED KEY — not record-grade evidence'
+              : replay.recovered ? 'recovered after a host crash — good enough for a badge, not for a record'
+                : 'signed by this box’s pinned key',
+            verify: `node infra/host-agent/tools/verify.js "${replay.file || '<file>'}" --pub <the box’s pinned key>`,
+          } : null,
+        }
+      }),
+    })
+  })
+
+  r.post('/records/:id/void', requireMod, (req, res) => {
+    db.prepare('UPDATE records SET verified=0, current=0 WHERE id=?').run(Number(req.params.id))
+    db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('record.void', ?, ?, ?)")
+      .run(req.me.steam_id, JSON.stringify({ id: req.params.id, note: (req.body && req.body.note) || null }), now())
+    mapRecords.sweep()
+    res.json({ ok: true })
+  })
+
+  // ---- boxes and the key pin ---------------------------------------------------------
+  r.get('/boxes', requireAdmin, (req, res) => res.json({ boxes: boxes.list() }))
+
+  r.post('/boxes', requireAdmin, (req, res) => {
+    const b = req.body || {}
+    if (!b.name || !b.match_key) return res.status(400).json({ error: 'name and match_key' })
+    res.json({ ok: true, box: boxes.create({ name: b.name, matchKey: b.match_key, region: b.region, note: b.note, maxInstances: b.max_instances || 4 }) })
+  })
+
+  r.post('/boxes/:id/enabled', requireAdmin, (req, res) => res.json({ ok: true, box: boxes.setEnabled(req.params.id, !!(req.body && req.body.enabled)) }))
+  r.post('/boxes/:id/key/accept', requireAdmin, (req, res) => res.json(boxes.acceptPendingKey(req.params.id, req.me.steam_id)))
+  r.post('/boxes/:id/key/reject', requireAdmin, (req, res) => res.json(boxes.rejectPendingKey(req.params.id, req.me.steam_id)))
+
+  // Lease a game by hand. This is how a box is tested without a party: it is the same
+  // lease() the party rail calls, so what works here works there.
+  r.post('/lease', requireAdmin, (req, res) => {
+    const b = req.body || {}
+    const out = assignments.lease({
+      box: b.box ? boxes.byName(b.box) : null,
+      mapKey: b.map || b.map_key,
+      mode: b.mode || 'verified',
+      players: b.players || [{ steamid: req.me.steam_id, name: users.pub(req.me).name }],
+      settings: b.settings || {},
+      by: req.me.steam_id,
+    })
+    res.status(out.ok ? 200 : 400).json(out)
+  })
+
+  r.post('/lease/:matchId/cancel', requireAdmin, (req, res) => res.json(assignments.cancel(req.params.matchId, req.me.steam_id)))
+
+  // ---- content -----------------------------------------------------------------------
+  r.post('/map-of-week', requireMod, (req, res) => {
+    const b = req.body || {}
+    if (!b.map_key) return res.status(400).json({ error: 'which map?' })
+    res.json({ ok: true, week: mapWeek.set(b.map_key, { note: b.note || null, by: req.me.steam_id }) })
+  })
+
+  r.post('/maps/:key', requireMod, (req, res) => {
+    const m = maps.byKey(req.params.key)
+    if (!m) return res.status(404).json({ error: 'no such map' })
+    const b = req.body || {}
+    const fields = ['title', 'author', 'year', 'health', 'hidden', 'description', 'readme', 'release_post', 'art', 'round_n']
+    const sets = []
+    const vals = []
+    for (const f of fields) if (b[f] !== undefined) { sets.push(`${f}=?`); vals.push(b[f]) }
+    if (sets.length) db.prepare(`UPDATE maps SET ${sets.join(', ')} WHERE id=?`).run(...vals, m.id)
+    res.json({ ok: true, map: maps.detail(m.key) })
+  })
+
+  r.post('/playlists', requireMod, (req, res) => {
+    const b = req.body || {}
+    if (!b.slug || !b.name) return res.status(400).json({ error: 'slug and name' })
+    const pl = playlists.create({ ...b, rewardBadge: b.reward_badge || 0, by: req.me.steam_id })
+    if (b.maps) playlists.setMaps(pl.id, b.maps)
+    res.json({ ok: true, playlist: playlists.bySlug(pl.slug) })
+  })
+
+  r.put('/playlists/:id', requireMod, (req, res) => {
+    playlists.update(Number(req.params.id), req.body || {})
+    if (req.body && Array.isArray(req.body.maps)) playlists.setMaps(Number(req.params.id), req.body.maps)
+    res.json({ ok: true })
+  })
+
+  // ---- badges --------------------------------------------------------------------
+  r.get('/badges', requireMod, (req, res) => res.json({ badges: badges.list({ includeRetired: true }) }))
+
+  r.post('/badges', requireAdmin, (req, res) => {
+    const b = req.body || {}
+    if (!b.name) return res.status(400).json({ error: 'name it' })
+    const { slugify } = require('../lib/util')
+    res.json({ ok: true, badge: badges.create({ ...b, slug: b.slug || slugify(b.name), createdBy: req.me.steam_id }) })
+  })
+
+  r.put('/badges/:id', requireAdmin, (req, res) => res.json({ ok: true, badge: badges.update(Number(req.params.id), req.body || {}) }))
+
+  r.post('/badges/:id/award', requireAdmin, (req, res) => {
+    const b = badges.get(Number(req.params.id))
+    if (!b) return res.status(404).json({ error: 'no such badge' })
+    // An achievement is never hand-awarded — the rule is the only thing that hands it out
+    // (05, and Movement's badges.js). A map badge is never hand-awarded either: it means
+    // the referee saw you finish the map.
+    if (b.kind !== 'staff') return res.status(400).json({ error: `a ${b.kind} badge is earned, not awarded` })
+    const u = users.resolve((req.body && req.body.steam_id) || '')
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    res.json({ ok: badges.award(b.id, u.steam_id, req.me.steam_id, { note: (req.body && req.body.note) || null }) })
+  })
+
+  r.post('/badges/:id/revoke', requireAdmin, (req, res) => {
+    const b = badges.get(Number(req.params.id))
+    if (!b) return res.status(404).json({ error: 'no such badge' })
+    if (b.kind === 'achievement' || b.kind === 'map') return res.status(400).json({ error: 'earned is earned; only a cheating ban removes this' })
+    const u = users.resolve((req.body && req.body.steam_id) || '')
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    res.json({ ok: badges.revoke(b.id, u.steam_id) })
+  })
+
+  // ---- sweeps ------------------------------------------------------------------------
+  r.post('/sweep', requireAdmin, (req, res) => {
+    res.json({ achievements: achievements.sweep(), map_records: mapRecords.sweep() })
+  })
+
+  return r
+}
+
+module.exports = { router }

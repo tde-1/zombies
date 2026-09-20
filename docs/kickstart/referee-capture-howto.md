@@ -9,18 +9,17 @@ Everything for this is built and deployed-ready; it needs one uninterrupted ~6 m
 * `build\referee\enw_t4.dll` built from current source (1,267,200 B, includes the `G_Say` chat hook
   and the multi-entity origin discovery).
 
-## Steps
+## One command
 ```powershell
 cd C:\Users\b\Desktop\Zombies
-powershell -ExecutionPolicy Bypass -File tools\dev\build.ps1  -Name referee
-powershell -ExecutionPolicy Bypass -File tools\dev\deploy.ps1 referee    # needs no game running
-
-# then, holding game.lock, from the referee scratchpad:
-#   capture.ps1 starts a game-link sink, launches a CLIENT-mode solo game,
-#   answers the modal boxes, records for N seconds, kills only its own PID
-#   and frees the lock.
-& <scratch>\capture.ps1 -Seconds 600 -Map nazi_zombie_prototype
+powershell -ExecutionPolicy Bypass -File referee\run-capture.ps1
 ```
+It builds, deploys, starts the game-link sink, launches a CLIENT-mode solo game with the modal
+boxes answered and the window parked off-screen, records, kills only its own PID, releases
+`game.lock`, prints the `currentOrigin` line for `re`, and runs the analysis. Captures land in
+`C:\Users\b\ZombiesDev\captures\<map>-<stamp>.ndjson`.
+
+Options: `-Seconds 600`, `-Map nazi_zombie_factory`, `-FsGame mods/nazi_zombie_ali`, `-SkipBuild`.
 
 **Client mode, not dedicated.** A dedicated server with no client connected has no player entities
 and `_zombiemode` never starts (`flag_wait("all_players_connected")`), so there is nothing to sample.

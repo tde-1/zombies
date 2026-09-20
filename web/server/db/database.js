@@ -49,10 +49,10 @@ function migrate() {
     -- ── Identity ────────────────────────────────────────────────────────────────────
     -- A Zombies account IS a Steam account. The ENW name is fetched over the narrow
     -- read-only SSO API (vault 11 §9b) and CACHED here: Zombies keeps its own user table
-    -- and never depends on ENW being up to render a profile. Same for VIP — `vip_is` is a
-    -- cache with a `vip_checked` timestamp, so an ENW outage downgrades nobody mid-game.
+    -- and never depends on ENW being up to render a profile. Same for VIP — \`vip_is\` is a
+    -- cache with a \`vip_checked\` timestamp, so an ENW outage downgrades nobody mid-game.
     --
-    -- `deleted` is how account deletion works (99 §4.1): the row is ANONYMISED, never
+    -- \`deleted\` is how account deletion works (99 §4.1): the row is ANONYMISED, never
     -- removed. Records, replays and badges are attached to it and must survive, so the
     -- display name becomes "Deleted player" and the Steam id stays as the join key.
     CREATE TABLE IF NOT EXISTS users (
@@ -99,11 +99,11 @@ function migrate() {
     -- attaches to a version (99 §4.7: boards are per map version, old versions freeze),
     -- and everything a browser filters on lives on the map.
     --
-    -- `key` is the engine name (`nazi_zombie_factory`) and is the map's identity: it is what
+    -- \`key\` is the engine name (\`nazi_zombie_factory\`) and is the map's identity: it is what
     -- the game box reports, what a manifest is filed under, and what a deep link carries
-    -- (`zombies.enw.gg/m/<map>`). `slug` is the human URL and may be prettier.
+    -- (\`zombies.enw.gg/m/<map>\`). \`slug\` is the human URL and may be prettier.
     --
-    -- `health` is the manifest's word (verified | playable | custom-only | broken), and it is
+    -- \`health\` is the manifest's word (verified | playable | custom-only | broken), and it is
     -- load-bearing: 99 §4.8 says a map broken on our servers is HIDDEN from the Maps list and
     -- appears only on the Archive page. That is a read-time filter on this column.
     CREATE TABLE IF NOT EXISTS maps (
@@ -164,7 +164,7 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_map_files_version ON map_files(map_version_id);
 
     -- One referee manifest per version, stored whole. The site does NOT re-implement the
-    -- evaluator (`infra/host-agent/lib/manifests.js` owns that): it reads the manifest for
+    -- evaluator (\`infra/host-agent/lib/manifests.js\` owns that): it reads the manifest for
     -- the map page's "what counts as beating this" block, the badge rules and the finish
     -- labels, and hands the file itself to the box in the assignment.
     CREATE TABLE IF NOT EXISTS manifests (
@@ -194,13 +194,13 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_map_tags_tag ON map_tags(tag_id);
 
     -- ── Playlists (Movement's machinery, unchanged) ──────────────────────────────────
-    -- `reward_badge` holds a BADGE ID, never a slug — Movement learned that the hard way
+    -- \`reward_badge\` holds a BADGE ID, never a slug — Movement learned that the hard way
     -- (its comment: a rename must never orphan a badge people already hold). The rule key
-    -- is `playlist-<id>` for the same reason.
+    -- is \`playlist-<id>\` for the same reason.
     --
-    -- `kind` is the one addition: 13 §3 wants a staff-curated kind and an AUTOMATIC one per
-    -- creator. A `creator` playlist has no hand-picked member rows; it is defined by its
-    -- `creator` column and resolved at read time, so a newly imported map by that author
+    -- \`kind\` is the one addition: 13 §3 wants a staff-curated kind and an AUTOMATIC one per
+    -- creator. A \`creator\` playlist has no hand-picked member rows; it is defined by its
+    -- \`creator\` column and resolved at read time, so a newly imported map by that author
     -- joins the list without anybody editing it.
     CREATE TABLE IF NOT EXISTS playlists (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -236,7 +236,7 @@ function migrate() {
 
     -- ── Parties and lobbies ─────────────────────────────────────────────────────────
     -- Movement's party rail, with "mode" now meaning Verified / Custom / Local.
-    -- `visibility` is private | friends | public (13 §4b). A public party is what "Find a
+    -- \`visibility\` is private | friends | public (13 §4b). A public party is what "Find a
     -- game" quick-join searches and what shows under Live games.
     --
     -- The READY CHECK is three columns rather than a table: a check belongs to exactly one
@@ -276,15 +276,15 @@ function migrate() {
 
     -- ── Game boxes and the pull protocol ────────────────────────────────────────────
     -- Movement's match_servers. A box authenticates with a per-box shared secret in
-    -- `x-match-secret` and the site NEVER connects out to it (host.md §1, and the CS fleet's
+    -- \`x-match-secret\` and the site NEVER connects out to it (host.md §1, and the CS fleet's
     -- reason: NAT, no inbound rules, no reachable RCON).
     --
-    -- THE KEY PIN. `replay_pub` / `replay_key_id` is the box's Ed25519 REPLAY-SIGNING public
-    -- key, pinned on first sight. This exists because `infra/host-agent` proved that a replay
+    -- THE KEY PIN. \`replay_pub\` / \`replay_key_id\` is the box's Ed25519 REPLAY-SIGNING public
+    -- key, pinned on first sight. This exists because \`infra/host-agent\` proved that a replay
     -- re-signed with a different key is internally consistent (host.md §5): the signature
     -- proves integrity, not authorship. Without a pin, anyone who can POST a result can also
     -- hand us a perfectly valid replay they wrote themselves. A key that ARRIVES DIFFERENT
-    -- from the pin is not accepted silently — it lands in `replay_pub_pending` and an admin
+    -- from the pin is not accepted silently — it lands in \`replay_pub_pending\` and an admin
     -- has to confirm it, which is the same shape as an SSH host-key change.
     CREATE TABLE IF NOT EXISTS boxes (
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -311,7 +311,7 @@ function migrate() {
     -- What a box should be running right now. One live row per box (the pull protocol has no
     -- queue on the box side); finished rows stay for the audit trail.
     --
-    -- `nonce` is the whole reason a 3-second poll costs nothing: the box caches it and only
+    -- \`nonce\` is the whole reason a 3-second poll costs nothing: the box caches it and only
     -- reconfigures when it changes (lib/siteclient.js). It is a hash of the assignment with
     -- the tokens and the timestamp removed, so re-issuing the identical lease does not churn
     -- a running game.
@@ -400,11 +400,11 @@ function migrate() {
     );
     CREATE INDEX IF NOT EXISTS idx_game_players_steam ON game_players(steam_id);
 
-    -- The replay pointer. 99 §5.5 says `game_events` OR a replay pointer only; the host agent
+    -- The replay pointer. 99 §5.5 says \`game_events\` OR a replay pointer only; the host agent
     -- already writes a hash-chained signed container, so the pointer is what the site keeps
     -- and the events live in the file.
     --
-    -- `key_pinned` records whether the signing key matched the box's pin AT INGEST. A 0 here
+    -- \`key_pinned\` records whether the signing key matched the box's pin AT INGEST. A 0 here
     -- means the file may be a perfectly valid replay signed by somebody else, which is
     -- exactly the case host.md §5 says must not be graded as record evidence.
     CREATE TABLE IF NOT EXISTS replays (
@@ -430,13 +430,13 @@ function migrate() {
     );
 
     -- ── Badges ──────────────────────────────────────────────────────────────────────
-    -- Movement's two tables and its `kind` column, with two zombies kinds added:
+    -- Movement's two tables and its \`kind\` column, with two zombies kinds added:
     --
     --   staff        hand-awarded (Archivist, Map Maker, Content Creator)
     --   achievement  a rule the site checks (round milestones, maps completed, collections)
     --   map          THE map badge: one per map, earned by the map's main finish (05)
     --   record       HELD, not earned — gold while you hold a record on that map, and it
-    --                moves with the record. Movement's `kind: 'record'` verbatim.
+    --                moves with the record. Movement's \`kind: 'record'\` verbatim.
     --
     -- A record badge is the only kind a sweep may take away, and it is taken away by moving
     -- it, never by deleting the history. Everything else: earned is earned.
@@ -485,7 +485,7 @@ function migrate() {
 
     -- ── XP, levels, prestige ────────────────────────────────────────────────────────
     -- XP is ACTIVE TIME (05): Verified full, Custom 25%, Local none. One ledger row per
-    -- credited game, never a mutated total — `users.xp_total` is a cache that can be rebuilt
+    -- credited game, never a mutated total — \`users.xp_total\` is a cache that can be rebuilt
     -- from this table, and an XP dispute is answered by reading rows rather than by trusting
     -- a counter.
     CREATE TABLE IF NOT EXISTS xp_ledger (
@@ -506,7 +506,7 @@ function migrate() {
     -- speedrun.com / Category-Extension category, split solo/2p/3p/4p, per map version, plus
     -- highest round per player count and the EE / Buyable Ending speedruns.
     --
-    -- `sort` is 'time_asc' (a speedrun) or 'round_desc' (a high round). It lives on the board
+    -- \`sort\` is 'time_asc' (a speedrun) or 'round_desc' (a high round). It lives on the board
     -- rather than being inferred from the category name, because the ranking rule is the one
     -- thing a board cannot get wrong.
     CREATE TABLE IF NOT EXISTS boards (
@@ -524,10 +524,10 @@ function migrate() {
     );
     CREATE INDEX IF NOT EXISTS idx_boards_map ON boards(map_key);
 
-    -- One row per RUN, not per player. A zombies high round is a team's, so `steam_id` is
-    -- the run's primary holder (the lowest slot still connected at the end) and `roster` is
+    -- One row per RUN, not per player. A zombies high round is a team's, so \`steam_id\` is
+    -- the run's primary holder (the lowest slot still connected at the end) and \`roster\` is
     -- the JSON list of everyone who was in it — all of whom hold the record badge and all of
-    -- whom the board shows. `current` marks a roster's standing entry on that board, so a
+    -- whom the board shows. \`current\` marks a roster's standing entry on that board, so a
     -- slower later run is kept (it is evidence) but does not appear on the board.
     CREATE TABLE IF NOT EXISTS records (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -580,7 +580,7 @@ function migrate() {
     );
     CREATE INDEX IF NOT EXISTS idx_comments_subject ON comments(kind, subject, created_at);
 
-    -- Thumbs, post-match only: `game_id` is not decoration, it is the proof that the rater
+    -- Thumbs, post-match only: \`game_id\` is not decoration, it is the proof that the rater
     -- played the map (13 §2c — only players who've played it can rate).
     CREATE TABLE IF NOT EXISTS ratings (
       map_key    TEXT NOT NULL,
@@ -627,7 +627,7 @@ function migrate() {
     );
     CREATE INDEX IF NOT EXISTS idx_infractions_steam ON infractions(steam_id, created_at);
 
-    -- `scope` is the whole design (05): a griefing ban is 'public' — the player keeps playing
+    -- \`scope\` is the whole design (05): a griefing ban is 'public' — the player keeps playing
     -- with friends and loses public lobbies and quick-join. A cheating ban is 'site' AND it
     -- wipes records and map badges; nothing else does.
     CREATE TABLE IF NOT EXISTS bans (
@@ -645,7 +645,7 @@ function migrate() {
 
     -- ── Custom-game presets ─────────────────────────────────────────────────────────
     -- The eight knob groups of 13 §4c, saved to an account and shared by CODE.
-    -- `locked` marks the four Verified challenge presets (No Power, No Perks, No Jug, First
+    -- \`locked\` marks the four Verified challenge presets (No Power, No Perks, No Jug, First
     -- Room): those are not free-form knobs, they are fixed rulesets with their own boards.
     CREATE TABLE IF NOT EXISTS presets (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,

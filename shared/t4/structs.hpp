@@ -90,10 +90,20 @@ namespace t4
     }
     namespace gentity_off
     {
-        constexpr std::size_t s      = 0x0;   // entityState_s
-        constexpr std::size_t r      = 0x118; // entityShared_t
-        constexpr std::size_t client = 0x180; // gclient_s*
-        constexpr std::size_t stride = 0x378; // sizeof(gentity_s); g_entities[i]
+        constexpr std::size_t s             = 0x0;   // entityState_s
+        constexpr std::size_t r             = 0x118; // entityShared_t
+        constexpr std::size_t client        = 0x180; // gclient_s*
+        constexpr std::size_t currentOrigin = 0x160; // float[3]; = r(0x118)+entityShared.currentOrigin(0x48)
+        constexpr std::size_t takedamage    = 0x19B; // byte
+        constexpr std::size_t classname     = 0x1A0; // uint16 script-string id -> SL_ConvertToString
+        constexpr std::size_t targetname    = 0x1A8; // uint16 script-string id
+        constexpr std::size_t health        = 0x1C8; // int
+        constexpr std::size_t stride        = 0x378; // sizeof(gentity_s); g_entities[i]
+    }
+    namespace client_extra_off
+    {
+        constexpr std::size_t lastUsercmd = 0x11108; // usercmd_s (0x38)
+        constexpr std::size_t ping        = 0x323E4;
     }
     namespace svs_off
     {

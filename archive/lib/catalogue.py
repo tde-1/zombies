@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS links (
   status     INTEGER,
   final_url  TEXT,
   size       INTEGER,
+  size_exact INTEGER DEFAULT 1,     -- 0 when the host only rounds it ("612M")
   content_type TEXT,
   filename   TEXT,
   error      TEXT,
@@ -98,11 +99,16 @@ def host_of(url: str) -> str:
         return ""
 
 
-def connect(path=DB_PATH):
+def connect(path=DB_PATH, threaded=False):
+    """threaded=True hands the same connection to the link checker's per-host workers.
+    Safe only because every write in check_links.py is taken under one lock."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    db = sqlite3.connect(path, timeout=60)
+    db = sqlite3.connect(path, timeout=60, check_same_thread=not threaded)
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA)
+    cols = {r[1] for r in db.execute("PRAGMA table_info(links)")}
+    if "size_exact" not in cols:
+        db.execute("ALTER TABLE links ADD COLUMN size_exact INTEGER DEFAULT 1")
     return db
 
 
@@ -136,9 +142,10 @@ def put_link(db, map_key, url, label=None, kind="download"):
 def record_health(db, url, map_keys, probe, verdict):
     for mk in map_keys:
         db.execute(
-            "UPDATE links SET status=?,final_url=?,size=?,content_type=?,filename=?,"
-            "error=?,verdict=?,checked=? WHERE url=? AND map_key=?",
+            "UPDATE links SET status=?,final_url=?,size=?,size_exact=?,content_type=?,"
+            "filename=?,error=?,verdict=?,checked=? WHERE url=? AND map_key=?",
             (probe.get("status"), probe.get("final_url"), probe.get("size"),
+             0 if probe.get("size_approx") else 1,
              probe.get("content_type"), probe.get("filename"), probe.get("error"),
              verdict, probe.get("checked"), url, mk))
 

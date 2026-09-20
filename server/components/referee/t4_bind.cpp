@@ -110,10 +110,27 @@ bool plausible(const float v[3]) {
 // off one entity. Zombies walk constantly, so summing motion over the whole entity
 // array finds the origin within a couple of seconds of the first round starting.
 constexpr int kEntScan = 128;        // entities to sample per pass
-constexpr int kNeedHits = 24;        // motion observations before we commit
+constexpr int kNeedHits = 24;        // motion observations before a candidate counts
+constexpr int kNeedPasses = 120;     // ~6 s at 20 Hz before we judge by spread
+constexpr float kMinOriginSpread = 800.0f;  // angles never exceed 720; a map does
 
 int g_cand_hits[64]{};
 int g_passes = 0;
+float g_cand_lo[64][3];
+float g_cand_hi[64][3];
+bool g_range_init[64]{};
+
+// Widest observed extent of any component of this candidate, across every entity
+// and every pass. currentAngles can only ever span 720; a real map spans thousands.
+float spread(int i) {
+    if (!g_range_init[i]) return 0.0f;
+    float best = 0.0f;
+    for (int k = 0; k < 3; ++k) {
+        const float d = g_cand_hi[i][k] - g_cand_lo[i][k];
+        if (d > best) best = d;
+    }
+    return best;
+}
 
 void find_origin_offset() {
     if (g_origin_off >= 0) return;
@@ -138,7 +155,6 @@ void find_origin_offset() {
     static float prev[64][kEntScan][3];
     static bool prev_ok[64][kEntScan];
 
-    int best = -1, best_hits = 0;
     for (int i = 0; i < g_cand_count; ++i) {
         if (!g_cand_valid[i]) continue;
         for (int e = 0; e < kEntScan; ++e) {
@@ -158,29 +174,66 @@ void find_origin_offset() {
                     break;
                 }
             }
+            if (!g_range_init[i]) {
+                std::memcpy(g_cand_lo[i], v, sizeof(v));
+                std::memcpy(g_cand_hi[i], v, sizeof(v));
+                g_range_init[i] = true;
+            } else {
+                for (int k = 0; k < 3; ++k) {
+                    if (v[k] < g_cand_lo[i][k]) g_cand_lo[i][k] = v[k];
+                    if (v[k] > g_cand_hi[i][k]) g_cand_hi[i][k] = v[k];
+                }
+            }
             std::memcpy(prev[i][e], v, sizeof(v));
             prev_ok[i][e] = true;
         }
-        if (g_cand_valid[i] && g_cand_hits[i] > best_hits) {
-            best_hits = g_cand_hits[i];
-            best = i;
-        }
     }
 
-    if (best >= 0 && best_hits >= kNeedHits) {
-        g_origin_off = static_cast<int>(g_cand_off[best]);
-        if (!g_origin_logged) {
-            g_origin_logged = true;
-            ENW_INFO("referee/bind: gentity_s currentOrigin = +0x%X (r+0x%X), found by motion over "
-                     "%d entities in %d passes (%d hits). re: measured offset, please confirm and "
-                     "put it in shared/t4",
-                     g_origin_off, g_origin_off - static_cast<int>(t4::gentity_off::r), kEntScan,
-                     g_passes, best_hits);
+    // MEASURED 2026-09-20 01:35: motion alone narrows 64 candidates to exactly 2 and
+    // then stalls, because entityShared_t holds currentOrigin AND currentAngles and
+    // both move. They are trivially separable by RANGE: angles live in +-360, an
+    // origin roams thousands of units across a map. So once motion has done its
+    // job, pick by spread and log both so `re` can check the pair, not just the winner.
+    if (g_passes >= kNeedPasses) {
+        int winner = -1;
+        float winner_spread = 0.0f;
+        int alive_n = 0;
+        for (int i = 0; i < g_cand_count; ++i) {
+            if (!g_cand_valid[i] || g_cand_hits[i] < kNeedHits) continue;
+            ++alive_n;
+            const float sp = spread(i);
+            if (sp > winner_spread) {
+                winner_spread = sp;
+                winner = i;
+            }
         }
-    } else if (g_passes == 400 && g_origin_off < 0) {
-        ENW_WARN("referee/bind: origin offset still unresolved after %d passes; %d candidates alive. "
-                 "Positions stay unavailable rather than guessed.",
-                 g_passes, g_cand_count);
+        if (winner >= 0 && winner_spread > kMinOriginSpread) {
+            g_origin_off = static_cast<int>(g_cand_off[winner]);
+            if (!g_origin_logged) {
+                g_origin_logged = true;
+                for (int i = 0; i < g_cand_count; ++i) {
+                    if (!g_cand_valid[i] || g_cand_hits[i] < kNeedHits) continue;
+                    ENW_INFO("referee/bind:   candidate +0x%X (r+0x%X) spread %.0f hits %d%s",
+                             static_cast<unsigned>(g_cand_off[i]),
+                             static_cast<unsigned>(g_cand_off[i] - t4::gentity_off::r), spread(i),
+                             g_cand_hits[i], i == winner ? "   <== ORIGIN" : "   (angles?)");
+                }
+                ENW_INFO("referee/bind: gentity_s currentOrigin = +0x%X (r+0x%X), chosen from %d "
+                         "moving candidates by spread (%.0f units) over %d entities / %d passes. "
+                         "re: MEASURED offset, please confirm and put it in shared/t4",
+                         g_origin_off, g_origin_off - static_cast<int>(t4::gentity_off::r), alive_n,
+                         winner_spread, kEntScan, g_passes);
+            }
+        } else if (g_passes == kNeedPasses) {
+            ENW_WARN("referee/bind: origin unresolved after %d passes; %d candidates moved but none "
+                     "had a spread over %.0f units. Positions stay unavailable rather than guessed.",
+                     g_passes, alive_n, kMinOriginSpread);
+            for (int i = 0; i < g_cand_count; ++i) {
+                if (!g_cand_valid[i]) continue;
+                ENW_WARN("referee/bind:   cand +0x%X hits %d spread %.1f",
+                         static_cast<unsigned>(g_cand_off[i]), g_cand_hits[i], spread(i));
+            }
+        }
     }
 }
 

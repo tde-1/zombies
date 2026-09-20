@@ -89,6 +89,12 @@ bool hook_import(const char* dll, const char* function, void* replacement, void*
 // Address of the IAT slot, or nullptr. Useful to check an import exists.
 void** find_import(const char* dll, const char* function);
 
+// The same, for imports bound BY ORDINAL rather than by name. CoDWaW.exe imports
+// every socket function that way (WSOCK32 ordinal 52 is gethostbyname), so the
+// name-based lookups above simply never find them.
+void** find_import_ordinal(const char* dll, uint16_t ordinal);
+bool hook_import_ordinal(const char* dll, uint16_t ordinal, void* replacement, void** original);
+
 // Does `address` look like the start of a real x86 function in .text?
 // Used to sanity-check the vault's public addresses before we call them.
 bool looks_like_function(uintptr_t address);

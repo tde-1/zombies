@@ -138,9 +138,22 @@ def probe_mega(ps, url):
 
 # --------------------------------------------------------------------- Google Drive
 GD_ID = re.compile(r"/file/d/([A-Za-z0-9_-]{10,})|[?&]id=([A-Za-z0-9_-]{10,})")
+GD_DL = "https://drive.usercontent.google.com/download?id=%s&export=download"
+GD_NAMESIZE = re.compile(
+    r'<span class="uc-name-size"><a[^>]*>([^<]+)</a>\s*\(([\d.]+)\s*([KMGT])\)', re.I)
+SIZE_SUFFIX = {"K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4}
 
 
 def probe_gdrive(ps, url):
+    """Probe the DOWNLOAD endpoint, not the /view page.
+
+    MEASURED: `drive.google.com/file/d/<id>/view` answers 401 for everything we tried,
+    live files included, so it cannot tell a dead link from a live one. The
+    `drive.usercontent.google.com/download` endpoint does: 404 for a deleted file,
+    a redirect to accounts.google.com for one that now needs sign-in, and for a live
+    file the "Download warning" interstitial, which conveniently states the filename
+    and a rounded size ("New_Realism_GreenhouseV1.1.exe (612M)").
+    """
     out = {"url": url, "status": None, "size": None, "final_url": None,
            "content_type": None, "error": None, "filename": None}
     m = GD_ID.search(url)
@@ -148,26 +161,32 @@ def probe_gdrive(ps, url):
         return _generic(ps, url)
     fid = m.group(1) or m.group(2)
     try:
-        t = ps.get("https://drive.google.com/file/d/%s/view" % fid)
+        t = ps.get(GD_DL % fid)
     except net.Dropped as exc:
         out["error"] = str(exc)
         return out, "blocked"
     if t is None:
-        out["error"] = "404 / no access"
+        out["error"] = "HTTP error from Drive"
         return out, "dead"
     out["status"] = 200
-    if re.search(r"the file you have requested does not exist|page not found|"
-                 r"you need access|request access", t, re.I):
-        out["error"] = "gone or access-restricted"
+    if "accounts.google.com" in t[:800] or "ServiceLogin" in t[:2000]:
+        out["error"] = "needs a Google sign-in (we do not use accounts)"
+        return out, "blocked"
+    if re.search(r"Error 404|Sorry, unable to open the file|does not exist", t[:3000], re.I):
+        out["error"] = "404 - deleted"
         return out, "dead"
-    mt = re.search(r'itemprop="name" content="([^"]+)"', t) or \
-        re.search(r"<title>([^<]+?)\s*-\s*Google Drive</title>", t)
-    if mt:
-        out["filename"] = mt.group(1)
-    ms = re.search(r'"fileSize":"?(\d+)', t) or re.search(r"\[null,\"(\d{4,})\"\]", t)
-    if ms:
-        out["size"] = int(ms.group(1))
-    return out, ("alive" if out["filename"] or out["size"] else "unknown")
+    mm = GD_NAMESIZE.search(t)
+    if mm:
+        out["filename"] = mm.group(1)
+        out["size"] = int(float(mm.group(2)) * SIZE_SUFFIX[mm.group(3).upper()])
+        out["size_approx"] = True      # Drive rounds to 3 significant figures
+        return out, "alive"
+    if "uc-download-link" in t or "download-form" in t:
+        return out, "alive"
+    if len(t) < 4000 and "<html" in t[:200].lower():
+        out["error"] = "unrecognised Drive page"
+        return out, "unknown"
+    return out, "alive"
 
 
 # --------------------------------------------------------------------- generic

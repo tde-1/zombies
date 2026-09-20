@@ -1,0 +1,17 @@
+# ENW MVP shortlist (vault 04 section 9). One map per line; any spelling -- the
+# name is normalised the same way the catalogue is, so "MW2 Rust Zombies",
+# "mw2 rust" and "Rust (MW2)" all find the same row.
+#
+# Order matters: fetch.py works down the list until the byte budget runs out.
+Leviathan
+Der Berg
+Clinic of Evil
+Zombie Desert
+ORBiT
+Octagonal Ascension
+ZHunterZ
+City of Hell
+MW2 Rust Zombies
+Project Viking
+BO2 Hijacked Zombies
+UGX Requiem

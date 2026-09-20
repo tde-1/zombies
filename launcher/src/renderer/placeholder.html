@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ENW Zombies</title>
+<style>
+  :root { --bg:#12130e; --bg2:#191b13; --line:#2f3325; --bone:#ddd9c8; --dim:#8e8f7e; --blood:#b2382c; --olive:#6b7150; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--bone); font:14px/1.6 "Segoe UI",system-ui,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:64px 32px; }
+  h1 { font-size:26px; margin:0 0 2px; font-weight:800; letter-spacing:.02em }
+  h1 .zm { color:var(--blood); letter-spacing:.3em; font-size:15px; margin-left:8px }
+  .one-liner { color:var(--dim); margin:0 0 36px }
+  h2 { font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); margin:32px 0 10px }
+  .box { border:1px solid var(--line); background:var(--bg2); border-radius:3px; padding:16px 18px; margin-bottom:10px }
+  .box b { color:var(--bone) }
+  .box p { margin:6px 0 0; color:var(--dim) }
+  code { font-family:Consolas,monospace; font-size:12px; color:var(--olive) }
+  ul { color:var(--dim); padding-left:20px }
+  li { margin:4px 0 }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ENW<span class="zm">ZOMBIES</span></h1>
+  <p class="one-liner">Every World at War custom zombies map, archived and playable.</p>
+
+  <div class="box">
+    <b>This is the launcher's placeholder page.</b>
+    <p>The launcher wraps the live site. Nothing is serving locally yet, so this is what
+    it shows instead. The rail on the right is real: it finds your game, installs the ENW
+    client, and launches it.</p>
+  </div>
+
+  <h2>What it will show here</h2>
+  <div class="box">
+    <b>The site, exactly as it is in a browser.</b>
+    <p>Home (live games, friends online, map of the week, latest records), Maps, map
+    pages, profiles, records and playlists. One codebase: a site update reaches the
+    launcher without a launcher update.</p>
+  </div>
+
+  <h2>Pointing it somewhere</h2>
+  <div class="box">
+    <p>The launcher tries these in order and uses the first that answers:</p>
+    <ul>
+      <li><code>http://127.0.0.1:8099</code> and <code>:3000</code> — the ENW Zombies site (<code>web/</code>)</li>
+      <li><code>http://127.0.0.1:8080</code> — the mock site (<code>infra/host-agent/mock-site</code>)</li>
+      <li><code>http://127.0.0.1:8787</code> — the host agent's dashboard</li>
+    </ul>
+    <p>Pin one in Settings, or set <code>ENW_SITE_URL</code> before starting the launcher.</p>
+  </div>
+</div>
+</body>
+</html>

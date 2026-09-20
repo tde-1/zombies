@@ -1,0 +1,186 @@
+'use strict'
+
+// `/api/gs/*` — THE PULL PROTOCOL. The game boxes poll the site; the site never connects out.
+//
+// This is the real version of `infra/host-agent/mock-site/site.js`, and the contract is that
+// file plus `infra/host-agent/lib/siteclient.js`. A host agent pointed at this server with
+// `--site http://127.0.0.1:3200 --secret devkey-a --box box-a` must work with no change on
+// its side, so every route name, header, query parameter and response key below is theirs,
+// not ours:
+//
+//   GET  /api/gs/assignment              what should this box be running?  (nonce-cached)
+//   GET  /api/gs/keys                    the site's invite-token public key
+//   POST /api/gs/status                  booting / ready / live / idle heartbeat
+//   POST /api/gs/result                  the summary + where the replay went
+//   GET  /api/gs/chat-feed?since=&wait=  long-poll drain of the global chat ring
+//   POST /api/gs/chat                    a player said something in one of our games
+//
+// Two routes are OURS, added because the site needs something the mock did not have:
+//
+//   POST /api/gs/key                     the box offers its replay-signing PUBLIC key for
+//                                        pinning. See lib/boxes.js for why this exists:
+//                                        a signed replay proves integrity, not authorship.
+//   POST /api/gs/spool                   a batch of results a box held while we were down
+//                                        (the coordinator's Q-host-2 answer: spool and
+//                                        retry). Same body as /result, in an array.
+//
+// The site ALSO reads `pub`/`key_id` out of the status and result bodies, because the host
+// agent already has them in hand and sending them costs it one line. Until it does, a box
+// pins on its first POST /api/gs/key and everything else works unpinned-but-flagged.
+//
+// AUTH is the per-box shared secret in `x-match-secret`, timing-safe compared. There is no
+// other authentication on these routes and there must not be: a box behind NAT with no
+// inbound rules and no reachable RCON is the whole point of the shape.
+
+const express = require('express')
+const boxes = require('../lib/boxes')
+const assignments = require('../lib/assignments')
+const results = require('../lib/results')
+const chat = require('../lib/chatNetwork')
+const presence = require('../lib/presence')
+const siteKeys = require('../lib/siteKeys')
+const { db, now } = require('../db/database')
+
+function router() {
+  const r = express.Router()
+  // A result post carries the whole referee summary. 2 MB is generous for JSON that is
+  // normally ~20 KB and small enough that a broken box cannot exhaust us.
+  r.use(express.json({ limit: '2mb' }))
+
+  // Every /api/gs route authenticates the same way, so it happens once.
+  r.use((req, res, next) => {
+    const box = boxes.authenticate(req)
+    if (!box) return res.status(401).json({ error: 'bad or missing x-match-secret' })
+    req.box = box
+    next()
+  })
+
+  // ---- assignment ------------------------------------------------------------------
+  r.get('/assignment', (req, res) => {
+    boxes.touch(req.box)
+    res.json(assignments.forBox(req.box))
+  })
+
+  // ---- keys ------------------------------------------------------------------------
+  // The box asks for the site's INVITE-TOKEN public key so it can verify joins. It holds
+  // only the public half, which is what makes a stolen box unable to mint a join.
+  r.get('/keys', (req, res) => {
+    const k = siteKeys.site()
+    res.json({ invite_pub: k.pub, key_id: k.keyId, alg: 'ed25519' })
+  })
+
+  // ---- the box's own replay key ------------------------------------------------------
+  r.post('/key', (req, res) => {
+    const { pub, key_id: keyId } = req.body || {}
+    if (!pub && !keyId) return res.status(400).json({ error: 'send pub and key_id' })
+    const r2 = boxes.offerKey(req.box, pub || null, keyId || null)
+    res.json({ ok: true, ...r2 })
+  })
+
+  // ---- status ------------------------------------------------------------------------
+  r.post('/status', (req, res) => {
+    const body = req.body || {}
+    boxes.recordStatus(req.box, body)
+    // If the heartbeat carries the box's key, pin it here — one fewer request for the box
+    // to make, and the earliest possible moment we can know it.
+    let key = null
+    if (body.pub || body.key_id) key = boxes.offerKey(req.box, body.pub || null, body.key_id || null)
+    if (body.state && body.match_id) assignments.ack(req.box, body.state, body.match_id)
+
+    // Presence: the box roster beats the lobby seat (11 §9). Everything the box says is in
+    // a game is in a game, whatever the site's parties table thinks.
+    try { markRoster(req.box, body) } catch (e) { console.warn('[gs] presence:', e.message) }
+
+    res.json({
+      ok: true,
+      // Told on every heartbeat rather than only on the key post, so a box whose key stopped
+      // matching finds out within seconds instead of at the end of a game.
+      key_pinned: key ? key.pinned : !!(req.box.replay_key_id && !req.box.pending_key_id),
+      pinned_key_id: req.box.replay_key_id || null,
+      ...(key && key.changed ? { warning: 'this box presented a different replay key; results are stored unpinned until an admin confirms it' } : {}),
+    })
+  })
+
+  // ---- result --------------------------------------------------------------------
+  r.post('/result', (req, res) => {
+    const out = safeIngest(req.body, req.box)
+    res.status(out.ok ? 200 : 400).json(out)
+  })
+
+  // A spool drain: everything the box held while the site was unreachable, in one POST.
+  // The box may delete its spool for every entry we return `ok` for.
+  r.post('/spool', (req, res) => {
+    const items = Array.isArray(req.body) ? req.body : (req.body && req.body.results) || []
+    const out = items.slice(0, 200).map((item) => {
+      const one = safeIngest(item, req.box)
+      return { match_id: (item && item.summary && item.summary.match_id) || null, ok: !!one.ok, error: one.error || null }
+    })
+    res.json({ ok: true, accepted: out.filter((x) => x.ok).length, results: out })
+  })
+
+  // ---- cross-server chat ----------------------------------------------------------
+  // The long-poll drain. `since` is the box's cursor; `wait` is how long it will hold the
+  // connection open waiting for something new. A box never receives its own lines back.
+  r.get('/chat-feed', async (req, res) => {
+    const since = Number(req.query.since || 0)
+    const wait = Math.min(25, Number(req.query.wait || 0))
+    const pending = () => chat.since(since, { excludeOrigin: req.box.name })
+    const first = pending()
+    if (first.length || !wait || !since) {
+      return res.json({ ok: true, enabled: true, latest: chat.latest(), events: first })
+    }
+    let done = false
+    const finish = () => { if (done) return; done = true; res.json({ ok: true, enabled: true, latest: chat.latest(), events: pending() }) }
+    req.on('close', () => { done = true })
+    await chat.wait(wait, req.box.name)
+    finish()
+  })
+
+  r.post('/chat', (req, res) => {
+    const b = req.body || {}
+    if (!b.text) return res.status(400).json({ error: 'no text' })
+    chat.push({
+      from: b.from || 'player', text: b.text, steamId: b.steamid || null,
+      origin: req.box.name, mapKey: b.map || null, instance: b.instance || null,
+    })
+    res.json({ ok: true, latest: chat.latest() })
+  })
+
+  return r
+}
+
+function safeIngest(body, box) {
+  try {
+    const payload = { ...(body || {}), box: (body && body.box) || box.name }
+    if (payload.replay && !payload.replay.key_id && payload.key_id) payload.replay.key_id = payload.key_id
+    const out = results.ingest(payload)
+    if (out.ok) {
+      const s = body.summary || {}
+      console.log(`[gs] result ${s.map} round ${s.rounds} finish=${(s.finish && s.finish.kind) || 'none'} ` +
+        `from ${box.name}${out.repeat ? ' (repeat)' : ''}${out.awarded && out.awarded.length ? ` — ${out.awarded.length} badge(s)` : ''}`)
+      // The game is over, so nobody is in it any more.
+      for (const p of s.players || []) if (p.steamid) presence.clearGame(p.steamid)
+    }
+    return out
+  } catch (e) {
+    // Never 500 a box: it will retry forever and the log fills with the same error. Record
+    // it where an admin will see it and tell the box the truth.
+    console.error('[gs] result ingest failed:', e.message)
+    db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('result.failed', ?, ?, ?)")
+      .run(box.name, JSON.stringify({ error: e.message, match_id: body && body.summary && body.summary.match_id }), now())
+    return { ok: false, error: 'the site could not store that result; it has been logged' }
+  }
+}
+
+function markRoster(box, body) {
+  for (const inst of body.instances || []) {
+    const g = inst.game
+    if (!g || !g.players) continue
+    for (const p of g.players) {
+      if (!p.steamid || !p.connected) continue
+      presence.markInGame(p.steamid, { matchId: g.match || inst.match_id, mapKey: g.map, box: box.name })
+    }
+  }
+}
+
+module.exports = { router }

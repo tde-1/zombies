@@ -91,10 +91,36 @@ Get-ChildItem -LiteralPath $Base -Directory | Where-Object { $LinkDirs -notconta
 Set-Content -LiteralPath (Join-Path $dest 'steam_appid.txt') -Value '10090' -Encoding ascii -NoNewline
 
 # 5. Per-instance user data folder (fs_homepath target), created here so launch.ps1
-#    never has to guess.
+#    never has to guess. `main` must exist before launch or the engine writes no
+#    console.log at all.
 $home_ = Join-Path $DevRoot "homes\$Name"
-New-Item -ItemType Directory -Path $home_ -Force | Out-Null
+New-Item -ItemType Directory -Path $home_, (Join-Path $home_ 'main') -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $DevRoot "logs\$Name") -Force | Out-Null
+
+# 6. Seed a private profile tree, for ENW_PRIVATE_PROFILE=1.
+#    Our DLL can redirect the engine's AppData lookup per instance
+#    (shared/core/components/instance_paths.cpp), but redirecting to an EMPTY
+#    directory means no profile at all, which drops the game into its first-run
+#    profile flow. So we copy B's existing profile in once, here.
+#    Layout must match what the engine builds: <appdata>\Activision\CoDWaW\players
+$appdata = Join-Path $home_ 'appdata'
+$privateProfile = Join-Path $appdata 'Activision\CoDWaW'
+$realProfile = Join-Path $env:LOCALAPPDATA 'Activision\CoDWaW\players'
+New-Item -ItemType Directory -Path $privateProfile -Force | Out-Null
+if (Test-Path -LiteralPath $realProfile) {
+    $seeded = Join-Path $privateProfile 'players'
+    if (-not (Test-Path -LiteralPath $seeded)) {
+        # Config and profile only. Never the mods folder: those are big, they are
+        # shared read-only anyway, and one of them contains an unsigned .exe that
+        # nothing here should ever be copying around (dev-box.md rule 3).
+        Copy-Item -LiteralPath $realProfile -Destination $seeded -Recurse -Force
+        $n = (Get-ChildItem -LiteralPath $seeded -Recurse -File | Measure-Object).Count
+        Write-Host "  seeded a private profile ($n files) from $realProfile" -ForegroundColor DarkGray
+    }
+}
+else {
+    Write-Host "  (no profile at $realProfile to seed from)" -ForegroundColor Yellow
+}
 
 $size = (Get-ChildItem -LiteralPath $dest -File | Measure-Object Length -Sum).Sum
 Write-Host ("Created {0} ({1:N1} MB of real files + {2} junctions)" -f $dest, ($size / 1MB), $LinkDirs.Count) -ForegroundColor Green

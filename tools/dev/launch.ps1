@@ -90,6 +90,16 @@ param(
     # fatal error dialogs, and stock WaW is missing at least one image.
     [switch]$Developer,
 
+    # Invite token, passed to the game through the environment (never argv).
+    [string]$AuthToken = '',
+
+    # Comma-separated hostnames the game may resolve; a leading dot is a suffix
+    # match. Activision/Demonware are blocked regardless.
+    [string]$AllowedHosts = '.enw.gg',
+
+    # Deny any DNS lookup not in -AllowedHosts, rather than only the known-bad.
+    [switch]$StrictNet,
+
     [string]$GameDir = '',
     [string]$DevRoot = 'C:\Users\b\ZombiesDev',
 
@@ -440,6 +450,17 @@ try {
     $env:ENW_INSTANCE = $Instance
     $env:ENW_ROLE = $Role
     $env:ENW_LOGDIR = $logDir
+    # Per-instance profile (shared/core/components/instance_paths.cpp). The DLL
+    # only acts on this when ENW_PRIVATE_PROFILE=1; new-copy.ps1 seeds the tree.
+    $env:ENW_INSTANCE_APPDATA = Join-Path $homeDir 'appdata'
+    # ENW-only networking (client-dll/components/network.cpp). Activision and
+    # Demonware are always blocked; strict mode denies everything else too.
+    $env:ENW_ALLOWED_HOSTS = $AllowedHosts
+    if ($StrictNet) { $env:ENW_NET_STRICT = '1' } else { $env:ENW_NET_STRICT = '0' }
+    # The invite token goes in the ENVIRONMENT, never argv: a command line is
+    # readable by any process on the box and ends up in logs and crash dumps.
+    # The DLL reads it once and clears it (client-dll/components/auth_token.cpp).
+    if ($AuthToken) { $env:ENW_AUTH_TOKEN = $AuthToken } else { $env:ENW_AUTH_TOKEN = $null }
     # SteamStub (board 00:35, dedi): without these the copy exits(0) after ~1.5 s
     # having written nothing - the stub asks Steam to relaunch app 10090 from the
     # *Steam* folder instead. steam_appid.txt in the copy (new-copy.ps1) as well.

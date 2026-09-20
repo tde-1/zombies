@@ -408,6 +408,47 @@ if (!single) {
     const up = new Updater({ feed: cfg.load().updateFeed, currentVersion: app.getVersion() })
     up.on('staged', (s) => push('toast', { kind: 'info', text: `An update is ready and will be applied ${s.appliesWhen}.` }))
     up.start()
+
+    // ENW_SMOKE_MS: boot, report what came up, quit. Lets the whole app be tested on a
+    // machine somebody is using without leaving a window on their screen, and makes
+    // "does it start" a command rather than a look.
+    if (process.env.ENW_SMOKE_MS) {
+      if (process.env.ENW_SMOKE_HIDDEN !== '0') state.win?.hide()
+      setTimeout(async () => {
+        const wc = state.siteView?.webContents
+        const report = {
+          ok: true,
+          appVersion: app.getVersion(),
+          electron: process.versions.electron,
+          window: !!state.win,
+          tray: !!state.tray,
+          site: { url: wc?.getURL(), title: wc?.getTitle(), loading: wc?.isLoading(), what: state.siteInfo?.what, probed: state.siteInfo?.probed },
+          shellTitle: state.win?.webContents.getTitle(),
+          setup: setup.status().installed,
+          preloadApi: await state.win?.webContents.executeJavaScript('Object.keys(window.enw||{}).length').catch((e) => `ERROR ${e.message}`),
+          shellRendered: await state.win?.webContents.executeJavaScript(
+            'JSON.stringify({rail:!!document.getElementById("rail"),maps:document.querySelectorAll("#mapList button").length,screen:[...document.querySelectorAll(".screen.on")].map(x=>x.id),status:document.getElementById("statusBody").innerText.replace(/\\n/g," | ")})'
+          ).catch((e) => `ERROR ${e.message}`),
+          deepLink: parseDeepLink('https://zombies.enw.gg/m/nazi_zombie_sumpf'),
+          deepLinkProto: parseDeepLink('enwzombies://m/nazi_zombie_ali'),
+        }
+        if (process.env.ENW_SMOKE_SHOT) {
+          // The site lives in a native child view, so the window's own webContents
+          // captures the chrome only. Grab both and say so.
+          for (const [name, target] of [['chrome', state.win?.webContents], ['site', wc]]) {
+            try {
+              const img = await target.capturePage()
+              const f = path.join(P.logs, `smoke-${name}.png`)
+              fs.writeFileSync(f, img.toPNG())
+              report[`shot_${name}`] = f
+            } catch (e) { report[`shot_${name}`] = `ERROR ${e.message}` }
+          }
+        }
+        console.log('ENW_SMOKE_REPORT ' + JSON.stringify(report))
+        state.quitting = true
+        app.quit()
+      }, Number(process.env.ENW_SMOKE_MS))
+    }
   })
 
   app.on('open-url', (e, url) => { e.preventDefault(); handleDeepLink(url) })

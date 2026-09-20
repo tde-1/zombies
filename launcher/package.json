@@ -5,15 +5,16 @@
   "type": "module",
   "description": "ENW Zombies launcher: finds World at War, installs the ENW client into its own folder, launches and connects, and wraps the site.",
   "main": "src/main/main.js",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "start": "electron .",
     "detect": "node src/main/detect-cli.js",
     "setup": "node src/main/setup-cli.js",
     "test": "node test/run-all.js"
   },
-  "dependencies": {},
   "devDependencies": {
-    "electron": "^38.0.0"
+    "electron": "^38.8.6"
   }
 }

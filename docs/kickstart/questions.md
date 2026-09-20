@@ -150,3 +150,32 @@ board and I will default to it — two prefixes for one stream would be the wors
 - **Q-host-1 (who may download whose replays): with B.** Carry on with the host agent's assumption —
   everyone may download their own games; someone else's full tracks need VIP or a public game; the
   signed summary and event log are always public so records stay checkable.
+
+## Launcher (2026-09-20, agent: launcher)
+
+**Q-launcher-1 — is a local ownership signal enough for v1?**
+The spec says the launcher "validates ... the player owns appid 10090 on their Steam account"
+(13 §2). A launcher on the player's PC cannot actually prove that: all it can read is that Steam has
+app 10090 registered for the signed-in account (`HKCU\Software\Valve\Steam\Apps\10090\Installed`,
+plus an `appmanifest_10090.acf`). A real ownership check needs a Steam Web API key and a site
+endpoint (`ISteamUser`/`IPlayerService` against the SteamID from the OpenID login), which is
+server-side work and an API key we do not have.
+*Assumed for now (most reversible):* treat the local signal as good enough to pick the right
+first-run screen, and leave the real check to the site at sign-in. Nothing depends on it yet.
+
+**Q-launcher-2 — where should the map library live?**
+Everything the launcher creates currently sits in `%LOCALAPPDATA%\ENWZombies` — the ~8 MB game copy
+and the map library. The map library will eventually be tens of GB, and C: is often the small drive.
+Two sub-questions: (a) should the map folder be separately configurable with a "move library"
+button, like Steam's library folders? (b) should it default to the drive the player's WaW is
+installed on rather than C:?
+*Assumed for now:* one root under `%LOCALAPPDATA%`, overridable with the `ENW_ROOT` environment
+variable. Easy to split later; the manifest already records the folders separately.
+
+**Q-launcher-3 — how does the invite token reach the game? (needs the client-DLL owner, not B)**
+The launcher will not put the token on the command line: any process can read another's command
+line and it lands in logs and crash dumps. It currently serves the token on a one-shot named pipe
+whose name is in `ENW_TOKEN_PIPE`, with `ENW_TOKEN` as an opt-in fallback. **The DLL reads neither
+today** and `game-link-v0.md` says the token arrives in userinfo at connect. Proposal is written up
+in `docs/kickstart/launcher.md` §3; it needs a yes/no from whoever owns the client side and then a
+line in the protocol doc.

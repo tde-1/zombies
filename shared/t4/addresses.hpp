@@ -81,10 +81,20 @@ namespace t4
         constexpr std::uintptr_t CL_ParseServerMessage      = 0x64D1A0; // [V] client counterpart; bounds compressed size to 0x20000
 
         // ---- chat / server commands ------------------------------------------------
-        constexpr std::uintptr_t G_Say                      = 0x473F10; // [V] EXE_SAY / EXE_SAYTEAM, "%s: " formatter
-        constexpr std::uintptr_t ClientCommand              = 0x4388A0; // [V] dispatches "say"/"say_team" -> G_Say (caller 0x4621E0 = SV_ExecuteClientCommand)
-        constexpr std::uintptr_t SV_GameSendServerCommand   = 0x648490; // [V] game->client reliable cmd (chat/warnings); ecx=clientNum(-1=all)+stack args
+        // RETRACTED (was wrong): 0x473F10 is NOT G_Say and 0x4388A0 is NOT ClientCommand —
+        // both were single-string guesses off the shared "%s: " formatter. 0x473F10 is a
+        // per-frame HUD/notify formatter (fires ~60 Hz idle with empty text), called only by
+        // 0x4388A0 which is itself on the frame path. T4 co-op chat is the party/lobby
+        // reliable-command system (`clientchat`/`hostchat`), not classic say->G_Say.
+        constexpr std::uintptr_t SV_GameSendServerCommand   = 0x648490; // [V] game->client reliable cmd (chat/warnings); ecx=clientNum(-1=all)+stack args. PROVEN for injection.
         constexpr std::uintptr_t SV_SendServerCommand       = 0x6F5F10; // [V] low-level per-client reliable-cmd queue (11 callers)
+        constexpr std::uintptr_t clientchat_send            = 0x655C80; // [V] sends "0clientchat %s" (client->server chat transport)
+        constexpr std::uintptr_t hostchat_send              = 0x65B630; // [V] sends "0hostchat %s %s"
+
+        // ---- script VM (referee: rounds, EE flags, score, knobs) -------------------
+        constexpr std::uintptr_t Scr_NotifyNum          = 0x698CC0; // [V] every notify funnels here. EAX=scriptInstance(0=server); stack: entnum, classnum, stringValue(notify-name strId), paramcount. 98 callers.
+        constexpr std::uintptr_t VM_Notify              = 0x698670; // [V] deepest chokepoint (2 callers). EAX=scriptInstance; stack: notifyListOwnerId, stringValue, top. `level notify(x)`: ownerId==gScrVarPub[0].levelId. BEST notify hook.
+        constexpr std::uintptr_t GetVariableValueAddress= 0x690040; // [V] EAX=varId, ECX=scriptInstance -> ptr into variable entry
 
         // ---- renderer / sound / OS gates (dedi needs to stub) ----------------------
         constexpr std::uintptr_t D3D9_CreateDevice_wrap     = 0x75A9A8; // [V] wraps Direct3DCreate9 (IAT 0x7EB46C)
@@ -106,6 +116,16 @@ namespace t4
         constexpr std::uintptr_t fs_game            = 0x2122B00; // [H] dvar_s*
         constexpr std::uintptr_t msg_decompress_pool= 0x212B2F8; // [V] SV_ExecuteClientMessage decode dst pool (0x20000-window ring)
         constexpr std::uintptr_t cl_decompress_buf  = 0x4E337C0; // [V] CL_ParseServerMessage decode dst, exactly 0x20000 bytes
+
+        // ---- script VM globals (referee) --------------------------------------------
+        // Arrays indexed by scriptInstance (0=server, 1=client).
+        constexpr std::uintptr_t gScrVarPub         = 0x3882BA8; // [V] scrVarPub_t[2], stride 0x18048
+        constexpr std::uintptr_t gScrVarPub_stride  = 0x18048;
+        constexpr std::uintptr_t levelId_server     = 0x3882BC8; // [V] gScrVarPub[0].levelId (+0x20) = the `level` script object id
+        constexpr std::uintptr_t gScrVarGlob        = 0x3914700; // [V] scrVarGlob_t[2] (variableList), stride 0x160000; parentVars@+0, childVars@+0x60000
+        constexpr std::uintptr_t gScrVarGlob_stride = 0x160000;
+        constexpr std::uintptr_t gScrVmPub          = 0x3BD4700; // [V] scrVmPub_t[2], stride 0x4320; top@+0x10, inparamcount@+0x18, stack@+0x320
+        constexpr std::uintptr_t gScrVmPub_stride   = 0x4320;
     }
 
     // ---- memory reserve patch sites (T4M-Enhanced facts; re-implement, don't copy) ------

@@ -86,7 +86,10 @@ export function install({ gameDir, dllPath = null, repoRoot = null, force = fals
   const step = (name, detail, ok = true) => { steps.push({ name, detail, ok }); onProgress({ name, detail, ok }) }
 
   const src = path.resolve(gameDir)
-  const v = validate(src, { hash: false })
+  // Hash it here even though the detector may already have: the manifest is the record
+  // of what we installed from, and "accepted" vs "verified" decides whether the player
+  // is eligible for records.
+  const v = validate(src, { hash: true })
   if (!v.ok) throw new Error(`Not a usable World at War install: ${v.reason}`)
 
   // From this moment the player's install is off limits to every write in the process.

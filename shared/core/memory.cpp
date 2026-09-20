@@ -241,6 +241,53 @@ void** find_import(const char* dll, const char* function) {
     return nullptr;
 }
 
+void** find_import_ordinal(const char* dll, uint16_t ordinal) {
+    const auto* nt = nt_headers();
+    if (!nt || !dll) return nullptr;
+
+    const auto& dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    if (!dir.VirtualAddress || !dir.Size) return nullptr;
+
+    const auto b = base();
+    const auto* desc = reinterpret_cast<const IMAGE_IMPORT_DESCRIPTOR*>(b + dir.VirtualAddress);
+
+    for (; desc->Name; ++desc) {
+        const char* name = reinterpret_cast<const char*>(b + desc->Name);
+        if (_stricmp(name, dll) != 0) continue;
+
+        const auto* thunk = reinterpret_cast<const IMAGE_THUNK_DATA32*>(
+            b + (desc->OriginalFirstThunk ? desc->OriginalFirstThunk : desc->FirstThunk));
+        auto* iat = reinterpret_cast<IMAGE_THUNK_DATA32*>(b + desc->FirstThunk);
+
+        for (; thunk->u1.Ordinal; ++thunk, ++iat) {
+            if (!(thunk->u1.Ordinal & IMAGE_ORDINAL_FLAG32)) continue;
+            if (IMAGE_ORDINAL32(thunk->u1.Ordinal) == ordinal) {
+                return reinterpret_cast<void**>(&iat->u1.Function);
+            }
+        }
+    }
+    return nullptr;
+}
+
+bool hook_import_ordinal(const char* dll, uint16_t ordinal, void* replacement, void** original) {
+    void** slot = find_import_ordinal(dll, ordinal);
+    if (!slot) {
+        ENW_ERROR("memory: %s ordinal %u is not in the import table", dll ? dll : "?", ordinal);
+        return false;
+    }
+    if (original) *original = *slot;
+
+    scoped_unprotect guard(slot, sizeof(void*));
+    if (!guard.ok()) {
+        ENW_ERROR("memory: could not unprotect the IAT slot for %s#%u", dll, ordinal);
+        return false;
+    }
+    *slot = replacement;
+    ENW_DEBUG("memory: IAT %s#%u %p -> %p", dll, ordinal, original ? *original : nullptr,
+              replacement);
+    return true;
+}
+
 bool hook_import(const char* dll, const char* function, void* replacement, void** original) {
     void** slot = find_import(dll, function);
     if (!slot) {
