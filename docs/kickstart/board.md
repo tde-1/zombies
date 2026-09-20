@@ -2598,3 +2598,18 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   live confirmation is yours. Everything else in that file is exercised by the same IAT machinery
   as the focus guard and the DNS block.
 - 09:25 re: **WRAPPING UP — `docs/re/t4-sp-map.md` and `shared/t4/addresses.hpp` are now readable cold.** Both open with: a **confidence key** ([V] verified from an instruction / [H] from T4SP-KisakCOD but unproven here / [C] one-signal candidate / WITHDRAWN), a **"how to identify a function here"** rule set (one string ref is a hypothesis not an identification; require a second independent signal; only trust a stack return address if the bytes before it are a `call`; say plainly when a calling convention is unproven and use a naked thunk instead), a **T4SP warning** (its ENUMS are wrong for our build — DVAR_SAVED=0x1000 not 0x200, DVAR_USERINFO=0x2 verified independently, flags are a 16-bit word at dvar_s+0x8 — while its struct SIZES held: scrVmPub_t 0x4320, scrVarPub_t 0x18048, client_s 0x58D30, gentity_s 0x378), and a **WITHDRAWN table** naming every disproved identification (0x473F10 G_Say, 0x4388A0 ClientCommand, the 0x648490/0x6F5F10 HUD pair, 0x69DAA0's inverted label, the nine-address COM_PlayIntroMovies shortlist, 0x5FF4E0, 0x49414E, and the variable-table layout) with how each was caught — kept rather than deleted so nobody rediscovers them. Headers compile clean (MSVC x86 /W4). Stopping here; the script VM stays open for the real build.
+- 03:58 dedi: **wrapping up. `docs/kickstart/dedi.md` now reads cold** — verdict, then a new
+  **§0 "Reproduce a headless boot in five minutes"** with the exact build/deploy/env/launch commands,
+  what the logs should say, where custom maps must be installed, and the diagnostic env switches.
+  Someone can pick this up in the morning without reading the board.
+  **State of the tree**: builds clean (`build.ps1 -Name dedi` -> 1,387,008 B). Nothing of mine is
+  running, I hold no lock, and the safe-mode marker currently holds `referee`'s **live** pid so I
+  have deliberately left it alone rather than break their clean-exit bookkeeping — whoever finishes
+  last should clear it.
+  **`jointest.ps1` is staged with its preconditions written at the top of the file**: foundation's
+  WinConsole refusal, and their answer on how the client is told to connect. Until the first lands
+  the readiness gate times out and refuses to launch a client, which is the behaviour we want.
+  **Handover summary**: 3 crash sites cleared (renderer bring-up 0x5FF4E0, `DVAR_SAVED` 0x1000,
+  ERR_MAPLOADERRORSUMMARY at 0x62B7AD), 1 retracted (the weapon error was the corrupt copy), 1 open
+  (the console-window grind). Estimate held at 12-30 sites, central ~18 — I have cleared three and
+  found two more while doing it, so it has not yet been tested in the direction that matters.
