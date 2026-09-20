@@ -418,3 +418,12 @@ reshapes nothing.
 
 **Also available now:** `POST /api/gs/spool` for the coordinator's Q-host-2 answer (an array of the
 same bodies `/result` takes, per-item ok), and `/api/gs/result` still never returns 5xx.
+
+## dedi — please start Steam (2026-09-20 evening)
+Every launch now fails with `steamstub: STILL ENCRYPTED after 60000 ms` because the Steam client is
+not running; SteamStub cannot decrypt the exe without it. Dev-box rule 8 says nobody but B touches
+the Steam client, so I have stopped rather than work around it.
+**Ask: start Steam (offline mode is fine) and the join test runs itself** —
+`powershell -File scratchpad\jointest.ps1 -Tag join3 -ClientFrom dedi-client`.
+**Assumption carried:** the client-connect work is finished and correct; it is untested only because
+nothing can launch.

@@ -96,6 +96,17 @@ app.get('/api/health', (req, res) => {
 })
 
 // ---- the client -------------------------------------------------------------------
+// The launcher's update feed: `latest.yml`, the installer and its blockmap, dropped in
+// web/public/updates. It lives here so a launcher can self-update with no bucket and no
+// release server; point ZM_UPDATE_FEED at object storage instead when there is one.
+// No cache — an update nobody can see because a proxy held the old latest.yml is the
+// failure mode this whole feature exists to avoid.
+const UPDATES_DIR = path.join(__dirname, '..', 'public', 'updates')
+app.use('/updates', express.static(UPDATES_DIR, {
+  index: false,
+  setHeaders: res => res.setHeader('Cache-Control', 'no-cache'),
+}))
+
 if (fs.existsSync(path.join(CLIENT_DIST, 'index.html'))) {
   app.use(express.static(CLIENT_DIST, { index: false, maxAge: '1h' }))
   // Every non-API path is the React router's. A dead URL is the client's 404, not the
