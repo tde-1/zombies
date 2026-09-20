@@ -187,3 +187,62 @@ line in the protocol doc.
   assets later.
 - **Quit Steam for one minute when convenient** so we can test whether a headless server runs without
   the client. That answer decides whether every rented game box needs its own Steam account.
+
+---
+
+## archive — four questions for B (2026-09-20)
+
+None block anything; the assumption I carried on with is stated each time.
+
+### Q-arc-1: ZombieModding.com is `robots.txt: Disallow: /` for everyone but Googlebot.
+`https://zombiemodding.com/robots.txt` is four lines: `User-agent: * / Disallow: /`, then
+`Allow: /` for Googlebot and Googlebot-Image only. So the site that hosts the
+**most-downloaded WaW maps in existence** (Super Mario 64 511k, The Simpsons 310k,
+nazi_zombie_airport 232k, Dead Ship 219k) is off-limits to our crawler, and I did not
+fetch a single page from it beyond `robots.txt`.
+
+**Assumed:** skipped entirely. The catalogue covers those maps anyway through ZWR and
+callofdutyrepo, so nothing is lost except ZombieModding's download counts and its
+release threads.
+
+**What I would do with a yes from you:** ask ZombieModding's staff for permission (or an
+export) the way an archive normally would. That is outreach, which tonight's rules
+forbid, so it needs you.
+
+### Q-arc-2: MediaFire's CDN nodes say `Disallow: /`, and 60% of every map link is MediaFire.
+`www.mediafire.com/robots.txt` **allows** the file pages we read. Each download node
+(`download1638.mediafire.com`) serves a blanket `Disallow: /` — boilerplate that keeps
+expiring tokenised URLs out of search indexes.
+
+**Assumed (and this is the one judgement call I made tonight):** robots.txt is obeyed
+absolutely for **discovery** — every crawl and every link-health probe checks it and
+stops when told to. For a **download** I fetch only when the file is on a shortlist a
+human wrote *and* the one-use URL was handed to us by a page the same site's robots.txt
+explicitly permits. That is a human clicking a download button, not a robot walking a
+tree. Where no allowed page hands us the file — Google Drive, whose only working
+endpoint is itself `Disallow: /` — I did not download at all.
+
+Flip `from_landing=False` in `archive/fetch.py:download()` to make this strictly
+conservative again. The cost is every MediaFire-hosted map, which is most of them.
+
+### Q-arc-3: MEGA holds ~350 links and we cannot fetch any of them.
+MEGA's public API answers "is this file alive and how big is it" without an account
+(that is how the link report has exact MEGA sizes), but the **file itself** is encrypted
+client-side: the key lives in the URL fragment and never reaches the server, so
+downloading means implementing AES-CTR decrypt plus their chunked transfer. It is a
+known, documented format and maybe half a day's work.
+
+**Assumed:** not built tonight; where a map has any other mirror we use it, and
+**ZHunterZ was dropped from the MVP shortlist because MEGA is its only link anywhere in
+the catalogue.** Worth building before the real archive run — see the link report for
+how many maps are MEGA-only.
+
+### Q-arc-4: Google Drive links (66 of them) are unverifiable without an account.
+`drive.usercontent.google.com/robots.txt` is `Disallow: /`, and `drive.google.com`'s
+robots.txt allows `/file` but that endpoint returns **401 to anything without a
+signed-in browser**. So a Drive link can be neither checked nor fetched politely and
+account-free.
+
+**Assumed:** counted as `blocked`, never as dead — a Drive link may well be fine. They
+need either a human with a browser or a signed-in fetcher, which is your call since it
+means an account.

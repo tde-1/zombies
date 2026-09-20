@@ -95,6 +95,10 @@ namespace t4
         constexpr std::uintptr_t Scr_NotifyNum          = 0x698CC0; // [V] every notify funnels here. EAX=scriptInstance(0=server); stack: entnum, classnum, stringValue(notify-name strId), paramcount. 98 callers.
         constexpr std::uintptr_t VM_Notify              = 0x698670; // [V] deepest chokepoint (2 callers). EAX=scriptInstance; stack: notifyListOwnerId, stringValue, top. `level notify(x)`: ownerId==gScrVarPub[0].levelId. BEST notify hook.
         constexpr std::uintptr_t GetVariableValueAddress= 0x690040; // [V] EAX=varId, ECX=scriptInstance -> ptr into variable entry
+        constexpr std::uintptr_t SetSavedDvar_builtin   = 0x516990; // [V] GSC builtin; flag test `test word[dvar+8],0x1000` at 0x516B15
+        // FindVariable(parentId, nameStrId): NOT address-confirmed. Candidates 0x699640 /
+        // 0x699560 (likely Scr_GetObjectField-family) — validate vs level.round_number before
+        // binding. Or sibling-walk the child list (entry 0x10; name in w-bitfield @+0x8).
 
         // ---- renderer / sound / OS gates (dedi needs to stub) ----------------------
         constexpr std::uintptr_t D3D9_CreateDevice_wrap     = 0x75A9A8; // [V] wraps Direct3DCreate9 (IAT 0x7EB46C)
@@ -126,6 +130,13 @@ namespace t4
         constexpr std::uintptr_t gScrVarGlob_stride = 0x160000;
         constexpr std::uintptr_t gScrVmPub          = 0x3BD4700; // [V] scrVmPub_t[2], stride 0x4320; top@+0x10, inparamcount@+0x18, stack@+0x320
         constexpr std::uintptr_t gScrVmPub_stride   = 0x4320;
+        constexpr std::uintptr_t mt_buffer_ptr      = 0x3702390; // [V] *(char**) — memory-tree base. SL_ConvertToString(id)= id? *(char**)0x3702390 + id*0xC + 4 : 0
+    }
+
+    // dvar_s flags are a 16-bit word at dvar_s + 0x8 (verified in SetSavedDvar).
+    namespace dvar_flag
+    {
+        constexpr std::uint16_t SAVED = 0x1000; // [V] the bit SetSavedDvar requires (NOT 0x200)
     }
 
     // ---- memory reserve patch sites (T4M-Enhanced facts; re-implement, don't copy) ------

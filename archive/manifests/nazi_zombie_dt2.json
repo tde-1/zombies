@@ -1,0 +1,97 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_dt2",
+  "title": "CITY OF HELL",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/nazi_zombie_dt2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_dt2.iwd": "69bb12f7bf2da853371d53f61591fa49e343793552e4f67d7c58f4145f39513d"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "scanner": {
+    "verdict": "manual",
+    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death, ending_parts_placed) but nothing decidable",
+    "scripts": 172,
+    "entities": 7624,
+    "ee_candidates": [],
+    "ending_words": [
+      "arcademode_ending_complete",
+      "crawler_round_ending",
+      "dog_round_ending",
+      "end_game",
+      "ending_extended_death",
+      "ending_parts_placed"
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "singledoor001"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "consite_tunnel_dr01"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "market_debris01"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "city_debris01"
+      ],
+      [
+        1250,
+        "pf9316_auto1",
+        "pf9316_auto2"
+      ]
+    ],
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "69bb12f7bf2da853371d53f61591fa49e343793552e4f67d7c58f4145f39513d",
+    "script_count": 172
+  },
+  "archive": {
+    "original": "City_of_Hell_zm.rar",
+    "original_sha256": "c79574ec3e9ea55f623fce4dc6578086a15869d8757ff4c9cf6b86c241f00941",
+    "original_size": 272122480,
+    "source_url": "http://www.mediafire.com/file/x5bqwa89ummeyrw/City_of_Hell_zm.rar/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-20T00:55:38Z",
+    "av": "clean",
+    "installer_kind": "rar",
+    "shipped_executables": [
+      "City of Hell.exe"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null
+  },
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 1 executable(s): City of Hell.exe. NEVER RUN THEM (dev-box.md rule 3). "
+}

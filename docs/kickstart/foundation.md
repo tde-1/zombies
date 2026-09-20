@@ -223,6 +223,7 @@ Everything else in vault §2 is still unverified — that is `re`'s job.
 | `components/main_thread.cpp` | the startup pump (Dvar_FindVar) |
 | `components/frame_dispatch.cpp` | installs the tick and reports on it |
 | `components/instance_paths.cpp` | per-instance profile via an IAT patch (off by default) |
+| `components/huffman_guard.cpp` | **the bounded compressed-message decode** (§11) |
 
 `thirdparty/minhook/` is vendored verbatim (BSD-2-Clause, `LICENSE.txt` and `VENDORED-FROM.txt`
 kept, upstream `8af6b4ac`). It brings its own length disassembler, which is the whole reason we are
@@ -422,16 +423,118 @@ This deserves a decision from B before anyone designs the leasing flow. Logged i
 ## 10. Open items
 
 1. **Bypass the renderer init at `0x5FF4E0`** so WinMain reaches its loop in *dedicated* mode. Solo
-   gets there fine now (301 frames measured), but a dedicated server never does. Shared blocker with
+   gets there fine (301 frames measured); a dedicated server never does. Shared blocker with
    `dedi`'s Stage C; `re` has the exact site.
-2. **Prove the per-instance profile** (§7). Implemented, off by default, never run. Needs the
-   directory seeding first, and it is the thing several-games-per-box depends on.
-3. **Two instances on one box** — still untested. `__CoDWaW` is a single-instance marker; item 2
-   probably removes that obstacle, but nobody has tried.
-4. **Steam client per game box** — with B as a business decision (§8). Nobody is to test offline
+2. **`re`: a userinfo write seam** — `Dvar_SetStringByName`, `Dvar_RegisterString` + the USERINFO
+   flag, or `Cbuf_AddText`. This is the single blocker on invite-token joins (§11).
+3. **`re`: argument lists for `CL_ConnectionlessPacket` (0x643380), `SV_ConnectionlessPacket`
+   (0x634E90) and `SV_DirectConnect` (0x62E3A0)**, so the OOB lockdown and direct connect can be
+   hooked rather than guessed at (§11).
+4. **`dedi`: a listener**, then the two-instance test as one experiment under one lock.
+5. **Prove the per-instance profile.** Implemented and now seeded by `new-copy.ps1`, but never run.
+   **Replace the `__CoDWaW` interlock first** — turning on `ENW_PRIVATE_PROFILE=1` moves that file
+   per-instance and silently disables the only thing currently stopping two launches colliding.
+   `game.lock` should take that job properly.
+6. **Two instances on one box** — still untested, and gated on item 5.
+7. **Steam client per game box** — with B as a business decision (§8). Nobody is to test offline
    mode; that is B's to do.
-5. **`referee` and `dedi` to migrate to `frame::subscribe`** when convenient. No rush and no
-   collision either way: the core holds the call site, not `Com_Frame` itself.
-6. `con_minicon 1` is still passed by `launch.ps1` and nobody has checked what it changes. The
-   other suspect in that line, `developer 1`, turned out to cost us the whole evening — so this one
-   deserves five minutes from somebody.
+8. **`referee` and `dedi` to migrate to `frame::subscribe`** when convenient. No collision either
+   way: the core holds the call site, not `Com_Frame` itself.
+9. `con_minicon 1` is still passed by `launch.ps1` and nobody has checked what it changes. Its
+   neighbour `developer 1` cost us the evening, so this deserves five minutes.
+
+## 11. Client side: joining (started)
+
+`client-dll/` is mine; `server/components/` stays `dedi`'s and `referee`'s. Everything here reuses
+`shared/core` rather than forking it.
+
+### Security 1 \u2014 the bounded Huffman decode (done, armed)
+
+`shared/core/components/huffman_guard.cpp`. It lives in the shared core because it protects the
+server *and* the client with one hook.
+
+`re`'s audit had the defect right and I confirmed it from our own dump, but **one detail in the
+audit is wrong and it matters**: the audit says the decoder "receives a capacity argument (0x20000)
+from both callers but ignores it". It receives no such argument. Reading 0x6751D0:
+
+```
+83 EC 08 53 55  8B 6C 24 14   sub esp,8; push ebx; push ebp; mov ebp,[esp+14h]
+8B F0  8B F9                  mov esi,eax ; mov edi,ecx
+...
+8D 1C F5 00000000             lea ebx,[esi*8]      ; total_bits = 8 * src_len
+88 16 / 83 C6 01              mov [esi],dl ; add esi,1
+39 5C 24 10 / 7C DA           cmp [esp+10h],ebx ; jl   <- consumed bits only
+2B C5                         sub eax,ebp          ; returns bytes written
+```
+
+So the real signature is `int f(int src_len /*eax*/, const void* src /*ecx*/, void* dst /*[esp+4]*/)`
+\u2014 three parameters, compiler-chosen convention, every `ret` is `C3` so the caller cleans the one
+stack argument. That makes it *worse* than the audit says: the function cannot bound its output
+even in principle, so the fix has to be outside it.
+
+**What we do:** interpose with a naked stub (no C++ convention can express eax/ecx/stack), decode
+into our own scratch instead of the caller's buffer, and copy back at most 0x20000. The scratch is
+8\u00d7 the maximum input \u2014 the provable worst case, since a symbol is at least one bit \u2014 and is
+followed by a `PAGE_NOACCESS` guard page, so if that reasoning is ever wrong we take a clean access
+violation inside our own allocation instead of silently corrupting the game's `.data`. An overlong
+decode copies nothing, returns 0 and logs loudly; failing closed is right, because a message that
+expands past the window is not one we want parsed.
+
+### ENW-only networking (partly done)
+
+`client-dll/components/network.cpp`.
+
+**Every socket function in the exe is imported by ORDINAL, not by name** \u2014 WSOCK32 ordinals
+2,3,4,9,10,12,14,16,17,19,20,21,23,52,57,111,115 plus five from WS2_32. A name-based IAT hook finds
+nothing, which is why `memory::hook_import_ordinal()` now exists. **Ordinal 52 is `gethostbyname`**,
+and it is the single chokepoint for every name the game resolves. Replacing that one slot needs no
+game code patched and no decrypted image, so it is armed in `post_load` before any engine
+instruction runs.
+
+It immediately earned its place. On a stock startup:
+
+```
+net: BLOCKED a DNS lookup for 'cod5-pc.auth.mmp3.demonware.net'   (x4)
+```
+
+The client tries to reach Activision's auth infrastructure on every launch. `*.activision.com`,
+`*.demonware.net` and `*.treyarch.com` are blocked unconditionally; `-StrictNet` denies anything
+not in `-AllowedHosts` (default `.enw.gg`); every lookup is logged either way.
+
+**Not done:** the OOB packet filter (`CL_ConnectionlessPacket` 0x643380) and the
+`connect`/`reconnect` lockdown. I read the prologue \u2014 a 0x464-byte frame, register-passed state
+and at least one stack argument \u2014 and stopped. A wrong detour on the connectionless path is an
+intermittent crash hours later, so I want the argument list from `re` first.
+
+### The invite token (plumbed, one gap)
+
+`client-dll/components/auth_token.cpp`. `launch.ps1 -AuthToken <t>` passes it in the
+**environment**, never argv: a command line is readable by every other process on the box and ends
+up in logs and crash dumps. The DLL reads it once in `post_load`, checks the `<b64url>.<b64url>`
+shape, and then **clears the environment variable** so it is neither inherited by a child nor
+visible to anything walking our environment afterwards. It is never logged \u2014 only fingerprinted
+(`eyJ2Ij...VzdA (122 chars)`), and it is zeroed at shutdown.
+
+**The gap:** getting it into userinfo. That needs `Dvar_SetStringByName`, or `Dvar_RegisterString`
+plus the USERINFO flag value, or `Cbuf_AddText` (to run `setu enw_token <v>`). `Dvar_FindVar` and
+`Dvar_RegisterBool/Enum` are verified; none of those are. The component warns every run rather
+than failing quietly.
+
+### Direct connect (not started \u2014 blocked)
+
+Blocked on two things, neither of them mine to decide: the signatures above, and `dedi` having a
+listener. The T4 handshake, from strings in the exe:
+
+| Direction | String | Address |
+|---|---|---|
+| client \u2192 server | `getchallenge 0 "%s"` | 0x48A14C |
+| server \u2192 client | `challengeResponse %i %s` | 0x486B98 |
+| client \u2192 server | `connect ` + userinfo | 0x48A1AC |
+| server \u2192 client | `connectResponse %s` | 0x48705C |
+| server reject | `rejected connect from protocol version %i (should be %i)` | 0x486D2C |
+
+The one that stands out: `CHALLENGERESPONSE: Got server licenseid %llx` (0x48A250). The T4 client
+checks a **server licence id** in the challenge response, which iw4x's `connect_coop` has no
+equivalent of. That is probably the real obstacle to direct connect here, and it is worth
+understanding before anyone starts flipping protocol-version comparisons.
+

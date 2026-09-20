@@ -1,0 +1,98 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_derberg",
+  "title": "DER BERG",
+  "source": "custom",
+  "author": "c.h.n",
+  "released": "February 10, 2017, 05:35:07 pm",
+  "fs_game": "mods/nazi_zombie_derberg",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_derberg.ff": "6a63e9be58806f60175cf561b8525255e5f0398184e8b34b695f3140009698f7"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "scanner": {
+    "verdict": "manual",
+    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, dog_roundfx_ending, end_game, ending_extended_death) but nothing decidable",
+    "scripts": 104,
+    "entities": 2900,
+    "ee_candidates": [],
+    "ending_words": [
+      "arcademode_ending_complete",
+      "crawler_round_ending",
+      "dog_round_ending",
+      "dog_roundfx_ending",
+      "end_game",
+      "ending_extended_death"
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_door",
+        "outside_right_zone_elec"
+      ],
+      [
+        10000,
+        "zombie_door",
+        "outside_left_zone_elec"
+      ],
+      [
+        10000,
+        "zombie_door",
+        "elek_bar_two"
+      ],
+      [
+        10000,
+        "zombie_door",
+        "elek_bar_one"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "outside_end_door"
+      ]
+    ],
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6a63e9be58806f60175cf561b8525255e5f0398184e8b34b695f3140009698f7",
+    "script_count": 104
+  },
+  "archive": {
+    "original": "Derberg.exe",
+    "original_sha256": "4683ba9cce14d26028b3e2a63dab6e08e2d0961739834237434256b8f1dd1de8",
+    "original_size": 540874792,
+    "source_url": "http://www.mediafire.com/file/d589wbvh3i0rm8y/Derberg.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-20T00:49:12Z",
+    "av": "clean",
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "[Release] Der Berg in Map Releases - Page 1 of 8 UGX-Mods Login \u00d7 Close Accountname (or Email) Password Remember Me Login / Activate issues? Forgot your password? Wrong email or nothing received? --> or login with an authentication provider below Sign In with Google Sign In with Twitter Sign In with Discord Sign In with Steam Sign In with Facebook Sign In with Twitch Login Issues Forgot password? Activate Issues Account activation email not received? Wrong account activation email used? Other Problems? Contact Support - Help Center Get help on the UGX Discord. Join it now! Back UGX-Mods Home UGX-Mods Forum UGX-Mods Scripting Reference UGX-Mods Wiki UGX-Mods Jira Cloud UGX-Mods Statuspage UGX-Mods UGX-Mods Forum View Index Black Ops 3 World at War Black Ops 1 View Recent Posts Search Blog Modding Help Modding Wiki Apps/Tools Scripting Reference Zombie Maps How to Play UGX-Mods UGX Map Manager UGX-Mods Official Maps Black Ops 3 Community Maps BO3 Community Mods BO3 Black Ops 1 Community Maps BO1 Community Mods BO1 World at War Community Maps WaW Community Mods WaW Discord Sign In Sign Up UGX-Mods \u00bb Call of Duty 5: World at War \u00bb Custom Maps, Mods & Tools \u00bb Map Releases \u00bb [Release] Der Berg Forum This topic This Board Members Advanced Search No connection: It looks like you are offline. You can use a precached version of this website but some actions might not work. Warning: Please enable JavaScript for best experience. How To Enable JavaScript [Release] Der Berg Topic Locked: T"
+  },
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+}

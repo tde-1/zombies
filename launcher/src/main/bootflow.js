@@ -53,8 +53,8 @@ export class BootFlow extends EventEmitter {
     this.cancelled = false
   }
 
-  step(id, state, detail, { simulated = false } = {}) {
-    const rec = { id, label: STEP_LABELS[id] || id, state, detail, simulated, at: Date.now() }
+  step(id, state, detail, { simulated = false, label = null } = {}) {
+    const rec = { id, label: label || STEP_LABELS[id] || id, state, detail, simulated, at: Date.now() }
     const prev = this.steps.find((s) => s.id === id)
     if (prev) Object.assign(prev, rec)
     else this.steps.push(rec)
@@ -88,6 +88,12 @@ export class BootFlow extends EventEmitter {
   async run() {
     const o = this.opts
     const siteUrl = (o.siteUrl || 'http://127.0.0.1:8099').replace(/\/$/, '')
+
+    // Play Local is a different journey (spec 13 §4): the map runs on the player's own
+    // PC as a normal client, solo, with nothing tracked. There is no server to reserve
+    // and no token to carry — and critically no `+connect`, or the engine would leave
+    // the local map and go to the server the moment it loaded.
+    if (o.localMap) return this.runLocal()
 
     // ---------------------------------------------------------- reserving --
     this.step('reserving', 'active', `asking ${siteUrl} for a server`)
@@ -147,7 +153,6 @@ export class BootFlow extends EventEmitter {
     const l = new GameLaunch({
       host,
       token,
-      map: o.localMap || null,
       settings: o.settings,
       stealth: !!o.stealth,
       instance: matchId,
@@ -160,17 +165,7 @@ export class BootFlow extends EventEmitter {
       tokenViaEnv: !!o.tokenViaEnv,
     })
     this.launch = l
-    l.on('note', () => this.emit('update', this.snapshot()))
-    l.on('dialog', (d) => { this.step('launching', 'active', d.friendly); })
-    l.on('phase', (p) => {
-      if (p.phase === 'loading') this.step('launching', 'active', p.detail)
-      if (p.phase === 'ended' || p.phase === 'failed') {
-        const ig = this.steps.find((s) => s.id === 'in_game')
-        if (!ig || ig.state !== 'done') this.step('launching', 'failed', p.detail)
-        this.emit('ended', p)
-      }
-    })
-    l.on('console', (line) => this.emit('console', line))
+    this.wireLaunch(l)
 
     try {
       const started = await l.start()
@@ -186,6 +181,73 @@ export class BootFlow extends EventEmitter {
     const connected = await this.waitForConnection(siteUrl, matchId, o.connectTimeoutMs ?? 60000)
     this.step('in_game', connected.ok ? 'done' : 'active', connected.detail, { simulated: !connected.confirmed })
     return this.snapshot()
+  }
+
+  // Play Local: no server, no token, no tracking. Two steps, both real.
+  async runLocal() {
+    const o = this.opts
+    this.step('reserving', 'done', 'this game runs on your PC, so there is no server to reserve and nothing is tracked', { label: 'Playing locally' })
+    this.step('loading', 'done', `${o.localMap}`, { label: 'Map' })
+    this.step('ready', 'done', 'ready', { label: 'Ready' })
+    if (o.launch === false) return this.snapshot()
+    if (this.cancelled) return this.snapshot()
+
+    this.step('launching', 'active', 'starting World at War')
+    const l = new GameLaunch({
+      host: null,                 // never both +map and +connect
+      token: null,                // untracked: there is nothing to authorise
+      map: o.localMap,
+      settings: o.settings,
+      stealth: !!o.stealth,
+      instance: `local-${o.localMap}`,
+      role: 'solo',
+      linkHost: o.linkHost,
+      lockName: o.lockName || 'launcher',
+      why: `launcher: local ${o.localMap}`,
+      useGameLock: o.useGameLock,
+      nannySeconds: o.nannySeconds,
+    })
+    this.launch = l
+    this.wireLaunch(l)
+    try {
+      const started = await l.start()
+      this.step('launching', 'done', `World at War is running (process ${started.pid})`)
+      this.emit('launched', started)
+    } catch (e) {
+      this.step('launching', 'failed', e.message)
+      return this.snapshot()
+    }
+    this.step('in_game', 'active', 'loading the map on your PC', { label: 'In game (untracked)' })
+    // The only honest confirmation for a local game is the engine's own log.
+    const loaded = await new Promise((resolve) => {
+      const until = Date.now() + (o.connectTimeoutMs ?? 90000)
+      const onLine = (line) => {
+        if (/Loading fastfile|\.d3dbsp|Server Initialization/i.test(line)) { cleanup(); resolve(line.trim().slice(0, 120)) }
+      }
+      const timer = setInterval(() => {
+        if (this.cancelled || l.ended || Date.now() > until) { cleanup(); resolve(null) }
+      }, 500)
+      const cleanup = () => { clearInterval(timer); l.off('console', onLine) }
+      l.on('console', onLine)
+    })
+    this.step('in_game', loaded ? 'done' : 'active',
+      loaded ? `the map is loading on your PC: ${loaded}` : 'the game is running; the engine has not reported a map yet',
+      { simulated: !loaded, label: 'In game (untracked)' })
+    return this.snapshot()
+  }
+
+  wireLaunch(l) {
+    l.on('note', () => this.emit('update', this.snapshot()))
+    l.on('dialog', (d) => { this.step('launching', 'active', d.friendly) })
+    l.on('phase', (p) => {
+      if (p.phase === 'loading') this.step('launching', 'active', p.detail)
+      if (p.phase === 'ended' || p.phase === 'failed') {
+        const ig = this.steps.find((s) => s.id === 'in_game')
+        if (!ig || ig.state !== 'done') this.step('launching', 'failed', p.detail)
+        this.emit('ended', p)
+      }
+    })
+    l.on('console', (line) => this.emit('console', line))
   }
 
   // Two places can answer "is the server up?", and they answer different halves:

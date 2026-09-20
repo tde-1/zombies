@@ -121,20 +121,44 @@ def find_mod_roots(root):
             if any(x.endswith(".ff") for x in v) or any(x.endswith(".iwd") for x in v)}
 
 
-def guess_map_name(folder, files):
-    base = os.path.basename(folder)
-    if base.lower() not in ("mods", "", "."):
-        cand = base
-    else:
-        cand = None
-    for f in files:
-        m = re.match(r"(nazi_zombie_[a-z0-9_]+)\.(ff|iwd)$", f, re.I)
-        if m:
-            return m.group(1).lower()
-    for f in files:
-        if f.lower() != "mod.ff" and f.lower().endswith((".ff", ".iwd")):
-            return os.path.splitext(f)[0].lower()
-    return (cand or "unknown").lower()
+def guess_names(folder, files):
+    """Return (mod_folder_name, bsp_name).
+
+    They are NOT the same thing and conflating them breaks the launch command. The
+    engine is told `fs_game mods/<mod_folder>` and then `map <bsp>`:
+
+      mw2rust/            mod folder "mw2rust",                bsp "mw2rust"
+      ugx_requiem_public_v1.1/  mod folder with that name,     bsp "ugx_artemovsk"
+
+    The mod folder is simply the directory the installer laid down (the one holding
+    `mod.ff`). The bsp is the fastfile that has a `<name>_load.ff` or `<name>_patch.ff`
+    beside it -- that pairing is what the map build produces, and it is the only
+    reliable marker when the folder is called something like `ugx_requiem_public_v1.1`
+    or when a map ships another mod's `.iwd` alongside it.
+
+    MEASURED: naming the folder after the first `.ff`/`.iwd` produced "buried" for
+    MW2 Rust (it ships `buried.iwd`, a perks pack) and "fastcompile" for UGX Requiem.
+    """
+    mod_folder = os.path.basename(folder.rstrip("\\/")) or "unknown"
+    ffs = {f.lower() for f in files if f.lower().endswith(".ff")}
+    stems = {f[:-3] for f in ffs}
+    scored = []
+    for s in stems:
+        if s in ("mod",) or s.startswith(("localized_", "common", "code_post_gfx", "ui_")):
+            continue
+        if s.endswith(("_load", "_patch")):
+            continue
+        # A map BUILD produces <map>.ff + <map>_load.ff + <map>_patch.ff. An asset or
+        # perks pack shipped alongside usually has only a _patch, or nothing.
+        # MEASURED: Minecraft Village ships both `gumball` (.ff + _patch) and
+        # `nazi_zombie_fear_mc_2` (.ff + _load + _patch); the second is the map.
+        score = (2 if s + "_load.ff" in ffs else 0) + (1 if s + "_patch.ff" in ffs else 0)
+        score += 1 if s.startswith("nazi_zombie") else 0
+        scored.append((score, s))
+    if scored:
+        scored.sort(reverse=True)
+        return mod_folder, scored[0][1]
+    return mod_folder, mod_folder.lower()
 
 
 def normalise_into_mods(src, mapname, dry=False):
@@ -196,18 +220,39 @@ def process(norm, original, report):
 
     roots = find_mod_roots(exdir)
     if not roots:
+        # A wrapper archive: Clinic of Evil ships as a .rar containing
+        # "Clinic Of Evil.exe" plus a readme, i.e. the installer inside a courtesy
+        # archive. One level of recursion, still never executing anything.
+        inner = [p for p in walk(exdir)
+                 if p.lower().endswith((".exe", ".zip", ".rar", ".7z"))
+                 and os.path.getsize(p) > 1 << 20]
+        for p in sorted(inner, key=os.path.getsize, reverse=True)[:1]:
+            sub = os.path.join(exdir, "_inner")
+            rc, log2 = run7z(p, sub)
+            out["nested"] = {"file": os.path.relpath(p, exdir).replace("\\", "/"),
+                             "kind": fingerprint(p), "rc": rc}
+            out["extract_log"] += "\n[nested] " + log2.strip()[-800:]
+        roots = find_mod_roots(exdir)
+    if not roots:
         out["errors"].append("no .ff/.iwd found in the extraction")
         report.append(out)
         return out
     # Strip the wrapper: report how deep below the extraction root the map sat.
     for folder, files in sorted(roots.items()):
         depth = len(os.path.relpath(folder, exdir).split(os.sep)) if folder != exdir else 0
-        mapname = guess_map_name(folder, files)
-        dest, copied = normalise_into_mods(folder, mapname)
-        out["mods"].append({"map": mapname, "from": os.path.relpath(folder, exdir)
-                            .replace("\\", "/"), "depth": depth,
-                            "dest": dest, "files": copied,
-                            "bytes": sum(f["size"] for f in copied)})
+        modname, bsp = guess_names(folder, files)
+        # The normalised install is named after the BSP, not after whatever the
+        # installer's payload folder happened to be called ("City of Hell", with
+        # spaces, or "ORBiT_v1.2", with a version in it). fs_game takes any folder
+        # name, so we take the predictable one -- which is also how B's existing
+        # `mods/nazi_zombie_ali` is laid out.
+        slug = re.sub(r"[^a-z0-9_]+", "_", bsp.lower()).strip("_") or "unknown"
+        dest, copied = normalise_into_mods(folder, slug)
+        out["mods"].append({"map": slug, "installer_folder": modname, "bsp": bsp,
+                            "from": os.path.relpath(folder, exdir).replace("\\", "/"),
+                            "depth": depth, "dest": dest, "files": copied,
+                            "bytes": sum(f["size"] for f in copied),
+                            "fs_game": "mods/" + slug})
         if out["wrapper_depth"] is None or depth < out["wrapper_depth"]:
             out["wrapper_depth"] = depth
     report.append(out)

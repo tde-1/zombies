@@ -35,6 +35,7 @@
 #include "memory.hpp"
 #include "scheduler.hpp"
 #include "hook.hpp"
+#include "frame.hpp"
 
 #include <cstdlib>
 #include <thread>
@@ -155,33 +156,27 @@ int  g_dedicated_value = 0;
 // Naked so we control the epilogue exactly. WinMain's call site is a plain E8; the
 // bytes around it are logged at install time so the assumption is checkable. EAX = 1
 // says "renderer is up"; if WinMain tests it the other way this is the byte to flip.
+// What this returns matters: if WinMain tests the result and treats our value as a
+// failure, it will skip its own loop -- which is one candidate explanation for frames
+// never turning even with the bring-up skipped (probe p29). Runtime-settable via
+// ENW_DEDI_BRINGUP_RET so trying both costs a probe, not a rebuild.
+long g_bringup_ret = 1;
+
 __declspec(naked) void renderer_bringup_stub() {
     __asm {
-        mov eax, 1
+        mov eax, dword ptr [g_bringup_ret]
         ret
     }
 }
 
 // ---- frame counting ------------------------------------------------------------
-// Two candidates, counted side by side so we can see which one is the real tick.
-// `re`'s static chain says WinMain -> Com_Frame 0x59E330 -> ... -> SV_Frame 0x635CC0,
-// but probe p28 showed Com_Frame at zero even with no map loaded (when WinMain's loop
-// must be turning), and `referee` reports SV_Frame as the tick that actually fires.
-// Counting both settles it instead of arguing about it.
-enw::hook g_com_frame_hook;
-enw::hook g_sv_frame_hook;
-volatile long long g_frames = 0;     // Com_Frame
-volatile long long g_sv_frames = 0;  // SV_Frame
-
-void __cdecl com_frame_stub() {
-    ++g_frames;
-    g_com_frame_hook.original<void(__cdecl*)()>()();
-}
-
-void __cdecl sv_frame_stub() {
-    ++g_sv_frames;
-    g_sv_frame_hook.original<void(__cdecl*)()>()();
-}
+// We do NOT hook Com_Frame or SV_Frame ourselves any more. shared/core/frame.hpp owns
+// the tick and the rule is that components subscribe: MinHook allows one hook per
+// address and the loser only learns from a log line. Probe p29 is exactly that failure
+// -- my private SV_Frame hook lost to `referee`'s
+// ("MH_CreateHook(00635CC0) failed: already created"), so the SV_Frame=0 it reported
+// was meaningless. Subscribing cannot collide.
+volatile long long g_frames = 0;
 
 // Read the engine's `dedicated` dvar without knowing dvar_s's layout: com_dedicated is a
 // pointer to it, so a non-null pointer plus a matching command line is enough for now.
@@ -236,6 +231,11 @@ public:
                  (dedicated_dvar && dedicated_dvar == com_dedicated) ? "(agree)" : "(MISMATCH - stop)");
         if (!dedicated_dvar || dedicated_dvar != com_dedicated) return;
 
+        if (const char* r = std::getenv("ENW_DEDI_BRINGUP_RET")) {
+            g_bringup_ret = std::strtol(r, nullptr, 0);
+            ENW_INFO("dedicated: ENW_DEDI_BRINGUP_RET=%ld (renderer stub return value)",
+                     g_bringup_ret);
+        }
         dump_dvar_layout(find);
         skip_renderer_bringup();
         install_frame_counter();
@@ -306,9 +306,14 @@ private:
         constexpr uintptr_t kCallSite = 0x5FF799;
         constexpr uintptr_t kTarget   = 0x5FF4E0;
 
-        ENW_INFO("dedicated: WinMain@0x%08X bytes around the renderer call: %s",
-                 static_cast<unsigned>(kCallSite),
-                 memory::hex_dump(enw::at(kCallSite) - 8, 24).c_str());
+        // Dump the instruction stream from just before the bring-up call to past the
+        // loop entry. p29/p30 show the loop body never executes even with the call
+        // skipped and with either return value, so this window is where the answer is.
+        ENW_INFO("dedicated: WinMain disassembly window 0x5FF790..0x5FF7E0 (loop entry is 0x5FF7B1, "
+                 "call Com_Frame is 0x5FF7BD):");
+        for (uintptr_t a = 0x5FF790; a < 0x5FF7E0; a += 16)
+            ENW_INFO("dedicated:   %08X  %s", static_cast<unsigned>(a),
+                     memory::hex_dump(enw::at(a), 16).c_str());
 
         const uintptr_t actual = memory::call_target(enw::at(kCallSite));
         if (actual != enw::at(kTarget)) {
@@ -336,28 +341,10 @@ private:
                       memory::hex_dump(enw::at(t4::fn::Com_Frame), 8).c_str());
             return;
         }
-        if (g_com_frame_hook.create(enw::at(t4::fn::Com_Frame), &com_frame_stub, "Com_Frame") &&
-            g_com_frame_hook.enable())
-            ENW_INFO("dedicated: Com_Frame hooked at 0x%08X", static_cast<unsigned>(t4::fn::Com_Frame));
-        else
-            ENW_ERROR("dedicated: could not hook Com_Frame at 0x%08X",
-                      static_cast<unsigned>(t4::fn::Com_Frame));
+        enw::frame::subscribe("dedicated", [](uint64_t) { ++g_frames; });
+        ENW_INFO("dedicated: subscribed to the shared frame tick (installed=%s, subscribers=%zu)",
+                 enw::frame::installed() ? "yes" : "NO", enw::frame::subscriber_count());
 
-        // SV_Frame: `referee` reports this is the tick that actually fires. It is also the
-        // right one for us -- server-authoritative and it does not run before a map.
-        constexpr uintptr_t kSV_Frame = 0x635CC0;
-        if (!memory::looks_like_function(enw::at(kSV_Frame))) {
-            ENW_ERROR("dedicated: SV_Frame 0x%08X does not look like a function (%s)",
-                      static_cast<unsigned>(kSV_Frame),
-                      memory::hex_dump(enw::at(kSV_Frame), 8).c_str());
-        } else if (g_sv_frame_hook.create(enw::at(kSV_Frame), &sv_frame_stub, "SV_Frame") &&
-                   g_sv_frame_hook.enable()) {
-            ENW_INFO("dedicated: SV_Frame hooked at 0x%08X; both ticks logged every 5 s",
-                     static_cast<unsigned>(kSV_Frame));
-        } else {
-            ENW_ERROR("dedicated: could not hook SV_Frame at 0x%08X",
-                      static_cast<unsigned>(kSV_Frame));
-        }
     }
 
     static constexpr int kMaxSavedFixAttempts = 200000;
@@ -503,14 +490,16 @@ private:
             for (int i = 0; i < 600; ++i) {
                 ::Sleep(5000);
                 const auto s = scheduler::snapshot();
-                static long long last_sv = 0;
-                const long long sv = g_sv_frames;
-                ENW_INFO("dedicated: liveness t=%ds  SV_Frame=%lld (+%lld in 5s = %.1f Hz)  "
-                         "Com_Frame=%lld  pumps=%llu",
-                         (i + 1) * 5, sv, sv - last_sv, (sv - last_sv) / 5.0,
+                static uint64_t last = 0;
+                const uint64_t n = enw::frame::count();
+                ENW_INFO("dedicated: liveness t=%ds  frame::count=%llu (+%llu in 5s = %.1f Hz) "
+                         "installed=%s  ours=%lld  pumps=%llu",
+                         (i + 1) * 5, static_cast<unsigned long long>(n),
+                         static_cast<unsigned long long>(n - last), (n - last) / 5.0,
+                         enw::frame::installed() ? "yes" : "NO",
                          static_cast<long long>(g_frames),
                          static_cast<unsigned long long>(s.pumps));
-                last_sv = sv;
+                last = n;
             }
         }).detach();
     }

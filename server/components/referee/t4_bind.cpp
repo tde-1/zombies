@@ -27,6 +27,7 @@
 
 #include "../../../shared/core/hook.hpp"
 #include "../../../shared/core/logger.hpp"
+#include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/memory.hpp"
 #include "../../../shared/t4/addresses.hpp"
 #include "../../../shared/t4/structs.hpp"
@@ -251,7 +252,7 @@ using SV_Frame_t = void(__cdecl*)();
 void __cdecl sv_frame_detour() {
     g_sv_frame_hook.original<SV_Frame_t>()();
     // After the server frame: the world is in a consistent post-think state.
-    dispatch_frame(static_cast<uint32_t>(::GetTickCount()));
+    dispatch_frame(game_link::now_ms());
 }
 
 // ------------------------------------------------------------- server cmd --
@@ -276,11 +277,24 @@ void* g_vm_notify_trampoline = nullptr;
 uint64_t g_notify_total = 0;
 uint64_t g_notify_level = 0;
 
+int g_notify_logged = 0;
+
 void __cdecl vm_notify_observe(int instance, int ownerId, int stringValue) {
     ++g_notify_total;
     const uint32_t levelId = *reinterpret_cast<uint32_t*>(at(t4::var::levelId_server));
+    // MEASURED 01:53: the hook fires (10,119 notifies in one minute) but NOTHING
+    // matched ownerId == levelId, so one of three assumptions is wrong: the stack
+    // offsets in the thunk, EAX being the script instance, or levelId_server being
+    // the right global. Dump the raw tuples so `re` can see which, rather than me
+    // guessing at it.
+    if (g_notify_logged < 24) {
+        ++g_notify_logged;
+        ENW_INFO("referee/notify[%d]: instance=%d ownerId=0x%08X stringValue=0x%08X levelId=0x%08X",
+                 g_notify_logged, instance, static_cast<unsigned>(ownerId),
+                 static_cast<unsigned>(stringValue), levelId);
+    }
     notify_event ev;
-    ev.game_ms = static_cast<uint32_t>(::GetTickCount());
+    ev.game_ms = game_link::now_ms();
     ev.name_id = stringValue;
     if (instance == 0 && static_cast<uint32_t>(ownerId) == levelId) {
         ev.who = notify_event::owner::level;
@@ -306,7 +320,11 @@ __declspec(naked) void vm_notify_detour() {
         add  esp, 12
         popfd
         popad
+        cmp  dword ptr [g_vm_notify_trampoline], 0
+        je   no_trampoline
         jmp  [g_vm_notify_trampoline]
+no_trampoline:
+        ret
     }
 }
 
@@ -383,10 +401,14 @@ const binding_report& bind() {
 
     // --- notifies: VM_Notify, the chokepoint every flag_set() passes through ---
     const uintptr_t vm_notify = at(t4::fn::VM_Notify);
+    // ORDER MATTERS: store the trampoline BEFORE enabling. enable() makes the
+    // detour live immediately, and the naked thunk ends in `jmp [trampoline]` --
+    // a notify firing in the gap would jump through a null pointer.
     if (memory::is_readable(reinterpret_cast<void*>(vm_notify), 16) &&
-        g_vm_notify_hook.create(vm_notify, reinterpret_cast<void*>(&vm_notify_detour), "VM_Notify") &&
-        g_vm_notify_hook.enable()) {
+        g_vm_notify_hook.create(vm_notify, reinterpret_cast<void*>(&vm_notify_detour), "VM_Notify")) {
         g_vm_notify_trampoline = g_vm_notify_hook.original<void*>();
+    }
+    if (g_vm_notify_trampoline && g_vm_notify_hook.enable()) {
         g_report.notify_hook = true;
     } else {
         ENW_WARN("referee/bind: could not hook VM_Notify at %08X", static_cast<unsigned>(vm_notify));

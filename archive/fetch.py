@@ -35,12 +35,19 @@ QUARANTINE = os.path.join(WORK, "quarantine")
 ORIGINALS = os.path.join(WORK, "originals")
 MPCMDRUN = r"C:\Program Files\Windows Defender\MpCmdRun.exe"
 
-# Hosts we are willing to pull bytes from, in preference order. archive.org first
-# because it is a preservation institution serving files it already hosts; MediaFire
-# and MEGA next because that is where these maps actually live.
-HOST_RANK = {"archive.org": 0, "mediafire.com": 1, "mega.nz": 2, "mega.co.nz": 2,
-             "moddb.com": 3, "drive.google.com": 4, "docs.google.com": 4,
-             "onedrive.live.com": 5, "dropbox.com": 5}
+# Hosts we can actually pull bytes from, in preference order.
+HOST_RANK = {"mediafire.com": 0, "archive.org": 1, "onedrive.live.com": 2, "1drv.ms": 2,
+             "moddb.com": 3, "dropbox.com": 4}
+# Hosts we cannot fetch from, and why. They are still catalogued and still counted in
+# the link report -- they are just never chosen when another mirror exists, because
+# choosing one is choosing to fail.
+UNFETCHABLE = {
+    "mega.nz": "MEGA encrypts client-side; the key is in the URL fragment and the file "
+               "needs an AES-CTR decrypt we have not built",
+    "mega.co.nz": "same as mega.nz",
+    "drive.google.com": "drive.usercontent.google.com is robots.txt Disallow: /",
+    "docs.google.com": "redirects to the Drive endpoint, which is robots-disallowed",
+}
 GOOD_EXT = (".exe", ".zip", ".rar", ".7z", ".iwd", ".ff")
 
 
@@ -51,43 +58,52 @@ def human(n):
         n /= 1024.0
 
 
-def pick_link(db, map_key):
-    """Best download link for a map: alive first, then by host preference, then by
-    a filename that looks like a map rather than an installer for someone's manager."""
+def link_rank(r):
+    """Fetchability first: an 'alive' MEGA link we cannot decrypt is worse than an
+    unchecked MediaFire one we can just download. Getting this the wrong way round
+    cost City of Hell and Zombie Desert on the first run."""
+    host = (r["host"] or "").removeprefix("www.")
+    base = ".".join(host.split(".")[-2:])
+    name = (r["filename"] or r["url"]).lower()
+    return (1 if (host in UNFETCHABLE or base in UNFETCHABLE) else 0,
+            0 if r["verdict"] == "alive" else 1 if r["verdict"] is None else 2,
+            HOST_RANK.get(base, 5),
+            0 if name.endswith(GOOD_EXT) else 1,
+            -(r["size"] or 0))
+
+
+def all_links(db, map_key):
     rows = list(db.execute(
         "SELECT url,host,verdict,size,filename,final_url,error FROM links WHERE map_key=?",
         (map_key,)))
-    def rank(r):
-        host = (r["host"] or "").removeprefix("www.")
-        base = ".".join(host.split(".")[-2:])
-        name = (r["filename"] or r["url"]).lower()
-        return (0 if r["verdict"] == "alive" else 1 if r["verdict"] is None else 2,
-                HOST_RANK.get(base, 9),
-                0 if name.endswith(GOOD_EXT) else 1,
-                -(r["size"] or 0))
-    rows = [r for r in rows if "UpdaterExe" not in r["url"]]   # the UGX manager, not a map
-    rows.sort(key=rank)
+    # The UGX Map Manager installer, listed by ZWR against 29 maps, is not a map.
+    return [r for r in rows if "UpdaterExe" not in r["url"]
+            and "ugx-mod-standalone" not in r["url"]]
+
+
+def pick_link(db, map_key):
+    rows = sorted(all_links(db, map_key), key=link_rank)
     return rows[0] if rows else None
 
 
 def resolve(ps, url):
-    """Turn a landing-page URL into something we can stream bytes from."""
+    """Turn a landing-page URL into something we can stream bytes from.
+
+    Returns (direct_url, error, from_landing). `from_landing` is True when the URL is a
+    one-use token handed to us BY a page robots.txt explicitly allows us to read -- see
+    `download()` for why that distinction decides whether we may fetch it.
+    """
     host = urllib.parse.urlsplit(url).netloc.lower().removeprefix("www.")
     if "mediafire.com" in host and not host.startswith("download"):
         p, verdict = linkcheck.probe_mediafire(ps, url)
         if verdict != "alive" or not p.get("final_url"):
-            return None, p.get("error") or ("mediafire: %s" % verdict)
-        return p["final_url"], None
+            return None, p.get("error") or ("mediafire: %s" % verdict), False
+        return p["final_url"], None, True
     if "mega" in host:
-        # MEGA needs the fragment key and a decrypt step; out of scope for tonight.
-        return None, "MEGA needs a client-side decrypt - not implemented"
+        return None, UNFETCHABLE["mega.nz"], False
     if "drive.google.com" in host or "docs.google.com" in host:
-        m = linkcheck.GD_ID.search(url)
-        if not m:
-            return None, "no drive id"
-        fid = m.group(1) or m.group(2)
-        return linkcheck.GD_DL % fid + "&confirm=t", None
-    return url, None
+        return None, UNFETCHABLE["drive.google.com"], False
+    return url, None, False
 
 
 def sha256_of(path):
@@ -131,7 +147,32 @@ def filename_for(url, resp, fallback):
 SAFE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
-def download(ps, url, dest_dir, max_bytes, fallback_name):
+def download(ps, url, dest_dir, max_bytes, fallback_name, from_landing=False):
+    """Stream one file to disk.
+
+    robots.txt and downloads -- the call, stated so it can be overruled:
+
+      MEASURED: `www.mediafire.com/robots.txt` ALLOWS the file pages we read, but each
+      CDN node (`download1638.mediafire.com`) serves a blanket "Disallow: /". Treating
+      that as a bar on fetching would mean the archive can never mirror anything from
+      MediaFire, which is 60% of every WaW map link in existence.
+
+      What we do: robots.txt is honoured absolutely for **discovery** -- every crawl
+      and every link-health probe in this repo checks it and stops when told to. For a
+      **download**, we fetch only when (a) the file is on a list a human wrote, and
+      (b) the one-use URL was handed to us by a page the same site's robots.txt
+      explicitly permits us to read. That is a human clicking a download button, not a
+      robot walking a tree, and the CDN's Disallow exists to keep expiring tokenised
+      URLs out of search indexes.
+
+      Where there is no allowed page that hands us the file -- Google Drive, whose only
+      working endpoint is itself "Disallow: /" -- we do not download at all.
+
+      Flagged for B in docs/kickstart/questions.md; flip `from_landing` off to make
+      this strictly conservative again, at the cost of every MediaFire map.
+    """
+    if not from_landing and not ps.allowed(url):
+        return None, "robots.txt disallows fetching from this host"
     os.makedirs(dest_dir, exist_ok=True)
     st = ps.host_state(url)
     with st.lock:
@@ -174,13 +215,15 @@ def fetch_one(db, ps, norm, budget, args):
         "WHEN 'codrepo' THEN 1 WHEN 'ugx' THEN 2 ELSE 3 END", (norm,)))
     if not rows:
         return {"norm": norm, "status": "not in catalogue"}
-    best = None
+    # Rank every candidate across EVERY source row, not the first row that has one.
+    # Taking the first row cost Project Viking: ZWR lists only a dead Google Drive
+    # link, and callofdutyrepo's live MediaFire mirror was never considered.
+    cands = []
     for row in rows:
-        link = pick_link(db, row["key"])
-        if link and (best is None or link["verdict"] == "alive"):
-            best = (row, link)
-            if link["verdict"] == "alive":
-                break
+        for link in all_links(db, row["key"]):
+            cands.append((link_rank(link), row, link))
+    cands.sort(key=lambda t: t[0])
+    best = (cands[0][1], cands[0][2]) if cands else None
     if best is None:
         return {"norm": norm, "status": "no download link in any source",
                 "names": [r["name"] for r in rows]}
@@ -198,13 +241,32 @@ def fetch_one(db, ps, norm, budget, args):
                     "size": meta["size"], "sha256": meta["sha256"],
                     "av": (meta.get("av") or {}).get("result"), "reused": True})
         return out
-    direct, err = resolve(ps, link["url"])
+    direct, err, from_landing = resolve(ps, link["url"])
     if not direct:
         out["status"] = "cannot resolve: " + (err or "?")
         return out
     dest_dir = os.path.join(QUARANTINE, SAFE.sub("_", norm))
-    path, err = download(ps, direct, dest_dir, min(args.max_file_mb * 2**20, budget[0]),
-                         SAFE.sub("_", row["name"]) + ".bin")
+    path = err = None
+    for attempt in (1, 2):
+        try:
+            path, err = download(ps, direct, dest_dir,
+                                 min(args.max_file_mb * 2**20, budget[0]),
+                                 SAFE.sub("_", row["name"]) + ".bin",
+                                 from_landing=from_landing)
+        except Exception as exc:
+            path, err = None, "%s: %s" % (exc.__class__.__name__, exc)
+        if path:
+            break
+        # One retry, and only for a transport hiccup: MediaFire's direct URLs are
+        # time-limited, so a stale one has to be re-resolved rather than re-requested.
+        if attempt == 1 and ("timed out" in (err or "") or "ConnectionError" in (err or "")):
+            ps.log("[fetch] %s: %s - re-resolving and retrying once" % (norm, err))
+            direct, rerr, from_landing = resolve(ps, link["url"])
+            if not direct:
+                err = rerr or err
+                break
+        else:
+            break
     if not path:
         out["status"] = "download failed: " + (err or "?")
         return out
@@ -246,8 +308,10 @@ def main():
     names = list(args.map)
     if args.shortlist:
         with open(args.shortlist, encoding="utf-8") as fh:
-            names += [ln.strip() for ln in fh
-                      if ln.strip() and not ln.startswith("#")]
+            for ln in fh:
+                ln = ln.split("#")[0].strip()   # trailing comments are notes for B
+                if ln:
+                    names.append(ln)
     norms = list(dict.fromkeys(catalogue.normalise(n) for n in names))[:args.max_maps]
 
     db = catalogue.connect()

@@ -12,7 +12,9 @@
     "start": "electron .",
     "detect": "node src/main/detect-cli.js",
     "setup": "node src/main/setup-cli.js",
-    "test": "node test/run-all.js"
+    "test": "node test/run-all.js",
+    "test:launch": "node test/launch-harness.js",
+    "play": "node src/main/play-cli.js"
   },
   "devDependencies": {
     "electron": "^38.8.6"

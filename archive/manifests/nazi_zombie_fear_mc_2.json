@@ -1,0 +1,88 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_fear_mc_2",
+  "title": "Minecraft Village Remastered",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/nazi_zombie_fear_mc_2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@gumball_patch.ff": "f7ab6420c957cd9180e0926b151c9076c4dc94da007f97e39f94f515bf78ddf3"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidate_flags": [
+        "ee_bowie_bear",
+        "ee_exp_monkey",
+        "ee_perk_bear"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "scanner": {
+    "verdict": "easter_egg",
+    "why": "flags ee_bowie_bear, ee_exp_monkey, ee_perk_bear look like easter-egg state; confirm which combination means 'done'",
+    "scripts": 156,
+    "entities": 72,
+    "ee_candidates": [
+      "ee_bowie_bear",
+      "ee_exp_monkey",
+      "ee_perk_bear"
+    ],
+    "ending_words": [
+      "arcademode_ending_complete",
+      "crawler_round_ending",
+      "dog_round_ending",
+      "end_game",
+      "ending_extended_death"
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f7ab6420c957cd9180e0926b151c9076c4dc94da007f97e39f94f515bf78ddf3",
+    "script_count": 156
+  },
+  "archive": {
+    "original": "minecraft_village.exe",
+    "original_sha256": "b99239ce74466ea944b5026d987463fdb99378e0137d23efd4157b4f1e4881c1",
+    "original_size": 621749700,
+    "source_url": "http://www.mediafire.com/file/4qeou43q1ka669p/minecraft_village.exe",
+    "source_page": "https://callofdutyrepo.com/2017/02/24/minecraft-village-remastered/",
+    "fetched": "2026-09-20T00:57:02Z",
+    "av": "clean",
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null
+  },
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). Scanner found easter-egg-looking flags but cannot know which combination means done; a human must read the scripts. The Round 20 fallback still applies meanwhile. "
+}

@@ -1,0 +1,11 @@
+# Round 2. Retries and substitutions, with the reason each one is here:
+Zombie Desert          # round 1: MediaFire read timeout mid-download
+City of Hell           # round 1: picked the MEGA mirror, which we cannot decrypt
+Project Viking         # round 1: ZWR's only link is a dead Google Drive file
+# ZHunterZ is DROPPED: its only catalogued link anywhere is MEGA, and MEGA needs a
+# client-side AES decrypt we have not built. Three substitutes, all tagged Easter Egg
+# AND Buyable Ending on callofdutyrepo and all with a live MediaFire mirror, so they
+# exercise more of the referee than ZHunterZ would have:
+Alcatraz
+Minecraft Village Remastered
+Abandoned School

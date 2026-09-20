@@ -299,7 +299,9 @@ function renderBoot(snap) {
     row.append(el('div', 'dot', !s ? '·' : s.state === 'done' ? '✓' : s.state === 'failed' ? '✕' : '›'))
     const body = el('div', 'body')
     const t = el('div', 'title')
-    t.append(document.createTextNode(({ reserving: 'Reserving server', loading: 'Loading map', ready: 'Ready', launching: 'Launching World at War', in_game: 'In game' })[id]))
+    // The step's own label when it has one: Play Local relabels these, because
+    // "Reserving server" is a lie on a game that runs on your own PC.
+    t.append(document.createTextNode(s?.label || ({ reserving: 'Reserving server', loading: 'Loading map', ready: 'Ready', launching: 'Launching World at War', in_game: 'In game' })[id]))
     if (s?.simulated) t.append(el('span', 'sim', 'simulated'))
     body.append(t)
     body.append(el('div', 'detail', s ? s.detail : 'waiting'))

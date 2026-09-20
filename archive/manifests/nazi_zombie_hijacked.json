@@ -1,0 +1,97 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_hijacked",
+  "title": "BO2 Hijacked Zombies",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/nazi_zombie_hijacked",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@hijacked.iwd": "4d17ad37b8c40f41f951c8066f1e6141c2ad2005f454ee822a6b014cf35477a2"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "scanner": {
+    "verdict": "manual",
+    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death) but nothing decidable",
+    "scripts": 117,
+    "entities": 2562,
+    "ee_candidates": [],
+    "ending_words": [
+      "arcademode_ending_complete",
+      "crawler_round_ending",
+      "dog_round_ending",
+      "end_game",
+      "ending_extended_death"
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_debris",
+        "door19"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door16"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door14"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door12"
+      ]
+    ],
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "4d17ad37b8c40f41f951c8066f1e6141c2ad2005f454ee822a6b014cf35477a2",
+    "script_count": 117
+  },
+  "archive": {
+    "original": "BO2_Hijacked_Zombies_v1.1.exe",
+    "original_sha256": "7b474bf6aad556ab025a39b21be544527accd7fb97f04538c2cabad32bd09453",
+    "original_size": 198356978,
+    "source_url": "http://www.mediafire.com/file/0ul8vuu9txuw7zv/BO2_Hijacked_Zombies_v1.1.exe",
+    "source_page": "https://callofdutyrepo.com/2015/07/17/bo2-hijacked-zombies/",
+    "fetched": "2026-09-20T00:52:14Z",
+    "av": "clean",
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null
+  },
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+}

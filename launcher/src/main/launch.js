@@ -54,7 +54,16 @@ export function serveToken(token, { timeoutMs = 120000 } = {}) {
     clearTimeout(timer)
     try { server.close() } catch {}
   }
-  return { ...state, pipePath, close, get delivered() { return state.delivered }, get connections() { return state.connections } }
+  // Getters, not a spread of `state`. The first version spread it, which froze
+  // `closed` at false forever while `close()` updated the inner object — a pipe that
+  // reported itself open long after it had shut. Caught by test/launch-harness.js.
+  return {
+    pipePath,
+    close,
+    get delivered() { return state.delivered },
+    get connections() { return state.connections },
+    get closed() { return state.closed },
+  }
 }
 
 // ------------------------------------------------------------- the safe-mode marker --
