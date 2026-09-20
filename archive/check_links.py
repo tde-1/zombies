@@ -38,6 +38,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="max links per host")
     ap.add_argument("--host", action="append", help="only these hosts")
+    ap.add_argument("--exclude-host", action="append", default=[],
+                    help="skip these hosts -- use it when another tool of ours is "
+                         "already talking to them, so a host never sees two of our "
+                         "processes at once")
     ap.add_argument("--recheck", action="store_true")
     ap.add_argument("--max-hosts", type=int, default=10)
     a = ap.parse_args()
@@ -49,6 +53,8 @@ def main():
     if a.host:
         want = set(a.host)
         rows = [r for r in rows if r["host"] in want]
+    for skip in a.exclude_host:
+        rows = [r for r in rows if skip not in (r["host"] or "")]
 
     by_host = collections.defaultdict(list)
     for r in rows:

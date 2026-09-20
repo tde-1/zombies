@@ -52,6 +52,7 @@ const flow = new BootFlow({
   stealth,
   useGameLock: !has('--no-lock'),
   lockName: 'launcher',
+  hostDashboard: val('--dash', 'http://127.0.0.1:8787'),
   serverTimeoutMs: Number(val('--server-timeout', '8000')),
   connectTimeoutMs: seconds * 1000,
   nannySeconds: seconds + 30,

@@ -52,12 +52,16 @@ function push({ from, text, steamId = null, origin = 'web', mapKey = null, insta
 
 const latest = () => (db.prepare('SELECT MAX(id) m FROM chat_network').get().m || 0)
 
+// The origin filter is IN THE QUERY, not after it. Filtering a LIMIT-ed page in JavaScript
+// looks equivalent and is not: a box that has said a hundred things and then reconnects with
+// `since=0` gets a page made entirely of its own lines, every one of which is filtered out,
+// and the drain returns empty forever while the cursor never advances past them. Found
+// exactly that way against a box with 2,400 of its own lines in the ring.
 function since(cursor, { excludeOrigin = null, limit = 100 } = {}) {
-  const rows = db.prepare(`SELECT * FROM chat_network WHERE id > ? AND removed=0 ORDER BY id ASC LIMIT ?`)
-    .all(Number(cursor) || 0, limit)
-  return rows
-    .filter((r) => !excludeOrigin || r.origin !== excludeOrigin)
-    .map(project)
+  const sql = `SELECT * FROM chat_network WHERE id > ? AND removed=0
+               ${excludeOrigin ? 'AND origin <> ?' : ''} ORDER BY id ASC LIMIT ?`
+  const args = excludeOrigin ? [Number(cursor) || 0, excludeOrigin, limit] : [Number(cursor) || 0, limit]
+  return db.prepare(sql).all(...args).map(project)
 }
 
 function tail(limit = 40) {

@@ -135,12 +135,17 @@ float spread(int i) {
 void find_origin_offset() {
     if (g_origin_off >= 0) return;
 
-    // Pass 0: build the candidate offsets from the local player's entity.
+    // Pass 0: EVERY 4-byte offset in the window is a candidate.
+    //
+    // The first version seeded candidates only where the player's entity already
+    // held a plausible float triple, and that silently excluded the right answer:
+    // at the instant gclient first becomes non-null the player has not spawned, so
+    // currentOrigin is still (0,0,0), `plausible` rejected it, and +0x160 was never
+    // reconsidered (measured 01:44 -- it kept only +0x118 and +0x11C, with zero
+    // motion hits). Seeding unconditionally costs 26 candidates instead of 2 and
+    // removes the dependency on WHEN the first sample happens.
     if (g_cand_count == 0) {
-        const uintptr_t ent = gentity_at(0);
         for (size_t o = kScanBegin; o + 12 <= kScanEnd && g_cand_count < 64; o += 4) {
-            float v[3];
-            if (!peek(ent + o, &v) || !plausible(v)) continue;
             g_cand_off[g_cand_count] = o;
             g_cand_valid[g_cand_count] = true;
             ++g_cand_count;
@@ -218,10 +223,12 @@ void find_origin_offset() {
                              static_cast<unsigned>(g_cand_off[i] - t4::gentity_off::r), spread(i),
                              g_cand_hits[i], i == winner ? "   <== ORIGIN" : "   (angles?)");
                 }
-                ENW_INFO("referee/bind: gentity_s currentOrigin = +0x%X (r+0x%X), chosen from %d "
-                         "moving candidates by spread (%.0f units) over %d entities / %d passes. "
-                         "re: MEASURED offset, please confirm and put it in shared/t4",
-                         g_origin_off, g_origin_off - static_cast<int>(t4::gentity_off::r), alive_n,
+                const bool agrees = g_origin_off == static_cast<int>(t4::gentity_off::currentOrigin);
+                ENW_INFO("referee/bind: CROSS-CHECK gentity_s currentOrigin: runtime motion+spread "
+                         "says +0x%X, shared/t4 says +0x%X -> %s  (%d moving candidates, spread "
+                         "%.0f units, %d entities, %d passes)",
+                         g_origin_off, static_cast<unsigned>(t4::gentity_off::currentOrigin),
+                         agrees ? "AGREE" : "*** DISAGREE - re please look ***", alive_n,
                          winner_spread, kEntScan, g_passes);
             }
         } else if (g_passes == kNeedPasses) {
@@ -253,6 +260,55 @@ void __cdecl sv_frame_detour() {
 // so passing a dummy is safe.
 using SV_GameSendServerCommand_t = void(__fastcall*)(int clientNum, int edx, int type,
                                                      const char* text);
+
+// ---------------------------------------------------------------- notifies --
+// VM_Notify(EAX = scriptInstance; stack: notifyListOwnerId, stringValue, top).
+// `re` 2026-09-20: the deepest chokepoint, 2 callers, sees every notify with its
+// name id. A `level notify(x)` is ownerId == *(u32*)levelId_server.
+//
+// EAX is an argument, so this needs a naked thunk: MSVC has no calling convention
+// that puts a parameter in EAX. The thunk captures EAX, forwards the three stack
+// args to a normal cdecl handler, and then jumps to the trampoline with the stack
+// exactly as the engine left it.
+enw::hook g_vm_notify_hook;
+void* g_vm_notify_trampoline = nullptr;
+
+uint64_t g_notify_total = 0;
+uint64_t g_notify_level = 0;
+
+void __cdecl vm_notify_observe(int instance, int ownerId, int stringValue) {
+    ++g_notify_total;
+    const uint32_t levelId = *reinterpret_cast<uint32_t*>(at(t4::var::levelId_server));
+    notify_event ev;
+    ev.game_ms = static_cast<uint32_t>(::GetTickCount());
+    ev.name_id = stringValue;
+    if (instance == 0 && static_cast<uint32_t>(ownerId) == levelId) {
+        ev.who = notify_event::owner::level;
+        ++g_notify_level;
+    } else {
+        ev.who = notify_event::owner::unknown;
+    }
+    ev.owner_id = ownerId;
+    dispatch_notify(ev);
+}
+
+__declspec(naked) void vm_notify_detour() {
+    __asm {
+        pushad
+        pushfd
+        // stack now: flags(4) + regs(32) + retaddr(4) then args
+        mov  ecx, [esp + 0x28]      // arg0 notifyListOwnerId
+        mov  edx, [esp + 0x2C]      // arg1 stringValue
+        push edx
+        push ecx
+        push eax                    // scriptInstance, passed to us in EAX
+        call vm_notify_observe
+        add  esp, 12
+        popfd
+        popad
+        jmp  [g_vm_notify_trampoline]
+    }
+}
 
 // ------------------------------------------------------------ chat capture --
 // G_Say(gentity_s* ent, gentity_s* target, int mode, const char* chatText) --
@@ -324,6 +380,17 @@ const binding_report& bind() {
     // --- chat out ---
     g_report.server_cmd =
         memory::is_readable(reinterpret_cast<void*>(at(t4::fn::SV_GameSendServerCommand)), 16);
+
+    // --- notifies: VM_Notify, the chokepoint every flag_set() passes through ---
+    const uintptr_t vm_notify = at(t4::fn::VM_Notify);
+    if (memory::is_readable(reinterpret_cast<void*>(vm_notify), 16) &&
+        g_vm_notify_hook.create(vm_notify, reinterpret_cast<void*>(&vm_notify_detour), "VM_Notify") &&
+        g_vm_notify_hook.enable()) {
+        g_vm_notify_trampoline = g_vm_notify_hook.original<void*>();
+        g_report.notify_hook = true;
+    } else {
+        ENW_WARN("referee/bind: could not hook VM_Notify at %08X", static_cast<unsigned>(vm_notify));
+    }
 
     // --- chat in: DISABLED, the address is wrong ---
     // MEASURED 2026-09-20 01:34: hooking 0x473F10 as
@@ -419,12 +486,20 @@ std::optional<client_view> client(int slot) {
     return v;
 }
 
-std::optional<usercmd_view> last_usercmd(int) {
-    // The offset of lastUsercmd inside client_s is not published. `re` gave the
-    // usercmd read site (0x630BF0, the "Invalid command time %i from client"
-    // function); the offset falls out of that but has not been extracted yet, and
-    // a guessed offset into a 0x58D30 struct is not worth the crash.
-    return std::nullopt;
+std::optional<usercmd_view> last_usercmd(int slot) {
+    if (!g_report.clients || slot < 0 || slot >= kMaxClients) return std::nullopt;
+    t4::usercmd_s cmd{};
+    if (!peek(client_at(slot) + t4::client_extra_off::lastUsercmd, &cmd)) return std::nullopt;
+    usercmd_view v;
+    v.server_time = cmd.serverTime;
+    v.buttons = static_cast<int32_t>(cmd.buttons);
+    // usercmd_s.angles is int[3] (packed), pitch then yaw.
+    v.view_pitch = static_cast<int16_t>(cmd.angles[0] & 0xFFFF);
+    v.view_yaw = static_cast<int16_t>(cmd.angles[1] & 0xFFFF);
+    v.forwardmove = cmd.forward;
+    v.rightmove = cmd.right;
+    v.weapon = static_cast<uint8_t>(cmd.weapon);
+    return v;
 }
 
 // ---------------------------------------------------------------------------
@@ -438,16 +513,18 @@ std::optional<ent_view> player_ent(int slot) {
     uintptr_t gclient = 0;
     if (!peek(ent + t4::gentity_off::client, &gclient) || gclient == 0) return std::nullopt;
 
+    // `re` published gentity_s.currentOrigin = +0x160 (2026-09-20). We use it, and
+    // keep the runtime discovery running purely as an independent cross-check --
+    // agreement between a static offset and a measurement neither derived from the
+    // other is the strongest confirmation available, and a disagreement is louder.
     find_origin_offset();
-    if (g_origin_off < 0) return std::nullopt;
 
     ent_view v;
     v.entnum = slot;
-    if (!peek(ent + static_cast<size_t>(g_origin_off), &v.origin)) return std::nullopt;
-    // currentAngles follows currentOrigin in entityShared_t.
-    peek(ent + static_cast<size_t>(g_origin_off) + 12, &v.angles);
-    v.alive = true;
-    v.health = 0;   // gentity_s.health offset not published; left honest rather than guessed
+    if (!peek(ent + t4::gentity_off::currentOrigin, &v.origin)) return std::nullopt;
+    peek(ent + t4::gentity_off::currentOrigin + 12, &v.angles);
+    peek(ent + t4::gentity_off::health, &v.health);
+    v.alive = v.health > 0;
     return v;
 }
 

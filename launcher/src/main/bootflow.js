@@ -133,11 +133,16 @@ export class BootFlow extends EventEmitter {
     if (this.cancelled) return this.snapshot()
 
     // -------------------------------------------------------------- ready --
+    // waitForServer may have learned the real port the box opened, so read it back
+    // from this.host rather than the address we guessed at reservation time.
+    host = this.host
     this.step('ready', 'done', loaded.reachable ? `the server is ready on ${host}` : `assuming ${host} is ready (no host agent to ask)`, { simulated: !loaded.reachable })
 
     if (o.launch === false) return this.snapshot()
 
     // ---------------------------------------------------------- launching --
+    // Last chance to bail: cancel() during the poll above must not still start a game.
+    if (this.cancelled) return this.snapshot()
     this.step('launching', 'active', 'starting World at War')
     const l = new GameLaunch({
       host,
@@ -183,27 +188,61 @@ export class BootFlow extends EventEmitter {
     return this.snapshot()
   }
 
-  // Poll the host agent (through the site) until the instance reports a loaded map.
+  // Two places can answer "is the server up?", and they answer different halves:
+  //
+  //   the SITE (/admin/state) knows a box booted an instance for this match, and on
+  //     which PORT — which is how we learn where to connect;
+  //   the BOX's own dashboard (:8787 /api/state) knows the live game: phase, round,
+  //     who is connected. The real site will carry this eventually; today it does not,
+  //     so the dashboard is a development source and is labelled as one.
+  //
+  // Whichever answers, the step says so. Nothing is ticked green on a guess.
+  async askSite(siteUrl, matchId) {
+    try {
+      const r = await jsonFetch(`${siteUrl}/admin/state`, { timeoutMs: 2000 })
+      if (!r.ok || !r.data) return null
+      for (const box of r.data.boxes || []) {
+        for (const inst of box.instances || box.lastStatus?.instances || []) {
+          if (inst.match_id === matchId) return { box: box.name, inst }
+        }
+      }
+      return { box: null, inst: null }
+    } catch { return null }
+  }
+
+  async askBox(dashUrl, matchId) {
+    if (!dashUrl) return null
+    try {
+      const r = await jsonFetch(`${dashUrl.replace(/\/$/, '')}/api/state`, { timeoutMs: 2000 })
+      if (!r.ok || !r.data) return null
+      const inst = (r.data.instances || []).find((x) => x.match_id === matchId)
+      return inst ? { inst, game: inst.game || null } : { inst: null, game: null }
+    } catch { return null }
+  }
+
   async waitForServer(siteUrl, matchId, timeoutMs) {
     const until = Date.now() + timeoutMs
     let sawSite = false
     while (Date.now() < until && !this.cancelled) {
-      try {
-        const r = await jsonFetch(`${siteUrl}/admin/state`, { timeoutMs: 2000 })
-        if (r.ok && r.data) {
-          sawSite = true
-          const g = (r.data.games || []).find((x) => x.match_id === matchId || x.matchId === matchId)
-          if (g && (g.map_loaded || g.state === 'running' || g.state === 'live')) {
-            return { reachable: true, detail: `the server loaded ${g.map || 'the map'}` }
-          }
+      const site = await this.askSite(siteUrl, matchId)
+      if (site) sawSite = true
+      if (site?.inst) {
+        // The port the box actually opened. This is where we connect.
+        if (site.inst.port) this.host = `127.0.0.1:${site.inst.port}`
+        const box = await this.askBox(this.opts.hostDashboard, matchId)
+        if (box?.game && ['live', 'running', 'ready'].includes(box.game.phase)) {
+          return { reachable: true, detail: `${box.game.map_name || box.game.map} is up on ${this.host} (round ${box.game.round ?? 1})` }
         }
-      } catch {}
+        if (site.inst.state === 'running') {
+          return { reachable: true, detail: `${site.box} is running ${site.inst.assignment?.map || 'the map'} on ${this.host}` }
+        }
+      }
       await new Promise((r) => setTimeout(r, 750))
     }
     return {
       reachable: false,
       detail: sawSite
-        ? 'the host agent never reported the map as loaded — continuing anyway'
+        ? 'no box picked up the match in time — continuing anyway'
         : 'no host agent to ask; continuing without a confirmed server',
     }
   }
@@ -211,16 +250,15 @@ export class BootFlow extends EventEmitter {
   async waitForConnection(siteUrl, matchId, timeoutMs) {
     const until = Date.now() + timeoutMs
     while (Date.now() < until && !this.cancelled) {
-      try {
-        const r = await jsonFetch(`${siteUrl}/admin/state`, { timeoutMs: 2000 })
-        const g = (r.data?.games || []).find((x) => x.match_id === matchId || x.matchId === matchId)
-        if (g && (g.players?.length || g.connected)) {
-          return { ok: true, confirmed: true, detail: `connected as ${g.players?.[0]?.name || 'player'}` }
-        }
-      } catch {}
+      const box = await this.askBox(this.opts.hostDashboard, matchId)
+      const players = box?.game?.players || []
+      const me = players.find((p) => !this.opts.steamid || String(p.steamid) === String(this.opts.steamid))
+      if (me) return { ok: true, confirmed: true, detail: `connected as ${me.name} (slot ${me.slot}) on round ${box.game.round ?? 1}` }
+      if (players.length) return { ok: true, confirmed: true, detail: `${players.length} player(s) connected` }
+      // The site only learns about a game when it ends, so it cannot confirm this.
       if (this.launch?.ended) return { ok: false, confirmed: false, detail: 'the game closed before it connected' }
       await new Promise((r) => setTimeout(r, 1000))
     }
-    return { ok: false, confirmed: false, detail: 'the game is running; nothing confirmed the connection (no host agent)' }
+    return { ok: false, confirmed: false, detail: 'the game is running; nothing confirmed the connection' }
   }
 }

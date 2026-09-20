@@ -124,6 +124,12 @@ function router() {
   r.get('/chat-feed', async (req, res) => {
     const since = Number(req.query.since || 0)
     const wait = Math.min(25, Number(req.query.wait || 0))
+    // `since=0` means "I have just started — tell me where the ring is now". It returns the
+    // cursor and NO events, deliberately differing from mock-site/site.js, which returns the
+    // whole ring: the host agent injects everything this route hands it straight into every
+    // live game, so replaying an hour of other people's chat at a player who just connected
+    // is the wrong answer. Backlog belongs on the website, which reads the ring directly.
+    if (!since) return res.json({ ok: true, enabled: true, latest: chat.latest(), events: [] })
     const pending = () => chat.since(since, { excludeOrigin: req.box.name })
     const first = pending()
     if (first.length || !wait || !since) {

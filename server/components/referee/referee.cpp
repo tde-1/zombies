@@ -23,6 +23,7 @@
 #include "t4_bind.hpp"
 
 #include <algorithm>
+#include <map>
 #include <set>
 #include <string>
 
@@ -105,6 +106,28 @@ public:
 private:
     // ------------------------------------------------------------- notifies --
     void on_notify(const notify_event& ev) {
+        // NAMELESS MODE. VM_Notify gives us a script-string *id*, and
+        // SL_ConvertToString is not published yet, so ev.name is empty. Rather than
+        // report nothing, report the ids: a level notify that fires exactly once
+        // per round IS `between_round_over`, and the host can identify it from the
+        // timing alone. Bounded so a per-frame notify cannot flood the link.
+        if (ev.name.empty()) {
+            if (ev.who != notify_event::owner::level) { ++suppressed_; return; }
+            ++level_notify_count_;
+            auto& n = id_counts_[ev.name_id];
+            ++n;
+            if (level_notify_emitted_ >= kIdBudget) { ++suppressed_; return; }
+            ++level_notify_emitted_;
+            json::writer w;
+            w.str("t", "notify")
+                .integer("ms", ev.game_ms)
+                .str("ent", "level")
+                .integer("name_id", ev.name_id)
+                .integer("nth", static_cast<long long>(n));
+            game_link::get().send(w);
+            return;
+        }
+
         // `trigger` is the engine's own notify on every trigger_use/trigger_multiple,
         // so it is both the most useful (doors, perks, the ali buyable ending) and
         // by far the most frequent. Handle it separately: only the ones with a
@@ -206,7 +229,10 @@ private:
         ++frames_;
         if (frames_ == 1) {
             ENW_INFO("referee: first frame tick (%s)", referee::bound().describe().c_str());
-        } else if (frames_ % 2000 == 0) {
+        } else if (frames_ % 1200 == 0) {
+            log_id_histogram();
+        }
+        if (frames_ % 2000 == 0) {
             const uint32_t span = ms - first_frame_ms_;
             ENW_INFO("referee: %llu frames in %u ms (%.1f fps)",
                      static_cast<unsigned long long>(frames_), span,
@@ -262,6 +288,22 @@ private:
                 p.have_downs = true;
             }
             // Revive is a notify (player_revived); the host pairs it with the down.
+        }
+    }
+
+    void log_id_histogram() {
+        // The identification aid for `re` and the host: which level-notify ids fired,
+        // and how often. An id with a count equal to the round count is
+        // between_round_over; an id that fired once near the end is end_game.
+        ENW_INFO("referee: %llu level notifies over %zu distinct ids (%llu emitted, %llu suppressed)",
+                 static_cast<unsigned long long>(level_notify_count_), id_counts_.size(),
+                 static_cast<unsigned long long>(level_notify_emitted_),
+                 static_cast<unsigned long long>(suppressed_));
+        int shown = 0;
+        for (const auto& [id, n] : id_counts_) {
+            if (++shown > 40) break;
+            ENW_INFO("referee:   level notify id %d fired %llu times", id,
+                     static_cast<unsigned long long>(n));
         }
     }
 
@@ -339,6 +381,10 @@ private:
 
     player_state players_[kMaxPlayers];
     std::set<std::string> seen_;
+    std::map<int, uint64_t> id_counts_;
+    uint64_t level_notify_count_ = 0;
+    uint64_t level_notify_emitted_ = 0;
+    static constexpr uint64_t kIdBudget = 3000;
     int novel_forwarded_ = 0;
     uint64_t suppressed_ = 0;
     int round_ = -1;

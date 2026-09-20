@@ -25,6 +25,9 @@ export const DEFAULTS = {
   siteUrl: null,            // set this to pin one
   // Where the launcher asks for a server and an invite token.
   hostApi: 'http://127.0.0.1:8080',
+  // The game box's own dashboard. Development source for live game state (phase,
+  // round, who is connected) until the site carries it.
+  hostDashboard: 'http://127.0.0.1:8787',
   // Where the game link should call home (passed to the client DLL as ENW_HOST).
   linkHost: '127.0.0.1:28960',
   // Where crash reports go. Local only: no cloud, ever, in this build.

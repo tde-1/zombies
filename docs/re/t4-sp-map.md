@@ -5,6 +5,21 @@
 file offset**. Confidence: [V] verified on our dump, [H] T4SP AGPL header assert consistent
 with our dump, [C] candidate (structure strong, name inferred), [U] unknown.*
 
+## Data-integrity note (2026-09-20)
+`ZombiesDev\waw-base` was a **corrupt copy**: nine `.iwd` archives (~1.1 GB) had correct file
+lengths but zero-filled tails; the engine mounts what it can and silently skips the rest,
+surfacing much later as a missing-asset error pointing nowhere near the cause (referee found
+and repaired it from the read-only Steam install; B's Steam install is fine). **Our dump was
+taken from a process launched from the Steam install, so it is unaffected** (all addresses
+above stand). Anything that relied on `waw-base` assets should be re-checked.
+
+## Lesson applied to this map
+A string cross-reference identifies a *caller*, not necessarily the wanted function; a wrong
+`[C]` can pass a smoke test then emit garbage (e.g. the 0x473F10 "G_Say" misID fired 60 Hz).
+Where practical, `[V]` here means a second independent check — a caller-count, an argument/
+stride shape (e.g. `imul instance, 0x4320` = sizeof scrVmPub_t), or "does it only fire when the
+event happens". Remaining `[C]` tags are flagged for the consumer to verify before binding.
+
 ## How the evidence was produced
 - **Dump**: `tools/re/dump_image.py` attaches/launches the game, waits for SteamStub to
   decrypt `.text` (first dword `0x9EF490B8` → real code), `ReadProcessMemory`s the whole image,
@@ -102,8 +117,10 @@ bytes — they point into the right instructions but not at the operand). Use th
 | `G_ClientDoPerFrameNotifies` | 0x503540 | [V] | see §1 — per-client notify pump each frame |
 | VM `waittill`/`endon` parse | 0x696E6D | [C] | "first parameter of waittill/endon must evaluate to a string" |
 | script stack-overflow guard | 0x693E80 / 0x696E6D / 0x6992E0 | [C] | "script stack overflow (too many embedded function calls)" |
-| `level.round_number` read | (script var) | [U] | **not an engine symbol** — it's a GSC field resolved at runtime via the script string table + variable lookup. Referee should hook `G_ClientDoPerFrameNotifies`/a notify, or read the level struct object's field via the VM's FindVariable path (T4SP `gScrVarPub`); each map ships its own `_zombiemode.gsc` so read the map's copy (vault §4). |
-| `Scr_NotifyNum`/notify plumbing | — | [U] | T4SP lists `Scr_NotifyNum`; not yet located on our dump. G_ClientDoPerFrameNotifies is the confirmed per-frame notify entry to hook. |
+| `Scr_NotifyNum` | 0x698CC0 | [V] | **every notify funnels here** (98 callers; called 7× by G_ClientDoPerFrameNotifies). EAX=scriptInstance(0=server); stack args entnum, classnum, stringValue(notify-name strId), paramcount. Confirms via `imul instance,0x4320`(sizeof scrVmPub_t) reading gScrVmPub.top@+0x10/inparamcount@+0x18 |
+| `VM_Notify` | 0x698670 | [V] | **deepest chokepoint** (2 callers: Scr_NotifyNum + one). EAX=scriptInstance; stack notifyListOwnerId, stringValue, top. For `level notify(x)`: ownerId == gScrVarPub[0].levelId. **Best hook to see every notify with its name** (resolve stringValue via SL_ConvertToString) |
+| `GetVariableValueAddress` | 0x690040 | [V] | EAX=varId, ECX=scriptInstance -> ptr into variable entry `0x3914700 + (inst*0x16000 + id)*0x10` |
+| `level.round_number` read | via VM | [V-path] | `level` is a script object; read a field by: `levelId = *(u32*)0x3882BC8`; `id = FindVariable(levelId, nameStrId)`; entry = `gScrVarGlob.variableList[id]` at `0x3974700 + id*0x10` (childVariables); value union @ entry+0x4, type in entry.w bits @ entry+0x8. Referee polls a per-map allow-list at ~1 Hz. Each map ships its own `_zombiemode.gsc` (vault §4). |
 
 ### Server: connection & message path
 | Function | Addr | Conf | Evidence |
@@ -127,11 +144,32 @@ bytes — they point into the right instructions but not at the operand). Use th
 | `SV_DropClient` | — | [C] | `EXE_PLAYERKICKED*` handlers at 0x62C3A7/0x62C410/0x62F250/0x643230; exact drop fn TBD |
 | `ClientConnect`/`ClientBegin` | — | [U] | GSC-side connect via `SV_DirectConnect`; the game-side `ClientConnect` not yet isolated |
 
-### Chat
+### Script VM globals (referee — rounds/flags/score/knobs)
+- **gScrVarPub** = 0x3882BA8, array[2] stride 0x18048. Server `level` object id **levelId = *(u32*)0x3882BC8** (+0x20). Also time@+0x14, gameId@+0x24.
+- **gScrVarGlob** = 0x3914700, array[2] stride 0x160000. Single `variableList` of `VariableValueInternal` (0x10 each): parentVariables[24576] @+0 (0x3914700), childVariables[65536] @+0x60000 (0x3974700). `FindVariable`/`GetVariableValueAddress` return child ids (index already offset into childVariables). Entry layout: hash@0x0 (Variable: id u16, prevSibling u16), u@0x4 (value union / next / ObjectInfo), w@0x8 (bitfield: type:5, status:2, unk:1, name:24), v@0xC, nextSibling@0xE.
+- **gScrVmPub** = 0x3BD4700, array[2] stride 0x4320. top@+0x10, inparamcount@+0x18, stack@+0x320.
+- Value types: VAR_UNDEFINED 0, VAR_POINTER 1, VAR_STRING 2, VAR_ISTRING 3, VAR_VECTOR 4, VAR_FLOAT 5, VAR_INTEGER 6, VAR_OBJECT 0x11. Value union: int/float/stringValue(strId)/vectorValue(ptr)/pointerValue.
+- To read `level.<name>`: get levelId, get the field's canonical string id, `id = FindVariable(levelId, strId)`, `GetVariableValueAddress(id / instance 0)`, read union+type. `FindVariable` is a thin wrapper in the variable module (0x67E–0x690 cluster) over FindVariableIndexInternal — locate/verify with the referee harness or KisakCOD `scr_variable.cpp` shape before relying on it; `GetVariableValueAddress` 0x690040 is confirmed.
+
+### Chat  — CORRECTED (see also the retraction note)
+> **0x473F10 was misidentified as G_Say and 0x4388A0 as ClientCommand** — both off the single
+> shared string `"%s: "`. 0x473F10 fires ~60 Hz idle (empty text; caller 0x4388A0 is on the
+> frame path), so it is a per-frame HUD/notify formatter, not chat. **T4 co-op has no classic
+> `say`→G_Say**: chat is the party/lobby reliable-command system. Client sends via
+> `0clientchat %s` (0x655C80) / `0hostchat %s %s` (0x65B630). **Inbound capture (verifiable):**
+> hook `SV_GameSendServerCommand` 0x648490 (proven for injection) and filter for the chat
+> command token — the server relays player chat through it; fires only on chat and carries the
+> text. The raw client-command entry is `SV_ExecuteClientMessage` 0x630F70's clc_clientCommand
+> path (command-exec region ~0x638BB0/0x638770, [C] — verify it fires only on a command, not
+> 60 Hz, before binding). Do NOT re-bind to 0x473F10.
+
 | Function | Addr | Conf | Evidence |
 |---|---|---|---|
-| `G_Say` | 0x473F10 | [C] | `EXE_SAY`/`EXE_SAYTEAM`, `"%s: "` formatter |
-| `ClientCommand` | 0x4388A0 | [C] | sole caller of G_Say; dispatches `say`/`say_team` |
+| ~~G_Say 0x473F10~~ | — | RETRACTED | fires ~60 Hz idle, empty text — per-frame HUD/notify formatter, not chat |
+| ~~ClientCommand 0x4388A0~~ | — | RETRACTED | on the frame path; sole caller of the 0x473F10 formatter |
+| `SV_GameSendServerCommand` | 0x648490 | [V] | inbound-chat **capture point** (relay) + injection; see the corrected chat note above |
+| `clientchat` sender | 0x655C80 | [V] | `0clientchat %s` |
+| `hostchat` sender | 0x65B630 | [V] | `0hostchat %s %s` |
 
 ### Renderer / sound / OS gates (dedi: what to stub)
 | Function | Addr | Conf | Evidence |

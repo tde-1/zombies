@@ -94,7 +94,10 @@ function renderStatus() {
   }
   const st = S.status
   if (!st) { kv('Loading', '…'); return }
-  const g = st.setup?.manifest?.source
+  // Once installed the manifest is the record; before that, whatever the detector just
+  // found. Reading only the manifest made the rail say "not found" on the very screen
+  // that was showing the game it had found.
+  const g = st.setup?.manifest?.source || (S.detection?.ok ? { grade: S.detection.game.grade } : null)
   kv('World at War', g ? (g.grade === 'verified' ? 'verified' : g.grade) : 'not found', g ? (g.grade === 'verified' ? 'good' : '') : 'bad')
   kv('ENW client', st.setup?.installed ? 'installed' : 'not installed', st.setup?.installed ? 'good' : 'bad')
   kv('Signed in', st.session?.signedIn ? (st.session.name || st.session.steamid) : 'no')
@@ -119,6 +122,7 @@ async function renderFirstRun(result) {
 
   const r = result || (await window.enw.detect({}))
   S.detection = r
+  renderStatus()
 
   if (r.ok) {
     const c = el('div', 'card good')
@@ -280,6 +284,8 @@ function showDetection(extra) {
 function renderBoot(snap) {
   S.boot = snap
   show('boot')
+  $('bootCancel').classList.remove('off')
+  $('bootClose').classList.remove('on')
   const m = MAPS.find((x) => x.id === snap.map)
   $('bootMap').textContent = m ? m.name : snap.map || '—'
   $('bootMode').textContent = snap.mode === 'verified' ? 'Verified' : 'Custom'
@@ -430,8 +436,8 @@ function wire() {
   window.enw.onBoot(renderBoot)
   window.enw.onBootDone((snap) => {
     renderBoot(snap)
-    $('bootCancel').style.display = 'none'
-    $('bootClose').style.display = ''
+    $('bootCancel').classList.add('off')
+    $('bootClose').classList.add('on')
   })
   window.enw.onToast((t) => toast(t.text, t.kind))
   window.enw.onSession(() => refresh())

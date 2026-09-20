@@ -200,3 +200,12 @@ code { font-family: Consolas, monospace; font-size: 12px; color: var(--bone-dim)
 .muted { color: var(--text-dim); }
 .mono { font-family: Consolas, monospace; font-size: 11px; }
 .scroller { max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: 3px; padding: 8px 12px; background: var(--bg-2); }
+
+/* Inline style="" attributes are blocked by this page's CSP (style-src 'self' with no
+   'unsafe-inline'), so anything that would have been one lives here and is toggled by
+   class. The "Back to the site" button was visible from the first frame because of
+   exactly that. */
+#bootClose { display: none; }
+#bootClose.on { display: inline-block; }
+#bootCancel.off { display: none; }
+#bootNotes { margin-top: 18px; }

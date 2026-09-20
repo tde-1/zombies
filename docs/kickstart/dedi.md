@@ -233,8 +233,21 @@ Three things it cost me that are worth knowing:
 3. `re`'s `com_dedicated = 0x212B2F4` is **confirmed live** — that pointer and
    `Dvar_FindVar("dedicated")` return the same `dvar_s*`.
 
-`server/components/net/` is deliberately empty: the direct-connect work is client-side and depends on
-site 3 being cleared first.
+`server/components/net/net.cpp` attacks site 3 directly. It counts entries into the engine's own
+packet handlers — `SV_PacketEvent` 0x635540, `SV_ConnectionlessPacket` 0x634E90, `SVC_GetChallenge`
+0x62DB60, `SV_DirectConnect` 0x62E3A0 — while `oob.py` fires `getstatus`/`getinfo`/`getchallenge` at
+127.0.0.1. That splits the problem cleanly: counters moving means packets reach the engine and the
+*reply* is the bug; counters at zero means the engine never reads the socket.
+
+Those detours are **naked and signature-agnostic** on purpose: `pushfd`/`pushad`, call a
+no-argument counter, `popad`/`popfd`, then tail-jump to MinHook's trampoline. We do not know these
+functions' calling conventions — `SV_ConnectionlessPacket` almost certainly takes a 24-byte
+`netadr_s` by value — and a wrong C signature would corrupt the stack. The pattern is correct for
+cdecl, stdcall, thiscall and by-value structs alike, and is worth reusing anywhere we want to observe
+a function before we understand it.
+
+The client-side direct-connect work (iw4x-sp's `connect_coop` pattern, 22 byte patches) waits until
+site 3 is cleared; a connect attempt before then only produces a timeout that teaches us nothing.
 
 ---
 

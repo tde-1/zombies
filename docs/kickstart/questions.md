@@ -179,3 +179,11 @@ whose name is in `ENW_TOKEN_PIPE`, with `ENW_TOKEN` as an opt-in fallback. **The
 today** and `game-link-v0.md` says the token arrives in userinfo at connect. Proposal is written up
 in `docs/kickstart/launcher.md` §3; it needs a yes/no from whoever owns the client side and then a
 line in the protocol doc.
+
+### For B in the morning (not blocking)
+- **Run Steam's "Verify integrity of game files" on World at War once.** `dedi` found `main\iw_13.iwd`
+  is damaged **in the Steam install itself** (a separate problem from our corrupt dev copy, which is
+  repaired and hash-verified). Nothing we do can fix the source copy, and it may explain odd missing
+  assets later.
+- **Quit Steam for one minute when convenient** so we can test whether a headless server runs without
+  the client. That answer decides whether every rented game box needs its own Steam account.

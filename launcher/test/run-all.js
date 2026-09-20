@@ -83,7 +83,7 @@ group('PE reading')
 const REAL_EXE = 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Call of Duty World at War\\CoDWaW.exe'
 const haveReal = fs.existsSync(REAL_EXE)
 
-await test('reads the real CoDWaW.exe: 32-bit, 1.7, SteamStub', { skip: !haveReal } && (() => {
+await test('reads the real CoDWaW.exe: 32-bit, 1.7, SteamStub', () => {
   if (!haveReal) return
   const info = pe.read(REAL_EXE)
   assert.equal(info.pe32, true)
@@ -91,7 +91,7 @@ await test('reads the real CoDWaW.exe: 32-bit, 1.7, SteamStub', { skip: !haveRea
   assert.equal(info.hasBind, true, 'expected a .bind section (SteamStub)')
   assert.equal(pe.isVersion17(info.version), true)
   assert.equal(info.size, detect.KNOWN.size)
-}))
+})
 
 await test('returns null for junk rather than throwing', () => {
   const f = path.join(TMP, 'junk.exe')
@@ -127,15 +127,15 @@ await test('rejects a renamed non-Steam executable as "not the Steam release"', 
   assert.match(v.reason, /not the Steam release/)
 })
 
-await test('rejects an exe with no game data beside it', { skip: !haveReal } && (() => {
+await test('rejects an exe with no game data beside it', () => {
   if (!haveReal) return
   const dir = fakeInstall('fake2', { exeBytes: fs.readFileSync(REAL_EXE), withData: false })
   const v = detect.validate(dir)
   assert.equal(v.ok, false)
   assert.match(v.reason, /not the game files/)
-}))
+})
 
-await test('grades the real install "verified" and names the build', { skip: !haveReal } && (() => {
+await test('grades the real install "verified" and names the build', () => {
   if (!haveReal) return
   const v = detect.validate(path.dirname(REAL_EXE))
   assert.equal(v.ok, true)
@@ -143,9 +143,9 @@ await test('grades the real install "verified" and names the build', { skip: !ha
   assert.equal(v.knownBuild, true)
   assert.equal(v.sha256, detect.KNOWN.sha256)
   assert.ok(v.checks.every((c) => c.ok), 'every check should pass on B\'s install')
-}))
+})
 
-await test('a modified exe of the right size is accepted but NOT verified', { skip: !haveReal } && (() => {
+await test('a modified exe of the right size is accepted but NOT verified', () => {
   if (!haveReal) return
   const bytes = Buffer.from(fs.readFileSync(REAL_EXE))
   bytes[bytes.length - 1] ^= 0xff // one flipped byte
@@ -155,7 +155,7 @@ await test('a modified exe of the right size is accepted but NOT verified', { sk
   assert.notEqual(v.grade, 'verified')
   assert.equal(v.knownBuild, false)
   assert.match(v.reason, /differs from the build we know/)
-}))
+})
 
 await test('never accepts CoDWaWmp.exe as the target', () => {
   assert.equal(detect.FORBIDDEN_EXE, 'codwawmp.exe')
@@ -164,19 +164,19 @@ await test('never accepts CoDWaWmp.exe as the target', () => {
 // ------------------------------------------------------------ browse search --
 group('The forgiving browse fallback')
 
-await test('finds the game from a folder inside it', { skip: !haveReal } && (() => {
+await test('finds the game from a folder inside it', () => {
   if (!haveReal) return
   const r = detect.searchAround(path.join(path.dirname(REAL_EXE), 'main'))
   assert.equal(r.hits.length >= 1, true)
   assert.equal(r.hits[0].dir.toLowerCase(), path.dirname(REAL_EXE).toLowerCase())
   assert.match(r.hits[0].how, /above/)
-}))
+})
 
-await test('finds the game from the Steam root above it', { skip: !haveReal } && (() => {
+await test('finds the game from the Steam root above it', () => {
   if (!haveReal) return
   const r = detect.searchAround('C:\\Program Files (x86)\\Steam')
   assert.equal(r.hits[0].dir.toLowerCase(), path.dirname(REAL_EXE).toLowerCase())
-}))
+})
 
 await test('is bounded: a huge wrong pick gives up instead of hanging', () => {
   const t0 = Date.now()
@@ -185,11 +185,11 @@ await test('is bounded: a huge wrong pick gives up instead of hanging', () => {
   assert.ok(r.scanned <= 300 + 50)
 })
 
-await test('accepts the exe itself being picked', { skip: !haveReal } && (() => {
+await test('accepts the exe itself being picked', () => {
   if (!haveReal) return
   const r = detect.searchAround(REAL_EXE)
   assert.equal(r.hits[0].dir.toLowerCase(), path.dirname(REAL_EXE).toLowerCase())
-}))
+})
 
 // ----------------------------------------------------------- the write guard --
 group('The write guard (never touch the player\'s game)')

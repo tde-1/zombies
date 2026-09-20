@@ -34,7 +34,10 @@ MF_DEAD = re.compile(
     re.I)
 MF_SIZE = re.compile(r'class="details"[^>]*>.*?\(([\d.]+)\s*([KMGT]?B)\)', re.S | re.I)
 MF_SIZE2 = re.compile(r'File size:\s*</?\w*>?\s*([\d.]+)\s*([KMGT]?B)', re.I)
-MF_DIRECT = re.compile(r'href="(https://download[^"]+mediafire\.com/[^"]+)"')
+# Both schemes appear in the wild: MediaFire still serves plain http:// direct links
+# on some file pages (measured on nazi_zombie_leviathan_v1.2.exe), and requiring
+# https:// silently turned "alive" into "cannot resolve" for a third of the shortlist.
+MF_DIRECT = re.compile(r'href="(https?://download\d*\.mediafire\.com/[^"]+)"')
 UNITS = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
 
 
@@ -165,6 +168,16 @@ def probe_gdrive(ps, url):
     except net.Dropped as exc:
         out["error"] = str(exc)
         return out, "blocked"
+    except net.Blocked:
+        # MEASURED 2026-09-20: drive.usercontent.google.com/robots.txt is
+        # "User-agent: * / Disallow: /", and drive.google.com's robots.txt allows
+        # /file but that endpoint answers 401 to anything without a browser session.
+        # So a Google Drive link cannot be checked politely and without an account.
+        # That is a real, reportable gap, not a dead link: 62 of ZWR's links live here.
+        out["error"] = ("Google Drive: unverifiable - the /download endpoint is "
+                        "robots-disallowed and /file/d/<id>/view returns 401 without a "
+                        "signed-in browser. Needs a human or an account; we use neither.")
+        return out, "blocked"
     if t is None:
         out["error"] = "HTTP error from Drive"
         return out, "dead"
@@ -204,6 +217,9 @@ def _generic(ps, url):
     if st is None:
         return out, ("blocked" if "robots" in (p.get("error") or "") else "dead")
     if st in (401, 403):
+        if not out["error"]:
+            out["error"] = ("HTTP %d - host refuses non-browser clients (GameFront serves "
+                            "a bot 'Security Check' here). Not counted as dead." % st)
         return out, "blocked"
     if st >= 400:
         return out, "dead"

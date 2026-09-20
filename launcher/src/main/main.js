@@ -10,7 +10,7 @@
 //   * NO OVERLAY, EVER. B was emphatic. The site lives in a native WebContentsView and
 //     our chrome sits BESIDE it, never on top of the game. When the boot screen or
 //     first-run wizard needs the whole window, the site view is hidden, not covered.
-import { app, BaseWindow, BrowserWindow, WebContentsView, Tray, Menu, ipcMain, shell, dialog, nativeImage, session as electronSession } from 'electron'
+import { app, BrowserWindow, WebContentsView, Tray, Menu, ipcMain, shell, dialog, nativeImage, session as electronSession } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -109,6 +109,14 @@ async function createWindow() {
     },
   })
   state.win = win
+  // Anything the chrome logs -- including CSP violations, which are how a blocked
+  // inline style shows up -- goes in the launcher log instead of nowhere.
+  state.consoleMessages = []
+  win.webContents.on('console-message', (e) => {
+    const line = `[shell] ${e.message} (${e.sourceId}:${e.lineNumber})`
+    state.consoleMessages.push(line)
+    if (e.level === 'error' || e.level === 'warning' || /Content Security Policy/i.test(e.message)) log(line)
+  })
   await win.loadFile(path.join(RENDERER, 'shell.html'))
 
   const view = new WebContentsView({
@@ -285,6 +293,7 @@ function wireIpc() {
       map: opts.map,
       mode: opts.mode || 'custom',
       siteUrl: opts.hostApi || conf.hostApi,
+      hostDashboard: conf.hostDashboard,
       linkHost: conf.linkHost,
       steamid: sess.steamid,
       playerName: sess.name,
@@ -308,12 +317,23 @@ function wireIpc() {
       showSite(true)
       push('boot_done', { ...flow.snapshot(), phase: p.phase, detail: p.detail })
     })
-    flow.run().then((snap) => push('boot', snap)).catch(async (e) => {
-      await reportCrash('server_unreachable', e, { map: opts.map })
-      push('boot', { ...flow.snapshot(), error: e.message })
+    const clear = () => {
+      if (state.flow !== flow) return
       state.flow = null
       state.gate.unblock('game')
+      state.tray?.rebuild()
       showSite(true)
+    }
+    flow.run().then((snap) => {
+      push('boot', snap)
+      // A step can fail without the game ever starting (no server, setup missing), in
+      // which case there is no 'ended' event to clean up after us. Without this the
+      // launcher refuses every later Play with "a launch is already in progress".
+      if (snap.failed) clear()
+    }).catch(async (e) => {
+      await reportCrash('server_unreachable', e, { map: opts.map })
+      push('boot', { ...flow.snapshot(), error: e.message })
+      clear()
     })
     return flow.snapshot()
   })
@@ -429,8 +449,36 @@ if (!single) {
           shellRendered: await state.win?.webContents.executeJavaScript(
             'JSON.stringify({rail:!!document.getElementById("rail"),maps:document.querySelectorAll("#mapList button").length,screen:[...document.querySelectorAll(".screen.on")].map(x=>x.id),status:document.getElementById("statusBody").innerText.replace(/\\n/g," | ")})'
           ).catch((e) => `ERROR ${e.message}`),
+          consoleMessages: state.consoleMessages.slice(0, 20),
           deepLink: parseDeepLink('https://zombies.enw.gg/m/nazi_zombie_sumpf'),
           deepLinkProto: parseDeepLink('enwzombies://m/nazi_zombie_ali'),
+        }
+        // ENW_SMOKE_BOOT: render the boot screen from a synthetic snapshot, so its
+        // layout can be checked without a game and without the game lock.
+        if (process.env.ENW_SMOKE_BOOT) {
+          showSite(false)
+          push('boot', {
+            map: 'nazi_zombie_prototype',
+            mode: 'verified',
+            matchId: 'm_cb6efc86',
+            host: '127.0.0.1:28964',
+            steps: [
+              { id: 'reserving', state: 'done', detail: 'match m_cb6efc86, invite token issued' },
+              { id: 'loading', state: 'done', detail: 'Nacht der Untoten is up on 127.0.0.1:28964 (round 1)' },
+              { id: 'ready', state: 'done', detail: 'the server is ready on 127.0.0.1:28964' },
+              { id: 'launching', state: 'done', detail: 'World at War is running (process 31204)' },
+              { id: 'in_game', state: 'active', detail: 'waiting for the game to connect', simulated: true },
+            ],
+            simulated: ['in_game'],
+            notes: [
+              'invite token offered over a private pipe (\\\\.\\pipe\\enw-launch-1f3c…) — never on the command line',
+              'cleared a leftover crash marker (dead process 27156) that would have shown "Run In Safe Mode?"',
+              'World at War asked to change your graphics settings; ENW answered No and kept yours.',
+              'Steam restarted the game as process 31204',
+            ],
+            dialogs: [],
+          })
+          await new Promise((r) => setTimeout(r, 400))
         }
         if (process.env.ENW_SMOKE_SHOT) {
           // The site lives in a native child view, so the window's own webContents

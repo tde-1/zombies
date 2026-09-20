@@ -188,6 +188,16 @@ def fetch_one(db, ps, norm, budget, args):
     out = {"norm": norm, "name": row["name"], "source": row["source"],
            "source_url": row["source_url"], "link": link["url"],
            "link_verdict": link["verdict"]}
+    have = os.path.join(ORIGINALS, SAFE.sub("_", norm))
+    existing = [f for f in os.listdir(have)] if os.path.isdir(have) else []
+    if any(f.endswith(".meta.json") for f in existing):
+        meta = json.load(open(os.path.join(have, [f for f in existing
+                                                  if f.endswith(".meta.json")][0]),
+                              encoding="utf-8"))
+        out.update({"status": "ok", "file": os.path.join(have, meta["file"]),
+                    "size": meta["size"], "sha256": meta["sha256"],
+                    "av": (meta.get("av") or {}).get("result"), "reused": True})
+        return out
     direct, err = resolve(ps, link["url"])
     if not direct:
         out["status"] = "cannot resolve: " + (err or "?")

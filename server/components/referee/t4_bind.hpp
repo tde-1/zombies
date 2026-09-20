@@ -48,7 +48,9 @@ struct notify_event {
     owner who = owner::unknown;
     int slot = -1;        // player slot, when who == player
     int entnum = -1;      // entity number, when who == entity
-    std::string name;     // the notify string ("between_round_over", a flag name, "trigger", ...)
+    std::string name;     // resolved notify string, EMPTY until SL_ConvertToString is bound
+    int name_id = -1;     // the raw script-string id; always set
+    int owner_id = 0;     // notifyListOwnerId, for correlating non-level notifies
     uint32_t game_ms = 0;
 };
 
