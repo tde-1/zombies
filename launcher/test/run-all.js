@@ -371,7 +371,7 @@ await test('the map source is config, not code', async () => {
   // sizes and the hashes still come from the site either way, so the bucket needs no
   // intelligence and we still verify everything we are given.
   const cfg = await import('../src/main/config.js')
-  assert.equal(cfg.DEFAULTS.mapsBase, null, 'default is the site's own route')
+  assert.equal(cfg.DEFAULTS.mapsBase, null, 'default is the site own route')
   const src = String(fs.readFileSync(new URL('../src/main/library.js', import.meta.url)))
   assert.ok(src.includes('mapsBase'), 'installFromSite must take a base')
   // The hash check is not conditional on where the bytes came from.
