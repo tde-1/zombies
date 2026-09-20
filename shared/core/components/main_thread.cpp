@@ -20,16 +20,20 @@
 // is bounded at 256 and drops oldest). Good enough for post_init, not for
 // steady-state host commands.
 //
-// WHY NOT Com_Frame (0x59E330): tried, and it produced **zero calls in 20 s** of
-// SP runtime -- the hook installed and enabled cleanly and the detour never ran
-// once. Statically it is WinMain's loop body; empirically the SP path does not
-// reach it, at least not before a map is loaded. It is also the hook the
-// `referee` component takes, and MinHook allows one hook per target, so taking
-// it here silently disabled theirs. Left alone on both counts. See the board.
+// WHY NOT Com_Frame (0x59E330) yet: I hooked it and measured **zero calls in
+// 20 s**. `re` then found the root cause (board 01:35) and the address is fine --
+// WinMain never reaches its loop. `0x5FF4E0` (called at WinMain+0x199, right
+// after Com_Init and BEFORE the loop at 0x5FF7B1) runs renderer/D3D bring-up
+// unconditionally, and it is NOT gated by com_dedicated. Our solo runs stall
+// there too, on the "Set Optimal Settings?" modal. So there is no per-frame tick
+// of any kind until that init is unblocked -- the same blocker as dedi's.
 //
-// WHAT THIS ACTUALLY NEEDS: one verified per-frame function that fires in SP,
-// hooked ONCE by the core, with everyone else subscribing. Until then, whoever
-// needs a frame hook is racing for the same address.
+// Com_Frame is also the hook `referee` takes, and MinHook allows ONE hook per
+// target: taking it here silently disabled theirs. Left alone on both counts.
+//
+// WHEN 0x5FF4E0 IS BYPASSED: move the pump to Com_Frame -- but via a single
+// core-owned hook with `on_frame(fn)` subscribers, not by racing referee for the
+// address. `ENW_PUMP=frame` runs the experiment in the meantime.
 #include "../component.hpp"
 
 #include "../game.hpp"

@@ -68,8 +68,11 @@ bytes — they point into the right instructions but not at the operand). Use th
 |---|---|---|---|
 | `WinMain` | 0x5FF600 | [V] | calls Com_Init; remote-desktop/`allowdupe`/`+set com_introPlayed 1` strings; the frame loop |
 | `Com_Init` | 0x59D710 | [V] | see §1 |
-| `Com_Frame` | 0x59E330 | [V] | called once per WinMain loop iteration; body = table of profiled subsystem updates via helper 0x59E1D0 |
-| dedicated console pump | 0x69DAA0 | [C] | called after Com_Frame only when `com_dedicated` set |
+| `Com_Frame` | 0x59E330 | [V] | **the per-frame function.** Verified via full chain: WinMain(0x5FF600) → Com_Frame(0x59E330) → 0x59DCF0 → 0x6366C0 → 0x636610 → SV_Frame(0x635CC0) → G_RunFrame(0x503AB0) → G_ClientDoPerFrameNotifies(0x503540, verified). Call site in WinMain loop = 0x5FF7BD. `void __cdecl`, main thread. **Hook target for a per-frame tick.** NB: it only fires once the dedicated server passes renderer init (see Sys_RenderInit_preloop below). |
+| `SV_Frame` | 0x635CC0 | [V] | server frame; runs the game world each frame. Better tick home for server-only work (round/score) since it doesn't run pre-map |
+| `G_RunFrame` | 0x503AB0 | [V] | game-logic frame; calls G_ClientDoPerFrameNotifies |
+| `Sys_RenderInit_preloop` | 0x5FF4E0 | [V] | **the renderer/D3D bring-up run BEFORE WinMain's frame loop** (call site 0x5FF799, after Com_Init). NOT gated by com_dedicated → the dedicated server gets stuck here (verified by sampling live dedi server pid 25144: every stack rooted at 0x5FF4E0, never the loop). Calls 0x75A9A2 (D3D). **Skip/stub in dedicated so the frame loop — and Com_Frame — can run.** |
+| dedicated console pump | 0x69DAA0 | [C] | called after Com_Frame each loop iteration when `com_dedicated` set; small (console input only, not the frame) |
 | `Sys_Milliseconds` | 0x603D40 | [V] | wraps `timeGetTime` (IAT 0x7EB39C), caches base |
 | `Com_InitDvars` | 0x59C8B0 | [C] | registers `com_maxfps`, `developer_script`, `dedicated` |
 | `dedicated` dvar (enum) | reg at 0x59C8B0 via `Dvar_RegisterEnum` 0x5EF150 | [V] | enum {0 "listen server", 1 "dedicated LAN server", 2 "dedicated internet server"}, flags 0x40; ptr → com_dedicated 0x212B2F4. WinMain reads value each frame (0x5FF7C2) and calls the dedicated console pump 0x69DAA0 when non-zero — **the SP exe has a real dedicated path** |
@@ -80,8 +83,15 @@ bytes — they point into the right instructions but not at the operand). Use th
 | `Cmd_FindCommand`/registrar | 0x594DB0 | [V] | 190 `(name, funcptr)` registration sites + console lookups both call it |
 | `SV_AddOperatorCommands` | 0x62C9B0 | [C] | registers `killserver`,`clientkick`,`loadgame`,`map`… (giant if-chain over `Cmd_FindCommand`) |
 | `Dvar_FindVar` | 0x5EDE30 | [V] | see §1 |
-| `Dvar_RegisterBool` | 0x5EEE20 | [H] | T4SP; confirmed entry |
-| Cbuf/Cmd_ExecuteString | — | [U] | not yet pinned; the console dispatch lives inside/near 0x62C9B0 |
+| `Dvar_Register` (internal) | 0x5EEB50 | [V] | shared by all the wrappers below |
+| `Dvar_RegisterBool` | 0x5EEE20 | [V] | `cl_voice` etc.; T4SP |
+| `Dvar_RegisterInt` | 0x5EEEA0 | [V] | `ui_serverStatusTimeOut` |
+| `Dvar_RegisterFloat` | 0x5EEF10 | [V] | `cg_hudGrenadeIconWidth`, `bg_bobMax`, `phys_gravity` |
+| `Dvar_RegisterString` | 0x5EED90 | [V] | `sv_hostname`, `net_ip`, `rate` |
+| `Dvar_RegisterVec3` | 0x5EEFA0 | [C] | 3-float wrapper (Vec4/Color = 0x5EF040) |
+| `Dvar_RegisterEnum` | 0x5EF150 | [V] | used for `dedicated` |
+| `SetSavedDvar` | 0x516990 | [V] | errors "the dvar %s does not exist" / requires DVAR_FLAG_SAVED (0x200). `con_typewriterColorBase` crash: registered only in client CG-init 0x4708C0 → absent headless. Fix: pre-register with SAVED from our DLL |
+| Cbuf/Cmd_ExecuteString | — | [U] | console dispatch lives inside/near 0x62C9B0; not individually pinned |
 | `Dvar_SetFromStringByName` | — | [U] | not yet pinned; reachable via Cmd handlers, find via Dvar_FindVar callers that also write value |
 
 ### Script VM (referee)
@@ -110,8 +120,12 @@ bytes — they point into the right instructions but not at the operand). Use th
 | map-file loader (`maps/%s.d3dbsp`) | 0x62B260 | [V] | sole ref to `maps/%s.d3dbsp`; 1 caller (SV_SpawnServer) |
 | `SV_DropClient` | — | [C] | `EXE_PLAYERKICKED*` handlers at 0x62C3A7/0x62C410/0x62F250/0x643230; exact drop fn TBD |
 | `ClientConnect`/`ClientBegin` | — | [U] | GSC-side connect via `SV_DirectConnect`; the game-side `ClientConnect` not yet isolated |
-| `SV_ClientThink`/usercmd | — | [U] | usercmd_s size 0x38 known (T4SP); the move-parse fn not yet isolated |
-| `SV_SendServerCommand`/`SV_GameSendServerCommand` | — | [U] | needed for chat injection; not yet pinned — find via reliable-command buffer writers |
+| usercmd/move handler (SV_UserMove-eq) | 0x630BF0 | [C] | "Invalid command time %i from client" — validates usercmd time; called from SV_ExecuteClientMessage's clc_move dispatch. **AFK path**: read/track usercmd buttons+moves here, or svs.clients[i].lastUsercmd |
+| `SV_GameSendServerCommand` | 0x648490 | [V] | game→client reliable cmd; callers G_Say + 3 G_ broadcasters. **chat/warning/24h-cap injection.** ecx=clientNum(-1=all)+stack args (type, string) |
+| `SV_SendServerCommand` | 0x6F5F10 | [V] | low-level per-client reliable-cmd queue (11 callers incl. SV_GameSendServerCommand) |
+| `SV_ExecuteClientCommand` | 0x4621E0 | [C] | sole caller of ClientCommand 0x4388A0 |
+| `SV_DropClient` | — | [C] | `EXE_PLAYERKICKED*` handlers at 0x62C3A7/0x62C410/0x62F250/0x643230; exact drop fn TBD |
+| `ClientConnect`/`ClientBegin` | — | [U] | GSC-side connect via `SV_DirectConnect`; the game-side `ClientConnect` not yet isolated |
 
 ### Chat
 | Function | Addr | Conf | Evidence |
@@ -146,26 +160,30 @@ WinMain (site 0x5FF698). With `fs_homepath` set, check whether the marker reloca
 0x12C00000 to 0x224FAEC (0x5F54CB) and 0x224FBF0 (0x5F54D5). T4M-E raises all three to
 0x19600000. Re-implement in our DLL (facts only).
 
+### Server globals addressing (referee)
+`svs` (serverStatic_s) base = **0x23D5C80**. Key fields (T4SP struct offsets, confirmed by
+dump ref density): `svs.initialized` = svs+0x171400 = **0x2547080**; `svs.time` = svs+0x171404
+= **0x2547084** (48 refs); `svs.clients` = svs+0x171410 = **0x2547090** (85 refs). Player cap 4.
+**svs.clients[i] = 0x2547090 + i*0x58D30** (stride = sizeof(client_s) 0x58D30, i=0..3).
+Per-client: userinfo +0x6F0, gentity* +0x11544, name +0x11548, netchanIncoming +0x523F4.
+Entities: `g_entities[i]` = 0x176C6F0 + i*0x378 (stride = sizeof(gentity_s)); client* at +0x180.
+
 ## 3. How much of the T4 engine we can see
 **Effectively all of the code section.** `.text` decrypts cleanly (0x3E9A00 bytes), we
 recover 15,692 function entry points and a full call graph, and string/dvar cross-references
 name a large fraction directly. DemonWare (`bdLobby`/`bdSocket`/`bdNet`) ships with full source
 paths (`C:\cod5\cod\codsrc\DemonWare\…`) — that whole online subsystem is trivially mapped and
-is exactly what we want to disable. The gaps are functions with no distinctive strings (parts
-of the script VM notify plumbing, `SV_SendServerCommand`, the usercmd/move path); those need
-call-graph tracing from the anchors above, and the Ghidra export will help name them.
+is exactly what we want to disable. The **frame path is fully traced** (WinMain → Com_Frame →
+… → SV_Frame → G_RunFrame → G_ClientDoPerFrameNotifies), and the connection, message, chat,
+dvar-register and server-command paths are all named. Remaining gaps are a few no-string
+functions (`Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`, exact `SV_DropClient`).
 
 ## 4. Open threads
-- Pin `SV_SendServerCommand`/`SV_GameSendServerCommand` (chat inject), `SV_DropClient`,
-  `SV_ClientThink`/usercmd parse, `Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`,
-  `SV_SpawnServer`/map-load. Anchors: SV_PacketEvent 0x635540, SV_AddOperatorCommands 0x62C9B0,
-  G_ClientDoPerFrameNotifies 0x503540.
+- Pin `Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`, exact `SV_DropClient`. Anchors:
+  SV_AddOperatorCommands 0x62C9B0 (console dispatch), the VM at 0x696E6D. KisakCOD structure +
+  (if fetched) lnxded symbols will name these quickly.
 - Confirm whether `fs_homepath` relocates the `__CoDWaW` marker (affects the safe-mode fix).
-- Fold in Ghidra's `ghidra-funcs.json` names once analysis finishes.
-- **Accelerators flagged in vault R12 (pending B's OK, see `questions.md`):**
-  - `codwaw_lnxded` — Treyarch's DRM-free Linux WaW dedi ELF (same 1.7 engine build). If it
-    carries symbols/distinctive constants, diff it against our exe to name the [U] functions
-    fast (the CoD4x method). MP-only, do **not** run it; static read only.
-  - KisakCOD (GPL-3.0 IW3 reimplementation) — labelled map of the parent engine (WaW server
-    reports engine `iw3.0`, confirming the IW3 fork). Use to locate/understand names, structs,
-    call graphs only; nothing pasted into the repo (same clean-room rule as post-2023 T4SP).
+- **RE accelerators (B approved 2026-09-20, see `docs/re/lnxded.md`):** KisakCOD cloned to
+  `ZombiesDev/thirdparty/KisakCOD` and already in use for naming (IW3 = parent engine, WaW
+  reports `iw3.0`). `codwaw_lnxded` deferred (its LinuxGSM tarball is 6.5 GB of assets; pull
+  only the ELF when the symbol diff is wanted). Clean room: names/offsets only, nothing pasted.

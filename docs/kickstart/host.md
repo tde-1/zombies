@@ -11,7 +11,24 @@ Everything in `infra/host-agent/` is **Node 24 with zero dependencies** — `nod
 `package.json` has an empty `dependencies` block and it stays that way.
 
 **Nothing here needs the game to exist.** A simulator (`sim/`) speaks the same protocol, so every
-feature below is built, tested and measured today; the real DLL drops into the same socket.
+feature below is built, tested and measured today.
+
+**Update, 01:02 — a real `CoDWaW.exe` has now been on the other end of the socket.** With the
+foundation agent's `tools/dev/launch.ps1` and the referee build of `enw_t4.dll` deployed into
+`ZombiesDev\waw-host`, `node host.js --boot 1 --game --map nazi_zombie_prototype` launched the real
+game and its DLL connected and said hello:
+
+```
+info  host/inst/inst-01  start game port 28960
+debug host/link          c1 connected from 127.0.0.1:52973
+info  host               instance inst-01 linked (pid 22048, Sep 20 2026 00:32:31)
+info  host/inst/inst-01  game PID 22048 adopted (launcher holds game.lock as "host")
+debug host/inst/inst-01  launcher exited (0); game PID 22048 is up
+```
+
+So the whole chain — lease, launch, lock, PID adoption, game link — works against the real thing,
+not just the simulator. The run was cut short before the map loaded, so there is still no real
+per-game CPU figure; see §3b.
 
 ---
 
@@ -61,6 +78,7 @@ here: a box behind NAT, with no inbound firewall rule and no reachable RCON, wor
 | `sim/engine.js`, `sim/sim-instance.js` | the fake game |
 | `mock-site/site.js`, `mock-site/web.html` | the fake website + its chat UI |
 | `tools/verify.js` | prove a replay is unmodified; `--tamper` shows it failing |
+| `tools/recover.js` | rebuild a replay whose host died before it could sign the footer |
 | `tools/measure-replay.js` | the size/cost measurement |
 | `test/run-all.js` | 37 in-process checks of the rules and the format |
 | `test/demo-network.js` | the two-box end-to-end demo |
@@ -86,6 +104,9 @@ node host.js --site http://127.0.0.1:8080 --secret devkey-a --box box-a
 
 # prove a replay, then prove the proof
 node tools/verify.js "C:\Users\b\ZombiesDev\replays\<match>.enwr" --tamper
+
+# salvage a replay whose host was killed mid-game
+node tools/recover.js "C:\Users\b\ZombiesDev\replays\<match>.enwr"
 
 # the size/cost numbers
 node tools/measure-replay.js --hours 1 --players 1,2,4 --levels 10,19
@@ -166,10 +187,23 @@ SIMULATOR, not World at War**, and say nothing about WaW's cost:
 
 What this *does* establish: **the host agent's own overhead is negligible** — the game-link socket,
 the referee, the replay writer and the dashboard together cost well under a hundredth of a core per
-game, so the vault's per-game cost model is entirely about the game process. The 0.3–0.8 core per
-game estimate in `14 - Server Infrastructure & Cost Model` needs the dedi agent's real
-`CoDWaW.exe`; the machinery to measure it is here and will report it automatically the moment
-`--game` boots a real instance (`GET /api/state` → `instances[].usage`).
+game, so the vault's per-game cost model is entirely about the game process.
+
+**The real game has connected but has not been measured.** The 01:02 launch above proved the path
+and was stopped before the map loaded (the game lock belongs to the dedi agent most of the time
+tonight, and a partly-started SP exe sitting at 37 MiB tells us nothing). Everything needed is now
+in place — a `waw-host` copy, the DLL deployed, the launcher invocation verified, the sampler
+running — so the 0.3–0.8 core per game estimate in `14 - Server Infrastructure & Cost Model`
+is one uninterrupted lock away:
+
+```bash
+node host.js --boot 1 --game --map nazi_zombie_prototype --dash-port 8787
+# leave it for a few minutes, then:
+curl -s http://127.0.0.1:8787/api/state    # instances[].usage.cores_avg / rss_peak_bytes
+```
+
+Boot two or three at once (`--boot 3`) and the same field gives the density number for T4 of the
+vault's test plan.
 
 Box for reference: AMD Ryzen 7 9800X3D, 16 cores, Node 24.16.0.
 
@@ -259,6 +293,29 @@ internally consistent and therefore *must* be checked against the box's pinned p
 is not authorship. The site must store each box's public key and `verify.js --pub <key>` must be how
 a record is checked, not a bare `verify`.
 
+### When the host dies mid-game
+The footer is written when the game ends, so a host that is killed outright leaves a header, a run
+of good chunks and **no footer at all**. `verify.js` calls that "not a replay", correctly: nothing
+about it can be proved. Vault 10 §5 nonetheless wants the game saved up to the crash, tagged — so
+`tools/recover.js` rebuilds the index and the chain from the surviving chunks and signs the result
+*now*:
+
+```
+recovered 30 chunk(s), 43872 events, 30.0 min of game time
+  -> m_57dae4d5.recovered.enwr, marked recovered + partial, signed by 7332de1a
+```
+
+That signature proves only that nothing has changed **since recovery**, so the footer carries
+`recovered: true` and `partial: true`, `verifyFile()` returns both flags, and `verify.js` prints
+**VALID BUT RECOVERED — good enough for a badge, not record-grade evidence** instead of a plain
+VALID. Anything that grades evidence must read those flags rather than just `ok`.
+
+This is not hypothetical: it is how the case was found. On Windows `child.kill('SIGTERM')` is
+`TerminateProcess`, so a host killed from another process never runs its shutdown handler and the
+replay is left unsigned. On Linux (production) SIGTERM is delivered and the shutdown path closes
+and signs every live game's replay first; `test/demo-network.js` now asks each box to end its games
+cleanly before killing it, so the demo stops manufacturing the crash case.
+
 ---
 
 ## 6. Feature verdicts
@@ -269,10 +326,10 @@ a record is checked, not a bare `verify`.
 | **Invite tokens** | **Works, fails closed.** | §4 of the demo: 2 genuine invites join, a **forged** token is refused `bad_signature`, an **expired** one `expired`. Also refused: wrong match, wrong SteamID, re-used `jti`, edited payload, and garbage. With no token or no site key, a box with checks required refuses everyone rather than becoming an open server. |
 | **24 h cap + warnings + clean end** | **Works.** | Demo §6b on an 8-minute clock: warnings at 5/3/1, `end` sent, game saved with `cap_reached`, replay written and verified. Unit-tested on the real 30/10/1 schedule. VIP lobbies are genuinely uncapped. |
 | **AFK warn/kick** | **Works.** | Warn at 10 min, kick at 15, active players untouched, coming back clears it, everyone-idle pauses then closes. A simulator bug found this: an "AFK" player who still typed reset their own timer — chat **is** activity, which is correct, and the sim was wrong. |
-| **Replays + verification** | **Works, and the cost is trivial.** | 5.98 MB/4-player-game-hour, $4.73/month at 25 concurrent games with 90-day retention. Signed, chained, seekable, tamper demo included. |
+| **Replays + verification** | **Works, and the cost is trivial.** | 5.98 MB/4-player-game-hour, $4.73/month at 25 concurrent games with 90-day retention. Signed, chained, seekable, tamper demo included. A host killed mid-game leaves an unsigned file; `tools/recover.js` salvages it, clearly marked as lower-grade evidence. |
 | **Pull protocol** | **Works.** | Lease → boot → `status=ready` → play → `POST /api/gs/result` with the summary and replay pointer, on two boxes at once, nonce-cached polling, site never connects out. |
 | **Live view / spectating** | **Works.** | `http://127.0.0.1:8787` — instances with live CPU/RAM, round, players, a 2D top-down canvas of player and zombie positions at 4 Hz, event log, chat, and playback of a recorded replay chunk-by-chunk. This is the prototype of the web live view in 99 §4.4 and of phase 2 of the replay roadmap. |
-| **Instance manager** | **Works.** | Start/stop/restart/reap, per-instance logs, one port and id each, `ENW_HOST`/`ENW_INSTANCE`/`ENW_ROLE`, CPU+RAM sampling, PID-scoped kills only, game lock for real launches. Untested against a real `CoDWaW.exe` — `tools/dev/launch.ps1` does not exist yet, and the manager says so clearly instead of failing oddly. |
+| **Instance manager** | **Works, against the real game.** | Start/stop/restart/reap, per-instance logs, one port and id each, `ENW_HOST`/`ENW_INSTANCE`/`ENW_ROLE`, CPU+RAM sampling, PID-scoped kills only. Verified against a real `CoDWaW.exe` at 01:02: the DLL connected and the manager adopted the game's PID. It refuses cleanly when another agent holds `game.lock` (*"game.lock is held by dedi (probe p19-saved-retry) — not launching"*) without touching the lock file. |
 | **Referee state machine** | **Works.** | 37 in-process checks, all green, against the referee agent's real manifests. |
 
 ---
@@ -378,10 +435,16 @@ agent touches it.
 
 ## 9. What is not done, and what to do next
 
-* **No real game has ever been on the other end of the socket.** Everything above is against the
-  simulator. The moment `tools/dev/launch.ps1` (foundation) and the DLL's game-link client land,
-  `node host.js --game --map <map>` boots a real instance through the same code path and the
-  dashboard reports its real CPU and RAM. That is the single most valuable next step.
+* **The real game has connected but not been measured.** One launch got as far as `hello`; the
+  next session should hold the lock long enough to load a map, get a round or two, and read
+  `instances[].usage` for the per-game core and RAM figures. That is still the single most valuable
+  next step, and it is now a one-liner.
+* **Real-game launch notes for whoever picks this up.** The game copy is `ZombiesDev\waw-host`
+  (`tools\dev\new-copy.ps1 host`), the DLL goes in with `tools\dev\deploy.ps1 host -From <build>`,
+  and `launch.ps1` — not the host agent — takes `game.lock`, under the name of the copy (`host`).
+  The host agent therefore checks the lock, refuses if someone else holds it, and never writes it;
+  it adopts the PID `launch.ps1` prints and polls that, because the PowerShell wrapper exits while
+  the game keeps running. `--dry-run` prints the exact launch line and starts nothing.
 * **The sim's curves are `[approx]`, not WaW.** Round budgets, zombie health/speed, kill rate and
   round length are a plausible ramp chosen so the zombie load is realistic (15 alive average, 24
   peak, round 22 in an hour at 4 players). Replace them from the real DLL's logs; nothing else
@@ -396,3 +459,10 @@ agent touches it.
 * **Not tested**: more than 2 instances at once, a link peer that lies, a full 24-hour soak at 1×,
   or the crash-recovery *state restore* (the host asks for `snapshot_state` and the sim answers, but
   nothing puts the state back — that needs the DLL).
+* **Results are lost if the site is down** when a game ends. The box plays, referees and records
+  regardless, but the `POST /api/gs/result` is fire-and-forget. A spool-and-retry queue on disk is
+  the obvious fix and is question Q-host-2 in `questions.md` (it means a cloud box must not be
+  destroyed until its spool is empty).
+* **The `games_mp.log` prefix is not settled.** The referee agent proposes `GSE;` for the DLL side;
+  the host writes `ENWZombie;` today. Both are one configurable string (`--game-log-prefix`). One
+  of us should win — see the note at the end of `questions.md`.

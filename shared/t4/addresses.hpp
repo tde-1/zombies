@@ -35,6 +35,15 @@ namespace t4
         constexpr std::uintptr_t WinMain                    = 0x5FF600; // [V] calls Com_Init, the frame loop, dedicated console pump
         constexpr std::uintptr_t Sys_Milliseconds           = 0x603D40; // [V] wraps timeGetTime (WINMM)
         constexpr std::uintptr_t va                         = 0x5F6D80; // [H]
+        // Frame chain (verified via call graph down to G_ClientDoPerFrameNotifies):
+        //   WinMain -> Com_Frame -> 0x59DCF0 -> 0x6366C0 -> 0x636610 -> SV_Frame ->
+        //   G_RunFrame -> G_ClientDoPerFrameNotifies
+        constexpr std::uintptr_t Com_Frame_callsite         = 0x5FF7BD; // [V] `call Com_Frame` in WinMain's loop
+        constexpr std::uintptr_t SV_Frame                   = 0x635CC0; // [V] server frame (runs game world); referee tick home
+        constexpr std::uintptr_t G_RunFrame                 = 0x503AB0; // [V] game logic frame
+        // The renderer/D3D init that runs BEFORE WinMain's frame loop and is NOT gated by
+        // com_dedicated -> blocks the dedicated server from ever ticking. Skip/stub in dedi.
+        constexpr std::uintptr_t Sys_RenderInit_preloop     = 0x5FF4E0; // [V] WinMain call site 0x5FF799; calls 0x75A9A2 (D3D)
 
         // ---- dvars ----------------------------------------------------------------
         constexpr std::uintptr_t Dvar_FindVar               = 0x5EDE30; // [V] interlocked refcount + hash lookup
@@ -71,9 +80,11 @@ namespace t4
         constexpr std::uintptr_t MSG_ReadBitsCompress_sym   = 0x5A2970; // [V] per-symbol Huffman bit reader (inner loop)
         constexpr std::uintptr_t CL_ParseServerMessage      = 0x64D1A0; // [V] client counterpart; bounds compressed size to 0x20000
 
-        // ---- chat ------------------------------------------------------------------
-        constexpr std::uintptr_t G_Say                      = 0x473F10; // [C] EXE_SAY / EXE_SAYTEAM, "%s: " formatter
-        constexpr std::uintptr_t ClientCommand              = 0x4388A0; // [C] dispatches "say"/"say_team" -> G_Say
+        // ---- chat / server commands ------------------------------------------------
+        constexpr std::uintptr_t G_Say                      = 0x473F10; // [V] EXE_SAY / EXE_SAYTEAM, "%s: " formatter
+        constexpr std::uintptr_t ClientCommand              = 0x4388A0; // [V] dispatches "say"/"say_team" -> G_Say (caller 0x4621E0 = SV_ExecuteClientCommand)
+        constexpr std::uintptr_t SV_GameSendServerCommand   = 0x648490; // [V] game->client reliable cmd (chat/warnings); ecx=clientNum(-1=all)+stack args
+        constexpr std::uintptr_t SV_SendServerCommand       = 0x6F5F10; // [V] low-level per-client reliable-cmd queue (11 callers)
 
         // ---- renderer / sound / OS gates (dedi needs to stub) ----------------------
         constexpr std::uintptr_t D3D9_CreateDevice_wrap     = 0x75A9A8; // [V] wraps Direct3DCreate9 (IAT 0x7EB46C)

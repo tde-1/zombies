@@ -89,32 +89,69 @@ export class Instance extends EventEmitter {
     this.holdsGameLock = false
   }
 
+  /** The game args a real launch needs, as PowerShell array elements. */
+  gameArgs() {
+    const out = []
+    if (this.assignment?.fs_game) out.push(`+set fs_game ${this.assignment.fs_game}`)
+    if (this.assignment?.map) out.push(`+map ${this.assignment.map}`)
+    out.push(`+set net_port ${this.port}`)
+    for (const [k, v] of Object.entries(this.assignment?.settings?.dvars || {})) out.push(`+set ${k} ${v}`)
+    return out.concat(this.args)
+  }
+
   spawnArgs() {
     if (this.kind === 'sim') {
       return { cmd: process.execPath, argv: [path.join(this.mgr.root, 'sim', 'sim-instance.js'), ...this.args] }
     }
-    // Real game. tools/dev/launch.ps1 is the foundation agent's; we pass what it needs and
-    // let it decide how to stage the dev copy. Windowed/small/muted per dev-box.md rule 6.
-    const ps1 = this.mgr.launchScript
-    return {
-      cmd: 'powershell.exe',
-      argv: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', ps1,
-        '-Instance', this.id, '-Port', String(this.port),
-        ...(this.assignment?.map ? ['-Map', this.assignment.map] : []),
-        ...(this.assignment?.fs_game ? ['-FsGame', this.assignment.fs_game] : []),
-        ...this.args],
-    }
+    // A real CoDWaW.exe, through the foundation agent's tools/dev/launch.ps1. Its real
+    // signature (read from the script, not assumed) is:
+    //   launch.ps1 -Name <copy> -Role <role> -EnwHost <h:p> -Instance <id>
+    //              -HomePath own|default -Why <text> -GameArgs '+a','+b' [-DryRun]
+    // It takes the game lock ITSELF, hides the window, and prints the game's PID, then
+    // returns — so the PowerShell wrapper exits while the game keeps running.
+    //
+    // `-Command` rather than `-File`: only -Command makes PowerShell parse `'a','b'` as a
+    // real string[]. Under -File the whole thing arrives as one string and -GameArgs
+    // silently becomes a one-element array with a comma in it.
+    const q = (s) => `'${String(s).replace(/'/g, "''")}'`
+    const ga = this.gameArgs()
+    const cmdline = [
+      `& ${q(this.mgr.launchScript)}`,
+      `-Name ${q(this.mgr.gameCopy)}`,
+      `-Role ${q(this.role)}`,
+      `-EnwHost ${q(`${this.mgr.linkHost}:${this.mgr.linkPort}`)}`,
+      `-Instance ${q(this.id)}`,
+      '-HomePath own',
+      `-Why ${q(`host-agent ${this.id} ${this.matchId || ''}`)}`,
+      ga.length ? `-GameArgs ${ga.map(q).join(',')}` : '',
+      this.mgr.dryRun ? '-DryRun' : '',
+    ].filter(Boolean).join(' ')
+    return { cmd: 'powershell.exe', argv: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', cmdline], cmdline }
   }
 
   start() {
     if (this.kind === 'game') {
-      const lock = acquireGameLock(this.mgr.lockOwner, `host-agent ${this.id} ${this.assignment?.map || ''}`)
-      if (!lock.ok) { this.state = 'failed'; this.failReason = `game lock: ${lock.reason}`; this.log.warn(this.failReason); this.emit('failed', this.failReason); return false }
-      this.holdsGameLock = true
+      // launch.ps1 owns the lock (dev-box.md rule 5). We must NOT take it as well — two
+      // holders is worse than none — but we check it first so the refusal is ours and
+      // legible, rather than a PowerShell throw in a log file.
+      const cur = readLock()
+      if (cur && !this.mgr.dryRun) {
+        const stale = (Number.isFinite(cur.ageMs) && cur.ageMs > LOCK_STALE_MS) || (cur.pid !== 'starting' && !pidAlive(cur.pid))
+        if (!stale) {
+          this.state = 'failed'
+          this.failReason = `game.lock is held by ${cur.owner} (${cur.what}) — not launching`
+          this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
+        }
+      }
       if (!fs.existsSync(this.mgr.launchScript)) {
-        releaseGameLock(this.mgr.lockOwner); this.holdsGameLock = false
         this.state = 'failed'
-        this.failReason = `launch script not found: ${this.mgr.launchScript} (foundation agent has not landed tools/dev/launch.ps1 yet)`
+        this.failReason = `launch script not found: ${this.mgr.launchScript}`
+        this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
+      }
+      const copy = path.join(path.dirname(LOCK_FILE), '..', `waw-${this.mgr.gameCopy}`)
+      if (!fs.existsSync(copy) && !this.mgr.dryRun) {
+        this.state = 'failed'
+        this.failReason = `no game copy at ${copy} — run tools\\dev\\new-copy.ps1 ${this.mgr.gameCopy} first`
         this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
       }
     }
@@ -136,18 +173,49 @@ export class Instance extends EventEmitter {
     this.child = child
     this.pid = child.pid
     this.mgr.ownedPids.add(child.pid)
-    if (this.holdsGameLock) stampGameLock(this.mgr.lockOwner, child.pid, `host-agent ${this.id}`)
-    child.stdout.on('data', (d) => this.logStream.write(d))
-    child.stderr.on('data', (d) => this.logStream.write(d))
+    child.stdout.on('data', (d) => { this.logStream.write(d); this.scanForGamePid(d) })
+    child.stderr.on('data', (d) => { this.logStream.write(d); this.scanForGamePid(d) })
     child.on('spawn', () => { this.state = 'running'; this.emit('running') })
     child.on('error', (e) => { this.log.error(`spawn failed: ${e.message}`); this.state = 'failed'; this.failReason = e.message; this.emit('failed', e.message) })
-    child.on('exit', (code, sig) => this.onExit(code, sig))
+    child.on('exit', (code, sig) => {
+      // For a real game the PowerShell wrapper exits as soon as it has printed the PID;
+      // the game itself is still running and is what we actually track. Only treat the
+      // wrapper's exit as the instance's exit if it never handed us a live PID.
+      if (this.kind === 'game' && this.gamePid && pidAlive(this.gamePid)) {
+        this.mgr.ownedPids.delete(child.pid)
+        this.log.debug(`launcher exited (${code}); game PID ${this.gamePid} is up`)
+        return
+      }
+      this.onExit(code, sig)
+    })
     this.emit('started')
     return true
   }
 
+  /** launch.ps1 prints "PID <n>" and then the bare id. Adopt it and watch THAT process. */
+  scanForGamePid(d) {
+    if (this.kind !== 'game' || this.gamePid) return
+    const m = /^\s*PID\s+(\d+)\b/m.exec(String(d))
+    if (!m) return
+    const pid = Number(m[1])
+    if (!pidAlive(pid)) return
+    this.gamePid = pid
+    this.pid = pid                       // this is the process we sample and kill
+    this.mgr.ownedPids.add(pid)
+    this.log.info(`game PID ${pid} adopted (launcher holds game.lock as "${this.mgr.gameCopy}")`)
+    // No child 'exit' event exists for a process we did not spawn, so poll it.
+    this.watch = setInterval(() => {
+      if (pidAlive(this.gamePid)) return
+      clearInterval(this.watch); this.watch = null
+      this.onExit(null, 'gone')
+    }, 2000)
+    this.watch.unref?.()
+  }
+
   onExit(code, sig) {
+    if (this.watch) { clearInterval(this.watch); this.watch = null }
     this.mgr.ownedPids.delete(this.pid)
+    if (this.child?.pid) this.mgr.ownedPids.delete(this.child.pid)
     this.exitCode = code
     this.exitSignal = sig
     this.exitedAt = Date.now()
@@ -155,7 +223,10 @@ export class Instance extends EventEmitter {
     this.state = 'exited'
     this.log.info(`exit code=${code} signal=${sig || '-'}${wanted ? '' : ' (unexpected)'}`)
     this.logStream.write(`=== ${new Date().toISOString()} exit ${code} ${sig || ''}\n`)
-    if (this.holdsGameLock) { releaseGameLock(this.mgr.lockOwner); this.holdsGameLock = false }
+    // launch.ps1 took the lock in OUR game-copy's name and then returned, so releasing it
+    // is our job. releaseGameLock only deletes a lock whose owner matches, so we can never
+    // free another agent's.
+    if (this.kind === 'game') releaseGameLock(this.mgr.gameCopy)
     this.emit('exit', { code, sig, wanted })
     if (!wanted && this.restartPolicy() ) {
       this.restarts++
@@ -184,6 +255,13 @@ export class Instance extends EventEmitter {
     if (!this.child || this.state === 'exited') return Promise.resolve()
     this.state = 'exiting'
     this.log.info(`stopping: ${reason}`)
+    // A real game was never our child, so there is no SIGTERM to send and no 'exit' to
+    // wait for: kill the PID we adopted and release the lock launch.ps1 left behind.
+    if (this.kind === 'game' && this.gamePid) {
+      if (this.watch) { clearInterval(this.watch); this.watch = null }
+      try { spawn('taskkill.exe', ['/PID', String(this.gamePid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }) } catch { /* ignore */ }
+      return new Promise((resolve) => setTimeout(() => { this.onExit(null, 'killed'); resolve() }, 1500))
+    }
     return new Promise((resolve) => {
       const done = () => resolve()
       this.child.once('exit', done)
@@ -234,7 +312,7 @@ export class Instance extends EventEmitter {
 }
 
 export class InstanceManager extends EventEmitter {
-  constructor({ root, logDir, linkHost, linkPort, basePort = 28960, maxInstances = 8, launchScript, lockOwner = 'host', sampleMs = 5000, log } = {}) {
+  constructor({ root, logDir, linkHost, linkPort, basePort = 28960, maxInstances = 8, launchScript, lockOwner = 'host', gameCopy = 'host', dryRun = false, sampleMs = 5000, log } = {}) {
     super()
     this.root = root
     this.logDir = logDir
@@ -244,6 +322,10 @@ export class InstanceManager extends EventEmitter {
     this.maxInstances = maxInstances
     this.launchScript = launchScript
     this.lockOwner = lockOwner
+    // The dev game copy (ZombiesDev\waw-<gameCopy>) AND the name launch.ps1 writes into
+    // game.lock — they are the same string in launch.ps1, so they must be here too.
+    this.gameCopy = gameCopy
+    this.dryRun = dryRun
     this.sampleMs = sampleMs
     this.log = log || makeLog('instances')
     this.instances = new Map()

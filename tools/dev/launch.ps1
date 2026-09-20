@@ -31,6 +31,10 @@
   Show the game window. OFF BY DEFAULT -- B uses this PC, so launches are parked
   at -4000,-4000 and never take focus. Pass this only when you must watch it.
 
+.PARAMETER KeepDialogs
+  Do not answer the modal startup boxes ("Set Optimal Settings?", "Run In Safe
+  Mode?"). They block startup forever, so this is off by default.
+
 .PARAMETER TestSeconds
   Smoke-test mode: wait this long, print what happened (alive? which image? child
   processes? log tail?), then kill the process we started and release the lock.
@@ -72,6 +76,11 @@ param(
     # windows interrupt them, so every launch is parked off-screen and never
     # takes focus unless you ask for it.
     [switch]$Visible,
+
+    # Leave the modal startup dialogs alone. OFF BY DEFAULT -- they block startup
+    # indefinitely, which is why no solo run ever reached the game. Only useful
+    # if you want to inspect one.
+    [switch]$KeepDialogs,
 
     [string]$GameDir = '',
     [string]$DevRoot = 'C:\Users\b\ZombiesDev',
@@ -125,56 +134,188 @@ if ($launchOk -ne '1' -and -not $DryRun) {
 # `vid_xpos`/`vid_ypos` handle the main render window, but not the splash
 # ("CoD Splash Screen"), the dedicated-server console ("Call of Duty WinConsole")
 # or the modal #32770 boxes, so we sweep by PID as well.
-Add-Type -Namespace EnwWin -Name Native -MemberDefinition @'
-[DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc cb, IntPtr p);
-[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
-[DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
-[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
-[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
-[DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int max);
-public delegate bool EnumWindowsProc(IntPtr h, IntPtr p);
+# THE TRAP THIS ALREADY FELL INTO ONCE: a plain SetWindowPos is a *synchronous*
+# cross-process call. It sends WM_WINDOWPOSCHANGING to the target's UI thread and
+# blocks until that thread answers -- and a game that is loading, or sitting on a
+# modal dialog, does not answer. The first version of this hung the launcher for
+# 703 s with the game still up and the lock still held.
+# So: SWP_ASYNCWINDOWPOS (posts, never waits) and ShowWindowAsync, and the
+# enumeration is compiled C# rather than a PowerShell scriptblock invoked as a
+# native callback once per top-level window.
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class EnwWindows
+{
+    delegate bool EnumProc(IntPtr h, IntPtr p);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr p);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr h, int cmd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int max);
+    // GetWindowText does NOT send WM_GETTEXT across processes -- it reads the
+    // cached caption -- so it is safe against a hung target. (Documented.)
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int max);
+    [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc cb, IntPtr p);
+    [DllImport("user32.dll")] static extern int GetDlgCtrlID(IntPtr h);
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
+
+    const uint SWP_NOSIZE = 0x0001, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010;
+    const uint SWP_ASYNCWINDOWPOS = 0x4000;
+    const int SW_SHOWNOACTIVATE = 4;
+    const uint WM_COMMAND = 0x0111;
+    const int IDOK = 1, IDCANCEL = 2, IDNO = 7;
+
+    static string TextOf(IntPtr h)
+    {
+        var sb = new StringBuilder(512);
+        GetWindowText(h, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    static string ClassOf(IntPtr h)
+    {
+        var sb = new StringBuilder(256);
+        GetClassName(h, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    // Returns "movedClass,movedClass|dialogCount". Never blocks on the target.
+    public static string Park(int pid, int x, int y)
+    {
+        var moved = new List<string>();
+        int dialogs = 0;
+        EnumWindows(delegate(IntPtr h, IntPtr lp)
+        {
+            uint wpid;
+            GetWindowThreadProcessId(h, out wpid);
+            if (wpid != (uint)pid) return true;
+
+            string cls = ClassOf(h);
+            // A modal dialog is Dismiss()'s business, not ours: moving it is
+            // pointless and hiding it would only make it harder to answer.
+            if (cls == "#32770") { dialogs++; return true; }
+
+            ShowWindowAsync(h, SW_SHOWNOACTIVATE);
+            SetWindowPos(h, IntPtr.Zero, x, y, 0, 0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+            if (!moved.Contains(cls)) moved.Add(cls);
+            return true;
+        }, IntPtr.Zero);
+        return string.Join(",", moved.ToArray()) + "|" + dialogs;
+    }
+
+    // Answer every #32770 the process owns, choosing the most conservative
+    // button available: No, else Cancel, else OK.
+    //
+    // Both boxes we actually meet want "No": "Set Optimal Settings?" No keeps the
+    // settings we passed on the command line, and "Run In Safe Mode?" No starts
+    // normally. PostMessage is asynchronous, so a wedged UI thread cannot hang us
+    // the way SetWindowPos once did.
+    //
+    // Returns one line per dialog: "title >> button [buttons seen]".
+    public static string Dismiss(int pid)
+    {
+        var report = new List<string>();
+        EnumWindows(delegate(IntPtr h, IntPtr lp)
+        {
+            uint wpid;
+            GetWindowThreadProcessId(h, out wpid);
+            if (wpid != (uint)pid) return true;
+            if (ClassOf(h) != "#32770") return true;
+
+            string title = TextOf(h);
+            var seen = new List<string>();
+            bool hasNo = false, hasCancel = false, hasOk = false;
+
+            EnumChildWindows(h, delegate(IntPtr c, IntPtr _)
+            {
+                if (ClassOf(c) != "Button") return true;
+                int id = GetDlgCtrlID(c);
+                seen.Add(id + ":" + TextOf(c).Replace("&", ""));
+                if (id == IDNO) hasNo = true;
+                if (id == IDCANCEL) hasCancel = true;
+                if (id == IDOK) hasOk = true;
+                return true;
+            }, IntPtr.Zero);
+
+            int pick = hasNo ? IDNO : (hasCancel ? IDCANCEL : (hasOk ? IDOK : IDNO));
+            string pickName = pick == IDNO ? "No" : (pick == IDCANCEL ? "Cancel" : "OK");
+            PostMessage(h, WM_COMMAND, (IntPtr)pick, IntPtr.Zero);
+
+            report.Add("'" + title + "' >> " + pickName +
+                       " [" + string.Join(" ", seen.ToArray()) + "]");
+            return true;
+        }, IntPtr.Zero);
+        return string.Join("\n", report.ToArray());
+    }
+}
 '@ -ErrorAction SilentlyContinue
 
-# SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE  -- move only, never raise, never focus.
-$script:SWP_MOVE_ONLY = 0x0001 -bor 0x0004 -bor 0x0010
-$script:SW_SHOWNOACTIVATE = 4
+# Every call into user32 against another process is time-boxed. Two agents lost
+# ten minutes to a launcher that blocked here, so if window handling ever takes
+# longer than this we give up on it for the rest of the run rather than hold the
+# game lock.
+$script:windowBudgetMs = 2000
+$script:windowHandlingDead = $false
+
+function Invoke-WindowOp {
+    param([scriptblock]$Op, [string]$What)
+    if ($script:windowHandlingDead) { return $null }
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    try {
+        $r = & $Op
+    }
+    catch {
+        Write-Host "  (window op '$What' failed: $_)" -ForegroundColor Yellow
+        return $null
+    }
+    finally { $sw.Stop() }
+    if ($sw.ElapsedMilliseconds -gt $script:windowBudgetMs) {
+        $script:windowHandlingDead = $true
+        Write-Host ("  WINDOW HANDLING DISABLED: '{0}' took {1} ms (budget {2} ms). The game's UI " -f
+            $What, $sw.ElapsedMilliseconds, $script:windowBudgetMs) -ForegroundColor Red
+        Write-Host '  thread is not responding; continuing without parking or dismissing.' -ForegroundColor Red
+    }
+    return $r
+}
 
 function Hide-GameWindows {
     param([int]$OwnerPid, [switch]$Report)
-    $moved = @()
-    $cb = [EnwWin.Native+EnumWindowsProc] {
-        param($h, $p)
-        $wpid = 0
-        [void][EnwWin.Native]::GetWindowThreadProcessId($h, [ref]$wpid)
-        if ($wpid -eq $OwnerPid) {
-            $sb = New-Object System.Text.StringBuilder 256
-            [void][EnwWin.Native]::GetClassName($h, $sb, $sb.Capacity)
-            $cls = $sb.ToString()
-            # Never move a modal dialog out of reach - someone may need to answer
-            # it, and dedi's harness finds them by handle. Just record it.
-            if ($cls -eq '#32770') {
-                $script:dialogsSeen += $cls
-            }
-            else {
-                [void][EnwWin.Native]::ShowWindow($h, $script:SW_SHOWNOACTIVATE)
-                [void][EnwWin.Native]::SetWindowPos($h, [IntPtr]::Zero, -4000, -4000, 0, 0, $script:SWP_MOVE_ONLY)
-                $script:movedWindows += $cls
-            }
-        }
-        return $true
-    }
-    $script:movedWindows = @()
-    $script:dialogsSeen = @()
-    [void][EnwWin.Native]::EnumWindows($cb, [IntPtr]::Zero)
+    $result = Invoke-WindowOp -What 'park' -Op { [EnwWindows]::Park($OwnerPid, -4000, -4000) }
+    if ($null -eq $result) { return 0 }
+    $parts = $result -split '\|'
+    $classes = if ($parts[0]) { $parts[0] } else { '' }
+    $dialogs = [int]$parts[1]
     if ($Report) {
-        if ($script:movedWindows.Count) {
-            Write-Host "  parked off-screen: $((($script:movedWindows | Sort-Object -Unique) -join ', '))" -ForegroundColor DarkGray
+        if ($classes) {
+            Write-Host "  parked off-screen: $classes" -ForegroundColor DarkGray
         }
-        if ($script:dialogsSeen.Count) {
-            Write-Host "  MODAL DIALOG present (#32770) - left where it is, it will block startup" -ForegroundColor Yellow
+        else {
+            Write-Host '  (no windows to park yet)' -ForegroundColor DarkGray
         }
     }
-    return $script:movedWindows.Count
+    return $dialogs
+}
+
+# Answers "Set Optimal Settings?" and "Run In Safe Mode?" so startup can carry on.
+# Until this existed, EVERY solo run sat on one of these and the game never
+# reached a playable state.
+function Dismiss-GameDialogs {
+    param([int]$OwnerPid)
+    $report = Invoke-WindowOp -What 'dismiss' -Op { [EnwWindows]::Dismiss($OwnerPid) }
+    if ([string]::IsNullOrWhiteSpace($report)) { return 0 }
+    $n = 0
+    foreach ($line in ($report -split "`n")) {
+        if ($line.Trim()) {
+            Write-Host "  dialog answered: $line" -ForegroundColor Cyan
+            $n++
+        }
+    }
+    return $n
 }
 
 # ---------------------------------------------------------------- game lock --
@@ -306,20 +447,25 @@ try {
     # Sweep repeatedly for the first few seconds: the splash, the render window
     # and the console each appear at different moments, and we want each one gone
     # the instant it exists rather than after it has flashed at B.
-    if (-not $Visible) {
-        $sweepUntil = (Get-Date).AddSeconds(6)
-        while ((Get-Date) -lt $sweepUntil -and -not $proc.HasExited) {
-            [void](Hide-GameWindows -OwnerPid $proc.Id)
-            Start-Sleep -Milliseconds 150
+    $script:dialogsAnswered = 0
+    $sweepUntil = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $sweepUntil -and -not $proc.HasExited) {
+        if (-not $Visible) { [void](Hide-GameWindows -OwnerPid $proc.Id) }
+        if (-not $KeepDialogs) {
+            $script:dialogsAnswered += (Dismiss-GameDialogs -OwnerPid $proc.Id)
         }
-        [void](Hide-GameWindows -OwnerPid $proc.Id -Report)
+        Start-Sleep -Milliseconds 250
     }
-    else {
-        Start-Sleep -Milliseconds 1500
+    if (-not $Visible) { [void](Hide-GameWindows -OwnerPid $proc.Id -Report) }
+    if ($KeepDialogs) {
+        Write-Host '  -KeepDialogs: modal boxes left unanswered; startup will block on them' -ForegroundColor Yellow
+    }
+    elseif ($script:dialogsAnswered -eq 0) {
+        Write-Host '  no modal dialogs appeared' -ForegroundColor DarkGray
     }
 
     $record = [ordered]@{
-        name = $Name; role = $Role; instance = $Instance; pid = $proc.Id; visible = [bool]$Visible
+        name = $Name; role = $Role; instance = $Instance; pid = $proc.Id; visible = [bool]$Visible; dialogs_answered = $script:dialogsAnswered
         exe = $exe; args = ($a -join ' '); started = (Get-Date -Format o)
         homepath = $(if ($HomePath -eq 'own') { $homeDir } else { "$env:LOCALAPPDATA\Activision\CoDWaW" })
         stdout = $outLog; stderr = $errLog
@@ -346,6 +492,8 @@ try {
         # Keep sweeping: the render window can be created (or recreated by a
         # vid_restart) long after startup.
         if (-not $Visible) { [void](Hide-GameWindows -OwnerPid $proc.Id) }
+        # A dialog can appear later too (vid_restart, a mid-run error box).
+        if (-not $KeepDialogs) { [void](Dismiss-GameDialogs -OwnerPid $proc.Id) }
     }
     $proc.Refresh()
 

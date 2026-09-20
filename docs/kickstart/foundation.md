@@ -20,6 +20,19 @@ logfile opened on Sun Sep 20 00:30:57 2026
 [ENW]^7 enw_t4 loaded - build Sep 20 2026 00:30:41, pid 26712
 ```
 
+That run caught the whole banner. How much of a burst survives varies with the engine's
+console-channel churn during startup (§3), so the loader also re-announces once after it settles,
+which is the line you can rely on:
+
+```
+   4: [enw] game: dvar system up after 47 ms ('logfile' exists)
+ 179: [ENW]^7 enw_t4 online - 9 components
+ 185: [ENW]^7 enw_t4 ready - build Sep 20 2026 01:11:13, pid 26240
+```
+
+Nine components in both runs — ours plus `dedi`'s, `referee`'s and `host`'s, all picked up by the
+CMake glob with no shared file edited by anybody.
+
 ---
 
 ## 1. The commands
@@ -54,7 +67,8 @@ Useful switches:
 **Launches are invisible by default.** B works at this machine, so `launch.ps1` sets
 `vid_xpos/vid_ypos -4000` and then sweeps every top-level window owned by our PID — for the first
 6 s and again throughout `-TestSeconds` — moving each one off-screen with
-`SetWindowPos(SWP_NOACTIVATE|SWP_NOZORDER|SWP_NOSIZE)` and `ShowWindow(SW_SHOWNOACTIVATE)`. Nothing
+`SetWindowPos(... SWP_ASYNCWINDOWPOS)` and `ShowWindowAsync(SW_SHOWNOACTIVATE)` — the async
+forms matter, see §9. Nothing
 is ever raised or focused. That covers the splash (`CoD Splash Screen`), the render window and the
 dedicated console (`Call of Duty WinConsole`); the repeated sweep also catches a window recreated by
 a `vid_restart`. Modal `#32770` dialogs are deliberately left in place — someone may need to answer
@@ -98,18 +112,32 @@ This is the single most useful thing on this page.
 | ~0 ms | `post_load()` — components may start threads and read config. **No game memory.** |
 | **~110–140 ms** | SteamStub finishes. `.text[0]` stops being `0x9EF490B8` and `0x401000` becomes real code. `post_unpack()` — patch and hook here. |
 | | ...but **the engine has not started**. No console, no dvars, no filesystem. Console output at this point is discarded. |
-| ~+40 ms | `Com_Init` has run; the dvar `logfile` exists. `post_init()` — the first usable moment, and it runs **on the game's main thread**. |
+| ~+45 ms | `Com_Init` has run; the dvar `logfile` exists. Not yet safe to print: the log file itself is not open. |
+| ~+? ms | `sys_gpu` exists (system/renderer detection). `post_init()` — the first usable moment, and it runs **on the game's main thread**. |
+| then | the *"Set Optimal Settings?"* modal appears and startup stops there (see §7). |
 
-Three concrete gotchas:
+Four concrete gotchas:
 
 1. **`post_unpack` is far too early for anything user-visible.** My first run printed a perfect
    banner into the void. If a human is meant to see it, it belongs in `post_init`.
 2. **Com_Printf works off-thread** — 203 probe lines emitted from our own loader thread reached the
-   engine's `console.log`. What is *not* reliable is the instant right after engine start: an
-   off-thread line from that moment is dropped while the identical main-thread line is kept. That is
-   why `post_init` is marshalled onto the main thread.
+   engine's `console.log`. What is *not* reliable is the instant right after engine start, and the
+   mechanism turned out to be simpler than "threads": **the engine opens
+   `<fs_homepath>\main\console.log` partway through `Com_Init`, and anything printed before that
+   is not in the file.** (It may still be in the in-game console buffer, which we cannot see with
+   the window parked off-screen — so `console.log` is evidence of Com_Printf working, not a
+   complete transcript.) `wait_for_engine()` therefore waits for the dvar `logfile` *and then* for
+   `sys_gpu`, which is registered during system/renderer detection, comfortably after the file is
+   open. `post_init` is still marshalled onto the main thread, because host commands need to be
+   there regardless.
 3. **Channels 0–6 all appear in `console.log`; channel 7 produces nothing.** (Probe: 8 channels ×
    30 rounds.) `console_print()` uses channel 0.
+4. **A burst of lines during startup is only partly kept.** The engine adds and hides console
+   channels while it execs `default.cfg` / `language.cfg` / the profile config, and the filter state
+   moves underneath us. Measured across five runs, between **1 and 7 of the same 7 banner lines**
+   reached `console.log` — same code, same build. Nothing is broken; the printing works every time.
+   If you need a line to be *seen*, emit it after the churn: the loader re-announces once, three
+   seconds after `post_init`, for exactly this reason.
 
 ### The main-thread pump, and its limit
 
@@ -123,21 +151,27 @@ game thread, but work queued with `scheduler::run_on_main()` after the game sett
 sit there indefinitely (the queue is bounded at 256 and drops oldest). Host commands (`exec`, `set`,
 `pause`) will need something better.
 
-**`Com_Frame` (0x59E330) is not that something — I tried it.** `re` has it as `[V] called once per
-WinMain loop iter`, so it looked ideal. MinHook created and enabled the detour cleanly, the `E9` was
-verifiably still at the entry 20 s later, and **it ran zero times.** Statically it is the frame loop
-body; empirically the SP path does not reach it, at least not before a map is loaded.
-`ENW_PUMP=frame` re-runs the experiment; it is off by default.
+**`Com_Frame` (0x59E330) measured zero calls — and the reason is the interesting bit.** I hooked
+it; MinHook created and enabled the detour cleanly, the `E9` was verifiably still at the entry 20 s
+later, and it ran **zero times**. `re` then found why (board 01:35, from live thread-stack samples
+plus a static WinMain trace): **WinMain never reaches its loop.** `0x5FF4E0`, called at
+`WinMain+0x199` right after `Com_Init` and *before* the loop at `0x5FF7B1`, runs renderer/D3D
+bring-up unconditionally and is not gated by `com_dedicated`. Our solo runs stall in the same place,
+on the *"Set Optimal Settings?"* modal. So there is **no per-frame tick of any kind, in any mode,
+until that init is unblocked** — which is also `dedi`'s Stage C blocker. The address is right; the
+loop is just never entered. `ENW_PUMP=frame` re-runs the experiment; it is off by default.
 
 That attempt also cost the `referee` agent four minutes of silent breakage: **MinHook allows exactly
 one hook per target address**, so my `MH_CreateHook(0x59E330)` won and theirs failed with
 `already created`, turning their frame binding off with nothing but a log line to show for it.
 Reverted; `frame=yes` confirmed back.
 
-> **The two open items here.** (1) `re`: a per-frame function that actually fires in SP. (2) The
-> core should own that single hook and expose `on_frame(fn)` so components subscribe rather than
-> race for the address — about 40 lines, and it makes this class of collision impossible. Nothing
-> else depends on where `pump()` is called from.
+> **The two open items here.** (1) Bypass `0x5FF4E0` so WinMain reaches its loop — `re` has the
+> exact site and `dedi` needs the same fix; then `Com_Frame` starts ticking and this whole caveat
+> goes away. (2) The core should own that single hook and expose `on_frame(fn)` so components
+> subscribe rather than race for the address — about 40 lines, and it makes this class of collision
+> impossible. I have deliberately *not* built it unilaterally, because switching it on takes
+> `Com_Frame` away from `referee` again. Nothing else depends on where `pump()` is called from.
 
 ## 4. Addresses verified on B's exe
 
@@ -223,8 +257,13 @@ nothing. Unproven as cause, but the fix is free and both scripts now do it.
 
 **Blocking dialogs**, both Win32 `#32770`:
 
-* *"Set Optimal Settings?"* on first run. `+set sys_configureGHz 1` pre-empts it (`launch.ps1` passes
-  it, along with `com_introPlayed 1`, `com_startupIntroPlayed 1`, `ui_autoContinue 1`).
+* *"Set Optimal Settings?"*. **`+set sys_configureGHz 1` does NOT suppress it** — I claimed it would
+  and I was wrong. The engine overwrites the dvar with its own measured value
+  (`dvar set sys_configureGHz 0.0297…` is the last line of console.log in every run) and shows the
+  box anyway. **Every solo run so far has been sitting on this dialog**; the game never reaches the
+  main menu. It does not block the DLL work — load, decrypt, verify, hook and print all happen
+  around it — but do not assume you have a *running game*. `launch.ps1` now reports
+  `MODAL DIALOG up (#32770 x1)` when one is present.
 * *"Run In Safe Mode?"* after an unclean exit. The marker is
   **`%LOCALAPPDATA%\Activision\CoDWaW\__CoDWaW`, a 4-byte file holding the PID** of the running
   instance, written at startup and deleted on a clean exit (found by `dedi`). `launch.ps1` deletes it
@@ -285,14 +324,21 @@ This deserves a decision from B before anyone designs the leasing flow. Logged i
   function pointer on fault and said nothing, which turned "Com_Printf crashed" into "Com_Printf
   quietly does nothing" — an indistinguishable and much more confusing symptom. It now logs the fault
   code, the thread, and how many faults before it gives up.
+* **`SetWindowPos` is a synchronous cross-process call, and it will hang you.** Parking the game
+  window off-screen looked like three lines. It sends `WM_WINDOWPOSCHANGING` to the target's UI
+  thread and blocks until that thread answers — and a game that is loading, or sitting on a modal
+  dialog, does not answer. The launcher sat there for **703 seconds** with the game still up and the
+  game lock still held. `SWP_ASYNCWINDOWPOS` + `ShowWindowAsync` post instead of send; the whole
+  sweep now takes 1–4 ms. If you ever touch another process's windows, use the async forms.
 * **The component glob works better than expected.** `dedi`, `referee` and the others dropped files
   into `server/components/` and they were compiling into the DLL within minutes, with no shared file
   touched and no coordination. 9 components at last run.
 
 ## 10. Open items
 
-1. **A verified per-frame function that fires in SP** so the main-thread pump is steady rather than
-   startup-only. `Com_Frame` (0x59E330) is not it (§3). (`re`)
+1. **Bypass the renderer init at `0x5FF4E0`** so WinMain reaches its frame loop. Until then there is
+   no per-frame tick at all and our pump is startup-only (§3). Shared blocker with `dedi`'s Stage C;
+   `re` has the exact site.
 2. **A core-owned frame hook with `on_frame(fn)` subscribers**, so components stop competing for one
    address under MinHook's one-hook-per-target rule. (foundation, on request)
 2. **Two instances on one box** — untested, and `__CoDWaW` suggests it may fight.

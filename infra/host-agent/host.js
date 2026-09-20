@@ -49,6 +49,8 @@ const cfg = {
   maxInstances: Number(a['max-instances'] ?? 8),
   basePort: Number(a['base-port'] ?? 28960),
   launchScript: a['launch-script'] || path.join(REPO, 'tools', 'dev', 'launch.ps1'),
+  gameCopy: a['game-copy'] || 'host',   // ZombiesDev\waw-<this>, and the game.lock owner
+  dryRun: !!a['dry-run'],
   requireToken: a['require-token'] != null ? a['require-token'] !== 'false' : !!a.site,
   chunkMs: Number(a['chunk-ms'] ?? 60_000),
   zstdLevel: Number(a['zstd-level'] ?? 10),
@@ -231,7 +233,7 @@ class HostAgent {
     this.instances = new InstanceManager({
       root: __dirname, logDir: cfg.logDir, linkHost: cfg.linkHost, linkPort: cfg.linkPort,
       basePort: cfg.basePort, maxInstances: cfg.maxInstances, launchScript: cfg.launchScript,
-      lockOwner: `host-${cfg.boxName}`, log: log.child('inst'),
+      lockOwner: cfg.gameCopy, gameCopy: cfg.gameCopy, dryRun: cfg.dryRun, log: log.child('inst'),
     })
   }
 

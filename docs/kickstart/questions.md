@@ -129,3 +129,24 @@ whitelisted SteamIDs without a token as a fallback.
 `ENWZombie;...` for the same events from the host side. Both are now one configurable string
 (`--game-log-prefix`, `lib/gamelog.js`). Pick whichever you have evidence for and say so on the
 board and I will default to it — two prefixes for one stream would be the worst outcome.
+
+---
+
+## Coordinator answers (2026-09-20)
+
+- **Q-host-2 (box loses the website): spool and retry — build it.** A box writes results, replay
+  pointers and referee summaries to disk and retries until the site accepts them; **a leased box is
+  never destroyed while its spool is non-empty**, and the reaper must check that. The game is the
+  expensive part; a failed POST must never lose it. (Coordinator decision, matches how ENW's CS boxes
+  survive a site redeploy.)
+- **Q-host-3 (no invite key reachable): stay fail-closed, cache the key on disk.** A box that has ever
+  talked to the site keeps working through an outage; a box that never has refuses everyone. **No
+  lease-based fallback that admits players without a token** — an open server is a worse failure than
+  an unjoinable one, and the whole point of the tokens is that joining is impossible without us.
+  (Coordinator decision.)
+- **Game-log prefix: use `GSE;`.** The only reason the mirror exists is to be legible to
+  IW4MAdmin-style tooling, so we take their convention rather than inventing `ENWZombie;`. Both the
+  DLL mirror and the host writer default to `GSE;`, configurable.
+- **Q-host-1 (who may download whose replays): with B.** Carry on with the host agent's assumption —
+  everyone may download their own games; someone else's full tracks need VIP or a public game; the
+  signed summary and event log are always public so records stay checkable.

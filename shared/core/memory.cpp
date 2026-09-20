@@ -209,6 +209,58 @@ uintptr_t find_pattern(const char* signature) {
     return find_pattern(signature, t.start, t.size);
 }
 
+void** find_import(const char* dll, const char* function) {
+    const auto* nt = nt_headers();
+    if (!nt || !dll || !function) return nullptr;
+
+    const auto& dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    if (!dir.VirtualAddress || !dir.Size) return nullptr;
+
+    const auto b = base();
+    const auto* desc = reinterpret_cast<const IMAGE_IMPORT_DESCRIPTOR*>(b + dir.VirtualAddress);
+
+    for (; desc->Name; ++desc) {
+        const char* name = reinterpret_cast<const char*>(b + desc->Name);
+        if (_stricmp(name, dll) != 0) continue;
+
+        // OriginalFirstThunk keeps the names; FirstThunk is the live IAT the
+        // loader overwrote with addresses. Walk them in step.
+        const auto* thunk = reinterpret_cast<const IMAGE_THUNK_DATA32*>(
+            b + (desc->OriginalFirstThunk ? desc->OriginalFirstThunk : desc->FirstThunk));
+        auto* iat = reinterpret_cast<IMAGE_THUNK_DATA32*>(b + desc->FirstThunk);
+
+        for (; thunk->u1.AddressOfData; ++thunk, ++iat) {
+            if (thunk->u1.Ordinal & IMAGE_ORDINAL_FLAG32) continue;  // imported by ordinal
+            const auto* import_by_name =
+                reinterpret_cast<const IMAGE_IMPORT_BY_NAME*>(b + thunk->u1.AddressOfData);
+            if (strcmp(reinterpret_cast<const char*>(import_by_name->Name), function) == 0) {
+                return reinterpret_cast<void**>(&iat->u1.Function);
+            }
+        }
+    }
+    return nullptr;
+}
+
+bool hook_import(const char* dll, const char* function, void* replacement, void** original) {
+    void** slot = find_import(dll, function);
+    if (!slot) {
+        ENW_ERROR("memory: %s!%s is not in the import table", dll ? dll : "?",
+                  function ? function : "?");
+        return false;
+    }
+    if (original) *original = *slot;
+
+    scoped_unprotect guard(slot, sizeof(void*));
+    if (!guard.ok()) {
+        ENW_ERROR("memory: could not unprotect the IAT slot for %s!%s", dll, function);
+        return false;
+    }
+    *slot = replacement;
+    ENW_DEBUG("memory: IAT %s!%s %p -> %p", dll, function, original ? *original : nullptr,
+              replacement);
+    return true;
+}
+
 bool looks_like_function(uintptr_t address) {
     const auto t = text_section();
     if (t.valid() && !t.contains(address)) return false;

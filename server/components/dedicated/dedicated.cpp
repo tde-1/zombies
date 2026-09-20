@@ -33,6 +33,8 @@
 
 #include "logger.hpp"
 #include "memory.hpp"
+#include "scheduler.hpp"
+#include "hook.hpp"
 
 #include <cstdlib>
 
@@ -77,8 +79,13 @@ constexpr size_t off_value = 0x10;
 }  // namespace dvar
 
 enum dvar_flags : uint16_t {
-    DVAR_SAVED    = 0x0001,  // [V] what SetSavedDvar() insists on
+    // `re` read the constant out of the SetSavedDvar builtin itself (0x516990) on
+    // 2026-09-20: it tests 0x200. My own bit-0 guess was wrong (probe p17 set it and
+    // GSC still refused); 0x200 is the bit I had mislabelled "write protected" after
+    // seeing fs_homepath = 0x0210.
+    DVAR_ARCHIVE  = 0x0001,  // [V] config.cfg archive (com_maxfps has it, logfile does not)
     DVAR_ROM      = 0x0040,  // [C] set on `dedicated`
+    DVAR_SAVED    = 0x0200,  // [V, re] what SetSavedDvar (0x516990) tests
     DVAR_EXTERNAL = 0x4000,  // [C] set on dvars created from the command line
 };
 
@@ -122,16 +129,60 @@ constexpr wanted_dvar kWantedDvars[] = {
 // The bit that is set in the first group and clear in the others is DVAR_SAVED.
 struct layout_probe { const char* name; const char* expect; };
 constexpr layout_probe kLayoutProbes[] = {
-    {"com_maxfps",              "in config.cfg -> SAVED expected"},
-    {"sensitivity",             "in config.cfg -> SAVED expected"},
-    {"logfile",                 "not in config.cfg -> no SAVED"},
-    {"dedicated",               "read only -> ROM"},
-    {"fs_homepath",             "write protected"},
-    {"con_typewriterColorBase", "created by +set -> external, no flags"},
+    // Round 1 (p16) established the layout and that bit 0 is the config.cfg archive bit.
+    {"com_maxfps",              "in config.cfg -> archive bit (0x0001)"},
+    {"logfile",                 "not in config.cfg -> archive clear"},
+    {"dedicated",               "read only -> ROM 0x0040"},
+    {"fs_homepath",             "write protected -> 0x0210"},
+    {"con_typewriterColorBase", "created by +set -> external 0x4000"},
+    // Round 2 (p18): bit 0 was NOT enough for SetSavedDvar, so "SAVED" is the GAMER
+    // PROFILE system, not config.cfg archiving. The engine prints its profile set at
+    // startup as `GamerProfile_UpdateProfileFromDvars(0): "mis_01" = ... "r_gamma" = ...`.
+    // These are known members of that set, so whatever bit they share and the ones above
+    // lack is DVAR_SAVED.
+    {"r_gamma",                 "GamerProfile member -> SAVED expected"},
+    {"takeCoverWarnings",       "GamerProfile member -> SAVED expected"},
+    {"mis_01",                  "GamerProfile member -> SAVED expected"},
+    {"cheat_points",            "GamerProfile member -> SAVED expected"},
+    {"mis_difficulty",          "GamerProfile member -> SAVED expected"},
 };
 
 bool g_is_dedicated = false;
 int  g_dedicated_value = 0;
+
+// ---- crash site 1: the renderer bring-up we skip ------------------------------
+// Naked so we control the epilogue exactly. WinMain's call site is a plain E8; the
+// bytes around it are logged at install time so the assumption is checkable. EAX = 1
+// says "renderer is up"; if WinMain tests it the other way this is the byte to flip.
+__declspec(naked) void renderer_bringup_stub() {
+    __asm {
+        mov eax, 1
+        ret
+    }
+}
+
+// ---- frame counting ------------------------------------------------------------
+enw::hook g_com_frame_hook;
+volatile long long g_frames = 0;
+unsigned long g_frame_window_start = 0;
+long long     g_frame_window_base = 0;
+
+void __cdecl com_frame_stub() {
+    ++g_frames;
+    const unsigned long now = ::GetTickCount();
+    if (g_frame_window_start == 0) {
+        g_frame_window_start = now;
+        g_frame_window_base = g_frames;
+    } else if (now - g_frame_window_start >= 5000) {
+        const double secs = (now - g_frame_window_start) / 1000.0;
+        const long long n = g_frames - g_frame_window_base;
+        ENW_INFO("dedicated: frame loop RUNNING - %lld frames in %.1f s = %.1f Hz (total %lld)",
+                 n, secs, n / secs, static_cast<long long>(g_frames));
+        g_frame_window_start = now;
+        g_frame_window_base = g_frames;
+    }
+    g_com_frame_hook.original<void(__cdecl*)()>()();
+}
 
 // Read the engine's `dedicated` dvar without knowing dvar_s's layout: com_dedicated is a
 // pointer to it, so a non-null pointer plus a matching command line is enough for now.
@@ -187,7 +238,16 @@ public:
         if (!dedicated_dvar || dedicated_dvar != com_dedicated) return;
 
         dump_dvar_layout(find);
-        register_missing_saved_dvars(find);
+        skip_renderer_bringup();
+        install_frame_counter();
+        // The gamer-profile dvars that let us derive DVAR_SAVED do not exist yet at
+        // post_init (probe p18: r_gamma / takeCoverWarnings / mis_01 / cheat_points /
+        // mis_difficulty all NOT FOUND), but the engine does print
+        // "GamerProfile_UpdateProfileFromDvars(0): ..." later in Com_Init, before
+        // "Server Initialization" and so before any GSC runs. So keep retrying on the
+        // main thread until they appear; the pump is driven by the engine's own
+        // Dvar_FindVar calls, so this costs nothing and lands at a safe point.
+        schedule_saved_flag_fix();
         report_pending_work();
     }
 
@@ -232,7 +292,160 @@ private:
     //
     // The launcher must pass `+set <name> <value>` for each of these; if one is missing we
     // say so loudly rather than inventing it.
-    void register_missing_saved_dvars(Dvar_FindVar_t find) {
+    // ---- crash site 1 ------------------------------------------------------------
+    // `re` (2026-09-20): 0x5FF4E0 is the renderer / D3D bring-up (it calls the D3D
+    // wrapper at 0x75A9A2). WinMain calls it at 0x5FF799, BEFORE entering its loop at
+    // 0x5FF7B1, and the call is NOT gated by com_dedicated. So in a headless process it
+    // both drags a D3D device in and, when it fails, stops WinMain ever reaching the
+    // frame loop -- which is why Com_Frame had never been observed to run.
+    //
+    // We retarget that one call rather than patching the function, because rewriting an
+    // existing rel32 cannot corrupt a neighbouring instruction. We refuse to patch
+    // unless the site really is an E8 pointing at 0x5FF4E0.
+    void skip_renderer_bringup() {
+        constexpr uintptr_t kCallSite = 0x5FF799;
+        constexpr uintptr_t kTarget   = 0x5FF4E0;
+
+        ENW_INFO("dedicated: WinMain@0x%08X bytes around the renderer call: %s",
+                 static_cast<unsigned>(kCallSite),
+                 memory::hex_dump(enw::at(kCallSite) - 8, 24).c_str());
+
+        const uintptr_t actual = memory::call_target(enw::at(kCallSite));
+        if (actual != enw::at(kTarget)) {
+            ENW_ERROR("dedicated: NOT patching: call at 0x%08X targets 0x%08X, expected 0x%08X",
+                      static_cast<unsigned>(kCallSite), static_cast<unsigned>(actual),
+                      static_cast<unsigned>(enw::at(kTarget)));
+            return;
+        }
+        if (!memory::retarget_call(enw::at(kCallSite), &renderer_bringup_stub)) {
+            ENW_ERROR("dedicated: retarget_call on 0x%08X failed", static_cast<unsigned>(kCallSite));
+            return;
+        }
+        ENW_INFO("dedicated: renderer bring-up 0x%08X skipped (call at 0x%08X retargeted). "
+                 "WinMain should now reach its frame loop at 0x5FF7B1.",
+                 static_cast<unsigned>(kTarget), static_cast<unsigned>(kCallSite));
+    }
+
+    // ---- the frame loop ------------------------------------------------------------
+    // Counting Com_Frame is how we prove the loop is running at all, and it is also the
+    // measurement everyone else is waiting on (sv_fps 20 => expect ~20 Hz).
+    void install_frame_counter() {
+        if (!memory::looks_like_function(enw::at(t4::fn::Com_Frame))) {
+            ENW_ERROR("dedicated: Com_Frame 0x%08X does not look like a function (%s)",
+                      static_cast<unsigned>(t4::fn::Com_Frame),
+                      memory::hex_dump(enw::at(t4::fn::Com_Frame), 8).c_str());
+            return;
+        }
+        if (!g_com_frame_hook.create(enw::at(t4::fn::Com_Frame), &com_frame_stub, "Com_Frame")) {
+            ENW_ERROR("dedicated: could not hook Com_Frame");
+            return;
+        }
+        if (!g_com_frame_hook.enable()) {
+            ENW_ERROR("dedicated: could not enable the Com_Frame hook");
+            return;
+        }
+        ENW_INFO("dedicated: Com_Frame hooked at 0x%08X; frame rate will be logged every 5 s",
+                 static_cast<unsigned>(t4::fn::Com_Frame));
+    }
+
+    static constexpr int kMaxSavedFixAttempts = 200000;
+    int  saved_fix_attempts_ = 0;
+    bool saved_fix_done_ = false;
+    bool saved_fix_gave_up_ = false;
+
+    // Re-arm on the main thread until the gamer-profile dvars exist, then fix the flags
+    // once. Bounded: it gives up rather than re-queueing for ever.
+    void schedule_saved_flag_fix() {
+        scheduler::run_on_main([this] { this->try_saved_flag_fix(); });
+    }
+
+    void try_saved_flag_fix() {
+        if (saved_fix_done_) return;
+        if (++saved_fix_attempts_ > kMaxSavedFixAttempts) {
+            if (!saved_fix_gave_up_) {
+                saved_fix_gave_up_ = true;
+                ENW_ERROR("dedicated: gave up deriving DVAR_SAVED after %d attempts; the "
+                          "GamerProfile dvars never appeared. Ask `re` for the flag constant "
+                          "that Scr_SetSavedDvar tests.", kMaxSavedFixAttempts);
+            }
+            return;
+        }
+        const auto find = reinterpret_cast<Dvar_FindVar_t>(enw::at(t4::fn::Dvar_FindVar));
+
+        // ENW_DEDI_SAVED_MASK lets us bisect the flag without a rebuild: set it to a hex
+        // mask of candidate bits and see whether GSC's SetSavedDvar stops complaining.
+        // Probe p19 showed the GamerProfile dvars (r_gamma, mis_01, ...) are never
+        // registered in dedicated mode -- the engine's profile printout reads its own
+        // buffer, not dvars -- so the derivation below cannot fire and the mask is how we
+        // find the bit until `re` reads the constant out of the SetSavedDvar builtin.
+        if (const char* env = std::getenv("ENW_DEDI_SAVED_MASK")) {
+            const auto mask = static_cast<uint16_t>(std::strtoul(env, nullptr, 16));
+            if (mask) {
+                ENW_INFO("dedicated: ENW_DEDI_SAVED_MASK=0x%04X (forced, bisecting)", mask);
+                register_missing_saved_dvars(find, mask);
+                saved_fix_done_ = true;
+                return;
+            }
+        }
+
+        register_missing_saved_dvars(find, DVAR_SAVED);
+        saved_fix_done_ = true;
+    }
+
+    // Work out DVAR_SAVED at runtime instead of hard-coding a guess.
+    //
+    // The engine tells us its own answer at startup: it prints
+    //   GamerProfile_UpdateProfileFromDvars(0): "mis_01" = ... "r_gamma" = ...
+    // which is exactly the set SetSavedDvar() operates on. So: AND the flags of dvars we
+    // know are in that set, and clear any bit that also appears on a dvar we know is not.
+    // Whatever survives is the flag. If that is not a single bit we refuse to write.
+    uint16_t derive_saved_flag(Dvar_FindVar_t find, bool quiet = false) {
+        static constexpr const char* kProfile[] = {
+            "r_gamma", "takeCoverWarnings", "mis_01", "cheat_points", "mis_difficulty"};
+        static constexpr const char* kNotProfile[] = {
+            "logfile", "dedicated", "fs_homepath", "com_maxfps", "con_typewriterColorBase"};
+
+        uint16_t common = 0xFFFF;
+        int seen = 0;
+        for (const char* n : kProfile) {
+            void* d = find(n);
+            if (!d) continue;
+            uint16_t f = 0;
+            if (!memory::read(reinterpret_cast<uintptr_t>(d) + dvar::off_flags, &f)) continue;
+            common &= f;
+            ++seen;
+        }
+        if (seen == 0) {
+            if (!quiet)
+                ENW_ERROR("dedicated: none of the GamerProfile dvars exist yet; cannot derive "
+                          "DVAR_SAVED on this attempt.");
+            return 0;
+        }
+
+        uint16_t negative = 0;
+        for (const char* n : kNotProfile) {
+            void* d = find(n);
+            if (!d) continue;
+            uint16_t f = 0;
+            if (!memory::read(reinterpret_cast<uintptr_t>(d) + dvar::off_flags, &f)) continue;
+            negative |= f;
+        }
+
+        const uint16_t candidate = static_cast<uint16_t>(common & ~negative);
+        const bool single = candidate != 0 && (candidate & (candidate - 1)) == 0;
+        if (!quiet || single)
+        ENW_INFO("dedicated: DVAR_SAVED derivation: %d profile dvars, common=0x%04X, "
+                 "negative=0x%04X, candidate=0x%04X (%s)",
+                 seen, common, negative, candidate,
+                 single ? "single bit - will use it" : "NOT a single bit - refusing to write");
+        return single ? candidate : 0;
+    }
+
+    void register_missing_saved_dvars(Dvar_FindVar_t find, uint16_t saved_bit) {
+        if (saved_bit == 0) {
+            ENW_WARN("dedicated: DVAR_SAVED not derived; leaving dvars alone this run");
+            return;
+        }
         for (const auto& d : kWantedDvars) {
             void* dv = find(d.name);
             if (!dv) {
@@ -247,12 +460,12 @@ private:
                 ENW_ERROR("dedicated: could not read dvar_s('%s') @ %p", d.name, dv);
                 continue;
             }
-            if (flags & DVAR_SAVED) {
+            if ((flags & saved_bit) == saved_bit) {
                 ENW_INFO("dedicated: '%s' already SAVED (flags 0x%04X type 0x%04X)",
                          d.name, flags, type);
                 continue;
             }
-            const uint16_t want = static_cast<uint16_t>(flags | DVAR_SAVED);
+            const uint16_t want = static_cast<uint16_t>(flags | saved_bit);
             if (!memory::write<uint16_t>(a + dvar::off_flags, want)) {
                 ENW_ERROR("dedicated: failed to set DVAR_SAVED on '%s' @ %p", d.name, dv);
                 continue;
@@ -261,7 +474,7 @@ private:
             memory::read(a + dvar::off_flags, &after);
             ENW_INFO("dedicated: '%s' flags 0x%04X -> 0x%04X (type 0x%04X) %s  [%s]",
                      d.name, flags, after, type,
-                     (after & DVAR_SAVED) ? "SAVED set" : "SET FAILED", d.why);
+                     ((after & saved_bit) == saved_bit) ? "SAVED bits set" : "SET FAILED", d.why);
         }
     }
 

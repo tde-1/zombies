@@ -135,6 +135,27 @@ DWORD WINAPI loader_thread(LPVOID) {
     }
 
     ENW_INFO("enw_t4: ready (post_init ran on %s)", on_main ? "the game thread" : "the loader thread");
+
+    // ...and once more, later, on purpose.
+    //
+    // The engine spends the first seconds of startup adding and hiding console
+    // channels as it execs default.cfg / language.cfg / the profile config, and a
+    // burst of Com_Printf lines emitted during that churn is only partly kept:
+    // measured across five runs, anywhere from 1 to 7 of the same 7 banner lines
+    // reached console.log. Nothing is wrong with the printing -- the filter state
+    // is just moving underneath us. So we re-announce once, after it settles, to
+    // give a deterministic "we are here" line.
+    ::Sleep(3000);
+    scheduler::run_on_main([]() {
+        game::console_print("^2[ENW]^7 enw_t4 ready - build %s %s, pid %lu\n", __DATE__, __TIME__,
+                            static_cast<unsigned long>(::GetCurrentProcessId()));
+    });
+    // The pump may already have stopped (see components/main_thread.cpp), so do
+    // not rely on the queue alone.
+    ::Sleep(500);
+    if (!game::console_available()) return 0;
+    game::console_print("^2[ENW]^7 enw_t4 ready - build %s %s, pid %lu\n", __DATE__, __TIME__,
+                        static_cast<unsigned long>(::GetCurrentProcessId()));
     link.send_log("info", "enw_t4 ready");
     return 0;
 }

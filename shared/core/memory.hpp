@@ -74,6 +74,21 @@ bool retarget_jmp(uintptr_t site, const void* destination);
 uintptr_t find_pattern(const char* signature);
 uintptr_t find_pattern(const char* signature, uintptr_t start, size_t size);
 
+// --------------------------------------------------------- import patching --
+// Replace an entry in the main module's import address table.
+//
+// Unlike everything else here, this WORKS BEFORE SteamStub HAS DECRYPTED: the
+// IAT lives in .rdata and the Windows loader fills it in before the PE entry
+// point runs. So it is the only way to intercept something the engine calls
+// during its very earliest init -- see components/instance_paths.cpp.
+//
+// `dll` is matched case-insensitively against the import descriptor's name.
+// `*original` receives the pointer that was there.
+bool hook_import(const char* dll, const char* function, void* replacement, void** original);
+
+// Address of the IAT slot, or nullptr. Useful to check an import exists.
+void** find_import(const char* dll, const char* function);
+
 // Does `address` look like the start of a real x86 function in .text?
 // Used to sanity-check the vault's public addresses before we call them.
 bool looks_like_function(uintptr_t address);

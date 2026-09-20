@@ -49,8 +49,28 @@ bool wait_for_engine(unsigned timeout_ms) {
         // means the dvar system -- and with it the console -- exists.
         if (find_dvar("logfile") != nullptr) {
             const unsigned waited = ::GetTickCount() - started;
+            ENW_INFO("game: dvar system up after %u ms ('logfile' exists)", waited);
+
+            // ...but `logfile` is registered BEFORE the engine actually opens
+            // <fs_homepath>\main\console.log, and anything printed in that window
+            // never reaches the file. `sys_gpu` is registered during system/
+            // renderer detection, which is comfortably after the file is open, so
+            // we use it as "startup is far enough along to be seen".
+            // Non-fatal: if it never appears we carry on and accept the race.
+            const DWORD second = ::GetTickCount();
+            while (::GetTickCount() - second < 15000) {
+                if (::InterlockedCompareExchange(&g_abort, 0, 0) != 0) return false;
+                if (find_dvar("sys_gpu") != nullptr) {
+                    ENW_INFO("game: engine fully up after %u ms ('sys_gpu' exists)",
+                             ::GetTickCount() - started);
+                    ::InterlockedExchange(&g_engine_ready, 1);
+                    return true;
+                }
+                ::Sleep(10);
+            }
+            ENW_WARN("game: 'sys_gpu' never appeared; carrying on after 'logfile' only. "
+                     "Early console output may not reach console.log.");
             ::InterlockedExchange(&g_engine_ready, 1);
-            ENW_INFO("game: engine up after %u ms (dvar 'logfile' exists)", waited);
             return true;
         }
         ::Sleep(10);
