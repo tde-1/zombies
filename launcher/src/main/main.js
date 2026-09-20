@@ -77,6 +77,88 @@ function wireCrashReporting() {
 }
 const reportCrash = wireCrashReporting()
 
+
+// ------------------------------------------------------- the closed-beta password --
+
+// One shared password in front of the whole site (web/server/middleware/gate.js).
+// Electron raises `login` on a 401 challenge, for the wrapped page and for anything
+// else in that session; we answer it from config, and ask the player once if we have
+// nothing. The answer is remembered so they type it once ever, not once per launch.
+//
+// It is a front door, not an identity: it does not identify anybody and it is not
+// their account password, which the prompt says out loud so nobody types the wrong one.
+async function askForPassword({ site, retry = false }) {
+  return new Promise((resolve) => {
+    const win = new BrowserWindow({
+      width: 460,
+      height: retry ? 340 : 312,
+      parent: state.win || undefined,
+      modal: !!state.win,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      title: 'ENW Zombies',
+      backgroundColor: '#12130e',
+      autoHideMenuBar: true,
+      webPreferences: { contextIsolation: false, nodeIntegration: false, sandbox: false },
+    })
+    let done = false
+    const finish = async (value) => {
+      if (done) return
+      done = true
+      try { win.destroy() } catch {}
+      resolve(value)
+    }
+    // The prompt hands its answer back through the document title, which needs no
+    // preload and no IPC surface for a window that only ever collects one string.
+    win.webContents.on('page-title-updated', async (e, title) => {
+      e.preventDefault()
+      if (title === 'enw:ok') {
+        const pw = await win.webContents.executeJavaScript('window.enwPassword').catch(() => null)
+        finish(pw)
+      } else if (title === 'enw:cancel') finish(null)
+    })
+    win.on('closed', () => finish(null))
+    const url = `file://${path.join(RENDERER, 'password.html').split(path.sep).join('/')}` +
+      `?site=${encodeURIComponent(site)}&retry=${retry ? 1 : 0}`
+    win.loadURL(url)
+  })
+}
+
+// Answers 401 challenges for the whole app. `attempts` stops a wrong password looping
+// forever: the second challenge for the same host re-prompts and says it was rejected,
+// and giving up leaves the page showing the site's own 401 rather than hanging.
+function wireSitePassword() {
+  const attempts = new Map()
+  app.on('login', async (event, webContents, details, authInfo, callback) => {
+    // Proxy authentication is somebody's corporate network, not our beta gate.
+    if (authInfo?.isProxy) return
+    const host = `${authInfo.host || ''}:${authInfo.port || ''}`
+    event.preventDefault()
+
+    const conf = cfg.load()
+    const tries = attempts.get(host) || 0
+    let pw = tries === 0 ? conf.sitePassword : null
+
+    if (!pw) {
+      const site = state.siteInfo?.url || `https://${authInfo.host || 'the site'}`
+      pw = await askForPassword({ site, retry: tries > 0 })
+      if (!pw) {
+        attempts.set(host, 0)
+        log('site password: the player cancelled')
+        push('toast', { kind: 'error', text: 'ENW Zombies needs the beta password. Open Settings to enter it.' })
+        return callback()
+      }
+      cfg.save({ sitePassword: pw })
+      log('site password: stored for', host)
+    }
+
+    attempts.set(host, tries + 1)
+    // Any username; the gate only reads what is after the colon.
+    callback('enw', pw)
+  })
+}
+
 // ---------------------------------------------------------------- the window --
 
 function layout() {
@@ -165,6 +247,7 @@ async function createWindow() {
       baseUrl: state.siteInfo.url,
       cookieProvider: electronCookieProvider(electronSession.defaultSession),
       appVersion: app.getVersion(),
+      password: cfg.load().sitePassword,
     })
     try {
       const hello = await api.sayHello()
@@ -511,7 +594,16 @@ if (!single) {
     // notifications, no geolocation. It is a web page, not a partner.
     electronSession.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false))
 
+    // ENW_SMOKE_FRESH: start as a brand-new install would — no cookies, so the
+    // closed-beta gate really challenges us. Without this the `zm_gate` cookie from a
+    // previous run masks the whole password path.
+    if (process.env.ENW_SMOKE_FRESH) {
+      await electronSession.defaultSession.clearStorageData().catch(() => {})
+      log('cleared the session (ENW_SMOKE_FRESH)')
+    }
+
     wireIpc()
+    wireSitePassword()
     await createWindow()
     createTray()
 

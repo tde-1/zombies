@@ -16,13 +16,19 @@ import { EventEmitter } from 'node:events'
 export const PROTOCOL = 0
 
 export class SiteApi extends EventEmitter {
-  constructor({ baseUrl, cookieProvider = null, appVersion = '0.0.0' } = {}) {
+  constructor({ baseUrl, cookieProvider = null, appVersion = '0.0.0', password = null } = {}) {
     super()
     this.baseUrl = String(baseUrl || 'http://127.0.0.1:3200').replace(/\/$/, '')
     this.cookieProvider = cookieProvider
     this.appVersion = appVersion
+    // The closed-beta gate. The main process uses Node's fetch, not Electron's network
+    // stack, so it never sees the `login` event the wrapped page gets — it has to send
+    // the Basic header itself or every API call 401s while the page works fine.
+    this.password = password
     this.hello = null
   }
+
+  setPassword(pw) { this.password = pw || null }
 
   async req(path, { method = 'GET', body = null, timeoutMs = 6000 } = {}) {
     const headers = {
@@ -34,6 +40,9 @@ export class SiteApi extends EventEmitter {
     if (body) headers['content-type'] = 'application/json'
     const cookie = this.cookieProvider ? await this.cookieProvider(this.baseUrl).catch(() => null) : null
     if (cookie) headers.cookie = cookie
+    if (this.password) {
+      headers.authorization = 'Basic ' + Buffer.from(`enw:${this.password}`).toString('base64')
+    }
 
     const res = await fetch(`${this.baseUrl}${path}`, {
       method,
