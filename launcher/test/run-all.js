@@ -366,6 +366,18 @@ await test('config.save exists and round-trips', async () => {
   cfg.save({ sitePassword: null })
 })
 
+await test('the map source is config, not code', async () => {
+  // B may move maps to a bucket. Switching has to be a setting: the file LIST, the
+  // sizes and the hashes still come from the site either way, so the bucket needs no
+  // intelligence and we still verify everything we are given.
+  const cfg = await import('../src/main/config.js')
+  assert.equal(cfg.DEFAULTS.mapsBase, null, 'default is the site's own route')
+  const src = String(fs.readFileSync(new URL('../src/main/library.js', import.meta.url)))
+  assert.ok(src.includes('mapsBase'), 'installFromSite must take a base')
+  // The hash check is not conditional on where the bytes came from.
+  assert.ok(src.includes('did not match the hash the archive recorded'))
+})
+
 // ------------------------------------------------------- the launch command --
 group('The launch command line')
 

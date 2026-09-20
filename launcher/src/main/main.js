@@ -392,7 +392,7 @@ function wireIpc() {
       // works on anybody else's machine. The local archive is the dev fallback.
       const onProgress = (p) => push('mapProgress', { bsp, ...p })
       if (state.api && state.api.can('map_downloads')) {
-        return await library.installFromSite(bsp, { api: state.api, onProgress })
+        return await library.installFromSite(bsp, { api: state.api, onProgress, mapsBase: cfg.load().mapsBase })
       }
       return library.install(bsp, { onProgress })
     } catch (e) {

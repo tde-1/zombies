@@ -192,7 +192,7 @@ function repair(file, rel) {
 // These are 200 MB - 1 GB over a Cloudflare tunnel from a home connection. That is
 // minutes, not seconds, so progress is reported per chunk with a rate and an estimate:
 // a download that looks hung is a download people kill.
-export async function installFromSite(bsp, { api, onProgress = () => {}, signal = null } = {}) {
+export async function installFromSite(bsp, { api, onProgress = () => {}, signal = null, mapsBase = null } = {}) {
   if (!api) throw new Error('not connected to the site')
   const listed = await api.req(`/api/maps/${encodeURIComponent(bsp)}/files`)
   if (!listed.ok) throw new Error(listed.data?.error || `the site answered ${listed.status}`)
@@ -226,7 +226,12 @@ export async function installFromSite(bsp, { api, onProgress = () => {}, signal 
     fs.mkdirSync(path.dirname(to), { recursive: true })
     const tmp = `${to}.part`
 
-    const url = f.url?.startsWith('http') ? f.url : `${api.baseUrl}${f.url}`
+    // Where the BYTES come from. The list, the sizes and the hashes always come from
+    // the site; only the base for the files themselves moves. So pointing this at a
+    // bucket needs no cleverness in the bucket, and we still verify everything.
+    const url = mapsBase
+      ? `${mapsBase}/${encodeURIComponent(bsp)}/${f.path.split('/').map(encodeURIComponent).join('/')}`
+      : (f.url?.startsWith('http') ? f.url : `${api.baseUrl}${f.url}`)
     const res = await api.fetchRaw(url, { signal })
     if (!res.ok) throw new Error(`${f.path}: the site answered ${res.status}`)
 
@@ -288,7 +293,7 @@ export async function installFromSite(bsp, { api, onProgress = () => {}, signal 
     author: man.author || null,
     fsGame: man.fs_game || `mods/${bsp}`,
     installedAt: new Date().toISOString(),
-    from: `${api.baseUrl}/api/maps/${bsp}/files`,
+    from: mapsBase ? `${mapsBase}/${bsp}` : `${api.baseUrl}/api/maps/${bsp}/files`,
     dir: dest,
     modLink: dest,
     files: copied,

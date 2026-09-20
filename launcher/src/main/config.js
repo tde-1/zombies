@@ -35,6 +35,15 @@ export const DEFAULTS = {
   // The closed-beta front door (web/server/middleware/gate.js). Remembered once the
   // player types it; never logged, never sent anywhere but the site.
   sitePassword: null,
+  // Where map FILES come from. Null means "the site's own download route", which is
+  // B's home connection through a tunnel. Point it at a bucket (R2, Hetzner, anything
+  // that serves bytes over HTTP) and nothing else changes: the file list, the sizes and
+  // the hashes still come from the site, so the bucket needs no intelligence and we
+  // still verify everything we get. `ZM_MAPS_BASE` overrides.
+  //
+  //   maps_base = 'https://maps.enw.gg'
+  //     -> https://maps.enw.gg/<bsp>/<file>
+  mapsBase: null,
   // Where the launcher asks for a server and an invite token.
   hostApi: 'http://127.0.0.1:8080',
   // The game box's own dashboard. Development source for live game state (phase,
@@ -75,6 +84,9 @@ export function load() {
   cached.siteUrl = pinned
   cached.site = pinned
   if (process.env.ZM_SITE_PASSWORD) cached.sitePassword = process.env.ZM_SITE_PASSWORD
+  // ZM_MAPS_BASE > config.mapsBase (> null, meaning the site's own route)
+  if (process.env.ZM_MAPS_BASE) cached.mapsBase = process.env.ZM_MAPS_BASE
+  if (cached.mapsBase) cached.mapsBase = String(cached.mapsBase).replace(/\/$/, '')
   if (process.env.ENW_HOST_API) cached.hostApi = process.env.ENW_HOST_API
   return cached
 }
