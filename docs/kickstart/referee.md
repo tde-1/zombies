@@ -9,9 +9,12 @@
 > `ENW_CHAT_INJECT=1` on a game that matters — that path is unproven (see §8.8).
 >
 > ### Green — measured in a live game, and still true after the retractions
-> * **Replay sampling at 19.2–19.5 Hz**, five independent runs, off `SV_Frame`. Player positions,
+> * **Replay sampling at 19.2–19.5 Hz**, six independent runs, off `SV_Frame`. Player positions,
 >   health and angles; zombie tracks via `classname`+`health`. A captured zombie read **health 150**,
 >   exactly stock round-1 — an independent confirmation of two offsets at once.
+> * **A full 7-minute capture with a moving player** (the crash fix landed in time for one):
+>   430 s, 8,340 snaps at 19.4 Hz, 11,949 zombie rows, 638 `input` events, position bbox
+>   x −248..968 / y −39..1092 / z −12..190. **11.44 MB/game-hour raw, 1.01 MB/h zstd-10.** See §8.9.
 > * **Flags and notifies by name.** `VM_Notify` + `re`'s string table resolve real script names
 >   (`all_players_connected`, `spawned_player`, …) with `ent: "level"` correctly attributed. This is
 >   the `flag_set()` → `level notify()` mechanism (§2.8) that makes ~1,000 custom maps tractable.
@@ -953,6 +956,35 @@ crash fixed on a test that did not reproduce the original configuration was the 
 
 Until the isolation run (sink connected, injection disabled) says otherwise, `server_say()` should
 be treated as **unsafe**, and the cross-server chat relay must not be built on `say`/`tell`.
+
+### 8.9 THE REAL MEASUREMENT (2026-09-20 04:01) — supersedes §8.6
+
+`ZombiesDev\captures
+azi_zombie_prototype-20260920-035402.ndjson`, client-mode solo on Nacht,
+taken on the fixed build (HUD-colour hook removed, injection off, diagnostics off). This is the
+first capture not truncated by my own bug, and the first with a player who actually moved.
+
+| | Measured |
+|---|---|
+| span | **429.9 s** (previous ceiling: 65.2 s) |
+| snaps | 8,340 at **19.4 Hz** |
+| player rows | 8,340, active slot only |
+| zombie rows | **11,949** (~1.4 per snap) |
+| `input` events | **638** — the player moved, unlike every earlier run |
+| position bbox | x −248..968, y −39..1092, z −12..190 |
+| **bytes** | **11.44 MB/game-hour raw · 1.16 gzip · 1.01 zstd-10** |
+
+**Movement barely changed the byte rate** (11.44 vs 11.62–11.78 stationary), which is expected: the
+v0 encoder writes a full position every snap rather than a delta, so motion costs digits, not rows.
+That is worth knowing before anyone tunes the format — the §8.3 finding that **zombie count
+dominates** is confirmed rather than displaced. `estimate_snap_bytes.py` predicts 40.2 MB/h raw for
+solo assuming ~8 zombies alive; this run averaged ~1.4, and 11.44 is almost exactly what the model
+gives at that density.
+
+**Still a floor, for one honest reason**: a solo player on round 1–2 of Nacht with a handful of
+zombies is the cheapest game that exists. A 4-player late-round game will be several times this.
+The model remains the planning number; this measurement confirms the model's *shape* and its
+sensitivity to zombie count, which is what it was for.
 
 ### 8.5 Still to run
 * `<fs_homepath>\main` + a mod (§3.4 follow-up) — staged, blocked because `fs_game` makes
