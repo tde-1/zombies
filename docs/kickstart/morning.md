@@ -24,9 +24,9 @@ invite tokens and live spectating all work together on real data.
 ## The numbers we now have (measured, not estimated)
 | | Figure |
 |---|---|
-| Maps catalogued | **2,276** distinct, ~2,400 download links |
-| Link rot | **~40% of community links are dead** |
-| Whole archive | **~120 GB** (mean map 176 MB) — cheaper than the 0.2–0.6 TB assumed |
+| Maps catalogued | **2,276** distinct, **2,810** download links |
+| Link rot | **13.7% of checkable community links are dead**, and a further **508 sit behind sign-in walls** nobody can verify — so 13.7–33.4%. **MEGA is 35.4% dead** and is the one host we can't download from; **MediaFire is 1.4% dead** after fifteen years |
+| Whole archive | **1,363 maps recoverable, 280 GB measured**; ~**0.6 TB** with originals plus installs — the **top** of the 0.2–0.6 TB estimate, and a floor rather than a ceiling |
 | Replay size | **3.0 / 6.4 / 8.0 MB per game-hour** at 1 / 2 / 4 players (from the simulator, corrected upward once its zombies behaved realistically; a live-game measurement is still owed) |
 | Replay storage | **$6.36/month** for 90 days at 25 concurrent games |
 | Headless server idle | **~0% CPU, 186 MB** with a zombies map loaded |

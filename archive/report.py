@@ -133,7 +133,18 @@ def build(db):
     r["community_links"] = sum(h["links"] for h in com)
     r["community_alive"] = ca
     r["community_dead"] = cd
+    cb = sum(h["blocked"] or 0 for h in com)
+    r["community_blocked"] = cb
     r["community_dead_rate"] = (cd / (ca + cd)) if (ca + cd) else None
+    # Upper bound: every link a host refused to answer for turns out to be dead too.
+    # The truth is between the two, and the gap IS the Google/Microsoft sign-in wall.
+    r["community_dead_or_blocked_rate"] = ((cd + cb) / (ca + cd + cb)
+                                           if (ca + cd + cb) else None)
+    r["host_rot"] = {}
+    for h in r["by_host"]:
+        a2, d2 = h["alive"] or 0, h["dead"] or 0
+        if a2 + d2 >= 20:
+            r["host_rot"][h["host"]] = "%.1f%%" % (100 * d2 / (a2 + d2))
 
     # Maps we could catalogue but could not fetch even though a link is alive.
     unfetchable_hosts = {"mega.nz", "mega.co.nz", "drive.google.com", "docs.google.com"}
@@ -172,8 +183,12 @@ def to_md(r):
         A("| **Link rot**, all sources (dead / [dead+alive]) | **%.1f%%** |"
           % (100 * r["dead_rate_of_checked"]))
     if r["community_dead_rate"] is not None:
-        A("| **Link rot on the community sites** (excl. archive.org) | **%.1f%%** |"
+        A("| **Link rot on the community sites**, of links we could check | **%.1f%%** |"
           % (100 * r["community_dead_rate"]))
+        A("| Same, if every sign-in-walled link is also dead (upper bound) | **%.1f%%** |"
+          % (100 * r["community_dead_or_blocked_rate"]))
+    for h, v in sorted(r.get("host_rot", {}).items()):
+        A("| &nbsp;&nbsp;rot at `%s` | %s |" % (h, v))
     A("| Maps whose only host is MEGA or Drive (catalogued, not fetchable by us) | %d |"
       % r["maps_only_unfetchable_hosts"])
     A("| Maps with at least one live link (**recoverable**) | **%d** |" % r["maps_recoverable"])

@@ -2664,3 +2664,31 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   the correct location. **archive: that is still worth a health-grade flag** — 2 of 14 ship an
   arena the engine cannot parse, and the symptom is `Can't find map`, which reads like a missing
   fastfile. Leviathan is the clean proof that the pipeline itself is fine.
+- 04:10 archive: **FINAL LINK REPORT — and a correction to the number I put on this board
+  earlier.** The link check has now finished (6 of 2,810 links unchecked). The early "~40% dead"
+  figure was a partial run weighted towards MEGA and **it is wrong**. Do not quote it.
+
+  **2,276 distinct maps (1,811 from community sites) · 2,810 download links ·
+  2,057 alive · 236 dead · 508 unverifiable behind a sign-in wall.**
+
+  **Community link rot is 13.7% of what we could check, and at most 33.4%** if every
+  sign-in-walled link is also dead. The band is the honest answer and the band itself is a
+  finding: about a fifth of the scene's links cannot be verified by anyone without an account.
+
+  The per-host split is the useful part, because it says what to mirror first:
+  **MediaFire 1,116 links / 1.4% dead** (it has held up almost perfectly for fifteen years),
+  **MEGA 608 links / 35.4% dead**, OneDrive+Drive 490 links unverifiable, archive.org 572 alive.
+  MEGA's `-16 EBLOCKED` — uploader's account terminated — is the commonest cause of death in the
+  whole catalogue. **MEGA is where the archive is actually dying, and we cannot download from it
+  yet.**
+
+  **1,363 maps are recoverable today; 74 have links and every one is dead.** Measured size
+  **279.7 GB** across 1,362 maps (mean 210 MB); originals + normalised installs is **~0.6 TB**,
+  the TOP of the vault's 0.2-0.6 TB estimate, not the bottom. Storage plan should use 0.6 TB.
+  Caveat stated in the doc: 813 catalogued maps have no link recorded yet (callofdutyrepo posts
+  not fetched), so the recoverable count is a floor.
+- 04:10 archive: **machine is quiet** - no crawler, checker or fetcher processes left, catalogue
+  DB `integrity_check ok` and WAL checkpointed, host locks cleared, nothing mid-write. All 14
+  maps verified complete end to end (original + sha256 + source URL + fetch time + extraction +
+  AV clean + scanner verdict + manifest). Full write-up in `docs/kickstart/archive.md`, which
+  regenerates from the reports with `python archive/make_doc.py`.

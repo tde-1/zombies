@@ -95,6 +95,13 @@ def main():
         "n_mediafire": sum(h["links"] for h in r["by_host"]
                            if "mediafire" in (h["host"] or "")),
         "only_mega": r["maps_only_mega"],
+        "rot_upper": "%.1f%%" % (100 * r["community_dead_or_blocked_rate"])
+                     if r.get("community_dead_or_blocked_rate") is not None else "n/a",
+        "com_alive": r.get("community_alive", 0),
+        "com_dead": r.get("community_dead", 0),
+        "com_blocked": r.get("community_blocked", 0),
+        "mediafire_rot": r.get("host_rot", {}).get("mediafire.com", "n/a"),
+        "mega_rot": r.get("host_rot", {}).get("mega.nz", "n/a"),
         "by_source": " · ".join("%s %d" % (k, v) for k, v in r["by_source"].items()),
         "tags": " · ".join("%s %d" % (k, v) for k, v in sorted(
             r["tags"].items(), key=lambda kv: -kv[1]) if not k.startswith("archive_")),

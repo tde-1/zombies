@@ -7,27 +7,53 @@
 ## The headline
 
 **2276 distinct maps catalogued (1811 from the community sites),
-2806 download links, and a measurement of WaW custom-zombies link rot — which
-`R3 - Map archive, legal and community` records as never having been measured.**
+2810 download links, and the first measurement of WaW custom-zombies link rot —
+which `R3 - Map archive, legal and community` records as never having been measured.**
 
-- **Link rot on the community sites: 23.3%** of the links we could check are dead.
-  (Across all sources, including archive.org's pre-verified mirror, 13.5%.)
-- **924 maps have at least one live link** — those are recoverable today.
-  **70 maps have links and every one of them is dead.**
-- **178.3 GB** of originals measured across 923 maps (largest live mirror each), mean
-  **197.9 MB** a map. That projects to **178.5 GB** for everything recoverable and
-  **349.9 GB** for the whole community catalogue. The archive keeps the original *and* a
-  normalised install (vault 04 rule 3), so roughly double those for the real storage bill. That
-  lands inside the vault's 0.2–0.6 TB estimate, near its lower half.
-- Two caveats on these counts, both of them "not yet" rather than "unknowable":
-  993 links were still being checked when this was generated, and 815 catalogued
-  maps have **no link recorded yet** — overwhelmingly callofdutyrepo posts whose per-map page has
-  not been fetched (the download buttons are only on the post). Both are bounded, resumable work:
-  `crawlers/codrepo.py --pass c --posts N`, then `check_links.py`, then `make_doc.py`.
+**Between 13.7% and 33.4% of community download links are already gone.**
+Of the 1485 + 236 community links we could actually check, **13.7%
+are dead**. A further 508 sit behind a Google or Microsoft sign-in we will not create
+an account to pass, and if every one of those is dead too the figure is 33.4%. The truth
+is somewhere in that band and the band itself is the finding: **a fifth of the scene's download
+links can no longer be verified by anyone without an account.**
+
+The per-host split matters more than the average, because it says what to mirror first:
+
+| Host | Links | Dead |
+|---|---:|---:|
+| MediaFire | 1,116 | **1.4%** |
+| MEGA | 608 | **35.4%** |
+| OneDrive + Google Drive | 490 | unverifiable — sign-in wall |
+| archive.org | 572 | 0% |
+
+MediaFire has held up almost perfectly for fifteen years. **MEGA is where the archive is
+actually dying**, and MEGA's `-16 EBLOCKED` (the uploader's account was terminated) is the
+single most common cause of death in the whole catalogue.
+
+- **1363 maps have at least one live link** — recoverable today.
+  **74 maps have links and every one of them is dead.**
+- **279.7 GB** of originals measured across 1362 maps (largest live mirror each), mean
+  **210.3 MB** a map. That projects to **279.9 GB** for everything recoverable and
+  **372.0 GB** for the whole community catalogue. The archive keeps the original *and* a
+  normalised install (vault 04 rule 3), so roughly double it for the real storage bill —
+  **about 0.6 TB**, the top of the vault's 0.2–0.6 TB estimate rather than the bottom.
+- **107 maps have nothing but MEGA and Google Drive links.** Catalogued,
+  plausibly alive, and out of this pipeline's reach until one of those two is solved.
+- 813 catalogued maps have **no link recorded yet** — almost all of them
+  callofdutyrepo posts whose per-map page was never fetched, because that host timed out on
+  us at 02:40 and the crawler stopped, as it is supposed to. 387 of its 1,399 posts are done;
+  the other 1,012 are the biggest single source of *more* links and are one resumable command
+  away (`crawlers/codrepo.py --pass c --posts N`).
 
 The pipeline then took **14 maps** end to end — fetched (6.1 GB), hashed,
-AV-scanned, extracted without running a single installer, normalised to `mods/<map>/` and scanned
+AV-scanned, extracted without running a single installer, normalised to `mods/<bsp>/` and scanned
 for a finish.
+
+**What a full archive run needs next, in order:** a MEGA client-side decrypt (608 links, 35% of
+them already dead, 94 maps have nothing else — this is the urgent one); ZombieModding's
+permission or an export, since its `robots.txt` bans us and it hosts the most-downloaded maps in
+the scene; a Drive/OneDrive-capable fetcher, which means an account and so is B's call; then the
+remaining 1,012 callofdutyrepo posts and a boot-test pass on a dedicated server.
 
 ## 1. How the pipeline runs
 
@@ -78,33 +104,37 @@ installer was executed.
 | Catalogue rows crawled | 3455 |
 | Distinct maps (all sources) | **2276** |
 | Distinct maps (community sites only) | **1811** |
-| Download links catalogued (distinct URLs) | **2806** |
-| Links alive | **1182** |
-| Links dead | **185** |
-| Links blocked (host will not answer a robot) | 449 |
+| Download links catalogued (distinct URLs) | **2810** |
+| Links alive | **2057** |
+| Links dead | **236** |
+| Links blocked (host will not answer a robot) | 508 |
 | Links unknown | 3 |
-| Links unchecked | 993 |
-| **Link rot**, all sources (dead / [dead+alive]) | **13.5%** |
-| **Link rot on the community sites** (excl. archive.org) | **23.3%** |
+| Links unchecked | 6 |
+| **Link rot**, all sources (dead / [dead+alive]) | **10.3%** |
+| **Link rot on the community sites**, of links we could check | **13.7%** |
+| Same, if every sign-in-walled link is also dead (upper bound) | **33.4%** |
+| &nbsp;&nbsp;rot at `archive.org` | 0.0% |
+| &nbsp;&nbsp;rot at `mediafire.com` | 1.4% |
+| &nbsp;&nbsp;rot at `mega.nz` | 35.4% |
 | Maps whose only host is MEGA or Drive (catalogued, not fetchable by us) | 107 |
-| Maps with at least one live link (**recoverable**) | **924** |
-| Maps whose every link is dead (**lost so far**) | **70** |
-| Maps we could not decide | 467 |
-| Maps with no download link at all | 815 |
-| Maps with a measured size | 923 |
-| **Measured bytes** (largest live mirror per map) | **178.3 GB** |
+| Maps with at least one live link (**recoverable**) | **1363** |
+| Maps whose every link is dead (**lost so far**) | **74** |
+| Maps we could not decide | 26 |
+| Maps with no download link at all | 813 |
+| Maps with a measured size | 1362 |
+| **Measured bytes** (largest live mirror per map) | **279.7 GB** |
 | of which Drive-rounded | 0.0 B |
-| Mean map size | 197.9 MB |
-| Projected: every recoverable map | **178.5 GB** |
-| Projected: the whole community catalogue | **349.9 GB** |
+| Mean map size | 210.3 MB |
+| Projected: every recoverable map | **279.9 GB** |
+| Projected: the whole community catalogue | **372.0 GB** |
 
 | Host | Links | Alive | Dead | Blocked | Unknown | Unchecked |
 |---|---:|---:|---:|---:|---:|---:|
-| mediafire.com | 1114 | 391 | 6 | 1 | 0 | 722 |
-| mega.nz | 608 | 219 | 173 | 0 | 0 | 216 |
+| mediafire.com | 1116 | 1092 | 15 | 3 | 0 | 6 |
+| mega.nz | 608 | 393 | 215 | 0 | 0 | 0 |
 | archive.org | 572 | 572 | 0 | 0 | 0 | 0 |
-| onedrive.live.com | 394 | 0 | 0 | 357 | 0 | 37 |
-| drive.google.com | 92 | 0 | 0 | 74 | 0 | 18 |
+| onedrive.live.com | 396 | 0 | 0 | 396 | 0 | 0 |
+| drive.google.com | 92 | 0 | 0 | 92 | 0 | 0 |
 | downloads.gamefront.com | 10 | 0 | 0 | 10 | 0 | 0 |
 | papy.cod-france.com | 5 | 0 | 5 | 0 | 0 | 0 |
 | docs.google.com | 2 | 0 | 0 | 2 | 0 | 0 |
@@ -122,7 +152,7 @@ Rows crawled per source: codrepo 1399 · zwr 936 · ugx 605 · archive.org 496 �
 | Source | What it is good for | What it cost | Catch |
 |---|---|---|---|
 | **ZWR** (`zwr.gg`) | ~950 maps and ~1,100 links **in one HTTP request**, plus an explicit "No Download Link available" marker on 51 rows | 1 request | Names only — no author, no date, no description |
-| **callofdutyrepo** | The finish tags the whole badge model needs, plus author, description, release date, view counts | 21 list pages + 11 tag pages + 1 per map | Its own "Direct Download" mirror is one OneDrive account whose legacy links no longer resolve (see below) |
+| **callofdutyrepo** | The finish tags the whole badge model needs, plus author, description, release date, view counts | 21 list pages + 11 tag pages + 387 of its 1,399 per-map posts | **It timed out on us at 02:40 and the crawler stopped**, so 1,012 posts (and their download links) are still to do. Its own "Direct Download" mirror is one OneDrive account whose legacy links no longer resolve (see below) |
 | **UGX-Mods** board 29 | The **author** and the **real release date** — the thread's poster and post time, not a repo's re-upload date | 35 index pages | The Map Manager's catalogue is inside the app, not on the site |
 | **ModDB** | Self-hosted files that do not rot, with size and MD5 published | 1 page | `robots.txt` disallows `/*?`, so **pagination is off-limits**: one page of 30, not the whole section |
 | **archive.org** | Exact byte sizes and hashes from `/metadata/<id>` — **the size question answered with zero bytes transferred** | ~60 requests | Its items are file dumps, so its "maps" are filenames, not releases |
@@ -140,7 +170,7 @@ Counting a link we cannot see as dead would inflate the rot figure with fiction,
   and account-free. Recorded `blocked`.
 - **OneDrive.** Every one of callofdutyrepo's OneDrive mirrors answers 404 to a HEAD and redirects a
   GET to `login.live.com`: Microsoft retired the `?cid=…&resid=…&authkey=…` URL shape. The files may
-  well still exist. Recorded `blocked` — the first version of the checker called all 396
+  well still exist. Recorded `blocked` — the first version of the checker called all 398
   of them dead, which would have put a couple of hundred imaginary corpses in the headline number.
 - **GameFront.** Serves a bot "Security Check" page (HTTP 403). No CAPTCHA was attempted. The ten
   links also carry `expires=1586…` signatures from April 2020, so they are dead in practice too.
@@ -310,7 +340,7 @@ token looks like the next false positive.
 |---|---|---|
 | **MEGA downloads** | 608 links, 94 maps have nothing else | Client-side AES-CTR decrypt with the key from the URL fragment. The *health and size* probe already works (MEGA's public API answers without an account), so only the download is missing. Half a day. |
 | **Google Drive, at all** | 94 links | Needs a signed-in browser. B's call, because it means an account. |
-| **OneDrive legacy links** | 396 links | Microsoft retired the URL shape. Possibly recoverable via the modern share-link API; more likely these want re-hosting from another mirror. |
+| **OneDrive legacy links** | 398 links | Microsoft retired the URL shape. Possibly recoverable via the modern share-link API; more likely these want re-hosting from another mirror. |
 | **ZombieModding** | the most-downloaded maps in the scene | `robots.txt` forbids it. Needs permission or an export — outreach, which needs B. |
 | **ModDB beyond page 1** | ~30 of maybe 900 addons catalogued | `robots.txt` disallows `/*?`. Needs their API or permission. |
 | **Boot-testing a map** | 0 of 14 | The pipeline stops at "extracted and scanned". `health` in every manifest is therefore unset: nothing here has been proved to *run*, let alone to survive a mid-game join. That is the dedi agent's lock to take. |

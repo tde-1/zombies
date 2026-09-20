@@ -7,27 +7,53 @@
 ## The headline
 
 **{{distinct_maps}} distinct maps catalogued ({{community_maps}} from the community sites),
-{{links}} download links, and a measurement of WaW custom-zombies link rot — which
-`R3 - Map archive, legal and community` records as never having been measured.**
+{{links}} download links, and the first measurement of WaW custom-zombies link rot —
+which `R3 - Map archive, legal and community` records as never having been measured.**
 
-- **Link rot on the community sites: {{rot_community}}** of the links we could check are dead.
-  (Across all sources, including archive.org's pre-verified mirror, {{rot_all}}.)
-- **{{recoverable}} maps have at least one live link** — those are recoverable today.
+**Between {{rot_community}} and {{rot_upper}} of community download links are already gone.**
+Of the {{com_alive}} + {{com_dead}} community links we could actually check, **{{rot_community}}
+are dead**. A further {{com_blocked}} sit behind a Google or Microsoft sign-in we will not create
+an account to pass, and if every one of those is dead too the figure is {{rot_upper}}. The truth
+is somewhere in that band and the band itself is the finding: **a fifth of the scene's download
+links can no longer be verified by anyone without an account.**
+
+The per-host split matters more than the average, because it says what to mirror first:
+
+| Host | Links | Dead |
+|---|---:|---:|
+| MediaFire | 1,116 | **{{mediafire_rot}}** |
+| MEGA | 608 | **{{mega_rot}}** |
+| OneDrive + Google Drive | 490 | unverifiable — sign-in wall |
+| archive.org | 572 | 0% |
+
+MediaFire has held up almost perfectly for fifteen years. **MEGA is where the archive is
+actually dying**, and MEGA's `-16 EBLOCKED` (the uploader's account was terminated) is the
+single most common cause of death in the whole catalogue.
+
+- **{{recoverable}} maps have at least one live link** — recoverable today.
   **{{lost}} maps have links and every one of them is dead.**
 - **{{bytes}}** of originals measured across {{sized}} maps (largest live mirror each), mean
   **{{mean}}** a map. That projects to **{{proj_recoverable}}** for everything recoverable and
   **{{proj_all}}** for the whole community catalogue. The archive keeps the original *and* a
-  normalised install (vault 04 rule 3), so roughly double those for the real storage bill. That
-  lands inside the vault's 0.2–0.6 TB estimate, near its lower half.
-- Two caveats on these counts, both of them "not yet" rather than "unknowable":
-  {{unchecked}} links were still being checked when this was generated, and {{nolinks}} catalogued
-  maps have **no link recorded yet** — overwhelmingly callofdutyrepo posts whose per-map page has
-  not been fetched (the download buttons are only on the post). Both are bounded, resumable work:
-  `crawlers/codrepo.py --pass c --posts N`, then `check_links.py`, then `make_doc.py`.
+  normalised install (vault 04 rule 3), so roughly double it for the real storage bill —
+  **about 0.6 TB**, the top of the vault's 0.2–0.6 TB estimate rather than the bottom.
+- **{{only_unfetchable}} maps have nothing but MEGA and Google Drive links.** Catalogued,
+  plausibly alive, and out of this pipeline's reach until one of those two is solved.
+- {{nolinks}} catalogued maps have **no link recorded yet** — almost all of them
+  callofdutyrepo posts whose per-map page was never fetched, because that host timed out on
+  us at 02:40 and the crawler stopped, as it is supposed to. 387 of its 1,399 posts are done;
+  the other 1,012 are the biggest single source of *more* links and are one resumable command
+  away (`crawlers/codrepo.py --pass c --posts N`).
 
 The pipeline then took **{{fetched_ok}} maps** end to end — fetched ({{fetched_bytes}}), hashed,
-AV-scanned, extracted without running a single installer, normalised to `mods/<map>/` and scanned
+AV-scanned, extracted without running a single installer, normalised to `mods/<bsp>/` and scanned
 for a finish.
+
+**What a full archive run needs next, in order:** a MEGA client-side decrypt (608 links, 35% of
+them already dead, {{only_mega}} maps have nothing else — this is the urgent one); ZombieModding's
+permission or an export, since its `robots.txt` bans us and it hosts the most-downloaded maps in
+the scene; a Drive/OneDrive-capable fetcher, which means an account and so is B's call; then the
+remaining 1,012 callofdutyrepo posts and a boot-test pass on a dedicated server.
 
 ## 1. How the pipeline runs
 
@@ -82,7 +108,7 @@ Rows crawled per source: {{by_source}}.
 | Source | What it is good for | What it cost | Catch |
 |---|---|---|---|
 | **ZWR** (`zwr.gg`) | ~950 maps and ~1,100 links **in one HTTP request**, plus an explicit "No Download Link available" marker on 51 rows | 1 request | Names only — no author, no date, no description |
-| **callofdutyrepo** | The finish tags the whole badge model needs, plus author, description, release date, view counts | 21 list pages + 11 tag pages + 1 per map | Its own "Direct Download" mirror is one OneDrive account whose legacy links no longer resolve (see below) |
+| **callofdutyrepo** | The finish tags the whole badge model needs, plus author, description, release date, view counts | 21 list pages + 11 tag pages + 387 of its 1,399 per-map posts | **It timed out on us at 02:40 and the crawler stopped**, so 1,012 posts (and their download links) are still to do. Its own "Direct Download" mirror is one OneDrive account whose legacy links no longer resolve (see below) |
 | **UGX-Mods** board 29 | The **author** and the **real release date** — the thread's poster and post time, not a repo's re-upload date | 35 index pages | The Map Manager's catalogue is inside the app, not on the site |
 | **ModDB** | Self-hosted files that do not rot, with size and MD5 published | 1 page | `robots.txt` disallows `/*?`, so **pagination is off-limits**: one page of 30, not the whole section |
 | **archive.org** | Exact byte sizes and hashes from `/metadata/<id>` — **the size question answered with zero bytes transferred** | ~60 requests | Its items are file dumps, so its "maps" are filenames, not releases |
