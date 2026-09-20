@@ -180,6 +180,126 @@ function repair(file, rel) {
   }
 }
 
+// --------------------------------------------------------------- from the site --
+
+// Downloading a map from the site instead of a folder on this machine.
+//
+// The site hands back every file with its size and the SHA-256 the archive recorded,
+// and we verify each one AS IT ARRIVES — hashing the stream rather than the file
+// afterwards, so a bad download is caught before it is written anywhere useful and we
+// never hand the engine a half-map.
+//
+// These are 200 MB - 1 GB over a Cloudflare tunnel from a home connection. That is
+// minutes, not seconds, so progress is reported per chunk with a rate and an estimate:
+// a download that looks hung is a download people kill.
+export async function installFromSite(bsp, { api, onProgress = () => {}, signal = null } = {}) {
+  if (!api) throw new Error('not connected to the site')
+  const listed = await api.req(`/api/maps/${encodeURIComponent(bsp)}/files`)
+  if (!listed.ok) throw new Error(listed.data?.error || `the site answered ${listed.status}`)
+  const spec = listed.data
+  if (!spec.install_known || !spec.files?.length) {
+    throw new Error(`The site has no files for ${bsp} yet.`)
+  }
+
+  const man = readManifests().get(bsp) || {}
+  const title = man.title || bsp
+  const dest = assertWritable(installDir(bsp))
+
+  const own = ownership(bsp)
+  if (own.state === 'theirs') {
+    throw new Error(`${title} is already in your own World at War mods folder and ENW did not put it there. Leaving it alone.`)
+  }
+  fs.mkdirSync(dest, { recursive: true })
+
+  const total = spec.size_bytes || spec.files.reduce((n, f) => n + (f.size || 0), 0)
+  const started = Date.now()
+  let done = 0
+  const copied = []
+  const problems = []
+
+  for (const f of spec.files) {
+    const ext = path.extname(f.path).toLowerCase()
+    if (BANNED_EXT.has(ext)) { problems.push(`refused ${f.path}: ENW never installs an executable that came with a map`); continue }
+    if (ext && !ALLOWED_EXT.has(ext)) { problems.push(`skipped ${f.path}: not a file type a map needs`); continue }
+
+    const to = assertWritable(path.join(dest, f.path))
+    fs.mkdirSync(path.dirname(to), { recursive: true })
+    const tmp = `${to}.part`
+
+    const url = f.url?.startsWith('http') ? f.url : `${api.baseUrl}${f.url}`
+    const res = await api.fetchRaw(url, { signal })
+    if (!res.ok) throw new Error(`${f.path}: the site answered ${res.status}`)
+
+    const hash = crypto.createHash('sha256')
+    const out = fs.createWriteStream(tmp)
+    let fileDone = 0
+    let lastTick = 0
+    try {
+      for await (const chunk of res.body) {
+        hash.update(chunk)
+        fileDone += chunk.length
+        done += chunk.length
+        if (!out.write(chunk)) await new Promise((r) => out.once('drain', r))
+        const now = Date.now()
+        if (now - lastTick > 250) {
+          lastTick = now
+          const secs = (now - started) / 1000
+          const rate = secs > 0 ? done / secs : 0
+          onProgress({
+            file: f.path, done, total, bytesPerSecond: rate,
+            etaSeconds: rate > 0 ? Math.max(0, Math.round((total - done) / rate)) : null,
+          })
+        }
+      }
+      await new Promise((r, j) => out.end((e) => (e ? j(e) : r())))
+    } catch (e) {
+      try { out.destroy() } catch {}
+      try { fs.unlinkSync(tmp) } catch {}
+      throw new Error(`${f.path}: the download stopped (${e.message})`)
+    }
+
+    // Loudly, before it is installed. A corrupt map that loads halfway is worse than
+    // one that never arrives.
+    const got = hash.digest('hex')
+    if (f.sha256 && got !== f.sha256) {
+      try { fs.unlinkSync(tmp) } catch {}
+      throw new Error(
+        `${f.path} did not match the hash the archive recorded — got ${got.slice(0, 16)}…, ` +
+        `expected ${String(f.sha256).slice(0, 16)}…. Nothing was installed.`
+      )
+    }
+    const st = fs.statSync(tmp)
+    if (f.size != null && st.size !== f.size) {
+      try { fs.unlinkSync(tmp) } catch {}
+      throw new Error(`${f.path} arrived as ${st.size} bytes, expected ${f.size}. Nothing was installed.`)
+    }
+
+    fs.renameSync(tmp, to)
+    const fix = repair(to, f.path)
+    if (fix) problems.push(`${f.path}: ${fix.what}`)
+    copied.push({ rel: f.path, size: st.size, sha256: f.sha256 || null, ...(fix ? { repaired: fix } : {}) })
+  }
+
+  if (!copied.length) throw new Error(`Nothing to install for ${title}.`)
+
+  const record = {
+    bsp,
+    title,
+    author: man.author || null,
+    fsGame: man.fs_game || `mods/${bsp}`,
+    installedAt: new Date().toISOString(),
+    from: `${api.baseUrl}/api/maps/${bsp}/files`,
+    dir: dest,
+    modLink: dest,
+    files: copied,
+    bytes: copied.reduce((n, f) => n + f.size, 0),
+    verified: spec.files.every((f) => !!f.sha256),
+    problems,
+  }
+  fs.writeFileSync(assertWritable(path.join(dest, RECORD)), JSON.stringify(record, null, 2))
+  return record
+}
+
 // ------------------------------------------------------------------- install --
 
 // The library and the engine's view are the same folder — and it is the PLAYER'S

@@ -24,6 +24,7 @@
 // Nothing here hands out anybody else's invite token, ever.
 
 const express = require('express')
+const mapfiles = require('../lib/mapfiles')
 const users = require('../lib/users')
 const parties = require('../lib/parties')
 const maps = require('../lib/maps')
@@ -78,7 +79,8 @@ function router() {
         deep_links: ['/m/:map', '/live/:match', '/id/:who'],
         // Not built. Listed so the launcher can grey a button instead of calling and
         // getting a 404 it has to explain to the player.
-        map_downloads: false,
+        // True only when the files are actually on this box, not when we wish they were.
+        map_downloads: mapfiles.available().length > 0,
         replay_downloads: false,
         og_cards: false,
       },

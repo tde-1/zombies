@@ -4,6 +4,7 @@
 
 const express = require('express')
 const maps = require('../lib/maps')
+const mapfiles = require('../lib/mapfiles')
 const records = require('../lib/records')
 const comments = require('../lib/comments')
 const playlists = require('../lib/playlists')
@@ -99,6 +100,51 @@ function router() {
     if (!set.ok) return res.status(400).json(set)
     void party
     res.json({ ok: true, party: set.party })
+  })
+
+  // ---- downloading a map -------------------------------------------------------
+  //
+  // Behind the site password like everything else (the gate is app-wide), so these are
+  // not open to the internet. Two routes: what to fetch, and the bytes.
+
+  // What the launcher needs to install this map: every file, its size, its SHA-256.
+  r.get('/:key/files', (req, res) => {
+    res.json(mapfiles.forMap(req.params.key))
+  })
+
+  // The bytes. `Range` is supported because these are 200 MB - 1 GB over a tunnel from
+  // a home connection, and a download that cannot resume is a download that fails.
+  r.get('/:key/files/:name', (req, res) => {
+    const f = mapfiles.resolveFile(req.params.key, req.params.name)
+    if (!f) return res.status(404).json({ error: 'no such file for that map' })
+
+    res.setHeader('content-type', 'application/octet-stream')
+    res.setHeader('accept-ranges', 'bytes')
+    // The hash the archive recorded, so a client can verify without a second request.
+    if (f.sha256) res.setHeader('x-enw-sha256', f.sha256)
+    // These files never change once normalised, so let anything in the middle cache
+    // them and let a re-install be free.
+    res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+
+    const range = req.headers.range
+    if (range) {
+      const m = /^bytes=(\d*)-(\d*)$/.exec(String(range).trim())
+      if (!m) { res.setHeader('content-range', `bytes */${f.size}`); return res.status(416).end() }
+      let start = m[1] === '' ? null : Number(m[1])
+      let end = m[2] === '' ? null : Number(m[2])
+      if (start === null) { start = Math.max(0, f.size - (end || 0)); end = f.size - 1 }
+      if (end === null || end >= f.size) end = f.size - 1
+      if (!(start >= 0) || start > end) { res.setHeader('content-range', `bytes */${f.size}`); return res.status(416).end() }
+      res.status(206)
+      res.setHeader('content-range', `bytes ${start}-${end}/${f.size}`)
+      res.setHeader('content-length', String(end - start + 1))
+      if (req.method === 'HEAD') return res.end()
+      return require('node:fs').createReadStream(f.full, { start, end }).pipe(res)
+    }
+
+    res.setHeader('content-length', String(f.size))
+    if (req.method === 'HEAD') return res.end()
+    require('node:fs').createReadStream(f.full).pipe(res)
   })
 
   return r

@@ -57,6 +57,16 @@ export class SiteApi extends EventEmitter {
     return { ok: res.ok, status: res.status, data, text }
   }
 
+  // A raw fetch that still carries the session cookie and the beta password, for
+  // streaming downloads where we want the body rather than parsed JSON.
+  async fetchRaw(url, { signal = null, headers = {} } = {}) {
+    const h = { 'x-enw-launcher': this.appVersion, ...headers }
+    const cookie = this.cookieProvider ? await this.cookieProvider(this.baseUrl).catch(() => null) : null
+    if (cookie) h.cookie = cookie
+    if (this.password) h.authorization = 'Basic ' + Buffer.from(`enw:${this.password}`).toString('base64')
+    return fetch(url.startsWith('http') ? url : `${this.baseUrl}${url}`, { headers: h, signal, redirect: 'follow' })
+  }
+
   // Once at startup. Replaces probing ports and guessing what the site can do.
   async sayHello() {
     const r = await this.req('/api/launcher/hello')

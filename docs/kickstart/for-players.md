@@ -56,11 +56,17 @@ Then pick a map from the list on the right. There are four that come with World 
 others. The small grey text under each name is the map's internal name, which is usually nothing
 like its real title.
 
-**Tonight, only the four stock maps will actually play.** The rescued ones are listed but say
-**"Not available yet"**, because the map files are 200 MB to 1 GB each and we have nowhere to serve
-them from yet. We are not hiding them from you — you should be able to see what's coming — but the
-launcher will not pretend you can install one. When the downloads exist, the same button will say
-*Install* and a size.
+A rescued map you haven't downloaded yet shows **Install** and its size instead of Play. Press it
+and wait.
+
+**These are big — 200 MB to 1 GB — and they come from B's home internet, not a proper download
+service.** Expect minutes, not seconds. The launcher shows the speed and a time estimate so you can
+tell it's working rather than stuck. Leave it running; you can carry on using the rest of the
+launcher while it downloads.
+
+Every file is checked against a fingerprint as it arrives. If anything doesn't match, the launcher
+throws the whole thing away and tells you, rather than installing a broken map you'd then have to
+debug.
 
 ### 5. Press Play Local
 
@@ -71,8 +77,8 @@ through the steps, then the game opens.
 
 ## What works, and what doesn't yet
 
-**Works:** finding your game, installing the ENW client, and playing the four stock World at War
-zombies maps on your own PC.
+**Works:** finding your game, installing the ENW client, downloading and installing any of the 14
+rescued maps, and playing them — or the four stock maps — on your own PC.
 
 **Not ready:**
 
@@ -83,9 +89,6 @@ zombies maps on your own PC.
   locally never will, by design — on your own PC you could change anything, so it wouldn't be fair
   to anyone else.
 - **Steam sign-in** is a stand-in, as above.
-- **Downloading the rescued maps.** They're catalogued and the launcher knows how to install and
-  verify one — it has done it here — but nothing serves the files over the internet yet. Until then
-  the 14 custom maps are visible and marked *Not available yet*.
 - **Automatic updates.** When there's a new version, B will send you a new file.
 
 ## If something goes wrong
@@ -94,6 +97,8 @@ zombies maps on your own PC.
   copy.
 - **The game opens but the map never loads** — tell B which map. The launcher will show you where it
   put the map files; that's the first thing to check.
+- **A download is crawling, or stops** — that's B's home connection, not you. Press Install again;
+  it starts over cleanly and will not leave a half-map behind.
 - **You want it gone** — Settings → **Remove the ENW client**. It asks whether to keep your
   downloaded maps, and it only removes things it installed. Your own World at War, and any maps you
   installed yourself, are left alone. Then delete the launcher file.

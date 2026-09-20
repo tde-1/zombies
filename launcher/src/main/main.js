@@ -388,7 +388,13 @@ function wireIpc() {
   handle('installMap', async (bsp) => {
     state.gate.block('mapinstall', 'a map is installing')
     try {
-      return library.install(bsp, { onProgress: (p) => push('mapProgress', { bsp, ...p }) })
+      // From the site when we are connected to one — that is the only route that
+      // works on anybody else's machine. The local archive is the dev fallback.
+      const onProgress = (p) => push('mapProgress', { bsp, ...p })
+      if (state.api && state.api.can('map_downloads')) {
+        return await library.installFromSite(bsp, { api: state.api, onProgress })
+      }
+      return library.install(bsp, { onProgress })
     } catch (e) {
       await reportCrash('map_failed', e, { bsp })
       throw e
@@ -686,6 +692,17 @@ if (!single) {
                if (!b) return 'no such map in the rail'
                b.click()
                await new Promise((r) => setTimeout(r, 300))
+               // If the map is not installed the primary button says Install. Press it
+               // and wait: these are hundreds of MB, so the wait is the point.
+               const primary = document.getElementById('playBtn')
+               if (/^Install/.test(primary.textContent)) {
+                 primary.click()
+                 const until = Date.now() + 600000
+                 while (Date.now() < until && !document.getElementById('playLocalBtn').disabled === false) {
+                   await new Promise((r) => setTimeout(r, 1000))
+                   if (!document.getElementById('playLocalBtn').disabled) break
+                 }
+               }
                const pl = document.getElementById('playLocalBtn')
                if (pl.disabled) return 'Play Local is disabled: ' + document.getElementById('cardNote').textContent
                pl.click()
