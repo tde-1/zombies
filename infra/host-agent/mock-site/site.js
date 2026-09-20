@@ -34,10 +34,14 @@ for (const s of String(a.keys || process.env.ENW_SITE_KEYS || 'box-a:devkey-a,bo
 }
 
 // The site's invite-token signing key. Boxes get the PUBLIC half over /api/gs/keys.
-const siteKey = keys.loadOrCreate(path.join(a['key-dir'] || path.join(__dirname, '.dev-keys'), 'site-invite.json'))
+// Keys default OUTSIDE the repo. They are development keys, but a key that lives in a
+// working tree gets committed eventually, and "it was only a dev key" is how that
+// argument always starts. --key-dir moves them.
+const KEY_DIR = a['key-dir'] || path.join(process.env.ZOMBIES_DEV || 'C:/Users/b/ZombiesDev', 'keys', 'mock-site')
+const siteKey = keys.loadOrCreate(path.join(KEY_DIR, 'site-invite.json'))
 // A key that is NOT the site's, used only to mint deliberately-forged tokens for the
 // refusal demo. Nothing real ever signs with it.
-const forgerKey = keys.loadOrCreate(path.join(a['key-dir'] || path.join(__dirname, '.dev-keys'), 'forger-demo.json'))
+const forgerKey = keys.loadOrCreate(path.join(KEY_DIR, 'forger-demo.json'))
 log.info(`invite key ${siteKey.keyId}`)
 
 const state = {

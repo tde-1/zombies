@@ -100,6 +100,26 @@ public:
             ENW_INFO("dedi_nowindows: not a dedicated server; leaving all windows alone");
             return;
         }
+        // NOTHING IS ENABLED BY DEFAULT HERE, AND NEITHER ATTEMPT WORKED.
+        // Kept because the two negative results are worth as much as the tool:
+        //   p41  suppressed 0x605500 ("WinConsole create") and 0x603D70 ("splash"):
+        //        no change at all -- still 2 frames then the GDI stall. 0x605500 has a
+        //        single caller, at 0x605804, i.e. it is a helper INSIDE the append path
+        //        rather than the window creator, so this was the wrong target.
+        //   p43  suppressed the appends themselves, 0x6057F0 (2 sites) and 0x605870
+        //        (3 sites): STRICTLY WORSE -- Com_Init stopped returning at all
+        //        (bringup_hits back to 0), no frames, and the UDP socket was never
+        //        bound (the OOB probe got ICMP port-unreachable rather than a timeout).
+        //        Either those functions do more than append text, or the plain-`ret`
+        //        stub is wrong for their calling convention and I corrupted the stack.
+        // Do not enable either set again without new evidence. The real evidence is in
+        // the p42 walk (see below); the fix should follow from naming 0x5B0830.
+        if (!std::getenv("ENW_DEDI_NOWINDOWS_FORCE")) {
+            ENW_WARN("dedi_nowindows: suppression attempts are DISABLED -- both made things "
+                     "worse or did nothing (see the comment in headless_windows.cpp). "
+                     "Set ENW_DEDI_NOWINDOWS_FORCE=1 only if you have new evidence.");
+            return;
+        }
         // Revised after probes p41/p42. Suppressing 0x605500 changed nothing, and the
         // deep validated stack walk says why: the thread is NOT deadlocked in one call.
         // Its EIP moves between `NtUserExtTextOutW` and `NtUserScrollDC`, and the

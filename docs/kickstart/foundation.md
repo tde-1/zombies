@@ -343,6 +343,7 @@ Everything else in vault §2 is still unverified — that is `re`'s job.
 | `components/frame_dispatch.cpp` | installs the tick and reports on it |
 | `components/instance_paths.cpp` | per-instance profile via an IAT patch (off by default) |
 | `components/huffman_guard.cpp` | **the bounded compressed-message decode** (§11) |
+| `components/direct_connect.cpp` | the getAuthTicket short-circuit (see below) |
 | `components/focus_guard.cpp` | **keeps the engine ticking when unfocused** (see the top) |
 | `components/heartbeat.cpp` | one "still ticking" line every 15 s, and a `perf` message |
 | `components/userinfo_guard.cpp` | sanitises player names and userinfo every frame (§11) |
@@ -729,35 +730,66 @@ dvar, so the engine sets flag 0x2 itself and resends userinfo without us writing
 When `re` hands over the full `Dvar_RegisterString` prototype this collapses into a direct call and
 the file disappears.
 
-### Direct connect — unblocked, loopback needs nothing
+### Direct connect — done, one site, five bytes
 
-`re` traced the whole join path, and the licence check is **not** the wall it looked like:
+`re` traced the join path and found the client's licence check is not a wall: it parses, stores and
+logs the server's 64-bit licenceId and never validates it. What gates a connect is the Demonware
+**`getAuthTicket` (0x57C0E0)** call the client makes before sending `connect`, which `Com_Error`s
+`PATCH_SERVER_AUTHFAIL` on failure — and that is the `demonware.net` traffic §0 shows us blocking.
 
-| Direction | String | Address |
-|---|---|---|
-| client → server | `getchallenge 0 "%s"` | 0x48A14C |
-| server → client | `challengeResponse %i %s` (+ 64-bit licenceId) | 0x486B98 |
-| client → server | `connect ` + userinfo | 0x48A1AC |
-| server → client | `connectResponse %s` | 0x48705C |
+**The part that would have sunk the join test.** The guard is narrower than "it's on my machine".
+From our own dump at 0x642E4C:
 
-The client **parses, stores and logs** the server's licenceId and never validates it
-(`CHALLENGERESPONSE: Got server licenseid %llx`, 0x48A250). What actually gates a connect is the
-Demonware **`getAuthTicket` (0x57C0E0)** call the client makes before sending `connect`, which
-`Com_Error`s `PATCH_SERVER_AUTHFAIL` on failure. **That whole block is skipped for `NA_LOOPBACK` /
-`NA_BOT`** (guard at 0x642E4C).
+```
+mov  eax, [0x300FFF8]   ; netadr.type
+cmp  eax, 2             ; NA_LOOPBACK -> skip the auth block
+je   skip
+test eax, eax           ; NA_BOT (0)  -> skip
+je   skip
+```
 
-So: **a loopback connect needs no patching at all** — stock handshake, every guard left on. For
-remote ENW servers the fix is one site, `call 0x57C0E0` at 0x642E77, rather than a protocol port.
+NA_LOOPBACK is the engine's **in-process** loopback, a listen server talking to its own client.
+**A second process on the same box is NA_IP (4), even at 127.0.0.1.** So a two-instance test on one
+machine takes the auth path in full, calls a service that has been dead for years, and fails in a
+way that looks precisely like a networking bug.
 
-> **These two pieces of work collide, and they have to ship together.** The `getAuthTicket` call is
-> the Demonware traffic my DNS block catches (§0). With ENW-only networking on, a *remote* connect
-> will therefore hard-error with `PATCH_SERVER_AUTHFAIL` instead of quietly phoning home. That is
-> the right security posture, but it means **short-circuiting 0x57C0E0 is not optional once DNS is
-> blocked** — you cannot land one without the other. Loopback is unaffected.
+**The fix**, `shared/core/components/direct_connect.cpp`, at 0x642E77:
 
-A consequence worth having in the product case: a **stock** WaW client cannot reach a
-non-Demonware server at all, which is very likely why Plutonium is the only project that ever did
-WaW co-op. Our client is genuinely *required*, not a convenience.
+```
+E8 64 92 F3 FF   call 0x57C0E0     ->    B0 01 90 90 90   mov al, 1 ; nop x3
+```
+
+The two arguments are pushed before the call and cleaned by the `add esp, 8` after it, so replacing
+only the call keeps the stack balanced; the result is read as `test al, al; jne ok`, so a non-zero
+`al` takes the success path and skips the `Com_Error`. The component verifies both the five bytes
+and that the call target really is `getAuthTicket` before writing anything, and refuses loudly
+otherwise. `ENW_DIRECT_CONNECT=0` disables it.
+
+Confirmed live: `direct_connect: getAuthTicket short-circuited at 00642E77`.
+
+It lives in `shared/core` rather than `client-dll` deliberately — the join test uses a core-only
+build, and a dedicated server never executes `CL_SendConnectPacket`, so the patch is inert there.
+
+**This is not DRM.** SteamStub is the copy protection and we never touch it; we wait for it
+(`steamstub.cpp`). This is the online-services auth ticket for joining a game server, for a service
+that no longer exists, on servers we run ourselves — vault 99 §5.1's direct-connect patch.
+
+> Pairs with §0: with ENW-only networking on, the DNS block makes `getAuthTicket` fail faster. The
+> short-circuit and the DNS block are two halves of one change and must ship together.
+
+### Survival: the ~70 s crash is not ours
+
+Two controls, both `+map nazi_zombie_prototype`, both with the focus guard in:
+
+| build | components | duration | result |
+|---|---|---|---|
+| core-only | 8, no server components at all | **270 s** | steady 62.5 fps, 16,761 frames, no crash |
+| full | 19, `referee/bind: notify=yes` and notify entries firing | **540 s** | steady 62.5 fps, 33,559 frames, no crash |
+
+So a stock-plus-core client survives well past 70 s, and so did a build with `referee`'s notify hook
+live. Stated plainly: the 540 s run had `scriptvars=no` and `dvars=no`, so those paths were not
+exercised — but "a notify hook exists" is not sufficient to cause the crash.
+
 
 **Running two instances.** The interlock refuses a second launch by design. `-Companion` is the
 supported way round it for a server+client test: it requires a live, fresh `game.lock` to exist

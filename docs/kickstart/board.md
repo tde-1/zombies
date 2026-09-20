@@ -2337,14 +2337,17 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   not the constraint** on games-per-box — whatever the ceiling turns out to be, it is the game
   process or dedi's hardcoded UDP 3074 party socket, not us. Caveat in bold: 51.8 MiB/instance is a
   Node simulator, not CoDWaW.exe, and says nothing about the 0.3-0.8 core the cost model turns on.
-- 05:10 host: SOAK, 20 min x 6 games x 4 players (not the 20 h T5 wants, but the only continuous
-  evidence we have). Game processes FLAT (+2.4%). 454k events, **0 dropped**. Simulated frame p99
-  31-47 ms, inside the 60 ms target. The agent's RSS more than doubled (64.7 -> ~150 MiB) and then
-  settled into a 148-161 MiB band — and the split is the answer: **heapUsed is 11.6-15.0 MiB and
-  flat**, so ~139 MiB is native Buffers, i.e. the replay path concatenating ~500 KB per chunk and
-  handing it to zstd six games at a time. Node reuses that arena rather than returning it, which is
-  why it oscillates instead of climbing. **No leak; budget ~150-200 MiB for the agent.** Worth
-  doing later: compress chunks incrementally instead of concatenating, which removes the arena.
+- 05:10 host: SOAK, 24 min x 6 games x 4 players (not the 20 h T5 wants, but the only continuous
+  evidence we have). Game processes FLAT (+2.4%). 518k events, **0 dropped**. Simulated frame p99
+  31-47 ms, inside the 60 ms target. The agent's RSS more than doubled (64.7 -> 168 MiB peak) and
+  then began sawtoothing around a **flat trough**: the last seven samples are 155.7, 148.0, 161.2,
+  148.7, 148.1, 161.8, 167.7 — the troughs do not move, which is what separates a sawtooth from a
+  leak. The split confirms it: **heapUsed is 11.6-15.0 MiB and flat**, so ~139 MiB is native
+  Buffers — the replay path concatenating ~500 KB per chunk and handing it to zstd, six games at a
+  time, with Node reusing the arena rather than returning it. **Read that as "no leak found in 24
+  minutes", not "no leak"** — the peaks still hit a new high on the last sample. Budget ~150-200
+  MiB for the agent. Worth doing later: compress chunks incrementally instead of concatenating,
+  which removes the arena and the question with it.
   One genuinely unbounded array was found while reading for the leak and fixed (`Referee.send()`
   appended every command ever issued to an array nothing read — fine for 20 minutes, not for 20
   hours). `tools/soak.js` now records heap beside RSS so the next run answers this from the CSV.
@@ -2388,3 +2391,39 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
 - 03:32 referee: everything I measured before 03:21 came from runs my own bug was cutting short at
   65 s. **The numbers in `referee.md` 8.6 are due a re-measure, not a footnote** — treat the snap
   rate as the only one that survives (a rate is insensitive to the run being truncated).
+- 05:25 host: two housekeeping notes on `infra/host-agent/`. (1) `mock-site/.dev-keys/` (two
+  Ed25519 dev keys) is sitting in the working tree — my fault, the mock site used to default its
+  key dir to `__dirname`. Fixed: it now defaults to `ZombiesDev\keys\mock-site`, outside the
+  repo. I have LEFT the two existing files alone because another agent has `mock-site/site.js`
+  running right now and a box pinned against its key; coordinator, delete `.dev-keys/` once that
+  process is gone. (2) `linksink.py` and `analyse_capture.py` are in my folder and are not mine —
+  they look like referee's capture tooling. Not touching them; say if they should move.
+- 03:36 dedi: **validated stack walk done, and it changes the picture — plus two failed fixes,
+  reported as failures.**
+  **(1) `re` was right about `0x49414E`**: with a `call`-preceded filter it is rejected as a return
+  address. It now shows up in a separate "unvalidated .text values (NOT callers)" line so nobody
+  chases it again. My first validated walk came back *empty*, which was worse than useless — a 1 KB
+  window from ESP does not reach the engine frames under a deep user32/GDI call. Widened to 16 KB.
+  **(2) The real chain (probe p42):**
+  ```
+  EIP = win32u.dll!NtUserScrollDC+0xC     (t=4s)   <- note: NOT ExtTextOutW this time
+  validated return addresses: 005B0830 (x15)  0060594E
+  unvalidated .text values (NOT callers): 0049414E
+  ```
+  **The EIP moves between `NtUserExtTextOutW` and `NtUserScrollDC` across runs, so the thread is not
+  deadlocked in one call — it is grinding.** That reads as the console edit control being hammered:
+  every appended line is a synchronous `SendMessage` -> wndproc -> paint + scroll, which is quadratic
+  in the amount of text and hangs the frame loop rather than blocking it. `0x60594E` is in your
+  WinConsole region. **`re`: the address that matters now is `0x5B0830`** — it is the repeated
+  validated caller and I cannot name it.
+  **(3) Both suppression attempts FAILED. Neither is enabled; the component now refuses to run
+  without `ENW_DEDI_NOWINDOWS_FORCE`.**
+  * p41, suppressing `0x605500` + `0x603D70`: **no change**. `0x605500` has exactly one caller, at
+    `0x605804`, so it is a helper *inside* the append path, not the window creator — wrong target.
+  * p43, suppressing the appends `0x6057F0` (2 sites) and `0x605870` (3 sites): **strictly worse** —
+    `Com_Init` stopped returning at all (`bringup_hits` back to 0), no frames, and the UDP socket was
+    never bound (the OOB probe got ICMP port-unreachable instead of a timeout). Either those
+    functions do more than append text, or my plain-`ret` stub is wrong for their calling convention
+    and I corrupted the stack. I should have checked the convention before patching five sites.
+  Also fixed: `oob.py` now reports `PORT UNREACHABLE` instead of crashing on a UDP reset — which is
+  itself a useful signal, it means nothing is bound.

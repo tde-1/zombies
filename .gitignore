@@ -30,3 +30,4 @@ thirdparty/*
 # and VENDORED-FROM.txt (the upstream commit) are kept next to the sources.
 !thirdparty/minhook/
 ZombiesDev/
+.dev-keys/

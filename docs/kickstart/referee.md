@@ -796,7 +796,14 @@ Everything runtime-shaped waits on this: the replay sampler, AFK input, the scor
 body, `SV_Frame`, `G_RunFrame`, and `Sys_DedicatedConsolePump` 0x69DAA0 (already known to run each
 frame when `com_dedicated != 0` — that one alone would give the dedicated server a tick today).
 
-### 8.6 MEASURED IN A REAL GAME (2026-09-20 02:08)
+### 8.6 MEASURED IN A REAL GAME (2026-09-20 02:08) — **SUPERSEDED, SEE 8.7**
+
+> **Read §8.7 first.** Every capture in this section was cut short at 65.2 s by a crash **in the
+> referee's own diagnostic code**, which I misdiagnosed twice (first as an engine pause, then as an
+> environment problem) before running the control that settled it. The snap rate below survives,
+> because a rate does not care that a run was truncated. The byte figures, the zombie-row counts and
+> the "no death observed" conclusion do not, and are being re-measured.
+
 
 `ZombiesDev\captures\nazi_zombie_prototype-20260920-020759.ndjson`, client-mode solo, Nacht.
 
@@ -838,6 +845,41 @@ order, and the thunk's stack offsets are all confirmed. The fault is `levelId`, 
 **0x00000000** at 0x3882BC8 throughout. Now reading it per instance
 (`gScrVarPub + instance*0x18048 + 0x20`) with a self-calibrating fallback: the first notify whose
 name is level-only defines the id, so flag detection no longer rests on one global being right.
+
+### 8.7 The 65-second wall was mine, and what it cost
+
+Every capture tonight ended at exactly 65.2 s. I read that as an environment quirk twice — first
+"the game pauses when unfocused", then "the engine crashes" — and reported both. Neither was right,
+and the tell was in the data the whole time: **a figure that identical across builds with different
+hook sets is evidence of a systematic cause in the constant factor**, and the constant factor was
+the referee.
+
+The control that settled it, which should have been the first move:
+
+| Build | Result |
+|---|---|
+| `build.ps1 -CoreOnly` (no server components) | **alive at 200 s** |
+| full build with the referee components | dead at ~70 s, every run |
+| full build, heavy diagnostics off/bounded | **alive at 210 s** |
+| full build, stack-alignment fix reverted, diagnostics still off | alive at 150 s → **alignment was not the cause** |
+
+So the crash was one of two **diagnostics**, not any feature:
+* the `level.*` probe — 65,536 entries × 4 extractions of `is_readable()` in one burst, **inside a
+  notify handler on the game thread**; now opt-in behind `ENW_LEVELVARS=1`;
+* the origin discovery — 128 entities × 26 candidates × a `VirtualQuery` **every frame**, ~200,000
+  syscalls/second, running unbounded (the logs show 960, 2,544 and 3,952 passes on different runs);
+  now hard-bounded.
+
+Both were throwaway probes that quietly became permanent per-frame load on the thing they were
+measuring. That is the same shape as two other bugs of mine tonight — a `finally` that released a
+lock it never acquired, and a log read that could have held the game's file open — and the common
+thread is **cleanup and diagnostic code carrying more authority and less budget than the feature
+code it serves**. A diagnostic needs a cost ceiling and an off switch the moment it is written.
+
+Withdrawn as a result: the `currentOrigin` runtime cross-check (non-deterministic across three runs
+— AGREE +0x160, then +0x15C, then +0x148, with a different surviving candidate set each time, so
+the one agreement was luck); and the claim that `foundation`'s focus guard would unblock the
+captures (it works, and it was not the blocker).
 
 ### 8.5 Still to run
 * `<fs_homepath>\main` + a mod (§3.4 follow-up) — staged, blocked because `fs_game` makes

@@ -184,8 +184,7 @@ map, then zombies GSC setting `g_spawnai 1`, `ai_disableSpawn 0`, `dynEnt_spawne
 | 1 | `WinMain` 0x5FF799 → 0x5FF4E0 | the renderer/D3D bring-up is called before the frame loop and is **not** gated by `com_dedicated`; in a headless process it drags a D3D device in | **CLEARED.** `re` found it; our DLL retargets that one call (verified `E8 42 FD FF FF` → 0x5FF4E0, no argument pushes before it, so a naked no-arg stub is safe), and refuses to patch if the target is not what we expect |
 | 2 | `maps/_load.gsc:3767` via `:324` | stock GSC calls `SetSavedDvar` on `con_typewriterColorBase`, a client-only dvar. `+set` creates it but without the SAVED flag; `seta` does not help | **CLEARED, but crudely.** Our DLL ORs flag bits into the existing `dvar_s`. See the honesty note below |
 | 3 | `ERR_MAPLOADERRORSUMMARY` raised from `SV_SpawnServer+0x3CD` (call at `0x62B7AD`) | The dedicated path tripped the map-load error summary **with an empty accumulated list**, and `Com_Error(7, "")` tail-called `Sys_Error`, which parked the main thread in `win32u!NtUserGetMessage` for ever inside `Com_Init`. Found by suspending the thread and reading its context; confirmed by trapping `Com_Error` | **CLEARED.** Our DLL retargets that one call to a stub that logs and returns. `Com_Init` now returns, the frame loop starts, and the server dispatches packets (`SV_PacketEvent`/`SV_ConnectionlessPacket`/`SV_DirectConnect` all fired) |
-| 5 | text draw at `0x49414E` | after ~2 frames the main thread parks in `win32u!NtGdiExtTextOutW`, same EIP/ESP every sample. Different address, different API and different ESP from site 3, so it is a new site rather than the old one recurring. Most likely the WinConsole / loading text drawn from the frame loop with nothing pumping that window | **OPEN. The only thing between us and the loopback join test.** Likely the same one-call short-circuit; we need no console output, `logfile 2` covers it |
-| 4 | `BG_LoadWeaponDef` | `Could not find default weapon`, reached only with `fs_game` active | **RETRACTED.** On repaired data `main\iw_14.iwd` holds **220 `weapons/sp/*` and 55 `accuracy/*` files**, and `iw_14.iwd` was one of the zero-filled ones — so those 275 files were simply invisible. Not a dedicated-mode bug and not an `fs_game` bug. Confirmation run pending |
+| 5 | console text output; repeated validated caller **`0x5B0830`**, plus `0x60594E` in the WinConsole region | after ~2 frames the main thread sits in GDI. A validated stack walk (accepting an address only if a `call` precedes it) shows the EIP **moving between `win32u!NtUserExtTextOutW` and `win32u!NtUserScrollDC`**, so it is **grinding, not deadlocked** — consistent with the console edit control being hammered: each appended line is a synchronous `SendMessage` → wndproc → paint + scroll, quadratic in the text. `0x49414E`, which I reported earlier, is **not** a return address and was a false positive | **OPEN. Two fixes tried, both failed — see below. The address that would unlock it is `0x5B0830`** |
 | — | UDP 3074 | the party socket is bound with no dvar to move it | not a crash; blocks several instances per box |
 
 ### How site 2 was settled, and what it cost
@@ -208,6 +207,20 @@ Three wrong answers preceded it and each is worth remembering:
 
 The three other flag names in our source (`0x0001` archive, `0x0040` ROM, `0x4000` external) are
 **[inferred] from behaviour**, not read from instructions, and are labelled that way in the code.
+
+### Two failed fixes for site 5, kept because the negatives are worth having
+
+Neither is enabled; `headless_windows.cpp` refuses to run without `ENW_DEDI_NOWINDOWS_FORCE`.
+
+- **Suppressing `0x605500` ("WinConsole create") and `0x603D70` ("splash"): no change at all.**
+  `0x605500` has exactly one caller, at `0x605804`, so it is a helper *inside* the append path rather
+  than the window creator — the wrong target.
+- **Suppressing the appends `0x6057F0` (2 call sites) and `0x605870` (3): strictly worse.**
+  `Com_Init` stopped returning at all (`bringup_hits` back to 0), no frames, and the UDP socket was
+  never bound — the OOB probe got ICMP port-unreachable rather than a timeout. Either those functions
+  do more than append text, or my plain-`ret` stub is wrong for their calling convention and I
+  corrupted the stack. I patched five sites on a convention I had not verified, which is the mistake
+  to learn from: the `add esp` check I wrote is evidence, not proof, and I should have required it.
 
 ### Honesty note on the "parked main thread" (superseded, kept for the record)
 

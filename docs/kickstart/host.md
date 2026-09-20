@@ -345,31 +345,37 @@ the result path, and deliberately so: one is a picture, the other is the record.
 
 ### 3h. The soak: does the agent drift?
 
-`node host.js --box soak --boot 6 --sim-players 4` plus `node tools/soak.js`, left running while
-everything else in this document was being done. Not the 20 hours vault 14 T5 asks for, but the
-only continuous evidence we have, and it found something.
+`node host.js --box soak --boot 6 --sim-players 4` plus `node tools/soak.js`, left running for 24
+minutes while everything else in this document was being done. Not the 20 hours vault 14 T5 asks
+for, but the only continuous evidence we have, and it found something.
 
-| | at 0 s | at 20 min | verdict |
+| | at 0 s | at 24 min | verdict |
 |---|---|---|---|
-| Game processes (6 × 4p) | 308.0 MiB | 315.3 MiB | **+2.4% — flat** |
-| Agent RSS | 64.7 MiB | ~150 MiB, oscillating 148–161 | **grew, then found a band** |
+| Game processes (6 × 4p) | 308.0 MiB | 315.4 MiB | **+2.4% — flat** |
+| Agent RSS | 64.7 MiB | sawtooth, floor 148, peaks to 168 | **see below** |
 | Agent JS heap | — | **11.6–15.0 MiB, flat** | **no JS leak** |
-| CPU | 0.016 core total | 0.016 core total | flat |
-| Game link | — | 454,000 events | **0 dropped** |
+| CPU | 0.016 core total | 0.019 core total | flat |
+| Game link | — | 518,000 events | **0 dropped** |
 | Simulated frame p99 | 22.9 ms | 31–47 ms | within the 60 ms target |
 
-**The agent's RSS more than doubled and then stopped.** The important measurement is the split:
-`heapUsed` sits at 11.6–15.0 MiB and does not move, so ~139 MiB of the RSS is **native, not JS** —
-Buffers. That is the replay path: every chunk flush concatenates ~500 KB of NDJSON and hands it to
-`zstdCompressSync`, six games at a time. Node's allocator reuses that arena rather than returning
-it, which is why the figure *oscillates* (161 → 148 → 154 → 149) instead of climbing monotonically.
-The density ramp agrees from the other direction: twenty games reached 145 MiB in a few minutes,
-six games reached ~150 MiB in twenty — the band is set by buffer churn, not by game count or time.
+**The agent's RSS more than doubled, and then started sawtoothing around a flat floor.** The last
+seven samples are 155.7, 148.0, 161.2, 148.7, 148.1, 161.8, 167.7 MiB — **the troughs do not move
+(148.0 / 148.7 / 148.1) while the peaks vary.** A flat trough is the thing that distinguishes a
+sawtooth from a leak: if memory were genuinely being retained, the bottom of each cycle would climb
+too.
 
-**So: no leak found, and a number to design against.** Budget ~150–200 MiB for the agent on a busy
-box and do not be alarmed by the first twenty minutes. Two things would still be worth doing before
-anyone trusts a 20-hour game: run this for the actual 20 hours, and make the chunk writer compress
-incrementally instead of concatenating, which would cut the arena to almost nothing.
+The split says where it lives: `heapUsed` sits at 11.6–15.0 MiB and does not move, so ~139 MiB of
+the RSS is **native, not JS** — Buffers. That is the replay path: every chunk flush concatenates
+~500 KB of NDJSON and hands it to `zstdCompressSync`, six games at a time. Node reuses that arena
+rather than returning it to the OS. The density ramp agrees from the other direction: twenty games
+reached 145 MiB in a few minutes, six reached ~150 in twenty, so the band is set by buffer churn
+rather than by game count or elapsed time.
+
+**Read this as "no leak found in 24 minutes", not "no leak".** A flat JS heap and a flat trough are
+good evidence and not proof; peaks still reached a new high on the last sample. Budget ~150–200 MiB
+for the agent on a busy box. Two things would settle it properly: run the real 20 hours, and make
+the chunk writer compress incrementally instead of concatenating, which removes the arena and the
+question with it.
 
 Running this again is one command each; `tools/soak.js` now records `agent_heap_mib` beside
 `agent_rss_mib` so the JS-vs-native question is answered by the CSV rather than by hand.
@@ -638,7 +644,7 @@ cleanly before killing it, so the demo stops manufacturing the crash case.
 | **Play Local** | **Works, and refuses in all the right places.** | `test/demo-local.js`: ignored by default, refused unregistered, adopted when registered, refereed and recorded with `self_reported` inside the signed header, and refused outright on a box with `--site`. |
 | **Live spectator frames** | **Works; the site's shim can be deleted.** | 87 frames in 22 s to the real site, 0 dropped; `GET /api/live/<match>` returns real player positions. |
 | **Density** | **The agent is not the constraint.** | 20 simulated games on one agent: 0.05 core total, flat per-game cost, 1,215 events/s, nothing dropped, ~4.9 MiB of agent memory per game. |
-| **Soak** | **No leak; a number to design against.** | 20 minutes, 6 games, 454k events, 0 dropped. Game processes flat; agent RSS settles in a 148–161 MiB band with a flat 12–15 MiB JS heap, i.e. native buffer churn in the replay path. |
+| **Soak** | **No leak found in 24 minutes — not the same as no leak.** | 24 min, 6 games, 518k events, 0 dropped, frame p99 inside target. Game processes flat. Agent RSS sawtooths with a **flat trough** (148.0/148.7/148.1) and a flat 12–15 MiB JS heap, so the ~139 MiB above it is native buffer churn in the replay path, not retention. The 20-hour run is still owed. |
 
 ---
 
@@ -769,7 +775,7 @@ agent touches it.
   logs and carries on — refereeing games is the job); a busy **game-link** port still does, correctly.
   Both test harnesses now fail loudly with the port in the message instead of letting somebody
   else's box quietly take the lease.
-* **The 20-hour soak still has not been run**, only 20 minutes of it (§3h). The two things it would
+* **The 20-hour soak still has not been run**, only 24 minutes of it (§3h). The two things it would
   settle are whether the native buffer band really is a band, and whether a single game's referee
   and replay writer drift over a full day.
 * **Not tested**: a link peer that lies, the restore of downed state and per-player flags,
