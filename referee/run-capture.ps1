@@ -29,7 +29,10 @@ param(
     [string]$Map = 'nazi_zombie_prototype',
     [string]$FsGame = '',
     [string]$OutDir = 'C:\Users\b\ZombiesDev\captures',
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    # Do not push test chat into the game. Injection via SV_GameSendServerCommand
+    # is the current prime suspect for the ~68 s crash, so this isolates it.
+    [switch]$NoSay
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -50,8 +53,9 @@ if (-not $SkipBuild) {
 
 Write-Host '== sink ==' -ForegroundColor Cyan
 $sink = Start-Process -FilePath 'python' -NoNewWindow -PassThru -RedirectStandardOutput $sinkLog `
-    -ArgumentList @((Join-Path $repo 'infra\host-agent\linksink.py'),
-                    '--out', $out, '--seconds', ($Seconds + 60))
+    -ArgumentList (@((Join-Path $repo 'infra\host-agent\linksink.py'),
+                    '--out', $out, '--seconds', ($Seconds + 60)) +
+                   $(if ($NoSay) { @('--no-say') } else { @() }))
 Start-Sleep -Seconds 2
 
 # --- dialog answering: match on the owning process IMAGE, not the pid we launched.

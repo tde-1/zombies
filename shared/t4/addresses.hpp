@@ -97,8 +97,22 @@ namespace t4
         // per-frame HUD/notify formatter (fires ~60 Hz idle with empty text), called only by
         // 0x4388A0 which is itself on the frame path. T4 co-op chat is the party/lobby
         // reliable-command system (`clientchat`/`hostchat`), not classic say->G_Say.
-        constexpr std::uintptr_t SV_GameSendServerCommand   = 0x648490; // [V] game->client reliable cmd (chat/warnings); ecx=clientNum(-1=all)+stack args. PROVEN for injection.
-        constexpr std::uintptr_t SV_SendServerCommand       = 0x6F5F10; // [V] low-level per-client reliable-cmd queue (11 callers)
+        // RETRACTED: 0x648490 / 0x6F5F10 are NOT server-command functions — they are a
+        // HUD/debug COLOURED-TEXT pair (0x648490 resolves an RGBA via 0x47A450 and passes four
+        // floats; 0x6F5F10 strlen's text into a debug ring buffer at 0x3DCB4C0). Calling them
+        // as a chat sender corrupts that buffer. Do not use.
+        constexpr std::uintptr_t HudDebugText_colour        = 0x648490; // [V] NOT a server command
+        constexpr std::uintptr_t HudDebugText_append        = 0x6F5F10; // [V] NOT a server command
+        // The real pair, verified from instructions:
+        //   SV_GameSendServerCommand(clientNum @ [esp+4]; edx = text; ecx = svscmd type)
+        //   clientNum == -1 is a genuine broadcast (explicit first branch).
+        //   Validates 0 <= clientNum < sv_maxclients ([0x23D5C30]->current.integer) and indexes
+        //   svs.clients[clientNum] = 0x2547090 + clientNum*0x58D30. Forwards to 0x633FA0 with
+        //   the client pointer in EAX (0 for broadcast).
+        //   UNSAFE before dvars/server are up; call at a frame boundary on the main thread.
+        //   Stack cleanup NOT verified — use a naked thunk, not a typed prototype.
+        constexpr std::uintptr_t SV_GameSendServerCommand   = 0x5A9350; // [V]
+        constexpr std::uintptr_t SV_SendServerCommand       = 0x633FA0; // [V] client ptr in EAX
         constexpr std::uintptr_t clientchat_send            = 0x655C80; // [V] sends "0clientchat %s" (client->server chat transport)
         constexpr std::uintptr_t hostchat_send              = 0x65B630; // [V] sends "0hostchat %s %s"
 

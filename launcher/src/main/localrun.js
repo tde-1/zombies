@@ -37,6 +37,34 @@ export class LocalRun extends EventEmitter {
     return res.json()
   }
 
+  // 1b. Register the game with the local host agent BEFORE launching it.
+  //
+  // The host agent inverted this the safe way: rather than adopting whatever says
+  // hello, the launcher declares what it is about to start and the box matches the
+  // `hello` against something it was told to expect. So the registration has to
+  // happen before the spawn, and the box hands back the link address to launch with
+  // — we do not guess the port.
+  //
+  // We register under the SITE's match id, so the site, the box and the signed replay
+  // all name the same game.
+  async expect({ instance, matchId, map }) {
+    const res = await fetch(`${this.dashUrl}/api/local/expect`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ instance, match_id: matchId, map }),
+      signal: AbortSignal.timeout(4000),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+      // 409s are the agent's two deliberate refusals, and both are worth showing as
+      // written: not in local mode, or it holds a lease and will not adopt.
+      throw new Error(data?.error || `the host agent answered ${res.status}`)
+    }
+    this.expected = data
+    this.emit('expected', data)
+    return data
+  }
+
   // 1. Open the match. The site decides the match id and hands back the account's
   //    settings and whatever it knows about installing the map.
   async start(mapKey) {

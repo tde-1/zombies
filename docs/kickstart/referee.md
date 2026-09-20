@@ -881,6 +881,33 @@ Withdrawn as a result: the `currentOrigin` runtime cross-check (non-deterministi
 the one agreement was luck); and the claim that `foundation`'s focus guard would unblock the
 captures (it works, and it was not the blocker).
 
+### 8.8 "Chat injection works" was an over-claim, and injection may be the crash
+
+I reported chat injection as green on the evidence that my sink pushed three `say` commands and the
+DLL logged no error. That is evidence the **sender** ran. It is not evidence that any text reached a
+player, and it is not evidence that the game survived the call — neither of which I checked.
+
+The crash hunt then pointed straight back at it:
+
+| Configuration | Outcome |
+|---|---|
+| core-only build, no server components | alive at 200 s |
+| full build, heavy diagnostics on | dead ~70 s |
+| full build, diagnostics off/bounded, **launched bare (no sink)** | alive at 210 s |
+| full build, diagnostics off/bounded, **capture running (sink + injection)** | dead ~68 s, heartbeat clean to 60 s at 62.5 fps |
+
+The sink pushes `say` at +20 s, +65 s and +110 s after connect. The crash lands at **~68 s, just
+after say #2** — say #1 falls before the map is up, where it is a no-op. So the suspect is
+`SV_GameSendServerCommand(ecx = -1, ...)` broadcasting in a listen/solo game.
+
+Note what this also says about the previous section's conclusion: the 210 s "fix" was measured on a
+**bare launch with no sink**, so it never exercised the culprit. The alignment fix and the
+diagnostic budgets were both worth doing on their own merits and neither was the bug. Declaring the
+crash fixed on a test that did not reproduce the original configuration was the mistake.
+
+Until the isolation run (sink connected, injection disabled) says otherwise, `server_say()` should
+be treated as **unsafe**, and the cross-server chat relay must not be built on `say`/`tell`.
+
 ### 8.5 Still to run
 * `<fs_homepath>\main` + a mod (§3.4 follow-up) — staged, blocked because `fs_game` makes
   `BG_LoadWeaponDef` fail before GSC compiles (`dedi` p13 is on it).

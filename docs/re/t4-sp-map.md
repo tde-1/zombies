@@ -40,8 +40,18 @@ message loop). CoDWaW.exe imports **no** ExtTextOut/TextOut/DrawText — its onl
   0x6056ED/0x605704; text append 0x6057F0 / 0x605870.
 - **Splash screen** — 0x603D70 ("cod.bmp" / "CoD Splash Screen"); `SendMessageA` at 0x603EA9.
 Both draw via their control's paint → ExtTextOutW. A synchronous append to a hidden/unpumped
-window stalls there. **Fix (dedicated only): skip WinConsole (0x605500) and splash (0x603D70)
-creation/appends; `logfile 2` already captures output.** The referee's reported frame 0x49414E is
+window stalls there. **CORRECTED after dedi's validated walk:** the thread is **grinding, not deadlocked** (EIP moves
+between `NtUserExtTextOutW` and `NtUserScrollDC`), and the repeated validated frame is
+**0x5B0830 -> func 0x5B0810** (0x80 bytes; caller 0x5BF5B0, callee 0x63B630) which is **NOT** the
+print path or the console module. 0x60594E -> 0x605870, whose only caller is Sys_Error.
+**0x605500 IS the console creator** (RegisterClassA + CreateWindowExA), called **lazily from the
+append at 0x605804** — so the window appears on the first print.
+**UNSAFE TO STUB: 0x605500 / 0x6057F0 / 0x605870.** They are not no-arg cdecl; a plain-`ret` stub
+that mis-cleans the stack corrupts the caller — that is what made Com_Init stop returning when
+dedi stubbed them. Verified prototypes are not yet established; do not guess one.
+**Safe fix: intercept at the IAT** (the technique that already fixed the foreground-app freeze) —
+hook `CreateWindowExA`/`RegisterClassA` and refuse the WinConsole class in dedicated mode. No
+engine calling-convention risk, and `logfile 2` already captures output. The referee's reported frame 0x49414E is
 **mid-instruction** (inside `movss` at 0x49414A) inside 0x494120 (a client-frame CG draw callback)
 — unreliable (0x410830 class); confirm with a validated return-address walk. If the real frame IS
 0x494120 it is on the CLIENT render path — suppress dedicated-only, never in the client build.

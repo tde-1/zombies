@@ -9,7 +9,7 @@ summary so a capture can be watched without tailing the file.
 import argparse, collections, json, socket, sys, threading, time
 
 
-def serve(port, out_path, seconds):
+def serve(port, out_path, seconds, no_say=False):
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(("127.0.0.1", port))
@@ -37,7 +37,7 @@ def serve(port, out_path, seconds):
             except socket.timeout:
                 continue
         # Exercise host->game chat injection a few times during the capture.
-        if next_say and time.time() >= next_say and says < 3:
+        if (not no_say) and next_say and time.time() >= next_say and says < 3:
             says += 1
             msg = json.dumps({"t": "say", "from": "ENW",
                               "text": f"capture test {says} of 3"}) + chr(10)
@@ -104,5 +104,7 @@ if __name__ == "__main__":
     ap.add_argument("--port", type=int, default=28960)
     ap.add_argument("--out", default="capture.ndjson")
     ap.add_argument("--seconds", type=int, default=900)
+    ap.add_argument("--no-say", action="store_true",
+                    help="do not push test chat into the game (isolates injection as a crash cause)")
     a = ap.parse_args()
-    serve(a.port, a.out, a.seconds)
+    serve(a.port, a.out, a.seconds, no_say=a.no_say)

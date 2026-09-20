@@ -88,7 +88,12 @@ async function main() {
   say(`   ${started.notice}`)
   say(`   watch it at ${SITE}/live/${started.match_id}`)
 
-  step(5, 'Launch World at War')
+  step(5, 'Register the game with the local host agent, then launch')
+  // The box matches the game's `hello` against something it was told to expect, so
+  // this has to happen BEFORE the spawn — and it hands back the link address, so we
+  // do not guess a port.
+  const exp = await run.expect({ instance: started.match_id, matchId: started.match_id, map: m.bsp })
+  say(`   the box expects instance ${exp.instance} and will listen on ${exp.link}`)
   const flow = new BootFlow({
     map: m.bsp,
     localMap: m.bsp,
@@ -96,7 +101,8 @@ async function main() {
     installDir: library.installDir(m.bsp),
     // On screen: off-screen and unfocused, the tick dies at ~65 s (referee).
     windowMode: 'small',
-    linkHost: LINK,
+    linkHost: exp.link,
+    instance: started.match_id,
     useGameLock: !has('--no-lock'),
     lockName: 'launcher',
     connectTimeoutMs: 120000,

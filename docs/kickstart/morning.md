@@ -27,7 +27,7 @@ invite tokens and live spectating all work together on real data.
 | Maps catalogued | **2,276** distinct, ~2,400 download links |
 | Link rot | **~40% of community links are dead** |
 | Whole archive | **~120 GB** (mean map 176 MB) — cheaper than the 0.2–0.6 TB assumed |
-| Replay size | **3.0 / 6.4 / 8.0 MB per game-hour** at 1 / 2 / 4 players |
+| Replay size | **3.0 / 6.4 / 8.0 MB per game-hour** at 1 / 2 / 4 players (from the simulator, corrected upward once its zombies behaved realistically; a live-game measurement is still owed) |
 | Replay storage | **$6.36/month** for 90 days at 25 concurrent games |
 | Headless server idle | **~0% CPU, 186 MB** with a zombies map loaded |
 | Map scanner | **10/12** on real custom maps (0/14 before it was fixed) |
@@ -39,6 +39,11 @@ invite tokens and live spectating all work together on real data.
 3. **Several games on one box** — the engine binds a fixed party socket that may cap it.
 4. **Rounds, score and custom-game knobs**, which need script-variable reads; the published layout was
    disproved rather than guessed at.
+5. **Sending text into a running game** — withdrawn, not merely unproven. It was reported working on
+   the strength of the call returning without error; nobody had seen text appear, and the game now
+   looks like it crashes seconds after the second injected message. That path also carries the
+   game-length warnings and every referee message, so it matters beyond chat. Disabled until the
+   calling convention is verified.
 
 ## Things only B can do
 - **Verify integrity of game files** on World at War in Steam: `main\iw_13.iwd` is damaged in the

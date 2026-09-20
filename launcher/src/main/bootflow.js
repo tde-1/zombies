@@ -321,8 +321,13 @@ export class BootFlow extends EventEmitter {
       settings: o.settings,
       stealth: !!o.stealth,
       windowMode: o.windowMode || null,
-      instance: `local-${o.localMap}`,
-      role: 'solo',
+      // The site's match id, so the site, the box and the replay name one game.
+      instance: o.instance || `local-${o.localMap}`,
+      // 'client', not 'solo'. referee's capture recipe is explicit about why: a run
+      // with no connected CLIENT has no player entities, so `_zombiemode` sits on
+      // `flag_wait "all_players_connected"` and never starts a round — which shows up
+      // as a game that loads perfectly and reports round 0 with 0 players forever.
+      role: 'client',
       // A local game still reports to a host agent when there is one on this PC: that
       // is how the player gets their own rounds, stats and replay. "Untracked" is a
       // property of the MODE — the site files it as local, self-reported, worth no
