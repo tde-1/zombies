@@ -118,32 +118,68 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/gs/status' && req.method === 'POST') {
       const body = await readBody(req)
       b.lastStatus = { ...body, at: Date.now() }
+      // Pin the box's replay-signing key on first sight, and tell it so on every
+      // heartbeat (the real site's contract). A file signed by a key that is not the pin
+      // is not record evidence, whatever its own signature says.
+      let keyWarning = null
+      if (body.key_id) {
+        if (!b.replayKeyId) { b.replayKeyId = body.key_id; b.replayPub = body.pub || null; log.info(`pinned replay key ${body.key_id} for ${b.name}`) }
+        else if (b.replayKeyId !== body.key_id) keyWarning = 'this box presented a different replay key; results are stored unpinned until an admin confirms it'
+      }
       b.instances = body.instances || b.instances
       log.info(`${b.name} status=${body.state} match=${body.match_id || '-'} instances=${(body.instances || []).length}`)
       if (body.state === 'ready' || body.state === 'live') {
         const asg = state.assignments.get(b.name)
         if (asg) asg.acked = body.state
       }
-      return json(res, 200, { ok: true })
+      return json(res, 200, {
+        ok: true,
+        key_pinned: !!b.replayKeyId && b.replayKeyId === (body.key_id || b.replayKeyId) && !keyWarning,
+        pinned_key_id: b.replayKeyId || null,
+        ...(keyWarning ? { warning: keyWarning } : {}),
+      })
     }
 
     if (p === '/api/gs/result' && req.method === 'POST') {
+      // Never 5xx (adopted from the real site): a 500 makes a box spool and retry a result
+      // it can never deliver. Bad body => 400 and the box gives up on it; anything we can
+      // store => 200.
       const body = await readBody(req)
+      if (!body?.summary?.match_id) return json(res, 400, { ok: false, error: 'no summary.match_id' })
       const g = { received_at: new Date().toISOString(), box: b.name, ...body }
       state.games.push(g)
-      log.info(`RESULT ${g.summary?.map} round ${g.summary?.rounds} finish=${g.summary?.finish?.kind || 'none'} replay=${g.replay?.file || '-'} (${g.replay?.size || 0} bytes)`)
-      // The lease is over.
+      log.info(`RESULT ${g.summary?.map} round ${g.summary?.rounds} finish=${g.summary?.finish?.kind || 'none'} replay=${g.replay?.file || '-'} (${g.replay?.size || 0} bytes) key=${g.replay?.key_id || 'UNPINNED'}`)
       if (state.assignments.get(b.name)?.match_id === body.summary?.match_id) state.assignments.delete(b.name)
       return json(res, 200, { ok: true, stored: state.games.length })
+    }
+
+    // The batch drain, same shape as the real site's: an array of /result bodies, answered
+    // per match id so the box deletes only what we actually took.
+    if (p === '/api/gs/spool' && req.method === 'POST') {
+      const body = await readBody(req)
+      const items = Array.isArray(body) ? body : body?.results || []
+      const out = items.slice(0, 200).map((item) => {
+        if (!item?.summary?.match_id) return { match_id: null, ok: false, error: 'no summary.match_id' }
+        state.games.push({ received_at: new Date().toISOString(), box: b.name, spooled: true, ...item })
+        return { match_id: item.summary.match_id, ok: true, error: null }
+      })
+      log.info(`SPOOL drain from ${b.name}: ${out.filter((x) => x.ok).length}/${items.length} accepted`)
+      return json(res, 200, { ok: true, accepted: out.filter((x) => x.ok).length, results: out })
     }
 
     // Cross-server chat drain — long-poll, exactly like /api/gs/chat-feed on the CS site.
     if (p === '/api/gs/chat-feed' && req.method === 'GET') {
       const since = Number(url.searchParams.get('since') || 0)
       const wait = Math.min(25, Number(url.searchParams.get('wait') || 0))
+      // `since=0` is "I have just started": hand back the CURSOR and NO EVENTS.
+      // Adopted from the real site (web/server/routes/gameserver.js) after it pointed out
+      // that this mock's whole-ring answer replays an hour of strangers' chat straight
+      // into a game that has just booted — the host injects everything this route returns.
+      // Backlog belongs on the website, which reads the ring directly.
+      if (!since) return json(res, 200, { ok: true, enabled: true, latest: state.chatSeq, events: [] })
       const pending = () => state.chat.filter((e) => e.id > since && e.origin !== b.name)
       const now = pending()
-      if (now.length || !wait || !since) {
+      if (now.length || !wait) {
         return json(res, 200, { ok: true, enabled: true, latest: state.chatSeq, events: now })
       }
       let done = false

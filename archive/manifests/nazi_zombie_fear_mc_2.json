@@ -15,19 +15,6 @@
   },
   "finishes": [
     {
-      "id": "easter_egg",
-      "label": "Easter Egg",
-      "priority": 1,
-      "when": {
-        "manual": true
-      },
-      "candidate_flags": [
-        "ee_bowie_bear",
-        "ee_exp_monkey",
-        "ee_perk_bear"
-      ]
-    },
-    {
       "id": "round",
       "label": "Round 20",
       "priority": 3,
@@ -40,21 +27,14 @@
   "confidence": "read",
   "needs_human": false,
   "scanner": {
-    "verdict": "easter_egg",
-    "why": "flags ee_bowie_bear, ee_exp_monkey, ee_perk_bear look like easter-egg state; confirm which combination means 'done'",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 80000",
     "scripts": 156,
     "entities": 72,
-    "ee_candidates": [
-      "ee_bowie_bear",
-      "ee_exp_monkey",
-      "ee_perk_bear"
-    ],
+    "ee_candidates": [],
     "ending_words": [
-      "arcademode_ending_complete",
       "crawler_round_ending",
-      "dog_round_ending",
-      "end_game",
-      "ending_extended_death"
+      "end_game"
     ],
     "orphan_end_triggers": [],
     "top_costs": [],
@@ -67,7 +47,7 @@
     ],
     "zombiemode_sha256": "f7ab6420c957cd9180e0926b151c9076c4dc94da007f97e39f94f515bf78ddf3",
     "script_count": 156,
-    "verdict_raw": "easter_egg",
+    "verdict_raw": "buyable_ending",
     "verdict_debiased": "round",
     "why_debiased": "no easter egg or ending found; default Round 20",
     "verdict_entities": "round",
@@ -77,6 +57,39 @@
       "ee_entities": [],
       "end_entities": []
     },
+    "map_specific_triggers": [
+      "arcade_1",
+      "arcade_2",
+      "auto12",
+      "auto15",
+      "auto16",
+      "auto17",
+      "auto18",
+      "auto4",
+      "auto5",
+      "auto6",
+      "auto8",
+      "auto9",
+      "gumball_leave",
+      "gumball_recycle",
+      "gumball_recycle1",
+      "gumball_recycle2",
+      "gumball_spin",
+      "gumball_switch1",
+      "gumball_switch2",
+      "gumball_switch3",
+      "gumball_switch4",
+      "gumball_switch5",
+      "gumball_vat_all",
+      "nade_toss",
+      "nade_toss_damage",
+      "sharpshooter",
+      "shop_buy1",
+      "shop_buy2",
+      "shop_buy3",
+      "shop_buy4",
+      "shop_buy5"
+    ],
     "ee_candidates_own": [],
     "ending_words_own": [],
     "baseline": {
@@ -107,5 +120,5 @@
     ],
     "catalogue_description": "this is a remaster of my very first custom map i made over 2 years ago, lots of people wanted this to be remade and now with me actually half knowing how to do stuff, i decided to remake this BIG THANKS TO NG CAUDLE FOR MAPPING THIS his twitter \u2013 https://twitter.com/NGcaudle his youtube channel \u2013 https://www.youtube.com/user/NGcaudle FEATURES: gobblegums (bo3 styled) BO3 Re-Pack-A-Punch abilities after a gun is pack-a-punched it can be re-pack-a-punched as many times as you want, with the exceptions of wunderweapons, explosives and special weapons these can NOT be used on boss type zombies effects: turned \u2013 makes a zombie an ally for a short time, ignored by other zombies as it attacks them blast furnace \u2013 sets a zombie and all nearby zombies on fire, killing instantly dead wire \u2013 electrocutes a zombie and spreads up to 8 others nearby fireworks \u2013 a gun spawns from a zombie and shoots nearby zombies thunder wall \u2013 sends nearby zombies flying into the air gamemodes: original \u2013 just normal zombie rules gungame \u2013 get a certain amount of kills to advance a gun, finish last gun to win sharpshooter \u2013 every minute you get a random gun to survive with one in the chamber \u2013 you get a revolver with one bullet, get a kill, get a bullet, no reserve ammo (this is your only gun) z confirmed \u2013 the only points you can gain are from bonus points drops (50% chance a zombie will drop one) deprived \u2013 (co-op only) players will go head to head trying to be the first to buy the buyable ending, hold "
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). Scanner found easter-egg-looking flags but cannot know which combination means done; a human must read the scripts. The Round 20 fallback still applies meanwhile. "
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

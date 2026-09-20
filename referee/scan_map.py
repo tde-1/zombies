@@ -57,13 +57,59 @@ COMMON_SCRIPTS = {
 FLAG_RE = re.compile(r'flag_(?:init|set|clear|wait|waitopen)\s*\(\s*"([^"]{1,64})"')
 NOTIFY_RE = re.compile(r'notify\s*\(\s*"([^"]{1,64})"')
 
-EE_HINTS = ("ee_", "easter", "egg", "quest", "amulet", "relic", "shard", "soul",
-            "step", "ritual", "tower", "pylon", "radio", "meteor", "skull")
-# Deliberately narrow. "finish" matched `rise_anim_finished` on two stock maps and
-# "win" matches "window"; a false "manual" verdict costs a human five minutes of
-# reading for nothing, which is exactly what this tool is supposed to save.
-END_HINTS = ("ending", "escape", "endgame", "end_game", "victory", "buyable",
-             "buy_end", "exfil", "game_won", "map_complete")
+# TOKEN hints, not substrings.
+#
+# MEASURED by the `archive` agent on 14 real custom maps: substring matching gives
+# false hits that no amount of list-tuning fixes -- `vending_mulekick` contains
+# "ending", `floor_three_zone` contains "ee_". So names are split into tokens and
+# a hint has to match a WHOLE token. That also makes short hints safe: "win" no
+# longer matches "window", because "window" is one token.
+EE_TOKENS = {"ee", "easter", "egg", "quest", "amulet", "relic", "shard", "pylon",
+             "meteor", "ritual", "step", "rune", "totem", "obelisk"}
+END_TOKENS = {"ending", "escape", "endgame", "victory", "buyable", "exfil",
+              "win", "won", "finale", "teleport"}
+# Whole names that mean an ending regardless of how they tokenise. `end_game` is
+# the shape both nazi_zombie_ali and MW2 Rust use for the ending trigger.
+END_NAMES = {"end_game", "endgame", "end_trigger", "buy_ending", "buyable_ending",
+             "end_level", "endmap", "end_map"}
+
+_TOKEN_SPLIT = re.compile(r"[^A-Za-z0-9]+|(?<=[a-z])(?=[A-Z])")
+
+
+def tokens(name: str) -> set[str]:
+    return {t.lower() for t in _TOKEN_SPLIT.split(name) if t}
+
+
+def hit(name: str, tokset: set[str]) -> bool:
+    n = name.lower()
+    if n in END_NAMES and tokset is END_TOKENS:
+        return True
+    return bool(tokens(name) & tokset)
+
+
+def load_baseline(path: str | None):
+    """Names that are Treyarch's, not the map's.
+
+    MEASURED, and the reason this exists: on a stock install the shared zombie
+    scripts live in common.ff/patch.ff, which this tool is never handed -- it only
+    gets nazi_zombie_<x>.ff. A CUSTOM map ships its own copy of that whole script
+    set inside mod.ff, so Treyarch's `arcademode_ending_complete`,
+    `dog_round_ending` and `ee_bowie_bear` suddenly appear *inside the map* and the
+    hint lists fire on them. 12 of 14 real maps returned `manual` on those same
+    three words. Subtracting a stock baseline is what makes the hints mean
+    "this map's own", which is the only thing they were ever supposed to mean.
+    """
+    if path is None:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "archive", "stock-baseline.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            d = json.load(fh)
+    except Exception:
+        return set(), set()
+    names = set(d.get("flags", [])) | set(d.get("notifies", []))
+    ents = set(d.get("entity_names", []))
+    return names, ents
 
 # Round N is the default finish; see referee/manifests/_schema.md.
 DEFAULT_ROUND_N = 20
@@ -133,7 +179,30 @@ def is_zombies_map(scripts) -> bool:
                for text, _src in scripts.values())
 
 
-def scan(ff_paths, iwd_paths):
+def corpus_common(per_map_names, threshold=0.6):
+    """Names shared by >= `threshold` of the corpus are not any one map's evidence.
+
+    MEASURED: after subtracting the stock baseline, `crawler_round_ending` and the
+    trigger name `end_game` still appeared on 14 of 14 real maps and pushed every
+    one of them to `buyable_ending`. They are not Treyarch's, so the baseline does
+    not catch them -- they ride in on the community script set that nearly every
+    custom map is built from. Anything that common describes the toolchain, not the
+    map, and treating it as evidence makes the scanner say the same thing about
+    everything.
+    """
+    from collections import Counter
+    if not per_map_names:
+        return set()
+    c = Counter()
+    for names in per_map_names:
+        c.update(set(names))
+    cutoff = max(2, int(len(per_map_names) * threshold))
+    return {n for n, k in c.items() if k >= cutoff}
+
+
+def scan(ff_paths, iwd_paths, baseline_path=None, ignore=None):
+    baseline_names, baseline_ents = load_baseline(baseline_path)
+    ignore = {n.lower() for n in (ignore or [])}
     scripts = read_scripts(ff_paths, iwd_paths)
     ents = read_mapents(ff_paths)
 
@@ -163,9 +232,29 @@ def scan(ff_paths, iwd_paths):
     zm = scripts.get("maps/_zombiemode.gsc")
     zm_sha = hashlib.sha256(zm[0].encode("latin-1")).hexdigest() if zm else None
 
-    low = lambda s: s.lower()  # noqa: E731
-    ee = sorted(f for f in flags if any(h in low(f) for h in EE_HINTS))
-    endish = sorted(set(f for f in flags | notifies if any(h in low(f) for h in END_HINTS)))
+    # Entity targetnames are evidence too -- often the ONLY evidence. Leviathan has
+    # no easter-egg flag in any of its 120 scripts; its quest lives in MapEnts as
+    # ee_step_1_switch / ee_step_3_trig / ee_testtube_activate_trig. MW2 Rust's
+    # ending is a trigger named end_game with nothing in script at all.
+    ent_names = {e.get("targetname", "") for e in ents}
+    ent_names |= {e.get("script_noteworthy", "") for e in ents}
+    ent_names = {n for n in ent_names if n}
+
+    def own(names, base):
+        return {n for n in names if n not in base and n.lower() not in ignore}
+
+    own_flags = own(flags, baseline_names)
+    own_notifies = own(notifies, baseline_names)
+    own_ents = own(ent_names, baseline_ents)
+
+    ee = sorted({n for n in (own_flags | own_ents) if hit(n, EE_TOKENS)})
+    endish = sorted({n for n in (own_flags | own_notifies | own_ents) if hit(n, END_TOKENS)})
+
+    # Every one of the 14 real maps hardcodes its ending price in script rather than
+    # in a zombie_cost key, so the entity-cost outlier below fired 0/14. Catch the
+    # script form too: a four-figure-plus literal assigned to a cost variable.
+    hardcoded = sorted({int(m) for text, _src in scripts.values()
+                        for m in re.findall(r"\bcost\s*=\s*(\d{4,6})\b", text)})
 
     # Buyable ending heuristic: a purchase trigger whose cost is a wild outlier.
     costs = []
@@ -188,17 +277,19 @@ def scan(ff_paths, iwd_paths):
     for text, _src in scripts.values():
         looked_up.update(re.findall(r'get_?ent(?:array)?\s*\(\s*"([^"]{1,64})"', text, re.I))
     orphans = sorted(n for n in named
-                     if n and any(h in low(n) for h in END_HINTS) and n not in looked_up)
+                     if n and hit(n, END_TOKENS) and n not in looked_up)
 
     if ee:
-        verdict = ("easter_egg", f"flags {', '.join(ee)} look like easter-egg state; confirm which "
+        verdict = ("easter_egg", f"{', '.join(ee[:6])} look like easter-egg state (map's own, after "
+                                 f"subtracting {len(baseline_names)} stock names); confirm which "
                                  f"combination means 'done'")
+    elif endish:
+        verdict = ("buyable_ending", f"{', '.join(endish[:6])} name an ending and are this map's own"
+                                     + (f"; script hardcodes cost {hardcoded[-1]}" if hardcoded else ""))
     elif buyable:
         verdict = ("buyable_ending",
                    f"one purchase trigger at {buyable['zombie_cost']} points, next highest is "
                    f"{buyable['next_highest']} - almost certainly the ending")
-    elif endish:
-        verdict = ("manual", f"names suggest an ending ({', '.join(endish)}) but nothing decidable")
     else:
         verdict = ("round", f"no easter egg or ending found; default Round {DEFAULT_ROUND_N}")
 
@@ -208,8 +299,12 @@ def scan(ff_paths, iwd_paths):
         "zombiemode_sha256": zm_sha,
         "common_script_overrides": overrides,
         "flags": sorted(flags),
+        "own_flags": sorted(own_flags),
+        "own_notifies": sorted(own_notifies),
+        "own_entity_names": sorted(own_ents)[:200],
         "ee_candidates": ee,
         "ending_words": endish,
+        "hardcoded_costs": hardcoded,
         "buyable_ending_candidate": buyable,
         "orphan_end_triggers": orphans,
         "top_costs": costs[:5],
@@ -222,9 +317,20 @@ def main():
     ap.add_argument("ff", nargs="+", help="the map .ff, plus mod.ff if there is one")
     ap.add_argument("--iwd", nargs="*", default=[], help="the map's .iwd files")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--baseline", default=None,
+                    help="stock-baseline.json (default: ../archive/stock-baseline.json)")
+    ap.add_argument("--ignore", default=None,
+                    help="JSON list or newline file of names to treat as not-the-map's "
+                         "(the batch driver's >=60%%-of-corpus rule feeds this)")
     a = ap.parse_args()
 
-    r = scan(a.ff, a.iwd)
+    ignore = []
+    if a.ignore:
+        with open(a.ignore, encoding="utf-8") as fh:
+            body = fh.read().strip()
+        ignore = json.loads(body) if body.startswith("[") else body.split()
+
+    r = scan(a.ff, a.iwd, baseline_path=a.baseline, ignore=ignore)
     if a.json:
         print(json.dumps(r, indent=2))
         return

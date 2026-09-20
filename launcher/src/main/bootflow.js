@@ -82,7 +82,12 @@ export class BootFlow extends EventEmitter {
   cancel(reason = 'cancelled') {
     this.cancelled = true
     try { this.launch?.stop(reason) } catch {}
-    this.step('launching', 'failed', reason)
+    // Closing a game you got into is not a failure. Only mark the launch failed if it
+    // never got there — otherwise a finished session shows a red step, which is both
+    // wrong and the sort of thing a player reports as a bug.
+    const inGame = this.steps.find((s) => s.id === 'in_game')
+    if (inGame && inGame.state === 'done') this.step('launching', 'done', reason)
+    else this.step('launching', 'failed', reason)
   }
 
   async run() {

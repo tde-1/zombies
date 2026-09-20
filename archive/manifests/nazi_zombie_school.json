@@ -22,8 +22,12 @@
         "manual": true
       },
       "candidate_flags": [
+        "ee_toilet_trigger",
         "fuse_step",
-        "zombie_souls"
+        "meteor_trig",
+        "roof_ee_door",
+        "roof_ee_fire",
+        "roof_ee_trigger"
       ],
       "candidate_entities": [
         "ee_toilet_trigger",
@@ -48,21 +52,23 @@
   "needs_human": true,
   "scanner": {
     "verdict": "easter_egg",
-    "why": "flags fuse_step, zombie_souls look like easter-egg state; confirm which combination means 'done'",
+    "why": "ee_toilet_trigger, fuse_step, meteor_trig, roof_ee_door, roof_ee_fire, roof_ee_trigger look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
     "scripts": 135,
     "entities": 1543,
     "ee_candidates": [
+      "ee_toilet_trigger",
       "fuse_step",
-      "zombie_souls"
+      "meteor_trig",
+      "roof_ee_door",
+      "roof_ee_fire",
+      "roof_ee_trigger"
     ],
     "ending_words": [
-      "arcademode_ending_complete",
       "crawler_round_ending",
-      "dog_round_ending",
       "end_game",
-      "ending_extended_death",
       "ending_survived",
-      "surviveEnding_begun"
+      "surviveEnding_begun",
+      "zombie_teleport_struct"
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -103,13 +109,17 @@
     "script_count": 135,
     "verdict_raw": "easter_egg",
     "verdict_debiased": "easter_egg",
-    "why_debiased": "flags fuse_step, zombie_souls look like easter-egg state and are NOT stock or community boilerplate",
+    "why_debiased": "flags ee_toilet_trigger, fuse_step, meteor_trig, roof_ee_door, roof_ee_fire, roof_ee_trigger look like easter-egg state and are NOT stock or community boilerplate",
     "verdict_entities": "easter_egg",
-    "why_entities": "easter-egg state found in flags fuse_step, zombie_souls and entities ee_toilet_trigger, meteor_trig, radio_trigger, roof_ee_door, roof_ee_fire, roof_ee_trigger",
+    "why_entities": "easter-egg state found in flags ee_toilet_trigger, fuse_step, meteor_trig, roof_ee_door, roof_ee_fire, roof_ee_trigger and entities ee_toilet_trigger, meteor_trig, radio_trigger, roof_ee_door, roof_ee_fire, roof_ee_trigger",
     "entity_evidence": {
       "ee_flags": [
+        "ee_toilet_trigger",
         "fuse_step",
-        "zombie_souls"
+        "meteor_trig",
+        "roof_ee_door",
+        "roof_ee_fire",
+        "roof_ee_trigger"
       ],
       "ee_entities": [
         "ee_toilet_trigger",
@@ -121,13 +131,40 @@
       ],
       "end_entities": []
     },
+    "map_specific_triggers": [
+      "auto113569",
+      "claymore_purchase",
+      "ee_toilet_trigger",
+      "electric_gate_trigger",
+      "fire_alarm_trigger",
+      "fuse_area",
+      "fuse_box_trigger",
+      "fuse_hint_trigger",
+      "gas_damage_trigger",
+      "meteor_trig",
+      "office_trigger",
+      "pipe_trap_trigger",
+      "powerup_exclusion",
+      "radio_trigger",
+      "rain_cover",
+      "roof_ee_trigger",
+      "symbol_trigger",
+      "teleporter_roof_trigger",
+      "teleporter_stage_trigger",
+      "zombie_stage_trigger"
+    ],
     "ee_candidates_own": [
+      "ee_toilet_trigger",
       "fuse_step",
-      "zombie_souls"
+      "meteor_trig",
+      "roof_ee_door",
+      "roof_ee_fire",
+      "roof_ee_trigger"
     ],
     "ending_words_own": [
       "ending_survived",
-      "surviveEnding_begun"
+      "surviveEnding_begun",
+      "zombie_teleport_struct"
     ],
     "baseline": {
       "stock_names": 827,

@@ -648,35 +648,67 @@ structural in info strings) but deliberately **not** from `userinfo`, where they
   into dvar internals off a single offset inferred from a single call site. Needs
   `Dvar_SetStringByName` / `Dvar_RegisterString`, or `dvar_s` in `shared/t4/structs.hpp`.
 
-### The invite token (plumbed, one gap)
+### The invite token (done, via the engine's front door)
 
 `client-dll/components/auth_token.cpp`. `launch.ps1 -AuthToken <t>` passes it in the
 **environment**, never argv: a command line is readable by every other process on the box and ends
 up in logs and crash dumps. The DLL reads it once in `post_load`, checks the `<b64url>.<b64url>`
 shape, and then **clears the environment variable** so it is neither inherited by a child nor
 visible to anything walking our environment afterwards. It is never logged — only fingerprinted
-(`eyJ2Ij...VzdA (122 chars)`), and it is zeroed at shutdown.
+(`eyJ2Ij...VzdA (122 chars)`) — and it is zeroed at shutdown.
 
-**The gap:** getting it into userinfo. That needs `Dvar_SetStringByName`, or `Dvar_RegisterString`
-plus the USERINFO flag value, or `Cbuf_AddText` (to run `setu enw_token <v>`). `Dvar_FindVar` and
-`Dvar_RegisterBool/Enum` are verified; none of those are. The component warns every run rather
-than failing quietly.
+**Getting it into userinfo.** `re` supplied `DVAR_FLAG_USERINFO = 0x2` (proven from the resend gate
+at 0x644B64 on `dvar_modifiedFlags` 0x21ACF30) and `Dvar_RegisterString` at 0x5EED90. I did not
+call that function. Its prologue shows an `ebp` frame taking arguments at +0x08, +0x0C, +0x10,
+**+0x14 (8 bytes)**, **+0x1C (8 bytes)**, +0x24, +0x28 and +0x2C — it is the generic
+register-with-domain helper rather than a four-argument string register, and an eight-argument
+layout inferred from a prologue is exactly the kind of guess that corrupts the dvar system quietly.
 
-### Direct connect (not started — blocked)
+So we use the engine's own front door. `setu` is precisely the command that registers a USERINFO
+dvar, so the engine sets flag 0x2 itself and resends userinfo without us writing to
+`dvar_modifiedFlags` at all:
 
-Blocked on two things, neither of them mine to decide: the signatures above, and `dedi` having a
-listener. The T4 handshake, from strings in the exe:
+1. `post_load` (before any engine code runs) writes one line —
+   `setu enw_token "<token>"` — into `<fs_homepath>\main\enw_auth.cfg`;
+2. the launcher passes `+exec enw_auth.cfg`, so **argv carries only the filename**;
+3. `post_init` overwrites and deletes the file, then calls `find_dvar("enw_token")` and reports
+   plainly whether the dvar actually registered. Verified, not assumed.
+
+When `re` hands over the full `Dvar_RegisterString` prototype this collapses into a direct call and
+the file disappears.
+
+### Direct connect — unblocked, loopback needs nothing
+
+`re` traced the whole join path, and the licence check is **not** the wall it looked like:
 
 | Direction | String | Address |
 |---|---|---|
 | client → server | `getchallenge 0 "%s"` | 0x48A14C |
-| server → client | `challengeResponse %i %s` | 0x486B98 |
+| server → client | `challengeResponse %i %s` (+ 64-bit licenceId) | 0x486B98 |
 | client → server | `connect ` + userinfo | 0x48A1AC |
 | server → client | `connectResponse %s` | 0x48705C |
-| server reject | `rejected connect from protocol version %i (should be %i)` | 0x486D2C |
 
-The one that stands out: `CHALLENGERESPONSE: Got server licenseid %llx` (0x48A250). The T4 client
-checks a **server licence id** in the challenge response, which iw4x's `connect_coop` has no
-equivalent of. That is probably the real obstacle to direct connect here, and it is worth
-understanding before anyone starts flipping protocol-version comparisons.
+The client **parses, stores and logs** the server's licenceId and never validates it
+(`CHALLENGERESPONSE: Got server licenseid %llx`, 0x48A250). What actually gates a connect is the
+Demonware **`getAuthTicket` (0x57C0E0)** call the client makes before sending `connect`, which
+`Com_Error`s `PATCH_SERVER_AUTHFAIL` on failure. **That whole block is skipped for `NA_LOOPBACK` /
+`NA_BOT`** (guard at 0x642E4C).
 
+So: **a loopback connect needs no patching at all** — stock handshake, every guard left on. For
+remote ENW servers the fix is one site, `call 0x57C0E0` at 0x642E77, rather than a protocol port.
+
+> **These two pieces of work collide, and they have to ship together.** The `getAuthTicket` call is
+> the Demonware traffic my DNS block catches (§0). With ENW-only networking on, a *remote* connect
+> will therefore hard-error with `PATCH_SERVER_AUTHFAIL` instead of quietly phoning home. That is
+> the right security posture, but it means **short-circuiting 0x57C0E0 is not optional once DNS is
+> blocked** — you cannot land one without the other. Loopback is unaffected.
+
+A consequence worth having in the product case: a **stock** WaW client cannot reach a
+non-Demonware server at all, which is very likely why Plutonium is the only project that ever did
+WaW co-op. Our client is genuinely *required*, not a convenience.
+
+**Running two instances.** The interlock refuses a second launch by design. `-Companion` is the
+supported way round it for a server+client test: it requires a live, fresh `game.lock` to exist
+(so it cannot be used to bypass the interlock), joins that experiment instead of taking a lock,
+leaves the lock for the holder to release, and tolerates the first instance owning the `__CoDWaW`
+marker. Use that rather than habitually passing `-ForceLock`.

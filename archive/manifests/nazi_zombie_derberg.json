@@ -27,20 +27,35 @@
   "confidence": "guess",
   "needs_human": true,
   "scanner": {
-    "verdict": "manual",
-    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, dog_roundfx_ending, end_game, ending_extended_death) but nothing decidable",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, dog_roundfx_ending, end_game, teleport_left_lf, teleport_left_single_zone, teleport_left_single_zone_spawners name an ending and are this map's own; script hardcodes cost 5000",
     "scripts": 104,
     "entities": 2900,
     "ee_candidates": [],
     "ending_words": [
-      "arcademode_ending_complete",
       "crawler_round_ending",
-      "dog_round_ending",
       "dog_roundfx_ending",
       "end_game",
-      "ending_extended_death"
+      "teleport_left_lf",
+      "teleport_left_single_zone",
+      "teleport_left_single_zone_spawners",
+      "teleport_left_zone",
+      "teleport_left_zone_spawners",
+      "teleport_left_zone_spawners_dog",
+      "teleport_left_zone_spawners_goal_0",
+      "teleport_right_lf",
+      "teleport_right_rt",
+      "teleport_right_spawners_goal_1",
+      "teleport_right_zone",
+      "teleport_right_zone_spawners",
+      "teleport_right_zone_spawners_dog",
+      "teleport_right_zone_spawners_goal_0"
     ],
-    "orphan_end_triggers": [],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
     "top_costs": [
       [
         10000,
@@ -77,19 +92,40 @@
     ],
     "zombiemode_sha256": "6a63e9be58806f60175cf561b8525255e5f0398184e8b34b695f3140009698f7",
     "script_count": 104,
-    "verdict_raw": "manual",
+    "verdict_raw": "buyable_ending",
     "verdict_debiased": "manual",
-    "why_debiased": "map-specific names suggest an ending (dog_roundfx_ending) but nothing decidable",
+    "why_debiased": "map-specific names suggest an ending (dog_roundfx_ending, teleport_left_lf, teleport_left_single_zone, teleport_left_single_zone_spawners, teleport_left_zone, teleport_left_zone_spawners) but nothing decidable",
     "verdict_entities": "manual",
-    "why_entities": "map-specific names suggest an ending (dog_roundfx_ending) but nothing decidable",
+    "why_entities": "map-specific names suggest an ending (dog_roundfx_ending, teleport_left_lf, teleport_left_single_zone, teleport_left_single_zone_spawners, teleport_left_zone, teleport_left_zone_spawners) but nothing decidable",
     "entity_evidence": {
       "ee_flags": [],
       "ee_entities": [],
       "end_entities": []
     },
+    "map_specific_triggers": [
+      "auto113984",
+      "auto114031",
+      "breath_trigger",
+      "trig_bridge_zone",
+      "zapper_damage_bridge"
+    ],
     "ee_candidates_own": [],
     "ending_words_own": [
-      "dog_roundfx_ending"
+      "dog_roundfx_ending",
+      "teleport_left_lf",
+      "teleport_left_single_zone",
+      "teleport_left_single_zone_spawners",
+      "teleport_left_zone",
+      "teleport_left_zone_spawners",
+      "teleport_left_zone_spawners_dog",
+      "teleport_left_zone_spawners_goal_0",
+      "teleport_right_lf",
+      "teleport_right_rt",
+      "teleport_right_spawners_goal_1",
+      "teleport_right_zone",
+      "teleport_right_zone_spawners",
+      "teleport_right_zone_spawners_dog",
+      "teleport_right_zone_spawners_goal_0"
     ],
     "baseline": {
       "stock_names": 827,

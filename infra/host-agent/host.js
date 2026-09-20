@@ -203,6 +203,11 @@ class Game extends EventEmitter {
         file: stats.file, size: stats.size, chunks: stats.chunks, events: stats.events,
         raw_bytes: stats.rawBytes, ratio: Number(stats.ratio.toFixed(1)),
         mb_per_hour: stats.durationMs > 0 ? Number((stats.size / 1048576 / (stats.durationMs / 3600000)).toFixed(2)) : null,
+        // WHICH KEY SIGNED IT. Without this the site stores the replay unpinned and record
+        // review correctly refuses to call it evidence: a file that verifies against the
+        // key it carries proves integrity, not authorship (host.md §5).
+        key_id: this.host.hostKey.keyId,
+        pub: this.host.hostKey.pub,
       }
       this.log.info(`replay closed: ${fmtBytes(stats.size)} in ${stats.chunks} chunks, ${stats.events} events, ${stats.ratio.toFixed(1)}x, ${replay.mb_per_hour} MB/game-hour`)
     }
@@ -211,7 +216,8 @@ class Game extends EventEmitter {
     this.log.info(`SUMMARY ${summary.map} round ${summary.rounds} finish=${summary.finish?.kind || 'none'} ${fmtDur(summary.duration_ms)} flags=[${summary.flags.join(',')}] eligible=${summary.records_eligible}`)
     this.host.games.set(this.matchId, { summary, replay })
     this.host.dash?.push('summary', { instance: this.instance.id, summary, replay })
-    await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay }).catch((e) => this.log.warn(`result post: ${e.message}`))
+    await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay })
+      .catch((e) => this.log.warn(`result post failed (${e.message}) — held in the spool, not lost`))
     // Reap: stop the process and free the slot.
     setTimeout(() => this.host.instances.remove(this.instance.id, 'game over'), 3000).unref?.()
     this.emit('finished', summary)
@@ -257,7 +263,7 @@ class HostAgent {
     }
 
     if (cfg.site) {
-      this.site = new SiteClient({ base: cfg.site, secret: cfg.secret, boxName: cfg.boxName, log: log.child('site') })
+      this.site = new SiteClient({ base: cfg.site, secret: cfg.secret, boxName: cfg.boxName, spoolDir: cfg.spoolDir, log: log.child('site') })
       try {
         const k = await this.site.fetchKeys()
         this.tokenGuard.setPublicKey(keys.publicFromRaw(k.invite_pub))
@@ -376,12 +382,26 @@ class HostAgent {
     waitReady.unref?.()
   }
 
-  reportStatus() {
-    this.site?.status({
+  async reportStatus() {
+    const r = await this.site?.status({
       state: this.byInstance.size ? 'live' : 'idle',
       instances: this.instances.list().map((i) => i.info()),
       host: hostInfo(),
+      // Offer our replay-signing PUBLIC key on every heartbeat. The site pins it on first
+      // sight and answers { key_pinned, pinned_key_id }; a box whose key stopped matching
+      // then finds out within seconds instead of at the end of a game.
+      pub: this.hostKey.pub,
+      key_id: this.hostKey.keyId,
     })
+    if (!r) return
+    if (r.warning) log.error(`SITE: ${r.warning}`)
+    if (r.key_pinned && !this.keyPinnedLogged) {
+      this.keyPinnedLogged = true
+      log.info(`replay key ${r.pinned_key_id || this.hostKey.keyId} is PINNED at the site — replays from this box are record-grade`)
+    }
+    if (r.key_pinned === false && r.pinned_key_id && r.pinned_key_id !== this.hostKey.keyId) {
+      log.error(`KEY MISMATCH: the site has ${r.pinned_key_id} pinned for this box but we sign with ${this.hostKey.keyId}. Every replay we write is being stored unpinned.`)
+    }
   }
 
   // ---- cross-server chat -----------------------------------------------------------

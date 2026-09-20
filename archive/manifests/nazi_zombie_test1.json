@@ -40,17 +40,14 @@
   "confidence": "read",
   "needs_human": false,
   "scanner": {
-    "verdict": "manual",
-    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death) but nothing decidable",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
     "scripts": 109,
     "entities": 478,
     "ee_candidates": [],
     "ending_words": [
-      "arcademode_ending_complete",
       "crawler_round_ending",
-      "dog_round_ending",
-      "end_game",
-      "ending_extended_death"
+      "end_game"
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -69,7 +66,7 @@
     ],
     "zombiemode_sha256": "9e01476194b03d2765739a7ad38ad9dc04a6e5653ef18f4b07cff614d86684c4",
     "script_count": 109,
-    "verdict_raw": "manual",
+    "verdict_raw": "buyable_ending",
     "verdict_debiased": "round",
     "why_debiased": "no easter egg or ending found; default Round 20",
     "verdict_entities": "buyable_ending",
@@ -81,6 +78,19 @@
         "end_game"
       ]
     },
+    "map_specific_triggers": [
+      "b1",
+      "b2",
+      "blunder_trigg",
+      "box",
+      "c4_purchase",
+      "end_game",
+      "rounds_survive_doors",
+      "secret_trigger",
+      "secret_trigger1",
+      "secret_trigger2",
+      "tomahawk_spawn"
+    ],
     "ee_candidates_own": [],
     "ending_words_own": [],
     "baseline": {

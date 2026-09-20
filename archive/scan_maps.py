@@ -322,12 +322,15 @@ def main():
                 fps["%s@%s" % (name, src)] = hashlib.sha256(
                     text.encode("latin-1")).hexdigest()
         ent_names = set()
+        trigger_names = set()
         for e in scan_map.read_mapents(ffs):
             for k in ("targetname", "script_noteworthy", "script_label"):
                 if e.get(k):
                     ent_names.add(e[k])
+            if e.get("classname", "").startswith("trigger") and e.get("targetname"):
+                trigger_names.add(e["targetname"])
         maps.append({"map": mapname, "res": res, "names": names, "fps": fps,
-                     "ent_names": ent_names,
+                     "ent_names": ent_names, "trigger_names": trigger_names,
                      "script_count": len(scripts), "ffs": ffs, "iwds": iwds})
 
     real = [m for m in maps if "res" in m]
@@ -370,6 +373,15 @@ def main():
         man["scanner"]["verdict_entities"] = v3
         man["scanner"]["why_entities"] = why3
         man["scanner"]["entity_evidence"] = ent_ev
+        # A shortlist for whoever reads this map next. Hint words only catch finishes
+        # whose author used our vocabulary; ORBiT's quest is `keycards`, `orbitron_lock`,
+        # `planet1trig` and Minecraft Village's is `gumball_*`. What IS reliable is that
+        # a trigger nobody else in the corpus has is this map's own -- so list those and
+        # let a human spend twenty seconds instead of reading 150 scripts.
+        man["scanner"]["map_specific_triggers"] = sorted(
+            n for n in m["trigger_names"]
+            if n not in boilerplate_ents and not auto_re.match(n)
+            and not PERK_ENT.search(n))[:40]
         man["scanner"]["ee_candidates_own"] = ee2
         man["scanner"]["ending_words_own"] = endish2
         man["scanner"]["baseline"] = {

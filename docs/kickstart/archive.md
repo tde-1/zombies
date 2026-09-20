@@ -2,24 +2,28 @@
 
 > Agent: **archive**. Code in `archive/` (repo). Working data in `C:\Users\b\ZombiesDev\archive\`
 > — map files and originals are never committed. Regenerate this file with
-> `python archive/make_doc.py`; every number below is generated from the reports, none typed.
+> `python archive/make_doc.py`; every figure below is generated from the reports, none typed by hand.
 
 ## The headline
 
 **2276 distinct maps catalogued (1811 from the community sites),
-2376 download links, and the first measurement anyone has of how much of World at War's
-custom-zombies scene is still there.**
+2492 download links, and a measurement of WaW custom-zombies link rot — which
+`R3 - Map archive, legal and community` records as never having been measured.**
 
-- **Link rot on the community sites: 39.3%** of the links we could check are dead.
-  (Across all sources including archive.org's pre-verified mirror: 18.3%.)
-- **701 maps have at least one live link** — those are recoverable today.
-  **43 maps have links and every one is dead.**
-- **120.0 GB** measured across 700 maps (largest live mirror each), mean **175.6 MB** a map.
-  That projects to **120.2 GB** for everything recoverable and **310.5 GB** for the
-  whole community catalogue — against the vault's 0.2–0.6 TB estimate, which turns out to be the
-  right order of magnitude and probably high.
-- 1160 links were still being checked when this was generated; re-run
-  `python archive/check_links.py` and then `python archive/make_doc.py`.
+- **Link rot on the community sites: 25.6%** of the links we could check are dead.
+  (Across all sources, including archive.org's pre-verified mirror, 12.3%.)
+- **767 maps have at least one live link** — those are recoverable today.
+  **55 maps have links and every one of them is dead.**
+- **137.3 GB** of originals measured across 766 maps (largest live mirror each), mean
+  **183.5 MB** a map. That projects to **137.5 GB** for everything recoverable and
+  **324.6 GB** for the whole community catalogue. The archive keeps the original *and* a
+  normalised install (vault 04 rule 3), so roughly double those for the real storage bill. That
+  lands inside the vault's 0.2–0.6 TB estimate, near its lower half.
+- Two caveats on these counts, both of them "not yet" rather than "unknowable":
+  1050 links were still being checked when this was generated, and 842 catalogued
+  maps have **no link recorded yet** — overwhelmingly callofdutyrepo posts whose per-map page has
+  not been fetched (the download buttons are only on the post). Both are bounded, resumable work:
+  `crawlers/codrepo.py --pass c --posts N`, then `check_links.py`, then `make_doc.py`.
 
 The pipeline then took **14 maps** end to end — fetched (6.1 GB), hashed,
 AV-scanned, extracted without running a single installer, normalised to `mods/<map>/` and scanned
@@ -66,33 +70,33 @@ installer was executed.
 | Catalogue rows crawled | 3455 |
 | Distinct maps (all sources) | **2276** |
 | Distinct maps (community sites only) | **1811** |
-| Download links catalogued (distinct URLs) | **2376** |
-| Links alive | **873** |
-| Links dead | **195** |
-| Links blocked (host will not answer a robot) | 145 |
+| Download links catalogued (distinct URLs) | **2492** |
+| Links alive | **964** |
+| Links dead | **135** |
+| Links blocked (host will not answer a robot) | 341 |
 | Links unknown | 4 |
-| Links unchecked | 1160 |
-| **Link rot**, all sources (dead / [dead+alive]) | **18.3%** |
-| **Link rot on the community sites** (excl. archive.org) | **39.3%** |
-| Maps whose only host is MEGA or Drive (catalogued, not fetchable by us) | 115 |
-| Maps with at least one live link (**recoverable**) | **701** |
-| Maps whose every link is dead (**lost so far**) | **43** |
-| Maps we could not decide | 684 |
-| Maps with no download link at all | 848 |
-| Maps with a measured size | 700 |
-| **Measured bytes** (largest live mirror per map) | **120.0 GB** |
+| Links unchecked | 1050 |
+| **Link rot**, all sources (dead / [dead+alive]) | **12.3%** |
+| **Link rot on the community sites** (excl. archive.org) | **25.6%** |
+| Maps whose only host is MEGA or Drive (catalogued, not fetchable by us) | 112 |
+| Maps with at least one live link (**recoverable**) | **767** |
+| Maps whose every link is dead (**lost so far**) | **55** |
+| Maps we could not decide | 612 |
+| Maps with no download link at all | 842 |
+| Maps with a measured size | 766 |
+| **Measured bytes** (largest live mirror per map) | **137.3 GB** |
 | of which Drive-rounded | 0.0 B |
-| Mean map size | 175.6 MB |
-| Projected: every recoverable map | **120.2 GB** |
-| Projected: the whole community catalogue | **310.5 GB** |
+| Mean map size | 183.5 MB |
+| Projected: every recoverable map | **137.5 GB** |
+| Projected: the whole community catalogue | **324.6 GB** |
 
 | Host | Links | Alive | Dead | Blocked | Unknown | Unchecked |
 |---|---:|---:|---:|---:|---:|---:|
-| mediafire.com | 958 | 188 | 3 | 1 | 0 | 767 |
+| mediafire.com | 997 | 248 | 3 | 1 | 0 | 747 |
 | archive.org | 572 | 572 | 0 | 0 | 0 | 0 |
-| mega.nz | 499 | 113 | 93 | 0 | 0 | 293 |
-| onedrive.live.com | 241 | 0 | 93 | 53 | 0 | 95 |
-| drive.google.com | 78 | 0 | 0 | 74 | 0 | 4 |
+| mega.nz | 533 | 144 | 126 | 0 | 0 | 263 |
+| onedrive.live.com | 280 | 0 | 0 | 249 | 0 | 31 |
+| drive.google.com | 82 | 0 | 0 | 74 | 0 | 8 |
 | downloads.gamefront.com | 10 | 0 | 0 | 10 | 0 | 0 |
 | papy.cod-france.com | 5 | 0 | 5 | 0 | 0 | 0 |
 | docs.google.com | 2 | 0 | 0 | 2 | 0 | 0 |
@@ -116,22 +120,25 @@ Rows crawled per source: codrepo 1399 · zwr 936 · ugx 605 · archive.org 496 �
 | **archive.org** | Exact byte sizes and hashes from `/metadata/<id>` — **the size question answered with zero bytes transferred** | ~60 requests | Its items are file dumps, so its "maps" are filenames, not releases |
 | **ZombieModding** | — | 1 request (`robots.txt`) | **`Disallow: /` for everyone but Googlebot.** Not crawled at all. See Q-arc-1 |
 
-Community finish tags recovered: buyable_ending 244 · challenge 105 · top100 100 · easter_egg 97 · top_100 94 · ugx_mod 34 · ugx_modded 25 · moddb 19 · t4m_req 17 · christmas_map 17 · prefab 15 · bossfight_ending 8 · leaderboard 8 · multiplayer_map 2 · bo3_buyable_ending 1 · singleplayer_map 1 · weapon_skin 1.
+Community finish tags recovered: buyable_ending 244 · challenge 105 · top100 100 · easter_egg 97 · top_100 94 · ugx_mod 34 · ugx_modded 29 · t4m_req 22 · moddb 19 · christmas_map 18 · prefab 15 · bossfight_ending 8 · leaderboard 8 · multiplayer_map 2 · bo3_buyable_ending 1 · singleplayer_map 1 · weapon_skin 1.
 
 ### The three link verdicts that are not "alive" or "dead"
 
 Counting a link we cannot see as dead would inflate the rot figure with fiction, so:
 
-- **Google Drive (115 maps depend on Drive or MEGA alone).**
+- **Google Drive** (84 links).
   `drive.usercontent.google.com/robots.txt` is `Disallow: /`, and `drive.google.com` allows `/file`
   but that endpoint returns **401 to anything without a signed-in browser**. Unverifiable politely
   and account-free. Recorded `blocked`.
 - **OneDrive.** Every one of callofdutyrepo's OneDrive mirrors answers 404 to a HEAD and redirects a
   GET to `login.live.com`: Microsoft retired the `?cid=…&resid=…&authkey=…` URL shape. The files may
-  well still exist. Recorded `blocked` — the first version of the checker called all of them dead,
-  which would have been 121 imaginary corpses in the headline number.
+  well still exist. Recorded `blocked` — the first version of the checker called all 282
+  of them dead, which would have put a couple of hundred imaginary corpses in the headline number.
 - **GameFront.** Serves a bot "Security Check" page (HTTP 403). No CAPTCHA was attempted. The ten
   links also carry `expires=1586…` signatures from April 2020, so they are dead in practice too.
+
+**112 maps have nothing but MEGA and Google Drive links** — catalogued, plausibly
+alive, and beyond this pipeline's reach until one of those two is solved.
 
 ## 3. The MVP maps
 
@@ -140,18 +147,18 @@ Counting a link we cannot see as dead would inflate the rot figure with fiction,
 
 | Map | Original | Size | Installer | mods/ | bsp | Scanner verdict | Community tag | Match |
 |---|---|---|---:|---|---|---|---|---|
-| ABANDONED SCHOOL | `Abandoned_School.exe` | 519.1 MB | nsis | `nazi_zombie_school` | `nazi_zombie_school` | easter_egg | easter_egg,buyable_ending | agree |
+| Abandoned School | `Abandoned_School.exe` | 519.1 MB | nsis | `nazi_zombie_school` | `nazi_zombie_school` | easter_egg | easter_egg,buyable_ending | agree |
 | Alcatraz | `Alcatraz.exe` | 953.1 MB | nsis | `water` | `water` | easter_egg | easter_egg,buyable_ending,bossfight_ending | agree |
 | BO2 Hijacked Zombies | `BO2_Hijacked_Zombies_v1.1.exe` | 189.2 MB | nsis | `nazi_zombie_hijacked` | `nazi_zombie_hijacked` | buyable_ending | buyable_ending | agree |
-| CITY OF HELL | `City_of_Hell_zm.rar` | 259.5 MB | rar | `nazi_zombie_dt2` | `nazi_zombie_dt2` | easter_egg | easter_egg,buyable_ending | agree |
-| CLINIC OF EVIL | `_clinic_of_evil_by_IZaRTaX_05_11_2018.rar` | 443.4 MB | rar | `sanatorium` | `sanatorium` | round | easter_egg,buyable_ending | missed-silently |
-| DER BERG | `Derberg.exe` | 515.8 MB | nsis | `nazi_zombie_derberg` | `nazi_zombie_derberg` | manual | - | untagged |
-| DESERT | `Zombie_Desert.exe` | 292.5 MB | nsis | `nazi_zombie_test1` | `nazi_zombie_test1` | buyable_ending | buyable_ending | agree |
-| [Manager] Leviathan V1.2 | `nazi_zombie_leviathan_v1.2.exe` | 432.1 MB | nsis | `nazi_zombie_leviathan` | `nazi_zombie_leviathan` | easter_egg | easter_egg,buyable_ending | agree |
+| City of Hell | `City_of_Hell_zm.rar` | 259.5 MB | rar | `nazi_zombie_dt2` | `nazi_zombie_dt2` | easter_egg | easter_egg,buyable_ending | agree |
+| Clinic of Evil | `_clinic_of_evil_by_IZaRTaX_05_11_2018.rar` | 443.4 MB | rar | `sanatorium` | `sanatorium` | round | easter_egg,buyable_ending | missed-silently |
+| Der Berg | `Derberg.exe` | 515.8 MB | nsis | `nazi_zombie_derberg` | `nazi_zombie_derberg` | manual | - | untagged |
+| Zombie Desert | `Zombie_Desert.exe` | 292.5 MB | nsis | `nazi_zombie_test1` | `nazi_zombie_test1` | buyable_ending | buyable_ending | agree |
+| Leviathan | `nazi_zombie_leviathan_v1.2.exe` | 432.1 MB | nsis | `nazi_zombie_leviathan` | `nazi_zombie_leviathan` | easter_egg | easter_egg,buyable_ending | agree |
 | Minecraft Village Remastered | `minecraft_village.exe` | 592.9 MB | nsis | `nazi_zombie_fear_mc_2` | `nazi_zombie_fear_mc_2` | round | easter_egg,buyable_ending,bossfight_ending | missed-silently |
 | MW2 Rust Zombies | `MW2RustZombies_1.0.exe` | 294.3 MB | nsis | `mw2rust` | `mw2rust` | buyable_ending | buyable_ending | agree |
 | OCTAGONAL ASCENSION | `nazi_zombie_octogonal_1.3.0.exe` | 395.7 MB | nsis | `nazi_zombie_octogonal` | `nazi_zombie_octogonal` | buyable_ending | - | untagged |
-| ORBIT | `ORBiT_v1.2.exe` | 455.8 MB | nsis | `nazi_zombie_orbit` | `nazi_zombie_orbit` | round | easter_egg,buyable_ending | missed-silently |
+| Orbit | `ORBiT_v1.2.exe` | 455.8 MB | nsis | `nazi_zombie_orbit` | `nazi_zombie_orbit` | round | easter_egg,buyable_ending | missed-silently |
 | Project Viking | `Project_Viking_Final.exe` | 504.1 MB | nsis | `nazi_zombie_test` | `nazi_zombie_test` | easter_egg | easter_egg,bossfight_ending | agree |
 | UGX Requiem | `ugx_requiem.exe` | 390.5 MB | nsis | `ugx_artemovsk` | `ugx_artemovsk` | easter_egg | easter_egg,buyable_ending | agree |
 
@@ -164,6 +171,20 @@ Per map we keep, beside each other and never mixed up:
 - `mods/<bsp>/` — the normalised install, every file hashed.
 - `archive/manifests/<bsp>.json` — a proposed referee manifest in the `referee/manifests/_schema.md`
   shape, carrying the scanner's evidence and its provenance.
+
+**To boot one** (`dedi`, `referee` — this is the bit you want):
+
+```
+python archive/install_map.py --list
+python archive/install_map.py --homepath C:\Users\b\ZombiesDev\homes\<you> --all
+CoDWaW.exe +set fs_homepath C:\Users\b\ZombiesDev\homes\<you> +set fs_game mods/<bsp> +map <bsp>
+```
+
+`install_map.py` makes a **directory junction** per map, so fourteen 500 MB installs cost one
+filesystem entry each and deleting the junction leaves the archive untouched. All fourteen are
+already junctioned into `C:\Users\b\ZombiesDev\homes\archive\mods\`. **The bsp is usually not the
+map's title** — Alcatraz is `water`, Zombie Desert is `nazi_zombie_test1`, Clinic of Evil is
+`sanatorium`, UGX Requiem is `ugx_artemovsk` — so read the table above before typing a `+map`.
 
 **Substitutions from the shortlist in the brief, and why:**
 
@@ -207,8 +228,10 @@ Two additions, both written in `archive/` so nothing of the referee's is touched
    cannot see it because the cost is hardcoded in script. Entity names need **token** matching, not
    substring: `vending_mulekick` contains "ending" and `floor_three_zone` contains "ee_".
 
-**With both: 7 of 14 decided without a human, and the verdicts are
-easter_egg 6, buyable_ending 4, round 3, manual 1.**
+**With both, the verdicts are easter_egg 6, buyable_ending 4, round 3, manual 1** — so **10 of 14
+maps now have a finish identified** at all, and **7 of 14 need no
+human judgement to award a badge** (the buyable endings, plus the Round-20 defaults where there
+really is nothing else).
 
 The honest accuracy check is not "did it decide" but "did it decide *right*", so
 `evaluate.py` scores every verdict against callofdutyrepo's own Easter-egg and Buyable-ending tag
@@ -239,9 +262,9 @@ there is small and stated plainly: take an optional baseline set, and run the hi
 
 | Gap | Size of it | Fix |
 |---|---|---|
-| **MEGA downloads** | the second-largest host in the archive | Client-side AES-CTR decrypt with the key from the URL fragment. The *health and size* probe already works (MEGA's public API answers without an account), so only the download is missing. Half a day. |
-| **Google Drive, at all** | 78 links | Needs a signed-in browser. B's call, because it means an account. |
-| **OneDrive legacy links** | 222 links | Microsoft retired the URL shape. Possibly recoverable via the modern share-link API; more likely these want re-hosting from another mirror. |
+| **MEGA downloads** | 533 links, 98 maps have nothing else | Client-side AES-CTR decrypt with the key from the URL fragment. The *health and size* probe already works (MEGA's public API answers without an account), so only the download is missing. Half a day. |
+| **Google Drive, at all** | 84 links | Needs a signed-in browser. B's call, because it means an account. |
+| **OneDrive legacy links** | 282 links | Microsoft retired the URL shape. Possibly recoverable via the modern share-link API; more likely these want re-hosting from another mirror. |
 | **ZombieModding** | the most-downloaded maps in the scene | `robots.txt` forbids it. Needs permission or an export — outreach, which needs B. |
 | **ModDB beyond page 1** | ~30 of maybe 900 addons catalogued | `robots.txt` disallows `/*?`. Needs their API or permission. |
 | **Boot-testing a map** | 0 of 14 | The pipeline stops at "extracted and scanned". `health` in every manifest is therefore unset: nothing here has been proved to *run*, let alone to survive a mid-game join. That is the dedi agent's lock to take. |
@@ -282,6 +305,16 @@ that prompted it.
    anything.
 8. **SQLite across threads.** The per-host workers share one connection; it needs
    `check_same_thread=False` and a lock around every write.
+9. **Two of our own processes briefly hit the same host at once.** A second
+   `codrepo.py` was started while the first was still running, and the two made four
+   simultaneous requests to the same small WordPress site before it was killed. The
+   in-process lock only keeps *threads* apart, and this repo runs several of these tools
+   at once overnight. `lib/net.py` now takes a **cross-process lockfile per host**: a
+   second process that touches a host someone else has claimed is dropped for that host
+   rather than doubling up, and a lock from a dead process is taken over.
+10. **The link checker and the fetcher both wanted MediaFire.** Same problem, spotted
+    before it happened: `check_links.py --exclude-host mediafire.com` exists so the
+    checker can work on everything else while the fetcher has the host to itself.
 
 ## 7. Where things are
 

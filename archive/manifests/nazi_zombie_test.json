@@ -21,7 +21,9 @@
       "when": {
         "manual": true
       },
-      "candidate_flags": [],
+      "candidate_flags": [
+        "afterlife_egg_skull"
+      ],
       "candidate_entities": [
         "afterlife_egg_skull",
         "afterlife_skull",
@@ -43,20 +45,24 @@
   "confidence": "guess",
   "needs_human": true,
   "scanner": {
-    "verdict": "manual",
-    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death, moab endgame) but nothing decidable",
+    "verdict": "easter_egg",
+    "why": "afterlife_egg_skull look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
     "scripts": 132,
     "entities": 2493,
-    "ee_candidates": [],
-    "ending_words": [
-      "arcademode_ending_complete",
-      "crawler_round_ending",
-      "dog_round_ending",
-      "end_game",
-      "ending_extended_death",
-      "moab endgame"
+    "ee_candidates": [
+      "afterlife_egg_skull"
     ],
-    "orphan_end_triggers": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "endgame_pad_loc",
+      "intermission_win",
+      "moab endgame",
+      "teleport_trigger_a"
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_1"
+    ],
     "top_costs": [
       [
         1250,
@@ -94,13 +100,15 @@
     ],
     "zombiemode_sha256": "15caa784603bfb641c8f85305e58fe7dbed26d66c4ee87181ca3c9d987e4db75",
     "script_count": 132,
-    "verdict_raw": "manual",
-    "verdict_debiased": "manual",
-    "why_debiased": "map-specific names suggest an ending (moab endgame) but nothing decidable",
+    "verdict_raw": "easter_egg",
+    "verdict_debiased": "easter_egg",
+    "why_debiased": "flags afterlife_egg_skull look like easter-egg state and are NOT stock or community boilerplate",
     "verdict_entities": "easter_egg",
-    "why_entities": "easter-egg state found in entities afterlife_egg_skull, afterlife_skull, crane_skull, soul_box, soul_chest_reward_spawn",
+    "why_entities": "easter-egg state found in flags afterlife_egg_skull and entities afterlife_egg_skull, afterlife_skull, crane_skull, soul_box, soul_chest_reward_spawn",
     "entity_evidence": {
-      "ee_flags": [],
+      "ee_flags": [
+        "afterlife_egg_skull"
+      ],
       "ee_entities": [
         "afterlife_egg_skull",
         "afterlife_skull",
@@ -112,9 +120,56 @@
         "endgame_pad_loc"
       ]
     },
-    "ee_candidates_own": [],
+    "map_specific_triggers": [
+      "afterlife_use",
+      "back_area_song_trigger",
+      "bos_area",
+      "bottommost_level",
+      "dig_trigger",
+      "elevator_area_a",
+      "elevator_area_a_push",
+      "elevator_area_b",
+      "elevator_top_level",
+      "gamemode_block_area",
+      "generator_area_a",
+      "generator_area_b",
+      "generator_area_c",
+      "generator_area_d",
+      "generator_area_e",
+      "generator_area_f",
+      "generator_area_g",
+      "hind_mask",
+      "hind_safe_area",
+      "keeper_mask",
+      "kill_area",
+      "kill_area_zap",
+      "mech_hitbox",
+      "middle_zone_trigger",
+      "nograb_area",
+      "nojump_area",
+      "o_bos_damage",
+      "packa_switch",
+      "pf3159_auto1",
+      "screecher_mask",
+      "screecher_spawn_area",
+      "screecher_spawn_area_b",
+      "slide_area",
+      "slovel_trigger",
+      "slow_area",
+      "song_area_a",
+      "song_trigger",
+      "teleport_trigger_a",
+      "throwback_area",
+      "toggle_generator_a"
+    ],
+    "ee_candidates_own": [
+      "afterlife_egg_skull"
+    ],
     "ending_words_own": [
-      "moab endgame"
+      "endgame_pad_loc",
+      "intermission_win",
+      "moab endgame",
+      "teleport_trigger_a"
     ],
     "baseline": {
       "stock_names": 827,
@@ -144,5 +199,5 @@
     ],
     "catalogue_description": "Project Viking V1.1 Update. I have decided to update my map which was released roughly 2 years ago, Project Viking! This update will feature some bug fixes, and modifications to the map overall. One of the main additions to this map is a full easter egg for classic mode. Many people have been constantly requesting that I add a easter egg which can be completed to earn victory on classic mode. Previously, the only way to \u201cbeat\u201d the map was to play a specific gamemode and detonate a moab without going down. Now, players can earn victory by completing a series of steps in the map. I won\u2019t reveal all these steps instantly, however I will say that most of the sidequests (such as filling up chests, collecting afterlife skulls, riding crane, boy of silence), are now all apart of the main easter egg. Since I wanted to add some final features into my map, that ment I had to sacrafice some of the older features not much people liked or used. Aside from the easter egg, a series of other things have been updated. Heres a small list of some of the changes: Removed beta message Removed ability to hold out bowie knife Removed deadshot Fixed beta G_SPAWN error. (Implemented debug system to track ents) Fixed logic for vulture and widows drops (only player who has perk can see and colled drops) Fixed series of bugs which occured in beta version Added gravity spikes/Ragnarok dg4, obtained in a step of ee. Allowed players to release themself from panzer after fully retracted Allowed panzer to sp"
   },
-  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "This map replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). Scanner found easter-egg-looking flags but cannot know which combination means done; a human must read the scripts. The Round 20 fallback still applies meanwhile. "
 }

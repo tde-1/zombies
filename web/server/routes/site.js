@@ -16,7 +16,9 @@ const playlists = require('../lib/playlists')
 const parties = require('../lib/parties')
 const results = require('../lib/results')
 const chat = require('../lib/chatNetwork')
+const live = require('../lib/live')
 const users = require('../lib/users')
+const { safeJson } = require('../lib/util')
 const { db } = require('../db/database')
 const { requireUser, requireApproved } = require('../middleware/auth')
 
@@ -30,6 +32,9 @@ function router() {
     const me = req.me ? req.me.steam_id : null
     res.json({
       live: assignments.live(),
+      // Which of those are actually sending frames, so home can offer Watch on the ones
+      // where it would work and stay quiet on the ones where it would not.
+      watchable: live.list(me),
       friends: me ? presence.friendsOnline(me) : [],
       online: presence.stats(),
       week: mapWeek.current(),
@@ -176,7 +181,37 @@ function router() {
     res.json({ game: g })
   })
 
-  r.get('/live', (req, res) => res.json({ live: assignments.live() }))
+  // ---- live games and the live view --------------------------------------------------
+  // `/api/live` is the lobby-level list (what has been leased); `/api/live/watch` is the
+  // list of games actually sending frames, which is the one the spectator list wants.
+  r.get('/live', (req, res) => res.json({
+    live: assignments.live(),
+    watchable: live.list(req.me ? req.me.steam_id : null),
+    stats: live.stats(),
+  }))
+
+  r.get('/live/:matchId', (req, res) => {
+    const id = String(req.params.matchId)
+    const may = live.canWatch(id, req.me ? req.me.steam_id : null)
+    if (!may.ok) return res.status(403).json({ error: may.reason })
+    const frame = live.get(id)
+    const game = db.prepare('SELECT * FROM games WHERE match_id=?').get(id)
+    const a = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(id)
+    if (!frame && !game && !a) return res.status(404).json({ error: 'no such game' })
+    const mapKey = (frame && frame.state.map) || (game && game.map_key) || (a && a.map_key) || null
+    res.json({
+      match_id: id,
+      frame,
+      // A game that has ENDED still resolves here, and says so rather than 404ing: a
+      // spectator watching the last round should land on the result, not on a dead page.
+      ended: game ? results.project(game) : null,
+      state: frame ? 'live' : game ? 'ended' : a ? String(a.state) : 'unknown',
+      map: mapKey ? maps.project(maps.byKey(mapKey), { me: req.me ? req.me.steam_id : null }) : null,
+      // The manifest's signals, so the view can say WHICH of them have fired rather than
+      // printing the raw ids the box sends.
+      signal_labels: mapKey ? signalLabels(mapKey) : {},
+    })
+  })
 
   // ---- global chat --------------------------------------------------------------
   r.get('/chat', (req, res) => res.json({ chat: chat.tail(Number(req.query.limit || 40)), latest: chat.latest() }))
@@ -219,6 +254,18 @@ function router() {
   })
 
   return r
+}
+
+// `signal_id -> human label`, read from the map's referee manifest. The box reports
+// `power_on`; the manifest calls it "Power turned on"; the live view should say the second.
+function signalLabels(mapKey) {
+  const m = db.prepare(`SELECT mf.json FROM manifests mf JOIN map_versions v ON v.id=mf.map_version_id
+                         JOIN maps mp ON mp.id=v.map_id WHERE mp.key=? AND v.latest=1`).get(String(mapKey))
+  const j = m ? safeJson(m.json, {}) : {}
+  const out = {}
+  for (const s of (j && j.signals) || []) if (s && s.id) out[s.id] = s.label || s.id
+  for (const f of (j && j.finishes) || []) if (f && f.id) out[f.id] = f.label || f.id
+  return out
 }
 
 // 13 §4c. Defaults are WaW's stock values; the ranges are wide but capped, and anything

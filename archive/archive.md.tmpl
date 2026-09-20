@@ -2,7 +2,7 @@
 
 > Agent: **archive**. Code in `archive/` (repo). Working data in `C:\Users\b\ZombiesDev\archive\`
 > — map files and originals are never committed. Regenerate this file with
-> `python archive/make_doc.py`; every number below is generated from the reports, none typed.
+> `python archive/make_doc.py`; every figure below is generated from the reports, none typed by hand.
 
 ## The headline
 
@@ -16,10 +16,9 @@
   **{{lost}} maps have links and every one of them is dead.**
 - **{{bytes}}** of originals measured across {{sized}} maps (largest live mirror each), mean
   **{{mean}}** a map. That projects to **{{proj_recoverable}}** for everything recoverable and
-  **{{proj_all}}** for the whole community catalogue. Since the archive keeps the original *and* a
-  normalised install (vault 04 rule 3), double it for the real storage bill: **roughly 0.25 TB for
-  what is recoverable, 0.6 TB if every map in the catalogue turned out to be** — which lands
-  squarely on the vault's 0.2–0.6 TB estimate and says the low end is the likely one.
+  **{{proj_all}}** for the whole community catalogue. The archive keeps the original *and* a
+  normalised install (vault 04 rule 3), so roughly double those for the real storage bill. That
+  lands inside the vault's 0.2–0.6 TB estimate, near its lower half.
 - Two caveats on these counts, both of them "not yet" rather than "unknowable":
   {{unchecked}} links were still being checked when this was generated, and {{nolinks}} catalogued
   maps have **no link recorded yet** — overwhelmingly callofdutyrepo posts whose per-map page has
@@ -87,16 +86,19 @@ Community finish tags recovered: {{tags}}.
 
 Counting a link we cannot see as dead would inflate the rot figure with fiction, so:
 
-- **Google Drive ({{only_unfetchable}} maps depend on Drive or MEGA alone).**
+- **Google Drive** ({{n_drive}} links).
   `drive.usercontent.google.com/robots.txt` is `Disallow: /`, and `drive.google.com` allows `/file`
   but that endpoint returns **401 to anything without a signed-in browser**. Unverifiable politely
   and account-free. Recorded `blocked`.
 - **OneDrive.** Every one of callofdutyrepo's OneDrive mirrors answers 404 to a HEAD and redirects a
   GET to `login.live.com`: Microsoft retired the `?cid=…&resid=…&authkey=…` URL shape. The files may
-  well still exist. Recorded `blocked` — the first version of the checker called all of them dead,
-  which would have been 121 imaginary corpses in the headline number.
+  well still exist. Recorded `blocked` — the first version of the checker called all {{n_onedrive}}
+  of them dead, which would have put a couple of hundred imaginary corpses in the headline number.
 - **GameFront.** Serves a bot "Security Check" page (HTTP 403). No CAPTCHA was attempted. The ten
   links also carry `expires=1586…` signatures from April 2020, so they are dead in practice too.
+
+**{{only_unfetchable}} maps have nothing but MEGA and Google Drive links** — catalogued, plausibly
+alive, and beyond this pipeline's reach until one of those two is solved.
 
 ## 3. The MVP maps
 
@@ -114,6 +116,20 @@ Per map we keep, beside each other and never mixed up:
 - `mods/<bsp>/` — the normalised install, every file hashed.
 - `archive/manifests/<bsp>.json` — a proposed referee manifest in the `referee/manifests/_schema.md`
   shape, carrying the scanner's evidence and its provenance.
+
+**To boot one** (`dedi`, `referee` — this is the bit you want):
+
+```
+python archive/install_map.py --list
+python archive/install_map.py --homepath C:\Users\b\ZombiesDev\homes\<you> --all
+CoDWaW.exe +set fs_homepath C:\Users\b\ZombiesDev\homes\<you> +set fs_game mods/<bsp> +map <bsp>
+```
+
+`install_map.py` makes a **directory junction** per map, so fourteen 500 MB installs cost one
+filesystem entry each and deleting the junction leaves the archive untouched. All fourteen are
+already junctioned into `C:\Users\b\ZombiesDev\homes\archive\mods\`. **The bsp is usually not the
+map's title** — Alcatraz is `water`, Zombie Desert is `nazi_zombie_test1`, Clinic of Evil is
+`sanatorium`, UGX Requiem is `ugx_artemovsk` — so read the table above before typing a `+map`.
 
 **Substitutions from the shortlist in the brief, and why:**
 
@@ -157,8 +173,10 @@ Two additions, both written in `archive/` so nothing of the referee's is touched
    cannot see it because the cost is hardcoded in script. Entity names need **token** matching, not
    substring: `vending_mulekick` contains "ending" and `floor_three_zone` contains "ee_".
 
-**With both: {{decided_entities}} of {{n_scanned}} decided without a human, and the verdicts are
-{{verdicts_entities}}.**
+**With both, the verdicts are {{verdicts_entities}}** — so **{{finish_found}} of {{n_scanned}}
+maps now have a finish identified** at all, and **{{decided_entities}} of {{n_scanned}} need no
+human judgement to award a badge** (the buyable endings, plus the Round-20 defaults where there
+really is nothing else).
 
 The honest accuracy check is not "did it decide" but "did it decide *right*", so
 `evaluate.py` scores every verdict against callofdutyrepo's own Easter-egg and Buyable-ending tag
@@ -189,9 +207,9 @@ there is small and stated plainly: take an optional baseline set, and run the hi
 
 | Gap | Size of it | Fix |
 |---|---|---|
-| **MEGA downloads** | the second-largest host in the archive | Client-side AES-CTR decrypt with the key from the URL fragment. The *health and size* probe already works (MEGA's public API answers without an account), so only the download is missing. Half a day. |
-| **Google Drive, at all** | 78 links | Needs a signed-in browser. B's call, because it means an account. |
-| **OneDrive legacy links** | 222 links | Microsoft retired the URL shape. Possibly recoverable via the modern share-link API; more likely these want re-hosting from another mirror. |
+| **MEGA downloads** | {{n_mega}} links, {{only_mega}} maps have nothing else | Client-side AES-CTR decrypt with the key from the URL fragment. The *health and size* probe already works (MEGA's public API answers without an account), so only the download is missing. Half a day. |
+| **Google Drive, at all** | {{n_drive}} links | Needs a signed-in browser. B's call, because it means an account. |
+| **OneDrive legacy links** | {{n_onedrive}} links | Microsoft retired the URL shape. Possibly recoverable via the modern share-link API; more likely these want re-hosting from another mirror. |
 | **ZombieModding** | the most-downloaded maps in the scene | `robots.txt` forbids it. Needs permission or an export — outreach, which needs B. |
 | **ModDB beyond page 1** | ~30 of maybe 900 addons catalogued | `robots.txt` disallows `/*?`. Needs their API or permission. |
 | **Boot-testing a map** | 0 of 14 | The pipeline stops at "extracted and scanned". `health` in every manifest is therefore unset: nothing here has been proved to *run*, let alone to survive a mid-game join. That is the dedi agent's lock to take. |
@@ -232,6 +250,16 @@ that prompted it.
    anything.
 8. **SQLite across threads.** The per-host workers share one connection; it needs
    `check_same_thread=False` and a lock around every write.
+9. **Two of our own processes briefly hit the same host at once.** A second
+   `codrepo.py` was started while the first was still running, and the two made four
+   simultaneous requests to the same small WordPress site before it was killed. The
+   in-process lock only keeps *threads* apart, and this repo runs several of these tools
+   at once overnight. `lib/net.py` now takes a **cross-process lockfile per host**: a
+   second process that touches a host someone else has claimed is dropped for that host
+   rather than doubling up, and a lock from a dead process is taken over.
+10. **The link checker and the fetcher both wanted MediaFire.** Same problem, spotted
+    before it happened: `check_links.py --exclude-host mediafire.com` exists so the
+    checker can work on everything else while the fetcher has the host to itself.
 
 ## 7. Where things are
 

@@ -35,8 +35,7 @@ LOG_ROOT = os.environ.get("ENW_ARCHIVE_LOGS", r"C:\Users\b\ZombiesDev\archive\lo
 DEFAULT_DELAY = 6.0          # seconds between requests to one host
 MAX_CONSEC_ERRORS = 2        # then the host is dropped for the run
 REQUEST_TIMEOUT = 45
-LOCK_DIR = os.path.join(os.path.dirname(CACHE_ROOT.rstrip("\\/")), "archive", "hostlocks") \
-    if False else os.path.join(CACHE_ROOT, "..", "hostlocks")
+LOCK_DIR = os.path.abspath(os.path.join(CACHE_ROOT, os.pardir, "hostlocks"))
 LOCK_STALE = 30 * 60         # a lock older than this is assumed abandoned
 
 
@@ -115,6 +114,8 @@ class PoliteSession:
         os.makedirs(LOG_ROOT, exist_ok=True)
         self.logpath = os.path.join(LOG_ROOT, log_name + ".log")
         self._loglock = threading.Lock()
+        import atexit
+        atexit.register(self.release)
 
     # ---------------------------------------------------------------- logging
     def log(self, *parts):

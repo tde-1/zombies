@@ -72,6 +72,8 @@ def main():
         "verdicts_entities": ", ".join(
             "%s %d" % (k, v) for k, v in sorted(
                 scan.get("verdicts_entities", {}).items(), key=lambda kv: -kv[1])),
+        "finish_found": len([x for x in scan["rows"]
+                             if x["verdict"] in ("easter_egg", "buyable_ending")]),
         "tagged": len(tagged),
         "agree": len([x for x in tagged if x["outcome"] == "agree"]),
         "missed": len([x for x in tagged if x["outcome"].startswith("missed")]),
@@ -81,6 +83,14 @@ def main():
                                           if f.get("status") == "ok")),
         "extracted": len(extract),
         "extract_clean": len([e for e in extract if not e["errors"] and e["mods"]]),
+        "n_drive": sum(h["links"] for h in r["by_host"]
+                       if "google" in (h["host"] or "")),
+        "n_onedrive": sum(h["links"] for h in r["by_host"]
+                          if "onedrive" in (h["host"] or "") or "1drv" in (h["host"] or "")),
+        "n_mega": sum(h["links"] for h in r["by_host"] if "mega" in (h["host"] or "")),
+        "n_mediafire": sum(h["links"] for h in r["by_host"]
+                           if "mediafire" in (h["host"] or "")),
+        "only_mega": r["maps_only_mega"],
         "by_source": " · ".join("%s %d" % (k, v) for k, v in r["by_source"].items()),
         "tags": " · ".join("%s %d" % (k, v) for k, v in sorted(
             r["tags"].items(), key=lambda kv: -kv[1]) if not k.startswith("archive_")),

@@ -45,22 +45,30 @@ export default function Home() {
       )}
 
       <div className="grid c2" style={{ alignItems: 'start' }}>
-        <Section title="Live games" sub={`${d.online.online} online`}>
+        <Section title="Live games" sub={`${d.online.online} online`} right={<Link className="btn small ghost" to="/live">Watch</Link>}>
           {d.live.length === 0 ? <Empty>No games running right now.</Empty> : (
             <div className="card flat">
-              {d.live.map((g) => (
-                <div className="maprow" key={g.match_id}>
-                  <div className="name">
-                    {/* Movement's joinability rule: a stranger's private lobby serialises
-                        with no map and no connect, so there is nothing here to render. */}
-                    <b>{g.map_title || 'Private lobby'}</b>
-                    <span>{g.mode}{g.state === 'live' ? ' · live' : ''}</span>
+              {d.live.map((g) => {
+                // A game that is sending live frames can be watched; one that has only been
+                // leased cannot yet, and saying "Watch" for it would be a lie.
+                const watch = (d.watchable || []).find((w) => w.match_id === g.match_id)
+                return (
+                  <div className="maprow" key={g.match_id}>
+                    <div className="name">
+                      {/* Movement's joinability rule: a stranger's private lobby serialises
+                          with no map and no connect, so there is nothing here to render. */}
+                      <b>{(watch && watch.map_title) || g.map_title || 'Private lobby'}</b>
+                      <span>{g.mode}{watch ? ` · round ${watch.round}` : g.state === 'live' ? ' · live' : ''}</span>
+                    </div>
+                    <span className="chip">{g.player_count}/4</span>
+                    <span className="tiny">{ago(g.started_at)}</span>
+                    <span className="row" style={{ gap: 5 }}>
+                      {watch && <Link className="btn small ghost" to={`/live/${g.match_id}`}>Watch</Link>}
+                      {g.joinable && g.map ? <Link className="btn small" to={`/m/${g.map}`}>Join</Link> : !watch && <span className="tiny">{g.visibility}</span>}
+                    </span>
                   </div>
-                  <span className="chip">{g.player_count}/4</span>
-                  <span className="tiny">{ago(g.started_at)}</span>
-                  {g.joinable && g.map ? <Link className="btn small" to={`/m/${g.map}`}>Join</Link> : <span className="tiny">{g.visibility}</span>}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </Section>

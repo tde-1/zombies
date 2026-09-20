@@ -40,17 +40,14 @@
   "confidence": "read",
   "needs_human": false,
   "scanner": {
-    "verdict": "manual",
-    "why": "names suggest an ending (arcademode_ending_complete, crawler_round_ending, dog_round_ending, end_game, ending_extended_death) but nothing decidable",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 60000",
     "scripts": 117,
     "entities": 1938,
     "ee_candidates": [],
     "ending_words": [
-      "arcademode_ending_complete",
       "crawler_round_ending",
-      "dog_round_ending",
-      "end_game",
-      "ending_extended_death"
+      "end_game"
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -89,7 +86,7 @@
     ],
     "zombiemode_sha256": "549a71c10e7c3ac1f066af80138fa8accad878fab38d76905f435b9d82bf6f4a",
     "script_count": 117,
-    "verdict_raw": "manual",
+    "verdict_raw": "buyable_ending",
     "verdict_debiased": "round",
     "why_debiased": "no easter egg or ending found; default Round 20",
     "verdict_entities": "buyable_ending",
@@ -101,6 +98,11 @@
         "end_game"
       ]
     },
+    "map_specific_triggers": [
+      "end_game",
+      "enter",
+      "harrybo21_perk_trigger"
+    ],
     "ee_candidates_own": [],
     "ending_words_own": [],
     "baseline": {

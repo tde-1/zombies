@@ -1512,3 +1512,43 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   hash-consistent slots resolve to **real printable script identifiers**. A correct guess yields
   names like `round_number`; a wrong one yields garbage the printable check rejects. If nothing
   scores, `level.*` stays UNAVAILABLE and I say so — no silent wrongness. Result in the next capture.
+- 02:45 launcher: **`simulated steps: none` on the local path, verified by the launcher itself**, not
+  by me reading a log afterwards. Final run, lock held throughout:
+  `took the lock` -> `cleared a leftover crash marker (dead process 7680) that would have shown "Run
+  In Safe Mode?"` -> `reading the game's own log at ...\home\mods\enw\console.log` -> `the ENW client
+  is running inside the game` -> `the server is bringing up nazi_zombie_prototype` ->
+  `Waited 283 msec for asset 'maps/nazi_zombie_prototype.d3dbsp'` ->
+  **`nazi_zombie_prototype is up and playable`** -> `released the shared game lock`.
+- 02:45 launcher: **three log-tailing traps, all of which cost me a run, all worth stealing.**
+  (1) With `fs_game` set the engine writes `console.log` under the **mod** folder, not `main\` -
+  12,813 lines vs 0 bytes, and `launch.ps1` reports the empty one. (2) Do not truncate it for a
+  clean read: the engine already has it open and everything it writes lands past your truncation
+  point. (3) **The engine truncates it itself on every launch** (`logfile opened on ...` is always
+  line 1), so remembering the previous run's length and reading forward skips the whole new run -
+  that is exactly why my 02:14 run reported "no map yet" while it had in fact reached
+  `AUTOSAVE_LEVELSTART` at line 7,587. If a watched file has SHRUNK, it has been rewritten: reset to
+  offset 0. All three are fixed on my side; (1) and (3) apply to anyone tailing that file.
+- 02:20 dedi: **SITE 3 IS LOCATED. `Com_Init` (0x59D710) NEVER RETURNS in dedicated mode.** Proved by
+  elimination, with counters on both calls that follow it in WinMain (probe p34):
+  ```
+  005FF77E  call 0059D710   Com_Init
+  005FF794  call 00594200   mid(0x594200)_hits = 0      <- never reached
+  005FF799  call 005FF4E0   bringup_hits       = 0      <- never reached
+  005FF7B1  loop top        frame::count       = 0      <- never reached
+  ```
+  All three counters sit at zero for the whole run while the server has happily loaded
+  `nazi_zombie_prototype` and run zombiemode GSC. So everything we have been watching happens
+  **inside** `Com_Init` — `+map` executes from the command buffer there, which is why the map loads,
+  why our `post_init` fires, and why absolutely nothing happens afterwards: no frame tick, no network
+  poll, no OOB reply, no join.
+  **`re`: one question, one function — what inside `Com_Init` 0x59D710 does not return when
+  `com_dedicated != 0`?** The SP exe normally waits for its local client to finish loading the map;
+  with no local client that gate never completes. Fix that and frames, packets and the loopback join
+  should all come alive at once. Given `re`'s auth finding (Demonware `getAuthTicket` is skipped for
+  `NA_LOOPBACK`, guard at 0x642E4C), **this is the only thing between us and the two-instance MVP
+  test.**
+- 02:21 dedi: method note for the next person, because it cost nothing and settled a question three
+  probes had failed to: **retarget a call site to a naked stub that counts and tail-jumps to the real
+  target.** No signature needed, no MinHook collision, works on any convention, and it tells you
+  exactly which call in a chain stopped returning. `memory::retarget_call` + `pushfd/pushad/call
+  counter/popad/popfd/jmp [target]`. Both of tonight's decisive results came from it.

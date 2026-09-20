@@ -12,22 +12,27 @@
 //   GET  /api/gs/chat-feed    long-poll drain of the cross-server chat ring
 //   POST /api/gs/chat         a player said something in one of our games
 import { EventEmitter } from 'node:events'
-import { makeLog, sleep } from './util.js'
+import fs from 'node:fs'
+import path from 'node:path'
+import { makeLog, sleep, mkdirp } from './util.js'
 
 export class SiteClient extends EventEmitter {
-  constructor({ base, secret, boxName = 'box', pollMs = 3000, chatWaitS = 20, log } = {}) {
+  constructor({ base, secret, boxName = 'box', pollMs = 3000, chatWaitS = 20, spoolDir = null, spoolMs = 15_000, log } = {}) {
     super()
     this.base = String(base).replace(/\/$/, '')
     this.secret = secret
     this.boxName = boxName
     this.pollMs = pollMs
     this.chatWaitS = chatWaitS
+    this.spoolDir = spoolDir
+    this.spoolMs = spoolMs
+    if (spoolDir) mkdirp(spoolDir)
     this.log = log || makeLog('site')
     this.nonce = null
     this.chatSince = 0
     this.running = false
     this.online = false
-    this.stats = { polls: 0, errors: 0, chatIn: 0, chatOut: 0, results: 0, lastError: null }
+    this.stats = { polls: 0, errors: 0, chatIn: 0, chatOut: 0, results: 0, spooled: 0, lastError: null }
   }
 
   async req(pathname, { method = 'GET', body = null, timeoutMs = 30_000 } = {}) {
@@ -55,6 +60,9 @@ export class SiteClient extends EventEmitter {
     this.running = true
     this.loopAssignment()
     this.loopChat()
+    this.loopSpool()
+    const held = this.spoolList().length
+    if (held) this.log.warn(`${held} result(s) held in the spool from a previous run — draining`)
   }
 
   stop() { this.running = false }
@@ -94,10 +102,92 @@ export class SiteClient extends EventEmitter {
     })
   }
 
+  // ---- results, with a spool ------------------------------------------------------
+  // Q-host-2, answered: a game is the expensive part and the POST is one HTTP request, so
+  // losing the result because the site was being redeployed is the wrong half to drop.
+  // A failed result goes to disk and is drained through POST /api/gs/spool (their batch
+  // endpoint) until the site takes it.
+  //
+  // A 400 is NOT retried. Their /result never 5xxs, so a 400 means the body is
+  // permanently unacceptable and retrying it forever would wedge the spool behind one bad
+  // game; it is moved aside and logged instead.
   async postResult(payload) {
-    const r = await this.req('/api/gs/result', { method: 'POST', body: payload, timeoutMs: 20_000 })
-    this.stats.results++
-    return r
+    try {
+      const r = await this.req('/api/gs/result', { method: 'POST', body: payload, timeoutMs: 20_000 })
+      this.stats.results++
+      return r
+    } catch (e) {
+      if (/-> 4\d\d/.test(e.message)) { this.reject(payload, e.message); throw e }
+      this.spool(payload, e.message)
+      throw e
+    }
+  }
+
+  spoolPath(payload, sub = '') {
+    const id = payload?.summary?.match_id || `unknown_${Date.now()}`
+    return path.join(this.spoolDir, sub, `${String(id).replace(/[^\w.-]/g, '_')}.json`)
+  }
+
+  /** Hold a result on disk until the site will take it. */
+  spool(payload, why) {
+    if (!this.spoolDir) return false
+    try {
+      const f = this.spoolPath(payload)
+      mkdirp(path.dirname(f))
+      fs.writeFileSync(f, JSON.stringify({ spooled_at: new Date().toISOString(), why, payload }))
+      this.stats.spooled++
+      this.log.warn(`result for ${payload?.summary?.match_id} spooled to disk (${why})`)
+      return true
+    } catch (e) { this.log.error(`could not spool the result: ${e.message}`); return false }
+  }
+
+  reject(payload, why) {
+    if (!this.spoolDir) return
+    try {
+      const f = this.spoolPath(payload, 'rejected')
+      mkdirp(path.dirname(f))
+      fs.writeFileSync(f, JSON.stringify({ rejected_at: new Date().toISOString(), why, payload }))
+      this.log.error(`the site REFUSED the result for ${payload?.summary?.match_id} (${why}); kept at ${f} and not retried`)
+    } catch { /* nothing more we can do */ }
+  }
+
+  spoolList() {
+    if (!this.spoolDir) return []
+    try { return fs.readdirSync(this.spoolDir).filter((f) => f.endsWith('.json')).map((f) => path.join(this.spoolDir, f)) } catch { return [] }
+  }
+
+  /**
+   * Drain the spool in one batch POST. The site answers per match id; we delete only the
+   * ones it accepted, so an entry it could not take stays for the next pass.
+   */
+  async drainSpool() {
+    const files = this.spoolList().slice(0, 200)
+    if (!files.length) return 0
+    const items = []
+    for (const f of files) {
+      try { items.push({ f, payload: JSON.parse(fs.readFileSync(f, 'utf8')).payload }) } catch { fs.unlinkSync(f) }
+    }
+    if (!items.length) return 0
+    let r
+    try { r = await this.req('/api/gs/spool', { method: 'POST', body: items.map((x) => x.payload), timeoutMs: 30_000 }) }
+    catch (e) { this.log.debug(`spool drain: ${e.message}`); return 0 }
+    let taken = 0
+    const byId = new Map((r?.results || []).map((x) => [String(x.match_id), x]))
+    for (const { f, payload } of items) {
+      const id = String(payload?.summary?.match_id)
+      const res = byId.get(id)
+      if (res?.ok) { try { fs.unlinkSync(f) } catch { /* ignore */ } taken++; this.stats.results++ }
+      else if (res && res.error) { this.reject(payload, res.error); try { fs.unlinkSync(f) } catch { /* ignore */ } }
+    }
+    if (taken) this.log.info(`spool drained: the site took ${taken} held result(s), ${this.spoolList().length} left`)
+    return taken
+  }
+
+  async loopSpool() {
+    while (this.running) {
+      if (this.online && this.spoolList().length) await this.drainSpool()
+      await sleep(this.spoolMs)
+    }
   }
 
   // ---- chat bridge -------------------------------------------------------------

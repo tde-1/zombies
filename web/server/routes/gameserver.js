@@ -38,6 +38,7 @@ const assignments = require('../lib/assignments')
 const results = require('../lib/results')
 const chat = require('../lib/chatNetwork')
 const presence = require('../lib/presence')
+const live = require('../lib/live')
 const siteKeys = require('../lib/siteKeys')
 const { db, now } = require('../db/database')
 
@@ -75,6 +76,21 @@ function router() {
     if (!pub && !keyId) return res.status(400).json({ error: 'send pub and key_id' })
     const r2 = boxes.offerKey(req.box, pub || null, keyId || null)
     res.json({ ok: true, ...r2 })
+  })
+
+  // ---- live frames ---------------------------------------------------------------
+  // The web live view (99 §4.4). One POST per game per frame, or a batch of them, at
+  // whatever rate the box likes — the site downsamples and never stores them (lib/live.js
+  // says why). The body is the referee's own `state()`, unreshaped.
+  //
+  //   { instances: [ { instance, match_id, state } ] }        the batch form
+  //   { instance, match_id, state }                           one game
+  r.post('/live', (req, res) => {
+    const body = req.body || {}
+    const items = Array.isArray(body.instances) ? body.instances : [body]
+    let taken = 0
+    for (const it of items.slice(0, 16)) if (live.push(req.box.name, it)) taken++
+    res.json({ ok: true, taken, of: items.length, min_frame_ms: live.MIN_FRAME_MS })
   })
 
   // ---- status ------------------------------------------------------------------------
@@ -164,8 +180,9 @@ function safeIngest(body, box) {
       const s = body.summary || {}
       console.log(`[gs] result ${s.map} round ${s.rounds} finish=${(s.finish && s.finish.kind) || 'none'} ` +
         `from ${box.name}${out.repeat ? ' (repeat)' : ''}${out.awarded && out.awarded.length ? ` — ${out.awarded.length} badge(s)` : ''}`)
-      // The game is over, so nobody is in it any more.
+      // The game is over, so nobody is in it any more and there is nothing live to watch.
       for (const p of s.players || []) if (p.steamid) presence.clearGame(p.steamid)
+      live.drop(s.match_id)
     }
     return out
   } catch (e) {
@@ -178,14 +195,21 @@ function safeIngest(body, box) {
   }
 }
 
+// A status heartbeat that carries `instances[].game` (the referee's `state()`) is ALSO a
+// live frame. This is deliberate: it means the host agent can light up the live view by
+// changing one line — `reportStatus()` sending `this.state().instances` instead of
+// `this.instances.list().map(i => i.info())` — without adding a call to /api/gs/live at
+// all. Both paths land in the same store.
 function markRoster(box, body) {
   for (const inst of body.instances || []) {
     const g = inst.game
     if (!g || !g.players) continue
+    const matchId = g.match || inst.match_id
     for (const p of g.players) {
       if (!p.steamid || !p.connected) continue
-      presence.markInGame(p.steamid, { matchId: g.match || inst.match_id, mapKey: g.map, box: box.name })
+      presence.markInGame(p.steamid, { matchId, mapKey: g.map, box: box.name })
     }
+    if (matchId) live.push(box.name, { instance: inst.id || g.instance, match_id: matchId, state: g })
   }
 }
 

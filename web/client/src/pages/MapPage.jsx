@@ -151,6 +151,21 @@ export default function MapPage() {
             </Section>
           )}
 
+          {d.live.length > 0 && (
+            <Section title="Being played now">
+              <div className="card flat">
+                {d.live.map((g) => (
+                  <div className="maprow" key={g.match_id}>
+                    <div className="name"><b>{g.players.map((p) => p.name).join(', ') || 'A game'}</b><span>{g.mode}</span></div>
+                    <span className="chip">{g.player_count}/4</span>
+                    <span />
+                    <Link className="btn small ghost" to={`/live/${g.match_id}`}>Watch</Link>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          )}
+
           <Section title="Recent games">
             {d.recent.length === 0 ? <Empty>Nobody has played this on our servers yet.</Empty> : (
               <div className="card flat">

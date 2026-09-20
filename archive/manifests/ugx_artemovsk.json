@@ -21,7 +21,16 @@
       "when": {
         "manual": true
       },
-      "candidate_flags": [],
+      "candidate_flags": [
+        "meteor_path_start",
+        "meteor_piece",
+        "meteor_stop_1",
+        "meteor_stop_2",
+        "meteor_stop_3",
+        "meteor_stop_4",
+        "ugx_meteor_large",
+        "ugx_meteor_largest"
+      ],
       "candidate_entities": [
         "meteor_path_start",
         "meteor_piece",
@@ -48,18 +57,23 @@
   "confidence": "guess",
   "needs_human": true,
   "scanner": {
-    "verdict": "manual",
-    "why": "names suggest an ending (crawler_round_ending, dog_round_ending, end_game, end_game_chaos, ending_extended_death, vending_item_power_on) but nothing decidable",
+    "verdict": "easter_egg",
+    "why": "meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
     "scripts": 138,
     "entities": 2226,
-    "ee_candidates": [],
+    "ee_candidates": [
+      "meteor_path_start",
+      "meteor_piece",
+      "meteor_stop_1",
+      "meteor_stop_2",
+      "meteor_stop_3",
+      "meteor_stop_4",
+      "ugx_meteor_large",
+      "ugx_meteor_largest"
+    ],
     "ending_words": [
       "crawler_round_ending",
-      "dog_round_ending",
-      "end_game",
-      "end_game_chaos",
-      "ending_extended_death",
-      "vending_item_power_on"
+      "end_game"
     ],
     "orphan_end_triggers": [],
     "top_costs": [
@@ -101,13 +115,22 @@
     ],
     "zombiemode_sha256": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1",
     "script_count": 138,
-    "verdict_raw": "manual",
-    "verdict_debiased": "manual",
-    "why_debiased": "map-specific names suggest an ending (end_game_chaos, vending_item_power_on) but nothing decidable",
+    "verdict_raw": "easter_egg",
+    "verdict_debiased": "easter_egg",
+    "why_debiased": "flags meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4, ugx_meteor_large, ugx_meteor_largest look like easter-egg state and are NOT stock or community boilerplate",
     "verdict_entities": "easter_egg",
-    "why_entities": "easter-egg state found in entities meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4",
+    "why_entities": "easter-egg state found in flags meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4, ugx_meteor_large, ugx_meteor_largest and entities meteor_path_start, meteor_piece, meteor_stop_1, meteor_stop_2, meteor_stop_3, meteor_stop_4",
     "entity_evidence": {
-      "ee_flags": [],
+      "ee_flags": [
+        "meteor_path_start",
+        "meteor_piece",
+        "meteor_stop_1",
+        "meteor_stop_2",
+        "meteor_stop_3",
+        "meteor_stop_4",
+        "ugx_meteor_large",
+        "ugx_meteor_largest"
+      ],
       "ee_entities": [
         "meteor_path_start",
         "meteor_piece",
@@ -122,11 +145,59 @@
       ],
       "end_entities": []
     },
-    "ee_candidates_own": [],
-    "ending_words_own": [
-      "end_game_chaos",
-      "vending_item_power_on"
+    "map_specific_triggers": [
+      "auto244",
+      "auto245",
+      "auto265",
+      "auto278",
+      "auto285",
+      "auto375",
+      "auto407",
+      "axe_shed",
+      "barn_boards_trig",
+      "barn_door_kick_trig",
+      "barracks_entry",
+      "bedroom_area",
+      "buildables_fuse",
+      "buildables_power",
+      "buildables_station_power",
+      "buildables_switch",
+      "double_tap_shed",
+      "electric_dmg_trig",
+      "garage",
+      "gersch_fire_trig",
+      "gravity_hint",
+      "hacker_panel",
+      "hacker_part_0",
+      "hacker_part_1",
+      "house_stairs",
+      "house_upstairs",
+      "house_yard",
+      "house_yard_2",
+      "meteor_piece",
+      "redeemer_start",
+      "redeemer_trig",
+      "satchel_charge",
+      "satchel_charge_place",
+      "satchel_det",
+      "train_trap_trig",
+      "trapped_trig",
+      "traps_keys",
+      "ugx_axe",
+      "ugx_wallweapon",
+      "ugxm_trap_machine"
     ],
+    "ee_candidates_own": [
+      "meteor_path_start",
+      "meteor_piece",
+      "meteor_stop_1",
+      "meteor_stop_2",
+      "meteor_stop_3",
+      "meteor_stop_4",
+      "ugx_meteor_large",
+      "ugx_meteor_largest"
+    ],
+    "ending_words_own": [],
     "baseline": {
       "stock_names": 827,
       "corpus_common": 254,
@@ -156,5 +227,5 @@
     ],
     "catalogue_description": "This map features UGX Mod v1.1! For a full list of features, click here . It\u2019s finally here! UGX Requiem is the latest map from the UGX-Mods team \u2013 featuring UGX Mod v1.1."
   },
-  "notes": "This map replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "This map replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). Scanner found easter-egg-looking flags but cannot know which combination means done; a human must read the scripts. The Round 20 fallback still applies meanwhile. "
 }

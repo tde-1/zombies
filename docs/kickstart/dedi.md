@@ -29,9 +29,16 @@ it is the direct answer to `R12 §4c`'s "cheapest decisive experiment": not vest
 **12–30, central ~18**. Both the vault's ~110 (from iw4x/h1-mod) and R12's 50–70 (from KisakCOD's
 CoD4 SP tree) assume we must author the dedicated branch points. We do not.
 
-**Still unproven and now the top risk: a client connecting.** The server does not yet answer
-connectionless packets on localhost (§4, site 3). R14 says there is no party layer to fight, so this
-should be tractable, but it is not yet demonstrated.
+**The whole remaining blocker is one function.** `Com_Init` (0x59D710) never returns in dedicated
+mode, so WinMain never reaches its frame loop: no frame tick, no network poll, no connectionless
+replies, no join. Everything we have watched — the map load, zombies GSC — happens *inside*
+Com_Init, because `+map` runs from the command buffer there. Proved by elimination with counters on
+every call that follows it in WinMain (§4, site 3).
+
+Once that returns, four things should come alive together: frames, `sv_fps` pacing, the network poll,
+and the loopback join. And the join is cheaper than feared — R14 says T4 SP has no party layer
+(plain `connect <ip>:<port>`), and `re` found that the Demonware `getAuthTicket` block is skipped
+entirely for `NA_LOOPBACK`, so a two-instance test on this box needs no auth patching at all.
 
 **One question only B can answer**: whether a game box needs a logged-in Steam client (§8).
 
@@ -103,7 +110,13 @@ Logs: `C:\Users\b\ZombiesDev\logs\dedi\<probe>.txt`, `<probe>.console.log`, and 
 | p25 | + `sp_minplayers 1` | no change |
 | p26 | repaired game data + in-DLL liveness thread | `Com_Frame=0`, pumps frozen, per-thread CPU frozen |
 | p27 | + `WM_NULL` posted to every window each second | no change — not a blocking `GetMessage` |
-| p28 | `dedicated 1`, **no map at all** | `Com_Frame=0` here too → 0x59E330 is probably not the tick |
+| p28 | `dedicated 1`, **no map at all** | `Com_Frame=0` here too |
+| p29 | `SV_Frame` + 4 packet-handler counters | **`4 of 4 packet handlers hooked`, all read 0** — packets never reach the engine. My SV_Frame hook lost to `referee`'s (`already created`), so its 0 was meaningless |
+| p30 | renderer stub returns 0 instead of 1 | no change; switched to foundation's `enw::frame::subscribe` (installed=yes, count=0) |
+| p31 | dump WinMain around the loop | `SetFocus` and `Sleep` are the only things between the stub and the loop top |
+| p32 | **`DVAR_SAVED = 0x1000`** from `re` | **works**: `flags 0x4000 -> 0x5000`, zero GSC errors in 5,827 lines. Also `bringup_stub_hits=0` |
+| p33 | scan WinMain for call sites | `Com_Init` is called at **0x5FF77E**, two calls before the stub |
+| p34 | counter on `0x5FF794 -> 0x594200` too | **both 0 → `Com_Init` never returns**. Site 3 located |
 
 ### The turning points, with evidence
 
@@ -170,22 +183,32 @@ map, then zombies GSC setting `g_spawnai 1`, `ai_disableSpawn 0`, `dynEnt_spawne
 |---|---|---|---|
 | 1 | `WinMain` 0x5FF799 → 0x5FF4E0 | the renderer/D3D bring-up is called before the frame loop and is **not** gated by `com_dedicated`; in a headless process it drags a D3D device in | **CLEARED.** `re` found it; our DLL retargets that one call (verified `E8 42 FD FF FF` → 0x5FF4E0, no argument pushes before it, so a naked no-arg stub is safe), and refuses to patch if the target is not what we expect |
 | 2 | `maps/_load.gsc:3767` via `:324` | stock GSC calls `SetSavedDvar` on `con_typewriterColorBase`, a client-only dvar. `+set` creates it but without the SAVED flag; `seta` does not help | **CLEARED, but crudely.** Our DLL ORs flag bits into the existing `dvar_s`. See the honesty note below |
-| 3 | after the map loads | the headless server **never answers connectionless packets** — `getstatus`, `getinfo`, `getchallenge` on 127.0.0.1 all time out, with and without a map, with and without `sp_minplayers`, and posting `WM_NULL` to its windows does not change it | **OPEN. Top priority** |
+| 3 | `Com_Init` 0x59D710, called from WinMain at 0x5FF77E | **`Com_Init` never returns in dedicated mode.** Counters on both following calls (`0x5FF794 -> 0x594200`, `0x5FF799 -> 0x5FF4E0`) and on the loop's `Com_Frame` call all read **0** for a whole run while the server has loaded the map and run zombiemode GSC. So everything observed happens *inside* Com_Init (`+map` runs from the command buffer there), and nothing downstream ever happens: no frame tick, no network poll, no OOB reply, no join | **OPEN, and precisely located. The whole remaining blocker.** |
 | 4 | `BG_LoadWeaponDef` | `Could not find default weapon`, reached only with `fs_game` active | **RETRACTED.** On repaired data `main\iw_14.iwd` holds **220 `weapons/sp/*` and 55 `accuracy/*` files**, and `iw_14.iwd` was one of the zero-filled ones — so those 275 files were simply invisible. Not a dedicated-mode bug and not an `fs_game` bug. Confirmation run pending |
 | — | UDP 3074 | the party socket is bound with no dvar to move it | not a crash; blocks several instances per box |
 
-### Honesty note on site 2
+### How site 2 was settled, and what it cost
 
-`re` read `DVAR_FLAG_SAVED = 0x200` out of the `SetSavedDvar` builtin at 0x516990. **On our build
-0x200 alone does not work**: p23 set `con_typewriterColorBase` to `flags 0x4000 → 0x4200`, verified by
-read-back, and GSC threw the identical error. What does work is a blunt mask `0xBDAE` — which does
-**not** contain 0x200 (bit 9 is clear in `1011 1101 1010 1110`). So the bit GSC actually tests is one
-of `0x0002 0x0004 0x0008 0x0020 0x0080 0x0100 0x0400 0x0800 0x1000 0x2000 0x8000`, and setting eleven
-flags at once — probably including USERINFO, SERVERINFO and CHEAT — is a hack, not a fix. The DLL
-reads `ENW_DEDI_SAVED_MASK` at runtime so the bisect costs a probe and no rebuild. **This must be
-narrowed to one bit before anyone calls Stage C done.**
+**`DVAR_SAVED = 0x1000`**, read out of the gate inside the `SetSavedDvar` builtin at 0x516B15
+(`test word ptr [dvar+8], 0x1000`). Applied, verified end to end in p32: `con_typewriterColorBase`
+goes `flags 0x4000 -> 0x5000`, the console log has zero `SetSavedDvar` errors across 5,827 lines, and
+the map loads and runs GSC.
 
-### Honesty note on the "parked main thread"
+Three wrong answers preceded it and each is worth remembering:
+
+- **My bit-0 guess** (p17). Written and read back; GSC still refused. Bit 0 is the config.cfg archive
+  bit, which I had inferred correctly but mislabelled as what GSC tests.
+- **T4SP's flag enum**, which calls 0x200 SAVED and 0x1000 CHANGEABLE_RESET. Wrong for this build.
+  T4SP has been reliable on struct sizes and wrong on this enum, so treat its constants as
+  hypotheses to check against an instruction.
+- **My own working mask `0xBDAE`** (p20/p21), which only worked because it happens to contain
+  0x1000. It also set about ten other bits, at least one cheat-ish — not something to ship on a
+  server that certifies records. Dropped.
+
+The three other flag names in our source (`0x0001` archive, `0x0040` ROM, `0x4000` external) are
+**[inferred] from behaviour**, not read from instructions, and are labelled that way in the code.
+
+### Honesty note on the "parked main thread" (superseded, kept for the record)
 
 I claimed on the board that the headless main thread parks. That was an over-claim and I corrected it:
 

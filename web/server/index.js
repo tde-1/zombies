@@ -25,6 +25,7 @@ const authRoutes = require('./routes/auth')
 const { attach } = require('./middleware/auth')
 const presence = require('./lib/presence')
 const chat = require('./lib/chatNetwork')
+const live = require('./lib/live')
 const achievements = require('./lib/achievements')
 const mapRecords = require('./lib/mapRecords')
 const users = require('./lib/users')
@@ -124,6 +125,21 @@ io.on('connection', (socket) => {
     io.emit('presence', presence.stats())
   }
   socket.on('heartbeat', () => { if (sid) presence.heartbeat(sid) })
+
+  // The live view subscribes per game rather than receiving every frame of every game.
+  // At 4 Hz with a handful of concurrent games the difference is the whole cost of the
+  // feature, and the visibility check has to happen once at join rather than per frame.
+  socket.on('watch', (matchId, ack) => {
+    const id = String(matchId || '')
+    if (!id) return
+    const may = live.canWatch(id, sid)
+    if (!may.ok) { if (typeof ack === 'function') ack({ ok: false, error: may.reason }); return }
+    socket.join(`live:${id}`)
+    const f = live.get(id)
+    if (f) socket.emit('live', f)
+    if (typeof ack === 'function') ack({ ok: true })
+  })
+  socket.on('unwatch', (matchId) => socket.leave(`live:${String(matchId || '')}`))
   socket.on('chat', (text) => {
     if (!sid || !text) return
     const u = users.byId(sid)
@@ -139,6 +155,8 @@ io.on('connection', (socket) => {
 
 // The chat ring pushes to the browsers; the boxes drain it over the long poll.
 chat.setEmitter((line) => io.emit('chat', line))
+// A live frame goes only to the room watching that game.
+live.setEmitter((matchId, frame) => io.to(`live:${matchId}`).emit('live', frame))
 
 achievements.startJobs()
 mapRecords.startJobs()

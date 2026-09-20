@@ -16,6 +16,8 @@ const BadgePage = lazy(() => import('./pages/Badges').then((m) => ({ default: m.
 const Playlists = lazy(() => import('./pages/Playlists'))
 const PlaylistPage = lazy(() => import('./pages/Playlists').then((m) => ({ default: m.PlaylistPage })))
 const Custom = lazy(() => import('./pages/Custom'))
+const Live = lazy(() => import('./pages/Live'))
+const LiveList = lazy(() => import('./pages/Live').then((m) => ({ default: m.LiveList })))
 const Admin = lazy(() => import('./pages/Admin'))
 const Creator = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Creator })))
 const Game = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Game })))
@@ -46,6 +48,8 @@ export default function App() {
               <Route path="/creator/:name" element={<Creator />} />
               <Route path="/game/:id" element={<Game />} />
               <Route path="/custom" element={<Custom />} />
+              <Route path="/live" element={<LiveList />} />
+              <Route path="/live/:matchId" element={<Live />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

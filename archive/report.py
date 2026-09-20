@@ -24,6 +24,7 @@ import argparse
 import collections
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -188,8 +189,32 @@ def to_md(r):
     return "\n".join(L)
 
 
+_BRACKET = re.compile(r"^\s*[\[(][^\])]*[\])]\s*")
+_VER_TAIL = re.compile(r"\s*[vV]?\d+(?:[._]\d+)*\s*$")
+
+
+def display_name(db, norm, fallback):
+    """The nicest of the names our sources gave this map.
+
+    Sources disagree in ways that look sloppy in a table: ZWR shouts ("DESERT"), UGX
+    prefixes its thread titles ("[Manager] Leviathan V1.2"). Prefer a name that is not
+    all-caps, has no `[tag]` prefix and no trailing version.
+    """
+    names = [r["name"] for r in db.execute(
+        "SELECT name FROM maps WHERE norm=?", (norm,))] or [fallback]
+    def score(n):
+        clean = _VER_TAIL.sub("", _BRACKET.sub("", n)).strip()
+        return (0 if not _BRACKET.match(n) else 1,
+                0 if clean != clean.upper() else 1,
+                len(clean))
+    best = min(names, key=score)
+    return _VER_TAIL.sub("", _BRACKET.sub("", best)).strip() or best
+
+
 def maps_table():
     """The per-map results table for docs/kickstart/archive.md."""
+    db = catalogue.connect()
+
     def load(name):
         p = os.path.join(WORK, "reports", name)
         return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
@@ -208,7 +233,8 @@ def maps_table():
             tags = ",".join(t for t in v.get("tags", [])
                             if t in ("easter_egg", "buyable_ending", "bossfight_ending"))
             L.append("| %s | `%s` | %s | %s | `%s` | `%s` | %s | %s | %s |"
-                     % (f.get("name") or e["norm"], e["original"],
+                     % (display_name(db, e["norm"], f.get("name") or e["norm"]),
+                        e["original"],
                         human(e["original_size"]), e["installer_kind"],
                         m["map"], m.get("bsp"),
                         s.get("verdict", "-"), tags or "-", v.get("outcome", "-")))
