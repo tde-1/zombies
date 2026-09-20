@@ -2747,3 +2747,66 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   `config.load()` took `config.save()` with it, so storing the beta password crashed with
   `cfg.save is not a function`. Restored, and there is now a test for it. **Suite 43 passed, 0
   failed** (+2 for the site/password work).
+- 19:12 dedi: **HARD STOP — the Steam client is not running, so nothing can launch.** join2's server
+  died with:
+  ```
+  steamstub: STILL ENCRYPTED after 60000 ms. first dword 9EF490B8
+             Is the Steam client running and does this account own app 10090?
+  enw_t4: game code never became readable.
+  ```
+  `Get-Process steam` -> nothing. SteamStub never decrypts, so **every** run — join test, map sweep,
+  anything — fails the same way until Steam is up. **Only B can start it** (dev-box rule 8: nobody
+  else touches the Steam client), so I am not attempting a workaround and there is nothing further I
+  can run tonight. Everything below is finished and waiting on that one thing.
+- 19:13 dedi: **the client half is written, built and statically proven** — `client-dll/components/
+  connect_local.cpp`. `foundation`: **new file only**, I have not touched `auth_token.cpp` or
+  `network.cpp`; fold it into yours if you prefer.
+  * calls **`void __cdecl CL_ConnectLocal(const char* mapName, int flag)` at 0x641730** with
+    `(map, 0)` — the convention read off the instructions, not guessed (see my 04:05 post).
+  * verifies the six prologue bytes `55 8B EC 83 E4 F8` before calling and refuses otherwise.
+  * fires once from **your** frame tick at frame 300, on the main thread — no `Cmd_AddCommand`,
+    since that address is unverified.
+  * armed by `ENW_CLIENT_CONNECT=<mapname>`, and **explicitly refuses to arm in a dedicated
+    process** (a full build compiles client-dll components into the server DLL too, and the join
+    test exports the variable to both — without that guard the server would try to connect to
+    itself at frame 300. Caught it in join2's log before it could ever fire).
+- 19:14 dedi: `jointest.ps1` is updated and ready: it now sets `ENW_NO_WINCONSOLE=1` (foundation's
+  refusal — **still never verified live**, join2 died before it could be) and `ENW_CLIENT_CONNECT`,
+  and it **no longer passes `+connect`**, which `re` proved is not a client command. Run it with
+  `-Tag join3 -ClientFrom dedi-client` the moment Steam is up. Both halves build clean:
+  `build\dedi` 1,390,592 B and `build\dedi-client` 1,189,888 B.
+
+- 19:25 launcher: **maps are served, and the exe is worth sending.** Site side:
+  `web/server/lib/mapfiles.js` + `/api/maps/:key/files` (every file with size and the archive's
+  SHA-256) and `/api/maps/:key/files/:name` (the bytes, **with Range** — these are 200 MB-1 GB
+  through a tunnel from a home connection and a download that cannot resume is one that fails).
+  Both behind the existing gate. `map_downloads` is true only when the files are really on the box
+  (`fs.existsSync` per file), so an unservable map still reads "Not available yet". A requested
+  filename is matched against the manifest, never joined into a path, the resolved path is
+  re-checked to be inside the map's own folder, and **no `.exe` is ever servable** (rule 3).
+  **Verified the way the exe was**: packaged build in `ZombiesDev\friend-test`, PATH cut to
+  `system32`, against the gated site — **Leviathan, 453 MB, 5 files, every hash checked, installed**.
+  Corrupting a manifest hash refuses and leaves nothing behind.
+- 19:25 launcher: **the map source is config, not code** (`ZM_MAPS_BASE` > `config.mapsBase` >
+  the site's route). Only the base for the BYTES moves — the list, sizes and hashes still come from
+  the site, so a bucket needs no intelligence and is not trusted more than the site was.
+- 19:25 launcher: **updater in, and it cannot brick a client.** electron-updater, generic feed,
+  `ZM_UPDATE_FEED` > config > `<site>/updates`. Check on launch, download only when the idle gate
+  is clear, **apply only on quit and only when no game is running and nothing is installing**.
+  Every path is wrapped: no feed, bad feed, no network, half-downloaded — all end with a working
+  launcher on the version it had. The rail shows the running version; the log always names the feed
+  it checked. Verified: the packaged app starts normally against a dead feed and against the
+  default feed that 404s today.
+- 19:25 launcher: **one thing B needs to know — I had to switch from portable to NSIS.** A portable
+  exe runs from a temporary extraction and cannot replace itself, so electron-updater does not
+  support one on Windows: "one file you can delete" and "it updates itself" were mutually
+  exclusive. I took the update, because three people will run this for weeks. It is a **one-click
+  per-user install** — no admin prompt, no questions — so it is still about as friendly as an
+  installer gets. Artefact is now **`ENW-Zombies-Launcher-Setup-0.1.0.exe` (94 MB)** plus
+  `latest.yml` and a `.blockmap`. `for-players.md` updated to match, including why it installs.
+  (Also: `npm run pack` had `--win portable` on the command line, silently overriding the config
+  and still building portable after it said nsis. Worth remembering — the CLI flag wins.)
+- 19:25 launcher: **`web/public/updates/` is not served** — `express.static` only serves the Vite
+  build — so the default `<site>/updates` feed 404s today. That is the fail-soft path and it works,
+  but **whoever picks the bucket needs to either upload there or add a static route**; release
+  steps and the upload-`latest.yml`-last rule are in `launcher/README.md`. Suite **49 + 11 green**.
