@@ -1,5 +1,16 @@
 # Host agent — design, how to run it, and the measured numbers
 
+> **STATUS (2026-09-20).** **Proven against the real website**: the whole control plane — party →
+> lease → boot → invite-token join → referee → signed, key-pinned replay → result → games, players,
+> XP and boards, plus live spectator frames and a spool that survives the site being down
+> (`node test/integration-site.js`, 0 failures). **Simulator-only**: everything on the *game* side.
+> No real zombies game has been refereed yet; a real `CoDWaW.exe` has connected to the game link
+> and said hello, nothing more, so every per-game CPU, RAM and replay-size figure here is measured
+> against `sim/` and moves when the DLL lands. **Off by default and must stay that way**: local
+> adoption (`--local` / `--adopt-local`, refused outright on a box with `--site`) and blind
+> adoption of an unregistered `hello`. Cold start: `infra/host-agent/README.md`.
+
+
 The **host agent** is the server software that runs on every game box. One process per box. It
 starts game-server instances, talks to them over `docs/protocol/game-link-v0.md`, referees them,
 records a signed replay of every game, bridges chat to the site's global channel, answers the DLL's

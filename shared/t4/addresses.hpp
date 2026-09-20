@@ -7,10 +7,39 @@
 //   Steam build 252004. ImageBase 0x400000, no ASLR (DllCharacteristics == 0), so these
 //   are absolute VAs that hold every launch.
 //
-// EVERY constant below was re-verified against our own decrypted dump on 2026-09-20
-// (dump codwaw-1.7-a.exe). Method and evidence: docs/re/t4-sp-map.md.
-// Confidence: [V] verified on our dump, [H] from T4SP AGPL headers (offset asserts) and
-// consistent with our dump, [C] candidate (structurally strong, name inferred).
+// ---------------------------------------------------------------------------------------
+// READ THIS BEFORE USING ANY CONSTANT HERE.  Full evidence: docs/re/t4-sp-map.md
+//
+//   [V] = verified from an instruction on our own dump (an operand, stride, branch or call
+//         site was read). Safe to act on.
+//   [H] = from T4SP / KisakCOD headers, consistent with our dump but NOT individually proven
+//         here. Usually fine for struct sizes/offsets; verify before patching.
+//   [C] = candidate: structure fits, name inferred from ONE signal. DO NOT act on without a
+//         second check.
+//
+// Two rules this project learned the hard way:
+//  1. A single string cross-reference is a hypothesis, not an identification. Two labels in
+//     here were wrong for exactly that reason (see the WITHDRAWN list below and in the map).
+//  2. Where a calling convention is unproven this file SAYS SO and recommends a naked thunk.
+//     Guessing one cost a crash and a boot failure. Do not invent a prototype from an address.
+//
+// T4SP's ENUMS ARE WRONG FOR THIS BUILD, though its struct SIZES have been right:
+//     DVAR_SAVED    = 0x1000  (T4SP says 0x200)  - proven: test word[dvar+8],0x1000 @0x516B15
+//     DVAR_USERINFO = 0x0002  (verified independently @0x644B64)
+//     dvar flags are a 16-bit word at dvar_s + 0x8.
+// Sizes that DID hold and were re-confirmed from code strides: scrVmPub_t 0x4320,
+// scrVarPub_t 0x18048, client_s 0x58D30, gentity_s 0x378.
+//
+// WITHDRAWN — kept named so they are not rediscovered; do not use:
+//   0x473F10 "G_Say"            -> per-frame HUD/notify formatter (fired 60 Hz idle)
+//   0x4388A0 "ClientCommand"    -> on the frame path; identified only via 0x473F10
+//   0x648490 / 0x6F5F10         -> HUD/debug COLOURED-TEXT pair, not server commands
+//                                  (real pair: SV_GameSendServerCommand 0x5A9350 / 0x633FA0)
+//   0x69DAA0 "dedicated pump"   -> INVERTED; it runs only when com_dedicated == 0
+//   0x5FF4E0 "dedicated stuck"  -> from an unvalidated stack scan; never even reached
+//   COM_PlayIntroMovies shortlist (9 addrs) -> all nine counting stubs read zero
+//   variable-table layout       -> disproved by the referee; level object id is 4
+// ---------------------------------------------------------------------------------------
 //
 // This is our own file: plain constants + comments, no copied Activision code.
 // ---------------------------------------------------------------------------------------

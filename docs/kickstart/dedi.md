@@ -32,15 +32,94 @@ CoD4 SP tree) assume we must author the dedicated branch points. We do not.
 **The server now boots, runs frames and reads packets.** Suppressing a spurious
 `ERR_MAPLOADERRORSUMMARY` (raised with an empty error list from `SV_SpawnServer+0x3CD`) makes
 `Com_Init` return; the frame loop starts and `SV_PacketEvent` / `SV_ConnectionlessPacket` /
-`SV_DirectConnect` all fire for the first time. It then stops after ~2 frames on a **new** blocker:
-the main thread parks in `win32u!NtGdiExtTextOutW`, drawing text from `0x49414E` (§4, site 5).
+`SV_DirectConnect` all fire for the first time.
 
-That last hop is what stands between us and the join — and the join is cheaper than feared. R14 says
-T4 SP has no party layer (plain `connect <ip>:<port>`), and `re` found the Demonware `getAuthTicket`
-block is skipped
-entirely for `NA_LOOPBACK`, so a two-instance test on this box needs no auth patching at all.
+**The one open blocker: a console-window grind.** About two frames in, the main thread goes into
+GDI and stays there — its EIP moves between `win32u!NtUserExtTextOutW` and `win32u!NtUserScrollDC`,
+so it is grinding rather than deadlocked. The fix in hand is `foundation` refusing the WinConsole
+class in `CreateWindowExA` / `RegisterClassA`, dedicated-only: if the window never exists the grind
+cannot happen, and it needs no engine calling-convention guesses. **Do not try to stub the console
+functions — I did, twice, and made it worse** (§4).
+
+**Next, in order**: (1) `foundation`'s WinConsole refusal lands; (2) run `scratchpad/jointest.ps1` —
+the loopback join is the MVP test and is staged and ready; (3) CPU and frame timing under load;
+(4) the 14-map sweep; (5) solo-on-dedicated co-op rules. The join is cheaper than feared: R14 says
+T4 SP has no party layer (plain `connect <ip>:<port>`) and `re` found the Demonware `getAuthTicket`
+block is skipped entirely for `NA_LOOPBACK`, so a two-instance test on this box needs no auth work.
 
 **One question only B can answer**: whether a game box needs a logged-in Steam client (§8).
+
+---
+
+## 0. Reproduce a headless boot in five minutes
+
+```powershell
+# 1. build and deploy the DLL into the dev copy
+powershell -ExecutionPolicy Bypass -File tools\dev\build.ps1  -Name dedi
+powershell -ExecutionPolicy Bypass -File tools\dev\deploy.ps1 d2 -From dedi
+
+# 2. environment. Without the Steam vars the copy exits(0) in 1.5 s writing nothing;
+#    without the suppression the server dies on a spurious map-load error summary.
+$env:SteamAppId = "10090"; $env:SteamGameId = "10090"
+$env:ENW_DEDI_SUPPRESS_MAPSUMMARY = "1"
+
+# 3. clear the safe-mode marker, or a modal box blocks the launch before any logging
+Remove-Item "$env:LOCALAPPDATA\Activision\codwaw\__CoDWaW" -ErrorAction SilentlyContinue
+
+# 4. launch (take ZombiesDev\locks\game.lock first; kill only this PID)
+& C:\Users\b\ZombiesDev\waw-d2\CoDWaW.exe `
+    +set fs_homepath C:\Users\b\ZombiesDev\homes\dedi `
+    +set logfile 2 +set r_fullscreen 0 +set r_mode "800x600" `
+    +set s_volume 0 +set snd_volume 0 `
+    +set dedicated 1 +set zombiemode 1 `
+    +set con_typewriterColorBase "1.0 1.0 1.0" +set hud_drawhud 1 +set ui_campaign american `
+    +set sv_maxclients 4 +set net_port 28960 `
+    +map nazi_zombie_prototype
+```
+
+The `con_typewriterColorBase` / `hud_drawhud` / `ui_campaign` values exist only so our DLL can flag
+them `DVAR_SAVED`; the engine has to create them first (§4, site 2).
+
+**What you should see** — in `<fs_homepath>\main\console.log`:
+
+```
+Loading fastfile code_post_gfx / localized_common / common / patch     (no 'ui', no D3D)
+Opening IP socket: ...
+--- Common Initialization Complete ---
+------ Server Initialization ------
+Server: nazi_zombie_prototype
+      dvar set sv_running 1
+Loading fastfile 'nazi_zombie_prototype'   used 76.85 MB memory in DB alloc
+      dvar set g_spawnai 1                 <- zombiemode GSC running
+```
+
+and in the DLL's own `waw-d2\enw-<pid>.log`:
+
+```
+dedi_error_trap: ERR_MAPLOADERRORSUMMARY call at 0x0062B7AD short-circuited
+dedicated: renderer bring-up 0x005FF4E0 skipped
+dedicated: liveness ... frame::count=2  bringup_hits=1
+net: ... SV_PacketEvent=1  SV_ConnectionlessPacket=1  SV_DirectConnect=1
+```
+
+**Then it stops.** About two frames in, the main thread goes into the console-window grind (§4,
+site 5) and the server answers nothing further. That is the one open blocker.
+
+**Custom maps**: the mod must be installed in WaW's own mod root,
+`%LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>\`, and nowhere else — then add
+`+set fs_game mods/<bsp>` and use `+map <bsp>`. See §6b; getting the location wrong fails silently.
+
+Diagnostic switches, all environment variables, all off by default:
+
+| Variable | Effect |
+|---|---|
+| `ENW_DEDI_WHEREIS=1` | every 4 s, suspend the main thread, log EIP as `module!export+off` and a **validated** return-address chain |
+| `ENW_DEDI_PROBE=<hex,hex,…>` | count entries into up to 12 functions, with first-seen ordinals |
+| `ENW_DEDI_SAVED_MASK=<hex>` | override the dvar flag bits our DLL sets |
+| `ENW_DEDI_NOWINDOWS_FORCE=1` | re-enable the two window-suppression attempts that **failed** — don't, without new evidence |
+
+`scratchpad/oob.py <port>` pokes a running server with `getstatus` / `getinfo` / `getchallenge` on
+localhost and distinguishes "no reply" from "port unreachable".
 
 ---
 
@@ -356,7 +435,30 @@ values.
 
 ## 7. Milestone (d): a client connecting
 
-Not achieved. What is known:
+**Not attempted.** The harness is written, both halves build and run, and it is one green server
+away from being a real test.
+
+`scratchpad/jointest.ps1` takes the lock once, deploys both halves, launches the headless server,
+**polls the OOB port until the server actually answers `getstatus`**, then launches the client with
+`+connect 127.0.0.1:28960` and watches both, killing only the two PIDs it started. It needs exactly
+two things to become valid:
+
+1. `foundation`'s WinConsole refusal, so the server survives past ~2 frames and can answer at all;
+2. `foundation`'s answer on how the client is told to connect — is `+connect` on the command line
+   wired to `direct_connect`, or does it need a console command after the menu loads?
+
+Run it as `powershell -File jointest.ps1 -Tag join2 -ClientFrom dedi-client`. **Not core-only**:
+`-CoreOnly` drops `direct_connect` and the `getAuthTicket` short-circuit, and `127.0.0.1` is not the
+engine's loopback, so that patch is required. `build\dedi-client` is configured with
+`-DENW_WITH_CLIENT_COMPONENTS=ON -DENW_WITH_SERVER_COMPONENTS=OFF`, which also keeps `referee`'s
+hooks out so their ~70 s crash cannot be mistaken for a networking failure.
+
+**Run `join1` was invalid and should be ignored** — my readiness gate matched `REPLY` inside
+`NO REPLY`, so it launched a client against a stalled server. Fixed. What it did show: the client
+half loads cleanly (11 components, 498 MB, alive 75 s, no unhandled exception) but gave **no sign of
+attempting a connection**, which is why (2) above matters.
+
+What else is known:
 
 - **R14**: there is no party system in T4 single-player. Joining is plain `connect <ip>:<port>` over
   UDP — no lobby negotiation, no Demonware handshake. Plutonium's friends list is a launcher overlay.

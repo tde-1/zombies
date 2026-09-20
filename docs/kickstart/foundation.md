@@ -168,6 +168,26 @@ refuses, by design -- one game at a time). And if `build.ps1` fails on a file yo
 Components register, logging works and the game-link connects; `steamstub` correctly reports
 `.bind absent` and declines to touch memory. No game lock, no window, no Steam.
 
+### Which build to use, and which is safe for a game B might start
+
+| You want | Build | Why |
+|---|---|---|
+| **A game B is going to look at, or any run you want to trust** | `build.ps1 -Name you -CoreOnly` | Core only. Everything in this document is in it — the proxy loader, the frame tick, the Huffman guard, the focus guard, the heartbeat, `direct_connect`, the WinConsole refusal. **No other agent's work-in-progress can crash it.** Survives indefinitely: measured 270 s at a steady 62.5 fps, and a full build with the same core ran 540 s. |
+| A client for the join test | `-CoreOnly` is enough | `direct_connect` lives in `shared/core/`, so core-only has it. Add client components only if you want the DNS filter, socket lockdown or the invite token. |
+| Everything, to check the tree still compiles | `build.ps1 -Name you` (no switch) | Picks up `server/` and `client-dll/`. This is the one that breaks when somebody else's file does not compile. |
+
+**`-CoreOnly` is the safe default.** If a run misbehaves, rebuild with it before blaming anything:
+it is the difference between "our loader has a bug" and "somebody's component does".
+
+The defaults in `launch.ps1` are all the safe ones and you should not normally override them:
+invisible and never focus-stealing, modal dialogs answered, `developer 0` (see §7 — `developer 1`
+makes a missing asset fatal), muted, 800x600, own `fs_homepath`, the game lock taken atomically,
+and nothing reachable on the network but loopback and whatever you allow-list.
+
+**Before you run anything**, know that the interlock will refuse you if a game is already running
+anywhere on the box — that is deliberate, it names the PID, and `-Companion` is the supported way
+to start a legitimate second instance.
+
 ### Reference
 
 ```powershell
@@ -343,6 +363,7 @@ Everything else in vault §2 is still unverified — that is `re`'s job.
 | `components/frame_dispatch.cpp` | installs the tick and reports on it |
 | `components/instance_paths.cpp` | per-instance profile via an IAT patch (off by default) |
 | `components/huffman_guard.cpp` | **the bounded compressed-message decode** (§11) |
+| `components/no_winconsole.cpp` | refuses the dedicated server's console window (IAT; written, not yet verified live) |
 | `components/direct_connect.cpp` | the getAuthTicket short-circuit (see below) |
 | `components/focus_guard.cpp` | **keeps the engine ticking when unfocused** (see the top) |
 | `components/heartbeat.cpp` | one "still ticking" line every 15 s, and a `perf` message |
