@@ -440,18 +440,56 @@ export class GameLaunch extends EventEmitter {
     this.emit('console', line)
     if (/^Server:\s*(\S+)/i.test(line)) {
       this.mapName = line.match(/^Server:\s*(\S+)/i)[1]
+      this.sawServer = true
       this.setPhase('loading', `the server is bringing up ${this.mapName}`)
-    } else if (/^LOADING\.\.\.\s*maps\//i.test(line) || /Waited .* for asset 'maps\/.*d3dbsp'/i.test(line)) {
+      this.checkMapUp(line)
+    } else if (/Loading fastfile 'mod'/i.test(line)) {
+      // dedi's marker: the mod ZONE loaded. If this never appears, the map is
+      // installed somewhere World at War does not look — the commonest failure and
+      // the one that looks like a broken map.
+      this.note('the map mod loaded (Loading fastfile \'mod\')')
+      this.sawMod = true
+    } else if (/Waited .* for asset 'maps\/.*\.d3dbsp'/i.test(line) || /^LOADING\.\.\.\s*maps\//i.test(line)) {
+      this.sawBsp = true
       this.setPhase('loading', line.trim().slice(0, 120))
+      this.checkMapUp(line)
     } else if (/AUTOSAVE_LEVELSTART/i.test(line)) {
-      // zombies writes this the moment the level is up and playable.
-      this.mapUp = true
-      this.emit('map_up', { map: this.mapName || null, line: line.trim() })
-      this.setPhase('in_game', `the map is up${this.mapName ? `: ${this.mapName}` : ''}`)
+      this.sawAutosave = true
+      this.checkMapUp(line)
     } else if (/enw_t4 (online|ready|loaded)/i.test(line)) {
       this.note('the ENW client is running inside the game')
     } else if (/Connecting to/i.test(line)) {
       this.setPhase('launching', line.trim().slice(0, 120))
+    }
+  }
+
+  // "The map is up" needs a signal that works for stock AND custom maps.
+  // `AUTOSAVE_LEVELSTART` is the cleanest but zombies-specific and not every custom
+  // map reaches it; the pair (`Server: <map>` + the map's own `.d3dbsp` loading) is
+  // what actually means the level is in. Either is enough.
+  checkMapUp(line) {
+    if (this.mapUp) return
+    if (!this.sawAutosave && !(this.sawServer && this.sawBsp)) return
+    this.mapUp = true
+    this.emit('map_up', { map: this.mapName || null, line: String(line).trim() })
+    this.setPhase('in_game', `the map is up${this.mapName ? `: ${this.mapName}` : ''}`)
+  }
+
+  // The silent failure dedi found, named. A custom map installed anywhere but
+  // %LOCALAPPDATA%\Activision\CoDWaW\mods mounts its .iwd files and shows up in the
+  // printed search path, so everything LOOKS right — but `mod.ff` is a zone, never
+  // loads, and `+map` quietly does nothing. The tell is that `Loading fastfile 'mod'`
+  // never appears. Anyone debugging this without knowing blames the map.
+  diagnose() {
+    const custom = this.opts.fsGame && this.opts.fsGame !== MOD_NAME
+    if (!custom) return null
+    if (this.sawMod) return null
+    return {
+      problem: 'the map mod never loaded',
+      why: "World at War loads a custom map's mod only from %LOCALAPPDATA%\Activision\CoDWaW\mods. " +
+        'Anywhere else the .iwd files still mount and the search path still looks right, but ' +
+        "`Loading fastfile 'mod'` never happens and the map silently does not start.",
+      check: this.opts.installDir || null,
     }
   }
 

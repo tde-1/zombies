@@ -261,14 +261,68 @@ await test('mkdirSync(recursive) over a DANGLING junction throws ENOENT', () => 
   assert.throws(() => fs.mkdirSync(link, { recursive: true }), /ENOENT/)
 })
 
-await test('the map library is the mods folder the engine reads', async () => {
-  // No junction between the library and the engine's view: they are one folder. This
-  // is deliberate (see paths.js) and the whole reason the custom-map path is simple.
+await test('maps install to the ONE folder World at War loads them from', async () => {
+  // dedi measured this: <fs_homepath>\mods and <game copy>\mods both fail SILENTLY —
+  // the .iwds mount and the search path looks right, but `mod.ff` is a zone, not a
+  // filesystem asset, so it never loads and +map never runs. Only the player's own
+  // %LOCALAPPDATA%\Activision\CoDWaW\mods works. Locking that in.
   const paths2 = await import('../src/main/paths.js')
   const lib = await import('../src/main/library.js')
-  assert.equal(path.basename(paths2.P.maps), 'mods')
-  assert.equal(paths2.isInside(paths2.P.maps, paths2.P.home), true)
-  assert.equal(lib.installDir('some_map'), path.join(paths2.P.maps, 'some_map'))
+  const want = path.join(process.env.LOCALAPPDATA, 'Activision', 'CoDWaW', 'mods')
+  assert.equal(paths2.P.maps.toLowerCase(), want.toLowerCase())
+  assert.equal(lib.installDir('some_map'), path.join(want, 'some_map'))
+  // …and that folder is the one exception to "never write outside the ENW folder".
+  assert.ok(paths2.assertWritable(path.join(want, 'some_map', 'mod.ff')))
+  assert.throws(() => paths2.assertWritable(path.join(process.env.LOCALAPPDATA, 'Activision', 'CoDWaW', 'players', 'x')), /Refusing to write/)
+})
+
+await test("a map the player installed themselves is never touched", async () => {
+  const lib = await import('../src/main/library.js')
+  // B's own nazi_zombie_ali lives in that folder. Ours carry a record file; theirs
+  // do not, and that is the whole test.
+  const o = lib.ownership('definitely_not_a_real_map_' + Date.now())
+  assert.equal(o.state, 'absent')
+  const src = String(fs.readFileSync(new URL('../src/main/library.js', import.meta.url)))
+  assert.ok(src.includes("state: 'theirs'"), 'ownership must be able to say a map belongs to the player')
+  assert.ok(src.includes('ENW did not put it there'), 'install must refuse to overwrite it')
+  assert.ok(src.includes('that map is yours'), 'uninstall must refuse to delete it')
+})
+
+await test('the console-log detector catches the SILENT wrong-location failure', async () => {
+  // The coordinator is right that asserting the path is not enough: the bug class is
+  // "everything looks fine and the map never loads". So drive the real detector with
+  // real lines from both runs.
+  //
+  // WORKING (Leviathan installed in %LOCALAPPDATA%\Activision\CoDWaW\mods):
+  const { GameLaunch } = await import('../src/main/launch.js')
+  const good = new GameLaunch({ fsGame: 'mods/nazi_zombie_leviathan', installDir: 'X' })
+  let up = null
+  good.on('map_up', (e) => { up = e })
+  for (const line of [
+    "Loading fastfile 'mod'",
+    'Server: nazi_zombie_leviathan',
+    "Waited 937 msec for asset 'maps/nazi_zombie_leviathan.d3dbsp' of type 'col_map_mp'.",
+  ]) good.onConsoleLine(line)
+  assert.ok(up, 'a real loading sequence must report the map as up')
+  assert.equal(up.map, 'nazi_zombie_leviathan')
+  assert.equal(good.diagnose(), null, 'a working run has nothing to diagnose')
+
+  // SILENT FAILURE (same map installed under <fs_homepath>\mods): the .iwds mount and
+  // the search path prints fine, but `Loading fastfile 'mod'` never appears.
+  const bad = new GameLaunch({ fsGame: 'mods/nazi_zombie_hijacked', installDir: 'Y' })
+  let badUp = null
+  bad.on('map_up', (e) => { badUp = e })
+  for (const line of [
+    'C:\Users\b\AppData\Local\ENWZombies\home/mods/nazi_zombie_hijacked',
+    "Loading fastfile 'common'",
+    `Error: Can't find map "nazi_zombie_hijacked".`,
+    'A mod is required for custom maps',
+  ]) bad.onConsoleLine(line)
+  assert.equal(badUp, null, 'a map that never loaded must not be reported as up')
+  const d = bad.diagnose()
+  assert.ok(d, 'the silent failure must be diagnosed, not left as "no map yet"')
+  assert.match(d.why, /Activision/)
+  assert.equal(d.check, 'Y')
 })
 
 await test("a map's title is not its bsp name, and the catalogue keeps both", async () => {

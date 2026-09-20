@@ -133,11 +133,36 @@ finally {
     }
 }
 
-Write-Host "`n== the two lines that matter ==" -ForegroundColor Cyan
-Get-ChildItem 'C:\Users\b\ZombiesDev\logs\referee\enw-*.log' |
-    Sort-Object LastWriteTime -Descending | Select-Object -First 1 |
-    ForEach-Object { Select-String -Path $_.FullName -Pattern 'currentOrigin|referee/bind:' } |
-    ForEach-Object { "  " + $_.Line }
+# A DIAGNOSTIC MUST NOT BE ABLE TO BREAK THE RUN IT IS DIAGNOSING.
+# `foundation` lost a run to exactly this shape: their log assertion held the
+# game's file open, threw, and skipped the kill -- leaving a game running and the
+# lock held. Three rules here: every log read happens AFTER the `finally` above has
+# killed the game and released the lock; the file is opened FileShare.ReadWrite so
+# it can never block the writer; and any failure warns and moves on.
+function Read-LogShared([string]$path) {
+    try {
+        $fs = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read,
+                              ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+        try {
+            $sr = New-Object IO.StreamReader $fs
+            try { return $sr.ReadToEnd() } finally { $sr.Dispose() }
+        } finally { $fs.Dispose() }
+    } catch {
+        Write-Warning "could not read $path : $($_.Exception.Message)"
+        return ''
+    }
+}
+
+Write-Host "`n== the lines that matter ==" -ForegroundColor Cyan
+try {
+    $log = Get-ChildItem 'C:\Users\b\ZombiesDev\logs\referee\enw-*.log' -ErrorAction Stop |
+           Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($log) {
+        (Read-LogShared $log.FullName) -split "`n" |
+            Where-Object { $_ -match 'currentOrigin|referee/bind:|levelvars|STOPPED TICKING|level notifies|chat captured|learned level' } |
+            Select-Object -Last 28 | ForEach-Object { "  " + $_.TrimEnd() }
+    }
+} catch { Write-Warning "log summary skipped: $($_.Exception.Message)" }
 
 Write-Host "`n== analysis ==" -ForegroundColor Cyan
 if ((Test-Path $out) -and (Get-Item $out).Length -gt 0) {

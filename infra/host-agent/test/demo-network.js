@@ -28,13 +28,13 @@ import { mkdirp, parseArgs } from '../lib/util.js'
 const args = parseArgs(process.argv.slice(2))
 const ROOT = path.resolve(import.meta.dirname, '..')
 const RUN = mkdirp(path.join(os.tmpdir(), 'enw-demo-' + Date.now().toString(36)))
-const SITE = `http://127.0.0.1:${PORT_SITE}`
-const VERBOSE = !!args.verbose
 // Several agents run tools on this machine tonight and two of them already collided with
 // the ports this demo used to hard-code. Everything here is on one uncommon block, and
-// overridable.
+// overridable with --port.
 const PORT_SITE = Number(args.port || 8809)
 const P = { linkA: 38861, linkB: 38862, dashA: 8861, dashB: 8862, baseA: 29500, baseB: 29600 }
+const SITE = `http://127.0.0.1:${PORT_SITE}`
+const VERBOSE = !!args.verbose
 
 const procs = []
 let failures = 0

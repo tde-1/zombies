@@ -125,8 +125,8 @@ void __cdecl on_sys_error(uintptr_t ret, uint32_t a1, uint32_t a2, uintptr_t esp
         __asm { jmp  dword ptr [tramp] }          \
     }
 
-ENW_ERROR_STUB(com_error_stub, on_com_error, g_com_error_tramp)
-ENW_ERROR_STUB(sys_error_stub, on_sys_error, g_sys_error_tramp)
+ENW_ERROR_STUB(com_error_stub, on_com_error, g_com_error_tramp);
+ENW_ERROR_STUB(sys_error_stub, on_sys_error, g_sys_error_tramp);
 #undef ENW_ERROR_STUB
 
 enw::hook g_com_error_hook;

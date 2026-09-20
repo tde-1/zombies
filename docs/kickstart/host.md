@@ -13,6 +13,12 @@ Everything in `infra/host-agent/` is **Node 24 with zero dependencies** — `nod
 **Nothing here needs the game to exist.** A simulator (`sim/`) speaks the same protocol, so every
 feature below is built, tested and measured today.
 
+**Update, 02:0x — the whole path runs against the REAL website.** `web/` on :3200 leases from its
+party rail, mints Ed25519 invite tokens, and takes back games, players, XP and the replay pointer;
+this box verifies those tokens against the public half it fetched from `GET /api/gs/keys`. One
+command reproduces it: `node test/integration-site.js --box box-b --secret devkey-b` — **0
+failures** (§3c).
+
 **Update, 01:02 — a real `CoDWaW.exe` has now been on the other end of the socket.** With the
 foundation agent's `tools/dev/launch.ps1` and the referee build of `enw_t4.dll` deployed into
 `ZombiesDev\waw-host`, `node host.js --boot 1 --game --map nazi_zombie_prototype` launched the real
@@ -130,48 +136,119 @@ One **simulated game-hour**, players sampled at 20 Hz and zombies at 10 Hz, real
 written and verified. `node tools/measure-replay.js --hours 1 --players 1,2,4 --levels 10,19`
 (full output in `infra/host-agent/measurement.json`, 2026-09-20).
 
-| Players | Round reached in the hour | Zombies alive (avg / peak) | Raw NDJSON | **Compressed (zstd-10)** | zstd-19 |
-|---|---|---|---|---|---|
-| 1 | 12 | 5.1 / 14 | 12.4 MiB | **0.30 MB/game-hour** | 0.26 |
-| 2 | 20 | 10.9 / 21 | 35.6 MiB | **2.69 MB/game-hour** | 2.31 |
-| 4 | 22 | 15.3 / 24 | 70.6 MiB | **5.98 MB/game-hour** | 5.14 |
+| Players | Round reached | Survived the hour? | Zombies alive (avg / peak) | Raw NDJSON | **Compressed (zstd-10)** | zstd-19 |
+|---|---|---|---|---|---|---|
+| 1 | 13 | no — wiped at 12 min | 7.6 / 22 | 5.4 MiB | **3.03 MB/game-hour** | 2.64 |
+| 2 | 25 | yes | 17.0 / 24 | 54.1 MiB | **6.42 MB/game-hour** | 5.48 |
+| 4 | 26 | yes | 14.4 / 24 | 72.6 MiB | **8.04 MB/game-hour** | 7.00 |
 
-Compression is **11.8×** at 4 players (69× solo — a solo track is very predictable). 90.9% of the
-raw bytes are `snap`, 8.8% are `input`, and everything else together is 0.3%.
+Compression is **9.0×** at 4 players. 86.0% of the raw bytes are `snap`, 13.5% are `input`, and
+everything else together is 0.5%.
 
-**The vault's ~4–5 MB per 4-player game-hour is right.** We measure 5.98 at zstd-10, 5.14 at
-zstd-19 — 1.1–1.3× the estimate, same order, no change to any decision. **Solo is much cheaper than
-estimated**: 0.30 MB/h against the vault's ~1.5, because a solo game reaches lower rounds and holds
-far fewer zombies.
+**These numbers are ~1.8–2× the vault's estimate, and the earlier version of this document was
+wrong.** The first pass measured 5.98 MB per 4-player game-hour and said the vault's ~4–5 was
+right. It was measuring a simulation that killed zombies far too quickly, so the map was half
+empty for most of the hour. Four fidelity fixes (§3d) later — trains that actually form, melee
+applied per swing instead of per tick, a cap on how many zombies can reach one player, and a game
+that ends when everyone is down — a 4-player hour holds **14.4 zombies alive on average and peaks
+at the engine's 24**, and the replay is correspondingly bigger. **Plan on ~8 MB per 4-player
+game-hour, not 4–5.**
 
 | Tier | 4p MB/game-hour | What it is |
 |---|---|---|
-| full | 5.98 | every event + player tracks + zombie tracks (90 days; VIP forever) |
-| no zombies | 2.89 | B's "reconstruct the zombies" idea |
+| full | 8.04 | every event + player tracks + zombie tracks (90 days; VIP forever) |
+| no zombies | 4.32 | B's "reconstruct the zombies" idea |
 | events only | 0.06 | the signed event log + summary (**kept forever, everyone**) |
 
-**B's "don't store the zombies" idea saves 3.09 MB/h (52%)** — close to the vault's ~2.7 MB/h
-estimate, and the vault's conclusion is confirmed with numbers: at R2's $0.015/GB-month, storing the
-real zombies for a thousand 4-player game-hours costs **$0.045 a month**. Zombie behaviour *is* the
-evidence. Keep it.
+**B's "don't store the zombies" idea saves 3.72 MB/h (46%)** — and the vault's conclusion still
+holds with the bigger numbers: at R2's $0.015/GB-month, storing the real zombies for a thousand
+4-player game-hours costs **$0.055 a month**. Zombie behaviour *is* the evidence. Keep it.
 
 **R2 at $0.015/GB-month**, full tier, 90-day retention, games running flat out 24/7:
 
 | Concurrent games | Stored | Cost |
 |---|---|---|
-| 25 | 315 GB | **$4.73/month** |
-| 100 | 1,261 GB | **$18.92/month** |
-| 400 | 5,044 GB | **$75.67/month** |
+| 25 | 424 GB | **$6.36/month** |
+| 100 | 1,696 GB | **$25.44/month** |
+| 400 | 6,784 GB | **$101.76/month** |
 
 The keep-forever event log adds **0.06 MB per game-hour** and never expires: at 25 concurrent games
 that is ~13 GB a year, about **$0.20/month of growth per year of operation**. A 20-hour VIP game is
-120 MB, i.e. **$0.0018/month to keep**. Reading is free on R2 (no egress charge), so watching
-replays costs nothing.
+160 MB, i.e. **$0.0024/month to keep**. Reading is free on R2 (no egress charge), so watching
+replays costs nothing. Even at 2× the vault's estimate the storage line is rounding error next to
+the €157–257/month a box costs.
 
-**zstd level.** Level 10 is the right default: level 3 is 23% bigger for no real CPU saving, level 19
-is 14% smaller but costs 17 s of CPU per game-hour recorded instead of 1.4 s — at 25 games per box
-that is 0.12 of a core spent on compression rather than 0.01. If storage ever matters more than CPU,
-re-compress cold replays to 19 offline; the container does not change.
+**zstd level.** Level 10 is the right default: level 19 is 12.9% smaller but costs 20 s of CPU per
+game-hour recorded instead of 1.9 s — at 25 games per box that is 0.14 of a core spent on
+compression rather than 0.013. If storage ever matters more than CPU, re-compress cold replays to
+19 offline; the container, the chain and the signature do not change.
+
+**Solo is the weak sample.** The solo run wipes at round 13 after 12 minutes, so its 3.03 MB/h is
+a rate measured over a short game rather than a full hour (the harness divides by actual sim time,
+not the hour it asked for). A competent solo player goes much further than round 13; the simulated
+one does not kite well enough. Treat solo as "roughly a third of a 4-player game" and re-measure
+against the real DLL.
+
+### 3c. The full integration run, against the real website
+
+`node test/integration-site.js` with `web/` running on :3200. Nothing is mocked on either side:
+the site has its own database and its own Ed25519 invite key, the box has its own replay key, and
+the only thing that passes between them is HTTP the box initiates.
+
+```
+0. the real site is up            invite key b74d9a7c9874d877; /api/gs/* is 401 without the secret
+1. the box comes up               fetched the invite key; the site PINNED replay key 96de531ff9d313d9
+2. party -> Start                 party 3, two signed-in players, ready check, launch -> lease m_104943d2
+3. the box takes the lease        seen on the next /assignment poll; slot 0 Dexter ALLOW, slot 1 Air ALLOW
+4. a forged token                 refused (bad_signature) against the site key the box holds
+5. the game plays out             round 8, 5m29s, replay 335.1 KiB / 6 chunks / 12,732 events
+6. what the site holds            game row, both players with XP (444 and 540), replay pinned=true
+7. the replay on disk             VALID against the pinned key; FAILS against any other key
+8. spool and retry                POST /api/gs/spool accepted a held result; a junk result is 400, never 5xx
+9. chat-feed since=0              cursor only, 0 events
+```
+
+**0 failures.** Party → lease → boot → join → referee → signed replay → result → games/players/XP,
+with the invite tokens signed by the site and verified by the box and nothing hand-copied between
+them.
+
+Three things that had to change to get there, all of them worth keeping:
+
+1. **The box now offers its replay public key on every status heartbeat** (`pub`, `key_id`) and
+   puts `key_id` + `pub` in the result's `replay` block. That is the whole difference between a
+   replay the site stores unpinned — which record review correctly refuses to call evidence — and
+   one it grades as record-grade. The box logs `replay key … is PINNED` once, and shouts
+   `KEY MISMATCH` if the site has a different key pinned for it.
+2. **A box that regenerates its key looks exactly like an impostor, and the site is right to say
+   so.** An early run used a throwaway key directory, the site pinned that key, and the box's real
+   key then sat *pending* while every replay was stored unpinned. Resolving it is an admin action
+   (Admin → Boxes → accept), which is the correct flow. The practical rule: **a box's replay key is
+   its identity — it lives outside anything a test or a deploy recreates.**
+3. **Spool and retry** (Q-host-2, now answered): a failed `POST /api/gs/result` goes to
+   `ZombiesDev\spool\<match>.json` and is drained through their batch `POST /api/gs/spool` until
+   taken. Their `/result` never 5xxs, so a **4xx is not retried** — it is moved to `spool/rejected/`
+   and logged, because one permanently bad body must not wedge every good one behind it. A box with
+   a non-empty spool must not be destroyed; it says so at boot.
+
+Two of their behaviours were adopted rather than argued with, and `mock-site/site.js` now matches:
+`chat-feed?since=0` returns **the cursor and no events** (the old whole-ring answer would inject an
+hour of strangers' chat into a game that had just booted, because the host pushes everything that
+route hands it into every live game), and `/result` never 5xxs.
+
+### 3d. What the simulator got wrong, and how it was found
+
+Every one of these was found by something downstream failing, not by reading the code — which is
+the argument for having the referee, the replay and the site on the other end of it.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| A game stuck at round 9 for 7 simulated hours | With every player down, nothing killed a zombie, so the round never ended, so nobody respawned | A team wipe now ends the game (`game_over`, `all_players_down`) — which is also what WaW does |
+| A 4-player team wiping by round 14, every time | Melee damage applied once per **tick** (20×/s) instead of once per **swing** (~1.1 s) | Scale by the swing interval |
+| A solo player dying under a pile | The whole train stacked on the player's exact position | At most four zombies can reach one player at once |
+| Trains that were not trains | `z.lag` was assigned and never used | Zombies chase the player's position from 0.15–1.0 s ago, from a 2-second trail |
+
+The last two are why the measured replay size moved by 35%: a map with a real 24-zombie train on it
+has far more to record than one that is half empty.
 
 ### 3b. CPU and RAM per instance
 
@@ -323,11 +400,12 @@ cleanly before killing it, so the demo stops manufacturing the crash case.
 | Feature | Verdict | Evidence |
 |---|---|---|
 | **Cross-server chat** | **Works.** | `test/demo-network.js` §5: a player line in game A reaches the site ring, box B's game console prints it, and a line typed on the website appears in both games. Long-poll drain (`?since=&wait=`), copied from `/api/gs/chat-feed`. |
-| **Invite tokens** | **Works, fails closed.** | §4 of the demo: 2 genuine invites join, a **forged** token is refused `bad_signature`, an **expired** one `expired`. Also refused: wrong match, wrong SteamID, re-used `jti`, edited payload, and garbage. With no token or no site key, a box with checks required refuses everyone rather than becoming an open server. |
+| **Invite tokens** | **Works against the real site, fails closed.** | Tokens minted by `web/`'s Ed25519 key, verified by the box against the public half it fetched: both real players ALLOW, a forged one `bad_signature`. |
+| **Invite tokens, the awkward cases** | **All refused.** | §4 of the two-box demo: 2 genuine invites join, a **forged** token is refused `bad_signature`, an **expired** one `expired`. Also refused: wrong match, wrong SteamID, re-used `jti`, edited payload, and garbage. With no token or no site key, a box with checks required refuses everyone rather than becoming an open server. |
 | **24 h cap + warnings + clean end** | **Works.** | Demo §6b on an 8-minute clock: warnings at 5/3/1, `end` sent, game saved with `cap_reached`, replay written and verified. Unit-tested on the real 30/10/1 schedule. VIP lobbies are genuinely uncapped. |
 | **AFK warn/kick** | **Works.** | Warn at 10 min, kick at 15, active players untouched, coming back clears it, everyone-idle pauses then closes. A simulator bug found this: an "AFK" player who still typed reset their own timer — chat **is** activity, which is correct, and the sim was wrong. |
 | **Replays + verification** | **Works, and the cost is trivial.** | 5.98 MB/4-player-game-hour, $4.73/month at 25 concurrent games with 90-day retention. Signed, chained, seekable, tamper demo included. A host killed mid-game leaves an unsigned file; `tools/recover.js` salvages it, clearly marked as lower-grade evidence. |
-| **Pull protocol** | **Works.** | Lease → boot → `status=ready` → play → `POST /api/gs/result` with the summary and replay pointer, on two boxes at once, nonce-cached polling, site never connects out. |
+| **Pull protocol** | **Works, against the real site.** | Lease → boot → `status=ready` → play → `POST /api/gs/result`, proven twice: two boxes against the mock, and one box against `web/` on :3200 driven by its own party rail (§3c). Results survive the site being down (spool + `POST /api/gs/spool`). |
 | **Live view / spectating** | **Works.** | `http://127.0.0.1:8787` — instances with live CPU/RAM, round, players, a 2D top-down canvas of player and zombie positions at 4 Hz, event log, chat, and playback of a recorded replay chunk-by-chunk. This is the prototype of the web live view in 99 §4.4 and of phase 2 of the replay roadmap. |
 | **Instance manager** | **Works, against the real game.** | Start/stop/restart/reap, per-instance logs, one port and id each, `ENW_HOST`/`ENW_INSTANCE`/`ENW_ROLE`, CPU+RAM sampling, PID-scoped kills only. Verified against a real `CoDWaW.exe` at 01:02: the DLL connected and the manager adopted the game's PID. It refuses cleanly when another agent holds `game.lock` (*"game.lock is held by dedi (probe p19-saved-retry) — not launching"*) without touching the lock file. |
 | **Referee state machine** | **Works.** | 37 in-process checks, all green, against the referee agent's real manifests. |
@@ -456,13 +534,16 @@ agent touches it.
   `usercmd` message yet; add it when the boards need it.
 * **The mock site is a mock.** In-memory, no database, one shared secret per box, `/admin/*` routes
   with no auth at all. It exists to prove the shape and must not grow into the real site.
+* **Port clashes are a real failure mode on a shared machine.** Three agents run tools here and two
+  of them took ports this code had hard-coded. A busy **dashboard** port no longer kills the box (it
+  logs and carries on — refereeing games is the job); a busy **game-link** port still does, correctly.
+  Both test harnesses now fail loudly with the port in the message instead of letting somebody
+  else's box quietly take the lease.
 * **Not tested**: more than 2 instances at once, a link peer that lies, a full 24-hour soak at 1×,
   or the crash-recovery *state restore* (the host asks for `snapshot_state` and the sim answers, but
   nothing puts the state back — that needs the DLL).
-* **Results are lost if the site is down** when a game ends. The box plays, referees and records
-  regardless, but the `POST /api/gs/result` is fire-and-forget. A spool-and-retry queue on disk is
-  the obvious fix and is question Q-host-2 in `questions.md` (it means a cloud box must not be
-  destroyed until its spool is empty).
+* ~~Results are lost if the site is down~~ — **done**: spooled to disk and drained through
+  `POST /api/gs/spool` (§3c). A box with a non-empty spool must not be destroyed.
 * **The `games_mp.log` prefix is not settled.** The referee agent proposes `GSE;` for the DLL side;
   the host writes `ENWZombie;` today. Both are one configurable string (`--game-log-prefix`). One
   of us should win — see the note at the end of `questions.md`.

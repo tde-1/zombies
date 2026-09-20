@@ -32,6 +32,14 @@ never returns, no frames run, no packets are handled and no dialog appears (it u
   class as my earlier 0x5FF4E0 claim, which I withdraw: stack-scanned return addresses are only
   trustworthy when validated as following a `call`.)
 
+## Behaviour note: the foreground-app check (2026-09-20)
+The engine throttles hard when it believes it is not the foreground app — it calls
+`GetActiveWindow`/`GetForegroundWindow` through the IAT, and parking windows off-screen (as our
+headless/off-screen launches do) makes it decide it is backgrounded. foundation's **65-second
+freeze** was this, fixed by replacing those two IAT entries. **Three separate measurements that
+night were capped by it**, so treat any timing taken with off-screen windows before that fix as
+suspect. This is a behaviour to remember, not an address to hook.
+
 ## Runtime cross-checks landed (from the referee/foundation)
 - **`gentity_s.currentOrigin = +0x160` confirmed** — the referee **withdrew its DISAGREE**: its
   sliding-window method scores +0x15C/+0x160/+0x164 identically (a 4-byte window over a 3-float
@@ -137,7 +145,7 @@ bytes — they point into the right instructions but not at the operand). Use th
 | `Dvar_RegisterBool` | 0x5EEE20 | [V] | `cl_voice` etc.; T4SP |
 | `Dvar_RegisterInt` | 0x5EEEA0 | [V] | `ui_serverStatusTimeOut` |
 | `Dvar_RegisterFloat` | 0x5EEF10 | [V] | `cg_hudGrenadeIconWidth`, `bg_bobMax`, `phys_gravity` |
-| `Dvar_RegisterVariant` (generic; NOT a 4-arg string register) | 0x5EED90 | [V] | used by string/color/vec dvars (sv_hostname/net_ip/rate/con_typewriterColorBase). **Prototype: `Dvar_RegisterVariant(const char* name /*+8*/, int type /*+0xC*/, int flags /*+0x10*/, DvarValue value /*+0x14, 8B by-value*/, DvarLimits domain /*+0x1C, ~0x18B by-value*/)`.** String: type=7, flags per need (USERINFO=0x2), value={defaultStr,0}, domain=0. Calls Dvar_FindVar then inner register 0x5EEA20. (Earlier "Dvar_RegisterString" label was wrong — there is no clean 4-arg string register.) |
+| `Dvar_RegisterVariant` (generic; NOT a 4-arg string register) | 0x5EED90 | [V] | used by string/color/vec dvars (sv_hostname/net_ip/rate/con_typewriterColorBase). **Prototype (settled from the instructions): `dvar_s* __cdecl Dvar_RegisterVariant(const char* name /*+8*/, int type /*+0xC*/, int flags /*+0x10*/, DvarValue value /*+0x14, 8 bytes*/, DvarLimits domain /*+0x1C, **0x14 = 20 bytes** */)`. It reads `[ebp+0x1C]` (movq, 8) **and** dwords `[ebp+0x24]/[ebp+0x28]/[ebp+0x2C]`, all forwarded to inner register 0x5EEA20 whose push block is exactly 0x2C — so the arg block is `[ebp+8]..[ebp+0x2F]` = **0x28 (40) bytes**, caller-cleaned. DvarLimits is 20 bytes, NOT 8; zero all 20 or the trailing dwords read the caller's frame.** String: type=7, flags per need (USERINFO=0x2), value={defaultStr,0}, domain=0. Calls Dvar_FindVar then inner register 0x5EEA20. (Earlier "Dvar_RegisterString" label was wrong — there is no clean 4-arg string register.) |
 | `Dvar_RegisterVec3` | 0x5EEFA0 | [C] | 3-float wrapper (Vec4/Color = 0x5EF040) |
 | `Dvar_RegisterEnum` | 0x5EF150 | [V] | used for `dedicated` |
 | `SetSavedDvar` | 0x516990 | [V] | errors "the dvar %s does not exist" / requires the SAVED flag. **Flag test at 0x516B15: `test word ptr [dvar+8], 0x1000` — so DVAR_SAVED = 0x1000 (NOT 0x200; T4SP enum is wrong for our build), and dvar flags = 16-bit word at dvar_s+0x8.** `con_typewriterColorBase` crash: registered only in client CG-init 0x4708C0 → absent headless. Fix: pre-register with flags\|=0x1000 |

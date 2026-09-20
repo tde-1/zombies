@@ -317,14 +317,18 @@ export class BootFlow extends EventEmitter {
       token: null,                // untracked: there is nothing to authorise
       map: o.localMap,
       fsGame: o.fsGame,
+      installDir: o.installDir,
       settings: o.settings,
       stealth: !!o.stealth,
       windowMode: o.windowMode || null,
       instance: `local-${o.localMap}`,
       role: 'solo',
-      // No host agent for a local game, so the game-link stays dormant rather than
-      // retrying a connection that will never succeed.
-      linkHost: null,
+      // A local game still reports to a host agent when there is one on this PC: that
+      // is how the player gets their own rounds, stats and replay. "Untracked" is a
+      // property of the MODE — the site files it as local, self-reported, worth no
+      // records and no XP — not of whether anyone was watching. With no agent the
+      // link simply stays dormant.
+      linkHost: o.linkHost || null,
       lockName: o.lockName || 'launcher',
       why: `launcher: local ${o.localMap}`,
       useGameLock: o.useGameLock,
@@ -357,8 +361,10 @@ export class BootFlow extends EventEmitter {
     // we installed it — World at War loads custom maps from exactly one folder and a
     // wrong location fails silently, looking for all the world like a broken map.
     let detail
+    const diag = l.diagnose?.()
     if (loaded) detail = `the map is loading on your PC: ${loaded}`
-    else if (o.installDir) detail = `the game is running but has not reported the map. ENW installed it to ${o.installDir} — World at War only loads custom maps from there, so that is the first thing to check.`
+    else if (diag) detail = `${diag.problem}. ${diag.why}${diag.check ? ` ENW installed it to ${diag.check}.` : ''}`
+    else if (o.installDir) detail = `the game is running but has not reported the map. ENW installed it to ${o.installDir}.`
     else detail = 'the game is running; the engine has not reported a map yet'
     this.step('in_game', loaded ? 'done' : 'active', detail, { simulated: !loaded, label: 'In game (untracked)' })
     return this.snapshot()
