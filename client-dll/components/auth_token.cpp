@@ -51,6 +51,72 @@ bool looks_like_token(const std::string& t) {
     return true;
 }
 
+// Read the token off the launcher's one-shot named pipe.
+//
+// The launcher (`launcher/src/main/launch.js`, serveToken) creates a pipe with a
+// random per-launch name, puts only the NAME in ENW_TOKEN_PIPE, and writes one
+// NDJSON line `{"v":0,"token":"..."}` to the first connection before closing.
+// So the token is in neither the command line nor the environment.
+//
+// We are called from post_load, which runs before any engine code, and the
+// launcher has the pipe listening before it spawns us -- but a short retry
+// covers the race and a busy pipe.
+std::string read_token_pipe(const std::string& pipe_path) {
+    constexpr int kAttempts = 50;  // ~1 s total
+    for (int attempt = 0; attempt < kAttempts; ++attempt) {
+        HANDLE h = ::CreateFileA(pipe_path.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0,
+                                 nullptr);
+        if (h == INVALID_HANDLE_VALUE) {
+            const DWORD err = ::GetLastError();
+            if (err == ERROR_PIPE_BUSY) {
+                ::WaitNamedPipeA(pipe_path.c_str(), 200);
+                continue;
+            }
+            if (err == ERROR_FILE_NOT_FOUND) {
+                ::Sleep(20);
+                continue;
+            }
+            ENW_ERROR("auth: cannot open the token pipe (err %lu)", err);
+            return {};
+        }
+
+        std::string line;
+        char buf[512];
+        DWORD got = 0;
+        while (::ReadFile(h, buf, sizeof(buf), &got, nullptr) && got > 0) {
+            line.append(buf, got);
+            SecureZeroMemory(buf, sizeof(buf));
+            if (line.find('\n') != std::string::npos) break;
+            if (line.size() > 8192) break;  // a peer that never ends the line
+        }
+        ::CloseHandle(h);
+
+        const size_t nl = line.find('\n');
+        if (nl != std::string::npos) line.resize(nl);
+        if (line.empty()) {
+            ENW_ERROR("auth: the token pipe gave us nothing");
+            return {};
+        }
+
+        json::value msg;
+        if (!json::parse(line, &msg) || msg.type != json::kind::object) {
+            SecureZeroMemory(&line[0], line.size());
+            ENW_ERROR("auth: the token pipe sent something that is not a JSON object");
+            return {};
+        }
+        const long long v = msg.int_or("v", -1);
+        std::string token = msg.str_or("token");
+        SecureZeroMemory(&line[0], line.size());
+        if (v != 0) {
+            ENW_ERROR("auth: token pipe spoke version %lld, we understand 0", v);
+            return {};
+        }
+        return token;
+    }
+    ENW_ERROR("auth: the token pipe at '%s' never became available", pipe_path.c_str());
+    return {};
+}
+
 // Never log the token itself. This is what goes in the log instead.
 std::string fingerprint(const std::string& t) {
     if (t.size() < 12) return "<short>";
