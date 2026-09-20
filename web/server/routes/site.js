@@ -18,6 +18,7 @@ const results = require('../lib/results')
 const chat = require('../lib/chatNetwork')
 const live = require('../lib/live')
 const replays = require('../lib/replays')
+const enw = require('../lib/enw')
 const users = require('../lib/users')
 const { safeJson } = require('../lib/util')
 const { db } = require('../db/database')
@@ -42,6 +43,23 @@ function router() {
       featured: maps.list({ sort: 'popular', limit: 4, me }).maps,
       feed: feed.recent(24),
       map_count: maps.count(),
+      // What is real and what is not, stated on the page rather than in a document.
+      // Nobody opening this for the first time should have to wonder whether something is
+      // broken or simply not built yet.
+      build: {
+        auth: require('./auth').effectiveMode(),
+        enw: enw.status().enabled,
+        archive_total: db.prepare('SELECT COUNT(*) c FROM maps').get().c,
+        // Each of these is a thing a visitor can see and might reasonably expect to work.
+        stubbed: [
+          require('./auth').effectiveMode() === 'mock'
+            && 'Sign-in is a local development page, not Steam. Pick any name; it makes a local account and nothing leaves this machine.',
+          !enw.status().enabled && 'ENW names and VIP are not connected, so names come from the Steam persona and VIP is whatever is set locally.',
+          'Map art is missing everywhere, so cards show the map’s engine name instead.',
+          'The launcher is not installed here, so Play Local and map downloads have nothing to launch or fetch.',
+          'Badge art is not drawn yet — every badge is a hexagon with the map name in it.',
+        ].filter(Boolean),
+      },
       // No "rescued" counter anywhere in v1 (13 §3). This is the map count the way Movement
       // shows it, and nothing else.
     })

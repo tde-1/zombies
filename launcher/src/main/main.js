@@ -583,6 +583,26 @@ if (!single) {
           showSite(false)
           await new Promise((r) => setTimeout(r, 900))
         }
+        // ENW_SMOKE_PLAYLOCAL=<bsp>: click the rail's map and press Play Local, the
+        // way B will. Proves the button, not just the plumbing behind it.
+        if (process.env.ENW_SMOKE_PLAYLOCAL) {
+          const bsp = process.env.ENW_SMOKE_PLAYLOCAL
+          report.playLocal = await state.win?.webContents.executeJavaScript(
+            `(async () => {
+               const btns = [...document.querySelectorAll('#mapList button')]
+               const b = btns.find((x) => (x.title || '').includes(${JSON.stringify(bsp)}))
+               if (!b) return 'no such map in the rail'
+               b.click()
+               await new Promise((r) => setTimeout(r, 300))
+               const pl = document.getElementById('playLocalBtn')
+               if (pl.disabled) return 'Play Local is disabled: ' + document.getElementById('cardNote').textContent
+               pl.click()
+               await new Promise((r) => setTimeout(r, 4000))
+               return 'clicked; boot screen: ' + [...document.querySelectorAll('#bootSteps .step')]
+                 .map((s) => s.querySelector('.title').textContent + '=' + (s.className.replace('step ','') || 'pending')).join(' | ')
+             })()`
+          ).catch((e) => `ERROR ${e.message}`)
+        }
         if (process.env.ENW_SMOKE_SHOT) {
           // The site lives in a native child view, so the window's own webContents
           // captures the chrome only. Grab both and say so.

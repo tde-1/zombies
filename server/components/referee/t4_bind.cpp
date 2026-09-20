@@ -29,6 +29,7 @@
 #include "../../../shared/core/logger.hpp"
 #include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/memory.hpp"
+#include "../../../shared/core/scheduler.hpp"
 #include "../../../shared/t4/addresses.hpp"
 #include "../../../shared/t4/structs.hpp"
 
@@ -422,8 +423,8 @@ void __cdecl sv_frame_detour() {
 // SV_GameSendServerCommand(clientNum in ecx, int type, const char* text).
 // clientNum -1 broadcasts. __fastcall gives us ecx; edx is unused by the callee
 // so passing a dummy is safe.
-using SV_GameSendServerCommand_t = void(__fastcall*)(int clientNum, int edx, int type,
-                                                     const char* text);
+// (the old __fastcall prototype for 0x648490 is gone: that address was a HUD colour
+// routine, and `re` recommends a naked thunk over a typed prototype for the real one)
 
 // ---------------------------------------------------------------- notifies --
 // VM_Notify(EAX = scriptInstance; stack: notifyListOwnerId, stringValue, top).
@@ -567,10 +568,10 @@ no_trampoline:
 // the "%s: " formatter both `say` and `say_team` land in. Hooking here rather
 // than ClientCommand gets us the text as a plain argument instead of needing
 // Cmd_Argv, which is not published.
-enw::hook g_svcmd_hook;
-void* g_svcmd_trampoline = nullptr;
 chat_sink g_chat_sink;
 uint64_t g_chat_captured = 0;
+uintptr_t g_sv_game_send = 0;     // 0x5A9350, resolved in bind()
+bool g_inject_enabled = false;
 
 int entnum_of(void* ent) {
     const uintptr_t base = at(t4::var::g_entities);
@@ -582,45 +583,45 @@ int entnum_of(void* ent) {
     return n >= 0 && n < 1024 ? n : -1;
 }
 
-// Observe one outgoing reliable command. `clientNum` -1 is a broadcast.
-void __cdecl svcmd_observe(int clientNum, const char* text) {
-    if (!text || !g_chat_sink) return;
-    if (!memory::is_readable(const_cast<char*>(text), 4)) return;
-    // The chat relays are "0clientchat <...>" / "0hostchat <...>" (re: 0x655C80 /
-    // 0x65B630). Everything else through this function is a normal server command
-    // and must not be reported as chat.
-    const char* p = text;
-    while (*p == '0' || *p == ' ') ++p;      // the leading channel digit
-    const bool is_client = std::strncmp(p, "clientchat", 10) == 0;
-    const bool is_host = std::strncmp(p, "hostchat", 8) == 0;
-    if (!is_client && !is_host) return;
-    const char* body = std::strchr(p, ' ');
-    if (!body) return;
-    ++body;
-    ++g_chat_captured;
-    g_chat_sink(clientNum, std::string(body), /*team=*/false);
-}
-
-// SV_GameSendServerCommand(ecx = clientNum, stack: type, text).
-__declspec(naked) void svcmd_detour() {
+// ---------------------------------------------------------- chat injection --
+// SV_GameSendServerCommand = 0x5A9350 (`re`, verified from its own instructions):
+//   clientNum = FIRST STACK ARG   (mov eax,[esp+8] after one push ecx)
+//   edx       = text
+//   ecx       = svscmd type
+//   -1 is genuinely the broadcast sentinel (explicit `cmp eax,-1 / jne` first branch)
+//
+// `re` has NOT verified stack cleanup and recommends a naked thunk that fixes the
+// stack itself rather than a typed prototype. Two convention guesses have already
+// cost a crash and a boot failure, so: we set the registers, make the call, and
+// restore esp from our own frame pointer afterwards regardless of what the callee
+// did with it.
+//
+// SAFETY, and it decides where this may be called from: the function dereferences
+// the sv_maxclients dvar pointer and indexes svs.clients, so it is unsafe before
+// dvars exist or before the server is running, and it must run on the main thread
+// at a frame boundary -- NEVER from the game-link socket thread. Broadcast (-1)
+// skips the client indexing and is the safer path.
+__declspec(naked) void call_sv_game_send(int /*clientNum*/, const char* /*text*/, int /*type*/) {
     __asm {
-        pushad
-        pushfd
-        mov  edx, [esp + 0x2C]      // arg1: the command text
         push ebp
         mov  ebp, esp
-        and  esp, -16               // see the alignment note above
-        push edx
-        push ecx                    // clientNum, in ecx
-        call svcmd_observe
+        sub  esp, 16
+        mov  [ebp-4], ebx
+        mov  [ebp-8], esi
+        mov  [ebp-12], edi
+        mov  eax, [ebp+8]           // clientNum
+        mov  edx, [ebp+12]          // text
+        mov  ecx, [ebp+16]          // svscmd type
+        push eax                    // clientNum is the first STACK argument
+        mov  eax, g_sv_game_send
+        call eax
+        mov  esp, ebp               // restore whatever the callee did to the stack
+        sub  esp, 16
+        mov  ebx, [ebp-4]
+        mov  esi, [ebp-8]
+        mov  edi, [ebp-12]
         mov  esp, ebp
         pop  ebp
-        popfd
-        popad
-        cmp  dword ptr [g_svcmd_trampoline], 0
-        je   svcmd_none
-        jmp  [g_svcmd_trampoline]
-svcmd_none:
         ret
     }
 }
@@ -664,9 +665,21 @@ const binding_report& bind() {
     g_report.entities =
         memory::is_readable(reinterpret_cast<void*>(at(t4::var::g_entities)), t4::gentity_off::stride);
 
-    // --- chat out ---
-    g_report.server_cmd =
-        memory::is_readable(reinterpret_cast<void*>(at(t4::fn::SV_GameSendServerCommand)), 16);
+    // --- chat out: the REAL SV_GameSendServerCommand (0x5A9350) ---
+    // Off unless asked for. The previous binding pointed at a HUD colour routine and
+    // corrupted a ring buffer, so this one does not get switched on by default and
+    // its acceptance test is TEXT VISIBLY APPEARING IN THE GAME, not a call returning.
+    const uintptr_t svgs = at(t4::fn::SV_GameSendServerCommand);
+    if (memory::is_readable(reinterpret_cast<void*>(svgs), 16)) {
+        g_sv_game_send = svgs;
+        char buf[8]{};
+        g_inject_enabled = ::GetEnvironmentVariableA("ENW_CHAT_INJECT", buf, sizeof(buf)) &&
+                           buf[0] == '1';
+        g_report.server_cmd = g_inject_enabled;
+        ENW_INFO("referee/bind: chat injection target %08X %s", static_cast<unsigned>(svgs),
+                 g_inject_enabled ? "ENABLED (ENW_CHAT_INJECT=1)"
+                                  : "present but DISABLED (set ENW_CHAT_INJECT=1 to test)");
+    }
 
     // --- notifies: VM_Notify, the chokepoint every flag_set() passes through ---
     const uintptr_t vm_notify = at(t4::fn::VM_Notify);
@@ -683,17 +696,15 @@ const binding_report& bind() {
         ENW_WARN("referee/bind: could not hook VM_Notify at %08X", static_cast<unsigned>(vm_notify));
     }
 
-    // --- chat in: SV_GameSendServerCommand, filtered for the chat token ---
-    const uintptr_t svcmd = at(t4::fn::SV_GameSendServerCommand);
-    if (memory::is_readable(reinterpret_cast<void*>(svcmd), 16) &&
-        g_svcmd_hook.create(svcmd, reinterpret_cast<void*>(&svcmd_detour), "SV_GameSendServerCommand")) {
-        g_svcmd_trampoline = g_svcmd_hook.original<void*>();
-    }
-    if (g_svcmd_trampoline && g_svcmd_hook.enable()) {
-        g_report.chat_capture = true;
-    } else {
-        ENW_WARN("referee/bind: could not hook SV_GameSendServerCommand for chat capture");
-    }
+    // --- chat in: NO VERIFIED PATH. ---
+    // 0x648490 is NOT a server-command function -- `re` re-read the instructions and
+    // it is a HUD/debug coloured-text routine (resolves an RGBA via 0x47A450, then
+    // 0x6F5F10 strlen's into a ring buffer at 0x3DCB4C0). My capture hook sat on it
+    // and my injection called it, which is what corrupted that buffer and killed the
+    // game about a minute later. Both are gone. T4 co-op chat rides the party/lobby
+    // reliable-command system and no capture site is verified yet, so capture stays
+    // OFF rather than hooked to the next plausible-looking address.
+    g_report.chat_capture = false;
 
     // --- old chat note ---
     // MEASURED 2026-09-20 01:34: hooking 0x473F10 as
@@ -884,12 +895,26 @@ std::optional<int> ent_int_field(int entnum, const char* field) {
 // Output
 // ---------------------------------------------------------------------------
 bool server_say(int slot, const std::string& text) {
-    if (!g_report.server_cmd) return false;
-    auto fn = reinterpret_cast<SV_GameSendServerCommand_t>(at(t4::fn::SV_GameSendServerCommand));
-    // The engine's own chat print is the `c` server command; type 0 is the normal
-    // reliable queue.
+    if (!g_inject_enabled || !g_sv_game_send) return false;
+
+    // MUST be on the game thread at a frame boundary: the callee dereferences the
+    // sv_maxclients dvar pointer and indexes svs.clients. Coming from the game-link
+    // socket thread would be a use of engine state from the wrong thread, which is
+    // how the last two crashes started. Queue it instead.
+    if (!scheduler::on_main_thread()) {
+        const int s = slot;
+        const std::string t = text;
+        scheduler::run_on_main([s, t] { server_say(s, t); });
+        return true;
+    }
+
+    // And not before the server exists. svs.clients is only meaningful once a map
+    // is running; broadcast (-1) skips the indexing entirely, so prefer it.
+    if (!g_report.entities) return false;
+
     const std::string cmd = "c \"" + text + "\"";
-    fn(slot < 0 ? -1 : slot, 0, 0, cmd.c_str());
+    call_sv_game_send(slot < 0 ? -1 : slot, cmd.c_str(), 0);
+    ENW_INFO("referee: injected chat (slot %d): %s", slot, text.c_str());
     return true;
 }
 

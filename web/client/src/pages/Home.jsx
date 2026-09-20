@@ -12,6 +12,37 @@ import MapCard from '../components/MapCard'
 // counter anywhere in v1." The Maps page shows the list and the number of maps the way
 // Movement does, and the archive story gets its own page later.
 
+// What is not built yet, said on the page.
+//
+// This exists because the alternative is worse: somebody opening the site for the first
+// time presses Play Local, nothing happens, and they cannot tell whether it is broken or
+// simply absent. Every line is a thing that is visible and might reasonably be expected to
+// work. It disappears on its own as those things get built — the server composes the list
+// from what is actually configured, so nothing here needs deleting by hand.
+function BuildNotice({ build }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <section className="card" style={{ marginBottom: 18, borderColor: 'var(--accent-2)' }}>
+      <div className="spread">
+        <div>
+          <div className="eyebrow" style={{ margin: 0 }}>Early build</div>
+          <p className="sub" style={{ margin: '4px 0 0' }}>
+            The archive, games, records, badges and the live view are real.{' '}
+            <b>{build.stubbed.length} things are not built yet</b> — so you never have to wonder
+            whether something is broken.
+          </p>
+        </div>
+        <button className="btn small ghost" onClick={() => setOpen((o) => !o)}>{open ? 'Hide' : 'What is missing'}</button>
+      </div>
+      {open && (
+        <ul className="sub" style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 13 }}>
+          {build.stubbed.map((s) => <li key={s} style={{ marginBottom: 4 }}>{s}</li>)}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 export default function Home() {
   const [d, setD] = useState(null)
   const { signedIn } = useSession()
@@ -27,6 +58,7 @@ export default function Home() {
 
   return (
     <div className="page">
+      {d.build && d.build.stubbed.length > 0 && <BuildNotice build={d.build} />}
       {!signedIn && (
         <section className="card" style={{ marginBottom: 26, display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
           <Lockup h={54} />

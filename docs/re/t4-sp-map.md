@@ -1,9 +1,64 @@
 # T4 SP map — verified addresses, function map, evidence
 
-*re agent. Kept current as work proceeds. Target: Steam `CoDWaW.exe` v1.7, SHA-256
-`732900D1…A7D64D`. All addresses are absolute VAs (no ASLR); on our dump **VA = 0x400000 +
-file offset**. Confidence: [V] verified on our dump, [H] T4SP AGPL header assert consistent
-with our dump, [C] candidate (structure strong, name inferred), [U] unknown.*
+*re agent. Target: Steam `CoDWaW.exe` v1.7, SHA-256 `732900D1…A7D64D`. All addresses are
+absolute VAs (no ASLR); on our dump **VA = 0x400000 + file offset**.*
+
+## READ THIS FIRST — how to trust an address in this file
+
+**Confidence tags, and what each actually means:**
+
+| Tag | Meaning | Safe to act on? |
+|---|---|---|
+| **[V]** | **Verified from an instruction on our own dump** — I read the code that proves it (an operand, a stride, a branch, a call site). | Yes. |
+| **[H]** | **From T4SP or KisakCOD headers, consistent with our dump but NOT individually proven here.** | Usually — but see the T4SP warning below. Verify before you patch. |
+| **[C]** | **Candidate.** Structure fits, name inferred. One signal only. | **No.** Verify first. |
+| **[U]** | Unknown / not located. | — |
+| **WITHDRAWN** | Was published here, later disproved. **Kept, not deleted**, so nobody rediscovers it. | **No. Do not use.** |
+
+**How to identify a function here — the method that survived this project:**
+1. **A single string cross-reference is a hypothesis, not an identification.** It tells you a
+   function *mentions* something; it does not tell you the function *is* that thing. Two of my
+   wrong calls came from exactly this, and both passed a smoke test before failing loudly.
+2. **Require a second, independent signal** before tagging [V]: a caller count, an argument or
+   stride shape (e.g. `imul reg, n, 0x4320` = sizeof scrVmPub_t), an instruction-level branch,
+   or a behavioural one ("does it fire when nothing is happening?").
+3. **Stack-scanned return addresses are not evidence unless validated** — accept one only if the
+   bytes immediately before it are a `call`. Un-validated ones land mid-instruction and name the
+   wrong function (0x410830, 0x5FF4E0, 0x49414E were all this).
+4. **Say plainly when you will not hand over a calling convention.** Several functions here are
+   optimised, register-argument, non-cdecl. Guessing one cost a crash and a boot failure. If the
+   convention is unproven, say so and recommend a naked thunk instead of a typed prototype.
+
+## T4SP's enums are wrong for our build — its struct SIZES have been right
+
+This bit us three times. **Trust T4SP/KisakCOD for struct sizes and offsets; do NOT trust their
+flag/constant enums without reading the instruction that tests the bit.**
+
+| Constant | T4SP says | **True on our build** | Proof |
+|---|---|---|---|
+| `DVAR_SAVED` | 0x200 | **0x1000** | `test word ptr [dvar+8], 0x1000` in SetSavedDvar @0x516B15 |
+| `DVAR_FLAG_USERINFO` | 0x2 | **0x2** (happens to be right — but verified independently) | userinfo-resend gate @0x644B64 on dvar_modifiedFlags 0x21ACF30 |
+| dvar flags location | — | **16-bit word at `dvar_s + 0x8`** | same instruction as above |
+
+By contrast T4SP's *sizes* have been reliable and independently confirmed on our dump:
+`scrVmPub_t` 0x4320, `scrVarPub_t` 0x18048, `client_s` 0x58D30, `gentity_s` 0x378 — each matched
+a stride or `imul` constant we read from code.
+
+## WITHDRAWN identifications — do not reuse these
+
+Kept deliberately so they are not rediscovered as new findings.
+
+| Withdrawn | I claimed | Reality | How it was caught |
+|---|---|---|---|
+| **0x473F10** | `G_Say` | A per-frame HUD/notify formatter sharing the `"%s: "` literal. | Referee bound chat to it; fired ~60 Hz idle with empty text. |
+| **0x4388A0** | `ClientCommand` | On the frame path; the sole caller of the 0x473F10 formatter. | Fell with 0x473F10 (identified only via it). |
+| **0x648490 / 0x6F5F10** | `SV_GameSendServerCommand` / `SV_SendServerCommand` | A **HUD/debug coloured-text pair** — 0x648490 resolves an RGBA via 0x47A450 and passes four floats; 0x6F5F10 strlen's text into a ring buffer at 0x3DCB4C0. | Referee's ~68 s crash after chat injection; reading the prologues showed float args. **Real pair: 0x5A9350 / 0x633FA0.** |
+| **0x69DAA0 "dedicated console pump"** | Runs when `com_dedicated != 0` | **Inverted** — WinMain's branch at 0x5FF7C7/0x5FF7CB *skips* it when dedicated; it is a client-side per-frame call. | dedi read the branch. |
+| **`COM_PlayIntroMovies` shortlist** (0x570B80, 0x42FDE0, 0x5A8B30, 0x6C0BC0, 0x479370, 0x6DC5D0, 0x6449B0, 0x5C9AC0, 0x5D6BD0) | One of these was the Com_Init gate | **None of them.** All nine counting stubs read zero. The gate was a fatal error (`ERR_MAPLOADERRORSUMMARY`), not a hang. | dedi stubbed all nine. |
+| **0x5FF4E0 "dedicated server is stuck here"** | Renderer bring-up was the blocker | Came from an **unvalidated stack scan**; the call site is never even reached. | dedi's counting stub: 0 hits. |
+| **0x49414E → 0x494120** | The GDI text-park site | 0x49414E is **mid-instruction**; rejected by dedi's call-preceded filter. | Validated walk gave 0x5B0830 instead. |
+| **Variable-table layout** (entry 0x10 with name at +8, slot `(name + parentId<<8) mod 0x10000`, childVariables at +0x60000) | How to read `level.<field>` | **Disproved** — the referee scored zero hash-consistent names across all four bit-extractions. Level object id is **4**, and `gScrVarPub+0x20` reads zero, so that is probably not `levelId` either. | Referee's exhaustive test. |
+
 
 ## Data-integrity note (2026-09-20)
 `ZombiesDev\waw-base` was a **corrupt copy**: nine `.iwd` archives (~1.1 GB) had correct file

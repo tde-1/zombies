@@ -1,5 +1,51 @@
 # referee — script hook points, detection strategy, and the in-process referee
 
+> ## STATUS AT HANDOVER (2026-09-20 04:00) — read this before anything below
+>
+> **The safe build for B:** `build.ps1 -Name referee` then `deploy.ps1 referee`, launched with **no
+> extra environment variables**. In that configuration chat injection is **off**
+> (`ENW_CHAT_INJECT` unset), the `level.*` probe is **off** (`ENW_LEVELVARS` unset), and the origin
+> discovery is hard-bounded. Nothing in it is known to be able to crash a game. Do **not** set
+> `ENW_CHAT_INJECT=1` on a game that matters — that path is unproven (see §8.8).
+>
+> ### Green — measured in a live game, and still true after the retractions
+> * **Replay sampling at 19.2–19.5 Hz**, five independent runs, off `SV_Frame`. Player positions,
+>   health and angles; zombie tracks via `classname`+`health`. A captured zombie read **health 150**,
+>   exactly stock round-1 — an independent confirmation of two offsets at once.
+> * **Flags and notifies by name.** `VM_Notify` + `re`'s string table resolve real script names
+>   (`all_players_connected`, `spawned_player`, …) with `ent: "level"` correctly attributed. This is
+>   the `flag_set()` → `level notify()` mechanism (§2.8) that makes ~1,000 custom maps tractable.
+> * **AFK input** from `client_s.lastUsercmd`: ~4 events in 5 idle minutes, which is correct.
+> * **Chat capture stays silent in an idle game** — the assertion is in the DLL, not in my memory.
+> * **Per-map finish detection: 10/12** against community tags on `archive`'s 14 real custom maps,
+>   5/5 on the stock maps, 15/15 campaign maps correctly rejected (§3.5a).
+> * **Script extraction** (`tools/re/ff_extract.py`) and the **`waw-base` repair** (nine corrupt
+>   iwds, hash-verified against Steam).
+>
+> ### Amber — designed and coded, not proven
+> Rounds and game over *as events* (the mechanism works; no capture has yet survived to a round
+> transition or a death), `level.round_number` / score / knobs (all need `level.*`, which is
+> **disproved** as of §8.7 — all four extractions scored zero), pause/restore, zombie counts in a
+> real fight.
+>
+> ### Withdrawn — claims of mine that did not survive checking
+> * **Chat injection "green"** → it was the *sender* not erroring; the address was a HUD colour
+>   routine and the call corrupted a ring buffer. Now rebound to the verified `0x5A9350`, off by
+>   default, acceptance test is *text visible in game* (§8.8).
+> * **Chat capture** → same wrong address; no verified capture site exists for T4 co-op chat.
+> * **The `currentOrigin` runtime cross-check** → non-deterministic across three runs; the one
+>   agreement with `re`'s +0x160 was luck. `re`'s offset stands on their evidence, not mine.
+> * **Three diagnoses of the 65-second wall** (engine pause → engine crash → my stack alignment).
+>   All wrong; the cause was the bad chat address. Found by *differentials* (core-only vs full,
+>   bare launch vs sink attached), never by reasoning forward from a mechanism (§8.7, §8.8).
+> * **"Scanner 20/20"** → that was stock maps only; it scored **0/14** on real custom maps before
+>   the fixes in §3.5a.
+>
+> ### The one thing I would tell the next person
+> Every number in §8.6 came from runs my own bug was truncating at 65 s. A figure that repeats
+> *identically* across different builds is not an environment quirk, it is a systematic cause in the
+> constant factor — and the constant factor was me. Rates survived that; totals did not.
+
 Scope: `server/components/{referee,replay,chat,afk,pause,knobs}/`, `referee/manifests/`, this file.
 Rules: `docs/dev-box.md`. Output contract: `docs/protocol/game-link-v0.md`.
 
