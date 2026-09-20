@@ -30,6 +30,10 @@ import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Weapons the magic box will only hand out one of. Holding one must survive a drop, or
+// the box hands out a second and weapon duplication is a ban on every board.
+const LIMITED = new Set(['wunderwaffe', 'wunderwaffe_dg2', 'm2_flamethrower', 'flamethrower'])
 const REPO = path.resolve(__dirname, '..', '..')
 const a = parseArgs(process.argv.slice(2))
 if (a.debug) setLogLevel('debug')
@@ -93,7 +97,16 @@ class Game extends EventEmitter {
     this.referee.on('command', (c) => this.sendToGame(c))
     this.referee.on('over', (s) => this.finish(s))
     this.referee.on('manifest_wanted', (map) => { this.manifest = host.manifests.get(map); this.referee.setManifest(this.manifest) })
-    for (const k of ['cap_warning', 'afk_warn', 'afk_kick', 'finish', 'signal', 'paused', 'resumed']) {
+    // Crash recovery (vault 10 §5). The referee decides WHEN; the host does the two bits
+    // of I/O: ask the game for the leaving player's state, and hand it back when they
+    // return. Both are recorded, because "Resumed" has to be auditable from the replay.
+    this.referee.on('snapshot_wanted', ({ slot, steamid }) => this.snapshotFor(slot, steamid))
+    this.referee.on('restore_wanted', ({ slot, steamid, state }) => {
+      const cmd = this.referee.send({ t: 'restore', slot, state })
+      this.recordHostEvent({ t: 'restore', slot, steamid, id: cmd.id, keys: Object.keys(state || {}) })
+      this.log.info(`restoring ${steamid} into slot ${slot} (${state?.players?.length ? 'full state' : 'partial'})`)
+    })
+    for (const k of ['cap_warning', 'afk_warn', 'afk_kick', 'finish', 'signal', 'paused', 'resumed', 'resume_countdown', 'state_held']) {
       this.referee.on(k, (d) => this.recordHostEvent({ t: 'referee', kind: k, ...(typeof d === 'object' ? d : { value: d }) }))
     }
     this.gameLog = new GameLog({ file: path.join(cfg.logDir, `${instance.id}.games_mp.log`), enabled: cfg.gameLog, prefix: cfg.gameLogPrefix })
@@ -135,6 +148,42 @@ class Game extends EventEmitter {
     this.recordHostEvent({ t: 'auth_decision', slot: ev.slot, steamid: ev.steamid || null, allow: r.allow, reason: r.reason })
     this.log[r.allow ? 'info' : 'warn'](`auth slot ${ev.slot} ${ev.name || ''} ${ev.steamid || ''}: ${r.allow ? 'ALLOW' : 'DENY'} (${r.reason})`)
     if (!r.allow) this.referee.players.delete(ev.slot)
+  }
+
+  /**
+   * Ask the game for the restorable state and keep the leaving player's slice of it.
+   * The whole-level snapshot is what the protocol returns; we hold only that person's
+   * part plus the level-scoped facts a restore needs.
+   */
+  snapshotFor(slot, steamid) {
+    const cmd = this.referee.send({ t: 'snapshot_state' })
+    const timer = setTimeout(() => {
+      this.referee.off('reply', onReply)
+      this.log.warn(`snapshot_state for ${steamid} timed out — nothing to restore if they come back`)
+      this.recordHostEvent({ t: 'snapshot_failed', slot, steamid, reason: 'timeout' })
+    }, 5000)
+    timer.unref?.()
+    const onReply = (ev) => {
+      if (ev.id !== cmd.id) return
+      clearTimeout(timer)
+      this.referee.off('reply', onReply)
+      if (!ev.ok) { this.log.warn(`snapshot_state failed: ${ev.error}`); return }
+      const whole = ev.value || {}
+      const mine = (whole.players || []).find((p) => String(p.steamid) === String(steamid) || p.slot === slot)
+      const state = {
+        ...mine,
+        round: whole.round,
+        power_on: whole.power_on,
+        pap_built: whole.pap_built,
+        // What the box must keep reserved while they are away: the magic box counts
+        // limited weapons held by CONNECTED players only, so a dropped Wunderwaffe can
+        // come out of the box again and be duplicated (vault 10 §5).
+        limited_weapons_held: mine?.weapon && LIMITED.has(mine.weapon) ? [mine.weapon] : [],
+      }
+      this.referee.holdState(steamid, state)
+      this.recordHostEvent({ t: 'snapshot_held', slot, steamid, score: state.score ?? null, weapon: state.weapon ?? null, reserved: state.limited_weapons_held })
+    }
+    this.referee.on('reply', onReply)
   }
 
   // ---- replay --------------------------------------------------------------------

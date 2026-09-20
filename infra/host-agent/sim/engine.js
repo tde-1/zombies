@@ -539,6 +539,27 @@ export class ZombiesSim extends EventEmitter {
       }
       case 'end': this.reply(cmd, true); this.endGame(cmd.reason || 'host_end'); break
       case 'snapshot_state': this.reply(cmd, true, this.restorableState()); break
+      case 'restore': {
+        // Put a returning player back as they were. In the real DLL this is the builtins
+        // the stock scripts already use (score, giveweapon + _upgraded, the perk list and
+        // its HUD, setorigin/setplayerangles). Here it is assignment, but the SHAPE — one
+        // command, one player, answered — is the contract the DLL has to meet.
+        const p = this.players.get(cmd.slot)
+        if (!p) { this.reply(cmd, false, null, 'no such slot'); break }
+        const st = cmd.state || {}
+        if (Number.isFinite(st.score)) p.score = st.score
+        if (st.weapon) p.weapon = st.weapon
+        if (Array.isArray(st.perks)) p.perks = st.perks
+        if (Array.isArray(st.pos)) p.pos = st.pos
+        if (Array.isArray(st.ang)) p.ang = st.ang
+        p.health = 100
+        p.down = false
+        p.alive = true
+        this.emitEv({ t: 'notify', ent: `player:${p.slot}`, name: 'enw_restored', args: { score: p.score, weapon: p.weapon } })
+        this.emitEv({ t: 'points', slot: p.slot, score: p.score, delta: 0, why: 'restore' })
+        this.reply(cmd, true, { slot: p.slot, score: p.score, weapon: p.weapon })
+        break
+      }
       default: this.reply(cmd, false, null, `unknown command ${cmd.t}`)
     }
   }

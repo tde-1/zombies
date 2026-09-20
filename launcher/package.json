@@ -14,7 +14,9 @@
     "setup": "node src/main/setup-cli.js",
     "test": "node test/run-all.js",
     "test:launch": "node test/launch-harness.js",
-    "play": "node src/main/play-cli.js"
+    "play": "node src/main/play-cli.js",
+    "maps": "node src/main/maps-cli.js",
+    "slice": "node test/slice.js"
   },
   "devDependencies": {
     "electron": "^38.8.6"

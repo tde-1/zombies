@@ -32,6 +32,20 @@ never returns, no frames run, no packets are handled and no dialog appears (it u
   class as my earlier 0x5FF4E0 claim, which I withdraw: stack-scanned return addresses are only
   trustworthy when validated as following a `call`.)
 
+## Second dedicated park: synchronous GDI text draw (2026-09-20)
+After the ERR_MAPLOADERRORSUMMARY suppression, Com_Init returns and ~2 frames run, then the main
+thread parks in `win32u!NtGdiExtTextOutW` with a **stable ESP** (one synchronous GDI call, not a
+message loop). CoDWaW.exe imports **no** ExtTextOut/TextOut/DrawText — its only GDI-text windows:
+- **WinConsole** — created 0x605500 ("Call of Duty WinConsole"); edit-control `SendMessageA` at
+  0x6056ED/0x605704; text append 0x6057F0 / 0x605870.
+- **Splash screen** — 0x603D70 ("cod.bmp" / "CoD Splash Screen"); `SendMessageA` at 0x603EA9.
+Both draw via their control's paint → ExtTextOutW. A synchronous append to a hidden/unpumped
+window stalls there. **Fix (dedicated only): skip WinConsole (0x605500) and splash (0x603D70)
+creation/appends; `logfile 2` already captures output.** The referee's reported frame 0x49414E is
+**mid-instruction** (inside `movss` at 0x49414A) inside 0x494120 (a client-frame CG draw callback)
+— unreliable (0x410830 class); confirm with a validated return-address walk. If the real frame IS
+0x494120 it is on the CLIENT render path — suppress dedicated-only, never in the client build.
+
 ## The dedicated fatal: ERR_MAPLOADERRORSUMMARY in SV_SpawnServer (2026-09-20)
 `dedi`'s Com_Error hook trapped it: **`Com_Error(7, "")` at 0x62B7AD**, return address 0x62B7B2.
 - **errorParm_t 7 = `ERR_MAPLOADERRORSUMMARY`** — read independently from T4SP `enums.hpp` and

@@ -54,7 +54,8 @@ can be built in parallel. Change it by editing this file and noting the change o
 | `kick` | `id, slot, reason` | drop a client |
 | `auth` | `slot, allow:bool, reason?` | answer to a `player_connect` token check |
 | `end` | `id, reason` | end the game cleanly |
-| `snapshot_state` | `id` | reply `value` = full restorable state (points, weapons, perks, position per player; round) |
+| `snapshot_state` | `id` | reply `value` = full restorable state (points, weapons, perks, position per player; round). The host asks for this the moment a player DROPS, while the level still has it. |
+| `restore` | `id, slot, state` | put a returning player back as they were: `state` is that player's slice of an earlier `snapshot_state` (`score`, `weapon` incl. `_upgraded`, `perks`, `pos`, `ang`). Reply ok/error. **Only ever sent for casual/badge games** — a record-profile game gets the pause and a vanilla rejoin, because restoring by hand is not vanilla and would disqualify the run (vault 10 §5). *(added 2026-09-20)* |
 
 ## Who consumes what (host side, built 2026-09-20)
 `infra/host-agent` implements this whole table. The referee is driven by `round`, `game_over`,

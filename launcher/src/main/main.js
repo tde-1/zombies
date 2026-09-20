@@ -129,6 +129,14 @@ async function createWindow() {
   layout()
   win.on('resize', layout)
 
+  // web asked how to tell "this is the launcher" server-side. This: every request the
+  // wrapped page makes carries the header, navigations included, so a server-rendered
+  // decision (the Play Local button, say) does not have to wait for client JS to sniff
+  // `window.enw`. Both signals exist; this is the one that works before first paint.
+  view.webContents.session.webRequest.onBeforeSendHeaders((details, cb) => {
+    cb({ requestHeaders: { ...details.requestHeaders, 'X-ENW-Launcher': app.getVersion() } })
+  })
+
   // The wrapped site may not be ours (a placeholder, a dashboard). Treat every page in
   // it as untrusted: no new windows, external links go to the real browser.
   const wc = view.webContents
@@ -342,7 +350,7 @@ function wireIpc() {
   handle('getSettings', () => settings.get())
   handle('setSettings', (patch) => { const s = settings.set(patch); push('settings', s); return s })
 
-  handle('play', async (opts = {}) => {
+  async function startPlay(opts = {}) {
     if (state.flow) throw new Error('A launch is already in progress.')
     const conf = cfg.load()
     const s = settings.get()
@@ -398,6 +406,32 @@ function wireIpc() {
       clear()
     })
     return flow.snapshot()
+  }
+
+  handle('play', (opts) => startPlay(opts))
+
+  // web's `window.enw.playLocal(session)`. Accepts either a map key or the whole
+  // `/local/start` response, because they offered the latter — but the launcher
+  // prefers to make that call itself: it is the thing that has to INSTALL the map
+  // first, and a match opened before an install that then fails is an orphan.
+  handle('playLocal', async (arg = {}) => {
+    const mapKey = arg.map_key || arg.map || arg.mapKey || arg?.map?.key
+    if (!mapKey) throw new Error('playLocal needs a map key')
+    // Install first if we have to: the site opening a match before an install that
+    // then fails would leave an orphan.
+    if (!library.isInstalled(mapKey) && library.catalogue().maps.some((m) => m.bsp === mapKey && m.available)) {
+      push('toast', { kind: 'info', text: 'Downloading the map…' })
+      library.install(mapKey, { onProgress: (p) => push('mapProgress', { bsp: mapKey, ...p }) })
+    }
+    return startPlay({
+      map: mapKey,
+      mode: 'local',
+      local: true,
+      fsGame: arg.fs_game || arg.map?.fs_game || null,
+      // If the page already called /local/start, reuse its match rather than opening
+      // a second one.
+      prestarted: arg.match_id ? arg : null,
+    })
   })
 
   handle('cancelPlay', () => { state.flow?.cancel('you cancelled'); showSite(true); return true })

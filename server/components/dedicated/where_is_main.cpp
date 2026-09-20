@@ -80,6 +80,29 @@ struct sample {
     bool ok = false;
 };
 
+// A value on the stack that merely POINTS into .text is not a return address -- it can
+// be a leftover from an earlier, deeper call. A real return address has a `call`
+// immediately before it. Checking that is the difference between naming the right
+// function and sending someone to chase a mid-instruction address: 0x49414E landed
+// inside the `movss` at 0x49414A, and 0x410830 before it was the same mistake.
+//
+// x86 call encodings we accept:
+//   E8 rel32                  -- 5 bytes
+//   FF /2 (call r/m32)        -- 2..7 bytes, modrm.reg == 2
+bool preceded_by_call(uintptr_t ret) {
+    for (int k = 2; k <= 7; ++k) {
+        uint8_t op = 0;
+        if (!memory::read(ret - k, &op)) continue;
+        if (k == 5 && op == 0xE8) return true;
+        if (op == 0xFF) {
+            uint8_t modrm = 0;
+            if (!memory::read(ret - k + 1, &modrm)) continue;
+            if (((modrm >> 3) & 7) == 2) return true;
+        }
+    }
+    return false;
+}
+
 sample probe_main_thread(unsigned long tid) {
     sample s;
     const HANDLE h = ::OpenThread(
@@ -101,7 +124,7 @@ sample probe_main_thread(unsigned long tid) {
         for (uintptr_t p = s.esp; p < s.esp + 0x400 && s.chain.size() < 12; p += 4) {
             uintptr_t v = 0;
             if (!memory::read(p, &v)) break;
-            if (text.contains(v)) s.chain.push_back(v);
+            if (text.contains(v) && preceded_by_call(v)) s.chain.push_back(v);
         }
     }
     ::ResumeThread(h);
@@ -132,7 +155,7 @@ public:
                 }
                 ENW_INFO("dedi_whereis: t=%ds  EIP=%s  ESP=%08X", (i + 1) * 4,
                          describe(s.eip).c_str(), static_cast<unsigned>(s.esp));
-                ENW_INFO("dedi_whereis:        stack-text: %s", chain.c_str());
+                ENW_INFO("dedi_whereis:        validated return addresses: %s", chain.c_str());
             }
         }).detach();
     }

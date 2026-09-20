@@ -32,6 +32,7 @@ export const DEFAULTS = {
   allAfkCloseMs: 5 * MIN,    // ...then close it this long after the pause
   emptyCloseMs: 2 * MIN,     // nobody connected at all
   crashGraceMs: 7 * MIN,     // vault 10 §5: 5–10 min, then a resume countdown
+  resumeCountdownMs: 10_000, // told to the players before the freeze lifts
   lateJoinGraceMs: 30_000,   // joining within this of go-live is not "late"
 }
 
@@ -76,9 +77,13 @@ export class Referee extends EventEmitter {
     this.lastEventWall = Date.now()
     this.allAfkSinceMs = null
     this.emptySinceMs = null
-    this.pendingCommands = []
+    this.recentCommands = []   // last 200, for diagnostics only
     this.dvars = {}
     this.levelVars = {}
+    // Crash recovery: SteamID -> the state the game handed back when they dropped.
+    // Keyed to the person, not the slot, and dropped when the grace window expires.
+    this.held = new Map()
+    this.resumeAt = null
     this.hashes = {}
   }
 
@@ -107,7 +112,11 @@ export class Referee extends EventEmitter {
   // ---- command sink -----------------------------------------------------------
   send(cmd) {
     const out = { id: `rf${++SEQ}`, ...cmd }
-    this.pendingCommands.push(out)
+    // A ring, not a log. This used to grow for the life of the game: harmless in a
+    // 20-minute test, an unbounded array in a 24-hour one, and the referee is the one
+    // object in the host that is guaranteed to live as long as the longest game.
+    this.recentCommands.push(out)
+    if (this.recentCommands.length > 200) this.recentCommands.shift()
     this.emit('command', out)
     return out
   }
@@ -158,13 +167,33 @@ export class Referee extends EventEmitter {
     const nowMs = ev.ms ?? this.now()
     // The DLL binds our token to the slot on connect, so a reconnect inside the grace
     // window is the SAME person coming back, not a new one (vault 10 §5, "Identity").
-    if (existing && existing.steamid && existing.steamid === (ev.steamid || ev.xuid)) {
-      existing.connected = true
-      existing.reconnects++
-      existing.disconnectedMs = null
-      existing.lastInputMs = nowMs
+    // The same person coming back — matched on SteamID, never on the slot, because slots
+    // are reused. The DLL binds our token to the slot on connect, so this is reliable.
+    const returning = existing?.steamid === (ev.steamid || ev.xuid) ? existing
+      : [...this.players.values()].find((x) => !x.connected && x.steamid && x.steamid === (ev.steamid || ev.xuid))
+    if (returning) {
+      if (returning.slot !== slot) {
+        // Back in a different slot. Move the record; everything we know about them is
+        // keyed to the person, and the held state is keyed to the SteamID anyway.
+        this.players.delete(returning.slot)
+        returning.slot = slot
+        this.players.set(slot, returning)
+      }
+      returning.connected = true
+      returning.reconnects++
+      returning.disconnectedMs = null
+      returning.lastInputMs = nowMs
+      returning.alive = true
       this.flags.add('resumed')
-      this.log.info(`slot ${slot} ${existing.name} reconnected (${existing.reconnects})`)
+      this.log.info(`slot ${slot} ${returning.name} reconnected (${returning.reconnects})`)
+      const state = this.restoreAllowed() ? this.stateFor(returning.steamid) : null
+      if (state) {
+        this.emit('restore_wanted', { slot, steamid: returning.steamid, state })
+        this.releaseState(returning.steamid)
+        this.tell(slot, 'Welcome back — your points, weapons and perks have been restored.')
+      } else if (!this.restoreAllowed()) {
+        this.tell(slot, 'Welcome back. This is a record game, so nothing is restored — you rejoin as the game left you.')
+      }
       this.maybeResumeAfterCrash()
       return
     }
@@ -210,7 +239,46 @@ export class Referee extends EventEmitter {
     p.disconnectedMs = ev.ms ?? this.now()
     p.disconnectReason = ev.reason || null
     this.log.info(`slot ${ev.slot} ${p.name} disconnected (${p.disconnectReason || 'unknown'})`)
+    // Ask for the restorable state NOW, while the level still has it. A snapshot taken
+    // ten seconds later is a snapshot of a game that has moved on.
+    if (this.restoreAllowed()) this.emit('snapshot_wanted', { slot: ev.slot, steamid: p.steamid, reason: 'disconnect' })
     this.maybePauseForCrash(p)
+  }
+
+  /**
+   * Vault 10 §5, the policy table: casual and badge games get a FULL restore (points,
+   * weapons incl. _upgraded, perks, position) and the game is tagged "Resumed". Record-
+   * profile games get the pause but NO restore — putting a player back by hand is not
+   * vanilla and would disqualify the run on ZWR/b2. So the restore is a mode decision,
+   * not a capability decision, and it is made here rather than at the game.
+   */
+  restoreAllowed() { return !this.recordProfile && this.mode !== 'local' }
+
+  /** The host hands back what `snapshot_state` returned, keyed to the person. */
+  holdState(steamid, state) {
+    if (!steamid || !state) return false
+    this.held.set(String(steamid), { at: this.now(), wall: Date.now(), state })
+    const limited = state.limited_weapons_held || []
+    this.log.info(`holding state for ${steamid}${limited.length ? ` (limited weapons reserved: ${limited.join(', ')})` : ''}`)
+    this.emit('state_held', { steamid, state })
+    return true
+  }
+
+  /** What to give back to a returning player, or null if there is nothing (or it is stale). */
+  stateFor(steamid) {
+    const h = this.held.get(String(steamid))
+    if (!h) return null
+    if (Date.now() - h.wall > this.cfg.crashGraceMs) { this.held.delete(String(steamid)); return null }
+    return h.state
+  }
+
+  releaseState(steamid) { this.held.delete(String(steamid)) }
+
+  /** Limited weapons (Waffe, flamethrower) still counted as held by absent players. */
+  reservedWeapons() {
+    const out = []
+    for (const [steamid, h] of this.held) for (const w of h.state.limited_weapons_held || []) out.push({ steamid, weapon: w })
+    return out
   }
 
   ev_down(ev) { const p = this.players.get(ev.slot); if (p) { this.creditAlive(p, ev.ms); p.down = true; p.downs++ } }
@@ -375,11 +443,17 @@ export class Referee extends EventEmitter {
   }
 
   maybeResumeAfterCrash() {
-    if (this.phase === 'paused' && this.crashGraceUntil) {
-      this.crashGraceUntil = null
-      this.resume('player is back')
-      this.flags.add('resumed')
-    }
+    if (this.phase !== 'paused' || !this.crashGraceUntil) return
+    this.crashGraceUntil = null
+    this.flags.add('resumed')
+    // A countdown, not a jump cut: unfreezing a player who is still reading the loading
+    // screen hands them to a zombie. Vault 10 §5 calls this "a resume countdown".
+    const secs = Math.max(0, Math.round(this.cfg.resumeCountdownMs / 1000))
+    if (secs > 0) {
+      this.say(`Everyone is back. Resuming in ${secs} seconds.`)
+      this.resumeAt = Date.now() + this.cfg.resumeCountdownMs
+      this.emit('resume_countdown', { seconds: secs })
+    } else this.resume('player is back')
   }
 
   /** Clean end: warn, record, tell the game to end, produce the summary. */
@@ -471,6 +545,7 @@ export class Referee extends EventEmitter {
   }
 
   tickGrace(now) {
+    if (this.resumeAt && Date.now() >= this.resumeAt) { this.resumeAt = null; this.resume('everyone is back') }
     // Crash grace expired with nobody back: close the game and save what we have.
     if (this.crashGraceUntil && Date.now() >= this.crashGraceUntil) {
       this.crashGraceUntil = null
@@ -534,6 +609,8 @@ export class Referee extends EventEmitter {
       duration_rta_ms: this.elapsedRta(),
       paused_ms: this.pausedMs,
       pauses: this.pauses.length,
+      restores: [...this.players.values()].filter((p) => p.reconnects > 0).map((p) => ({ steamid: p.steamid, reconnects: p.reconnects })),
+      states_held_at_end: [...this.held.keys()],
       started_at: new Date(this.startedAt).toISOString(),
       ended_at: this.endedAt ? new Date(this.endedAt).toISOString() : null,
       end_reason: this.endReason,

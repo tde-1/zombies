@@ -243,16 +243,81 @@ t('solo crash: the whole game pauses for the grace window, then saves', () => {
   eq(r.summary().rounds, 5, 'the rounds reached are still saved')
 })
 
-t('a player who comes back inside the grace window resumes the game', () => {
-  const r = makeRef({ config: { crashGraceMs: 10 * MIN } })
+t('a player who comes back inside the grace window resumes the game, after a countdown', () => {
+  const r = makeRef({ config: { crashGraceMs: 10 * MIN, resumeCountdownMs: 10_000 } })
   bootGame(r, { players: 1 })
   r.onEvent({ t: 'round', ms: 4 * MIN, n: 5 })
   r.onEvent({ t: 'player_disconnect', ms: 4 * MIN, slot: 0, reason: 'connection lost' })
+  eq(r.phase, 'paused')
   r.onEvent({ t: 'player_connect', ms: 6 * MIN, slot: 0, name: 'P0', steamid: '76561198000000000' })
+  // Not a jump cut: the freeze holds for the countdown so a player still on the loading
+  // screen is not handed to a zombie.
+  eq(r.phase, 'paused', 'still frozen during the resume countdown')
+  ok(r.cmds.some((c) => c.t === 'say' && /Resuming in 10 seconds/.test(c.text)), 'players are counted down')
+  r.resumeAt = Date.now() - 1
+  r.tick()
   eq(r.phase, 'live')
   ok(r.flags.has('resumed'), 'the game is tagged Resumed')
   eq(r.players.get(0).reconnects, 1)
   eq(r.players.size, 1, 'the returning player is the same person, not a new slot')
+})
+
+t('a returning player is matched on SteamID even in a different slot', () => {
+  const r = makeRef({ config: { crashGraceMs: 10 * MIN } })
+  bootGame(r, { players: 2 })
+  r.onEvent({ t: 'points', ms: 1000, slot: 1, score: 7250, delta: 60, why: 'kill' })
+  r.onEvent({ t: 'player_disconnect', ms: 2 * MIN, slot: 1, reason: 'lost' })
+  // Slot 1 freed and reused; they come back in slot 3.
+  r.onEvent({ t: 'player_connect', ms: 3 * MIN, slot: 3, name: 'P1', steamid: '76561198000000001' })
+  eq(r.players.size, 2, 'no ghost player was created')
+  eq(r.players.get(3).steamid, '76561198000000001')
+  eq(r.players.get(3).score, 7250, 'their score came with them')
+  eq(r.players.get(1), undefined, 'the old slot is gone')
+})
+
+t('crash recovery: state is asked for on the drop and handed back on return', () => {
+  const r = makeRef({ mode: 'custom', config: { crashGraceMs: 10 * MIN, resumeCountdownMs: 0 } })
+  bootGame(r, { players: 2 })
+  const wanted = []
+  const restores = []
+  r.on('snapshot_wanted', (x) => wanted.push(x))
+  r.on('restore_wanted', (x) => restores.push(x))
+  r.onEvent({ t: 'player_disconnect', ms: 2 * MIN, slot: 1, reason: 'lost' })
+  eq(wanted.length, 1, 'the host is asked for a snapshot the moment they drop')
+  eq(wanted[0].steamid, '76561198000000001')
+  // The host answers with what the game gave back.
+  r.holdState('76561198000000001', { score: 9000, weapon: 'wunderwaffe', perks: ['jugg', 'speed'], pos: [10, 20, 32], limited_weapons_held: ['wunderwaffe'] })
+  eq(r.reservedWeapons(), [{ steamid: '76561198000000001', weapon: 'wunderwaffe' }], 'the Waffe stays reserved while they are away')
+  r.onEvent({ t: 'player_connect', ms: 4 * MIN, slot: 1, name: 'P1', steamid: '76561198000000001' })
+  eq(restores.length, 1, 'their state is handed back')
+  eq(restores[0].state.score, 9000)
+  eq(restores[0].state.weapon, 'wunderwaffe')
+  eq(r.reservedWeapons(), [], 'and the reservation is released')
+  ok(r.flags.has('resumed'))
+})
+
+t('a record game pauses but never restores', () => {
+  const r = makeRef({ mode: 'verified', config: { crashGraceMs: 10 * MIN } })
+  r.recordProfile = 'ZWR-WaW-2025-09'
+  bootGame(r, { players: 2 })
+  const wanted = []; const restores = []
+  r.on('snapshot_wanted', (x) => wanted.push(x))
+  r.on('restore_wanted', (x) => restores.push(x))
+  r.onEvent({ t: 'player_disconnect', ms: 2 * MIN, slot: 1, reason: 'lost' })
+  eq(wanted.length, 0, 'a record game does not even ask for the state')
+  r.holdState('76561198000000001', { score: 9000 })
+  r.onEvent({ t: 'player_connect', ms: 3 * MIN, slot: 1, name: 'P1', steamid: '76561198000000001' })
+  eq(restores.length, 0, 'restoring by hand is not vanilla and would void the run')
+  ok(r.cmds.some((c) => c.t === 'tell' && /record game/.test(c.text)), 'and they are told why')
+})
+
+t('held state goes stale when the grace window passes', () => {
+  const r = makeRef({ config: { crashGraceMs: 1 } })
+  bootGame(r, { players: 2 })
+  r.holdState('76561198000000001', { score: 100 })
+  const h = r.held.get('76561198000000001')
+  h.wall -= 60_000
+  eq(r.stateFor('76561198000000001'), null, 'a stale snapshot is not handed back')
 })
 
 t('the summary is the row the website stores', () => {

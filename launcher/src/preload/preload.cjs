@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('enw', {
 
   // Playing.
   play: (opts) => call('play', opts),
+  // For the site's own Play Local button when it is running inside the launcher.
+  // Takes a map key, or the whole /local/start response if the page already made
+  // that call. web: rename freely, it is one line here.
+  playLocal: (session) => call('playLocal', session),
   cancelPlay: () => call('cancelPlay'),
   closeBoot: () => call('closeBoot'),
 

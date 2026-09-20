@@ -17,7 +17,7 @@ feature below is built, tested and measured today.
 party rail, mints Ed25519 invite tokens, and takes back games, players, XP and the replay pointer;
 this box verifies those tokens against the public half it fetched from `GET /api/gs/keys`. One
 command reproduces it: `node test/integration-site.js --box box-b --secret devkey-b` — **0
-failures** (§3c).
+failures** (§3b).
 
 **Update, 01:02 — a real `CoDWaW.exe` has now been on the other end of the socket.** With the
 foundation agent's `tools/dev/launch.ps1` and the referee build of `enw_t4.dll` deployed into
@@ -34,7 +34,7 @@ debug host/inst/inst-01  launcher exited (0); game PID 22048 is up
 
 So the whole chain — lease, launch, lock, PID adoption, game link — works against the real thing,
 not just the simulator. The run was cut short before the map loaded, so there is still no real
-per-game CPU figure; see §3b.
+per-game CPU figure; see §3d.
 
 ---
 
@@ -86,8 +86,11 @@ here: a box behind NAT, with no inbound firewall rule and no reachable RCON, wor
 | `tools/verify.js` | prove a replay is unmodified; `--tamper` shows it failing |
 | `tools/recover.js` | rebuild a replay whose host died before it could sign the footer |
 | `tools/measure-replay.js` | the size/cost measurement |
+| `tools/density.js` | ramp instances on one agent and record what each one costs |
+| `tools/soak.js` | watch a running agent over hours and record whether it drifts |
 | `test/run-all.js` | 37 in-process checks of the rules and the format |
-| `test/demo-network.js` | the two-box end-to-end demo |
+| `test/demo-network.js` | the two-box end-to-end demo (mock site) |
+| `test/integration-site.js` | the full run against the REAL site on :3200 |
 
 ---
 
@@ -116,6 +119,13 @@ node tools/recover.js "C:\Users\b\ZombiesDev\replays\<match>.enwr"
 
 # the size/cost numbers
 node tools/measure-replay.js --hours 1 --players 1,2,4 --levels 10,19
+
+# how many games one agent carries, and what each one costs
+node tools/density.js --to 20 --step 4 --players 4
+
+# leave an agent running and record whether it drifts
+node host.js --box soak --boot 6 --sim-players 4 --dash-port 8871 --link-port 38871 --base-port 29700
+node tools/soak.js --dash http://127.0.0.1:8871 --every 60 --out soak.csv
 ```
 
 Useful flags: `--game` (boot a real `CoDWaW.exe` through `tools/dev/launch.ps1` instead of the sim —
@@ -148,7 +158,7 @@ everything else together is 0.5%.
 **These numbers are ~1.8–2× the vault's estimate, and the earlier version of this document was
 wrong.** The first pass measured 5.98 MB per 4-player game-hour and said the vault's ~4–5 was
 right. It was measuring a simulation that killed zombies far too quickly, so the map was half
-empty for most of the hour. Four fidelity fixes (§3d) later — trains that actually form, melee
+empty for most of the hour. Four fidelity fixes (§3c) later — trains that actually form, melee
 applied per swing instead of per tick, a cap on how many zombies can reach one player, and a game
 that ends when everyone is down — a 4-player hour holds **14.4 zombies alive on average and peaks
 at the engine's 24**, and the replay is correspondingly bigger. **Plan on ~8 MB per 4-player
@@ -189,7 +199,7 @@ not the hour it asked for). A competent solo player goes much further than round
 one does not kite well enough. Treat solo as "roughly a third of a 4-player game" and re-measure
 against the real DLL.
 
-### 3c. The full integration run, against the real website
+### 3b. The full integration run, against the real website
 
 `node test/integration-site.js` with `web/` running on :3200. Nothing is mocked on either side:
 the site has its own database and its own Ed25519 invite key, the box has its own replay key, and
@@ -235,7 +245,7 @@ Two of their behaviours were adopted rather than argued with, and `mock-site/sit
 hour of strangers' chat into a game that had just booted, because the host pushes everything that
 route hands it into every live game), and `/result` never 5xxs.
 
-### 3d. What the simulator got wrong, and how it was found
+### 3c. What the simulator got wrong, and how it was found
 
 Every one of these was found by something downstream failing, not by reading the code — which is
 the argument for having the referee, the replay and the site on the other end of it.
@@ -250,7 +260,7 @@ the argument for having the referee, the replay and the site on the other end of
 The last two are why the measured replay size moved by 35%: a map with a real 24-zombie train on it
 has far more to record than one that is half empty.
 
-### 3b. CPU and RAM per instance
+### 3d. CPU and RAM per instance
 
 The sampler is real (`lib/procstat.js`, `Get-Process` deltas over wall time, one persistent
 PowerShell worker so the measurement does not measure itself), but **the numbers below are the
@@ -286,6 +296,91 @@ Box for reference: AMD Ryzen 7 9800X3D, 16 cores, Node 24.16.0.
 
 ---
 
+### 3e. Several games on one host agent
+
+`node tools/density.js --to 20 --step 4 --players 4`, on a Ryzen 7 9800X3D (16 cores), with the
+soak below running alongside:
+
+| Live games | Cores total | **Core/game** | Games MiB | MiB/game | **Agent MiB** | Events/s | Drops |
+|---|---|---|---|---|---|---|---|
+| 4 | 0.01 | 0.0030 | 206 | 51.6 | 67.6 | 234 | 0 |
+| 8 | 0.02 | 0.0024 | 414 | 51.7 | 78.9 | 473 | 0 |
+| 12 | 0.03 | 0.0027 | 621 | 51.8 | 95.7 | 710 | 0 |
+| 16 | 0.03 | 0.0020 | 829 | 51.8 | 111.0 | 965 | 0 |
+| 20 | 0.05 | 0.0026 | 1,038 | 51.9 | 145.3 | 1,215 | 0 |
+
+**Per-game cost is flat and the link never dropped a message.** Twenty games produce 1,215
+events a second between them (~60 per game, which is what the protocol's rates predict) and the
+whole agent — game-link, twenty referees, twenty replay writers, the SSE dashboard — costs
+**0.05 of a core**.
+
+The agent's own memory grows **~4.9 MiB per extra game** (67.6 MiB at four games, 145.3 at twenty).
+That is the replay writers: each holds up to 60 seconds of events before it compresses a chunk.
+At the vault's 45-games-per-box figure the agent would want ~300 MiB and a twentieth of a core.
+
+**What this does NOT say.** The 51.8 MiB per instance is a Node simulator, not `CoDWaW.exe`, and
+says nothing about the 0.3–0.8 core per game the cost model turns on. What it does establish is
+that **the host agent is not the constraint** — it adds roughly 0.003 core and 5 MiB per game, so
+whatever the density limit turns out to be, it will be set by the game process or by the engine's
+hardcoded UDP 3074 party socket (`dedi`'s finding), not by us.
+
+### 3f. Live frames to the site's spectator view
+
+`web/tools/live-bridge.js` was a shim: it polled this box's local dashboard and forwarded frames
+to the site because the box had no reason to send them. **It can be deleted.** The box now posts
+directly:
+
+```
+POST /api/gs/live { instances: [{ instance, match_id, state }] }   ~4 Hz, at most 16 per post
+```
+
+`state` is the referee's own `state()` — the same object the local dashboard draws its 2D view
+from, so the site's `/live` page and the box's dashboard cannot disagree. Measured against the
+real site: **87 frames in 22 seconds, 0 dropped**, and `GET /api/live/<match>` came back with
+three players' positions and the zombies.
+
+Frames are **fire and forget**. A live view is worth nothing a second later, so a failed post is
+counted (`liveDropped`) and thrown away — never spooled, never retried. That is the opposite of
+the result path, and deliberately so: one is a picture, the other is the record.
+
+### 3g. Two failures worth keeping in front of you
+
+Both are the same shape: **the system was working correctly and the operator could not tell**,
+because the signal was in a place nobody was looking. Neither was found by reading the code.
+
+### A box's replay key is its identity
+An early integration run pointed the box at a throwaway key directory. It generated a new Ed25519
+key, the site pinned *that*, and when the box was next run with its real key the site — correctly —
+treated it as an impostor: the key sat `pending`, and **every replay written in the meantime was
+stored unpinned**, which record review rightly refuses to call evidence. Nothing errored. The games
+played, the results posted, the boards updated, and the only symptom was a field called
+`key_pinned` being `false`.
+
+The rule that follows: **a box's replay key lives outside anything a test, a container rebuild or a
+deploy recreates.** It is provisioned once, like a machine's SSH host key, and a change to it is an
+admin decision (Admin → Boxes → accept), not something a restart can do quietly. The box now logs
+`replay key … is PINNED` once on confirmation and `KEY MISMATCH` loudly otherwise, so the state is
+visible without opening the database.
+
+### A busy dashboard port silently stopped a box from booting
+Another agent's tool had taken port 8791. The two-box demo's `box-a` bound its dashboard to that
+port, failed, and exited during `start()` — before it had logged anything useful. The site then
+leased the game to a *different* box that happened to be online, which played it perfectly. The
+demo's assertions read the site, saw a completed game with a valid replay, and passed. The only
+evidence anything was wrong was an empty artifacts directory.
+
+Two fixes, and the second is the general one. A busy **dashboard** port no longer takes the box
+down: it logs `dashboard disabled: port 8791 is already in use` and carries on, because refereeing
+games is the job and the dashboard is a convenience. A busy **game-link** port still kills the box,
+correctly — without it there is no game. And both harnesses now check that *their own* box came up
+before believing anything they read from the site.
+
+The general lesson for a shared machine: **a test that verifies through a shared system must first
+prove the component under test is the one being exercised.** Three agents run tools on this box;
+two of them collided with ports this code had hard-coded.
+
+---
+
 ## 4. The referee, rule by rule
 
 One `Referee` per game. It consumes protocol events and owns every decision; the game process
@@ -314,6 +409,60 @@ The **game summary** is the row the website stores (`games` + `game_players` in 
 who, map, mode, rounds, finish, duration (in-game **and** RTA), paused time, flags, per-player
 stats, `records_eligible`, `xp_multiplier` (Verified 1, Custom 0.25, Local 0), the replay pointer and
 the run fingerprint.
+
+### Crash recovery: pause, hold, resume
+
+Vault 10 §5's promise is not "the replay survives" — `tools/recover.js` does that. It is that **the
+game** survives: an engine-level pause, a grace window, a full state restore, and the result tagged
+"Resumed". The referee owns *when*; the in-game half (freezing zombies without `timescale 0`,
+holding bleedout and powerup timers, `freezecontrols` plus invulnerability — the `ZPauseT4` pattern,
+vault 11 §3) belongs to the DLL. This is the host agent's half, so it is not invented at build time.
+
+```
+player drops                     referee: pause (solo/empty), flag crash_pause
+      |                          referee emits `snapshot_wanted`
+      v
+host: send `snapshot_state`      <- while the level STILL HAS the state. A snapshot taken
+      wait for the reply (5 s)      ten seconds later is of a game that has moved on.
+      keep that player's slice, keyed to the SteamID, with a wall-clock stamp
+      |
+      +-- limited weapons they were holding are RESERVED (see below)
+      v
+player returns inside the grace  referee matches on SteamID, not slot
+      referee emits `restore_wanted`
+      v
+host: send `restore {slot, state}`   -> the DLL puts back score, weapon (incl. _upgraded),
+      release the reservation           perks, position; replies ok/error
+      referee: resume COUNTDOWN, then unfreeze; game flagged `resumed`
+```
+
+Decisions this pins down, each of which would otherwise be argued about at build time:
+
+* **Ask on the drop, not on the return.** The state has to be captured while the level still holds
+  it. The host holds it, not the game — a game that crashes outright has nothing left to ask.
+* **Keyed to the SteamID, never the slot.** Slots are reused, and a returning player often lands in
+  a different one. The referee now moves the whole player record to the new slot, so their score,
+  downs and revives come back with them rather than being split across two rows.
+* **The grace window is enforced on the wall clock**, not the game clock, because the game clock is
+  frozen for the whole pause.
+* **A record-profile game gets the pause and NO restore.** Putting a player back by hand is not
+  vanilla and would void the run on ZWR/b2, so `restoreAllowed()` is false for a record profile:
+  the host does not even ask for the snapshot, and the player is told why. That is the vault's
+  policy table expressed as one method rather than scattered through the code.
+* **Limited weapons stay reserved.** The magic box counts Wunderwaffe and flamethrowers held by
+  *connected* players, so a dropped Waffe can come out of the box again — and weapon duplication is
+  a ban on every board. The held snapshot records it and `reservedWeapons()` exposes it for as long
+  as the player is away. **The enforcement is the DLL's** (the box must consult the reservation);
+  the host's job is to know.
+* **A resume countdown, not a jump cut.** Unfreezing the instant someone reconnects hands a player
+  still on the loading screen to a zombie. Ten seconds, announced.
+
+Not done, and needing the DLL: the restore itself is only as good as the builtins behind it. Downed
+state, the Bowie knife flag and other per-player flags are listed in vault 10 §5 as hard, and
+nothing here can verify them. What is proven is the choreography — against a real host agent and a
+real simulator, a drop captures state (`holding state for 7656…`) and a return hands it back — plus
+six in-process checks covering the SteamID match, the stale window, the reservation and the
+record-game refusal.
 
 ### Manifests
 `referee/manifests/` belongs to the **referee agent**; the host only reads it. `lib/manifests.js`
@@ -543,7 +692,7 @@ agent touches it.
   or the crash-recovery *state restore* (the host asks for `snapshot_state` and the sim answers, but
   nothing puts the state back — that needs the DLL).
 * ~~Results are lost if the site is down~~ — **done**: spooled to disk and drained through
-  `POST /api/gs/spool` (§3c). A box with a non-empty spool must not be destroyed.
+  `POST /api/gs/spool` (§3b). A box with a non-empty spool must not be destroyed.
 * **The `games_mp.log` prefix is not settled.** The referee agent proposes `GSE;` for the DLL side;
   the host writes `ENWZombie;` today. Both are one configurable string (`--game-log-prefix`). One
   of us should win — see the note at the end of `questions.md`.

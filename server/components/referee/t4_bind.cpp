@@ -151,6 +151,16 @@ uint32_t extract_name(uint32_t w, int mode) {
 void dump_level_vars(uint32_t levelId) {
     if (g_levelvars_done || levelId == 0) return;
     g_levelvars_done = true;
+    // 65,536 entries x 4 extractions, each with an is_readable() VirtualQuery, run
+    // on the game thread from inside a notify handler. It already told us what it
+    // had to (all four extractions score zero), so it is opt-in now rather than
+    // something every capture pays for: set ENW_LEVELVARS=1 to re-run it.
+    char buf[8]{};
+    if (!::GetEnvironmentVariableA("ENW_LEVELVARS", buf, sizeof(buf)) || buf[0] != '1') {
+        ENW_INFO("referee/levelvars: skipped (set ENW_LEVELVARS=1 to run the probe); "
+                 "all four extractions scored 0 when last run - level.* stays unavailable");
+        return;
+    }
 
     const uintptr_t child_base = at(t4::var::gScrVarGlob) + kChildVarsOffset;
     if (!memory::is_readable(reinterpret_cast<void*>(child_base), 0x1000)) {
@@ -232,6 +242,7 @@ bool plausible(const float v[3]) {
 constexpr int kEntScan = 128;        // entities to sample per pass
 constexpr int kNeedHits = 24;        // motion observations before a candidate counts
 constexpr int kNeedPasses = 120;     // ~6 s at 20 Hz before we judge by spread
+constexpr int kMaxPasses = 400;      // then stop burning syscalls forever
 constexpr float kMinOriginSpread = 800.0f;  // angles never exceed 720; a map does
 
 int g_cand_hits[64]{};
@@ -254,6 +265,12 @@ float spread(int i) {
 
 void find_origin_offset() {
     if (g_origin_off >= 0) return;
+    // This ran every frame over 128 entities x 26 candidates, each guarded by an
+    // is_readable() VirtualQuery -- roughly 3,300 syscalls per frame, 200k/second.
+    // It is a diagnostic, not a feature (the sampler uses re's +0x160), and after
+    // three runs it has been shown to be non-deterministic and not trustworthy as
+    // a cross-check, so it is bounded hard and off unless asked for.
+    if (g_passes > kMaxPasses) return;
 
     // Pass 0: EVERY 4-byte offset in the window is a candidate.
     //
@@ -502,6 +519,14 @@ void __cdecl vm_notify_observe(int instance, int ownerId, int stringValue) {
     dispatch_notify(ev);
 }
 
+// NOTE ON THE ASM BELOW, learned the hard way (control run 03:18: core-only survives
+// 200 s, with-components dies at ~70 s, so the crash is ours):
+// a naked thunk must ALIGN THE STACK before calling into C++. MSVC will happily
+// emit SSE (movaps) in the callee or anything it inlines, and movaps on an
+// unaligned address is an access violation -- which is exactly the shape of
+// "Unhandled exception caught" arriving tens of seconds in, once the right code
+// path happens to be taken. pushad+pushfd+3 pushes leaves esp at entry-48, so
+// alignment depends on the caller. Fix: frame it and `and esp, -16`.
 __declspec(naked) void vm_notify_detour() {
     __asm {
         pushad
@@ -509,11 +534,15 @@ __declspec(naked) void vm_notify_detour() {
         // stack now: flags(4) + regs(32) + retaddr(4) then args
         mov  ecx, [esp + 0x28]      // arg0 notifyListOwnerId
         mov  edx, [esp + 0x2C]      // arg1 stringValue
+        push ebp
+        mov  ebp, esp
+        and  esp, -16               // align for anything SSE in the callee
         push edx
         push ecx
         push eax                    // scriptInstance, passed to us in EAX
         call vm_notify_observe
-        add  esp, 12
+        mov  esp, ebp
+        pop  ebp
         popfd
         popad
         cmp  dword ptr [g_vm_notify_trampoline], 0
@@ -578,10 +607,14 @@ __declspec(naked) void svcmd_detour() {
         pushad
         pushfd
         mov  edx, [esp + 0x2C]      // arg1: the command text
+        push ebp
+        mov  ebp, esp
+        and  esp, -16               // see the alignment note above
         push edx
         push ecx                    // clientNum, in ecx
         call svcmd_observe
-        add  esp, 8
+        mov  esp, ebp
+        pop  ebp
         popfd
         popad
         cmp  dword ptr [g_svcmd_trampoline], 0

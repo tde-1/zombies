@@ -31,6 +31,9 @@ npm start                                     # the actual app
 ENW_SMOKE_MS=5000 npx electron .              # boot it, report what came up, quit (no window)
 ENW_SMOKE_MS=5000 ENW_SMOKE_SHOT=1 npx electron .   # …and save screenshots to the log folder
 
+node src/main/maps-cli.js list                # the archive's maps, title AND bsp
+node src/main/maps-cli.js install water       # "Alcatraz", hash-verified
+node test/slice.js --map nazi_zombie_leviathan   # the whole vertical slice, one run
 node tools/crash-sink.js                      # the local crash endpoint (127.0.0.1:8791)
 node tools/make-icons.js                      # regenerate the tray icon
 ```
@@ -384,6 +387,70 @@ clean, so this is a per-map defect rather than a convention.
 
 ---
 
+## 3c. The vertical slice: a local game, reported to the site
+
+`launcher/test/slice.js` drives the launcher's own modules end to end. One run, game lock taken and
+released:
+
+```
+1. signed in as 76561198126330106 · site protocol 0 · local games supported
+2. Leviathan (bsp nazi_zombie_leviathan) by AwesomePieMan · 453 MB, 5 files, hashes known
+3. installed to %LOCALAPPDATA%\Activision\CoDWaW\mods\nazi_zombie_leviathan, every hash checked
+4. match l_21a50db2 — "Local game — untracked. No badges, no records and no XP."
+   watch it at http://127.0.0.1:3200/live/l_21a50db2
+5. World at War running (pid 5464)
+     → "the server is bringing up nazi_zombie_leviathan"
+     → "Waited 879 msec for asset 'maps/nazi_zombie_leviathan.d3dbsp' of type 'col_map_mp'"
+     → IN GAME: "nazi_zombie_leviathan is up and playable"
+6. relay live frames        BLOCKED (below)
+7. the site's verdict       BLOCKED (below)
+```
+
+**Steps 1–5 are real**, and step 5 is the first time an archived custom map has played through our
+stack.
+
+### No box secret on a player's PC
+
+Every site call in `siteapi.js` and `localrun.js` is authenticated by the **player's own session
+cookie**, shared with the wrapped page. There is no second auth path, nothing for the launcher to
+hold, and `x-match-secret` appears nowhere in `launcher/`. If it ever needs to, the design is
+wrong: that header belongs to a game box, and a player's machine is not one. Everything through
+the three local endpoints is stamped `self_reported` by the site, which is the correct default for
+anything a player's own machine says about itself.
+
+And the thing worth repeating, because it is counter-intuitive: **a local game's replay is valid
+and is still not evidence.** On this dev box the local host agent *is* the pinned box, so every
+signature check passes. The signature proves the recording is unedited; the **mode** decides
+whether it counts, and the mode is `local`.
+
+### What blocks steps 6 and 7
+
+`infra/host-agent/host.js:301`:
+
+```js
+const g = this.byInstance.get(conn.instance)
+if (!g) return log.warn(`hello from unknown instance ${conn.instance} — ignoring`)
+```
+
+Our game connects to the link port and says hello; the host agent only knows instances **it**
+launched from a lease, so it ignores us and there is no referee, no summary and no replay.
+Observed exactly once in its log: `hello from unknown instance local-nazi_zombie_leviathan —
+ignoring`.
+
+`--boot 1 --game --dry-run` does not work around it: `launch.ps1 -DryRun` returns immediately, so
+the instance is reaped as `exit code=0 (unexpected)` → `server_crash` before our game can connect.
+
+The fix belongs on the host side and is small — adopt a hello from an instance it did not launch,
+behind a flag, building the `Game` from the hello's own `instance`/`role`. That is the shape Play
+Local needs anyway: **on a player's PC the launcher owns the process and the host agent is just the
+referee and replay writer running beside it**, which is the inverse of a game box. `launcher/` has
+not touched `infra/host-agent/` (dev-box rule 10).
+
+`localrun.js` implements the whole `/local/start` → `/local/live` → `/local/result` → verdict
+sequence already; the relay simply has nothing to send yet.
+
+---
+
 ## 4. The shell
 
 `src/main/main.js` + `src/renderer/`. Electron 38, `contextIsolation` on, `nodeIntegration` off, one
@@ -445,7 +512,10 @@ preload (`src/preload/preload.cjs`) that is the entire API surface.
 | The map list in the rail | **Placeholder**, and labelled as one in the UI |
 | Map art | **Placeholder** (gradient); comes from the site |
 | Storage page (folder and per-map sizes) | **Real**; junctions are reported as links, not counted, so the ENW folder does not "weigh" the player's 12 GB install |
-| Real map installs (14 maps, hash-verified) | **Real**; refuses executables, repairs the BOM defect, records everything in a per-map manifest |
+| Real map installs (14 maps, hash-verified) | **Real**; installs to the one folder WaW reads, refuses executables, repairs the BOM defect, never overwrites a map the player installed |
+| **A real archived custom map, playable** | **Real**: Leviathan installs and reaches "up and playable" from the launcher |
+| Local game opened on the site (`/local/start`) | **Real**, session-authenticated, stamped self-reported |
+| Live frame relay + result + the site refusing to count it | **Written, unexercised** — the host agent ignores a hello from a game it did not launch (see §3c) |
 | Map downloads over the network | **Not built** — installs copy from the archive on this box |
 | Uninstall asks whether to keep maps | **Real** (a three-way dialog: keep maps / remove everything / cancel) |
 | In-game toasts (badge, invite, friend moments) | **Not built** — they belong in the DLL |
