@@ -175,7 +175,12 @@ function renderStatus() {
   kv('ENW client', st.setup?.installed ? 'installed' : 'not installed', st.setup?.installed ? 'good' : 'bad')
   kv('Signed in', st.session?.signedIn ? (st.session.name || st.session.steamid) : 'no')
   kv('Site', st.site?.placeholder ? 'placeholder' : 'connected', st.site?.placeholder ? '' : 'good')
-  if (st.pendingUpdate) kv('Update', `${st.pendingUpdate.version} on next start`)
+  const u = st.updates || {}
+  kv('Version', u.current || st.appVersion || '?')
+  if (u.downloaded) kv('Update', `${u.downloaded} on next start`, 'good')
+  else if (u.available) kv('Update', `downloading ${u.available}`)
+  else if (!u.enabled) kv('Updates', 'not configured')
+  else if (u.error) kv('Updates', 'could not check')
   if (st.gameLock?.held) kv('Game lock', `${st.gameLock.name}${st.gameLock.stale ? ' (stale)' : ''}`, st.gameLock.stale ? '' : 'bad')
 
   const det = el('button', 'ghost', 'What did we find?')

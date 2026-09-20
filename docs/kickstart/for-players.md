@@ -9,10 +9,16 @@ itself, and you do not need to be technical.
 
 ### 1. Download the launcher
 
-B will send you **`ENW-Zombies-Launcher-0.1.0.exe`**. Put it anywhere — Desktop is fine.
+B will send you **`ENW-Zombies-Launcher-Setup-0.1.0.exe`**. Double-click it.
 
-It is one file. There is no installer, nothing is added to your Start menu, and you can delete it
-when you are done.
+It installs itself in a few seconds — no questions, no admin password, just you — and puts
+**ENW Zombies** on your desktop and Start menu. It installs for your account only, so it never asks
+Windows for permission to change anything.
+
+It installs rather than running as a single file for one reason: **so it can update itself**. We
+will be changing things for weeks, and you should not have to chase a new file from B every time.
+It checks when it starts and applies anything new the *next* time you start — never in the middle
+of a game.
 
 Windows will probably warn you that it is from an unknown publisher — **"Windows protected your
 PC"**. That is because we have not paid for a code-signing certificate, not because anything is
@@ -89,7 +95,9 @@ rescued maps, and playing them — or the four stock maps — on your own PC.
   locally never will, by design — on your own PC you could change anything, so it wouldn't be fair
   to anyone else.
 - **Steam sign-in** is a stand-in, as above.
-- **Automatic updates.** When there's a new version, B will send you a new file.
+- **Nothing else.** Updates are automatic now: the launcher checks when it starts and the new
+  version is in place the next time you open it. The version it is running is shown in the panel on
+  the right, so if B asks "are you on the latest?" it is one screenshot.
 
 ## If something goes wrong
 
@@ -99,8 +107,9 @@ rescued maps, and playing them — or the four stock maps — on your own PC.
   put the map files; that's the first thing to check.
 - **A download is crawling, or stops** — that's B's home connection, not you. Press Install again;
   it starts over cleanly and will not leave a half-map behind.
-- **You want it gone** — Settings → **Remove the ENW client**. It asks whether to keep your
-  downloaded maps, and it only removes things it installed. Your own World at War, and any maps you
-  installed yourself, are left alone. Then delete the launcher file.
+- **You want it gone** — Settings → **Remove the ENW client** first. It asks whether to keep your
+  downloaded maps, and it only removes things it installed; your own World at War, and any maps you
+  installed yourself, are left alone. Then uninstall **ENW Zombies** from Windows' Apps list as
+  normal.
 
 Anything else, or anything confusing: tell B. Confusing counts as a bug.

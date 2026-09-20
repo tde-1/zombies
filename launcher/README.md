@@ -94,6 +94,52 @@ points at the map archive, `ENW_DEV_ROOT` moves (or disables) the shared game lo
 
 Full notes, measurements and what is still faked: **`../docs/kickstart/launcher.md`**.
 
+## Releasing a new version
+
+Three friends run a packaged exe and we change things under them for weeks, so the updater is the
+thing that must not break. Its rule is **check on launch, apply on the next launch** — never
+mid-game, never mid-download.
+
+```powershell
+cd launcher
+# 1. bump the version. This is what the updater compares against.
+npm version patch --no-git-tag-version      # 0.1.0 -> 0.1.1
+
+# 2. build
+npm run pack
+```
+
+**What comes out**, in `launcher\dist\`:
+
+| File | What to do with it |
+|---|---|
+| `ENW-Zombies-Launcher-<version>.exe` | the launcher. Upload it **and** send it to anyone new. |
+| `latest.yml` | the feed index — version, file name, sha512. **Upload it last.** |
+| `*.blockmap` | upload it if present; it lets an update download only what changed |
+| `win-unpacked\` | intermediate, do not ship |
+
+**Upload all of those to the same directory**, whatever it is: a Cloudflare R2 or Hetzner bucket,
+or `web/public/updates/` on the site. That directory's URL is the feed.
+
+Upload `latest.yml` **last**. It is the file that says "there is a new version"; if it arrives
+before the exe, every launcher that checks in between tries to download something that is not there
+yet. It fails soft — they stay on the version they have — but it is a pointless scare.
+
+**Point launchers at it** with `updateFeed` in the launcher's config, or `ZM_UPDATE_FEED`. If
+neither is set it uses `<site>/updates`, so putting the files under the site needs no configuration
+at all.
+
+Nothing is signed, so Windows SmartScreen will warn on a new version exactly as it did on the first.
+
+### If an update goes wrong
+
+It is meant not to. No feed, a bad feed, no network, a half-downloaded file: the launcher starts
+and plays on the version it already had, and the rail says `Updates: could not check`. To back out
+a bad release, put the previous `latest.yml` and exe back — `allowDowngrade` is off, so also bump
+the version past the bad one rather than relying on people downgrading.
+
+The rail always shows the running version, so "are you on the latest?" is one screenshot.
+
 ## Three rules this code exists to keep
 
 * **The player's copy of World at War is never written to.** One `assertWritable()` guards every

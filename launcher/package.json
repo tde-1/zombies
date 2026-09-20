@@ -17,7 +17,7 @@
     "play": "node src/main/play-cli.js",
     "maps": "node src/main/maps-cli.js",
     "slice": "node test/slice.js",
-    "pack": "electron-builder --win portable --publish never"
+    "pack": "electron-builder --win --publish never"
   },
   "devDependencies": {
     "electron": "^38.8.6",
@@ -36,18 +36,34 @@
       "src/**/*",
       "tools/**/*",
       "resources/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
     ],
     "win": {
       "target": [
-        "portable"
+        "nsis"
       ],
       "icon": "src/renderer/assets/icon-256.png"
     },
-    "portable": {
-      "artifactName": "ENW-Zombies-Launcher-${version}.exe"
-    },
     "compression": "maximum",
-    "asar": true
+    "asar": true,
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://zombies.enw.gg/updates"
+      }
+    ],
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "ENW-Zombies-Launcher-Setup-${version}.exe",
+      "shortcutName": "ENW Zombies"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

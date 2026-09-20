@@ -26,6 +26,7 @@ import { Updater, IdleGate, applyPending, pending } from './updates.js'
 import { BootFlow } from './bootflow.js'
 import * as library from './library.js'
 import { SiteApi, electronCookieProvider } from './siteapi.js'
+import { AutoUpdater, resolveFeed } from './autoupdate.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -354,6 +355,7 @@ function wireIpc() {
     pendingUpdate: pending(),
     gameLock: lock.enabled() ? lock.read() : { held: false, note: 'not a dev box' },
     lastError: state.lastError,
+    updates: state.updater ? state.updater.status() : { enabled: false, current: app.getVersion() },
     site_api: state.api ? { protocol: 0, auth: state.api.hello?.auth, you: state.api.who, capabilities: state.api.hello?.capabilities } : null,
   }))
 
@@ -619,9 +621,21 @@ if (!single) {
 
     // Silently send anything that failed to send last time, then start the update lane.
     crash.flush(cfg.load().crashEndpoint).then((r) => { if (r.sent) log('flushed crash reports', r) })
-    const up = new Updater({ feed: cfg.load().updateFeed, currentVersion: app.getVersion() })
-    up.on('staged', (s) => push('toast', { kind: 'info', text: `An update is ready and will be applied ${s.appliesWhen}.` }))
-    up.start()
+    // The updater. Everything about it is allowed to fail: a friend's launcher that
+    // will not open because an update check failed is the outcome we are avoiding.
+    const feed = resolveFeed({ config: cfg.load(), siteUrl: state.siteInfo?.url })
+    state.updater = new AutoUpdater({
+      feedUrl: feed,
+      currentVersion: app.getVersion(),
+      gate: state.gate,
+      log: (...a) => log('updater', ...a),
+    })
+    state.updater.on('ready', (r) => push('toast', {
+      kind: 'info',
+      text: `Version ${r.version} is ready. It will be applied the next time you start ENW Zombies — never during a game.`,
+    }))
+    state.updater.on('status', () => push('update', state.updater.status()))
+    state.updater.start()
 
     // ENW_SMOKE_MS: boot, report what came up, quit. Lets the whole app be tested on a
     // machine somebody is using without leaving a window on their screen, and makes
@@ -736,5 +750,8 @@ if (!single) {
   app.on('before-quit', () => {
     state.quitting = true
     try { state.flow?.cancel('the launcher is closing') } catch {}
+    // Applying is the only moment an update can disturb anything, so it happens here,
+    // and only when no game is running and nothing is installing.
+    try { state.updater?.applyIfSafe() } catch {}
   })
 }

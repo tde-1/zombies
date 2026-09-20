@@ -378,6 +378,56 @@ await test('the map source is config, not code', async () => {
   assert.ok(src.includes('did not match the hash the archive recorded'))
 })
 
+// ----------------------------------------------------------------- the updater --
+group('Updates: never break a friend launcher')
+
+await test('the feed resolves ZM_UPDATE_FEED > config > the site', async () => {
+  const { resolveFeed } = await import('../src/main/autoupdate.js')
+  assert.equal(resolveFeed({ env: { ZM_UPDATE_FEED: 'https://bucket/u/' }, config: { updateFeed: 'https://x' }, siteUrl: 'https://s' }), 'https://bucket/u')
+  assert.equal(resolveFeed({ env: {}, config: { updateFeed: 'https://x/' }, siteUrl: 'https://s' }), 'https://x')
+  assert.equal(resolveFeed({ env: {}, config: {}, siteUrl: 'https://s/' }), 'https://s/updates')
+  // No site and no feed is a supported state, not an error.
+  assert.equal(resolveFeed({ env: {}, config: {}, siteUrl: null }), null)
+  // A placeholder page is not an update feed.
+  assert.equal(resolveFeed({ env: {}, config: {}, siteUrl: 'file:///x.html' }), null)
+})
+
+await test('no feed is fine and says so', async () => {
+  const { AutoUpdater } = await import('../src/main/autoupdate.js')
+  const u = new AutoUpdater({ feedUrl: null, currentVersion: '0.1.0', gate: new updates.IdleGate() })
+  await u.start()
+  assert.equal(u.status().enabled, false)
+  assert.equal(u.status().current, '0.1.0')
+  assert.match(u.status().error, /no update feed/)
+})
+
+await test('a broken feed does not throw at the caller', async () => {
+  const { AutoUpdater } = await import('../src/main/autoupdate.js')
+  const u = new AutoUpdater({ feedUrl: 'http://127.0.0.1:1/nothing-here', currentVersion: '0.1.0', gate: new updates.IdleGate() })
+  // The whole point: this resolves. It does not reject, and it does not throw.
+  await u.start()
+  assert.ok(u.status().checked || u.status().error, 'it either checked or recorded why it could not')
+})
+
+await test('an update is never applied while a game is running', async () => {
+  const { AutoUpdater } = await import('../src/main/autoupdate.js')
+  const gate = new updates.IdleGate()
+  const u = new AutoUpdater({ feedUrl: 'https://example.invalid', currentVersion: '0.1.0', gate })
+  u.updater = { quitAndInstall: () => { throw new Error('should not be reached') } }
+  u.state.downloaded = '0.2.0'
+  gate.block('game', 'a game is running')
+  assert.equal(u.applyIfSafe(), false, 'must refuse while a game is running')
+  gate.unblock('game')
+  // With nothing busy it tries — and even a throwing quitAndInstall must not escape.
+  assert.equal(u.applyIfSafe(), false)
+})
+
+await test('nothing downloaded means nothing to apply', async () => {
+  const { AutoUpdater } = await import('../src/main/autoupdate.js')
+  const u = new AutoUpdater({ feedUrl: 'https://example.invalid', currentVersion: '0.1.0', gate: new updates.IdleGate() })
+  assert.equal(u.applyIfSafe(), false)
+})
+
 // ------------------------------------------------------- the launch command --
 group('The launch command line')
 
