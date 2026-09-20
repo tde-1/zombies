@@ -357,6 +357,25 @@ is exactly what we want to disable. The **frame path is fully traced** (WinMain 
 dvar-register and server-command paths are all named. Remaining gaps are a few no-string
 functions (`Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`, exact `SV_DropClient`).
 
+## 5. The join path (first task for the next session)
+`+connect` is **not a client command in the SP exe** — the string `connect` (0x888A28) is pushed
+at exactly one site, 0x635253, inside `SV_ConnectionlessPacket`; it is the *server* OOB command
+name. Nothing registers a client-side `connect`, so the command line was silently a no-op.
+
+The T4 equivalent of iw4x's `connect_coop` is **function 0x641730** (0x641730..0x641960) [C-strong]:
+- pushes **"localhost"** (0x86F0D4), calls **`CL_SendConnectPacket` 0x642C80**, and is called from
+  **0x631F20** (the map-load path) and 0x6582A0 — i.e. it is what connects the local client after
+  a map comes up in a listen/solo game.
+- **Gate [V]:** at 0x64174E, `mov esi,6; cmp dword ptr [0x305842C], esi; jl -> skip` — the client
+  state at **`[0x305842C]` must be >= 6** or the connect branch is skipped. It also clears
+  `[0x3058424]`/`[0x3058428]` and sets `[0x22BD9EB]=1`. (0x3058xxx is the clientStatic/clc block.)
+- **Both call sites pass two stack dwords**: `push edx([ebp+0x10]); push edi` (0x6321A2) and
+  `push 0; push edi` (0x65838A).
+- **NOT PROVEN: what those two arguments mean, and who cleans the stack.** Do not call it blind.
+  Prove the args and cleanup first — the two call sites plus the `jl` gate are the way in.
+- Auth is already clear for this test: Demonware `getAuthTicket` 0x57C0E0 is skipped for
+  NA_LOOPBACK (guard 0x642E4C), so a loopback join needs no auth patch.
+
 ## 4. Open threads
 - Pin `Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`, exact `SV_DropClient`. Anchors:
   SV_AddOperatorCommands 0x62C9B0 (console dispatch), the VM at 0x696E6D. KisakCOD structure +
