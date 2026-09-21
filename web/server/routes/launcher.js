@@ -247,7 +247,7 @@ function router() {
     // A launcher that crashed and came back does not need a second match. Handing it the
     // one it already has is the difference between a recovered run and two half-runs, one
     // of which has the rounds and the other of which has the result.
-    const open = localMatches.inFlight(req.me.steam_id).find((x) => x.map_key === m.key)
+    const open = localMatches.resumable(req.me.steam_id, m.key)
     const row = open || localMatches.start(req.me.steam_id, m.key)
     if (!open) {
       db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('local.start', ?, ?, ?)")

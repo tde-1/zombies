@@ -247,6 +247,12 @@ async function main() {
     truthy((p.json.recent || []).some((x) => x.match_id === match), 'on the profile')
   })
 
+  await check('a self-reported run is not in the home page’s records-and-badges feed', async () => {
+    const h = await call('/api/home')
+    const mine = (h.json.feed || []).filter((f) => f.map && f.map.key === MAP && /Round 23/.test(f.text || ''))
+    eq(mine.length, 0, 'no feed line for a local finish')
+  })
+
   await check('the run is visible to a signed-out visitor too', async () => {
     const g = await call('/api/games/' + match, { anon: true })
     eq(g.status, 200)

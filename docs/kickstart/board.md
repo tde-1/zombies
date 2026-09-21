@@ -2921,3 +2921,48 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   silent, check for leftover `ENW Zombies` processes first. And **the updater failed soft exactly as
   intended** in that run — checked `https://zombies.enw.gg/updates`, got `ERR_ABORTED` because no
   feed is uploaded yet, logged it and carried on. Suite **50 passed, 0 failed**.
+- 16:45 mvp-server: **the local-run door had three holes and all three are fixed and tested.** All
+  reproduced first on a private instance (port **3399**, own `ZM_DATA_DIR`; 3200 untouched throughout).
+  **(1) A site restart mid-run destroyed the run.** Local matches lived in a `Map` in
+  `routes/launcher.js`, so after any restart `POST /api/launcher/local/result` answered
+  `404 {"error":"not your game"}` and forty minutes of play were gone. They are a `local_matches`
+  row now; the result is matched against the row and survives restarts.
+  **(2) `rounds: "abc"` was stored as NULL.** `Number(x || 0)` is NaN and better-sqlite3 binds NaN
+  to an INTEGER column as NULL silently — the one number B's MVP is about, quietly missing. Every
+  number and string reaching a column is coerced now (`num`/`int`/`str`/`parseWhen` in `lib/results.js`).
+  **(3) `players: "me"` was an HTTP 500**, which a launcher retries forever. Malformed bodies get a
+  400 that names the problem.
+- 16:45 mvp-server: three more, same door. A **retried** result is now an idempotent `repeat: true`
+  instead of a 404. The **map** on a result is the site's (from `local/start`), not the client's — a
+  result with no `map` used to store `map_key: ''` and appear on no page at all. And a run whose
+  result **never arrives** is closed out by a sweep and written from its live frames with the round
+  it reached, flagged `abandoned` + `frames_only`; the real summary supersedes it if it turns up
+  later. Nothing sits "live" forever any more.
+- 16:45 mvp-server: **launcher lane — two additive fields you may want.** `POST /local/start` returns
+  `resumed: true` when it hands back a match you already had open on that map (within 10 min), so a
+  crashed launcher does not orphan the run; `GET /api/launcher/local` lists your in-flight matches.
+  `POST /local/result` now echoes `stored: { rounds, map_key }` and `url: /game/<match>`, so you can
+  show the player the round the site actually filed rather than assuming a 200 means agreement.
+  `hello.capabilities.replay_downloads` was `false` while both replay routes worked — it is `true`
+  now, plus `local_resume: true`. `localrun.js` needs no change; everything is additive.
+- 16:45 mvp-server: **PROVEN end to end, with a real referee and a real signed replay.** Host agent
+  simulator → `web/tools/local-run.js` → site on 3399: `l_cd19f6c08170`, round 21 on Verruckt,
+  2.25 MiB replay, 34 chunks, 61,276 events. The site shows it on `/game/<id>`, on `/m/nazi_zombie_asylum`
+  and on the profile, marked local/self-reported, and **`HIGHEST ROUND` stayed 41** (the verified
+  number) and the map shelf stayed un-ticked — local earns nothing, as designed. The replay
+  downloaded **through the site** is 2,363,575 bytes in and out and `tools/verify.js` calls it VALID;
+  one bit flipped in the middle of the downloaded copy → INVALID, chain broken from chunk 28 on.
+- 16:45 mvp-server: **demo data can no longer be mistaken for a real run.** Seeded games carry
+  `games.demo = 1` (set by `db/seed.js` and by nothing else — no route can write it) and fixed
+  `demo_<n>` match ids, so re-running `--demo` updates six rows instead of stacking six more;
+  `--demo` now **refuses outright** on a database that already holds a real game unless
+  `--force-demo`; and `--reset` takes a `VACUUM INTO` backup before deleting. `demo` is exposed by
+  `results.project()` for the **ui** lane to render however it likes.
+- 16:45 mvp-server: **judgement call for B, easily reversed.** A self-reported finish no longer
+  pushes a line into the home page's feed — that feed is records and badges, and a local run earns
+  neither. The run is still on the profile, the map page and its own game page. One `if` in
+  `lib/results.js` if B wants it the other way.
+- 16:45 mvp-server: tests. `npm run check` now runs **both** suites from `web/`: `check:lib`
+  (55 in-process, unchanged) and **`check:mvp`** — 26 new HTTP checks in `web/test/local-run.js`
+  that spawn the real server on port 33991 with its own temp `ZM_DATA_DIR`, drive the three local
+  endpoints over HTTP, restart the server mid-run, and sweep an abandoned match. 81 passed, 0 failed.

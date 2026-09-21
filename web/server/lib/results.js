@@ -336,12 +336,20 @@ function applyProgressAndBadges(game, summary, seated) {
     }
   }
 
-  if (finish) {
+  // The home page's feed is a log of records and badges — things the site vouched for.
+  // A self-reported finish is neither: it earned no badge above and can hold no record, so
+  // putting "Round 20 on Verruckt" in the same list as a refereed run states something the
+  // site does not know. The run is still on the player's profile, on the map page and on
+  // its own game page, which is where a history belongs.
+  //
+  // (If this should read the other way — B's call — it is this `if` and a flag on the feed
+  // row for the client to mark it with.)
+  if (finish && !game.self_reported) {
     const map2 = db.prepare('SELECT title FROM maps WHERE key=?').get(game.map_key)
     feed.push({
       kind: 'finish', map_key: game.map_key, game_id: game.id,
       text: `${game.finish_label || finish} on ${map2 ? map2.title : game.map_key}`,
-      data: { rounds: game.rounds, players: seated.length, solo },
+      data: { rounds: game.rounds, players: seated.length, solo, mode: game.mode },
     })
   }
   return awarded

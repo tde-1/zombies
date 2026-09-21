@@ -34,7 +34,7 @@ badges so the pages are not empty.
 |---|---|
 | `npm install` | the server's four dependencies |
 | `npm run build` | installs and builds the React client into `client/dist` |
-| `npm run seed -- --reset --demo` | wipes and rebuilds the database from `referee/manifests/*.json`, then adds four demo players and six games so nothing is empty. Drop `--demo` for a site with no fake players in it |
+| `npm run seed -- --reset --demo` | wipes and rebuilds the database from `referee/manifests/*.json`, then adds four demo players and six games so nothing is empty. Drop `--demo` for a site with no fake players in it. `--reset` backs the old database up to `data/zombies.db.<stamp>.bak` first, and `--demo` refuses to run at all on a database that already holds a real game (`--force-demo` overrides). Demo games are marked `demo` everywhere the API reports a game |
 | `npm run import:archive -- --catalogue` | the archive agent's 14 rescued maps, plus the 2,265-map crawl index behind the Archive page. Drop `--catalogue` for just the 14 |
 | `npm run dev` | the server, on 127.0.0.1:3200 |
 
@@ -46,7 +46,8 @@ The home page carries an **Early build** notice listing what is not built yet, s
 have to guess. `npm run check` runs 55 in-process checks in a few seconds.
 
 To start over: `npm run seed -- --reset --demo` again (it is safe to re-run, as is the
-archive import).
+archive import — and `--reset` copies the old database aside before deleting it, so a real
+run is never actually lost to a typo).
 
 ## What is faked
 
@@ -62,8 +63,15 @@ what is stubbed and why.
 
 ```bash
 npm run client        # Vite dev server on :5173, proxies /api and /socket.io to :3200
-npm run check         # 55 in-process checks, no server needed
+npm run check         # both suites below
+npm run check:lib     # 55 in-process checks, no server needed
+npm run check:mvp     # 26 HTTP checks of the local-run path — spawns its own server on 33991
 ```
+
+`check:mvp` is the end-to-end one: it starts the real server as a child process with its
+own temporary data directory, plays a local run through `local/start` → `local/live` →
+`local/result`, restarts the server in the middle of one, recovers an abandoned run, and
+downloads a replay. It never touches the database or the port you are developing against.
 
 Licence: AGPL-3.0-or-later (vault 99 §0.3 — the server is open-sourced under AGPL because of
 its network use).

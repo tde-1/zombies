@@ -35,8 +35,17 @@ npm run client                    # http://127.0.0.1:5173
 Checks:
 
 ```bash
-npm run check                     # 51 in-process checks, a few seconds, no server needed
+npm run check                     # both suites: 55 in-process + 26 over HTTP
+npm run check:lib                 # 55 in-process checks, a few seconds, no server needed
+npm run check:mvp                 # 26 HTTP checks of the local-run path (spawns a server on 33991)
 ```
+
+`check:mvp` (`test/local-run.js`) is the one that covers B's MVP sentence. It spawns the
+**real** server as a child process on its own port with its own `ZM_DATA_DIR`, drives
+`local/start` → `local/live` → `local/result` over HTTP exactly as the launcher does,
+**restarts the server mid-run**, sweeps an abandoned match, downloads a replay and checks
+the bytes. None of the bugs it covers were visible to the in-process suite, because all of
+them lived in the HTTP layer or in the state machine between three requests.
 
 **A live game on the site in twenty seconds** — a real host agent, a real referee, real frames:
 
@@ -489,11 +498,48 @@ holding one makes every board on the site whatever they feel like typing. So loc
 own door, authenticated as the **player** by the ordinary session cookie:
 
 ```
-POST /api/launcher/local/start   {map_key}      -> {match_id, map{fs_game, files, install_known,
-                                                    readme}, settings, notice}
-POST /api/launcher/local/live    {match_id, state}   ~4 Hz while it runs
-POST /api/launcher/local/result  {summary, replay}
+POST /api/launcher/local/start   {map_key}      -> {match_id, resumed, map{fs_game, files,
+                                                    install_known, readme}, settings, notice}
+POST /api/launcher/local/live    {match_id, state}   ~4 Hz while it runs -> {taken, round}
+POST /api/launcher/local/result  {summary, replay}   -> {game_id, repeat, stored{rounds,map_key}, url}
+GET  /api/launcher/local                             -> the caller's in-flight matches
+GET  /api/launcher/local/<match>                     -> one of them, and its game if it finished
 ```
+
+### A local match is a row, because a run is forty minutes long
+
+The first version kept matches in a `Map` in `routes/launcher.js`, and that was the biggest
+hole in the MVP. Reproduced on a private instance before it was fixed: start a local game,
+restart the site, post the result — **`404 {"error":"not your game"}`**, and the run is gone
+with nothing anywhere to recover it from. A deploy, a crash or `node --watch` on a save is
+enough. So `local_matches` is a table (`lib/localMatches.js`), and three things follow:
+
+* **A restart does not lose the run.** The result is matched against the row, and sessions
+  were already in SQLite, so both halves survive.
+* **A crash leaves a number.** Every live frame records the highest round reported. A run
+  whose result never arrives is written out by `sweep()` with the round it reached, flagged
+  `abandoned` + `frames_only` so nobody mistakes it for a refereed result — and the real
+  summary **supersedes** that placeholder if it turns up later. That is the one case where a
+  repeat post is allowed to change the numbers, and it is narrow by construction: only a row
+  we synthesised ourselves.
+* **Nothing sits live forever.** Twenty minutes without a frame having had one, or a full day
+  having never had one, and the match is closed.
+
+Two smaller ones from the same pass. A **retried** result is an idempotent `repeat: true`
+rather than a 404 — a launcher whose POST succeeded and whose response was lost was being
+told it had lost everything. And the **map** on a result is the site's, taken from
+`local/start`: a result with no `map` used to store `map_key: ''` and appear on no page at
+all. If the referee names a different map, the site keeps its own and flags `map_mismatch`.
+
+### Nothing malformed reaches a column
+
+`Number(x || 0)` is NaN for `"abc"`, and better-sqlite3 binds NaN to an INTEGER column as
+NULL without complaining. `POST /local/result {rounds:"abc"}` therefore returned 200 and
+stored a game with **no round on it** — the one number B's MVP is about. `players: "me"` was
+an HTTP 500, which a box retries forever (rule 3 of `lib/results.js`, broken by the layer
+above it). Every number and every string reaching a column now goes through `num`/`int`/
+`str`/`parseWhen`, and the three local endpoints refuse a malformed body with a 400 that
+names the problem.
 
 Everything through that door is stamped `games.self_reported = 1`, and the roster on a result is
 **overridden** to the session's player — otherwise a local game could write rows against other
@@ -560,6 +606,25 @@ the site          a Local game: it ran on the player's own PC with the console a
 On a development box the local host agent **is** `box-a`, so the signing key is the pinned one and
 every key check in §4f passes. The **mode** decides this, not the key — which is the same lesson as
 §4d one turn further on: integrity is not authorship, and authorship is not legitimacy.
+
+### Run again, 2026-09-21, after the hardening
+
+Host agent simulator → `web/tools/local-run.js` → a private site on 3399:
+
+```
+local game l_cd19f6c08170 on Verruckt
+  … 420 frames relayed, rounds 1 → 21 …
+game over: round 21, Round 20
+  site says: mode=local records_eligible=false self_reported=true
+  replay: local — a Local game: it ran on the player's own PC …
+```
+
+and afterwards, on the site itself: `/game/l_cd19f6c08170` shows **Round 21** on Verruckt with
+the local notice and the player's stats; the run is on `/m/nazi_zombie_asylum` under Recent
+games and on the profile — while **HIGHEST ROUND stayed 41** (the verified number) and the
+Verruckt shelf tile stayed un-ticked. The replay downloaded **through the site** is 2,363,575
+bytes in and 2,363,575 out, and `tools/verify.js` on the downloaded copy says VALID; one bit
+flipped in the middle of it says INVALID, chain broken from chunk 28 on.
 
 ---
 

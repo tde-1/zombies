@@ -51,6 +51,15 @@ const SILENT_MS = 26 * 3600_000
 // about the game. Rounds past it are clamped and the row says so via `frames_only`.
 const MAX_ROUND = 100_000
 
+// How recently a match must have been heard from before a second `start` on the same map
+// is treated as the SAME run resuming rather than a new one.
+//
+// Both mistakes cost something. Resuming too eagerly merges two runs the player meant to
+// keep apart — quit at round 5, start again, and both attempts land on one game row.
+// Resuming too reluctantly orphans the run a crashed launcher is coming back to. Ten
+// minutes is longer than a map load and shorter than a deliberate second attempt.
+const RESUME_MS = 10 * 60_000
+
 const q = {
   insert: db.prepare(`INSERT INTO local_matches (match_id, steam_id, map_key, state, round, frames, started_at, last_seen)
                       VALUES (?,?,?, 'live', 0, 0, ?, ?)`),
@@ -102,6 +111,16 @@ function finish(matchId, gameId) {
 
 /** Every local match this player still has open. A restarted launcher asks for this. */
 const inFlight = (steamId) => q.inFlight.all(String(steamId))
+
+/**
+ * The match a second `start` on this map should resume, if any.
+ *
+ * Only a match that has been heard from inside RESUME_MS. An older one is left alone: it
+ * stays live until the sweep closes it, which writes it out as the abandoned run it is
+ * rather than quietly folding it into the next attempt.
+ */
+const resumable = (steamId, mapKey, at = now()) =>
+  inFlight(steamId).find((x) => x.map_key === String(mapKey) && at - x.last_seen < RESUME_MS) || null
 
 /** What a client is allowed to know about one of its own matches. */
 const pub = (row) => (!row ? null : {
@@ -190,4 +209,4 @@ function recoverAsGame(row) {
   return out && out.ok ? out.game_id : null
 }
 
-module.exports = { start, byId, owned, heartbeat, finish, inFlight, pub, sweep, recoverAsGame, STALE_MS, SILENT_MS, MAX_ROUND }
+module.exports = { start, byId, owned, heartbeat, finish, inFlight, resumable, pub, sweep, recoverAsGame, STALE_MS, SILENT_MS, RESUME_MS, MAX_ROUND }
