@@ -28,8 +28,8 @@ export default function Admin() {
 
   return (
     <div className="page wide">
-      <div className="tabs pill-nav">
-        {TABS.map((t) => <a key={t} className={tab === t ? 'on' : ''} href="#" onClick={(e) => { e.preventDefault(); setTab(t) }}>{t}</a>)}
+      <div className="seg" style={{ marginBottom: 14 }}>
+        {TABS.map((t) => <button key={t} type="button" className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>)}
       </div>
 
       {d.key_warnings.length > 0 && (
