@@ -1196,9 +1196,19 @@ if (!single) {
         if (process.env.ENW_SMOKE_SHOT) {
           // The site lives in a native child view, so the window's own webContents
           // captures the chrome only. Grab both and say so.
+          //
+          // TIME-BOXED, because `capturePage()` on a view that is NOT VISIBLE never
+          // resolves. The moment a screen hides the site view -- which is now every
+          // first-run and settings screen -- an untimed capture hangs the whole smoke
+          // run with the report already built and never printed, which looks exactly
+          // like a crash. A screenshot is the least important thing here; it must never
+          // be the thing that stops the report.
           for (const [name, target] of [['chrome', state.win?.webContents], ['site', wc]]) {
             try {
-              const img = await target.capturePage()
+              const img = await Promise.race([
+                target.capturePage(),
+                new Promise((_r, rej) => setTimeout(() => rej(new Error('capturePage timed out (the view is probably hidden)')), 5000)),
+              ])
               const f = path.join(P.logs, `smoke-${name}.png`)
               fs.writeFileSync(f, img.toPNG())
               report[`shot_${name}`] = f
