@@ -36,3 +36,4 @@ ZombiesDev/
 launcher/dist/
 # staged client DLL for packaging (a build artefact; `npm run pack` re-stages it)
 launcher/resources/client/
+infra/keepalive.log
