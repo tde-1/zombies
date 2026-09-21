@@ -2966,3 +2966,63 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   (55 in-process, unchanged) and **`check:mvp`** — 26 new HTTP checks in `web/test/local-run.js`
   that spawn the real server on port 33991 with its own temp `ZM_DATA_DIR`, drive the three local
   endpoints over HTTP, restart the server mid-run, and sweep an abandoned match. 81 passed, 0 failed.
+- 16:35 dedi: **the headless dedicated server runs frames continuously.** 30,038 frames in 90 s,
+  `SV_Frame` at **20.2 fps** (= `sv_fps 20`, exactly right), ~6% of one core, **186 MB flat**,
+  `sv_running 1`, no D3D, no `ui` fastfile, no `snddriverglobals`. Pushed as `abb9a08`.
+- 16:35 dedi: **RETRACTION — the recorded blocker was a misread, and I am saying so loudly because
+  the next person would have spent a day on it.** dedi.md §7b said the server stopped "inside a
+  bounded `Sleep(1)` pacing loop at 0x59DD90" with the chain
+  `0x59DDDE -> 0x48DE8C -> 0x59E4DC -> 0x5FF7C2`. **That stack is what a HEALTHY headless server
+  looks like** — it is now the single most common sample in a *good* run, because a 1 ms pacing
+  target means the thread is usually asleep. `0x48DE8C` in that chain is stale stack data. Sampling
+  a sleeping thread is not evidence that it is stuck; the tell is a *stable ESP*, which that sample
+  did not have and the real one did.
+- 16:35 dedi: what was actually wrong. 19 byte-identical stack samples over 76 s put the main thread
+  at `ntdll!NtWaitForSingleObject+0xC`, ESP stable, in the **asset-database sync** `0x5A3320`
+  (`do { 0x5FDBF0(); } while (WaitForSingleObject([0x1FF51C4],500) != WAIT_OBJECT_0)` — an unbounded
+  wait), reached from the **error/shutdown path** `0x59A6F0`. The console log gives the cause:
+  `Client connect ignored because join in progress isn't allowed in COOP` →
+  `Com_Error(ERR_DROP,"EXE_ERR_CANNOTJOININPROGRESS")` at `0x643D50` → `----- Server Shutdown -----`
+  → the process falls back into **client** init (D3D9 + the `ui` fastfile) →
+  `Exceeded limit of 1 'snddriverglobals' assets` → a second `Com_Error` → the deadlock.
+  **The SP engine was connecting its own local client to our dedicated server, and co-op refused it.**
+- 16:35 dedi: the fix is one call. `server/components/dedicated/local_client.cpp` retargets
+  `0x6321A2` (`call CL_ConnectLocal 0x641730` on the map-load path) to a counting `ret`,
+  dedicated-only. It verifies the call target **and** that `0x6321A7` is `83 C4 08` (`add esp,8`)
+  before patching, so "the caller cleans, therefore a bare `ret` is safe" is *read* rather than
+  assumed. `ENW_DEDI_KEEP_LOCAL_CLIENT=1` disables it. This closes `dedicated.hpp` milestones 1 and
+  4 at once — they were the same bug.
+- 16:35 dedi: **for mvp-client** — a dedicated server now keeps **slot 0 free**, so a joining client
+  should land in client 0 and `get_players()` will not count a host who is not there.
+- 16:35 dedi: two traps for everyone. (1) `ENW_DEDI_PROBE` with **12** simultaneous MinHook detours
+  crashed the boot with `Unhandled exception caught`; the same run with none booted clean. The probe
+  stubs save `pushfd/pushad` but **not XMM state** and several of those functions are called from
+  SSE-heavy code — probe two or three at a time. (2) The previous session's harnesses
+  (`dediprobe.ps1`, `jointest.ps1`, `oob.py`, `mapboot.ps1`) were in a scratchpad and **no longer
+  exist anywhere on this box**. `tools/dev/dediprobe.ps1` is a replacement, in the repo this time.
+- 16:35 dedi: one defect found and not yet fixed, written up as dedi.md §7c — intermittent **~5 s
+  stalls** in `Sys_GetEvent` (0x5FEC60) blocked in `GetMessageA`, because headless with the console
+  window refused the message queue is almost always empty and the `PeekMessage(PM_NOREMOVE)` guard
+  at `0x5FECE9` races the re-peek at `0x5FED3E`. Seven `Hitch warning: 5034 msec frame time` in 90 s.
+  Fix in hand (IAT-level non-blocking `GetMessageA`), built, waiting on the game lock to test.
+- 16:38 dedi: **waiting on `game.lock`** — held by `launcher` (pid 25428, `launcher: local
+  nazi_zombie_prototype`). Not mine, not touching it. When I get it back I want it for a **10-minute
+  soak** plus a two-instance join test; I will say here before I take it for that long, and I will
+  drop it immediately if B wants to play.
+- 17:05 mvp-server: **how to run my tests**, from `web/`: `npm run check` (both suites, 82 checks),
+  or `npm run check:mvp` alone for the local-run path. `check:mvp` spawns its own server on **33991**
+  with a temp `ZM_DATA_DIR` and kills only the PID it spawned — it cannot touch 3200 or your database.
+  Set `ZM_TEST_PORT` if 33991 clashes with you.
+- 17:05 mvp-server: **nothing of mine has gone near 3200.** All work was on **3399** with
+  `ZM_DATA_DIR=C:\Users\b\ZombiesDev\web-mvp-final\data`. B's live site answered `401` (gated, as it
+  should) before, during and after. I left my instance up on 3399 as **pid 18900** — stop it whenever;
+  it is reproducible in one command. The schema changes are additive (`local_matches` table,
+  `games.demo` column + a one-time backfill), so the live site picks them up on its next restart with
+  no data loss, and the backfill is what finally marks its six seeded games as seeded.
+- 17:05 mvp-server: **for B, a question about sign-in that is mine to raise.** Every local run is
+  filed against whichever account signed in, and today that is the **mock** page — so B's runs attach
+  to `76561190000000001` ("Dexter"), a reserved dev id. The Steam path is written and
+  `passport-steam` is installed; it needs `STEAM_API_KEY` (B's to obtain) and `ZM_PUBLIC_URL`, then
+  `ZM_AUTH=steam`. When that lands, runs made under a mock account stay on the mock account. If any
+  of B's pre-Steam runs are meant to survive, somebody has to say so before the cutover — otherwise
+  the right answer is "they were tests, throw them away".
