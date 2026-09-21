@@ -156,12 +156,12 @@ export const Loading = () => <div className="loading"><span className="spinner" 
 
 export const Page = ({ wide = false, children }) => <div className={`page${wide ? ' wide' : ''}`}>{children}</div>
 
-export function Stat({ label, value }) {
+export function Stat({ label, value, tone }) {
   const v = value === null || value === undefined || value === '' ? '—' : value
   return (
     <div className="stat">
       <span>{label}</span>
-      <b className="num">{typeof v === 'number' ? num(v) : v}</b>
+      <b className={`num ${tone || ''}`}>{typeof v === 'number' ? num(v) : v}</b>
     </div>
   )
 }

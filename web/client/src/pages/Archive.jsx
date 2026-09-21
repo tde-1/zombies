@@ -50,8 +50,8 @@ export default function Archive() {
           <Stat label="Playable here" value={s.playable} />
           <Stat label="Originals held" value={s.originals_held} />
           <Stat label="Download links" value={s.links} />
-          <Stat label="Links alive" value={s.links_alive} />
-          <Stat label="Links dead" value={s.links_dead} />
+          <Stat label="Links alive" value={s.links_alive} tone="good" />
+          <Stat label="Links dead" value={s.links_dead} tone="hot" />
           {s.links_unchecked > 0 && <Stat label="Still checking" value={s.links_unchecked} />}
         </div>
       )}

@@ -42,10 +42,10 @@ export default function Nav() {
 
       <div className="spacer" />
 
-      <div ref={box} style={{ position: 'relative', width: 240, marginRight: 10 }}>
+      <div ref={box} className="nav-search">
         <input type="search" value={q} placeholder="Search" onChange={(e) => setQ(e.target.value)} />
         {hits && (hits.maps.length || hits.players.length) ? (
-          <div className="card" style={{ position: 'absolute', top: 40, right: 0, width: 320, zIndex: 50, padding: 8 }}>
+          <div className="nav-hits">
             {hits.maps.map((m) => (
               <button key={m.key} className="btn ghost" style={{ width: '100%', justifyContent: 'flex-start', border: 0 }} onClick={() => go(`/m/${m.key}`)}>
                 {m.title} <span className="tiny" style={{ marginLeft: 6 }}>{m.key}</span>
@@ -60,7 +60,7 @@ export default function Nav() {
         ) : null}
       </div>
 
-      <select value={theme} onChange={(e) => setTheme(e.target.value)} style={{ width: 'auto', marginRight: 10 }} title="Theme">
+      <select className="nav-theme" value={theme} onChange={(e) => setTheme(e.target.value)} title="Theme">
         {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.label}</option>)}
       </select>
 

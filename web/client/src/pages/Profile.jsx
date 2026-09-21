@@ -113,9 +113,9 @@ export default function Profile() {
                 <div className="listing">
                   {d.recent.map((g) => (
                     <Link className="maprow" key={g.id} to={`/game/${g.match_id}`}>
-                      <div className="name"><b>{g.map_title}</b><span>{g.players.map((x) => x.name).join(', ')}</span></div>
+                      <div className="name"><b>{g.map_title || '—'}</b><span>{g.players.map((x) => x.name).join(', ')}</span></div>
                       {g.mode === 'local' || g.self_reported ? <Untracked /> : <span className="tag">{g.mode}</span>}
-                      <span className="num">R{g.rounds}</span>
+                      <span className="num">{g.rounds ? `R${g.rounds}` : '—'}</span>
                       <span className="tiny num">{dur(g.duration_ms)} · {ago(g.ended_at)}</span>
                     </Link>
                   ))}

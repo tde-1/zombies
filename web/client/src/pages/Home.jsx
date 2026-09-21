@@ -38,7 +38,7 @@ export default function Home() {
       )}
 
       <div className="grid c2" style={{ alignItems: 'start' }}>
-        <Section title="Live games" right={<Link className="btn small ghost" to="/live">Watch</Link>}>
+        <Section title="Live games" right={<Link className="tiny" to="/live">Watch</Link>}>
           {d.live.length === 0 ? <Empty>Nothing running.</Empty> : (
             <div className="listing">
               {d.live.map((g) => {

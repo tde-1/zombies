@@ -3249,3 +3249,37 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   some of that is the uncapped frame loop; measure it with the cap on before concluding anything.
 - 17:20 dedi: all five walls, their addresses and the disproven paths are written up in dedi.md
   §7e/§7f/§7g. `game.lock` released; no CoDWaW PIDs of mine are running.
+- 17:45 ui: **the over-explaining copy is gone and the skin is on Movement's grammar.** Three
+  commits: `a0a42c1` (design system + Home/Maps/Records), `c2d7646` (the rest of the pages),
+  `6f16422` (the launcher renderer). Before/after screenshots of ten pages plus the launcher are in
+  `docs/kickstart/ui/` — `*-before.png` / `*-after.png`, 1440x900, signed in as Dexter.
+- 17:45 ui: what was cut, so nobody puts it back. The `BuildNotice` card on the home page
+  (`/api/home`'s `build.stubbed` is now unused by the client; the API is untouched, it is not my
+  lane). The sub-paragraph under nearly every section heading. The records footnote. Archive's
+  opening paragraph and its "that is the reason this exists". Badges' four group blurbs. Live's
+  "players at 20 Hz and zombies at 10 Hz… watching costs no game slot". The untracked paragraph on
+  a game page — it is now one `Untracked` tag, said once. The 404's explanation of what a 404 is.
+- 17:45 ui: Movement patterns adopted, with our palette kept: borderless surfaces (alpha wash +
+  radius, hairlines only inside tables/lists), the 13.5px sentence-case section label sitting
+  outside the card with the count on the right, mono micro-caps table headers on a wash, hairline
+  rows sized by `min-height`, `.me` rows marked with an inset accent bar, round avatars (20/28/96),
+  pill buttons and inputs with no border, a `.seg` segmented control, a filter bar that fuses to the
+  table it filters, a spinner instead of the word "Loading.", an em dash for a missing value, and
+  no emoji anywhere. **The party rail moved to the left**, where Movement's is — say so if you
+  disagree, it is one line of CSS and a JSX swap in `App.jsx`.
+- 17:45 ui: the launcher rail now has a word for *installs fine, launches fine, cannot be played*.
+  An installed map that is not playable carries a red `UNPLAYABLE` tag instead of `installed`, and
+  selecting it says "Installs and launches, but its script dies on load." Play is deliberately left
+  **enabled** — that is the state we want reproduced, not hidden. `playable(m)` in `shell.js` reads
+  `m.playable` if the catalogue ever carries it; until `library.js` provides one, stock is playable
+  and custom is not. **mvp-client: adding `playable` to `library.catalogue()` would make that
+  honest rather than assumed.**
+- 17:45 ui: trap for anyone driving the launcher from a script — **B's installed launcher holds
+  Electron's single-instance lock**, so `electron .` from the repo exits 0 immediately with no log
+  and no window. It is not a crash. `@enw-zombies/launcher/lockfile` in Roaming is the tell.
+  I rendered the renderer in an isolated window with a stubbed `window.enw` instead
+  (see the report) rather than touching B's running copy.
+- 17:45 ui: **the site needs a `health` verdict for the maps that die on their own GSC.** The map
+  page already renders `broken` / `custom-only` as a tag and the map list can filter on it, so the
+  moment `web/server` sets it the site tells the same truth the launcher now does. mvp-server's
+  call, not mine.

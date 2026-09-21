@@ -66,9 +66,9 @@ export default function MapPage() {
             <div className="row">
               {signedIn && (
                 <>
-                  <button className={`btn small ${m.favourite ? 'on' : 'ghost'}`} onClick={fav}>{m.favourite ? '★ Favourite' : '☆ Favourite'}</button>
-                  <button className={`btn small ${m.my_rating === 1 ? 'on' : 'ghost'}`} onClick={() => rate(m.my_rating === 1 ? 0 : 1)} title="Thumbs up">&#128077; {m.thumbs_up}</button>
-                  <button className={`btn small ${m.my_rating === -1 ? 'on' : 'ghost'}`} onClick={() => rate(m.my_rating === -1 ? 0 : -1)} title="Thumbs down">&#128078; {m.thumbs_down}</button>
+                  <button className={`btn small ${m.favourite ? 'on' : 'ghost'}`} onClick={fav}>Favourite</button>
+                  <button className={`btn small ${m.my_rating === 1 ? 'on' : 'ghost'}`} onClick={() => rate(m.my_rating === 1 ? 0 : 1)} title="Rate up">▲ {m.thumbs_up}</button>
+                  <button className={`btn small ${m.my_rating === -1 ? 'on' : 'ghost'}`} onClick={() => rate(m.my_rating === -1 ? 0 : -1)} title="Rate down">▼ {m.thumbs_down}</button>
                 </>
               )}
             </div>
@@ -212,7 +212,7 @@ export default function MapPage() {
                   <Link className="maprow" key={g.id} to={`/game/${g.match_id}`}>
                     <div className="name"><b>Round {g.rounds}</b><span>{g.players.map((p) => p.name).join(', ')}</span></div>
                     {g.mode === 'local' || g.self_reported ? <Untracked /> : <span className="tag">{g.mode}</span>}
-                    <span className="tiny">{g.finish ? g.finish.label : ''}</span>
+                    <span className="tiny">{g.finish && g.finish.label !== `Round ${g.rounds}` ? g.finish.label : ''}</span>
                     <span className="tiny num">{ago(g.ended_at)}</span>
                   </Link>
                 ))}
