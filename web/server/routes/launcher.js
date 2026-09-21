@@ -412,12 +412,21 @@ function phaseOf(party, launch) {
   return 'idle'
 }
 
-// Everything the launcher needs to have the map on disk before it launches. `files` is the
-// archive's record of the version — empty until the archive pipeline has imported one, and
-// an empty list means "we cannot tell you how to install this", NOT "nothing to install".
+// Everything the launcher needs to have the map on disk before it launches.
+//
+// `files` comes from `mapfiles.forMap()`, which lists what this server can actually SERVE:
+// the unpacked, installable files, each with the URL to fetch it from. It used to be built
+// from the `map_files` table instead, which is the archive's record of PROVENANCE — where
+// the map originally came from. Those are different lists and the difference bites:
+// leviathan's provenance is a single `nazi_zombie_leviathan_v1.2.exe`, so this payload
+// advertised an installer as the thing to install. Nothing ever executed it (installFromSite
+// reads `/api/maps/<bsp>/files` and never looked here), so the only visible symptom was
+// `install_known` lying in both directions — false for maps we can serve, true for maps we
+// cannot. One source of truth now, and it is the one that knows what is on disk.
 function mapPayload(m) {
   const v = db.prepare('SELECT * FROM map_versions WHERE map_id=? AND latest=1').get(m.id)
-  const files = v ? db.prepare("SELECT path, sha256, size, kind, source_url FROM map_files WHERE map_version_id=? AND kind != 'script'").all(v.id) : []
+  const served = mapfiles.forMap(m.key)
+  const files = served.files
   return {
     key: m.key,
     title: m.title,
@@ -427,9 +436,14 @@ function mapPayload(m) {
     fs_game: v ? v.fs_game : null,
     version: v ? v.version : null,
     version_id: v ? v.id : null,
-    size_bytes: v ? v.size_bytes : null,
+    // The served size when we have the files, falling back to the archive's recorded size
+    // so a map page still shows a number before the pipeline has unpacked it.
+    size_bytes: served.size_bytes || (v ? v.size_bytes : null),
     files,
-    install_known: files.length > 0,
+    install_known: served.install_known,
+    // Said out loud when the archive recorded more files than this server holds, so a
+    // partial install is visible before it fails rather than after.
+    files_note: served.note || null,
     // The readme, for the boot screen to show while the map loads (13 §4b-2).
     readme: m.readme || m.description || null,
   }

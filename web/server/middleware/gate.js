@@ -12,7 +12,17 @@
 const crypto = require('node:crypto')
 
 const REALM = 'ENW Zombies (closed beta)'
-const EXEMPT = [/^\/api\/gs(\/|$)/, /^\/healthz$/]
+const EXEMPT = [
+  /^\/api\/gs(\/|$)/,
+  /^\/healthz$/,
+  // The launcher's update feed. An installer is not a secret, and a silently dead updater
+  // is much the worse failure: electron-updater would get a 401 it cannot answer, every
+  // friend's client would stop updating, and nobody would find out for weeks. The launcher
+  // does send the password as well, so this is belt and braces rather than the only thing
+  // holding it up. Nothing under /updates identifies anyone or reveals anything the
+  // installer itself does not.
+  /^\/updates(\/|$)/,
+]
 
 function timingSafeEqual (a, b) {
   const ab = Buffer.from(String(a))
