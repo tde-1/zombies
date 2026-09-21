@@ -15,7 +15,7 @@
     <button id="navFwd" title="Forward">&#8594;</button>
     <button id="navReload" title="Reload">&#8635;</button>
   </div>
-  <span class="pill" id="sitePill" title="Which site the launcher is showing. Click to change.">site: …</span>
+  <span class="pill" id="sitePill" title="Which site the launcher is showing">site: …</span>
   <div class="spacer"></div>
   <span class="pill" id="setupPill" title="Where the ENW client is installed">client: …</span>
   <span class="pill" id="accountPill">Sign in</span>
@@ -26,9 +26,7 @@
      cover it. There is no overlay anywhere in this app. -->
 
 <div class="screen wide" id="firstRun">
-  <h1>Set up ENW Zombies</h1>
-  <p class="lede">One screen. We find your copy of World at War, install the ENW client into
-    our own folder, and leave your game exactly as it is.</p>
+  <h1>Set up</h1>
   <div id="frBody"></div>
   <div class="actions" id="frActions"></div>
 </div>
@@ -50,8 +48,6 @@
 
 <div class="screen" id="settings">
   <h1>Settings</h1>
-  <p class="lede">These are saved to your ENW account and applied over the top when the game
-    starts. Your own World at War config is never modified.</p>
   <div id="settingsBody"></div>
   <h2>Where things are</h2>
   <div id="pathsBody"></div>
@@ -77,13 +73,13 @@
       <div class="card-art" id="cardArt"><div class="label">
         <div class="mode" id="cardMode">Custom</div>
         <div class="name" id="cardMap">No map selected</div>
-        <div class="sub" id="cardSub">Pick a map to play</div>
+        <div class="sub" id="cardSub">Pick a map</div>
       </div></div>
       <div class="card-actions">
         <button class="primary" id="playBtn" disabled>Play</button>
         <div class="row">
-          <button id="playLocalBtn" disabled title="Runs on your own PC. Nothing is tracked.">Play Local</button>
-          <button id="modeBtn" title="Verified games are stock and count for records. Custom games do not.">Custom</button>
+          <button id="playLocalBtn" disabled title="Runs on your own PC. Untracked.">Play Local</button>
+          <button id="modeBtn" title="Verified counts for records. Custom does not.">Custom</button>
         </div>
         <div class="card-note" id="cardNote"></div>
       </div>

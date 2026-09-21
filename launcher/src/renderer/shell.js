@@ -2,7 +2,9 @@
 // (see src/preload/preload.cjs) and to nothing else.
 //
 // Tone rule (vault 06): plain, dry, no selling, no hype. Functional words only —
-// error states, empty states, and why a control is disabled.
+// error states, empty states, and why a control is disabled. A thing is said once: the
+// Play button already says what it is about to do, so the note under it only speaks when
+// it has something the button does not.
 
 const $ = (id) => document.getElementById(id)
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n }
@@ -70,7 +72,7 @@ function renderMaps() {
     // nothing serves the rescued map files yet, so on a friend's machine most of this
     // list cannot be installed at all. Saying "453 MB" there would be a lie.
     const tag = el('span', 'tag',
-      m.stock ? 'stock' : m.installed ? 'installed' : m.available ? mb(m.bytes) : 'not available yet')
+      m.stock ? 'stock' : m.installed ? 'installed' : m.available ? mb(m.bytes) : 'unavailable')
     if (!m.stock && !m.installed) tag.classList.add(m.available ? 'needs' : 'absent')
     b.append(tag)
     // The bsp, small — it is what the folder and the original download are called, and
@@ -91,7 +93,7 @@ function selectMap(bsp) {
   const m = MAPS.find((x) => x.bsp === bsp)
   S.selected = m || null
   $('cardMap').textContent = m ? m.title : bsp
-  $('cardSub').textContent = m && m.author ? `${m.bsp}  ·  by ${m.author}` : bsp
+  $('cardSub').textContent = m && m.author ? `${m.bsp}  ·  ${m.author}` : bsp
   renderMaps()
   updatePlay()
 }
@@ -111,7 +113,7 @@ function updatePlay() {
   // played, so offering Play and failing would be the wrong thing.
   const play = $('playBtn')
   if (unavailable) {
-    play.textContent = 'Not available yet'
+    play.textContent = 'Unavailable'
     play.disabled = true
     play.onclick = null
   } else if (needsInstall) {
@@ -124,15 +126,16 @@ function updatePlay() {
     play.onclick = () => play_(false)
   }
   $('playLocalBtn').disabled = !S.map || !ready || busy || needsInstall || unavailable || installing
+  // One line, and only when it says something the buttons do not.
   $('cardNote').textContent =
-    !ready ? 'The ENW client is not installed yet.'
-      : installing ? (S.installFile || 'Copying the map into your ENW library.')
-        : busy ? 'A game is starting.'
+    !ready ? 'ENW client not installed.'
+      : installing ? (S.installFile || 'Copying files.')
+        : busy ? 'Starting.'
           : !S.map ? 'Pick a map.'
-            : unavailable ? `${m.title} is in the archive, but the files are not on this PC and nothing serves them yet. The four stock maps work.`
-              : needsInstall ? `${m.title} is in the archive but not on this PC yet.`
-              : S.mode === 'verified' ? 'Stock settings. Records and badges count.'
-                : 'Any settings. Nothing is tracked.'
+            : unavailable ? 'Not on this PC. The four stock maps work.'
+              : needsInstall ? 'Not installed yet.'
+                : S.mode === 'verified' ? 'Records and badges count.'
+                  : 'Untracked.'
 }
 
 async function installSelected() {
@@ -144,7 +147,7 @@ async function installSelected() {
   updatePlay()
   try {
     const rec = await window.enw.installMap(m.bsp)
-    toast(`${rec.title} installed — ${rec.files.length} files, every one checked against the archive's hash.`)
+    toast(`${rec.title} installed — ${rec.files.length} files, hashes checked.`)
     await loadMaps()
     selectMap(m.bsp)
   } catch (e) {
@@ -183,9 +186,8 @@ function renderStatus() {
   else if (u.error) kv('Updates', 'could not check')
   if (st.gameLock?.held) kv('Game lock', `${st.gameLock.name}${st.gameLock.stale ? ' (stale)' : ''}`, st.gameLock.stale ? '' : 'bad')
 
-  const det = el('button', 'ghost', 'What did we find?')
-  det.style.marginTop = '8px'
-  det.style.width = '100%'
+  const det = el('button', 'ghost', 'What we found')
+  det.id = 'detBtn'
   det.onclick = showDetection
   b.append(det)
 }
@@ -217,11 +219,11 @@ async function renderFirstRun(result) {
     what.append(el('div', 'head', 'What setting up will change'))
     const ul = el('ul', 'changed')
     for (const line of [
-      `Create ${S.status?.enwRoot || 'an ENW folder'} and put a small copy of the game in it (about 8 MB — the big folders are links, not copies).`,
+      `Create ${S.status?.enwRoot || 'an ENW folder'} with a small copy of the game (about 8 MB).`,
       'Install the ENW client there as binkw32.dll, keeping the original beside it.',
       'Keep ENW\'s game settings and logs in that folder.',
     ]) ul.append(el('li', null, line))
-    const kept = el('li', 'kept', 'Your Steam copy of World at War is not touched, and nothing is written to it. Ever.')
+    const kept = el('li', 'kept', 'Your Steam copy is not touched.')
     ul.append(kept)
     what.append(ul)
     body.append(what)
@@ -232,7 +234,7 @@ async function renderFirstRun(result) {
   } else if (r.state === 'owned_not_installed') {
     const c = el('div', 'card')
     c.append(el('div', 'head', 'You own World at War, but it is not installed'))
-    c.append(el('div', 'body', 'Install it through Steam and we will carry on from there.'))
+    c.append(el('div', 'body', 'Install it through Steam.'))
     body.append(c)
     const b1 = el('button', 'primary', 'Install via Steam')
     b1.onclick = () => window.enw.installViaSteam()
@@ -240,7 +242,6 @@ async function renderFirstRun(result) {
   } else {
     const c = el('div', 'card bad')
     c.append(el('div', 'head', 'We could not find World at War'))
-    c.append(el('div', 'body', 'We checked the Steam registry, every Steam library on this PC, and Steam\'s own records for app 10090.'))
     body.append(c)
     const b1 = el('button', null, 'Get World at War on Steam')
     b1.onclick = () => window.enw.getOnSteam()
@@ -251,7 +252,7 @@ async function renderFirstRun(result) {
   browse.onclick = doBrowse
   actions.append(browse)
 
-  const why = el('button', 'ghost', 'Show everything we checked')
+  const why = el('button', 'ghost', 'What we checked')
   why.onclick = showDetection
   actions.append(why)
 }
@@ -260,7 +261,7 @@ async function doBrowse() {
   const r = await window.enw.browse()
   if (r.cancelled) return
   if (r.ok) {
-    if (r.corrected) toast(`That was not quite the right folder — we found the game ${r.how}.`)
+    if (r.corrected) toast(`Not quite the right folder — found the game ${r.how}.`)
     await renderFirstRun({ ok: true, game: r.game, candidates: r.candidates, routes: [], state: 'installed' })
   } else {
     toast(r.reason, 'error')
@@ -293,8 +294,8 @@ async function doSetup(gameDir) {
     const m = await window.enw.setup({ gameDir })
     off()
     const done = el('div', `card ${m.sourceUnchanged ? 'good' : 'bad'}`)
-    done.append(el('div', 'head', m.sourceUnchanged ? 'Done. Your copy of World at War was not changed.' : 'Done, but something in your install changed — check the log.'))
-    done.append(el('div', 'body', `ENW lives in ${m.gameDir}. Removing it later puts everything back.`))
+    done.append(el('div', 'head', m.sourceUnchanged ? 'Done' : 'Done, but something in your install changed. Check the log.'))
+    done.append(el('div', 'body', m.gameDir))
     body.append(done)
     const close = el('button', 'primary', 'Continue')
     close.onclick = async () => { await refresh(); hideAll() }
@@ -390,7 +391,7 @@ function renderBoot(snap) {
   const notes = $('bootNotes')
   notes.replaceChildren()
   if (snap.notes?.length) {
-    notes.append(el('h2', null, 'What the launcher did'))
+    notes.append(el('h2', null, 'Log'))
     const sc = el('div', 'scroller')
     for (const n of snap.notes) sc.append(el('div', 'muted', n))
     notes.append(sc)
@@ -398,8 +399,8 @@ function renderBoot(snap) {
   if (snap.simulated?.length) {
     const c = el('div', 'card')
     c.style.marginTop = '12px'
-    c.append(el('div', 'head', 'Some of this was not real'))
-    c.append(el('div', 'body', `No host agent answered, so these steps were simulated: ${snap.simulated.join(', ')}.`))
+    c.append(el('div', 'head', 'Simulated'))
+    c.append(el('div', 'body', `No host agent answered: ${snap.simulated.join(', ')}.`))
     notes.append(c)
   }
   updatePlay()
@@ -439,12 +440,12 @@ function renderSettings() {
     i.onchange = () => window.enw.setSettings({ [key]: i.checked }).then(refresh)
     return i
   }
-  field('Field of view', num('fov', 65, 120), 'Records allow up to 120. The gun model looks wrong much above 100.')
-  field('Max FPS', num('maxFps', 60, 250), 'Records allow up to 250, and the server checks the value.')
+  field('Field of view', num('fov', 65, 120), 'Records allow up to 120.')
+  field('Max FPS', num('maxFps', 60, 250), 'Records allow up to 250.')
   field('Fullscreen', check('fullscreen'))
   field('Show FPS', check('showFps'))
   field('Streamer mode', check('streamerMode'), 'Hides join codes and incoming invite details.')
-  field('Remove unplayed maps', check('autoRemoveUnplayedMaps'), 'Off by default.')
+  field('Remove unplayed maps', check('autoRemoveUnplayedMaps'))
   const scope = el('div', 'muted', s._scope ? `Saved to: ${s._scope}` : '')
   b.append(scope)
 
@@ -464,7 +465,7 @@ function renderSettings() {
   const f = el('div', 'field')
   f.append(el('label', null, 'Site URL'))
   f.append(siteIn)
-  f.append(el('div', 'hint', 'Where the launcher loads the site from. Blank means: try the usual local ports.'))
+  f.append(el('div', 'hint', 'Blank: try the usual local ports.'))
   p.append(f)
 }
 
@@ -491,7 +492,7 @@ async function renderStorage() {
     box.append(el('h2', null, 'Maps'))
     for (const m of st.maps) row(m.id, mb(m.bytes))
   } else {
-    box.append(el('div', 'muted', 'No maps downloaded yet. Map downloads are not built.'))
+    box.append(el('div', 'muted', 'No maps downloaded.'))
   }
 }
 
@@ -521,7 +522,7 @@ function wire() {
     const st = await window.enw.status()
     if (st.session?.signedIn) { await window.enw.signOut(); toast('Signed out.') }
     else {
-      try { const s = await window.enw.signIn(); toast(`Signed in as ${s.name} (mock sign-in — Steam OpenID needs the site).`) }
+      try { const s = await window.enw.signIn(); toast(`Signed in as ${s.name}.`) }
       catch (e) { toast(e.message, 'error') }
     }
     refresh()

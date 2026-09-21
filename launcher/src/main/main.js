@@ -654,8 +654,15 @@ function wireIpc() {
     // sitting right there. Our DLL rides in on the binkw32 proxy, not on fs_game, so
     // it does not care which mod is loaded. A stock map (prototype, asylum, sumpf,
     // factory) is not installed by us and keeps the ENW mod folder.
+    //
+    // `isInstalled` is the wrong test here and it cost a run: it means "WE installed
+    // it", so a map the player already had — B's own `nazi_zombie_ali`, and
+    // `nazi_zombie_octogonal` — came back false, fs_game stayed `mods/enw`, and the
+    // engine never found the map. Whether the folder is ours or theirs is a question
+    // about deleting it, not about playing it. `ownership()` answers both.
+    const own = library.ownership(mapKey)
     const fsGame = arg.fs_game || arg.map?.fs_game ||
-      (library.isInstalled(mapKey) ? `mods/${mapKey}` : undefined)
+      (own.state === 'absent' ? undefined : `mods/${mapKey}`)
     return startPlay({
       map: mapKey,
       mode: 'local',
