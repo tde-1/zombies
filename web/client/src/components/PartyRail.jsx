@@ -64,8 +64,7 @@ export default function PartyRail() {
     return (
       <aside className="prail">
         <div className="top">
-          <div className="art">Sign in to pick a map and play with friends.</div>
-          <p className="tiny">The whole site is browsable without an account. Playing needs one.</p>
+          <div className="art">Sign in to play.</div>
         </div>
         <ChatPanel chat={chat} lines={lines} disabled />
       </aside>
@@ -77,13 +76,13 @@ export default function PartyRail() {
       <div className="top">
         <div className="art">
           {party && party.map
-            ? <div><b>{party.map.title}</b><div className="tiny">{party.map.key}</div></div>
-            : <span>No map selected — pick one from <Link to="/maps">Maps</Link>.</span>}
+            ? <div><b>{party.map.title}</b><div className="mono tiny">{party.map.key}</div></div>
+            : <Link to="/maps">Pick a map</Link>}
         </div>
 
         {!party && (
           <button className="btn accent" style={{ width: '100%' }} disabled={busy || !approved} onClick={() => act('/api/party/create')}>
-            {approved ? 'Start a party' : 'Your account is on the waiting list'}
+            {approved ? 'Start a party' : 'On the waiting list'}
           </button>
         )}
 
@@ -96,19 +95,15 @@ export default function PartyRail() {
 
             {launch && launch.state === 'ready' && launch.connect ? (
               <div className="card" style={{ padding: 10, marginBottom: 8 }}>
-                <div className="eyebrow" style={{ margin: 0 }}>Ready</div>
-                <div className="tiny">Launch World at War and connect to</div>
+                <div className="section-label">Ready</div>
                 <code>{launch.connect}</code>
-                {/* The token is the player's own and is never shown to anybody else: the
-                    launcher reads it from this same endpoint and passes it in userinfo. */}
-                <div className="tiny" style={{ marginTop: 6 }}>Your invite token is held for the launcher.</div>
               </div>
             ) : null}
 
             {party.state === 'forming' && (
               <button className="btn primary big" style={{ width: '100%' }} disabled={busy || !party.map || !party.is_leader}
                 onClick={() => act('/api/party/ready-check')}>
-                {party.map ? 'Start' : 'Pick a map first'}
+                {party.map ? 'Start' : 'Pick a map'}
               </button>
             )}
 
@@ -123,12 +118,13 @@ export default function PartyRail() {
                   <>
                     <button className="btn primary" style={{ width: '100%' }} disabled={busy || !party.all_ready}
                       onClick={() => act('/api/party/launch')}>
-                      {party.all_ready ? 'Everyone ready — go' : 'Waiting for the others'}
+                      {party.all_ready ? 'Go' : 'Waiting for the others'}
                     </button>
                     {!party.all_ready && (
                       <button className="btn ghost small" style={{ width: '100%' }} disabled={busy}
+                        title="Late joiners earn nothing from this game"
                         onClick={() => act('/api/party/launch', { force: true })}>
-                        Start anyway — the rest can late-join and earn nothing from it
+                        Start anyway
                       </button>
                     )}
                     <button className="btn ghost small" style={{ width: '100%' }} disabled={busy} onClick={() => act('/api/party/cancel')}>Cancel</button>
@@ -139,7 +135,7 @@ export default function PartyRail() {
 
             {(party.state === 'launching' || party.state === 'in-game') && (
               <div className="card" style={{ padding: 10 }}>
-                <div className="eyebrow" style={{ margin: 0 }}>{party.state === 'launching' ? 'Reserving server' : 'In game'}</div>
+                <div className="section-label">{party.state === 'launching' ? 'Reserving server' : 'In game'}</div>
                 <div className="tiny">{launch && launch.match_id}</div>
               </div>
             )}
@@ -151,7 +147,7 @@ export default function PartyRail() {
 
       {party && (
         <div className="members">
-          <div className="eyebrow">Party {party.code}</div>
+          <div className="section-label" style={{ marginBottom: 6 }}>Party {party.code}</div>
           {party.members.map((m) => (
             <div className="member" key={m.steam_id}>
               <span className={`dot ${m.ready ? 'ready' : ''}`} />
@@ -172,9 +168,9 @@ export default function PartyRail() {
 function ChatPanel({ chat, lines, text, setText, send, disabled }) {
   return (
     <div className="chat">
-      <div className="eyebrow" style={{ padding: '10px 14px 0', margin: 0 }}>Global</div>
+      <div className="section-label" style={{ padding: '10px 14px 0' }}>Global</div>
       <div className="lines" ref={lines}>
-        {chat.length === 0 && <div className="tiny">Nobody has said anything yet.</div>}
+        {chat.length === 0 && <div className="tiny">No messages.</div>}
         {chat.map((l) => (
           <div className="line" key={l.id}>
             <b>{l.from}</b>{l.map ? <span className="tiny"> ({l.map.replace('nazi_zombie_', '')})</span> : null}: {l.text}

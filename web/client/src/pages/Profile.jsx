@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ago, dur, hours, num } from '../api'
 import { useSession } from '../session'
-import { Section, Empty, Avatar, Level, Hex, BadgeTile, PlayerLink } from '../components/Bits'
+import { Section, Empty, Loading, Stat, Untracked, Avatar, Level, Hex, BadgeTile, PlayerLink } from '../components/Bits'
 import Comments from '../components/Comments'
 
 // The profile = Movement's, plus the zombies additions (05, 13 §3):
@@ -27,7 +27,7 @@ export default function Profile() {
   useEffect(() => { load() }, [load])
 
   if (err) return <div className="page"><h1>{err}</h1></div>
-  if (!d) return <div className="page"><p className="sub">Loading.</p></div>
+  if (!d) return <div className="page"><Loading /></div>
 
   const p = d.player
   const isSelf = me && me.steam_id === p.steam_id
@@ -39,30 +39,30 @@ export default function Profile() {
 
   return (
     <div className="page wide">
-      <div className="card" style={{ marginBottom: 20 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="row" style={{ gap: 16, alignItems: 'flex-start' }}>
           <Avatar user={p} size="lg" />
           <div style={{ flex: 1 }}>
             <div className="row" style={{ gap: 9 }}>
               <h1>{p.name}</h1>
-              {p.vip && <span className="chip vip">VIP</span>}
-              {p.admin && <span className="chip">admin</span>}
-              {p.mod && !p.admin && <span className="chip">mod</span>}
-              {p.archivist && <span className="chip">archivist</span>}
+              {p.vip && <span className="tag gold">VIP</span>}
+              {p.admin && <span className="tag">Admin</span>}
+              {p.mod && !p.admin && <span className="tag">Mod</span>}
+              {p.archivist && <span className="tag">Archivist</span>}
             </div>
             <div className="row" style={{ gap: 12, marginTop: 6 }}>
               <Level standing={d.standing} showBar />
-              <span className="tiny">
+              <span className="tiny num">
                 {d.standing.prestige > 0 ? `${d.standing.emblem.label} · ` : ''}level {d.standing.level}
-                {d.standing.next_level_cost ? ` · ${num(d.standing.next_level_cost - d.standing.into_level)} xp to the next` : ''}
+                {d.standing.next_level_cost ? ` · ${num(d.standing.next_level_cost - d.standing.into_level)} xp to go` : ''}
               </span>
-              {d.where && <span className="chip">{d.where.state === 'in-game' ? `playing ${d.where.map_title || ''}` : d.where.state === 'in-party' ? 'in a party' : 'online'}</span>}
+              {d.where && <span className="tag">{d.where.state === 'in-game' ? `playing ${d.where.map_title || ''}` : d.where.state === 'in-party' ? 'in a party' : 'online'}</span>}
             </div>
           </div>
           {signedIn && !isSelf && (
             <div className="stack">
               {d.friend_state === 'none' && <button className="btn small" onClick={() => friend('request')}>Add friend</button>}
-              {d.friend_state === 'sent' && <span className="chip">Request sent</span>}
+              {d.friend_state === 'sent' && <span className="tag">Request sent</span>}
               {d.friend_state === 'incoming' && (
                 <div className="row"><button className="btn small accent" onClick={() => friend('accept')}>Accept</button>
                   <button className="btn small ghost" onClick={() => friend('decline')}>Decline</button></div>
@@ -73,15 +73,15 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="stats" style={{ marginBottom: 22 }}>
-        <div className="stat"><span>Maps beaten</span><b className="num">{c.maps_beaten} / {c.maps_total}</b></div>
-        <div className="stat"><span>Highest round</span><b className="num">{c.best_round || '—'}</b></div>
-        <div className="stat"><span>Easter eggs</span><b className="num">{c.easter_eggs}</b></div>
-        <div className="stat"><span>Games</span><b className="num">{num(c.games)}</b></div>
-        <div className="stat"><span>Time played</span><b className="num">{hours(c.time_ms)}</b></div>
-        <div className="stat"><span>Kills</span><b className="num">{num(c.kills)}</b></div>
-        <div className="stat"><span>Downs</span><b className="num">{num(c.downs)}</b></div>
-        <div className="stat"><span>Revives</span><b className="num">{num(c.revives)}</b></div>
+      <div className="stats" style={{ marginBottom: 18 }}>
+        <Stat label="Maps beaten" value={`${c.maps_beaten} / ${c.maps_total}`} />
+        <Stat label="Highest round" value={c.best_round} />
+        <Stat label="Easter eggs" value={c.easter_eggs} />
+        <Stat label="Games" value={c.games} />
+        <Stat label="Time played" value={hours(c.time_ms)} />
+        <Stat label="Kills" value={c.kills} />
+        <Stat label="Downs" value={c.downs} />
+        <Stat label="Revives" value={c.revives} />
       </div>
 
       {d.pinned.length > 0 && (
@@ -90,7 +90,7 @@ export default function Profile() {
         </Section>
       )}
 
-      <Section title="Map shelf" sub="Every map. Greyed until beaten; gold while they hold the record.">
+      <Section title="Map shelf">
         <div className="shelf">
           {d.shelf.map((s) => (
             <Link className={`slot ${s.beaten ? 'beaten' : ''}`} key={s.key} to={`/m/${s.key}`}
@@ -108,16 +108,15 @@ export default function Profile() {
       <div className="grid c2" style={{ alignItems: 'start' }}>
         <div>
           <Section title="Recent games">
-            {d.history_hidden ? <Empty>This player has hidden their game history. Records and badges stay public.</Empty>
+            {d.history_hidden ? <Empty>History hidden.</Empty>
               : !d.recent || d.recent.length === 0 ? <Empty>No games yet.</Empty> : (
-                <div className="card flat">
+                <div className="listing">
                   {d.recent.map((g) => (
                     <Link className="maprow" key={g.id} to={`/game/${g.match_id}`}>
                       <div className="name"><b>{g.map_title}</b><span>{g.players.map((x) => x.name).join(', ')}</span></div>
-                      <span className={`chip ${g.mode === 'local' || g.self_reported ? 'be' : ''}`}
-                        title={g.mode === 'local' ? 'Ran on their own PC. Untracked.' : ''}>{g.mode}</span>
+                      {g.mode === 'local' || g.self_reported ? <Untracked /> : <span className="tag">{g.mode}</span>}
                       <span className="num">R{g.rounds}</span>
-                      <span className="tiny">{dur(g.duration_ms)} · {ago(g.ended_at)}</span>
+                      <span className="tiny num">{dur(g.duration_ms)} · {ago(g.ended_at)}</span>
                     </Link>
                   ))}
                 </div>
@@ -132,7 +131,7 @@ export default function Profile() {
         <div>
           <Section title="Records held">
             {d.records.length === 0 ? <Empty>None yet.</Empty> : (
-              <div className="card">
+              <div className="listing">
                 <table className="data">
                   <tbody>
                     {d.records.map((r, i) => (
@@ -156,7 +155,7 @@ export default function Profile() {
 
           <Section title="Most played">
             {d.most_played.length === 0 ? <Empty>Nothing yet.</Empty> : (
-              <div className="card">
+              <div className="listing">
                 <table className="data">
                   <tbody>
                     {d.most_played.map((m) => (
@@ -172,7 +171,7 @@ export default function Profile() {
           {d.favourites.length > 0 && (
             <Section title="Favourites">
               <div className="row wrap" style={{ gap: 6 }}>
-                {d.favourites.map((m) => <Link className="chip" key={m.key} to={`/m/${m.key}`}>{m.title}</Link>)}
+                {d.favourites.map((m) => <Link className="tag" key={m.key} to={`/m/${m.key}`}>{m.title}</Link>)}
               </div>
             </Section>
           )}
@@ -194,7 +193,7 @@ function Settings({ d, onSaved }) {
   }
 
   return (
-    <Section title="Your settings" sub="Saved to your account and applied over World at War at launch. Your own config is never modified.">
+    <Section title="Your settings">
       <div className="card grid c3">
         <label className="field"><span>FOV (65–120)</span>
           <input type="number" min={65} max={120} defaultValue={s.fov} onBlur={(e) => put('/api/me/settings', { fov: Number(e.target.value) })} /></label>
@@ -210,7 +209,8 @@ function Settings({ d, onSaved }) {
           <select defaultValue={session.user.privacy_history} onChange={(e) => put('/api/me/privacy', { history: e.target.value })}>
             <option value="public">Public</option>
             <option value="private">Hidden</option>
-          </select></label>
+          </select>
+          <div className="hint">Records and badges stay public.</div></label>
         <label className="field"><span>Who can comment on your profile</span>
           <select defaultValue={session.user.profile_comments} onChange={(e) => put('/api/me/privacy', { profile_comments: e.target.value })}>
             <option value="everyone">Everyone</option>
@@ -221,11 +221,9 @@ function Settings({ d, onSaved }) {
           <select defaultValue={String(!!s.zombie_counter)} onChange={(e) => put('/api/me/settings', { zombie_counter: e.target.value === 'true' })}>
             <option value="true">On</option>
             <option value="false">Off</option>
-          </select></label>
+          </select>
+          <div className="hint">Forced off in record games.</div></label>
       </div>
-      <p className="tiny" style={{ marginTop: 8 }}>
-        Records and badges are always public and cannot be hidden. The zombie counter is forced off in record games whatever this says.
-      </p>
       {err && <p className="tiny hot">{err}</p>}
       {d.badges.length > 0 && <PinPicker badges={d.badges} pinned={d.pinned} />}
     </Section>
@@ -243,10 +241,10 @@ function PinPicker({ badges, pinned }) {
   }
   return (
     <div style={{ marginTop: 14 }}>
-      <div className="eyebrow">Pinned badges (up to three)</div>
+      <div className="section-label" style={{ marginBottom: 6 }}>Pinned badges (up to three)</div>
       <div className="row wrap" style={{ gap: 6 }}>
         {badges.map((b) => (
-          <button key={b.id} className={`chip ${ids.includes(b.id) ? 'on' : ''}`} onClick={() => toggle(b.id)}>{b.name}</button>
+          <button key={b.id} className={`chip ${ids.includes(b.id) ? 'on' : ''}`} type="button" onClick={() => toggle(b.id)}>{b.name}</button>
         ))}
       </div>
     </div>

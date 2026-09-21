@@ -28,9 +28,13 @@ export default function App() {
   return (
     <SessionProvider>
       <div className="shell">
+        {/* The rail sits ABOVE the router (Movement's party.jsx): it survives navigation,
+            so the map you picked and the ready check you are in do not reset when you click
+            into somebody's profile. It is on the left, where Movement's is. */}
+        <PartyRail />
         <div className="main">
           <Nav />
-          <Suspense fallback={<div className="page"><p className="sub">Loading.</p></div>}>
+          <Suspense fallback={<div className="page"><div className="loading"><span className="spinner" /></div></div>}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/home" element={<Navigate to="/" replace />} />
@@ -55,10 +59,6 @@ export default function App() {
             </Routes>
           </Suspense>
         </div>
-        {/* The rail sits ABOVE the router (Movement's party.jsx): it survives navigation,
-            so the map you picked and the ready check you are in do not reset when you click
-            into somebody's profile. */}
-        <PartyRail />
       </div>
     </SessionProvider>
   )

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
-import { Section, Empty } from '../components/Bits'
+import { Section, Empty, Loading, Untracked } from '../components/Bits'
 
 // Custom games: the eight knob groups (13 §4c) and the presets.
 //
@@ -28,7 +28,7 @@ export default function Custom() {
   useEffect(() => { api.get('/api/presets').then(setD).catch(() => {}) }, [])
   useEffect(() => { if (party && party.settings) setKnobs(party.settings) }, [party])
 
-  if (!d) return <div className="page"><p className="sub">Loading.</p></div>
+  if (!d) return <div className="page"><Loading /></div>
 
   const set = (g, k, v) => setKnobs((s) => ({ ...s, [g]: { ...(s[g] || {}), [k]: v } }))
   const val = (g, k, dflt) => {
@@ -56,7 +56,7 @@ export default function Custom() {
 
   return (
     <div className="page wide">
-      <Section title="Verified challenge presets" sub="Locked rulesets with their own boards and badges. These count.">
+      <Section title="Verified challenge presets" right={<span className="tag good">Counts</span>}>
         <div className="grid c4">
           {locked.map((p) => (
             <div className="card" key={p.id}>
@@ -67,12 +67,12 @@ export default function Custom() {
         </div>
       </Section>
 
-      <Section title="Custom knobs" sub="Defaults are World at War's stock values. Custom games are untracked and earn a quarter of the XP.">
+      <Section title="Custom knobs" right={<span className="row" style={{ gap: 6 }}><Untracked /><span className="tiny">quarter XP</span></span>}>
         {!signedIn && <Empty>Sign in to set up a custom game.</Empty>}
         <div className="grid c2" style={{ alignItems: 'start' }}>
           {d.groups.map((g) => (
             <div className="card" key={g.key}>
-              <div className="eyebrow">{g.label}</div>
+              <div className="section-label" style={{ marginBottom: 8 }}>{g.label}</div>
               {g.knobs.map((k) => (
                 <label className="field" key={k.key} style={{ marginBottom: 8 }}>
                   <span>{k.label}{k.min != null ? ` (${k.min}–${k.max})` : ''}</span>
@@ -99,7 +99,7 @@ export default function Custom() {
 
         <div className="row wrap" style={{ marginTop: 14 }}>
           <button className="btn primary" onClick={apply} disabled={!party || party.mode !== 'custom'}>
-            {party && party.mode === 'custom' ? 'Apply to my party' : 'Switch your party to Custom first'}
+            {party && party.mode === 'custom' ? 'Apply to my party' : 'Party must be Custom'}
           </button>
           <button className="btn" onClick={save} disabled={!signedIn}>Save as a preset</button>
           <input type="text" placeholder="Share code" value={code} onChange={(e) => setCode(e.target.value)} style={{ maxWidth: 160 }} />
@@ -110,7 +110,7 @@ export default function Custom() {
 
       {shared.length > 0 && (
         <Section title="Shared presets">
-          <div className="card">
+          <div className="listing">
             <table className="data">
               <tbody>
                 {shared.map((p) => (

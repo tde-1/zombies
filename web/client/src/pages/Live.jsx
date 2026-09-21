@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, dur, num } from '../api'
 import { socket } from '../socket'
-import { Section, Empty, PlayerLink } from '../components/Bits'
+import { Section, Empty, Loading, Stat, PlayerLink } from '../components/Bits'
 import TopDown from '../components/TopDown'
 
 // The web live view (99 §4.4, 13 §4b): round, players, points, downs, and a top-down view
@@ -46,15 +46,15 @@ export default function Live() {
   }, [frame, load])
 
   if (err) return <div className="page"><h1>{err}</h1><Link className="btn" to="/">Home</Link></div>
-  if (!meta) return <div className="page"><p className="sub">Loading.</p></div>
+  if (!meta) return <div className="page"><Loading /></div>
 
   if (!frame && meta.ended) {
     return (
       <div className="page">
         <div className="card">
-          <div className="eyebrow">This game has finished</div>
+          <div className="section-label">Finished</div>
           <h1>{meta.ended.map_title} — round {meta.ended.rounds}</h1>
-          <Link className="btn primary" to={`/game/${meta.ended.match_id}`}>The full breakdown</Link>
+          <Link className="btn primary" to={`/game/${meta.ended.match_id}`} style={{ marginTop: 12 }}>The full breakdown</Link>
         </div>
       </div>
     )
@@ -63,12 +63,10 @@ export default function Live() {
     return (
       <div className="page">
         <div className="card">
-          <div className="eyebrow">{meta.state}</div>
+          <div className="section-label">{meta.state}</div>
           <h1>Nothing to watch yet</h1>
-          <p className="sub">
-            {meta.state === 'leased' || meta.state === 'ready'
-              ? 'The server has been reserved and is loading the map. This page fills in the moment the game starts.'
-              : 'No box is sending frames for this game.'}
+          <p className="sub" style={{ margin: 0 }}>
+            {meta.state === 'leased' || meta.state === 'ready' ? 'The map is loading.' : 'No frames from this game.'}
           </p>
         </div>
       </div>
@@ -85,22 +83,22 @@ export default function Live() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="spread" style={{ alignItems: 'flex-start' }}>
           <div>
-            <div className="eyebrow">Live · {s.mode}{frame.box ? ` · ${frame.box}` : ''}</div>
+            <div className="mono tiny">Live · {s.mode}{frame.box ? ` · ${frame.box}` : ''}</div>
             <h1>{meta.map ? <Link to={`/m/${meta.map.key}`}>{meta.map.title}</Link> : s.map_name || s.map}</h1>
             <div className="row wrap" style={{ gap: 7, marginTop: 8 }}>
               <span className="chip on">Round {s.round}</span>
               <span className="chip">{connected.length}/4 playing</span>
               <span className="chip">{s.zombies_alive} zombies</span>
               <span className="chip">{dur(s.elapsed_ms)}</span>
-              {s.paused && <span className="chip be">Paused{s.pause_reason ? ` — ${s.pause_reason}` : ''}</span>}
-              {s.cap_left_ms != null && s.cap_left_ms < 3600_000 && <span className="chip be">{dur(s.cap_left_ms)} to the cap</span>}
-              {s.cap_ms == null && <span className="chip vip">Uncapped (VIP)</span>}
-              {s.flags.map((f) => <span className="chip be" key={f}>{f.replace(/_/g, ' ')}</span>)}
+              {s.paused && <span className="tag hot">Paused{s.pause_reason ? ` — ${s.pause_reason}` : ''}</span>}
+              {s.cap_left_ms != null && s.cap_left_ms < 3600_000 && <span className="tag hot">{dur(s.cap_left_ms)} to the cap</span>}
+              {s.cap_ms == null && <span className="tag gold">Uncapped</span>}
+              {s.flags.map((f) => <span className="tag hot" key={f}>{f.replace(/_/g, ' ')}</span>)}
             </div>
           </div>
           <div className="stack" style={{ alignItems: 'flex-end' }}>
             <span className={`tiny ${stale ? 'hot' : ''}`}>
-              {stale ? 'no frame for a few seconds' : `frame ${num(frame.seq)}`}
+              {stale ? 'no frames' : `frame ${num(frame.seq)}`}
             </span>
             <button className={`btn small ${trails ? 'on' : 'ghost'}`} onClick={() => setTrails((t) => !t)}>Trails</button>
           </div>
@@ -110,15 +108,11 @@ export default function Live() {
       <div className="grid c2" style={{ alignItems: 'start' }}>
         <div>
           <TopDown frame={frame} trails={trails} />
-          <p className="tiny" style={{ marginTop: 6 }}>
-            Positions as the server sees them: players at 20 Hz and zombies at 10 Hz on the box,
-            downsampled to about four frames a second here. Watching costs no game slot.
-          </p>
         </div>
 
         <div>
           <Section title="Players">
-            <div className="card">
+            <div className="listing">
               <table className="data">
                 <thead><tr><th>Player</th><th className="num">Points</th><th className="num">Health</th><th className="num">Downs</th><th>State</th></tr></thead>
                 <tbody>
@@ -146,11 +140,11 @@ export default function Live() {
             </div>
           </Section>
 
-          <Section title="Progress" sub="What the referee has seen on this map so far">
+          <Section title="Progress">
             <div className="card">
-              {s.finish && <p><span className="chip ee">{s.finish.label || s.finish.kind}</span> done.</p>}
+              {s.finish && <p style={{ margin: '0 0 8px' }}><span className="tag gold">{s.finish.label || s.finish.kind}</span></p>}
               {Object.keys(labels).length === 0 && s.signals.length === 0
-                ? <Empty>This map has no manifest signals, so there is nothing to tick off but the round.</Empty>
+                ? <Empty>No manifest signals.</Empty>
                 : (
                   <div className="row wrap" style={{ gap: 6 }}>
                     {Object.entries(labels).map(([id, label]) => (
@@ -167,9 +161,9 @@ export default function Live() {
           {s.perf && (
             <Section title="Server">
               <div className="stats">
-                <div className="stat"><span>Frame p50</span><b className="num">{s.perf.frame_ms_p50 ?? '—'} ms</b></div>
-                <div className="stat"><span>Frame p99</span><b className="num">{s.perf.frame_ms_p99 ?? '—'} ms</b></div>
-                {s.perf.cpu_pct != null && <div className="stat"><span>CPU</span><b className="num">{s.perf.cpu_pct}%</b></div>}
+                <Stat label="Frame p50" value={s.perf.frame_ms_p50 != null ? `${s.perf.frame_ms_p50} ms` : null} />
+                <Stat label="Frame p99" value={s.perf.frame_ms_p99 != null ? `${s.perf.frame_ms_p99} ms` : null} />
+                {s.perf.cpu_pct != null && <Stat label="CPU" value={`${s.perf.cpu_pct}%`} />}
               </div>
             </Section>
           )}
@@ -191,12 +185,12 @@ export function LiveList() {
     return () => clearInterval(t)
   }, [])
   const rows = useMemo(() => (d ? d.watchable : []), [d])
-  if (!d) return <div className="page"><p className="sub">Loading.</p></div>
+  if (!d) return <div className="page"><Loading /></div>
   return (
     <div className="page">
-      <Section title="Live games" sub="Watching uses no game slot.">
-        {rows.length === 0 ? <Empty>Nothing is running that you can watch. Private and friends-only lobbies are not listed.</Empty> : (
-          <div className="card flat">
+      <Section title="Live games" right={<span className="tiny num">{rows.length}</span>}>
+        {rows.length === 0 ? <Empty>Nothing to watch.</Empty> : (
+          <div className="listing">
             {rows.map((g) => (
               <Link className="maprow" key={g.match_id} to={`/live/${g.match_id}`}>
                 <div className="name">
@@ -204,8 +198,8 @@ export function LiveList() {
                   <span>{g.players.map((p) => p.name).join(', ')}</span>
                 </div>
                 <span className="chip on">Round {g.round}</span>
-                <span className="chip">{g.player_count}/4</span>
-                <span className="tiny">{dur(g.elapsed_ms)}{g.paused ? ' · paused' : ''}</span>
+                <span className="tag">{g.player_count}/4</span>
+                <span className="tiny num">{dur(g.elapsed_ms)}{g.paused ? ' · paused' : ''}</span>
               </Link>
             ))}
           </div>

@@ -1,33 +1,32 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api, ago } from '../api'
-import { Section, Empty, Hex, PlayerLink } from '../components/Bits'
+import { Section, Empty, Loading, Hex, PlayerLink } from '../components/Bits'
 
-// The badges directory (Movement's /badges), with the four kinds of 05 grouped and each
-// one's `obtain` line shown. Movement's note applies: a directory where half the rows say
-// nothing about how the badge is got is a directory you cannot read, so every badge carries
-// one sentence, staff badges included.
+// The badges directory (Movement's /badges), the four kinds of 05 grouped. Every badge
+// carries its own `obtain` line, which is the only explanation the page needs — a group
+// heading that repeats it in different words is two answers to one question.
 
 const GROUPS = [
-  ['map', 'Map badges', 'One per map, earned by its main finish: Easter Egg, else Buyable Ending, else Round N. Other finishes are ticks on the same badge.'],
-  ['record', 'Record badges', 'Held, not earned. Gold while you hold a record on that map; it moves when the record does.'],
-  ['achievement', 'Achievements', 'Rules the site checks. Never hand-awarded, and never taken back.'],
-  ['staff', 'Staff', 'Awarded by staff.'],
+  ['map', 'Map badges'],
+  ['record', 'Record badges'],
+  ['achievement', 'Achievements'],
+  ['staff', 'Staff'],
 ]
 
 export default function Badges() {
   const [d, setD] = useState(null)
   useEffect(() => { api.get('/api/badges').then(setD).catch(() => {}) }, [])
-  if (!d) return <div className="page"><p className="sub">Loading.</p></div>
+  if (!d) return <div className="page"><Loading /></div>
   const held = new Set(d.held)
 
   return (
     <div className="page wide">
-      {GROUPS.map(([kind, title, sub]) => {
+      {GROUPS.map(([kind, title]) => {
         const rows = d.badges.filter((b) => b.kind === kind)
         if (!rows.length) return null
         return (
-          <Section key={kind} title={title} sub={sub}>
+          <Section key={kind} title={title} right={<span className="tiny num">{rows.length}</span>}>
             <div className="grid c4">
               {rows.map((b) => {
                 const p = d.progress[b.slug]
@@ -37,10 +36,10 @@ export default function Badges() {
                     <div style={{ minWidth: 0 }}>
                       <h3>{b.name}</h3>
                       <p className="tiny" style={{ margin: '3px 0' }}>{b.obtain}</p>
-                      <div className="tiny">{b.holders} {b.holders === 1 ? 'holder' : 'holders'}</div>
+                      <div className="tiny num">{b.holders} {b.holders === 1 ? 'holder' : 'holders'}</div>
                       {p && !held.has(b.id) && (
                         <div style={{ marginTop: 5 }}>
-                          <span className="bar"><i style={{ width: `${Math.round((p.current / p.target) * 100)}%` }} /></span>
+                          <span className="bar-meter"><i style={{ width: `${Math.round((p.current / p.target) * 100)}%` }} /></span>
                           <span className="tiny">{p.current} / {p.target}</span>
                         </div>
                       )}
@@ -62,23 +61,23 @@ export function BadgePage() {
   const [err, setErr] = useState(null)
   useEffect(() => { api.get(`/api/badges/${slug}`).then(setD).catch((e) => setErr(e.message)) }, [slug])
   if (err) return <div className="page"><h1>{err}</h1></div>
-  if (!d) return <div className="page"><p className="sub">Loading.</p></div>
+  if (!d) return <div className="page"><Loading /></div>
   const b = d.badge
   return (
     <div className="page">
-      <div className="card row" style={{ gap: 18, marginBottom: 20 }}>
+      <div className="card row" style={{ gap: 18, marginBottom: 16 }}>
         <Hex badge={b} size={86} gold={b.kind === 'record'} />
         <div>
-          <div className="eyebrow">{b.kind}</div>
+          <div className="mono tiny">{b.kind}</div>
           <h1>{b.name}</h1>
           <p className="sub">{b.description}</p>
           <p className="tiny">{b.obtain}</p>
-          {b.map_key && <Link className="chip" to={`/m/${b.map_key}`}>{b.map_key}</Link>}
+          {b.map_key && <Link className="tag" to={`/m/${b.map_key}`}>{b.map_key}</Link>}
         </div>
       </div>
       <Section title={`${d.holders.length} ${d.holders.length === 1 ? 'holder' : 'holders'}`}>
         {d.holders.length === 0 ? <Empty>Nobody holds this yet.</Empty> : (
-          <div className="card">
+          <div className="listing">
             <table className="data">
               <tbody>
                 {d.holders.map((h) => (

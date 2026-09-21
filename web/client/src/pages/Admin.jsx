@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ago, clock, num } from '../api'
 import { useSession } from '../session'
-import { Section, Empty, PlayerLink } from '../components/Bits'
+import { Section, Empty, Loading, PlayerLink } from '../components/Bits'
 
 // The mod tools at launch (99 §4.9): the reports queue, infractions and bans, and record
 // review WITH THE REPLAY. Plus the operator surfaces: the boxes and their key pins, leasing
@@ -24,7 +24,7 @@ export default function Admin() {
 
   if (!isMod) return <div className="page"><h1>Moderators only</h1></div>
   if (err) return <div className="page"><h1>{err}</h1></div>
-  if (!d) return <div className="page"><p className="sub">Loading.</p></div>
+  if (!d) return <div className="page"><Loading /></div>
 
   return (
     <div className="page wide">
@@ -34,7 +34,7 @@ export default function Admin() {
 
       {d.key_warnings.length > 0 && (
         <div className="card warn" style={{ marginBottom: 18 }}>
-          <div className="eyebrow">Replay key changed</div>
+          <div className="section-label">Replay key changed</div>
           {d.key_warnings.map((b) => (
             <p key={b.id}>
               <b>{b.name}</b> is presenting key <code>{b.key.pending}</code> but <code>{b.key.pinned}</code> is pinned.
@@ -73,7 +73,7 @@ function Overview({ d, onChange, isAdmin }) {
         <div className="stat"><span>In game</span><b className="num">{d.presence.in_game}</b></div>
       </div>
 
-      <Section title="ENW link" sub="The only two runtime links to ENW: the name (SSO) and VIP status.">
+      <Section title="ENW link">
         <div className="card">
           <p className="sub" style={{ margin: 0 }}>{d.enw.note}</p>
           <p className="tiny">Base: {d.enw.base || 'not set'} · token: {d.enw.has_token ? 'set' : 'not set'}</p>
@@ -111,7 +111,7 @@ function LeaseForm({ onChange }) {
     onChange()
   }
   return (
-    <Section title="Lease a game by hand" sub="The same lease the party rail makes. This is how a box is tested without a lobby.">
+    <Section title="Lease a game by hand">
       <div className="card row wrap">
         <input type="text" value={map} onChange={(e) => setMap(e.target.value)} style={{ maxWidth: 260 }} />
         <input type="text" value={box} onChange={(e) => setBox(e.target.value)} style={{ maxWidth: 140 }} />
@@ -129,14 +129,14 @@ function Reports({ onChange }) {
   const [d, setD] = useState(null)
   const load = useCallback(() => api.get('/api/admin/reports').then(setD).catch(() => {}), [])
   useEffect(() => { load() }, [load])
-  if (!d) return <p className="sub">Loading.</p>
+  if (!d) return <Loading />
   return (
-    <Section title="Reports" sub="Moderators decide case by case; there is no fixed ladder.">
+    <Section title="Reports">
       {d.reports.length === 0 ? <Empty>Nothing waiting.</Empty> : d.reports.map((r) => (
         <div className="card" key={r.id} style={{ marginBottom: 10 }}>
           <div className="spread">
             <div>
-              <div className="eyebrow">{r.kind} · {ago(r.at)}</div>
+              <div className="mono tiny">{r.kind} · {ago(r.at)}</div>
               <div>Reported by <PlayerLink user={r.reporter} avatar={false} />{r.reported && <> about <PlayerLink user={r.reported} avatar={false} /></>}</div>
               {r.reason && <p className="sub">{r.reason}</p>}
               {r.detail && <p className="tiny">{r.detail}</p>}
@@ -186,7 +186,7 @@ function RecordReview() {
   const [busy, setBusy] = useState(null)
   const load = useCallback(() => api.get('/api/admin/records/review').then(setD).catch(() => {}), [])
   useEffect(() => { load() }, [load])
-  if (!d) return <p className="sub">Loading.</p>
+  if (!d) return <Loading />
 
   const verify = async (id) => {
     setBusy(id)
@@ -199,7 +199,7 @@ function RecordReview() {
   }
 
   return (
-    <Section title="Record review" sub="A signature proves a replay is unmodified. It does not prove who signed it — that is what the key pin is for.">
+    <Section title="Record review">
       {d.records.length === 0 ? <Empty>No records yet.</Empty> : (
         <div className="card">
           <table className="data">
@@ -258,7 +258,7 @@ function RecordReview() {
 
 function Boxes({ d, onChange, isAdmin }) {
   return (
-    <Section title="Game boxes" sub="The boxes poll us; we never connect out to them.">
+    <Section title="Game boxes">
       {d.boxes.map((b) => (
         <div className="card" key={b.id} style={{ marginBottom: 10 }}>
           <div className="spread">
@@ -300,9 +300,9 @@ function Waitlist({ onChange }) {
   const [d, setD] = useState(null)
   const load = useCallback(() => api.get('/api/admin/waitlist').then(setD).catch(() => {}), [])
   useEffect(() => { load() }, [load])
-  if (!d) return <p className="sub">Loading.</p>
+  if (!d) return <Loading />
   return (
-    <Section title="Waiting list" sub="Play is waitlist + approval at first. The archive is open to any Steam login.">
+    <Section title="Waiting list">
       {d.users.length === 0 ? <Empty>Nobody waiting.</Empty> : (
         <div className="card">
           <table className="data">

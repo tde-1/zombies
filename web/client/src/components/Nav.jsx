@@ -43,7 +43,7 @@ export default function Nav() {
       <div className="spacer" />
 
       <div ref={box} style={{ position: 'relative', width: 240, marginRight: 10 }}>
-        <input type="search" value={q} placeholder="Search maps and players" onChange={(e) => setQ(e.target.value)} />
+        <input type="search" value={q} placeholder="Search" onChange={(e) => setQ(e.target.value)} />
         {hits && (hits.maps.length || hits.players.length) ? (
           <div className="card" style={{ position: 'absolute', top: 40, right: 0, width: 320, zIndex: 50, padding: 8 }}>
             {hits.maps.map((m) => (
@@ -66,16 +66,16 @@ export default function Nav() {
 
       {signedIn ? (
         <div className="row" style={{ gap: 8 }}>
-          <Link to={`/id/${me.name}`} className="row" style={{ gap: 7 }}>
+          <Link to={`/id/${me.name}`} className="me">
             <Avatar user={me} />
-            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{me.name}</span>
+            <span>{me.name}</span>
+            <Level standing={standing} />
           </Link>
-          <Level standing={standing} />
           <button className="btn small ghost" onClick={async () => { await api.post('/auth/logout'); refresh() }}>Sign out</button>
         </div>
       ) : (
         <a className="btn small primary" href={authMode === 'steam' ? SIGN_IN_STEAM : SIGN_IN}>
-          {authMode === 'steam' ? 'Sign in with Steam' : 'Sign in (dev)'}
+          {authMode === 'steam' ? 'Sign in' : 'Sign in (dev)'}
         </a>
       )}
     </nav>
