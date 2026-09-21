@@ -80,6 +80,16 @@ public static class EnwNanny
     [DllImport("user32.dll")] static extern int GetDlgCtrlID(IntPtr h);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
+    // SM_XVIRTUALSCREEN 76, SM_YVIRTUALSCREEN 77, SM_CXVIRTUALSCREEN 78, SM_CYVIRTUALSCREEN 79.
+    // The VIRTUAL desktop, not the primary monitor: B runs more than one screen, and a
+    // dialog on the second one is not lost.
+    static int VirtualLeft   { get { return GetSystemMetrics(76); } }
+    static int VirtualTop    { get { return GetSystemMetrics(77); } }
+    static int VirtualRight  { get { return GetSystemMetrics(76) + GetSystemMetrics(78); } }
+    static int VirtualBottom { get { return GetSystemMetrics(77) + GetSystemMetrics(79); } }
 
     const uint SWP_NOSIZE = 0x0001, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_ASYNCWINDOWPOS = 0x4000;
     const int SW_SHOWNOACTIVATE = 4;
@@ -121,10 +131,26 @@ public static class EnwNanny
 
             string title = TextOf(h);
             var seen = new List<string>();
+            var body = new List<string>();
             bool hasNo = false, hasCancel = false, hasOk = false;
             EnumChildWindows(h, delegate(IntPtr c, IntPtr _)
             {
-                if (ClassOf(c) != "Button") return true;
+                string ccls = ClassOf(c);
+                // THE MESSAGE ITSELF. This used to be thrown away: we recorded the title
+                // and the buttons, pressed No, and lost the sentence that said what was
+                // wrong. B could see error boxes we had no record of -- which is the
+                // worst possible split, because he cannot read them either when the
+                // window lands off-screen. The text lives in the dialog's Static (and
+                // occasionally Edit) children. GetWindowText reads the cached caption
+                // rather than sending WM_GETTEXT, so this stays safe against a wedged
+                // game, same as everything else here.
+                if (ccls == "Static" || ccls == "Edit")
+                {
+                    string t = TextOf(c).Replace("\r", " ").Replace("\n", " / ").Trim();
+                    if (t.Length > 0 && !body.Contains(t)) body.Add(t);
+                    return true;
+                }
+                if (ccls != "Button") return true;
                 int id = GetDlgCtrlID(c);
                 seen.Add(id + ":" + TextOf(c).Replace("&", ""));
                 if (id == IDNO) hasNo = true;
@@ -133,10 +159,33 @@ public static class EnwNanny
                 return true;
             }, IntPtr.Zero);
 
+            // A modal nobody can see is useless whether we answer it or not. B reported
+            // seeing World at War error boxes land off-screen where he could not read
+            // them; the desktop is not the only reason that happens, since -Park moves
+            // the game's own windows to -32000. So: if a modal is sitting outside the
+            // virtual desktop, drag it back before doing anything else. Async form, so
+            // a wedged UI thread cannot block us (a plain SetWindowPos once hung a
+            // launcher for 703 s -- foundation, board 01:00).
+            bool rescued = false;
+            RECT rc;
+            if (GetWindowRect(h, out rc))
+            {
+                if (rc.Right < VirtualLeft + 40 || rc.Left > VirtualRight - 40 ||
+                    rc.Bottom < VirtualTop + 40 || rc.Top > VirtualBottom - 40)
+                {
+                    SetWindowPos(h, IntPtr.Zero, VirtualLeft + 80, VirtualTop + 80, 0, 0,
+                                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+                    rescued = true;
+                }
+            }
+
             int pick = hasNo ? IDNO : (hasCancel ? IDCANCEL : (hasOk ? IDOK : IDNO));
             string pickName = pick == IDNO ? "No" : (pick == IDCANCEL ? "Cancel" : "OK");
             if (answer) PostMessage(h, WM_COMMAND, (IntPtr)pick, IntPtr.Zero);
-            report.Add(title + "\t" + string.Join(" ", seen.ToArray()) + "\t" + (answer ? pickName : "(left alone)"));
+            report.Add(title + "\t" + string.Join(" ", seen.ToArray()) + "\t"
+                       + (answer ? pickName : "(left alone)") + "\t"
+                       + string.Join(" | ", body.ToArray()) + "\t"
+                       + (rescued ? "was off-screen" : ""));
             return true;
         }, IntPtr.Zero);
         return string.Join("\n", report.ToArray());
@@ -181,7 +230,7 @@ while ((Get-Date) -lt $deadline) {
             if ($Park) {
                 $moved = [EnwNanny]::Park($id, -4000, -4000)
                 if ($moved) {
-                    $key = "park:$id:$moved"
+                    $key = "park:${id}:$moved"
                     if ($reported.Add($key)) { Emit @{ t = 'parked'; pid = $id; classes = $moved } }
                 }
             }
@@ -190,9 +239,14 @@ while ((Get-Date) -lt $deadline) {
                 foreach ($line in ($r -split "`n")) {
                     if (-not $line.Trim()) { continue }
                     $f = $line -split "`t"
-                    $key = "dlg:$id:$($f[0])"
+                    # Key on the title AND the message. Two dialogs from the same game
+                    # can share a caption ("Call of Duty: World at War") and say
+                    # completely different things, and the second one is usually the
+                    # interesting one. Keying on the caption alone silently dropped it.
+                    $key = "dlg:${id}:$($f[0])|$($f[3])"
                     if ($reported.Add($key)) {
-                        Emit @{ t = 'dialog'; pid = $id; title = $f[0]; buttons = $f[1]; answered = $f[2] }
+                        Emit @{ t = 'dialog'; pid = $id; title = $f[0]; buttons = $f[1]; answered = $f[2]
+                                message = $f[3]; offscreen = ($f.Count -gt 4 -and $f[4] -eq 'was off-screen') }
                     }
                 }
             }
