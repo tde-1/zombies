@@ -37,6 +37,50 @@ const boxes = require('./boxes')
 
 const FINISH_LABEL = { easter_egg: 'Easter Egg', buyable_ending: 'Buyable Ending', round: 'Round' }
 
+// ── Numbers from a summary ────────────────────────────────────────────────────────────
+//
+// `Number(x || 0)` looks safe and is not: `Number('abc')` is NaN, and better-sqlite3 binds
+// NaN to an INTEGER column as NULL without complaining. A launcher that sends
+// `rounds: "abc"` — a half-parsed console line, a missing field read as a string — got a
+// stored game with **no round on it at all**, which is the one number B's MVP is about.
+// Proven before the fix: `POST /local/result {rounds:"abc"}` → 200, and `rounds: null` in
+// the row.
+//
+// So every number that reaches a column goes through here. A numeric string still parses
+// (a box is allowed to be sloppy about JSON types); anything that is not a number becomes
+// the fallback, and nothing NaN or Infinite is ever bound.
+function num(v, fallback = 0, { min = -Infinity, max = Infinity } = {}) {
+  const n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(max, Math.max(min, n))
+}
+const int = (v, fallback = 0, bounds) => Math.round(num(v, fallback, bounds))
+
+// The same for text. An object or an array where a name was expected is a bind error from
+// better-sqlite3 — which reaches the box as a 500 it retries forever (rule 3). Anything
+// that is not a string or a number becomes null; everything else is capped, because a
+// summary field is a label and not a payload.
+function str(v, max = 200) {
+  if (v == null) return null
+  if (typeof v === 'object') return null
+  const s = String(v)
+  return s ? s.slice(0, max) : null
+}
+
+// `Date.parse` of anything unparseable is NaN, which SQLite stores as NULL — so a bad
+// timestamp silently becomes "no timestamp" rather than being noticed. Numbers are already
+// epoch millis (the host agent sends ISO, a launcher may not).
+function parseWhen(v) {
+  if (v == null) return null
+  const n = typeof v === 'number' ? v : Date.parse(String(v))
+  return Number.isFinite(n) ? n : null
+}
+
+// A round counter is a non-negative integer. The cap is a bound on OUR storage, not a claim
+// about the game: a local game has the console open and can say anything.
+const MAX_ROUND = 100_000
+const MAX_MS = 400 * 86400_000
+
 // May this game's numbers appear as a player's ACHIEVEMENT — a best round, a career high —
 // rather than merely in their history? Only a Verified game we refereed on our own box.
 // Local is the player's PC with cheats; Custom can start at round 100 by design; a
@@ -49,7 +93,19 @@ const eligibleForStats = (game) => game.mode === 'verified' && !game.self_report
  */
 function ingest(body, { selfReported = false } = {}) {
   const summary = body && body.summary
-  if (!summary || !summary.match_id) return { ok: false, error: 'no summary' }
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return { ok: false, error: 'no summary' }
+  if (!summary.match_id || typeof summary.match_id === 'object') return { ok: false, error: 'no summary' }
+
+  // `players` is iterated twice below and a box that sends the wrong type must get a
+  // refusal, not a 500 that it retries forever. Proven before the fix:
+  // `POST /local/result {players:"me"}` → HTTP 500 and the run lost.
+  if (summary.players != null && !Array.isArray(summary.players)) {
+    return { ok: false, error: 'players must be a list' }
+  }
+  if (summary.flags != null && !Array.isArray(summary.flags)) return { ok: false, error: 'flags must be a list' }
+  if (summary.finish != null && (typeof summary.finish !== 'object' || Array.isArray(summary.finish))) {
+    return { ok: false, error: 'finish must be an object or null' }
+  }
 
   // ── THE LOCAL DOWNGRADE ─────────────────────────────────────────────────────────
   // 13 §4: a Local game runs on the player's own PC "as just a normal client", with the
@@ -76,31 +132,31 @@ function ingest(body, { selfReported = false } = {}) {
 
   const row = {
     match_id: String(summary.match_id),
-    box: body.box || (assignment ? boxes.nameOf(assignment.box_id) : null),
-    instance: body.instance || summary.instance || null,
-    mode: summary.mode || 'verified',
-    map_key: String(summary.map || ''),
+    box: str(body.box, 64) || (assignment ? boxes.nameOf(assignment.box_id) : null),
+    instance: str(body.instance, 64) || str(summary.instance, 64),
+    mode: str(summary.mode, 32) || 'verified',
+    map_key: str(summary.map, 64) || '',
     map_id: map ? map.id : null,
     map_version_id: version ? version.id : null,
-    fs_game: summary.fs_game || null,
+    fs_game: str(summary.fs_game, 200),
     party_id: assignment ? assignment.party_id : null,
     settings_json: assignment ? assignment.settings_json : null,
-    fingerprint: summary.fingerprint || null,
-    rounds: Number(summary.rounds || 0),
-    finish_kind: summary.finish ? summary.finish.kind : null,
-    finish_label: summary.finish ? (summary.finish.label || FINISH_LABEL[summary.finish.kind] || null) : null,
-    badge_earned: summary.badge ? (summary.badge.kind || null) : null,
-    player_count: Number(summary.player_count || (summary.players || []).length),
+    fingerprint: str(summary.fingerprint, 64),
+    rounds: int(summary.rounds, 0, { min: 0, max: MAX_ROUND }),
+    finish_kind: summary.finish ? str(summary.finish.kind, 32) : null,
+    finish_label: summary.finish ? (str(summary.finish.label, 64) || FINISH_LABEL[summary.finish.kind] || null) : null,
+    badge_earned: summary.badge && typeof summary.badge === 'object' ? str(summary.badge.kind, 32) : null,
+    player_count: int(summary.player_count, (summary.players || []).length, { min: 0, max: 64 }),
     solo: summary.solo ? 1 : 0,
-    duration_ms: Number(summary.duration_ms || 0),
-    duration_rta_ms: Number(summary.duration_rta_ms || 0),
-    paused_ms: Number(summary.paused_ms || 0),
+    duration_ms: int(summary.duration_ms, 0, { min: 0, max: MAX_MS }),
+    duration_rta_ms: int(summary.duration_rta_ms, 0, { min: 0, max: MAX_MS }),
+    paused_ms: int(summary.paused_ms, 0, { min: 0, max: MAX_MS }),
     flags: JSON.stringify(summary.flags || []),
     records_eligible: summary.records_eligible ? 1 : 0,
-    xp_multiplier: Number(summary.xp_multiplier != null ? summary.xp_multiplier : 1),
-    end_reason: summary.end_reason || null,
-    started_at: summary.started_at ? Date.parse(summary.started_at) : null,
-    ended_at: summary.ended_at ? Date.parse(summary.ended_at) : now(),
+    xp_multiplier: num(summary.xp_multiplier, 1, { min: 0, max: 10 }),
+    end_reason: str(summary.end_reason, 40),
+    started_at: parseWhen(summary.started_at),
+    ended_at: parseWhen(summary.ended_at) ?? now(),
     received_at: now(),
     self_reported: untrusted ? 1 : 0,
     summary_json: JSON.stringify(summary),
@@ -111,8 +167,32 @@ function ingest(body, { selfReported = false } = {}) {
     // stop: the consequences below already ran.
     db.prepare(`UPDATE games SET summary_json=?, received_at=?, ended_at=COALESCE(ended_at,?) WHERE id=?`)
       .run(row.summary_json, now(), row.ended_at, existing.id)
+
+    // ── The one case where a repeat is allowed to change the numbers ────────────────
+    //
+    // A local run that went silent is written from its live frames alone and flagged
+    // `frames_only` (lib/localMatches.js) — the map, the round, the time, and nothing
+    // else. It is a placeholder for a run nobody closed out, and when the real result does
+    // turn up (the launcher came back, the referee finished writing, the player's PC
+    // reconnected) the placeholder must give way to it.
+    //
+    // This is not a hole in rule 2. It is narrow by construction: only a row we ourselves
+    // synthesised, only when the arriving result is not itself frames-only, and it re-runs
+    // no consequence, because a frames-only row earns nothing to un-earn.
+    const wasFramesOnly = (safeJson(existing.flags, []) || []).includes('frames_only')
+    const nowFramesOnly = (summary.flags || []).includes('frames_only')
+    if (wasFramesOnly && !nowFramesOnly) {
+      db.prepare(`UPDATE games SET rounds=@rounds, finish_kind=@finish_kind, finish_label=@finish_label,
+                    duration_ms=@duration_ms, duration_rta_ms=@duration_rta_ms, paused_ms=@paused_ms,
+                    flags=@flags, end_reason=@end_reason, started_at=COALESCE(@started_at, started_at),
+                    ended_at=@ended_at WHERE id=@id`)
+        .run({ ...row, id: existing.id })
+      db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('local.superseded', ?, ?, ?)")
+        .run(existing.box || null, JSON.stringify({ match_id: row.match_id, was_rounds: existing.rounds, rounds: row.rounds }), now())
+    }
+
     if (body.replay) storeReplay(existing, body)
-    return { ok: true, game_id: existing.id, match_id: row.match_id, repeat: true }
+    return { ok: true, game_id: existing.id, match_id: row.match_id, repeat: true, superseded: wasFramesOnly && !nowFramesOnly }
   }
 
   const info = db.prepare(`INSERT INTO games (match_id, box, instance, mode, map_key, map_id, map_version_id, fs_game,
@@ -133,17 +213,20 @@ function ingest(body, { selfReported = false } = {}) {
     // A player with no SteamID is a slot the box could not identify — a bot, a local test,
     // or a connect the DLL saw before the token check. It is recorded in summary_json and
     // NOT given a row here, because a row keyed on a made-up id would attach somebody's
-    // badge to nobody.
-    if (!p.steamid) continue
-    const s = p.stats || {}
-    insP.run(game.id, String(p.steamid), p.slot ?? null, p.name || null,
-      p.score || 0, s.kills ?? p.kills ?? 0, s.headshots ?? 0, s.downs ?? p.downs ?? 0,
-      s.revives ?? p.revives ?? 0, s.deaths ?? p.bleedouts ?? 0,
-      s.points_earned ?? 0, s.points_spent ?? 0, s.time_alive_ms ?? 0,
-      s.rounds_played ?? p.rounds_played ?? 0, p.joined_round ?? 1,
+    // badge to nobody. The same goes for an entry that is not an object at all.
+    if (!p || typeof p !== 'object' || Array.isArray(p)) continue
+    const sid = str(p.steamid, 32)
+    if (!sid) continue
+    const s = (p.stats && typeof p.stats === 'object' && !Array.isArray(p.stats)) ? p.stats : {}
+    const stat = (...vs) => { for (const v of vs) if (v != null) return int(v, 0, { min: 0, max: 1e12 }); return 0 }
+    insP.run(game.id, sid, p.slot == null ? null : int(p.slot, 0, { min: 0, max: 63 }), str(p.name, 64),
+      stat(p.score), stat(s.kills, p.kills), stat(s.headshots), stat(s.downs, p.downs),
+      stat(s.revives, p.revives), stat(s.deaths, p.bleedouts),
+      stat(s.points_earned), stat(s.points_spent), stat(s.time_alive_ms),
+      stat(s.rounds_played, p.rounds_played), int(p.joined_round, 1, { min: 0, max: MAX_ROUND }),
       p.late ? 1 : 0, p.afk_kicked ? 1 : 0)
-    users.ensure(p.steamid, { username: p.name || null })
-    seated.push({ ...p, steam_id: String(p.steamid) })
+    users.ensure(sid, { username: str(p.name, 64) })
+    seated.push({ ...p, steam_id: sid })
   }
 
   if (body.replay) storeReplay(game, body)
@@ -169,19 +252,21 @@ function ingest(body, { selfReported = false } = {}) {
 }
 
 function storeReplay(game, body) {
-  const r = body.replay || {}
+  const r = (body.replay && typeof body.replay === 'object' && !Array.isArray(body.replay)) ? body.replay : {}
   // The box's replay-signing key, pinned on first sight. A file signed with a key that is
   // not the pin is NOT record evidence, whatever its own signature says (host.md §5).
-  const keyId = r.key_id || body.key_id || null
+  const keyId = str(r.key_id, 64) || str(body.key_id, 64) || null
   const pinned = keyId ? boxes.keyMatchesPin(game.box, keyId) : false
   db.prepare(`INSERT INTO replays (match_id, game_id, box, object_key, file, size, chunks, events, ratio,
       mb_per_hour, key_id, key_pinned, recovered, partial, tier, created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(match_id) DO UPDATE SET size=excluded.size, chunks=excluded.chunks, events=excluded.events,
       ratio=excluded.ratio, mb_per_hour=excluded.mb_per_hour, key_id=excluded.key_id, key_pinned=excluded.key_pinned`)
-    .run(game.match_id, game.id, game.box || null, r.object_key || null, r.file || null,
-      r.size || null, r.chunks || null, r.events || null, r.ratio || null, r.mb_per_hour || null,
-      keyId, pinned ? 1 : 0, r.recovered ? 1 : 0, r.partial ? 1 : 0, r.tier || 'full', now())
+    .run(game.match_id, game.id, game.box || null, str(r.object_key, 400), str(r.file, 400),
+      r.size == null ? null : int(r.size, 0, { min: 0 }), r.chunks == null ? null : int(r.chunks, 0, { min: 0 }),
+      r.events == null ? null : int(r.events, 0, { min: 0 }), r.ratio == null ? null : num(r.ratio, 0, { min: 0 }),
+      r.mb_per_hour == null ? null : num(r.mb_per_hour, 0, { min: 0 }),
+      keyId, pinned ? 1 : 0, r.recovered ? 1 : 0, r.partial ? 1 : 0, str(r.tier, 16) || 'full', now())
 }
 
 // The map shelf, the ticks, and the one badge per map.
@@ -296,6 +381,16 @@ function project(game, { withPlayers = true } = {}) {
     flags: safeJson(game.flags, []) || [],
     records_eligible: !!game.records_eligible,
     self_reported: !!game.self_reported,
+    // Three flags the UI lane needs and cannot derive. They are DATA, not copy: what a
+    // page says about a self-reported game is theirs to decide, but it cannot decide
+    // anything if the API will not say which rows are which.
+    //
+    //   demo        seeded scaffolding, never a real run (db/seed.js --demo)
+    //   abandoned   nobody posted a result; the round came from the live frames
+    //   end_reason  why it stopped, in the referee's own word
+    demo: !!game.demo,
+    abandoned: game.end_reason === 'abandoned',
+    end_reason: game.end_reason || null,
     fingerprint: game.fingerprint,
     started_at: game.started_at,
     ended_at: game.ended_at,

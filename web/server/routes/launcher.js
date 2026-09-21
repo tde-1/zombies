@@ -40,16 +40,44 @@ const { requireUser, requireApproved } = require('../middleware/auth')
 const launcherState = new Map()
 const STATE_TTL_MS = 120_000
 
-// Local games in flight, keyed by match id. In memory, like the frames: a local game is
-// one player's PC and one launcher process, and if the site restarts mid-game the right
-// answer is that the launcher starts a new one.
-const localGames = new Map()
-const LOCAL_TTL_MS = 26 * 3600_000
-setInterval(() => {
-  for (const [id, g] of localGames) if (now() - g.started > LOCAL_TTL_MS) localGames.delete(id)
-}, 3600_000).unref?.()
+// Local games in flight live in `lib/localMatches.js`, in SQLite.
+//
+// They used to be a Map here, and that Map was the biggest hole in the MVP: the site
+// restarting inside somebody's forty-minute run made the result arrive to "not your game"
+// and the run was simply gone. A row survives the restart, remembers the highest round the
+// live frames reported, and gets closed by a sweep instead of sitting live forever.
+const localMatches = require('../lib/localMatches')
+
+// The sweep runs on a timer AND on the way into the local endpoints, because a site that
+// is only ever poked by a launcher still has to close out the run the launcher abandoned.
+const SWEEP_MS = 60_000
+setInterval(() => { try { localMatches.sweep() } catch (e) { console.warn('[launcher] local sweep:', e.message) } }, SWEEP_MS).unref?.()
 
 const PROTOCOL_VERSION = 0
+
+// ── Reading a body from a launcher ───────────────────────────────────────────────────
+//
+// `express.json()` will happily hand us a string, a number, an array or null, because all
+// of those are valid JSON documents. `const b = req.body || {}` then passes them straight
+// into property reads, and the first one that lands on a method — `.find` on a string —
+// is a 500 rather than a 400. A half-working launcher must get a refusal it can log, not
+// a server error it retries.
+const body = (req) => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {})
+
+// A field that has to be a plain scalar before it can be a key, a name or an id. An object
+// stringifies to "[object Object]", which is a perfectly good SQL value and a terrible one.
+const text = (v, max = 200) => {
+  if (v == null || typeof v === 'object') return ''
+  const s = String(v).trim()
+  return s ? s.slice(0, max) : ''
+}
+
+// Close out abandoned local matches on the way past. A site whose only visitor is a
+// launcher gets no other chance to notice that somebody's run stopped heartbeating.
+const sweepFirst = (req, res, next) => {
+  try { localMatches.sweep() } catch (e) { console.warn('[launcher] local sweep:', e.message) }
+  next()
+}
 
 function router() {
   const r = express.Router()
@@ -81,7 +109,15 @@ function router() {
         // getting a 404 it has to explain to the player.
         // True only when the files are actually on this box, not when we wish they were.
         map_downloads: mapfiles.available().length > 0,
-        replay_downloads: false,
+        // `GET /api/replays/<match>` (the pointer and the evidence grade, public) and
+        // `GET /api/replays/<match>/download` (the bytes, gated by lib/replays.mayDownload).
+        // This said `false` while both routes existed and worked, which is the kind of lie
+        // that makes a launcher grey out a button that would have worked.
+        replay_downloads: true,
+        // Local runs survive a site restart and are closed out if they never finish, so a
+        // launcher may ask for its in-flight matches (`GET /api/launcher/local`) rather
+        // than starting a second game after a crash.
+        local_resume: true,
         og_cards: false,
       },
       enw: enw.status(),
@@ -202,18 +238,25 @@ function router() {
   // tracked, they have to play through our servers."
 
   /** Start one. Returns the match id the launcher uses for frames and the result. */
-  r.post('/local/start', requireUser, (req, res) => {
-    const b = req.body || {}
-    const mapKey = String(b.map_key || '')
+  r.post('/local/start', requireUser, sweepFirst, (req, res) => {
+    const b = body(req)
+    const mapKey = text(b.map_key, 64)
     const m = mapKey ? maps.byKey(mapKey) : null
     if (!m) return res.status(400).json({ error: 'which map?' })
-    const matchId = 'l_' + require('crypto').randomBytes(4).toString('hex')
-    localGames.set(matchId, { steam_id: req.me.steam_id, map: m.key, started: now() })
-    db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('local.start', ?, ?, ?)")
-      .run(req.me.steam_id, JSON.stringify({ match_id: matchId, map: m.key }), now())
+
+    // A launcher that crashed and came back does not need a second match. Handing it the
+    // one it already has is the difference between a recovered run and two half-runs, one
+    // of which has the rounds and the other of which has the result.
+    const open = localMatches.inFlight(req.me.steam_id).find((x) => x.map_key === m.key)
+    const row = open || localMatches.start(req.me.steam_id, m.key)
+    if (!open) {
+      db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('local.start', ?, ?, ?)")
+        .run(req.me.steam_id, JSON.stringify({ match_id: row.match_id, map: m.key }), now())
+    }
     res.json({
       ok: true,
-      match_id: matchId,
+      match_id: row.match_id,
+      resumed: !!open,
       // Local is solo only (13 §4, decided). The launcher should not offer a party here.
       solo: true,
       map: mapPayload(m),
@@ -224,42 +267,97 @@ function router() {
     })
   })
 
+  /**
+   * The local matches this player still has open.
+   *
+   * A launcher that restarted — or a PC that rebooted — asks this instead of guessing, and
+   * posts its result against the match that is already there. Without it, the only way to
+   * find a match id after losing it was to start a second game.
+   */
+  r.get('/local', requireUser, sweepFirst, (req, res) => {
+    res.json({ matches: localMatches.inFlight(req.me.steam_id).map(localMatches.pub) })
+  })
+
+  /** One of them, by id — only ever the caller's own. */
+  r.get('/local/:matchId', requireUser, (req, res) => {
+    const row = localMatches.owned(req.params.matchId, req.me.steam_id)
+    if (!row) return res.status(404).json({ error: 'not your game' })
+    res.json({ match: localMatches.pub(row), game: row.game_id ? require('../lib/results').byId(row.game_id) : null })
+  })
+
   /** Live frames for a local game, so a friend can watch it on the site. */
   r.post('/local/live', requireUser, (req, res) => {
-    const b = req.body || {}
-    const g = localGames.get(String(b.match_id || ''))
+    const b = body(req)
     // Only the player whose game it is may push frames for it — otherwise anybody could
     // paint anything onto anybody's live view.
-    if (!g || g.steam_id !== req.me.steam_id) return res.status(404).json({ error: 'not your game' })
-    if (!b.state) return res.status(400).json({ error: 'no state' })
+    const row = localMatches.owned(b.match_id, req.me.steam_id)
+    if (!row) return res.status(404).json({ error: 'not your game' })
+    if (row.state !== 'live') return res.status(409).json({ error: `that game is already ${row.state}`, state: row.state })
+    // `state` is spread into the frame, so it has to be an object. A string spreads into
+    // `{0:'h',1:'e',…}` and was accepted before this line existed.
+    const st = b.state
+    if (!st || typeof st !== 'object' || Array.isArray(st)) return res.status(400).json({ error: 'state must be an object' })
+
+    // THE HIGHEST ROUND SEEN IS THE RUN'S RECOVERY POINT. If the game dies here and never
+    // posts a result, this is the only number that will survive, so it is written every
+    // frame rather than only at the end.
+    const beat = localMatches.heartbeat(row.match_id, st.round)
+
     // The "box" is the player's own PC. It is labelled `local` and NOT `local:<steamid>`:
     // the frame is broadcast to everyone watching, and the box label is rendered, so a
     // SteamID in it would put the host's account id on a public page. Who owns the game is
-    // in `localGames`, which is server-side and is what the guard above reads.
+    // in `local_matches`, which is server-side and is what the guard above reads.
     const taken = live.push('local', {
       instance: 'local',
-      match_id: b.match_id,
-      state: { ...b.state, mode: 'local', map: b.state.map || g.map },
+      match_id: row.match_id,
+      state: { ...st, mode: 'local', map: text(st.map, 64) || row.map_key },
     })
-    res.json({ ok: true, taken, min_frame_ms: live.MIN_FRAME_MS })
+    res.json({ ok: true, taken, round: beat.round, min_frame_ms: live.MIN_FRAME_MS })
   })
 
   /** The summary and the replay pointer for a finished local game. */
   r.post('/local/result', requireUser, (req, res) => {
-    const b = req.body || {}
-    const s = b.summary
+    const b = body(req)
+    const s = (b.summary && typeof b.summary === 'object' && !Array.isArray(b.summary)) ? b.summary : null
     if (!s || !s.match_id) return res.status(400).json({ error: 'no summary' })
-    const g = localGames.get(String(s.match_id))
-    if (!g || g.steam_id !== req.me.steam_id) return res.status(404).json({ error: 'not your game' })
+    const row = localMatches.owned(s.match_id, req.me.steam_id)
+    if (!row) return res.status(404).json({ error: 'not your game' })
+
+    // A retry is not an error. A launcher whose POST succeeded and whose response was lost
+    // to a closed laptop lid will send it again, and answering "not your game" to the
+    // second one loses nothing but tells the launcher it lost everything. `ingest` is
+    // idempotent on match_id, so the honest answer is to run it and say `repeat`.
+    //
+    // A result for an ABANDONED match is also accepted: the sweep wrote the run from its
+    // frames, and the real summary supersedes that placeholder (lib/results.js).
 
     // The roster is the ONE thing the site overrides rather than trusts. Local is solo, so
     // the only player who can be in it is the one holding the session — otherwise a local
     // game could write rows against other people's accounts.
+    if (s.players != null && !Array.isArray(s.players)) return res.status(400).json({ error: 'players must be a list' })
     const me = users.pub(req.me)
-    const mine = (s.players || []).find((p) => String(p.steamid) === String(req.me.steam_id)) || (s.players || [])[0] || {}
+    const roster = (s.players || []).filter((p) => p && typeof p === 'object' && !Array.isArray(p))
+    const mine = roster.find((p) => String(p.steamid) === String(req.me.steam_id)) || roster[0] || {}
+
+    // If the referee says it refereed a different map from the one the launcher opened the
+    // match on, the site keeps its own answer and says that they disagreed. Both claims
+    // come from the same PC, so neither is evidence; what matters is that the run is filed
+    // somewhere findable and that the disagreement is not swallowed.
+    const claimed = text(s.map, 64)
+    const flags = Array.isArray(s.flags) ? s.flags.slice(0, 32) : []
+    if (claimed && claimed !== row.map_key && !flags.includes('map_mismatch')) flags.push('map_mismatch')
+
     const summary = {
       ...s,
+      flags,
+      match_id: row.match_id,
       mode: 'local',
+      // THE MAP IS THE SITE'S, NOT THE CLIENT'S. The launcher said which map it was
+      // starting and we wrote it down; a result naming a different one would file the run
+      // on the wrong map page, or — when the field is simply missing — on no map at all.
+      // That happened: `POST /local/result` with no `map` stored a game with `map_key: ''`
+      // that appeared nowhere.
+      map: row.map_key,
       solo: true,
       player_count: 1,
       players: [{ ...mine, slot: 0, steamid: req.me.steam_id, name: me.name }],
@@ -271,12 +369,17 @@ function router() {
       { box: null, instance: 'local', summary, replay: b.replay || null },
       { selfReported: true },
     )
-    live.drop(String(s.match_id))
-    localGames.delete(String(s.match_id))
     if (!out.ok) return res.status(400).json(out)
+
+    live.drop(row.match_id)
+    localMatches.finish(row.match_id, out.game_id)
     res.json({
       ...out,
       tracked: false,
+      // What the site actually stored, echoed back, so a launcher can tell that the round
+      // it sent is the round that landed rather than assuming a 200 means agreement.
+      stored: { rounds: (require('../lib/results').byId(out.game_id) || {}).rounds ?? null, map_key: row.map_key },
+      url: `/game/${row.match_id}`,
       notice: 'Stored as a Local game. It earns no badge, no record and no XP, and its replay is not record evidence.',
     })
   })

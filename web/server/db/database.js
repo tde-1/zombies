@@ -793,6 +793,48 @@ function migrate() {
     created_at  INTEGER
   )`)
 
+  // ── A local game in flight ────────────────────────────────────────────────────────
+  //
+  // This used to be a `Map` in routes/launcher.js, and that was the single biggest hole in
+  // the MVP: a player finishes a forty-minute run, the site has restarted in the meantime
+  // (a deploy, a crash, `node --watch` on a save), and `POST /local/result` answers
+  // **"not your game"**. The run is gone and there is nothing to recover it from.
+  //
+  // So the match is a row. It is the site's record that a run is happening, it survives a
+  // restart, it carries the highest round a live frame reported — so even a run whose
+  // result never arrives leaves a number behind — and a sweep closes the ones nobody ever
+  // finished instead of letting them sit "live" forever.
+  //
+  // It is NOT the game. A game is the `games` row that `lib/results.ingest` writes when the
+  // result arrives (or when the sweep gives up on it). This table is the thing in between.
+  //
+  //   state: live      started, still heartbeating
+  //          done      a result arrived and became a game
+  //          abandoned no heartbeat for LOCAL_STALE_MS and no result
+  db.exec(`CREATE TABLE IF NOT EXISTS local_matches (
+    match_id    TEXT PRIMARY KEY,
+    steam_id    TEXT NOT NULL,
+    map_key     TEXT NOT NULL,
+    state       TEXT NOT NULL DEFAULT 'live',
+    round       INTEGER NOT NULL DEFAULT 0,
+    frames      INTEGER NOT NULL DEFAULT 0,
+    game_id     INTEGER,
+    started_at  INTEGER NOT NULL,
+    last_seen   INTEGER NOT NULL,
+    ended_at    INTEGER
+  )`)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_local_matches_player ON local_matches(steam_id, started_at)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_local_matches_state ON local_matches(state, last_seen)')
+
+  // Scaffolding, marked as scaffolding.
+  //
+  // `npm run seed -- --demo` writes six games so the pages are not empty, and it writes
+  // them through the real ingest path so the demo exercises the same code a box drives.
+  // The cost is that a demo game and a real one are the same shape, and B looking at his
+  // own first run has no way to tell which rows are his. This column is the difference,
+  // and it is set by the seeder and by nothing else — no request can set it.
+  addColumn('games', 'demo', 'INTEGER DEFAULT 0')
+
   return db
 }
 

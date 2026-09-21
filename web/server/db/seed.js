@@ -14,14 +14,18 @@
 // Release facts for the four stock maps (Treyarch, the WaW map packs) are common knowledge
 // and are written out below. Everything else about a map comes from its manifest.
 //
-//   node server/db/seed.js            top up: insert what is missing, leave the rest
-//   node server/db/seed.js --reset    delete the database file first
-//   node server/db/seed.js --demo     also create demo players, games, records and comments
-//                                     so every page has something on it (dev only)
+//   node server/db/seed.js               top up: insert what is missing, leave the rest
+//   node server/db/seed.js --reset       delete the database file first
+//   node server/db/seed.js --demo        also create demo players, games, records and
+//                                        comments so every page has something on it (dev only)
+//   node server/db/seed.js --demo --force-demo
+//                                        ...even though the database already holds real games
 //
 // The demo block is SCAFFOLDING and says so on every row it writes: demo accounts have
 // steam ids in the reserved 7656119000000000x range, which is not a real SteamID64 space,
-// so they can never collide with a signed-in player.
+// so they can never collide with a signed-in player; demo games carry `games.demo = 1` and
+// a fixed `demo_<n>` match id; and `--demo` refuses to run at all on a database that holds
+// a real game unless `--force-demo` is given. See seedDemo() for why each of those exists.
 
 const fs = require('fs')
 const path = require('path')
@@ -32,6 +36,29 @@ const REPO = path.resolve(__dirname, '..', '..', '..')
 
 if (args.has('--reset')) {
   const dir = process.env.ZM_DATA_DIR || path.join(__dirname, '..', '..', 'data')
+  const main = path.join(dir, 'zombies.db')
+
+  // A reset is destruction the caller asked for, so it happens. But the README tells
+  // people to run `--reset --demo` to "start over", and the day that instruction is
+  // followed on a database holding somebody's actual run is the day the run is gone for
+  // good. Copying the file first costs a few megabytes and makes the mistake survivable.
+  if (fs.existsSync(main)) {
+    const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)
+    const backup = path.join(dir, `zombies.db.${stamp}.bak`)
+    try {
+      // Through SQLite rather than a file copy, so the WAL is checkpointed into the backup
+      // and it is a complete database rather than a snapshot missing the last writes.
+      const D = require('better-sqlite3')
+      const src = new D(main)
+      src.exec(`VACUUM INTO '${backup.replace(/'/g, "''")}'`)
+      src.close()
+      console.log('backed up', main, '->', backup)
+    } catch (e) {
+      try { fs.copyFileSync(main, backup); console.log('backed up (plain copy)', backup) } catch { /* nothing to back up */ }
+      if (String(e.message || '').includes('VACUUM')) console.warn('  (WAL not checkpointed:', e.message + ')')
+    }
+  }
+
   for (const f of ['zombies.db', 'zombies.db-wal', 'zombies.db-shm']) {
     const p = path.join(dir, f)
     if (fs.existsSync(p)) { fs.rmSync(p); console.log('removed', p) }
@@ -358,9 +385,36 @@ function seedWeek(entries) {
 }
 
 // ---- demo content (dev only) --------------------------------------------------------
+//
+// ── The rule this block lives under ─────────────────────────────────────────────────
+//
+// Demo rows exist so no page is empty on a fresh install. They must never be mistakable
+// for something that happened. Three things enforce that, and all three are load-bearing:
+//
+//   1. **Every demo game is marked `demo = 1`** in the games table, and `results.project()`
+//      hands that flag to the client. Before this, a seeded game and a refereed one were
+//      the same shape, and the only way to tell B's own first run from scaffolding was to
+//      recognise the map.
+//   2. **The match ids are fixed** (`demo_1` … `demo_6`), not random. Re-running `--demo`
+//      therefore updates the same six rows instead of stacking six more every time, which
+//      it did — three runs and the home page was eighteen games nobody played.
+//   3. **It refuses to run on a database that holds real games**, unless the caller says
+//      `--force-demo` and means it. `npm run seed -- --demo` on a live database used to
+//      add fake games beside real ones with no warning.
+//
+// Demo accounts keep their reserved `7656119000000000x` steam ids, which are outside the
+// real SteamID64 space and so can never collide with a signed-in player.
 function seedDemo(entries) {
   const results = require('../lib/results')
   const users = require('../lib/users')
+
+  const real = db.prepare('SELECT COUNT(*) c FROM games WHERE COALESCE(demo,0)=0').get().c
+  if (real > 0 && !args.has('--force-demo')) {
+    console.log(`demo   SKIPPED: this database already holds ${real} real game${real === 1 ? '' : 's'}.`)
+    console.log('       Seeding demo content beside real runs is how a fake game gets mistaken for one of yours.')
+    console.log('       Use --force-demo if you are certain, or --reset to start from nothing.')
+    return
+  }
   const people = [
     ['76561190000000001', 'dexter', 'Dexter'],
     ['76561190000000002', 'air', 'Air'],
@@ -385,13 +439,17 @@ function seedDemo(entries) {
   // inserting rows: the demo data then exercises exactly the code a game box drives, and a
   // bug in badge awarding or XP shows up in the seed rather than in production.
   let t = Date.now() - 12 * 3600_000
+  let n = 0
   const mk = (map, mode, rounds, finish, players, mins, extra = {}) => {
     t += 40 * 60_000
+    n += 1
     const dur = mins * 60_000
     return {
       box: 'box-a', instance: 'inst-01',
       summary: {
-        match_id: 'm_' + crypto.randomBytes(4).toString('hex'),
+        // Fixed, not random: re-running the seeder updates these six rows rather than
+        // adding six more. `demo_` is also visibly not an `m_` match id from a box.
+        match_id: 'demo_' + n,
         instance: 'inst-01', mode, map, map_name: null, fs_game: null,
         manifest: map, manifest_confidence: 'read',
         badge: finish ? { kind: finish, map } : null,
@@ -430,7 +488,12 @@ function seedDemo(entries) {
     mk('nazi_zombie_factory', 'verified', 26, 'round', [P[2]], 80),
   ]
   for (const g of games) {
-    try { results.ingest(g) } catch (e) { console.error('demo game failed:', e.message) }
+    try {
+      const out = results.ingest(g)
+      // The mark. It is set here and nowhere else — no route writes this column, so a
+      // demo row can only ever have come from this file.
+      if (out && out.ok) db.prepare('UPDATE games SET demo=1 WHERE id=?').run(out.game_id)
+    } catch (e) { console.error('demo game failed:', e.message) }
   }
 
   // A comment on each map and one on a profile, so the moderation surfaces are not empty.

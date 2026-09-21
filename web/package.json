@@ -14,7 +14,9 @@
     "reseed": "node server/db/seed.js --reset",
     "build": "npm --prefix client install && npm --prefix client run build",
     "client": "npm --prefix client run dev",
-    "check": "node test/run-all.js",
+    "check": "node test/run-all.js && node test/local-run.js",
+    "check:lib": "node test/run-all.js",
+    "check:mvp": "node test/local-run.js",
     "import:archive": "node server/db/import-archive.js",
     "live-bridge": "node tools/live-bridge.js"
   },
