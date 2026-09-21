@@ -77,6 +77,42 @@ namespace {
 constexpr uintptr_t kPushSite = 0x6417E7;
 const uint8_t kExpected[5] = {0x68, 0xD4, 0xF0, 0x86, 0x00};  // push 0x86F0D4
 
+// ---------------------------------------------------------------------------
+// ...and the client state it leaves behind, which skips the challenge handshake
+// ---------------------------------------------------------------------------
+// With a real address in place, run join7 got the connect packet all the way to
+// the server -- SV_DirectConnect fired for the first time -- and the server
+// rejected it:
+//
+//     ERROR: No or bad challenge for address.
+//
+// CL_SendConnectPacket 0x642C80 is really CL_CheckForResend: it runs per frame
+// and dispatches on clc.state:
+//
+//     00642D00  sub esi, 4
+//     00642D03  je 00643104        ; state 4 -> send "getchallenge"
+//     00642D09  sub esi, 1
+//     00642D0C  je 00642E4C        ; state 5 -> send "connect" + userinfo
+//     00642D12  sub esi, 2
+//     00642D15  je 00642D31        ; state 7 -> ...
+//
+// CL_ConnectLocal hard-sets state **5** at 0x64185F, i.e. "I already have a
+// challenge, send the connect". That is correct for the in-process loopback it
+// was written for -- SV_DirectConnect does not challenge NA_LOOPBACK. Over a real
+// socket it is wrong, and the server says so.
+//
+// Patch that one immediate 5 -> 4. CL_ConnectLocal then leaves the client in
+// "connecting", its own call to CL_SendConnectPacket sends `getchallenge`
+// instead, SVC_GetChallenge 0x62DB60 answers `challengeResponse`,
+// CL_ConnectionlessPacket 0x643380 stores it and moves the state on, and the
+// connect that follows carries a challenge the server accepts.
+//
+//     0064185F  C7 05 2C 84 05 03 | 05 00 00 00    mov dword [0x305842C], 5
+//                                   ^^ imm32 at 0x641865
+constexpr uintptr_t kStateImm = 0x641865;
+constexpr uint32_t  kStateConnecting = 4;   // sends getchallenge
+constexpr uint32_t  kStateChallenged = 5;   // sends connect (what stock writes)
+
 // strncpy at 0x6417F1 copies at most 0xFF bytes into clc.servername.
 char g_address[128] = {};
 
@@ -129,6 +165,25 @@ public:
             ENW_ERROR("connect_address: could not write the push operand at 0x%08X",
                       static_cast<unsigned>(kPushSite + 1));
             return;
+        }
+
+        // ...and make it start from "connecting" so the challenge handshake happens.
+        uint32_t state = 0;
+        if (!memory::read(enw::at(kStateImm), &state) || state != kStateChallenged) {
+            ENW_ERROR("connect_address: the client-state immediate at 0x%08X is %u, expected %u. "
+                      "Address patched but the challenge handshake will still be skipped, so the "
+                      "server will answer 'No or bad challenge for address.'",
+                      static_cast<unsigned>(kStateImm), state, kStateChallenged);
+        }
+        else if (!memory::write<uint32_t>(enw::at(kStateImm), kStateConnecting)) {
+            ENW_ERROR("connect_address: could not write the client-state immediate at 0x%08X",
+                      static_cast<unsigned>(kStateImm));
+        }
+        else {
+            ENW_INFO("connect_address: CL_ConnectLocal will leave the client in state %u "
+                     "(connecting) instead of %u, so CL_CheckForResend 0x642C80 sends "
+                     "'getchallenge' first and the connect that follows carries a challenge.",
+                     kStateConnecting, kStateChallenged);
         }
 
         ENW_INFO("connect_address: CL_ConnectLocal will now connect to '%s' instead of "

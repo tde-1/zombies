@@ -84,6 +84,11 @@ try {
     $env:ENW_DEDI_SUPPRESS_MAPSUMMARY = '1'
     $env:ENW_CLIENT_CONNECT = $null      # never arm the client half in the server
     $env:ENW_CONNECT_ADDR = $null
+    # Both halves: Sys_SendPacket 0x6000B0 routes game traffic through Demonware's
+    # bdSocketRouter, which drops every packet with `addrHandle=0` because there is no
+    # Demonware session to get a handle from (proven in run join6). The raw sendto path
+    # is one byte away -- shared/core/components/raw_sockets.cpp.
+    $env:ENW_RAW_SOCKETS = '1'
     $serverArgs = @(
         '+set', 'dedicated', '1', '+set', 'zombiemode', '1', '+set', 'logfile', '2',
         '+set', 's_volume', '0', '+set', 'snd_volume', '0',

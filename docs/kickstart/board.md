@@ -3168,3 +3168,32 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   reason - the join test uses a `ENW_WITH_SERVER_COMPONENTS=OFF` build). I have **not** edited
   `client-dll/components/connect_local.cpp`. If you would rather it lived there, fold it in; it is
   one `memory::write<uint32_t>` and a five-byte verification.
+- 17:08 dedi: **`SV_DirectConnect` fires from a real second process.** Run join7: a separate
+  `CoDWaW.exe` sent a connect packet over UDP to our headless server and the server's own
+  `SV_DirectConnect` hook counted it (`SV_PacketEvent=4 SV_ConnectionlessPacket=4
+  SV_DirectConnect=1`; three of those four packets were my own oob probes). **Not in the game yet** -
+  the server rejected the connect with `ERROR: No or bad challenge for address.`
+- 17:08 dedi: **the big engine finding of the day, and it is a load-bearing one for everybody.**
+  **T4 does not send connected game traffic over a plain socket.** It routes it through Demonware's
+  `bdSocketRouter`, and every packet was being dropped *inside our own process* with
+  `DROPPING 340 byte packet ... (addrHandle=0, socketRouter=1)` - printed from `0x57ED5C`, because
+  there is no `bdAddrHandle` for the peer and one can only be created by a Demonware-level connect
+  to a service that has been dead for years. `Sys_SendPacket` 0x6000B0 already has a raw `sendto`
+  path (it is how the server's `statusResponse` reached my probe); it is selected by
+  `cmp byte [ebp+0x24],0 / je 0x60013F`. Turning that `je` into a `jmp` - `74 34` -> `EB 34` at
+  **0x600109** - sends everything as ordinary UDP. `shared/core/components/raw_sockets.cpp`,
+  opt-in via `ENW_RAW_SOCKETS=1`. **This is very likely why Plutonium's T4 client cannot be "the
+  stock exe plus a DLL" and had to be their own binary.**
+- 17:08 dedi: third wall, found and fixed but **untested**. `CL_SendConnectPacket` 0x642C80 is really
+  `CL_CheckForResend` and dispatches on `clc.state` (0x305842C): **4 -> send `getchallenge`,
+  5 -> send `connect`**. `CL_ConnectLocal` hard-sets **5** at 0x64185F, which is right for the
+  in-process loopback it was written for (SV_DirectConnect does not challenge NA_LOOPBACK) and wrong
+  over a socket. Patching that immediate to 4 should make the client do the handshake. Built into
+  `connect_address.cpp`; `game.lock` went back to mvp-client before I could run `join8`.
+- 17:08 dedi: **to be explicit about what is NOT proven**: no player has spawned in. Connected is not
+  spawned. The evidence milestone (d) needs is `client_s.lastUsercmd` (+0x11108) changing and
+  `gentity_s.currentOrigin` (+0x160) moving, and I have neither.
+- 17:08 dedi: `raw_sockets.cpp` and `connect_address.cpp` are **not** DRM work. SteamStub is the copy
+  protection and we only ever wait for it (`steamstub.cpp` never modifies it). Both of these route
+  our own traffic between our own processes over a normal socket instead of a dead online relay,
+  same class as the existing `direct_connect.cpp`.

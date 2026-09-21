@@ -800,6 +800,110 @@ is `SV_DirectConnect` going above 0 on the server.
 
 ---
 
+## 7f. The join, walked forward three walls at a time
+
+Each of these was found by running the test, reading the failure, and reading the instruction that
+produced it. Every one turned out to be a one- or two-byte fix at a site we could verify first.
+
+| Run | What the server saw | What stopped it |
+|---|---|---|
+| `join5` | `SV_PacketEvent=3` (all three my own probes), `SV_DirectConnect=0` | `CL_ConnectLocal` hard-codes `"localhost"`, which `NET_StringToAdr` turns into **NA_LOOPBACK** — the in-process ring buffer. No packet ever reached a socket. |
+| `join6` | same — still 0 from the client | With a real address, the client produced real 340-byte connect packets, and **the engine threw them away itself**: `DROPPING 340 byte packet because we're still connecting to the remote address (addrHandle=0, socketRouter=1)`, about once a second. |
+| `join7` | **`SV_PacketEvent=4`, `SV_ConnectionlessPacket=4`, `SV_DirectConnect=1`** | The connect arrived and the server rejected it: **`ERROR: No or bad challenge for address.`** The client had skipped the challenge handshake. |
+
+### Wall 2 — Demonware's socket router ate every packet
+
+The message is at `0x86F5B8`, printed from **`0x57ED5C`** inside the Demonware send wrapper
+`0x57EC90`:
+
+```
+0057ECB9  lea ecx, [eax*4 + 0x48886F8]   ; the bdAddrHandle table, stride 0x24, 0x68 entries
+0057ECC5  call 005805E0                  ; the handle for this peer  -> esi
+0057ECD0  call 0057E2F0 / 0078A430       ; the socket router         -> edi
+0057ECE4  je 0057ED5C                    ; !esi -> DROP
+0057ECE8  je 0057ED5C                    ; !edi -> DROP
+```
+
+`addrHandle=0` means **there is no `bdAddrHandle` for the destination**, and one is only created by
+a Demonware-level connect to that peer — a live session with a service that has not existed for
+years. No amount of retrying produces one. This is a genuine architectural fact about T4 and is
+worth stating plainly: **T4 does not send connected game traffic over a plain socket by default.**
+
+The lever is one byte. `Sys_SendPacket` **0x6000B0** already has a raw path:
+
+```
+006000C0  switch (to.type):  3,4 -> socket [0x22BEBD0];  5,6 -> socket [0x22BD9EC]
+                             else Com_Error("Sys_SendPacket: bad address type")
+00600105  cmp byte ptr [ebp+0x24], 0
+00600109  je 0060013F                    ; ZERO -> THE RAW PATH
+0060010B..00600132  copy the netadr, call 0057EC90     ; Demonware (drops)
+0060013F  call 005FFCD0                  ; NetadrToSockadr
+006001B2  push 0x10 / &sockaddr / 0 / data / len
+006001C0  push esi ; call sendto         ; a plain Winsock sendto
+```
+
+That raw path is how the server's `statusResponse` reached `oob.py` in the first place. So:
+`74 34` (`je`) → `EB 34` (`jmp`) at **0x600109**, and every packet goes out as ordinary UDP. Nothing
+is relocated, no argument is reinterpreted, the branch target is unchanged — only the condition is
+removed. `shared/core/components/raw_sockets.cpp`, armed by `ENW_RAW_SOCKETS=1`.
+
+Result: `SV_DirectConnect` fired for the first time from a real second process.
+
+**This is not a DRM bypass.** SteamStub is the copy protection and we only ever *wait* for it
+(`steamstub.cpp`). This routes our traffic between our own processes over a normal socket instead of
+through a dead relay, exactly like `direct_connect.cpp`. It is also, very likely, why Plutonium's T4
+client cannot be "the stock exe plus a DLL": this has to be done inside the binary.
+
+Two caveats, both untested and both distinguishable if they bite:
+- netadr types **5 and 6** use the other socket (`[0x22BD9EC]`) and may be genuinely
+  Demonware-routed address kinds. We only ever produce type 4. Watch for
+  `Sys_SendPacket: bad address type`.
+- the raw path has a second branch at `0x60014B`: when `[0x46E50A8] != 0` and the address is type 4
+  it prepends a 10-byte header `{0,0,0,1, ip, port}` from `0x22BDA40`. If the two sides disagree
+  about it, packets will **arrive and be rejected as malformed** rather than not arrive — a
+  different symptom, so you can tell them apart.
+
+### Wall 3 — the client skipped the challenge handshake
+
+`CL_SendConnectPacket` **0x642C80** is really `CL_CheckForResend`: it runs per frame, rate-limits
+itself (3,000 ms normally, 100 ms in state 7) and dispatches on `clc.state` at `0x305842C`:
+
+```
+00642D00  sub esi, 4
+00642D03  je 00643104        ; state 4 -> send "getchallenge"
+00642D09  sub esi, 1
+00642D0C  je 00642E4C        ; state 5 -> send "connect" + userinfo
+00642D12  sub esi, 2
+00642D15  je 00642D31        ; state 7 -> ...
+```
+
+`CL_ConnectLocal` hard-sets state **5** at `0x64185F` — "I already have a challenge, send the
+connect". Correct for the in-process loopback it was written for, because `SV_DirectConnect` does
+not challenge NA_LOOPBACK. Wrong over a socket, and the server says so in as many words.
+
+Fix: the immediate at **0x641865**, `5` → `4`. `CL_ConnectLocal` then leaves the client in
+"connecting", its own call sends `getchallenge`, `SVC_GetChallenge` 0x62DB60 answers
+`challengeResponse`, `CL_ConnectionlessPacket` 0x643380 stores it, and the connect that follows
+carries a challenge. Folded into `connect_address.cpp` behind the same `ENW_CONNECT_ADDR`.
+
+**Status: built, not yet run.** `game.lock` went to the `mvp-client` lane again. The next run is
+`jointest.ps1 -Tag join8 -ClientFrom dedi-client`, and the thing to watch is whether
+`SV_PacketEvent` climbs past the connect — that is the client sending usercmds, which is what
+milestone (d) actually asks for.
+
+### What to check the moment a client does get in
+
+The success criterion is not "connected", it is **spawned and moving**:
+
+- `svs.clients[i]` = `0x2547090 + i*0x58D30`; `client_s.lastUsercmd` at **+0x11108** should change
+  every frame the player holds a key.
+- `g_entities[i]` = `0x176C6F0 + i*0x378`; `gentity_s.currentOrigin` at **+0x160** should move.
+- **Test the solo case explicitly.** On a dedicated server the game runs co-op rules even with one
+  player (Quick Revive, prices, revives). For a speedrun platform that is the difference between a
+  valid and an invalid solo run.
+
+---
+
 ## 8. Does a game box need a Steam client?
 
 `CoDWaW.exe` has six sections; the last is **`.bind`** (0x4ABB000, 0x56000 bytes) and the entry point
@@ -872,7 +976,7 @@ the copy and neither opens as a zip. Worth B running Steam's "Verify integrity o
 | (a) runs with no renderer/window | **done, by the stock exe** |
 | (b) loads `nazi_zombie_prototype` and runs script frames | **done** (p21) — map, collision, zombies GSC |
 | (c) stable frame rate with sleep-based pacing, CPU and RAM | **done, soaked 10 min** — 61 Hz, `SV_Frame` **20.0 fps**, **4.85% of one core**, **186.3 MB flat**, 1 hitch (the map load). §7d |
-| (d) a client connects and spawns in | in progress — **the server answers `getstatus` on UDP** (§7e). The client reached `CL_ConnectLocal` but connected to `NA_LOOPBACK`, so no packet left the process; the one-dword fix is built and untested |
+| (d) a client connects and spawns in | in progress — **`SV_DirectConnect` fires from a real second process** (§7f, run `join7`). Three walls cleared: NA_LOOPBACK, the Demonware socket router, and the challenge handshake. The third fix is built and untested; not spawned in yet |
 
 **Estimate for a focused swarm to finish Stage C**, assuming `re` keeps supplying addresses and the
 Steam question is answered: narrowing the SAVED flag to one bit, hours. Site 3 (the wire), 1–2 days —
