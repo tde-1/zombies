@@ -336,20 +336,27 @@ function applyProgressAndBadges(game, summary, seated) {
     }
   }
 
-  // The home page's feed is a log of records and badges — things the site vouched for.
-  // A self-reported finish is neither: it earned no badge above and can hold no record, so
-  // putting "Round 20 on Verruckt" in the same list as a refereed run states something the
-  // site does not know. The run is still on the player's profile, on the map page and on
-  // its own game page, which is where a history belongs.
+  // The home feed is a log of records and badges — things the site vouched for — and a
+  // self-reported finish is neither: it earns no badge above and can hold no record.
+  // That argues for keeping it out, and it did for a while.
   //
-  // (If this should read the other way — B's call — it is this `if` and a flag on the feed
-  // row for the client to mark it with.)
-  if (finish && !game.self_reported) {
+  // It goes in anyway, because right now a self-reported finish is the ONLY kind of finish
+  // there is. Nobody has a refereed run; the dedicated server does not take clients yet. So
+  // gating these out leaves four people playing a game all evening and a home page that
+  // never changes once — which reads as broken, not as rigorous.
+  //
+  // The distinction is kept in the data rather than by the row's absence: `self_reported`
+  // rides on the feed row, so the client marks it and any later query drops it in one
+  // clause. When refereed runs exist, nothing here needs revisiting.
+  if (finish) {
     const map2 = db.prepare('SELECT title FROM maps WHERE key=?').get(game.map_key)
     feed.push({
       kind: 'finish', map_key: game.map_key, game_id: game.id,
       text: `${game.finish_label || finish} on ${map2 ? map2.title : game.map_key}`,
-      data: { rounds: game.rounds, players: seated.length, solo, mode: game.mode },
+      data: {
+        rounds: game.rounds, players: seated.length, solo, mode: game.mode,
+        self_reported: !!game.self_reported,
+      },
     })
   }
   return awarded

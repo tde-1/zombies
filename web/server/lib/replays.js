@@ -127,6 +127,13 @@ function grade(row) {
 /** Q-host-1's rule, as one function. */
 function mayDownload(row, viewer) {
   if (!row) return { ok: false, reason: 'there is no replay for that game' }
+  // Sign-in is required even for a public game's replay, and that is deliberate (B's call,
+  // 2026-09-21). A replay is several MB served off one PC through a tunnel, so anonymous
+  // download is a bandwidth and abuse surface with nothing on the other side of the trade:
+  // the whole site is behind one shared beta password today, so "anonymous" means somebody
+  // who already has that password and simply has not signed in. The signed summary and the
+  // event log stay public for everyone, so nothing is hidden by this — only the large file
+  // needs a name attached to it. Worth revisiting the day the site opens to the public.
   if (!viewer) return { ok: false, reason: 'sign in to download a replay' }
   const sid = String(viewer.steam_id)
   const mine = db.prepare(`SELECT 1 FROM game_players gp JOIN games g ON g.id=gp.game_id

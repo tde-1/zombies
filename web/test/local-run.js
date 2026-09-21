@@ -247,10 +247,19 @@ async function main() {
     truthy((p.json.recent || []).some((x) => x.match_id === match), 'on the profile')
   })
 
-  await check('a self-reported run is not in the home page’s records-and-badges feed', async () => {
+  // This asserted the opposite until 2026-09-21. A self-reported finish earns no badge and
+  // can hold no record, so keeping it out of a records-and-badges feed was defensible — but
+  // during the closed beta it is the only kind of finish that exists, and a home page that
+  // never changes while four people play all evening reads as broken. So it goes in,
+  // carrying the flag that says what it is. The flag is the part worth testing: without it
+  // the client cannot tell a local run from a refereed one, which is the failure that
+  // decision would actually cause.
+  await check('a self-reported run reaches the home feed, flagged as self-reported', async () => {
     const h = await call('/api/home')
     const mine = (h.json.feed || []).filter((f) => f.map && f.map.key === MAP && /Round 23/.test(f.text || ''))
-    eq(mine.length, 0, 'no feed line for a local finish')
+    eq(mine.length, 1, 'one feed line for the local finish')
+    eq(mine[0].data && mine[0].data.self_reported, true, 'flagged self_reported')
+    eq(mine[0].data && mine[0].data.rounds, 23, 'carries the round it reached')
   })
 
   await check('the run is visible to a signed-out visitor too', async () => {
