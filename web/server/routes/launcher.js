@@ -96,7 +96,16 @@ function router() {
       // mock provider that is a local page, with Steam it is Steam.
       sign_in_url: require('./auth').effectiveMode() === 'steam' ? '/auth/steam' : '/auth/mock',
       capabilities: {
-        play: true,              // GET/POST /api/launcher/play
+        // Playing on OUR servers. This said `true` unconditionally, which is the same
+        // lie `replay_downloads: false` was, pointing the other way: the launcher offered
+        // a Play button, the player pressed it, and the flow sat on "Reserving server"
+        // forever because there is no server able to host a game yet. B hit exactly that.
+        //
+        // It is now the truth, measured: is any box actually online. The day the dedicated
+        // server takes clients and a box reports in, the button turns itself on with no
+        // release — and until then the launcher can grey it and say why, which is what the
+        // comment below already asks for.
+        play: require('../lib/boxes').list().some((b) => b.online),
         settings: true,          // GET /api/me/settings
         state: true,             // POST /api/launcher/state
         reports: true,           // POST /api/launcher/report

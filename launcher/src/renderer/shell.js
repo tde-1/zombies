@@ -43,6 +43,17 @@ const STOCK = [
 // to a record this reads it; until then a stock map is playable and a custom one is not,
 // which is today's truth. Delete the fallback, not this function, when it stops being.
 const playable = (m) => (m && m.playable !== undefined ? !!m.playable : !!(m && m.stock))
+
+// Can anyone host a game for us right now? The site answers honestly — `play` is true
+// only when a box is actually online — so this needs no release to flip: the day the
+// dedicated server takes clients, the Play button turns itself on.
+//
+// An older site that does not report the capability at all is treated as UP rather than
+// down, so this never greys out a working button on a site we have not updated yet.
+const serversUp = () => {
+  const c = S.status?.site_api?.capabilities
+  return !c || c.play !== false
+}
 const UNPLAYABLE_NOTE = 'Installs and launches, but its script dies on load.'
 
 // ------------------------------------------------------------------- screens --
@@ -143,8 +154,11 @@ function updatePlay() {
     play.disabled = !ready || installing
     play.onclick = () => installSelected()
   } else {
+    // Play on OUR servers. Off unless the site says a box is actually online — the
+    // dedicated server does not take clients yet, and an enabled button that parks on
+    // "Reserving server" forever is worse than one that says why it is off.
     play.textContent = 'Play'
-    play.disabled = !S.map || !ready || busy || installing
+    play.disabled = !S.map || !ready || busy || installing || !serversUp()
     play.onclick = () => play_(false)
   }
   $('playLocalBtn').disabled = !S.map || !ready || busy || needsInstall || unavailable || installing
@@ -157,6 +171,7 @@ function updatePlay() {
           : !S.map ? 'Pick a map.'
             : unavailable ? 'Not on this PC. Nacht der Untoten works.'
               : needsInstall ? 'Not installed yet.'
+                : !serversUp() ? 'No servers yet — use Play Local.'
                 : !playable(m) ? UNPLAYABLE_NOTE
                   : S.mode === 'verified' ? 'Records and badges count.'
                     : 'Untracked.'
