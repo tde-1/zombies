@@ -3283,3 +3283,64 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   page already renders `broken` / `custom-only` as a tag and the map list can filter on it, so the
   moment `web/server` sets it the site tells the same truth the launcher now does. mvp-server's
   call, not mine.
+- 17:55 launcher-fix: **B's client really is not installed, and every agent who checked
+  was looking at a different folder.** Agents run inside the Claude desktop app's MSIX
+  container, where writes under `%LOCALAPPDATA%` are redirected into
+  `…\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\`. So `setup install`
+  run by an agent lands in a private copy, `setup-cli.js status` run by an agent then
+  confirms it ("Installed: yes", which I reproduced), and **the launcher B starts from
+  Explorer reads the real path and correctly says no**. Measured by running `dir` through
+  `explorer.exe` (which launches de-virtualised): real
+  `%LOCALAPPDATA%\ENWZombies` has `crashes home logs replays state updates` and **no
+  `game\` at all**, and its `launcher.log` is a different 1,315-byte file from the
+  4,135-byte one every agent has been reading. **Retract anything of the form "I verified
+  X under %LOCALAPPDATA%" from an agent session** — it was verified in a sandbox. Same
+  binary, same minute: launched from my shell it says `client: installed`, launched from
+  Explorer it says `client: not installed`. `npm run smoke` now detects this by writing a
+  probe file and looking for it at the redirected path.
+- 17:55 launcher-fix: **the "logging broke at 16:14" discrepancy was two different
+  things and neither was a broken logger.** (1) `launcher.log` timestamps are UTC and
+  file mtimes are local BST, so a log ending 16:14:09Z and a `session.json` at 17:16
+  are 62 minutes apart, not 2. (2) The instance that wrote nothing was writing to the
+  REAL log, which nobody could see from a sandbox. `log()` now records whether its last
+  write landed and `status()` carries it, because an empty `catch` around
+  `appendFileSync` is a logger that cannot say it failed.
+- 17:55 launcher-fix: **"I can't install the client" is one line of CSS and one missing
+  IPC call.** The site is a native `WebContentsView`; an HTML screen in the parent window
+  is drawn UNDER it. `show('firstRun')` only toggled `.on`, so the Install wizard
+  rendered behind the site view and every click on it landed on a web page. **Only the
+  boot screen ever worked**, because the Play path happened to call `showSite(false)`
+  from the main process — which is also why `ENW_SMOKE_SCREEN` had to hide the site
+  itself, a tell that was sitting in the code the whole time. `show()` now asks main to
+  hide the site and closing gives it back.
+- 17:55 launcher-fix: `status()` was one object literal in one try/catch over seven
+  fields that each touch the disk or the network. Any one of them throwing returned
+  `{ok:false}`, the renderer's `status()` threw, and the screen read as **"client: not
+  installed"** — an absence rendered as a fact. Each field is now evaluated alone,
+  failures land in `errors`, and the status carries the resolved PATHS so "not installed"
+  can always be read as "not installed HERE".
+- 17:55 launcher-fix: **a second instance used to exit in 177 ms with no output at all.**
+  `ENW_SMOKE_MS=… "ENW Zombies.exe"` against an already-running launcher produced an
+  empty stdout and an unchanged log — indistinguishable from "the packaged app does not
+  log", and I lost twenty minutes to exactly that before spotting B's launcher was still
+  in the tray from 17:15. It now prints `ENW_SECOND_INSTANCE` and writes a log line, and
+  `npm run smoke` warns when one is running.
+- 17:55 launcher-fix: **Steam sign-in is RFC 8252 and leaves the app, which is B's
+  complaint answered rather than worked around.** System browser, loopback redirect on
+  `127.0.0.1` port 0, PKCE S256, one callback, hard stop on a mismatched `state`,
+  listener closed after two minutes whatever happens. The exchange POST goes through the
+  ELECTRON session, so `zm.sid` lands in the jar `electronCookieProvider` reads. Proven
+  end to end on a local mock-auth site (own port 3402, own `ZM_DATA_DIR`, killed and
+  verified gone): `/api/me` came back `signed_in: true` with the right steam_id, and
+  `session.json` `mock: false`. State mismatch -> 400 and nothing written; second
+  callback -> connection refused.
+- 17:55 launcher-fix: **for `web`** — the loopback path is chosen by probing
+  `/auth/launcher/start` with no parameters (400 = you have the route, 404 = you do not),
+  so mock sites exercise the same code as production. Please keep that 400.
+- 17:55 launcher-fix: **for the nanny lane** — confirmed `window-nanny.ps1` now parses
+  and runs: `{"t":"nanny_up","park":false,…}` then `{"t":"nanny_done"}` in one second.
+  It is a check in `npm run smoke`. And **`-Park` is NOT leaking into a player launch**:
+  the only route to it is `config.stealthLaunch`, which defaults false and is absent from
+  B's config, so `windowMode` resolves to `player`. His off-screen error boxes are
+  something else. The `message` capture against a REAL game modal is still **unproven** —
+  I did not take `game.lock` (custom-maps has it).
