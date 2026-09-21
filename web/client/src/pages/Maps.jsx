@@ -2,19 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, num } from '../api'
 import { useSession } from '../session'
-import { Section, Empty, FinishChips, Health } from '../components/Bits'
+import { Section, Empty, Loading, FinishChips, Health } from '../components/Bits'
 import MapCard from '../components/MapCard'
 
 // Maps = Movement's mode home (13 §3): featured, map of the week, new maps, playlists, then
 // the full list with a map count.
 //
-// The filters are the four B named, all present and all in the URL so a filtered view is a
-// link somebody can paste:
-//   has Easter egg / has buyable ending · author / year / version · popularity / rating /
-//   newest · your progress
-//
-// Search is the smart one: the server ranks name (including the nazi_zombie_ alias) > author
-// > tags > description.
+// The four filters B named are all here and all in the URL, so a filtered view is a link
+// somebody can paste: has Easter egg / has buyable ending · author / year / version ·
+// popularity / rating / newest · your progress. Search is the server's ranking: name
+// (including the nazi_zombie_ alias) > author > tags > description.
 
 export default function Maps() {
   const [sp, setSp] = useSearchParams()
@@ -43,7 +40,7 @@ export default function Maps() {
     setSp(next, { replace: true })
   }
 
-  if (!list) return <div className="page"><p className="sub">Loading.</p></div>
+  if (!list) return <div className="page"><Loading /></div>
 
   const filtering = ['q', 'finish', 'author', 'year', 'tag', 'progress'].some((k) => sp.get(k))
 
@@ -52,7 +49,7 @@ export default function Maps() {
       {!filtering && home && (
         <>
           {home.week && (
-            <Section title="Map of the week" sub={home.week.note || ''}>
+            <Section title="Map of the week">
               <MapCard map={home.week.map} big />
             </Section>
           )}
@@ -63,7 +60,7 @@ export default function Maps() {
             </Section>
           )}
 
-          <Section title="New" sub="Most recently added to the archive">
+          <Section title="New">
             <div className="grid c4">{home.newest.slice(0, 4).map((m) => <MapCard key={m.key} map={m} />)}</div>
           </Section>
 
@@ -72,13 +69,14 @@ export default function Maps() {
               <div className="grid c3">
                 {home.playlists.slice(0, 6).map((p) => (
                   <Link className="card" key={p.id} to={`/playlists/${p.slug}`}>
-                    <h3>{p.name}</h3>
-                    <p className="sub" style={{ margin: '4px 0 8px' }}>{p.blurb || `${p.map_count} map${p.map_count === 1 ? '' : 's'}`}</p>
-                    <div className="row wrap" style={{ gap: 5 }}>
-                      {p.maps.slice(0, 5).map((m) => <span className="chip" key={m.key}>{m.title}</span>)}
-                      {p.map_count > 5 && <span className="chip">+{p.map_count - 5}</span>}
+                    <div className="spread" style={{ marginBottom: 8 }}>
+                      <h3>{p.name}</h3>
+                      <span className="tiny num">{p.progress ? `${p.progress.done} / ${p.progress.total}` : `${p.map_count}`}</span>
                     </div>
-                    {p.progress && <div className="tiny" style={{ marginTop: 8 }}>{p.progress.done} / {p.progress.total} beaten</div>}
+                    <div className="row wrap" style={{ gap: 5 }}>
+                      {p.maps.slice(0, 5).map((m) => <span className="tag" key={m.key}>{m.title}</span>)}
+                      {p.map_count > 5 && <span className="tag">+{p.map_count - 5}</span>}
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -89,22 +87,23 @@ export default function Maps() {
 
       <Section
         title={archive ? 'The archive' : 'All maps'}
-        sub={`${num(list.total)} map${list.total === 1 ? '' : 's'}`}
         right={(
-          <div className="row" style={{ gap: 6 }}>
-            <button className={`btn small ${view === 'rows' ? 'on' : 'ghost'}`} onClick={() => setView('rows')}>List</button>
-            <button className={`btn small ${view === 'cards' ? 'on' : 'ghost'}`} onClick={() => setView('cards')}>Cards</button>
+          <div className="row" style={{ gap: 10 }}>
+            <span className="tiny num">{num(list.total)} map{list.total === 1 ? '' : 's'}</span>
+            <div className="seg">
+              <button className={view === 'rows' ? 'on' : ''} onClick={() => setView('rows')}>List</button>
+              <button className={view === 'cards' ? 'on' : ''} onClick={() => setView('cards')}>Cards</button>
+            </div>
           </div>
         )}
       >
-        <div className="filters">
-          <input type="search" value={q} placeholder="Map name, author, tag, or anything in the readme"
-            onChange={(e) => set('q', e.target.value)} />
+        <div className="bar">
+          <input type="search" value={q} placeholder="Search maps" onChange={(e) => set('q', e.target.value)} />
 
           <select value={sp.get('finish') || ''} onChange={(e) => set('finish', e.target.value)}>
             <option value="">Any finish</option>
-            <option value="ee">Has Easter egg</option>
-            <option value="buyable">Has buyable ending</option>
+            <option value="ee">Easter egg</option>
+            <option value="buyable">Buyable ending</option>
             <option value="survival">Survival only</option>
           </select>
 
@@ -125,7 +124,7 @@ export default function Maps() {
 
           {signedIn && (
             <select value={sp.get('progress') || ''} onChange={(e) => set('progress', e.target.value)}>
-              <option value="">Your progress</option>
+              <option value="">Any progress</option>
               <option value="unplayed">Not played</option>
               <option value="played">Played</option>
               <option value="beaten">Beaten</option>
@@ -136,23 +135,22 @@ export default function Maps() {
           <select value={sp.get('sort') || 'popular'} onChange={(e) => set('sort', e.target.value)}>
             <option value="popular">Popularity</option>
             <option value="rating">Rating</option>
-            <option value="newest">Newest rescued</option>
+            <option value="newest">Newest</option>
             <option value="oldest">Release date</option>
             <option value="name">Name</option>
           </select>
 
-          <button className={`btn small ${archive ? 'on' : 'ghost'}`} onClick={() => set('archive', archive ? '' : '1')}
-            title="Maps that do not run on our servers are hidden from this list and live on the archive view">
+          <button className={`btn small ${archive ? 'on' : 'ghost'}`} onClick={() => set('archive', archive ? '' : '1')}>
             Include broken
           </button>
 
           {filtering && <button className="btn small ghost" onClick={() => setSp(new URLSearchParams())}>Clear</button>}
         </div>
 
-        {list.maps.length === 0 ? <Empty>No map matches that.</Empty>
-          : view === 'cards' ? <div className="grid c4">{list.maps.map((m) => <MapCard key={m.key} map={m} />)}</div>
+        {list.maps.length === 0 ? <div className="listing"><Empty>No map matches.</Empty></div>
+          : view === 'cards' ? <div className="grid c4" style={{ marginTop: 12 }}>{list.maps.map((m) => <MapCard key={m.key} map={m} />)}</div>
             : (
-              <div className="card flat">
+              <div className="listing">
                 {list.maps.map((m) => (
                   <Link className="maprow" key={m.key} to={`/m/${m.key}`}>
                     <div className="name">
@@ -162,7 +160,7 @@ export default function Maps() {
                     <div className="row" style={{ gap: 5 }}><FinishChips map={m} /></div>
                     <div className="row" style={{ gap: 5 }}>
                       {archive && <Health health={m.health} />}
-                      {m.progress && m.progress.beaten && <span className="chip on">Beaten</span>}
+                      {m.progress && m.progress.beaten && <span className="tag good">Beaten</span>}
                     </div>
                     <span className="tiny num" style={{ minWidth: 70, textAlign: 'right' }}>
                       {m.rating != null ? `${m.rating}%` : ''} {m.plays ? `· ${m.plays}` : ''}

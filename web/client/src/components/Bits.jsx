@@ -44,22 +44,24 @@ export function Lockup({ h = 22, word = true }) {
 }
 
 // ---- people -----------------------------------------------------------------------
-export function Avatar({ user, size = 'sm' }) {
-  if (!user) return <span className={`avatar ${size === 'lg' ? 'lg' : ''}`}>?</span>
+export function Avatar({ user, size = 'md' }) {
+  const cls = `avatar ${size === 'lg' ? 'lg' : size === 'sm' ? 'sm' : ''}`
+  if (!user) return <span className={cls}>?</span>
   const initial = String(user.name || '?').trim().charAt(0).toUpperCase()
   return (
-    <span className={`avatar ${size === 'lg' ? 'lg' : ''}`} title={user.name}>
+    <span className={cls} title={user.name}>
       {user.avatar ? <img src={user.avatar} alt="" /> : initial}
     </span>
   )
 }
 
 export function PlayerLink({ user, avatar = true }) {
-  if (!user) return <span className="sub">—</span>
+  if (!user) return <span className="faint">—</span>
   return (
-    <Link to={`/id/${encodeURIComponent(user.name || user.steam_id)}`} className="row" style={{ gap: 7, display: 'inline-flex' }}>
-      {avatar && <Avatar user={user} />}
-      <span>{user.name}{user.vip && <span className="chip vip" style={{ marginLeft: 6 }}>VIP</span>}</span>
+    <Link to={`/id/${encodeURIComponent(user.name || user.steam_id)}`} className="who">
+      {avatar && <Avatar user={user} size="sm" />}
+      <span className="who-n">{user.name}</span>
+      {user.vip && <span className="tag gold">VIP</span>}
     </Link>
   )
 }
@@ -73,7 +75,7 @@ export function Level({ standing, showBar = false }) {
       {standing.prestige > 0 && <span className={`em ${e.finish === 'silver' ? 'silver' : e.finish === 'gold' ? 'gold' : ''} ${e.icon === 'missing' ? 'missing' : ''}`}>{e.icon === 'missing' ? '' : standing.prestige}</span>}
       <b className="num">{standing.level}</b>
       {showBar && standing.next_level_cost && (
-        <span className="bar" style={{ width: 70 }}><i style={{ width: `${Math.round(standing.progress * 100)}%` }} /></span>
+        <span className="bar-meter" style={{ width: 70 }}><i style={{ width: `${Math.round(standing.progress * 100)}%` }} /></span>
       )}
     </span>
   )
@@ -112,29 +114,35 @@ export function BadgeTile({ badge, gold = false }) {
 export function FinishChips({ map }) {
   return (
     <>
-      {map.has_ee && <span className="chip ee">Easter Egg</span>}
-      {map.has_buyable && <span className="chip be">Buyable Ending</span>}
-      {!map.has_ee && !map.has_buyable && <span className="chip">Round {map.round_n}</span>}
+      {map.has_ee && <span className="tag gold">Easter egg</span>}
+      {map.has_buyable && <span className="tag hot">Buyable ending</span>}
+      {!map.has_ee && !map.has_buyable && <span className="tag">Round {map.round_n}</span>}
     </>
   )
 }
 
 export function Health({ health }) {
-  if (health === 'verified') return <span className="chip" title="Read end to end and refereed">Verified</span>
-  if (health === 'broken') return <span className="chip be" title="Does not run on our servers">Broken</span>
-  if (health === 'custom-only') return <span className="chip" title="Runs, but not in a Verified game">Custom only</span>
-  return <span className="chip">Playable</span>
+  if (health === 'verified') return <span className="tag good">Verified</span>
+  if (health === 'broken') return <span className="tag hot">Broken</span>
+  if (health === 'custom-only') return <span className="tag">Custom only</span>
+  if (health === 'catalogued') return <span className="tag">Catalogued</span>
+  return null
+}
+
+// Untracked: one mark, one place. A local or self-reported game earns nothing, and that is
+// worth four characters, not a sentence.
+export function Untracked({ title = 'No badges, records or XP' }) {
+  return <span className="tag hot" title={title}>Untracked</span>
 }
 
 // ---- layout helpers --------------------------------------------------------------------
-export function Section({ title, sub, right, children }) {
+export function Section({ title, right, children }) {
   return (
     <section className="section">
       {(title || right) && (
         <header>
-          {title && <h2>{title}</h2>}
-          {sub && <span className="sub">{sub}</span>}
-          {right && <span style={{ marginLeft: 'auto' }}>{right}</span>}
+          {title && <div className="section-label">{title}</div>}
+          {right && <span className="right">{right}</span>}
         </header>
       )}
       {children}
@@ -144,12 +152,16 @@ export function Section({ title, sub, right, children }) {
 
 export const Empty = ({ children }) => <div className="empty">{children}</div>
 
-export function Stat({ label, value, sub }) {
+export const Loading = () => <div className="loading"><span className="spinner" /></div>
+
+export const Page = ({ wide = false, children }) => <div className={`page${wide ? ' wide' : ''}`}>{children}</div>
+
+export function Stat({ label, value }) {
+  const v = value === null || value === undefined || value === '' ? '—' : value
   return (
     <div className="stat">
       <span>{label}</span>
-      <b className="num">{typeof value === 'number' ? num(value) : value}</b>
-      {sub && <span className="tiny">{sub}</span>}
+      <b className="num">{typeof v === 'number' ? num(v) : v}</b>
     </div>
   )
 }

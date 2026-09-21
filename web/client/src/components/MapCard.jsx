@@ -21,8 +21,7 @@ export default function MapCard({ map, big = false }) {
       </div>
       <div className="row wrap" style={{ gap: 6 }}>
         <FinishChips map={map} />
-        {p && p.beaten && <span className="chip on">Beaten</span>}
-        {p && !p.beaten && p.played && <span className="chip">Played</span>}
+        {p && p.beaten ? <span className="tag good">Beaten</span> : p && p.played ? <span className="tag">Played</span> : null}
       </div>
     </Link>
   )
