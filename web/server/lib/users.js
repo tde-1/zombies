@@ -89,8 +89,18 @@ function pub(row) {
     xp: row.xp_total || 0,
     created_at: row.created_at || null,
     last_seen: row.last_seen || null,
+    // A seeded account, so the client can mark it rather than hardcoding the id range.
+    //
+    // It is derived, not stored: `7656119000000000x` is outside the real SteamID64 space,
+    // so nothing signed in through Steam can ever land in it. On this dev box the mock
+    // sign-in page hands these ids out, so B himself plays as one of them — which is
+    // exactly why it is a property of the ACCOUNT and never of the game. Whether a run is
+    // real is `games.demo`, and nothing else.
+    demo_account: isDemoId(row.steam_id),
   }
 }
+
+const isDemoId = (steamId) => /^7656119000000000\d$/.test(String(steamId || ''))
 
 const publicById = (steamId) => pub(byId(steamId))
 
@@ -173,6 +183,6 @@ function pendingRequests(steamId) {
 
 module.exports = {
   DEFAULT_SETTINGS, DELETED_NAME,
-  ensure, byId, resolve, pub, publicById, settings, saveSettings, anonymise,
+  ensure, byId, resolve, pub, publicById, settings, saveSettings, anonymise, isDemoId,
   friendIds, friendState, requestFriend, respondFriend, removeFriend, pendingRequests,
 }

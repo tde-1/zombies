@@ -833,11 +833,33 @@ function migrate() {
   // The cost is that a demo game and a real one are the same shape, and B looking at his
   // own first run has no way to tell which rows are his. This column is the difference,
   // and it is set by the seeder and by nothing else — no request can set it.
-  addColumn('games', 'demo', 'INTEGER DEFAULT 0')
+  if (addColumn('games', 'demo', 'INTEGER DEFAULT 0')) {
+    const n = markSeededDemoGames()
+    if (n) console.log(`[db] marked ${n} seeded demo game${n === 1 ? '' : 's'}`)
+  }
 
   return db
 }
 
+/**
+ * Mark games that the seeder wrote, in a database seeded before `games.demo` existed —
+ * B's live site among them, where six scaffolding games have been sitting in exactly the
+ * shape of a real one.
+ *
+ * The marker is the replay pointer. `seedDemo()` is the only thing that has ever written
+ * `demo.enwr`, and it writes it for every game it makes.
+ *
+ * It is deliberately NOT "every player on it is a demo account". The mock sign-in page
+ * hands those reserved ids out, so on this dev box B plays as one of them, and that rule
+ * would mark his own runs as fake — which is the exact failure this column exists to
+ * prevent, inverted.
+ */
+function markSeededDemoGames() {
+  return db.prepare(`UPDATE games SET demo=1
+                      WHERE COALESCE(demo,0)=0
+                        AND id IN (SELECT game_id FROM replays WHERE file='demo.enwr')`).run().changes
+}
+
 migrate()
 
-module.exports = { db, now, migrate, addColumn, DB_PATH, DATA_DIR }
+module.exports = { db, now, migrate, addColumn, markSeededDemoGames, DB_PATH, DATA_DIR }

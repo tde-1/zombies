@@ -440,6 +440,31 @@ async function main() {
     eq((await call('/api/games/' + match)).json.game.demo, false, 'a real run is not')
   })
 
+  await check('the backfill finds every seeded game and no real one', async () => {
+    // The migration only runs this when it creates the column, which on a fresh database
+    // is before any game exists. B's live site is the case it is for: six seeded games
+    // already sitting there in the shape of a real one. So the predicate is tested here
+    // directly — unmark everything, run it, and see what it picks up.
+    stopServer()
+    await new Promise((r) => setTimeout(r, 400))
+    const prevData = process.env.ZM_DATA_DIR
+    process.env.ZM_DATA_DIR = env.ZM_DATA_DIR
+    delete require.cache[require.resolve('../server/db/database')]
+    const { db, markSeededDemoGames } = require('../server/db/database')
+    db.prepare('UPDATE games SET demo=0').run()
+    const n = markSeededDemoGames()
+    eq(n, 6, 'six seeded games marked')
+    const marked = db.prepare('SELECT match_id FROM games WHERE demo=1').all().map((g) => g.match_id)
+    eq(marked.every((id) => id.startsWith('demo_')), true, 'and only the seeded ones: ' + marked.join(', '))
+    eq(db.prepare('SELECT demo FROM games WHERE match_id=?').get(match).demo, 0, 'the real run stays unmarked')
+    db.close()
+    delete require.cache[require.resolve('../server/db/database')]
+    for (const m of ['../server/lib/localMatches', '../server/lib/results']) delete require.cache[require.resolve(m)]
+    if (prevData === undefined) delete process.env.ZM_DATA_DIR; else process.env.ZM_DATA_DIR = prevData
+    startServer()
+    await waitUp()
+  })
+
   await check('re-seeding demo content on a database with real games refuses', async () => {
     const out = await new Promise((resolve) => {
       let s = ''
