@@ -98,12 +98,18 @@ export function findClientDll({ repoRoot = null, explicit = null } = {}) {
   const h0 = consider(path.join(launcherRoot, 'resources', 'client', 'enw_t4.dll'), 'staged in the launcher folder')
   if (h0) hits.push(h0)
 
+  // Development. PREFERENCE FIRST, THEN FRESHNESS -- the same order tools/stage-client.js
+  // uses, and for the same reason: four agents build into build/<name> on this box, so
+  // "newest" picks whoever compiled last rather than the build that is the client.
+  // It silently installed build/dedi (a dedicated-server experiment) over a client
+  // build made ninety seconds earlier.
   const repo = repoRoot || path.resolve(launcherRoot, '..')
+  const PREFER = ['launcher', 'referee', 'foundation']
   for (const name of ['launcher', 'referee', 'dedi', 'foundation']) {
     const h = consider(path.join(repo, 'build', name, 'enw_t4.dll'), `repo build/${name} (development)`)
-    if (h) hits.push(h)
+    if (h) hits.push({ ...h, rank: PREFER.indexOf(name) < 0 ? 99 : PREFER.indexOf(name) })
   }
-  hits.sort((a, b) => b.mtime - a.mtime)
+  hits.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || b.mtime - a.mtime)
   return { dll: hits[0] || null, tried }
 }
 
@@ -154,15 +160,31 @@ export function explainSetupFailure(err) {
 // Creating an NTFS junction needs no privileges, but a policy or a filter driver can
 // still refuse it, and the failure is opaque. Answered once, before we start copying
 // eight megabytes we would only have to undo.
-export function canMakeJunctions(dir) {
+export function canMakeJunctions(dir, target) {
+  // THE TARGET MUST BE THE REAL ONE, i.e. outside our folder.
+  //
+  // The first version of this probe linked to a scratch folder inside `dir` and
+  // refused every install on B's PC. That is not a bug in the probe — it is the same
+  // behaviour launcher.md §3b already recorded: on this machine a junction whose link
+  // AND target are both inside the ENW folder resolves to nothing, while the identical
+  // junction with either end outside it is fine. `fsutil reparsepoint query` showed
+  // data identical to a working junction in both cases.
+  //
+  // So the probe has to be the thing we are actually about to do: a link from inside
+  // our folder to the player's install. A probe that tests something else is worse
+  // than no probe, because it fails on exactly the machine it was written for.
   const probe = path.join(dir, '.enw-junction-probe')
-  const target = path.join(dir, '.enw-junction-target')
+  const clear = () => {
+    // rmdir, never rm -r: rmdir removes the reparse point and leaves the target alone.
+    // A recursive delete THROUGH a junction deletes the player's 12 GB install, looks
+    // like it worked, and is the single most dangerous thing this file can do.
+    try { if (fs.lstatSync(probe).isSymbolicLink()) fs.rmdirSync(probe) } catch {}
+  }
   try {
-    fs.mkdirSync(assertWritable(target), { recursive: true })
-    try { fs.rmSync(probe, { recursive: true, force: true }) } catch {}
+    clear()
     fs.symlinkSync(target, assertWritable(probe), 'junction')
-    const ok = fs.existsSync(probe)
-    return { ok, reason: ok ? null : 'the junction was created but does not resolve' }
+    const ok = fs.existsSync(probe) && fs.readdirSync(probe).length >= 0
+    return { ok, reason: ok ? null : `Windows created the folder link but it does not resolve (${probe} -> ${target}).` }
   } catch (e) {
     return {
       ok: false,
@@ -173,8 +195,7 @@ export function canMakeJunctions(dir) {
         `probably not NTFS, or a security policy is blocking it.\n\n(Technical detail: ${e.code || ''} ${e.message})`,
     }
   } finally {
-    try { fs.rmSync(probe, { recursive: true, force: true }) } catch {}
-    try { fs.rmSync(target, { recursive: true, force: true }) } catch {}
+    clear()
   }
 }
 
@@ -214,7 +235,7 @@ export function install({ gameDir, dllPath = null, repoRoot = null, force = fals
   // 0. Can we link at all? Asked BEFORE eight megabytes of copying, because the
   //    junctions are what make this an ENW folder rather than a 12 GB duplicate, and
   //    "it failed at step 2" is a much worse experience than "it cannot work here".
-  const j = canMakeJunctions(dest)
+  const j = canMakeJunctions(dest, path.join(src, LINK_DIRS[0]))
   if (!j.ok) { step('junctions', j.reason, false); throw new Error(j.reason) }
 
   // 1. Real copies of every file in the root of the player's install.

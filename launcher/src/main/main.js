@@ -631,11 +631,19 @@ function wireIpc() {
       push('toast', { kind: 'info', text: 'Downloading the map…' })
       library.install(mapKey, { onProgress: (p) => push('mapProgress', { bsp: mapKey, ...p }) })
     }
+    // A CUSTOM MAP IS ITS OWN MOD. World at War loads `nazi_zombie_leviathan` out of
+    // `mods\nazi_zombie_leviathan`, so fs_game has to be that and not `mods/enw` — get
+    // it wrong and the engine says `Can't find map "..."` with the 450 MB fastfile
+    // sitting right there. Our DLL rides in on the binkw32 proxy, not on fs_game, so
+    // it does not care which mod is loaded. A stock map (prototype, asylum, sumpf,
+    // factory) is not installed by us and keeps the ENW mod folder.
+    const fsGame = arg.fs_game || arg.map?.fs_game ||
+      (library.isInstalled(mapKey) ? `mods/${mapKey}` : undefined)
     return startPlay({
       map: mapKey,
       mode: 'local',
       local: true,
-      fsGame: arg.fs_game || arg.map?.fs_game || null,
+      fsGame,
       // If the page already called /local/start, reuse its match rather than opening
       // a second one.
       prestarted: arg.match_id ? arg : null,

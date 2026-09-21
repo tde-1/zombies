@@ -10,8 +10,11 @@
 import { BootFlow } from './bootflow.js'
 import { buildArgs } from './launch.js'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { P } from './paths.js'
 import * as lock from './gamelock.js'
+import { HostAgent } from './hostagent.js'
+import { LocalRun } from './localrun.js'
 
 const argv = process.argv.slice(2)
 const has = (f) => argv.includes(f)
@@ -55,6 +58,27 @@ if (has('--dry-run')) {
   process.exit(0)
 }
 
+// --track: the whole MVP from a terminal — start the referee, register the match,
+// launch the game pointed at it, and print the round count and the replay path when
+// the run ends. Exactly what the app's Play Local button does, minus Electron, so a
+// failure can be told apart from a UI problem.
+let agent = null
+let run = null
+let matchId = val('--match', `l_${crypto.randomBytes(4).toString('hex')}`)
+let linkHost = val('--link', null)
+if (has('--track')) {
+  agent = new HostAgent()
+  agent.on('log', (m) => console.log(`[ .. ] referee                  ${m}`))
+  const info = await agent.ensure()
+  run = new LocalRun({ api: null, dashUrl: info.dashUrl })
+  run.offline = true            // no site from the CLI; the run is still recorded
+  run.matchId = matchId
+  const expected = await run.expect({ instance: matchId, matchId, map })
+  linkHost = expected.link || info.linkHost
+  console.log(`[done] referee                  match ${matchId} on ${linkHost}; dashboard ${info.dashUrl}`)
+  console.log(`[done] replays                  ${info.replayDir}`)
+}
+
 const flow = new BootFlow({
   map,
   siteUrl,
@@ -62,10 +86,12 @@ const flow = new BootFlow({
   localMap: has('--local') ? map : null,
   fsGame,
   windowMode,
+  instance: has('--track') ? matchId : undefined,
+  linkHost,
   installDir: fsGame ? path.join(P.maps, fsGame.split('/').pop()) : null,
   useGameLock: !has('--no-lock'),
   lockName: 'launcher',
-  hostDashboard: val('--dash', 'http://127.0.0.1:8787'),
+  hostDashboard: agent?.dashUrl || val('--dash', 'http://127.0.0.1:8787'),
   serverTimeoutMs: Number(val('--server-timeout', '8000')),
   connectTimeoutMs: seconds * 1000,
   nannySeconds: seconds + 30,
@@ -78,6 +104,28 @@ flow.on('step', (s) => {
 })
 flow.on('note', () => {})
 if (has('--console')) flow.on('console', (l) => console.log(`    | ${l}`))
+
+let lastRound = null
+// --track: watch the referee the way the app does, and say out loud what it sees.
+// This is the instrumentation that turns "did my run get logged?" into a line of text.
+if (run) {
+  run.on('frame', (f) => { if (f.n === 1 || f.round !== lastRound) { lastRound = f.round; console.log(`[ .. ] round                     ${f.round} (${f.players} player${f.players === 1 ? '' : 's'})`) } })
+  run.relayUntilDone({ instanceId: matchId, timeoutMs: (seconds + 120) * 1000 }).then((r) => {
+    console.log('')
+    if (r.ok) {
+      console.log(`RUN LOGGED  match ${matchId}`)
+      console.log(`  round           ${r.summary?.rounds}`)
+      console.log(`  finish          ${r.summary?.finish?.label || r.summary?.end_reason || '-'}`)
+      console.log(`  duration        ${Math.round((r.summary?.duration_ms || 0) / 1000)}s`)
+      console.log(`  flags           ${(r.summary?.flags || []).join(', ') || '-'}`)
+      console.log(`  replay          ${r.replay?.file || '(none)'}`)
+      console.log(`  verify it with  node infra\\host-agent\\tools\\verify.js "${r.replay?.file || ''}"`)
+    } else {
+      console.log(`RUN NOT LOGGED: ${r.reason}  (last round seen: ${r.lastRound ?? 'none'}, ${r.frames} frames)`)
+    }
+  }).catch((e) => console.log(`relay failed: ${e.message}`))
+}
+
 
 let stopping = false
 const stop = (why) => {
@@ -92,7 +140,14 @@ const stop = (why) => {
     if (d.length) { console.log('\nWindows dialogs answered:'); for (const x of d) console.log(`  - "${x.title}" -> ${x.answered}  [${x.buttons}]`) }
     console.log(`\nsimulated steps: ${flow.simulated.length ? flow.simulated.join(', ') : 'none'}`)
     console.log(`game lock now: ${JSON.stringify(lock.read())}`)
-    process.exit(0)
+    // Give the referee time to notice the game is gone, end it and sign the replay.
+    if (run) {
+      console.log('waiting for the referee to close the game and sign the replay…')
+      setTimeout(() => { run.stop(); agent?.stop(); process.exit(0) }, 25_000)
+    } else {
+      agent?.stop()
+      process.exit(0)
+    }
   }, 1200)
 }
 

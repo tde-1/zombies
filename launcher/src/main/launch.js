@@ -136,7 +136,12 @@ export function buildArgs({
 
   // The three from the brief.
   a.push('+set', 'com_introPlayed', '1')
-  a.push('+set', 'fs_game', fsGame)
+  // `fsGame = MOD_NAME` only defaults an UNDEFINED argument, and every caller that
+  // does not have a custom map passes an explicit null — so the engine was being told
+  // `+set fs_game null`. MEASURED 2026-09-21: the game then wrote its console.log to
+  // `<fs_homepath>\null\console.log` and loaded no mod at all, which is also exactly
+  // where a custom map would have failed to load from.
+  a.push('+set', 'fs_game', fsGame || MOD_NAME)
 
   // Startup dvars that make an unattended boot survivable. These are the launch.ps1
   // set, minus the dev-only ones.
