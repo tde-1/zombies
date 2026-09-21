@@ -29,6 +29,12 @@ export class LocalRun extends EventEmitter {
     this.matchId = null
     this.frames = 0
     this.stopped = false
+    // Set when the site never opened a match: no session, site down, or a friend
+    // playing with no internet. The run is still refereed and still recorded to a
+    // signed replay on their own disk — it simply has nowhere to be posted. A local
+    // game counts for nothing either way, so the site being reachable must not be
+    // what decides whether a player's own rounds get written down.
+    this.offline = false
   }
 
   async dash() {
@@ -103,22 +109,37 @@ export class LocalRun extends EventEmitter {
       const cur = s.instances.find((x) => x.id === inst.id)
       if (cur?.game && !cur.finished) {
         last = cur.game
-        try {
-          await this.api.req('/api/launcher/local/live', { method: 'POST', body: { match_id: this.matchId, state: cur.game } })
-          this.frames++
-          this.emit('frame', { n: this.frames, round: cur.game.round, players: cur.game.players?.length || 0 })
-        } catch {}
+        this.frames++
+        this.emit('frame', { n: this.frames, round: cur.game.round, players: cur.game.players?.length || 0 })
+        if (!this.offline) {
+          try {
+            await this.api.req('/api/launcher/local/live', { method: 'POST', body: { match_id: this.matchId, state: cur.game } })
+          } catch {}
+        }
       }
 
       const done = s.games?.find((g) => g.summary && g.summary.instance === inst.id)
       if (done) {
+        // The replay is on the player's own disk whatever the site says. Report the
+        // pointer either way, so "where is my replay" always has an answer.
+        const out = { ok: true, frames: this.frames, summary: done.summary, replay: done.replay || null, stored: null }
+        if (this.offline) {
+          this.emit('result', out)
+          return { ...out, posted: false, reason: 'not posted: the site did not open this match' }
+        }
         const r = await this.api.req('/api/launcher/local/result', {
           method: 'POST',
           body: { summary: { ...done.summary, match_id: this.matchId }, replay: done.replay || null },
         })
-        if (!r.ok) return { ok: false, reason: r.data?.error || `the site answered ${r.status}`, frames: this.frames }
+        if (!r.ok) {
+          // A failed POST is not a failed RUN. The rounds happened and the replay
+          // exists; say which part did not work rather than throwing both away.
+          this.emit('result', out)
+          return { ...out, posted: false, reason: r.data?.error || `the site answered ${r.status} when filing the result` }
+        }
+        out.stored = r.data
         this.emit('result', r.data)
-        return { ok: true, frames: this.frames, stored: r.data, summary: done.summary, replay: done.replay || null }
+        return { ...out, posted: true }
       }
 
       if (cur && cur.finished) break

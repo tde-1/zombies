@@ -26,6 +26,7 @@ const launch = await import('../src/main/launch.js')
 const crash = await import('../src/main/crash.js')
 const settings = await import('../src/main/settings.js')
 const updates = await import('../src/main/updates.js')
+const hostagent = await import('../src/main/hostagent.js')
 
 let pass = 0
 let fail = 0
@@ -432,16 +433,70 @@ await test('a build with no client DLL is refused, loudly', async () => {
   // The first packaged build shipped with no enw_t4.dll. Setup then "succeeded" with a
   // soft warning and the launcher said "not installed yet" forever with no reason.
   // Now it throws, naming every path it looked in.
-  const setupSrc = String(fs.readFileSync(new URL('../src/main/setup.js', import.meta.url)))
-  assert.ok(setupSrc.includes('is missing from this build'), 'the error must say the build is at fault')
-  assert.ok(setupSrc.includes('Looked in:'), 'and must list where it looked')
-  assert.ok(setupSrc.includes('process.resourcesPath'), 'and must look where a PACKAGED app keeps it')
+  // Behaviour, not a grep for a sentence: the message a player gets must name every
+  // path we looked at, because "ENW client is not installed" with no reason is
+  // exactly the report we got from B and could do nothing with.
+  const tried = [
+    { path: 'C:\\somewhere\\resources\\client\\enw_t4.dll', via: 'shipped with the launcher', exists: false },
+    { path: 'C:\\somewhere\\resources\\app.asar\\resources\\client\\enw_t4.dll', via: 'staged', exists: false, skipped: 'inside app.asar' },
+  ]
+  const msg = setup.explainMissingClient(tried)
+  assert.match(msg, /enw_t4\.dll/, 'the error must name the file')
+  assert.match(msg, /packaging fault/, 'and say the build is at fault, not the player')
+  for (const t of tried) assert.ok(msg.includes(t.path), `must list ${t.path}`)
+
   // The build itself refuses rather than producing an installer that cannot work.
   const stage = String(fs.readFileSync(new URL('../tools/stage-client.js', import.meta.url)))
   assert.ok(stage.includes('process.exit(1)'))
   const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
   assert.match(pkg.scripts.pack, /stage-client/, 'pack must stage the client first')
   assert.ok((pkg.build.extraResources || []).some((r) => String(r.to) === 'client'), 'the DLL must ship as a real file')
+})
+
+await test('the client DLL is never taken from inside app.asar', () => {
+  // MEASURED on the packaged build of 2026-09-20: `resources/**` was packed into the
+  // archive AND shipped beside it, and the mtime sort picked the copy INSIDE
+  // app.asar. It happens to copy, because Electron patches fs for this process only.
+  // It is the kind of thing that works until it does not.
+  const r = setup.findClientDll({ explicit: 'C:\\x\\resources\\app.asar\\resources\\client\\enw_t4.dll' })
+  assert.equal(r.tried[0].skipped, 'inside app.asar', 'an asar path must be refused by name')
+  assert.ok(!r.dll || !/app\.asar/.test(r.dll.path), `chose ${r.dll?.path}`)
+  for (const t of r.tried) if (/app\.asar/.test(t.path)) assert.equal(t.exists, false, `${t.path} must never count as found`)
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.ok(pkg.build.files.includes('!resources/client/**'), 'and it must not be packed into the archive at all')
+})
+
+await test('the referee ships with the launcher and is reachable when packaged', () => {
+  // A player has no repo and no Node. If host.js is not an extraResource there is no
+  // referee on their machine, and a local game records nothing — silently.
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  const ex = pkg.build.extraResources || []
+  assert.ok(ex.some((r) => String(r.to) === 'host-agent'), 'the host agent must ship beside the app')
+  const found = hostagent.findHostAgent()
+  assert.ok(found.file, `host.js must be findable; looked in ${found.tried.map((t) => t.path).join(', ')}`)
+  assert.ok(fs.existsSync(found.file))
+})
+
+await test('files another program has to open are unpacked from the asar', () => {
+  // powershell.exe cannot read inside app.asar. Without asarUnpack the window nanny
+  // silently never runs in a packaged build, and the "Set Optimal Settings?" modal
+  // that blocked every unattended run comes back.
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.ok((pkg.build.asarUnpack || []).includes('tools/**'), 'tools/ must be unpacked')
+  assert.equal(
+    paths.unpacked('C:\\x\\resources\\app.asar\\tools\\window-nanny.ps1'),
+    'C:\\x\\resources\\app.asar.unpacked\\tools\\window-nanny.ps1'
+  )
+})
+
+await test('a path with a space in it survives being turned back from a file: URL', () => {
+  // `new URL(import.meta.url).pathname` does not decode, so a player called
+  // "John Smith" got %20 in every path derived from it. Four files did this.
+  const p = paths.dirOfModule('file:///C:/Users/John%20Smith/AppData/Local/Programs/ENW%20Zombies/resources/app.asar/src/main/x.js')
+  assert.ok(!p.includes('%20'), `decoded, got ${p}`)
+  assert.ok(p.includes('John Smith'))
+  const src = String(fs.readFileSync(new URL('../src/main/launch.js', import.meta.url)))
+  assert.ok(!/new URL\(import\.meta\.url\)\.pathname/.test(src), 'launch.js must not hand-roll it')
 })
 
 // ------------------------------------------------------- the launch command --

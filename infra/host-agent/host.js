@@ -68,6 +68,10 @@ const cfg = {
   //   --adopt-local  additionally accept a `hello` we were told nothing about
   local: !!a.local || !!a['adopt-local'],
   adoptLocal: !!a['adopt-local'],
+  // How long a local game's link may stay down before we call the game and sign the
+  // replay. Long enough for a SteamStub relaunch, short enough that a player who quits
+  // gets their result while they are still looking at the launcher.
+  localOrphanMs: Number(a['local-orphan-ms'] ?? 15_000),
   liveHz: Number(a['live-hz'] ?? 4),   // frames per second to the site's spectator view
   referee: {
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
@@ -127,9 +131,42 @@ class Game extends EventEmitter {
 
   attach(conn) {
     this.conn = conn
+    clearTimeout(this.orphanTimer)
     conn.on('message', (m) => this.onGameMessage(m))
-    conn.on('close', () => { this.conn = null; this.log.info('game link closed') })
+    conn.on('close', () => {
+      this.conn = null
+      this.log.info('game link closed')
+      this.onLinkClosed()
+    })
     for (const c of this.pending.splice(0)) conn.send(c)
+  }
+
+  /**
+   * The link went away. For an instance WE launched, the process watcher already
+   * handles this — an exit we did not want becomes `server_crash` and the game is
+   * saved up to the crash.
+   *
+   * A LOCAL GAME HAS NO SUCH WATCHER. The launcher owns the process and we never
+   * touch it (dev-box.md rule 4), so if the player alt-F4s World at War, or it
+   * crashes, nothing here ever notices. The consequences are worse than they look:
+   * `finish()` is what CLOSES THE REPLAY, and a replay with no signed footer is not a
+   * replay — it is a prefix of one. Every local game that did not end through the
+   * scripts' own game-over would have left an unverifiable stub on the player's disk.
+   *
+   * So: a grace period, then call it. The grace is there because the one way a link
+   * legitimately drops mid-game is SteamStub relaunching the game under a new pid
+   * (referee, board 01:20), and that reconnects within a second or two.
+   */
+  onLinkClosed() {
+    if (this.finished || !this.instance.foreign) return
+    clearTimeout(this.orphanTimer)
+    this.orphanTimer = setTimeout(() => {
+      if (this.finished || this.conn) return
+      this.log.warn('the local game closed its link and did not come back — ending the game so the replay is written and signed')
+      this.referee.flags.add('link_closed')
+      this.referee.finishGame('link_closed')
+    }, Number(cfg.localOrphanMs))
+    this.orphanTimer.unref?.()
   }
 
   sendToGame(c) {
@@ -629,13 +666,34 @@ const host = new HostAgent()
 await host.start()
 
 let closing = false
-for (const s of ['SIGINT', 'SIGTERM']) {
-  process.on(s, async () => {
-    if (closing) process.exit(1)
-    closing = true
-    await host.shutdown()
-    process.exit(0)
-  })
+const close = async (why, code = 0) => {
+  if (closing) process.exit(1)
+  closing = true
+  log.info(`closing: ${why}`)
+  await host.shutdown()
+  process.exit(code)
+}
+for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => close(s))
+
+// --exit-with-pid <pid>: die when whoever started us dies.
+//
+// The launcher starts this agent as a child and kills it on quit, but a launcher that
+// CRASHES never gets to. An orphaned referee holds the game-link port, so the next
+// game connects to a process that will never report anything to anyone — a failure
+// with no symptom at all. Polling a pid is crude and it is also the only thing on
+// Windows that survives every way a parent can die.
+if (a['exit-with-pid']) {
+  const watch = Number(a['exit-with-pid'])
+  if (Number.isFinite(watch) && watch > 0) {
+    log.info(`will exit when pid ${watch} does`)
+    const t = setInterval(() => {
+      try { process.kill(watch, 0) } catch {
+        clearInterval(t)
+        close(`the process that started us (pid ${watch}) is gone`)
+      }
+    }, 2000)
+    t.unref?.()
+  }
 }
 
 export { host, cfg }

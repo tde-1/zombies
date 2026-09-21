@@ -37,9 +37,13 @@
     "files": [
       "src/**/*",
       "tools/**/*",
-      "resources/**/*",
+      "resources/manifests/**/*",
+      "!resources/client/**",
       "package.json",
       "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "tools/**"
     ],
     "win": {
       "target": [
@@ -68,6 +72,22 @@
       {
         "from": "resources/client",
         "to": "client"
+      },
+      {
+        "from": "../referee/manifests",
+        "to": "host-agent/manifests"
+      },
+      {
+        "from": "../infra/host-agent",
+        "to": "host-agent",
+        "filter": [
+          "**/*",
+          "!node_modules",
+          "!test/**",
+          "!tools/soak.js",
+          "!**/*.py",
+          "!measurement.json"
+        ]
       }
     ]
   },

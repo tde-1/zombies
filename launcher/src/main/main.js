@@ -13,6 +13,7 @@
 import { app, BrowserWindow, WebContentsView, Tray, Menu, ipcMain, shell, dialog, nativeImage, session as electronSession } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
 import { P, ensureDirs } from './paths.js'
@@ -27,6 +28,8 @@ import { BootFlow } from './bootflow.js'
 import * as library from './library.js'
 import { SiteApi, electronCookieProvider } from './siteapi.js'
 import { AutoUpdater, resolveFeed } from './autoupdate.js'
+import { hostAgent } from './hostagent.js'
+import { LocalRun } from './localrun.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -46,6 +49,8 @@ const state = {
   gate: new IdleGate(),
   pendingDeepLink: null,
   lastError: null,
+  localRun: null,
+  lastLocalResult: null,
 }
 
 // ------------------------------------------------------------------- logging --
@@ -379,7 +384,9 @@ function wireIpc() {
       return m
     } catch (e) {
       await reportCrash('setup_failed', e, { gameDir })
-      throw e
+      // A player gets a sentence they can act on, not an errno. The original message
+      // is kept on the end for us.
+      throw new Error(setup.explainSetupFailure(e))
     } finally { state.gate.unblock('setup') }
   })
   handle('storage', () => setup.storage())
@@ -441,11 +448,69 @@ function wireIpc() {
   handle('getSettings', () => settings.get())
   handle('setSettings', (patch) => { const s = settings.set(patch); push('settings', s); return s })
 
+  // --------------------------------------------------- a tracked local game --
+  //
+  // THE MISSING LINK, and it is why no local game has ever produced a round count.
+  // `localrun.js` has always known how to tell the site about a local game; what
+  // nothing did was START THE REFEREE. The chain only closes if all four of these
+  // happen before the game launches, in this order:
+  //
+  //   1. the host agent is running               (hostagent.js — it was never started)
+  //   2. the site opens a match, or we mint one  (so the id is the same everywhere)
+  //   3. the agent is told to EXPECT that id     (it refuses a hello it was not told about)
+  //   4. the game launches pointed at the link address THE AGENT gave us
+  //
+  // Step 4 used to send the game at a hard-coded 127.0.0.1:28960, which is not where
+  // the agent listens, so even a perfectly built game would have found nothing there.
+  async function prepareLocalRun(mapKey) {
+    const agent = hostAgent()
+    agent.removeAllListeners('log')
+    agent.on('log', (m) => log('hostagent', m))
+    const info = await agent.ensure()
+    log('hostagent', `ready: dash ${info.dashUrl}, link ${info.linkHost}, ${info.adopted ? 'adopted' : `pid ${info.pid}`}`)
+
+    const run = new LocalRun({ api: state.api, dashUrl: info.dashUrl })
+    // The site names the match when it can. When it cannot — no session, site down,
+    // a friend playing offline — we still play and still record; the run is simply
+    // never posted anywhere. A local game is worth nothing to the ladder either way,
+    // so there is no reason for the site to be able to stop it happening.
+    let matchId = null
+    try {
+      const started = await run.start(mapKey)
+      matchId = started.match_id
+      log('localrun', `site opened match ${matchId} for ${mapKey}`)
+    } catch (e) {
+      matchId = `l_${crypto.randomBytes(4).toString('hex')}`
+      run.matchId = matchId
+      run.offline = true
+      log('localrun', `the site did not open a match (${e.message}); recording locally as ${matchId}`)
+    }
+
+    const expected = await run.expect({ instance: matchId, matchId, map: mapKey })
+    const linkHost = expected.link || info.linkHost
+    log('localrun', `the referee is expecting ${matchId} and listening on ${linkHost}`)
+    return { run, matchId, linkHost, agent, info }
+  }
+
   async function startPlay(opts = {}) {
     if (state.flow) throw new Error('A launch is already in progress.')
     const conf = cfg.load()
     const s = settings.get()
     const sess = settings.session()
+
+    // Everything a local game needs from the referee, resolved BEFORE the launch,
+    // because the game only reads ENW_HOST/ENW_INSTANCE once, at startup.
+    let local = null
+    if (opts.local) {
+      try {
+        local = await prepareLocalRun(opts.map)
+      } catch (e) {
+        // Recording is not the point of the game. Say so plainly and play anyway.
+        log('localrun', `not recording this game: ${e.message}`)
+        push('toast', { kind: 'warn', text: `This game will not be recorded: ${String(e.message).split('\n')[0]}` })
+      }
+    }
+
     const flow = new BootFlow({
       map: opts.map,
       mode: opts.mode || 'custom',
@@ -453,14 +518,19 @@ function wireIpc() {
       // mock-site lease path stays only for a machine with no site running.
       api: opts.local ? null : state.api,
       siteUrl: opts.hostApi || conf.hostApi,
-      hostDashboard: conf.hostDashboard,
-      linkHost: conf.linkHost,
+      hostDashboard: local?.info?.dashUrl || conf.hostDashboard,
+      // The address the referee IS listening on, read back from the referee. The old
+      // default (127.0.0.1:28960) was a guess that has never been right.
+      linkHost: local?.linkHost || conf.linkHost,
       steamid: sess.steamid,
       playerName: sess.name,
       settings: s,
       stealth: conf.stealthLaunch,
       useGameLock: conf.useGameLock,
       localMap: opts.local ? opts.map : null,
+      // The match id is the instance id: the site, the referee and the signed replay
+      // then all name one game, which is what makes the replay findable afterwards.
+      instance: local?.matchId || undefined,
       fsGame: opts.fsGame || undefined,
       lockName: 'launcher',
     })
@@ -470,8 +540,41 @@ function wireIpc() {
     showSite(false)
     push('boot', flow.snapshot())
     flow.on('update', (snap) => push('boot', snap))
+
+    // The relay runs for as long as the game does: it watches the referee, pushes
+    // live frames at the site's spectator view, and posts the summary and the replay
+    // pointer when the referee calls the game. It is started on 'launched' rather than
+    // up front so a launch that never happens does not leave a poller running.
+    if (local) {
+      state.localRun = local.run
+      local.run.on('frame', (f) => push('localRound', { match_id: local.matchId, round: f.round, players: f.players }))
+      flow.on('launched', () => {
+        log('localrun', `relaying ${local.matchId} from ${local.info.dashUrl}`)
+        local.run
+          .relayUntilDone({ instanceId: local.matchId })
+          .then((r) => {
+            state.lastLocalResult = { ...r, match_id: local.matchId, replay_dir: local.info.replayDir }
+            if (r.ok) {
+              const rounds = r.summary?.rounds ?? '?'
+              const file = r.replay?.file || '(none)'
+              log('localrun', `RUN LOGGED: match ${local.matchId}, round ${rounds}, ${r.frames} live frames, replay ${file}`)
+              push('toast', { kind: 'good', text: `Run recorded: round ${rounds}. Replay saved.` })
+            } else {
+              log('localrun', `run NOT logged: ${r.reason} (last round ${r.lastRound ?? '?'}, ${r.frames} frames)`)
+              push('toast', { kind: 'warn', text: `The run was not recorded: ${r.reason}` })
+            }
+            push('localResult', state.lastLocalResult)
+          })
+          .catch((e) => log('localrun', `relay failed: ${e.message}`))
+      })
+    }
+
     flow.on('ended', async (p) => {
       if (p.phase === 'failed') await reportCrash('game_crash', new Error(p.detail || 'the game ended unexpectedly'), { map: opts.map })
+      // Give the referee a moment to notice the game is gone and write its footer,
+      // then stop polling. Without the delay we stop the relay before the summary
+      // exists and the replay pointer is never posted.
+      if (local) setTimeout(() => local.run.stop(), 20_000).unref?.()
       state.flow = null
       state.gate.unblock('game')
       state.tray?.rebuild()
@@ -506,8 +609,22 @@ function wireIpc() {
   // prefers to make that call itself: it is the thing that has to INSTALL the map
   // first, and a match opened before an install that then fails is an orphan.
   handle('playLocal', async (arg = {}) => {
-    const mapKey = arg.map_key || arg.map || arg.mapKey || arg?.map?.key
-    if (!mapKey) throw new Error('playLocal needs a map key')
+    // MEASURED, from B's own launcher.log on 2026-09-20: three presses of Play Local,
+    // three `ipc error playLocal The "path" argument must be of type string. Received
+    // an instance of Object`. The site sends `{ map: { key, bsp, … } }`, `arg.map` is
+    // truthy, and an OBJECT went all the way into path.join(). So: take the first
+    // candidate that is actually a string, and say what arrived if none is.
+    const mapKey = [
+      arg.map_key, arg.mapKey, arg.bsp,
+      typeof arg.map === 'string' ? arg.map : null,
+      arg?.map?.bsp, arg?.map?.key, arg?.map?.map_key,
+    ].find((x) => typeof x === 'string' && x.trim())
+    if (!mapKey) {
+      throw new Error(
+        'playLocal needs a map key (a bsp name like "nazi_zombie_prototype"). ' +
+        `Got: ${JSON.stringify(arg)?.slice(0, 200)}`
+      )
+    }
     // Install first if we have to: the site opening a match before an install that
     // then fails would leave an orphan.
     if (!library.isInstalled(mapKey) && library.catalogue().maps.some((m) => m.bsp === mapKey && m.available)) {
@@ -767,6 +884,11 @@ if (!single) {
   app.on('before-quit', () => {
     state.quitting = true
     try { state.flow?.cancel('the launcher is closing') } catch {}
+    // The referee is our child and it dies with us. An orphan would hold the game-link
+    // port and referee games for a launcher that no longer exists — and it would only
+    // ever be noticed as "the next game recorded nothing".
+    try { state.localRun?.stop() } catch {}
+    try { if (hostAgent().stop()) log('hostagent', 'stopped the host agent we started') } catch {}
     // Applying is the only moment an update can disturb anything, so it happens here,
     // and only when no game is running and nothing is installing.
     try { state.updater?.applyIfSafe() } catch {}

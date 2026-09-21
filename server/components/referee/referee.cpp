@@ -23,14 +23,60 @@
 #include "t4_bind.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <map>
 #include <set>
 #include <string>
+
+#include <windows.h>
 
 namespace enw {
 namespace {
 
 using referee::notify_event;
+
+// ---------------------------------------------------------- our command line --
+//
+// WHY THE COMMAND LINE AND NOT A DVAR. The host agent cannot open a replay until it
+// is told `map_loaded`, and NOTHING HAS EVER SENT ONE -- `grep -rn map_loaded shared/
+// server/ client-dll/` found zero hits before this. The consequence is worse than a
+// missing field: `Game.openReplay()` is what CREATES the replay file, so every local
+// game so far would have recorded to nowhere and produced no replay at all, with no
+// error anywhere.
+//
+// The map name could come from the `sv_mapname` dvar, but `dvar_get()` is still
+// unbound (t4_bind.cpp) and reading a dvar_s means trusting a struct layout nobody
+// has verified. Our own command line needs no engine binding, and the launcher always
+// puts `+map <bsp>` and `+set fs_game <x>` on it -- see launcher/src/main/launch.js.
+// A hand-launched game with neither simply reports nothing, which is honest.
+std::string cmdline_value(const char* flag, const char* word) {
+    const char* cmd = ::GetCommandLineA();
+    if (!cmd) return {};
+    const std::string s(cmd);
+    std::string needle = flag;
+    needle += ' ';
+    if (word && *word) { needle += word; needle += ' '; }
+    const size_t p = s.find(needle);
+    if (p == std::string::npos) return {};
+    size_t i = p + needle.size();
+    while (i < s.size() && s[i] == ' ') ++i;
+    const bool quoted = i < s.size() && s[i] == '"';
+    if (quoted) ++i;
+    std::string out;
+    for (; i < s.size(); ++i) {
+        const char c = s[i];
+        if (quoted ? c == '"' : (c == ' ' || c == '\t')) break;
+        out.push_back(c);
+    }
+    return out;
+}
+
+std::string env_str(const char* name) {
+    char buf[512]{};
+    const DWORD n = ::GetEnvironmentVariableA(name, buf, sizeof(buf));
+    if (n == 0 || n >= sizeof(buf)) return {};
+    return std::string(buf, n);
+}
 
 // Notifies we always forward. Everything else is subject to the novelty budget.
 // Sources: docs/kickstart/referee.md §2.
@@ -95,9 +141,15 @@ public:
         // 2026-09-20). NDJSON over TCP stays the contract; this mirrors the event
         // subset as IW4MAdmin GSE lines so an ENW server is readable by a log
         // tailer when no socket is available. Never mirrors snap or input.
-        if (auto v = referee::dvar_get("enw_logprint_events")) {
-            referee::set_logprint_enabled(*v == "1" || *v == "on" || *v == "true");
-        }
+        // The dvar is the documented switch. It is also unreadable today -- dvar_get()
+        // is unbound -- so the mirror could never be turned on at all, which made the
+        // one channel that works without a socket useless. ENW_LOGPRINT=1 in the
+        // environment does the same job, needs no engine binding, and is something the
+        // launcher can set. Either turns it on.
+        bool lp = false;
+        if (auto v = referee::dvar_get("enw_logprint_events")) lp = (*v == "1" || *v == "on" || *v == "true");
+        if (!lp) { const auto e = env_str("ENW_LOGPRINT"); lp = (e == "1" || e == "on" || e == "true"); }
+        referee::set_logprint_enabled(lp);
         ENW_INFO("referee: armed (%s), logprint mirror %s",
                  referee::bound().describe().c_str(),
                  referee::logprint_enabled() ? "on" : "off");
@@ -136,6 +188,74 @@ private:
             on_trigger(ev);
             return;
         }
+
+        // ---------------------------------------------------------- ROUNDS --
+        //
+        // THIS IS HOW A ROUND IS COUNTED, and it is worth saying exactly why, because
+        // the obvious answer does not work and the documented answer is wrong.
+        //
+        //   * `level.round_number` is the real number, and we CANNOT READ IT: script
+        //     variable access is unbound (t4_bind.cpp -- level_int() returns nullopt
+        //     unconditionally), so the frame poll below has never once fired.
+        //   * `new_zombie_round` DOES NOT EXIST in stock World at War. It is a
+        //     Plutonium T4SP addition. Waiting on it means waiting forever.
+        //   * `between_round_over` IS the round boundary. From the game's own scripts
+        //     (`maps/_zombiemode.gsc :: round_think()`, prototype :1224-1226):
+        //         level.round_number++;
+        //         level notify( "between_round_over" );
+        //     and the same two lines are in asylum, factory and ali.
+        //
+        // Cross-checked against two independently-written MIT projects that solve this
+        // exact problem on this exact engine (checked 2026-09-21):
+        //   * Xeptix/ZPauseT4 `zpause.gsc:1486` -- `level waittill("between_round_over")`,
+        //     and it never reads level.round_number at all.
+        //   * RaidMax/IW4M-Admin `GameFiles/ZombieStats/_zm_stats_t4.gsc:371` --
+        //     `waittill_any_return("intermission", "between_round_over")`.
+        //
+        // The notify carries no number, so we count. round 1 is live before the first
+        // notify, and the notify fires AFTER the increment, so round = count + 1 --
+        // the same value `level.round_number` holds at that instant.
+        //
+        // THE ONE WEAKNESS, stated plainly: counting cannot recover an absolute round
+        // if the DLL attaches late or a mod sets level.round_number itself. Both MIT
+        // implementations read the variable instead, for exactly that reason. When
+        // script vars are bound, level_int() below takes over and this becomes the
+        // fallback; until then it is this or nothing, and nothing is what we had.
+        if (ev.name == "between_round_over") {
+            // Two script instances (server and client) share one notify hook. A round
+            // boundary is many seconds wide, so anything arriving within half a second
+            // of the last one is the same event seen twice.
+            if (ev.game_ms >= last_round_ms_ && ev.game_ms - last_round_ms_ < 500 && round_notifies_ > 0) {
+                ++suppressed_;
+                return;
+            }
+            last_round_ms_ = ev.game_ms;
+            ++round_notifies_;
+            emit_round(static_cast<int>(round_notifies_) + 1, ev.game_ms, "between_round_over");
+        }
+
+        // ------------------------------------------------------- GAME OVER --
+        //
+        // `end_game()` sets `level.intermission = true` as its first statement on every
+        // map, which would be the portable signal if we could read script variables.
+        // We cannot. What we CAN see is the notifies on the way out, and there are two:
+        //
+        //   `end_game`          only on Der Riese and maps derived from it
+        //   `stop_intermission` on EVERY map -- `_zombiemode.gsc:1740`, after the
+        //                       GAME OVER card and the intermission wait, and before
+        //                       ExitLevel()/MissionFailed(). It is the last thing the
+        //                       scripts do that we can see.
+        //
+        // `stop_intermission` lands roughly `zombie_intermission_time` after the player
+        // actually died. That is late, and it is also certain, which matters more: the
+        // alternative is guessing from a down that might still be revived.
+        if (ev.name == "stop_intermission") emit_game_over("stop_intermission notify");
+
+        // Round 1 is live before any `between_round_over` has fired, so without this
+        // a player who dies on round 1 produces a game whose round is never reported
+        // at all. `all_players_connected` is the flag `_zombiemode` waits on before it
+        // starts round_think(), which is exactly "round 1 has begun".
+        if (ev.name == "all_players_connected") emit_round(1, ev.game_ms, "all_players_connected");
 
         const bool always = std::any_of(std::begin(kAlways), std::end(kAlways),
                                         [&](const char* a) { return ev.name == a; });
@@ -240,14 +360,17 @@ private:
         }
         if (frames_ == 1) first_frame_ms_ = ms;
 
+        // The server is running a map: that IS map_loaded. SV_Frame does not tick
+        // before a server exists, so the first tick is the earliest honest moment,
+        // and it is the message that makes the host agent open the replay file.
+        if (!map_announced_) announce_map(ms);
+
+        // When script variables become readable this takes over from the notify
+        // counter: an absolute value beats a derived one, and it survives a late
+        // attach. It has never fired -- level_int() returns nullopt unconditionally
+        // today -- so the notify path above is what actually reports rounds.
         if (auto r = referee::level_int("round_number")) {
-            if (*r != round_) {
-                round_ = *r;
-                json::writer w;
-                w.str("t", "round").integer("ms", ms).integer("n", round_);
-                game_link::get().send(w);
-                referee::lp_round_complete(round_);
-            }
+            if (*r != round_) emit_round(*r, ms, "level.round_number");
         }
 
         if (!game_over_) {
@@ -308,6 +431,43 @@ private:
             ENW_INFO("referee:   level notify id %d fired %llu times", id,
                      static_cast<unsigned long long>(n));
         }
+    }
+
+    // --------------------------------------------------------- map_loaded --
+    void announce_map(uint32_t ms) {
+        map_announced_ = true;
+        // `+map <bsp>` is how the launcher starts a local game; ENW_MAP is the belt
+        // and braces it sets alongside, for the day somebody starts the game a
+        // different way. Neither present = a hand-launched game, and we say so rather
+        // than inventing a map name that would end up inside a signed replay header.
+        std::string map = cmdline_value("+map", nullptr);
+        if (map.empty()) map = cmdline_value("+devmap", nullptr);
+        if (map.empty()) map = env_str("ENW_MAP");
+        std::string fs_game = cmdline_value("+set", "fs_game");
+
+        json::writer w;
+        w.str("t", "map_loaded").integer("ms", ms);
+        w.str("map", map.empty() ? "unknown" : map);
+        if (!fs_game.empty()) w.str("fs_game", fs_game);
+        w.str("mode", "zombies");
+        w.integer("sv_maxclients", referee::max_clients());
+        game_link::get().send(w);
+        ENW_INFO("referee: map_loaded map=%s fs_game=%s (from our own command line)",
+                 map.empty() ? "unknown" : map.c_str(), fs_game.empty() ? "-" : fs_game.c_str());
+    }
+
+    // --------------------------------------------------------------- round --
+    void emit_round(int n, uint32_t ms, const char* how) {
+        if (n <= round_) return;   // never go backwards; the host treats round as a high-water mark
+        round_ = n;
+        json::writer w;
+        w.str("t", "round").integer("ms", ms).integer("n", round_);
+        game_link::get().send(w);
+        // The IW4MAdmin-shaped mirror in the game's own log. Off unless
+        // enw_logprint_events is set, and free when it is off -- but when it IS on it
+        // is a human-readable trace of exactly this decision, in a file B can open.
+        referee::lp_round_complete(round_);
+        ENW_INFO("referee: ROUND %d (%s)", round_, how);
     }
 
     void emit_game_over(const char* reason) {
@@ -390,7 +550,10 @@ private:
     static constexpr uint64_t kIdBudget = 3000;
     int novel_forwarded_ = 0;
     uint64_t suppressed_ = 0;
-    int round_ = -1;
+    int round_ = 0;
+    uint64_t round_notifies_ = 0;
+    uint32_t last_round_ms_ = 0;
+    bool map_announced_ = false;
     bool game_over_ = false;
     uint32_t game_ms_ = 0;
     uint64_t frames_ = 0;

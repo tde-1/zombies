@@ -16,11 +16,15 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { P, ensureDirs, isInside, protectedRoots } from './paths.js'
+import { P, ensureDirs, isInside, protectedRoots, dirOfModule, unpacked } from './paths.js'
 import { MOD_NAME } from './setup.js'
 import * as lock from './gamelock.js'
 
-const NANNY = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', '..', 'tools', 'window-nanny.ps1')
+// PACKAGED TRAP: this is handed to powershell.exe, which is not us and cannot read
+// inside app.asar. `asarUnpack: ["tools/**"]` in package.json puts a real copy beside
+// the archive and `unpacked()` addresses it. Without both, every packaged build loses
+// the dialog answering silently — the spawn succeeds and powershell exits 1.
+const NANNY = unpacked(path.resolve(dirOfModule(import.meta.url), '..', '..', 'tools', 'window-nanny.ps1'))
 const PWSH = `${process.env.SystemRoot || 'C:\\Windows'}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
 
 // The boot screen's states, in order (spec 99 §4.3).
@@ -263,6 +267,14 @@ export class GameLaunch extends EventEmitter {
         ENW_INSTANCE: o.instance || 'launcher',
         ENW_ROLE: o.role || 'client',
         ENW_LOGDIR: P.logs,
+        // The map, so the DLL can say `map_loaded` without reading a dvar. It also
+        // takes it off our command line, and this is the belt to that braces.
+        ...(o.map ? { ENW_MAP: o.map } : {}),
+        // The IW4MAdmin-shaped event mirror into the game's own console.log. It is
+        // the only channel that works when the socket does not, and it is what turns
+        // "the launcher says nothing happened" into a file with the round numbers in
+        // it. The dvar that is supposed to control it cannot be read yet.
+        ENW_LOGPRINT: o.logprint === false ? '0' : '1',
       }
       // Only point the game-link somewhere when there is something to point it at.
       // A local game has no host agent, and the DLL's documented behaviour for an

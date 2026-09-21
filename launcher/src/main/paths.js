@@ -6,8 +6,47 @@
 import os from 'node:os'
 import path from 'node:path'
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 const LOCAL = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
+
+// ------------------------------------------------------- where our own files are --
+//
+// THREE PACKAGED-ONLY TRAPS, all of which look fine in `npm start` and break for a
+// friend who runs the installer. Every one of them cost us a real failure:
+//
+//  1. `new URL(import.meta.url).pathname` DOES NOT DECODE. A player called
+//     "John Smith" installs to `C:\Users\John Smith\AppData\...`, the pathname comes
+//     back with `%20` in it, and every path derived from it points at a folder that
+//     does not exist. Use `fileURLToPath`, always. (`dirOfModule` below.)
+//  2. INSIDE app.asar IS NOT A REAL FILE. Electron patches `fs` so *our* reads work,
+//     but `powershell.exe -File <inside the asar>` does not, and neither does
+//     anything else outside this process. Anything another program must open has to
+//     be `asarUnpack`ed and addressed through `unpacked()`.
+//  3. `extraResources` lands beside the asar, not inside it, so it is reached through
+//     `process.resourcesPath` — which only exists under Electron.
+export function dirOfModule(importMetaUrl) {
+  return path.dirname(fileURLToPath(importMetaUrl))
+}
+
+// The launcher's own root: `<repo>/launcher` in development, `…/resources/app.asar`
+// when packaged. Both are real paths to *this* app's files.
+export const APP_ROOT = path.resolve(dirOfModule(import.meta.url), '..', '..')
+
+// True when we are running out of an asar archive.
+export const PACKAGED = /[\\/]app\.asar([\\/]|$)/i.test(APP_ROOT)
+
+// `process.resourcesPath` is Electron-only (it is undefined under plain `node`), and
+// it is where `extraResources` lands: `…/resources/client`, `…/resources/host-agent`.
+export const RESOURCES = process.resourcesPath || null
+
+// Rewrite a path that lives inside the asar to its `asarUnpack`ed twin. Needed for
+// every file handed to a program that is not us: powershell scripts, and the host
+// agent, which runs in its own process.
+export function unpacked(p) {
+  if (!p) return p
+  return String(p).replace(/([\\/])app\.asar([\\/])/i, '$1app.asar.unpacked$2')
+}
 
 // "ENWZombies", not "ENW Zombies", and that is deliberate. The engine parses its own
 // GetCommandLine() rather than taking an argv, and `+set fs_homepath <path with a

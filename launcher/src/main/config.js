@@ -9,9 +9,9 @@
 // bundled placeholder page.
 import fs from 'node:fs'
 import path from 'node:path'
-import { P, ensureDirs } from './paths.js'
+import { P, ensureDirs, dirOfModule } from './paths.js'
 
-const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))
+const HERE = dirOfModule(import.meta.url)
 export const PLACEHOLDER = path.resolve(HERE, '..', 'renderer', 'placeholder.html')
 
 // Where the site lives in production. Changing this changes where every packaged

@@ -20,7 +20,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import { P, assertWritable, protectPath, isInside, ensureDirs } from './paths.js'
+import { P, assertWritable, protectPath, isInside, ensureDirs, dirOfModule, RESOURCES, PACKAGED } from './paths.js'
 import { validate } from './detect.js'
 
 // Junctioned (big, shared, read-only). Same list as tools/dev/new-copy.ps1.
@@ -54,27 +54,47 @@ function diffFingerprints(before, after) {
 
 // Find the ENW client DLL to install. In a shipped launcher it is bundled; during
 // development we take the freshest build out of the repo.
+//
+// TWO RULES, both learned from a packaged build rather than guessed at:
+//
+//  * THE SHIPPED COPY WINS OUTRIGHT when there is one. It used to be entered into an
+//    mtime race with the development candidates, which is wrong in both directions: a
+//    player has no repo so the race is pointless, and on a developer's machine the
+//    race silently decided which DLL a *packaged* build installed.
+//  * NOTHING INSIDE app.asar IS EVER CHOSEN. `resources/**` used to be packed into the
+//    archive as well as shipped beside it, so the winner was
+//    `…/app.asar/resources/client/enw_t4.dll` — a path that only exists because
+//    Electron patches `fs`, and only for this process. It happens to copy, and it is
+//    the kind of thing that works until the day it does not. `package.json` no longer
+//    packs it; this refuses it even if something else ever does.
+const IN_ASAR = /[\\/]app\.asar[\\/]/i
+
 export function findClientDll({ repoRoot = null, explicit = null } = {}) {
   const tried = []
   const consider = (p, via) => {
     if (!p) return null
-    tried.push({ path: p, via, exists: fs.existsSync(p) })
-    return fs.existsSync(p) ? { path: p, via, mtime: fs.statSync(p).mtimeMs } : null
+    const inAsar = IN_ASAR.test(p)
+    const exists = !inAsar && fs.existsSync(p)
+    tried.push({ path: p, via, exists, ...(inAsar ? { skipped: 'inside app.asar' } : {}) })
+    return exists ? { path: p, via, mtime: fs.statSync(p).mtimeMs } : null
   }
-  const hits = []
-  if (explicit) { const h = consider(path.resolve(explicit), 'given explicitly'); if (h) hits.push(h) }
+  if (explicit) {
+    const h = consider(path.resolve(explicit), 'given explicitly')
+    if (h) return { dll: h, tried }
+  }
 
-  const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))
-  const launcherRoot = path.resolve(here, '..', '..')
+  const launcherRoot = path.resolve(dirOfModule(import.meta.url), '..', '..')
 
   // PACKAGED: electron-builder puts extraResources next to the app, outside app.asar.
   // This is the one that matters for a player — everything below it is development.
   // `process.resourcesPath` only exists under Electron, hence the guard.
-  if (process.resourcesPath) {
-    const h = consider(path.join(process.resourcesPath, 'client', 'enw_t4.dll'), 'shipped with the launcher')
-    if (h) hits.push(h)
+  if (RESOURCES) {
+    const h = consider(path.join(RESOURCES, 'client', 'enw_t4.dll'), 'shipped with the launcher')
+    if (h) return { dll: h, tried }
   }
-  // Staged but not yet packaged (running from the repo with `npm start`).
+
+  // Development, newest build wins.
+  const hits = []
   const h0 = consider(path.join(launcherRoot, 'resources', 'client', 'enw_t4.dll'), 'staged in the launcher folder')
   if (h0) hits.push(h0)
 
@@ -85,6 +105,77 @@ export function findClientDll({ repoRoot = null, explicit = null } = {}) {
   }
   hits.sort((a, b) => b.mtime - a.mtime)
   return { dll: hits[0] || null, tried }
+}
+
+// The sentence a player sees when there is no client to install, with every path we
+// looked at. B's report was "ENW client is not installed" and nothing else, which is
+// unactionable by him and undiagnosable by us.
+export function explainMissingClient(tried) {
+  const lines = [
+    'The ENW client (enw_t4.dll) is missing from this copy of the launcher, so there is nothing to install.',
+    '',
+    'This is a packaging fault, not something you did wrong — please send this message to us.',
+    '',
+    `Looked in ${tried.length} place${tried.length === 1 ? '' : 's'}:`,
+  ]
+  for (const t of tried) {
+    lines.push(`  ${t.exists ? 'found' : t.skipped ? 'skipped' : 'not there'}  ${t.path}${t.skipped ? `  (${t.skipped})` : ''}`)
+  }
+  lines.push('', `Launcher: ${PACKAGED ? 'packaged' : 'running from a repo checkout'}; resources at ${RESOURCES || '(none — not running under Electron)'}`)
+  return lines.join('\n')
+}
+
+// Turn the errno soup Windows produces into a sentence a player can act on. B's report
+// was "ENW client is not installed" with no reason, and every one of these failures
+// looks identical from the outside.
+export function explainSetupFailure(err) {
+  const msg = String(err?.message || err)
+  const code = err?.code || (msg.match(/\b(EPERM|EACCES|EBUSY|ENOSPC|EXDEV|EEXIST|ENOENT|EINVAL)\b/) || [])[1]
+  const plain = {
+    EPERM: 'Windows would not let the launcher create the ENW folder.\n\n' +
+      'Most often this is your antivirus quarantining enw_t4.dll — it is an unsigned DLL that gets ' +
+      'copied next to a game executable, which is exactly the shape antivirus software dislikes. ' +
+      'Allow it, or add %LOCALAPPDATA%\\ENWZombies as an exclusion, and press Install again.',
+    EACCES: 'Windows refused access to a file the launcher needs.\n\n' +
+      'Close World at War and Steam if they are running, then press Install again. If it keeps ' +
+      'happening, your antivirus is probably holding enw_t4.dll.',
+    EBUSY: 'A file is in use, so the launcher could not replace it.\n\n' +
+      'Close World at War (and anything else using it), then press Install again.',
+    ENOSPC: 'There is not enough space on the drive for the ENW folder.\n\n' +
+      'Setup needs about 15 MB on the drive that holds %LOCALAPPDATA%. Free some space and try again.',
+    ENOENT: 'A file the launcher expected was not there.\n\n' +
+      'This usually means World at War moved or was uninstalled since we last looked. ' +
+      'Use "Find my game" on the setup screen and point the launcher at it again.',
+  }[code]
+  if (!plain) return msg
+  return `${plain}\n\n(Technical detail: ${code} — ${msg})`
+}
+
+// Creating an NTFS junction needs no privileges, but a policy or a filter driver can
+// still refuse it, and the failure is opaque. Answered once, before we start copying
+// eight megabytes we would only have to undo.
+export function canMakeJunctions(dir) {
+  const probe = path.join(dir, '.enw-junction-probe')
+  const target = path.join(dir, '.enw-junction-target')
+  try {
+    fs.mkdirSync(assertWritable(target), { recursive: true })
+    try { fs.rmSync(probe, { recursive: true, force: true }) } catch {}
+    fs.symlinkSync(target, assertWritable(probe), 'junction')
+    const ok = fs.existsSync(probe)
+    return { ok, reason: ok ? null : 'the junction was created but does not resolve' }
+  } catch (e) {
+    return {
+      ok: false,
+      reason:
+        'Windows would not let the launcher create a folder link (an NTFS junction) inside ' +
+        `${dir}.\n\nENW links to your World at War instead of copying 12 GB of it, so this has to ` +
+        'work. It normally does without any special permissions — if it is failing, the drive is ' +
+        `probably not NTFS, or a security policy is blocking it.\n\n(Technical detail: ${e.code || ''} ${e.message})`,
+    }
+  } finally {
+    try { fs.rmSync(probe, { recursive: true, force: true }) } catch {}
+    try { fs.rmSync(target, { recursive: true, force: true }) } catch {}
+  }
 }
 
 // ------------------------------------------------------------------- install --
@@ -119,6 +210,12 @@ export function install({ gameDir, dllPath = null, repoRoot = null, force = fals
     }
   }
   fs.mkdirSync(assertWritable(dest), { recursive: true })
+
+  // 0. Can we link at all? Asked BEFORE eight megabytes of copying, because the
+  //    junctions are what make this an ENW folder rather than a 12 GB duplicate, and
+  //    "it failed at step 2" is a much worse experience than "it cannot work here".
+  const j = canMakeJunctions(dest)
+  if (!j.ok) { step('junctions', j.reason, false); throw new Error(j.reason) }
 
   // 1. Real copies of every file in the root of the player's install.
   //    Except CoDWaWmp.exe: ENW never starts the multiplayer executable (dev-box.md
@@ -176,16 +273,10 @@ export function install({ gameDir, dllPath = null, repoRoot = null, force = fals
   // 5. The proxy DLL. Stock binkw32.dll -> binkw32_org.dll, ours in its place.
   const found = dllPath ? { dll: { path: path.resolve(dllPath), via: 'given explicitly' }, tried: [] } : findClientDll({ repoRoot })
   if (!found.dll) {
-    const where = found.tried
-      .map((t) => `  ${t.exists ? 'found  ' : 'missing'}  ${t.path}  (${t.via})`)
-      .join('\n')
     step('client_dll', 'no enw_t4.dll anywhere', false)
     // Fatal. Previously this was a warning and setup carried on, so the launcher
     // reported success and then said "not installed yet" with no reason given.
-    throw new Error(
-      'The ENW client (enw_t4.dll) is missing from this build, so there is nothing to install. ' +
-      'This is a packaging fault, not something you did - please tell B.\n\nLooked in:\n' + where
-    )
+    throw new Error(explainMissingClient(found.tried))
   } else {
     const proxy = assertWritable(path.join(dest, 'binkw32.dll'))
     const original = assertWritable(path.join(dest, 'binkw32_org.dll'))

@@ -29,10 +29,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import { P, assertWritable, ensureDirs } from './paths.js'
+import { P, assertWritable, ensureDirs, dirOfModule } from './paths.js'
 
 const ARCHIVE = process.env.ENW_ARCHIVE || path.join(process.env.ENW_DEV_ROOT || 'C:\\Users\\b\\ZombiesDev', 'archive')
-const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))
+const HERE = dirOfModule(import.meta.url)
 // Bundled with the app first, then the repo. A packaged launcher on a friend's PC
 // has no repo above it, so a repo-relative path alone means an empty map list.
 const MANIFEST_DIRS = [
