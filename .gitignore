@@ -44,3 +44,10 @@ infra/keepalive.log
 # there — which electron-updater reports as a corrupt download.
 web/public/updates/latest.yml
 web/public/updates/*.blockmap
+
+# Secrets live in infra/site.env, which keepalive.ps1 loads into the site's environment.
+# There is no dotenv in the server on purpose -- nothing reads a file from the repo root
+# by accident. infra/site.env.example is the committed template.
+.env
+*.env
+!infra/site.env.example

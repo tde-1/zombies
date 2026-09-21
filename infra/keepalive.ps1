@@ -39,6 +39,25 @@ $webDir     = Join-Path $repo 'web'
 $logFile    = Join-Path $PSScriptRoot 'keepalive.log'
 $cloudflared = 'C:\Program Files (x86)\cloudflared\cloudflared.exe'
 
+# The site's environment lives in infra\site.env (gitignored; see site.env.example).
+# There is no dotenv in the server on purpose, so this is the one place that reads it —
+# which means a secret cannot be picked up by accident from a stray file in the repo,
+# and a restart can never silently lose one.
+#
+# Loading it here also makes turning on real Steam sign-in a one-line paste: the server
+# falls back to the mock page unless STEAM_API_KEY and ZM_PUBLIC_URL are both set, so
+# the day a key lands in that file, the next cycle picks it up by itself.
+$envFile = Join-Path $PSScriptRoot 'site.env'
+if (Test-Path -LiteralPath $envFile) {
+    foreach ($line in Get-Content -LiteralPath $envFile) {
+        $t = $line.Trim()
+        if (-not $t -or $t.StartsWith('#') -or ($t -notmatch '=')) { continue }
+        $name  = $t.Substring(0, $t.IndexOf('=')).Trim()
+        $value = $t.Substring($t.IndexOf('=') + 1).Trim().Trim('"').Trim("'")
+        if ($name) { Set-Item -Path "Env:$name" -Value $value }
+    }
+}
+
 # The beta password. Without it the gate is off and the site would be open to the
 # internet, so a restart that loses it is worse than a restart that fails.
 if (-not $env:ZM_SITE_PASSWORD) { $env:ZM_SITE_PASSWORD = 'CrazyTime' }
