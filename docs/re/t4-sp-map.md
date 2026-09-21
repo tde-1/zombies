@@ -358,7 +358,7 @@ is exactly what we want to disable. The **frame path is fully traced** (WinMain 
 dvar-register and server-command paths are all named. Remaining gaps are a few no-string
 functions (`Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`, exact `SV_DropClient`).
 
-## 5. The join path (first task for the next session)
+## 5. The join path (superseded by §9 — kept for the reasoning)
 `+connect` is **not a client command in the SP exe** — the string `connect` (0x888A28) is pushed
 at exactly one site, 0x635253, inside `SV_ConnectionlessPacket`; it is the *server* OOB command
 name. Nothing registers a client-side `connect`, so the command line was silently a no-op.
@@ -541,6 +541,49 @@ New, and load-bearing for milestone (d):
 - `0x679520` is the name-to-netadr resolver [C]; its convention looks like EAX = name with the out
   pointer on the stack. Not proven enough to call, and it does not need to be -- the `push` operand
   is the cheaper and safer lever.
+
+---
+
+## 9. The join path, end to end (dedi, 2026-09-21) — five gates, all [V]
+
+A second `CoDWaW.exe` now reaches `Going from CS_FREE to CS_CONNECTED` on our headless server. Five
+things stood in the way, each found by running the test and reading the instruction that produced
+the failure. All five addresses below were verified before being patched, and every patch site was
+checked for the caller's own stack cleanup rather than a guessed convention.
+
+| # | Gate | Address | What it does | How we pass it |
+|---|---|---|---|---|
+| 1 | `CL_ConnectLocal`'s hard-coded destination | `push` imm32 at **0x6417E7** | pushes `"localhost"` (0x86F0D4), which `NET_StringToAdr` **0x679520** special-cases to `netadr.type = 2` (**NA_LOOPBACK**, the in-process ring buffer) with no ip and no port | rewrite the imm32 to our own `"127.0.0.1:<port>"`; the resolver then takes the parse branch at 0x679569 and splits on `':'` (0x84B668) |
+| 2 | Demonware's `bdSocketRouter` | drop at **0x57ED5C** in **0x57EC90**, selected by `je` at **0x600109** in `Sys_SendPacket` **0x6000B0** | every connected packet is dropped in-process with `addrHandle=0` because there is no `bdAddrHandle` for the peer (table at **0x48886F8**, stride 0x24, 0x68 entries) and one needs a live Demonware session | `74 34` → `EB 34`, so `Sys_SendPacket` always takes its own raw `sendto` path at 0x60013F |
+| 3 | the challenge handshake | imm32 at **0x641865** | `CL_ConnectLocal` hard-sets `clc.state` = **5**; `CL_CheckForResend` **0x642C80** dispatches **4 → send `getchallenge`**, **5 → send `connect`**, **7 → …** (`sub esi,4 / je` at 0x642D00) | set the immediate to **4** so the client asks for a challenge first |
+| 4 | the co-op join gate | `cmp byte [eax+0x10],0 / je` at **0x62EBC9**, dvar ptr at **0x339A774** | `SV_DirectConnect` refuses with `EXE_ERR_CANNOTJOININPROGRESS` when the dvar is 0. Read twice (0x62E9BB, 0x62EBC4) | set the dvar. **Its name is `party_joinInProgressAllowed`** — recovered at runtime from `dvar_s+0x00`, because all five references *read* 0x339A774 and none writes it. **It is not registered at `post_init`**; poll for it |
+| 5 | the Demonware server-licence ticket | `call 0x582740` at **0x62EDA7** | `SV_DirectConnect` validates a ticket from the last 0x18 bytes of `client_s` (+0x58D18/+0x58D20/+0x58D28) and raises `EXE_BAD_CHALLENGE` (0x886DA4) at 0x62EDE5 if it fails. The name misleads: `CHALLENGERESPONSE: Got server licenseid %llx` shows this is the licence exchange, not the Quake challenge number | `mov al,1; nop x3` — stack-neutral because `add esp,0x10` follows at 0x62EDAC. The exact mirror of the existing client-side patch at 0x642E77 |
+
+**A second `EXE_BAD_CHALLENGE` raise at 0x62E75D** on an earlier path in the same function is **not
+patched and has not been hit**. Distinguishable: only the one at 0x62EDE5 is preceded by the
+0x582740 call.
+
+### Related addresses confirmed along the way
+
+| Symbol | Addr | Conf | Evidence |
+|---|---|---|---|
+| `NET_StringToAdr` | 0x679520 | [V] | `repe cmpsb` against `"localhost"` then `mov dword [ebx], 2`; name in EAX, out `netadr_s*` on the stack |
+| `NET_SendPacket` | 0x6790E0 | [V] | 6 callers; switches on `netadr.type` — 2 → loop packet (0x678FF0), 0/1 → drop, else → `Sys_SendPacket` |
+| `Sys_SendPacket` | 0x6000B0 | [V] | 1 caller; type 3/4 → socket `[0x22BEBD0]`, 5/6 → socket `[0x22BD9EC]`, else `Com_Error("Sys_SendPacket: bad address type")` |
+| `CL_CheckForResend` (the `CL_SendConnectPacket` label was too narrow) | 0x642C80 | [V] | per-frame; valid states 4/5/7, rate-limited 3,000 ms (100 ms in state 7); sends `getchallenge` (0x888A18) or `connect` |
+| `clc.state` | 0x305842C | [V] | written 5 by CL_ConnectLocal, read by CL_CheckForResend's dispatch |
+| `clc.servername` | 0x48AE3A0 | [V] | `strncpy(.., "localhost", 0xFF)` at 0x6417F1 |
+| `clc.serverAddress` (netadr_s) | 0x300FFF8 | [V] | out param of NET_StringToAdr at 0x641855; also what direct_connect's auth guard reads (`cmp [0x300FFF8], 2`) |
+| netadr type enum | — | [V] | **0 NA_BOT, 1 NA_BAD, 2 NA_LOOPBACK**, 3/4 ordinary sockets (4 = NA_IP), 5/6 Demonware-routed |
+
+### Two behaviours worth remembering
+
+- **T4 does not send connected game traffic over a plain socket by default.** It routes it through
+  Demonware. That is almost certainly why Plutonium's T4 client is their own binary rather than the
+  stock exe plus a DLL, and it is the single biggest engine fact this lane has found.
+- **`getstatus` is answered on the raw path** and worked from the very first headless boot, so "the
+  server answers on the wire" and "a client can talk to the server" are genuinely different
+  questions. Do not use one as evidence for the other.
 
 ---
 
