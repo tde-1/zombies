@@ -28,7 +28,22 @@ In the rail pick **Nacht der Untoten** (`nazi_zombie_prototype`) and press
 **Play Local**.
 
 Use Nacht for this first test and nothing else. It is a stock map, so nothing
-downloads and nothing can be wrong with it. Custom maps come after this works.
+downloads and nothing can be wrong with it.
+
+**Do not use a custom map for this test.** I tried three today — `nazi_zombie_dt2`,
+`nazi_zombie_leviathan` and your own `nazi_zombie_ali` — and all three install
+perfectly, load, render, run at 62 fps, and have already **killed their own server
+script at map load** with a GSC runtime error before you can do anything:
+
+| map | the error, from the game's own console |
+|---|---|
+| `nazi_zombie_dt2` | `entity already has linkTo enabled` |
+| `nazi_zombie_leviathan` | `unknown item 'napalmblob'` (after ~40 missing xmodels) |
+| `nazi_zombie_ali` | `cannot cast undefined to bool` — `nazi_zombie_ali.gsc:130` calls `flag_wait("all_players_connected")` from a thread started at line 7, before `_zombiemode` has created the flag |
+
+When that happens there are no rounds to count, because the script that counts them is
+dead. It is not the launcher and it is not the round detection — those are the same
+code that works on Nacht. It is a separate problem and it needs its own session.
 
 ## 4. Play. Get past round 1.
 

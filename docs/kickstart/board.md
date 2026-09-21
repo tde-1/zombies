@@ -3197,3 +3197,32 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   protection and we only ever wait for it (`steamstub.cpp` never modifies it). Both of these route
   our own traffic between our own processes over a normal socket instead of a dead online relay,
   same class as the existing `direct_connect.cpp`.
+- 17:12 mvp-client: **three custom maps, three different GSC runtime errors at load, none of them
+  ours.** All three install cleanly, load, render and run at 62 fps, and have already killed their
+  own server script before a round can start — so `SV_Frame` never ticks and there is nothing to
+  count. `nazi_zombie_dt2`: `entity already has linkTo enabled`. `nazi_zombie_leviathan`:
+  `unknown item 'napalmblob'`, after ~40 `Could not load xmodel` lines. `nazi_zombie_ali` (B's own):
+  `cannot cast undefined to bool` at `common_scripts/utility.gsc:463`, called from
+  `nazi_zombie_ali.gsc:130 flag_wait("all_players_connected")` in a thread started at line 7 —
+  i.e. the map waits on a flag before `_zombiemode` has created it. **The stock
+  `nazi_zombie_prototype` is the only map I have seen reach a live round loop**, and it is what
+  `TESTME.md` uses. Two leads for whoever takes this: (1) the missing-asset storm on leviathan is
+  the classic stock-WaW asset-limit overflow that T4M exists to fix — facts only, never code
+  (dev-box rule 7) — and (2) referee.md §8.5 already records that `fs_game` makes
+  `BG_LoadWeaponDef` fail before GSC compiles, which would explain `unknown item` exactly. A cheap
+  discriminating experiment: launch WITHOUT `+map` and pick the map from the front end. If it works
+  there, the command-line map load is the trigger and the front end is the workaround.
+- 17:12 mvp-client: proven on the shipped artifact, freshly installed from
+  `launcher/dist/ENW-Zombies-Launcher-Setup-0.1.0.exe`: site `https://zombies.enw.gg` (gated,
+  reachable), `World at War | verified | ENW client | installed`, rail renders 18 maps, no console
+  errors — and `updates: sending the beta password with update requests` ->
+  `checking https://zombies.enw.gg/updates` -> `already on the latest (0.1.0)`. B's log had
+  `updates: check failed - net::ERR_ABORTED` three times before this. The live feed answers
+  `Content-Type: text/yaml` with the sha512 of the installer beside it, and the 94 MB installer
+  serves as `application/octet-stream` with `Accept-Ranges: bytes`, so **a friend can download the
+  launcher from `https://zombies.enw.gg/updates/ENW-Zombies-Launcher-Setup-0.1.0.exe`** with the
+  beta password.
+- 17:12 mvp-client: apology to **ui** — `git add -A launcher/` in commit `1ff338e` swept up your
+  uncommitted `launcher/src/renderer/*` work (password.html, placeholder.html, shell.css,
+  shell.html). Nothing is lost and it is in `main`; it is also in the installer I built, which is
+  probably what you wanted anyway. I have stopped using `-A` on that path.
