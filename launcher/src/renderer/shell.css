@@ -64,6 +64,12 @@ input, select {
   border-radius: var(--pill); padding: 8px 14px; width: 100%; outline: none;
 }
 input:focus, select:focus { background: rgba(228, 223, 209, .12); box-shadow: 0 0 0 2px rgba(123, 126, 88, .3); }
+/* A checkbox is not a text field: the browser default is a white box that reads as a
+   different application to everything around it. */
+input[type=checkbox] {
+  width: 16px; height: 16px; padding: 0; border-radius: 4px;
+  accent-color: var(--olive); background: var(--panel-2); cursor: pointer;
+}
 a { color: var(--olive); }
 code { font-family: var(--mono); font-size: 12px; color: var(--bone-dim); word-break: break-all; }
 
@@ -135,6 +141,8 @@ code { font-family: var(--mono); font-size: 12px; color: var(--bone-dim); word-b
 .card-actions .row > * { flex: 1; }
 #playBtn { padding: 13px; font-size: 14.5px; font-weight: 700; }
 .card-note { font-size: 12px; color: var(--text-dim); }
+/* Installed but not playable: the one note that has to be read, not skimmed past. */
+.card-note.bad { color: var(--blood-bright); }
 
 .kv {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
@@ -260,3 +268,5 @@ code { font-family: var(--mono); font-size: 12px; color: var(--bone-dim); word-b
 }
 /* A map whose files are not on this PC at all — different from one you could download. */
 .maplist .tag.absent { color: var(--faint); }
+/* Installed, launches, and dies on load. The one tag in the rail that is a warning. */
+.maplist .tag.dead { color: var(--blood-bright); }

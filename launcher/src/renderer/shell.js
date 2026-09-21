@@ -32,6 +32,19 @@ const STOCK = [
   { bsp: 'nazi_zombie_factory', title: 'Der Riese', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
 ]
 
+// Installed is not the same as playable.
+//
+// A custom map installs cleanly, launches, renders and holds 60 fps, and its server
+// script is already dead from a GSC runtime error before the player can move. Three
+// tried, three different errors. "Play" followed by a silent dead map is worse than a
+// row that says so, so the rail says so.
+//
+// The catalogue does not carry that verdict yet. When the main process adds `playable`
+// to a record this reads it; until then a stock map is playable and a custom one is not,
+// which is today's truth. Delete the fallback, not this function, when it stops being.
+const playable = (m) => (m && m.playable !== undefined ? !!m.playable : !!(m && m.stock))
+const UNPLAYABLE_NOTE = 'Installs and launches, but its script dies on load.'
+
 // ------------------------------------------------------------------- screens --
 
 function show(name) {
@@ -71,9 +84,11 @@ function renderMaps() {
     // "not on this PC" is a real state and has to look different from "download me":
     // nothing serves the rescued map files yet, so on a friend's machine most of this
     // list cannot be installed at all. Saying "453 MB" there would be a lie.
+    const dead = !playable(m)
     const tag = el('span', 'tag',
-      m.stock ? 'stock' : m.installed ? 'installed' : m.available ? mb(m.bytes) : 'unavailable')
-    if (!m.stock && !m.installed) tag.classList.add(m.available ? 'needs' : 'absent')
+      m.stock ? 'stock' : dead && m.installed ? 'unplayable' : m.installed ? 'installed' : m.available ? mb(m.bytes) : 'unavailable')
+    if (dead && m.installed) tag.classList.add('dead')
+    else if (!m.stock && !m.installed) tag.classList.add(m.available ? 'needs' : 'absent')
     b.append(tag)
     // The bsp, small — it is what the folder and the original download are called, and
     // people searching for a map will have seen it.
@@ -127,15 +142,18 @@ function updatePlay() {
   }
   $('playLocalBtn').disabled = !S.map || !ready || busy || needsInstall || unavailable || installing
   // One line, and only when it says something the buttons do not.
-  $('cardNote').textContent =
+  const note = $('cardNote')
+  note.textContent =
     !ready ? 'ENW client not installed.'
       : installing ? (S.installFile || 'Copying files.')
         : busy ? 'Starting.'
           : !S.map ? 'Pick a map.'
-            : unavailable ? 'Not on this PC. The four stock maps work.'
+            : unavailable ? 'Not on this PC. Nacht der Untoten works.'
               : needsInstall ? 'Not installed yet.'
-                : S.mode === 'verified' ? 'Records and badges count.'
-                  : 'Untracked.'
+                : !playable(m) ? UNPLAYABLE_NOTE
+                  : S.mode === 'verified' ? 'Records and badges count.'
+                    : 'Untracked.'
+  note.classList.toggle('bad', !!m && !needsInstall && !unavailable && !installing && !playable(m))
 }
 
 async function installSelected() {
