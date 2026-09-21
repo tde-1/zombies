@@ -34,18 +34,22 @@ CoD4 SP tree) assume we must author the dedicated branch points. We do not.
 `Com_Init` return; the frame loop starts and `SV_PacketEvent` / `SV_ConnectionlessPacket` /
 `SV_DirectConnect` all fire for the first time.
 
-**The one open blocker: a console-window grind.** About two frames in, the main thread goes into
-GDI and stays there — its EIP moves between `win32u!NtUserExtTextOutW` and `win32u!NtUserScrollDC`,
-so it is grinding rather than deadlocked. The fix in hand is `foundation` refusing the WinConsole
-class in `CreateWindowExA` / `RegisterClassA`, dedicated-only: if the window never exists the grind
-cannot happen, and it needs no engine calling-convention guesses. **Do not try to stub the console
-functions — I did, twice, and made it worse** (§4).
+**The frame loop now runs (2026-09-21).** Two further blockers were cleared after the WinConsole
+refusal landed:
 
-**Next, in order**: (1) `foundation`'s WinConsole refusal lands; (2) run `scratchpad/jointest.ps1` —
-the loopback join is the MVP test and is staged and ready; (3) CPU and frame timing under load;
-(4) the 14-map sweep; (5) solo-on-dedicated co-op rules. The join is cheaper than feared: R14 says
-T4 SP has no party layer (plain `connect <ip>:<port>`) and `re` found the Demonware `getAuthTicket`
-block is skipped entirely for `NA_LOOPBACK`, so a two-instance test on this box needs no auth work.
+- **The server shut itself down because its own local client was refused.** The SP engine connects
+  local client 0 after the map comes up; co-op rules refuse a join-in-progress; the resulting
+  `ERR_DROP` shuts the server down, drops the process back into *client* init, and it deadlocks in
+  the asset-database sync. Fixed by not connecting the local client in dedicated mode (§7b).
+  **30,038 frames in 90 s, `SV_Frame` at 20.2 fps, 186 MB flat.**
+- The previously recorded diagnosis ("a bounded Sleep(1) pacing loop at 0x59DD90") is **retracted**
+  in §7b: that stack is what a *healthy* headless server looks like.
+
+**Next, in order**: (1) the `Sys_GetEvent` `GetMessageA` stall (§7c); (2) the loopback join —
+`CL_ConnectLocal` 0x641730 and `tools\dev\jointest.ps1`; (3) the 14-map sweep; (4) solo-on-dedicated
+co-op rules. The join is cheaper than feared: R14 says T4 SP has no party layer, and CLL's source
+confirms no launcher in this scene implements one — Plutonium's `connect ip:port` lives inside
+*their* binary, not in stock T4.
 
 **One question only B can answer**: whether a game box needs a logged-in Steam client (§8).
 
@@ -102,8 +106,11 @@ dedicated: liveness ... frame::count=2  bringup_hits=1
 net: ... SV_PacketEvent=1  SV_ConnectionlessPacket=1  SV_DirectConnect=1
 ```
 
-**Then it stops.** About two frames in, the main thread goes into the console-window grind (§4,
-site 5) and the server answers nothing further. That is the one open blocker.
+**And it keeps running.** `dedicated: liveness t=90s frame::count=30038` and
+`referee: 2000 frames in 99016 ms (20.2 fps)` — Com_Frame free-runs at 200–500 Hz and `SV_Frame`
+ticks at exactly `sv_fps`. Reproduce the whole thing with
+`tools\dev\dediprobe.ps1 -Tag rNN -Seconds 90 -WhereIs`, which sets the environment above, takes
+and releases `game.lock`, samples CPU/RSS/threads and collects both logs.
 
 **Custom maps**: the mod must be installed in WaW's own mod root,
 `%LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>\`, and nowhere else — then add
@@ -481,6 +488,176 @@ What else is known:
 
 ---
 
+## 7b. SOLVED — the server stops because its own local client is dropped
+
+**Status: fixed 2026-09-21.** `server/components/dedicated/local_client.cpp`.
+
+### What the previous session recorded, and why it was wrong
+
+> "The headless server boots, loads the map, runs zombiemode GSC, runs **4-5 frames, and then
+> stops**. The main thread sits in `ntdll!NtDelayExecution` (Sleep) with a validated return chain
+> of `0x59DDDE -> 0x48DE8C -> 0x59E4DC -> 0x5FF7C2`. … the real behaviour is something outside
+> [the bounded sleep loop] re-entering it endlessly."
+
+**Retracted.** Two things were wrong with it:
+
+1. **That stack is a HEALTHY sample, not a stalled one.** `0x59DDDE <- 0x59E4DC <- 0x5FF7C2` is
+   the normal 1 ms pacing sleep inside `Com_Frame`. A working headless server lands there
+   constantly — it is now the most common sample in a *good* run. Sampling a sleeping thread and
+   calling it "stuck" is the trap; `0x48DE8C` in that chain is stale stack data (it validates as
+   call-preceded but belongs to `0x48DE40`, a sibling call Com_Frame makes *earlier* in the same
+   frame, whose slot the pacing function reuses as a local).
+2. **The outer loop cannot stall.** WinMain's loop `0x5FF7B1..0x5FF80B` is unconditional, every
+   wait in it is bounded, and `Com_Frame`'s body (`0x59E4CD..0x59E4DC`) is three calls. Read
+   statically, there is nowhere in that path for an endless re-entry to live. That should have
+   redirected the search, and it does now.
+
+### What the main thread is actually doing when it stops
+
+`ENW_DEDI_WHEREIS=1`, run `r02`, **19 consecutive identical samples over 76 s**:
+
+```
+EIP = ntdll!NtWaitForSingleObject+0xC   ESP = 000EEDC4   (byte-identical every sample)
+validated return addresses: 005A3363  0059A764  0053002B  007B7353 …
+```
+
+`NtWaitForSingleObject` with a **stable ESP** is a real wait, not a sleep and not a grind.
+
+- **`0x5A3320` is the asset-database sync.** It prints `"Database: Assets Sync Started"`
+  (0x873A4C), then `edi = 0x70E3A0(); do { 0x5FDBF0(); } while (WaitForSingleObject([0x1FF51C4],
+  500) != WAIT_OBJECT_0);`, then prints `"Database: Assets Sync Finished"` (0x873A6C). **0x5A3363
+  is the return address inside that do/while** — it waits for ever if the event is never
+  signalled. *That* is the outer loop the previous session went looking for. [V]
+- **`0x59A6F0` is the error/shutdown path.** `Com_Frame` enters it at `0x59E505` when
+  `[0x1F964B4] != 0`, and it calls `0x5A3320` at `0x59A75F`. [V]
+
+### Why we were on the error path at all — the actual bug
+
+From `r02.console.log`, in order:
+
+```
+Client connect ignored because join in progress isn't allowed in COOP
+[enw] === Com_Error TRAPPED ===  called from 00643D55
+        arg1 = 00000001 (ERR_DROP)   arg2 = "%s"   arg3 = "EXE_ERR_CANNOTJOININPROGRESS"
+ERROR: Can not join a game in progress
+----- Server Shutdown -----          dvar set sv_running 0
+Creating Direct3D device...          Loading fastfile ui
+Error: Exceeded limit of 1 'snddriverglobals' assets.
+Database: Assets Sync Started        <- and never "Finished"
+```
+
+**The SP engine connects its own local client after the map comes up, and co-op rules refuse a
+join-in-progress.** The chain is:
+
+`SV_SpawnServer` finishes → map-load path `0x631F20` calls `CL_ConnectLocal` `0x641730` at
+**`0x6321A2`** → the server refuses the join → it sends the client an `error` OOB packet →
+`CL_ConnectionlessPacket` turns it into `Com_Error(ERR_DROP, "%s", "EXE_ERR_CANNOTJOININPROGRESS")`
+at **`0x643D50`** → **Server Shutdown** → the engine falls back into **client** init (D3D9, the `ui`
+fastfile) → the sound-driver singleton is already taken → a second `Com_Error` → the error path
+`0x59A6F0` calls the asset-database sync → **it waits for ever.**
+
+So `dedicated.hpp`'s milestone 1 ("stop the engine falling back into client/renderer init") and
+milestone 4 ("keep local client 0 out of the game") were the *same bug*, and the thing that
+triggers both is the local client connecting.
+
+### The fix
+
+Retarget the one call at `0x6321A2` to a counting `ret`, dedicated-only:
+
+```
+00632192  cmp byte ptr [esp+0x13], 0
+00632197  jne 0063222B
+0063219D  mov edx, [ebp+0x10]
+006321A0  push edx
+006321A1  push edi              ; arg1 = map name
+006321A2  call 00641730         ; CL_ConnectLocal      <- retargeted
+006321A7  add esp, 8            ; THE CALLER CLEANS -> a bare `ret` stub is correct
+```
+
+`add esp,8` after the call is **read, not assumed** — the component verifies both the call target
+and those three bytes and refuses to patch otherwise. That is the discipline the two failed
+console-stub attempts (§4) lacked. `ENW_DEDI_KEEP_LOCAL_CLIENT=1` turns it off for bisecting.
+
+We fix the *client* half rather than relaxing the server's co-op join gate on purpose: a dedicated
+server wants **zero** local clients, so slot 0 is free for a real one and `get_players()` does not
+size rounds for a player who is not there.
+
+### Result
+
+| | before | after |
+|---|---|---|
+| frames | 4, then nothing | **30,038 in 90 s** |
+| `SV_Frame` | — | **20.2 fps** (`sv_fps 20`, exactly right) |
+| CPU | 1.81 s then flat (stopped) | ~6% of one core, climbing steadily |
+| RSS | 230 MB (client init had run) | **186 MB, flat** |
+| `sv_running` | 0 (Server Shutdown) | **1** |
+| D3D / `ui` fastfile / `snddriverglobals` | all present | **none** |
+
+### Three hypotheses tested and dead — do not re-test
+
+| Hypothesis | Test | Result |
+|---|---|---|
+| The frame limiter dvar | `+set com_maxfps 0` | no change. **Now explained**: `0x59DD2C` reads `com_dedicated` and *skips* the `1000/com_maxfps` computation entirely when dedicated, so the pacing target is hard-coded to 1 ms and the dvar is not consulted |
+| Windows' 15.6 ms sleep quantum (iw4x's documented fix for this loop shape) | `timeBeginPeriod(1)`, returned 0 = success | **no change**. Kept as hygiene; the comment in `dedicated.cpp` no longer claims it explains anything |
+| The nonsense CPU benchmark feeding the pacing target | the float written directly at `dvar_s+0x10` (`+set` is refused: write-protected); log confirms `0.029753 -> 4.700000 … write landed` | **no change — disproven. The code has been removed**: it hard-coded B's CPU speed and defeated a ROM dvar for no benefit |
+
+And one correction to the record: **we never set `sys_configureGHz` ourselves.** The
+`Measured CPU speed is 0.01 GHz` / `Total CPU performance is estimated as 0.03 GHz` figures are the
+engine's own broken measurement on a Ryzen 9800X3D. (`tools\dev\launch.ps1` does pass
+`+set sys_configureGHz 1`, which the engine refuses as write-protected.)
+
+Worth keeping: `sys_configureGHz` is `flags 0x0011 type 0x0001` — so **dvar type 0x0001 is float**,
+a free addition to the type table in §3.
+
+### One thing a 12-slot probe run taught us the hard way
+
+`ENW_DEDI_PROBE` with **twelve** simultaneous MinHook detours
+(`59E330,59DCF0,59B630,5FEC60,59DA50,6366C0,636610,503AB0,59DB80,70E3A0,48DE40,52D8E0`) produced an
+`Unhandled exception caught` box during boot and a dead main thread. The same run with **no** probes
+booted cleanly. The probe stubs save `pushfd/pushad` but **not XMM/FPU state**, and several of these
+functions are called from SSE-heavy code. Probe two or three at a time, and prefer
+`ENW_DEDI_WHEREIS` — the stack walk cost nothing and is what actually solved this.
+
+---
+
+## 7c. OPEN — intermittent ~5 s stalls in `Sys_GetEvent`'s message pump
+
+With the frame loop running, `r03` shows seven `Hitch warning: 5034 msec frame time` lines in 90 s,
+and the frame rate alternates between ~500 Hz and ~170 Hz in 5 s bands. The stack walk catches the
+main thread in the slow bands at:
+
+```
+EIP = win32u!NtUserGetMessage+0xC   ESP = 000EFD98
+validated: 005FED11 <- 0059B64C <- 0059DD95 <- 0059E4DC <- 005FF7C2
+```
+
+i.e. `WinMain -> Com_Frame -> pacing loop -> Com_EventLoop(0x59B630) -> Sys_GetEvent(0x5FEC60)`,
+blocked in **`GetMessageA`**. `Sys_GetEvent`'s pump is:
+
+```
+005FECD6  esi = PeekMessageA                       ; IAT 0x7EB2EC
+005FECE9  call esi                                  ; PeekMessageA(&msg, NULL, 0, 0, PM_NOREMOVE)
+005FECED  je 005FED44                               ; nothing pending -> Sys_ConsoleInput
+005FED00: call [0x7EB2CC]                           ; GetMessageA(&msg, NULL, 0, 0)   <- BLOCKS
+005FED13  je 005FEDCD                               ; returned 0 -> WM_QUIT
+005FED28  TranslateMessage / DispatchMessageA
+005FED3E  call esi ; jne 005FED00                   ; PeekMessageA again -> loop
+```
+
+The `PeekMessage(PM_NOREMOVE)` guard is not a guarantee: the loop re-peeks at `0x5FED3E`, and if a
+message arrives between that peek and the next `GetMessageA` being reached with an otherwise empty
+queue, `GetMessageA` **blocks until the next message of any kind**. In a rendered client the queue
+is never empty so this never bites. Headless — and with the WinConsole window refused — the queue is
+empty almost always, so the thread parks until one of our own 5 s worker-thread log lines wakes it.
+Hence exactly ~5 s.
+
+**Fix to try (not yet done):** hook `GetMessageA` at the IAT (**0x7EB2CC**), dedicated-only, and make
+it non-blocking: `PeekMessageA(msg, NULL, 0, 0, PM_REMOVE)`, and when there is nothing, synthesise
+`msg = {hwnd = NULL, message = WM_NULL}` and return **non-zero**. Returning 0 is not an option — the
+engine reads 0 as `WM_QUIT` (`0x5FED13`). `DispatchMessageA` on a NULL hwnd is a no-op, and the
+re-peek at `0x5FED3E` then returns FALSE and exits the loop cleanly. Same IAT-level technique as
+`no_winconsole` and the foreground-app fix, so there is no engine calling convention to guess.
+
 ## 8. Does a game box need a Steam client?
 
 `CoDWaW.exe` has six sections; the last is **`.bind`** (0x4ABB000, 0x56000 bytes) and the entry point
@@ -552,8 +729,8 @@ the copy and neither opens as a zip. Worth B running Steam's "Verify integrity o
 |---|---|
 | (a) runs with no renderer/window | **done, by the stock exe** |
 | (b) loads `nazi_zombie_prototype` and runs script frames | **done** (p21) — map, collision, zombies GSC |
-| (c) stable frame rate with sleep-based pacing, CPU and RAM | partial: idle **~0% CPU, 186 MB** measured; frame rate not yet observed (§4 site 3) |
-| (d) a client connects and spawns in | **not started** — blocked on site 3 |
+| (c) stable frame rate with sleep-based pacing, CPU and RAM | **done** — Com_Frame 200–500 Hz, `SV_Frame` **20.2 fps**, ~6% of one core, **186 MB flat**. One defect open: intermittent ~5 s stalls in `Sys_GetEvent` (§7c) |
+| (d) a client connects and spawns in | in progress — the server now stays up to be connected to |
 
 **Estimate for a focused swarm to finish Stage C**, assuming `re` keeps supplying addresses and the
 Steam question is answered: narrowing the SAVED flag to one bit, hours. Site 3 (the wire), 1–2 days —

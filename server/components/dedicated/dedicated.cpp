@@ -249,6 +249,7 @@ public:
     const char* name() const override { return "dedicated"; }
 
     void post_load() override {
+        raise_timer_resolution();
         // No game memory here: the image may still be SteamStub-encrypted.
         int v = 0;
         if (detect_dedicated_from_command_line(&v)) {
@@ -557,6 +558,38 @@ private:
                      d.name, flags, after, type,
                      ((after & saved_bit) == saved_bit) ? "SAVED bits set" : "SET FAILED", d.why);
         }
+    }
+
+    // 1 ms timer resolution. Hygiene, NOT a fix for anything we have measured.
+    //
+    // The frame pacing at 0x59DD90 sleeps 1 ms at a time until elapsed >= the target in
+    // [esp+0x14], bounded to 0x32 = 50 iterations (`add edi,1 / cmp edi,0x32 /
+    // jl 0x59DD90`, ebx = KERNEL32!Sleep). In dedicated mode the target is hard-coded
+    // to 1 ms -- the `1000/com_maxfps` computation at 0x59DD37 is SKIPPED when
+    // com_dedicated is non-zero (0x59DD2C reads [0x212B2F4] and jumps past it) -- so
+    // the loop normally exits after one sleep.
+    //
+    // This was tried as a cure for the "server stops after 4 frames" bug on the theory
+    // that Sleep(1) is really ~15.6 ms at the default quantum, which is the trap iw4x
+    // documents in Threading.cpp for exactly this loop shape. **It made no difference:
+    // that bug was the local client being dropped by the co-op join gate (see
+    // local_client.cpp), nothing to do with sleep resolution.** Kept because it is free
+    // and it does make the pacing honest -- a 1 ms target sleeping 15.6 ms would cap a
+    // headless server at ~64 Hz whatever else was true.
+    //
+    // Loaded dynamically so the build needs no winmm link change (other agents share
+    // this CMakeLists).
+    void raise_timer_resolution() {
+        const HMODULE winmm = ::LoadLibraryA("winmm.dll");
+        if (!winmm) { ENW_WARN("dedicated: could not load winmm.dll"); return; }
+        using timeBeginPeriod_t = unsigned(__stdcall*)(unsigned);
+        const auto fn = reinterpret_cast<timeBeginPeriod_t>(
+            ::GetProcAddress(winmm, "timeBeginPeriod"));
+        if (!fn) { ENW_WARN("dedicated: winmm.dll has no timeBeginPeriod"); return; }
+        const unsigned rc = fn(1);
+        ENW_INFO("dedicated: timeBeginPeriod(1) -> %u (0 = ok). Hygiene only: the pacing loop at "
+                 "0x59DD90 targets 1 ms in dedicated mode, which would be ~15.6 ms at the default "
+                 "quantum. It was NOT the cause of the 4-frame stop (see local_client.cpp).", rc);
     }
 
     // Is the main thread alive at all?
