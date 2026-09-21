@@ -57,6 +57,7 @@ Kept deliberately so they are not rediscovered as new findings.
 | **`COM_PlayIntroMovies` shortlist** (0x570B80, 0x42FDE0, 0x5A8B30, 0x6C0BC0, 0x479370, 0x6DC5D0, 0x6449B0, 0x5C9AC0, 0x5D6BD0) | One of these was the Com_Init gate | **None of them.** All nine counting stubs read zero. The gate was a fatal error (`ERR_MAPLOADERRORSUMMARY`), not a hang. | dedi stubbed all nine. |
 | **0x5FF4E0 "dedicated server is stuck here"** | Renderer bring-up was the blocker | Came from an **unvalidated stack scan**; the call site is never even reached. | dedi's counting stub: 0 hits. |
 | **0x49414E → 0x494120** | The GDI text-park site | 0x49414E is **mid-instruction**; rejected by dedi's call-preceded filter. | Validated walk gave 0x5B0830 instead. |
+| **the 0x59DD90 "bounded Sleep(1) pacing loop" stop** | The dedicated server stops inside it, so something outside must re-enter it endlessly | **That stack is a HEALTHY headless server.** `0x59DDDE <- 0x59E4DC <- 0x5FF7C2` is the normal 1 ms pacing sleep and is the *most common* sample in a good run; `0x48DE8C` in that chain is stale stack data. The loop really is bounded to 50 and never stalls. The real stop was `NtWaitForSingleObject` with a **stable ESP** in the asset-database sync, off the error path. | dedi, 2026-09-21: 19 identical samples named 0x5A3320; removing the cause made it run 37,875 frames in 625 s |
 | **Variable-table layout** (entry 0x10 with name at +8, slot `(name + parentId<<8) mod 0x10000`, childVariables at +0x60000) | How to read `level.<field>` | **Disproved** — the referee scored zero hash-consistent names across all four bit-extractions. Level object id is **4**, and `gScrVarPub+0x20` reads zero, so that is probably not `levelId` either. | Referee's exhaustive test. |
 
 
@@ -375,6 +376,173 @@ The T4 equivalent of iw4x's `connect_coop` is **function 0x641730** (0x641730..0
   Prove the args and cleanup first — the two call sites plus the `jl` gate are the way in.
 - Auth is already clear for this test: Demonware `getAuthTicket` 0x57C0E0 is skipped for
   NA_LOOPBACK (guard 0x642E4C), so a loopback join needs no auth patch.
+
+## 6. The frame path, read end to end (dedi, 2026-09-21) — all [V]
+
+Every address here was read off an instruction on our own dump and then confirmed against a live
+validated stack walk of a running headless server. This section exists to settle "where can a
+dedicated server possibly stall", because the answer turned out to be **nowhere in this path** —
+the stall was on the error path (§7).
+
+### `WinMain`'s loop — unconditional, cannot exit
+
+```
+005FF77E  call 0059D710             Com_Init
+005FF794  call 00594200             command-buffer exec (this is where `+map` runs)
+005FF799  call 005FF4E0             renderer bring-up   <- we retarget this
+005FF7AB  mov esi, [0x7EB0F0]       esi = KERNEL32!Sleep
+005FF7B1: cmp [0x22C1BF0], ebx      LOOP TOP (ebx = 0)
+005FF7B7  je 005FF7BD | push 5 / call esi        conditional Sleep(5)
+005FF7BD  call 0059E330             Com_Frame    <- shared/core/frame.cpp retargets this
+005FF7C2  eax = [0x212B2F4]         com_dedicated
+005FF7CB  cmp [eax+0x10], ebx / jne 005FF7D5     dedicated SKIPS the next call
+005FF7D0  call 0069DAA0             client-side per-frame
+005FF7D5  Dvar_FindVar("onlinegame") ... je 005FF7B1
+005FF80B  jmp 005FF7B1
+```
+
+**Every path ends at `jmp 0x5FF7B1`.** There is no break out of it. So if frames stop, the answer
+is always "`Com_Frame` did not return", never "the outer loop is waiting for something".
+
+### `Com_Frame` 0x59E330 — a wrapper with a `setjmp` guard
+
+```
+0059E339..0059E4AB   40x `mov esi,<addr>; call 0059E1D0`    per-frame profile/timer resets
+0059E4C1  call 007E1894            _setjmp3(buf, 0)   (writes 'VC20' at buf+0x20 -- MSVC setjmp)
+0059E4CB  jne 0059E4E3             the longjmp landing: an ERR_DROP SKIPS the whole body
+0059E4CD  call 0070E3A0
+0059E4D2  call 0048DE40
+0059E4D7  call 0059DCF0            THE FRAME BODY
+0059E4DC  add dword [0x1F964BC], 1 com_frameNumber
+0059E4E3  push 0x2298D68 / call [0x7EB138]       EnterCriticalSection
+0059E4EE  cmp dword [0x1F964B4], 0
+0059E4F5  jne 0059E505             THE ERROR BRANCH (see section 7)
+0059E502  ret
+0059E505  call 0059A6F0 ; LeaveCriticalSection ; call 00644BE0 ; jmp 0059E180
+```
+
+- **`com_frameNumber` = 0x1F964BC** [V]. It is incremented *after* the body, so a counter hooked at
+  WinMain's call site reads N when the (N+1)th frame is the one that hung. That is exactly why the
+  server that hung on its 5th frame reported "4 frames".
+- `Com_Error(ERR_DROP)` `longjmp`s back to 0x59E4CB, which is how a frame can silently do nothing.
+
+### `0x59DCF0` — the frame body, and the pacing loop
+
+```
+0059DD10  edx = [0x1F96488]        the com_maxfps dvar
+0059DD26  [esp+0x14] = 1           minimum frame time = 1 ms
+0059DD2A  jle 0059DD4B             com_maxfps <= 0 -> uncapped
+0059DD2C  eax = [0x212B2F4] ; cmp dword [eax+0x10], 0
+0059DD35  jne 0059DD4B             DEDICATED SKIPS THE 1000/com_maxfps COMPUTATION
+0059DD37  eax = 1000 / com_maxfps -> [esp+0x14]
+0059DD6C  add [0x1F552D4], 1       a frame counter
+0059DD7C  je 0059DDFA              NOT dedicated -> the other pacing path
+0059DD7E  ebp = [0x7EB39C] timeGetTime   ebx = [0x7EB0F0] Sleep   edi = 0
+0059DD90: call 0059B630            Com_EventLoop
+0059DDB1  eax = timeGetTime() - [0x22BEC34]      now, in ms since the engine's base
+0059DDC1  [0x1F9648C] = eax        com_frameTime
+0059DDD2  esi = now - [0x1F964B8]  lastFrameTime
+0059DDD8  jge 0059DDEB             target met, done
+0059DDDC  call ebx                 Sleep(1)
+0059DDE1  cmp edi, 0x32 / jl 0059DD90            BOUNDED TO 50 ITERATIONS
+...
+0059DEBF  call 006366C0            the server frame (-> 0x636610 -> SV_Frame 0x635CC0)
+0059DED4  jne 0059DFCF             DEDICATED skips ALL the client work below
+```
+
+- **`com_frameTime` = 0x1F9648C**, **lastFrameTime = 0x1F964B8**, **timer base = 0x22BEC34** [V].
+- **A dedicated server's minimum frame time is hard-coded to 1 ms**: `com_maxfps` is not consulted
+  on this path at all. That is why `+set com_maxfps 0` changed nothing when it was tried as a cure
+  for the 4-frame stop, and why an unpatched headless server free-runs at ~515 Hz while `SV_Frame`
+  does its real work at 20. `server/components/dedicated/frame_pacing.cpp` nops the `jne` at
+  **0x59DD35** so the dvar is honoured (measured: 515 Hz at 12.5% of a core -> 61 Hz at 4.9%).
+- The sleep loop is genuinely bounded at 50 iterations and **cannot** be where a server hangs.
+
+### The event pump
+
+| Function | Addr | Conf | Evidence |
+|---|---|---|---|
+| `Com_EventLoop` | 0x59B630 | [V] | 1 caller (0x59DCF0). Loops `Sys_GetEvent` over a 0x20-byte event, `jmp [eax*4 + 0x59B6F0]` switch on type 0..3; handlers 0x4780F0, 0x478850, 0x594200 |
+| `Sys_GetEvent` | 0x5FEC60 | [V] | pops a queued event under CS 0x2298E58; else `PeekMessageA` (IAT 0x7EB2EC, PM_NOREMOVE) -> `GetMessageA` (IAT **0x7EB2CC**) -> Translate/Dispatch -> `Sys_ConsoleInput` |
+| `Sys_ConsoleInput` | 0x605840 | [V] | 1 caller (Sys_GetEvent). **Pure memory: no GDI, no window, no blocking.** `if (!byte[0x22C1674]) return 0;` then copies the line to +0x200 and returns 0x22C1874. **Safe with the WinConsole refused** -- it is not why anything hangs |
+| two-event poll | 0x48DE40 | [V] | called by Com_Frame at 0x59E4D2. `WaitForSingleObject([0x1FF5250], 0)` then `([0x1FF51C4], 0)` (IAT **0x7EB100**); timeout 0, so non-blocking. If the second is signalled it tail-jumps to 0x48E560 |
+
+**`GetMessageA` will block a headless server for seconds at a time.** The `PeekMessage(PM_NOREMOVE)`
+guard at 0x5FECE9 races the re-peek at 0x5FED3E, and with an almost-always-empty queue (headless,
+console window refused) the thread parks in `GetMessageA` until any message arrives. Measured: seven
+`Hitch warning: 5034 msec frame time` in 90 s. Fixed at the IAT in
+`server/components/dedicated/nonblocking_pump.cpp`; hitches went 7 -> 1 and the frame rate went from
+oscillating 170-500 Hz to flat. **Do not return 0 from a GetMessageA replacement** -- the engine
+reads 0 as WM_QUIT at 0x5FED13 and shuts down.
+
+### IAT entries used above (all [V], read from the operands)
+
+| Import | IAT slot |
+|---|---|
+| `KERNEL32!Sleep` | 0x7EB0F0 |
+| `KERNEL32!WaitForSingleObject` | 0x7EB100 |
+| `WINMM!timeGetTime` | 0x7EB39C |
+| `USER32!PeekMessageA` | 0x7EB2EC |
+| `USER32!GetMessageA` | 0x7EB2CC |
+| `USER32!TranslateMessage` | 0x7EB300 |
+| `USER32!DispatchMessageA` | 0x7EB2E4 |
+| `KERNEL32!EnterCriticalSection` / `LeaveCriticalSection` | 0x7EB138 / 0x7EB134 |
+
+---
+
+## 7. The error path, and the only unbounded wait on it (dedi, 2026-09-21)
+
+This is what the dedicated server actually deadlocked in, and it is worth knowing because **any**
+`Com_Error` on a headless box ends here.
+
+| Function | Addr | Conf | Evidence |
+|---|---|---|---|
+| error / shutdown path | 0x59A6F0 | [V] | 2 callers: `Com_Init`+0x21 and `Com_Frame` at 0x59E505 (taken when `[0x1F964B4] != 0`). 0x1010-byte frame, zeroes ~10 globals, calls the DB sync at 0x59A75F |
+| **asset-database sync** | 0x5A3320 | [V] | 12 callers. Prints `"Database: Assets Sync Started"` (0x873A4C), then `do { 0x5FDBF0(); } while (WaitForSingleObject([0x1FF51C4], 500) != WAIT_OBJECT_0);`, then `"Database: Assets Sync Finished"` (0x873A6C). **The only unbounded wait on the frame or error path.** A console log that ends on "Started" with no "Finished" means the main thread is here |
+| `EXE_ERR_CANNOTJOININPROGRESS` raise | 0x643D50 | [V] | inside `CL_ConnectionlessPacket` 0x643380: `push msg; push "%s"(0x84B86C); push 1 /*ERR_DROP*/; call Com_Error 0x59AC50`. This handles the server's `error` OOB reply |
+
+**The diagnostic rule this cost a day to learn:** a sample in `NtDelayExecution` proves nothing on
+its own, because a healthy headless server is asleep most of the time. A sample in
+`NtWaitForSingleObject` **with a byte-identical ESP across many samples** is a real deadlock.
+
+---
+
+## 8. `CL_ConnectLocal` 0x641730, read out (dedi, 2026-09-21)
+
+Upgrades section 5 from [C-strong] to [V] on the mechanics, and adds the part that decides whether a
+**second-process** join can work at all.
+
+```
+00641730  push ebp / mov ebp,esp / and esp,-8    args [ebp+8] = map name, [ebp+0Ch] = byte flag
+0064174E  cmp [0x305842C], esi(=6)
+00641767  jl 006417D2                            state < 6 TAKES the connect path
+00641769  push "localhost"(0x86F0D4) ...         state >= 6: early-out if already on localhost
+006417D2: eax = 0x840FF0 ("") ; call 005EF550
+006417E7  push "localhost"(0x86F0D4)             THE TARGET ADDRESS, hard-coded (68 D4 F0 86 00)
+006417EC  push 0x48AE3A0                         the server-name buffer
+006417F1  call 007AA9C0                          strncpy(0x48AE3A0, "localhost", 0xFF)
+0064185F  [0x305842C] = 5                        client state = connecting
+00641855  push 0x300FFF8                         out netadr_s
+0064187A  call 00679520                          name -> netadr (name in EAX, out ptr on the stack)
+00641883  call 00642C80                          CL_SendConnectPacket
+0064194F  ret                                    plain ret; both call sites `add esp,8` -> cdecl
+```
+
+New, and load-bearing for milestone (d):
+
+- **server-name buffer = 0x48AE3A0** [V]; **resolved server address (netadr_s) = 0x300FFF8** [V];
+  **client state = 0x305842C** [V] (set to 5 = connecting; the gate compares against 6).
+- **The destination is hard-coded to the string `"localhost"`**, pushed as a plain `imm32` at
+  **0x6417E7**. The function takes no address argument. If `"localhost"` resolves to `NA_LOOPBACK`
+  (the engine's in-process ring buffer) rather than `NA_IP 127.0.0.1`, then **a second process can
+  never reach our server through this call** -- and the one-dword fix is to rewrite that `push`
+  operand to point at our own string, e.g. `"127.0.0.1:28960"`. **Untested as of writing. Test it
+  before believing either answer.**
+- `0x679520` is the name-to-netadr resolver [C]; its convention looks like EAX = name with the out
+  pointer on the stack. Not proven enough to call, and it does not need to be -- the `push` operand
+  is the cheaper and safer lever.
+
+---
 
 ## 4. Open threads
 - Pin `Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`, exact `SV_DropClient`. Anchors:

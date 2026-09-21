@@ -24,6 +24,7 @@ param(
     [string]$Name = 'd2',
     [string]$Map = 'nazi_zombie_prototype',
     [int]$Port = 28960,
+    [int]$MaxFps = 60,
     [string]$Probe = '',
     [switch]$WhereIs,
     [string[]]$ExtraArgs = @(),
@@ -52,7 +53,12 @@ $gameArgs = @(
     '+set', 'hud_drawhud', '1',
     '+set', 'ui_campaign', 'american',
     '+set', 'sv_maxclients', '4',
-    '+set', 'net_port', "$Port"
+    '+set', 'net_port', "$Port",
+    # Dedicated mode ignores com_maxfps in stock T4 (the branch at 0x59DD35 skips the
+    # 1000/com_maxfps computation), so Com_Frame free-runs at ~515 Hz for a 20 Hz
+    # server. server/components/dedicated/frame_pacing.cpp nops that branch; this is
+    # then the rate. 3x sv_fps is plenty of headroom.
+    '+set', 'com_maxfps', "$MaxFps"
 ) + $ExtraArgs + @('+map', $Map)
 
 $logDir = Join-Path $DevRoot "logs\dedi"

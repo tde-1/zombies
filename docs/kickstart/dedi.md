@@ -620,7 +620,7 @@ functions are called from SSE-heavy code. Probe two or three at a time, and pref
 
 ---
 
-## 7c. OPEN — intermittent ~5 s stalls in `Sys_GetEvent`'s message pump
+## 7c. FIXED — intermittent ~5 s stalls in `Sys_GetEvent`'s message pump
 
 With the frame loop running, `r03` shows seven `Hitch warning: 5034 msec frame time` lines in 90 s,
 and the frame rate alternates between ~500 Hz and ~170 Hz in 5 s bands. The stack walk catches the
@@ -651,12 +651,48 @@ is never empty so this never bites. Headless — and with the WinConsole window 
 empty almost always, so the thread parks until one of our own 5 s worker-thread log lines wakes it.
 Hence exactly ~5 s.
 
-**Fix to try (not yet done):** hook `GetMessageA` at the IAT (**0x7EB2CC**), dedicated-only, and make
+**Fixed** in `server/components/dedicated/nonblocking_pump.cpp`: hitches went **7 -> 1** in 90 s (the survivor is the 1 s map load) and the frame rate stopped oscillating. The fix hooks `GetMessageA` at the IAT (**0x7EB2CC**), dedicated-only, and make
 it non-blocking: `PeekMessageA(msg, NULL, 0, 0, PM_REMOVE)`, and when there is nothing, synthesise
 `msg = {hwnd = NULL, message = WM_NULL}` and return **non-zero**. Returning 0 is not an option — the
 engine reads 0 as `WM_QUIT` (`0x5FED13`). `DispatchMessageA` on a NULL hwnd is a no-op, and the
 re-peek at `0x5FED3E` then returns FALSE and exits the loop cleanly. Same IAT-level technique as
 `no_winconsole` and the foreground-app fix, so there is no engine calling convention to guess.
+
+## 7d. Milestone (c): the 10-minute soak, with numbers
+
+`tools\dev\dediprobe.ps1 -Tag soak1 -Seconds 620 -WhereIs`, `waw-d2`, `nazi_zombie_prototype`,
+`sv_maxclients 4`, `com_maxfps 60`, no clients connected, Ryzen 9800X3D.
+
+| | at t=1 s | at t=620 s |
+|---|---|---|
+| `Com_Frame` rate | 51 Hz (still loading) | **60.8 Hz**, and 60.6–61.2 Hz continuously in between |
+| frames total | — | **37,875** over 625 s |
+| `SV_Frame` | — | **20.0 fps** (`referee: 12000 frames in 598765 ms`) — exactly `sv_fps 20` |
+| CPU | 2.17 s | **30.06 s** → **4.85% of one core**, perfectly linear |
+| RSS | 183.7 MB | **186.4 MB** — 186.3 MB unchanged from t=10 s to t=620 s |
+| threads | 11 | 8–10 |
+| handles | 436 | 475 |
+| `Hitch warning` | — | **1** in the whole run, the 1,059 ms map load |
+| `Com_Error` / `Server Shutdown` / `snddriverglobals` | — | **0 / 0 / 0** |
+
+No leak, no drift, no stall. The remaining handle growth (436 → 475 over ten minutes) is worth a
+look on a much longer soak before this hosts anything real, but it is flat over the last several
+minutes and is as likely to be our own diagnostics as the engine.
+
+**The frame rate is a knob now.** Stock T4 ignores `com_maxfps` in dedicated mode
+(`docs/re/t4-sp-map.md` §6: the branch at `0x59DD35` skips the `1000/com_maxfps` computation), so an
+unpatched headless server free-runs. Measured on the same map:
+
+| | frame rate | CPU |
+|---|---|---|
+| stock dedicated pacing (1 ms target) | **515 Hz**, rock steady | 12.5% of a core |
+| `frame_pacing.cpp` + `com_maxfps 60` | **61 Hz** | **4.85%** of a core |
+
+`SV_Frame` paces itself to `sv_fps` either way, so the extra 450 Hz was Com_Frame asking the OS what
+time it was. `ENW_DEDI_UNCAPPED=1` restores the stock behaviour, and `+set com_maxfps 0` still means
+uncapped because the `jle` at `0x59DD2A` is untouched.
+
+---
 
 ## 8. Does a game box need a Steam client?
 
@@ -729,7 +765,7 @@ the copy and neither opens as a zip. Worth B running Steam's "Verify integrity o
 |---|---|
 | (a) runs with no renderer/window | **done, by the stock exe** |
 | (b) loads `nazi_zombie_prototype` and runs script frames | **done** (p21) — map, collision, zombies GSC |
-| (c) stable frame rate with sleep-based pacing, CPU and RAM | **done** — Com_Frame 200–500 Hz, `SV_Frame` **20.2 fps**, ~6% of one core, **186 MB flat**. One defect open: intermittent ~5 s stalls in `Sys_GetEvent` (§7c) |
+| (c) stable frame rate with sleep-based pacing, CPU and RAM | **done, soaked 10 min** — 61 Hz, `SV_Frame` **20.0 fps**, **4.85% of one core**, **186.3 MB flat**, 1 hitch (the map load). §7d |
 | (d) a client connects and spawns in | in progress — the server now stays up to be connected to |
 
 **Estimate for a focused swarm to finish Stage C**, assuming `re` keeps supplying addresses and the

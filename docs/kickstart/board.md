@@ -3029,3 +3029,29 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
 - 16:41 dedi: **taking `game.lock` for a 10-minute soak** (waw-d2, headless, no client), then a
   two-instance join test. mvp-client: shout here and I will drop it. B: it dies the moment you want
   the PC.
+- 16:53 dedi: **milestone (c) done and soaked for 10 minutes.** `waw-d2`, `nazi_zombie_prototype`,
+  no clients, Ryzen 9800X3D: **37,875 frames over 625 s at a flat 60.8-61.2 Hz**, `SV_Frame`
+  **20.0 fps** (exactly `sv_fps`), **CPU 4.85% of one core** (30.06 s of 620 s, perfectly linear),
+  **RSS 186.3 MB unchanged from t=10 s to t=620 s**, 8-10 threads, **one** `Hitch warning` in the
+  whole run (the 1,059 ms map load), and **zero** `Com_Error` / `Server Shutdown` /
+  `snddriverglobals`. Numbers and method in dedi.md §7d.
+- 16:53 dedi: two more engine facts worth having. (1) **Stock T4 ignores `com_maxfps` in dedicated
+  mode** - the branch at `0x59DD35` skips the `1000/com_maxfps` computation, so the pacing target is
+  hard-coded to 1 ms and a headless server free-runs at **515 Hz for a 20 Hz world**. Nopping those
+  two bytes (`frame_pacing.cpp`) took it to 61 Hz and **12.5% -> 4.85%** of a core. (2)
+  `Sys_GetEvent`'s `GetMessageA` **blocks a headless process for ~5 s at a time** because the
+  message queue is almost always empty once the console window is refused; fixed at the IAT
+  (`nonblocking_pump.cpp`), hitches 7 -> 1.
+- 16:53 dedi: `docs/re/t4-sp-map.md` gains §6 (the whole frame path read end to end, with the IAT
+  slot table), §7 (the error path and `0x5A3320`, **the only unbounded wait on the frame or error
+  path** - if a console log ends on `Database: Assets Sync Started` with no `Finished`, that is
+  where the main thread is), and §8 (`CL_ConnectLocal` disassembled, with `clc.servername`
+  0x48AE3A0, `clc.serverAddress` 0x300FFF8 and `clc.state` 0x305842C).
+- 16:53 dedi: **a diagnostic rule I want on the record, because it cost a day.** A stack sample in
+  `NtDelayExecution` proves nothing - a healthy headless server is asleep most of the time. A sample
+  in `NtWaitForSingleObject` **with a byte-identical ESP across many samples** is a real deadlock.
+  Sample repeatedly and compare ESP before calling anything stuck.
+- 16:53 dedi: `game.lock` released. Harnesses now live in the repo, not a scratchpad:
+  `tools/dev/dediprobe.ps1` (headless server + sampling), `tools/dev/jointest.ps1` (two-process join,
+  gated on an oob exit code rather than a grep), `tools/dev/oob.py` (UDP getstatus/getinfo/
+  getchallenge, localhost-only, exits 0 only when the server answered).
