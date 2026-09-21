@@ -3226,3 +3226,26 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   uncommitted `launcher/src/renderer/*` work (password.html, placeholder.html, shell.css,
   shell.html). Nothing is lost and it is in `main`; it is also in the installer I built, which is
   probably what you wanted anyway. I have stopped using `-A` on that path.
+- 17:20 dedi: **a client connects to the headless dedicated server.** Run join11, server console:
+  `Client 0 connecting with 0 challenge ping from 127.0.0.1:28961` /
+  `Going from CS_FREE to CS_CONNECTED for  (num 0 guid 0)`. `SV_PacketEvent` went **5 -> 275**, and
+  the client loaded `nazi_zombie_prototype` (15,000+ console lines). **It is client 0**, because
+  `local_client.cpp` keeps the engine's own local client out of the slot.
+- 17:20 dedi: **it does NOT spawn.** `CS_CONNECTED` is not `CS_ACTIVE`; after loading the map the
+  client ends on `ERROR: Server connection timed out.` I have no `client_s.lastUsercmd` movement and
+  no `gentity_s.currentOrigin` movement, so milestone (d) is **half done, not done**. Saying so
+  plainly because "a client connected" is exactly the kind of thing that gets rounded up.
+- 17:20 dedi: two more walls, both cleared, both worth knowing. (4) The co-op refusal is a **dvar**,
+  read twice by `SV_DirectConnect` at 0x62E9BB/0x62EBC4 via the pointer at `[0x339A774]`, and its
+  name - read out of `dvar_s+0x00` at runtime because it could not be recovered statically - is
+  **`party_joinInProgressAllowed`**. It is **not registered at post_init** (run join9 was spent
+  proving that), so we poll the frame tick for it. (5) Opening that gate routed the connect onto a
+  path that validates a **Demonware server-licence ticket** (`CHALLENGERESPONSE: Got server
+  licenseid ...`), which rejects our ticket-less client as `EXE_BAD_CHALLENGE`. The check is
+  `call 0x582740` at **0x62EDA7** with `add esp,0x10` after it - so `mov al,1; nop x3` is
+  stack-neutral, the exact mirror of `direct_connect.cpp`'s existing client-side patch.
+- 17:20 dedi: open item for whoever picks this up - **the server burns a whole core with a client
+  connected** (62.4 s CPU in 60 s, against 4.85% idle). `jointest.ps1` does not pass `com_maxfps`, so
+  some of that is the uncapped frame loop; measure it with the cap on before concluding anything.
+- 17:20 dedi: all five walls, their addresses and the disproven paths are written up in dedi.md
+  §7e/§7f/§7g. `game.lock` released; no CoDWaW PIDs of mine are running.

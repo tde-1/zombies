@@ -886,10 +886,8 @@ Fix: the immediate at **0x641865**, `5` → `4`. `CL_ConnectLocal` then leaves t
 `challengeResponse`, `CL_ConnectionlessPacket` 0x643380 stores it, and the connect that follows
 carries a challenge. Folded into `connect_address.cpp` behind the same `ENW_CONNECT_ADDR`.
 
-**Status: built, not yet run.** `game.lock` went to the `mvp-client` lane again. The next run is
-`jointest.ps1 -Tag join8 -ClientFrom dedi-client`, and the thing to watch is whether
-`SV_PacketEvent` climbs past the connect — that is the client sending usercmds, which is what
-milestone (d) actually asks for.
+**Status: proven.** Run `join8`: `CHALLENGERESPONSE: Got server licenseid f36072ab308c8331` and
+`SVC_GetChallenge` went 1 -> 2. The handshake completes. Two more walls followed (§7g).
 
 ### What to check the moment a client does get in
 
@@ -901,6 +899,107 @@ The success criterion is not "connected", it is **spawned and moving**:
 - **Test the solo case explicitly.** On a dedicated server the game runs co-op rules even with one
   player (Quick Revive, prices, revives). For a speedrun platform that is the difference between a
   valid and an invalid solo run.
+
+---
+
+## 7g. A client connects: `CS_FREE -> CS_CONNECTED` on a headless server
+
+**Run `join11`, server console:**
+
+```
+Client 0 connecting with 0 challenge ping from 127.0.0.1:28961
+Going from CS_FREE to CS_CONNECTED for  (num 0 guid 0)
+```
+
+and the counters went from 5 packets to **275**:
+
+| | join5 | join7 | join10 | **join11** |
+|---|---|---|---|---|
+| `SV_PacketEvent` | 3 (all mine) | 4 | 5 | **275** |
+| `SV_ConnectionlessPacket` | 3 | 4 | 5 | **12** |
+| `SVC_GetChallenge` | 1 (mine) | 1 | 2 | **2** |
+| `SV_DirectConnect` | 0 | 1 | 1 | **1** |
+| client got to | nothing sent | bad challenge | bad challenge | **CS_CONNECTED, map loaded** |
+
+**It is client 0.** That slot is free precisely because `local_client.cpp` keeps the engine's own
+local client out, which is the thing that was killing the server in the first place.
+
+The client then loaded `nazi_zombie_prototype` (15,000+ console lines of it) and finally:
+
+```
+ERROR: Server connection timed out.
+```
+
+### Walls 4 and 5, both cleared
+
+**4 — the co-op gate is a dvar, and it is called `party_joinInProgressAllowed`.**
+`SV_DirectConnect` reads it twice, at `0x62E9BB` and `0x62EBC4`:
+
+```
+0062EBC4  mov eax, [0x339A774]        ; dvar_s*
+0062EBC9  cmp byte ptr [eax+0x10], 0
+0062EBCD  je 0062F101                 ; ZERO -> "Client connect ignored because join in
+                                      ;          progress isn't allowed in COOP" -> refuse
+```
+
+We could not recover the name statically — all five references *read* `0x339A774` and none writes
+it — so `join_in_progress.cpp` reads the name out of `dvar_s+0x00` at runtime and logs it. It is
+**`party_joinInProgressAllowed`**.
+
+**It is not registered at `post_init`.** Run `join9` was wasted proving that: the pointer is still
+null when `Com_Init` finishes, because the party/lobby side owns it. The component polls the frame
+tick every 16 frames instead, and re-asserts the value because the three other readers (`0x654260`,
+`0x654530`, `0x65A5A0`) are party code that may write it back.
+
+**5 — the server validates a Demonware ticket, and the client has not got one.**
+Opening the co-op gate routed the connect down the path that checks it, so the error changed from
+"Can not join a game in progress" to "No or bad challenge for address". The name is misleading:
+`CHALLENGERESPONSE: Got server licenseid f36072ab308c8331` shows this is Demonware's **server
+licence** exchange, not the Quake challenge number. The check is:
+
+```
+0062ED8A  lea ecx, [esi+0x58D28]      ; the last 0x18 bytes of client_s (sizeof = 0x58D30)
+0062ED91  lea edx, [esi+0x58D18]
+0062ED98  lea ebp, [esi+0x58D20]
+0062EDA5  push ebp / push eax / push edx / push ecx
+0062EDA7  call 00582740               ; the Demonware ticket/licence validator
+0062EDAC  add esp, 0x10               ; THE CALLER CLEANS
+0062EDAF  test al, al
+0062EDB1  jne 0062EE0A                ; non-zero -> accept
+0062EDE5  mov eax, 0x886DA4           ; "error\nEXE_BAD_CHALLENGE" -> reject
+```
+
+`server_auth.cpp` replaces that one call with `mov al,1; nop x3` — **the exact mirror of
+`direct_connect.cpp`'s existing client-side patch at `0x642E77`**, and stack-neutral for the same
+reason, which the component verifies (`83 C4 10` must follow) rather than assumes. Dedicated only.
+
+There is a **second** `EXE_BAD_CHALLENGE` raise in the same function at `0x62E75D` on an earlier
+path. It has not been hit and is not patched; the two are distinguishable because only the one we
+patched is preceded by the `0x582740` call.
+
+### What is NOT done, precisely
+
+**The player has not spawned.** `CS_CONNECTED` is not `CS_ACTIVE`; the server never logged the
+client entering the game, and `client_s.lastUsercmd` (+0x11108) and `gentity_s.currentOrigin`
+(+0x160) were never sampled because there was nothing to sample. Connected is not spawned, and the
+success criterion is spawned and moving.
+
+Two concrete things for the next session, in order:
+
+1. **Why the connection times out after the map loads.** The client goes
+   `CS_CONNECTED -> (gamestate) -> CS_PRIMED -> CS_ACTIVE`, and it stalled somewhere after loading.
+   `SV_PacketEvent` stopped climbing at 275, so the conversation died rather than never started. The
+   places to look are the `clc_move`/usercmd path (`0x630BF0`, "Invalid command time %i from
+   client") and whether the server ever sends the "entered the game" server command.
+2. **The server burns a whole core with a client connected.** Idle it is 4.85% of one core; in
+   `join11` it was **62.4 s of CPU in 60 s**. That is not the frame rate (`jointest.ps1` does not
+   pass `com_maxfps`, so Com_Frame free-runs) but it is worth measuring properly with the cap on
+   before anyone concludes the server is expensive.
+
+Also still true and still untested: on a dedicated server the game runs **co-op rules even with one
+player** (Quick Revive, prices, revives). For a speedrun platform that is the difference between a
+valid and an invalid solo run, and it may force a design decision about how solo Verified runs are
+hosted.
 
 ---
 
@@ -976,7 +1075,7 @@ the copy and neither opens as a zip. Worth B running Steam's "Verify integrity o
 | (a) runs with no renderer/window | **done, by the stock exe** |
 | (b) loads `nazi_zombie_prototype` and runs script frames | **done** (p21) — map, collision, zombies GSC |
 | (c) stable frame rate with sleep-based pacing, CPU and RAM | **done, soaked 10 min** — 61 Hz, `SV_Frame` **20.0 fps**, **4.85% of one core**, **186.3 MB flat**, 1 hitch (the map load). §7d |
-| (d) a client connects and spawns in | in progress — **`SV_DirectConnect` fires from a real second process** (§7f, run `join7`). Three walls cleared: NA_LOOPBACK, the Demonware socket router, and the challenge handshake. The third fix is built and untested; not spawned in yet |
+| (d) a client connects and spawns in | **connects — `Going from CS_FREE to CS_CONNECTED`, client 0, map loaded** (§7g, run `join11`). Five walls cleared. **Does not spawn**: the connection times out after the map loads |
 
 **Estimate for a focused swarm to finish Stage C**, assuming `re` keeps supplying addresses and the
 Steam question is answered: narrowing the SAVED flag to one bit, hours. Site 3 (the wire), 1–2 days —
