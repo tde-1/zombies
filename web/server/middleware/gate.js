@@ -22,6 +22,17 @@ const EXEMPT = [
   // holding it up. Nothing under /updates identifies anyone or reveals anything the
   // installer itself does not.
   /^\/updates(\/|$)/,
+  // Signing in with Steam. These have to be reachable without the beta password because
+  // two of the parties in the handshake cannot possibly supply one: Steam, which redirects
+  // the browser back to us and knows nothing about a password, and the player's own
+  // browser, which the launcher opens fresh and which may never have visited this site.
+  //
+  // It costs nothing. None of these paths serves site content — they start an identity
+  // handshake, finish one, or redeem a code. Somebody who gets through here has an
+  // account and still cannot see a single page without the password, because the gate
+  // and the session are different things. An account is not access.
+  /^\/auth\/steam(\/|$)/,
+  /^\/auth\/launcher(\/|$)/,
 ]
 
 function timingSafeEqual (a, b) {

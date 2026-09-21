@@ -20,9 +20,93 @@
 // after the response, so a slow or absent ENW never delays a login.
 
 const express = require('express')
+const crypto = require('node:crypto')
 const users = require('../lib/users')
 const enw = require('../lib/enw')
 const { db, now } = require('../db/database')
+
+// ── Signing in from the LAUNCHER ──────────────────────────────────────────────────
+//
+// The launcher is a native app, so this follows RFC 8252 (OAuth 2.0 for Native Apps):
+// the sign-in happens in the USER'S OWN BROWSER, and the result comes back to the app
+// over a loopback redirect. Not in an embedded window.
+//
+// That is not a workaround for the window opening externally — it is the recommendation,
+// for two reasons that both matter here. An embedded webview hides the address bar and
+// the padlock, so nobody can tell a real Steam login from a painted one, and the app that
+// hosts the webview can read what is typed into it; a Steam password is exactly the thing
+// that must never go through our process. And the system browser already has the user's
+// Steam session, so for most people this is one click rather than a fresh login.
+//
+// The flow, end to end:
+//
+//   1. launcher  binds 127.0.0.1:<ephemeral>, invents `state` and a PKCE verifier
+//   2. launcher  opens the system browser at /auth/launcher/start?port&state&challenge
+//   3. site      remembers the flow in the session, sends the browser to Steam
+//   4. Steam     signs the user in and redirects to /auth/steam/return
+//   5. site      mints a single-use code and redirects to http://127.0.0.1:<port>/cb
+//   6. launcher  checks `state`, POSTs code + verifier to /auth/launcher/exchange
+//   7. site      checks SHA-256(verifier) against the stored challenge, burns the code,
+//                and sets the session cookie on the launcher's own request
+//
+// Why each guard is there, because every one of them is a real attack on this shape:
+//
+//   * PKCE (S256). Any other process on the machine could receive that callback if it
+//     got to the port first. The code alone is worthless without the verifier, which
+//     never leaves the launcher.
+//   * `state`, so a callback the launcher did not start is ignored.
+//   * The redirect target is BUILT HERE from a port number — the launcher never sends a
+//     URL. There is no open redirect to find, because there is no URL to supply.
+//   * 127.0.0.1 literal, never `localhost`: RFC 8252 §8.3, because `localhost` can be
+//     pointed elsewhere by DNS or the hosts file.
+//   * Codes are single use with a 120-second life, and the store is capped, so a flood
+//     of starts cannot grow memory without bound.
+const LAUNCHER_CODE_TTL_MS = 120_000
+const LAUNCHER_MAX_PENDING = 200
+const launcherCodes = new Map()
+
+function sweepLauncherCodes () {
+  const cutoff = Date.now()
+  for (const [k, v] of launcherCodes) if (v.expires <= cutoff) launcherCodes.delete(k)
+  // Cap after sweeping: if something is hammering /start, drop the oldest rather than
+  // letting the map grow. Losing a stale half-finished sign-in is harmless.
+  while (launcherCodes.size > LAUNCHER_MAX_PENDING) {
+    launcherCodes.delete(launcherCodes.keys().next().value)
+  }
+}
+
+const b64url = (buf) => Buffer.from(buf).toString('base64url')
+const sha256b64url = (s) => b64url(crypto.createHash('sha256').update(String(s)).digest())
+
+// Step 5, shared by every provider. Returns true when it has sent the browser back to the
+// launcher, false when this was an ordinary sign-in in an ordinary browser.
+//
+// It hangs off the provider rather than living inside the Steam handler because the mock
+// is still the fallback while the beta gate is up: if a launcher could only complete the
+// handshake against real Steam, then the day Steam or the redirect broke, the fallback
+// would be useless precisely when it was needed.
+//
+// The code goes in the query string and the SteamID does not. A URL is the most leaked
+// string there is — history, referrers, shoulders — so what travels that way is worth
+// nothing alone: two minutes to live, one use, and unusable without the verifier that
+// never left the launcher.
+function finishLauncherFlow (req, res) {
+  const flow = req.session && req.session.launcher
+  if (!flow || Date.now() - flow.at >= LAUNCHER_CODE_TTL_MS) return false
+  delete req.session.launcher
+  sweepLauncherCodes()
+  const code = b64url(crypto.randomBytes(32))
+  launcherCodes.set(code, {
+    steam_id: req.session.steam_id,
+    challenge: flow.challenge,
+    expires: Date.now() + LAUNCHER_CODE_TTL_MS,
+  })
+  // Built here from a port, never taken as a URL, and 127.0.0.1 rather than `localhost`
+  // (RFC 8252 §8.3 — a name can be repointed, an address cannot).
+  res.redirect(`http://127.0.0.1:${flow.port}/cb`
+    + `?code=${encodeURIComponent(code)}&state=${encodeURIComponent(flow.state)}`)
+  return true
+}
 
 const MODE = (process.env.ZM_AUTH || 'mock').toLowerCase()
 const PUBLIC_URL = process.env.ZM_PUBLIC_URL || null
@@ -48,6 +132,61 @@ function router() {
     steam_profiles: !!STEAM_API_KEY,
     enw: enw.status(),
   }))
+
+  // ---- the launcher's half of RFC 8252 ------------------------------------------------
+  // Step 2: the launcher has opened the system browser here. Nothing is decided yet; we
+  // only remember what the launcher told us and hand the browser to the identity provider.
+  r.get('/launcher/start', (req, res) => {
+    const port = Number(req.query.port)
+    const state = String(req.query.state || '')
+    const challenge = String(req.query.challenge || '')
+
+    // Ports below 1024 need privilege the launcher does not have, so a low one is either
+    // a mistake or somebody trying to make us talk to something else.
+    if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+      return res.status(400).type('text/plain').send('bad callback port')
+    }
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(state)) {
+      return res.status(400).type('text/plain').send('bad state')
+    }
+    // 43 chars is exactly a base64url SHA-256. S256 only: `plain` is in the RFC for
+    // devices that cannot hash, which does not describe an Electron app.
+    if (!/^[A-Za-z0-9_-]{43}$/.test(challenge)) {
+      return res.status(400).type('text/plain').send('bad PKCE challenge')
+    }
+
+    req.session.launcher = { port, state, challenge, at: Date.now() }
+    res.redirect('/auth/steam')
+  })
+
+  // Step 6: the launcher redeems its code. This is the only request in the flow that comes
+  // from the launcher itself rather than from a browser, and the only one that gets a
+  // session cookie.
+  r.post('/launcher/exchange', express.json({ limit: '4kb' }), (req, res) => {
+    sweepLauncherCodes()
+    const code = String((req.body && req.body.code) || '')
+    const verifier = String((req.body && req.body.verifier) || '')
+    if (!code || !verifier) return res.status(400).json({ error: 'code and verifier are required' })
+
+    const entry = launcherCodes.get(code)
+    // One message for every failure. Telling a caller whether a code was unknown, expired
+    // or already spent is telling them how to probe.
+    const nope = () => res.status(400).json({ error: 'that sign-in code is not valid' })
+    if (!entry) return nope()
+    launcherCodes.delete(code)                       // single use, whatever happens next
+    if (entry.expires <= Date.now()) return nope()
+    if (!/^[A-Za-z0-9_-]{43,128}$/.test(verifier)) return nope()
+
+    const expected = Buffer.from(entry.challenge)
+    const actual = Buffer.from(sha256b64url(verifier))
+    if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) return nope()
+
+    const u = users.byId(entry.steam_id)
+    if (!u) return nope()
+    req.session.steam_id = u.steam_id
+    db.prepare('UPDATE users SET last_seen=? WHERE steam_id=?').run(now(), u.steam_id)
+    res.json({ ok: true, you: users.pub(u) })
+  })
 
   // ---- the mock provider -----------------------------------------------------------
   // Kept registered alongside real Steam sign-in for as long as the closed-beta gate is
@@ -87,6 +226,7 @@ function router() {
       }
       req.session.steam_id = u.steam_id
       db.prepare('UPDATE users SET last_seen=? WHERE steam_id=?').run(now(), sid)
+      if (finishLauncherFlow(req, res)) return
       res.redirect(String(req.body.next || '/'))
     })
   }
@@ -144,6 +284,8 @@ function router() {
         req.session.steam_id = u.steam_id
         // Both ENW lookups happen AFTER the redirect is on its way.
         setImmediate(() => { enw.refreshName(u.steam_id).catch(() => {}); enw.refreshVip(u.steam_id).catch(() => {}) })
+
+        if (finishLauncherFlow(req, res)) return
         res.redirect(String(req.session.next || '/'))
       })
     } catch (e) {
