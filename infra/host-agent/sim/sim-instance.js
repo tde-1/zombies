@@ -123,16 +123,33 @@ function run() {
     sim.on('event', h)
   }
 
-  // Wall-clock pacing: `interval` ms of real time carries `perTick` 50 ms sim ticks, so
-  // sim time advances `timescale` times faster than the clock on the wall. Timers never
-  // fire faster than ~200 Hz, so above 10x we batch ticks instead of shortening the
-  // interval. (Getting this wrong once made a "30x" run go 300x, which is how the drop
-  // policy above got found.)
-  const interval = Math.max(5, Math.round(TICK_MS / timescale))
-  const perTick = Math.max(1, Math.round((timescale * interval) / TICK_MS))
-  console.error(`[sim ${instance}] ${timescale}x = ${perTick} tick(s) every ${interval} ms`)
+  // Wall-clock pacing: sim time must advance `timescale` times faster than the clock on
+  // the wall, whatever the timer actually does.
+  //
+  // It used to ask for `TICK_MS / timescale` ms and step a FIXED number of ticks each
+  // fire, which silently under-runs on Windows: a plain `setInterval(6)` fires at
+  // 15.65 ms here (measured, 63.9 Hz), not at 6 ms, because nothing in this process
+  // raises the system timer resolution. `--timescale 8` therefore advanced at 3.2x, and
+  // an 8-round solo game that should take 46 s took 116 s — which is what made
+  // `test/demo-local.js` fail on an 80 s deadline while nothing was actually wrong.
+  //
+  // So: measure the elapsed wall time on every fire and step as many 50 ms ticks as it
+  // has earned. A slow timer now costs a bigger batch, not a slower game. `owed` is
+  // capped so a stalled process cannot come back and spin for minutes.
+  // (Getting this wrong the other way once made a "30x" run go 300x, which is how the
+  // drop policy above got found — hence the cap rather than an unbounded catch-up.)
+  const interval = Math.max(5, Math.min(TICK_MS, Math.round(TICK_MS / timescale)))
+  const MAX_BATCH = 400          // at most 20 s of sim time in one fire
+  let owed = 0
+  let last = Date.now()
+  console.error(`[sim ${instance}] ${timescale}x = ~${((timescale * 15.6) / TICK_MS).toFixed(1)} tick(s) per fire, asking for every ${interval} ms`)
   const timer = setInterval(() => {
-    for (let i = 0; i < perTick; i++) if (!sim.step()) { clearInterval(timer); setTimeout(() => process.exit(0), 250); return }
+    const now = Date.now()
+    owed = Math.min(owed + ((now - last) * timescale) / TICK_MS, MAX_BATCH)
+    last = now
+    let n = Math.floor(owed)
+    owed -= n
+    while (n-- > 0) if (!sim.step()) { clearInterval(timer); setTimeout(() => process.exit(0), 250); return }
   }, interval)
 
   sim.on('end', (r) => {

@@ -133,6 +133,19 @@ try {
   const me = await leader.call('/api/me')
   ok(`signed in as ${me.user?.username || ADMIN} and ${MATE}`)
 
+  // The beta gate is real: `requireApproved` refuses anybody with `approved=0`, and on a
+  // FRESH database only the first account to sign in is approved (it is made admin by
+  // `routes/auth.js`). So a second player could not join a party, and this harness failed
+  // four checks in a row against a site that was working correctly — it had only ever been
+  // run against a database somebody had already curated by hand.
+  //
+  // The leader is that first account, so it is a mod and can approve the mate. Idempotent,
+  // and best-effort: on a site where the leader is NOT a mod this says so and carries on
+  // rather than pretending the party failed for some other reason.
+  const appr = await leader.call(`/api/admin/player/${MATE}/approve`, { method: 'POST', body: { approved: true } })
+  if (appr && appr.ok) info(`approved ${MATE} off the beta waiting list (the leader is the site's first account, so it is admin)`)
+  else info(`could not approve ${MATE}: ${JSON.stringify(appr).slice(0, 120)} — if the join below fails, that is why`)
+
   await leader.call('/api/party/leave', { method: 'POST' })
   await mate.call('/api/party/leave', { method: 'POST' })
   const created = await leader.call('/api/party/create', { method: 'POST', body: { visibility: 'public' } })

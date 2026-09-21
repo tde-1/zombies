@@ -89,14 +89,63 @@ export class Instance extends EventEmitter {
     this.holdsGameLock = false
   }
 
-  /** The game args a real launch needs, as PowerShell array elements. */
+  /**
+   * The game args a real launch needs, as PowerShell array elements.
+   *
+   * This is the DEDICATED-SERVER recipe, and its source of truth is the server half of
+   * `tools/dev/jointest.ps1` — the only launch line a `CoDWaW.exe` has ever answered a
+   * connectionless packet from. Keep the two in step; if they disagree, jointest wins,
+   * because that is the one somebody watches.
+   *
+   * Two things here are load-bearing and were wrong before:
+   *
+   *   1. **`+map` must be LAST.** The engine executes `+` commands in command-line order,
+   *      and `+map` is the one that starts the server. Anything set after it is set on a
+   *      server that is already listening — so `+map … +set net_port 28971` binds 28960
+   *      and the box then probes a port nothing is on. This used to emit `+map` second.
+   *   2. **`+set dedicated 1` is what makes it headless.** Without it the stock SP exe
+   *      brings up Direct3D and a window. It was never passed at all: every `--game`
+   *      launch before this was a windowed single-player game wearing a server's name.
+   *
+   * `+set developer 1` is never passed (dev-box.md rule 6).
+   */
   gameArgs() {
+    const a = this.assignment || {}
     const out = []
-    if (this.assignment?.fs_game) out.push(`+set fs_game ${this.assignment.fs_game}`)
-    if (this.assignment?.map) out.push(`+map ${this.assignment.map}`)
-    out.push(`+set net_port ${this.port}`)
-    for (const [k, v] of Object.entries(this.assignment?.settings?.dvars || {})) out.push(`+set ${k} ${v}`)
-    return out.concat(this.args)
+    // fs_game first: it decides where the engine even looks for the map and the console log.
+    if (a.fs_game) out.push(`+set fs_game ${a.fs_game}`)
+    out.push(
+      '+set dedicated 1',            // headless: no D3D, no window, no front end
+      '+set zombiemode 1',           // the zombies GSC path
+      '+set logfile 2',              // flushed console.log under <fs_homepath>
+      '+set s_volume 0', '+set snd_volume 0',
+      // These three exist only so the DLL has something to flag DVAR_SAVED; the engine has
+      // to create them first (dedi.md §4, site 2).
+      '+set con_typewriterColorBase 1.0 1.0 1.0',
+      '+set hud_drawhud 1',
+      '+set ui_campaign american',
+      `+set sv_maxclients ${Math.max(1, Math.min(8, Number(a.slots?.length || a.max_players || 4)))}`,
+      `+set net_port ${this.port}`,
+    )
+    for (const [k, v] of Object.entries(a.settings?.dvars || {})) out.push(`+set ${k} ${v}`)
+    for (const extra of this.args) out.push(extra)
+    if (a.map) out.push(`+map ${a.map}`)
+    return out
+  }
+
+  /**
+   * The environment a headless game needs on top of what launch.ps1 sets itself.
+   * Both of these are proven blockers, not belt and braces — see `tools/dev/jointest.ps1`:
+   *   ENW_RAW_SOCKETS           Sys_SendPacket routes through Demonware's bdSocketRouter,
+   *                             which drops every packet with addrHandle=0. Without this
+   *                             the server never answers anything (dedi.md §7f wall 2).
+   *   ENW_DEDI_SUPPRESS_MAPSUMMARY
+   *                             SV_SpawnServer raises ERR_MAPLOADERRORSUMMARY with an
+   *                             EMPTY error list, so Com_Init never returns and the frame
+   *                             loop never starts (dedi.md §0).
+   */
+  gameEnv() {
+    return { ENW_RAW_SOCKETS: '1', ENW_DEDI_SUPPRESS_MAPSUMMARY: '1' }
   }
 
   spawnArgs() {
@@ -163,6 +212,7 @@ export class Instance extends EventEmitter {
       ENW_ROLE: this.role,
       ENW_MATCH: this.matchId || '',
       ENW_PORT: String(this.port),
+      ...(this.kind === 'game' ? this.gameEnv() : {}),
       ...this.env,
     }
     this.state = 'starting'
@@ -307,6 +357,12 @@ export class Instance extends EventEmitter {
   info() {
     return {
       id: this.id, kind: this.kind, role: this.role, port: this.port, pid: this.pid,
+      // For a real game `pid` is the PowerShell WRAPPER, which exits seconds later — the
+      // game itself is `game_pid`, and that is the one an operator would taskkill and the
+      // one the CPU/RAM samples are taken from. Reporting only `pid` meant the dashboard
+      // showed a PID that no longer existed.
+      game_pid: this.gamePid || null,
+      foreign: !!this.foreign,
       state: this.state, match_id: this.matchId, restarts: this.restarts,
       uptime_ms: this.startedAt ? (this.exitedAt || Date.now()) - this.startedAt : 0,
       log: this.logFile, fail: this.failReason || null, usage: this.usage(),
