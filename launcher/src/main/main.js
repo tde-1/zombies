@@ -535,7 +535,11 @@ function wireIpc() {
     // No Steam Web API key is involved. The key only buys persona names and avatars;
     // the site runs `passport-steam` with `profile: false`.
     const auth = state.api?.hello?.auth
-    if (!mock && state.api && auth === 'steam') {
+    // Decided by what the site can DO, not by what it calls itself. Keying this on
+    // `auth === 'steam'` meant a mock site silently took a completely different code
+    // path, so the fallback tested nothing and the real path could only ever be tested
+    // against production. The probe costs one request and creates nothing.
+    if (!mock && state.api && (await supportsLoopbackSignIn())) {
       const s = await steamSignIn()
       push('session', s)
       return s
@@ -835,6 +839,20 @@ async function whoAmI() {
 
 const b64url = (b) => Buffer.from(b).toString('base64url')
 
+// Does this site speak the loopback sign-in at all?
+//
+// Asked with NO parameters on purpose: a site that has the route answers 400 ("you did
+// not send a port/state/challenge") and a site that does not answers 404. So the probe
+// distinguishes the two without minting a code that nobody will ever spend.
+async function supportsLoopbackSignIn() {
+  const base = String(state.siteInfo?.url || '').replace(/\/$/, '')
+  if (!/^https?:/i.test(base)) return false
+  try {
+    const r = await fetch(`${base}/auth/launcher/start`, { redirect: 'manual', signal: AbortSignal.timeout(6000) })
+    return r.status !== 404 && r.status < 500
+  } catch { return false }
+}
+
 function signInPage(title, body) {
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + title + '</title>' +
     '<style>html,body{height:100%;margin:0}' +
@@ -942,6 +960,11 @@ function steamSignIn() {
       // The beta password is NEVER in this URL. `/auth/launcher/*` and `/auth/steam` are
       // exempt from the gate precisely so a freshly opened browser — and Steam — can
       // reach them without one.
+      //
+      // ENW_SIGNIN_NO_BROWSER: print the URL instead of opening anything. It is how the
+      // whole handshake — listener, state check, exchange, cookie — gets tested without
+      // a browser and without Steam, and it is what a headless box would need.
+      if (process.env.ENW_SIGNIN_NO_BROWSER) { log('sign-in', 'ENW_SIGNIN_NO_BROWSER: open this yourself ->', url); return }
       shell.openExternal(url).catch((e) => done(reject, new Error('could not open your browser: ' + e.message)))
     })
 
@@ -1119,6 +1142,17 @@ if (!single) {
                return (document.getElementById('frBody').innerText || '').replace(/\\s+/g, ' ').slice(0, 400)
              })()`
           ).catch((e) => `ERROR ${e.message}`)
+        }
+
+        // ENW_SMOKE_SIGNIN=1: press Sign in the way a player does and wait for the
+        // round trip to finish. With ENW_SIGNIN_NO_BROWSER the URL is logged instead of
+        // opened, so the whole handshake can be driven from a script.
+        if (process.env.ENW_SMOKE_SIGNIN) {
+          report.signIn = await state.win?.webContents.executeJavaScript(
+            `window.enw.signIn().then((s) => 'signed in as ' + (s.name || s.steamid) + (s.mock ? ' (MOCK)' : ' (real)'), (e) => 'ERROR ' + e.message)`
+          ).catch((e) => `ERROR ${e.message}`)
+          report.signIn_session = settings.session()
+          try { report.signIn_me = (await state.api.req('/api/me')).data } catch (e) { report.signIn_me = `ERROR ${e.message}` }
         }
 
         // ENW_SMOKE_SCREEN=settings|detail: open that screen before the screenshot.
