@@ -694,6 +694,112 @@ uncapped because the `jle` at `0x59DD2A` is untouched.
 
 ---
 
+## 7e. Milestone (d): the server answers on the wire, and why the client could not reach it
+
+### The wire works. That closes "site 3".
+
+`tools\dev\jointest.ps1 -Tag join5`, with `tools\dev\oob.py` as the readiness gate:
+
+```
+getstatus      ANSWERED   674 bytes: statusResponse |
+  \fxfrustumCutoff\1000 \g_gameskill\1 \gamename\Call of Duty: World at War
+  \mapname\nazi_zombie_prototype \protocol\62 \shortversion\1
+  \sv_hostname\CoDWaWHost \sv_maxclients\4 \sv_maxRate\7000 ...
+```
+
+A real `statusResponse`, four seconds after launch, from a headless `CoDWaW.exe` with our DLL beside
+it. **The dedicated server is a functioning server on UDP.** `getinfo` and `getchallenge` got NO
+REPLY, but the server's own counters show `SVC_GetChallenge=1`, so it *ran* the handler — the reply
+path for those two is worth a look later and is not on the critical path.
+
+The probe is deliberately exit-code-gated: `oob.py` exits 0 only when something answered. The
+previous session's gate matched `REPLY` inside `NO REPLY` and fired a client at a stalled server,
+which is how run `join1` became a "networking failure" that was nothing of the kind.
+
+### The client connected to the in-process loopback, so the server never heard it
+
+Run `join5`, client side:
+
+```
+[enw] connect_local: calling CL_ConnectLocal("nazi_zombie_prototype", 0) at 0x00641730
+      PROFILES: setting server info to 0.0.0.0:0
+[enw] connect_local: returned; client state [0x305842C] = 5
+```
+
+server side, for the whole 90 s:
+
+```
+[enw] net: SV_PacketEvent=3  SV_ConnectionlessPacket=3  SVC_GetChallenge=1  SV_DirectConnect=0
+```
+
+and all **three** of those packets were the harness's own `oob.py` probes. **Zero packets from the
+client**, despite `clc.state` reaching 5 (connecting).
+
+`0.0.0.0:0` is the tell, and the instructions explain it exactly. `CL_ConnectLocal` takes no address
+argument — it hard-codes one:
+
+```
+006417E7  push 0x86F0D4          ; "localhost"       (68 D4 F0 86 00)
+0064187A  call 00679520          ; NET_StringToAdr(name in EAX, out netadr on the stack)
+00641883  call 00642C80          ; CL_SendConnectPacket
+```
+
+and `NET_StringToAdr` special-cases that exact string:
+
+```
+00679531  edi = 0x86F0D4 ("localhost")
+00679538  ecx = 10 ; repe cmpsb
+00679541  jne 00679569           ; anything else -> the real parse, splits on ':' (0x84B668)
+00679543  zero the 0x18-byte netadr_s
+00679555  mov dword ptr [ebx], 2 ; netadr.type = 2 = NA_LOOPBACK
+0067955B  return 1               ; and NO ip and NO port are ever written
+```
+
+**`NA_LOOPBACK` is the engine's in-process ring buffer**, not 127.0.0.1 — the same value
+`direct_connect.cpp`'s auth guard reads at `cmp [0x300FFF8], 2`. So the connect packet goes into a
+buffer inside the *client's own* process and no socket is involved. A second process on the same
+machine is unreachable through this call, by construction.
+
+This is worth stating plainly because it is the opposite of the natural assumption: the problem is
+not that 127.0.0.1 is awkward, it is that **the only connect entry point in the SP exe never uses an
+address at all.**
+
+### The fix, one dword
+
+`shared/core/components/connect_address.cpp` rewrites the `imm32` operand of that `push` to point at
+a string of ours (`ENW_CONNECT_ADDR=127.0.0.1:28960`). `NET_StringToAdr` then fails the `repe cmpsb`,
+takes the branch at `0x679569`, splits on `':'` and resolves a real address and port. The opcode
+stays `68`, the instruction stays five bytes, nothing is relocated and there is no calling convention
+involved. The five bytes are verified before the write.
+
+It sits beside `direct_connect.cpp` in `shared/core/components/` for the reason that file already
+gives: the join test uses a build with `ENW_WITH_SERVER_COMPONENTS=OFF`, and a dedicated server never
+executes this path anyway (and `local_client.cpp` stubs the call site out there).
+
+The other `push "localhost"` at `0x641769` is a *comparison* on the `clc.state >= 6` branch ("are we
+already on localhost?"). A freshly launched client is at state 0 and takes the `jl` at `0x641767`, so
+it never runs; we leave it alone.
+
+**Status: built, wired into `jointest.ps1`, not yet run** — `game.lock` went to the `mvp-client` lane
+mid-test. The next run is `jointest.ps1 -Tag join6 -ClientFrom dedi-client`, and the thing to watch
+is `SV_DirectConnect` going above 0 on the server.
+
+### Still to expect after that, in order
+
+1. **The connect handshake.** `CL_ConnectLocal` calls `CL_SendConnectPacket` immediately, which sends
+   `connect`. The normal Quake order is `getchallenge` → `challengeResponse` → `connect`, and
+   `SV_DirectConnect` validates a `challenge` field. If the server rejects the first packet, the
+   resend loop (`cl_connectionAttempts 20`, `cl_connectTimeout 200`) is what has to carry it, and
+   that loop is the next thing to instrument.
+2. **The client's Demonware login spin.** `join5`'s client logged `Failed to log on.` about once a
+   second for the whole run, with `Couldn't get profiles instance, are we logged on?`. It did not
+   stop the process or the frame loop, and `direct_connect.cpp` already neutralises the
+   `getAuthTicket` gate inside `CL_SendConnectPacket`, but it is noise that could hide a real error.
+3. **Spawning in**, which is the actual success criterion: `client_s.lastUsercmd` (`+0x11108`)
+   changing on the server and `gentity_s.currentOrigin` (`+0x160`) moving.
+
+---
+
 ## 8. Does a game box need a Steam client?
 
 `CoDWaW.exe` has six sections; the last is **`.bind`** (0x4ABB000, 0x56000 bytes) and the entry point
@@ -766,7 +872,7 @@ the copy and neither opens as a zip. Worth B running Steam's "Verify integrity o
 | (a) runs with no renderer/window | **done, by the stock exe** |
 | (b) loads `nazi_zombie_prototype` and runs script frames | **done** (p21) — map, collision, zombies GSC |
 | (c) stable frame rate with sleep-based pacing, CPU and RAM | **done, soaked 10 min** — 61 Hz, `SV_Frame` **20.0 fps**, **4.85% of one core**, **186.3 MB flat**, 1 hitch (the map load). §7d |
-| (d) a client connects and spawns in | in progress — the server now stays up to be connected to |
+| (d) a client connects and spawns in | in progress — **the server answers `getstatus` on UDP** (§7e). The client reached `CL_ConnectLocal` but connected to `NA_LOOPBACK`, so no packet left the process; the one-dword fix is built and untested |
 
 **Estimate for a focused swarm to finish Stage C**, assuming `re` keeps supplying addresses and the
 Steam question is answered: narrowing the SAVED flag to one bit, hours. Site 3 (the wire), 1–2 days —

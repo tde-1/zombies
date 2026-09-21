@@ -83,6 +83,7 @@ try {
     # ------------------------------------------------------------- the server --
     $env:ENW_DEDI_SUPPRESS_MAPSUMMARY = '1'
     $env:ENW_CLIENT_CONNECT = $null      # never arm the client half in the server
+    $env:ENW_CONNECT_ADDR = $null
     $serverArgs = @(
         '+set', 'dedicated', '1', '+set', 'zombiemode', '1', '+set', 'logfile', '2',
         '+set', 's_volume', '0', '+set', 'snd_volume', '0',
@@ -123,6 +124,12 @@ try {
     # -Companion: joins the experiment that already holds the lock rather than taking
     # a second one, so the interlock is never bypassed.
     $env:ENW_CLIENT_CONNECT = $Map
+    # CL_ConnectLocal hard-codes "localhost", and NET_StringToAdr 0x679520 turns that
+    # exact string into NA_LOOPBACK -- the engine's IN-PROCESS ring buffer, with no ip
+    # and no port. A second process is unreachable that way (proven in run join5: the
+    # server saw 0 packets from the client). shared/core/components/connect_address.cpp
+    # rewrites the push operand when this is set.
+    $env:ENW_CONNECT_ADDR = "127.0.0.1:$Port"
     $clientArgs = @(
         '+set', 'logfile', '2', '+set', 'zombiemode', '1',
         '+set', 's_volume', '0', '+set', 'snd_volume', '0'

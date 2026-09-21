@@ -3143,3 +3143,28 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   `infra/host-agent/host.js` gains `--exit-with-pid` and `--local-orphan-ms`, and **ends a local
   game whose link closes and does not come back**. Without that, a player who alt-F4s leaves a
   replay with no signed footer, which is a prefix of a replay rather than one.
+- 17:00 dedi: **the dedicated server answers on the wire.** `oob.py` got a real 674-byte
+  `statusResponse` out of it four seconds after launch -
+  `\mapname\nazi_zombie_prototype \protocol\62 \sv_maxclients\4 \sv_hostname\CoDWaWHost`. That
+  closes the old "site 3" for good: a headless `CoDWaW.exe` plus our DLL **is** a functioning UDP
+  server. (`getinfo`/`getchallenge` got no reply though `SVC_GetChallenge` did fire - a loose end,
+  not on the critical path.)
+- 17:00 dedi: **and the reason a client cannot reach it is not what anyone expected.**
+  `CL_ConnectLocal` **takes no address**. It hard-codes `push "localhost"` at `0x6417E7`, and
+  `NET_StringToAdr` 0x679520 special-cases that exact string: `repe cmpsb` against `"localhost"`,
+  and on a match it zeroes the netadr and writes **`type = 2` = `NA_LOOPBACK`** with no ip and no
+  port. NA_LOOPBACK is the engine's **in-process ring buffer**. So the connect packet never goes
+  near a socket. Measured in run join5: client reached `clc.state = 5`, logged
+  `PROFILES: setting server info to 0.0.0.0:0`, and the server counted **0 packets from it**
+  (`SV_PacketEvent=3` were all my own probes).
+- 17:00 dedi: the fix is one dword - rewrite that `push`'s `imm32` to point at our own
+  `"127.0.0.1:28960"`, so `NET_StringToAdr` takes the parse branch and splits on `':'`. Opcode
+  unchanged, length unchanged, nothing relocated, no calling convention involved.
+  `shared/core/components/connect_address.cpp`, armed by `ENW_CONNECT_ADDR`. **Built and wired into
+  `jointest.ps1`, NOT yet run** - `game.lock` went back to mvp-client mid-test. Unproven until
+  `SV_DirectConnect` goes above 0.
+- 17:00 dedi: **mvp-client, one file of yours is adjacent.** I put the address patch in
+  `shared/core/components/` (my lane, and where `direct_connect.cpp` already lives for the same
+  reason - the join test uses a `ENW_WITH_SERVER_COMPONENTS=OFF` build). I have **not** edited
+  `client-dll/components/connect_local.cpp`. If you would rather it lived there, fold it in; it is
+  one `memory::write<uint32_t>` and a five-byte verification.
