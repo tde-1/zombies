@@ -1003,6 +1003,190 @@ hosted.
 
 ---
 
+## 7h. MILESTONE (d) DONE — a player spawns in, and round 1 starts
+
+**Runs `join12` (00:24), `join13` (00:32), `join14` (00:37), 2026-09-22. Three for three.**
+
+```
+dprint[15] Going from CS_CONNECTED to CS_CLIENTLOADING for %s
+dprint[15] Sending %i bytes in gamestate to client: %i
+dprint[15] Going from CS_CLIENTLOADING to CS_ACTIVE for %s
+join_probe: slot 0 CS_ACTIVE  name="anna-jpg" msgAck=110 gamestateNum=5
+            clientSvId=0x00000010 svServerId=0x00000010  gentity=0x0176C6F0
+referee: ROUND 1 (all_players_connected)
+```
+
+Connect to spawned is **under 3 seconds** once the client has the map (join12 00:24:31.2 to
+00:24:34.3; join14 00:37:30 to 00:37:33.1). Nothing new had to be patched to get from §7g's
+`CS_CONNECTED` to here — the five walls in §7f/§7g were the whole of it, and `join11`'s
+`Server connection timed out` was the client giving up while the server was still fine.
+
+### T4 HAS NO `CS_PRIMED`. Correct this everywhere before reading any older note.
+
+Everything written in this repo before today said the client walks
+`CS_CONNECTED -> CS_PRIMED -> CS_ACTIVE`. That is Quake 3 and CoD4. **T4's middle state is
+`CS_CLIENTLOADING`**, from the strings in our own dump:
+
+| VA | string |
+|---|---|
+| `0x887114` | `SV_SendClientGameState() for %s` |
+| `0x887138` | `Going from CS_CONNECTED to CS_CLIENTLOADING for %s` |
+| `0x88716C` | `Sending %i bytes in gamestate to client: %i` |
+| `0x88719C` | `Going from CS_CLIENTLOADING to CS_ACTIVE for %s` |
+| `0x88755C` | `%s : dropped gamestate, resending` |
+
+The numeric values are unchanged (FREE 0, ZOMBIE 1, CONNECTED 2, CLIENTLOADING 3, ACTIVE 4) —
+`cmp dword ptr [esi], 1` guards the ZOMBIE early-out at `0x6310AB` and `cmp dword ptr [esi], 3`
+guards the enter-world call at `0x63101B`. Only the *name* was wrong, and a wrong name sends you
+looking for a function that does not exist.
+
+### Addresses recovered, all read off an instruction
+
+| What | Where | Read at |
+|---|---|---|
+| `SV_SendClientGameState` | `0x62F500` | contains `0x62F602` |
+| `SV_ClientEnterWorld` | `0x62FC30` | sets `[client] = 4`, tail-jumps `ClientBegin` `0x67C160` |
+| `SV_ClientCommand` | `0x6309D0` | `clientCommand: %i : %s` |
+| `SV_UserMove` | `0x630BF0` | `Invalid command time %i from client %s` |
+| `svs.clients` base / stride | `0x2547090` / `0x58D30` | `SV_GameSendServerCommand` `0x5A937E` |
+| `sv.serverId` | `[0x46E5124]` | `SV_ExecuteClientMessage` `0x630FF5` |
+| `sv_pure` dvar_s* | `[0x23D5C24]` | `0x6310C9`, gate on `EXE_UNPURECLIENTDETECTED` |
+| `Com_DPrintf(chan, fmt, ...)` | `0x59A310` | developer gate at `[0x1F55288]` |
+| `G_WriteGame` | `0x512850` | sole ref to `G_WriteGame '%s' '%s'` |
+
+`client_s` offsets, every one from an instruction rather than a header: `state` +0x00000,
+`messageAcknowledge` +0x110FC, `gamestateMessageNum` +0x11100, `lastUsercmd` +0x11108,
+`gentity` +0x11544, `name` +0x11548, pure state +0x323F0, the serverId the client echoes +0x52C00.
+
+### The entry to the world is on the near-miss branch, which is worth knowing
+
+`SV_ExecuteClientMessage` `0x630F70` compares the serverId the client echoed (+0x52C00) with
+`sv.serverId`:
+
+```
+00631008  cmp  eax, ecx          ; equal -> read the message normally, NO enter-world here
+0063100A  je   0x631080
+00631015  xor  eax, ecx
+00631017  test al, 0xF0          ; differs ONLY in the low nibble?
+00631019  jne  0x631042          ;   no  -> maybe resend the gamestate
+0063101B  cmp  dword ptr [esi], 3;   yes -> CS_CLIENTLOADING?
+00631029  call 0x62FC30          ;          SV_ClientEnterWorld
+...
+00631042  mov  eax, [esi+0x110FC]; messageAcknowledge
+00631048  cmp  eax, [esi+0x11100]; gamestateMessageNum
+0063104E  jle  0x631031          ; not yet -> say nothing, do nothing
+00631067  call 0x62F500          ; SV_SendClientGameState
+```
+
+So a client is entered into the world **only** while its serverId is a low-nibble near-miss of the
+server's. Get that wrong in either direction and the client sits at `CS_CLIENTLOADING` for ever
+with no error printed anywhere.
+
+### Why the server could not narrate any of this
+
+Every interesting line on the connect path is a `Com_DPrintf`, which the engine throws away unless
+`developer` is 1 — and we do not set that, because it changes asset handling and script behaviour
+and would make anything measured a different game. So
+`server/components/dedicated/join_probe.cpp` **mirrors** `Com_DPrintf` (log the format string, jump
+straight to the trampoline, the engine still decides for itself whether to print) and polls
+`svs.clients` on the frame tick. That is how the table above was read, and it stays in: a state
+machine that only tells you where it is when you ask it in the wrong mode is worth instrumenting
+once and for all.
+
+## 7i. The level-start autosave hangs a dedicated server (FIXED)
+
+Milestone (d) landed and the server then died, twice, in two different ways with one thing in
+common: the last line it ever printed, over and over, was
+
+```
+G_WriteGame 'nazi_zombie_prototype-zombie_start' 'AUTOSAVE_LEVELSTART'
+```
+
+* **join12** — 31 of them, then `Sys_Error("Internal script stack overflow")`.
+* **join13** — 195 of them, then the frame loop **stopped dead**: `frame::count` frozen at 4183 for
+  the remaining 110 s while the process burned a whole core. No error, no exit. Just gone.
+
+T4 queues an autosave from script and drains the queue from the server frame, immediately after
+`SV_Frame`:
+
+```
+00636654  call 0x635CC0        ; SV_Frame
+0063666D  call 0x636CC0        ; drain the autosave queue   (and again at 0x636695)
+00636D57  call 0x512AC0        ;   ... once per queued request
+00512B14  call 0x512850        ;       ... G_WriteGame, which prints the line above
+00512B19  add  esp, 4          ; THE CALLER CLEANS -- one stack argument
+00512B1C  test al, al
+00512B1E  je   0x512AD4        ; failed -> return 0, nothing is marked done
+00512B23  call 0x512A80        ; succeeded -> post-save bookkeeping ([0x1F2F6D4] = 1, 0x563FC0)
+```
+
+On a headless server there is no player profile, the save never completes, the post-save step never
+runs, and whatever is waiting on it asks again next frame — **once per server frame, which is
+exactly the 20/s we measured**.
+
+`server/components/dedicated/no_autosave.cpp` retargets `G_WriteGame`'s **one** call site so it
+reports every autosave as done without writing one. Dedicated only; a player's own client and a
+local solo run keep the stock autosave. Every skipped save is counted and the first few are logged
+with the checkpoint name — this is not a silent swallow, and if server-side saves are ever wanted
+this is the component to delete. `ENW_DEDI_ALLOW_AUTOSAVE=1` puts the stock behaviour back.
+
+**Result (join14): 1 autosave request instead of 195.** The retry loop is gone.
+
+## 7j. OPEN — `exceeded maximum number of script variables`, ~18 s after the player spawns
+
+join14, with the autosave fixed, still died — at 00:37:51, **18.5 s** after `ROUND 1`. The engine's
+own words:
+
+```
+******* script runtime error *******
+exceeded maximum number of script variables: (file 'maps/_utility.gsc', line 9269)
+ players = GetPlayers();
+           *
+Error: called from:
+(file 'maps/nazi_zombie_prototype.gsc', line 352)
+  players = get_players();
+```
+
+and then it raises the same error **2,150 more times**, dumping the whole script thread list each
+time (555,979 console lines), until the operand stack itself overflows at `0x69A8D0`
+(`gScrVmPub[0].top` reaches `maxstack`) and `Sys_Error` parks the thread.
+
+**What is NOT happening**, measured across all 2,150 dumps — every one of these is flat, not
+climbing:
+
+| | first dump | last dump |
+|---|---|---|
+| `ent type 'entity'` | count 223, var usage 1606 | count 223, var usage 1606 |
+| `ent type 'hudelem'` | count 8, var usage 72 | count 8, var usage 72 |
+| `ent type 'pathnode'` | count 12, var usage 24 | count 12, var usage 24 |
+| global `var usage` | 688, endon 93 | 629, endon 73 |
+
+So **nothing is leaking entities or variables in any category the engine reports**, and the totals
+are tiny — about 2,300 variables. The allocator is refusing at a point where the accounting says
+there is plenty. That is the interesting part and it is the next thing to chase: either the pool is
+smaller than the accounting suggests in this mode, or its free list is not what it should be.
+
+Two facts to carry into that work, neither of them yet an explanation:
+
+1. **`wait_for_first_player()` is still waiting.** Two threads sit on
+   `level waittill("first_player_ready")` (`_utility.gsc:9698`, from `_utility.gsc:9539` and
+   `_load.gsc:2256`) for the whole run, *after* the player is `CS_ACTIVE`. Meanwhile
+   `all_players_connected` **did** fire — the referee logged round 1 off it. So one of the two
+   player-ready signals reaches the level script on a dedicated server and the other does not.
+   `local_client.cpp` deliberately keeps the engine's own local client out, and "first player" is
+   the kind of thing a single-player engine may well tie to that client. **Unproven. Test it before
+   believing it** — this project has lost time twice to a plausible single-signal identification.
+2. `maps/_introscreen.gsc:566 flag_wait("introscreen_complete")` is also still waiting, and
+   `maps/_autosave.gsc:36 flag_wait("starting final intro screen fadeout")` behind it. A headless
+   server has no intro screen.
+
+Also still open and now measured properly: **the server burns a whole core with a client
+connected** — join13, 111.5 s of CPU in 120 s of wall clock, against 4.85% of one core idle. The
+frame loop free-runs at about 237 Hz because `jointest.ps1` passes no `com_maxfps`. join12's flat
+CPU reading was not a healthy server, it was a **parked** one: the process had already hit
+`Sys_Error` at t=39 s and the remaining 160 s of "low CPU" was a dead thread. Do not read a flat CPU
+line as health without checking `frame::count` alongside it.
+
 ## 8. Does a game box need a Steam client?
 
 `CoDWaW.exe` has six sections; the last is **`.bind`** (0x4ABB000, 0x56000 bytes) and the entry point
@@ -1075,7 +1259,8 @@ the copy and neither opens as a zip. Worth B running Steam's "Verify integrity o
 | (a) runs with no renderer/window | **done, by the stock exe** |
 | (b) loads `nazi_zombie_prototype` and runs script frames | **done** (p21) — map, collision, zombies GSC |
 | (c) stable frame rate with sleep-based pacing, CPU and RAM | **done, soaked 10 min** — 61 Hz, `SV_Frame` **20.0 fps**, **4.85% of one core**, **186.3 MB flat**, 1 hitch (the map load). §7d |
-| (d) a client connects and spawns in | **connects — `Going from CS_FREE to CS_CONNECTED`, client 0, map loaded** (§7g, run `join11`). Five walls cleared. **Does not spawn**: the connection times out after the map loads |
+| (d) a client connects and spawns in | **DONE** — `Going from CS_CLIENTLOADING to CS_ACTIVE`, then `referee: ROUND 1 (all_players_connected)`. Runs `join12`, `join13`, `join14`, reproduced three times out of three. §7h |
+| (e) the server survives the first round | **not yet.** ~18 s after the player spawns the script VM reports `exceeded maximum number of script variables` and keeps reporting it until it dies. §7h |
 
 **Estimate for a focused swarm to finish Stage C**, assuming `re` keeps supplying addresses and the
 Steam question is answered: narrowing the SAVED flag to one bit, hours. Site 3 (the wire), 1–2 days —
