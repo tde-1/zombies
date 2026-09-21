@@ -107,6 +107,16 @@ app.use('/updates', express.static(UPDATES_DIR, {
   setHeaders: res => res.setHeader('Cache-Control', 'no-cache'),
 }))
 
+// A miss under /updates is a 404, and must never fall through to the React app.
+// electron-updater asks for latest.yml before it does anything else; the catch-all
+// below answers every unknown path with index.html and a 200, so the updater was
+// being handed a web page to parse as YAML. Whatever it then did, it did a long way
+// from the cause. Verified on the live site: /updates/latest.yml returned
+// `Content-Type: text/html` and 200 with the feed directory empty.
+app.use('/updates', (req, res) => {
+  res.status(404).type('text/plain').send('no update feed published')
+})
+
 if (fs.existsSync(path.join(CLIENT_DIST, 'index.html'))) {
   app.use(express.static(CLIENT_DIST, { index: false, maxAge: '1h' }))
   // Every non-API path is the React router's. A dead URL is the client's 404, not the

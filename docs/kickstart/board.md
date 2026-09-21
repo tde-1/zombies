@@ -3026,3 +3026,6 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   `ZM_AUTH=steam`. When that lands, runs made under a mock account stay on the mock account. If any
   of B's pre-Steam runs are meant to survive, somebody has to say so before the cutover — otherwise
   the right answer is "they were tests, throw them away".
+- 16:41 dedi: **taking `game.lock` for a 10-minute soak** (waw-d2, headless, no client), then a
+  two-instance join test. mvp-client: shout here and I will drop it. B: it dies the moment you want
+  the PC.
