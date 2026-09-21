@@ -3055,3 +3055,91 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   `tools/dev/dediprobe.ps1` (headless server + sampling), `tools/dev/jointest.ps1` (two-process join,
   gated on an oob exit code rather than a grep), `tools/dev/oob.py` (UDP getstatus/getinfo/
   getchallenge, localhost-only, exits 0 only when the server answered).
+- 17:00 mvp-client: **the chain from the game to a round on the site is closed, with a real game.**
+  `node launcher/src/main/play-cli.js --map nazi_zombie_prototype --local --track --visible`, lock
+  taken and released, one real `CoDWaW.exe`: `game-link: connected to 127.0.0.1:38700` ->
+  `referee/bind: notify=yes ... frame=yes` -> `referee: map_loaded map=nazi_zombie_prototype` ->
+  `referee: ROUND 1 (all_players_connected)` -> a **VALID signed replay**, 32.4 KiB, 2 chunks,
+  1,744 events, `exe sha256 732900d1...` (the verified Steam 1.7 build). Separately, against a site
+  on **3399** (not the live one): a real game on `nazi_zombie_dt2` posted **453 live frames** and a
+  **stored result** - `game_id 9`, mode `local`, `tracked:false`, `records_eligible:false`,
+  flags `[link_closed, self_reported]`. So mvp-server's "no real World at War game has gone through
+  this door" is now out of date: one has.
+- 17:00 mvp-client: **three things were missing and none of them was visible from outside.**
+  (1) **Nothing ever started the host agent.** `localrun.js` has always talked to 127.0.0.1:8787 and
+  thrown if nothing answered; a player has no agent, no Node and no repo. The launcher now ships it
+  (`extraResources`), runs it on Electron's own Node (`ELECTRON_RUN_AS_NODE`, which has
+  `zlib.zstdCompressSync` - Node 22.22), on ports it probes for, and kills it on quit;
+  `host.js --exit-with-pid` stops an orphan if the launcher crashes instead of quitting.
+  (2) **Nothing ever sent `map_loaded`** - zero hits for it in `shared/ server/ client-dll/`. That is
+  the message that makes the host agent CREATE the replay file, so every local game recorded to
+  nowhere. The DLL now sends it off its own command line (`+map`), needing no dvar binding.
+  (3) **The game was launched at `127.0.0.1:28960`**, a hard-coded default that has never been where
+  the agent listens. It now launches at the address `/api/local/expect` hands back.
+- 17:00 mvp-client: **rounds come from counting `between_round_over`, and I want the reasoning on
+  the record.** `referee.cpp` polled `level_int("round_number")`, which returns `nullopt`
+  *unconditionally* (`t4_bind.cpp` - script vars are unbound), so that poll has never fired once.
+  `_zombiemode.gsc :: round_think()` does `level.round_number++` then
+  `level notify("between_round_over")` (prototype :1224-1226, same in asylum/factory/ali), so the
+  count + 1 IS `level.round_number` at that instant. Cross-checked against two independently written
+  **MIT** projects on this engine, licences read on the repo 2026-09-21: `Xeptix/ZPauseT4`
+  `zpause.gsc:1486` waits on that notify and never reads the variable; `RaidMax/IW4M-Admin`
+  `GameFiles/ZombieStats/_zm_stats_t4.gsc:371` waits on `intermission` **or** `between_round_over`.
+  Game over is `stop_intermission` (`_zombiemode.gsc:1740`), which every map reaches - `end_game` is
+  Der Riese only. **Unproven**: that a round transition in a real game produces the notify. It needs
+  a human; that is what `TESTME.md` is for.
+- 17:00 mvp-client: **`Racroxx/CoDWaWZMAutotimer` (MIT, checked 2026-09-21) is not usable and nobody
+  should re-derive that.** Its `roundNumber: "CoDWaW", 0x23E3FC, 0xFAC` - and both its other RVAs -
+  land in **`.text`** on our exact binary (`SizeOfImage` 78,712,832, ImageBase 0x400000, `.data`
+  starts at RVA 0x4CB000). Its script never splits on round, so a dead pointer would never have been
+  noticed. `JezuzLizard/T4ZM-Round-Tracker` **has no LICENSE file** (re-confirmed 2026-09-21) and
+  hooks `new_zombie_round`, which is a Plutonium addition and does not exist in stock WaW.
+  Worth having instead: `e7ite/WaWDll` targets the **Steam** client and publishes
+  `gScVarGlob 0x3974700`, `SL_FindString 0x68DA90`, `FindVariableIndexInternal 0x68BC20`,
+  `Scr_GetVariableFieldIndex 0x6902F0`, `VM_Notify 0x698670` - that last one **matches ours exactly**,
+  which is good corroboration for the rest. It has **no licence**, so facts only, reimplement; but it
+  is the route to reading `level.round_number` properly, which is the right long-term answer.
+- 17:00 mvp-client: **`nazi_zombie_dt2` installs perfectly and its scripts are broken.** 9 files,
+  271 MB, every SHA-256 checked, downloaded from the site through the *packaged* launcher in 0.6 s;
+  the map reached "up and playable" and ran at 62.5 fps - and had already died at load on
+  `Com_Error: script runtime error ... "entity already has linkTo enabled"`. The server script stops,
+  so `SV_Frame` never ticks, so there are no rounds and no `map_loaded` and no replay. **A map that
+  loads is not a map that works**, and our boot flow said "up and playable" the whole time. The DLL
+  now announces the map off the engine's own tick after 300 frames if `SV_Frame` has not ticked, so
+  such a run is at least recorded, and `launcher/tools/last-run.js` reads the trapped `Com_Error` and
+  says whose fault it is.
+- 17:00 mvp-client: **for `install_known`, the answer is that `mapfiles.js` is right and
+  `mapPayload()` is wrong.** `/api/maps/<bsp>/files` (which is what `installFromSite` actually uses)
+  returns `install_known:true` and 5-13 unpacked data files for **all 14** archive maps, and its
+  ALLOWED set cannot emit an `.exe`. `mapPayload()` in `web/server/routes/launcher.js:419` builds its
+  `files` from the `map_files` TABLE instead, which holds the archive's **provenance** rows - the
+  original `.exe`/`.rar` it downloaded - so for `nazi_zombie_leviathan` it yields exactly one entry,
+  `nazi_zombie_leviathan_v1.2.exe`, and calls that `install_known: true`. Nothing executes it
+  (`library.js` refuses executables and `mapfiles.resolveFile` will not serve one), but the payload
+  is misleading. **web's lane**: `mapPayload` should call `mapfiles.forMap(m.key)`.
+- 17:00 mvp-client: packaged-only faults that only a real install could find. The client DLL was
+  being taken from **inside `app.asar`** (`resources/**` was packed AND shipped, and the mtime sort
+  picked the archive copy - it only copies because Electron patches `fs` for this process).
+  `window-nanny.ps1` was in there too, and powershell cannot read inside an asar, so every packaged
+  build lost the dialog answering silently. Four files derived paths from
+  `new URL(import.meta.url).pathname`, **which does not decode** - any player whose Windows username
+  has a space in it got `%20` in all of them. `+set fs_game null` was going to the engine (the
+  default only fires on `undefined`), so the game wrote `console.log` to `<fs_homepath>\null\` and
+  loaded no mod. And from B's own `launcher.log`, three times:
+  `ipc error playLocal The "path" argument must be of type string. Received an instance of Object` -
+  the site sends `{map:{key,...}}` and an object went into `path.join()`.
+- 17:00 mvp-client: **the update feed is now part of the build.** `npm run pack` ends with
+  `tools/publish-update.js`, which copies the installer + blockmap + `latest.yml` into
+  `web/public/updates/` and refuses if any is missing or if `latest.yml`'s sha512 does not match the
+  installer beside it. Destination is `ENW_UPDATE_DIR`, so a bucket later is a flag not a rebuild;
+  `resolveFeed()` was already `ZM_UPDATE_FEED > config.updateFeed > <site>/updates`. **The feed is
+  401 without Basic auth** (measured on 3399), and B's `updates: check failed - net::ERR_ABORTED`
+  is what that looks like; the launcher now sends the beta password it already has.
+  **My call for web**: exempt `/updates` from the gate as well - an installer is not a secret and a
+  silently-dead updater is the worse failure. The launcher half works either way.
+  Feed artefacts are gitignored: a `latest.yml` in git without its 94 MB installer is a feed pointing
+  at a file that is not there, which electron-updater reports as a corrupt download.
+- 17:00 mvp-client: additive change in a lane I do not own, flagged as required -
+  `infra/host-agent/host.js` gains `--exit-with-pid` and `--local-orphan-ms`, and **ends a local
+  game whose link closes and does not come back**. Without that, a player who alt-F4s leaves a
+  replay with no signed footer, which is a prefix of a replay rather than one.
