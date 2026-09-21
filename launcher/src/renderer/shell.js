@@ -47,9 +47,16 @@ const UNPLAYABLE_NOTE = 'Installs and launches, but its script dies on load.'
 
 // ------------------------------------------------------------------- screens --
 
+// THE SITE IS A NATIVE VIEW. It sits ON TOP of this page, so a screen that is merely
+// `display:block` is drawn UNDERNEATH it and cannot be seen or clicked. For months only
+// the boot screen worked, because the PLAY path in the main process happened to hide
+// the site itself; `firstRun`, `settings` and `detail` rendered into the dark and every
+// click on them landed on a web page. That is exactly what "I can't install the client"
+// was. Every screen now asks for the site to be hidden, and closing gives it back.
 function show(name) {
   S.screen = name
   for (const id of ['firstRun', 'boot', 'settings', 'detail']) $(id).classList.toggle('on', id === name)
+  window.enw.screen(name).catch(() => {})
 }
 function hideAll() { show(null) }
 
@@ -194,7 +201,7 @@ function renderStatus() {
   const g = st.setup?.manifest?.source || (S.detection?.ok ? { grade: S.detection.game.grade } : null)
   kv('World at War', g ? (g.grade === 'verified' ? 'verified' : g.grade) : 'not found', g ? (g.grade === 'verified' ? 'good' : '') : 'bad')
   kv('ENW client', st.setup?.installed ? 'installed' : 'not installed', st.setup?.installed ? 'good' : 'bad')
-  kv('Signed in', st.session?.signedIn ? (st.session.name || st.session.steamid) : 'no')
+  kv('Signed in', st.session?.signedIn ? `${st.session.name || st.session.steamid}${st.session.mock ? ' (mock)' : ''}` : 'no')
   kv('Site', st.site?.placeholder ? 'placeholder' : 'connected', st.site?.placeholder ? '' : 'good')
   const u = st.updates || {}
   kv('Version', u.current || st.appVersion || '?')
@@ -203,6 +210,11 @@ function renderStatus() {
   else if (!u.enabled) kv('Updates', 'not configured')
   else if (u.error) kv('Updates', 'could not check')
   if (st.gameLock?.held) kv('Game lock', `${st.gameLock.name}${st.gameLock.stale ? ' (stale)' : ''}`, st.gameLock.stale ? '' : 'bad')
+  // Two things that used to fail in total silence. A status field that threw took the
+  // whole object with it and read as "not installed"; a log that could not be written
+  // made every later diagnosis an argument about missing evidence.
+  if (st.errors) kv('Status', `could not read: ${Object.keys(st.errors).join(', ')}`, 'bad')
+  if (st.logging && st.logging.writable === false) kv('Log', `cannot write ${st.logging.file}`, 'bad')
 
   const det = el('button', 'ghost', 'What we found')
   det.id = 'detBtn'
@@ -221,6 +233,35 @@ async function renderFirstRun(result) {
   const r = result || (await window.enw.detect({}))
   S.detection = r
   renderStatus()
+
+  // ALREADY INSTALLED IS ITS OWN SCREEN.
+  //
+  // This screen used to offer "Install the ENW client" the moment World at War was
+  // found, whether or not the client was already there -- so the one screen a player
+  // opens to ask "is it installed?" answered by offering to install it again. Say what
+  // is true, and name the folder: a "not installed" that does not say WHERE is what
+  // sent us looking for a renderer bug when the real answer was a different folder.
+  const st = S.status
+  if (st?.setup?.installed) {
+    const c = el('div', 'card good')
+    c.append(el('div', 'head', 'The ENW client is installed'))
+    const bd = el('div', 'body')
+    bd.append(el('div', 'mono', st.setup.gameDir || st.paths?.game || ''))
+    if (st.setup.clientDll) bd.append(el('div', 'muted mono', `binkw32.dll · ${st.setup.clientDll.size.toLocaleString()} bytes`))
+    bd.append(el('div', null, 'Press Play on a map. Nothing here needs doing.'))
+    c.append(bd)
+    body.append(c)
+    const close = el('button', 'primary', 'Back to the site')
+    close.onclick = hideAll
+    actions.append(close)
+    const again = el('button', 'ghost', 'Install it again')
+    again.onclick = () => doSetup(r.ok ? r.game.dir : st.setup.manifest?.source?.dir)
+    actions.append(again)
+    const why2 = el('button', 'ghost', 'What we checked')
+    why2.onclick = showDetection
+    actions.append(why2)
+    return
+  }
 
   if (r.ok) {
     const c = el('div', 'card good')
@@ -525,7 +566,13 @@ async function refresh() {
   $('sitePill').className = `pill ${st.site?.placeholder ? 'warn' : 'ok'}`
   $('setupPill').textContent = st.setup?.installed ? 'client: installed' : 'client: not installed'
   $('setupPill').className = `pill ${st.setup?.installed ? 'ok' : 'warn'}`
-  $('accountPill').textContent = st.session?.signedIn ? `${st.session.name || st.session.steamid}${st.session.mock ? ' (mock)' : ''}` : 'Sign in'
+  $('setupPill').title = st.setup?.installed
+    ? `Installed in ${st.paths?.game || ''}`
+    : `Not installed in ${st.paths?.game || 'the ENW folder'} — click to install it`
+  const signedIn = st.session?.signedIn
+  $('accountPill').textContent = signedIn
+    ? `${st.session.name || st.session.steamid}${st.session.mock ? ' (mock)' : ''}`
+    : (st.site_api?.auth === 'steam' ? 'Sign in with Steam' : 'Sign in')
   return st
 }
 
@@ -538,10 +585,19 @@ function wire() {
   $('settingsPill').onclick = renderSettings
   $('accountPill').onclick = async () => {
     const st = await window.enw.status()
-    if (st.session?.signedIn) { await window.enw.signOut(); toast('Signed out.') }
+    if (st.session?.signedIn && !st.session?.mock) { await window.enw.signOut(); toast('Signed out.') }
     else {
-      try { const s = await window.enw.signIn(); toast(`Signed in as ${s.name}.`) }
-      catch (e) { toast(e.message, 'error') }
+      // Steam sign-in happens IN THE PLAYER'S OWN BROWSER (RFC 8252) and takes as long
+      // as they take, so the pill has to say what is going on or the launcher looks
+      // frozen — and has to come back to a real state, never a spinner, if they close
+      // the tab.
+      const steam = st.site_api?.auth === 'steam'
+      if (steam) {
+        $('accountPill').textContent = 'Waiting for your browser…'
+        toast('Signing in to Steam in your browser. Come back here when it says you can close the tab.')
+      }
+      try { const s = await window.enw.signIn(); toast(`Signed in as ${s.name || s.steamid}${s.mock ? ' (mock)' : ''}.`) }
+      catch (e) { toast(`${e.message} Press Sign in to try again.`, 'error') }
     }
     refresh()
   }

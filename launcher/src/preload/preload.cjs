@@ -21,8 +21,14 @@ contextBridge.exposeInMainWorld('enw', {
   // Who and what.
   version: 0,
   status: () => call('status'),
-  signIn: () => call('signIn'),
+  // `{mock:true}` forces the fallback. Without it the launcher uses whatever the site
+  // offers, which is Steam.
+  signIn: (opts) => call('signIn', opts),
   signOut: () => call('signOut'),
+  // Our screens are HTML in the parent window and the site is a NATIVE child view, so
+  // a screen can only be shown by HIDING the site — never by covering it. Pass null
+  // when the last screen closes.
+  screen: (name) => call('screen', name),
 
   // Finding and installing the game.
   detect: (opts) => call('detect', opts),

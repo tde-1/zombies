@@ -21,6 +21,7 @@
     "stage-client": "node tools/stage-client.js",
     "prepack": "node tools/stage-client.js",
     "publish-update": "node tools/publish-update.js",
+    "smoke": "node tools/smoke.js",
     "test:chain": "node test/local-chain.js",
     "last-run": "node tools/last-run.js"
   },

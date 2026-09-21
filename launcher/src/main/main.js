@@ -12,6 +12,7 @@
 //     first-run wizard needs the whole window, the site view is hidden, not covered.
 import { app, BrowserWindow, WebContentsView, Tray, Menu, ipcMain, shell, dialog, nativeImage, session as electronSession } from 'electron'
 import fs from 'node:fs'
+import http from 'node:http'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
@@ -51,17 +52,46 @@ const state = {
   lastError: null,
   localRun: null,
   lastLocalResult: null,
+  // The loopback listener while a browser sign-in is in flight, so a second press does
+  // not bind a second port.
+  signIn: null,
 }
 
 // ------------------------------------------------------------------- logging --
 
-ensureDirs()
+// `ensureDirs()` can itself fail (a read-only profile, a redirected LOCALAPPDATA), and
+// when it does every later write fails too. It must not take the app with it.
+let dirsError = null
+try { ensureDirs() } catch (e) { dirsError = e.message }
+
 const LOG = path.join(P.logs, 'launcher.log')
+// WHY THIS IS NOT JUST `appendFileSync` IN A TRY/CATCH ANY MORE.
+//
+// It was, and it cost us a whole diagnosis. B's packaged launcher wrote NOTHING to
+// `launcher.log` for fifteen minutes while it was plainly running, and the silence read
+// as "logging broke" -- it was `appendFileSync` throwing into an empty `catch` because
+// the folder was not the one we thought. A logger that cannot say it failed is worse
+// than no logger: it makes every later diagnosis an argument about missing evidence.
+//
+// So: remember whether the last write landed, and expose it in `status()` so the UI and
+// the smoke script can both see "the log you are reading is not the log this process is
+// writing".
+const logState = { file: LOG, writable: null, error: null, lines: 0 }
 function log(...a) {
   const line = `${new Date().toISOString()} ${a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ')}`
-  try { fs.appendFileSync(LOG, line + '\n') } catch {}
+  try {
+    fs.appendFileSync(LOG, line + '\n')
+    logState.writable = true
+    logState.error = null
+    logState.lines++
+  } catch (e) {
+    logState.writable = false
+    logState.error = e.message
+  }
   console.log(line)
 }
+
+const setupInstalledSafe = () => { try { return !!setup.status().installed } catch { return false } }
 
 // Anything unhandled is a crash report and a short plain message. Never a stack trace
 // in the player's face.
@@ -349,20 +379,59 @@ function wireIpc() {
     }
   })
 
-  handle('status', async () => ({
-    appVersion: app.getVersion(),
-    site: state.siteInfo,
-    setup: setup.status(),
-    session: settings.session(),
-    settings: settings.get(),
-    config: cfg.load(),
-    enwRoot: P.root,
-    pendingUpdate: pending(),
-    gameLock: lock.enabled() ? lock.read() : { held: false, note: 'not a dev box' },
-    lastError: state.lastError,
-    updates: state.updater ? state.updater.status() : { enabled: false, current: app.getVersion() },
-    site_api: state.api ? { protocol: 0, auth: state.api.hello?.auth, you: state.api.who, capabilities: state.api.hello?.capabilities } : null,
-  }))
+  // ONE FIELD MUST NEVER BE ABLE TO BLANK THE WHOLE SCREEN.
+  //
+  // `status` used to be a single object literal inside one try/catch. Every field in it
+  // touches the disk or the network -- `setup.status()` hashes a 1.4 MB DLL,
+  // `lock.read()` reads another agent's file, `state.updater.status()` reflects a
+  // network call -- and if ANY of them threw, the handler returned `{ok:false}`, the
+  // renderer's `status()` threw, and the first-run screen rendered from `undefined`.
+  // Which looks, to a player, exactly like "the client is not installed".
+  //
+  // Now each field is evaluated on its own. A field that throws becomes `null` and its
+  // message lands in `errors`, and everything the launcher DOES know still reaches the
+  // UI. `installed` is never inferred from an absence.
+  const field = (errors, name, fn, fallback = null) => {
+    try { return fn() } catch (e) { errors[name] = e.message; return fallback }
+  }
+
+  handle('status', async () => {
+    const errors = {}
+    const st = {
+      appVersion: app.getVersion(),
+      site: state.siteInfo,
+      setup: field(errors, 'setup', () => setup.status(), { installed: false, unknown: true }),
+      session: field(errors, 'session', () => settings.session(), { signedIn: false }),
+      settings: field(errors, 'settings', () => settings.get(), {}),
+      config: field(errors, 'config', () => cfg.load(), {}),
+      enwRoot: P.root,
+      // Where everything actually is. B's launcher insisted the client was not
+      // installed while `setup-cli.js status` on the same machine said it was -- the
+      // two were reading DIFFERENT FOLDERS and nothing on screen said so. The paths are
+      // now part of the status, so "not installed" can always be read as "not installed
+      // HERE".
+      paths: { root: P.root, game: P.game, home: P.home, maps: P.maps, logs: P.logs, state: P.state },
+      logging: { ...logState, dirsError },
+      pendingUpdate: field(errors, 'pendingUpdate', () => pending()),
+      gameLock: field(errors, 'gameLock', () => (lock.enabled() ? lock.read() : { held: false, note: 'not a dev box' }), { held: false }),
+      lastError: state.lastError,
+      updates: field(errors, 'updates', () => (state.updater ? state.updater.status() : { enabled: false, current: app.getVersion() }), { enabled: false }),
+      site_api: field(errors, 'site_api', () =>
+        (state.api ? { protocol: 0, auth: state.api.hello?.auth, signInUrl: state.api.hello?.sign_in_url || '/auth/steam', you: state.api.who, capabilities: state.api.hello?.capabilities } : null)),
+    }
+    st.errors = Object.keys(errors).length ? errors : null
+    return st
+  })
+
+  // The site lives in a NATIVE child view, so an HTML screen in the parent window
+  // cannot be drawn over it -- it is drawn UNDER it and is invisible. Every screen has
+  // to ask for the site to be hidden.
+  //
+  // This is the whole of "I can't install the client". `show('firstRun')` only toggled
+  // a CSS class, so the Install wizard rendered behind the site view and B clicked at a
+  // web page. Only the boot screen ever worked, because the PLAY path happened to call
+  // `showSite(false)` from the main process.
+  handle('screen', (name) => { showSite(!name); return { site: !name, screen: name || null } })
 
   handle('detect', (opts) => detect.detect(opts || {}))
   handle('browse', async () => {
@@ -452,13 +521,31 @@ function wireIpc() {
     return setup.uninstall({ keepMaps: keepMaps !== false })
   })
 
-  handle('signIn', async () => {
-    // MOCK. Real sign-in is Steam OpenID in a browser window against the site; there is
-    // no site and no secret locally, so we use the Steam account this PC is signed into
-    // — which is at least a real SteamID, and makes the rest of the flow honest.
+  handle('signIn', async ({ mock = false } = {}) => {
+    // REAL STEAM SIGN-IN, when the site offers it.
+    //
+    // Steam sign-in is OpenID 2.0: a redirect round trip, not an API call. The window
+    // goes to steamcommunity.com, THE PLAYER types their password there and nowhere
+    // else, Steam redirects back to <site>/auth/steam/return, and the site's session
+    // cookie lands in this app's cookie jar. Because the sign-in window uses the
+    // DEFAULT Electron session -- the same one the wrapped site view uses -- the page
+    // and `siteapi.js` (through `electronCookieProvider`) are then the same signed-in
+    // player, with no second auth path and nothing for the launcher to hold.
+    //
+    // No Steam Web API key is involved. The key only buys persona names and avatars;
+    // the site runs `passport-steam` with `profile: false`.
+    const auth = state.api?.hello?.auth
+    if (!mock && state.api && auth === 'steam') {
+      const s = await steamSignIn()
+      push('session', s)
+      return s
+    }
+    // The fallback, and it says so. Still useful while the beta password is set: it
+    // separates "the launcher is broken" from "auth is broken".
     const acct = await detect.steamAccount()
     if (!acct.current) throw new Error('No Steam account is signed in on this PC, so there is nothing to sign in as yet.')
     const s = settings.signIn({ steamid: acct.current.steamid, name: acct.current.persona || acct.current.account, mock: true })
+    log('sign-in', `mock, as ${s.steamid}${auth === 'steam' ? ' (the site offers Steam; this was asked for explicitly)' : ` (the site's auth mode is ${auth || 'unknown'})`}`)
     push('session', s)
     return s
   })
@@ -712,6 +799,162 @@ function wireIpc() {
   })
 }
 
+// ------------------------------------------------------------ Steam sign-in --
+//
+// RFC 8252, "OAuth 2.0 for Native Apps": a native application sends the user to the
+// SYSTEM BROWSER and collects the answer on a loopback redirect. It does not host the
+// sign-in in a webview of its own.
+//
+// The first version of this did use an Electron window, and B caught it straight away —
+// clicking through landed him in Waterfox anyway. That is not a bug to route around, it
+// is the correct behaviour, and there are two hard reasons to lean into it:
+//
+//   * A webview has no address bar and no padlock, so a player cannot tell a real Steam
+//     login from one we painted. The browser is the only thing that can prove where the
+//     password is going.
+//   * The process hosting a webview can read what is typed into it. A Steam password
+//     must never be able to pass through ours. It now cannot: we never see that window.
+//
+// And it is nicer: B's browser already holds his Steam session, so this is one click.
+//
+// PKCE (S256) is what makes a loopback redirect safe. Any local process can bind a port
+// and any local process can watch a redirect go past, but the code that comes back is
+// worthless without the `verifier`, which never leaves this process except in the one
+// POST that spends it. The server enforces the S256 check, burns codes on first use,
+// expires them at 120 s, echoes `state`, and BUILDS the redirect from our port number,
+// so there is no URL of ours for anyone to point somewhere else.
+
+// Ask the site who we are, tolerating a site that answers in more than one shape.
+async function whoAmI() {
+  const r = await state.api.req('/api/me', { timeoutMs: 5000 })
+  const d = r.data || {}
+  const you = d.you || d.user || d
+  const steamid = you.steamid || you.steam_id || you.id || null
+  return { signedIn: !!(d.signed_in || d.signedIn || (steamid && you.name)), steamid, name: you.name || you.persona || null }
+}
+
+const b64url = (b) => Buffer.from(b).toString('base64url')
+
+function signInPage(title, body) {
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + title + '</title>' +
+    '<style>html,body{height:100%;margin:0}' +
+    'body{background:#12130e;color:#e8e4d9;font:16px/1.5 "Segoe UI",system-ui,sans-serif;' +
+    'display:flex;align-items:center;justify-content:center;text-align:center}' +
+    '.c{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .6rem;color:#f3efe3}' +
+    'p{margin:.4rem 0;color:#a9a496}.m{color:#b0342c}</style></head>' +
+    '<body><div class="c"><h1>' + title + '</h1>' + body + '</div></body></html>'
+}
+
+// One sign-in at a time, and never a listener left bound.
+function steamSignIn() {
+  if (state.signIn) throw new Error('A sign-in is already open in your browser. Finish it there, or wait for it to time out.')
+
+  const base = String(state.siteInfo?.url || '').replace(/\/$/, '')
+  if (!/^https?:/i.test(base)) throw new Error('There is no site to sign in to yet.')
+
+  const verifier = b64url(crypto.randomBytes(32))
+  const challenge = b64url(crypto.createHash('sha256').update(verifier).digest())
+  const stateTok = b64url(crypto.randomBytes(16))
+
+  return new Promise((resolve, reject) => {
+    let settled = false
+    let claimed = false          // exactly one callback, then we stop listening
+    let timer = null
+
+    const done = (fn, arg) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      state.signIn = null
+      try { server.close() } catch {}
+      fn(arg)
+    }
+
+    const server = http.createServer(async (req, res) => {
+      const u = new URL(req.url, 'http://127.0.0.1')
+      if (u.pathname !== '/cb') { res.writeHead(404).end(); return }
+      if (claimed) {
+        res.writeHead(409, { 'content-type': 'text/html; charset=utf-8' })
+        res.end(signInPage('Already done', '<p>This sign-in has already been used.</p>'))
+        return
+      }
+      claimed = true
+
+      const fail = (msg) => {
+        res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' })
+        res.end(signInPage('Sign-in did not finish', '<p class="m">' + msg + '</p><p>Close this tab and press Sign in again in ENW Zombies.</p>'))
+        log('sign-in', 'failed: ' + msg)
+        done(reject, new Error(msg))
+      }
+
+      if (u.searchParams.get('error')) return fail('Steam did not sign you in.')
+      // A MISMATCHED STATE IS A HARD STOP. It means this callback is not the one this
+      // launcher started, so the code in it is not ours to spend.
+      if (u.searchParams.get('state') !== stateTok) return fail('That sign-in did not match the one this launcher started.')
+      const code = u.searchParams.get('code')
+      if (!code) return fail('Steam came back without a sign-in code.')
+
+      try {
+        // THROUGH THE ELECTRON SESSION, not Node's fetch. The 200 carries the `zm.sid`
+        // cookie, and it has to land in the jar that the wrapped page and
+        // `electronCookieProvider` both read — otherwise the launcher would be holding
+        // an identity the site had never heard of.
+        const ex = await electronSession.defaultSession.fetch(base + '/auth/launcher/exchange', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ code, verifier }),
+        })
+        const data = await ex.json().catch(() => ({}))
+        if (!ex.ok || !data.ok) return fail(data.error || ('the site refused the sign-in (' + ex.status + ')'))
+
+        const you = data.you || {}
+        const steamid = you.steam_id || you.steamid || null
+        if (!steamid) return fail('the site signed us in but did not say who we are')
+        const s = settings.signIn({ steamid, name: you.name || you.persona || null, mock: false })
+        log('sign-in', 'Steam: signed in as ' + (s.name || s.steamid))
+
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+        res.end(signInPage('Signed in', '<p>You can close this tab and go back to ENW Zombies.</p>'))
+
+        // The wrapped page loaded signed out; it needs to see the cookie.
+        try { await state.api.sayHello() } catch {}
+        try { state.siteView?.webContents.reload() } catch {}
+        state.win?.show(); state.win?.focus()
+        done(resolve, s)
+      } catch (e) {
+        fail('could not reach the site to finish signing in (' + e.message + ')')
+      }
+    })
+
+    server.on('error', (e) => done(reject, new Error('could not listen for the sign-in reply: ' + e.message)))
+
+    // 127.0.0.1 EXPLICITLY. Not 0.0.0.0, not ::, not the name "localhost" — this
+    // listener must not be reachable off the machine, and RFC 8252 §8.3 wants the
+    // literal address. Port 0 lets the OS pick, which is always >= 1024.
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port
+      if (port < 1024) return done(reject, new Error('the operating system gave us a privileged port'))
+      state.signIn = { port, since: Date.now() }
+      const url = base + '/auth/launcher/start?port=' + port +
+        '&state=' + encodeURIComponent(stateTok) +
+        '&challenge=' + encodeURIComponent(challenge)
+      log('sign-in', 'Steam: listening on 127.0.0.1:' + port + ', opening your browser')
+      // The beta password is NEVER in this URL. `/auth/launcher/*` and `/auth/steam` are
+      // exempt from the gate precisely so a freshly opened browser — and Steam — can
+      // reach them without one.
+      shell.openExternal(url).catch((e) => done(reject, new Error('could not open your browser: ' + e.message)))
+    })
+
+    // Time-boxed whatever happens. The server's codes expire at 120 s, and a listener
+    // left bound is a local service nobody asked for.
+    timer = setTimeout(() => {
+      log('sign-in', 'Steam: timed out after two minutes; the listener is closed')
+      done(reject, new Error('Sign-in timed out. Press Sign in again when you are ready.'))
+    }, 125000)
+    timer.unref?.()
+  })
+}
+
 async function reloadSite(url) {
   if (url) cfg.save({ siteUrl: url })
   state.siteInfo = await cfg.resolveSiteUrl()
@@ -724,6 +967,14 @@ async function reloadSite(url) {
 
 const single = app.requestSingleInstanceLock()
 if (!single) {
+  // A SECOND INSTANCE USED TO EXIT IN 177 ms WITH NO OUTPUT AT ALL, and that silence
+  // cost real time: `ENW_SMOKE_MS=… ENW Zombies.exe` against an already-running
+  // launcher produced an empty stdout and an unchanged log, which reads exactly like
+  // "the packaged app does not log". It is now said out loud, in both places anyone
+  // would look.
+  const note = 'another ENW Zombies is already running; this one handed its arguments over and quit'
+  try { fs.appendFileSync(path.join(P.logs, 'launcher.log'), `${new Date().toISOString()} second instance: ${note}\n`) } catch {}
+  console.log('ENW_SECOND_INSTANCE ' + note)
   app.quit()
 } else {
   app.on('second-instance', (_e, argv) => {
@@ -733,6 +984,15 @@ if (!single) {
   })
 
   app.whenReady().then(async () => {
+    // THE FIRST LINE OF EVERY RUN NAMES THE FOLDER THIS PROCESS IS USING.
+    //
+    // B's launcher said "client: not installed" while `setup-cli.js status` on the same
+    // machine printed "Installed: yes", and the two disagreed because they were looking
+    // at two different `%LOCALAPPDATA%` trees. Nothing on screen or in the log said
+    // which folder either of them meant. Now it does, before anything else can fail.
+    log('root', P.root, `(client ${setupInstalledSafe() ? 'installed' : 'NOT installed'} here)`,
+      `log ${LOG}`, dirsError ? `- could not create our folders: ${dirsError}` : '')
+
     // Updates are applied HERE, before anything opens: the only moment that is never
     // mid-game and never mid-action (spec 13 §2).
     try {
