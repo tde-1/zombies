@@ -19,10 +19,22 @@
 import { EventEmitter } from 'node:events'
 
 export class AutoUpdater extends EventEmitter {
-  constructor({ feedUrl, currentVersion, gate, log = () => {} }) {
+  constructor({ feedUrl, currentVersion, gate, log = () => {}, sitePassword = null, siteUser = 'beta' }) {
     super()
     this.feedUrl = feedUrl || null
     this.currentVersion = currentVersion
+    // THE FEED IS BEHIND THE CLOSED-BETA PASSWORD, and electron-updater does not know
+    // that. B's own log, three times: `updates: check failed — net::ERR_ABORTED`. What
+    // it was actually handed was a 401.
+    //
+    // Two fixes are possible and they are not alternatives: the site should exempt
+    // /updates from the gate (an installer is not a secret, and an updater that never
+    // runs is a worse failure than a public download), and the launcher should send
+    // the credentials it already has for that host. This is the half we own. If the
+    // exemption lands, this becomes harmless.
+    this.authHeader = sitePassword
+      ? 'Basic ' + Buffer.from(`${siteUser}:${sitePassword}`).toString('base64')
+      : null
     this.gate = gate                 // the IdleGate: blocked while in game / installing
     this.log = log
     this.state = {
@@ -58,6 +70,10 @@ export class AutoUpdater extends EventEmitter {
       updater.autoInstallOnAppQuit = false  // and we decide whether, on quit
       updater.allowDowngrade = false
       updater.logger = null
+      if (this.authHeader) {
+        updater.requestHeaders = { ...(updater.requestHeaders || {}), Authorization: this.authHeader }
+        this.log('updates: sending the beta password with update requests')
+      }
       updater.setFeedURL({ provider: 'generic', url: this.feedUrl })
 
       updater.on('error', (e) => {

@@ -17,6 +17,7 @@
 // re-run over a stored replay.
 #include "../../../shared/core/component.hpp"
 
+#include "../../../shared/core/frame.hpp"
 #include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/logger.hpp"
 #include "logprint_mirror.hpp"
@@ -136,6 +137,28 @@ public:
         referee::bind();
         referee::on_notify([this](const notify_event& ev) { on_notify(ev); });
         referee::on_frame([this](uint32_t ms) { on_frame(ms); });
+
+        // A SECOND ROUTE TO map_loaded, and it is not belt and braces -- it is the
+        // difference between a run that leaves a replay and one that leaves nothing.
+        //
+        // MEASURED 2026-09-21 on `nazi_zombie_dt2`: the map loaded, the engine ran at
+        // 62.5 fps for 90 seconds, and SV_Frame NEVER TICKED, because a GSC runtime
+        // error ("entity already has linkTo enabled") killed the server script at load.
+        // No SV_Frame meant no map_loaded, and no map_loaded meant the host agent never
+        // opened a replay file, so a 90-second game produced a summary with a null map
+        // and no recording at all.
+        //
+        // The engine's own tick keeps running through that, so it is what we fall back
+        // on. Rule 12: subscribe to the core's frame source, never hook Com_Frame.
+        enw::frame::subscribe("referee_mapload", [this](uint64_t) {
+            if (map_announced_) return;
+            if (++core_frames_ < 300) return;   // ~5 s at 60 fps: give SV_Frame its chance
+            ENW_WARN("referee: the server frame has not ticked in %llu engine frames -- "
+                     "announcing the map anyway so the run is still recorded. Something "
+                     "is wrong with this map's scripts; check the console for a GSC error.",
+                     static_cast<unsigned long long>(core_frames_));
+            announce_map(game_link::now_ms());
+        });
 
         // Degraded-mode transport, off unless asked for (coordinator approved
         // 2026-09-20). NDJSON over TCP stays the contract; this mirrors the event
@@ -557,6 +580,7 @@ private:
     bool game_over_ = false;
     uint32_t game_ms_ = 0;
     uint64_t frames_ = 0;
+    uint64_t core_frames_ = 0;
     uint32_t first_frame_ms_ = 0;
 };
 

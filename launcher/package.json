@@ -17,9 +17,10 @@
     "play": "node src/main/play-cli.js",
     "maps": "node src/main/maps-cli.js",
     "slice": "node test/slice.js",
-    "pack": "node tools/stage-client.js && electron-builder --win --publish never",
+    "pack": "node tools/stage-client.js && electron-builder --win --publish never && node tools/publish-update.js",
     "stage-client": "node tools/stage-client.js",
-    "prepack": "node tools/stage-client.js"
+    "prepack": "node tools/stage-client.js",
+    "publish-update": "node tools/publish-update.js"
   },
   "devDependencies": {
     "electron": "^38.8.6",

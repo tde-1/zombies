@@ -37,3 +37,10 @@ launcher/dist/
 # staged client DLL for packaging (a build artefact; `npm run pack` re-stages it)
 launcher/resources/client/
 infra/keepalive.log
+
+# The launcher update feed is a BUILD ARTEFACT, produced by `cd launcher && npm run pack`
+# (tools/publish-update.js). The installer itself is already ignored by *.exe above, and
+# committing latest.yml without it would publish a feed pointing at a file that is not
+# there — which electron-updater reports as a corrupt download.
+web/public/updates/latest.yml
+web/public/updates/*.blockmap

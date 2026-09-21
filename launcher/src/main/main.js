@@ -394,20 +394,39 @@ function wireIpc() {
   // The real map library (archive agent's 14 normalised maps). The rail shows `title`;
   // only the engine ever sees `bsp`.
   handle('maps', () => library.catalogue())
-  handle('installMap', async (bsp) => {
+  // One route to "the map is on disk", used by the Install button AND by Play Local.
+  //
+  // Play Local used to have its own copy of this that only ever consulted the LOCAL
+  // ARCHIVE — `ZombiesDev\archive`, which exists on exactly one machine in the world.
+  // On a friend's PC the condition was false, nothing installed, and the game was
+  // launched at a map that was not there. That is the first clause of B's MVP sentence
+  // ("load one of the test maps -> it installs") failing silently for everyone but him.
+  async function ensureMapInstalled(bsp, { announce = false } = {}) {
+    if (library.isInstalled(bsp)) return { already: true }
+    const onProgress = (p) => push('mapProgress', { bsp, ...p })
     state.gate.block('mapinstall', 'a map is installing')
     try {
       // From the site when we are connected to one — that is the only route that
       // works on anybody else's machine. The local archive is the dev fallback.
-      const onProgress = (p) => push('mapProgress', { bsp, ...p })
       if (state.api && state.api.can('map_downloads')) {
+        if (announce) push('toast', { kind: 'info', text: 'Downloading the map…' })
         return await library.installFromSite(bsp, { api: state.api, onProgress, mapsBase: cfg.load().mapsBase })
       }
-      return library.install(bsp, { onProgress })
+      if (library.catalogue().maps.some((m) => m.bsp === bsp && m.available)) {
+        if (announce) push('toast', { kind: 'info', text: 'Installing the map…' })
+        return library.install(bsp, { onProgress })
+      }
+      return { skipped: 'no source for this map: the site cannot serve it and there is no local archive' }
+    } finally { state.gate.unblock('mapinstall') }
+  }
+
+  handle('installMap', async (bsp) => {
+    try {
+      return await ensureMapInstalled(bsp)
     } catch (e) {
       await reportCrash('map_failed', e, { bsp })
       throw e
-    } finally { state.gate.unblock('mapinstall') }
+    }
   })
   handle('removeMap', (bsp) => library.uninstall(bsp))
 
@@ -626,11 +645,9 @@ function wireIpc() {
       )
     }
     // Install first if we have to: the site opening a match before an install that
-    // then fails would leave an orphan.
-    if (!library.isInstalled(mapKey) && library.catalogue().maps.some((m) => m.bsp === mapKey && m.available)) {
-      push('toast', { kind: 'info', text: 'Downloading the map…' })
-      library.install(mapKey, { onProgress: (p) => push('mapProgress', { bsp: mapKey, ...p }) })
-    }
+    // then fails would leave an orphan. Same route as the Install button — the site
+    // when there is one, the local archive only as a dev fallback.
+    await ensureMapInstalled(mapKey, { announce: true })
     // A CUSTOM MAP IS ITS OWN MOD. World at War loads `nazi_zombie_leviathan` out of
     // `mods\nazi_zombie_leviathan`, so fs_game has to be that and not `mods/enw` — get
     // it wrong and the engine says `Can't find map "..."` with the 450 MB fastfile
@@ -754,6 +771,8 @@ if (!single) {
       currentVersion: app.getVersion(),
       gate: state.gate,
       log: (...a) => log('updater', ...a),
+      // The same password the player already typed to see the site. Never logged.
+      sitePassword: cfg.load().sitePassword || null,
     })
     state.updater.on('ready', (r) => push('toast', {
       kind: 'info',
@@ -825,7 +844,12 @@ if (!single) {
                  (document.getElementById('frBody').innerText || '').slice(0, 200)
                btn.click()
                await new Promise((r) => setTimeout(r, 8000))
-               return (document.getElementById('frBody').innerText || '').replace(/\s+/g, ' ').slice(0, 400)
+               // \\s, not \\s-in-a-template-literal: this code is inside a JS template
+               // string, so a single backslash is eaten before the page ever sees it
+               // and the regex becomes /s+/g — which replaces every letter "s" with a
+               // space. The smoke report read "In talling ... c:\\program file (x86)"
+               // and we nearly went looking for an encoding bug that was not there.
+               return (document.getElementById('frBody').innerText || '').replace(/\\s+/g, ' ').slice(0, 400)
              })()`
           ).catch((e) => `ERROR ${e.message}`)
         }
