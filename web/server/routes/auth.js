@@ -40,12 +40,30 @@ function router() {
 
   r.get('/mode', (req, res) => res.json({
     mode: effectiveMode(),
-    steam_ready: !!(STEAM_API_KEY && PUBLIC_URL),
+    // Can somebody sign in with Steam? That is the question callers are actually asking,
+    // and it does not involve the API key. It used to report false whenever the key was
+    // missing, which is how a working sign-in stayed switched off.
+    steam_ready: effectiveMode() === 'steam',
+    // Whether we can show persona names and avatars, which is what the key buys.
+    steam_profiles: !!STEAM_API_KEY,
     enw: enw.status(),
   }))
 
   // ---- the mock provider -----------------------------------------------------------
-  if (effectiveMode() === 'mock') {
+  // Kept registered alongside real Steam sign-in for as long as the closed-beta gate is
+  // up. The reason is narrow: turning Steam on removes the only other way in, and if the
+  // redirect round-trip fails for any reason — a realm mismatch, Steam being down, the
+  // tunnel changing hostname — everyone is locked out of their own site with no way to
+  // look at anything. During the beta the front door is one shared password held by four
+  // people, so the extra exposure is small and the insurance is worth it.
+  //
+  // It must go when the site opens to the public. Mock sign-in lets anyone who can reach
+  // it become anyone.
+  const betaFallback = effectiveMode() !== 'mock' && !!process.env.ZM_SITE_PASSWORD
+  if (betaFallback) {
+    console.warn('[auth] mock sign-in stays available as a fallback while ZM_SITE_PASSWORD is set')
+  }
+  if (effectiveMode() === 'mock' || betaFallback) {
     r.get('/mock', (req, res) => {
       if (!localOnly(req)) return res.status(403).send('the mock sign-in is not available on this site')
       const list = devIdentities()
@@ -81,16 +99,45 @@ function router() {
       const SteamStrategy = require('passport-steam').Strategy
       passport.serializeUser((u, done) => done(null, u))
       passport.deserializeUser((u, done) => done(null, u))
+      // **Signing in with Steam does not need a Steam Web API key.**
+      //
+      // This was the blocker for weeks and it was never real. Steam sign-in is OpenID
+      // 2.0: the browser goes to Steam, Steam sends it back with a signed claim, and we
+      // verify the claim. No key is involved. The key is for ISteamUser/GetPlayerSummaries
+      // — the persona NAME and the AVATAR — and passport-steam skips that call entirely
+      // when `profile` is false (strategy.js: `if (options.profile) getUserProfile(...)`).
+      //
+      // So the key is a nice-to-have for display, not a prerequisite for identity. We
+      // switch on it rather than wait for it: no key means real accounts with a plain
+      // name until one arrives, and the day it does, names and avatars fill in with no
+      // migration — the steam_id was right all along.
+      //
+      // That also avoids a trap. Steam issues ONE Web API key per account, and
+      // registering one replaces any key that account already has. If the Steam account
+      // behind ENW Movement's sign-in is the same one, registering a key for Zombies
+      // would silently break Movement's login. Not needing a key sidesteps it.
       passport.use(new SteamStrategy({
         returnURL: `${PUBLIC_URL}/auth/steam/return`,
         realm: PUBLIC_URL,
-        apiKey: STEAM_API_KEY,
-      }, (identifier, profile, done) => done(null, profile)))
+        apiKey: STEAM_API_KEY || undefined,
+        profile: !!STEAM_API_KEY,
+      }, (identifier, profile, done) => done(null, { identifier, profile })))
       r.use(passport.initialize())
       r.get('/steam', passport.authenticate('steam', { session: false }))
       r.get('/steam/return', passport.authenticate('steam', { session: false, failureRedirect: '/' }), (req, res) => {
-        const p = req.user || {}
-        const u = users.ensure(p.id, {
+        // With no key there is no profile object, so the SteamID64 comes out of the
+        // OpenID identifier itself — which is the part Steam signed, and therefore the
+        // part worth trusting. passport-steam has already checked the endpoint, the
+        // namespace and the claimed id before we get here.
+        const { identifier, profile } = req.user || {}
+        const claimed = /^https?:\/\/steamcommunity\.com\/openid\/id\/(\d{17})$/.exec(String(identifier || ''))
+        const steamId = claimed ? claimed[1] : (profile && profile.id) || null
+        if (!steamId) {
+          console.warn('[auth] Steam returned a claim we could not read a SteamID64 out of')
+          return res.status(400).type('text/plain').send('Steam sign-in failed. Try again.')
+        }
+        const p = profile || {}
+        const u = users.ensure(steamId, {
           username: p.displayName || null,
           avatar: (p.photos && p.photos[2] && p.photos[2].value) || null,
         })
@@ -115,8 +162,11 @@ function router() {
   return r
 }
 
+// The API key is deliberately NOT part of this test. Sign-in is OpenID and needs only a
+// public URL to be redirected back to; the key adds names and avatars. Requiring it here
+// is what kept real sign-in switched off while it was already available.
 function effectiveMode() {
-  if (MODE === 'steam' && STEAM_API_KEY && PUBLIC_URL) return 'steam'
+  if (MODE === 'steam' && PUBLIC_URL) return 'steam'
   return 'mock'
 }
 
