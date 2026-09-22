@@ -4769,3 +4769,53 @@ configured by environment was not enforcing tokens at all.**
   the live box's point of view. **A `verified` identity has never been seen on this box**; that
   needs a real party, which is B's to start.
 - 15:20 vps: box left on `enw-host-agent`, **idle**, tokens enforced, 21 GB free.
+- 16:00 archive: **`tools\dev\launch.ps1` was committed with a PowerShell parse error** — lines
+  612–614, the `ENW_USE_PRIVATE_LOCALAPPDATA` block, had every `$` variable reference stripped
+  out of them (`if ( -eq '1') { = Join-Path 'localappdata' }`). That file does not misbehave, it
+  does not *parse*, so nothing that calls it could run: `maptest.ps1`, `jointest.ps1`, all of it.
+  Restored from the comment above it and from `mapmount.ps1`'s matching switch. All five dev
+  scripts now check clean with `[Parser]::ParseFile`; running that check takes a second and is
+  worth doing before any session that edits them. `dedi.md` §15.1.
+- 16:05 archive: **`build\dedi\enw_t4.dll` did not carry `enw_localappdata`** (the component
+  post-dates the 15:29 build), so the private-LocalAppData redirect was a no-op in the dedi copy.
+  Rebuilt. Anyone using `ENW_USE_PRIVATE_LOCALAPPDATA=1` must check for the line
+  `enw_localappdata: SHGetFolderPathA redirected N time(s) -> '…\homes\<copy>\localappdata'` in
+  the enw log before trusting the run.
+- 16:20 archive: **the private LocalAppData tree needs `Activision\CoDWaW\players\profiles`
+  seeded or no map ever starts.** With it empty, every map got to `Loading fastfile 'mod'`, went
+  to the menu, re-entered client init and died on `Exceeded limit of 1 'snddriverglobals' assets`
+  at t≈1.6 s with `frame::count=0` — and *no* `------ Server Initialization ------` line.
+  **`snddriverglobals` is also the normal restart symptom after a map's own failure**, so the two
+  are told apart by whether `Server Initialization` appears first: after it, the map died and the
+  engine restarted; before it, the map never started and the fault is the harness's. Seeded by
+  copying B's `players\` out (read-only, copy out, never write in). `dedi.md` §15.2.
+- 16:35 archive: **the add-on-IWD theory is dead, measured, not read.** Runs `addon5` (baseline,
+  reproduces Zombie Desert's `utility.gsc:463`), `addon6`, `addon7`, all dedicated with the
+  private LocalAppData verified in effect. (1) 7-Zip's listing of every original shows our
+  `mods/<bsp>/` is **exactly** the release installer's own file table for all six maps — nothing
+  was swept in and nothing was lost. (2) No add-on IWD anywhere in the set overrides
+  `_utility` / `_zombiemode*` / `_load`; the maps' **own** IWDs do. (3) Excluding the add-ons
+  changed nothing on MW2 Rust, Clinic of Evil, Der Berg or Project Viking, and made **Zombie
+  Desert worse**: drop only `maps/zombie_hitmarker.gsc` and you get `Server script compile error /
+  Could not find script 'maps/zombie_hitmarker'` from the map's **own** `nazi_zombie_test1.gsc:135`.
+  The hitmarker add-on is a hard dependency of the author's build, not an extra. All six keep
+  `status: "broken"`, broken by the map. Customs passing five gates: still **one**.
+  `archive.md` §9, `dedi.md` §15.
+- 16:35 archive: **Leviathan's release genuinely omits `<bsp>_patch.ff` and `<bsp>_load.ff`** —
+  five files in the installer where every other release in the set has six to eleven — so the
+  engine loads `default` in its place (`map03` console line 2189). The generic 690,464-byte
+  custom-map patch fastfile that Zombie Desert and Clinic of Evil ship **byte-identically**
+  contains the string `napalmblob`, so it was staged in under Leviathan's name; the engine loaded
+  it and `unknown item 'napalmblob'` **did not move**. Real fact about the release, not the cause.
+  Recorded in the manifest as `install.add` with `applied: false`.
+- 16:35 archive: **stock WaW loads raw GSC out of mod-folder IWDs, and that raw copy is what
+  executes.** Proven by deleting one `.gsc` from inside an IWD and getting `Could not find script`.
+  It is live code, not leftover source — which is why every error trace since §13 has matched the
+  IWD's raw line numbers exactly. True of every custom map in the archive that ships a `maps/`
+  tree in its IWD.
+- 16:40 archive: `install.exclude[]` / `install.add[]` are now a manifest feature.
+  `install_map.py --stage` builds `archive\mods-staged\<bsp>\` out of **hard links**, so the
+  originals are never written and an exclusion is a view rather than an edit; `"applied": false`
+  keeps an audited entry in the record without acting on it, and every entry written today carries
+  it plus the run that decided it. `mapmount.ps1` mounts a staged folder when one exists, says so,
+  and **repoints** a junction left aimed at the other install instead of silently keeping it.

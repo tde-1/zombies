@@ -13,6 +13,33 @@ It never runs anything.
   python install_map.py --list
   python install_map.py --homepath C:\\Users\\b\\ZombiesDev\\homes\\dedi --all
   python install_map.py --homepath ... --map nazi_zombie_leviathan --map water
+  python install_map.py --stage --map nazi_zombie_test1        # honour install.exclude
+
+`install.exclude` (2026-09-23)
+------------------------------
+Some releases drop third-party ADD-ON iwds into the mod folder beside the map's own
+files -- a hitmarker script, a perk pack, empty placeholder iwds. A manifest may list
+them:
+
+    "install": {"exclude": [{"file": "zombie_hitmarker_bythesuzho.iwd",
+                             "reason": "third-party hitmarker add-on; ..."}]}
+
+`--stage` then builds `archive\\mods-staged\\<bsp>\\` containing a HARD LINK to every
+other file. Hard links cost no bytes and the archive's own `mods\\<bsp>\\` is never
+written, so the originals stay byte-for-byte what the release shipped -- the exclusion
+is a *view*, not an edit. `tools\\dev\\mapmount.ps1` mounts the staged folder when one
+exists. Delete `mods-staged\\<bsp>` to go back to the release as shipped.
+
+`install.add` is the same idea pointed the other way, for a release that OMITS a file
+every other release in the set ships:
+
+    "install": {"add": [{"file": "nazi_zombie_leviathan_patch.ff",
+                         "from": "nazi_zombie_test1/nazi_zombie_test1_patch.ff",
+                         "reason": "..."}]}
+
+`from` is relative to `archive\\mods\\`, and the file is hard-linked in under the name
+in `file`. Nothing is downloaded and nothing is generated: it is a file this archive
+already holds, put where the engine looks for it.
 """
 
 from __future__ import annotations
@@ -24,7 +51,105 @@ import subprocess
 
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 MODS = os.path.join(WORK, "mods")
+STAGED = os.path.join(WORK, "mods-staged")
 MANIFESTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manifests")
+
+# The engine writes its console.log into fs_homepath\<fs_game>\, which the junction
+# makes the archive folder (dedi.md 14.4). Never carry it into a staged install.
+NEVER_STAGE = {"console.log"}
+
+
+def manifest_path(bsp):
+    return os.path.join(MANIFESTS, bsp + ".json")
+
+
+def excludes(bsp):
+    """[(filename, reason)] from the manifest's install.exclude, lowercased names."""
+    mf = manifest_path(bsp)
+    if not os.path.exists(mf):
+        return []
+    man = json.load(open(mf, encoding="utf-8"))
+    out = []
+    for e in ((man.get("install") or {}).get("exclude") or []):
+        if isinstance(e, str):
+            out.append((e.lower(), ""))
+            continue
+        # `"applied": false` keeps an audited entry in the record without acting on it.
+        # An add-on that was suspected and then MEASURED not to be the cause -- or, worse,
+        # measured to be a hard dependency of the map's own scripts -- must stay written
+        # down, or the next session re-runs the same experiment. It must not stay in the
+        # install. Anything without the key is applied, so old manifests do not change
+        # meaning.
+        if e.get("applied") is False:
+            continue
+        out.append((str(e.get("file", "")).lower(), e.get("reason", "")))
+    return [e for e in out if e[0]]
+
+
+def stage(bsp):
+    """Build mods-staged\\<bsp> as hard links to mods\\<bsp> minus install.exclude."""
+    src = os.path.join(MODS, bsp)
+    if not os.path.isdir(src):
+        return "no install at " + src
+    drop = dict(excludes(bsp))
+    dst = os.path.join(STAGED, bsp)
+    # Rebuild from scratch every time: a stale staged folder is worse than none, and
+    # every entry in it is a hard link, so removing it frees nothing and loses nothing.
+    if os.path.isdir(dst):
+        for root, _d, fs in os.walk(dst, topdown=False):
+            for f in fs:
+                os.remove(os.path.join(root, f))
+            if root != dst:
+                os.rmdir(root)
+    os.makedirs(dst, exist_ok=True)
+    linked, skipped = 0, []
+    for name in sorted(os.listdir(src)):
+        p = os.path.join(src, name)
+        if not os.path.isfile(p):
+            continue
+        low = name.lower()
+        if low in NEVER_STAGE:
+            continue
+        if low in drop:
+            skipped.append(name)
+            continue
+        try:
+            os.link(p, os.path.join(dst, name))
+        except OSError:                      # different volume, or no hard-link support
+            import shutil
+            shutil.copy2(p, os.path.join(dst, name))
+        linked += 1
+    # install.add: a file the release omits, taken from another install in this archive.
+    added = []
+    mf = manifest_path(bsp)
+    man = json.load(open(mf, encoding="utf-8")) if os.path.exists(mf) else {}
+    for a in ((man.get("install") or {}).get("add") or []):
+        want, frm = a.get("file"), a.get("from")
+        if not want or not frm:
+            continue
+        srcf = os.path.join(MODS, frm.replace("/", os.sep))
+        if not os.path.isfile(srcf):
+            added.append(want + " (SOURCE MISSING: " + frm + ")")
+            continue
+        target = os.path.join(dst, want)
+        if os.path.exists(target):
+            os.remove(target)
+        try:
+            os.link(srcf, target)
+        except OSError:
+            import shutil
+            shutil.copy2(srcf, target)
+        added.append("%s <- %s" % (want, frm))
+        linked += 1
+
+    missing = sorted(set(drop) - {s.lower() for s in skipped})
+    note = ""
+    if missing:
+        note = "  (manifest excludes files that are not installed: %s)" % ", ".join(missing)
+    if added:
+        note += "  added: " + "; ".join(added)
+    return "staged %d file(s), excluded %d: %s%s" % (
+        linked, len(skipped), ", ".join(skipped) or "-", note)
 
 
 def installs():
@@ -58,9 +183,33 @@ def main():
     ap.add_argument("--homepath", help=r"e.g. C:\Users\b\ZombiesDev\homes\dedi")
     ap.add_argument("--map", action="append", default=[])
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--stage", action="store_true",
+                    help="build mods-staged/<bsp> honouring the manifest's install.exclude")
+    ap.add_argument("--unstage", action="store_true",
+                    help="delete mods-staged/<bsp> so the release is mounted as shipped")
     a = ap.parse_args()
 
     rows = installs()
+
+    if a.stage or a.unstage:
+        want = set(a.map)
+        for r in rows:
+            if not a.all and r["bsp"] not in want:
+                continue
+            if a.unstage:
+                d = os.path.join(STAGED, r["bsp"])
+                if os.path.isdir(d):
+                    for root, _dd, fs in os.walk(d, topdown=False):
+                        for f in fs:
+                            os.remove(os.path.join(root, f))
+                        os.rmdir(root)
+                    print("%-26s unstaged" % r["bsp"])
+                else:
+                    print("%-26s not staged" % r["bsp"])
+            else:
+                print("%-26s %s" % (r["bsp"], stage(r["bsp"])))
+        return
+
     if a.list or not a.homepath:
         print("%-26s %10s  %-16s %s" % ("bsp (fs_game mods/<bsp>)", "size", "finish", "title"))
         for r in rows:

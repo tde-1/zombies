@@ -609,9 +609,14 @@ try {
     # not redirect to makes every custom map fail with Can't find map. Set
     # ENW_USE_PRIVATE_LOCALAPPDATA=1 once the copy you are launching carries a DLL
     # from 2026-09-23 or later; mapmount.ps1 reads the same switch.
-    if ( -eq '1') {
-         = Join-Path  'localappdata'
-    } else {  =  }
+    # 2026-09-23, archive/dedi: this block was committed with every variable
+    # reference stripped out of it (`if ( -eq '1') { = Join-Path 'localappdata' }`),
+    # which is a PowerShell PARSE error -- launch.ps1 would not run at all, so no
+    # harness that dot-sources or calls it could run either. Restored from the
+    # comment above and from mapmount.ps1's matching switch.
+    if ($env:ENW_USE_PRIVATE_LOCALAPPDATA -eq '1') {
+        $env:ENW_LOCALAPPDATA = Join-Path $homeDir 'localappdata'
+    } else { $env:ENW_LOCALAPPDATA = $env:LOCALAPPDATA }
     if ($PrivateProfile) { $env:ENW_PRIVATE_PROFILE = '1' } else { $env:ENW_PRIVATE_PROFILE = '0' }
     # ENW-only networking (client-dll/components/network.cpp). Activision and
     # Demonware are always blocked; strict mode denies everything else too.

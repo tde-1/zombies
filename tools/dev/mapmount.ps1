@@ -47,7 +47,24 @@ function Mount-EnwMap {
         [scriptblock]$Log = { param($m, $c) Write-Host $m -ForegroundColor $(if ($c) { $c } else { 'Gray' }) }
     )
 
+    # ---------------------------------------------------------------------------
+    # STAGED INSTALLS (2026-09-23, archive lane)
+    # ---------------------------------------------------------------------------
+    # `archive\install_map.py --stage <bsp>` builds `archive\mods-staged\<bsp>\` out of
+    # HARD LINKS to `archive\mods\<bsp>\`, minus whatever the map's manifest lists under
+    # `install.exclude[]` -- third-party add-on iwds a release dropped into the mod
+    # folder beside the map's own files. Costs no bytes and never writes to the
+    # originals. If a staged folder exists it is what the engine gets, and this says so
+    # out loud, because "which install did that run actually boot" is exactly the kind
+    # of thing that silently invalidates a result.
+    $staged = Join-Path $DevRoot "archive\mods-staged\$Bsp"
     $src = Join-Path $DevRoot "archive\mods\$Bsp"
+    if (Test-Path -LiteralPath $staged) {
+        $shipped = @(Get-ChildItem -LiteralPath $src -File -ErrorAction SilentlyContinue).Count
+        $kept = @(Get-ChildItem -LiteralPath $staged -File).Count
+        $src = $staged
+        & $Log "mounting the STAGED install $staged ($kept of $shipped shipped files; install.exclude is in effect)" 'Yellow'
+    }
     if (-not (Test-Path -LiteralPath $src)) {
         throw "map $Bsp is not in the archive at $src -- run archive\install_map.py first"
     }
@@ -93,7 +110,20 @@ function Mount-EnwMap {
     $targets += (Join-Path $localAppData $Bsp)
 
     foreach ($dst in $targets) {
-        if (Test-Path -LiteralPath $dst) { continue }
+        if (Test-Path -LiteralPath $dst) {
+            # A junction left over from a previous run may point at the OTHER install
+            # (shipped vs staged). Silently keeping it would mean the run boots files
+            # the caller did not ask for, and the log would not say so. Repoint it.
+            $item = Get-Item -LiteralPath $dst -Force
+            $tgt = $item.Target
+            if ($tgt -is [array]) { $tgt = $tgt[0] }
+            if ($item.LinkType -and $tgt -and ($tgt.TrimEnd('\') -ne $src.TrimEnd('\'))) {
+                & $Log "repointing $dst : was -> $tgt" 'Yellow'
+                cmd /c rmdir "$dst" | Out-Null
+            }
+            elseif ($item.LinkType) { continue }
+            else { continue }   # a real directory: someone put files there on purpose
+        }
         New-Item -ItemType Directory -Path (Split-Path -Parent $dst) -Force | Out-Null
         cmd /c mklink /J "$dst" "$src" | Out-Null
         if (-not (Test-Path -LiteralPath $dst)) { throw "could not junction $dst -> $src" }

@@ -2403,3 +2403,78 @@ step is the client lane's, not this one's.
   `$null` when the holder releases between the `Test-Path` and the read, and `.Trim()` on it killed
   `join84` after it had waited correctly for three minutes — and took its own `Start-Job` and the
   running game down with it, leaving a stale lock behind. The read is guarded now.
+
+## 15. 2026-09-23 — the add-on-IWD theory, and two harness faults that had to be fixed first
+
+Full working in `archive.md` §9; this is what the dedi lane needs to carry.
+
+### 15.1 `launch.ps1` was committed with a parse error, so no harness could run
+
+`tools\dev\launch.ps1` lines 612–614 were in the tree as:
+
+```powershell
+    if ( -eq '1') {
+         = Join-Path  'localappdata'
+    } else {  =  }
+```
+
+Every variable reference had been stripped out of the block. That is not a bug that misbehaves, it
+is a **PowerShell parse error**: `launch.ps1` would not run at all, and neither would `maptest.ps1`,
+`jointest.ps1` or anything else that calls it. Restored from the comment above it and from
+`mapmount.ps1`'s matching switch:
+
+```powershell
+    if ($env:ENW_USE_PRIVATE_LOCALAPPDATA -eq '1') {
+        $env:ENW_LOCALAPPDATA = Join-Path $homeDir 'localappdata'
+    } else { $env:ENW_LOCALAPPDATA = $env:LOCALAPPDATA }
+```
+
+All five harness scripts are now checked with `[Parser]::ParseFile` and parse clean. **Worth doing
+before any session that edits them**; it costs a second and it caught this.
+
+### 15.2 The private-LocalAppData redirect needs `players\profiles` seeded, or no map ever starts
+
+Today's hard rule is that nothing of ours writes into B's `%LOCALAPPDATA%\Activision\CoDWaW`, so
+every run in this session used `ENW_USE_PRIVATE_LOCALAPPDATA=1`. Two things had to be true first:
+
+1. **The DLL in the copy must carry `enw_localappdata`.** `build\dedi\enw_t4.dll` did not — the
+   component post-dates it — and `mapmount.ps1` warns about exactly this. Rebuilt; the check is a
+   string search for `enw_localappdata` in the DLL, and the proof in the run is the line
+   `enw_localappdata: SHGetFolderPathA redirected 2 time(s) -> '…\homes\d2\localappdata'`.
+2. **The private tree must contain `Activision\CoDWaW\players\profiles`.** With it empty, every
+   map — all four tried, listen and dedicated alike — got as far as `Loading fastfile 'mod'`, went
+   to the menu, and then re-entered client init: a **second** `code_post_gfx` + `mod` load and
+   `Error: Exceeded limit of 1 'snddriverglobals' assets.` at t≈1.6 s, with `frame::count=0`. No
+   `------ Server Initialization ------` line at all.
+
+That second symptom is a trap worth naming, because `snddriverglobals` is **also** the restart
+symptom that follows a *normal* map failure (§14.6 flagged it for Octogonal). The way to tell them
+apart is the `Server Initialization` line: after it, the double load is the map dying and restarting;
+before it, the map never started and the error is the harness's. Seeding the profiles directory by
+copying B's out — read-only, copy out, never write in — fixed it, and run `addon5` then reproduced
+Zombie Desert's known `common_scripts/utility.gsc:463` fault exactly.
+
+### 15.3 The result, in one table
+
+Baseline `addon5`; interventions `addon6` (staged installs) and `addon7` (as shipped). All
+dedicated, `-BigHeap`, 20–30 s hold, private LocalAppData verified in effect on every run.
+
+| Map | intervention | outcome |
+|---|---|---|
+| Zombie Desert `nazi_zombie_test1` | add-on's GSC dropped, its assets kept | **worse**: `Server script compile error / Could not find script 'maps/zombie_hitmarker'` — the map's own script calls into the add-on |
+| MW2 Rust `mw2rust` | both third-party IWDs excluded | unchanged: `flag_wait("electricity_on")`, `maps/mw2rust.gsc:179` |
+| Clinic of Evil `sanatorium` | five empty (22-byte) IWDs excluded | unchanged: `maps/_zombiemode_rotating_door.gsc:34` |
+| Project Viking `nazi_zombie_test` | nothing to exclude — no add-on exists | unchanged |
+| Der Berg `nazi_zombie_derberg` | nothing to exclude — no add-on exists | unchanged: `com_frameTime +0 ms, last 5651` (mapB said 5651) |
+| Leviathan `nazi_zombie_leviathan` | the missing `<bsp>_patch.ff` supplied | loaded (`Loading fastfile 'nazi_zombie_leviathan_patch'`, was `'default'`); `unknown item 'napalmblob'` unchanged |
+
+**Customs passing the five gates: still one** (`nazi_zombie_fear_mc_2`, `join83`). Nothing here
+earned a five-gate run, because nothing got past its load-time error.
+
+### 15.4 One fact that is new and is not about these six maps
+
+`Could not find script 'maps/zombie_hitmarker'` was produced by deleting a `.gsc` **out of an IWD**.
+So **stock WaW loads raw GSC from mod-folder IWDs, and that raw copy is the one that executes** —
+it is live code, not leftover source the author forgot to strip. Every custom map in the archive
+that ships a `maps/` tree inside its IWD is running that tree, which is why the engine's error line
+numbers have matched the IWD's raw files exactly in every trace since §13.

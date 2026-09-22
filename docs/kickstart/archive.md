@@ -494,3 +494,124 @@ counts in `C:\Users\b\ZombiesDev\archive\reports\next20.json`, all 20 checked ag
 existing link-checker verdicts and all 20 have a `mediafire.com: alive` row. None fetched this
 run (rule: no new ~300–950 MB pulls without a plan for which ones B actually wants archived
 next).
+
+## 9. 2026-09-23 — the add-on IWDs are not extras, and the six maps stay broken
+
+### 9.1 The theory, and why it was a good one
+
+Four of the six maps marked `status: "broken"` die on the same shape: a map script calling
+`flag_wait` before `maps\_load::main()` has run `flag_init`. `dedi.md` §14 proved that happens on a
+**stock** exe with none of our code in the process, and it noted in passing that Zombie Desert's
+`flag_wait` is inside `zombie_hitmarker_bythesuzho.iwd` — "a third-party add-on sitting loose in the
+mod folder". That is a repack signature, and the theory it suggests is a real one: **our
+`mods/<bsp>/` install ships add-on IWDs that are not the map**, either because the release we
+archived is a repack or because `extract.py` swept in the installer's extras, and one of those
+add-ons overrides a stock script and faults.
+
+It is wrong, and it is wrong in three separate ways. Each one was measured.
+
+### 9.2 Nothing was swept in: every install is the installer's own file table
+
+7-Zip's listing of each original was read against what `extract.py` produced. For all six maps the
+mod folder we install is **exactly** what the release's own installer contains — same files, same
+sizes, nothing added, nothing dropped:
+
+| Map | release | files in the installer (excl. `$PLUGINSDIR`) | our `mods/<bsp>/` |
+|---|---|---|---|
+| Zombie Desert | `Zombie_Desert.exe` (nsis) | 8 | identical |
+| Project Viking | `Project_Viking_Final.exe` (nsis) | 6 | identical |
+| MW2 Rust | `MW2RustZombies_1.0.exe` (nsis) | 9 | identical |
+| Clinic of Evil | `_clinic_of_evil_..._2018.rar` -> nsis | 11 | identical |
+| Leviathan | `nazi_zombie_leviathan_v1.2.exe` (nsis) | **5** | identical |
+| Der Berg | `Derberg.exe` (nsis) | 4 | identical |
+
+So "our extractor added something" is dead on inspection, with no run needed.
+
+### 9.3 What the add-on IWDs actually are, and what they override
+
+Every `.iwd` in the six installs was opened and its scripts listed:
+
+| Map | add-on IWD | what is inside |
+|---|---|---|
+| Zombie Desert | `zombie_hitmarker_bythesuzho.iwd` (2,663 B) | 4 entries: `maps/zombie_hitmarker.gsc`, `images/hitmarker.iwi`, `materials/hitmarker`, `material_properties/hitmarker`. **Line 38 of that GSC is `flag_wait( "all_players_connected" );`** — the exact fatal frame |
+| Zombie Desert | `electric_cherry.iwd` (954 KB) | Harry Bo21 Electric Cherry, 1 script (`maps/bam_bo_mod_e_cherry_standalone.gsc`) |
+| MW2 Rust | `harrybo21_bo1_2_3_perks_v4.0.3.iwd` (99 MB) | 474 entries, `images/` and `weapons/` only — **zero scripts** |
+| MW2 Rust | `buried.iwd` (18 MB) | BO2 Buried character pack; 17 scripts, all `aitype/` `character/` `xmodelalias/` definitions |
+| Clinic of Evil | `brutus` `chara_player` `motd_zombies` `pause_mn` `weapons`.iwd | **22 bytes each — empty zips, zero entries.** Also 22 bytes inside the installer, so this is the release, not our extraction |
+| Project Viking | — | none. Its 73 raw scripts, including the fatal `maps/_zombiemode_ai_mech.gsc` **and** the author's own `maps/_load.gsc` and `maps/_utility.gsc` overrides, are in the map's own `nazi_zombie_test.iwd` |
+| Der Berg | — | none. `derberg.iwd` is the map's 394 MB asset pack and holds exactly **one** script, `animscripts/pain.gsc` |
+| Leviathan | — | none |
+
+No add-on anywhere in the set overrides `maps/_utility.gsc`, `maps/_zombiemode*.gsc` or
+`maps/_load.gsc`. The maps' own IWDs do — that is the author's source tree, shipped raw.
+
+### 9.4 Zombie Desert: the add-on is a HARD DEPENDENCY of the map's own script
+
+`install.exclude[]` and `install_map.py --stage` were built for this test (§9.6). Two runs, both
+dedicated, both against a reproduced baseline (`addon5`, which prints the known
+`common_scripts/utility.gsc:463` fault at console line 3385):
+
+```
+addon1  the whole zombie_hitmarker iwd excluded
+        dies EARLIER: "Loading fastfile 'mod'" -> ERROR: image 'images/hitmarker.iwi' is missing
+        the author's own zone references the add-on's image
+
+addon6  only maps/zombie_hitmarker.gsc dropped, the iwd's images/materials kept
+        ******* Server script compile error *******
+        Could not find script 'maps/zombie_hitmarker'
+          (file 'maps/nazi_zombie_test1.gsc', line 135)
+          maps\zombie_hitmarker::cargar_imagen_hitmarker();
+```
+
+That second run settles two things at once. The map's **own compiled script calls into the add-on**
+and there is no copy of it in `mod.ff`, so the add-on cannot be removed — it is part of the author's
+build, and the release page's own feature list ends "*hitmarkers". And a `Could not find script`
+error only arises if the raw GSC inside the IWD was the copy the engine was using, so **stock WaW
+does load raw GSC out of mod-folder IWDs** and those raw files are live code, not leftover source.
+That is worth knowing for every other map in the archive.
+
+### 9.5 The other five, one run each
+
+| Map | what was excluded | run | result |
+|---|---|---|---|
+| Zombie Desert | hitmarker GSC (assets kept) | `addon6` | **worse** — `Could not find script 'maps/zombie_hitmarker'` |
+| MW2 Rust | both add-on IWDs | `addon6` | **unchanged** — `flag_wait( "electricity_on" )` at `maps/mw2rust.gsc:179`, the map's own line, carrying the author's own comment `//remove line if you want it to work without power` |
+| Clinic of Evil | all five empty IWDs | `addon6` | **unchanged** — `maps/_zombiemode_rotating_door.gsc:34`, a script that is in the author's `mod.ff`, not in any IWD |
+| Project Viking | nothing to exclude | `addon7` | **unchanged** — same script runtime error |
+| Der Berg | nothing to exclude | `addon7` | **unchanged** — `com_frameTime +0 ms over 8 probes (last 5651)`, the same 5,651 ms stop as run `mapB` |
+| Leviathan | (an **addition**, see below) | `addon6` | **unchanged** — `unknown item 'napalmblob'` |
+
+**Leviathan is the one place the "missing file" version of the theory had teeth.** Its installer
+ships five files and **no `<bsp>_patch.ff` and no `<bsp>_load.ff`**, which every other release in
+the set does; run `map03`'s console shows the engine falling back to `Loading fastfile 'default'`
+in its place. `weapons/sp/napalmblob` exists in the stock game (`main\iw_14.iwd`), and the string
+`napalmblob` is at offset 58,521 of the inflated 2,348,417 bytes of the generic 690,464-byte
+custom-map patch fastfile that **Zombie Desert and Clinic of Evil both ship byte-identically**
+(sha256 `d3eedd1e…`). So that file was staged in under the name `nazi_zombie_leviathan_patch.ff`.
+The engine loaded it — `Loading fastfile 'nazi_zombie_leviathan_patch'`, console line 2197, where
+`map03` had said `'default'` — and `unknown item 'napalmblob'` did not move. **The missing patch
+fastfile is real and is now a named fact about this release; it is not what breaks the map.** The
+`install.add` entry stays in the manifest with that result and `applied: false`.
+
+### 9.6 What the test left behind, and it is the useful part
+
+- **`install.exclude[]` / `install.add[]` in the manifest**, honoured by
+  `install_map.py --stage`, which builds `ZombiesDev\archive\mods-staged\<bsp>\` out of **hard
+  links**. No bytes are copied, `archive\mods\<bsp>\` is never written, and the originals stay
+  byte-for-byte what the release shipped: an exclusion is a *view*, not an edit.
+- **`"applied": false`** on an entry keeps an audited add-on in the record without acting on it.
+  Every entry written this session carries it, with the run that decided it. An add-on that was
+  suspected and then measured innocent must stay written down or the next session repeats the
+  experiment; it must not stay in the install.
+- **`mapmount.ps1` mounts the staged folder when one exists** and says so in yellow, and it now
+  **repoints** a junction left pointing at the other install rather than silently keeping it. A run
+  that boots files the caller did not ask for, and does not say so, is how a result gets quietly
+  invalidated.
+
+### 9.7 The verdict
+
+**All six keep `status: "broken"`, and all six are broken by the map.** Three sessions have now
+tried to find something of ours in the way — an overlay, a sampler, the mount, and now the install
+— and there has never been anything there. The remaining honest question is the one §14 left open
+and this session did not close: **why the community plays four of these anyway.** The add-on IWDs
+are not the answer.
