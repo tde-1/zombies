@@ -1,5 +1,11 @@
 # Where things stand — 2026-09-22, 01:30
 
+> **This file is the current state of the code.** The design and the decision history live in the
+> Obsidian vault at `C:\Users\b\Desktop\shared-notes\ENW COD Zombies` — start there at
+> `19 - Build Log (what actually exists)`, which is the same story written for someone who has not
+> seen this repo. A new agent working in here should read `docs/kickstart/README.md`, then
+> `docs/kickstart/next-session.md`.
+
 ## The headline
 
 **A real client now connects to the headless dedicated server and spawns into the game**, and the
