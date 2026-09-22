@@ -397,6 +397,10 @@ export function configPaths(homeDir = P.home, profile = PROFILE, localAppData = 
     activeTxt: path.join(homeDir, 'players', 'profiles', 'active.txt'),
     plainCfg: path.join(homeDir, 'main', 'config.cfg'),
     stamp: path.join(homeDir, 'players', 'profiles', profile, '.enw-baseline.json'),
+    // Markers. They live beside the baseline stamp (the fs_homepath tree always
+    // exists; the engine's localappdata tree may not on a dev run).
+    readbackStamp: path.join(homeDir, 'players', 'profiles', profile, '.enw-readback.json'),
+    migrations: path.join(homeDir, 'players', 'profiles', profile, '.enw-migrations.json'),
   }
 }
 
@@ -457,6 +461,55 @@ export function seedHome({ homeDir = P.home, profile = PROFILE, settings = {}, d
 
   fs.writeFileSync(assertWritable(p.stamp), JSON.stringify({ version: BASELINE_VERSION, at: new Date().toISOString(), reason, wrote, dvars: Object.fromEntries(pairs), binds: Object.fromEntries(BASELINE_BINDS.map((b) => [b.key, b.command])) }, null, 2))
   return { written: true, reason, paths: p, dvars: pairs, wrote }
+}
+
+// ------------------------------------------------------------- migrations --
+
+function readMigrations(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return { done: [] } }
+}
+
+// One-time rewrite of the aim-down-sights bind in the config the ENGINE reads.
+//
+// Evidence: the profile the engine is really using is whatever `active.txt` names —
+// `$$$` on B's box, not our `enw` — and it held the stock `bind MOUSE2
+// "+toggleads_throw"`, i.e. toggle ADS, which is exactly what B reported. `seedHome`
+// only rewrites a config once per BASELINE_VERSION, and B's box has already taken
+// version 3, so the seed will not revisit it; this does, once.
+//
+// It only ever replaces the EXACT stock toggle bind. A player who has since bound
+// MOUSE2 to anything else — including back to toggle on purpose after our baseline —
+// is left alone, because we cannot tell "still stock" from "chose toggle" except by
+// the fact that we have never touched this file before, which the marker records.
+export function migrateAdsBind({ homeDir = P.home, profile = PROFILE, localAppData = null, log = () => {} } = {}) {
+  const NAME = 'ads-hold-2026-09-22'
+  const p = configPaths(homeDir, profile, localAppData)
+  const m = readMigrations(p.migrations)
+  const done = new Set(m.done || [])
+  if (done.has(NAME)) return { ran: false, reason: 'already run for this profile', changed: [] }
+
+  const changed = []
+  for (const file of [p.engineCfg, p.profileCfg, p.plainCfg]) {
+    let text
+    try { text = fs.readFileSync(file, 'utf8') } catch { continue }
+    // `bind MOUSE2 "+toggleads_throw"`, quoted or bare, and nothing else.
+    const re = /^([ \t]*)bind[ \t]+MOUSE2[ \t]+"?\+toggleads_throw"?[ \t]*$/gim
+    if (!re.test(text)) continue
+    re.lastIndex = 0
+    fs.writeFileSync(assertWritable(file), text.replace(re, '$1bind MOUSE2 "+speed_throw"'))
+    changed.push(file)
+  }
+
+  done.add(NAME)
+  try {
+    fs.mkdirSync(assertWritable(path.dirname(p.migrations)), { recursive: true })
+    fs.writeFileSync(assertWritable(p.migrations), JSON.stringify({ done: [...done], at: new Date().toISOString() }, null, 2))
+  } catch {}
+
+  if (changed.length) {
+    log(`aim down sights: rewrote bind MOUSE2 "+toggleads_throw" -> "+speed_throw" in ${changed.join(', ')} — the engine's active profile (${p.engineProfile}) still held the stock TOGGLE bind, which is the toggle-ADS B reported; T4 has no ADS dvar, the bind IS the setting`)
+  }
+  return { ran: true, changed, profile: p.engineProfile, paths: p }
 }
 
 // ------------------------------------------------------------- the round trip --
@@ -554,12 +607,76 @@ export function settingsFromConfig({ dvars, binds } = {}) {
 // now. A key is only written back when the game actually wrote that dvar, so an
 // in-game change is never overridden by a stale saved value — and equally, a setting
 // the player changed in the launcher and the game did not touch survives.
+// Which dvar each settings key is READ from, so a value coming back out of
+// config.cfg can be compared against the one we seeded for the same key.
+const SETTING_DVAR = {
+  resolution: 'r_mode',
+  fov: 'cg_fov',
+  maxFps: 'com_maxfps',
+  vsync: 'r_vsync',
+  volume: 'snd_volume',
+  sensitivity: 'sensitivity',
+  showFps: 'cg_drawFPS',
+  display: 'r_monitor',
+}
+
+// The engine's own 2008 defaults, in the engine's own formats, as they appear in the
+// untouched `$$$` profile on this box. Used only as the belt to the diff-vs-seed
+// braces below.
+const STOCK_DEFAULTS = {
+  com_maxfps: ['60', '85'],
+  cg_fov: ['65'],
+  r_mode: ['800x600'],
+  r_displayRefresh: ['60 Hz'],
+}
+
 export function applyReadBack({ homeDir = P.home, profile = PROFILE, saved = {} } = {}) {
   const cfg = readConfig({ homeDir, profile })
   if (!cfg.found) return { changed: {}, file: null, reason: 'the game wrote no config.cfg' }
   const patch = settingsFromConfig(cfg)
   const ambiguous = patch._modeAmbiguous
   delete patch._modeAmbiguous
+
+  // THE READ-BACK MUST ONLY PERSIST WHAT THE PLAYER CHANGED IN GAME.
+  //
+  // Evidence: B's account ended up holding `maxFps: 60` and `fov: 65` — the engine's
+  // 2008 stock defaults, not anything he picked. Until 0.2.3 the config.cfg we seeded
+  // went to a folder the engine never opens (launcher.md 0.2.3 §1), so this function
+  // read the engine's untouched profile and dutifully saved ITS defaults into his
+  // account; every launch since re-applied them, which is the live "60 FPS" report.
+  //
+  // CHOSEN APPROACH: **diff against what we seeded**. `seedState()` records the exact
+  // dvar pairs written for this home+profile, so a value identical to the one we wrote
+  // means the player did not touch it and there is nothing to save. This is exact and
+  // has no false positives.
+  //
+  // FALLBACK, for a home with no stamp (pre-0.2.3, or a profile the engine made on its
+  // own): on the FIRST read-back for that profile only, refuse a value that equals a
+  // stock 2008 default. First-read-back only, because a player who really does choose
+  // 65 FOV later must be believed — and a marker file records that first read.
+  const seed = seedState(homeDir, profile)
+  const seededDvars = seed?.dvars || null
+  const p = configPaths(homeDir, profile)
+  const firstReadBack = !fs.existsSync(p.readbackStamp)
+  const held = []
+  for (const key of Object.keys(patch)) {
+    const dvar = SETTING_DVAR[key]
+    if (!dvar || !cfg.dvars.has(dvar)) continue
+    const raw = cfg.dvars.get(dvar)
+    if (seededDvars && seededDvars[dvar] !== undefined && String(seededDvars[dvar]) === String(raw)) {
+      held.push(`${key} (${dvar} is still the ${raw} we seeded)`)
+      delete patch[key]
+      continue
+    }
+    if (firstReadBack && (STOCK_DEFAULTS[dvar] || []).includes(String(raw))) {
+      held.push(`${key} (${dvar} "${raw}" is the engine's stock default on a first read-back)`)
+      delete patch[key]
+    }
+  }
+  try {
+    fs.mkdirSync(assertWritable(path.dirname(p.readbackStamp)), { recursive: true })
+    fs.writeFileSync(assertWritable(p.readbackStamp), JSON.stringify({ at: new Date().toISOString(), file: cfg.file, held }, null, 2))
+  } catch {}
 
   // Borderless and windowed both write `r_fullscreen 0`. If that is all we have, and
   // the account already said borderless, keep borderless — otherwise every single

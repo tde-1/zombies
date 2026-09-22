@@ -82,7 +82,7 @@ namespace t4
         constexpr std::uintptr_t IN_Init                    = 0x5FA820; // [V] registers `in_mouse` then tail-jmps IN_StartupMouse
         constexpr std::uintptr_t IN_StartupMouse            = 0x5FA7D0; // [V] prints "Mouse control not active." when in_mouse==0
         constexpr std::uintptr_t IN_DeactivateMouse         = 0x5FA5B0; // [V] ShowCursor loop
-        constexpr std::uintptr_t IN_MouseEvent              = 0x5FA5F0; // [V] button bitmask differ -> Sys_QueEvent(K_MOUSE1+i = 200+i). ONE caller: the WndProc 0x606B60
+        constexpr std::uintptr_t IN_MouseEvent              = 0x5FA5F0; // [V] button bitmask differ -> Sys_QueEvent(K_MOUSE1+i = 0xC8+i). ONE caller: 0x607124, inside the game WndProc. CORRECTED 2026-09-23: the old note said the caller was 0x606B60 -- that is only where t4map.py puts the function START; 0x606B60 itself is the VK->engine-key mapper.
         constexpr std::uintptr_t IN_Frame                   = 0x5FA850; // [V] "ClickToContinue", focus check, calls IN_MouseMove
         constexpr std::uintptr_t IN_MouseMove               = 0x5FA6D0; // [V] void(void); GetCursorPos -> delta -> ScreenToClient -> CL_MouseEvent -> recenter
         constexpr std::uintptr_t IN_MouseMove_callsite      = 0x5FA8E4; // [V] the ONE `call IN_MouseMove`, inside IN_Frame
@@ -102,7 +102,7 @@ namespace t4
         // and 0x606BE0 has the proc shape: hwnd@[ebp+8], msg@[ebp+0xC], wParam@[ebp+0x10],
         // lParam@[ebp+0x14]. Two independent signals, as the map's rule 2 requires.
         constexpr std::uintptr_t WndProc_game               = 0x606BE0; // [V] lpfnWndProc of the "CoD-WaW" class
-        constexpr std::uintptr_t WndProc_game_msg_helper    = 0x606B60; // [V] called by it; routes mouse buttons -> IN_MouseEvent. NOT the proc
+        constexpr std::uintptr_t WndProc_game_msg_helper    = 0x606B60; // [V] NOT the proc, and CORRECTED 2026-09-23: it does not route mouse buttons either. It is the KEYBOARD mapper -- VK/scancode -> engine key, with the extended-key table at 0x8D1640 and MapVirtualKeyA. Mouse buttons go through 0x6070F7.
         constexpr std::uintptr_t Sys_RegisterGameWindowClass= 0x5FF450; // [V] RegisterClassExA("CoD-WaW"); Com_Error EXE_ERR_COULDNT_REGISTER_WINDOW on failure
         constexpr std::uintptr_t WndProc_winconsole         = 0x605210; // [V] proc of the "Call of Duty WinConsole" class; only handles WM 5..0x14
         constexpr std::uintptr_t Sys_CreateConsoleWindow    = 0x605500; // [V] RegisterClassA + CreateWindowExA for "Call of Duty WinConsole" -- NOT the game window
@@ -176,6 +176,50 @@ namespace t4
         //   the client pointer in EAX (0 for broadcast).
         //   UNSAFE before dvars/server are up; call at a frame boundary on the main thread.
         //   Stack cleanup NOT verified — use a naked thunk, not a typed prototype.
+        // ---- the userinfo / name path (re, 2026-09-23, for the referee's name lock) ---
+        //
+        // The chain, proven end to end: a client's `userinfo` command is dispatched off
+        // ucmds[] at 0x8D0348 (the `userinfo` slot is 0x8D034C) by SV_ExecuteClientCommand
+        // 0x6308F0, which walks the table in 8-byte strides and calls entry->fn(client).
+        //
+        // NOTE, and it matters: the map's older `SV_ExecuteClientCommand = 0x4621E0 [C]`
+        // is NOT this function. 0x6308F0 is the one that dispatches ucmds[], proven by the
+        // table walk. The [C] guess is withdrawn.
+        constexpr std::uintptr_t ucmds                      = 0x8D0348; // [V] {const char* name; void(*fn)(client_s*);}[], NUL-terminated 0x8D03A0
+        constexpr std::uintptr_t SV_ExecuteClientCommand2    = 0x6308F0; // [V] walks ucmds[]; replaces the withdrawn 0x4621E0 [C]
+        // void __cdecl(client_s*). I_strncpyz(cl+0x6F0, Cmd_Argv(1), 0x5FF), then
+        // SV_UserinfoChanged, then a TAIL-JMP into ClientUserinfoChanged(clientNum).
+        // The single writer of cl->userinfo on the client path, and the hook point for
+        // the name lock — it fires only on a real userinfo command, never per frame.
+        constexpr std::uintptr_t SV_UpdateUserinfo_f        = 0x6307E0; // [V] ucmds["userinfo"]
+        // **REGISTER ARGS — client_s* in ESI, never loaded from the stack.** Do NOT give
+        // this a typed prototype (map rule 4). Listed because it is the function that
+        // derives cl->name (+0x11548) from the infostring; we reach it only through the
+        // engine's own chain. Callers: SV_DirectConnect 0x62F047 and SV_UpdateUserinfo_f.
+        constexpr std::uintptr_t SV_UserinfoChanged         = 0x630650; // [V] __usercall(ESI = client_s*)
+        // void __cdecl(int clientNum). Re-reads svs.clients[i].userinfo, cleans the name,
+        // and writes the clientinfo/scoreboard record at clientinfo + i*0x594 + 0xC.
+        constexpr std::uintptr_t ClientUserinfoChanged      = 0x67BCF0; // [V]
+        // **REGISTER ARGS — ECX = src, EDX = dst, no stack args.** Sole ref to
+        // "UnnamedPlayer". Not called by us; here so nobody prototypes it as cdecl.
+        constexpr std::uintptr_t ClientCleanName            = 0x67BC70; // [V] __usercall
+
+        // The Info_* infostring helpers, each proven by its own error string (note: every
+        // Com_Error/Com_Printf literal in this build is 0x15-prefixed and pushed as VA-1,
+        // which is why `t4map.py sxref` finds nothing for them).
+        //
+        // Info_SetValueForKey is plain __cdecl(char* s, const char* key, const char* value),
+        // proven from the frame arithmetic, and SILENTLY STRIPS '\\', ';' and '"' from the
+        // value rather than erroring — which is what makes it safe to hand it a name.
+        constexpr std::uintptr_t Info_SetValueForKey        = 0x5F71F0; // [V] cdecl(s, key, value); MAX_INFO_STRING 0x600
+        constexpr std::uintptr_t Info_SetValueForKey_Big    = 0x5F73E0; // [V]
+        constexpr std::uintptr_t Info_RemoveKey             = 0x5F6FA0; // [V]
+        constexpr std::uintptr_t Info_RemoveKey_Big         = 0x5F70B0; // [V]
+        // **REGISTER ARG — infostring in ECX, key at [esp+4]; returns a ROTATING static
+        // buffer, so copy the result out immediately.** Not prototyped as __thiscall.
+        constexpr std::uintptr_t Info_ValueForKey           = 0x5F6DF0; // [V] __usercall(ECX = info, [esp+4] = key)
+        constexpr std::uintptr_t I_strncpyz                 = 0x7AA9C0; // [V] cdecl(dst, src, size)
+
         constexpr std::uintptr_t SV_GameSendServerCommand   = 0x5A9350; // [V]
         constexpr std::uintptr_t SV_SendServerCommand       = 0x633FA0; // [V] client ptr in EAX
         constexpr std::uintptr_t clientchat_send            = 0x655C80; // [V] sends "0clientchat %s" (client->server chat transport)
@@ -229,6 +273,47 @@ namespace t4
         constexpr std::uintptr_t s_wmv_oldPos_y     = 0x229A0D0; // [V] last GetCursorPos y
         constexpr std::uintptr_t s_wmv_centre_x     = 0x229A0C0; // [V] window centre x, written by IN_RecenterMouse
         constexpr std::uintptr_t s_wmv_centre_y     = 0x229A0BC; // [V] window centre y, written by IN_RecenterMouse
+
+        // ---- the button path, read instruction by instruction 2026-09-23 ------------
+        // THE ONE FACT THAT DECIDES THE WHOLE DESIGN OF THE MOUSE FIX:
+        // the game WndProc's SECOND dispatch (0x60704E) is
+        //     lea eax,[edi-0x200]; cmp eax,0x18; ja default
+        //     movzx ecx,[eax+0x607204]; jmp [ecx*4+0x6071F4]
+        // and that table sends WM_MOUSEMOVE (0x200) and EVERY WM_?BUTTON?DOWN/UP
+        // (0x201,0x202,0x204,0x205,0x207,0x208,0x20B,0x20C) to the SAME handler,
+        // 0x6070F7, which does nothing but translate wParam's MK_ bits:
+        //     MK_LBUTTON->1  MK_RBUTTON->2  MK_MBUTTON->4  MK_XBUTTON1->8  MK_XBUTTON2->0x10
+        // and call IN_MouseEvent with that byte and nothing else.
+        // The DBLCLK messages and WM_MOUSEHWHEEL go to the default case; WM_MOUSEWHEEL
+        // (0x20A) has its own handler at 0x60706B.
+        //
+        // So THE ENGINE NEVER LOOKS AT THE MESSAGE ID. A mouse button edge exists for
+        // T4 if and only if the MK_ mask of some mouse message differs from the mask of
+        // the previous one. Two consequences we rely on:
+        //   * a duplicated WM_LBUTTONDOWN cannot double a click (same mask, no edge);
+        //   * a WM_MOUSEMOVE carrying a stale or premature mask CAN invent or destroy
+        //     one, because it is the same input to the same differ.
+        constexpr std::uintptr_t WndProc_mouse_case = 0x6070F7; // [V] wParam MK_ mask -> IN_MouseEvent, shared by MOUSEMOVE and all buttons
+        constexpr std::uintptr_t s_wmv_oldButtonState= 0x229A0C8; // [V] the differ's memory. Written ONLY at 0x5FA648, inside IN_MouseEvent. Nothing else in the image clears it.
+        constexpr std::uintptr_t g_wv_activeApp     = 0x229A0C4; // [V] IN_Frame 0x5FA8A0: if zero it tail-jmps IN_DeactivateMouse and IN_MouseMove IS NEVER CALLED. Written only by the WM_ACTIVATE handler 0x606AA0 and by WM_MOVE at 0x606E18.
+        constexpr std::uintptr_t g_wv_recenterMouse = 0x22C1BF4; // [V] stock IN_MouseMove stores CL_MouseEvent's return here (0x5FA755). DEAD STORE -- xref says nothing in the image reads it, so our replacement not writing it costs nothing. Checked, because it looked like a bug.
+
+        // ---- the engine event ring (Sys_QueEvent 0x5FEB30), read-only ---------------
+        // Read instruction by instruction so the input trace can count what the engine
+        // ACTUALLY queued without hooking anything (kickstart rule 9: hooks are owned).
+        //   index  = head & 0xFF                      (0x5FEB4D)
+        //   slot   = 0x22BBF48 + (index * 0x18)       (0x5FEB58: lea esi,[eax+eax*2]; lea esi,[esi*8+base])
+        //   overflow when head - tail >= 0x100        (0x5FEB52) -> "Sys_QueEvent: overflow"
+        // Fields, from the stores at 0x5FEBCA..0x5FEBE5:
+        //   +0x00 time   +0x04 type   +0x08 value   +0x0C value2   +0x10 ptrLength   +0x14 ptr
+        // A mouse button is type 1 (SE_KEY), value = 0xC8 + n (K_MOUSE1..K_MOUSE5),
+        // value2 = down. Queued from IN_MouseEvent's loop at 0x5FA638.
+        constexpr std::uintptr_t sys_event_ring     = 0x22BBF48; // [V]
+        constexpr std::uintptr_t sys_event_head     = 0x22BBA34; // [V] monotonic, never masked
+        constexpr std::uintptr_t sys_event_tail     = 0x22BD9B0; // [V]
+        constexpr std::uintptr_t sys_event_stride   = 0x18;      // [V]
+        constexpr std::uintptr_t sys_event_count    = 0x100;     // [V]
+        constexpr std::uintptr_t K_MOUSE1           = 0xC8;      // [V] IN_MouseEvent: lea eax,[esi+0xC8]
 
         // ---- script VM globals (referee) --------------------------------------------
         // Arrays indexed by scriptInstance (0=server, 1=client).

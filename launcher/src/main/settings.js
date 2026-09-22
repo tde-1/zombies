@@ -80,11 +80,35 @@ function all() {
   return read(P.settings, { accounts: {}, local: { ...DEFAULT_SETTINGS } })
 }
 
+// Merge `over` onto `base` WITHOUT letting a key it does not define shadow one that
+// `base` does. `{ ...base, ...over }` is not this: a key present-and-undefined in
+// `over` (which JSON.parse cannot produce, but an object built in code can) wins, and
+// — the live bug — an object that is used INSTEAD of `base` shadows every key at once.
+//
+// Evidence (B's state\settings.json, 2026-09-22): his account block
+// `accounts["76561198126330106"]` has no `mode`, no `fullscreen` and no `vsync`, while
+// `local` has `mode: "borderless"`. `get()` used to pick ONE of the two objects
+// (`(id && a.accounts[id]) || a.local`), so signing in threw the whole local block
+// away and every key the account happened not to carry fell back to a bare default
+// instead of to what this computer was actually playing with. `mode` is the one that
+// reaches `ENW_BORDERLESS` (launch.js), so it gets a test of its own.
+function mergeDefined(base, over) {
+  const out = { ...base }
+  for (const [k, v] of Object.entries(over || {})) {
+    if (v === undefined || v === null) continue // never shadow with "no opinion"
+    out[k] = v
+  }
+  return out
+}
+
 export function get(steamid = null) {
   const a = all()
   const id = steamid || session().steamid
-  const stored = (id && a.accounts[id]) || a.local || {}
-  return { ...DEFAULT_SETTINGS, ...stored, _scope: id ? `account ${id}` : 'this computer (not signed in)' }
+  // Defaults, then this computer's copy, then the account: each layer may only
+  // override a key it actually defines.
+  let out = mergeDefined({ ...DEFAULT_SETTINGS }, a.local || {})
+  if (id && a.accounts[id]) out = mergeDefined(out, a.accounts[id])
+  return { ...out, _scope: id ? `account ${id}` : 'this computer (not signed in)' }
 }
 
 // Validation, in one place, because these values end up on a command line the engine
@@ -119,6 +143,63 @@ export function set(rawPatch, steamid = null) {
   if (id) a.local = { ...(a.local || {}), ...patch }
   write(P.settings, a)
   return { ...DEFAULT_SETTINGS, ...target }
+}
+
+// ---------------------------------------------------------------- migrations --
+
+// One-time repairs of a saved block, with a marker so each one runs exactly once per
+// account. The marker lives in the settings file itself (`migrations: { <id>: [...] }`)
+// because that is the file the repair is about — a separate marker file could go out
+// of step with it.
+export const MIGRATIONS = {
+  // 2026-09-22. B's account held `maxFps: 60` and `fov: 65` — the engine's own 2008
+  // stock defaults, NOT anything he chose. They got there because the config.cfg we
+  // seeded was written to a folder the engine never opens (launcher.md 0.2.3 §1), so
+  // the post-exit read-back parsed the engine's untouched `$$$` profile and persisted
+  // its defaults into his account; every launch since re-applied them. That is the
+  // live "60 FPS" report. applyReadBack no longer does this (gamecfg.js), but the
+  // values already saved have to be put back by hand, once.
+  //
+  // Only exact stock values are touched: a player who really chose 60 fps typed 60,
+  // and we cannot tell those apart — so the marker means we only ever risk it once,
+  // and anything else is left alone.
+  'stock-defaults-2026-09-22': (b) => {
+    const notes = []
+    if (Number(b.maxFps) === 60) { b.maxFps = 250; notes.push('maxFps 60 -> 250') }
+    if (Number(b.fov) === 65) { b.fov = 80; notes.push('fov 65 -> 80') }
+    return notes
+  },
+}
+
+// Run every migration that has not run yet, for the signed-in account (or all of
+// them) and for the local block. Idempotent: the marker is written whether or not
+// the migration found anything to change, so it never runs twice.
+export function migrate({ steamid = null, log = () => {} } = {}) {
+  const a = all()
+  a.migrations = a.migrations || {}
+  const ran = []
+  let dirty = false
+
+  const ids = steamid ? [steamid] : Object.keys(a.accounts || {})
+  const blocks = [['local', a.local = a.local || {}], ...ids.map((id) => [id, a.accounts[id] = a.accounts[id] || {}])]
+
+  for (const [id, block] of blocks) {
+    const done = new Set(a.migrations[id] || [])
+    for (const [name, fn] of Object.entries(MIGRATIONS)) {
+      if (done.has(name)) continue
+      const notes = fn(block) || []
+      done.add(name)
+      dirty = true
+      if (notes.length) {
+        ran.push({ id, name, notes })
+        log(`settings migration "${name}" on ${id === 'local' ? 'this computer' : `account ${id}`}: ${notes.join(', ')} — these were the engine's 2008 stock defaults, saved into the account by the 0.2.3 read-back bug, not a choice the player made`)
+      }
+    }
+    a.migrations[id] = [...done]
+  }
+
+  if (dirty) write(P.settings, a)
+  return { ran, migrations: a.migrations }
 }
 
 // Pull settings the site holds for this account, if the site offers them. Local wins

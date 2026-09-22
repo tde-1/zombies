@@ -121,6 +121,121 @@
 // 4. No r_autopriority / Key_ClearStates on focus loss; those are separate
 //    upstream features, not part of the polling-rate fix.
 
+// ===========================================================================
+// 2026-09-23 -- WHERE MOUSE BUTTONS ACTUALLY COME FROM, AND THE STATE MACHINE
+// ===========================================================================
+// B, playing 0.2.2: "mouse inputs get dropped -- if I aim, sometimes it aims
+// and un-aims; keyboard is fine, mouse clicks disappear a lot of the time, at
+// 125 Hz and 1000 Hz."
+//
+// The button path was read out of the dump instruction by instruction before
+// anything here was changed, because the shape of it decides the whole design.
+// It is written down in addresses.hpp under "the button path"; the one fact
+// that matters is this:
+//
+//   The game WndProc's mouse dispatch (0x60704E) sends WM_MOUSEMOVE (0x200)
+//   AND every WM_?BUTTON?DOWN/UP to the SAME handler, 0x6070F7, which does
+//   nothing but translate wParam's MK_ bits into a 5-bit mask and call
+//   IN_MouseEvent with it. IN_MouseEvent XORs that mask against
+//   s_wmv.oldButtonState (0x229A0C8) and queues one Sys_QueEvent(K_MOUSE1+n,
+//   down) per bit that CHANGED.
+//
+// THE ENGINE NEVER LOOKS AT THE MESSAGE ID. For T4 a click is not a
+// WM_LBUTTONDOWN; a click is "the mask of some mouse message differs from the
+// mask of the previous one". Three consequences, and the fix falls out of them:
+//
+//   * a duplicated button message cannot double a click -- same mask, no edge;
+//   * a WM_MOUSEMOVE carrying a stale or premature mask CAN invent a click or
+//     destroy one, because it is the same input to the same differ;
+//   * whatever we hand the engine, only the LOW WORD of wParam is read.
+//
+// That last point is what makes the state machine below airtight rather than
+// best-effort, and it retires two real defects that were in this file:
+//
+//   DEFECT 1 (in the NOLEGACY path, default since 0.2.3, never yet played).
+//   synth_buttons() built wParam from GetAsyncKeyState AT SYNTHESIS TIME. A
+//   report processed after the physical button had already moved on therefore
+//   carried the WRONG mask, and since the engine reads ONLY the mask, a
+//   synthesised WM_LBUTTONDOWN whose GetAsyncKeyState said "up" produced
+//   wParam = 0 == oldButtonState and NO EDGE AT ALL. Not a reordering: the
+//   click was gone. The mirror case turned a synthesised UP into a DOWN. Any
+//   click whose down and up both landed before one drain -- which is every
+//   click at all during a 30-62 ms hitch, and the norm at 1000 Hz where a
+//   single GetRawInputBuffer consumes several milliseconds of reports -- was
+//   at risk.
+//
+//   DEFECT 2 (the per-frame legacy<->NOLEGACY flip). Buttons were synthesised
+//   only while g_nolegacy_now was true. So a click whose legacy twin was
+//   already queued when we flipped to NOLEGACY got delivered twice, and a
+//   click whose raw report was generated under NOLEGACY but dispatched after
+//   we flipped back got delivered zero times, because OnRawInput refused to
+//   synthesise it. The flip is once a frame and driven by CL_MouseEvent, so
+//   this is not a rare race.
+//
+// ---------------------------------------------------------------------------
+// THE STATE MACHINE (g_btn_mask), and why it is exactly one engine edge per
+// physical transition in BOTH modes
+// ---------------------------------------------------------------------------
+// NOLEGACY is now a MOTION AND OS-CURSOR decision only. Buttons behave
+// identically on both sides of the flip.
+//
+// ONE SOURCE OF TRUTH: g_btn_mask, an MK_ mask maintained from RAWMOUSE
+// usButtonFlags in the order the reports are consumed -- the dispatched one in
+// OnRawInput, the queued ones in drain_raw_buffer, which is the order the
+// device produced them.
+//
+//   raw DOWN(b)   ->  g_btn_mask |= MK_b ; g_btn_known |= MK_b
+//                     send the matching legacy message to the ORIGINAL WndProc
+//                     with wParam low word = g_btn_mask
+//   raw UP(b)     ->  g_btn_mask &= ~MK_b ; g_btn_known |= MK_b ; same
+//   raw wheel     ->  WM_MOUSEWHEEL, MAKEWPARAM(g_btn_mask, delta)
+//
+//   ANY legacy mouse message Windows still delivers (WM_MOUSEMOVE, any
+//   WM_?BUTTON?, WM_MOUSEWHEEL) is FORWARDED -- never swallowed -- with the
+//   bits of its low word that are in g_btn_known REPLACED by g_btn_mask.
+//   Bits NOT in g_btn_known pass through untouched, which is the safety net:
+//   a button whose raw transitions we have never seen keeps the stock
+//   behaviour exactly, so this can never leave the player unable to click.
+//
+//   focus/capture lost, or shutdown -> g_btn_mask = 0 and one WM_MOUSEMOVE
+//   carrying mask 0, so the engine queues the UPs for everything that was
+//   down. Without that, a button held across an alt-tab is stuck down for
+//   ever: the differ has no other way back, and a stuck +attack or a stuck
+//   toggle-ADS is indistinguishable from "inputs get dropped".
+//   focus regained -> g_btn_mask resynced from GetAsyncKeyState, one
+//   WM_MOUSEMOVE, then raw takes over again.
+//
+// WHY IT IS EXACTLY ONE EDGE. After the rule above, every mouse message the
+// engine sees carries g_btn_mask in the bits we own. So the sequence of masks
+// the engine differs is the sequence of g_btn_mask values, in raw report
+// order, with arbitrary REPEATS interleaved (the forwarded legacy messages and
+// the WM_MOUSEMOVEs). A differ over a sequence with repeats yields exactly the
+// transitions of the underlying sequence -- no more, no fewer. Message order,
+// message id, GetAsyncKeyState timing and the NOLEGACY flip all stop being
+// able to affect the outcome. That is the whole argument, and it is why this
+// is a design change rather than a patched race.
+//
+// ENW_RAW_MOUSE_BUTTONS=0 turns the tracker off and passes every legacy
+// message through untouched (stock button behaviour, raw motion only).
+//
+// ---------------------------------------------------------------------------
+// ENW_INPUT_TRACE=1 -- the instrument that decides this, out of ONE run
+// ---------------------------------------------------------------------------
+// Counters only; no allocation and no I/O on the message or frame path. Per
+// button it counts raw transitions, messages we sent, legacy messages seen,
+// and -- the ground truth -- what the engine ACTUALLY QUEUED, read straight
+// out of the Sys_QueEvent ring (0x22BBF48, head 0x22BBA34, stride 0x18;
+// layout in addresses.hpp). NOTHING IS HOOKED for this: the ring is read, not
+// intercepted, so no MinHook address is taken and kickstart rule 9 is not in
+// play. A drop is a raw transition with no matching queued key event; a double
+// is two queued events for one transition. Focus flaps (WM_ACTIVATE,
+// WM_SETFOCUS, WM_KILLFOCUS, WM_CAPTURECHANGED) and the engine's own
+// s_wmv.mouseActive / g_wv.activeApp / oldButtonState are timestamped
+// alongside, because IN_Frame (0x5FA8A0) does not call IN_MouseMove at all
+// while activeApp is 0, and focus_guard hooks GetForegroundWindow, so the
+// engine can believe it is foreground while Windows is routing clicks
+// somewhere else. The verdict prints every ~15 s and once at shutdown.
+
 #include "component.hpp"
 #include "frame.hpp"
 #include "logger.hpp"
@@ -408,46 +523,252 @@ void set_nolegacy(bool want) {
                  want ? "OFF" : "back ON", want ? "game" : "menu/console", g_nolegacy_flips);
 }
 
-// The buttons, put back on the engine's own path as the legacy messages it
-// expects. One message per transition, never per motion report.
-void synth_buttons(USHORT flags, SHORT wheel) {
-    if (!flags || !g_prev_wndproc || !g_hwnd) return;
+// ===========================================================================
+// THE BUTTON STATE MACHINE. The argument for it is in the file header; this is
+// the implementation, and it is deliberately small.
+// ===========================================================================
+// g_btn_mask is the MK_ mask we believe the physical buttons are in, updated
+// from raw transitions in report order. g_btn_known is the set of buttons we
+// have ever seen a raw transition for -- the safety net: bits outside it are
+// never rewritten, so a device whose buttons raw input does not report keeps
+// the stock behaviour exactly and the player can always click.
+WPARAM g_btn_mask = 0;
+WPARAM g_btn_known = 0;
+bool g_btn_track = true;          // ENW_RAW_MOUSE_BUTTONS=0 turns this off
+
+// ---------------------------------------------------------------- the trace
+// ENW_INPUT_TRACE=1. Counters only: no allocation, no I/O, nothing on the
+// message path but a handful of increments behind one bool.
+bool g_trace = false;
+
+// [0]=MOUSE1 .. [4]=MOUSE5, matching K_MOUSE1..K_MOUSE5 = 0xC8..0xCC.
+long g_raw_down[5] = {};      // physical transitions seen in raw input
+long g_raw_up[5] = {};
+long g_legacy_down[5] = {};   // legacy WM_?BUTTON?DOWN/UP Windows delivered
+long g_legacy_up[5] = {};
+long g_que_down[5] = {};      // what the engine ACTUALLY queued (ground truth)
+long g_que_up[5] = {};
+long g_legacy_move_maskchange = 0;  // forwarded WM_MOUSEMOVE whose mask we corrected
+long g_mask_rewrites = 0;
+long g_force_release = 0;
+long g_que_overflow = 0;
+
+// Where we are in the engine's event ring. The head counter is monotonic and
+// never masked (0x5FEB8A: `add dword [0x22BBA34], 1`), so a saved copy is a
+// valid cursor.
+unsigned g_que_head_seen = 0;
+bool g_que_started = false;
+
+int64_t g_qpc0 = 0;
+double g_qpc_freq = 0.0;
+
+unsigned trace_ms() {
+    if (!g_qpc_freq) return 0;
+    LARGE_INTEGER n{};
+    if (!::QueryPerformanceCounter(&n)) return 0;
+    return static_cast<unsigned>((static_cast<double>(n.QuadPart - g_qpc0) / g_qpc_freq) * 1000.0);
+}
+
+// Engine state we watch for flaps, sampled once a frame; only transitions are
+// logged. IN_Frame (0x5FA8A0) does not call IN_MouseMove AT ALL while
+// g_wv.activeApp is 0, and focus_guard hooks GetForegroundWindow, so the
+// engine can be certain it is foreground while Windows routes clicks elsewhere.
+int g_last_active_app = -1;
+int g_last_mouse_active = -1;
+
+const char* button_name(int i) {
+    static const char* n[5] = {"MOUSE1", "MOUSE2", "MOUSE3", "MOUSE4", "MOUSE5"};
+    return (i >= 0 && i < 5) ? n[i] : "?";
+}
+
+// ------------------------------------------------------------ mask rewriting
+// Replace the bits we own with our tracked state, leave everything else. Only
+// the LOW WORD of wParam is the button mask; WM_XBUTTON* and WM_MOUSEWHEEL
+// carry the button number / wheel delta in the high word and it must survive.
+WPARAM rewrite_mask(WPARAM wp) {
+    if (!g_btn_track || !g_btn_known) return wp;
+    const WPARAM lo = wp & 0xFFFF;
+    const WPARAM fixed = (lo & ~g_btn_known) | (g_btn_mask & g_btn_known);
+    if (fixed == lo) return wp;
+    ++g_mask_rewrites;
+    return (wp & ~static_cast<WPARAM>(0xFFFF)) | fixed;
+}
+
+void send_to_engine(UINT msg, WPARAM wp, LPARAM lp) {
+    if (!g_prev_wndproc || !g_hwnd) return;
+    ::CallWindowProcA(g_prev_wndproc, g_hwnd, msg, wp, lp);
+}
+
+LPARAM cursor_lparam() {
     POINT p = {};
     ::GetCursorPos(&p);
-    ::ScreenToClient(g_hwnd, &p);
-    const LPARAM lp = MAKELPARAM(static_cast<WORD>(p.x), static_cast<WORD>(p.y));
+    if (g_hwnd) ::ScreenToClient(g_hwnd, &p);
+    return MAKELPARAM(static_cast<WORD>(p.x), static_cast<WORD>(p.y));
+}
 
-    // The engine reads the *other* buttons' state out of wParam, so build it the
-    // way Windows would rather than passing zero.
-    WPARAM wp = 0;
-    if (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) wp |= MK_LBUTTON;
-    if (::GetAsyncKeyState(VK_RBUTTON) & 0x8000) wp |= MK_RBUTTON;
-    if (::GetAsyncKeyState(VK_MBUTTON) & 0x8000) wp |= MK_MBUTTON;
-    if (::GetAsyncKeyState(VK_XBUTTON1) & 0x8000) wp |= MK_XBUTTON1;
-    if (::GetAsyncKeyState(VK_XBUTTON2) & 0x8000) wp |= MK_XBUTTON2;
-    if (::GetAsyncKeyState(VK_SHIFT) & 0x8000) wp |= MK_SHIFT;
-    if (::GetAsyncKeyState(VK_CONTROL) & 0x8000) wp |= MK_CONTROL;
+// The modifier bits. The engine does not read them (0x6070F7 only tests
+// MK_LBUTTON/RBUTTON/MBUTTON/XBUTTON1/XBUTTON2) but DefWindowProc and any
+// future consumer might, so build them the way Windows would.
+WPARAM modifier_bits() {
+    WPARAM w = 0;
+    if (::GetAsyncKeyState(VK_SHIFT) & 0x8000) w |= MK_SHIFT;
+    if (::GetAsyncKeyState(VK_CONTROL) & 0x8000) w |= MK_CONTROL;
+    return w;
+}
 
-    struct { USHORT flag; UINT msg; WPARAM extra; } map[] = {
-        {RI_MOUSE_LEFT_BUTTON_DOWN, WM_LBUTTONDOWN, 0},
-        {RI_MOUSE_LEFT_BUTTON_UP, WM_LBUTTONUP, 0},
-        {RI_MOUSE_RIGHT_BUTTON_DOWN, WM_RBUTTONDOWN, 0},
-        {RI_MOUSE_RIGHT_BUTTON_UP, WM_RBUTTONUP, 0},
-        {RI_MOUSE_MIDDLE_BUTTON_DOWN, WM_MBUTTONDOWN, 0},
-        {RI_MOUSE_MIDDLE_BUTTON_UP, WM_MBUTTONUP, 0},
-        {RI_MOUSE_BUTTON_4_DOWN, WM_XBUTTONDOWN, XBUTTON1},
-        {RI_MOUSE_BUTTON_4_UP, WM_XBUTTONUP, XBUTTON1},
-        {RI_MOUSE_BUTTON_5_DOWN, WM_XBUTTONDOWN, XBUTTON2},
-        {RI_MOUSE_BUTTON_5_UP, WM_XBUTTONUP, XBUTTON2},
+// One physical transition -> one message carrying the POST-transition mask.
+// This is the whole of defect 1's fix: the mask is ours, taken at the moment
+// the report is consumed, never re-sampled from GetAsyncKeyState.
+void emit_button(int idx, bool down, LPARAM lp) {
+    static const struct { WPARAM mk; UINT dn; UINT up; WPARAM xbtn; } kMap[5] = {
+        {MK_LBUTTON,  WM_LBUTTONDOWN, WM_LBUTTONUP, 0},
+        {MK_RBUTTON,  WM_RBUTTONDOWN, WM_RBUTTONUP, 0},
+        {MK_MBUTTON,  WM_MBUTTONDOWN, WM_MBUTTONUP, 0},
+        {MK_XBUTTON1, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON1},
+        {MK_XBUTTON2, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON2},
     };
-    for (const auto& m : map) {
-        if (!(flags & m.flag)) continue;
-        const WPARAM w = m.extra ? MAKEWPARAM(static_cast<WORD>(wp), static_cast<WORD>(m.extra)) : wp;
-        ::CallWindowProcA(g_prev_wndproc, g_hwnd, m.msg, w, lp);
+    if (idx < 0 || idx > 4) return;
+    const auto& m = kMap[idx];
+    if (down) g_btn_mask |= m.mk; else g_btn_mask &= ~m.mk;
+    g_btn_known |= m.mk;
+
+    const WPARAM lo = g_btn_mask | modifier_bits();
+    const WPARAM wp = m.xbtn ? MAKEWPARAM(static_cast<WORD>(lo), static_cast<WORD>(m.xbtn)) : lo;
+    send_to_engine(down ? m.dn : m.up, wp, lp);
+    if (down) ++g_raw_down[idx]; else ++g_raw_up[idx];
+    if (g_trace)
+        ENW_INFO("input_trace: %8u ms  RAW  %s %-4s mask=0x%02X", trace_ms(), button_name(idx),
+                 down ? "DOWN" : "UP", static_cast<unsigned>(g_btn_mask));
+}
+
+// Everything down, released, as one mask-0 mouse move. The engine's differ has
+// no other way back: a button held across an alt-tab, a NOLEGACY flip into the
+// menu, or a shutdown would otherwise stay down for ever, and a stuck +attack
+// or a stuck toggle-ADS reads to a player exactly like "inputs get dropped".
+void release_all_buttons(const char* why) {
+    if (!g_btn_track || !g_btn_mask) return;
+    g_btn_mask = 0;
+    send_to_engine(WM_MOUSEMOVE, modifier_bits(), cursor_lparam());
+    ++g_force_release;
+    if (g_trace || g_verbose)
+        ENW_INFO("input_trace: %8u ms  RELEASE-ALL (%s) -- every tracked button forced up so the "
+                 "engine's differ cannot leave one stuck down", trace_ms(), why);
+}
+
+// Coming back from a focus loss: believe the OS once, then raw again.
+void resync_buttons_from_os(const char* why) {
+    if (!g_btn_track) return;
+    WPARAM m = 0;
+    if (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) m |= MK_LBUTTON;
+    if (::GetAsyncKeyState(VK_RBUTTON) & 0x8000) m |= MK_RBUTTON;
+    if (::GetAsyncKeyState(VK_MBUTTON) & 0x8000) m |= MK_MBUTTON;
+    if (::GetAsyncKeyState(VK_XBUTTON1) & 0x8000) m |= MK_XBUTTON1;
+    if (::GetAsyncKeyState(VK_XBUTTON2) & 0x8000) m |= MK_XBUTTON2;
+    if (m == g_btn_mask) return;
+    g_btn_mask = m;
+    send_to_engine(WM_MOUSEMOVE, m | modifier_bits(), cursor_lparam());
+    if (g_trace || g_verbose)
+        ENW_INFO("input_trace: %8u ms  RESYNC (%s) mask=0x%02X", trace_ms(), why,
+                 static_cast<unsigned>(m));
+}
+
+// RAWMOUSE.usButtonFlags -> our tracker, in report order. Called for the
+// dispatched report AND for every buffered one, in BOTH modes -- that is
+// defect 2's fix: buttons no longer depend on which side of the NOLEGACY flip
+// the report happened to land on.
+void apply_raw_buttons(USHORT flags, SHORT wheel) {
+    if (!flags || !g_btn_track || !g_prev_wndproc || !g_hwnd) return;
+    const LPARAM lp = cursor_lparam();
+
+    static const struct { USHORT dn; USHORT up; int idx; } kRaw[5] = {
+        {RI_MOUSE_LEFT_BUTTON_DOWN,   RI_MOUSE_LEFT_BUTTON_UP,   0},
+        {RI_MOUSE_RIGHT_BUTTON_DOWN,  RI_MOUSE_RIGHT_BUTTON_UP,  1},
+        {RI_MOUSE_MIDDLE_BUTTON_DOWN, RI_MOUSE_MIDDLE_BUTTON_UP, 2},
+        {RI_MOUSE_BUTTON_4_DOWN,      RI_MOUSE_BUTTON_4_UP,      3},
+        {RI_MOUSE_BUTTON_5_DOWN,      RI_MOUSE_BUTTON_5_UP,      4},
+    };
+    // A single report can carry a down AND an up for the same button (a click
+    // shorter than one report interval). Emit both, down first, so the engine
+    // differs two transitions instead of losing the pair.
+    for (const auto& r : kRaw) {
+        if (flags & r.dn) emit_button(r.idx, true, lp);
+        if (flags & r.up) emit_button(r.idx, false, lp);
     }
     if (flags & RI_MOUSE_WHEEL)
-        ::CallWindowProcA(g_prev_wndproc, g_hwnd, WM_MOUSEWHEEL,
-                          MAKEWPARAM(static_cast<WORD>(wp), static_cast<WORD>(wheel)), lp);
+        send_to_engine(WM_MOUSEWHEEL,
+                       MAKEWPARAM(static_cast<WORD>(g_btn_mask | modifier_bits()),
+                                  static_cast<WORD>(wheel)),
+                       lp);
+}
+
+// ------------------------------------------------- the engine's own verdict
+// Read (never hook) the Sys_QueEvent ring and count the K_MOUSE key events the
+// engine really queued. This is the ground truth the whole trace exists for:
+// a raw transition with no matching queued event is a DROP; two queued events
+// for one transition is a DOUBLE.
+void drain_engine_event_ring() {
+    const unsigned head = *enw::ptr<unsigned>(t4::var::sys_event_head);
+    const unsigned tail = *enw::ptr<unsigned>(t4::var::sys_event_tail);
+    if (!g_que_started) {
+        g_que_head_seen = head;
+        g_que_started = true;
+        return;
+    }
+    if (head - tail >= t4::var::sys_event_count) ++g_que_overflow;
+    // If we fell more than a ring behind (we cannot, at frame rate, but say so
+    // rather than read wrapped garbage) skip forward and count the loss.
+    if (head - g_que_head_seen > t4::var::sys_event_count) {
+        g_que_head_seen = head - static_cast<unsigned>(t4::var::sys_event_count);
+        ++g_que_overflow;
+    }
+    for (; g_que_head_seen != head; ++g_que_head_seen) {
+        const uintptr_t slot = enw::at(t4::var::sys_event_ring) +
+                               (g_que_head_seen & (t4::var::sys_event_count - 1)) *
+                                   t4::var::sys_event_stride;
+        const int type = *reinterpret_cast<int*>(slot + 0x04);
+        if (type != 1) continue;  // SE_KEY
+        const int key = *reinterpret_cast<int*>(slot + 0x08);
+        const int down = *reinterpret_cast<int*>(slot + 0x0C);
+        const int idx = key - static_cast<int>(t4::var::K_MOUSE1);
+        if (idx < 0 || idx > 4) continue;
+        if (down) ++g_que_down[idx]; else ++g_que_up[idx];
+        if (g_trace)
+            ENW_INFO("input_trace: %8u ms  QUEUED %s %s  <- the engine", trace_ms(),
+                     button_name(idx), down ? "DOWN" : "UP");
+    }
+}
+
+// The one line B reads. Raw transitions against what the engine queued, per
+// button. Anything but a match is named in words, because a table of numbers
+// is not a verdict.
+void report_verdict(const char* when) {
+    bool any = false;
+    for (int i = 0; i < 5; ++i) any = any || g_raw_down[i] || g_legacy_down[i] || g_que_down[i];
+    if (!any) {
+        ENW_INFO("input_trace (%s): no mouse button activity at all this session -- nothing to "
+                 "judge. If you were clicking, the clicks are not reaching this window.", when);
+        return;
+    }
+    for (int i = 0; i < 5; ++i) {
+        if (!g_raw_down[i] && !g_raw_up[i] && !g_que_down[i] && !g_que_up[i] && !g_legacy_down[i])
+            continue;
+        const long lost_d = g_raw_down[i] - g_que_down[i];
+        const long lost_u = g_raw_up[i] - g_que_up[i];
+        const char* verdict = (lost_d == 0 && lost_u == 0) ? "PERFECT"
+                              : (lost_d > 0 || lost_u > 0) ? "DROPPED"
+                                                           : "DOUBLED";
+        ENW_INFO("input_trace (%s): %s  raw %ld down / %ld up  |  legacy msgs %ld / %ld  |  "
+                 "engine QUEUED %ld down / %ld up  ->  %s%s%s",
+                 when, button_name(i), g_raw_down[i], g_raw_up[i], g_legacy_down[i],
+                 g_legacy_up[i], g_que_down[i], g_que_up[i], verdict,
+                 lost_d ? (lost_d > 0 ? "  (downs lost)" : "  (extra downs)") : "",
+                 lost_u ? (lost_u > 0 ? "  (ups lost)" : "  (extra ups)") : "");
+    }
+    ENW_INFO("input_trace (%s): masks rewritten %ld, forced releases %ld, "
+             "Sys_QueEvent overflow windows %ld, tracker %s, NOLEGACY %s (%ld flips)",
+             when, g_mask_rewrites, g_force_release, g_que_overflow,
+             g_btn_track ? "on" : "OFF (ENW_RAW_MOUSE_BUTTONS=0)", g_nolegacy_now ? "on" : "off",
+             g_nolegacy_flips);
 }
 
 // Read every pending raw report in ONE call instead of one WM_INPUT dispatch
@@ -489,11 +810,17 @@ long drain_raw_buffer() {
                 const bool absolute = (m.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
                 g_raw_x.Update(m.lLastX, absolute);
                 g_raw_y.Update(m.lLastY, absolute);
-                // Only while NOLEGACY is actually registered. In the menu the
-                // legacy messages are back and the engine is already getting
-                // the clicks; synthesising here as well would double them.
-                if (m.usButtonFlags && g_nolegacy_now)
-                    synth_buttons(m.usButtonFlags, static_cast<SHORT>(m.usButtonData));
+                // IN BOTH MODES, and that is defect 2's fix. The old code
+                // did this only while NOLEGACY was registered, on the
+                // reasoning that the legacy messages were already carrying
+                // the clicks. They were -- but the flip happens once a frame,
+                // so a report generated on one side of it and consumed on the
+                // other was either doubled or dropped. Now raw input is the
+                // only source of button transitions and every legacy message
+                // is mask-rewritten to agree with it (see wndproc), so the
+                // engine sees exactly one edge per transition either way.
+                if (m.usButtonFlags)
+                    apply_raw_buttons(m.usButtonFlags, static_cast<SHORT>(m.usButtonData));
                 ::InterlockedIncrement(&g_events_total);
                 ::InterlockedIncrement(&g_events_this_frame);
                 ++consumed;
@@ -557,14 +884,11 @@ void OnRawInput(LPARAM lparam) {
     g_raw_x.Update(raw.data.mouse.lLastX, absolute);
     g_raw_y.Update(raw.data.mouse.lLastY, absolute);
 
-    // With RIDEV_NOLEGACY there is no WM_LBUTTONDOWN either, so this event's
-    // button transitions have to go back onto the engine's own path -- the same
-    // thing drain_raw_buffer() does for the reports it consumes. Only while
-    // NOLEGACY is actually registered: with legacy messages on, the engine is
-    // already getting them and synthesising would double every click.
-    if (g_nolegacy_now && raw.data.mouse.usButtonFlags)
-        synth_buttons(raw.data.mouse.usButtonFlags,
-                      static_cast<SHORT>(raw.data.mouse.usButtonData));
+    // This event's button transitions, in BOTH modes. See drain_raw_buffer for
+    // why the old `g_nolegacy_now &&` guard was defect 2 rather than a saving.
+    if (raw.data.mouse.usButtonFlags)
+        apply_raw_buttons(raw.data.mouse.usButtonFlags,
+                          static_cast<SHORT>(raw.data.mouse.usButtonData));
 
     // Upstream's alt-tab fix: the first update after (re)acquiring the device
     // carries everything that happened while we were not looking, and applying
@@ -584,32 +908,119 @@ void OnRawInput(LPARAM lparam) {
                  static_cast<unsigned>(raw.data.mouse.usFlags));
 }
 
+// The index of a WM_?BUTTON? message in our 0..4 button space, or -1.
+int legacy_button_index(UINT msg, WPARAM wparam, bool* down) {
+    switch (msg) {
+    case WM_LBUTTONDOWN: *down = true;  return 0;
+    case WM_LBUTTONUP:   *down = false; return 0;
+    case WM_RBUTTONDOWN: *down = true;  return 1;
+    case WM_RBUTTONUP:   *down = false; return 1;
+    case WM_MBUTTONDOWN: *down = true;  return 2;
+    case WM_MBUTTONUP:   *down = false; return 2;
+    case WM_XBUTTONDOWN: *down = true;  return GET_XBUTTON_WPARAM(wparam) == XBUTTON2 ? 4 : 3;
+    case WM_XBUTTONUP:   *down = false; return GET_XBUTTON_WPARAM(wparam) == XBUTTON2 ? 4 : 3;
+    default: return -1;
+    }
+}
+
 LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     ::InterlockedIncrement(&g_msgs_total);
     ::InterlockedIncrement(&g_msgs_frame);
+
+    // ---- mouse messages: FORWARDED, never swallowed, with the mask corrected.
+    // The engine derives every button edge from wParam's MK_ bits alone
+    // (addresses.hpp, WndProc_mouse_case 0x6070F7) and WM_MOUSEMOVE feeds the
+    // SAME differ as the button messages. So a message carrying a stale or a
+    // premature mask can invent a click or destroy one, and the SetCursorPos
+    // the engine does once a frame generates exactly such a message. Replacing
+    // the bits we track makes the sequence of masks the engine sees equal to
+    // the sequence our raw tracker produced, with repeats -- and a differ over
+    // a sequence with repeats yields exactly the underlying transitions.
     switch (msg) {
-    case WM_MOUSEMOVE:
-        // The legacy half of the flood. We do not consume it -- the menu cursor
-        // and the engine's own button routing live on this path -- we count it.
+    case WM_MOUSEMOVE: {
         ::InterlockedIncrement(&g_wm_mousemove_total);
         ::InterlockedIncrement(&g_wm_mousemove_frame);
-        break;
+        const WPARAM fixed = rewrite_mask(wparam);
+        if (fixed != wparam) {
+            ++g_legacy_move_maskchange;
+            if (g_trace)
+                ENW_INFO("input_trace: %8u ms  LEG  WM_MOUSEMOVE mask 0x%02X -> 0x%02X  "
+                         "(a move carrying a button state the device never reported)",
+                         trace_ms(), static_cast<unsigned>(wparam & 0x1F),
+                         static_cast<unsigned>(fixed & 0x1F));
+        }
+        return ::CallWindowProcA(g_prev_wndproc, hwnd, msg, fixed, lparam);
+    }
+    case WM_LBUTTONDOWN: case WM_LBUTTONUP:
+    case WM_RBUTTONDOWN: case WM_RBUTTONUP:
+    case WM_MBUTTONDOWN: case WM_MBUTTONUP:
+    case WM_XBUTTONDOWN: case WM_XBUTTONUP:
+    case WM_MOUSEWHEEL: {
+        bool down = false;
+        const int idx = legacy_button_index(msg, wparam, &down);
+        if (idx >= 0) {
+            if (down) ++g_legacy_down[idx]; else ++g_legacy_up[idx];
+            if (g_trace)
+                ENW_INFO("input_trace: %8u ms  LEG  %s %-4s wParam mask=0x%02X tracked=0x%02X",
+                         trace_ms(), button_name(idx), down ? "DOWN" : "UP",
+                         static_cast<unsigned>(wparam & 0x1F),
+                         static_cast<unsigned>(g_btn_mask));
+        }
+        return ::CallWindowProcA(g_prev_wndproc, hwnd, msg, rewrite_mask(wparam), lparam);
+    }
     case WM_INPUT:
         OnRawInput(lparam);
         break;  // and fall through to the engine/DefWindowProc, as MSDN requires
+
+    // ---- the focus and capture flaps ------------------------------------
+    // These are traced because a Q3-lineage engine loses buttons across them
+    // and because focus_guard hooks GetForegroundWindow, so the ENGINE cannot
+    // see them: IN_Frame will keep believing it is foreground. WM_ACTIVATE is
+    // the one that matters most -- its handler (0x606AA0) is the ONLY thing
+    // that clears g_wv.activeApp (0x229A0C4), and with activeApp at 0 IN_Frame
+    // tail-jumps to IN_DeactivateMouse and never calls IN_MouseMove at all.
+    case WM_ACTIVATE: {
+        const bool active = LOWORD(wparam) != WA_INACTIVE;
+        if (g_trace || g_verbose)
+            ENW_INFO("input_trace: %8u ms  FOCUS WM_ACTIVATE %s (minimized=%d). This is the one "
+                     "the engine acts on: its handler is the only writer of g_wv.activeApp, and "
+                     "with that zero IN_Frame never calls IN_MouseMove.",
+                     trace_ms(), active ? "ACTIVE" : "INACTIVE", HIWORD(wparam) ? 1 : 0);
+        if (!active) {
+            clip_cursor_to_client(false);
+            set_nolegacy(false);
+            release_all_buttons("WM_ACTIVATE inactive");
+        }
+        break;
+    }
     case WM_SETFOCUS:
         g_in_focus = true;
         g_first_raw_update = true;
+        if (g_trace || g_verbose)
+            ENW_INFO("input_trace: %8u ms  FOCUS WM_SETFOCUS", trace_ms());
+        resync_buttons_from_os("WM_SETFOCUS");
         break;
     case WM_KILLFOCUS:
         g_in_focus = false;
         g_first_raw_update = true;
+        if (g_trace || g_verbose)
+            ENW_INFO("input_trace: %8u ms  FOCUS WM_KILLFOCUS", trace_ms());
         // Alt-tab. A clipped cursor that survives losing focus traps the mouse
         // on the game's monitor, and NOLEGACY that survives it stops the OS
         // cursor moving for the whole desktop. Both go, now, on the message --
-        // not on the next frame, because there may not be one.
+        // not on the next frame, because there may not be one. And every
+        // tracked button is released: raw input stops arriving the moment we
+        // are not foreground, so a button let go while alt-tabbed is a
+        // transition we will never see, and the engine's differ would hold it
+        // down for the rest of the session.
         clip_cursor_to_client(false);
         set_nolegacy(false);
+        release_all_buttons("WM_KILLFOCUS");
+        break;
+    case WM_CAPTURECHANGED:
+        if (g_trace || g_verbose)
+            ENW_INFO("input_trace: %8u ms  FOCUS WM_CAPTURECHANGED (capture went to 0x%p)",
+                     trace_ms(), reinterpret_cast<void*>(lparam));
         break;
     default:
         break;
@@ -762,6 +1173,33 @@ public:
             return;
         }
         g_verbose = env_on("ENW_RAW_MOUSE_VERBOSE");
+
+        // The button tracker. ON by default -- it is the fix, not an
+        // experiment -- with a one-word revert for a machine where raw button
+        // reports turn out not to arrive.
+        g_btn_track = !env_off("ENW_RAW_MOUSE_BUTTONS");
+        g_trace = env_on("ENW_INPUT_TRACE");
+        {
+            LARGE_INTEGER f{}, n{};
+            if (::QueryPerformanceFrequency(&f) && ::QueryPerformanceCounter(&n) && f.QuadPart) {
+                g_qpc_freq = static_cast<double>(f.QuadPart);
+                g_qpc0 = n.QuadPart;
+            }
+        }
+        if (!g_btn_track)
+            ENW_WARN("mouse_polling: BUTTON TRACKING OFF (ENW_RAW_MOUSE_BUTTONS=0). Legacy mouse "
+                     "messages pass through with the mask Windows put in them, which is the "
+                     "0.2.2/0.2.3 behaviour and the thing that dropped clicks. Use this only to "
+                     "A/B the fix.");
+        if (g_trace)
+            ENW_INFO("mouse_polling: INPUT TRACE ON (ENW_INPUT_TRACE=1). Every raw button "
+                     "transition, every legacy mouse message whose mask we corrected, every "
+                     "focus/capture flap, and every K_MOUSE key event THE ENGINE ACTUALLY "
+                     "QUEUED (read straight out of the Sys_QueEvent ring at 0x22BBF48 -- read, "
+                     "not hooked) is logged with a millisecond timestamp, and a verdict line "
+                     "per button prints every ~15 s and at shutdown. A drop is a raw transition "
+                     "with no matching queued event; a double is two queued events for one "
+                     "transition.");
         // DEFAULT ON since 0.2.3. `ENW_RAW_MOUSE_NOLEGACY=0` is the one-word
         // A/B back to 0.2.2's behaviour.
         g_nolegacy_wanted = !env_off("ENW_RAW_MOUSE_NOLEGACY");
@@ -837,6 +1275,30 @@ public:
                 return;
             }
 
+            // Ground truth for the trace, and cheap: two reads and a walk of
+            // whatever the engine queued since the last frame. Only when asked.
+            if (g_trace) {
+                drain_engine_event_ring();
+                const int aa = *enw::ptr<int>(t4::var::g_wv_activeApp) ? 1 : 0;
+                const int ma = *enw::ptr<unsigned char>(t4::var::s_wmv_mouseActive) ? 1 : 0;
+                if (aa != g_last_active_app) {
+                    if (g_last_active_app >= 0)
+                        ENW_INFO("input_trace: %8u ms  ENGINE g_wv.activeApp %d -> %d. While this "
+                                 "is 0, IN_Frame tail-jumps to IN_DeactivateMouse and our "
+                                 "IN_MouseMove replacement is NOT CALLED.",
+                                 trace_ms(), g_last_active_app, aa);
+                    g_last_active_app = aa;
+                }
+                if (ma != g_last_mouse_active) {
+                    if (g_last_mouse_active >= 0)
+                        ENW_INFO("input_trace: %8u ms  ENGINE s_wmv.mouseActive %d -> %d "
+                                 "(focus_guard hooks GetForegroundWindow, so this reflects our "
+                                 "answer, not the desktop's)",
+                                 trace_ms(), g_last_mouse_active, ma);
+                    g_last_mouse_active = ma;
+                }
+            }
+
             const long ev = ::InterlockedExchange(&g_events_this_frame, 0);
             if (ev > 0) {
                 ++g_frames_with_events;
@@ -877,11 +1339,18 @@ public:
                                                     static_cast<double>(g_buffered_reads)
                                               : 0.0,
                              g_recentres_skipped, g_cursor_clipped ? "on" : "off");
+                if (g_trace) report_verdict("15 s window");
             }
         });
     }
 
     void pre_destroy() override {
+        // Nothing may be left held down in the engine's differ.
+        release_all_buttons("shutdown");
+        if (g_trace) {
+            drain_engine_event_ring();
+            report_verdict("session total");
+        }
         // Put the legacy messages back BEFORE unregistering, so a game that is
         // shutting down never leaves the desktop without a moving cursor.
         set_nolegacy(false);

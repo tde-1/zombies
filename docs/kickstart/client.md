@@ -784,3 +784,265 @@ climbing, `reports per call` well above 1, and a `measured device rate` matching
 four together are the plumbing proof. The verdict is whether run 1 beats run 2 on **p99** and on
 **over 16.7ms**. If it does not, the default reverts and the next suspect is `Sys_GetEvent`'s
 drain-until-empty loop itself, which no community project has touched.
+
+
+---
+
+## 6. 2026-09-23 — dropped mouse clicks: what T4 thinks a click *is*, and why that loses them
+
+B, playing 0.2.2 on the evening of 2026-09-22: *"mouse inputs get dropped — if I aim, sometimes it
+aims and un-aims; keyboard is fine, mouse clicks disappear a lot of the time, at 125 Hz and
+1000 Hz."*
+
+This section is the answer, and it is the first thing in this lane that was **proven in the running
+engine** rather than argued from a listing. Read 6a before anything else: it changes what a fix has
+to do, and every design decision below falls out of it.
+
+### 6a. PROVEN: for T4 a click is a *mask difference*, and a mouse MOVE carries the mask
+
+Read out of the dump instruction by instruction (all of it is now in `addresses.hpp` under
+"the button path"). The game WndProc's second dispatch is
+
+```
+0060704E  lea   eax, [edi - 0x200]          ; edi = msg
+00607054  cmp   eax, 0x18
+00607057  ja    default
+0060705D  movzx ecx, byte ptr [eax + 0x607204]
+00607064  jmp   dword ptr [ecx*4 + 0x6071F4]
+```
+
+and decoding those two tables gives this, which is the whole finding:
+
+| message | handler |
+|---|---|
+| `WM_MOUSEMOVE` 0x200 | **0x6070F7** |
+| `WM_LBUTTONDOWN/UP`, `WM_RBUTTONDOWN/UP`, `WM_MBUTTONDOWN/UP`, `WM_XBUTTONDOWN/UP` | **0x6070F7** |
+| `WM_MOUSEWHEEL` 0x20A | 0x60706B |
+| the three `*DBLCLK`, `WM_MOUSEHWHEEL` | default, ignored |
+
+**`WM_MOUSEMOVE` goes to the same handler as every button message.** And that handler does exactly
+one thing:
+
+```
+006070F7  xor eax, eax
+          test bl, 0x01 -> eax |= 1        ; bl = wParam. MK_LBUTTON
+          test bl, 0x02 -> eax |= 2        ; MK_RBUTTON
+          test bl, 0x10 -> eax |= 4        ; MK_MBUTTON
+          test bl, 0x20 -> eax |= 8        ; MK_XBUTTON1
+          test bl, 0x40 -> eax |= 0x10     ; MK_XBUTTON2
+00607123  push eax
+00607124  call 0x5FA5F0                    ; IN_MouseEvent
+```
+
+and `IN_MouseEvent` (0x5FA5F0) XORs that byte against `s_wmv.oldButtonState` (0x229A0C8) and calls
+`Sys_QueEvent(SE_KEY, K_MOUSE1 + n, down)` once per bit that **changed**.
+
+So, and this is the sentence the rest of the section hangs on:
+
+> **The engine never looks at the message id.** A click, for T4, is not a `WM_LBUTTONDOWN`. A click
+> is "the MK_ mask of some mouse message differs from the mask of the previous one" — and a plain
+> mouse *move* is one of those messages.
+
+Three consequences:
+
+* a **duplicated** button message cannot double a click (same mask, no edge) — so the flood is not
+  a doubling risk;
+* a button message whose mask is **wrong** produces **no edge at all** — the click is gone, not
+  mis-ordered;
+* a `WM_MOUSEMOVE` carrying a stale or premature mask can **invent** a click or **destroy** one.
+
+`s_wmv.oldButtonState` is written in exactly one place in the whole 78 MB image (0x5FA648, inside
+`IN_MouseEvent`), so nothing else resets it and there is no third party to blame.
+
+### 6b. PROVEN IN THE RUNNING GAME, 2026-09-22 18:17, `waw-c2`, `nazi_zombie_prototype`
+
+Three arms posted into the game's own message queue with `PostMessage` (**not** `SendInput` —
+§1e retracted that; `PostMessage` is same-integrity and is not filtered), while
+`ENW_INPUT_TRACE=1` read the engine's `Sys_QueEvent` ring. `ZombiesDev\logs\c2\enw-23108.log`.
+
+**Arm B — four button messages carrying the wrong mask.** `WM_LBUTTONDOWN` with `wParam = 0`, i.e.
+exactly what `synth_buttons` built when `GetAsyncKeyState` was sampled after the physical button had
+already moved on:
+
+```
+8148 ms  LEG  MOUSE1 DOWN wParam mask=0x00 tracked=0x00
+8261 ms  LEG  MOUSE1 UP   wParam mask=0x00 tracked=0x00
+8548 ms  LEG  MOUSE1 DOWN wParam mask=0x00 tracked=0x00
+8553 ms  LEG  MOUSE1 UP   wParam mask=0x00 tracked=0x00
+...
+input_trace: MOUSE1  raw 1 down / 0 up | legacy msgs 2 / 2 | engine QUEUED 0 down / 0 up -> DROPPED
+```
+
+**Four button-down/up messages, zero key events queued.** The clicks did not arrive late or out of
+order; they did not exist.
+
+**Arm C — three pure mouse MOVES carrying `MK_RBUTTON`, and no button message at all:**
+
+```
+9329 ms  QUEUED MOUSE2 DOWN  <- the engine
+9488 ms  QUEUED MOUSE2 UP    <- the engine
+9646 ms  QUEUED MOUSE2 DOWN  <- the engine
+9781 ms  QUEUED MOUSE2 UP    <- the engine
+9939 ms  QUEUED MOUSE2 DOWN  <- the engine
+10102 ms QUEUED MOUSE2 UP    <- the engine
+...
+input_trace: MOUSE2  raw 0 down / 0 up | legacy msgs 0 / 0 | engine QUEUED 3 down / 3 up -> DOUBLED
+```
+
+**Three right-clicks manufactured out of mouse movement**, with the right mouse button never
+touched and no button message ever sent. That is 6a's third consequence, measured.
+
+`QUEUED` is not our count of what we sent; it is a read of the engine's own event ring
+(0x22BBF48, head 0x22BBA34, stride 0x18 — layout in `addresses.hpp`). **Nothing is hooked for it**:
+the ring is read, not intercepted, so no MinHook address is taken and kickstart rule 9 does not
+apply.
+
+### 6c. The two defects this proves, and what changed
+
+**DEFECT 1 — `synth_buttons` built the mask from `GetAsyncKeyState` at synthesis time.** Arm B *is*
+this defect. Under `RIDEV_NOLEGACY` (0.2.3's default, which **B has never run**) every button
+transition was re-manufactured, and the mask was re-sampled from the OS at the moment the report was
+*consumed* rather than taken from the report itself. A report consumed after the physical button had
+moved on — which is every click during a 30–60 ms hitch, and the norm at 1000 Hz where one
+`GetRawInputBuffer` consumes several milliseconds of reports — carried the wrong mask and queued
+nothing. **0.2.3 and 0.2.4 would have dropped clicks for B on their default path.** This is the
+single most valuable thing in this section: it was caught before he ran it.
+
+**DEFECT 2 — buttons were synthesised only while `g_nolegacy_now` was true.** The NOLEGACY flip
+happens once a frame, driven by `CL_MouseEvent`'s return. A click whose legacy twin was already
+queued when we flipped *to* NOLEGACY was delivered twice; a click whose raw report was generated
+under NOLEGACY but dispatched after we flipped *back* was delivered zero times, because `OnRawInput`
+refused to synthesise it.
+
+**What changed.** `RIDEV_NOLEGACY` is now a **motion-and-OS-cursor decision only**. Buttons behave
+identically on both sides of it, because:
+
+1. **Raw input is the single source of button truth, in both modes.** Every `RAWMOUSE.usButtonFlags`
+   transition updates `g_btn_mask` in report order and emits **one** message carrying the
+   **post-transition** mask — ours, from the report, never re-sampled from the OS.
+2. **Every legacy mouse message Windows still delivers is forwarded with its mask rewritten** to
+   `g_btn_mask` — `WM_MOUSEMOVE` included, which is what closes arm C. Never swallowed, so the menu
+   cursor, `DefWindowProc` and the UI are untouched (§2a).
+3. **Only bits we have actually seen a raw transition for are rewritten** (`g_btn_known`). A button
+   raw input never reports keeps the stock path exactly, so this can never leave a player unable to
+   click. That is the safety net, and it is deliberate.
+4. **Everything is released on `WM_ACTIVATE(WA_INACTIVE)` / `WM_KILLFOCUS`,** as one mask-0 move.
+   Raw input stops the instant we are not foreground, so a button let go during an alt-tab is a
+   transition we will never see and the differ would hold it down for the rest of the session. A
+   stuck `+attack`, or a stuck toggle-ADS, reads to a player exactly like "inputs get dropped".
+   Visible in the same run at 77055 ms: a real click's `QUEUED MOUSE1 DOWN` followed immediately by
+   the forced `QUEUED MOUSE1 UP`.
+
+**Why this is exactly one edge per transition, and not a patched race.** After rules 1–3 every mouse
+message the engine sees carries `g_btn_mask` in the bits we own. So the sequence of masks the engine
+differs *is* the sequence of `g_btn_mask` values, in raw report order, with arbitrary repeats
+interleaved. A differ over a sequence with repeats yields exactly the transitions of the underlying
+sequence — no more, no fewer. Message order, message id, `GetAsyncKeyState` timing and the NOLEGACY
+flip all stop being able to affect the outcome. The state machine is written out in full at the top
+of `mouse_polling.cpp`.
+
+`ENW_RAW_MOUSE_BUTTONS=0` is the one-word revert to the old pass-through behaviour, for A/B only.
+
+### 6d. The focus flap, and why B's windowed session made it worse
+
+A second, independent loser of input, and this one is visible in an ordinary run on this box.
+
+`IN_Frame` (0x5FA850) reads:
+
+```
+005FA897  cmp byte ptr [0x229A0D5], 0   ; s_wmv.mouseInited -- 0 means do nothing at all
+005FA8A0  cmp dword ptr [0x229A0C4], 0  ; g_wv.activeApp
+005FA8A7  jne 0x5FA8AF
+005FA8AA  jmp 0x5FA5B0                  ; IN_DeactivateMouse, and RETURN
+005FA8E4  call 0x5FA6D0                 ; IN_MouseMove -- OUR retarget, never reached above
+```
+
+`g_wv.activeApp` is written by exactly two places: the **`WM_ACTIVATE`** handler (0x606AA0) and the
+`WM_MOVE` case (0x606E18). So a single `WM_ACTIVATE(WA_INACTIVE)` takes the engine out of the mouse
+entirely — our `IN_MouseMove` replacement is **not called at all**, raw deltas stop being consumed,
+and whatever was held is stuck. `WM_SETFOCUS`/`WM_KILLFOCUS` do **not** do this; all they do is
+`SetPriorityClass` (0x20 / 0x40), which is `r_autopriority`. Checked, because the Q3 lineage's
+`Key_ClearStates()`-on-focus-loss was the obvious suspect and **T4 does not have it**.
+
+`focus_guard` (`shared/core`) hooks `GetForegroundWindow` and `GetActiveWindow` and answers with the
+game window, so `IN_Frame`'s own re-activation check (0x5FA8CA) and `IN_MouseMove`'s first guard
+(0x5FA6DB) can never see the truth. The engine can therefore be certain it is foreground while
+Windows routes clicks by hit-test to whatever is actually on top — **keyboard keeps working, because
+keyboard follows focus and mouse buttons follow the window under the cursor.** That is B's
+"keyboard is fine, mouse clicks disappear" exactly.
+
+With `ENW_BORDERLESS=0` B played **windowed**, on the same desktop as the Electron launcher. The
+launcher had three `state.win.show(); state.win.focus()` sites that could fire mid-game — the
+deep-link handler (party invites and follow-the-leader arrive *while you are playing*), the Steam
+sign-in callback, and the second-instance `onFocus`. All three are now routed through
+`launcher/src/main/focusguard.js`, which refuses to raise the window while `state.flow` is set and
+performs the raise once the flow ends. The tray menu and the tray click are left alone: those are
+the player asking, at the keyboard.
+
+### 6e. What is PROVEN and what is still SUSPECTED
+
+**Proven** (6a, 6b, 6d — each by a read of an instruction or a counter, not by argument):
+
+* T4 derives every mouse-button edge from the MK_ mask alone, and `WM_MOUSEMOVE` feeds the same
+  differ as the button messages.
+* A button message with a wrong mask queues **nothing** (arm B, 4 messages → 0 events).
+* Three pure mouse-moves with a stale mask queue **three full clicks** (arm C, 0 button messages →
+  6 events).
+* Defect 1 was on 0.2.3/0.2.4's **default** path. B has not run it; he would have lost clicks.
+* `g_wv.activeApp` at 0 stops `IN_MouseMove` being called at all, and only `WM_ACTIVATE` clears it.
+* T4 has no `Key_ClearStates` on focus loss — that suspect is excluded by reading both handlers.
+
+**Suspected, and B's run decides it.** *Which* of these hit B on 0.2.2 specifically. 0.2.2 ran
+`IN_RecenterMouse` → `SetCursorPos` **every frame**, and `SetCursorPos` generates a `WM_MOUSEMOVE`
+whose mask Windows assembles when the message is *retrieved*, not when the cursor moved — arm C is
+the live demonstration that such a move rewrites the engine's button state. The mechanism is proven
+to exist and to be sufficient; that it is the thing he felt is **not yet measured on his hardware**,
+because nobody can click for him. `SendInput` at rate is discarded on this box (§1e, retracted in
+full there) and `PostMessage` cannot produce raw input at all, so **no agent can generate a real
+click on this machine** — the arms above drive the legacy path only, which is why they prove the
+*engine's* behaviour and not B's *session*.
+
+### 6f. The run B does — one minute, and the verdict is one line
+
+`ENW_INPUT_TRACE=1` is off by default and costs a handful of increments behind one `bool` when on.
+
+Launch the game twice, a minute each, **on the same map**, clicking and aiming continuously the
+whole time — fire in bursts, aim down sights repeatedly, use MOUSE4/MOUSE5 if bound:
+
+| run | mouse polling rate | environment |
+|---|---|---|
+| 1 | **125 Hz** | `ENW_INPUT_TRACE=1 ENW_FRAMETIME=1` |
+| 2 | **1000 Hz** (or 4000/8000) | `ENW_INPUT_TRACE=1 ENW_FRAMETIME=1` |
+
+Then read `%LOCALAPPDATA%\ENWZombies\logs\enw-<pid>.log`. The last `input_trace (session total)`
+block is the verdict, one line per button:
+
+```
+input_trace (session total): MOUSE1  raw 128 down / 128 up | legacy msgs 128 / 128 |
+                             engine QUEUED 128 down / 128 up  ->  PERFECT
+input_trace (session total): MOUSE2  raw 61 down / 61 up   | legacy msgs 61 / 61   |
+                             engine QUEUED 61 down / 61 up   ->  PERFECT
+input_trace (session total): masks rewritten 940, forced releases 0,
+                             Sys_QueEvent overflow windows 0, tracker on, NOLEGACY on (12 flips)
+```
+
+How to read it:
+
+* **`raw` is what the device reported. `engine QUEUED` is what the game actually acted on.** They
+  must be equal. `PERFECT` on every button at both rates is the pass.
+* `DROPPED` means `engine QUEUED` is short: clicks were lost. `DOUBLED` means it is over: clicks were
+  invented. Either one names the button and is a failure, and the per-event `RAW` / `LEG` /
+  `QUEUED` lines above it, all timestamped in milliseconds, say where in the run it happened.
+* **`masks rewritten` being large is the fix working**, not a warning: it counts legacy messages
+  whose mask disagreed with the device and was corrected. A large number at 1000 Hz and a small one
+  at 125 Hz is the expected shape.
+* **`forced releases` should be 0 in a clean run.** Anything else means the window lost activation
+  mid-game — look for the `FOCUS WM_ACTIVATE INACTIVE` line next to it and for whatever stole focus.
+* `Sys_QueEvent overflow windows` must be 0. It has never been non-zero in B's logs and it is not
+  the mechanism, but it is now counted rather than assumed.
+* Read the `frametime: window` lines beside it as before: the click verdict and the stutter verdict
+  come out of the same run.
+
+If run 1 and run 2 are both `PERFECT` on every button, inputs are exact at 125 Hz and at his real
+rate and this is finished. If either shows `DROPPED`, send the log: the timestamps around the first
+divergence are the whole diagnosis.

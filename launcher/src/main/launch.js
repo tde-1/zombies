@@ -20,7 +20,8 @@ import { P, ensureDirs, isInside, protectedRoots, dirOfModule, unpacked } from '
 import { MOD_NAME } from './setup.js'
 import * as lock from './gamelock.js'
 import { listDisplays, pickDisplay } from './display.js'
-import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, PROFILE } from './gamecfg.js'
+import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, PROFILE } from './gamecfg.js'
+import * as settings from './settings.js'
 
 // PACKAGED TRAP: this is handed to powershell.exe, which is not us and cannot read
 // inside app.asar. `asarUnpack: ["tools/**"]` in package.json puts a real copy beside
@@ -120,6 +121,16 @@ export function settingsArgs(s = {}, display = null) {
   return dvarsToArgs(baselineDvars(s, display))
 }
 
+// `ENW_BORDERLESS` for the DLL's borderless component, from the EFFECTIVE resolved
+// mode — the one `baselineDvars` builds `r_noborder` from, so the env var and the
+// command line can never disagree. Exported because the value is the whole of B's
+// "borderless is not working": an account block with no `mode` used to discard the
+// local `mode: "borderless"` wholesale (settings.js), and a dev window mode must
+// never inherit a borderless flag, hence the explicit '0'.
+export function borderlessEnv(settings = {}, playerMode = true) {
+  return playerMode && resolveMode(settings) === 'borderless' ? '1' : '0'
+}
+
 export function buildArgs({
   host = null,
   map = null,
@@ -130,6 +141,10 @@ export function buildArgs({
   // Whether an invite token is being carried. Only its PRESENCE reaches the command line
   // (as `+exec enw_auth.cfg`); the token itself never does.
   token = null,
+  // The player's ENW name, from the signed-in session. `+name` for every launch,
+  // including Play Local. See the block where it is pushed for why this is a BELT and
+  // not the lock.
+  playerName = null,
   stealth = false,
   windowMode = null,
   extra = [],
@@ -171,6 +186,28 @@ export function buildArgs({
   // it anyway. `tools/dev/launch.ps1` has done both since the component landed, which is
   // why every proof so far went through the dev harness and none through the launcher.
   if (token) a.push('+exec', 'enw_auth.cfg')
+
+  // ---- the ENW name (B, 2026-09-23) --------------------------------------------------
+  //
+  // "Right now it says Unknown Soldier, which is annoying." That string is the ENGINE's
+  // stock default for the `name` dvar, and the reason every player had it is simply that
+  // nothing ever passed `+name`. This is that line.
+  //
+  // Local games too, deliberately: a Play Local run never reaches a server, so the
+  // server-side lock cannot apply, and this is the only thing standing between the
+  // player and "Unknown Soldier" on their own screen.
+  //
+  // **It is a belt, not the lock.** `+name` runs in the player's own process and anybody
+  // can pass a different one, or change it in the console. What stops a spoof is the
+  // referee overwriting the SERVER's copy of the userinfo with the invite token's name
+  // (`server/components/referee/name_lock.cpp`); this only makes the honest case right.
+  //
+  // Quoted as one argv entry by the spawn, never shell-interpolated. Backslashes and
+  // quotes are stripped because the engine's infostring is backslash-delimited and a
+  // name carrying one would split the key/value pairs; `Info_SetValueForKey` strips them
+  // server-side too, so this only keeps the two sides agreeing.
+  const enwName = String(playerName || '').replace(/[\\";]/g, '').trim().slice(0, 31)
+  if (enwName) a.push('+set', 'name', enwName)
 
   // Three window modes, and the difference matters more than it looks.
   //
@@ -319,6 +356,14 @@ export class GameLaunch extends EventEmitter {
       // the player has a config, the game owns it and we only ever read it.
       const display = o.display === undefined ? pickDisplay(listDisplays(), o.settings?.display) : o.display
       this.display = display
+      // THE effective mode, resolved ONCE, from the same settings object the command
+      // line is built from. `o.settings` is `settings.get()`, which since 2026-09-22
+      // layers defaults <- this computer <- the account and lets no layer shadow a key
+      // it does not define (settings.js): B's account block carries no `mode` at all,
+      // and before that fix the whole local block — `mode: "borderless"` included —
+      // was discarded the moment he signed in. Everything below reads this, so the
+      // env var, `+set r_noborder` and the seeded config.cfg can never disagree.
+      this.effectiveMode = resolveMode(o.settings || {})
       // Dev window modes are left exactly as they were: 'small' and 'offscreen' force
       // 800x600 muted on the command line, and seeding a config.cfg (or reading one
       // back) from a dev run would put 800x600 into the player's account.
@@ -327,6 +372,12 @@ export class GameLaunch extends EventEmitter {
         if (!this.playerMode) throw new Error('dev window mode: no baseline is seeded')
         const seed = seedHome({ homeDir, profile: o.profile || PROFILE, settings: o.settings || {}, display, force: !!o.reseed })
         if (seed.written) this.note(`wrote the ENW settings baseline into ${seed.paths.profileCfg} (${seed.reason})`)
+        // One-time, and only when the config still holds the exact stock toggle bind.
+        // seedHome() will not revisit a config at the current BASELINE_VERSION, so a
+        // box that already took version 3 (B's) needs this to reach the toggle-ADS
+        // bind sitting in the engine's own `$$$` profile.
+        const ads = migrateAdsBind({ homeDir, profile: o.profile || PROFILE, log: (m) => this.note(m) })
+        if (ads.ran && !ads.changed.length) this.note(`aim down sights: the bind is not the stock toggle one, so it was left alone (profile ${ads.profile})`)
       } catch (e) {
         this.note(`could not write the settings baseline (${e.message}); the game will use its own config`)
       }
@@ -335,6 +386,12 @@ export class GameLaunch extends EventEmitter {
         host: o.host,
         map: o.map,
         token: o.token || null,
+        // Every launch carries the ENW name, without every caller having to remember:
+        // it is a property of WHO IS SIGNED IN, not of this particular Play button.
+        // `session().name` is what the site answered at sign-in (`users.pub().name`,
+        // which is `enw_name` first), so an account that has picked gets its handle and
+        // one that has not gets nothing rather than something invented.
+        playerName: o.playerName || settings.session().name || null,
         fsGame: o.fsGame,
         settings: o.settings,
         display,
@@ -343,6 +400,11 @@ export class GameLaunch extends EventEmitter {
         windowMode: o.windowMode || null,
         extra: o.extraArgs || [],
       })
+
+      // The same name `buildArgs` put on the command line, sanitised the same way, so
+      // the argv and the environment can never disagree about who this player is.
+      const enwName = String(o.playerName || settings.session().name || '')
+        .replace(/[\\";]/g, '').trim().slice(0, 31)
 
       // Environment: game-link v0 (ENW_HOST/INSTANCE/ROLE) plus the SteamStub hints,
       // without which a copied exe exits(0) after ~1.5 s (dedi, board 00:35).
@@ -362,6 +424,12 @@ export class GameLaunch extends EventEmitter {
         // Where auth_token.cpp writes `main\enw_auth.cfg`. It has to be the SAME folder
         // the engine will exec from, i.e. the `fs_homepath` on the command line.
         ENW_FS_HOMEPATH: homeDir,
+        // The player's ENW name, for the DLL's `name_pin` component. The command line
+        // already carries `+set name`, which is what fixes the boot; this is what lets
+        // the DLL put it BACK if something in game changes it. Same value, two places,
+        // deliberately — the command line is read once and the environment is readable
+        // for the life of the process. Belt only: the lock is the referee's.
+        ...(enwName ? { ENW_PLAYER_NAME: enwName } : {}),
         // The map, so the DLL can say `map_loaded` without reading a dvar. It also
         // takes it off our command line, and this is the belt to that braces.
         ...(o.map ? { ENW_MAP: o.map } : {}),
@@ -377,7 +445,7 @@ export class GameLaunch extends EventEmitter {
         // is what a future engine or a Plutonium-style client would read. In a dev
         // window mode it is explicitly '0' rather than absent, so a dev run can never
         // inherit a borderless flag from somewhere else.
-        ENW_BORDERLESS: this.playerMode && resolveMode(o.settings || {}) === 'borderless' ? '1' : '0',
+        ENW_BORDERLESS: borderlessEnv(o.settings || {}, this.playerMode),
         // Joining a server. Empty for a local game.
         ...connectEnv({ host: o.host, map: o.map }),
       }
