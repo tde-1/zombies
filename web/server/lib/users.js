@@ -109,8 +109,55 @@ function settings(steamId) {
   return { ...DEFAULT_SETTINGS, ...(safeJson(u && u.settings_json) || {}) }
 }
 
+// The Settings page's `game` object (web /settings, laid out like World at War's own
+// Options menus; client/src/data/wawSettings.js is the catalogue). The LAUNCHER is the
+// strict gate - launcher/src/main/wawcfg.js refuses anything the game's menus do not
+// offer before it reaches a command line or a config.cfg. This only keeps the stored blob
+// the right shape and size, so a hand-made PUT cannot park junk on the account.
+const GAME_KEYS = {
+  mode: (v) => (['borderless', 'fullscreen', 'windowed'].includes(v) ? v : undefined),
+  display: (v) => (v == null ? undefined : String(v).slice(0, 64)),
+  resolution: (v) => (v === '' || /^\d{3,5}x\d{3,5}$/.test(String(v)) ? String(v) : undefined),
+  vsync: (v) => !!v,
+  fov: (v) => (Number.isFinite(Number(v)) ? Math.min(120, Math.max(65, Math.round(Number(v)))) : undefined),
+  maxFps: (v) => (Number.isFinite(Number(v)) ? Math.min(250, Math.max(20, Math.round(Number(v)))) : undefined),
+  showFps: (v) => !!v,
+  sensitivity: (v) => (Number.isFinite(Number(v)) && Number(v) > 0 && Number(v) <= 100 ? Number(v) : undefined),
+  rawMouse: (v) => v !== false,
+}
+function sanitizeGame(g) {
+  if (!g || typeof g !== 'object' || Array.isArray(g)) return undefined
+  const out = { waw: {}, wawBinds: {} }
+  for (const [k, f] of Object.entries(GAME_KEYS)) {
+    if (!(k in g)) continue
+    const v = f(g[k])
+    if (v !== undefined) out[k] = v
+  }
+  for (const [d, v] of Object.entries(g.waw || {}).slice(0, 80)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]{1,40}$/.test(d)) continue
+    if (v === null || (typeof v === 'string' && v.length <= 24)) out.waw[d] = v
+  }
+  for (const [c, keys] of Object.entries(g.wawBinds || {}).slice(0, 80)) {
+    if (!/^[+A-Za-z_][A-Za-z0-9_ ]{1,30}$/.test(c) || !Array.isArray(keys)) continue
+    out.wawBinds[c] = keys.map((k) => String(k).toUpperCase()).filter((k) => /^[A-Z0-9_\-=[\]',./\\]{1,12}$/.test(k)).slice(0, 2)
+  }
+  out.updatedAt = Number.isFinite(Number(g.updatedAt)) ? Number(g.updatedAt) : Date.now()
+  return out
+}
+
 function saveSettings(steamId, patch) {
-  const merged = { ...settings(steamId), ...(patch || {}) }
+  patch = { ...(patch || {}) }
+  if ('game' in patch) {
+    const g = sanitizeGame(patch.game)
+    if (g) {
+      patch.game = g
+      // The two the rest of the site already reads (Profile, /api/launcher/play) stay in
+      // step with the Settings page rather than becoming a second opinion.
+      if (g.fov !== undefined) patch.fov = g.fov
+      if (g.maxFps !== undefined) patch.max_fps = g.maxFps
+    } else delete patch.game
+  }
+  const merged = { ...settings(steamId), ...patch }
   db.prepare('UPDATE users SET settings_json=? WHERE steam_id=?').run(JSON.stringify(merged), String(steamId))
   return merged
 }
@@ -183,6 +230,6 @@ function pendingRequests(steamId) {
 
 module.exports = {
   DEFAULT_SETTINGS, DELETED_NAME,
-  ensure, byId, resolve, pub, publicById, settings, saveSettings, anonymise, isDemoId,
+  ensure, byId, resolve, pub, publicById, settings, saveSettings, sanitizeGame, anonymise, isDemoId,
   friendIds, friendState, requestFriend, respondFriend, removeFriend, pendingRequests,
 }

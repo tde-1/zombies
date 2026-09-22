@@ -1078,6 +1078,57 @@ async function main() {
     eq(payload.n, 'the-real-one', 'the token did not carry the account name')
   })
 
+  // ---- /settings: World at War's Options menus, per SteamID (2026-09-22) ---------------
+  // The page saves one `game` object; the launcher reads it through the preload bridge.
+  // launcher/test/waw-settings.js carries it the rest of the way to the +set list and the
+  // engine's config.cfg; these are the site's half.
+  const waw = await import('../client/src/data/wawSettings.js')
+
+  await checkAsync('a WaW setting saved on the site is stored per SteamID and comes back in the launcher shape', async () => {
+    const sid = '76561198000000041'
+    const other = '76561198000000042'
+    users.ensure(sid, {}); users.ensure(other, {})
+    let g = waw.allDefaults()
+    const item = (id) => waw.ALL.find((i) => i.id === id)
+    g = waw.withValue(g, item('ai_corpseCount'), '32')
+    g = waw.withValue(g, item('r_texFilterMipMode'), 'Force Trilinear')
+    g = waw.withValue(g, item('fov'), 95)
+    g = waw.withValue(g, item('bind:+forward'), ['UPARROW'])
+    g.updatedAt = 1700000000000
+    users.saveSettings(sid, { game: g })
+    const back = users.settings(sid).game
+    eq(back.waw.ai_corpseCount, '32')
+    eq(back.waw.r_texFilterMipMode, 'Force Trilinear')
+    eq(back.wawBinds['+forward'][0], 'UPARROW')
+    eq(users.settings(sid).fov, 95, 'the site-wide fov did not follow the Settings page')
+    eq(users.settings(other).game, undefined, 'another account picked it up')
+    const p = waw.toLauncherPatch(back)
+    eq(p.waw.ai_corpseCount, '32')
+    eq(p.fov, 95)
+    eq(p.gameUpdatedAt, 1700000000000)
+    eq(p.waw.sm_enable, null, 'a game-default item must reach the launcher as null (reset)')
+  })
+
+  check('the stored game blob refuses junk: bad keys, long values, a quit smuggled into a bind', () => {
+    const g = users.sanitizeGame({ fov: 400, mode: 'kiosk', waw: { 'r_gamma; quit': '1', r_gamma: 'x'.repeat(40), fx_marks: '0' }, wawBinds: { '+attack': ['MOUSE1', 'K;QUIT', 'F', 'G'] } })
+    eq(g.fov, 120)
+    eq(g.mode, undefined)
+    eq(JSON.stringify(g.waw), JSON.stringify({ fx_marks: '0' }))
+    eq(JSON.stringify(g.wawBinds['+attack']), JSON.stringify(['MOUSE1', 'F']))
+  })
+
+  check('every WaW item has a source and a section, and each section has a reset', () => {
+    for (const it of waw.ALL) {
+      truthy(it.src && it.src.length > 10, `${it.label} has no source`)
+      truthy(waw.SECTIONS.some((s) => s.id === it.section), `${it.label} is in no section`)
+    }
+    for (const s of waw.SECTIONS) truthy(Object.keys(waw.sectionDefaults(s.id)).length, `${s.id} has no defaults`)
+    // The launcher's whitelist is a different package; read it as text so this suite does
+    // not need the launcher's ESM graph. Every dvar the page can send must be in it.
+    const src = fs.readFileSync(path.join(__dirname, '..', '..', 'launcher', 'src', 'main', 'wawcfg.js'), 'utf8')
+    for (const it of waw.ALL.filter((i) => i.to === 'waw')) truthy(new RegExp(`\\b${it.dvar}:`).test(src), `${it.dvar} is not in the launcher whitelist`)
+  })
+
   // ---- report ---------------------------------------------------------------
   for (const [s, n] of results) console.log(`${s}  ${n}`)
   console.log(`\n${pass} passed, ${fail} failed`)

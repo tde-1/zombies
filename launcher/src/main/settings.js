@@ -12,6 +12,7 @@ import fs from 'node:fs'
 import { P, ensureDirs, assertWritable } from './paths.js'
 import { MODES, clampFov, clampFps } from './gamecfg.js'
 import { validResolution } from './display.js'
+import { validateWaw, validateBinds } from './wawcfg.js'
 
 export const DEFAULT_SETTINGS = {
   fov: 80,            // spec 4.5: cap ~90-100 for the gun model, <=120 for speedruns
@@ -39,7 +40,19 @@ export const DEFAULT_SETTINGS = {
   // puts the header back to the bytes we recorded before we first touched it; it
   // never reaches the player's own install either way.
   largeAddressAware: true,
+  // The site's Settings page (web /settings, laid out like WaW's Options menus). `waw` is
+  // { <dvar>: value | null (game default) }, `wawBinds` is { <command>: [key, key] }, both
+  // checked against wawcfg.js's whitelist of what the game's own menus write.
+  // `gameUpdatedAt` says which copy is newer, this one or the site's (ms since epoch).
+  waw: {},
+  wawBinds: {},
+  gameUpdatedAt: 0,
+  // The client DLL's raw-input mouse (client.md 1, 5). Off = ENW_RAW_MOUSE=0.
+  rawMouse: true,
 }
+
+// The keys that are "how the game runs", so a change to any of them moves gameUpdatedAt.
+export const GAME_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'waw', 'wawBinds']
 
 function read(file, fallback) {
   try { return { ...fallback, ...JSON.parse(fs.readFileSync(file, 'utf8')) } } catch { return { ...fallback } }
@@ -131,16 +144,47 @@ export function validate(patch = {}) {
   // Keep the legacy flag in step with the mode so nothing that still reads it lies.
   if ('mode' in out) out.fullscreen = out.mode === 'fullscreen'
   if ('volume' in out && out.volume !== null) out.volume = Math.min(1, Math.max(0, Number(out.volume) || 0))
+  if ('rawMouse' in out) out.rawMouse = out.rawMouse !== false
+  if ('sensitivity' in out && out.sensitivity !== null) {
+    const n = Number(out.sensitivity)
+    if (Number.isFinite(n) && n > 0 && n <= 100) out.sensitivity = Math.round(n * 1000) / 1000
+    else { notes.push(`sensitivity "${out.sensitivity}" is not a number the game takes; kept the saved one`); delete out.sensitivity }
+  }
+  if ('showFps' in out) out.showFps = !!out.showFps
+  if ('waw' in out) { const r = validateWaw(out.waw); out.waw = r.waw; notes.push(...r.notes) }
+  if ('wawBinds' in out) { const r = validateBinds(out.wawBinds); out.wawBinds = r.binds; notes.push(...r.notes) }
+  if ('gameUpdatedAt' in out) out.gameUpdatedAt = Number(out.gameUpdatedAt) || 0
   return { patch: out, notes }
+}
+
+// `waw` and `wawBinds` are MERGED key by key, not replaced: the post-game read-back
+// sends only what the player changed. '' in `waw` removes that dvar (no opinion); null
+// keeps meaning "game default". A null bind goes back to the stock keys by removal.
+function mergeGame(prev = {}, patch = {}) {
+  const out = { ...prev, ...patch }
+  if (patch.waw) {
+    const w = { ...(prev.waw || {}) }
+    for (const [k, v] of Object.entries(patch.waw)) { if (v === '') delete w[k]; else w[k] = v }
+    out.waw = w
+  }
+  if (patch.wawBinds) {
+    const b = { ...(prev.wawBinds || {}) }
+    for (const [k, v] of Object.entries(patch.wawBinds)) { if (v === null) delete b[k]; else b[k] = v }
+    out.wawBinds = b
+  }
+  // A change to how the game runs that does not carry its own time (the launcher's
+  // Settings screen, the read-back) is newer than whatever the site holds.
+  if (!('gameUpdatedAt' in patch) && GAME_KEYS.some((k) => k in patch)) out.gameUpdatedAt = Date.now()
+  return out
 }
 
 export function set(rawPatch, steamid = null) {
   const { patch } = validate(rawPatch)
   const a = all()
   const id = steamid || session().steamid
-  const target = id ? (a.accounts[id] = { ...(a.accounts[id] || {}), ...patch }) : (a.local = { ...(a.local || {}), ...patch })
+  const target = id ? (a.accounts[id] = mergeGame(a.accounts[id] || {}, patch)) : (a.local = mergeGame(a.local || {}, patch))
   // Keep the local copy in step so a signed-out launch still feels like the player's.
-  if (id) a.local = { ...(a.local || {}), ...patch }
+  if (id) a.local = mergeGame(a.local || {}, patch)
   write(P.settings, a)
   return { ...DEFAULT_SETTINGS, ...target }
 }

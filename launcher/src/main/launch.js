@@ -21,6 +21,7 @@ import { MOD_NAME } from './setup.js'
 import * as lock from './gamelock.js'
 import { listDisplays, pickDisplay } from './display.js'
 import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, PROFILE } from './gamecfg.js'
+import { launchDvars, applyAccountToConfig, readBackAccount } from './wawcfg.js'
 import * as settings from './settings.js'
 
 // PACKAGED TRAP: this is handed to powershell.exe, which is not us and cannot read
@@ -117,8 +118,11 @@ export function clearStartupBlockers({ homeDir = P.home, gameDir = P.game } = {}
 // `set r_fullscreen 0` are literals in the image, vsync is on, `com_maxfps` is 85 and
 // `cg_fov` is 65. B pressed Play and got 800x600 at 60 fps. The baseline is now
 // explicit and lives in gamecfg.js, with every value sourced.
+//
+// 2026-09-22 (web /settings): the account's WaW-menu values (`settings.waw`) are laid over
+// the baseline in place by wawcfg.launchDvars(); with none saved it is baselineDvars().
 export function settingsArgs(s = {}, display = null) {
-  return dvarsToArgs(baselineDvars(s, display))
+  return dvarsToArgs(s && s.waw && Object.keys(s.waw).length ? launchDvars(s, display) : baselineDvars(s, display))
 }
 
 // `ENW_BORDERLESS` for the DLL's borderless component, from the EFFECTIVE resolved
@@ -378,6 +382,11 @@ export class GameLaunch extends EventEmitter {
         // bind sitting in the engine's own `$$$` profile.
         const ads = migrateAdsBind({ homeDir, profile: o.profile || PROFILE, log: (m) => this.note(m) })
         if (ads.ran && !ads.changed.length) this.note(`aim down sights: the bind is not the stock toggle one, so it was left alone (profile ${ads.profile})`)
+        // The account's settings from the site's Settings page (WaW's Options menus),
+        // merged into the config.cfg the engine reads on EVERY launch, so the in-game
+        // menu shows them too. wawcfg.js says why this is not seed-once.
+        const acct = applyAccountToConfig({ homeDir, profile: o.profile || PROFILE, settings: o.settings || {}, display })
+        if (acct.wrote.length) this.note(`applied ${acct.pairs.length} account setting${acct.pairs.length === 1 ? '' : 's'}${acct.resets.length ? `, ${acct.resets.length} game default${acct.resets.length === 1 ? '' : 's'}` : ''} and ${Object.keys(acct.binds).length} bind${Object.keys(acct.binds).length === 1 ? '' : 's'} to ${acct.wrote[0]}`)
       } catch (e) {
         this.note(`could not write the settings baseline (${e.message}); the game will use its own config`)
       }
@@ -446,6 +455,9 @@ export class GameLaunch extends EventEmitter {
         // window mode it is explicitly '0' rather than absent, so a dev run can never
         // inherit a borderless flag from somewhere else.
         ENW_BORDERLESS: borderlessEnv(o.settings || {}, this.playerMode),
+        // The DLL's raw-input mouse (mouse_polling.cpp reads `ENW_RAW_MOUSE=0` as off).
+        // Only an explicit "off" in the account turns it off; the default stays the DLL's.
+        ...(o.settings && o.settings.rawMouse === false ? { ENW_RAW_MOUSE: '0' } : {}),
         // Joining a server. Empty for a local game.
         ...connectEnv({ host: o.host, map: o.map }),
       }
@@ -700,6 +712,15 @@ export class GameLaunch extends EventEmitter {
         profile: this.opts.profile || PROFILE,
         saved: this.opts.settings || {},
       })
+      // The WaW-menu settings (web /settings): what the player changed in game relative
+      // to what this launch wrote. It wins over the older read-back for the same key,
+      // because it compares against this launch rather than against the first seed.
+      try {
+        const acct = readBackAccount({ homeDir: this.opts.homeDir || P.home, profile: this.opts.profile || PROFILE })
+        if (Object.keys(acct.changed).length) r.changed = { ...(r.changed || {}), ...acct.changed }
+      } catch (e) {
+        this.note(`could not read the account settings back (${e.message})`)
+      }
       this.readBack = r
       const n = Object.keys(r.changed || {}).length
       if (n) this.note(`the player changed ${n} setting${n === 1 ? '' : 's'} in game; saving them to the account (${Object.keys(r.changed).join(', ')})`)

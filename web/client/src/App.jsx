@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { SessionProvider } from './session'
 import Nav from './components/Nav'
 import ChatDock from './components/ChatDock'
+import { GameSettingsSync } from './components/launcherBridge'
 import Home from './pages/Home'
 // NOT lazy: home renders `MapBody` out of this module, so it lands in the first chunk
 // whatever this line says, and a lazy route over a module that is already loaded only buys
@@ -26,6 +27,7 @@ const Creator = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Crea
 const Game = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Game })))
 const Archive = lazy(() => import('./pages/Archive'))
 const Download = lazy(() => import('./pages/Download'))
+const Settings = lazy(() => import('./pages/Settings'))
 // The 3D replay viewer. Split hard: this chunk carries three.js.
 const Replay = lazy(() => import('./pages/Replay'))
 const NotFound = lazy(() => import('./pages/Misc').then((m) => ({ default: m.NotFound })))
@@ -33,6 +35,8 @@ const NotFound = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Not
 export default function App() {
   return (
     <SessionProvider>
+      {/* Keeps the launcher's copy of /settings and the account's in step (launcherBridge.js). */}
+      <GameSettingsSync />
       {/* ~~The rail sits ABOVE the router (Movement's party.jsx): it survives navigation~~
           — **retracted 2026-09-22, B: no right column at all.** The party is a panel at the
           top of home's left column now (`components/PartyPanel.jsx`), beside the map pool it
@@ -64,6 +68,7 @@ export default function App() {
               <Route path="/m/:key" element={<MapPage />} />
               <Route path="/archive" element={<Archive />} />
               <Route path="/download" element={<Download />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/records" element={<Records />} />
               <Route path="/badges" element={<Badges />} />
               <Route path="/badges/:slug" element={<BadgePage />} />

@@ -1131,3 +1131,82 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
   color: var(--faint); cursor: pointer;
 }
 .mv-discord-x:hover { color: var(--text); background: var(--panel-2); }
+
+/* ---- /settings: World at War's Options menus (pages/Settings.jsx, 2026-09-22) ------------
+   The game's layout, in the site's ink: a column of menu names on the left, the selected
+   menu's rows on the right, labels right-aligned against a centre line and values left of
+   it, the "< value >" list, and one brass highlight - the colour of the game's own menu
+   selection bar. Uppercase condensed labels are the game's voice; values stay sentence
+   case so a resolution or a key name reads as data. */
+.waw-page {
+  --waw-hi: #c9a14a;
+  --waw-hi-soft: rgba(201, 161, 74, .13);
+  --waw-hi-line: rgba(201, 161, 74, .55);
+  --waw-ground: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.72));
+}
+.waw-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 6px 0 14px; flex-wrap: wrap; }
+.waw-title { font-family: var(--display); font-size: 30px; letter-spacing: .14em; text-transform: uppercase; margin: 0; color: var(--text); }
+.waw-status { font-size: 12.5px; color: var(--muted); min-height: 1em; }
+.waw-shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 18px; align-items: start; }
+.waw-menu { background: var(--waw-ground); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 0; position: sticky; top: calc(var(--nav-h) + 12px); }
+.waw-group + .waw-group { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+.waw-group-label { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); padding: 2px 18px 6px; }
+.waw-menu-item {
+  display: block; width: 100%; text-align: left; background: none; border: 0; cursor: pointer;
+  padding: 8px 18px; font-family: var(--display); font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  border-left: 3px solid transparent;
+}
+.waw-menu-item:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.waw-menu-item.on { color: var(--waw-hi); border-left-color: var(--waw-hi); background: var(--waw-hi-soft); }
+.waw-menu-item:focus-visible, .waw-arrow:focus-visible, .waw-cycle-val:focus-visible, .waw-key:focus-visible { outline: 2px solid var(--waw-hi); outline-offset: 1px; }
+.waw-panel { background: var(--waw-ground); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px 18px 16px; min-width: 0; }
+.waw-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--waw-hi-line); padding-bottom: 8px; margin-bottom: 6px; }
+.waw-panel-head h2 { margin: 0; font-family: var(--display); font-size: 18px; letter-spacing: .16em; text-transform: uppercase; color: var(--waw-hi); }
+.waw-src, .waw-meta code { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.waw-rows { display: flex; flex-direction: column; }
+.waw-row {
+  display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 1.25fr) minmax(0, .8fr);
+  align-items: center; gap: 4px 18px; padding: 6px 8px; border-radius: 6px;
+}
+.waw-row:hover { background: var(--waw-hi-soft); }
+.waw-label { text-align: right; font-family: var(--display); font-size: 13.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text); }
+.waw-row:hover .waw-label { color: var(--waw-hi); }
+.waw-control { min-width: 0; }
+.waw-meta { display: flex; gap: 6px; align-items: center; justify-content: flex-end; min-width: 0; overflow: hidden; }
+.waw-meta code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.waw-note { grid-column: 2 / 4; font-size: 11.5px; color: var(--faint); margin-top: -2px; }
+.waw-cycle { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; }
+.waw-arrow { background: none; border: 0; color: var(--waw-hi); font-size: 20px; line-height: 1; padding: 2px 8px; cursor: pointer; border-radius: 4px; }
+.waw-arrow:hover { background: rgba(255,255,255,.06); }
+.waw-cycle-val { background: none; border: 0; color: var(--text); font-size: 14px; min-width: 132px; text-align: center; padding: 4px 6px; cursor: pointer; font-family: var(--sans); }
+.waw-select { background: var(--panel-deep); color: var(--text); border: 1px solid var(--line-2, var(--line)); border-radius: 6px; padding: 6px 8px; font-size: 13.5px; max-width: 100%; }
+.waw-select:disabled { color: var(--faint); }
+.waw-slider { display: flex; align-items: center; gap: 12px; }
+.waw-slider input[type=range] { flex: 1; min-width: 0; accent-color: var(--waw-hi); }
+.waw-val { font-family: var(--num); font-size: 13px; color: var(--text); min-width: 44px; }
+.waw-keys-head { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, .9fr) minmax(0, .9fr); gap: 18px; padding: 2px 8px 4px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); }
+.waw-bind { grid-template-columns: minmax(150px, 1fr) minmax(0, .9fr) minmax(0, .9fr); }
+.waw-key {
+  background: var(--panel-deep); border: 1px solid var(--line); border-radius: 6px; color: var(--text);
+  font-family: var(--mono); font-size: 12.5px; padding: 6px 10px; text-align: center; cursor: pointer; min-width: 0;
+}
+.waw-key.empty { color: var(--faint); }
+.waw-key:hover { border-color: var(--waw-hi-line); }
+.waw-key.capturing { border-color: var(--waw-hi); color: var(--waw-hi); background: var(--waw-hi-soft); }
+.waw-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.waw-omitted { margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+.waw-omitted summary { cursor: pointer; color: var(--text); }
+.waw-omitted li { margin: 6px 0; }
+@media (max-width: 760px) {
+  .waw-shell { grid-template-columns: 1fr; }
+  .waw-menu { position: static; display: flex; flex-wrap: wrap; padding: 6px; gap: 2px; }
+  .waw-group { display: contents; }
+  .waw-group-label { display: none; }
+  .waw-menu-item { width: auto; padding: 6px 10px; font-size: 12px; border-left: 0; border-bottom: 2px solid transparent; }
+  .waw-menu-item.on { border-bottom-color: var(--waw-hi); }
+  .waw-row { grid-template-columns: 1fr; gap: 4px; }
+  .waw-label { text-align: left; }
+  .waw-meta { justify-content: flex-start; }
+  .waw-note { grid-column: 1; }
+  .waw-bind, .waw-keys-head { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+}

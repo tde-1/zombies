@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { api } from '../api'
+import { useSession } from '../session'
+import { toLauncherPatch, fromLauncher, newer } from '../data/wawSettings'
 
 // THE LAUNCHER'S OWN BAR IS GONE (B, 2026-09-22). The launcher window is frameless and the
 // site IS its chrome: this nav bar is the title bar (drag region), and the three window
@@ -62,4 +65,38 @@ export function describeLauncher(st) {
     update,
     updateReady,
   }
+}
+
+// The Settings page's `game` object lives in two places - the account on the site and the
+// launcher's own settings file, which is what the launch reads - and the newer one wins.
+// The launcher's is newer after a game in which the player changed something in the
+// game's own menus (the post-exit read-back); the site's after an edit on /settings in a
+// browser. This runs on every signed-in load inside the launcher, and again whenever the
+// launcher says its settings changed, so neither copy is stale at the next Play.
+export function GameSettingsSync() {
+  const { signedIn, session, refresh } = useSession()
+  const siteGame = (session && session.user && session.user.settings && session.user.settings.game) || null
+  const stamp = siteGame ? Number(siteGame.updatedAt) || 0 : 0
+  useEffect(() => {
+    const enw = bridge()
+    if (!signedIn || !enw || !enw.getSettings || !enw.setSettings) return undefined
+    let live = true
+    const sync = async () => {
+      try {
+        const L = await enw.getSettings()
+        const who = newer(siteGame || { updatedAt: 0 }, L)
+        if (!live || who === 'same') return
+        if (who === 'site' && siteGame) await enw.setSettings(toLauncherPatch(siteGame))
+        else if (who === 'launcher') {
+          const g = { ...(siteGame || {}), ...fromLauncher(L), waw: { ...((siteGame && siteGame.waw) || {}), ...((L && L.waw) || {}) }, wawBinds: { ...((siteGame && siteGame.wawBinds) || {}), ...((L && L.wawBinds) || {}) } }
+          await api.put('/api/me/settings', { game: g })
+          refresh()
+        }
+      } catch { /* an older launcher, or signed out mid-way: the next load tries again */ }
+    }
+    sync()
+    const off = enw.onSettings ? enw.onSettings(() => sync()) : null
+    return () => { live = false; try { off && off() } catch { /* gone */ } }
+  }, [signedIn, stamp]) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
 }
