@@ -626,6 +626,48 @@ patched and has not been hit**. Distinguishable: only the one at 0x62EDE5 is pre
 
 ---
 
+## 10. The Demonware lobby socket, and why "3074 then 3075" is not a two-port limit (dedi, 2026-09-23) — all [V]
+
+Every headless server opens two UDP sockets: `net_port` (NET_IPSocket) and Demonware's "game
+socket", seen on 3074, then 3075 for a second instance. `vps.md` §15 read this as a two-port
+limit. **It is not a limit.** The engine probes one hundred ports. Two independent signals, the
+call graph and the bind log, agree.
+
+**Call graph** (`t4map.py xref 7EB3E8`, `dis`, `func`, `callers`):
+
+| addr | what | evidence |
+|---|---|---|
+| `0x7EB3E8` | IAT slot WSOCK32 **#2 = `bind`** (by ordinal) | `imports`; `0x777FD8 call [0x7EB3E8]` with `(sock, &sockaddr, 0x10)` after `call [0x7EB3CC]` (#9 `htons`) |
+| `0x75A98A` | thunk `jmp [0x7EB3E8]` | called from `0x600350` (NET_IPSocket, AF 2) and `0x600B80` (IPX, AF 6) |
+| `0x777F70` | `bdSocket::bind(addr, port)`: htons → bind; on failure WSAGetLastError (#111) + closesocket (#3); `0x271D`/`0x2740`/`0x2741` → **-4**, else -1 | its only caller is `0x7CC390` |
+| `0x78A1E0` | **`bdNetImpl::findFreePort`** (strings `"bdNetImpl::findFreePort"`, `"Socket bind failed, but subsequent close succeeded!"`): `for (edi = 0; edi < 100; ++edi) { create; bind(port); close; if ok → write the port back, return 1; port += 1 }` | `add esi, ebx` (port+1) at `0x78A2D5`, **`cmp edi, 0x64; jb`** at `0x78A2F4` |
+| `0x78AF70` | `bdNetImpl::start(params)`: port from `params+2` → findFreePort → the real bind through the socket's vtable (`[vt+8]`) → bdLog `"Requested port %u, using port %u"` (silent in retail) | callers `0x57E5D0`, `0x78B3E0` |
+| `0x78BF70` | `bdNetStartParams::bdNetStartParams`: **`0x78BF9C  66 C7 46 02 02 0C  mov word [esi+2], 0x0C02`** — the requested port is the constant **3074**. `+0x14` gets the same constant (unidentified; not a bind we see) | callers `0x57E5D0`, `0x78ADB0` |
+| `0x57E5D0` | the game's Demonware bring-up: params ctor, STUN hosts `stun.us/eu.demonware.net`, `bdNetImpl::start` | callers `0x5FC640` (from `0x59CEB0`), `0x5FC870` |
+
+A byte scan for the imm32 `22 0C 00 00` finds nothing: the constant is only ever the imm16 `02 0C`
+above.
+
+**Behavioural** (`server/components/dedicated/lobby_port.cpp` hooks the IAT slot and logs every
+AF_INET bind; box, 2026-09-22 23:43 UTC = 00:43 UK on the 23rd, three servers):
+
+```
+inst on 28960 (asked 3074):  bind 28960 ok | bind 3074 ok (probe) | bind 3074 ok (real)
+test 1 on 28962 (asked 3074): bind 28962 ok | bind 3074 FAILED (WSA 10048) | bind 3075 ok (fell forward) | bind 3075 ok
+test 2 on 28964 (asked 3075): bind 28964 ok | bind 3075 FAILED (WSA 10048) | bind 3076 ok (fell forward) | bind 3076 ok
+```
+
+So: probe-bind, close, real bind (two binds per success); `EADDRINUSE` moves it up one; the game
+port is bound before the lobby port. A third instance **does** get 3076. What parked `inst-03`/
+`inst-04` in `vps.md` §15 was not the port; the likeliest cause is the *"Set Optimal Settings?"*
+MessageBox that `dedi.md` §17 found on every boot on that box a few hours later (no_msgbox now
+answers it). That is inference: §15's parked processes were not inspected for a window.
+
+**Patch** (`lobby_port.cpp`, dedicated only): with `ENW_LOBBY_PORT=n`, the imm16 at `0x78BFA0`
+becomes `n` (checked against the six bytes first, in `post_unpack` — in `post_load` the site still
+reads SteamStub ciphertext `FF 24 F8 3A 98 4F`, measured). The engine then asks for `n` and falls
+forward on its own.
+
 ## 4. Open threads
 - Pin `Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`, exact `SV_DropClient`. Anchors:
   SV_AddOperatorCommands 0x62C9B0 (console dispatch), the VM at 0x696E6D. KisakCOD structure +

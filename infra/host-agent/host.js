@@ -70,6 +70,8 @@ const cfg = {
   keyDir: a['key-dir'] || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'keys'),
   maxInstances: Number(a['max-instances'] ?? 8),
   basePort: Number(a['base-port'] ?? 28960),
+  // Each game asks for its Demonware port at lobbyBase + slot (ENW_LOBBY_PORT, dedi.md §19).
+  lobbyBase: Number(a['lobby-base'] ?? 3074),
   launchScript: a['launch-script'] || path.join(REPO, 'tools', 'dev', 'launch.ps1'),
   gameCopy: a['game-copy'] || 'host',   // ZombiesDev\waw-<this>, and the game.lock owner
   // ---- WINE MODE (the Linux box; off unless --wine, docs/kickstart/vps.md §13) --------
@@ -643,7 +645,7 @@ class HostAgent {
     this.link = new GameLinkServer({ host: cfg.linkHost, port: cfg.linkPort, log: log.child('link') })
     this.instances = new InstanceManager({
       root: __dirname, logDir: cfg.logDir, linkHost: cfg.linkHost, linkPort: cfg.linkPort,
-      basePort: cfg.basePort, maxInstances: cfg.maxInstances, launchScript: cfg.launchScript,
+      basePort: cfg.basePort, lobbyBase: cfg.lobbyBase, maxInstances: cfg.maxInstances, launchScript: cfg.launchScript,
       lockOwner: cfg.gameCopy, gameCopy: cfg.gameCopy, wine: cfg.wine, dryRun: cfg.dryRun, log: log.child('inst'),
     })
   }
@@ -696,7 +698,28 @@ class HostAgent {
     timer.unref?.()
   }
 
+  /**
+   * A lease must never map to a game copy that does not exist (the inst-05 outage,
+   * dedi.md §19). Slots are 0..maxInstances-1, so check those copies once at start and cap
+   * the box at the ones that are really there, loudly, instead of failing leases later.
+   */
+  checkSlotCopies() {
+    const w = cfg.wine
+    if (!w || cfg.dryRun || !/\{slot\}/.test(w.gameDir)) return
+    let have = 0
+    for (let s = 0; s < this.instances.maxInstances; s++) {
+      const dir = w.gameDir.replace(/\{slot\}/g, `inst-${String(s + 1).padStart(2, '0')}`)
+      if (!fs.existsSync(path.join(dir, 'CoDWaW.exe'))) break
+      have++
+    }
+    if (have < this.instances.maxInstances) {
+      log.error(`only ${have} game cop${have === 1 ? 'y' : 'ies'} for --max-instances ${this.instances.maxInstances} (${w.gameDir}); capping this box at ${have}`)
+      this.instances.maxInstances = have
+    } else log.info(`${have} game copies for ${have} instance slot(s): ${w.gameDir}`)
+  }
+
   async start() {
+    this.checkSlotCopies()
     await this.link.listen()
     this.instances.linkPort = this.link.port
     this.link.on('hello', (conn, msg) => {

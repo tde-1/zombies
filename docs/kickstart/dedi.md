@@ -160,7 +160,7 @@ localhost and distinguishes "no reply" from "port unreachable".
 | networking | `Winsock Initialized`, `Opening IP socket`; the real bind is **`0.0.0.0:<net_port>`** and `+set net_port 28970` works |
 | "strip local client 0" | **untested** — no client has connected yet |
 | "sleep-based frame pacing" | **unmeasured** — see §4 site 3 |
-| "a party/lobby replacement" | the lobby layer exists and runs on shutdown (`Party_StopParty`, `party_host`, `xblive_hostingprivateparty`) and binds **UDP 3074 with no dvar to change it**. Per R14 there is **no party system in T4 SP**, so joining is plain `connect <ip>:<port>` |
+| "a party/lobby replacement" | the lobby layer exists and runs on shutdown (`Party_StopParty`, `party_host`, `xblive_hostingprivateparty`) and binds **UDP 3074 with no dvar to change it** (it falls forward up to 100 ports when that is taken, and `ENW_LOBBY_PORT` moves it: §19). Per R14 there is **no party system in T4 SP**, so joining is plain `connect <ip>:<port>` |
 
 ---
 
@@ -2736,3 +2736,136 @@ T+50 (… +50 ms: no catch-up)`.
 
 **Unproven**: a real client's `enw_ui` reaching the server (the client half is not built); what a
 remote client draws while frozen; two clients (not possible tonight — B was playing).
+
+## 19. 2026-09-23, 00:30–00:50 UK — three instances on one box: the lobby port was never the limit, and an agent that failed every lease after four
+
+B asked for game servers in reserve, so an agent can test while he plays, and three for now.
+
+### 19.1 The bind site: one hundred ports, not two
+
+Full table in `docs/re/t4-sp-map.md` §10. In short: `bdNetStartParams` (`0x78BF70`) stores the
+constant **3074** at `0x78BF9C` (`66 C7 46 02 02 0C`). `bdNetImpl::findFreePort` (`0x78A1E0`)
+then tries that port and each next one **up to 100 times** (`cmp edi, 0x64`), binding and closing
+a probe socket each time, and the real socket binds the port it found. Every bind in the exe,
+Demonware's and NET_IPSocket's, goes through one IAT slot, WSOCK32 #2 at `0x7EB3E8`.
+
+The bind log below backs the call graph: a third instance asking for 3074 gets `WSAEADDRINUSE`
+twice and ends up on 3076. `vps.md` §15's "one fallback to 3075" was an inference from a port
+table, and it was wrong. §15's third instance, which bound nothing, was most likely stuck behind
+the §17 MessageBox. That is inference too: nobody looked for a window on it.
+
+### 19.2 The patch: `server/components/dedicated/lobby_port.cpp`
+
+* **Bind log** (`post_load`, dedicated only): an IAT hook on WSOCK32 #2 logs every AF_INET bind:
+  the address, the port, `ok` or `FAILED (WSA n)`, and whether it was the lobby port asked for or
+  one it fell forward to. Behaviour is unchanged, and the hook preserves `GetLastError` for
+  the engine's `WSAGetLastError`. Off: `ENW_NO_BIND_LOG=1`.
+* **`ENW_LOBBY_PORT=n`** (`post_unpack`): rewrites the imm16 at `0x78BFA0` from 3074 to `n`,
+  after checking all six instruction bytes. The engine then asks for `n` and still falls forward
+  by itself, and it knows which port it really has. A bind-time rewrite (option (a)) would have left
+  it believing 3074. **Unset means stock.** The first build patched in `post_load` and found
+  SteamStub ciphertext (`FF 24 F8 3A 98 4F`) at the site. It refused to patch, as intended, and the
+  patch moved to `post_unpack`.
+* Dedicated only (`dedicated 1|2` on the command line), like `no_msgbox`.
+
+The host agent sets `ENW_LOBBY_PORT = --lobby-base (3074) + slot`, so every instance asks for its
+own port and two instances that boot together cannot race for the same probe.
+
+### 19.3 The host agent: `{slot}`, and why B's Play failed at 23:27 box time
+
+**The outage.** `run-host.sh` mapped `waw-{id}` to a game copy, and the id counter grows for
+the agent's whole life. The archive lane's map proofs made four boots in one agent lifetime, and
+every lease after that failed with `no game copy at /home/waw/pfx/drive_c/zdev/waw-inst-05`. The
+failures ran from inst-05 to inst-24 between 23:27 and 23:32 box time, with B's own Play among
+them. Before tonight only a restart reset the counter.
+
+**The fix** (`lib/instances.js`, `host.js`):
+
+* **`{slot}`** is `inst-01`, `inst-02`, … and comes from the game port, `(port - base) / 2`. The
+  manager hands ports out lowest-free-first and takes them back on remove, so a slot is reused
+  as soon as its instance is retired. The id still counts up, and only the copy and homepath
+  follow the slot. `run-host.sh` and host.js's defaults now use `{slot}`.
+* **`checkSlotCopies()`** runs at start. If the copies for slots `0..max-1` are not all there,
+  the agent logs an error and caps `max-instances` at the number that exist. A lease can no
+  longer map to a missing copy.
+* **One game boots at a time.** `boot()` holds the next real game until the previous one reaches
+  `map_loaded`, ends, fails, or 90 s have passed. §15 measured that simultaneous starts lose
+  instances.
+* **`--lobby-base`** (default 3074) → `ENW_LOBBY_PORT`.
+* Tests: `test/run-all.js` "game copies by slot": 40 leases in a row with two instances held
+  never map past `waw-inst-03`; a retired slot is reused; the cap holds; `--lobby-base`. 61/61
+  pass.
+
+### 19.4 Proof on the box (2026-09-22 23:38–23:45 UTC)
+
+The box DLL is **`6fccc0e046eb008cb1df9105f07147821332697872842f3e89a3c024c9b9452c`**
+(1,823,744 bytes). It was built from a clean worktree at `257a3da`
+(`C:\Users\b\ZombiesDev\wt-pause`, `build.ps1 -Name dedi`) and installed into all seven
+`waw-*/binkw32.dll` while the box was idle. The rollback copy of `86f12b12…` is at
+`/home/waw/binkw32.rollback-86f12b12.dll`. The pre-change `host.js`, `instances.js` and
+`run-host.sh` are at `/home/waw/*.bak-pre-lobby`.
+
+**A lease through the service** (fake ID 76561198000000001, `m_abb67742`): `inst-02` →
+`waw-inst-01` (slot 0), `lobby_port: Demonware game socket asks for 3074`, `map_loaded` 6 s after
+boot.
+
+**Three at once.** The site allows **one live lease per box**. `assignments.lease()` marks every
+other live lease on that box `superseded` whatever its players are
+(`web/server/lib/assignments.js`, `UPDATE assignments SET state='superseded' … WHERE box_id=?`),
+and the host agent retires the superseded instance. So three leases in a row give one instance,
+not three, and a different fake SteamID per lease does not change that. For the proof, the
+service instance stayed on its lease. A second, site-less host agent ran the same code from
+`/home/waw/enw-test` (`--boot 2 --base-port 28962 --link-port 38710`, copies `waw-tinst-01/02`)
+and booted two more beside it. A guard script would have SIGKILLed only the test games if
+MemAvailable fell under 120 MB. It never fired.
+
+Round A (`--lobby-base 3075`, the patch doing the choosing):
+
+```
+0.0.0.0:28960  pid 220102 (service, slot 0)     0.0.0.0:3074  pid 220102   asked 3074
+0.0.0.0:28962  pid 220600 (test, waw-tinst-01)  0.0.0.0:3075  pid 220600   asked 3075, got it
+0.0.0.0:28964  pid 220640 (test, waw-tinst-02)  0.0.0.0:3076  pid 220640   asked 3076, got it
+map_loaded: 23:40:14, 23:41:32, 23:41:38 (the 2nd test boot waited for the 1st's map_loaded)
+oob.py getstatus from B's PC: 28960 ANSWERED, 28962 ANSWERED, 28964 ANSWERED
+```
+
+Round B (`--lobby-base 3074`, the stock request, to watch the engine's own fallback): the same
+three ports came out, by falling forward. Test 1 asked for 3074 → `FAILED (WSA 10048)` → 3075;
+test 2 asked for 3075 → `FAILED` → 3076. Both loaded their maps.
+
+**What three cost** (Nacht, no players, `com_maxfps 60`):
+
+| | RSS | CPU (30 s, `/proc/<pid>/stat`) |
+|---|---|---|
+| service inst | 304 MB | 0.314 core |
+| test 1 | 304 MB | 0.320 core |
+| test 2 | 305 MB | 0.336 core |
+| **box** | used 3,519 of 3,819 MB, **MemAvailable 292–300 MB** (min over the run) | load 1.52 on 2 cores |
+
+Afterwards the test agent was stopped with SIGINT, which stopped its own two games, and the lease
+was cancelled. At 23:44 B pressed Play (m_d2e29686 → m_6d80aa20). His lease retired the leftover
+service instance and booted on slot 0 with the new DLL and host code: `map_loaded` 6 s,
+`auth slot 0 … ALLOW`, `game live`. B is playing on this build.
+
+### 19.5 What four needs, and what is not done
+
+* **Four instances need about 300 MB more.** Three leave about 300 MB, and the fourth takes about
+  305 MB, which puts the box at the OOM edge. Steam's CEF (steamwebhelper, 9 processes) still
+  holds about 2.3 GB. Two cheap ways to find the room: run Steam without its browser, or move to a
+  bigger box. The bigger box is rule 8, and the Steam restart puts B's login at risk.
+  **Untested.** CPU is not the limit: 1.0 of 2 cores for three idle servers, but a full
+  four-player late round is unmeasured.
+* **The site hands out one game per box.** `max-instances 3` is the box's cap, but until
+  `assignments.lease()`/`forBox()` and the host's `onAssignment` carry several live leases per
+  box, B pressing Play while an agent's lease is live **supersedes the agent's game**, and the
+  reverse is also true. That is the real blocker for "an agent tests while I play". It is the
+  site's lane (`web/`), plus a small change in `onAssignment`, which currently retires every
+  instance on a different match id.
+* **The running agent** is the 23:38 restart. It has the slot fix and `ENW_LOBBY_PORT`, but not
+  `checkSlotCopies` or `--lobby-base`. `run-host.sh` already says `--max-instances 3`. Both take
+  effect at the next restart, and that restart waits for idle because B is playing. The site's box
+  row still says `max_instances 2`.
+* `/home/waw/enw-test`, `/home/waw/run-test3.sh`, `waw-tinst-01/02` and `homes\tinst-01/02` are
+  left on the box for the next multi-instance test (about 70 MB).
+* The `linked (… Sep 22 2026 20:28:57)` build string in the journal is still stale (§17's cosmetic
+  note).

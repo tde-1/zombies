@@ -486,8 +486,9 @@ into `steamapps/common/Call of Duty World at War`.
   site**~~ — **registered 05:14, §16**: B lifted rule 7 for that one row, the database was backed
   up first, and `capabilities.play` is now `true`. What is still not done is a **real lease**,
   which needs a logged-in session at the site and is B's to start.
-- ~~**Instances-per-box is unmeasured.**~~ **It is two — §15**, and the limit is the lobby layer's
-  UDP 3074/3075 pair, not CPU, RAM or disk.
+- ~~**Instances-per-box is unmeasured.**~~ ~~**It is two — §15**, and the limit is the lobby layer's
+  UDP 3074/3075 pair, not CPU, RAM or disk.~~ **It is three (2026-09-23, `dedi.md` §19)**: the lobby
+  socket probes 100 ports, and RAM is the next limit (~300 MB left with three up).
 - ~~**The German depot is still installed.**~~ **Uninstalled** through the client; the box now runs
   off B's English tree at `/home/waw/waw-en`. §13.
 - Steam offline mode, and whether SteamStub tolerates several simultaneous decryptions, are both
@@ -686,6 +687,16 @@ change.
 
 ## 15. Instances per box: **two**, and the limit is not CPU, RAM or disk
 
+> **CORRECTED 2026-09-23 (`dedi.md` §19): the ceiling is now three, and the port pair was
+> never the limit.** The Demonware socket's `findFreePort` (`0x78A1E0`) tries **100** ports
+> up from 3074, not two. Three servers ran together on 28960/28962/28964 with lobby ports
+> 3074/3075/3076, all answering from outside, ~304 MB RSS and ~0.33 core each, MemAvailable
+> ~300 MB left. `run-host.sh` says `--max-instances 3`, and each instance gets
+> `ENW_LOBBY_PORT=3074+slot`. What parked inst-03/04 below was most likely the "Set Optimal
+> Settings?" MessageBox (`dedi.md` §17). That is inference: nobody looked for a window. **Four
+> needs about 300 MB more**, so Steam without its CEF, or a bigger box (rule 8). The table and
+> "Why two" below are kept as measured, and their conclusion is withdrawn.
+
 Four per-instance game copies (`waw-inst-01…04`, each 8 MB of real files with `main/` and `zone/`
 symlinked into `waw-en`), each with its own `fs_homepath`, started **one at a time**, each waited
 on until it answered:
@@ -823,13 +834,13 @@ The `exe sha256` in that footer is **B's `CoDWaW.exe`**, recorded by a game runn
 
 **`kill -9` on a game leaves `__CoDWaW` behind, and the next launch hangs with nothing in any log.** The marker is 4 bytes holding the previous PID; a stale one makes the engine put up "Run In Safe Mode?" *before* it opens `console.log`. The symptom is a `CoDWaW.exe` sitting at ~50 MB, no `console.log` at all, and our own DLL reporting `game: engine never came up within 120000 ms`.
 
-`05-run-dedi.sh` already deleted it; the host agent's Wine path did not, and now does — **unconditionally**, which is right here and wrong on Windows. `launch.ps1` deletes it only when the PID inside is dead and refuses when it is live, because on Windows that marker is a real single-instance interlock. On this box it is not: the interlock is the 3074/3075 pair (§15), every instance has its own copy and homepath, and the marker is one shared file in one prefix that instance two would always find live. The code says so at the site of the deletion.
+`05-run-dedi.sh` already deleted it; the host agent's Wine path did not, and now does — **unconditionally**, which is right here and wrong on Windows. `launch.ps1` deletes it only when the PID inside is dead and refuses when it is live, because on Windows that marker is a real single-instance interlock. On this box it is not: each instance has its own lobby port (`dedi.md` §19; the "3074/3075 pair" of §15 was never an interlock), every instance has its own copy and homepath, and the marker is one shared file in one prefix that instance two would always find live. The code says so at the site of the deletion.
 
 After the fix, the same run reaches `map_loaded` in **6 seconds** and logs `PER-FRAME TICK IS LIVE`.
 
 ### Capped at two
 
-`max_instances` is **2** in the box row and `--max-instances 2` in `/home/waw/run-host.sh`. Both are the measured ceiling from §15, not a guess.
+`max_instances` is **2** in the box row and `--max-instances 2` in `/home/waw/run-host.sh`. Both are the measured ceiling from §15, not a guess. **2026-09-23: `run-host.sh` is now `--max-instances 3`, measured (`dedi.md` §19). The box row still says 2, and the site leases one game per box anyway.**
 
 ## 17. The watersim fix on the box: the frame body returns, under load (2026-09-22 07:55)
 

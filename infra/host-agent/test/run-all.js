@@ -10,6 +10,7 @@ import { ReplayWriter, verifyFile, readFooter, readChunk, readEvents } from '../
 import { issue, check, TokenGuard } from '../lib/tokens.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
+import { InstanceManager } from '../lib/instances.js'
 
 const TMP = mkdirp(path.join(os.tmpdir(), 'enw-host-tests'))
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..')
@@ -706,6 +707,51 @@ t('a long pause does not come back as an AFK warning', () => {
   r.tickAfk(31 * MIN)
   ok(!r.players.get(0).afkWarned && !r.players.get(1).afkWarned, 'nobody is AFK-warned for having paused')
 })
+// ---- game copies by SLOT, not by id (dedi.md §19, 2026-09-23) --------------------------
+// MEASURED on the box 2026-09-22 23:27-23:32: ids grow for the agent's whole life, the copy
+// was `waw-{id}`, and after four boots every lease failed with `no game copy at
+// .../waw-inst-05` (...inst-24) until the agent restarted — B's own Play among them.
+console.log('\n== game copies by slot (the inst-05 outage) ==')
+{
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const mgr = new InstanceManager({
+    root: TMP, logDir: path.join(TMP, 'slots'), linkHost: '127.0.0.1', linkPort: 1, maxInstances: 3,
+    wine: { gameDir: '/home/waw/pfx/drive_c/zdev/waw-{slot}', homeWin: 'C:\zdev\homes\{slot}' },
+    dryRun: true, log: quiet,
+  })
+  const COPIES = new Set(['waw-inst-01', 'waw-inst-02', 'waw-inst-03'])
+  const copyOf = (i) => path.posix.basename(i.winePaths().gameDir)
+  let churnOk = true, churnWhy = ''
+  // Forty leases one after another (retire, boot), with two others held throughout.
+  const a = mgr.create({ kind: 'game' }), b = mgr.create({ kind: 'game' })
+  for (let n = 0; n < 40; n++) {
+    const c = mgr.create({ kind: 'game' })
+    if (!COPIES.has(copyOf(c))) { churnOk = false; churnWhy = `${c.id} -> ${copyOf(c)}`; break }
+    await mgr.remove(c.id)
+  }
+  t('three live instances get three different existing copies, homepaths and lobby ports', () => {
+    const c = mgr.create({ kind: 'game' })
+    eq([a, b, c].map(copyOf), ['waw-inst-01', 'waw-inst-02', 'waw-inst-03'])
+    eq([a, b, c].map((i) => i.winePaths().homeWin), ['C:\zdev\homes\inst-01', 'C:\zdev\homes\inst-02', 'C:\zdev\homes\inst-03'])
+    eq([a, b, c].map((i) => i.gameEnv().ENW_LOBBY_PORT), ['3074', '3075', '3076'])
+    ok(c.id === 'inst-43', `the id still counts up (${c.id}); only the copy is by slot`)
+  })
+  t('forty leases in a row never map to a copy past the three that exist', () => ok(churnOk, churnWhy))
+  await mgr.remove(b.id)
+  t('a retired slot is reused: the next boot takes the lowest free copy', () => {
+    const d = mgr.create({ kind: 'game' })
+    eq(copyOf(d), 'waw-inst-02'); eq(d.gameEnv().ENW_LOBBY_PORT, '3075')
+  })
+  t('the cap still holds at --max-instances', () => {
+    let threw = false
+    try { mgr.create({ kind: 'game' }) } catch { threw = true }
+    ok(threw, 'a fourth instance on a three-instance box must be refused')
+  })
+  t('--lobby-base moves every instance\'s lobby port together', () => {
+    const m2 = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'slots2'), linkHost: '127.0.0.1', linkPort: 1, basePort: 28962, lobbyBase: 3075, dryRun: true, log: quiet })
+    eq([m2.create({}), m2.create({})].map((i) => i.gameEnv().ENW_LOBBY_PORT), ['3075', '3076'])
+  })
+}
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`)
 if (fail) { for (const [s, n, m] of results) if (s === 'FAIL') console.log(`  FAIL ${n}: ${m}`) }
 process.exit(fail ? 1 : 0)

@@ -1052,6 +1052,16 @@ wrong** — worth saying plainly, because the first reading was "party join is b
 
 ### 10.5 Two headless instances on one box — measured, and it works
 
+> **2026-09-23 (`dedi.md` §19): three, and the agent is fixed for it.** The engine falls forward
+> up to 100 lobby ports, not just 3074 → 3075. Each game gets `ENW_LOBBY_PORT = --lobby-base +
+> slot`. On the box the game copy and homepath follow the **slot** (`{slot}` = `inst-01`… by game
+> port), not the ever-growing id: after four boots the old `waw-{id}` failed every lease ("no game
+> copy at waw-inst-05", B's Play included). `checkSlotCopies()` caps `max-instances` at the
+> copies that exist. Real games boot one at a time, each waiting for the previous `map_loaded`,
+> for at most 90 s. Three were proven concurrently on the box. **The site still leases one game
+> per box** (`assignments.lease` supersedes by `box_id`), so a second Play replaces the first
+> game.
+
 `dedi.md` §9.2 item 4 records this as unsolved: several games share
 `%LOCALAPPDATA%\Activision\codwaw` including the single-instance `__CoDWaW` marker, and
 "collide on **UDP 3074**". **The engine half of that is wrong, and the measurement is

@@ -159,7 +159,7 @@ export class Instance extends EventEmitter {
       // from whatever it is given, so this is not what makes a third instance possible; it
       // makes each instance's port its own, so two booting together never race for one.
       // The box firewall opens 3074-3079. An older DLL ignores it.
-      ENW_LOBBY_PORT: String(3074 + this.slot()),
+      ENW_LOBBY_PORT: String(this.lobbyPort()),
     }
   }
 
@@ -173,6 +173,9 @@ export class Instance extends EventEmitter {
     const n = Math.floor((Number(this.port) - Number(this.mgr.basePort)) / 2)
     return Number.isFinite(n) && n >= 0 ? n : 0
   }
+
+  /** The Demonware port this instance asks for: --lobby-base (3074) + its slot. */
+  lobbyPort() { return (Number(this.mgr.lobbyBase) || 3074) + this.slot() }
 
   /** `inst-01` for slot 0: the name of the per-slot game copy and homepath on a box. */
   slotName() { return `inst-${String(this.slot() + 1).padStart(2, '0')}` }
@@ -285,7 +288,7 @@ export class Instance extends EventEmitter {
         try { if (fs.existsSync(marker)) { fs.unlinkSync(marker); this.log.debug(`cleared the stale safe-mode marker ${marker}`) } } catch (e) { this.log.warn(`could not clear ${marker}: ${e.message}`) }
       }
       try { fs.mkdirSync(path.join(this.mgr.wine.prefix, 'drive_c', ...homeWin.replace(/^[A-Za-z]:\\/, '').split('\\'), 'main'), { recursive: true }) } catch { /* best effort */ }
-      this.log.info(`wine: ${gameDir} -> fs_homepath ${homeWin} (slot ${this.slot()}, lobby port ${3074 + this.slot()})`)
+      this.log.info(`wine: ${gameDir} -> fs_homepath ${homeWin} (slot ${this.slot()}, lobby port ${this.lobbyPort()})`)
     } else if (this.kind === 'game') {
       // ONE REAL GAME PER BOX, and say so out loud.
       //
@@ -521,13 +524,14 @@ export class Instance extends EventEmitter {
 }
 
 export class InstanceManager extends EventEmitter {
-  constructor({ root, logDir, linkHost, linkPort, basePort = 28960, maxInstances = 8, launchScript, lockOwner = 'host', gameCopy = 'host', wine = null, dryRun = false, sampleMs = 5000, log } = {}) {
+  constructor({ root, logDir, linkHost, linkPort, basePort = 28960, lobbyBase = 3074, maxInstances = 8, launchScript, lockOwner = 'host', gameCopy = 'host', wine = null, dryRun = false, sampleMs = 5000, log } = {}) {
     super()
     this.root = root
     this.logDir = logDir
     this.linkHost = linkHost
     this.linkPort = linkPort
     this.basePort = basePort
+    this.lobbyBase = lobbyBase
     this.maxInstances = maxInstances
     this.launchScript = launchScript
     this.lockOwner = lockOwner

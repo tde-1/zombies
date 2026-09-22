@@ -7,6 +7,8 @@
 
 * **2026-09-22 late — object storage (`docs/kickstart/storage.md`)**: the site can 302 installers, blockmaps, map files and replay `.glb`s to two public Hetzner buckets (`S3_BUCKET_FILES`/`S3_BUCKET_MAPS` in `infra\site.env`, off until set); `tools/s3/sync.js`/`check.js`; `publish-update.js` uploads too. **Not live yet: the keys in `infra\s3.env` see no buckets** (the names are not found in nbg1/fsn1/hel1). **Superseded 23:05: ONE bucket `enw-zombies` created by the coordinator on B's direct instruction, public-read, installers + 26.5 GB of maps synced, site switched over (keepalive loop restarted so it read the new `site.env`), installer and map downloads 302 to the bucket at ~47 MB/s; replay `.glb`s held back. `storage.md` §6.**
 
+* **2026-09-23 00:45 UK — the box runs three game servers at once (`dedi.md` §19).** The "3074 + one fallback" limit was wrong. The engine probes 100 lobby ports, and the new dedi DLL `6fccc0e0…` (`lobby_port.cpp`) logs every bind and takes `ENW_LOBBY_PORT` (3074+slot). Three servers were proven up together, all answering, ~304 MB and ~0.33 core each, ~300 MB RAM left. Four needs Steam without its browser or a bigger box. **Fixed an outage:** after four boots the host agent failed every lease, B's Play included (23:27–23:32 box time, "no game copy at waw-inst-05"). Copies now go by slot. **Still one game per box at the site**: a second Play supersedes the first, and that is the web lane's to change.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
