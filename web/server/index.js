@@ -110,6 +110,15 @@ app.get('/api/health', (req, res) => {
 // No cache — an update nobody can see because a proxy held the old latest.yml is the
 // failure mode this whole feature exists to avoid.
 const UPDATES_DIR = path.join(__dirname, '..', 'public', 'updates')
+// The installer and its blockmap are 302'd to the files bucket when S3_BUCKET_FILES is
+// set and the bucket holds a same-size copy (lib/bucket.js, docs/kickstart/storage.md).
+// latest.yml is always answered from here: it is 400 bytes and it is the feed. Its
+// `files[].url` entries are relative, so electron-updater resolves them against THIS
+// URL and then follows the 302 (builder-util-runtime httpExecutor handleResponse; the
+// Electron executor's 'redirect' handler; both strip Authorization cross-origin).
+const bucket = require('./lib/bucket')
+app.use('/updates', bucket.redirectMiddleware('files', UPDATES_DIR,
+  (rel) => (rel.includes('/') || /\.ya?ml$/i.test(rel) ? null : bucket.keys.update(rel))))
 app.use('/updates', express.static(UPDATES_DIR, {
   index: false,
   setHeaders: res => res.setHeader('Cache-Control', 'no-cache'),
@@ -136,7 +145,13 @@ app.use('/media', (req, res) => res.status(404).type('text/plain').send('no such
 // glb fails a long way from the cause.
 {
   const [mapsDir, mapsStatic] = require('./routes/replay').mapsStatic()
-  if (fs.existsSync(mapsDir)) app.use('/mapdata', mapsStatic)
+  // The .glb is 302'd to the maps bucket when it holds a same-size copy; the small,
+  // no-cache .meta.json always comes from here.
+  if (fs.existsSync(mapsDir)) {
+    app.use('/mapdata', bucket.redirectMiddleware('maps', mapsDir,
+      (rel) => (/\.glb$/i.test(rel) ? bucket.keys.mapdata(rel) : null)))
+    app.use('/mapdata', mapsStatic)
+  }
   app.use('/mapdata', (req, res) => res.status(404).type('text/plain').send('no such map export'))
 }
 

@@ -58,3 +58,6 @@ infra/hcloud.env
 # Map art copied out of the archive by web/server/db/import-archive.js. Derived;
 # `npm run import:archive` puts it back.
 web/public/media/
+
+# Object-storage keys (docs/kickstart/storage.md). infra/s3.env.example is the template.
+infra/s3.env

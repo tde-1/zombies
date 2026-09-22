@@ -2,7 +2,7 @@
   "name": "enw-zombies-web",
   "version": "0.1.0",
   "private": true,
-  "description": "ENW Zombies \u2014 the website at zombies.enw.gg. A port of ENW Movement (CSGO-Matchmaker/server + movement-client) with the nouns changed.",
+  "description": "ENW Zombies — the website at zombies.enw.gg. A port of ENW Movement (CSGO-Matchmaker/server + movement-client) with the nouns changed.",
   "license": "AGPL-3.0-or-later",
   "engines": {
     "node": ">=20"
@@ -15,15 +15,18 @@
     "build": "npm --prefix client install && npm --prefix client run build",
     "client": "npm --prefix client run dev",
     "test": "npm run check",
-    "check": "node test/run-all.js && node test/local-run.js && node test/launcher-signin.js && node test/game-chat.js",
+    "check": "node test/run-all.js && node test/local-run.js && node test/launcher-signin.js && node test/game-chat.js && node test/bucket.js",
     "check:game-chat": "node test/game-chat.js",
     "check:lib": "node test/run-all.js",
     "check:mvp": "node test/local-run.js",
     "import:archive": "node server/db/import-archive.js",
     "live-bridge": "node tools/live-bridge.js",
-    "check:signin": "node test/launcher-signin.js"
+    "check:signin": "node test/launcher-signin.js",
+    "check:bucket": "node test/bucket.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1138.0",
+    "@aws-sdk/lib-storage": "^3.1138.0",
     "better-sqlite3": "^12.2.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",

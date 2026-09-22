@@ -26,10 +26,16 @@
 //   node tools/publish-update.js
 //   node tools/publish-update.js --to D:\r2-sync\updates
 //   node tools/publish-update.js --check          # verify only, publish nothing
+//   node tools/publish-update.js --no-bucket      # skip the files-bucket upload
+//
+// After the local copy it ALSO uploads the installer, the blockmap and then latest.yml
+// to the files bucket (tools/s3/lib.cjs, docs/kickstart/storage.md) when infra/s3.env
+// has keys, so a publish is one command. The site 302s the installer to the bucket copy.
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const LAUNCHER = path.resolve(HERE, '..')
@@ -39,6 +45,7 @@ const DIST = path.join(LAUNCHER, 'dist')
 const argv = process.argv.slice(2)
 const val = (f) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : null }
 const CHECK_ONLY = argv.includes('--check')
+const NO_BUCKET = argv.includes('--no-bucket')
 const DEST = path.resolve(val('--to') || process.env.ENW_UPDATE_DIR || path.join(REPO, 'web', 'public', 'updates'))
 
 const die = (...lines) => {
@@ -106,6 +113,24 @@ const pubHash = crypto.createHash('sha512').update(fs.readFileSync(pubInstaller)
 if (sha512 && pubHash !== sha512) die('The copy that landed in the feed directory does not hash to what latest.yml says.')
 
 console.log(`  feed ready in ${DEST}`)
+
+// 5. The files bucket. Installer and blockmap first, latest.yml last, so the bucket feed
+//    never names an installer that has not arrived. Not fatal when there are no keys: the
+//    site still serves the feed locally, exactly as before the bucket existed.
+if (!NO_BUCKET) {
+  const s3 = createRequire(import.meta.url)(path.join(REPO, 'tools', 's3', 'lib.cjs'))
+  const cfg = s3.loadConfig()
+  if (!s3.hasKeys(cfg)) {
+    console.log(`  bucket: skipped - no keys in ${cfg.envFile}. Later: node tools/s3/sync.js --only updates`)
+  } else {
+    const entries = s3.updatesEntries(DEST)
+      .filter((e) => [installerName, `${installerName}.blockmap`, 'latest.yml'].includes(path.basename(e.file)))
+    const st = await s3.sync(cfg, cfg.files, entries, { prefix: 'updates/' })
+    if (st.failed) die(`${st.failed} upload(s) to the ${cfg.files} bucket failed. The local feed is fine; re-run`,
+      '  node tools/s3/sync.js --only updates')
+    for (const e of entries) console.log(`  public: ${s3.publicUrl(cfg, cfg.files, e.key)}`)
+  }
+}
 console.log('')
 console.log('  Serve it and check you get YAML, not a web page:')
 console.log('    curl -u beta:<password> https://zombies.enw.gg/updates/latest.yml')

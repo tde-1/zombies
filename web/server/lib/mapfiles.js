@@ -119,7 +119,11 @@ function forMap (bsp) {
       size: f.size,
       sha256: f.sha256,
       kind: f.kind,
-      url: `/api/maps/${encodeURIComponent(e.bsp)}/files/${encodeURIComponent(f.path)}`
+      url: `/api/maps/${encodeURIComponent(e.bsp)}/files/${encodeURIComponent(f.path)}`,
+      // The maps bucket's copy (docs/kickstart/storage.md), when the site is configured
+      // with one. A hint, not a promise: `url` stays the stable address, and it 302s to
+      // this itself once the copy is verified present. Null when no bucket is configured.
+      mirror_url: require('./bucket').mirrorUrl('maps', require('./bucket').keys.mapFile(e.bsp, f.path))
     })),
     // Honest about where this is coming from: B's home connection behind a tunnel, not
     // a CDN. The launcher shows it so a slow download does not look like a hang.
@@ -145,7 +149,13 @@ function resolveFile (bsp, rel) {
   // Belt and braces: the resolved path must still be inside the map's own folder.
   if (!path.resolve(full).toLowerCase().startsWith(path.resolve(e.dir).toLowerCase() + path.sep)) return null
   if (!fs.existsSync(full)) return null
-  return { full, size: f.size, sha256: f.sha256 }
+  return { full, size: f.size, sha256: f.sha256, bsp: e.bsp, rel: f.path.replace(/\\/g, '/') }
 }
 
-module.exports = { forMap, available, resolveFile, ARCHIVE }
+// Every servable map and its files, straight from the archive's report — no database.
+// tools/s3/sync.js mirrors exactly this list into the maps bucket.
+function served () {
+  return [...read().values()].filter(e => e.files.length)
+}
+
+module.exports = { forMap, available, resolveFile, served, ARCHIVE }

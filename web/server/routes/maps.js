@@ -134,9 +134,23 @@ function router() {
 
   // The bytes. `Range` is supported because these are 200 MB - 1 GB over a tunnel from
   // a home connection, and a download that cannot resume is a download that fails.
-  r.get('/:key/files/:name', (req, res) => {
+  //
+  // When the maps bucket holds a same-size copy (lib/bucket.js), this is a 302 to it
+  // instead: the launcher's fetch follows it, drops the beta password and the cookie on
+  // the way (cross-origin), and a Range header travels with it. Otherwise, as before.
+  r.get('/:key/files/:name', async (req, res) => {
     const f = mapfiles.resolveFile(req.params.key, req.params.name)
     if (!f) return res.status(404).json({ error: 'no such file for that map' })
+
+    try {
+      const bucket = require('../lib/bucket')
+      const url = await bucket.target('maps', bucket.keys.mapFile(f.bsp, f.rel), f.size)
+      if (url) {
+        if (f.sha256) res.setHeader('x-enw-sha256', f.sha256)
+        res.setHeader('cache-control', 'no-cache')
+        return res.redirect(302, url)
+      }
+    } catch { /* serve it locally */ }
 
     res.setHeader('content-type', 'application/octet-stream')
     res.setHeader('accept-ranges', 'bytes')
