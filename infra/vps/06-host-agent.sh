@@ -57,8 +57,13 @@ cat > /home/waw/run-host.sh <<'RUN'
 # parks inside Com_Init (vps.md §15).
 cd /home/waw/enw/infra/host-agent
 export ZOMBIES_DEV=/home/waw/zdev-host
+# --require-token true is NOT belt and braces. host.js computes it as `!!a.site`,
+# reading the --site ARGUMENT and not ENW_SITE, so a box whose site comes from the
+# environment -- which is how a systemd unit must do it, to keep the secret off every
+# command line -- silently logs `token checks advisory` and lets an unsigned join in.
+# docs/kickstart/vps.md section 19.
 exec /opt/node24/bin/node host.js \
-  --game --wine \
+  --game --wine --require-token true \
   --wine-game-dir '/home/waw/pfx/drive_c/zdev/waw-{id}' \
   --wine-homepath 'C:\zdev\homes\{id}' \
   --base-port 28960 --max-instances 2 --dash off "$@"

@@ -1049,3 +1049,78 @@ systemd-run --unit=enw-oneshot-game --uid=waw --gid=waw \
 
 So the result row is from a **real game on the real box against the real site**, reached without a
 party. A leased game is still B's to start, and the box is back on `enw-host-agent`, idle.
+
+## 19. Identity on the box: a forged token is refused, and a real one cannot be faked (2026-09-22 15:20)
+
+`bd3bd59` (referee: token parsed at connect) and `9506d04` (host: identity on the result) were
+rebuilt from HEAD into `build\vps` and shipped to the box with `infra/host-agent/` in one session.
+
+```
+DLL sha256  318dfd609f45a07b831275025a03e81844c0f41413dae70a06eb9589f2c27bec   (1,570,816 bytes)
+```
+
+in every `zdev/waw-*` copy. `node test/run-all.js` on B's PC: **46 passed, 0 failed**. After the
+restart: `play: true`, box `zombies-dev` **idle**, 0 instances, replay key still pinned.
+
+### The bug this found, and it was live on the box for the whole evening
+
+**A box whose site comes from the environment does not enforce invite tokens.** `host.js` computes
+
+```js
+requireToken: a['require-token'] != null ? a['require-token'] !== 'false' : !!a.site,
+```
+
+— `a.site`, the **`--site` argument**. But `cfg.site` itself is `a.site || process.env.ENW_SITE`,
+and a systemd unit must pass the site through the environment, because that is how the secret
+beside it stays off every command line (§16). So the box polled the live site, pinned its replay
+key, and logged:
+
+```
+site invite key b74d9a7c9874d877 loaded — token checks advisory
+```
+
+**`advisory`, not `ENFORCED`** — every join since §16 would have been seated with no token at all.
+`host.md` §10.2's transcript says `ENFORCED` because that run passed `--site` on the command line.
+
+Fixed here by passing `--require-token true` explicitly in `/home/waw/run-host.sh`
+(`infra/vps/06-host-agent.sh` writes it, with the reason at the line), and the box now logs
+`token checks ENFORCED`. **The real fix belongs in `host.js`** — `requireToken` should be computed
+from `cfg.site`, not from `a.site` — and is the host lane's to make. Until it is, any box
+configured by environment is open.
+
+### The run: a forged token, refused, on the live box
+
+**A valid token could not be minted, and deliberately was not.** The box verifies against the
+**live** site's public invite key, so only a token the live site signed for a real lease can pass;
+minting one would mean using the live site's private key for a lease that does not exist. The
+brief forbade that and so does this lane. `tools/dev/authhost.mjs` mints against a scratch
+`ZM_KEY_DIR`, never `web/keys` — which is exactly what makes it a **forgery** from the live box's
+point of view.
+
+So the proof is the refusal path, end to end, against a game on the box with tokens enforced
+(match `m_1dcb3335`):
+
+```
+referee: identity gate armed, match=m_1dcb3335
+referee: player_connect slot 0 name='anna-jpg' steamid=76561198999999999 identity=claimed
+host/inst-01  auth slot 0 anna-jpg 76561198999999999: DENY (bad_signature) -> identity refused
+referee: slot 0 REFUSED (bad_signature) -- its roster row carries no steamid and nothing
+         may be awarded to it. referee.md 13.
+referee: console command queued: clientkick 0
+referee: clientkick 0 (bad_signature) queued
+referee: player_disconnect slot 0 ('anna-jpg')
+```
+
+**129 ms** from `player_connect` to `REFUSED`, and **38 ms** more to the player being gone. Both
+lines of defence held: the roster row carries no steamid whatever happens next, and the kick
+landed as well. The `sid` in the log is the forged `…999999999` — `--forge` rewrites the payload
+and keeps the original signature, so the edit is what fails, not the token's shape.
+
+*(The steamid is an invented `76561198000000042` / `…999999999`, per the standing rule that test
+data never carries a real person's id.)*
+
+### What is left
+
+**A `verified` identity has never been seen on this box.** That needs a token the live site minted
+for a real lease, which needs a party — B's to start. Everything under it is proved: the gate arms
+with the right match id, a bad signature is caught, the row is stripped, and the player is kicked.

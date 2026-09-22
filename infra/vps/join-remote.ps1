@@ -36,6 +36,11 @@ param(
     [string]$From = 'vps',          # build\<this>; NOT build\dedi, which is another lane's
     [int]$WatchSeconds = 300,
     [int]$WaitLockMinutes = 20,
+    # An invite token to present at connect, and the lease it is for. The box verifies
+    # against the LIVE site's public invite key, so only a token the live site minted for
+    # a real lease can pass -- which is why the refusal path is the one a test can drive.
+    [string]$AuthToken = '',
+    [string]$MatchId = '',
     [string]$DevRoot = 'C:\Users\b\ZombiesDev'
 )
 $ErrorActionPreference = 'Stop'
@@ -71,8 +76,11 @@ $env:ENW_DEDI_SUPPRESS_MAPSUMMARY = $null
 # dies with "A positional parameter cannot be found that accepts argument 'logfile'".
 $clientArgs = @('+set', 'logfile', '2', '+set', 'zombiemode', '1',
     '+set', 's_volume', '0', '+set', 'snd_volume', '0')
+$extra = @{}
+if ($AuthToken) { $extra['AuthToken'] = $AuthToken }
+if ($MatchId) { $extra['MatchId'] = $MatchId }
 $clientPid = & (Join-Path $repo 'tools\dev\launch.ps1') $ClientName -Role client -HomePath own `
-    -GameArgs $clientArgs -EnwHost $Addr -Why "vps: remote join to $Addr" | Select-Object -Last 1
+    -GameArgs $clientArgs -EnwHost $Addr -Why "vps: remote join to $Addr" @extra | Select-Object -Last 1
 if (-not $clientPid) { throw 'launch.ps1 did not return a client PID' }
 Write-Host "client PID $clientPid -> $Addr ($Map)" -ForegroundColor Green
 

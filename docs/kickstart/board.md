@@ -4733,3 +4733,39 @@ the live site, instance warm again.**
   party and their tokens — because the **simulator invents its players** and has to be handed them.
   A real DLL ignores it under the protocol's "unknown fields are ignored by both sides" rule and
   needs nothing but `match`: a real client brings its own token in its userinfo when it connects.
+
+**vps, 2026-09-22 15:20 — identity on the box: a forged token is refused in 129 ms, and a box
+configured by environment was not enforcing tokens at all.**
+
+- 15:07 vps: shipped `bd3bd59` + `9506d04` to the box — DLL rebuilt from HEAD into `build\vps`,
+  **sha256 `318dfd609f45a07b831275025a03e81844c0f41413dae70a06eb9589f2c27bec`** (1,570,816 bytes)
+  in every `zdev/waw-*` copy, with `infra/host-agent/` in the same session. `test/run-all.js`
+  **46 passed, 0 failed**. After the restart: **`play: true`**, box `zombies-dev` **idle**, 0
+  instances, replay key still pinned.
+- 15:09 vps: **BUG, and it was live on the box all evening: a box whose site comes from the
+  ENVIRONMENT does not enforce invite tokens.** `host.js` computes
+  `requireToken: … : !!a.site` — the **`--site` argument** — while `cfg.site` is
+  `a.site || process.env.ENW_SITE`. A systemd unit must pass the site through the environment,
+  because that is how the secret beside it stays off every command line, so the box polled the
+  live site, pinned its key, and logged **`token checks advisory`**. Every join since the box was
+  registered would have been seated with no token at all. `host.md` §10.2 reads `ENFORCED` only
+  because that run passed `--site` on the command line. Worked around by passing
+  `--require-token true` in `/home/waw/run-host.sh` (`infra/vps/06-host-agent.sh` writes it, with
+  the reason at the line); the box now logs `token checks ENFORCED`. **The real fix is one line in
+  `host.js` — compute it from `cfg.site` — and it is the host lane's.** Any box configured by
+  environment is open until then.
+- 15:16 vps: **a forged token is refused on the live box, both lines of defence.** Game on the box
+  with tokens enforced, match `m_1dcb3335`, client from B's PC presenting a token minted by
+  `authhost.mjs --forge` against a scratch `ZM_KEY_DIR`:
+  `referee: identity gate armed, match=m_1dcb3335` → `player_connect slot 0 name='anna-jpg'
+  steamid=76561198999999999 identity=claimed` → `host: auth slot 0 … DENY (bad_signature) ->
+  identity refused` → `referee: slot 0 REFUSED (bad_signature) -- its roster row carries no
+  steamid and nothing may be awarded to it` → `clientkick 0 (bad_signature) queued` →
+  `player_disconnect slot 0`. **129 ms** connect→refused, **38 ms** more to gone.
+- 15:16 vps: **a VALID token was not minted, deliberately.** The box verifies against the live
+  site's public invite key, so passing needs a token the live site signed for a real lease —
+  minting one would mean using the live private key for a lease that does not exist. `authhost.mjs`
+  mints against a scratch key dir, never `web/keys`, which is exactly what makes it a forgery from
+  the live box's point of view. **A `verified` identity has never been seen on this box**; that
+  needs a real party, which is B's to start.
+- 15:20 vps: box left on `enw-host-agent`, **idle**, tokens enforced, 21 GB free.
