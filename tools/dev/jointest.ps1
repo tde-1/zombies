@@ -35,6 +35,14 @@ param(
     [string]$ClientFrom = '',
 
     [string]$Map = 'nazi_zombie_prototype',
+
+    # A CUSTOM MAP IS ITS OWN MOD. The engine loads nazi_zombie_leviathan out of
+    # mods\nazi_zombie_leviathan, so fs_game must be that -- not our mods/enw overlay,
+    # and not empty. The DLL rides in on the binkw32 proxy, never on fs_game, so there
+    # is no "how do both load at once" problem: there is only ever one mod, the map's.
+    # Pass 'auto' to use mods/<Map> whenever <Map> is not one of the four stock maps.
+    # Note the engine then writes console.log to <fs_homepath>\<fs_game>\, not main\.
+    [string]$FsGame = 'auto',
     [int]$Port = 28960,
 
     # How long to wait for the server to answer on the wire before giving up.
@@ -59,8 +67,31 @@ function Say($msg, $colour = 'Gray') {
     Add-Content -LiteralPath $transcript -Value ("[{0:HH:mm:ss}] {1}" -f (Get-Date), $msg) -Encoding utf8
 }
 
+$stockMaps = @('nazi_zombie_prototype', 'nazi_zombie_asylum', 'nazi_zombie_sumpf', 'nazi_zombie_factory')
+if ($FsGame -eq 'auto') {
+    $FsGame = if ($stockMaps -contains $Map) { '' } else { "mods/$Map" }
+}
+
 Set-Content -LiteralPath $transcript -Value "jointest $Tag  $(Get-Date -Format o)" -Encoding utf8
-Say "server=waw-$ServerName client=waw-$ClientName map=$Map port=$Port" 'Cyan'
+Say "server=waw-$ServerName client=waw-$ClientName map=$Map fs_game='$FsGame' port=$Port" 'Cyan'
+
+# The map's mod folder has to be visible from BOTH homepaths. install_map.py makes a
+# directory junction per map, so this costs one filesystem entry, not 500 MB.
+if ($FsGame) {
+    $modName = Split-Path -Leaf $FsGame
+    foreach ($h in @($ServerName, $ClientName)) {
+        $dst = Join-Path $DevRoot "homes\$h\mods\$modName"
+        if (Test-Path -LiteralPath $dst) { continue }
+        $src = Join-Path $DevRoot "archive\mods\$modName"
+        if (-not (Test-Path -LiteralPath $src)) {
+            Say "NO SUCH MAP: $src -- run archive\install_map.py first" 'Red'
+            throw "map $modName is not in the archive at $src"
+        }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $dst) -Force | Out-Null
+        cmd /c mklink /J "$dst" "$src" | Out-Null
+        Say "junctioned $dst -> $src"
+    }
+}
 
 # ---------------------------------------------------------------------- deploy --
 if (-not $NoDeploy) {
@@ -100,9 +131,13 @@ try {
         '+set', 's_volume', '0', '+set', 'snd_volume', '0',
         '+set', 'con_typewriterColorBase', '1.0 1.0 1.0',
         '+set', 'hud_drawhud', '1', '+set', 'ui_campaign', 'american',
-        '+set', 'sv_maxclients', '4', '+set', 'net_port', "$Port",
-        '+map', $Map
+        '+set', 'sv_maxclients', '4', '+set', 'net_port', "$Port"
     )
+    # fs_game BEFORE +map: the map fastfile lives inside the mod folder, so the search
+    # path has to already include it when the map load runs. (Same ordering bug class as
+    # `+map` before `+set net_port`, STATUS.md "Fixed today".)
+    if ($FsGame) { $serverArgs += @('+set', 'fs_game', $FsGame) }
+    $serverArgs += @('+map', $Map)
     $serverPid = & (Join-Path $PSScriptRoot 'launch.ps1') $ServerName -Role server -HomePath own `
         -GameArgs $serverArgs -Why "dedi $Tag join test (server + client)" | Select-Object -Last 1
     if (-not $serverPid) { throw 'launch.ps1 did not return a server PID' }
@@ -145,6 +180,8 @@ try {
         '+set', 'logfile', '2', '+set', 'zombiemode', '1',
         '+set', 's_volume', '0', '+set', 'snd_volume', '0'
     )
+    # The client needs the same mod mounted or it cannot load the map it is sent to.
+    if ($FsGame) { $clientArgs += @('+set', 'fs_game', $FsGame) }
     $clientPid = & (Join-Path $PSScriptRoot 'launch.ps1') $ClientName -Role client -HomePath own `
         -Companion -GameArgs $clientArgs -EnwHost "127.0.0.1:$Port" | Select-Object -Last 1
     if (-not $clientPid) { throw 'launch.ps1 did not return a client PID' }
@@ -181,11 +218,14 @@ finally {
     }
 
     # ------------------------------------------------------------- collect --
+    # With fs_game set the engine writes console.log under <fs_homepath>\<fs_game>\,
+    # not main\ (launcher.md found this the hard way). Collect whichever exists.
+    $conSub = if ($FsGame) { $FsGame -replace '/', '\' } else { 'main' }
     foreach ($pair in @(
             @((Join-Path $DevRoot "logs\$ServerName\enw-$serverPid.log"), "$Tag.server.enw.log"),
             @((Join-Path $DevRoot "logs\$ClientName\enw-$clientPid.log"), "$Tag.client.enw.log"),
-            @((Join-Path $DevRoot "homes\$ServerName\main\console.log"), "$Tag.server.console.log"),
-            @((Join-Path $DevRoot "homes\$ClientName\main\console.log"), "$Tag.client.console.log"))) {
+            @((Join-Path $DevRoot "homes\$ServerName\$conSub\console.log"), "$Tag.server.console.log"),
+            @((Join-Path $DevRoot "homes\$ClientName\$conSub\console.log"), "$Tag.client.console.log"))) {
         if (Test-Path -LiteralPath $pair[0]) {
             Copy-Item -LiteralPath $pair[0] -Destination (Join-Path $logDir $pair[1]) -Force
             Say "collected $($pair[1])"
