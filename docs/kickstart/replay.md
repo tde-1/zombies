@@ -688,3 +688,206 @@ The live `/replay/m_0afb449b` was **not** opened in a browser by this session: t
 needs its password typed, which this agent may not do. The site was restarted on the new
 build through the authorised path, `/mapdata` (ungated) answers with both maps, and the
 identical build was driven in the verify instance. B's first look is the live proof.
+
+### 8.11 2026-09-22 (evening) — WaW HUD, crosshair, grenade, damage, and position accuracy
+
+Branch `replay-waw`. B's asks: maps clean, zombies visible and facing, WaW's round HUD with a
+zombies-left counter, a crosshair "very accurate to the real game", the grenade cook, obvious
+hits, and (via the coordinator) **positions that line up exactly**. Tested against the two real
+replays, `m_0afb449b` (Nacht, B, 2 rounds) and `m_5de3842b` (Nacht, round 1, one hit), on a dev
+copy (port 3431, a copy of the DB, a scratch map export). The live site, `web/data` and the live
+map export were not touched; the game was not launched. Screenshots: `docs/kickstart/ui/replay-waw-*.png`.
+
+**Sources, read-only.** The game's own weapon files and scripts, unlinked from B's
+`nazi_zombie_prototype.ff` / `common.ff` with OpenAssetTools; the replay header's script
+fingerprint (`9a260a45…d031`) is byte-identical to the extracted `_zombiemode.gsc`. The HUD
+textures (`side_small`, `center_cross`, `chalkmarks_1..5`, `hit_direction`,
+`overlay_low_health`, `grenadeicon`) were decoded to look at and are **not shipped** — everything
+drawn is CSS/SVG. The engine formulas are from **KisakCOD** (SwagSoftware, GPL-3.0, a source
+reimplementation of CoD4/IW3, which T4 is built on), read for formulas only; every HUD dvar name
+used is also a string in B's `CoDWaW.exe`, so the elements exist in T4, but their **default
+values are CoD4's** and are [H] for T4. No GitHub/OBS/ReShade "CoD crosshair" overlay was worth
+copying: the ones found draw a static cross; the real shape and motion come from the engine code
+above.
+
+#### Position accuracy (the coordinator's item 0)
+
+The frame is right and was right: the `.glb` is raw engine units, Z up; the map group and every
+actor go through the same `(x, y, z) -> (x, z, -y)` (`mapGroup.rotation.x = -90°` and
+`toThree`), no scale, no offset. WaW yaw 0 = +X, counter-clockwise; pitch positive = down —
+`scene.js forwardOf` is exactly that. **Measured:** player origin minus the rendered floor under
+it, median **−1.4 u** (p5 −4.0) over 218 in-game samples of `m_0afb449b`, −1.1 on `m_5de3842b`;
+the recorded yaw points **inside the target zombie's 15-unit half-width on 13 of 15 aimed shots**
+(errors 0.0–1.8°, 0.0° at 966 u; the 71.58 s shot is 1.8° off a zombie 183 u away that is gone
+in the same 50 ms tick, and the 97.68 s and 103.59 s shots each kill within 0.4 s). What was
+wrong, and by how much:
+
+| # | Wrong | By how much | Fix |
+|---|---|---|---|
+| 1 | **49 brush-model islands (1 236 triangles) piled on the engine origin** — barricade planks 140 u tall and 140 u deep through the start-room floor, trim chunks, a door, the "help" sign. Husky writes a `script_brushmodel`'s geometry in its local space; the engine moves it, Husky does not. The origin is the middle of Nacht's start room, so the player "walked through" them | recorded positions within 13 u of a wall face: **23 of 217 → 3 of 217** (the 3 left are a rubble slope and a window sill) | `export_map.py drop_origin_brushmodels` |
+| 2 | Eye height and hull were Source's (eye 64/46, capsule r16 × 72) | eye **4 u high** standing, 6 crouched, prone not modelled | WaW 60 / 40 / 11 and r15 × 70 / 50 / 30 (bg_pmove), per stance from the usercmd bits |
+| 3 | First-person FOV was CS:GO's 90 | a 38 % wider angle than the game | `cg_fov` 65 (4:3 horizontal) |
+| 4 | Zombies sampled on the other server frame from the players, and not interpolated | 50 ms behind (≈2 u walking, ≈5 u running) and stepping at 10 Hz | the track samples on the zombie frames; zombies lerp like players |
+| 4b | **The time base drifted.** Tick k was drawn at `t0 + k · 100 ms`, but server frames are not exactly 50 ms apart | by the end of `m_0afb449b` the grid was **674 ms** off the snaps' own clock: every event (weapon change, hit, down, frag) sat 0.7 s away from the positions it belongs with | the track carries `tick_t` (each tick's real ms) and the viewer maps time through it; the weapon changes now land on 14 308 / 69 106 / 118 305 ms exactly |
+| 5 | **View pitch is not recorded.** `ang[0]` is the player *entity's* pitch, which the engine keeps at 0: every in-game snap of both files has pitch 0 (the 24.2 / 355 values are the intermission camera) | first person always level | **DLL change**: `cmd_ang` (usercmd angles); the host calibrates delta at spawn (§ DLL below) |
+| 6 | Zombie z | inside the building, median −0.4 u, p10 −12.5 u under the rendered floor | **not changed**: the map's own explosive barrels (map_ents, not Husky) sit 5–14 u under the same floors, so shell and engine ground disagree by a few units in places |
+| 7 | **The Husky shell is missing walls** | 12 of 15 aimed shots pass through a rendered wall; rays west from x = −150 at 45 u find no wall for y −750..+300, though the map's `exterior_goal`s put windows at x = −266; only two ~70-u wall pieces exist there. No translation within ±64 u clears the shots, so it is missing/misplaced geometry, not an offset. The recording agrees with the map entities (zombie 256 stood 25 u from the (288, −257) window goal; B shot out of the (−266, −751) window) | **open**: needs a second Husky run (a `game.lock` hold) or C2M; `aim-above.png` shows the zombie standing inside a rubble mound the game does not have there |
+
+#### Map clutter (ask 1) — `tools/maps/export_map.py`, Nacht re-exported to the scratch dir
+
+| Change | Nacht |
+|---|---|
+| origin brush models dropped (row 1 above) | 49 islands, 1 236 triangles |
+| alpha-tested materials written `alphaMode: MASK` (cut 0.5), glass `BLEND`, sky untouched — they were glTF's default OPAQUE, so foliage/branches/wire drew as **black shards** over the start room | 54 of 273 materials |
+| props under 12 u on the longest axis not drawn (pebbles, rubble bits, cage lights) | 209 hidden (`props_hidden_small`) |
+| props with no shell surface within 40 u below them hidden (they stand on floors the shell lacks: the sandbag rows hanging over the start room) | 506 hidden (`props_hidden_floating`); 258 kept and listed (`props_unsupported_kept`: sunk 8–40 u under a floor, or wall-hung chalk weapons) |
+| duplicates | none (0 same-model same-origin pairs) |
+
+**The live Nacht export is unchanged** (`ZombiesDev\maps`, serving the site). To ship: re-run
+`python tools/maps/export_map.py nazi_zombie_prototype --world <husky obj>` into `ZombiesDev\maps`
+(the coordinator's call; `built_at` changes, so browsers refetch).
+
+#### Recorded vs inferred
+
+| Shown | Source | Status |
+|---|---|---|
+| Player position, yaw | `snap.players[].pos/ang` | **recorded**, proven (above) |
+| View pitch | `cmd_ang` from the new DLL; old files none | **recorded-from-next-game** (calibration at spawn is [H]); both test files: level |
+| Stance (eye height, capsule) | usercmd bits 0x200 crouch / 0x100 prone (IW3 `msg.h`; on `m_0afb449b` 0x100 is held through the last stand) | **recorded** bits, meaning [H]+evidence |
+| Zombie positions | `snap.zombies[]` | **recorded** |
+| Zombie facing | `yaw` from the 2026-09-22-late DLL; both test files predate it | **inferred** from direction of travel (settings panel says which) |
+| Round | `snap.round` / `round` event | **recorded** |
+| Zombies left | stock total for (map, round, players) − zombies seen and gone this round | **computed**: `_zombiemode.gsc` round_spawning (Nacht lines 825–857; Der Riese / Verrückt variants in `lib/wawRules.js`). Matches the file: round 1 solo 4 spawned, round 2 solo 9 (3 s spawn delay: 9 lists grow 94.4 → 117.2 s) |
+| Weapon | `#<usercmd index>`; Nacht #7 = zombie_colt (held 0.6 s after every spawn), #16 = m1carbine (selected 26 u from the carbine wall-buy with +use held) | **recorded index, name proven for 3 indices**; others use the M1 Garand row, flagged in the panel |
+| Shots | `input` 0x1 press/release at ms, expanded by the weapon's fireType/fireTime | **recorded** presses, shots inferred for full-auto holds |
+| ADS (crosshair hidden) | 0x800 | **recorded** bit, [H] meaning |
+| Crosshair spread | the engine's aimSpreadScale model over the above | **computed** from recorded inputs + weapon file |
+| Frag in hand / cook | +frag 0x4000 press/release; armed `holdFireTime` 0.4 s after the press, `fuseTime` 3.5 s | **recorded** presses, fuse **computed** from the weapon file. B's "5 s" is not WaW's: stielhandgranate is 3.5 s + 0.4 s |
+| Grenade in flight / explosion | `snap.nades` / `explode` (new DLL, classname unverified on T4) | none in either file; the feed shows "frag … went off (inferred)" at press + 3.9 s |
+| Being hit | `health` drop at 20 Hz (**recorded**: `m_5de3842b` 100 → 40 at 378 508 ms) | flash + direction; direction = nearest zombie at that instant (**inferred**, the DLL records no attacker) |
+| Down | no `down` event in either file; the weapon index going to #0 while holding one | **inferred** (`m_0afb449b` 118.3 s, `m_5de3842b` 380.1 s) |
+
+`m_0afb449b`'s end, read off the new fields: +frag pressed at 114.221 s, released 116.561 s
+(cooked 1.94 s of the 3.5 s fuse), so it went off at ≈118.12 s; the player stopped dead at
+117.6 s and the down is at 118.305 s with no health drop recorded in between. **Consistent with
+B killing himself with his own stielhandgranate** — an inference, stated as one.
+
+#### The HUD (ask 3) — `ReplayViewer.jsx`, `r3d.css`
+
+- **Round**, bottom-left, colour (0.423, 0.004, 0): 1–5 chalk tallies, 6–10 a second chalk group,
+  11+ the number (`_zombiemode.gsc` `create_chalk_hud` / `chalk_one_up`: left/bottom aligned,
+  64 × 64 per chalk, `hud_chalk_N`). Tallies are hand-drawn SVG after `chalkmarks_1..5`.
+- **Zombies left**: beside it, smaller, labelled "left". Stock WaW has no such counter; it is
+  ENW's, and looks it.
+- **Settings panel** (the cog): speed, then three toggles, **all on by default** and remembered per
+  browser — Round + zombies left, Crosshair + grenade, Damage effects — plus which weapon row is in
+  use and where the zombies-left number comes from.
+
+#### The crosshair (ask 4) — `waw.js` from [K] + the weapon files
+
+Four `reticle_side_small` ticks (a 1-texel white line in a 3-texel black outline, 6/8 of an
+8 × 8 box, scaled by height/480); the gap is `CG_CalcReticleSpread`:
+`spread° = min + (max − min) · aimSpreadScale`, projected with the 4:3 vertical of `cg_fov` 65,
+clamped up to `reticleMinOfs`; alpha `max(0.5, 1 − aimSpreadScale)`. `aimSpreadScale` is
+`PM_UpdateAimSpreadScale` integrated once over the track (scrub-exact): moving above 11 u/s adds
+`hipSpreadMoveAdd · speed / 190` per second, turning adds `hipSpreadTurnAdd · 0.01 · Δ°`, otherwise
+it decays at `hipSpreadDecayRate` (× ducked/prone decay); each shot adds `hipSpreadFireAdd`;
+ADS adds nothing and hides the ticks. Stance picks the min/max row. Not drawn: the red
+"enemy under the crosshair" colour (the engine traces for it; without pitch and occlusion a
+horizontal guess lit it through walls). Per weapon, straight from the Nacht zone:
+
+| weapon | index | fire | stand min/max ° | crouch | prone | decay/s | +per shot | +move | reticle |
+|---|---|---|---|---|---|---|---|---|---|
+| 30cal_bipod | — | Full Auto 0.096s | 4 / 10 | 3.5 / 8 | 3 / 6 | 4 | 0.6 | 5 | reticle_side_small 8px, gap 79px @1080p |
+| bar | — | Full Auto 0.16s | 2 / 8 | 1.8 / 6.5 | 1.5 / 5 | 4 | 0.56 | 5 | reticle_side_small 8px, gap 39px @1080p |
+| doublebarrel | — | Single Shot 0.283s | 4 / 4 | 4 / 4 | 4 / 4 | 5 | 0 | 0.1 | reticle_side_small 8px, gap 79px @1080p |
+| doublebarrel_sawed_grip | — | Single Shot 0.283s | 6 / 6 | 4 / 4 | 4 / 4 | 5 | 0 | 0.1 | reticle_side_small 8px, gap 119px @1080p |
+| fg42_bipod | — | Full Auto 0.064s | 2 / 8 | 1.8 / 6.5 | 1.5 / 5 | 4 | 0.56 | 5 | reticle_side_small 8px, gap 39px @1080p |
+| fraggrenade | — | Full Auto 0.4s | 0 / 0 | 0 / 0 | 0 / 0 | 0 | 0 | 0 | reticle_center_cross 32px, fuse 3.5s + 0.4s |
+| gewehr43 | — | Single Shot 0.125s | 1 / 5 | 0.75 / 4 | 0.5 / 3 | 4 | 0.6 | 5 | reticle_side_small 8px, gap 20px @1080p |
+| kar98k | — | Single Shot 0.33s | 8 / 10 | 7.5 / 9.5 | 7 / 9 | 5 | 1 | 5 | reticle_side_small 8px, gap 159px @1080p |
+| kar98k_scoped_zombie | — | Single Shot 0.33s | 8 / 10 | 7.5 / 9.5 | 7 / 9 | 5 | 1 | 5 | reticle_side_small 8px, gap 159px @1080p |
+| m1carbine | #16 (proven) | Single Shot 0.135s | 1 / 5 | 0.75 / 4 | 0.5 / 3 | 4 | 0.6 | 5 | reticle_side_small 8px, gap 20px @1080p |
+| m1garand | default for unproven #n | Single Shot 0.135s | 1 / 5 | 0.75 / 4 | 0.5 / 3 | 4 | 0.6 | 5 | reticle_side_small 8px, gap 20px @1080p |
+| m1garand_gl | — | Single Shot 0.135s | 1 / 5 | 0.75 / 4 | 0.5 / 3 | 4 | 0.6 | 5 | reticle_side_small 8px, gap 20px @1080p |
+| mg42_bipod | — | Full Auto 0.064s | 3.7 / 6 | 2.5 / 5 | 1 / 4 | 4 | 0.6 | 5 | reticle_side_small 8px, gap 73px @1080p |
+| mk2_frag | — | Full Auto 0.4s | 0 / 0 | 0 / 0 | 0 / 0 | 0 | 0 | 0 | reticle_center_cross 32px, fuse 3.5s + 0.4s |
+| mp40 | — | Full Auto 0.112s | 1.5 / 6 | 1.25 / 5 | 1 / 4 | 4 | 0.52 | 4 | reticle_side_small 8px, gap 30px @1080p |
+| ptrs41_zombie | — | Single Shot 0.8s | 8 / 10 | 7.5 / 9.5 | 7 / 9 | 5 | 1 | 5 | reticle_side_small 8px, gap 159px @1080p |
+| ray_gun | — | Full Auto 0.33s | 1 / 2 | 1 / 2 | 1 / 2 | 3.25 | 1 | 0.5 | reticle_side_small 8px, gap 20px @1080p |
+| shotgun | — | Single Shot 0.283s | 4 / 4 | 4 / 4 | 4 / 4 | 5 | 0 | 0.1 | reticle_side_small 8px, gap 79px @1080p |
+| springfield | — | Single Shot 0.33s | 8 / 10 | 7.5 / 9.5 | 7 / 9 | 5 | 1 | 5 | reticle_side_small 8px, gap 159px @1080p |
+| stg44 | — | Full Auto 0.112s | 2 / 8 | 1.8 / 6.5 | 1.5 / 5 | 4 | 0.56 | 5 | reticle_side_small 8px, gap 39px @1080p |
+| stielhandgranate | — | Full Auto 0.4s | 0 / 0 | 0 / 0 | 0 / 0 | 0 | 0 | 0 | reticle_center_cross 32px, fuse 3.5s + 0.4s |
+| sw_357 | — | Single Shot 0.32s | 2 / 4 | 1.5 / 3 | 1 / 2 | 4 | 1 | 4.5 | reticle_side_small 8px, gap 39px @1080p |
+| thompson | — | Full Auto 0.08s | 1.5 / 6 | 1.25 / 5 | 1 / 4 | 4 | 0.52 | 4 | reticle_side_small 8px, gap 30px @1080p |
+| walther | — | Single Shot 0.135s | 3 / 6 | 2.5 / 5 | 2 / 4 | 4 | 1 | 4.5 | reticle_side_small 8px, gap 59px @1080p |
+| zombie_colt | #7 (proven) | Single Shot 0.075s | 3 / 6 | 2.5 / 5 | 2 / 4 | 4 | 1 | 4.5 | reticle_side_small 8px, gap 59px @1080p |
+| zombie_melee | — | Single Shot 0.075s | 3.5 / 6.5 | 3 / 6 | 2.5 / 5.5 | 3.25 | 0.75 | 5.5 | reticle_side_small 8px, gap 69px @1080p |
+
+Gaps are at 1080p, standing, at rest. Weapon rows for every Nacht weapon are in `waw.js`
+`WEAPONS`; turret (`*_bipod_stand` etc.) and napalm rows are left out.
+
+#### The grenade (ask 5)
+
+WaW has **no cook meter**. What the game does (`CG_DrawReticleCenter`, `PM_Weapon_OffHand*`):
+while the frag is held the crosshair becomes the grenade's `reticle_center_cross` (four ticks at
+the edges of a 32-px box, bright at the inner end), and for a `cookOffHold` grenade the box grows
+by `(grenadeTimeLeft % 1000) / 100` px — a saw-tooth that ticks once a second, not faster. The
+fuse is armed `holdFireTime` (0.4 s) after the press and runs 3.5 s whether or not it has been
+thrown; held past that, it goes off in the hand. That is what is drawn, from the recorded
+press/release (`cook.png`). The pulsing grenade *icon + pointer* B remembers is the **danger
+indicator** for a live grenade within 256 u (`CG_DrawGrenadeIndicators`, 1.7 Hz pulse); its
+constants are in `waw.js HUD.grenade`, but no file has a grenade entity yet (`snap.nades` is new),
+so it is not drawn. The own-throw explosion is placed in the feed only: its position is unknown.
+
+#### Damage (ask 6)
+
+Driven by **recorded health drops** (and the inferred down). `CG_DrawFlashDamage`: a (0.2, 0, 0)
+fill, alpha `min(5, |remaining ms · kick · forwardFrac| / 500) / 5 · 0.7` for 500 ms, kick =
+clamp(damage · 0.2, 5, 90) — a hit from the front flashes hard, from the side barely (as in the
+game). `CG_DrawDamageDirectionIndicators`: a 128 × 64 red smear 128 px from the centre, rotated
+to the attacker's side, full for 1 s then fading over the next (2 s, `cg_hudDamageIconTime`); the
+attacker is the nearest recorded zombie (inferred). The low-health overlay (`_gameskill.gsc`
+`redFlashingOverlay`, dark-red edges, 0.8 s pulse) shows at health ≤ 20 % (`healthOverlayCutoff`
+on regular, `g_gameskill 1` per dedi.md) — `m_5de3842b`'s hit to 40 correctly does not trigger it.
+`hit-flash.png` (67.27 s) and `hit-direction.png` (67.9 s, smear at the top: the zombie was in
+front). The down on `m_0afb449b` flashes at 118.3 s (`down-flash.png`).
+
+#### DLL (flagged for the coordinator: built, not deployed)
+
+`server/components/replay/replay.cpp`, built in this worktree (`tools\dev\build.ps1 -Name replaywaw`
+→ `build\replaywaw\enw_t4.dll`, 1 611 264 B, compiles clean):
+
+1. **`cmd_ang`** `[pitch, yaw]` on each player when it changes — the usercmd view angles, the only
+   source of view pitch until `ps.viewangles`/`delta_angles` are bound. The host
+   (`routes/replay.js`) zeroes the pitch offset at spawn and whenever the entity-vs-usercmd yaw
+   offset jumps > 20° (teleport, last stand) — spawn points have pitch 0 on stock maps, [H].
+2. **Stance bits fixed**: crouch 0x200, prone 0x100 (was 0x4 / 0x8 = melee / use).
+3. **Kills**: the live/seen arrays were 256 long and real zombies are entnum 254–300+, so
+   `kill` / `kills_round` missed every zombie ≥ 256 (round 1 of `m_0afb449b`: 4 died, `kills_round`
+   said 1). Now 1024 (MAX_GENTITIES). The viewer no longer uses `kills_round`.
+
+Still wanted from the DLL, not done: weapon names (`BG_GetWeaponDef`, or the weapon configstrings
+the server sends — board.md "Weapon index mismatch" notes the name list is in the gamestate),
+the attacker/direction of damage, `level.zombie_total` (script variables), and the grenade
+classname census result.
+
+#### Proven on the two replays (dev copy, headless Edge + the browser pane)
+
+- Both play in all three cameras; first person at 60 u eye, cg_fov 65, crosshair with the
+  zombie_colt / m1carbine numbers, hidden while ADS; the chalk round, "4 left" → "0", round 2
+  "II" with "9 left" (`hud-3p`, `round2`, `aim-fp`, `settings`).
+- Zombies drawn in every mode as red capsules with a facing wedge (travel direction).
+- The cook reticle at 108.62 s of `m_0afb449b`; the flash and the direction smear on
+  `m_5de3842b`'s recorded hit; the inferred downs in the feed.
+- `npm test` in web: 94 / 33 / 14, including new checks for the round formula (both measured
+  totals), zombies-left, the button edges, hits, weapon names, pitch calibration, the spread
+  projection and the fuse.
+
+#### Open
+
+- The Husky shell (row 7): windows closed and walls missing on Nacht. The viewer is exact about
+  the recording; the map it is drawn in is not, around the windows.
+- The live map export and the DLL are not deployed from here.
+- Weapon indices other than #0/#7/#16, and every map but Nacht, fall back to the M1 Garand row.

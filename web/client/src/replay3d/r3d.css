@@ -135,15 +135,78 @@
 .r3d-zm-rtick { position: absolute; top: 0; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: rgba(176, 52, 44, .95); pointer-events: none; }
 .r3d-zm-rnum { position: absolute; bottom: calc(50% + 9px); transform: translateX(-50%); font-size: 9.5px; font-weight: 700; color: var(--muted); pointer-events: none; }
 
-/* WaW-style dynamic crosshair (replay.md 8.7). --xh-gap is set per frame by the viewer. */
-.r3d-zm-xh { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 3; --xh-gap: 14px; }
-.r3d-zm-xh i { position: absolute; background: rgba(255, 255, 255, .9); box-shadow: 0 0 1px rgba(0, 0, 0, .9); }
-.r3d-zm-xh .u, .r3d-zm-xh .d { width: 2px; height: 9px; left: -1px; }
-.r3d-zm-xh .l, .r3d-zm-xh .r { width: 9px; height: 2px; top: -1px; }
-.r3d-zm-xh .u { bottom: var(--xh-gap); }
+/* WaW's hip crosshair (replay.md 8.11). Four reticle_side_small ticks: the 8x8 image is a
+   1-texel white line in a 3-texel black outline over rows 2-7, so a tick is 3/8 of its box
+   wide (1/8 white core) and 6/8 tall, its inner end at the spread. Up and left sit one
+   texel further out than down and right, as CG_DrawReticleSides draws them. --xh-gap,
+   --xh-size and --xh-alpha are set per frame from waw.js reticleGeom(). */
+.r3d-zm-xh { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 3;
+  --xh-gap: 14px; --xh-size: 18px; --xh-alpha: 1; opacity: var(--xh-alpha); --xh-core: #fff; }
+.r3d-zm-xh i { position: absolute; box-sizing: border-box; background: var(--xh-core);
+  border: calc(var(--xh-size) / 8) solid #000; border-radius: 1px; }
+.r3d-zm-xh .u, .r3d-zm-xh .d { width: calc(var(--xh-size) * 3 / 8); height: calc(var(--xh-size) * 6 / 8); left: calc(var(--xh-size) * -3 / 16); }
+.r3d-zm-xh .l, .r3d-zm-xh .r { height: calc(var(--xh-size) * 3 / 8); width: calc(var(--xh-size) * 6 / 8); top: calc(var(--xh-size) * -3 / 16); }
+.r3d-zm-xh .u { bottom: calc(var(--xh-gap) + var(--xh-size) / 8); }
 .r3d-zm-xh .d { top: var(--xh-gap); }
-.r3d-zm-xh .l { right: var(--xh-gap); }
+.r3d-zm-xh .l { right: calc(var(--xh-gap) + var(--xh-size) / 8); }
 .r3d-zm-xh .r { left: var(--xh-gap); }
+
+/* The grenade in hand: reticle_center_cross (32 px + the once-a-second tick). Four ticks at
+   the edges of the box, a quarter of it long, bright at the inner end, fading outward, as
+   the center_cross image is. */
+.r3d-waw-cook { position: absolute; left: 50%; top: 50%; width: var(--ck-size, 32px); height: var(--ck-size, 32px);
+  transform: translate(-50%, -50%); pointer-events: none; z-index: 3; }
+.r3d-waw-cook i { position: absolute; }
+.r3d-waw-cook .u, .r3d-waw-cook .d { left: calc(50% - var(--ck-size, 32px) / 32); width: calc(var(--ck-size, 32px) / 16); height: 25%; }
+.r3d-waw-cook .l, .r3d-waw-cook .r { top: calc(50% - var(--ck-size, 32px) / 32); height: calc(var(--ck-size, 32px) / 16); width: 25%; }
+.r3d-waw-cook .u { top: 0; background: linear-gradient(to bottom, rgba(255,255,255,.15), #fff); }
+.r3d-waw-cook .d { bottom: 0; background: linear-gradient(to top, rgba(255,255,255,.15), #fff); }
+.r3d-waw-cook .l { left: 0; background: linear-gradient(to right, rgba(255,255,255,.15), #fff); }
+.r3d-waw-cook .r { right: 0; background: linear-gradient(to left, rgba(255,255,255,.15), #fff); }
+
+/* Damage (replay.md 8.11). The flash is CG_DrawFlashDamage: a (0.2, 0, 0) fill at up to 0.7
+   alpha for 500 ms. The arms are CG_DrawDamageDirectionIndicators: a 128 x 64 hit_direction
+   smear (a red, ragged arc, drawn here as SVG) 128 px from the centre, rotated to the side the
+   hit came from, full for a second and fading over the next. */
+.r3d-waw-flash { position: absolute; inset: -10px; background: rgb(51, 0, 0); opacity: 0; pointer-events: none; z-index: 2; }
+.r3d-waw-low { position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: 2;
+  background: radial-gradient(ellipse 62% 60% at 50% 50%, rgba(120, 4, 2, 0) 38%, rgba(112, 6, 2, .55) 70%, rgba(78, 0, 0, .96) 100%); }
+.r3d-waw-dmg { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 3; }
+.r3d-waw-dmg-arm { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; transform-origin: 0 0; }
+.r3d-waw-dmg-arm > i { position: absolute; left: calc(var(--dmg-w, 128px) / -2); top: var(--dmg-r, 128px);
+  width: var(--dmg-w, 128px); height: var(--dmg-h, 64px);
+  background: no-repeat center / 100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 64'%3E%3Cdefs%3E%3Cfilter id='r' x='-10%25' y='-30%25' width='120%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.09' numOctaves='3' seed='7'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='9'/%3E%3CfeGaussianBlur stdDeviation='1.2'/%3E%3C/filter%3E%3C/defs%3E%3Cpath filter='url(%23r)' d='M6 18 Q 64 44 122 18 Q 118 34 100 40 Q 64 54 26 40 Q 10 33 6 18 Z' fill='%238c0a06' fill-opacity='.9'/%3E%3C/svg%3E"); }
+
+/* The round, as _zombiemode.gsc draws it: hud_chalk_1..5 tallies (a second chalk hud from
+   round 6 to 10), then the number, bottom-left, colour (0.423, 0.004, 0). The zombies-left
+   counter is ENW's addition and says so by being smaller and labelled. --waw-v is the
+   480-line virtual pixel, set by the viewer. */
+.r3d-waw-hud { position: absolute; left: 16px; bottom: calc(16px + var(--r3d-h) + 12px); z-index: 3; pointer-events: auto;
+  display: flex; align-items: flex-end; gap: calc(10px * var(--waw-v, 1.5)); color: rgb(108, 1, 0); }
+.r3d-waw-round { display: flex; align-items: flex-end; gap: 0; }
+.r3d-waw-chalk { width: calc(64px * var(--waw-v, 1.5)); height: calc(64px * var(--waw-v, 1.5)); overflow: visible;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, .6)); }
+.r3d-waw-chalk path { fill: none; stroke: rgb(108, 1, 0); stroke-width: 4.6; stroke-linecap: round; opacity: .96; }
+.r3d-waw-num { font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Oswald', sans-serif; font-size: calc(52px * var(--waw-v, 1.5));
+  line-height: .9; letter-spacing: .02em; color: rgb(108, 1, 0); text-shadow: 0 0 2px rgba(0, 0, 0, .7), 1px 1px 0 rgba(40, 0, 0, .8); }
+.r3d-waw-left { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; padding-bottom: calc(6px * var(--waw-v, 1.5)); }
+.r3d-waw-left b { font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif; font-weight: 400; font-size: calc(26px * var(--waw-v, 1.5));
+  color: rgb(150, 8, 4); text-shadow: 0 0 2px rgba(0, 0, 0, .8); font-variant-numeric: tabular-nums; }
+.r3d-waw-left span { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(210, 190, 185, .8); text-shadow: var(--r3d-ink-shadow); }
+
+/* The settings panel (the cog): speed, then the WaW overlay toggles, all ON by default. */
+.r3d-menu-settings { width: 244px; padding: 10px; gap: 6px; }
+.r3d-menu-settings .r3d-seg-row { flex-direction: row; flex-wrap: wrap; }
+.r3d-menu-settings .r3d-seg-row > button { padding: 0 8px; height: 26px; }
+.r3d-set-lab { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.r3d-set-tog { display: flex; align-items: center; gap: 8px; padding: 5px 4px; background: transparent; border: none; border-radius: 6px;
+  color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; }
+.r3d-set-tog:hover { background: rgba(255, 255, 255, .06); }
+.r3d-set-box { position: relative; width: 16px; height: 16px; border-radius: 4px; border: 2px solid var(--muted); flex: none; box-sizing: border-box; }
+.r3d-set-tog.on .r3d-set-box { background: #c8402c; border-color: #c8402c; }
+.r3d-set-tog.on .r3d-set-box::after { content: ''; position: absolute; left: 3.5px; top: 0.5px; width: 4px; height: 8px;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.r3d-set-note { font-size: 11px; line-height: 1.35; color: var(--muted); }
 
 /* The site's chat dock is position:fixed at z 70 and, at a narrow width (the launcher's
    embedded view), spans the whole bottom edge -- right over the Play button, which then

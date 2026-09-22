@@ -46,6 +46,7 @@ constexpr int kMaxPlayers = 4;
 constexpr size_t kMaxZombies = 64;
 constexpr size_t kMaxNades = 16;
 constexpr int kNadeIds = 1024;   // level.zombie_vars max_ai is 24 stock; headroom for customs
+constexpr size_t kEntIds = 1024; // MAX_GENTITIES
 
 std::string fmt_vec3_10th(const float v[3]) {
     char b[80];
@@ -84,8 +85,17 @@ std::string weapon_name(uint8_t index) {
 //   * `log_unknown_button_masks` prints each distinct mask once, which is exactly the
 //     evidence the next session needs -- crouch in a join run, read the log, and
 //     either promote this to [V] or correct it.
-constexpr int kButtonCrouch = 0x00000004;
-constexpr int kButtonProne  = 0x00000008;
+//
+// 2026-09-22 (late), replay.md 8.11: THE OLD VALUES WERE WRONG. 0x4 and 0x8 are IW3's
+// BUTTON_MELEE and BUTTON_USE (KisakCOD src/qcommon/msg.h, the CoD4 reimplementation T4
+// descends from), and B's own game shows it: on m_0afb449b "prone" (0x8) was held for the
+// nine seconds he spent rebuilding boards and on the frame he bought the carbine, and
+// "crouch" (0x4) was one frame beside a knife kill. The stance bits are 0x200 (crouch, set
+// every frame from the current stance by CL_AddCurrentStanceToCmd) and 0x100 (prone, held),
+// and 0x100 is held on that file for the whole last stand, which is prone. Still [H] until a
+// join run crouches on purpose, but now [H] with evidence rather than against it.
+constexpr int kButtonCrouch = 0x00000200;
+constexpr int kButtonProne  = 0x00000100;
 
 const char* stance_from_buttons(int buttons) {
     const bool crouch = (buttons & kButtonCrouch) != 0;
@@ -163,6 +173,22 @@ private:
                 prev.score = *s;
             }
             if (auto cmd = referee::last_usercmd(slot)) {
+                // VIEW PITCH (replay.md 8.11). `ang` above is the player ENTITY's angles, and
+                // the engine keeps an entity's pitch at 0 for a player: every in-game `ang[0]`
+                // on m_0afb449b is 0, so first person never looked up or down. The usercmd
+                // carries the view as the client sent it, BEFORE ps.delta_angles (which is
+                // not bound). So this is the raw usercmd angle pair; the host calibrates
+                // delta from the entity yaw it already has (routes/replay.js). One pair of
+                // one-decimal floats, omitted when unchanged.
+                const float cp = static_cast<float>(static_cast<uint16_t>(cmd->view_pitch)) * (360.0f / 65536.0f);
+                const float cy = static_cast<float>(static_cast<uint16_t>(cmd->view_yaw)) * (360.0f / 65536.0f);
+                if (!prev.valid || cmd->view_pitch != prev.cmd_pitch || cmd->view_yaw != prev.cmd_yaw) {
+                    char ca[48];
+                    std::snprintf(ca, sizeof(ca), "[%.1f,%.1f]", cp, cy);
+                    p.raw("cmd_ang", ca);
+                }
+                prev.cmd_pitch = cmd->view_pitch;
+                prev.cmd_yaw = cmd->view_yaw;
                 if (!prev.valid || cmd->weapon != prev.weapon) {
                     p.str("weapon", weapon_name(cmd->weapon));
                 }
@@ -202,7 +228,11 @@ private:
             // event: WE CANNOT ATTRIBUTE IT TO A PLAYER, so there is no `slot`. The
             // engine reuses entity numbers, so an id that vanishes and returns is two
             // different zombies; that is the same caveat the `snap` list already has.
-            bool seen[kMaxZombies * 4] = {};
+            // Sized to MAX_GENTITIES (1024), not kMaxZombies*4 = 256 as it was: on
+            // m_0afb449b the zombies were entnums 254-273, so every zombie from 256 up was
+            // never marked live, never "left the list", and never produced a `kill` --
+            // round 1 there had 4 zombies die and kills_round said 1 (replay.md 8.11).
+            bool seen[kEntIds] = {};
             for (size_t i = 0; i < got; ++i) {
                 const int id = buf[i].entnum;
                 if (id >= 0 && static_cast<size_t>(id) < sizeof(seen)) seen[id] = true;
@@ -319,10 +349,12 @@ private:
         int score = 0;
         uint8_t weapon = 0;
         const char* stance = "";
+        int16_t cmd_pitch = 0;
+        int16_t cmd_yaw = 0;
     };
 
     player_prev players_[kMaxPlayers];
-    bool was_live_[kMaxZombies * 4] = {};
+    bool was_live_[kEntIds] = {};
     bool nade_live_[kNadeIds] = {};
     float nade_pos_[kNadeIds][3] = {};
     bool stopped_said_ = false;

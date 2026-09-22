@@ -449,23 +449,38 @@ export function createScene(canvas, opts) {
   const eyeV = new THREE.Vector3()
 
   function playerEyeThree(out) {
-    return toThree(state.origin.x, state.origin.y, state.origin.z + (state.ducked ? EYE_DUCK : EYE_STAND), out)
+    return toThree(state.origin.x, state.origin.y, state.origin.z + eyeHeight(), out)
   }
 
-  function setPose(ox, oy, oz, pitch, yaw, ducked) {
+  // ENW ZOMBIES (replay.md §8.11, position accuracy): Movement's constants are Source's --
+  // eye 64 / 46, hull 72 x r16. A WaW player's eye is 60 / 40 / 11 (stand / crouch / prone)
+  // and the hull is r15 x 70 / 50 / 30 (bg_pmove). `body` = { eye, height, radius } overrides
+  // them per pose; without it this is Movement's code path, unchanged.
+  function eyeHeight() {
+    if (state.body) return state.body.eye
+    return state.ducked ? EYE_DUCK : EYE_STAND
+  }
+
+  function setPose(ox, oy, oz, pitch, yaw, ducked, body) {
     state.origin.set(ox, oy, oz)
     state.pitch = pitch
     state.yaw = yaw
-    if (ducked !== state.ducked) {
+    state.body = body || null
+    if (body) {
+      state.ducked = !!ducked
+      capsule.geometry = standGeo
+      capsule.scale.set(body.radius / CAPSULE_R, body.height / STAND_H, body.radius / CAPSULE_R)
+    } else if (ducked !== state.ducked) {
       state.ducked = ducked
       capsule.geometry = ducked ? duckGeo : standGeo
     }
-    const h = ducked ? DUCK_H : STAND_H
+    if (!body) capsule.scale.set(1, 1, 1)
+    const h = body ? body.height : (ducked ? DUCK_H : STAND_H)
     toThree(ox, oy, oz, player.position)
     capsule.position.set(0, h / 2, 0)
     disc.position.set(0, 0.5, 0)
     // view line from eye, 48 units along the look direction
-    const eyeH = ducked ? EYE_DUCK : EYE_STAND
+    const eyeH = eyeHeight()
     forwardOf(pitch, yaw, tmpF)
     const pos = viewGeo.attributes.position
     pos.setXYZ(0, 0, eyeH, 0)
@@ -496,7 +511,7 @@ export function createScene(canvas, opts) {
       camera.fov = sourceFovToVertical(state.worldFov || 90) // installWorldFov (end of file) sets state.worldFov
     } else if (state.mode === 'follow') {
       // Orbit around a point at chest height. Source yaw/pitch semantics for the orbit angles.
-      toThree(state.origin.x, state.origin.y, state.origin.z + (state.ducked ? DUCK_H : STAND_H) * 0.6, eyeV)
+      toThree(state.origin.x, state.origin.y, state.origin.z + (state.body ? state.body.height : (state.ducked ? DUCK_H : STAND_H)) * 0.6, eyeV)
       forwardOf(state.orbitPitch, state.orbitYaw, tmpF)
       camera.position.set(eyeV.x + tmpF.x * state.orbitDist, eyeV.y + tmpF.y * state.orbitDist, eyeV.z + tmpF.z * state.orbitDist)
       camera.lookAt(eyeV)
