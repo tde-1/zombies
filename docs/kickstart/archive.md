@@ -634,9 +634,14 @@ size, content type, fetched), the same shape as §8's. `reports/art_urls.json` i
 Re-runnable: a map with its sidecar is skipped without a request.
 
 **The run:** the cache named a picture for **1,418** of 2,276 catalogue entries (1,399
-callofdutyrepo, 19 moddb). Started 20:14, one image every ~6.6 s; at 22:26, **1,200 fetched,
-2 failed**, still running (`logs/fetch_art.log`). The remaining ~858 entries have no page in
-our cache that shows a picture.
+callofdutyrepo, 19 moddb). Started 20:14, one image every ~6.6 s; at 22:26, 1,200 fetched,
+2 failed (`logs/fetch_art.log`). The remaining ~858 entries have no page in our cache that shows
+a picture.
+
+**Final, on the live site** (`web/public/media/maps/manifest.json`, 21:51Z run of
+`tools/maps/map_art.py --no-stock`, 2,348 maps): **1,449 scraped covers, 19 maps' own loading
+screens, 880 generated cards, 0 stock** (ip-posture §4), plus 25 own loading screens offered as a
+second picture.
 
 The rest of the chain is the web lane's (`tools/maps/map_art.py`, web.md's dated section): scraped
 art first, then the map's own loading screen out of its `.iwd` (an `.iwi` decoded by

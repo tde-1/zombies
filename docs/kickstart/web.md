@@ -1633,12 +1633,15 @@ where a map has scraped art **and** its own loading screen (the page offers both
 sha256. `--write-db` sets `maps.art` (`/media/maps/<stem>.webp?v=<hash>`; the hash is the
 cache-buster, since `/media` is served with a 7-day max-age) and the new `maps.art_source`.
 
-**Counts** (dev copy of the live DB, 2,284 maps, at 22:30 with the catalogue fetch at 1,200 of
-1,415): **site 1,256 · iwd 0 · stock 4 · placeholder 1,024**, plus 10 own-loading-screen
-second pictures. *iwd 0* is not a miss: every map whose files we hold also has a release-post
-cover, which wins; their own loading screens are the 10 second pictures, and the `iwd` rung is
-what a held map with no cover would get. When the fetch finishes, re-run `map_art.py --write-db`
-(seconds, incremental); expected about 1,470 site / 810 placeholder.
+**Counts, final** (the run behind the live site, `web/public/media/maps/manifest.json` generated
+2026-09-22 21:51Z, `--no-stock`): **2,348 maps: site 1,449 · iwd 19 · stock 0 · placeholder 880**,
+plus **25** own-loading-screen second pictures. The 19 `iwd` winners are held maps with no scraped
+cover (22:51 UK, after the popular-maps fetch added held maps); stock is 0 because the stock four fall to
+the generated card under ip-posture §4.
+
+*Interim, kept for the record:* at 22:30 on the dev copy (2,284 maps, catalogue fetch at 1,200 of
+1,415) it was site 1,256 · iwd 0 · stock 4 · placeholder 1,024, plus 10 second pictures. *iwd 0*
+was not a miss: every map whose files we held then also had a release-post cover, which wins.
 
 Two things measured on the first run and fixed, kept because each looks right until it is not:
 
