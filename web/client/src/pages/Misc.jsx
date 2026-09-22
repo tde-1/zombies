@@ -114,9 +114,16 @@ function Replay({ matchId }) {
           <b className={r.ok ? 'good' : 'hot'}>{r.reason}</b>
         </p>
         <pre className="block">{r.verify_command}</pre>
-        {r.can_download
-          ? <a className="btn small" href={`/api/replays/${encodeURIComponent(matchId)}/download`}>Download ({r.download_reason})</a>
-          : <p className="tiny">{r.download_reason}</p>}
+        <div className="row wrap" style={{ gap: 8, marginTop: 10 }}>
+          {/* Watching needs neither the download entitlement nor the file itself: the
+              track is decoded server-side and only positions cross the wire. A replay
+              that failed to verify is still watchable and still says so above. */}
+          <Link className="btn small" to={`/replay/${encodeURIComponent(matchId)}`}>Watch in 3D</Link>
+          {r.can_download
+            ? <a className="btn small ghost" href={`/api/replays/${encodeURIComponent(matchId)}/download`}>Download ({r.download_reason})</a>
+            : null}
+        </div>
+        {!r.can_download && <p className="tiny">{r.download_reason}</p>}
         {!r.available && <p className="tiny">Not downloadable yet.</p>}
       </div>
     </Section>

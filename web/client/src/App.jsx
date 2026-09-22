@@ -25,6 +25,8 @@ const Creator = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Crea
 const Game = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Game })))
 const Archive = lazy(() => import('./pages/Archive'))
 const Download = lazy(() => import('./pages/Download'))
+// The 3D replay viewer. Split hard: this chunk carries three.js.
+const Replay = lazy(() => import('./pages/Replay'))
 const NotFound = lazy(() => import('./pages/Misc').then((m) => ({ default: m.NotFound })))
 
 export default function App() {
@@ -58,6 +60,9 @@ export default function App() {
               <Route path="/id/:who" element={<Profile />} />
               <Route path="/creator/:name" element={<Creator />} />
               <Route path="/game/:id" element={<Game />} />
+              {/* A replay link is pasted into a video description like /m/<map> is,
+                  so it is a route of its own and the match id must never change. */}
+              <Route path="/replay/:matchId" element={<Replay />} />
               <Route path="/custom" element={<Custom />} />
               <Route path="/live" element={<LiveList />} />
               <Route path="/live/:matchId" element={<Live />} />

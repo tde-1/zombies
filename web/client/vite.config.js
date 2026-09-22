@@ -15,6 +15,10 @@ export default defineConfig({
       '/api': { target: API, changeOrigin: false },
       '/auth': { target: API, changeOrigin: false },
       '/socket.io': { target: API, ws: true, changeOrigin: false },
+      // Exported map geometry for the replay viewer, served from ZombiesDev by the
+      // Express app. Without this line the dev server answers a .glb request with
+      // index.html and GLTFLoader fails on 'Unexpected token <'.
+      '/mapdata': { target: API, changeOrigin: false },
     },
   },
   build: {

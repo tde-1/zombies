@@ -1,0 +1,136 @@
+/* The replay viewer's chrome, ported from ENW Movement's theme.css (the ~200 `.r3d-*`
+   rules at lines 8612-8935 of movement-client/src/theme.css) with three changes and
+   nothing else:
+
+     1. Movement's token is `--panel2`; this site's is `--panel-2`. Every use is renamed.
+     2. Everything CS:GO-only is dropped -- jumpstats, the crosshair canvas, the
+        viewmodel FOV row, the loadout rows, the runner's saved GOKZ HUD.
+     3. The zombies blocks at the bottom (`.r3d-zm-*`) are new.
+
+   It is a separate file rather than an append to this site's theme.css because the web
+   lane owns that file and this lane does not. It is imported by ReplayViewer.jsx, so it
+   only loads with the viewer chunk -- which is also where three.js is, and neither
+   belongs in the home page's first paint. */
+
+.r3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: var(--text);
+  --r3d-h: 36px;
+  --r3d-fill: var(--panel-2);
+  --r3d-fill-hi: rgba(255, 255, 255, .14);
+  --r3d-fg: var(--text);
+  --r3d-shadow: 0 12px 36px rgba(11, 13, 18, .45), 0 1px 3px rgba(11, 13, 18, .35);
+  --r3d-ink-shadow: 0 1px 3px rgba(11, 13, 18, .7);
+  --r3d-panel: linear-gradient(var(--panel), var(--panel)), rgba(11, 13, 18, .34);
+}
+
+.r3d-menu, .r3d-menu button, .r3d-cams button, .r3d-clock, .r3d-title { text-shadow: var(--r3d-ink-shadow); }
+.r3d button { font-family: inherit; }
+
+.r3d-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.r3d-canvas:active { cursor: grabbing; }
+
+/* Icon controls: SVG on currentColor, one 36px circle each, an 18px glyph centred. */
+.r3d-icon { display: inline-flex; align-items: center; justify-content: center; width: var(--r3d-h); height: var(--r3d-h); padding: 0; line-height: 0; flex: none; }
+.r3d-icon svg { display: block; width: 18px; height: 18px; }
+.r3d-icon.r3d-skip { width: var(--r3d-h); padding: 0; line-height: 0; }
+
+/* The viewer's segmented rail, sized to the 36px line (30px options inside 3px). */
+.r3d .r3d-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--panel); border-radius: var(--pill); }
+.r3d .r3d-seg > button { display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0 12px; background: transparent; border: none; border-radius: var(--pill); color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer; transition: background .16s ease, color .16s ease; }
+.r3d .r3d-seg > button:hover { color: var(--text); }
+.r3d .r3d-seg > button.on { background: var(--panel-2); color: var(--text); }
+.r3d .r3d-seg > button:disabled { color: var(--faint); cursor: default; }
+.r3d .r3d-seg > button.mono { font-family: var(--num); font-variant-numeric: tabular-nums; }
+
+.r3d-menu { position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: var(--radius); background: var(--r3d-panel); box-shadow: var(--r3d-shadow); }
+.r3d-menu-speed { right: calc(16px + var(--r3d-h) + 8px); bottom: calc(16px + var(--r3d-h) + 8px); width: 104px; padding: 6px; }
+.r3d-menu-speed .r3d-seg { padding: 0; background: transparent; flex-direction: column; align-items: stretch; }
+
+/* Ranges: a 4px track lifted to read over a scene, a 14px thumb in the site's text
+   white, both drawn here so the thumb's centre IS the control's centre line. */
+.r3d-range { -webkit-appearance: none; appearance: none; height: var(--r3d-h); margin: 0; padding: 0; background: transparent; cursor: pointer; }
+.r3d-range:focus { outline: none; box-shadow: none; }
+.r3d-range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .22); }
+.r3d-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: var(--text); border: none; box-shadow: 0 1px 4px rgba(11, 13, 18, .5); }
+.r3d-range::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .22); }
+.r3d-range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--text); border: none; }
+
+/* Top bar. */
+.r3d-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,0)); pointer-events: none; z-index: 3; }
+.r3d-top > * { pointer-events: auto; }
+.r3d-title { display: flex; align-items: center; gap: 10px; font-size: 14px; min-width: 0; }
+.r3d-title > span { white-space: nowrap; }
+.r3d-alias { font-weight: 700; }
+.r3d-sep { width: 1px; height: 14px; background: rgba(255, 255, 255, .25); }
+.r3d-tools { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.r3d-cams { height: var(--r3d-h); }
+@media (max-width: 1100px) { .r3d-title-more { display: none; } }
+
+.r3d-x, .r3d-play, .r3d-skip { display: inline-flex; align-items: center; justify-content: center; height: var(--r3d-h); background: var(--panel-2); border: none; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; line-height: 1; padding: 0 12px; border-radius: var(--pill); cursor: pointer; white-space: nowrap; transition: background .16s ease, color .16s ease; }
+.r3d-x:hover, .r3d-skip:hover, .r3d-play:hover { background: rgba(255, 255, 255, .10); color: #fff; }
+
+.r3d-state { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 10px; background: var(--r3d-panel); padding: 12px 18px; border-radius: var(--radius); box-shadow: var(--r3d-shadow); font-size: 13px; z-index: 5; }
+.r3d-err { color: var(--bad); }
+.r3d-note { position: absolute; left: 16px; bottom: calc(16px + var(--r3d-h) + 14px); z-index: 3; max-width: 420px; color: var(--muted); background: var(--r3d-panel); padding: 6px 12px; border-radius: var(--pill); font-size: 12px; }
+
+/* The loading surface: black, the mark centred, a thin ring turning under it. */
+.r3d-boot { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: #000; opacity: 1; transition: opacity .2s ease; pointer-events: none; }
+.r3d-boot.out { opacity: 0; }
+.r3d-boot-mark { display: block; width: 74px; height: auto; }
+.r3d-boot-bar { display: block; width: 140px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.r3d-boot-fill { display: block; height: 100%; background: rgba(255, 255, 255, .55); transition: width .12s linear; }
+.r3d-boot-spin { display: block; width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .12); border-top-color: rgba(255, 255, 255, .55); animation: spin .8s linear infinite; }
+
+/* The control bar. */
+.r3d-bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 12px 16px 16px; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.6)); }
+.r3d-scrub-wrap { position: relative; flex: 1; min-width: 80px; display: flex; align-items: center; }
+.r3d-scrub { flex: 1; min-width: 80px; width: 100%; }
+.r3d-stagesegs { position: absolute; left: 7px; right: 7px; top: 50%; height: 10px; transform: translateY(-50%); pointer-events: none; }
+.r3d-stagetick { position: absolute; top: 0; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: rgba(190, 197, 208, .9); pointer-events: none; }
+.r3d-stagename { position: absolute; bottom: calc(50% + 9px); transform: translateX(-50%); white-space: nowrap; font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--text); text-shadow: var(--r3d-ink-shadow); pointer-events: none; }
+.r3d-clock { display: inline-flex; align-items: center; height: var(--r3d-h); font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--text); white-space: nowrap; }
+@media (max-width: 720px) { .r3d-title { font-size: 12px; } .r3d-clock { display: none; } }
+
+/* ---- zombies ------------------------------------------------------------------
+   New, not in Movement. A KZ run has one runner, one clock and one route; a zombies
+   game has a round, four scoreboards and a body count, and those are what somebody
+   watches the replay to see. The scoreboard is the same .r3d-panel card as the
+   settings menu so it reads as part of the same chrome. */
+.r3d-zm-score { position: absolute; right: 16px; top: calc(12px + var(--r3d-h) + 10px); z-index: 3; min-width: 216px; padding: 10px 12px; border-radius: var(--radius); background: var(--r3d-panel); box-shadow: var(--r3d-shadow); }
+.r3d-zm-row { display: flex; align-items: center; gap: 8px; padding: 4px 2px; font-size: 13px; border-radius: 6px; cursor: pointer; }
+.r3d-zm-row:hover { background: rgba(255, 255, 255, .06); }
+.r3d-zm-row.on { background: var(--panel-2); }
+.r3d-zm-row.down { opacity: .5; }
+.r3d-zm-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.r3d-zm-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.r3d-zm-pts { font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 700; }
+.r3d-zm-hp { width: 34px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .16); overflow: hidden; flex: none; }
+.r3d-zm-hp > i { display: block; height: 100%; background: var(--good); }
+.r3d-zm-hp.hurt > i { background: var(--bad); }
+
+/* Round and body count, top-left under the title -- the two numbers a zombies player
+   reads first, so they are the biggest type in the viewer. */
+.r3d-zm-round { position: absolute; left: 16px; top: calc(12px + var(--r3d-h) + 10px); z-index: 3; display: flex; flex-direction: column; gap: 2px; pointer-events: none; text-shadow: var(--r3d-ink-shadow); }
+.r3d-zm-round-n { font-family: var(--display); font-size: 34px; font-weight: 700; line-height: 1; color: var(--bad); }
+.r3d-zm-round-lab { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.r3d-zm-alive { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.r3d-zm-alive b { color: var(--text); font-family: var(--num); font-variant-numeric: tabular-nums; }
+
+/* The event feed: points, downs, revives and the referee's own signals, the last few
+   before the playhead. It is the replay's evidence, so it says the time. */
+.r3d-zm-feed { position: absolute; right: 16px; bottom: calc(16px + var(--r3d-h) + 14px); z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; pointer-events: none; font-size: 12px; text-shadow: var(--r3d-ink-shadow); }
+.r3d-zm-ev { display: flex; align-items: center; gap: 7px; padding: 3px 9px; border-radius: var(--pill); background: rgba(11, 13, 18, .5); white-space: nowrap; }
+.r3d-zm-ev-t { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.r3d-zm-ev.pts b { color: var(--good); font-family: var(--num); }
+.r3d-zm-ev.bad b { color: var(--bad); }
+
+/* Round markers on the scrubber. A zombies replay is navigated by round, never by
+   seconds, so the round boundaries are ticks on the bar and the round number sits
+   over the tick. */
+.r3d-zm-rtick { position: absolute; top: 0; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: rgba(176, 52, 44, .95); pointer-events: none; }
+.r3d-zm-rnum { position: absolute; bottom: calc(50% + 9px); transform: translateX(-50%); font-size: 9.5px; font-weight: 700; color: var(--muted); pointer-events: none; }

@@ -83,6 +83,9 @@ app.use('/api/maps', require('./routes/maps').router())
 app.use('/api/players', require('./routes/players').router())
 app.use('/api/launcher', require('./routes/launcher').router())
 app.use('/api/admin', require('./routes/admin').router())
+// The 3D replay viewer's decoded track (routes/replay.js). Separate from the
+// /api/replays/* pointer and grade endpoints in routes/site.js, which it does not touch.
+app.use('/api/replay', require('./routes/replay').router())
 app.use('/api', require('./routes/site').router())
 
 app.get('/api/health', (req, res) => {
@@ -115,6 +118,18 @@ app.use('/updates', express.static(UPDATES_DIR, {
 const MEDIA_DIR = path.join(__dirname, '..', 'public', 'media')
 app.use('/media', express.static(MEDIA_DIR, { index: false, maxAge: '7d' }))
 app.use('/media', (req, res) => res.status(404).type('text/plain').send('no such media'))
+
+// Exported map geometry for the replay viewer: one .glb and one .meta.json per map,
+// built by tools/maps/export_map.py. It is GAME-DERIVED, so it lives in ZombiesDev and
+// is git-ignored, and it is mounted here rather than copied into web/public so there is
+// exactly one copy on the box. A miss is a 404 and must never fall through to the React
+// app, for the same reason /updates must not: a loader handed index.html to parse as a
+// glb fails a long way from the cause.
+{
+  const [mapsDir, mapsStatic] = require('./routes/replay').mapsStatic()
+  if (fs.existsSync(mapsDir)) app.use('/mapdata', mapsStatic)
+  app.use('/mapdata', (req, res) => res.status(404).type('text/plain').send('no such map export'))
+}
 
 // A miss under /updates is a 404, and must never fall through to the React app.
 // electron-updater asks for latest.yml before it does anything else; the catch-all
