@@ -1035,3 +1035,270 @@ installer answered a range request with `206`, which is what the updater needs.
 `parties.create()` defaults `mode = 'verified'` and the `parties.mode` column is
 `TEXT NOT NULL DEFAULT 'verified'`. The panel's segmented control reflects it, so a party made
 by pressing "Start a party" and then Start plays stock settings and is tracked.
+
+---
+
+## 11. The morning the site became Movement (2026-09-22)
+
+B's list, in the morning, after §10: two views on the maps page with all of Movement's filters
+re-worded for zombies; home rows he names; the map entry rewritten; badges into the user menu;
+**one theme, Movement's**; a three-link nav with the search top-left and the account top-right.
+Then two addenda during the pass: Play in a browser goes to `/download`, and a result may credit
+only a `verified` player row.
+
+### 11a. What is copied, file by file
+
+Every row here is a copy rather than an approximation, which was the brief ("copy components and
+CSS wholesale, change only zombies nouns and data"). Where a line diverges, the divergence is the
+data underneath, not the drawing.
+
+| Ours | From ENW Movement | What changed on the way over |
+|---|---|---|
+| `client/src/components/Nav.jsx` | `movement-client/src/components/Nav.jsx` | three links instead of six; our lockup joins the centred group |
+| `client/src/components/UserMenu.jsx` | `components/UserMenu.jsx` | VIP item dropped (no Movement entitlement here); Badges kept in Movement's own slot, under Profile |
+| `client/src/components/SearchBar.jsx` | `components/SearchBar.jsx` | two result kinds (maps, players) instead of four; the per-browser history is not ported; ranking is the server's |
+| `client/src/components/MapCard.jsx` | `components/MapCard.jsx` | the caption is name / bsp / author / date; the tier chip and PB become nothing (see 11c) |
+| `client/src/components/MapListRow.jsx` | `components/MapList.jsx` → `RecordTable density="pick"` | our columns, Movement's pick density. We do not have a records deck to render it through, so it is a row of its own at the same measurements |
+| `client/src/components/MapRow.jsx` | `components/MapRow.jsx` | **verbatim**, mechanism and comments. The measured page step, the scroll-container-for-the-keyboard decision and the absent-not-disabled arrows are all its |
+| `client/src/components/MapRows.jsx` | `pages/ModeHome.jsx` (its row section) | the rows come from a table, not from three hard-coded queries |
+| `client/src/components/Icons.jsx` | `components/ServerIcons.jsx` | four glyphs of the set, same language |
+| `client/src/pages/Maps.jsx` | `pages/Hub.jsx` + its `PickBar` | two views instead of one; our filters; the URL holds the state where Movement holds it in localStorage |
+| `client/src/themes.js` | `themes.js` | one skin, no palettes |
+| `client/src/theme.css` `:root` | `theme.css` `:root` ("Radio") | verbatim, including the derived OKLCH signal family and the note saying why |
+| `client/src/theme.css` `.mv-nav` / `.nav-search` / `.um` | the same blocks | `--panel2` → `--panel-2`, our token spelling |
+| `client/src/theme.css` `.map-card` / `.maprow` / `.rdk-bar` / `.modeview` | the same blocks | the caption is three lines rather than one; `--h` is a holding hue rather than a baked map colour |
+
+### 11b. Two views, and one list behind them
+
+`/maps` draws the pool as a **list** — each row is the map's page entry, with the art — or as a
+**card grid**, and both are fed by the same filtered array off one request. Movement's own note
+is the reason they are not two code paths: when they were, the same filter produced two different
+orders depending on which way you happened to be looking.
+
+The view is remembered per browser and can be stated on the URL (`?view=cards`), which is the only
+thing this page remembers. A filter is what you are doing right now, and a pool that opened
+already narrowed to last week's question is the site answering something nobody asked.
+
+**The filters, and Movement's rule for them.** OR within a group, AND across groups, an empty
+group constrains nothing — so the default is the whole pool and every tick can only narrow it.
+That rule is enforced in `server/lib/maps.js`, not in the page, and it has a test, because getting
+it backwards makes "Large and Hard" quietly answer "Large or Hard", which is most of the archive.
+
+| Group | How | Notes |
+|---|---|---|
+| Finish | segment | Any / Easter Egg / Buyable Ending / Round-based. **This is where the words under every map went** |
+| Size | chips | tag kind `size` |
+| Difficulty | chips | tag kind `difficulty` — **not drawn today**, because nothing is tagged yet |
+| Style | chips | tag kind `style` |
+| Stock vs custom | segment | `maps.source`, which already existed |
+| Playable on our server | chip | `health in (verified, playable)`. Narrower than "in the list": a `custom-only` map is a real map a real person can run at home |
+| Has records | chip | a board with a record on it, **or** a stored replay |
+| Author, Year, Tag | selects | a dropdown of nine hundred authors is not a filter; nine hundred chips is the same exercise with more pixels |
+| Your progress | select | signed in only — signed out both options claim the whole pool or none of it |
+| Include broken | chip | the archive view |
+
+Sorts: popularity, rating, newest, release date, name.
+
+And Movement's other rule, which is what keeps the bar honest: **a group is drawn only where the
+pool actually splits on it.** Difficulty is absent rather than three chips that each empty the
+page. That is also the answer to "where is difficulty" — it is implemented, it has no data, and
+inventing some would be the site describing what it does not know.
+
+### 11c. The map entry, and the words that came off it
+
+Name first — "Clinic of Evil" — then the bsp name as the subtitle (`sanatorium`), then the author,
+then the release date. `client/src/data/mapText.js` owns all four, so the card, the list row and
+the search hit cannot drift.
+
+Two small things in there that are decisions rather than formatting:
+
+* **Titles are title-cased for display when the stored title is all caps.** The crawl recorded
+  "CLINIC OF EVIL" because that is how the forum post shouted it; B writes it as Clinic of Evil.
+  A title that already has case of its own — "UGX Requiem", "BO2 Hijacked Zombies" — is left
+  exactly alone, and nothing is written back to the database: the crawl records what the source
+  said and this is a reading of it.
+* **The bsp name is printed whole**, `nazi_zombie_leviathan` and not `leviathan`. It is the
+  filename the player sees in their mods folder, in a download and in the console, and a subtitle
+  that quietly drops the prefix is a second spelling of the one identifier the game uses.
+
+**"Buyable Ending · Easter Egg · Round 20" is gone from the list and the card entirely.** It is a
+filter now. A label that is true of a quarter of the archive and printed under all of it is not
+information. The map's own page still states what counts as beating it, out of the referee
+manifest, because that is a page somebody opened to find out. The same reasoning killed an "Our
+servers" chip on the list row before it shipped: it was true of twelve of nineteen rows.
+
+### 11d. The home rows are a table
+
+**New maps**, **Vanilla** (Nacht der Untoten, Verrückt, Shi No Numa, Der Riese) and **High
+production** (seeded with Leviathan alone). They are `collections` + `collection_maps`, new tables,
+additive migration, DB backed up first to `web/data/backup-20260922T144026Z/` via `VACUUM INTO`.
+
+Two kinds: an **auto** row is a query resolved at read time, so a map imported tonight joins "New
+maps" with nobody editing anything; a **manual** row is its maps in the order an admin put them.
+Vanilla and High production are judgements, so they are manual.
+
+It is deliberately **not** `playlists`. A playlist is a thing you complete for a badge — it has a
+reward, a live date and per-player progress — and hanging a shelf off that machinery would make
+every row on the home page a challenge somebody could be half way through.
+
+**Edited from Admin → rows.** Show/hide, move up and down, add and remove maps; every write is
+logged to `activity_log` with the actor, because a shelf that changed and nobody can say who
+changed it is an argument waiting to happen. Three guards that each have a test:
+
+* the seeder writes a row's membership **only on the visit that creates it**, so a map an admin
+  removes does not come back on the next restart;
+* a manual row is resolved **through `maps.list()`**, so a map that has since been marked broken
+  cannot reach a shelf even though an admin put it there;
+* a row that resolves to nothing is **not drawn at all** — an empty shelf reads as a broken site.
+
+The same rows fill home's right-hand region when no map is open, which is what §10's "Pick a map"
+card used to be. §10's left column — the party panel and the 302px map pool — is untouched.
+
+### 11e. One theme
+
+`themes.js` is one token block and an `applyTheme()`. The Zombies / Ember / Dusk dropdown is gone
+from the nav and so are the other two palettes; `theme.css`'s `:root` is Movement's, verbatim,
+including its derived OKLCH signal family.
+
+**The olive was hiding in a second place and would have survived the deletion.** `ambience.js`'s
+`WAW_DEFAULT` is the colour pair the ambient system pours when nothing is selected — which is how
+the site opens — so every page would still have been washed the old brand green with the palette
+removed. It is near-neutral now: the same two hues at a chroma low enough that the grade's own
+floor is what you see. Movement's sentence, which is the whole point: *the site is grey, and the
+map you are on is the colour.* The per-map tint of §10b is unchanged and still crossfades in OKLCH
+on a rAF; `index.html`'s `data-theme`, `theme-color` and inline favicon moved with it.
+
+### 11f. The nav
+
+**Maps, Records, Admin** (Admin for staff). Search top-left where Movement's is, absolutely
+positioned so the links stay centred on the bar whatever the box and the account name measure.
+Account top-right with Movement's dropdown: Profile, Badges, Settings, **Sign out**.
+
+* **Badges** was a nav tab and is now under Profile, Movement's own placement and its own reason.
+* **Playlists and Custom** keep their routes and their deep links; only the permanent tab went.
+  They are linked from Admin → rows → Elsewhere.
+* **Sign out left the header.** It was the most destructive control on the site, drawn as a button
+  in the bar at the same weight as the thing beside it.
+* **Settings** is a section of your own profile (there are eight of them and they are all about
+  how the game runs for you), so the menu item is `/id/<you>#settings` and that section is now an
+  anchor.
+* **Download left the bar too**, and did not need a replacement: every Play button in a plain
+  browser now goes there by itself.
+
+### 11g. Play in a browser goes to `/download` (B's addendum)
+
+Nothing in a browser tab can start World at War. Before this, Play, Play Local, Start, Ready, Go
+and both *Start anyway* overrides were requests that either failed on the server or succeeded into
+a party the person had no way to join, and the site never said the one thing that was actually
+wrong.
+
+`client/src/components/playGate.js` is the gate. `guard(intent)` returns **true** when it has taken
+the person to `/download`, so every call site reads `if (guard(...)) return` — one line, impossible
+to half-apply. Inside the launcher it returns false and everything behaves exactly as it did.
+
+**How we know.** Two signals and either is enough: `window.enw`, the preload bridge, which is the
+thing that can actually launch a game; and `me.launcher`, the server's reading of the
+`X-ENW-Launcher` header the wrapped view stamps on every request — **the header the launcher lane
+offered us in `launcher-v0.md` §6 and which had never been taken up.** It is true before any client
+JS has run, which is what a first-paint decision needs. They disagree honestly in both directions
+(a launcher whose preload failed still sends the header; a dev page opened straight in Electron has
+the bridge and no header) and in both of those the person **has** the launcher.
+
+**The deep link is `enw-zombies://` — hyphenated.** `launcher-v0.md` §7 says so explicitly and says
+the unhyphenated `enwzombies://` of §3 is the older spelling not to build against. Both routes we
+need already exist and are implemented:
+
+| The person pressed | `/download` gets | its button sends |
+|---|---|---|
+| Play / Play Local | `?map=<key>&then=/m/<key>` | `enw-zombies://map/<key>` |
+| Start / Ready / Go | `?party=<id>&map=<key>&then=/` | `enw-zombies://party/<id>` |
+
+`/download` offers **"Open in the ENW Zombies launcher" before the installer**, and says what it is
+installing for: *"Install the launcher to play Clinic of Evil"*, with the title fetched rather than
+taken off the URL, because a title in a query string is one somebody can rewrite and this one is
+printed as fact. The fallback is a **reveal, not a redirect**: there is no way to ask a browser
+whether a scheme is registered, so the page navigates to the link and after 1.6 s says nothing
+happened. It does not navigate anywhere on that timer — that is exactly when the OS's own "open
+this application?" prompt is on screen, and a page navigating then would be fighting it.
+
+`then` comes off the URL and is treated as hostile: a site-relative path and nothing else.
+`//evil.example` is a protocol-relative URL that a naive "starts with `/`" check lets straight
+through, which is how an open redirect is usually built.
+
+**One thing that was broken and is now fixed**: §7 says `enw-zombies://party/<id>` navigates the
+wrapped view to `/party/<id>`, and the site had no such route — it was a 404. `/party/:id` now
+renders home, where the party panel is. It does not join anything; §7 says joining is the site's
+decision, and the site's decision is the invite the person already holds.
+
+### 11h. Identity: who a result may credit (referee lane addendum)
+
+`docs/protocol/game-link-v0.md`, referee commit `bd3bd59`: a result's `players[]` rows carry
+`identity` — `none | claimed | verified | refused` — and a `steamid` only when `verified`.
+
+**Only `verified` is credited.** The other three are attendance: they stay in `summary_json`,
+which is the whole result exactly as the box sent it, and they get **no `game_players` row** — so
+no XP, no records, no badges, no map progress, because every one of those iterates `game_players`
+or the seated list. The game is untracked for them.
+
+Three decisions worth writing down:
+
+* **`claimed` is the dangerous one**, and it is the one that looks safe. It means a token arrived
+  and *parsed* — somebody sent a well-formed blob naming an account. Until the signature has been
+  checked that is a claim about who was playing, and crediting a round-40 record to it would be
+  crediting it to whoever typed the loudest.
+* **An absent `identity` fails closed**, treated as `none`. Every box that can post to
+  `/api/gs/result` speaks the current protocol; a body without the field is either older than
+  today or is not a referee, and "we could not tell" has to fail closed on the one path that hands
+  out records.
+* **The gate is on the box path only** (`/api/gs/result`, `/api/gs/spool`), passed in as
+  `requireVerifiedIdentity`. A Local run never had a token to check, already scores zero of
+  everything (`mode: 'local'` forces `records_eligible: 0` and `xp_multiplier: 0`), and its one
+  consequence is the player's own "played" tick on their own machine. Gating it would delete that
+  and protect nothing.
+
+A refusal is written to `activity_log` as `result.unverified` with the box, the match and each
+row's identity, and logged on the console — a player who finished a round-40 game and got nothing
+will ask why, and that is the row that answers.
+
+### 11i. Tests, screenshots and the deploy
+
+`npm test` is **120 checks** (was 105): 75 in-process, 31 over HTTP, 14 sign-in. New:
+
+* the filter contract — OR within a group and AND across groups, an unknown slug matching nothing
+  rather than being ignored, and `?tag=<one-slug>` still meaning what it always meant;
+* "our servers" being narrower than "in the list", and "has records" reading the boards and the
+  replays rather than the map row;
+* four on collections — the seed, a row resolving through `maps.list()` in the admin's order, a
+  broken map not reaching a shelf, and **a removed map staying removed across a restart**;
+* four on identity — a `claimed` row earning nothing while the result is still stored, a
+  `verified` row credited exactly as before, `refused`/absent failing closed, and a Local run not
+  being gated;
+* four on the launcher signal — both directions, a signed-out visitor, and a 500-character header
+  value being cut to 32 rather than echoed back.
+
+Screenshots (headless Edge, 1440 wide, against a private instance on 3399 holding a copy of the
+live database — `web/data` was not touched):
+`ui/maps-home-rows.png`, `ui/maps-list-view.png`, `ui/maps-card-view.png`, `ui/download-gate.png`.
+
+**The site was restarted once, via the keepalive path**, and this section says so because §10j's
+did not need one and this did: the new bundle asks `/api/maps/home` for `rows`, and against the
+old process every row on the page would simply have been missing. `Stop-Process` on the site's pid
+then `infra\keepalive.ps1 -Once`, which is the path that loads `infra/site.env` — so the beta
+password and Steam mode came back with it rather than being lost to a hand-rolled start. Verified
+after: `127.0.0.1:3200` answers 401, `zombies.enw.gg` serves the same bundle hash as
+`client/dist`, `/api/maps/home` returns the three rows, `?server=1` returns 12 of 19, and
+`/api/me` with the launcher header answers `launcher: true`. `cloudflared` was not touched.
+
+### 11j. Still open
+
+* **Difficulty has no data.** The filter is built and hidden. It wants an admin tag editor, or a
+  pass over the pool by somebody who has played them.
+* **Art for the other 2,270 maps** — §10i's item, unchanged. Fourteen covers; every card and row
+  without one falls back to the engine stem.
+* **`/maps` and home are still two map browsers**, §10i's question and still a fair one. They have
+  grown *closer* this morning rather than further apart — the same rows, the same card, the same
+  entry text — but home is the one you play from and `/maps` is the one with the filters and the
+  shareable URL.
+* **The global chat panel still has no page.** §10i, unchanged.
+* **Collections have no drag-reorder** — add and remove, and the row's own order is the order they
+  were added in. `reorder()` exists on the server and nothing calls it.

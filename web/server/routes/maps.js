@@ -8,6 +8,7 @@ const mapfiles = require('../lib/mapfiles')
 const records = require('../lib/records')
 const comments = require('../lib/comments')
 const playlists = require('../lib/playlists')
+const collections = require('../lib/collections')
 const parties = require('../lib/parties')
 const assignments = require('../lib/assignments')
 const { db } = require('../db/database')
@@ -28,7 +29,17 @@ function router() {
     // the caller has to ask for more.
     const out = maps.list({
       q: q.q, finish: q.finish, author: q.author, year: q.year ? Number(q.year) : null,
-      tag: q.tag, progress: q.progress, sort: q.sort, source: q.source,
+      // One param per CHIP GROUP on the bar, ORed inside and ANDed across (lib/maps.js).
+      // `tag` is the catch-all and still takes a single slug, so /maps?tag=top-100 — which
+      // is on the map page, on every creator page and in whatever anyone has pasted — keeps
+      // meaning exactly what it meant.
+      tagGroups: [q.tag, q.size, q.difficulty, q.style],
+      progress: q.progress, sort: q.sort, source: q.source,
+      // B's morning list (2026-09-22): playable-on-our-server, stock vs custom (`source`,
+      // which already existed) and has-a-replay-or-record. Size, difficulty and style are
+      // not new params — they are TAG KINDS, and `tag` takes a comma-separated list now, so
+      // every chip group on the bar writes the same one param.
+      server: q.server === '1', records: q.records === '1',
       includeBroken: archive,
       me,
       limit: q.limit ? Math.min(500, Number(q.limit)) : (archive ? 60 : null),
@@ -47,16 +58,25 @@ function router() {
     })
   })
 
-  // Everything the Maps home (Movement's mode home) shows above the list.
+  // Everything the Maps home (Movement's mode home) shows above the grid.
+  //
+  // `rows` is the whole of it now: New maps, Vanilla, High production and whatever else an
+  // admin has made, in the order they set, from the `collections` table (lib/collections.js).
+  // The four hard-coded blocks that used to be here — map of the week, your favourites, New,
+  // Playlists — are gone as a SHAPE: three of them were a row of maps under a heading, which
+  // is what a collection is, and keeping them as their own fields meant four payload keys and
+  // four blocks of JSX to say one thing.
+  //
+  // `week` and `playlists` stay on the wire because the map-of-the-week hero and the playlist
+  // machinery are real and are read elsewhere; nothing on the maps page draws them now.
   r.get('/home', (req, res) => {
     const me = req.me ? req.me.steam_id : null
     const mapWeek = require('../lib/mapWeek')
     res.json({
       count: maps.count(),
+      rows: collections.live({ me }),
       week: mapWeek.current(),
       playlists: playlists.live({ me, withMaps: true }),
-      featured: maps.list({ sort: 'popular', limit: 6, me }).maps,
-      newest: maps.list({ sort: 'newest', limit: 6, me }).maps,
       favourites: me ? maps.favouritesOf(me) : [],
     })
   })

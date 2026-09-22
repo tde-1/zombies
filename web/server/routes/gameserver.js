@@ -175,13 +175,24 @@ function safeIngest(body, box) {
   try {
     const payload = { ...(body || {}), box: (body && body.box) || box.name }
     if (payload.replay && !payload.replay.key_id && payload.key_id) payload.replay.key_id = payload.key_id
-    const out = results.ingest(payload)
+    // `requireVerifiedIdentity` is ON for every box post (referee lane, 2026-09-22): a
+    // `players[]` row that is not `identity:"verified"` is attendance and is awarded
+    // nothing. See lib/results.js, the IDENTITY block, for why `claimed` is the dangerous
+    // one and why an absent field fails closed.
+    const out = results.ingest(payload, { requireVerifiedIdentity: true })
     if (out.ok) {
       const s = body.summary || {}
       console.log(`[gs] result ${s.map} round ${s.rounds} finish=${(s.finish && s.finish.kind) || 'none'} ` +
         `from ${box.name}${out.repeat ? ' (repeat)' : ''}${out.awarded && out.awarded.length ? ` — ${out.awarded.length} badge(s)` : ''}`)
       // The game is over, so nobody is in it any more and there is nothing live to watch.
+      // Presence is cleared for EVERY slot that named an account, verified or not: they
+      // are not in the game any more whatever their row was worth, and leaving somebody
+      // marked in-game is a bug about where they are, not about what they earned.
       for (const p of s.players || []) if (p.steamid) presence.clearGame(p.steamid)
+      if (out.unverified && out.unverified.length) {
+        console.log(`[gs]   ${out.unverified.length} player row(s) not verified — attendance only: ` +
+          out.unverified.map((u) => `${u.name || 'slot ' + u.slot}=${u.identity}`).join(', '))
+      }
       live.drop(s.match_id)
     }
     return out

@@ -14,6 +14,10 @@ const { db, now } = require('../db/database')
 const { safeJson } = require('./util')
 
 const LIST_HEALTH = ['verified', 'playable', 'custom-only']
+// Which of those our own boxes will actually referee. `custom-only` is a map a player can
+// download and run on their own PC and nothing more, so "playable on our server" is a
+// narrower question than "in the list".
+const SERVER_HEALTH = ['verified', 'playable']
 
 function project(row, { me = null } = {}) {
   if (!row) return null
@@ -31,6 +35,9 @@ function project(row, { me = null } = {}) {
     has_buyable: !!row.has_buyable,
     description: row.description || null,
     art: row.art || null,
+    // Playable on our boxes, as its own field rather than something every card has to
+    // re-derive from `health`. The map browser filters on it and the list row prints it.
+    on_server: SERVER_HEALTH.includes(row.health),
     released_at: row.released_at || null,
     added_at: row.added_at || null,
     plays: row.plays || 0,
@@ -134,11 +141,41 @@ function list(o = {}) {
   if (o.author) rows = rows.filter((r) => String(r.author || '').toLowerCase() === String(o.author).toLowerCase())
   if (o.year) rows = rows.filter((r) => Number(r.year) === Number(o.year))
   if (o.source) rows = rows.filter((r) => r.source === o.source)
-  if (o.tag) {
-    const t = db.prepare('SELECT id FROM tags WHERE slug=?').get(String(o.tag))
-    if (!t) return { maps: [], total: 0 }
-    const ids = new Set(db.prepare('SELECT map_id FROM map_tags WHERE tag_id=?').all(t.id).map((x) => x.map_id))
-    rows = rows.filter((r) => ids.has(r.id))
+
+  // Playable on OUR server. `custom-only` is a real map that a real person can download and
+  // run, and it is deliberately in LIST_HEALTH — it is just not one our boxes will referee.
+  // So this is its own question and not a second spelling of the health filter.
+  if (o.server) rows = rows.filter((r) => SERVER_HEALTH.includes(r.health))
+
+  // Has anything to watch or beat. Records first, replays second, and either counts: a map
+  // whose only artefact is a signed replay still has something on its page worth opening.
+  if (o.records) {
+    const withR = new Set([
+      ...db.prepare('SELECT DISTINCT b.map_key k FROM records r JOIN boards b ON b.id=r.board_id').all().map((x) => x.k),
+      ...db.prepare('SELECT DISTINCT g.map_key k FROM replays rp JOIN games g ON g.id=rp.game_id').all().map((x) => x.k),
+    ].filter(Boolean))
+    rows = rows.filter((r) => withR.has(r.key))
+  }
+
+  // TAGS: **OR within a group, AND across groups.** That is Movement's rule for every chip
+  // group on its bar ("Slides or Ladders is a sensible thing to ask for") and it is the only
+  // reading that makes a bar of groups useful — Large AND Hard is a question; Large OR Hard
+  // is nearly the whole pool.
+  //
+  // A group is a comma-separated list of slugs. The caller sends one param per group (`tag`,
+  // `size`, `difficulty`, `style`) and they are all the same machinery: `tag` is the
+  // catch-all, and a single slug in it still works, so every link anybody has already pasted
+  // keeps meaning what it meant.
+  const groups = (Array.isArray(o.tagGroups) ? o.tagGroups : [o.tag])
+    .map((g) => String(g || '').split(',').map((x) => x.trim()).filter(Boolean))
+    .filter((g) => g.length)
+  for (const group of groups) {
+    const ids = db.prepare(`SELECT id FROM tags WHERE slug IN (${group.map(() => '?').join(',')})`).all(...group).map((t) => t.id)
+    // A group naming only slugs that do not exist can match nothing. Answering "everything"
+    // there would silently drop a filter the reader can see is on.
+    if (!ids.length) return { maps: [], total: 0 }
+    const mapIds = new Set(db.prepare(`SELECT map_id FROM map_tags WHERE tag_id IN (${ids.map(() => '?').join(',')})`).all(...ids).map((x) => x.map_id))
+    rows = rows.filter((r) => mapIds.has(r.id))
   }
 
   if (o.progress && o.me) {
@@ -286,5 +323,5 @@ const count = () => db.prepare(`SELECT COUNT(*) c FROM maps WHERE hidden=0 AND h
 
 module.exports = {
   project, byKey, bySlug, list, detail, authors, years, tagCloud, archiveStats, sourcesFor,
-  rate, recountRatings, favourite, favouritesOf, count, ratingOf, tagsFor, LIST_HEALTH,
+  rate, recountRatings, favourite, favouritesOf, count, ratingOf, tagsFor, LIST_HEALTH, SERVER_HEALTH,
 }

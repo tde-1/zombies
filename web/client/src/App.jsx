@@ -46,6 +46,13 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/home" element={<Navigate to="/" replace />} />
+              {/* `enw-zombies://party/<id>` opens /party/<id> in the launcher's wrapped view
+                  (docs/protocol/launcher-v0.md §7), and the party lives on home in a panel —
+                  there is no page of its own to send it to. So the route exists and lands on
+                  home rather than on a 404. It does NOT try to join anything: the launcher
+                  says joining is the site's decision, and the site's decision is made by the
+                  invite the person already holds. */}
+              <Route path="/party/:id" element={<Home />} />
               <Route path="/maps" element={<Maps />} />
               {/* /m/<map> is the deep link YouTubers put in a description (13 §2d). It is
                   short on purpose and must never change. */}

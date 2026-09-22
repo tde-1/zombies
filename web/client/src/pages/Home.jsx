@@ -5,6 +5,7 @@ import { useSession } from '../session'
 import { Loading, Lockup } from '../components/Bits'
 import PartyPanel from '../components/PartyPanel'
 import MapListPanel from '../components/MapListPanel'
+import MapRows from '../components/MapRows'
 import { MapBody } from './MapPage'
 import { setBaseAmbience } from '../ambience'
 
@@ -32,6 +33,7 @@ import { setBaseAmbience } from '../ambience'
 export default function Home() {
   const { signedIn, authMode } = useSession()
   const [maps, setMaps] = useState(null)
+  const [rows, setRows] = useState(null)
   const [party, setParty] = useState(null)
   const [launch, setLaunch] = useState(null)
   // What the page is showing. It follows the party's staged map when there is one, because
@@ -42,6 +44,10 @@ export default function Home() {
 
   useEffect(() => {
     api.get('/api/maps?sort=popular').then((j) => setMaps(j.maps || [])).catch(() => setMaps([]))
+    // The home ROWS — New maps, Vanilla, High production — off `collections`, which an admin
+    // owns (B, 2026-09-22). They fill the right-hand region when no map is open, which is
+    // the region that used to say "Pick a map" and nothing else.
+    api.get('/api/maps/home').then((j) => setRows(j.rows || [])).catch(() => setRows([]))
   }, [signedIn])
 
   const loadParty = useCallback(async () => {
@@ -100,7 +106,7 @@ export default function Home() {
       <div className="home-right">
         {sel
           ? <MapBody mapKey={sel} />
-          : <Nothing count={maps.length} />}
+          : <Nothing count={maps.length} rows={rows} />}
       </div>
     </div>
   )
@@ -126,10 +132,29 @@ function SignIn({ authMode, count }) {
   )
 }
 
-// No map open. Deliberately almost nothing: the list beside it is the invitation, and a
-// panel of suggestions here would be the featured row this page just removed, wearing a
-// different hat.
-function Nothing({ count }) {
+// No map open — so the region is Movement's mode home: the rows, then the way into the
+// whole pool.
+//
+// ~~Deliberately almost nothing: the list beside it is the invitation, and a panel of
+// suggestions here would be the featured row this page just removed, wearing a different
+// hat.~~ **Retracted in place, B 2026-09-22.** The objection to the old featured row was that
+// it was a hard-coded guess with nothing behind it; these rows are a table an admin edits
+// (`collections`), and B asked for them by name. The empty card stays underneath as the
+// state when there are no rows at all — a new database, or every row emptied — because that
+// is still better than a blank half-page.
+function Nothing({ count, rows }) {
+  if (rows && rows.length) {
+    return (
+      <>
+        <MapRows rows={rows} />
+        <div className="row" style={{ justifyContent: 'center', marginTop: 4 }}>
+          <Link className="btn ghost small" to="/maps">All {num(count)} maps</Link>
+          <Link className="btn ghost small" to="/archive">The archive</Link>
+          <Link className="btn ghost small" to="/records">Records</Link>
+        </div>
+      </>
+    )
+  }
   return (
     <div className="card" style={{ padding: '46px 22px', textAlign: 'center' }}>
       <h2 style={{ marginBottom: 6 }}>Pick a map</h2>

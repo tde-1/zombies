@@ -59,6 +59,8 @@ const live = require('../server/lib/live')
 const replays = require('../server/lib/replays')
 const tokens = require('../server/lib/tokens')
 const achievements = require('../server/lib/achievements')
+const collections = require('../server/lib/collections')
+const { seedCollections } = require('../server/db/database')
 const { canonical } = require('../server/lib/util')
 
 // ---- fixtures -------------------------------------------------------------------
@@ -689,6 +691,168 @@ async function main() {
   check('only somebody who has played it can rate it', () => {
     eq(maps.rate('nazi_zombie_test', '76561198000000099', 1).ok, false, 'a stranger cannot')
     truthy(maps.rate('nazi_zombie_test', '76561198000000003', 1).ok, 'a player can')
+  })
+
+
+  // ── the map browser's filters (B's morning list, 2026-09-22) ──────────────────
+  //
+  // Size, difficulty and style are not new columns: they are TAG KINDS, and the bar writes
+  // one URL param per group. The rule the whole bar rests on is OR within a group, AND
+  // across groups — get that backwards and "Large and Hard" quietly answers "Large or
+  // Hard", which is most of the archive.
+  check('a filter group is OR inside it and AND across groups', () => {
+    const tag = (slug, label, kind) => {
+      db.prepare('INSERT OR IGNORE INTO tags (slug, label, kind, sort_order) VALUES (?,?,?,0)').run(slug, label, kind)
+      return db.prepare('SELECT id FROM tags WHERE slug=?').get(slug).id
+    }
+    const small = tag('small', 'Small', 'size')
+    const large = tag('large', 'Large', 'size')
+    const horror = tag('horror', 'Horror', 'style')
+    const idOf = (k) => db.prepare('SELECT id FROM maps WHERE key=?').get(k).id
+    const t4 = idOf('nazi_zombie_test')
+    const riese = idOf('nazi_zombie_factory')
+    const link = db.prepare('INSERT OR IGNORE INTO map_tags (map_id, tag_id) VALUES (?,?)')
+    link.run(t4, small); link.run(t4, horror)
+    link.run(riese, large)
+
+    // OR within the group: both maps come back.
+    const either = maps.list({ tagGroups: ['', 'small,large'] }).maps.map((m) => m.key).sort()
+    eq(either.join(','), 'nazi_zombie_factory,nazi_zombie_test', 'OR within a group')
+    // AND across groups: only the map that is BOTH small and horror.
+    const both = maps.list({ tagGroups: ['', 'small,large', '', 'horror'] }).maps.map((m) => m.key)
+    eq(both.join(','), 'nazi_zombie_test', 'AND across groups')
+    // A group naming nothing real matches nothing — it must not quietly answer "everything".
+    eq(maps.list({ tagGroups: ['', 'no-such-tag'] }).total, 0, 'an unknown slug is not ignored')
+    // The single-slug spelling still works: /maps?tag=horror is on the map page, on every
+    // creator page, and in whatever anybody has already pasted.
+    eq(maps.list({ tag: 'horror' }).maps[0].key, 'nazi_zombie_test', 'one slug in `tag` still works')
+  })
+
+  check('"playable on our server" is narrower than "in the list"', () => {
+    db.prepare(`INSERT INTO maps (key, slug, title, source, health, added_at)
+                VALUES ('nazi_zombie_dlonly','dl-only','Download only','custom','custom-only',?)`).run(now())
+    const listed = maps.list({}).maps.map((m) => m.key)
+    truthy(listed.includes('nazi_zombie_dlonly'), 'a custom-only map is still in the list')
+    const ours = maps.list({ server: true }).maps.map((m) => m.key)
+    truthy(!ours.includes('nazi_zombie_dlonly'), 'a custom-only map is not on our servers')
+    truthy(ours.includes('nazi_zombie_test'), 'a verified map is')
+    // And the flag every card and row reads, so nothing has to re-derive it from `health`.
+    eq(maps.list({ q: 'Download only' }).maps[0].on_server, false, 'on_server says so')
+  })
+
+  check('"has records" asks the boards and the replays, not the map row', () => {
+    // The suite has already played games on nazi_zombie_test by the time this runs, so the
+    // assertion that means anything is the SPLIT: the map with a board qualifies and the
+    // one nobody has ever played does not.
+    const withRecords = maps.list({ records: true }).maps.map((m) => m.key)
+    truthy(withRecords.includes('nazi_zombie_test'), 'the map with a record does not qualify')
+    truthy(!withRecords.includes('nazi_zombie_factory'), 'a map nobody has played qualified')
+  })
+
+  // ── the home rows (`collections`) ─────────────────────────────────────────────
+  //
+  // B: "make the row membership a collections/playlist-like table editable from admin, not
+  // hard-coded." These four checks are the difference between that sentence being true and
+  // the rows being an array in the client with a table beside it for show.
+  check('the three rows are seeded, and Vanilla is the four stock maps', () => {
+    const all = collections.all()
+    const bySlug = Object.fromEntries(all.map((c) => [c.slug, c]))
+    truthy(bySlug.new && bySlug.vanilla && bySlug['high-production'], 'a row is missing')
+    eq(bySlug.new.kind, 'auto', 'New maps is a query, not a hand-picked list')
+    eq(bySlug.vanilla.keys.length, 4, 'Vanilla is not the four stock maps')
+    eq(bySlug['high-production'].keys.join(','), 'nazi_zombie_leviathan', 'High production was not seeded with Leviathan')
+  })
+
+  check('a row only shows maps the list view would show, in the collection’s own order', () => {
+    const id = collections.all().find((c) => c.slug === 'high-production').id
+    // Leviathan is not in this test database at all, so the row resolves to nothing and is
+    // dropped: an empty shelf reads as a broken site.
+    truthy(!collections.live().some((r) => r.slug === 'high-production'), 'an unresolvable row was drawn')
+    truthy(collections.addMap(id, 'nazi_zombie_factory').ok, 'could not add a map')
+    truthy(collections.addMap(id, 'nazi_zombie_test').ok, 'could not add a second map')
+    const row = collections.live().find((r) => r.slug === 'high-production')
+    eq(row.maps.map((m) => m.key).join(','), 'nazi_zombie_factory,nazi_zombie_test', 'the row lost the admin’s order')
+    // A broken map must not reach a shelf even when an admin put it there.
+    db.prepare("UPDATE maps SET health='broken' WHERE key='nazi_zombie_factory'").run()
+    eq(collections.live().find((r) => r.slug === 'high-production').maps.length, 1, 'a broken map reached the shelf')
+    db.prepare("UPDATE maps SET health='verified' WHERE key='nazi_zombie_factory'").run()
+  })
+
+  check('a map an admin removes stays removed when the server restarts', () => {
+    const id = collections.all().find((c) => c.slug === 'vanilla').id
+    truthy(collections.removeMap(id, 'nazi_zombie_prototype').ok, 'remove failed')
+    eq(collections.keysOf(id).length, 3, 'the map was not removed')
+    // The seeder runs on every boot. If it re-asserted its list it would be a second editor
+    // quietly overruling the first, every restart, for ever.
+    seedCollections()
+    eq(collections.keysOf(id).length, 3, 'the seeder put a removed map back')
+  })
+
+  check('a collection refuses a map that does not exist, and a query row has no map list', () => {
+    const vanilla = collections.all().find((c) => c.slug === 'vanilla').id
+    eq(collections.addMap(vanilla, 'nazi_zombie_nothing').ok, false, 'an unknown key was accepted')
+    const newest = collections.all().find((c) => c.slug === 'new').id
+    eq(collections.addMap(newest, 'nazi_zombie_test').ok, false, 'a query row took a hand-picked map')
+  })
+
+  // ── identity: who a result may award anything to ──────────────────────────────
+  //
+  // Referee lane, 2026-09-22 (`docs/protocol/game-link-v0.md`): a `players[]` row carries
+  // `identity` and only `verified` may be credited. `claimed` is the dangerous one — a
+  // token arrived and PARSED, and its signature was never checked, so it is a claim about
+  // who was playing rather than a fact.
+  const identSummary = (rows) => summary({
+    match_id: 'm_ident_' + Math.random().toString(16).slice(2, 8),
+    players: rows.map((r) => r.sid),
+  })
+  const withIdentity = (sum, rows) => {
+    sum.players = sum.players.map((p, i) => (rows[i].identity ? { ...p, identity: rows[i].identity } : p))
+    return sum
+  }
+
+  check('a `claimed` player row is attendance: no game_players row, no XP, no map progress', () => {
+    const sid = '76561198000000002'
+    const before = db.prepare('SELECT xp_total FROM users WHERE steam_id=?').get(sid).xp_total
+    const sum = withIdentity(identSummary([{ sid }]), [{ identity: 'claimed' }])
+    const out = results_.ingest({ box: 'test-box', summary: sum }, { requireVerifiedIdentity: true })
+    truthy(out.ok, 'the result itself was refused — it should be stored, just not credited')
+    eq(db.prepare('SELECT COUNT(*) c FROM game_players WHERE game_id=?').get(out.game_id).c, 0, 'a claimed row was seated')
+    eq(db.prepare('SELECT xp_total FROM users WHERE steam_id=?').get(sid).xp_total, before, 'a claimed row earned XP')
+    eq(out.unverified.length, 1, 'the refusal was not reported back')
+    eq(out.unverified[0].identity, 'claimed')
+    // The whole result is still on file, exactly as the box sent it — attendance, not a
+    // deletion. And the refusal is in the audit log, because the player will ask why.
+    truthy(JSON.parse(db.prepare('SELECT summary_json j FROM games WHERE id=?').get(out.game_id).j).players.length === 1,
+      'the player vanished from the stored summary')
+    truthy(db.prepare("SELECT COUNT(*) c FROM activity_log WHERE event='result.unverified'").get().c > 0, 'nothing was logged')
+  })
+
+  check('a `verified` player row is credited exactly as before', () => {
+    const sid = '76561198000000004'
+    const sum = withIdentity(identSummary([{ sid }]), [{ identity: 'verified' }])
+    const out = results_.ingest({ box: 'test-box', summary: sum }, { requireVerifiedIdentity: true })
+    eq(db.prepare('SELECT COUNT(*) c FROM game_players WHERE game_id=? AND steam_id=?').get(out.game_id, sid).c, 1, 'a verified row was not seated')
+    truthy(db.prepare('SELECT xp_total FROM users WHERE steam_id=?').get(sid).xp_total > 0, 'a verified row earned no XP')
+    eq(out.unverified.length, 0, 'a verified row was reported as unverified')
+  })
+
+  check('`refused`, and an absent identity, fail closed on the box path', () => {
+    const sum = withIdentity(identSummary([{ sid: '76561198000000002' }, { sid: '76561198000000003' }]),
+      [{ identity: 'refused' }, {}])
+    const out = results_.ingest({ box: 'test-box', summary: sum }, { requireVerifiedIdentity: true })
+    eq(db.prepare('SELECT COUNT(*) c FROM game_players WHERE game_id=?').get(out.game_id).c, 0, 'an unverified row was seated')
+    eq(out.unverified.length, 2, 'both rows should have been held back')
+    // An absent field is reported as `none`, which is what it means, rather than as ''.
+    eq(out.unverified[1].identity, 'none', 'an absent identity was not named')
+  })
+
+  check('a Local run is not identity-gated — it never had a token, and it scores zero anyway', () => {
+    const sid = '76561198000000003'
+    const sum = summary({ match_id: 'm_local_' + Math.random().toString(16).slice(2, 8), mode: 'local', players: [sid] })
+    const out = results_.ingest({ box: 'test-box', summary: sum }, { selfReported: true })
+    eq(db.prepare('SELECT COUNT(*) c FROM game_players WHERE game_id=?').get(out.game_id).c, 1, 'the local run lost its player')
+    eq(db.prepare('SELECT records_eligible, xp_multiplier FROM games WHERE id=?').get(out.game_id).records_eligible, 0,
+      'a local run became records-eligible')
   })
 
   // ---- report ---------------------------------------------------------------

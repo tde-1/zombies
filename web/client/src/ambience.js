@@ -29,12 +29,23 @@
 
 import { sampleImageColors } from './data/sampleColors'
 
-// No map selected. 06's palette as a colour PAIR rather than as a gradient string, so the
+// No map selected, and no art to sample. A colour PAIR rather than a gradient string, so the
 // default goes through the identical grade, tween and projection a map does — the page with
 // nothing open has to be the same kind of surface as the page with Der Riese open, or
-// picking a map reads as the site changing rather than as the map arriving. Muddy olive as
-// the primary, dried blood as the crown.
-export const WAW_DEFAULT = { h: 66, s: 18, l: 32, h2: 4, s2: 44, l2: 26 }
+// picking a map reads as the site changing rather than as the map arriving.
+//
+// ~~Muddy olive as the primary, dried blood as the crown — 06's palette.~~ **Retracted in
+// place, B 2026-09-22: one theme, Movement's.** The olive pair was 06's brand palette
+// arriving by the back door: with nothing selected — which is how the site opens — every
+// page was washed the old theme's green, so removing the palette from themes.js and leaving
+// this would have moved the brand colour rather than dropped it.
+//
+// The pair is now NEARLY NEUTRAL: the same two hues, at a chroma low enough that the
+// grade's own floor is what you see. That is Movement's ground exactly ("the site is grey;
+// the MAP you're on is the colour"), and it keeps the mechanism honest — a map with art
+// still pours its real colour over this, and the crossfade between the two still runs in
+// OKLCH on the same rAF.
+export const WAW_DEFAULT = { h: 66, s: 3, l: 12, h2: 20, s2: 4, l2: 9 }
 
 let baseAmb = null        // what the page is about when nothing is open or hovered
 let overrideAmb = null    // the open map

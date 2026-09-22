@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { usePlayGate } from '../components/playGate'
 import { setAmbienceOverride } from '../ambience'
 import { api, ago, clock, num } from '../api'
 import { useSession } from '../session'
@@ -27,6 +28,7 @@ export default function MapPage() {
 
 export function MapBody({ mapKey: key }) {
   const { signedIn, approved, refresh } = useSession()
+  const { guard } = usePlayGate()
   const [d, setD] = useState(null)
   const [err, setErr] = useState(null)
   const [version, setVersion] = useState(null)
@@ -51,7 +53,12 @@ export function MapBody({ mapKey: key }) {
   if (!d) return <Loading />
 
   const m = d.map
+  // The play gate (B, 2026-09-22): in a plain browser this button cannot do the thing it
+  // says, so it goes to /download carrying this map — "install the launcher to play Clinic
+  // of Evil" — rather than staging a party nobody can join. Inside the launcher `guard`
+  // returns false and the request goes as it always did.
   const play = async () => {
+    if (guard({ map: m.key, then: `/m/${m.key}` })) return
     try { await api.post(`/api/maps/${m.key}/play`); refresh() } catch (e) { setErr(e.message) }
   }
   const rate = async (t) => { try { await api.post(`/api/maps/${m.key}/rate`, { thumbs: t }); load() } catch (e) { setErr(e.message) } }
@@ -258,12 +265,16 @@ const hostOf = (u) => { try { return new URL(u).host } catch { return u } }
 
 // Play Local (13 §3, §4). `window.enw` is the launcher's preload bridge (launcher.md §4).
 // In a plain browser it is absent and there is nothing to launch.
+//
+// ~~It said so in a red line under the button.~~ Retracted in place, B 2026-09-22: a
+// refusal that names a thing you do not have is only half an answer. It goes to /download
+// now, like every other play action, carrying this map — `components/playGate.js`.
 function PlayLocal({ mapKey, onError }) {
   const [busy, setBusy] = useState(false)
-  const inLauncher = typeof window !== 'undefined' && !!window.enw
+  const { guard } = usePlayGate()
 
   const go = async () => {
-    if (!inLauncher) { onError('Play Local needs the launcher.'); return }
+    if (guard({ map: mapKey, then: `/m/${mapKey}` })) return
     setBusy(true)
     try {
       const s = await api.post('/api/launcher/local/start', { map_key: mapKey })

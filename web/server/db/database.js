@@ -826,6 +826,48 @@ function migrate() {
   db.exec('CREATE INDEX IF NOT EXISTS idx_local_matches_player ON local_matches(steam_id, started_at)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_local_matches_state ON local_matches(state, last_seen)')
 
+  // ── Collections: the home rows ────────────────────────────────────────────────────
+  //
+  // Movement's mode home is ROWS, and which maps are in a row is an editorial decision that
+  // changes weekly. B's three — New maps, Vanilla, High production — are therefore a TABLE
+  // and not a constant in the client: "seed it with Leviathan and make the membership
+  // editable from admin, not hard-coded" (B, 2026-09-22).
+  //
+  // Two kinds, and the difference is who decides:
+  //   auto    the row is a QUERY. `auto` holds the query name ('newest', 'popular',
+  //           'stock'), it is resolved at read time, and a map imported tonight joins
+  //           "New maps" without anybody editing anything.
+  //   manual  the row is `collection_maps`, in `position` order. Vanilla and High
+  //           production are manual because both are judgements.
+  //
+  // It is NOT `playlists`. A playlist is a thing you complete for a badge — it has a
+  // reward, a live_from date and per-player progress (lib/playlists.js), and hanging a
+  // shelf row off that machinery would mean every row on the home page was also a
+  // challenge somebody could be half way through.
+  db.exec(`CREATE TABLE IF NOT EXISTS collections (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug        TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL,
+    blurb       TEXT,
+    kind        TEXT NOT NULL DEFAULT 'manual',
+    auto        TEXT,
+    state       TEXT NOT NULL DEFAULT 'live',
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    limit_n     INTEGER NOT NULL DEFAULT 12,
+    created_at  INTEGER,
+    updated_at  INTEGER,
+    updated_by  TEXT
+  )`)
+  db.exec(`CREATE TABLE IF NOT EXISTS collection_maps (
+    collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+    map_key       TEXT NOT NULL,
+    position      INTEGER NOT NULL DEFAULT 0,
+    added_at      INTEGER,
+    PRIMARY KEY (collection_id, map_key)
+  )`)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_collections_live ON collections(state, sort_order)')
+  seedCollections()
+
   // Scaffolding, marked as scaffolding.
   //
   // `npm run seed -- --demo` writes six games so the pages are not empty, and it writes
@@ -860,6 +902,39 @@ function markSeededDemoGames() {
                         AND id IN (SELECT game_id FROM replays WHERE file='demo.enwr')`).run().changes
 }
 
+/**
+ * The three rows B named, created ONCE and then left alone.
+ *
+ * The membership is only written on the visit that creates the row. That matters: an admin
+ * who takes Der Riese out of Vanilla must not find it back tomorrow because the server
+ * restarted, and a seeder that re-asserted its list on every boot would be a second editor
+ * quietly overruling the first. `INSERT OR IGNORE` on the collection is the whole guard —
+ * `changes` tells us whether this process is the one that made it.
+ *
+ * "High production" is seeded with Leviathan alone, which is what B asked for and is also
+ * the honest state: one map has been judged a big undertaking and the rest have not been
+ * looked at yet. A row of four guesses would read as a verdict on the other 2,280.
+ */
+function seedCollections() {
+  const t = now()
+  const add = db.prepare(`INSERT OR IGNORE INTO collections
+    (slug, name, blurb, kind, auto, state, sort_order, limit_n, created_at, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`)
+  const member = db.prepare('INSERT OR IGNORE INTO collection_maps (collection_id, map_key, position, added_at) VALUES (?,?,?,?)')
+  const idOf = (slug) => { const r = db.prepare('SELECT id FROM collections WHERE slug=?').get(slug); return r && r.id }
+  const make = (slug, name, blurb, kind, auto, order, limit, maps = []) => {
+    const r = add.run(slug, name, blurb, kind, auto, 'live', order, limit, t, t)
+    if (!r.changes) return
+    const id = idOf(slug)
+    maps.forEach((k, i) => member.run(id, k, i, t))
+  }
+  make('new', 'New maps', 'The most recently added to the archive.', 'auto', 'newest', 10, 12)
+  make('vanilla', 'Vanilla', 'The four that shipped with World at War.', 'manual', null, 20, 12,
+    ['nazi_zombie_prototype', 'nazi_zombie_asylum', 'nazi_zombie_sumpf', 'nazi_zombie_factory'])
+  make('high-production', 'High production', 'Big undertakings.', 'manual', null, 30, 12,
+    ['nazi_zombie_leviathan'])
+}
+
 migrate()
 
-module.exports = { db, now, migrate, addColumn, markSeededDemoGames, DB_PATH, DATA_DIR }
+module.exports = { db, now, migrate, addColumn, markSeededDemoGames, seedCollections, DB_PATH, DATA_DIR }

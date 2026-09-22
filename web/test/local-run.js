@@ -44,10 +44,11 @@ const truthy = (a, what) => { if (!a) throw new Error(`${what || 'value'} is fal
 
 // ---- HTTP ---------------------------------------------------------------------------
 let cookie = ''
-async function call(p, { method = 'GET', body, form, anon = false } = {}) {
+async function call(p, { method = 'GET', body, form, anon = false, headers = {} } = {}) {
   const res = await fetch(SITE + p, {
     method,
     headers: {
+      ...headers,
       ...(cookie && !anon ? { cookie } : {}),
       ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
       ...(form ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
@@ -484,6 +485,45 @@ async function main() {
     truthy(/SKIPPED/.test(out), 'it says it skipped: ' + out.split('\n').filter((l) => /demo/.test(l)).join(' | '))
     const all = await call('/api/games/demo_1')
     eq(all.json.game.demo, true, 'and the demo rows are unchanged')
+  })
+
+  // ── the play gate: is this browser the launcher's browser? ─────────────────────────
+  //
+  // B, 2026-09-22: a Play button pressed in a PLAIN browser must go to /download instead,
+  // because nothing in a browser tab can start World at War. The client half of that is
+  // `components/playGate.js`; this is the signal it reads, and it is the one that works
+  // before any client JS has run — the header the launcher's wrapped view stamps on every
+  // request it makes (`launcher/src/main/main.js`, offered to us in launcher-v0.md
+  // §"Still open for you").
+  //
+  // Both directions matter. A site that never says `launcher: true` sends the launcher's
+  // own users to a download page for software they are already inside; a site that says it
+  // too readily lets a plain browser press Play and fail silently, which is what this
+  // replaces.
+  await check('/api/me says `launcher: false` to an ordinary browser', async () => {
+    const r = await call('/api/me')
+    eq(r.status, 200)
+    eq(r.json.launcher, false, 'a plain browser was taken for the launcher')
+  })
+
+  await check('/api/me says `launcher: true` to a request carrying X-ENW-Launcher', async () => {
+    const r = await call('/api/me', { headers: { 'x-enw-launcher': '0.2.0' } })
+    eq(r.json.launcher, true, 'the launcher header was not read')
+    eq(r.json.launcher_version, '0.2.0', 'the version was not carried')
+  })
+
+  await check('the launcher signal reaches a signed-out visitor too', async () => {
+    // The gate has to answer before sign-in: the party panel's signed-out state and the map
+    // page both draw a Play affordance to somebody with no session.
+    const r = await call('/api/me', { anon: true, headers: { 'x-enw-launcher': '0.2.0' } })
+    eq(r.json.signed_in, false, 'the anon call was not anonymous')
+    eq(r.json.launcher, true, 'a signed-out launcher was taken for a browser')
+  })
+
+  await check('a header claiming to be a novel-length version is cut down, not stored whole', async () => {
+    const r = await call('/api/me', { headers: { 'x-enw-launcher': 'x'.repeat(500) } })
+    eq(r.json.launcher, true)
+    eq(r.json.launcher_version.length, 32, 'an unbounded header value was echoed back')
   })
 
   // ---- report -------------------------------------------------------------------------

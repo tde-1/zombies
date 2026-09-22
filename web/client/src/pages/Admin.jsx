@@ -11,7 +11,11 @@ import { Section, Empty, Loading, PlayerLink } from '../components/Bits'
 // The loudest thing on this page is a box whose replay-signing key changed, because that is
 // the one condition under which a perfectly valid-looking replay is not evidence.
 
-const TABS = ['overview', 'reports', 'records', 'boxes', 'waitlist']
+// `rows` is the home shelves (collections). The two pages that lost their nav links this
+// morning — Playlists and Custom — are linked from that tab rather than getting tabs of
+// their own: they are whole pages, and a tab holding two links is a menu pretending to be a
+// workspace.
+const TABS = ['overview', 'rows', 'reports', 'records', 'boxes', 'waitlist']
 
 export default function Admin() {
   const { isMod, isAdmin } = useSession()
@@ -51,6 +55,7 @@ export default function Admin() {
       )}
 
       {tab === 'overview' && <Overview d={d} onChange={load} isAdmin={isAdmin} />}
+      {tab === 'rows' && <Collections isAdmin={isAdmin} />}
       {tab === 'reports' && <Reports onChange={load} />}
       {tab === 'records' && <RecordReview />}
       {tab === 'boxes' && <Boxes d={d} onChange={load} isAdmin={isAdmin} />}
@@ -319,5 +324,146 @@ function Waitlist({ onChange }) {
         </div>
       )}
     </Section>
+  )
+}
+
+
+// -- The home rows -------------------------------------------------------------------------
+// B, 2026-09-22: "make the row membership a collections/playlist-like table editable from
+// admin, not hard-coded." This is the editor for `collections` / `collection_maps`
+// (server/lib/collections.js), and it is the whole reason New maps, Vanilla and High
+// production are rows in a database rather than an array in the client.
+//
+// Two kinds, and the editor only offers the controls that mean something for each:
+//   AUTO    the row is a query ('newest', 'popular', ...) and has no hand-picked maps, so it
+//           gets the query picker and no map list.
+//   MANUAL  the row IS its maps, in order, so it gets add and remove.
+//
+// Every write here is logged to `activity_log` with the actor (routes/admin.js), because a
+// shelf that changed and nobody can say who changed it is an argument waiting to happen.
+function Collections({ isAdmin }) {
+  const [d, setD] = useState(null)
+  const [err, setErr] = useState(null)
+  const load = useCallback(() => api.get('/api/admin/collections').then(setD).catch((e) => setErr(e.message)), [])
+  useEffect(() => { load() }, [load])
+
+  const act = async (fn) => { setErr(null); try { await fn(); load() } catch (e) { setErr(e.message) } }
+
+  if (err) return <Section title="Home rows"><p className="tiny hot">{err}</p></Section>
+  if (!d) return <Loading />
+
+  return (
+    <>
+      <Section title="Home rows" right={isAdmin ? <NewCollection onDone={load} auto={d.auto} /> : null}>
+        <p className="sub" style={{ marginTop: 0 }}>
+          The rows above the grid on <Link to="/maps">Maps</Link> and on home. A row that
+          resolves to no maps is not drawn at all.
+        </p>
+        {d.collections.length === 0 ? <Empty>No rows.</Empty> : d.collections.map((c) => (
+          <div className="card" key={c.id} style={{ marginBottom: 10 }}>
+            <div className="spread">
+              <div>
+                <b>{c.name}</b>{' '}
+                <span className="tiny">/{c.slug} · {c.kind}{c.auto ? ` · ${c.auto}` : ''} · {c.resolved} showing · {c.state}</span>
+              </div>
+              {isAdmin && (
+                <span className="row" style={{ gap: 6 }}>
+                  <button className="btn small ghost"
+                          onClick={() => act(() => api.post(`/api/admin/collections/${c.id}`, { state: c.state === 'live' ? 'hidden' : 'live' }))}>
+                    {c.state === 'live' ? 'Hide' : 'Show'}
+                  </button>
+                  <button className="btn small ghost" title="Move this row up the page"
+                          onClick={() => act(() => api.post(`/api/admin/collections/${c.id}`, { sort_order: Number(c.sort_order) - 15 }))}>Up</button>
+                  <button className="btn small ghost" title="Move this row down the page"
+                          onClick={() => act(() => api.post(`/api/admin/collections/${c.id}`, { sort_order: Number(c.sort_order) + 15 }))}>Down</button>
+                </span>
+              )}
+            </div>
+            {c.kind === 'manual' && (
+              <div className="row wrap" style={{ gap: 5, marginTop: 8 }}>
+                {c.keys.length === 0 && <span className="tiny">No maps yet.</span>}
+                {c.keys.map((k) => (
+                  <span className="tag" key={k}>
+                    {k}
+                    {isAdmin && (
+                      <button className="linkish" style={{ marginLeft: 6 }} title={`Remove ${k}`}
+                              onClick={() => act(() => api.del(`/api/admin/collections/${c.id}/maps/${encodeURIComponent(k)}`))}>x</button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+            {isAdmin && c.kind === 'manual' && <AddMap id={c.id} onDone={load} />}
+          </div>
+        ))}
+      </Section>
+
+      {/* The two pages that lost their nav link this morning. They are staff surfaces for now
+          (B, 2026-09-22) and this is where staff are. Both keep their own routes and their
+          deep links; only the permanent tab went. */}
+      <Section title="Elsewhere">
+        <div className="row" style={{ gap: 8 }}>
+          <Link className="btn small ghost" to="/playlists">Playlists</Link>
+          <Link className="btn small ghost" to="/custom">Custom games</Link>
+          <Link className="btn small ghost" to="/archive">The archive</Link>
+        </div>
+      </Section>
+    </>
+  )
+}
+
+function AddMap({ id, onDone }) {
+  const [key, setKey] = useState('')
+  const [err, setErr] = useState(null)
+  const go = async () => {
+    setErr(null)
+    try { await api.post(`/api/admin/collections/${id}/maps`, { map_key: key.trim() }); setKey(''); onDone() }
+    catch (e) { setErr(e.message) }
+  }
+  return (
+    <div className="row" style={{ gap: 6, marginTop: 8 }}>
+      <input type="text" value={key} placeholder="map key, e.g. nazi_zombie_leviathan"
+             onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go() }} />
+      <button className="btn small" disabled={!key.trim()} onClick={go}>Add</button>
+      {err && <span className="tiny hot">{err}</span>}
+    </div>
+  )
+}
+
+function NewCollection({ onDone, auto }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [kind, setKind] = useState('manual')
+  const [query, setQuery] = useState((auto && auto[0]) || 'newest')
+  const [err, setErr] = useState(null)
+  const go = async () => {
+    setErr(null)
+    try {
+      await api.post('/api/admin/collections', {
+        slug: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        name: name.trim(),
+        kind,
+        auto: kind === 'auto' ? query : null,
+      })
+      setName(''); setOpen(false); onDone()
+    } catch (e) { setErr(e.message) }
+  }
+  if (!open) return <button className="btn small ghost" onClick={() => setOpen(true)}>New row</button>
+  return (
+    <span className="row" style={{ gap: 6 }}>
+      <input type="text" value={name} placeholder="Row name" onChange={(e) => setName(e.target.value)} />
+      <select value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 'auto' }}>
+        <option value="manual">hand-picked</option>
+        <option value="auto">a query</option>
+      </select>
+      {kind === 'auto' && (
+        <select value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: 'auto' }}>
+          {(auto || []).map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+      )}
+      <button className="btn small" disabled={!name.trim()} onClick={go}>Create</button>
+      <button className="btn small ghost" onClick={() => setOpen(false)}>Cancel</button>
+      {err && <span className="tiny hot">{err}</span>}
+    </span>
   )
 }

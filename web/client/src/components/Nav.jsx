@@ -1,88 +1,57 @@
-import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { NavLink, Link } from 'react-router-dom'
 import { useSession } from '../session'
-import { api, SIGN_IN, SIGN_IN_STEAM } from '../api'
-import { Lockup, Avatar, Level } from './Bits'
-import { THEMES, applyTheme, savedTheme } from '../themes'
+import { Lockup } from './Bits'
+import SearchBar from './SearchBar'
+import UserMenu from './UserMenu'
+
+// Movement's nav bar (`movement-client/src/components/Nav.jsx`): search top-left where the
+// wordmark would be, the links centred and growing outward from the middle, the account in
+// the top right. Three regions, and the middle one is the only one that is a list of pages.
+//
+// B's list for this morning (2026-09-22) and what each line cost:
+//
+//   THE BAR IS **Maps, Records, Admin** and nothing else. Admin is staff-only. It was seven
+//   tabs — Maps, Records, Badges, Playlists, Custom, Download, Admin — and the seven were
+//   not one kind of thing: two were pages you read, two were staff tools with no gate on
+//   them, one was a directory that belongs to your account, and one was an install page.
+//
+//   PLAYLISTS AND CUSTOM MOVED UNDER ADMIN. Both are real and both still have their routes
+//   and their deep links (/playlists/<slug>, /custom); what they are not is a thing a player
+//   browsing maps needs a permanent tab for. The Admin console links them.
+//
+//   BADGES MOVED TO THE ACCOUNT MENU (UserMenu.jsx), which is where Movement keeps it.
+//
+//   THE THEME DROPDOWN IS GONE, with the two extra palettes behind it. One theme, Movement's
+//   — see themes.js, which is now a single token block and an `applyTheme()`.
+//
+//   SIGN OUT LEFT THE HEADER for the account dropdown.
+//
+// DOWNLOAD is the one link Movement has no equivalent for, and it is not in the bar either
+// any more: every Play button in a plain browser now goes there by itself
+// (`components/playGate.js`), which is a better door than a tab, and the lockup's own menu
+// would be a fourth region. It stays linked from the party panel's signed-out state, the map
+// page and the gate, which is where somebody actually wants it.
 
 export default function Nav() {
-  const { signedIn, me, standing, isMod, authMode, refresh } = useSession()
-  const [theme, setTheme] = useState(savedTheme())
-  const [q, setQ] = useState('')
-  const [hits, setHits] = useState(null)
-  const nav = useNavigate()
-  const box = useRef(null)
-
-  useEffect(() => { applyTheme(theme) }, [theme])
-
-  // The one search box (13 §3). It searches maps and players; the ranking is the server's.
-  useEffect(() => {
-    if (!q.trim()) { setHits(null); return undefined }
-    const t = setTimeout(() => { api.get(`/api/search?q=${encodeURIComponent(q)}`).then(setHits).catch(() => setHits(null)) }, 180)
-    return () => clearTimeout(t)
-  }, [q])
-
-  useEffect(() => {
-    const away = (e) => { if (box.current && !box.current.contains(e.target)) setHits(null) }
-    document.addEventListener('mousedown', away)
-    return () => document.removeEventListener('mousedown', away)
-  }, [])
-
-  const go = (to) => { setQ(''); setHits(null); nav(to) }
+  const { isMod } = useSession()
 
   return (
-    <nav className="nav">
-      <Link to="/" className="lockup" aria-label="ENW Zombies"><Lockup h={20} /></Link>
-      <NavLink to="/maps" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Maps</NavLink>
-      <NavLink to="/records" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Records</NavLink>
-      <NavLink to="/badges" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Badges</NavLink>
-      <NavLink to="/playlists" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Playlists</NavLink>
-      <NavLink to="/custom" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Custom</NavLink>
-      {/* Movement has no equivalent — it is a CS:GO site and there is no client to install.
-          The nav is the right place for ours anyway: the other candidate, the party panel's
-          empty state, is only on home and only when signed out, and the person who needs
-          this most is a signed-in player whose launcher is out of date. */}
-      <NavLink to="/download" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Download</NavLink>
-      {isMod && <NavLink to="/admin" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Admin</NavLink>}
-
-      <div className="spacer" />
-
-      <div ref={box} className="nav-search">
-        <input type="search" value={q} placeholder="Search" onChange={(e) => setQ(e.target.value)} />
-        {hits && (hits.maps.length || hits.players.length) ? (
-          <div className="nav-hits">
-            {hits.maps.map((m) => (
-              <button key={m.key} className="btn ghost" style={{ width: '100%', justifyContent: 'flex-start', border: 0 }} onClick={() => go(`/m/${m.key}`)}>
-                {m.title} <span className="tiny" style={{ marginLeft: 6 }}>{m.key}</span>
-              </button>
-            ))}
-            {hits.players.map((p) => (
-              <button key={p.steam_id} className="btn ghost" style={{ width: '100%', justifyContent: 'flex-start', border: 0 }} onClick={() => go(`/id/${p.name}`)}>
-                {p.name}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      <select className="nav-theme" value={theme} onChange={(e) => setTheme(e.target.value)} title="Theme">
-        {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.label}</option>)}
-      </select>
-
-      {signedIn ? (
-        <div className="row" style={{ gap: 8 }}>
-          <Link to={`/id/${me.name}`} className="me">
-            <Avatar user={me} />
-            <span>{me.name}</span>
-            <Level standing={standing} />
-          </Link>
-          <button className="btn small ghost" onClick={async () => { await api.post('/auth/logout'); refresh() }}>Sign out</button>
+    <nav className="mv-nav">
+      <div className="mv-nav-bar">
+        <SearchBar />
+        <div className="mv-nav-center">
+          {/* The lockup is the way home and sits inside the centred group rather than in the
+              corner: the corners are the search and the account, and a brand mark competing
+              with the search box for the top-left is the layout Movement deleted. */}
+          <Link to="/" className="mv-lockup" aria-label="ENW Zombies"><Lockup h={18} /></Link>
+          <NavLink to="/maps" className={({ isActive }) => 'mv-navlink' + (isActive ? ' active' : '')}>Maps</NavLink>
+          <NavLink to="/records" className={({ isActive }) => 'mv-navlink' + (isActive ? ' active' : '')}>Records</NavLink>
+          {isMod && <NavLink to="/admin" className={({ isActive }) => 'mv-navlink' + (isActive ? ' active' : '')}>Admin</NavLink>}
         </div>
-      ) : (
-        <a className="btn small primary" href={authMode === 'steam' ? SIGN_IN_STEAM : SIGN_IN}>
-          {authMode === 'steam' ? 'Sign in' : 'Sign in (dev)'}
-        </a>
-      )}
+        <div className="mv-nav-right">
+          <UserMenu />
+        </div>
+      </div>
     </nav>
   )
 }

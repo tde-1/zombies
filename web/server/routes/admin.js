@@ -16,6 +16,7 @@ const users = require('../lib/users')
 const maps = require('../lib/maps')
 const mapWeek = require('../lib/mapWeek')
 const playlists = require('../lib/playlists')
+const collections = require('../lib/collections')
 const assignments = require('../lib/assignments')
 const achievements = require('../lib/achievements')
 const mapRecords = require('../lib/mapRecords')
@@ -253,6 +254,60 @@ function router() {
     const u = users.resolve((req.body && req.body.steam_id) || '')
     if (!u) return res.status(404).json({ error: 'no such player' })
     res.json({ ok: badges.revoke(b.id, u.steam_id) })
+  })
+
+  // ---- collections: the home rows -----------------------------------------------------
+  //
+  // B, 2026-09-22: "make the row membership a collections/playlist-like table editable from
+  // admin, not hard-coded". This is that console. Every write logs, for the same reason every
+  // other write on this router does — a shelf that changed and nobody can say who changed it
+  // is an argument waiting to happen.
+  const logC = (req, event, meta) => db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES (?,?,?,?)")
+    .run(event, req.me.steam_id, JSON.stringify(meta), now())
+
+  r.get('/collections', requireMod, (req, res) => {
+    res.json({ collections: collections.all(), auto: collections.AUTO_KEYS })
+  })
+
+  r.post('/collections', requireAdmin, (req, res) => {
+    const out = collections.create({ ...(req.body || {}), by: req.me.steam_id })
+    if (!out.ok) return res.status(400).json(out)
+    logC(req, 'collection.create', { slug: out.collection.slug })
+    res.json(out)
+  })
+
+  r.post('/collections/:id', requireAdmin, (req, res) => {
+    const out = collections.update(Number(req.params.id), req.body || {}, req.me.steam_id)
+    if (!out.ok) return res.status(400).json(out)
+    logC(req, 'collection.update', { id: Number(req.params.id), patch: req.body || {} })
+    res.json(out)
+  })
+
+  r.post('/collections/:id/maps', requireAdmin, (req, res) => {
+    const out = collections.addMap(Number(req.params.id), (req.body && req.body.map_key) || '')
+    if (!out.ok) return res.status(400).json(out)
+    logC(req, 'collection.add', { id: Number(req.params.id), map: req.body.map_key })
+    res.json(out)
+  })
+
+  r.delete('/collections/:id/maps/:key', requireAdmin, (req, res) => {
+    const out = collections.removeMap(Number(req.params.id), req.params.key)
+    if (!out.ok) return res.status(400).json(out)
+    logC(req, 'collection.remove', { id: Number(req.params.id), map: req.params.key })
+    res.json(out)
+  })
+
+  r.post('/collections/:id/order', requireAdmin, (req, res) => {
+    const out = collections.reorder(Number(req.params.id), (req.body && req.body.keys) || [])
+    if (!out.ok) return res.status(400).json(out)
+    res.json(out)
+  })
+
+  r.delete('/collections/:id', requireAdmin, (req, res) => {
+    const out = collections.remove(Number(req.params.id))
+    if (!out.ok) return res.status(400).json(out)
+    logC(req, 'collection.delete', { id: Number(req.params.id) })
+    res.json(out)
   })
 
   // ---- sweeps ------------------------------------------------------------------------

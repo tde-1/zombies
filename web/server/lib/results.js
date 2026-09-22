@@ -87,11 +87,44 @@ const MAX_MS = 400 * 86400_000
 // self-reported result did not come from a box at all.
 const eligibleForStats = (game) => game.mode === 'verified' && !game.self_reported
 
+// ---- IDENTITY (referee lane, commit bd3bd59; `docs/protocol/game-link-v0.md`) -----------
+//
+// A result's `players[]` now carry `identity`, and it is what the row's `steamid` is WORTH:
+//
+//   none      no token was presented. A Local or dev run. There is no `steamid` at all.
+//   claimed   a token was presented and parsed, and its signature was NOT checked.
+//   verified  the host answered `auth allow:true` with a real check.
+//   refused   the host, or the game, said no. No `steamid` is sent.
+//
+// **Only `verified` may be awarded anything.** The other three are ATTENDANCE: they stay in
+// `summary_json`, which is the whole result exactly as the box sent it, and they get no
+// `game_players` row — so no XP, no records, no badges, no map progress, and the game shows
+// as untracked for them.
+//
+// `claimed` is the one that matters and the one that looks safe. It means a token arrived
+// and parsed — which is to say somebody sent us a well-formed blob naming an account. Until
+// the signature has been checked that is a CLAIM about who was playing, and crediting a
+// round-40 record to it would be crediting it to whoever typed the loudest.
+//
+// An ABSENT `identity` is treated as `none`, not as verified. Every box that can post to
+// `/api/gs/result` speaks the current protocol; a body without the field is either older
+// than 2026-09-22 or is not a referee, and "we could not tell" has to fail closed on the one
+// path that hands out records.
+const VERIFIED = 'verified'
+
 /**
  * @param {object} body  the box's POST body: { box, instance, summary, replay }
- * @returns {object} { ok, game_id, match_id, awarded, records, repeat }
+ * @param {object} [opts]
+ * @param {boolean} [opts.selfReported]
+ * @param {boolean} [opts.requireVerifiedIdentity]  seat only `identity:"verified"` rows.
+ *        ON for `/api/gs/result` and `/api/gs/spool` — the paths a game box posts through,
+ *        and the only ones that can produce a record. OFF for a Local run, which never had
+ *        a token to check, already scores zero of everything (`mode: 'local'` forces
+ *        `records_eligible: 0` and `xp_multiplier: 0` above), and whose one consequence is
+ *        the player's own map_progress "played" tick on their own machine.
+ * @returns {object} { ok, game_id, match_id, awarded, records, repeat, unverified }
  */
-function ingest(body, { selfReported = false } = {}) {
+function ingest(body, { selfReported = false, requireVerifiedIdentity = false } = {}) {
   const summary = body && body.summary
   if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return { ok: false, error: 'no summary' }
   if (!summary.match_id || typeof summary.match_id === 'object') return { ok: false, error: 'no summary' }
@@ -209,6 +242,7 @@ function ingest(body, { selfReported = false } = {}) {
       downs, revives, bleedouts, points_earned, points_spent, time_alive_ms, rounds_played, joined_round, late, afk_kicked)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
   const seated = []
+  const unverified = []
   for (const p of summary.players || []) {
     // A player with no SteamID is a slot the box could not identify — a bot, a local test,
     // or a connect the DLL saw before the token check. It is recorded in summary_json and
@@ -217,6 +251,13 @@ function ingest(body, { selfReported = false } = {}) {
     if (!p || typeof p !== 'object' || Array.isArray(p)) continue
     const sid = str(p.steamid, 32)
     if (!sid) continue
+    // The identity gate. See VERIFIED above: `claimed` / `refused` / absent are attendance,
+    // and attendance gets no row, which is what makes it award nothing anywhere downstream
+    // — XP, badges and map progress all iterate `game_players` or `seated`.
+    if (requireVerifiedIdentity && p.identity !== VERIFIED) {
+      unverified.push({ slot: p.slot == null ? null : p.slot, name: str(p.name, 64), identity: str(p.identity, 16) || 'none' })
+      continue
+    }
     const s = (p.stats && typeof p.stats === 'object' && !Array.isArray(p.stats)) ? p.stats : {}
     const stat = (...vs) => { for (const v of vs) if (v != null) return int(v, 0, { min: 0, max: 1e12 }); return 0 }
     insP.run(game.id, sid, p.slot == null ? null : int(p.slot, 0, { min: 0, max: 63 }), str(p.name, 64),
@@ -231,7 +272,16 @@ function ingest(body, { selfReported = false } = {}) {
 
   if (body.replay) storeReplay(game, body)
 
-  const out = { ok: true, game_id: game.id, match_id: game.match_id, awarded: [], records: [], errors: [] }
+  const out = { ok: true, game_id: game.id, match_id: game.match_id, awarded: [], records: [], errors: [], unverified }
+  // Said out loud in the audit log rather than only in a return value the box discards. A
+  // player who finished a round-40 game and got nothing for it will ask why, and this is the
+  // row that answers — with the identity the referee actually reported.
+  if (unverified.length) {
+    try {
+      db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('result.unverified', ?, ?, ?)")
+        .run(String(body.box || 'unknown'), JSON.stringify({ match_id: game.match_id, players: unverified }), now())
+    } catch (e) { out.errors.push('audit: ' + e.message) }
+  }
 
   // Everything below is consequence, and none of it may fail the box's POST.
   try { out.awarded = applyProgressAndBadges(game, summary, seated) } catch (e) { out.errors.push('badges: ' + e.message) }

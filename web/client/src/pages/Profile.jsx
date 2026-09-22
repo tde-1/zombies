@@ -178,7 +178,11 @@ export default function Profile() {
         </div>
       </div>
 
-      {isSelf && <Settings d={d} onSaved={load} />}
+      {/* The account menu's Settings item is /id/<you>#settings, so the section it lands on
+          has to be an anchor. Settings are a section of your own profile rather than a page
+          of their own: there are eight of them and they are all about how the game runs for
+          you. */}
+      {isSelf && <div id="settings"><Settings d={d} onSaved={load} /></div>}
     </div>
   )
 }

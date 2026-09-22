@@ -322,9 +322,18 @@ Read it, then delete it. A real run of it is in `docs/kickstart/web.md` §4i.
 * **`window.enw.playLocal(session)`** — the site's Play Local button calls this when it detects it
   is inside the launcher (`window.enw` present) and passes the whole `/local/start` response. Name
   it something else and I will change the call; it is one line in `web/client/src/pages/MapPage.jsx`.
-* **How you signal "I am the launcher"** more generally. `window.enw` is the current sniff. A
+* ~~**How you signal "I am the launcher"** more generally. `window.enw` is the current sniff. A
   request header on the wrapped view's navigations would be cleaner for server-rendered decisions;
-  say which you prefer.
+  say which you prefer.~~ **Settled 2026-09-22 — you sent both, and the site now reads both.**
+  The wrapped view stamps `X-ENW-Launcher: <version>` on every request it makes, navigations
+  included (`launcher/src/main/main.js`, `onBeforeSendHeaders`), and `/api/me` answers
+  `{ launcher: true, launcher_version }` when it sees it. `window.enw` is still read alongside
+  it, and **either one is enough**: the header is true before any client JS has run, which is
+  what a first-paint decision needs, and the bridge is the thing that can actually launch a
+  game, which is what a Play button needs. They disagree honestly in both directions — a
+  launcher whose preload failed still sends the header; a dev page opened straight in Electron
+  has the bridge and no header — and in both of those the person **has** the launcher, which is
+  the only question being asked. Nothing needs to change on your side.
 
 ---
 
@@ -377,3 +386,35 @@ Every URL received, under the scope `deeplink`, including the ones that go home 
 (`unknown route "live"`, `a map link with no map key`). A player reporting "the link just opened
 the launcher" is otherwise unfixable, so if the site sends a form this launcher drops, the
 evidence is already on the player's disk.
+
+### What the SITE sends, and when (web lane, 2026-09-22)
+
+Both routes are now emitted by `web/client/src/components/playGate.js`. Nothing new is asked of
+the launcher; this is a record of what it will start receiving.
+
+**The rule.** Any action that would put somebody into a game — **Play**, **Play Local**,
+**Start**, **Ready**, **Go**, and both *Start anyway* overrides — cannot do that from a browser
+tab. Pressed in a plain browser they now navigate to `/download`, carrying the map or the party,
+and that page offers **"Open in the ENW Zombies launcher"** *before* it offers the installer:
+somebody who already has the launcher does not need an installer, they need the app to come
+forward.
+
+| The person pressed | `/download` gets | its button sends |
+|---|---|---|
+| Play / Play Local, on a map page or home | `?map=<bsp key>&then=/m/<key>` | `enw-zombies://map/<key>` |
+| Start / Ready / Go, in the party panel | `?party=<id>&map=<key>&then=/` | `enw-zombies://party/<id>` |
+
+The party wins when both are present. Neither link is ever sent with an empty argument, which §7
+asks for. Inside the launcher **none of this happens** — the buttons do exactly what they did.
+
+**The fallback is a reveal, not a redirect.** There is no way to ask a browser whether a scheme
+is registered, so the page navigates to the link and, if nothing has happened after 1.6 s, says
+so and points at the installer. It does **not** navigate anywhere on that timer: the moment the
+timer expires is precisely the moment the OS's own "open this application?" prompt is on screen,
+and a page that navigated then would be fighting it.
+
+**`/party/<id>` now exists**, because §7 said the launcher navigates there and it was a 404.
+Parties live on home in a panel and have no page of their own, so the route renders **home** —
+`web/client/src/App.jsx`. It deliberately does not *join* anything: §7 says joining is the
+site's decision, and the site's decision is made by the invite the person already holds. If you
+would rather point party links at `/` and drop the route, say so; it is one line either way.

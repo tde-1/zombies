@@ -1,33 +1,83 @@
-import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api, num } from '../api'
 import { useSession } from '../session'
-import { Section, Empty, Loading, FinishChips, Health } from '../components/Bits'
+import { Empty, Loading } from '../components/Bits'
+import { GridIcon, ListIcon } from '../components/Icons'
 import MapCard from '../components/MapCard'
+import MapListRow from '../components/MapListRow'
+import MapRows from '../components/MapRows'
+import { hoverAmbience, endHoverAmbience } from '../ambience'
 
-// Maps = Movement's mode home (13 §3): featured, map of the week, new maps, playlists, then
-// the full list with a map count.
+// THE MAP BROWSER — Movement's, both of its drawings (B, 2026-09-22).
 //
-// The four filters B named are all here and all in the URL, so a filtered view is a link
-// somebody can paste: has Easter egg / has buyable ending · author / year / version ·
-// popularity / rating / newest · your progress. Search is the server's ranking: name
-// (including the nazi_zombie_ alias) > author > tags > description.
+// Movement's pool page is `movement-client/src/pages/Hub.jsx` plus `components/MapList.jsx`
+// and `components/MapCard.jsx`, and its bar is the records deck's `.rdk-bar`. This page is
+// those, with zombies' nouns and zombies' questions.
+//
+// ── Two views, and they draw ONE list ────────────────────────────────────────────────────
+// A LIST view, where each row is the map's page entry, and a CARD/GRID view. Both are fed by
+// the same sorted, filtered array: they used to be two code paths on Movement and the same
+// filter produced two different orders depending on which way you happened to be looking at
+// it. The choice is remembered per browser, and it is the ONLY thing this page remembers —
+// a filter is what you are doing right now, and a pool that opened already narrowed to
+// something you asked for last week is the site answering a question nobody had asked.
+//
+// **The art is in both views.** Movement shows the map in its list as well as its grid — a
+// 48x28 plate flush to the row's left edge — and a list of two thousand names with no
+// pictures is a spreadsheet.
+//
+// ── What a map entry SAYS ────────────────────────────────────────────────────────────────
+// Name, then the bsp name as a subtitle, then the author, then the release date — and
+// nothing else. `data/mapText.js` owns it for the card, the row and the search hit together.
+// The finish words are GONE from both views; they are filters on the bar now.
+//
+// ── The filters ──────────────────────────────────────────────────────────────────────────
+// OR within a group, AND across groups, an empty group constrains nothing — Movement's rule,
+// enforced server-side (`lib/maps.js`). Every one of them is in the URL, so a filtered view
+// is a link somebody can paste, which is the whole reason this page exists beside home.
+//
+// And Movement's other rule, which is the one that keeps the bar honest: **a group is drawn
+// only where the pool actually splits on it.** Nothing here is tagged Hard yet, so there is
+// no Difficulty group — three chips that each empty the page say less than no chips.
+
+// The view is remembered per browser AND stateable on the URL, in that order of authority:
+// `?view=cards` wins, because a link somebody pasted is a thing they meant, and otherwise
+// the last view this browser chose stands. It is the only thing this page remembers.
+const VIEW_KEY = 'zm.maps.view'
+const readView = () => { try { return localStorage.getItem(VIEW_KEY) === 'cards' ? 'cards' : 'list' } catch { return 'list' } }
+
+// Every filter this page writes, so "am I filtering" and "clear all" are one list rather
+// than two that drift.
+const PARAMS = ['q', 'finish', 'size', 'difficulty', 'style', 'tag', 'author', 'year', 'progress', 'source', 'server', 'records']
+
+const SORTS = [
+  ['popular', 'Popularity'],
+  ['rating', 'Rating'],
+  ['newest', 'Newest'],
+  ['oldest', 'Release date'],
+  ['name', 'Name'],
+]
 
 export default function Maps() {
   const [sp, setSp] = useSearchParams()
   const { signedIn } = useSession()
   const [home, setHome] = useState(null)
   const [list, setList] = useState(null)
-  const [view, setView] = useState('rows')
+  const [stored, setStored] = useState(readView)
+  const scroller = useRef(null)
 
+  const urlView = sp.get('view')
+  const view = urlView === 'cards' || urlView === 'list' ? urlView : stored
   const q = sp.get('q') || ''
   const archive = sp.get('archive') === '1'
+  const filtering = PARAMS.some((k) => sp.get(k))
 
   useEffect(() => { api.get('/api/maps/home').then(setHome).catch(() => {}) }, [signedIn])
 
   useEffect(() => {
     const qs = new URLSearchParams()
-    for (const k of ['q', 'finish', 'author', 'year', 'tag', 'progress', 'sort', 'archive']) {
+    for (const k of [...PARAMS, 'sort', 'archive', 'limit']) {
       const v = sp.get(k)
       if (v) qs.set(k, v)
     }
@@ -39,91 +89,132 @@ export default function Maps() {
     if (v) next.set(k, v); else next.delete(k)
     setSp(next, { replace: true })
   }
+  const pickView = (v) => {
+    setStored(v)
+    try { localStorage.setItem(VIEW_KEY, v) } catch { /* private browsing */ }
+    set('view', v)
+  }
 
-  if (!list) return <div className="page"><Loading /></div>
+  // One chip group, one URL param, comma-separated. Ticking is a toggle because that is what
+  // "OR within the group" means as a gesture.
+  const toggle = (k, slug) => {
+    const cur = new Set((sp.get(k) || '').split(',').filter(Boolean))
+    if (cur.has(slug)) cur.delete(slug); else cur.add(slug)
+    set(k, [...cur].join(','))
+  }
+  const has = (k, slug) => (sp.get(k) || '').split(',').includes(slug)
 
-  const filtering = ['q', 'finish', 'author', 'year', 'tag', 'progress'].some((k) => sp.get(k))
+  // Delegated hover: one listener on the container rather than two per row. With two thousand
+  // rows that is the difference between a list and a stress test, and crossing the hairline
+  // between two rows does not flash the page back to neutral because the leave belongs to
+  // the container. (Movement, MapList.jsx — "see docs/RECORDS-REDESIGN.md §10.7".)
+  const byKey = useMemo(() => {
+    const m = new Map()
+    for (const x of (list && list.maps) || []) m.set(x.key, x)
+    return m
+  }, [list])
+  const over = (e) => {
+    const row = e.target.closest && e.target.closest('[data-key]')
+    if (!row) return
+    const m = byKey.get(row.dataset.key)
+    if (m) hoverAmbience(m)
+  }
+
+  if (!list) return <div className="page wide"><Loading /></div>
+
+  const tags = (list.filters && list.filters.tags) || []
+  const ofKind = (kind) => tags.filter((t) => t.kind === kind)
+  const loose = tags.filter((t) => !['size', 'difficulty', 'style', 'finish'].includes(t.kind))
 
   return (
     <div className="page wide">
-      {!filtering && home && (
-        <>
-          {home.week && (
-            <Section title="Map of the week">
-              <MapCard map={home.week.map} big />
-            </Section>
-          )}
+      {/* The rows come off `collections` and an admin owns them — New maps, Vanilla, High
+          production, and whatever else has been made. They stand down the moment anything is
+          filtered: you asked a question, and three shelves of maps that do not answer it are
+          in the way of the ones that do. */}
+      {!filtering && !archive && home && home.rows && <MapRows rows={home.rows} />}
 
-          {home.favourites.length > 0 && (
-            <Section title="Your favourites">
-              <div className="grid c4">{home.favourites.slice(0, 4).map((m) => <MapCard key={m.key} map={m} />)}</div>
-            </Section>
-          )}
-
-          <Section title="New">
-            <div className="grid c4">{home.newest.slice(0, 4).map((m) => <MapCard key={m.key} map={m} />)}</div>
-          </Section>
-
-          {home.playlists.length > 0 && (
-            <Section title="Playlists" right={<Link className="btn small ghost" to="/playlists">All</Link>}>
-              <div className="grid c3">
-                {home.playlists.slice(0, 6).map((p) => (
-                  <Link className="card" key={p.id} to={`/playlists/${p.slug}`}>
-                    <div className="spread" style={{ marginBottom: 8 }}>
-                      <h3>{p.name}</h3>
-                      <span className="tiny num">{p.progress ? `${p.progress.done} / ${p.progress.total}` : `${p.map_count}`}</span>
-                    </div>
-                    <div className="row wrap" style={{ gap: 5 }}>
-                      {p.maps.slice(0, 5).map((m) => <span className="tag" key={m.key}>{m.title}</span>)}
-                      {p.map_count > 5 && <span className="tag">+{p.map_count - 5}</span>}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </Section>
-          )}
-        </>
-      )}
-
-      <Section
-        title={archive ? 'The archive' : 'All maps'}
-        right={(
-          <div className="row" style={{ gap: 10 }}>
-            <span className="tiny num">{num(list.total)} map{list.total === 1 ? '' : 's'}</span>
-            <div className="seg">
-              <button className={view === 'rows' ? 'on' : ''} onClick={() => setView('rows')}>List</button>
-              <button className={view === 'cards' ? 'on' : ''} onClick={() => setView('cards')}>Cards</button>
-            </div>
+      <section className="map-browser">
+        <div className="mk-head">
+          <h2 className="mk-title">{archive ? 'The archive' : 'All maps'}</h2>
+          <span className="mk-count num">{num(list.total)}</span>
+          <div className="modeview" role="group" aria-label="How to view the maps">
+            {[['list', 'List', <ListIcon key="l" />], ['cards', 'Cards', <GridIcon key="g" />]].map(([k, label, icon]) => (
+              <button key={k} className={'modeview-btn' + (view === k ? ' on' : '')}
+                      aria-pressed={view === k}
+                      onClick={() => { if (view !== k) pickView(k) }}>
+                {icon}<span>{label}</span>
+              </button>
+            ))}
           </div>
-        )}
-      >
-        <div className="bar">
-          <input type="search" value={q} placeholder="Search maps" onChange={(e) => set('q', e.target.value)} />
+        </div>
 
-          <select value={sp.get('finish') || ''} onChange={(e) => set('finish', e.target.value)}>
-            <option value="">Any finish</option>
-            <option value="ee">Easter egg</option>
-            <option value="buyable">Buyable ending</option>
-            <option value="survival">Survival only</option>
-          </select>
+        <div className="rdk-bar">
+          <input className="rdk-search" type="search" value={q} placeholder={`Search ${num(list.total)} maps…`}
+                 aria-label="Search maps" onChange={(e) => set('q', e.target.value)} />
 
-          <select value={sp.get('author') || ''} onChange={(e) => set('author', e.target.value)}>
+          {/* FINISH. Exclusive rather than a set: a map is one of these three, and letting
+              you ask for two would be asking for the whole pool the long way round. This is
+              also where "Buyable Ending · Easter Egg · Round 20" went when it came off every
+              card and every row. */}
+          <div className="rdk-seg" role="group" aria-label="How it finishes">
+            {[['', 'Any finish'], ['ee', 'Easter Egg'], ['buyable', 'Buyable Ending'], ['survival', 'Round-based']].map(([k, label]) => (
+              <button key={k || 'any'} className={(sp.get('finish') || '') === k ? 'on' : ''}
+                      onClick={() => set('finish', k)}>{label}</button>
+            ))}
+          </div>
+
+          <ChipGroup label="Size" param="size" options={ofKind('size')} has={has} toggle={toggle} />
+          <ChipGroup label="Difficulty" param="difficulty" options={ofKind('difficulty')} has={has} toggle={toggle} />
+          <ChipGroup label="Style" param="style" options={ofKind('style')} has={has} toggle={toggle} />
+
+          {/* STOCK vs CUSTOM. Four maps against two thousand, so it is a segment rather than
+              two chips: the interesting reading is "only the four" or "everything else". */}
+          <div className="rdk-seg" role="group" aria-label="Where the map came from">
+            {[['', 'All'], ['stock', 'Stock'], ['custom', 'Custom']].map(([k, label]) => (
+              <button key={k || 'any'} className={(sp.get('source') || '') === k ? 'on' : ''}
+                      onClick={() => set('source', k)}>{label}</button>
+            ))}
+          </div>
+
+          {/* Playable on OUR boxes. Narrower than "in this list": a `custom-only` map is a
+              real map a real person can run at home, it is just not one we will referee. */}
+          <button className={'rdk-chip txt' + (sp.get('server') === '1' ? ' on' : '')}
+                  aria-pressed={sp.get('server') === '1'}
+                  title="Maps our servers will host and referee"
+                  onClick={() => set('server', sp.get('server') === '1' ? '' : '1')}>Our servers</button>
+
+          <button className={'rdk-chip txt' + (sp.get('records') === '1' ? ' on' : '')}
+                  aria-pressed={sp.get('records') === '1'}
+                  title="Maps with a record or a saved replay"
+                  onClick={() => set('records', sp.get('records') === '1' ? '' : '1')}>Has records</button>
+
+          {/* Author, year and the long tail of tags are SELECTS and not chips, for the reason
+              Movement gives for not drawing a 900-entry facet list: an author dropdown with
+              nine hundred names in it is not a filter, it is a scrolling exercise — and nine
+              hundred chips is the same exercise with more pixels. */}
+          <select className="rdk-select" value={sp.get('author') || ''} onChange={(e) => set('author', e.target.value)} aria-label="Author">
             <option value="">Any author</option>
-            {list.filters.authors.map((a) => <option key={a.name} value={a.name}>{a.name} ({a.maps})</option>)}
+            {(list.filters.authors || []).map((a) => <option key={a.name} value={a.name}>{a.name} ({a.maps})</option>)}
           </select>
 
-          <select value={sp.get('year') || ''} onChange={(e) => set('year', e.target.value)}>
+          <select className="rdk-select" value={sp.get('year') || ''} onChange={(e) => set('year', e.target.value)} aria-label="Year">
             <option value="">Any year</option>
-            {list.filters.years.map((y) => <option key={y.year} value={y.year}>{y.year} ({y.maps})</option>)}
+            {(list.filters.years || []).map((y) => <option key={y.year} value={y.year}>{y.year} ({y.maps})</option>)}
           </select>
 
-          <select value={sp.get('tag') || ''} onChange={(e) => set('tag', e.target.value)}>
-            <option value="">Any tag</option>
-            {list.filters.tags.map((t) => <option key={t.slug} value={t.slug}>{t.label} ({t.maps})</option>)}
-          </select>
+          {loose.length > 0 && (
+            <select className="rdk-select" value={sp.get('tag') || ''} onChange={(e) => set('tag', e.target.value)} aria-label="Tag">
+              <option value="">Any tag</option>
+              {loose.map((t) => <option key={t.slug} value={t.slug}>{t.label} ({t.maps})</option>)}
+            </select>
+          )}
 
+          {/* Signed out there is no progress to filter on, so both options would claim the
+              whole pool or none of it. Absent rather than disabled: the sign-in that fixes it
+              is in the corner of every page. */}
           {signedIn && (
-            <select value={sp.get('progress') || ''} onChange={(e) => set('progress', e.target.value)}>
+            <select className="rdk-select" value={sp.get('progress') || ''} onChange={(e) => set('progress', e.target.value)} aria-label="Your progress">
               <option value="">Any progress</option>
               <option value="unplayed">Not played</option>
               <option value="played">Played</option>
@@ -132,44 +223,61 @@ export default function Maps() {
             </select>
           )}
 
-          <select value={sp.get('sort') || 'popular'} onChange={(e) => set('sort', e.target.value)}>
-            <option value="popular">Popularity</option>
-            <option value="rating">Rating</option>
-            <option value="newest">Newest</option>
-            <option value="oldest">Release date</option>
-            <option value="name">Name</option>
+          <select className="rdk-select" value={sp.get('sort') || 'popular'} onChange={(e) => set('sort', e.target.value)} aria-label="Sort">
+            {SORTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
           </select>
 
-          <button className={`btn small ${archive ? 'on' : 'ghost'}`} onClick={() => set('archive', archive ? '' : '1')}>
-            Include broken
-          </button>
+          <button className={'rdk-chip txt' + (archive ? ' on' : '')}
+                  aria-pressed={archive}
+                  title="Also show maps that are broken on our servers"
+                  onClick={() => set('archive', archive ? '' : '1')}>Include broken</button>
 
-          {filtering && <button className="btn small ghost" onClick={() => setSp(new URLSearchParams())}>Clear</button>}
+          {/* One button rather than a chip per tick: every filter on this bar states itself
+              by being lit, so the only thing left to offer is the way back to the whole pool. */}
+          {filtering && <button className="rdk-chip txt" onClick={() => setSp(new URLSearchParams(archive ? { archive: '1' } : {}))}>Clear all</button>}
+
+          <span className="rdk-bar-n">
+            <b>{num(list.maps.length)}</b> of {num(list.total)} maps
+          </span>
         </div>
 
-        {list.maps.length === 0 ? <div className="listing"><Empty>No map matches.</Empty></div>
-          : view === 'cards' ? <div className="grid c4" style={{ marginTop: 12 }}>{list.maps.map((m) => <MapCard key={m.key} map={m} />)}</div>
-            : (
-              <div className="listing">
-                {list.maps.map((m) => (
-                  <Link className="maprow" key={m.key} to={`/m/${m.key}`}>
-                    <div className="name">
-                      <b>{m.title}</b>
-                      <span>{m.key}{m.author ? ` · ${m.author}` : ''}{m.year ? ` · ${m.year}` : ''}</span>
-                    </div>
-                    <div className="row" style={{ gap: 5 }}><FinishChips map={m} /></div>
-                    <div className="row" style={{ gap: 5 }}>
-                      {archive && <Health health={m.health} />}
-                      {m.progress && m.progress.beaten && <span className="tag good">Beaten</span>}
-                    </div>
-                    <span className="tiny num" style={{ minWidth: 70, textAlign: 'right' }}>
-                      {m.rating != null ? `${m.rating}%` : ''} {m.plays ? `· ${m.plays}` : ''}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-      </Section>
+        {list.maps.length === 0 ? <div className="listing"><Empty>No map matches these filters.</Empty></div>
+          : view === 'cards' ? (
+            <div className="map-grid" onMouseOver={over} onMouseLeave={endHoverAmbience}>
+              {list.maps.map((m) => <MapCard key={m.key} map={m} />)}
+            </div>
+          ) : (
+            <div className="mlist-wrap" ref={scroller} onMouseOver={over} onMouseLeave={endHoverAmbience}>
+              {list.maps.map((m) => <MapListRow key={m.key} map={m} archive={archive} />)}
+            </div>
+          )}
+
+        {/* The archive paginates — 2,284 rows is 1.1 MB of JSON and a tab that janks — so it
+            says how far in you are and offers the rest rather than pretending this is all. */}
+        {list.maps.length < list.total && (
+          <div className="mk-more">
+            <button className="btn ghost" onClick={() => set('limit', String(Math.min(500, list.maps.length + 60)))}>
+              Show more ({num(list.total - list.maps.length)} left)
+            </button>
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
+// A group of chips writing one comma-separated URL param. It draws only where the pool
+// actually splits on it: one option would be a control that changes nothing, and none would
+// be a control that empties the page.
+function ChipGroup({ label, param, options, has, toggle }) {
+  if (!options || options.length < 2) return null
+  return (
+    <div className="rdk-chips" role="group" aria-label={label}>
+      {options.map((t) => (
+        <button key={t.slug} className={'rdk-chip txt' + (has(param, t.slug) ? ' on' : '')}
+                aria-pressed={has(param, t.slug)}
+                onClick={() => toggle(param, t.slug)}>{t.label}</button>
+      ))}
     </div>
   )
 }

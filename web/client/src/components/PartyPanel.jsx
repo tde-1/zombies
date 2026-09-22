@@ -3,6 +3,7 @@ import { api } from '../api'
 import { useSession } from '../session'
 import { socket } from '../socket'
 import { Avatar } from './Bits'
+import { usePlayGate } from './playGate'
 
 // The party, at the top of the left column on home. Movement's PartyPanel, with the things
 // zombies has that Movement does not: the map DOWNLOAD per member, and Verified/Custom
@@ -22,6 +23,7 @@ import { Avatar } from './Bits'
 
 export default function PartyPanel({ party, launch, onChange, selected }) {
   const { me, approved, refresh } = useSession()
+  const { guard } = usePlayGate()
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
   // Progress arrives two ways and both are needed: in the party payload on every poll (so a
@@ -42,6 +44,18 @@ export default function PartyPanel({ party, launch, onChange, selected }) {
     catch (e) { setErr(e.message) }
     finally { setBusy(false) }
   }, [onChange, refresh])
+
+  // THE PLAY GATE (B, 2026-09-22). The actions that put somebody into a game — Start, Ready,
+  // Go, and both "Start anyway" overrides — cannot do that from a browser tab, so in one they
+  // go to /download carrying the party instead. The actions that only ARRANGE a party — make
+  // one, set the mode, invite, leave — are unchanged: they work perfectly well from a phone
+  // on the bus, and gating them would be telling somebody to install an app to press Leave.
+  const play = useCallback(async (path, body) => {
+    if (guard({ party: party && party.id, map: party && party.map && party.map.key, then: '/' })) return
+    await act(path, body)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guard, party, act])
+
 
   if (!party) {
     return (
@@ -90,7 +104,7 @@ export default function PartyPanel({ party, launch, onChange, selected }) {
         <>
           <button className="btn primary big" style={{ width: '100%' }}
                   disabled={busy || !party.map || !party.is_leader || !party.installs_ok}
-                  onClick={() => act('/api/party/ready-check')}>
+                  onClick={() => play('/api/party/ready-check')}>
             {!party.map ? 'Pick a map' : !party.is_leader ? 'The leader starts' : canStart ? 'Start' : 'Waiting for the map'}
           </button>
           {/* The override, and only when there is something to override. "Start anyway" on a
@@ -98,7 +112,7 @@ export default function PartyPanel({ party, launch, onChange, selected }) {
           {party.is_leader && waitingOn.length > 0 && (
             <button className="btn ghost small" style={{ width: '100%', marginTop: 6 }} disabled={busy}
                     title="They will have to finish the download before they can join"
-                    onClick={() => act('/api/party/ready-check', { force: true })}>
+                    onClick={() => play('/api/party/ready-check', { force: true })}>
               Start anyway
             </button>
           )}
@@ -109,18 +123,18 @@ export default function PartyPanel({ party, launch, onChange, selected }) {
         <div className="stack">
           {meRow && !meRow.ready && (
             <button className="btn accent big" style={{ width: '100%' }} disabled={busy}
-                    onClick={() => act('/api/party/ready', { ready: true })}>Ready</button>
+                    onClick={() => play('/api/party/ready', { ready: true })}>Ready</button>
           )}
           {party.is_leader && (
             <>
               <button className="btn primary" style={{ width: '100%' }} disabled={busy || !party.all_ready}
-                      onClick={() => act('/api/party/launch')}>
+                      onClick={() => play('/api/party/launch')}>
                 {party.all_ready ? 'Go' : 'Waiting for the others'}
               </button>
               {!party.all_ready && (
                 <button className="btn ghost small" style={{ width: '100%' }} disabled={busy}
                         title="Late joiners earn nothing from this game"
-                        onClick={() => act('/api/party/launch', { force: true })}>Start anyway</button>
+                        onClick={() => play('/api/party/launch', { force: true })}>Start anyway</button>
               )}
               <button className="btn ghost small" style={{ width: '100%' }} disabled={busy}
                       onClick={() => act('/api/party/cancel')}>Cancel</button>

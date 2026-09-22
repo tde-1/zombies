@@ -4659,3 +4659,53 @@ the live site, instance warm again.**
   `autoUpdater` only. UGX Requiem was not re-run flagged: with ORBiT's Steam Error in hand a second
   one proves nothing and costs the shared lock.
 
+- 16:08 web: **the site is Movement's.** `/maps` has two views off one filtered list — a LIST whose
+  row is the map's page entry and a CARD grid, art in both — with the filters B named: finish
+  (Easter Egg / Buyable Ending / Round-based), size, style, author, year, tag, stock vs custom,
+  playable-on-our-server, has-records, your progress, include-broken; five sorts; all of it in the
+  URL. **OR within a group, AND across groups** (`lib/maps.js`, tested). Difficulty is built and
+  **not drawn** — Movement's rule that a group only stands where the pool splits on it, and nothing
+  is tagged Hard. Map entry is name / bsp / author / release date and the finish words are **off the
+  card and the row entirely** — they are filters now.
+- 16:08 web: **home rows are a table, not an array.** `collections` + `collection_maps` (new,
+  additive; DB backed up to `web/data/backup-20260922T144026Z/` with `VACUUM INTO` first) — New maps
+  (a query), Vanilla (the four stock), High production (seeded with Leviathan alone). Edited from
+  **Admin → rows**, every write in `activity_log`. Three guards with tests: the seeder writes
+  membership only on the visit that creates the row (a map an admin removes stays removed across a
+  restart), a manual row resolves through `maps.list()` (a broken map cannot reach a shelf), and a
+  row resolving to nothing is not drawn. Same rows fill home's right region when no map is open.
+- 16:08 web: **one theme, and the olive was hiding in two places.** themes.js is one token block;
+  theme.css `:root` is Movement's "Radio" verbatim. The second place was `ambience.js`'s
+  `WAW_DEFAULT` — the pair poured when nothing is selected, which is how the site opens — so
+  deleting the palette alone would have left every page washed the old green. Near-neutral now. The
+  per-map tint of §10b is unchanged.
+- 16:08 web: nav is **Maps / Records / Admin**, search top-left, account top-right with Profile,
+  Badges, Settings, **Sign out**. Badges left the nav for the account menu (Movement's placement);
+  Playlists and Custom keep their routes and are linked from Admin; the theme dropdown is gone.
+- 16:08 web: **B's addendum done — Play in a plain browser goes to `/download`.** Play, Play Local,
+  Start, Ready, Go and both *Start anyway* overrides. `components/playGate.js`; detection is
+  `window.enw` **or** the `X-ENW-Launcher` header, which `/api/me` now reads — **launcher lane, that
+  answers `launcher-v0.md` §6's open question; nothing changes on your side.** The link is
+  `enw-zombies://map/<key>` / `enw-zombies://party/<id>`, §7's hyphenated scheme, both already
+  implemented. `/download` offers "Open in the ENW Zombies launcher" before the installer and names
+  the map. **Also fixed: `/party/:id` existed only in §7 — the site 404'd it. It is a route now.**
+- 16:08 web: **referee addendum done — only `identity:"verified"` is credited.** `claimed`,
+  `refused` and an absent field are attendance: stored in `summary_json`, no `game_players` row, so
+  no XP, records, badges or map progress. Box path only (`/api/gs/result`, `/api/gs/spool`); a Local
+  run is not gated because it never had a token and already scores zero. Refusals land in
+  `activity_log` as `result.unverified`. Four tests.
+- 16:08 web: **`npm test` 120/0** (75 in-process, 31 HTTP, 14 sign-in). Screenshots in
+  `docs/kickstart/ui/`: `maps-home-rows.png`, `maps-list-view.png`, `maps-card-view.png`,
+  `download-gate.png` — headless Edge at 1440 against a private instance on 3399 holding a copy of
+  the live DB. `web.md` §11.
+- 16:08 web: **the site WAS restarted, once, and this says so.** §10j needed none; this did — the
+  new bundle asks `/api/maps/home` for `rows` and the old process has none, so every row would have
+  been missing. `Stop-Process` on the site's pid then `infra\keepalive.ps1 -Once`, which is the path
+  that loads `infra/site.env`, so the beta password and Steam mode came back with it. After:
+  127.0.0.1:3200 → 401, zombies.enw.gg serves `index-H82dXRPl.js` (= `client/dist`),
+  `/api/maps/home` → three rows, `?server=1` → 12 of 19, `/api/me` + launcher header → true.
+  `cloudflared` untouched.
+- 16:08 web: **open.** Difficulty has no data (the filter is hidden until it does). Art for the
+  other 2,270 maps. `/maps` and home are still two map browsers — closer than they were, same rows,
+  same card, same entry text, but still two. Global chat still has no page. Collections have no
+  drag-reorder: `reorder()` exists server-side and nothing calls it.

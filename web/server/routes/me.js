@@ -16,8 +16,21 @@ const { requireUser } = require('../middleware/auth')
 function router() {
   const r = express.Router()
 
+  // Is this browser the LAUNCHER'S browser?
+  //
+  // The launcher's wrapped view stamps `X-ENW-Launcher: <version>` on every request it makes,
+  // navigations included (launcher/src/main/main.js) — the header it offered us in
+  // `launcher-v0.md` §"Still open for you", now taken up. The client also sniffs `window.enw`,
+  // and both signals exist for a reason: the preload bridge is the one that can actually
+  // LAUNCH a game, and the header is the one that is true before any client JS has run. A
+  // page that has to decide where the Play button goes on first paint reads this.
+  const launcherOf = (req) => {
+    const v = req.get('x-enw-launcher')
+    return v ? { launcher: true, launcher_version: String(v).slice(0, 32) } : { launcher: false }
+  }
+
   r.get('/', (req, res) => {
-    if (!req.me) return res.json({ signed_in: false, auth: require('./auth').effectiveMode() })
+    if (!req.me) return res.json({ signed_in: false, auth: require('./auth').effectiveMode(), ...launcherOf(req) })
     const sid = req.me.steam_id
     // Both ENW lookups are fire-and-forget AFTER the response is composed: a slow or absent
     // ENW must never delay the site's own boot call.
@@ -25,6 +38,7 @@ function router() {
     res.json({
       signed_in: true,
       auth: require('./auth').effectiveMode(),
+      ...launcherOf(req),
       user: {
         ...users.pub(req.me),
         settings: users.settings(sid),
