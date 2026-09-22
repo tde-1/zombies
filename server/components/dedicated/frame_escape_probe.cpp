@@ -59,6 +59,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <string>
+#include <cstring>
 
 namespace enw::dedi {
 namespace {
@@ -78,14 +79,80 @@ uintptr_t g_eventloop_real = 0;
 // stack is being reset by something, and the question is what.
 std::atomic<uintptr_t> g_last_esp{0};
 
+// ---- 2026-09-22: does an SEH unwind pass through THIS frame? ----------------
+// The VEH proved no exception is *raised* except DBG_PRINTEXCEPTION_C, but a VEH
+// runs before any SEH frame and says nothing about which frame claims one. A
+// filter in our own wrapper is the other half of that measurement: it runs during
+// phase 1 for every exception that propagates past us, so if the frame leaves by
+// an unwind we see the code and the faulting address from the inside.
+//
+// The filter returns EXCEPTION_CONTINUE_SEARCH, so behaviour is unchanged --
+// unless ENW_DEDI_CATCH_ESCAPE=1, in which case it claims the exception and the
+// wrapper returns normally. That is the control: if catching it makes
+// com_frameTime advance again, the escape IS an unwind and we have it by the
+// throat; if the frame still escapes, it is not.
+bool g_catch_escape = false;
+std::atomic<uint64_t> g_seh_seen{0}, g_seh_caught{0};
+
+int seh_filter(unsigned long code, ::EXCEPTION_POINTERS* ep) {
+    const uint64_t n = g_seh_seen.fetch_add(1, std::memory_order_relaxed);
+    if (n < 8 && ep && ep->ExceptionRecord && ep->ContextRecord) {
+        ENW_ERROR("dedi_frame_escape: SEH #%llu THROUGH our Com_EventLoop frame: code=%08X "
+                  "at %08X eip=%08X esp=%08X flags=%08X",
+                  static_cast<unsigned long long>(n + 1), static_cast<unsigned>(code),
+                  static_cast<unsigned>(reinterpret_cast<uintptr_t>(
+                      ep->ExceptionRecord->ExceptionAddress)),
+                  static_cast<unsigned>(ep->ContextRecord->Eip),
+                  static_cast<unsigned>(ep->ContextRecord->Esp),
+                  static_cast<unsigned>(ep->ExceptionRecord->ExceptionFlags));
+    }
+    return g_catch_escape ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH;
+}
+
+// __try/__except cannot share a function with anything MSVC wants to unwind, so
+// the guarded call lives on its own.
+void call_eventloop_guarded() {
+    __try {
+        reinterpret_cast<void(__cdecl*)()>(g_eventloop_real)();
+    } __except (seh_filter(GetExceptionCode(), GetExceptionInformation())) {
+        g_seh_caught.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
 void __cdecl eventloop_wrapper() {
     unsigned long stack_ptr = 0;
     __asm { mov eax, esp }
     __asm { mov stack_ptr, eax }
     g_last_esp.store(stack_ptr, std::memory_order_relaxed);
     g_el_in.fetch_add(1, std::memory_order_relaxed);
-    reinterpret_cast<void(__cdecl*)()>(g_eventloop_real)();
+    call_eventloop_guarded();
     g_el_out.fetch_add(1, std::memory_order_relaxed);
+}
+
+// ---- and does Sys_GetEvent come back? --------------------------------------
+// Com_EventLoop is a `for(;;) { ev = Sys_GetEvent(); switch (ev.type) }` whose only
+// exit is event type 0. Wrapping its one `call Sys_GetEvent` at 0x59B647 splits the
+// question in two: if in == out here, the escape is in one of the switch arms; if
+// in runs away from out, it is inside Sys_GetEvent -- i.e. in the message pump.
+constexpr uintptr_t kGetEventCallSite = 0x59B647;   // call 0x5FEC60, inside Com_EventLoop
+constexpr uintptr_t kGetEvent         = 0x5FEC60;
+volatile long g_ge_in = 0, g_ge_out = 0;
+uintptr_t g_getevent_real = 0;
+
+// Sys_GetEvent(dst, 1) is cdecl with two caller-cleaned arguments and hands the
+// event back in EAX, so the thunk re-pushes both arguments, calls through, and
+// cleans up its own copies. It never touches EAX and only disturbs the flags,
+// which are dead across the call site (0x59B64C reads EAX, not EFLAGS).
+__declspec(naked) void getevent_wrapper() {
+    __asm {
+        lock inc dword ptr [g_ge_in]
+        push dword ptr [esp + 8]      // arg2
+        push dword ptr [esp + 8]      // arg1 (shifted by the first push)
+        call dword ptr [g_getevent_real]
+        add  esp, 8
+        lock inc dword ptr [g_ge_out]
+        ret
+    }
 }
 
 // 0x693CF0 takes the script instance in EAX and nothing on the stack, so we cannot
@@ -154,15 +221,100 @@ enw::hook g_longjmp_hook;
 std::atomic<uint64_t> g_exceptions{0};
 void* g_veh = nullptr;
 
+// DBG_PRINTEXCEPTION_C carries the text: ExceptionInformation[0] is the length and
+// [1] is the char*. The join59 run counted one of these per escaped frame and never
+// looked at what it said -- so read it. If the engine is narrating its own failure
+// through OutputDebugString once a frame, the message is the answer.
+constexpr DWORD kDbgPrint  = 0x40010006;
+constexpr DWORD kDbgPrintW = 0x4001000A;
+std::atomic<uint64_t> g_dbgprints{0};
+char g_last_dbg[192] = {0};
+
+// OUR OWN LOGGER GOES OUT THROUGH OutputDebugString (run join60: the first log line
+// from this handler produced the second, and 28 more in three milliseconds). So the
+// handler must not log its way back into itself, and it must not report our own
+// lines as if they were the engine's. Both guards are here; without them this probe
+// kills the server before it answers.
+thread_local bool g_in_note = false;
+std::atomic<uint64_t> g_ours{0};
+
+bool looks_like_ours(const char* s) {
+    if (s[0] == '[') {
+        if (std::strncmp(s, "[enw]", 5) == 0) return true;
+        // our timestamp: "[HH:MM:SS.mmm] ["
+        if (s[1] >= '0' && s[1] <= '9' && s[3] == ':' && s[6] == ':') return true;
+    }
+    return false;
+}
+
+void note_debug_string(const EXCEPTION_RECORD* r) {
+    if (g_in_note) return;
+    if (r->NumberParameters < 2) return;
+    const auto* p = reinterpret_cast<const char*>(r->ExceptionInformation[1]);
+    if (!p || !memory::is_readable(p, 1)) return;
+    char buf[192];
+    size_t i = 0;
+    for (; i + 1 < sizeof buf && memory::is_readable(p + i, 1) && p[i]; ++i) {
+        const auto u = static_cast<unsigned char>(p[i]);
+        buf[i] = (u < 0x20 || u > 0x7E) ? ((u == 0x0A || u == 0x0D) ? ' ' : '.') : p[i];
+    }
+    buf[i] = 0;
+    if (looks_like_ours(buf)) { g_ours.fetch_add(1, std::memory_order_relaxed); return; }
+    const uint64_t n = g_dbgprints.fetch_add(1, std::memory_order_relaxed);
+    // Log the first few, then only when the text changes: this fires once a frame.
+    if (n < 12 || std::strcmp(buf, g_last_dbg) != 0) {
+        g_in_note = true;
+        ENW_ERROR("dedi_frame_escape: engine OutputDebugString #%llu: \"%s\"",
+                  static_cast<unsigned long long>(n + 1), buf);
+        g_in_note = false;
+    }
+    std::strncpy(g_last_dbg, buf, sizeof g_last_dbg - 1);
+}
+
 LONG CALLBACK on_exception(EXCEPTION_POINTERS* info) {
     const uint64_t n = g_exceptions.fetch_add(1, std::memory_order_relaxed);
-    if (n < 6 && info && info->ExceptionRecord) {
-        ENW_ERROR("dedi_frame_escape: exception #%llu code=%08X at %08X flags=%08X",
-                  static_cast<unsigned long long>(n + 1),
-                  static_cast<unsigned>(info->ExceptionRecord->ExceptionCode),
-                  static_cast<unsigned>(reinterpret_cast<uintptr_t>(
-                      info->ExceptionRecord->ExceptionAddress)),
-                  static_cast<unsigned>(info->ExceptionRecord->ExceptionFlags));
+    if (info && info->ExceptionRecord) {
+        const DWORD code = info->ExceptionRecord->ExceptionCode;
+        if (code == kDbgPrint || code == kDbgPrintW) {
+            if (code == kDbgPrint) note_debug_string(info->ExceptionRecord);
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+        // Anything that is NOT a debug print is the interesting case, and join57-59
+        // never saw one. Log the first 20 of those on their own budget.
+        static std::atomic<uint64_t> others{0};
+        const uint64_t o = others.fetch_add(1, std::memory_order_relaxed);
+        if (o < 6 && info->ContextRecord) {
+            // The chain that led to the fault, from the faulting ESP outwards. This is
+            // the one thing that names WHICH engine system reaches the bad read.
+            const auto* c = info->ContextRecord;
+            const auto text = memory::text_section();
+            std::string chain;
+            char tmp[16];
+            for (uintptr_t sp = c->Esp; sp < c->Esp + 0x300 && chain.size() < 260; sp += 4) {
+                uint32_t v = 0;
+                if (!memory::read(sp, &v)) break;
+                if (text.contains(v)) { std::snprintf(tmp, sizeof tmp, "%08X ", v); chain += tmp; }
+            }
+            g_in_note = true;
+            ENW_ERROR("dedi_frame_escape: FAULT #%llu eip=%08X eax=%08X ebx=%08X ecx=%08X "
+                      "edx=%08X esi=%08X edi=%08X ebp=%08X  callers: %s",
+                      static_cast<unsigned long long>(o + 1), static_cast<unsigned>(c->Eip),
+                      static_cast<unsigned>(c->Eax), static_cast<unsigned>(c->Ebx),
+                      static_cast<unsigned>(c->Ecx), static_cast<unsigned>(c->Edx),
+                      static_cast<unsigned>(c->Esi), static_cast<unsigned>(c->Edi),
+                      static_cast<unsigned>(c->Ebp), chain.c_str());
+            g_in_note = false;
+        }
+        if (o < 20)
+            ENW_ERROR("dedi_frame_escape: exception #%llu (non-print #%llu) code=%08X at %08X "
+                      "eip=%08X esp=%08X flags=%08X",
+                      static_cast<unsigned long long>(n + 1),
+                      static_cast<unsigned long long>(o + 1), static_cast<unsigned>(code),
+                      static_cast<unsigned>(reinterpret_cast<uintptr_t>(
+                          info->ExceptionRecord->ExceptionAddress)),
+                      static_cast<unsigned>(info->ContextRecord ? info->ContextRecord->Eip : 0),
+                      static_cast<unsigned>(info->ContextRecord ? info->ContextRecord->Esp : 0),
+                      static_cast<unsigned>(info->ExceptionRecord->ExceptionFlags));
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -175,6 +327,12 @@ public:
 
     void post_init() override {
         if (!std::getenv("ENW_DEDI_ESCAPE_PROBE")) return;
+
+        g_catch_escape = std::getenv("ENW_DEDI_CATCH_ESCAPE") != nullptr;
+        if (g_catch_escape)
+            ENW_WARN("dedi_frame_escape: ENW_DEDI_CATCH_ESCAPE=1 -- our __except around "
+                     "Com_EventLoop will CLAIM any exception that reaches it. This changes "
+                     "behaviour; it is a control, not a fix.");
 
         g_veh = ::AddVectoredExceptionHandler(1, &on_exception);
         ENW_INFO("dedi_frame_escape: vectored exception handler %s",
@@ -207,6 +365,24 @@ public:
                       static_cast<unsigned>(kLongjmp));
         }
 
+        // Split Com_EventLoop in two: is it Sys_GetEvent that does not come back, or
+        // one of the switch arms below it?
+        const uintptr_t ge_site = enw::at(kGetEventCallSite);
+        if (memory::call_target(ge_site) != enw::at(kGetEvent)) {
+            ENW_ERROR("dedi_frame_escape: 0x%08X calls 0x%08X, expected Sys_GetEvent 0x%08X. "
+                      "NOT wrapping it.", static_cast<unsigned>(kGetEventCallSite),
+                      static_cast<unsigned>(memory::call_target(ge_site)),
+                      static_cast<unsigned>(kGetEvent));
+        } else {
+            g_getevent_real = enw::at(kGetEvent);
+            if (memory::retarget_call(ge_site, reinterpret_cast<const void*>(&getevent_wrapper)))
+                ENW_INFO("dedi_frame_escape: wrapped Com_EventLoop's own call Sys_GetEvent at "
+                         "0x%08X", static_cast<unsigned>(kGetEventCallSite));
+            else
+                ENW_ERROR("dedi_frame_escape: retarget_call on 0x%08X failed",
+                          static_cast<unsigned>(kGetEventCallSite));
+        }
+
         ENW_INFO("dedi_frame_escape: wrapped the dedicated path's call Com_EventLoop at 0x%08X. "
                  "If `in` runs away from `out`, Com_EventLoop is where the frame body leaves.",
                  static_cast<unsigned>(kEventLoopCallSite));
@@ -217,14 +393,42 @@ public:
             static uint64_t last_in = 0, last_out = 0;
             const uint64_t in = g_el_in.load(), out = g_el_out.load();
             if (in - out == last_in - last_out) return;     // nothing new to say
+            // FORENSICS. The escaped frame left its stack behind: everything DEEPER
+            // than the wrapper's ESP (lower addresses) is the dead call chain, and it
+            // is not overwritten until something goes that deep again. Print the .text
+            // return addresses found there, innermost first -- that names the deepest
+            // function the frame reached before it left.
+            if (in > out) {
+                const auto text = memory::text_section();
+                const uintptr_t base = g_last_esp.load();
+                std::string chain;
+                char tmp[24];
+                for (uintptr_t p = base; p > base - 0x800 && chain.size() < 300; p -= 4) {
+                    uint32_t v = 0;
+                    if (!memory::read(p, &v)) break;
+                    if (text.contains(v)) {
+                        std::snprintf(tmp, sizeof tmp, "%08X ", v);
+                        chain += tmp;
+                    }
+                }
+                ENW_WARN("dedi_frame_escape: dead stack below esp=%08X (deepest first): %s",
+                         static_cast<unsigned>(base), chain.c_str());
+            }
             const char* m0 = vm_error_message(0);
             const char* m1 = vm_error_message(1);
-            ENW_WARN("dedi_frame_escape: Com_EventLoop in=%llu out=%llu MISSING=%llu  "
-                     "longjmps=%llu exceptions=%llu esp=%08X  vm_err[0]=\"%s\" vm_err[1]=\"%s\"",
+            ENW_WARN("dedi_frame_escape: Com_EventLoop in=%llu out=%llu MISSING=%llu | "
+                     "Sys_GetEvent in=%ld out=%ld MISSING=%ld | longjmps=%llu exceptions=%llu "
+                     "seh-through=%llu seh-caught=%llu dbg(engine)=%llu dbg(ours)=%llu esp=%08X  "
+                     "vm_err[0]=\"%s\" vm_err[1]=\"%s\"",
                      static_cast<unsigned long long>(in), static_cast<unsigned long long>(out),
                      static_cast<unsigned long long>(in - out),
+                     g_ge_in, g_ge_out, g_ge_in - g_ge_out,
                      static_cast<unsigned long long>(g_longjmps.load()),
                      static_cast<unsigned long long>(g_exceptions.load()),
+                     static_cast<unsigned long long>(g_seh_seen.load()),
+                     static_cast<unsigned long long>(g_seh_caught.load()),
+                     static_cast<unsigned long long>(g_dbgprints.load()),
+                     static_cast<unsigned long long>(g_ours.load()),
                      static_cast<unsigned>(g_last_esp.load()),
                      m0 ? m0 : "(none)", m1 ? m1 : "(none)");
             last_in = in; last_out = out;

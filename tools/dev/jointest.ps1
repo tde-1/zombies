@@ -218,19 +218,37 @@ finally {
     }
 
     # ------------------------------------------------------------- collect --
-    # With fs_game set the engine writes console.log under <fs_homepath>\<fs_game>\,
-    # not main\ (launcher.md found this the hard way). Collect whichever exists.
-    $conSub = if ($FsGame) { $FsGame -replace '/', '\' } else { 'main' }
     foreach ($pair in @(
             @((Join-Path $DevRoot "logs\$ServerName\enw-$serverPid.log"), "$Tag.server.enw.log"),
-            @((Join-Path $DevRoot "logs\$ClientName\enw-$clientPid.log"), "$Tag.client.enw.log"),
-            @((Join-Path $DevRoot "homes\$ServerName\$conSub\console.log"), "$Tag.server.console.log"),
-            @((Join-Path $DevRoot "homes\$ClientName\$conSub\console.log"), "$Tag.client.console.log"))) {
+            @((Join-Path $DevRoot "logs\$ClientName\enw-$clientPid.log"), "$Tag.client.enw.log"))) {
         if (Test-Path -LiteralPath $pair[0]) {
             Copy-Item -LiteralPath $pair[0] -Destination (Join-Path $logDir $pair[1]) -Force
             Say "collected $($pair[1])"
         }
         else { Say "MISSING $($pair[0])" 'Yellow' }
+    }
+
+    # THE CONSOLE LOG MOVES, AND join59 COLLECTED THE WRONG ONE. With fs_game set the
+    # engine writes console.log under <fs_homepath>\<fs_game>\ rather than main\, and the
+    # fixed $conSub this used to build silently produced a <tag>.server.console.log that
+    # was byte-identical to the client's -- so the dedicated server's own console output
+    # had never actually been read on a custom-map run. Search the whole home, take the
+    # newest, and SAY where it came from and which game copy wrote it, so a mislabel is
+    # visible in the transcript instead of costing a session.
+    $roles = @{ $ServerName = 'server'; $ClientName = 'client' }
+    foreach ($copy in $roles.Keys) {
+        $who = @($copy, $roles[$copy])
+        $homeDir = Join-Path $DevRoot "homes\$($who[0])"
+        $src = Get-ChildItem -LiteralPath $homeDir -Filter console.log -Recurse -File -ErrorAction SilentlyContinue |
+               Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $src) { Say "MISSING console.log anywhere under $homeDir" 'Yellow'; continue }
+        $dst = Join-Path $logDir "$Tag.$($who[1]).console.log"
+        Copy-Item -LiteralPath $src.FullName -Destination $dst -Force
+        $wd = (Select-String -Path $dst -Pattern 'Working directory:' | Select-Object -First 1).Line
+        Say "collected $Tag.$($who[1]).console.log  from $($src.FullName)  [$wd]"
+        if ($wd -and $wd -notmatch [regex]::Escape("waw-$($who[0])")) {
+            Say "  WARNING: that console log was written by a different game copy than waw-$($who[0])" 'Red'
+        }
     }
     Say "transcript: $transcript" 'Cyan'
 }

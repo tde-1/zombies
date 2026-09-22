@@ -1697,9 +1697,15 @@ being jumped over. That is the whole of the frame-rate question.
   three callers: `Com_Error` 0x59AC50 and `Sys_Error` 0x5FE8C0, both already trapped by
   `error_trap.cpp` and both silent, and **0x693CF0**, the script VM's error path. The probe hooks
   `longjmp` itself. `longjmps=0` through the entire storm, in two runs.
-- **It is not an SEH unwind.** A vectored exception handler sees **only** `DBG_PRINTEXCEPTION_C`
-  (0x40010006, i.e. `OutputDebugString`) — 5,063 of them against 4,775 escaped frames, about one
-  debug string per escaped frame — and never `STATUS_LONGJUMP`, never an access violation.
+- ~~**It is not an SEH unwind.**~~ **RETRACTED 2026-09-22 07:15 -- it is exactly an SEH
+  unwind, and 12.1 has the measurement.** The claim was that a vectored handler saw *only*
+  `DBG_PRINTEXCEPTION_C` (0x40010006, i.e. `OutputDebugString`), about one per escaped frame,
+  and never an access violation. **The handler logged only its first six exceptions**, and the
+  first six of any run are init-time debug prints; the access violations start at exception
+  **#124**. Counting by class instead of by budget (`join61`) gives `seh-through` equal to the
+  missing frames to the frame. The one-debug-string-per-escaped-frame figure was ours too: the
+  ENW logger goes out through `OutputDebugString`, so a handler that logs what it sees feeds
+  itself -- in `join60` that killed the server in three milliseconds.
 
 The escaped frames are also **not nesting**: at 5,300 escapes a second the stack would be gone
 inside a minute and the process runs for hours. Something resets the stack without a longjmp and
@@ -1841,3 +1847,196 @@ from about fifty seconds after a spawn. **No dev knob was used and none would ha
 console command or a GSC shortcut that ends the round still has to be executed by a script VM that
 the server has stopped ticking. Round 2 is downstream of 11.1 and is blocked on it, not on the
 referee.
+
+## 12. 2026-09-22, 06:35-07:20 — the frame body escapes through an access violation in the WATER SIMULATION, and it is fixed
+
+### 12.1 Named: an SEH unwind out of a NULL read, once per frame
+
+Section 11 measured the escape and ruled out `longjmp` (correctly) and an SEH unwind
+(**wrongly** — 11.2 is retracted in place). The probe that settles it is three additions to
+`frame_escape_probe.cpp`, all under `ENW_DEDI_ESCAPE_PROBE=1`:
+
+- a **logging `__except` filter** around our `Com_EventLoop` wrapper. A filter runs in phase 1
+  for every exception that propagates past the frame, so it reports unwinds a vectored handler
+  cannot attribute. It returns `EXCEPTION_CONTINUE_SEARCH`, so it changes nothing
+  (`ENW_DEDI_CATCH_ESCAPE=1` makes it claim the exception instead — a control, not a fix);
+- a wrapper on **Com_EventLoop's own `call Sys_GetEvent`** at 0x59B647, splitting the loop from
+  the message pump;
+- the **faulting context** — registers plus the stack's `.text` chain — for the first six
+  exceptions that are not debug prints.
+
+`join61`, stock `nazi_zombie_prototype`, one real client:
+
+```
+Com_EventLoop in=3185 out=1871 MISSING=1314
+Sys_GetEvent  in=3185 out=3185 MISSING=0        <- the pump is innocent
+longjmps=0    seh-through=1314                  <- EXACTLY the missing frames
+exception code=C0000005 at 006F3E6A, once per escaped frame
+```
+
+**`seh-through` equals `MISSING` to the frame, in every window of every run since.** So every
+escaped frame is an SEH unwind out of an access violation. The landing place is in `Com_Frame`
+and it explains the whole shape of the bug:
+
+```
+0059E4B0  mov eax, fs:[0x2c]          ; the per-thread abortframe
+0059E4C1  call 0x7E1894               ; _setjmp3
+0059E4CB  jne 0x59E4E3                ; a non-local return SKIPS the body
+0059E4D7  call 0x59DCF0               ; the frame body
+0059E4DC  add [0x1F964BC], 1          ; "the body returned" -- only on the straight path
+0059E4E3: ...                         ; both paths continue here, and Com_Frame RETURNS
+```
+
+That is why `ours` and `frame-body-entered` keep ticking at 59 Hz while `Com_Frame-body` reads
+0.0 Hz, and why the process never dies: the engine's own handler swallows the fault, the stack
+unwinds past the body, `Com_Frame` returns to WinMain, and everything after the fault —
+`com_frameTime`, `SV_Frame`, the whole server — is skipped.
+
+**Two traps in the instrument itself, both paid for:**
+
+- **The ENW logger goes out through `OutputDebugString`.** A vectored handler that logs the
+  debug strings it sees logs its own line, sees that, logs again: `join60` produced 28 nested
+  copies in three milliseconds and the server never answered. The handler now carries a
+  re-entrancy guard and ignores strings that look like ours. That also disposes of 11.2's "one
+  debug string per escaped frame", which was never the engine narrating anything.
+- **Never budget the log by the first N exceptions.** The first six of any run are init-time
+  debug prints. Budget by *class*, or the interesting one is never reached. The access
+  violations start at exception **#124**.
+
+### 12.2 The cause: the server samples the water simulation, which only the renderer allocates
+
+`join62` logged the faulting context:
+
+```
+FAULT eip=006F3E6A edx=00000000 ecx=00000000
+callers: 006F3FB9 0046DA85 0041853C 0041918D 00504380 00415DF8 0041A743
+         0041AF32 004E896A 004E8E15 00630C6A 00630F4C
+
+006F3E5D  add edx, 0x4dd0a10       ; edx = i * 0x40E0, i in {0,1}
+006F3E63  mov edx, [edx]           ; the buffer pointer -- NULL
+006F3E6A  movq xmm0, [edx + ecx]   ; <- read of 0x00000000
+```
+
+0x6F3E00 interpolates between two ping-pong buffers at **0x4DD0A10** and **0x4DD4AF0**
+(= 0x4DD0A10 + 0x40E0). They are allocated by **0x6F13B0**, which is reached only from
+**0x70EC00** — the renderer's dynamic-buffer bring-up, the function that carries `Couldn't
+create a %i-byte dynamic index buffer`. `dedicated.cpp` skips renderer bring-up at 0x5FF799 on
+purpose, so on a headless server those pointers are NULL for the life of the process.
+
+**It is the water simulation.** 0x6F0D90, in the same unit, registers `r_watersim_enabled`,
+`r_watersim_debug`, `r_watersim_flatten`, `r_watersim_waveSeedDelay`, `r_watersim_curlAmount`,
+`r_watersim_curlMax`, `r_watersim_curlReduce`. **The `r_` prefix is why nobody looked**, and it
+is wrong about ownership: the caller chain comes up through 0x630C70, the server's own
+per-client work, reached from Com_EventLoop's packet arm. The server samples the water surface
+when a player is in or near water, whatever the renderer is doing. That also explains the two
+timings that had looked unrelated — about fifty seconds is how long an idle client takes to end
+up in the water on prototype, and a custom map can put something there at once.
+
+### 12.3 The fix, and the proof
+
+`server/components/dedicated/watersim_pool.cpp` calls **0x6F13B0** once, from the first frame,
+dedicated only. It is the engine's own allocator for this pool: no arguments, guarded by its own
+`cmp byte ptr [0x46E568C], 0` so calling it twice is a no-op, six buffers (0x100080, 0x100080,
+0x20080, 0x10080, 0x10080, 0x40080 — about 2.2 MB) each `memset` to zero before use. A zeroed
+water field is a flat surface, which is what an unseeded simulation reads as anyway, and nothing
+headless ever seeds a wave. The component verifies the function's first seven bytes before
+calling it and prints the guard byte and all six pointers before and after:
+
+```
+dedi_watersim_pool: before: guard=0 [04DD0A10]=00000000 [04DD4AF0]=00000000 ...
+dedi_watersim_pool: after : guard=1 [04DD0A10]=0D59B020 [04DD4AF0]=0D6A9020 ...
+```
+
+`ENW_DEDI_NO_WATERSIM_POOL=1` is the off switch and brings the escape straight back.
+
+**It was not done with `r_watersim_enabled 0`** because the sampler faults before any dvar test
+on that path, and turning a subsystem off is a guess about what else reads it. Allocating the
+memory it was always meant to have cannot change any other answer.
+
+#### The second wall, found the moment the first one came down
+
+With the pool in, `join64` simulated for **121 s** — the first time a headless server has kept
+`com_frameTime` moving with a player in — and then the game *ended*, correctly:
+
+```
+referee: game over at round 1 (stop_intermission notify)
+=== Com_Error TRAPPED === called from 0050E21F   arg2 = "Unable to find save."
+ShutdownGame:  ->  slot 0 went back to CS_FREE from CS_ACTIVE -- it was dropped
+Com_Error "Exceeded limit of 1 'snddriverglobals' assets."  ->  Sys_Error  ->  parked
+```
+
+An idle client gets eaten in round one, and T4's single-player death flow reloads the last
+save. `SV_LoadGame` 0x62C0D0 tries two lookups and then raises `ERR_DROP` — and a headless
+server never wrote a save, because `no_autosave.cpp` makes sure of it. The last two lines are
+the restart chain `next-session.md` already warns about, and are a symptom of the first error.
+
+`server/components/dedicated/no_save_reload.cpp` retargets that one `call G_Error` at
+**0x62C10D** to a counting `ret`, dedicated only, verifying both the call target and the
+caller's own `add esp, 8` at 0x62C112 first — the verified pattern from `no_autosave.cpp`.
+**This is not "game over handled":** it keeps the server, the map and the connected clients
+alive through a failed reload. Nothing restarts the round; that is a real feature and it is not
+built. `ENW_DEDI_ALLOW_SAVE_RELOAD=1` is the control.
+
+#### Two consecutive clean 300 s runs, five gates each
+
+| | `join65` | `join66` |
+|---|---|---|
+| `CS_ACTIVE` / `referee: ROUND 1` | yes / yes | yes / yes |
+| `getstatus` answered | 76 of 76 | 76 of 76 |
+| `frame::count` at the end | 59.0 Hz | 59.2 Hz |
+| **`com_frameTime` at the end** | **321,127 ms**, +30,001 over the last 30 s | **321,107 ms**, +30,008 |
+| **`Com_Frame-body`** (the body returning) | **59.0 Hz** | **59.2 Hz** |
+| client at the end | slot 0 `CS_ACTIVE`, unchanged since 06:58:38 | same |
+| CPU | 22.6 s over 320 s; 0.2–0.3 s per 5 s in steady state = **4–6% of a core** | same |
+| RSS | flat 188 MB | flat 188 MB |
+| verdict | **PASS** | **PASS** |
+
+Both ran through game over and out the other side with the client still connected.
+
+### 12.4 The fifth gate, in the harness
+
+`jointest-proof.ps1` now fails a run whose engine has stopped, which is the gap
+`next-session.md` asked for. It reads the **last** `dedi_rate_probe` line and requires
+
+- `Com_Frame-body` > 0 Hz (`[0x1F964BC]` at 0x59E4DC — the counter only a returning body
+  reaches), and
+- `com_frameTime` to have **advanced across rate-probe lines**.
+
+**Do not gate on the probe's own `delta=` field.** It reads 0 on a perfectly healthy server: it
+compares `com_frameTime` with a copy taken in the same breath. The harness compares the last
+line with the one six windows (30 s) earlier instead. A failing run now names the gate:
+`failed gates: THE ENGINE STOPPED SIMULATING (com_frameTime frozen / frame body not returning)`.
+
+`jointest.ps1`'s log collection was also wrong, and had been for at least a session:
+`join59.server.console.log` is **byte-identical to the client's**, because `$conSub` was built
+from `fs_game` and the server's console had moved. So the dedicated server's own console output
+had never actually been read on a custom-map run. It now searches the whole home for
+`console.log`, takes the newest, prints the path it came from and the `Working directory:` line
+inside it, and warns in red when that names a different game copy.
+
+### 12.5 Der Berg: the same mechanism, a different fault — named, not fixed
+
+`join67`, Der Berg, 300 s: the pool is allocated (`[04DD0A10] -> 0D5AD020`) and the server
+**still** stops, at `com_frameTime=5666`, 5.6 s in, before the client reaches `CS_ACTIVE`. Same
+*mechanism* (`join68`: `seh-through` = `MISSING` = 4,383, `Sys_GetEvent` in == out,
+`longjmps=0`), **different fault**:
+
+```
+FAULT eip=005FFE23 eax=00002733 ecx=00000000
+callers: 0059B51A 0059B55F 0059B6EB 0059DD95 0059E4DC 005FF7C2
+
+005FFE1D  mov ecx, [0x3BFD478]       ; a dvar_s* -- NULL
+005FFE23  cmp byte ptr [ecx + 0x10], 0
+```
+
+0x5FFDB0 is the packet receive, called from Com_EventLoop's tail (0x59B420 and 0x59B4F0, i.e.
+past 0x59B6EB). A socket error — `eax` is 10035 / `WSAEWOULDBLOCK`, and the branch above tests
+0x2746 = 10054 / `WSAECONNRESET` — takes a path that reads **a dvar the dedicated server never
+registered** and dereferences NULL. That is the same class as the three dvars `dedicated.cpp`
+already re-flags at startup. The next session should find out which dvar `[0x3BFD478]` is and
+register it, rather than patch the read. Stock maps do not reach it in 320 s; Der Berg does in
+5.6 s.
+
+`join67` numbers for the record: 7.0 s of CPU over 300 s (**2.3% of a core**), RSS flat 346 MB,
+no `Com_Error`, no `Sys_Error`, process alive at the end — a stopped server that is cheap rather
+than expensive, exactly as 11.3 said it would be.

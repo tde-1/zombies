@@ -5,8 +5,23 @@
   3 s for the whole of it. A run PASSES only when:
     * the client reached CS_ACTIVE and the referee logged ROUND 1,
     * every getstatus in the watch window was answered,
-    * frame::count was still advancing in the last liveness line.
-  Anything else prints FAIL and says which of the three it was.
+    * frame::count was still advancing in the last liveness line,
+    * THE ENGINE WAS STILL SIMULATING at the end -- com_frameTime advancing and the
+      frame body still returning.
+  Anything else prints FAIL and says which of the five it was.
+
+  THE FIFTH GATE IS WHY THIS FILE WAS EDITED. Runs join55-join59 PASSED the first four
+  gates on a server that had not simulated a frame in two minutes: `ROUND 1` fires
+  seconds after the spawn, `getstatus` is answered on the raw out-of-band path, and
+  `frame::count` is OUR tick, which keeps running whatever the engine does. The engine's
+  own clock is the only one that can tell. `dedi_rate_probe` (frame_pacing.cpp, on unless
+  ENW_DEDI_NO_RATE_PROBE) prints it every five seconds:
+
+    dedi_rate_probe: ... | Com_Frame-body 0.0 Hz | ... com_frameTime=5662 ... delta=0
+
+  `delta` is how far com_frameTime ([0x1F9648C]) moved in the last window and
+  `Com_Frame-body` is [0x1F964BC] at 0x59E4DC -- the counter the frame body only reaches
+  when it RETURNS. Both must be non-zero in the LAST line of the run. See dedi.md 11.1.
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Tag,
@@ -62,7 +77,7 @@ while (((Get-Date) - $t0).TotalSeconds -lt ($Watch + 10)) {
     elseif ($firstAnswer) { $unanswered++; $lines += "t=${t}s getstatus UNANSWERED" }
 }
 $lines += "answered $answered, unanswered-after-first-answer $unanswered"
-Wait-Job $job -Timeout 400 | Out-Null
+Wait-Job $job -Timeout ($Watch + 200) | Out-Null
 Receive-Job $job | Out-Null
 Remove-Job $job -Force
 
@@ -73,7 +88,44 @@ $round = (Select-String -Path $enw -Pattern 'referee: ROUND 1' -SimpleMatch).Cou
 $last = (Select-String -Path $enw -Pattern 'liveness t=').Line | Select-Object -Last 1
 $moving = $last -match '\+(\d+) in 5s' -and [int]$Matches[1] -gt 0
 $lines += "CS_ACTIVE=$active ROUND1=$round lastLiveness='$last'"
-$pass = ($active -ge 1) -and ($round -ge 1) -and ($unanswered -eq 0) -and $moving
+
+# --- gate 5: was the ENGINE still simulating? ------------------------------------
+# NOTE: the probe's own `delta=` field is always 0 -- it compares com_frameTime with a
+# copy read in the same breath. Do not gate on it. Compare com_frameTime ACROSS lines.
+$rateLines = @((Select-String -Path $enw -Pattern 'dedi_rate_probe:').Line)
+$rate = $rateLines | Select-Object -Last 1
+$simulating = $false
+$frameTimeDelta = -1
+$bodyHz = -1.0
+if ($rateLines.Count -ge 2) {
+    $ftOf = {
+        param($l)
+        if ($l -match 'com_frameTime=(\d+)') { [int]$Matches[1] } else { -1 }
+    }
+    # 30 s earlier where there is that much history, otherwise the first line.
+    $back = [Math]::Min(6, $rateLines.Count - 1)
+    $ftNow = & $ftOf $rate
+    $ftThen = & $ftOf $rateLines[$rateLines.Count - 1 - $back]
+    $frameTimeDelta = $ftNow - $ftThen
+    if ($rate -match 'Com_Frame-body\s+([0-9.]+)\s*Hz') { $bodyHz = [double]$Matches[1] }
+    $simulating = ($frameTimeDelta -gt 0) -and ($bodyHz -gt 0)
+}
+$lines += "lastRateProbe='$rate'"
+$lines += "com_frameTime advanced $frameTimeDelta ms over the last $back rate-probe windows  Com_Frame-body=$bodyHz Hz  simulating=$simulating"
+if (-not $rate) {
+    $lines += "NO dedi_rate_probe LINE: the fifth gate cannot be evaluated (is ENW_DEDI_NO_RATE_PROBE set?). Treating as FAIL."
+}
+
+$pass = ($active -ge 1) -and ($round -ge 1) -and ($unanswered -eq 0) -and $moving -and $simulating
+if (-not $pass) {
+    $why = @()
+    if ($active -lt 1) { $why += 'no CS_ACTIVE' }
+    if ($round -lt 1) { $why += 'no ROUND 1' }
+    if ($unanswered -ne 0) { $why += "$unanswered unanswered getstatus" }
+    if (-not $moving) { $why += 'frame::count not advancing' }
+    if (-not $simulating) { $why += 'THE ENGINE STOPPED SIMULATING (com_frameTime frozen / frame body not returning)' }
+    $lines += "failed gates: $($why -join '; ')"
+}
 $lines += $(if ($pass) { "PASS" } else { "FAIL" })
 Set-Content -LiteralPath $out -Value $lines -Encoding utf8
 $lines | ForEach-Object { Write-Host $_ }

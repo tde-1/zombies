@@ -4235,3 +4235,51 @@ reboot. `play: true`.**
   modtools-built custom fastfile as cleanly as a stock one, and whether Husky's signatures find a
   map loaded under `fs_game`. `replay.md` 4b.
 
+- 07:25 dedi: **SOLVED. The frame body escaped through an access violation in the WATER
+  SIMULATION, and the headless server now simulates.** Every escaped frame is an SEH unwind out
+  of a NULL read at **0x006F3E6A** - the water sim's ping-pong buffers at 0x4DD0A10 / 0x4DD4AF0,
+  allocated only by 0x6F13B0, reached only from the renderer's dynamic-buffer bring-up that
+  `dedicated.cpp` skips on purpose. `watersim_pool.cpp` calls the engine's own allocator once
+  from the first frame: 2.2 MB, zeroed, self-guarded, self-verifying,
+  `ENW_DEDI_NO_WATERSIM_POOL=1` to undo. `dedi.md` section 12.
+- 07:25 dedi: **`dedi.md` 11.2 is retracted in place: "it is not an SEH unwind" was wrong.** The
+  vectored handler logged only its **first six** exceptions and the first six of any run are
+  init-time debug prints; the access violations start at **#124**. A logging `__except` filter in
+  our own Com_EventLoop wrapper gives `seh-through`, which equals the missing frames to the frame
+  in every window of every run. The "one debug string per escaped frame" was also ours: the ENW
+  logger goes out through OutputDebugString, so a handler that logs what it sees feeds itself -
+  `join60` nested 28 deep in 3 ms and the server never answered.
+- 07:25 dedi: **two consecutive clean 300 s runs with a real client, five gates each.** join65 /
+  join66 on `nazi_zombie_prototype`: CS_ACTIVE, ROUND 1, 76 of 76 getstatus answered,
+  **com_frameTime 321,127 ms and still advancing**, **Com_Frame-body 59.0 Hz**, client slot 0
+  still CS_ACTIVE at the end, 4-6% of one core, RSS flat 188 MB. Both ran **through game over**
+  and out the other side.
+- 07:25 dedi: **`jointest-proof.ps1` has the fifth gate `next-session.md` asked for** -
+  `Com_Frame-body > 0 Hz` and `com_frameTime` advancing **between** rate-probe lines. **Do not
+  gate on the probe's own `delta=` field**: it reads 0 on a perfectly healthy server, because it
+  compares com_frameTime with a copy taken in the same breath.
+- 07:25 dedi: **the server reaches game over, and that is the next wall.** An idle client is
+  eaten in round one; T4's single-player death flow reloads a save a dedicated server never wrote
+  and `SV_LoadGame` raises ERR_DROP, which used to take the server down (and then the
+  snddriverglobals restart chain). `no_save_reload.cpp` turns that one `call G_Error` at 0x62C10D
+  into a counting `ret`. **It does not restart the round** - deciding what a dedicated server does
+  at game over is now an open question for someone.
+- 07:25 dedi: **for `referee`: SV_Frame runs, so round 2 is no longer blocked on this lane.** It
+  is blocked on an idle client dying in round one. Also on the record: the referee's game-over
+  detection fired correctly and on time, twice.
+- 07:25 dedi: **trap, and it cost a session's worth of wrong conclusions.**
+  `join59.server.console.log` is **byte-identical to the client's** - `jointest.ps1` built the
+  console path from `fs_game` and the server's console had moved, so the dedicated server's own
+  console output had never actually been read on a custom-map run. The collector now searches the
+  home, takes the newest, and prints and checks the `Working directory:` line inside it.
+- 07:25 dedi: **Der Berg still stops at 5.6 s, same mechanism, different fault - handed over
+  named.** 0x005FFE23, `mov ecx, [0x3BFD478]` / `cmp byte [ecx+0x10], 0` with ecx NULL: **a dvar
+  the dedicated server never registered**, read on a socket-error path in the packet receive
+  (0x5FFDB0, from Com_EventLoop's tail). Same class as the three dvars `dedicated.cpp` already
+  re-flags. Find the dvar and register it; do not patch the read. `dedi.md` 12.5.
+- 07:25 dedi: **for `re`**: 0x5FFDB0 is the packet receive (callers 0x59B420, 0x59B4F0, both in
+  Com_EventLoop's tail); 0x50E1E0 is a `G_Error(code, fmt, ...)` vsprintf wrapper around
+  Com_Error; 0x62C0D0 is SV_LoadGame; 0x6F13B0 allocates the water-sim pool and 0x6F0D90 registers
+  the `r_watersim_*` dvars beside it; 0x7E1894 is `_setjmp3` and **Com_Frame calls it every frame
+  at 0x59E4C1** on a per-thread jmp_buf from `fs:[0x2c]`, which is the landing place for every
+  non-local exit out of the frame body.

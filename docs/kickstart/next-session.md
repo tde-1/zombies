@@ -1,61 +1,76 @@
 # Next session — one page
 
-Written 2026-09-22 at 06:30, after the frame-rate work. If this page and `../../STATUS.md` ever
+Written 2026-09-22 at 07:25, after the frame-escape fix. If this page and `../../STATUS.md` ever
 disagree, STATUS wins; it is rewritten at the end of every session.
 
 ## Read this first, because it changes what you think is true
 
-**The headless server still stops simulating about fifty seconds after a player spawns.** It no
-longer *freezes* — the temp-stack fix is real and stands — but the engine's frame body stops
-returning, `com_frameTime` stops advancing, and `SV_Frame` therefore never runs again. Full
-evidence, with run tags: `dedi.md` §11.1.
+**The headless server simulates.** A real client connects, spawns, plays round one, the game
+ends, and the server is still running three hundred seconds later with the client attached.
+Two consecutive clean runs, five gates each: `dedi.md` §12.3.
 
-The thing that hid this is worth knowing: **`jointest-proof.ps1` passes in exactly this state.**
-All four of its gates — `CS_ACTIVE`, `referee: ROUND 1`, every `getstatus` answered,
-`frame::count` still moving — are true on a server that has not simulated a frame in two minutes.
-`ROUND 1` fires seconds after the spawn and `getstatus` is answered on the raw path. **Add a fifth
-gate: `com_frameTime` (`[0x1F9648C]`) must still be moving at the end.** That is one read and it
-would have caught this two sessions ago.
+```
+join65 / join66   CS_ACTIVE, ROUND 1, 76 of 76 getstatus answered,
+                  com_frameTime 321,127 ms and still advancing,
+                  Com_Frame-body 59.0 Hz, client slot 0 CS_ACTIVE at the end,
+                  4-6% of one core, RSS flat 188 MB          PASS / PASS
+```
 
-What the "~5,900 Hz frame rate" actually was: every frame entering the body and none returning.
-It was never a pacing-arithmetic bug — the body clamps its own target to 1 ms, so with
-`timeBeginPeriod(1)` it cannot exceed ~1,000 Hz however `com_maxfps` reads.
+**What it was.** Every escaped frame was an **SEH unwind out of an access violation at
+0x006F3E6A**, once per frame: a NULL read through the **water simulation's** ping-pong buffers
+at 0x4DD0A10 / 0x4DD4AF0. Those are allocated by 0x6F13B0, reached only from the renderer's
+dynamic-buffer bring-up — which `dedicated.cpp` skips on purpose. The `r_watersim_*` dvars are
+why nobody looked: the prefix says renderer, but the **server** samples the water surface when a
+player is near it. `watersim_pool.cpp` calls the engine's own allocator once, from the first
+frame. Two megabytes, zeroed, guarded, self-verifying, `ENW_DEDI_NO_WATERSIM_POOL=1` to undo.
 
-## What was finished
+**`dedi.md` §11.2 is retracted in place.** "It is not an SEH unwind" was wrong, and it was wrong
+for a reason worth carrying: the vectored handler logged only its **first six** exceptions, and
+the first six of any run are init-time debug prints. The access violations start at #124.
 
-- **The CPU is fixed.** `frame_pacing.cpp` now also paces in WinMain's loop, outside `Com_Frame`,
-  where nothing can jump over it. A populated server holds **59.4 Hz at 1.4–1.8% of one core**
-  (`join57`, `join59`) where it used to burn ~84%. `ENW_DEDI_NO_OUTER_PACE=1` is the control.
-- **Two candidate causes of the escape are dead**, measured, so do not re-derive them: it is
-  **not** `longjmp` (0x7AD57C hooked, zero calls in two runs; its only three callers are
-  `Com_Error`, `Sys_Error` and the script VM's 0x693CF0), and it is **not** an SEH unwind (a
-  vectored handler sees only `DBG_PRINTEXCEPTION_C`, one per escaped frame). It is also not
-  nesting — the stack would be gone in a minute.
-- **Der Berg boots headless and answers `getstatus`** with `fs_game=mods/nazi_zombie_derberg`.
-  It was failing on *our* command line, not its own script.
-- **Custom-map verdicts are in the manifests.** `archive/manifests/<bsp>.json` gained
-  `dedi_status` and a dated note; three maps are `map_error`, two are `untested` because the
-  failure was ours.
-- **`replay.cpp`** now emits `kill`, `zombies_alive`, `kills_round`, `round` on every snap, and
-  `stance`, and `weapon` is a string like everything else on disk.
+**The harness has its fifth gate.** `jointest-proof.ps1` now fails a run whose engine has
+stopped. Do **not** gate on the rate probe's own `delta=` field — it reads 0 on a healthy
+server. Gate on `Com_Frame-body > 0 Hz` and on `com_frameTime` advancing **between** lines.
+
+## What else was finished
+
+- **`no_save_reload.cpp`.** With the server simulating, the game reaches game over — and T4's
+  single-player death flow reloads a save that a dedicated server never wrote, which was an
+  `ERR_DROP` and took the server with it. The `call G_Error` at 0x62C10D is now a counting
+  `ret`, verified against the caller's own `add esp, 8`. **It does not restart the round.** It
+  means you can now see what happens *after* game over. `ENW_DEDI_ALLOW_SAVE_RELOAD=1` is the
+  control.
+- **`jointest.ps1` collected the wrong console log.** `join59.server.console.log` is
+  byte-identical to the client's: `$conSub` was built from `fs_game` and the server's console
+  had moved. The dedicated server's own console output had never been read on a custom-map run.
+  It now searches the home, takes the newest, and prints (and checks) the `Working directory:`
+  line inside it.
+- **`frame_escape_probe.cpp`** gained the three instruments that named the bug: a logging
+  `__except` filter around `Com_EventLoop` (`seh-through` — the number that settled it), a
+  wrapper on `Com_EventLoop`'s own `call Sys_GetEvent` (which cleared the message pump), and the
+  faulting registers plus stack chain for the first six non-debug-print exceptions.
 
 ## The next tasks, in order
 
-1. **Find what resets the stack.** `ENW_DEDI_ESCAPE_PROBE=1` already records the ESP each
-   `Com_EventLoop` entry is made with, and counts in/out. If ESP is identical across escaped
-   frames, something restores a saved stack pointer without going through `longjmp`; if it marches
-   down, they are nesting after all and the process should be dying. That one number chooses the
-   next move. Everything else is downstream: no `SV_Frame` means no round 2, no game over, no
-   replay body, and no custom map surviving a client.
-2. **Round 2 is blocked on (1), not on the referee.** A dev knob that ends a round still has to be
-   executed by a script VM the server has stopped ticking. None was used tonight.
-3. **Two custom maps are ours to fix, cheaply.** Zombie Desert and Project Viking die on
-   `fs_game is write protected.` before the map loads, while other maps in the same batch were
-   fine — leftover homepath state, because `config.cfg` archives `fs_game`. Clear
-   `<fs_homepath>\main\config.cfg` before each launch and re-run `maptest.ps1`.
-4. **Leviathan's `unknown item 'napalmblob'` is not the asset limit.** The 422 MB reserve is now
-   implemented (`big_heap.cpp`, `ENW_DEDI_BIG_HEAP=1`) and makes no difference to it. Next lead is
-   which zone should carry that weapon.
+1. **Der Berg stops 5.6 s in, on a different fault — go and get it.** Same mechanism
+   (`join68`: `seh-through` = `MISSING`, `Sys_GetEvent` in == out, `longjmps=0`), different
+   address: **0x005FFE23**, `mov ecx, [0x3BFD478]` / `cmp byte [ecx+0x10], 0` with `ecx` NULL —
+   **a dvar pointer the dedicated server never registered**, read on a socket-error path in the
+   packet receive (0x5FFDB0, from Com_EventLoop's tail). Find out which dvar `[0x3BFD478]` is
+   and register it the way `dedicated.cpp` already handles three others. Do not patch the read.
+   `dedi.md` §12.5.
+2. **Round 2 is no longer blocked on the frame loop.** `SV_Frame` runs now. What actually
+   happens is that an idle client dies in round one, so a round-2 measurement needs either a
+   client that moves or the knobs lane's zombie-health dial. That is a real experiment, not a
+   blocked one.
+3. **Decide what a dedicated server does at game over.** Right now: nothing. The save reload is
+   suppressed, the round does not restart, the client stays connected in a finished game. A
+   `map_restart` is the obvious answer and nobody has tried it.
+4. **Two custom maps are still ours to fix, cheaply.** Zombie Desert and Project Viking die on
+   `fs_game is write protected.` before the map loads. Clear `<fs_homepath>\main\config.cfg`
+   before each launch and re-run `maptest.ps1`.
+5. **Leviathan's `unknown item 'napalmblob'` is not the asset limit** — the 422 MB reserve
+   (`big_heap.cpp`) makes no difference. Next lead is which zone should carry that weapon.
 
 ## How to run things
 
@@ -63,6 +78,9 @@ It was never a pacing-arithmetic bug — the body clamps its own target to 1 ms,
 cd C:\Users\b\Desktop\Zombies
 powershell -ExecutionPolicy Bypass -File tools\dev\build.ps1  -Name dedi
 powershell -ExecutionPolicy Bypass -File tools\dev\deploy.ps1 d2 -From dedi
+
+# the acceptance test -- five gates, and it means it now
+powershell -ExecutionPolicy Bypass -File tools\dev\jointest-proof.ps1 -Tag joinNN -Watch 300
 
 # one join run, stock map
 powershell -ExecutionPolicy Bypass -File tools\dev\jointest.ps1 -Tag joinNN
@@ -78,11 +96,14 @@ Environment switches, all off by default:
 
 | | |
 |---|---|
-| `ENW_DEDI_ESCAPE_PROBE=1` | wrap `call Com_EventLoop` at 0x59DD90, hook `longjmp`, install a vectored exception handler. The instrument for task 1 |
-| `ENW_DEDI_NO_OUTER_PACE=1` | turn the new WinMain-level pacer off; the 5,300 Hz spin comes back |
+| `ENW_DEDI_NO_WATERSIM_POOL=1` | do not allocate the water-sim buffers. The escape of §11.1 comes straight back — the control for the fix |
+| `ENW_DEDI_ALLOW_SAVE_RELOAD=1` | let `SV_LoadGame` raise its `ERR_DROP`; the server dies at game over |
+| `ENW_DEDI_ESCAPE_PROBE=1` | the instrument: wrap `call Com_EventLoop` 0x59DD90 and `call Sys_GetEvent` 0x59B647, hook `longjmp`, install a VEH, log the faulting context. **Use this for task 1** |
+| `ENW_DEDI_CATCH_ESCAPE=1` | with the probe on, our `__except` claims the exception instead of passing it on. A control, never a fix |
+| `ENW_DEDI_NO_OUTER_PACE=1` | turn the WinMain-level pacer off |
 | `ENW_DEDI_BIG_HEAP=1` | main memory reserve 300 MB → 422 MB |
 | `ENW_DEDI_NO_TEMP_GUARD=1` | turn the temp-stack fix off; the freeze comes back (`join54`) |
-| `ENW_DEDI_NO_RATE_PROBE=1` | stop the five-second counter line |
+| `ENW_DEDI_NO_RATE_PROBE=1` | stop the five-second counter line — **and with it the fifth proof gate** |
 
 ## Which logs to read, in this order
 
@@ -90,31 +111,31 @@ All under `C:\Users\b\ZombiesDev\logs\dedi\`, collected at the end of every run.
 
 | File | What it answers |
 |---|---|
-| `joinNN.txt` | The transcript. The `t=` lines carry CPU and RSS every 5 s — **read them with `frame::count`, never alone** |
-| `joinNN.server.enw.log` | Ours. `CS_ACTIVE`, `referee: ROUND 1`, `dedi_rate_probe` (the four counters), `dedi_frame_escape`, and **the first `=== Com_Error TRAPPED ===` — `arg3` is the message** |
-| `mapNN.<bsp>.enw.log` | Per-map boot. Same: read the **first** trapped error, not the last |
-| `joinNN.server.console.log` | The engine's own words, including the GSC call stack above a script error |
+| `joinNN-proof.txt` | The verdict and, on a failure, `failed gates:` naming which one |
+| `joinNN.txt` | The transcript. `t=` lines carry CPU and RSS every 5 s — **read them with `frame::count`** |
+| `joinNN.server.enw.log` | Ours. `dedi_rate_probe` (**`Com_Frame-body` and `com_frameTime` are the health of the engine**), `dedi_watersim_pool`, `dedi_frame_escape`, and the first `=== Com_Error TRAPPED ===` — `arg3` is the message |
+| `joinNN.server.console.log` | The engine's own words. The collector now prints the path and the `Working directory:` it found; check it says `waw-d2` |
 
 ## Traps that have already cost this project time
 
-Everything in the previous edition of this page still holds. Four new ones:
+Everything in the previous edition still holds. Five that are new or sharpened:
 
-- **A passing `jointest-proof.ps1` does not mean the server is simulating.** See the top of this
-  page. Gate on `com_frameTime` too.
-- **`Exceeded limit of 1 'snddriverglobals' assets` is a symptom, never the first cause.** Every
-  custom-map failure ends there: the real error raises an `ERR_DROP`, the drop sends the engine
-  back to the front end, the front end re-loads `mod.ff`, the second load of the same mod trips the
-  singleton limit, and *that* raises `Sys_Error` and parks the thread. It looks exactly like the
-  `ENW_PRIVATE_PROFILE` failure and is not it. Read the first trapped `Com_Error`.
-- **`+set con_typewriterColorBase "1.0 1.0 1.0"` is load-bearing on custom maps.** Leave it out and
-  a map's `_load.gsc` raises `SetSavedDvar(): The dvar ... does not exist` and the server script
-  dies at load. That alone was Der Berg's "broken map".
-- **`shared/t4/addresses.hpp` :: `t4::mem` holds instruction starts, not operand starts.** The
-  immediates are at +1, +6, +6 — the vault's original numbers. `big_heap.cpp` §"CORRECTION" has the
-  bytes. The guard caught it; a patch written on assumption would have written 422 MB over an
-  opcode.
+- **A vectored exception handler that logs is a loop.** The ENW logger goes out through
+  `OutputDebugString`, which raises `DBG_PRINTEXCEPTION_C`, which the handler logs. `join60`
+  nested 28 deep in three milliseconds and the server never answered. Guard for re-entrancy and
+  ignore strings that look like ours.
+- **Never budget a diagnostic by "the first N events".** Six exceptions of budget bought six
+  init-time debug prints and cost a session; the access violations began at #124.
+- **`r_` does not mean "renderer only".** The water simulation is sampled by the server.
+  Anything the renderer-skip leaves unallocated is a candidate for the same class of bug, and
+  the next one (task 1) is an unregistered dvar on the same principle.
+- **`Exceeded limit of 1 'snddriverglobals' assets` is a symptom, never the first cause.** Still
+  true, and §12.3 shows it downstream of `Unable to find save.` Read the *first* trapped error.
+- **A green harness is only as honest as its gates.** Four gates passed for three sessions on a
+  server that had not simulated in two minutes. If a run looks too good, ask which number would
+  have moved.
 
 ## Do not touch
 
-The Steam install. `CoDWaWmp.exe`. Port 3200 and the `cloudflared` tunnel. `web/data`. Any PID you
-did not start. Full list: `../dev-box.md`.
+The Steam install. `CoDWaWmp.exe`. Port 3200 and the `cloudflared` tunnel. `web/data`. The
+Hetzner box. Any PID you did not start. Full list: `../dev-box.md`.
