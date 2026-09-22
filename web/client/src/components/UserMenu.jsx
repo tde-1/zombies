@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, SIGN_IN, SIGN_IN_STEAM } from '../api'
 import { useSession } from '../session'
 import { Level } from './Bits'
+import { bridge, useLauncherStatus, describeLauncher } from './launcherBridge'
 
 // Top-right account chip: avatar + name, click for a dropdown → Profile / Badges / Settings /
 // Sign out. Copied from Movement (`movement-client/src/components/UserMenu.jsx`), including
@@ -30,6 +31,14 @@ export default function UserMenu() {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const nav = useNavigate()
+  // Inside the launcher this menu also carries what the launcher's old top bar did:
+  // Settings, the client / update status, and sign-in through the launcher's own Steam
+  // round trip (the wrapped view cannot follow Steam's OpenID page itself).
+  const enw = bridge()
+  const launcher = describeLauncher(useLauncherStatus())
+  const [signingIn, setSigningIn] = useState(false)
+  useEffect(() => (enw && enw.onSession ? enw.onSession(() => refresh()) : undefined), [enw, refresh])
+  const openScreen = (name) => { setOpen(false); try { enw.openScreen(name) } catch { /* older launcher */ } }
 
   useEffect(() => {
     const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -42,6 +51,28 @@ export default function UserMenu() {
   if (loading) return <div className="um-chip um-skeleton" />
 
   if (!signedIn || !me) {
+    if (enw && enw.openScreen) {
+      const signIn = async () => {
+        setSigningIn(true)
+        try { await enw.signIn() } catch { /* the launcher toasts its own reason */ }
+        setSigningIn(false)
+        refresh()
+      }
+      return (
+        <div className="um-signed-out">
+          <button type="button" className="btn small primary" onClick={signIn} disabled={signingIn}>
+            {signingIn ? 'Waiting for your browser…' : 'Sign in'}
+          </button>
+          <button type="button" className="um-cog" onClick={() => openScreen('settings')}
+                  aria-label="Launcher settings" title="Launcher settings">
+            <svg viewBox="0 0 24 24" width="16" height="16" className="server-icon" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+            </svg>
+          </button>
+        </div>
+      )
+    }
     return (
       <a className="btn small primary" href={authMode === 'steam' ? SIGN_IN_STEAM : SIGN_IN}>
         {authMode === 'steam' ? 'Sign in' : 'Sign in (dev)'}
@@ -51,7 +82,13 @@ export default function UserMenu() {
 
   const who = encodeURIComponent(me.name || me.steam_id)
   const go = (to) => { setOpen(false); nav(to) }
-  const signOut = async () => { setOpen(false); try { await api.post('/auth/logout') } catch { /* already gone */ } refresh() }
+  const signOut = async () => {
+    setOpen(false)
+    try { await api.post('/auth/logout') } catch { /* already gone */ }
+    // The launcher keeps its own copy of who is signed in (settings.session); drop it too.
+    if (enw && enw.signOut) { try { await enw.signOut() } catch { /* nothing held */ } }
+    refresh()
+  }
 
   return (
     <div className="um" ref={ref}>
@@ -78,6 +115,22 @@ export default function UserMenu() {
               a page of their own — there are eight of them and they are all about how the
               game runs for you. The hash is the anchor on that section. */}
           <button className="um-item" role="menuitem" onClick={() => go(`/id/${who}#settings`)}>Settings</button>
+          {launcher && (
+            <>
+              <div className="um-sep" />
+              <div className="um-launcher">
+                <div className={launcher.installed ? '' : 'warn'}>{launcher.client}</div>
+                <div>Launcher <b>{launcher.version || '?'}</b>{launcher.update ? ` · ${launcher.update}` : ''}</div>
+              </div>
+              {!launcher.installed && (
+                <button className="um-item" role="menuitem" onClick={() => openScreen('firstRun')}>Install the ENW client</button>
+              )}
+              {launcher.updateReady && (
+                <button className="um-item" role="menuitem" onClick={() => { setOpen(false); enw.restartAndUpdate().catch(() => {}) }}>Restart to update</button>
+              )}
+              <button className="um-item" role="menuitem" onClick={() => openScreen('settings')}>Launcher settings</button>
+            </>
+          )}
           <div className="um-sep" />
           <button className="um-item um-danger" role="menuitem" onClick={signOut}>Sign out</button>
         </div>

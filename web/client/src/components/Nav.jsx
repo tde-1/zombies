@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import { Lockup } from './Bits'
 import SearchBar from './SearchBar'
 import UserMenu from './UserMenu'
+import WindowControls from './WindowControls'
 
 // Movement's nav bar (`movement-client/src/components/Nav.jsx`): search top-left where the
 // wordmark would be, the links centred and growing outward from the middle, the account in
@@ -125,6 +126,9 @@ export default function Nav() {
         <div className="mv-nav-right">
           <DiscordNavLink />
           <UserMenu />
+          {/* Inside the launcher only: the window is frameless and this bar is its title
+              bar. Renders nothing in a browser. */}
+          <WindowControls />
         </div>
       </div>
     </nav>

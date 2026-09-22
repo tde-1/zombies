@@ -171,6 +171,42 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .mv-navlink.active { color: var(--text); background: var(--panel-2); }
 .mv-nav-right { position: absolute; right: 12px; top: 0; height: 100%; display: flex; align-items: center; gap: 14px; }
 
+/* ── inside the launcher: this bar IS the title bar (B, 2026-09-22) ───────────
+   The launcher window is frameless and draws nothing of its own above the site, so the
+   nav is the drag region (double-click maximises, Windows' own behaviour) and every
+   control in it opts back out. `html.in-launcher` is set by components/launcherBridge.js
+   only when the preload bridge is present; a browser never sees any of this. */
+html.in-launcher .mv-nav-bar { -webkit-app-region: drag; user-select: none; }
+html.in-launcher .mv-nav-bar a,
+html.in-launcher .mv-nav-bar button,
+html.in-launcher .mv-nav-bar input,
+html.in-launcher .nav-search,
+html.in-launcher .um,
+html.in-launcher .mv-discord,
+html.in-launcher .wc { -webkit-app-region: no-drag; }
+html.in-launcher .mv-nav-right { right: 0; }
+.wc { display: flex; align-self: stretch; margin-left: -2px; }
+.wc-btn {
+  width: 46px; height: 100%; display: grid; place-items: center;
+  background: transparent; border: none; color: var(--muted); cursor: pointer;
+  transition: color .16s ease, background .16s ease;
+}
+.wc-btn:hover { color: var(--text); background: var(--panel-2); }
+.wc-btn:active { background: var(--line-2); }
+.wc-close:hover { color: #fff; background: var(--bad); }
+.wc-close:active { background: var(--hot-deep); }
+.wc-btn:focus-visible { outline-offset: -2px; }
+/* The launcher's line in the account menu: client + update state, one quiet row. */
+.um-launcher { padding: 8px 16px 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.um-launcher b { color: var(--text); font-weight: 600; }
+.um-launcher .warn { color: var(--gold); }
+.um-signed-out { display: flex; align-items: center; gap: 8px; }
+.um-cog {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--panel); border: none; color: var(--muted); cursor: pointer;
+}
+.um-cog:hover { background: var(--panel-2); color: var(--text); }
+
 /* ── the one search box (nav, top-left) ────────────────────────────── */
 .nav-search { position: absolute; left: 16px; top: 0; height: 100%; display: flex; align-items: center; z-index: 40; }
 .nav-search-box {
