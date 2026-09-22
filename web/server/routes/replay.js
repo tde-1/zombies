@@ -24,12 +24,15 @@ const os = require('node:os')
 const zlib = require('node:zlib')
 const { execFile } = require('node:child_process')
 const replays = require('../lib/replays')
+const waw = require('../lib/wawRules')
 
 // Exported map geometry (tools/maps). Game-derived, so it is NEVER in git — it lives in
 // ZombiesDev and is mounted read-only here. A missing map is a 404, not a fall-through
 // to index.html, for the same reason /updates is (see index.js).
 const MAPS_DIR = process.env.ZM_MAPS_DIR
   || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'maps')
+
+const wrap180 = (a) => ((((a + 180) % 360) + 360) % 360) - 180
 
 /** Sampled snapshot state for one slot, carried forward across omitted fields. */
 class SlotState {
@@ -42,6 +45,7 @@ class SlotState {
     this.weapon = ''
     this.stance = 'stand'
     this.seen = false
+    this.va = null
   }
 
   apply(p) {
@@ -53,6 +57,21 @@ class SlotState {
     if (p.alive !== undefined) this.alive = p.alive
     if (p.weapon !== undefined) this.weapon = String(p.weapon)
     if (p.stance !== undefined) this.stance = p.stance
+    if (p.cmd_ang !== undefined) this.cmd = p.cmd_ang
+    // VIEW PITCH from the usercmd (replay.md §8.11). The usercmd angle is the view BEFORE
+    // ps.delta_angles, which the DLL cannot read. The engine sets delta when it sets the
+    // view (spawn, teleport, last stand) and the view it sets has pitch 0 on every stock
+    // spawn point, so: whenever the entity-yaw-minus-usercmd-yaw offset jumps (or on the
+    // first sample after a spawn), the pitch offset is re-zeroed at that moment. [H], stated.
+    if (this.cmd && p.ang) {
+      const dy = wrap180(p.ang[1] - this.cmd[1])
+      if (this.dYaw === undefined || this.respawned || Math.abs(wrap180(dy - this.dYaw)) > 20) {
+        this.dYaw = dy
+        this.dPitch = -this.cmd[0]
+        this.respawned = false
+      }
+      this.va = [wrap180(this.cmd[0] + this.dPitch)]
+    }
   }
 }
 
@@ -79,6 +98,22 @@ function buildTrack(file, replayLib, hz = 10) {
   const stride = Math.max(1, Math.round(20 / hz))
   const tickMs = stride * 50
 
+  // POSITION ACCURACY (replay.md §8.11). The DLL writes the zombie list on every other server
+  // frame. Sampling players on the OTHER phase put every zombie 50 ms behind the players it
+  // was chasing (a running zombie is ~5 units at that age) and made the list step. So the
+  // sampling phase is chosen to land ON the zombie frames: one cheap pre-pass finds the first
+  // snap that carries the zombie-frame marker (`zombies_alive`), and every sampled tick after
+  // that is a zombie frame. Players are recorded every frame, so any phase suits them.
+  let phase = 0
+  {
+    let k = -1
+    for (const e of replayLib.readEvents(file)) {
+      if (e.t !== 'snap') continue
+      k++
+      if (e.zombies_alive !== undefined || Array.isArray(e.zombies)) { phase = k % stride; break }
+    }
+  }
+
   const slots = new Map()        // slot -> SlotState
   const names = new Map()        // slot -> { name, steamid }
   const cols = new Map()         // slot -> { pos: [], ang: [], health: [], score: [], alive: [] }
@@ -87,9 +122,12 @@ function buildTrack(file, replayLib, hz = 10) {
   const rounds = []
   const feed = []
 
-  // §3 gap 2, closed by the referee: `snap.zombies_alive` is the number the ROUND has
-  // left to send, which is not `snap.zombies.length` (the engine only ever has 24-31 out
-  // at once). `kills_round` is its other half. Both are delta-coded like every other snap
+  // `snap.zombies_alive` is the number of zombie AI entities ALIVE at that sample -- the
+  // DLL's own comment says so (replay.cpp: "MEASURED: live AI entities this sample ... NOT
+  // how many are left in the round"). An earlier version of this comment called it the
+  // round's remainder and the HUD labelled it "Zombies left"; that was wrong (§8.11). The
+  // round's remainder is `zombies_left` below. `kills_round` is the DLL's kill counter,
+  // which undercounts on real games (§8.11: its seen[] array stops at entnum 255). Both are delta-coded like every other snap
   // field, so they are carried forward, and both are `null` for every file recorded before
   // they existed -- which is why they are separate arrays with a `has_` flag rather than
   // zeros the HUD could not tell apart from a quiet round.
@@ -116,9 +154,48 @@ function buildTrack(file, replayLib, hz = 10) {
   // §8.7: `input` carries `buttons` on change. Bit 0x1 is read as attack [H]; the
   // crosshair and the placeholder viewmodel use it.
   const fireCur = new Map()      // slot -> 0|1
+  // §8.11: the whole usercmd button mask, carried per slot (stance, ADS, frag, use -- the IW3
+  // layout in lib/wawRules.js BTN), and the press/release edges of the buttons the HUD
+  // animates, at full millisecond resolution rather than the 10 Hz tick.
+  const btnCur = new Map()       // slot -> mask
+  const presses = new Map()      // slot -> { fire: [[down, up|null]], frag: [...], ads: [...] }
+  const pressOf = (slot) => {
+    if (!presses.has(slot)) presses.set(slot, { fire: [], frag: [], ads: [] })
+    return presses.get(slot)
+  }
+  const edge = (list, was, now, ms) => {
+    if (now && !was) list.push([ms, null])
+    else if (!now && was && list.length && list[list.length - 1][1] === null) list[list.length - 1][1] = ms
+  }
+  // Health drops at snap resolution (20 Hz), with the nearest zombie at that moment as the
+  // inferred attacker -- the DLL records no damage direction (§8.11 "recorded vs inferred").
+  const hits = []
+  const lastHealth = new Map()
+  // Weapons: the per-tick column holds an index into `weapons`.
+  const weaponTable = ['']
+  const weaponIdx = new Map([['', 0]])
+  const wIndex = (raw) => {
+    const key = String(raw || '')
+    if (!weaponIdx.has(key)) { weaponIdx.set(key, weaponTable.length); weaponTable.push(key) }
+    return weaponIdx.get(key)
+  }
+  // Zombies-left bookkeeping: identities first seen in the current round.
+  const zLeft = []
+  const zTotal = []
+  let roundForCount = 0
+  let spawnedThisRound = 0
+  let totalThisRound = null
+  let leftSource = null
+  const roundTotals = []
+  let playersNow = 1
 
   let snapIndex = -1
   let ticks = 0
+  // §8.11: the real time of every sampled tick. Server frames are not exactly 50 ms apart,
+  // and `t0 + k * tick_ms` was 674 ms off the snaps' own clock by the end of m_0afb449b --
+  // every event (a hit, a down, a weapon change) then landed 0.7 s away from the positions it
+  // belongs with. The viewer maps time to tick through this array.
+  const tickT = []
   let round = 0
   let lastMs = 0
   let firstSnapMs = null
@@ -128,10 +205,11 @@ function buildTrack(file, replayLib, hz = 10) {
       // A slot that appears late still needs a full-length column, so it is back-filled
       // with the tick count so far. Otherwise tick N of slot 1 is tick N-k of slot 0 and
       // every player after the first is out of sync with the scrubber.
-      const c = { pos: [], ang: [], health: [], score: [], alive: [], fire: [] }
+      const c = { pos: [], ang: [], health: [], score: [], alive: [], fire: [], btn: [], wpn: [], pitch: [] }
       for (let i = 0; i < ticks; i++) {
         c.pos.push(0, 0, 0); c.ang.push(0, 0)
         c.health.push(0); c.score.push(0); c.alive.push(0); c.fire.push(0)
+        c.btn.push(0); c.wpn.push(0); c.pitch.push(null)
       }
       cols.set(slot, c)
     }
@@ -142,9 +220,19 @@ function buildTrack(file, replayLib, hz = 10) {
     if (e.ms !== undefined && e.ms > lastMs) lastMs = e.ms
 
     if (e.t === 'player_connect') names.set(e.slot, { name: e.name, steamid: e.steamid })
+    if (e.t === 'player_spawn' && slots.has(e.slot)) slots.get(e.slot).respawned = true
     if (e.t === 'round') { round = e.n; rounds.push({ ms: e.ms, n: e.n }) }
     if (endMs === null && (e.t === 'game_over' || (e.t === 'notify' && e.name === 'intermission'))) endMs = e.ms
-    if (e.t === 'input' && e.slot !== undefined) fireCur.set(e.slot, (e.buttons & 1) ? 1 : 0)
+    if (e.t === 'input' && e.slot !== undefined) {
+      const was = btnCur.get(e.slot) || 0
+      const now = e.buttons | 0
+      fireCur.set(e.slot, (now & waw.BTN.ATTACK) ? 1 : 0)
+      btnCur.set(e.slot, now)
+      const pr = pressOf(e.slot)
+      edge(pr.fire, was & waw.BTN.ATTACK, now & waw.BTN.ATTACK, e.ms)
+      edge(pr.frag, was & waw.BTN.FRAG, now & waw.BTN.FRAG, e.ms)
+      edge(pr.ads, was & waw.BTN.ADS, now & waw.BTN.ADS, e.ms)
+    }
 
     if (FEED_EVENTS.has(e.t)) {
       const f = { ms: e.ms || 0, t: e.t }
@@ -161,15 +249,29 @@ function buildTrack(file, replayLib, hz = 10) {
     // already sent. Only the *sampling* is strided, never the state machine.
     for (const p of e.players || []) {
       if (!slots.has(p.slot)) slots.set(p.slot, new SlotState())
-      slots.get(p.slot).apply(p)
+      const st = slots.get(p.slot)
+      st.apply(p)
+      const was = lastHealth.get(p.slot)
+      if (st.alive && was !== undefined && st.health < was && (endMs === null || e.ms < endMs)) {
+        let src = null
+        let best = 140 * 140   // a zombie swipe reaches ~64; 140 leaves room for the 10 Hz list's age
+        for (const z of zCur || []) {
+          const dx = z.pos[0] - st.pos[0], dy = z.pos[1] - st.pos[1]
+          const d2 = dx * dx + dy * dy
+          if (d2 < best) { best = d2; src = [r1(z.pos[0]), r1(z.pos[1])] }
+        }
+        hits.push({ slot: p.slot, ms: e.ms, from: was, to: st.health, src })
+      }
+      lastHealth.set(p.slot, st.health)
     }
+    if (Array.isArray(e.players) && e.players.length) playersNow = e.players.length
     if (e.zombies_alive !== undefined) { zAliveCur = e.zombies_alive; sawCounters = true }
     if (e.kills_round !== undefined) { kRoundCur = e.kills_round; sawCounters = true }
     if (Array.isArray(e.zombies)) zCur = e.zombies
     else if (e.zombies_alive === 0) zCur = []   // a zombie frame with none out
     if (Array.isArray(e.nades)) nCur = e.nades
     else if (e.zombies_alive !== undefined) nCur = []   // a 10 Hz frame with no nade list
-    if (snapIndex % stride !== 0) continue
+    if ((((snapIndex - phase) % stride) + stride) % stride !== 0) continue
     if (firstSnapMs === null) firstSnapMs = e.ms
 
     for (const [slot, s] of slots) {
@@ -180,9 +282,13 @@ function buildTrack(file, replayLib, hz = 10) {
       c.score.push(s.score)
       c.alive.push(s.alive ? 1 : 0)
       c.fire.push(fireCur.get(slot) || 0)
+      c.btn.push(btnCur.get(slot) || 0)
+      c.wpn.push(wIndex(s.weapon))
+      c.pitch.push(s.va ? r1(s.va[0]) : null)
     }
     zAlive.push(zAliveCur)
     kRound.push(kRoundCur)
+    tickT.push(e.ms)
     ticks++
 
     // Zombies. `zombies` absent and `zombies: []` mean the same thing (the sampler only
@@ -211,8 +317,27 @@ function buildTrack(file, replayLib, hz = 10) {
       // the map (replay.cpp: identity is (id, first-seen), never id alone).
       for (const id of [...last.keys()]) if (!live.has(id)) last.delete(id)
     }
+    const before = zombies.size
     if (zCur) track(zCur, zombies, zLast, true)
     if (nCur) track(nCur, nades, nLast, false)
+
+    // Zombies left in the round (§8.11): the stock total for (map, round, players) minus the
+    // zombies this round that have come and gone. `spawned - alive` is the dead, so
+    // left = total - spawned + alive. Recorded inputs: round, the zombie list; the total is
+    // the game's own formula (lib/wawRules.js).
+    const rNow = e.round !== undefined ? e.round : round
+    if (rNow !== roundForCount && rNow > 0) {
+      roundForCount = rNow
+      spawnedThisRound = 0
+      const t = waw.roundTotal(header.map, rNow, playersNow)
+      totalThisRound = t.total
+      leftSource = t.source
+      roundTotals.push({ n: rNow, total: t.total, players: playersNow })
+    }
+    spawnedThisRound += zombies.size - before
+    const aliveNow = zCur ? zCur.length : 0
+    zTotal.push(totalThisRound)
+    zLeft.push(totalThisRound === null ? null : Math.max(0, totalThisRound - spawnedThisRound + aliveNow))
   }
 
   const players = []
@@ -223,6 +348,12 @@ function buildTrack(file, replayLib, hz = 10) {
       name: meta.name || `Slot ${slot}`,
       steamid: meta.steamid || null,
       pos: c.pos, ang: c.ang, health: c.health, score: c.score, alive: c.alive, fire: c.fire,
+      btn: c.btn, wpn: c.wpn,
+      // View pitch is NOT in any file recorded so far: `ang[0]` is the player ENTITY's pitch,
+      // which the engine keeps at 0 (§8.11). `pitch` is filled from the DLL's view angles
+      // (`va`, 2026-09-22 late build) when the file has them; otherwise it is null.
+      pitch: c.pitch.some((v) => v !== null) ? c.pitch : null,
+      presses: presses.get(slot) || { fire: [], frag: [], ads: [] },
     })
   }
 
@@ -259,6 +390,15 @@ function buildTrack(file, replayLib, hz = 10) {
     nades: [...nades.values()],
     rounds,
     events: feed,
+    // §8.11 additions.
+    tick_t: tickT,
+    phase_note: `sampled on zombie frames (snap phase ${phase} of ${stride})`,
+    weapons: weaponTable.map((raw) => ({ raw, ...waw.weaponName(header.map, raw) })),
+    zombies_left: zLeft,
+    zombies_total: zTotal,
+    zombies_left_source: leftSource,
+    round_totals: roundTotals,
+    hits,
   }
 }
 

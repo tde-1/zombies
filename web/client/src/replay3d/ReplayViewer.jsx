@@ -25,8 +25,12 @@
 //   * the scoreboard (points, health), the round counter, the body count, the event
 //     feed, and round markers on the scrubber.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createScene, isWebGL2Available } from './scene.js'
+import { createScene, isWebGL2Available, installWorldFov } from './scene.js'
 import { createActors, installSkyDome, createPlaceholderGun, SLOT_COLORS } from './actors.js'
+import {
+  CG_FOV, VIEW_HEIGHT, HULL, HUD, BTN, stanceOf, WEAPONS, DEFAULT_WEAPON, weaponRow,
+  simulateSpread, reticleGeom, cookAt, roundGlyphs, trackClock,
+} from './waw.js'
 import { fetchAsset, fetchJson } from './assets.js'
 import Boot from './Boot.jsx'
 import './r3d.css'
@@ -46,27 +50,39 @@ const clock = (s) => {
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
 }
 
-// The first-person crosshair (replay.md §8.7). WaW's hip crosshair is four ticks round a
-// gap that opens with movement and with each shot and closes again; these are per-class
-// numbers in screen pixels, eyeballed against the game, not read out of the weapon files.
-// The weapon is `#<index>` until the DLL resolves names (§3 gap 5), so every weapon is a
-// rifle today and the table is the seam for the day it is not.
-const XH_CLASS = {
-  pistol: { base: 10, move: 16, shot: 7, max: 46, recover: 60 },
-  rifle: { base: 14, move: 24, shot: 9, max: 60, recover: 45 },
-  smg: { base: 12, move: 18, shot: 5, max: 50, recover: 70 },
-  mg: { base: 20, move: 30, shot: 4, max: 70, recover: 35 },
-  shotgun: { base: 26, move: 20, shot: 12, max: 70, recover: 40 },
+// The first-person crosshair is WaW's own now (replay.md §8.11): the four reticle_side_small
+// ticks, their gap from each weapon file's hip spread, the spread driven by the engine's
+// aimSpreadScale model over the recorded inputs -- all in waw.js, with sources.
+
+// Viewer settings (B's ask 3): each overlay can be switched off; all start ON. Per-viewer
+// convenience, so localStorage, wrapped: a private window has none and that is fine.
+const SETTINGS_KEY = 'enw.replay3d.settings'
+const DEFAULT_SETTINGS = { hud: true, xh: true, dmg: true }
+const loadSettings = () => {
+  try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') } } catch { return { ...DEFAULT_SETTINGS } }
 }
-const xhClass = (weapon) => {
-  const w = String(weapon || '')
-  if (/colt|walther|nambu|tokarev|357|m1911|pistol/i.test(w)) return XH_CLASS.pistol
-  if (/thompson|mp40|ppsh|type100|mp44|stg/i.test(w)) return XH_CLASS.smg
-  if (/30cal|mg42|dp28|fg42|bar|type99/i.test(w)) return XH_CLASS.mg
-  if (/shotgun|trench|doublebarrel/i.test(w)) return XH_CLASS.shotgun
-  return XH_CLASS.rifle
+const saveSettings = (v) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(v)) } catch { /* no storage: still works */ } }
+
+// Heights per stance (WaW, bg_pmove): the eye camera and the capsules both use them.
+const BODY = {
+  stand: { eye: VIEW_HEIGHT.stand, height: HULL.stand, radius: HULL.radius },
+  crouch: { eye: VIEW_HEIGHT.crouch, height: HULL.crouch, radius: HULL.radius },
+  prone: { eye: VIEW_HEIGHT.prone, height: HULL.prone, radius: HULL.radius },
 }
-const WAW_RUN = 190   // units a second; the engine's sprint is a little over this
+
+// The chalk tally (hud_chalk_1..5, [I]): up to four near-vertical strokes and a diagonal,
+// hand-wobbled, in a 64 x 64 box. Procedural SVG -- the game's texture is never shipped.
+const TALLY = [
+  'M13 9 C 11 24, 15 40, 12 57', 'M24 7 C 26 25, 22 41, 25 58', 'M35 9 C 33 26, 37 42, 34 57',
+  'M46 8 C 48 24, 44 40, 47 58', 'M4 44 C 20 34, 38 26, 60 16',
+]
+function Chalk({ n }) {
+  return (
+    <svg className="r3d-waw-chalk" viewBox="0 0 64 64" aria-hidden="true">
+      {TALLY.slice(0, n).map((d, i) => <path key={i} d={d} />)}
+    </svg>
+  )
+}
 
 const lerpAngle = (a, b, f) => {
   let d = ((b - a + 540) % 360) - 180
@@ -101,6 +117,10 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [speedOpen, setSpeedOpen] = useState(false)
+  const [settings, setSettings] = useState(loadSettings)
+  const settingsRef = useRef(settings)
+  useEffect(() => { settingsRef.current = settings; saveSettings(settings); dirtyRef.current = true }, [settings])
+  const toggle = (k) => setSettings((v) => ({ ...v, [k]: !v[k] }))
   // `hud` is the only state the frame loop is allowed to set, and it is set at most
   // ~15 times a second. Every other per-frame value lives in a ref: a setState per
   // frame is a React render per frame, and the viewer's whole frame budget is the
@@ -114,8 +134,11 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const dirtyRef = useRef(true)
   const camRef = useRef('follow')
   const xhRef = useRef(null)
+  const cookRef = useRef(null)
+  const flashRef = useRef(null)
+  const lowRef = useRef(null)
+  const dmgRefs = useRef([])
   const gunRef = useRef(null)
-  const bloomRef = useRef(0)
 
   // THE TIMELINE'S ZERO IS THE FIRST SNAPSHOT, NOT THE FIRST EVENT.
   //
@@ -146,26 +169,106 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     return Number.isFinite(k) ? k : 0
   }, [track])
   const tickMs = track ? track.tick_ms : 50
+  // Time <-> tick through the snaps' own clock (§8.11), not t0 + k * tick_ms.
+  const clk = useMemo(() => (track ? trackClock(track) : null), [track])
 
-  useEffect(() => { timeRef.current = (firstLive * (track ? track.tick_ms : 50)) / 1000; dirtyRef.current = true }, [track, firstLive])
+  useEffect(() => { timeRef.current = clk ? (clk.at(firstLive) - t0) / 1000 : 0; dirtyRef.current = true }, [track, firstLive, clk, t0])
   useEffect(() => { playingRef.current = playing }, [playing])
   useEffect(() => { speedRef.current = speed }, [speed])
   useEffect(() => { focusRef.current = focus; dirtyRef.current = true }, [focus])
   useEffect(() => { camRef.current = camMode; dirtyRef.current = true }, [camMode])
+
+  // Weapon per player per tick, as a NAME from the weapon table (or null: none / unproven).
+  // An index the recording has not proven falls back to DEFAULT_WEAPON's row, flagged.
+  const weaponNameAt = useCallback((p, k) => {
+    if (!track || !p.wpn || !track.weapons) return DEFAULT_WEAPON
+    const w = track.weapons[p.wpn[k]]
+    if (!w) return null
+    if (w.name) return w.name
+    if (!w.raw || w.raw === '#0') return null
+    return DEFAULT_WEAPON
+  }, [track])
+
+  // aimSpreadScale per tick for every player, integrated once (scrub-exact). waw.js.
+  const spread = useMemo(() => {
+    const out = new Map()
+    if (!track) return out
+    for (const p of track.players) out.set(p.slot, simulateSpread(track, p, weaponNameAt))
+    return out
+  }, [track, weaponNameAt])
+
+  // Zombie facing: the recorded yaw if the file has it, else the direction of travel over
+  // +-1 tick, held while standing still (§8.11: both replays predate the yaw field).
+  const zombieYaw = useMemo(() => {
+    if (!track) return []
+    return track.zombies.map((z) => {
+      const n = z.pos.length / 3
+      const out = new Float32Array(n)
+      let last = NaN
+      for (let k = 0; k < n; k++) {
+        const rec = z.yaw ? z.yaw[k] : null
+        if (rec != null) { out[k] = rec; last = rec; continue }
+        const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1)
+        const dx = z.pos[b * 3] - z.pos[a * 3], dy = z.pos[b * 3 + 1] - z.pos[a * 3 + 1]
+        if (dx * dx + dy * dy > 4) last = Math.atan2(dy, dx) * 180 / Math.PI
+        out[k] = last
+      }
+      return out
+    })
+  }, [track])
+  const yawRecorded = !!(track && track.zombies.some((z) => z.yaw))
+
+  // Downs. A `down` event when the referee sends one; otherwise INFERRED from the weapon
+  // index going to #0 (none) while the player was holding a real one -- last stand takes
+  // the weapon away (§8.11: both replays have no down event and both show this).
+  const downs = useMemo(() => {
+    const out = []
+    if (!track) return out
+    const real = track.events.filter((e) => e.t === 'down')
+    if (real.length) return real.map((e) => ({ slot: e.slot, ms: e.ms, inferred: false }))
+    const end = track.end_ms || Infinity
+    for (const p of track.players) {
+      if (!p.wpn || !track.weapons) continue
+      let had = false
+      for (let k = 0; k < track.ticks; k++) {
+        const w = track.weapons[p.wpn[k]]
+        const none = !w || !w.raw || w.raw === '#0'
+        const ms = clk.at(k)
+        if (!none && p.alive[k]) had = true
+        else if (none && had && ms < end) { out.push({ slot: p.slot, ms, inferred: true }); had = false }
+      }
+    }
+    return out
+  }, [track, clk])
 
   // Index the event feed by tick once, so the per-frame lookup is a slice and not a
   // scan of 1500 events.
   const feedByTick = useMemo(() => {
     const out = new Map()
     if (!track) return out
-    for (const e of track.events) {
-      if (e.t === 'round' || e.t === 'auth_decision' || e.t === 'player_connect') continue
-      const k = Math.floor((e.ms - t0) / tickMs)
+    const add = (e) => {
+      const k = Math.floor(clk.index(e.ms))
       if (!out.has(k)) out.set(k, [])
       out.get(k).push(e)
     }
+    for (const e of track.events) {
+      if (e.t === 'round' || e.t === 'auth_decision' || e.t === 'player_connect' || e.t === 'down') continue
+      add(e)
+    }
+    for (const d of downs) add({ t: 'down', ms: d.ms, slot: d.slot, inferred: d.inferred })
+    for (const h of track.hits || []) add({ t: 'hit', ms: h.ms, slot: h.slot, delta: h.to - h.from })
+    // Frags from the +frag press, when the file has no grenade entities to show the real one.
+    if (!(track.nades && track.nades.length)) {
+      const row = WEAPONS.stielhandgranate
+      for (const p of track.players) {
+        for (const [d] of (p.presses && p.presses.frag) || []) {
+          const c = cookAt(p.presses, d, row)
+          if (c) add({ t: 'frag', ms: c.explodeAt, slot: p.slot, cooked: ((c.releasedAt - c.armedAt) / 1000) })
+        }
+      }
+    }
     return out
-  }, [track, tickMs, t0])
+  }, [track, clk, downs])
 
   const roundAt = useMemo(() => {
     // A flat array of round number per tick. `round` is an event, never a snap field
@@ -175,11 +278,11 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     let r = 0
     let i = 0
     for (let k = 0; k < track.ticks; k++) {
-      while (i < track.rounds.length && track.rounds[i].ms - t0 <= k * tickMs) { r = track.rounds[i].n; i++ }
+      while (i < track.rounds.length && track.rounds[i].ms <= clk.at(k)) { r = track.rounds[i].n; i++ }
       a[k] = r
     }
     return a
-  }, [track, tickMs, t0])
+  }, [track, clk])
 
   // ---- scene ------------------------------------------------------------------
   useEffect(() => {
@@ -199,7 +302,18 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     canvasRef.current = canvas
 
     const api = createScene(canvas, {})
+    // First person at WaW's own field of view (cg_fov 65, 4:3 horizontal), not Movement's
+    // CS:GO 90: the crosshair's spread-to-pixels projection assumes it (waw.js reticleGeom).
+    installWorldFov(api)
+    api.setWorldFov(CG_FOV)
     sceneRef.current = api
+    // `?r3ddebug` exposes the scene to the console, for the screenshots in replay.md §8.11
+    // (placing the free camera exactly). Nothing reads it; off unless asked for.
+    try {
+      if (new URLSearchParams(window.location.search).has('r3ddebug')) {
+        window.__r3d = { api, redraw: () => { dirtyRef.current = true } }
+      }
+    } catch { /* no window.location: not a browser */ }
     const actors = createActors(api)
     actorsRef.current = actors
     const gun = createPlaceholderGun()
@@ -328,7 +442,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     const actors = actorsRef.current
     if (!api || !actors || !track) return null
 
-    const tf = (timeRef.current * 1000) / tickMs
+    const tf = clk.index(t0 + timeRef.current * 1000)
     let i = Math.floor(tf)
     if (i < 0) i = 0
     if (i > track.ticks - 1) i = track.ticks - 1
@@ -348,11 +462,17 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       const dx = bx - ax, dy = by - ay, dz = bz - az
       const ff = (dx * dx + dy * dy + dz * dz > 400 * 400) ? 0 : f
       const x = ax + dx * ff, y = ay + dy * ff, z = az + dz * ff
+      // Pitch: the entity's recorded pitch is always 0 (§8.11), so it is used only when the
+      // file carries the usercmd-derived `pitch` column.
+      const pa = p.pitch ? (p.pitch[i] ?? 0) : p.ang[i * 2]
+      const pb = p.pitch ? (p.pitch[j] ?? pa) : p.ang[j * 2]
+      const stance = stanceOf(p.btn ? p.btn[i] : 0)
       const rec = {
         slot: p.slot, name: p.name, x, y, z,
-        pitch: lerpAngle(p.ang[i * 2], p.ang[j * 2], ff),
+        pitch: lerpAngle(pa, pb, ff),
         yaw: lerpAngle(p.ang[i * 2 + 1], p.ang[j * 2 + 1], ff),
         health: p.health[i], score: p.score[i], alive: p.alive[i] === 1,
+        stance, height: BODY[stance].height,
       }
       list.push(rec)
       if (rec.slot === focusRef.current) focusP = rec
@@ -360,13 +480,25 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     if (!focusP) focusP = list[0]
 
     actors.setPlayers(list, focusP ? focusP.slot : -1)
-    if (focusP) api.setPose(focusP.x, focusP.y, focusP.z, focusP.pitch, focusP.yaw, false)
+    if (focusP) api.setPose(focusP.x, focusP.y, focusP.z, focusP.pitch, focusP.yaw, focusP.stance !== 'stand', BODY[focusP.stance])
 
+    // Zombies, interpolated between samples exactly as the players are (they used to snap
+    // from sample to sample at 10 Hz, §8.11), facing their recorded or travelled yaw.
     const zs = []
-    for (const z of track.zombies) {
+    for (let zi = 0; zi < track.zombies.length; zi++) {
+      const z = track.zombies[zi]
       const k = i - z.t0
-      if (k < 0 || k * 3 >= z.pos.length) continue
-      zs.push({ x: z.pos[k * 3], y: z.pos[k * 3 + 1], z: z.pos[k * 3 + 2] })
+      const n = z.pos.length / 3
+      if (k < 0 || k >= n) continue
+      const k2 = Math.min(n - 1, k + 1)
+      const zf = k2 > k ? f : 0
+      const yw = zombieYaw[zi]
+      zs.push({
+        x: z.pos[k * 3] + (z.pos[k2 * 3] - z.pos[k * 3]) * zf,
+        y: z.pos[k * 3 + 1] + (z.pos[k2 * 3 + 1] - z.pos[k * 3 + 1]) * zf,
+        z: z.pos[k * 3 + 2] + (z.pos[k2 * 3 + 2] - z.pos[k * 3 + 2]) * zf,
+        yaw: Number.isFinite(yw[k]) ? (Number.isFinite(yw[k2]) ? lerpAngle(yw[k], yw[k2], zf) : yw[k]) : null,
+      })
     }
     actors.setZombies(zs)
 
@@ -377,26 +509,134 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       const k = i - n.t0
       const len = n.pos.length / 3
       if (k >= 0 && k < len) ns.push({ x: n.pos[k * 3], y: n.pos[k * 3 + 1], z: n.pos[k * 3 + 2] })
-      const age = ((tf - (n.t0 + len)) * tickMs) / 1000
+      const age = (t0 + timeRef.current * 1000 - clk.at(n.t0 + len)) / 1000
       if (age >= 0 && age < 0.8 && len) booms.push({ x: n.pos[len * 3 - 3], y: n.pos[len * 3 - 2], z: n.pos[len * 3 - 1], age })
     }
     actors.setNades(ns)
     actors.setExplosions(booms)
 
-    // What the crosshair and the gun need: the focused player's ground speed and trigger.
-    let speed = 0
+    // What the HUD overlays need about the focused player.
     let fire = false
+    let xh = null
     const fp = focusP && track.players.find((p) => p.slot === focusP.slot)
     if (fp) {
-      const dx = fp.pos[j * 3] - fp.pos[i * 3], dy = fp.pos[j * 3 + 1] - fp.pos[i * 3 + 1]
-      if (j > i) speed = Math.min(400, Math.hypot(dx, dy) / (tickMs / 1000))
       fire = !!(fp.fire && fp.fire[i]) && focusP.alive
+      const wname = weaponNameAt(fp, i)
+      const sc = spread.get(fp.slot)
+      const a = sc ? sc[i] : 0
+      const b = sc ? sc[j] : 0
+      xh = {
+        row: weaponRow(wname), name: wname, scale: a + (b - a) * f,
+        stance: focusP.stance, ads: !!(fp.btn && (fp.btn[i] & BTN.ADS)), alive: focusP.alive,
+        presses: fp.presses, x: focusP.x, y: focusP.y, z: focusP.z, yaw: focusP.yaw, health: focusP.health,
+        raw: track.weapons && fp.wpn ? (track.weapons[fp.wpn[i]] || {}) : {},
+      }
     }
 
-    const zl = track.zombies_alive ? track.zombies_alive[i] : null
-    const kr = track.kills_round ? track.kills_round[i] : null
-    return { speed, fire, i, list, alive: zs.length, left: zl === undefined ? null : zl, kills: kr === undefined ? null : kr, round: roundAt[i] || 0 }
-  }, [track, tickMs, roundAt])
+    // Zombies left: computed by the track from the round's stock total (lib/wawRules.js).
+    const zl = track.zombies_left ? track.zombies_left[i] : null
+    return { fire, xh, zs, i, list, alive: zs.length, left: zl == null ? null : zl, round: roundAt[i] || 0 }
+  }, [track, clk, t0, roundAt, weaponNameAt, spread, zombieYaw])
+
+  // ---- WaW overlays: crosshair, cook reticle, damage flash + direction, low health -----
+  // All of it is a pure function of replay time and the track, so a paused or scrubbed
+  // frame shows exactly what the player saw at that instant. Sources in waw.js.
+  const drawOverlays = useCallback((s) => {
+    const cfg = settingsRef.current
+    const wrap = wrapRef.current
+    const h = wrap ? wrap.clientHeight : 480
+    const v = h / 480
+    if (wrap) wrap.style.setProperty('--waw-v', v.toFixed(3))
+    const tMs = t0 + timeRef.current * 1000
+    const eyes = camRef.current === 'eyes'
+    const x = s.xh
+
+    // Grenade in hand (B's ask 5). Stock WaW has no cook meter: the reticle becomes the
+    // grenade's reticle_center_cross, which grows by (grenadeTimeLeft % 1000)/100 px -- one
+    // tick a second -- until the throw; it goes off holdFireTime + fuseTime after the press.
+    const cook = x ? cookAt(x.presses, tMs, WEAPONS.stielhandgranate) : null
+    const ck = cookRef.current
+    if (ck) {
+      const on = cfg.xh && eyes && cook && cook.holding && x.alive
+      ck.style.display = on ? '' : 'none'
+      if (on) {
+        ck.style.setProperty('--ck-size', `${(cook.reticleSize * v).toFixed(1)}px`)
+        ck.dataset.left = (cook.timeLeftMs / 1000).toFixed(1)
+      }
+    }
+
+    // Hip crosshair (B's ask 4): CG_DrawReticleSides with this weapon's numbers.
+    const el = xhRef.current
+    if (el) {
+      const on = cfg.xh && eyes && x && x.row && x.row.side && x.alive && !x.ads && !(cook && cook.holding)
+      el.style.display = on ? '' : 'none'
+      if (on) {
+        const g = reticleGeom(x.row, x.scale, x.stance, h)
+        el.style.setProperty('--xh-gap', `${g.spread.toFixed(1)}px`)
+        el.style.setProperty('--xh-size', `${g.size.toFixed(1)}px`)
+        el.style.setProperty('--xh-alpha', g.alpha.toFixed(3))
+        // crosshairColorChange (red over an enemy within enemyCrosshairRange) is NOT drawn:
+        // the engine decides it with a trace along the view, and the files carry neither the
+        // view pitch nor anything to trace against occlusion with. A horizontal-only guess
+        // lit the crosshair red through walls, so it is left white (replay.md §8.11).
+      }
+    }
+
+    // Damage (B's ask 6): the red flash and the direction smear, from RECORDED health drops;
+    // a down with no recorded drop (the file's last-stand inference) flashes too.
+    const hits = (track && track.hits) || []
+    let flash = 0
+    const icons = []
+    const slot = focusRef.current
+    for (const hit of hits) {
+      if (hit.slot !== slot) continue
+      const age = tMs - hit.ms
+      if (age < 0 || age > HUD.damageIcon.timeMs) continue
+      const dmg = hit.from - hit.to
+      const kick = Math.min(HUD.viewKick.max, Math.max(HUD.viewKick.min, dmg * HUD.viewKick.scale))
+      let pitchKick = -kick
+      let dirYaw = null
+      if (hit.src && x) {
+        // Direction of the damage = attacker -> victim; forwardFrac = its dot with the view.
+        dirYaw = Math.atan2(x.y - hit.src[1], x.x - hit.src[0]) * 180 / Math.PI
+        pitchKick = kick * Math.cos((dirYaw - x.yaw) * Math.PI / 180)
+      }
+      if (age < HUD.flashMs) flash = Math.max(flash, Math.min(5, Math.abs((HUD.flashMs - age) * pitchKick / 500)) / 5 * 0.7)
+      if (dirYaw !== null && x) {
+        const t = age / HUD.damageIcon.timeMs
+        icons.push({ angle: x.yaw - dirYaw, alpha: Math.min(1, 2 - 2 * t) })
+      }
+    }
+    for (const d of downs) {
+      if (d.slot !== slot) continue
+      const age = tMs - d.ms
+      if (age >= 0 && age < HUD.flashMs) flash = Math.max(flash, (1 - age / HUD.flashMs) * 0.7)
+    }
+    const fl = flashRef.current
+    if (fl) fl.style.opacity = cfg.dmg && eyes ? flash.toFixed(3) : '0'
+    for (let k = 0; k < dmgRefs.current.length; k++) {
+      const e = dmgRefs.current[k]
+      if (!e) continue
+      const ic = icons[k]
+      if (!ic || !cfg.dmg || !eyes) { e.style.opacity = '0'; continue }
+      e.style.opacity = ic.alpha.toFixed(3)
+      e.style.transform = `rotate(${ic.angle.toFixed(1)}deg)`
+      e.style.setProperty('--dmg-w', `${HUD.damageIcon.w * v}px`)
+      e.style.setProperty('--dmg-h', `${HUD.damageIcon.h * v}px`)
+      e.style.setProperty('--dmg-r', `${HUD.damageIcon.offset * v}px`)
+    }
+    // The low-health overlay (_gameskill.gsc healthOverlay/fadeFunc): at or under the
+    // cutoff it pulses every 0.8 s, full then 0.9 then 0.8 of full.
+    const lo = lowRef.current
+    if (lo) {
+      let a = 0
+      if (cfg.dmg && eyes && x && x.alive && x.health > 0 && x.health / 100 <= HUD.lowHealthCutoff) {
+        const ph = ((tMs / 1000) % HUD.lowHealthPulse) / HUD.lowHealthPulse
+        a = ph < 0.1 ? ph / 0.1 : ph < 0.4 ? 1 : ph < 0.6 ? 1 - (ph - 0.4) / 0.2 * 0.1 : 0.9 - (ph - 0.6) / 0.4 * 0.1
+      }
+      lo.style.opacity = a.toFixed(3)
+    }
+  }, [track, t0, downs])
 
   // ---- frame loop -------------------------------------------------------------
   useEffect(() => {
@@ -431,25 +671,21 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         const step = moving ? dt * speedRef.current : 0
         const g = gunRef.current
         if (g) g.update(moving && s.fire, step)
-        const el = xhRef.current
-        if (el) {
-          const c = xhClass(null)
-          if (moving && s.fire) bloomRef.current = Math.min(c.max, bloomRef.current + c.shot * step * 10)
-          bloomRef.current = Math.max(0, bloomRef.current - c.recover * step)
-          const gap = Math.min(c.max, c.base + c.move * Math.min(1, s.speed / WAW_RUN) + bloomRef.current)
-          el.style.setProperty('--xh-gap', `${gap.toFixed(1)}px`)
-        }
+        drawOverlays(s)
       }
       api.render()
 
       if (s && now - hudAt > 66) {
         hudAt = now
-        setHud({ t: timeRef.current, round: s.round, alive: s.alive, left: s.left, kills: s.kills, players: s.list, tick: s.i })
+        setHud({
+          t: timeRef.current, round: s.round, alive: s.alive, left: s.left, players: s.list, tick: s.i,
+          weapon: s.xh ? { name: s.xh.name, raw: s.xh.raw.raw, source: s.xh.raw.source } : null,
+        })
       }
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [track, total, sample])
+  }, [track, total, sample, drawOverlays])
 
   // ---- input ------------------------------------------------------------------
   useEffect(() => {
@@ -560,24 +796,35 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
       {note && <div className="r3d-note">{note}</div>}
 
-      {camMode === 'eyes' && (
-        <div className="r3d-zm-xh" ref={xhRef} aria-hidden="true">
-          <i className="u" /><i className="d" /><i className="l" /><i className="r" />
+      {/* WaW overlays, drawn under the chrome. Every one is driven from drawOverlays(). */}
+      <div className="r3d-waw-low" ref={lowRef} aria-hidden="true" />
+      <div className="r3d-waw-flash" ref={flashRef} aria-hidden="true" />
+      <div className="r3d-waw-dmg" aria-hidden="true">
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((k) => (
+          <div key={k} className="r3d-waw-dmg-arm" ref={(e) => { dmgRefs.current[k] = e }}><i /></div>
+        ))}
+      </div>
+      <div className="r3d-zm-xh" ref={xhRef} aria-hidden="true" style={{ display: 'none' }}>
+        <i className="u" /><i className="d" /><i className="l" /><i className="r" />
+      </div>
+      <div className="r3d-waw-cook" ref={cookRef} aria-hidden="true" style={{ display: 'none' }}>
+        <i className="u" /><i className="d" /><i className="l" /><i className="r" />
+      </div>
+
+      {settings.hud && (
+        <div className="r3d-waw-hud" title="Round (chalk, as WaW draws it) and zombies left this round">
+          <div className="r3d-waw-round">
+            {(() => {
+              const g = roundGlyphs(hud.round)
+              if (g.number) return <span className="r3d-waw-num">{g.number}</span>
+              return g.tallies.map((n, k) => <Chalk key={k} n={n} />)
+            })()}
+          </div>
+          {hud.left != null && hud.round > 0 && (
+            <div className="r3d-waw-left"><b>{hud.left}</b><span>left</span></div>
+          )}
         </div>
       )}
-
-      <div className="r3d-zm-round">
-        <span className="r3d-zm-round-lab">Round</span>
-        <span className="r3d-zm-round-n">{hud.round || '—'}</span>
-        {/* "Zombies up" is the number of zombies the VIEWER has, which is what it can
-            honestly claim from positions alone. When the referee sends the round's own
-            counters (2026-09-22 DLL builds onward) they are the better number and they
-            are labelled as what they are: `zombies_alive` is the round's remaining pool,
-            not what is on screen. */}
-        {hud.left == null
-          ? <span className="r3d-zm-alive">Zombies up <b>{hud.alive}</b></span>
-          : <span className="r3d-zm-alive">Zombies left <b>{hud.left}</b>{hud.kills == null ? null : <> · killed <b>{hud.kills}</b></>}</span>}
-      </div>
 
       <div className="r3d-zm-score">
         {hud.players.map((p) => (
@@ -595,7 +842,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
       <div className="r3d-zm-feed">
         {feed.map((e, n) => (
-          <div key={n} className={'r3d-zm-ev' + (e.t === 'points' ? ' pts' : (e.t === 'down' || e.t === 'bleedout') ? ' bad' : '')}>
+          <div key={n} className={'r3d-zm-ev' + (e.t === 'points' ? ' pts' : (e.t === 'down' || e.t === 'bleedout' || e.t === 'hit') ? ' bad' : '')}>
             {/* The same clock the scrubber shows, so a line in the feed and the time
                 under the playhead are the same number: both are measured from the first
                 snapshot, not from the moment the server process started. */}
@@ -604,7 +851,9 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
             {/* A kill is its own record now, not an inference off a points line. `how`
                 is the referee's word for why the zombie stopped existing. */}
             {e.t === 'kill' && <span><b>kill</b>{e.slot === undefined ? '' : ` · slot ${e.slot}`}{e.how ? ` · ${e.how}` : ''}</span>}
-            {e.t === 'down' && <span>slot {e.slot} <b>down</b></span>}
+            {e.t === 'down' && <span>slot {e.slot} <b>down</b>{e.inferred ? ' (inferred)' : ''}</span>}
+            {e.t === 'hit' && <span>slot {e.slot} <b>hit {e.delta}</b></span>}
+            {e.t === 'frag' && <span>frag <b>{e.cooked > 0 ? `cooked ${e.cooked.toFixed(1)}s` : 'thrown'}</b> · went off (inferred)</span>}
             {e.t === 'revive' && <span>slot {e.slot} <b>revived</b></span>}
             {e.t === 'bleedout' && <span>slot {e.slot} <b>bled out</b></span>}
             {e.t === 'chat' && <span>slot {e.slot}: {e.text}</span>}
@@ -637,14 +886,32 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
         <span className="r3d-clock">{clock(hud.t)} / {clock(total)}</span>
 
-        <button className="r3d-x r3d-icon r3d-speed-btn" onClick={() => setSpeedOpen((v) => !v)} title={`Speed ${speed}x`}><IconCog /></button>
+        <button className="r3d-x r3d-icon r3d-speed-btn" onClick={() => setSpeedOpen((v) => !v)} title={`Replay settings · speed ${speed}x`}><IconCog /></button>
         {speedOpen && (
-          <div className="r3d-menu r3d-menu-speed">
-            <div className="r3d-seg">
+          <div className="r3d-menu r3d-menu-speed r3d-menu-settings">
+            <div className="r3d-set-lab">Speed</div>
+            <div className="r3d-seg r3d-seg-row">
               {SPEEDS.map((s) => (
                 <button key={s} className={'mono' + (s === speed ? ' on' : '')}
-                  onClick={() => { setSpeed(s); setSpeedOpen(false) }}>{s}x</button>
+                  onClick={() => setSpeed(s)}>{s}x</button>
               ))}
+            </div>
+            <div className="r3d-set-lab">WaW overlays</div>
+            {[['hud', 'Round + zombies left'], ['xh', 'Crosshair + grenade'], ['dmg', 'Damage effects']].map(([k, label]) => (
+              <button key={k} className={'r3d-set-tog' + (settings[k] ? ' on' : '')} onClick={() => toggle(k)} aria-pressed={settings[k]}>
+                <span className="r3d-set-box" />{label}
+              </button>
+            ))}
+            {hud.weapon && (
+              <div className="r3d-set-note">
+                Weapon {hud.weapon.raw || '—'}: {hud.weapon.source === 'index-proven' ? hud.weapon.name
+                  : hud.weapon.name == null && (hud.weapon.raw === '#0' || !hud.weapon.raw) ? 'none'
+                    : `unknown index, ${DEFAULT_WEAPON} numbers`}
+              </div>
+            )}
+            <div className="r3d-set-note">
+              Zombies left: {track.zombies_left_source === 'stock-formula' ? 'stock round formula − recorded deaths' : track.zombies_left_source ? 'assumed formula (custom map)' : 'n/a'}.
+              Facing: {yawRecorded ? 'recorded' : 'direction of travel'}.
             </div>
           </div>
         )}

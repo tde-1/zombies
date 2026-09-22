@@ -82,6 +82,13 @@ OAT = DEV / "tools" / "oat" / "Unlinker.exe"
 # filter is by classname, not by size.
 PLACEABLE = {"script_model", "misc_model"}
 
+# Props smaller than this on their longest axis are not drawn (replay.md §8.11): on Nacht
+# that is 321 `static_peleliu_rock_coral01_small` pebbles (9.3 u), 14 runway rubble bits
+# (9.2 u), 11 `static_berlin_rubble_small_rocks` (1.9 u) and 5 cage lights (7.7 u) -- 351
+# draw instances of floor speckle that read as noise at replay distance and cost a draw
+# each. The engine draws them; a replay viewer does not need them.
+MIN_PROP_SIZE = 12.0
+
 MAX_TEX = 512          # px on the long edge; Nacht's props ship 1024 and nobody can tell
 JPEG_QUALITY = 86
 
@@ -232,6 +239,7 @@ class Glb:
         }
         self.bin = bytearray()
         self._tex_cache = {}
+        self.alpha_textures = set()   # texture indices whose PNG uses its alpha (mark_cutout)
 
     def _align(self, n=4):
         while len(self.bin) % n:
@@ -356,9 +364,194 @@ def read_mtl(mtl_path: Path):
     return out
 
 
+def drop_origin_brushmodels(groups: dict):
+    """Remove the script_brushmodel geometry Husky leaves piled on the engine origin.
+
+    MEASURED 2026-09-22 (replay.md §8.11, "position accuracy"): Husky writes every
+    GfxWorld surface as-is, and a *brush model* (`script_brushmodel`, model "*N" -- the
+    barricade planks, the debris piles, the hinged doors) is stored in GfxWorld in its
+    OWN local space, centred on its entity origin. The engine moves it into place at
+    run time; Husky does not. On Nacht that is 39 islands / 1 139 triangles of
+    `makin_door_wood2` planks, `peleliu_trim_concrete_broken` chunks and one
+    `okinawa_door_wood_heavy` door, all straddling (0,0,0) -- which is the middle of
+    the start room, so a player walking across it walked "through" planks standing
+    140 units tall and 140 units deep into the floor.
+
+    They cannot be put back where they belong: nothing in Husky's output says which
+    island is which "*N", and 127 brushmodels share a handful of materials. So they are
+    dropped. The rule is geometric and narrow on purpose: a connected island whose
+    bounding box is centred within 100 units of the origin in x and y, reaches below -8 (a
+    real floor piece near the origin stays at z >= 0), and is under 600 units across.
+    """
+    dropped_islands = dropped_tris = 0
+    for name, g in groups.items():
+        pos, idx = g['pos'], g['idx']
+        nv = len(pos) // 3
+        parent = list(range(nv))
+
+        def find(a):
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+
+        def union(a, b):
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[ra] = rb
+
+        weld = {}
+        for v in range(nv):
+            k = (round(pos[3 * v], 2), round(pos[3 * v + 1], 2), round(pos[3 * v + 2], 2))
+            if k in weld:
+                union(v, weld[k])
+            else:
+                weld[k] = v
+        for t in range(0, len(idx), 3):
+            union(idx[t], idx[t + 1])
+            union(idx[t + 1], idx[t + 2])
+        lo, hi = {}, {}
+        for v in range(nv):
+            r = find(v)
+            p = pos[3 * v:3 * v + 3]
+            if r not in lo:
+                lo[r] = list(p)
+                hi[r] = list(p)
+            else:
+                for i in range(3):
+                    lo[r][i] = min(lo[r][i], p[i])
+                    hi[r][i] = max(hi[r][i], p[i])
+        bad = set()
+        for r in lo:
+            a, b = lo[r], hi[r]
+            # Centred on the origin (within 100 units in x and y -- brush models are
+            # built round their own origin, so their bounds are near-symmetric about it:
+            # a door hinged there spans x -175..0, the concrete trim faces sit at y = -10)
+            # and reaching below the floor. Measured on Nacht: this catches the planks,
+            # the trim chunks and their faces, the door and the "help" chalk sign, and
+            # nothing else (replay.md 8.11).
+            cx, cy = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+            # A decal riding on one of those brush models (the blood splat on the "help"
+            # sign, z 23..84) does not reach below the floor, so decals are matched by
+            # material name instead.
+            below = a[2] < -8 and b[2] > 0
+            if (abs(cx) < 100 and abs(cy) < 100 and (below or name.startswith('decal'))
+                    and max(b[k] - a[k] for k in range(3)) < 600):
+                bad.add(r)
+        if not bad:
+            continue
+        keep = []
+        for t in range(0, len(idx), 3):
+            if find(idx[t]) in bad:
+                dropped_tris += 1
+            else:
+                keep += idx[t:t + 3]
+        dropped_islands += len(bad)
+        g['idx'] = keep
+    return dropped_islands, dropped_tris
+
+
+# Props that legitimately hang in the air: lamps, wires, poles, the sky.
+HANGS = ("light", "lamp", "lantern", "wire", "pole", "antenna", "bomber", "__")
+# Props hung on walls by design: the wall-buy chalk weapons and the box.
+WALL_HUNG = ("weapon_", "chalk", "grenade_bag", "treasure")
+
+
+def count_unsupported_props(glb: 'Glb'):
+    """COUNT props with nothing under them (replay.md §8.11). It does not hide them any more.
+
+    Written to hide them, and measured before shipping: on Nacht 764 of 1 351 placed props
+    have no shell surface from 40 units below to 8 above their origin. That is not 764
+    floating props: the wall-buy chalk weapons hang on walls by design, and many props sit
+    MORE than 8 units under the shell's floor -- the fastfile's own explosive barrels by 5-14
+    (map_ents, not Husky), the same depth the recorded zombies walk at -- so the shell's
+    floor and the engine's ground disagree by a few units in places. Hiding them would empty
+    the map, so the count goes into the sidecar as `props_unsupported` for the next export
+    to be judged against.
+
+    MEASURED on Nacht: the Husky shell is missing whole surfaces. Horizontal rays west from
+    x = -150 at 45 units high find no wall before x = -527 for y -750..+300, although the
+    map's own window goals (map_ents `exterior_goal`) put windows in a west wall at
+    x = -266; only two ~70-unit wall pieces exist there. Sandbags hang over the start room
+    the same way, which reads as missing upstairs floors. A prop counts as supported when
+    some world triangle lies under its origin (XY inside, top within 40 units below to 8
+    above); everything in HANGS is exempt. Needs numpy; without it nothing is counted."""
+    try:
+        import numpy as np
+    except ImportError:
+        return {}
+    groups = getattr(glb, "world_groups", None)
+    if not groups:
+        return {}
+    tris = []
+    for g in groups.values():
+        P = np.asarray(g["pos"], dtype=np.float64).reshape(-1, 3)
+        I = np.asarray(g["idx"], dtype=np.int64).reshape(-1, 3)
+        if len(I):
+            tris.append(P[I])
+    T = np.concatenate(tris)
+    a, b, c = T[:, 0], T[:, 1], T[:, 2]
+    lo = T[:, :, :2].min(1)
+    hi = T[:, :, :2].max(1)
+    hidden = {}
+    unsupported = {}
+    scene = glb.j["scenes"][0]["nodes"]
+    keep = []
+    for ni in scene:
+        node = glb.j["nodes"][ni]
+        name = node.get("name", "")
+        t = node.get("translation")
+        if not t or any(h in name for h in HANGS):
+            keep.append(ni)
+            continue
+        x, y, z = t
+        m = (lo[:, 0] <= x) & (hi[:, 0] >= x) & (lo[:, 1] <= y) & (hi[:, 1] >= y)
+        ok = False
+        if m.any():
+            A, B, C = a[m], b[m], c[m]
+            v0 = C[:, :2] - A[:, :2]
+            v1 = B[:, :2] - A[:, :2]
+            v2 = np.array([x, y]) - A[:, :2]
+            d00 = (v0 * v0).sum(1); d01 = (v0 * v1).sum(1); d11 = (v1 * v1).sum(1)
+            d20 = (v2 * v0).sum(1); d21 = (v2 * v1).sum(1)
+            den = d00 * d11 - d01 * d01
+            good = np.abs(den) > 1e-9
+            den = np.where(good, den, 1)
+            u = (d11 * d20 - d01 * d21) / den
+            v = (d00 * d21 - d01 * d20) / den
+            inside = good & (u >= -1e-3) & (v >= -1e-3) & (u + v <= 1 + 1e-3)
+            zz = A[:, 2] + u * (C[:, 2] - A[:, 2]) + v * (B[:, 2] - A[:, 2])
+            ok = bool((inside & (zz <= z + 8) & (zz >= z - 40)).any())
+            sunk = bool((inside & (zz > z + 8) & (zz <= z + 40)).any())
+        else:
+            sunk = False
+        if ok:
+            keep.append(ni)
+        elif sunk or any(k in name for k in WALL_HUNG):
+            # Under a floor by 8-40 units (the engine's ground and the shell disagree), or
+            # hung on a wall by design: drawn, and counted.
+            keep.append(ni)
+            unsupported[name] = unsupported.get(name, 0) + 1
+        else:
+            # Nothing within 40 units below it: standing on a surface the shell does not
+            # have. Hidden, and counted.
+            hidden[name] = hidden.get(name, 0) + 1
+    glb.j["scenes"][0]["nodes"] = keep
+    glb.hidden_floating = hidden
+    glb.unsupported = unsupported
+    return hidden
+
+
 def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
     """Fold a Husky world export into `glb` as one mesh. Returns the mesh index."""
     groups = read_obj(obj_path)
+    isl, tris = drop_origin_brushmodels(groups)
+    glb.dropped_origin_brushmodels = (isl, tris)
+    if isl:
+        log(f"dropped {isl} brushmodel islands ({tris} triangles) piled on the engine origin")
+    groups = {k: g for k, g in groups.items() if g['idx']}
+    # Kept for the floating-prop pass in build(): every surviving world triangle.
+    glb.world_groups = groups
     tex_of = read_mtl(obj_path.with_suffix('.mtl'))
     prims = []
     for name, g in groups.items():
@@ -394,6 +587,9 @@ def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
                 if got:
                     ti = glb.add_image_bytes(f'{stem}.dds', got[0], got[1])
                     m['pbrMetallicRoughness']['baseColorTexture'] = {'index': ti}
+                    if got[1] == 'image/png':
+                        glb.alpha_textures.add(ti)
+                    mark_cutout(glb, m, ti)
             glb.j['materials'].append(m)
             mat_cache[key] = len(glb.j['materials']) - 1
         prims.append({'attributes': {'POSITION': ap, 'NORMAL': an, 'TEXCOORD_0': au},
@@ -443,6 +639,27 @@ def load_dds(path: Path):
     return buf.getvalue(), "image/jpeg"
 
 
+def mark_cutout(glb, material: dict, tex_index: int):
+    """An alpha-tested CoD material (foliage, branches, wire, grilles) is a card whose
+    shape IS its alpha. Written without `alphaMode` it is glTF's default OPAQUE and draws as
+    a solid dark polygon -- on Nacht that is the 36 bare beech trees, 35 hedgerows and the
+    grass clumps outside every window, which read in the viewer as black shards hanging over
+    the start room (replay.md §8.11, "map clutter"). load_dds keeps a texture as PNG exactly
+    when its alpha is used, so a PNG base colour means MASK at the engine's 0.5 cut."""
+    if tex_index in glb.alpha_textures:
+        name = material.get("name", "")
+        if "skybox" in name:
+            # The sky dome is drawn first with depth off (actors.js installSkyDome); a
+            # blended sky would move to the transparent pass and paint the moon over walls.
+            return
+        if "glass" in name:
+            # Soft alpha (windows) is blended, not cut.
+            material["alphaMode"] = "BLEND"
+        else:
+            material["alphaMode"] = "MASK"
+            material["alphaCutoff"] = 0.5
+
+
 def merge_model(glb: Glb, gltf_path: Path, images_dir: Path, mat_cache: dict):
     """Copy one Unlinker .gltf's meshes into `glb`. Returns the new mesh index."""
     src = json.loads(gltf_path.read_text(encoding="utf8"))
@@ -483,6 +700,8 @@ def merge_model(glb: Glb, gltf_path: Path, images_dir: Path, mat_cache: dict):
         if not got:
             continue
         tmap[i] = glb.add_image_bytes(name, got[0], got[1])
+        if got[1] == "image/png":
+            glb.alpha_textures.add(tmap[i])
 
     mmap = {}
     for i, m in enumerate(src.get("materials", [])):
@@ -496,6 +715,7 @@ def merge_model(glb: Glb, gltf_path: Path, images_dir: Path, mat_cache: dict):
         bct = pbr.get("baseColorTexture")
         if bct and bct.get("index") in tmap:
             nm["pbrMetallicRoughness"]["baseColorTexture"] = {"index": tmap[bct["index"]]}
+            mark_cutout(glb, nm, tmap[bct["index"]])
         glb.j["materials"].append(nm)
         mat_cache[key] = len(glb.j["materials"]) - 1
         mmap[i] = mat_cache[key]
@@ -549,6 +769,17 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
     mat_cache = {}
     mesh_of = {}          # model name -> mesh index (one copy, many nodes)
     placed = skipped = 0
+    hidden_small = {}
+
+    def mesh_extent(mi):
+        lo = [1e9] * 3
+        hi = [-1e9] * 3
+        for pr in glb.j["meshes"][mi]["primitives"]:
+            a = glb.j["accessors"][pr["attributes"]["POSITION"]]
+            for i in range(3):
+                lo[i] = min(lo[i], a["min"][i])
+                hi[i] = max(hi[i], a["max"][i])
+        return max(hi[i] - lo[i] for i in range(3))
 
     worldspawn = next((e for e in ents if e.get("classname") == "worldspawn"), {})
 
@@ -571,6 +802,14 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         mi = mesh_for(name)
         if mi is None:
             skipped += 1
+            continue
+        sc_ = e.get("modelscale")
+        try:
+            s_ = float(sc_) if sc_ else 1.0
+        except ValueError:
+            s_ = 1.0
+        if mesh_extent(mi) * s_ < MIN_PROP_SIZE:
+            hidden_small[name] = hidden_small.get(name, 0) + 1
             continue
         node = {"name": name, "mesh": mi, "translation": vec(e.get("origin"))}
         ang = vec(e.get("angles"))
@@ -607,6 +846,10 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
             glb.j["nodes"].append({"name": "__world", "mesh": mi})
             glb.j["scenes"][0]["nodes"].append(len(glb.j["nodes"]) - 1)
             log(f"world shell merged from {world.name}")
+            floating = count_unsupported_props(glb)
+            if floating:
+                log(f"hid {sum(floating.values())} props floating over missing floors; "
+                    f"{sum(glb.unsupported.values())} more sit under the shell's floor or on walls (kept)")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     size = glb.write(out_dir / f"{bsp}.glb")
@@ -623,6 +866,11 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         "glb_bytes": size,
         "props_placed": placed,
         "props_missing_model": skipped,
+        "props_hidden_small": hidden_small,
+        "props_hidden_floating": getattr(glb, "hidden_floating", {}),
+        "props_unsupported_kept": getattr(glb, "unsupported", {}),
+        "min_prop_size": MIN_PROP_SIZE,
+        "world_origin_brushmodels_dropped": list(getattr(glb, "dropped_origin_brushmodels", (0, 0))),
         "sky_model": sky_name if sky_ok else None,
         "world_shell": bool(world and world.is_file()),
         "world_source": world.name if (world and world.is_file()) else None,

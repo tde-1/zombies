@@ -86,6 +86,19 @@ in-game changes come back after exit. Proven by test, dev port and a preload har
 unproven** — `client.md` §8 (dvar table, §8d = B's one-minute check), `web.md` newest section.
 Needs a launcher release + site deploy to reach players.
 
+**WaW pass (2026-09-22 evening, branch `replay-waw`, not merged or deployed; replay.md §8.11).**
+Positions checked against the Nacht shell: frame and axes were right; wrong were 49 brush-model
+islands piled on the engine origin (the start-room "walk-through" planks, dropped), Source eye/hull
+heights (now WaW 60/40/11, r15 × 70/50/30), CS:GO FOV (now cg_fov 65), zombies 50 ms behind and
+stepping, a **674 ms** time-base drift between events and positions (fixed with per-tick real
+times), and **no view pitch in any file** (DLL change). Yaw is exact: 13 of 15 aimed shots inside
+the target's half-width. Open: the Husky shell misses walls around Nacht's windows (12 of 15
+shots pass through rendered walls). New: chalk round HUD + zombies-left (stock formula − deaths),
+the weapon-file crosshair (engine spread model), the grenade reticle and fuse, the damage flash +
+direction from recorded health, a settings panel. Map clutter: alpha-cut foliage, 209 tiny and 506
+floating props hidden (scratch export only; live export unchanged). **DLL built, not deployed**:
+`cmd_ang`, stance bits 0x200/0x100 (were melee/use), kill counter blind above entnum 255.
+
 ## Since the morning checklist was written (afternoon)
 
 - **Isolation rule, done and proven**: our session redirects the game's LocalAppData into `%LOCALAPPDATA%\ENWZombies\home\localappdata` (DLL `enw_localappdata.cpp`); maps, config, saves, profiles all live there; B's `Activision\CoDWaW` tree is byte-identical before/after a Play Local. B's own mods folder was cleaned into `ZombiesDevackup-user-mods-20260923\`.

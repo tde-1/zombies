@@ -18,9 +18,15 @@
 import {
   Group, Mesh, MeshStandardMaterial, CapsuleGeometry, InstancedMesh, Object3D,
   Color, Sprite, SpriteMaterial, CanvasTexture, RingGeometry, MeshBasicMaterial,
-  DoubleSide, SphereGeometry, BoxGeometry, CylinderGeometry, AdditiveBlending,
+  DoubleSide, SphereGeometry, BoxGeometry, CylinderGeometry, AdditiveBlending, ConeGeometry,
 } from 'three'
-import { toThree, STAND_H, DUCK_H, CAPSULE_R } from './scene.js'
+import { toThree } from './scene.js'
+import { HULL } from './waw.js'
+
+// WaW's hull, not Source's (replay.md §8.11): r15 x 70 standing, 50 crouched, 30 prone
+// (bg_pmove). An AI zombie uses the same 15 x 70 box. Every actor below is sized from these.
+const STAND_H = HULL.stand
+const CAPSULE_R = HULL.radius
 
 // Slot colours. Four, distinguishable at a glance and distinguishable from the
 // zombies, which are the one colour that must never be mistaken for a player.
@@ -76,6 +82,7 @@ export function createActors(api) {
       new MeshStandardMaterial({ color: new Color(color), roughness: 0.55, metalness: 0.05, fog: false }),
     )
     capsule.position.y = STAND_H / 2
+    capsule.userData.h = STAND_H
     const disc = new Mesh(
       new RingGeometry(CAPSULE_R * 1.15, CAPSULE_R * 1.5, 24),
       new MeshBasicMaterial({ color: new Color(color), transparent: true, opacity: 0.35, side: DoubleSide, fog: false }),
@@ -101,6 +108,16 @@ export function createActors(api) {
   zombies.count = 0
   zombies.frustumCulled = false
   group.add(zombies)
+  // Facing (§8.11 / B's ask 2): a pale wedge at head height pointing the way the zombie
+  // faces -- the recorded yaw when the file has it (DLL 2026-09-22 late), otherwise its
+  // direction of travel. Same instancing, one more draw call.
+  const noseGeo = new ConeGeometry(3.5, 14, 6)
+  noseGeo.rotateZ(-Math.PI / 2)          // point along +X, which is engine yaw 0
+  noseGeo.translate(CAPSULE_R + 5, 0, 0)
+  const noses = new InstancedMesh(noseGeo, new MeshBasicMaterial({ color: 0xe8a090, fog: false }), MAX_ZOMBIES)
+  noses.count = 0
+  noses.frustumCulled = false
+  group.add(noses)
   const dummy = new Object3D()
 
   /**
@@ -117,6 +134,14 @@ export function createActors(api) {
       // Down but not out is drawn translucent rather than removed: where a
       // player went down is most of what a zombies replay is watched for.
       const dead = p.alive === false
+      // Stance height (§8.11): the capsule is scaled to the pose's hull height, feet fixed.
+      const h = p.height || STAND_H
+      if (rec.capsule.userData.h !== h) {
+        rec.capsule.userData.h = h
+        rec.capsule.scale.y = h / STAND_H
+        rec.capsule.position.y = h / 2
+        rec.plate.position.y = h + 26
+      }
       rec.capsule.material.opacity = dead ? 0.28 : 0.92
       rec.capsule.material.transparent = true
       rec.disc.visible = !dead
@@ -125,17 +150,29 @@ export function createActors(api) {
     for (const [slot, rec] of players) if (!seen.has(slot)) rec.group.visible = false
   }
 
-  /** @param list [{ x, y, z }] in ENGINE coordinates */
+  /** @param list [{ x, y, z, yaw }] in ENGINE coordinates; yaw in degrees, CCW from +X */
   function setZombies(list) {
     const n = Math.min(list.length, MAX_ZOMBIES)
+    let m = 0
     for (let i = 0; i < n; i++) {
       const v = toThree(list[i].x, list[i].y, list[i].z)
       dummy.position.set(v.x, v.y + STAND_H / 2, v.z)
+      dummy.rotation.set(0, 0, 0)
+      dummy.scale.set(1, 1, 1)
       dummy.updateMatrix()
       zombies.setMatrixAt(i, dummy.matrix)
+      if (list[i].yaw != null && Number.isFinite(list[i].yaw)) {
+        // engine (cos y, sin y, 0) -> three (cos y, 0, -sin y): a rotation of +yaw about three's Y.
+        dummy.position.set(v.x, v.y + STAND_H - 10, v.z)
+        dummy.rotation.set(0, list[i].yaw * Math.PI / 180, 0)
+        dummy.updateMatrix()
+        noses.setMatrixAt(m++, dummy.matrix)
+      }
     }
     zombies.count = n
     zombies.instanceMatrix.needsUpdate = true
+    noses.count = m
+    noses.instanceMatrix.needsUpdate = true
   }
 
   // Grenades (replay.md §8.6): small dark spheres, one InstancedMesh like the zombies,

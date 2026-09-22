@@ -591,11 +591,101 @@ async function main() {
     const t = buildTrack('x.enwr', lib, 10)
     eq(t.zombies.length, 1, 'the zombie was dropped by the stride')
     eq(JSON.stringify(t.zombies[0].pos.slice(0, 3)), '[5,5,0]')
-    eq(JSON.stringify(t.zombies[0].yaw), '[90,91]', 'yaw was not carried')
+    // §8.11: the sampler now lands ON the zombie frames (phase 1 here: ms 50, 150, 250), so
+    // the list is read where it was written; the 250 tick carries the 150 list forward.
+    eq(JSON.stringify(t.zombies[0].yaw), '[90,91,91]', 'yaw was not carried')
     eq(t.nades.length, 1, 'the grenade was dropped')
     truthy(t.events.some((e) => e.t === 'explode'), 'no explode in the feed')
     eq(t.end_ms, 210, 'the end is not the intermission')
     eq(t.players[0].fire[0], 1, 'attack bit not carried')
+  })
+
+  // ── replay.md §8.11: WaW's round total, the counters, the inputs the HUD animates ──
+  check('the round total is the stock _zombiemode.gsc formula, per map family', () => {
+    const { roundTotal } = require('../server/lib/wawRules')
+    // Measured on m_0afb449b (Nacht, solo): round 1 sent 4 zombies, round 2 sent 9.
+    eq(roundTotal('nazi_zombie_prototype', 1, 1).total, 4)
+    eq(roundTotal('nazi_zombie_prototype', 2, 1).total, 9)
+    eq(roundTotal('nazi_zombie_prototype', 3, 1).total, 14)
+    eq(roundTotal('nazi_zombie_prototype', 5, 1).total, 24)
+    eq(roundTotal('nazi_zombie_prototype', 10, 1).total, 24, 'solo adds nothing on Nacht')
+    eq(roundTotal('nazi_zombie_prototype', 1, 4).total, 8, '(24 + 3*6) * 0.2')
+    eq(roundTotal('nazi_zombie_prototype', 10, 4).total, 24 + 54)
+    eq(roundTotal('nazi_zombie_factory', 1, 1).total, 5, 'Der Riese solo adds 0.5 * 6')
+    eq(roundTotal('nazi_zombie_asylum', 1, 1).total, 6, 'Verrückt rounds 1-2 override')
+    eq(roundTotal('some_custom_map', 1, 1).source, 'stock-formula-assumed')
+  })
+
+  check('the track counts zombies left, carries the buttons, and records hits and weapons', () => {
+    const { buildTrack } = require('../server/routes/replay')
+    const z = (id, x) => ({ id, pos: [x, 0, 0] })
+    const ev = [
+      { t: 'round', ms: 0, n: 1 },
+      { t: 'snap', ms: 0, round: 1, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], health: 100, alive: true, weapon: '#7' }] },
+      { t: 'snap', ms: 50, round: 1, zombies_alive: 1, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0] }], zombies: [z(300, 40)] },
+      { t: 'input', ms: 60, slot: 0, buttons: 0x4001 },
+      { t: 'snap', ms: 100, round: 1, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], health: 50 }] },
+      { t: 'snap', ms: 150, round: 1, zombies_alive: 2, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0] }], zombies: [z(300, 40), z(301, 900)] },
+      { t: 'input', ms: 170, slot: 0, buttons: 0x200 },
+      { t: 'snap', ms: 250, round: 1, zombies_alive: 1, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], weapon: '#16' }], zombies: [z(301, 890)] },
+      { t: 'snap', ms: 350, round: 1, zombies_alive: 1, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0] }], zombies: [z(301, 880)] },
+    ]
+    const lib = { readHeader: () => ({ header: { match_id: 'm_t2', map: 'nazi_zombie_prototype' } }), readEvents: () => ev }
+    const t = buildTrack('x.enwr', lib, 10)
+    eq(t.zombies_left_source, 'stock-formula')
+    eq(JSON.stringify(t.tick_t), '[50,150,350]', 'each tick carries its own snap ms, not t0 + k * 100')
+    eq(t.zombies_left[0], 4, 'round 1 solo on Nacht starts at 4')
+    eq(t.zombies_left[t.ticks - 1], 3, 'two seen, one gone: 4 - 2 + 1')
+    const p = t.players[0]
+    eq(JSON.stringify(p.presses.frag), '[[60,170]]', 'the +frag press/release')
+    eq(JSON.stringify(p.presses.fire), '[[60,170]]')
+    eq(p.btn[t.ticks - 1], 0x200, 'the crouch bit is carried')
+    eq(t.hits.length, 1)
+    eq(t.hits[0].from - t.hits[0].to, 50)
+    eq(JSON.stringify(t.hits[0].src), '[40,0]', 'the nearest zombie is the inferred attacker')
+    const names = p.wpn.map((i) => t.weapons[i].name)
+    eq(names[0], 'zombie_colt', '#7 on Nacht')
+    eq(names[names.length - 1], 'm1carbine', '#16 on Nacht')
+    eq(p.pitch, null, 'no usercmd angles in this file: no invented pitch')
+  })
+
+  await checkAsync('the viewer’s WaW model: weapon-file spread, the cook fuse, the chalk', async () => {
+    const url = require('url').pathToFileURL(path.join(__dirname, '..', 'client', 'src', 'replay3d', 'waw.js')).href
+    const w = await import(url)
+    const colt = w.WEAPONS.zombie_colt
+    eq(colt.standMin, 3, 'hipSpreadStandMin from the weapon file')
+    // CG_CalcReticleSpread at 480 lines: tan(3 deg) * 240 / (tan(32.5 deg) * 0.75)
+    const g = w.reticleGeom(colt, 0, 'stand', 480)
+    truthy(Math.abs(g.spread - 26.32) < 0.05, `spread ${g.spread}`)
+    eq(g.alpha, 1)
+    eq(w.reticleGeom(colt, 1, 'stand', 480).alpha, 0.5, 'cg_crosshairAlphaMin')
+    // Stielhandgranate: armed 0.4 s after the press, 3.5 s fuse from there.
+    const c = w.cookAt({ frag: [[1000, 2000]] }, 1500, w.WEAPONS.stielhandgranate)
+    eq(c.explodeAt, 1000 + 400 + 3500)
+    truthy(c.holding, 'still in hand at 1.5 s')
+    eq(c.timeLeftMs, 3400)
+    eq(JSON.stringify(w.roundGlyphs(7)), '{"tallies":[5,2]}')
+    eq(JSON.stringify(w.roundGlyphs(12)), '{"number":12}')
+    // Spread settles to 0 with no input and jumps by fireAdd per shot.
+    const tr = { ticks: 3, tick_ms: 100, t0_ms: 0 }
+    const pl = { pos: [0, 0, 0, 0, 0, 0, 0, 0, 0], ang: [0, 0, 0, 0, 0, 0], alive: [1, 1, 1], btn: [0, 0, 0], presses: { fire: [[150, 160]] } }
+    const s = w.simulateSpread(tr, pl, () => 'zombie_colt')
+    eq(s[1], 0)
+    eq(s[2], 1, 'one colt shot adds hipSpreadFireAdd 1 (x255) after the decay clamp')
+  })
+
+  check('usercmd angles become a view pitch, zeroed at the spawn', () => {
+    const { buildTrack } = require('../server/routes/replay')
+    const ev = [
+      { t: 'player_spawn', ms: 0, slot: 0 },
+      { t: 'snap', ms: 0, zombies_alive: 0, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 90], cmd_ang: [350, 30], health: 100, alive: true }] },
+      { t: 'snap', ms: 50, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 95], cmd_ang: [5, 35] }] },
+      { t: 'snap', ms: 100, zombies_alive: 0, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 95], cmd_ang: [5, 35] }] },
+    ]
+    const lib = { readHeader: () => ({ header: { match_id: 'm_t3', map: 'nazi_zombie_prototype' } }), readEvents: () => ev }
+    const t = buildTrack('x.enwr', lib, 10)
+    eq(t.players[0].pitch[0], 0, 'pitch is zero at the spawn')
+    eq(t.players[0].pitch[1], 15, '350 -> 5 is 15 degrees down')
   })
 
   // ── Local is untracked, and the site enforces it rather than trusting the box ──
