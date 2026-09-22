@@ -67,7 +67,8 @@
 // ===========================================================================
 // WHAT WE DO
 // ===========================================================================
-// * Subclass the game window's WndProc (its hwnd is at [0x22C1BE4]) and
+// * Subclass the game window's WndProc (0x606BE0, the lpfnWndProc of the
+//   "CoD-WaW" class registered at 0x5FF450; its hwnd is at [0x22C1BE4]) and
 //   accumulate WM_INPUT relative motion. One subclass, ours, installed once.
 // * Retarget the single `call IN_MouseMove` at 0x5FA8E4 to our replacement,
 //   which feeds the accumulated raw counts to the engine's own CL_MouseEvent
@@ -79,7 +80,7 @@
 // SELF-VERIFYING, in the house style (see server/components/dedicated/
 // no_autosave.cpp): before we write anything we check that 0x5FA8E4 really is
 // an `E8` whose target is 0x5FA6D0, and that the window we are about to
-// subclass really has 0x606B60 as its WndProc. Either check failing means the
+// subclass really has 0x606BE0 as its WndProc. Either check failing means the
 // image is not the one these addresses came from; we log loudly and leave the
 // stock path alone rather than guess.
 //
@@ -88,8 +89,8 @@
 // ===========================================================================
 // 1. NO RIDEV_NOLEGACY. iw4x registers RIDEV_INPUTSINK|RIDEV_NOLEGACY and
 //    reimplements every mouse button from the raw button flags. On T4 the
-//    buttons come from the game WndProc (0x606B60 -> IN_MouseEvent 0x5FA5F0 ->
-//    Sys_QueEvent), and suppressing legacy messages would take the OS cursor
+//    buttons come from the game WndProc (0x606BE0 -> 0x606B60 -> IN_MouseEvent ->
+//    Sys_QueEvent 0x5FEB30), and suppressing legacy messages would take the OS cursor
 //    away from the menu path as well. We register with dwFlags = 0 and take
 //    only MOTION from raw input, so buttons, the wheel and the menu cursor
 //    keep working exactly as they do today. That also means we do NOT port
@@ -251,8 +252,13 @@ void OnRawInput(LPARAM lparam) {
         g_first_raw_update = false;
     }
 
-    ::InterlockedIncrement(&g_events_total);
+    const long total = ::InterlockedIncrement(&g_events_total);
     ::InterlockedIncrement(&g_events_this_frame);
+    if (total == 1)
+        ENW_INFO("mouse_polling: first WM_INPUT received (lLastX=%ld lLastY=%ld, flags=0x%04X). "
+                 "Raw input is live; mouse motion is no longer coming from screen pixels.",
+                 static_cast<long>(raw.data.mouse.lLastX), static_cast<long>(raw.data.mouse.lLastY),
+                 static_cast<unsigned>(raw.data.mouse.usFlags));
 }
 
 LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {

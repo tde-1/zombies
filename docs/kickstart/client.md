@@ -54,7 +54,7 @@ For completeness, because the brief asked about the two alternative hypotheses:
   `PeekMessageA` / `GetMessageA` / `TranslateMessage` / `DispatchMessageA` until the queue is
   empty, and `Com_EventLoop` (`0x5FEDE0`) calls it until the event type is 0. The engine event ring
   (`Sys_QueEvent` `0x5FEB30`) is 256 entries with an audible `Sys_QueEvent: overflow`. But mouse
-  **motion is never queued** — the game WndProc (`0x606B60`) only queues button transitions — so
+  **motion is never queued** — the game WndProc (`0x606BE0`) only queues button transitions — so
   "the pump is flooded" is a cost to measure, not a defect we can name. `mouse_polling` logs
   WM_INPUT messages per frame so B's real test produces that number.
 
@@ -72,7 +72,7 @@ first-update delta reset that kills the alt-tab angle snap, and the `m_rawinput`
 
 What it does:
 
-* subclasses the game window's WndProc (hwnd at `[0x22C1BE4]`) and accumulates `WM_INPUT` relative
+* subclasses the game window's WndProc (`0x606BE0`, the `lpfnWndProc` of the `"CoD-WaW"` class registered at `0x5FF450`; hwnd at `[0x22C1BE4]`) and accumulates `WM_INPUT` relative
   motion;
 * retargets the one `call IN_MouseMove` at `0x5FA8E4` to our replacement, which feeds the
   accumulated raw counts straight to the engine's own `CL_MouseEvent` and then lets the engine's own
@@ -83,16 +83,27 @@ What it does:
 
 | # | Upstream | Here | Why |
 |---|---|---|---|
-| 1 | `RIDEV_INPUTSINK \| RIDEV_NOLEGACY`, buttons reimplemented from raw flags | `dwFlags = 0`, legacy messages **kept**, buttons untouched | On T4 the buttons come from the game WndProc `0x606B60` → `IN_MouseEvent` `0x5FA5F0` → `Sys_QueEvent`. Suppressing legacy would also take the OS cursor away from the menu path. We take **motion only**. So `ProcessMouseRawEvent` / `OnLegacyMouseEvent` / `mw_up` / `mw_down` are not ported |
+| 1 | `RIDEV_INPUTSINK \| RIDEV_NOLEGACY`, buttons reimplemented from raw flags | `dwFlags = 0`, legacy messages **kept**, buttons untouched | On T4 the buttons come from the game WndProc `0x606BE0` → its message helper `0x606B60` → `IN_MouseEvent` `0x5FA5F0` → `Sys_QueEvent` `0x5FEB30`. Suppressing legacy would also take the OS cursor away from the menu path. We take **motion only**. So `ProcessMouseRawEvent` / `OnLegacyMouseEvent` / `mw_up` / `mw_down` are not ported |
 | 2 | `ClipCursor` to the client rect | not ported | A separate windowed-mode fix; see §2c |
 | 3 | `m_rawinput` dvar | `ENW_RAW_MOUSE` env var | Registering a dvar needs `Dvar_RegisterBool` (`0x5EEE20`), whose convention is name-in-EDI / default-in-AL / (flags, desc) on the stack. Readable, but rule 2 of `addresses.hpp` is *do not invent a prototype from an address*, and a wrong one crashes at startup. The name and semantics are kept so the dvar drops straight in later |
 | 4 | `r_autopriority`, `Key_ClearStates` on focus loss | not ported | Separate upstream features, not part of this fix |
+
+**One correction, kept in place because the wrong answer looked right.** The first version of this
+component checked for `0x606B60` as the window proc, because `0x606B60` calls `IN_MouseEvent`,
+`IN_RecenterMouse` and `DefWindowProcA` — it reads exactly like a WndProc. It is not one; it is a
+message helper the real proc calls. The class registration settles it:
+`0x5FF47A  mov [esp+0x10], 0x606BE0` is `WNDCLASSEX.lpfnWndProc` (cbSize is at `[esp+8]`),
+`0x5FF4B1` sets `lpszClassName = "CoD-WaW"`, and `0x5FF4B9` calls `RegisterClassExA`. `0x606BE0`
+also has the proc shape (`hwnd@[ebp+8]`, `msg@[ebp+0xC]`, `wParam@[ebp+0x10]`, `lParam@[ebp+0x14]`).
+Two independent signals, which is what the map's rule 2 asks for and what the first pass did not
+have. `0x605210` is a third red herring: it is the proc of the **"Call of Duty WinConsole"** class
+created at `0x605500`, not the game window.
 
 **Self-verifying, in the house style** (`server/components/dedicated/no_autosave.cpp`). Nothing is
 written until both checks pass, and a failure logs loudly and leaves the stock path alone:
 
 1. `0x5FA8E4` must be an `E8` whose target is `0x5FA6D0` (`IN_MouseMove`);
-2. the window we are about to subclass must currently have `0x606B60` as its WndProc, i.e. it is
+2. the window we are about to subclass must currently have `0x606BE0` as its WndProc, i.e. it is
    the engine's own game window and nobody else has subclassed it.
 
 **How to turn it off.** `ENW_RAW_MOUSE=0` in the environment — the component logs that it is off and
@@ -108,7 +119,7 @@ Install lines, in order:
 ```
 mouse_polling: IN_Frame's `call IN_MouseMove` (0x005FA8E4 -> 0x005FA6D0) now goes to our raw-input
                mouse move. ...
-mouse_polling: RAW INPUT ON. hwnd=0x..., WndProc 0x00606B60 subclassed,
+mouse_polling: RAW INPUT ON. hwnd=0x..., WndProc 0x00606BE0 subclassed,
                RegisterRawInputDevices(usage 1/2, dwFlags=0, legacy messages KEPT) ok. ...
 ```
 
@@ -128,8 +139,35 @@ B's real test: play a round at 1000 Hz (or 4000/8000) with the component on, the
 `ENW_RAW_MOUSE=0` and play the same round. The A/B is the point; the counters only prove the
 plumbing.
 
+### 1d. It has been measured, on this box, on the map
+
+Run 4, `waw-c2`, windowed, `+map nazi_zombie_prototype`, 2026-09-22 03:56. The window happened to
+hold focus for the first ~30 s, so this is not a dry run — it is the mechanism working:
+
+```
+mouse_polling: IN_Frame's `call IN_MouseMove` (0x005FA8E4 -> 0x005FA6D0) now goes to our
+               raw-input mouse move. ...
+mouse_polling: RAW INPUT ON. hwnd=0x00100C34, WndProc 0x00606BE0 subclassed,
+               RegisterRawInputDevices(usage 1/2, dwFlags=0, legacy messages KEPT) ok. ...
+mouse_polling: first WM_INPUT received (lLastX=-8 lLastY=2, flags=0x0000). Raw input is live ...
+mouse_polling: WM_INPUT total=14597, peak/frame=72, frames with motion=1046, raw=on focus=yes
+heartbeat:     still ticking at 75 s - 4527 frames total, 62.5 fps over the last 15 s
+```
+
+Read that `peak/frame=72`: at the measured 62.5 fps that is about **4,500 mouse reports per second
+reaching the game**, where the stock path could only ever have turned them into at most one
+whole-pixel `GetCursorPos` difference per frame. The counters also stop dead and `focus=no` the
+moment the window loses focus, which is the `dwFlags = 0` foreground-only registration behaving as
+intended. 75 s on the map, 62.5 fps, no crash, both byte checks passed.
+
+Two earlier runs are worth keeping because they are what the guards are for. Run 1 refused to patch
+(`looks_like_function` is a prologue heuristic and `CL_MouseEvent` has no standard prologue — now a
+byte compare against the dump). Run 3 installed but never took focus, so `total=0`: an honest zero,
+not a silent failure, because `focus=no` was in the same line.
+
 **Still unproven, and say so.** Whether this removes the *feel* of the stutter can only be
-established by a person with a high-polling-rate mouse. Everything above is plumbing evidence.
+established by a person playing with a high-polling-rate mouse. Everything above is plumbing
+evidence, and it is the plumbing that was broken.
 
 ---
 
@@ -177,24 +215,46 @@ read-while-running — the file is only complete once the process is gone, and t
 in the launcher's settings store. That keeps the whole feature in `launcher/` with no client-DLL
 work at all, which is why it is not a component.
 
-### 2c. Borderless windowed
+### 2c. Borderless windowed — the default, and it needs the DLL
 
-**Vanilla T4 has no `r_noborder`.** The string does not exist anywhere in the image (checked), so
-there is nothing to set and the feature has to come from us.
+**B's decision (2026-09-22):** the game launches **by default in perfect borderless windowed at the
+main display's native resolution**. The launcher's Display settings offer monitor, mode (Borderless
+default / Fullscreen / Windowed) and resolution, with resolution editable only when the mode is not
+Borderless.
 
-The shape of it, with the pieces the exe gives us:
+The community recipe is Plutonium's documented one for T4 —
+`r_fullscreen 0; r_noborder 1; vid_xpos 0; vid_ypos 0; vid_restart`
+(<https://plutonium.pw/docs/client/t4/perfect-borderless-window/>).
 
-* `Sys_CreateWindow` is `0x605500` (`RegisterClassA` + `CreateWindowExA` + `SetWindowLongA`), and
-  `SetWindowLongA` (IAT `0x7EB348`) and `SetWindowPos` (IAT `0x7EB2C4`) are both imported, so the
-  window style is reachable without patching engine code: `r_fullscreen 0`, then strip
-  `WS_CAPTION | WS_THICKFRAME` from the style, `SetWindowPos` to (0,0) at the desktop size, with
-  `SWP_FRAMECHANGED`.
-* It must survive `vid_restart`, which recreates the window — so the component has to re-apply on
-  window creation rather than once at startup. `mouse_polling`'s lazy install from the frame tick
-  (and its "is this still the engine's own WndProc?" check) is the pattern to copy, and the two
-  components will need to agree about who owns the subclass.
-* Gate it the same way: an env var / launcher flag now, a dvar named `r_noborder` once the
-  `Dvar_RegisterBool` thunk in §1b deviation 3 is proven.
+**Checked in the exe, and the answer is no.** `r_noborder` is **not** a vanilla dvar: the byte
+string `r_noborder` (and the substring `noborder`, case-insensitive) appears **zero times** in the
+78 MB dump. `r_noborder` is something **Plutonium's own client adds**, so Plutonium's recipe cannot
+be followed with command-line dvars alone on a stock exe. The three dvars around it *do* exist and
+are vanilla: `r_fullscreen` (`0x89E710`), `vid_xpos` (`0x89E720`), `vid_ypos` (`0x89E72C`), plus
+`r_monitor` (`0x8A5448`) for the monitor picker and `r_displayRefresh` (`0x89E6DC`).
+
+So the split is:
+
+* **launcher**: passes `r_fullscreen 0`, `r_mode <native WxH>`, `vid_xpos 0`, `vid_ypos 0` and
+  `r_monitor <index>` on the command line, exactly as it already passes `r_fullscreen` / `r_mode`
+  (launcher.md §3), and stores the mode/monitor/resolution per account.
+* **the DLL**: must **strip `WS_CAPTION | WS_THICKFRAME` from the game window itself** and
+  `SetWindowPos` it to (0,0) at the chosen monitor's size with `SWP_FRAMECHANGED`. That is the
+  `r_noborder 1` half, and there is no dvar for it on a stock exe.
+
+The pieces are all reachable without patching engine code: `SetWindowLongA` (IAT `0x7EB348`) and
+`SetWindowPos` (IAT `0x7EB2C4`) are both imported, the game window class is `"CoD-WaW"` registered
+at `0x5FF450`, its proc is `0x606BE0` and its hwnd is at `[0x22C1BE4]`.
+
+Two constraints for whoever writes it:
+
+* **It must survive `vid_restart`**, which recreates the window — so re-apply on window creation
+  rather than once at startup. `mouse_polling`'s lazy install from the frame tick, and its "is this
+  still the engine's own WndProc?" check, are the pattern to copy; the two components must agree
+  about who owns the subclass rather than each installing one.
+* Name the toggle `r_noborder` when the `Dvar_RegisterBool` thunk in §1b deviation 3 is proven, so
+  a player following Plutonium's documentation finds the dvar they expect. Until then it is an env
+  var / launcher flag like `ENW_RAW_MOUSE`.
 
 ### 2d. In-game chat overlay (note only — not designed)
 
@@ -205,7 +265,7 @@ What the DLL would need, and nothing more than that is decided:
   as a text renderer corrupts a ring buffer at `0x3DCB4C0` — they were withdrawn for exactly this.
   Whatever is found must be identified by two independent signals before it is used.
 * **input capture**, so a chat key swallows keystrokes instead of passing them to the game. The
-  place for that is the event path already mapped here: the game WndProc `0x606B60`, `Sys_QueEvent`
+  place for that is the event path already mapped here: the game WndProc `0x606BE0`, `Sys_QueEvent`
   `0x5FEB30` and `Sys_GetEvent` `0x5FEC60`. Note `mouse_polling` already subclasses that WndProc;
   a second consumer must extend the one subclass, not add another.
 * the transport already exists — `clientchat_send` `0x655C80` / `hostchat_send` `0x65B630` and the
@@ -219,8 +279,9 @@ All added to `shared/t4/addresses.hpp` under "win32 input / mouse", all `[V]` fr
 except the two marked `[C]`: `IN_Init` `0x5FA820`, `IN_StartupMouse` `0x5FA7D0`,
 `IN_DeactivateMouse` `0x5FA5B0`, `IN_MouseEvent` `0x5FA5F0`, `IN_Frame` `0x5FA850`, `IN_MouseMove`
 `0x5FA6D0`, `IN_MouseMove_callsite` `0x5FA8E4`, `IN_RecenterMouse` `0x5FA510`,
-`IN_ClampCursorToWindow` `0x5FA660`, `CL_MouseEvent` `0x63D9A0`, `WndProc_game` `0x606B60`,
-`WndProc_other` `0x605210`, `Sys_CreateWindow` `0x605500` `[C]`, `Sys_QueEvent` `0x5FEB30`,
+`IN_ClampCursorToWindow` `0x5FA660`, `CL_MouseEvent` `0x63D9A0`, `WndProc_game` `0x606BE0`,
+`WndProc_game_msg_helper` `0x606B60`, `Sys_RegisterGameWindowClass` `0x5FF450`,
+`WndProc_winconsole` `0x605210`, `Sys_CreateConsoleWindow` `0x605500`, `Sys_QueEvent` `0x5FEB30`,
 `Sys_GetEvent` `0x5FEC60`, `Com_EventLoop` `0x5FEDE0` `[C]`; globals `g_wv_hwnd` `0x22C1BE4`,
 `g_wv_sysMsgTime` `0x22C1BF8`, `in_mouse_dvar` `0x229A0B8`, `s_wmv_mouseActive` `0x229A0D4`,
 `s_wmv_mouseInited` `0x229A0D5`, `s_wmv_oldPos_x/y` `0x229A0CC`/`0x229A0D0`,

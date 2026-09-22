@@ -92,9 +92,20 @@ namespace t4
         //   edx = client x, ecx = client y, [esp+4] = dx, [esp+8] = dy, CALLER cleans 8.
         //   Register args are NOT expressible in a C prototype -- use a naked thunk.
         constexpr std::uintptr_t CL_MouseEvent              = 0x63D9A0; // [V] sole caller IN_MouseMove; accumulates dx/dy into 0x307D650/0x307D658
-        constexpr std::uintptr_t WndProc_game               = 0x606B60; // [V] the game window's proc: mouse buttons -> IN_MouseEvent, also calls IN_RecenterMouse + DefWindowProcA
-        constexpr std::uintptr_t WndProc_other              = 0x605210; // [V] a second proc; only handles WM 5..0x14, everything else -> DefWindowProcA
-        constexpr std::uintptr_t Sys_CreateWindow           = 0x605500; // [C] RegisterClassA + CreateWindowExA + SetWindowLongA
+        // CORRECTED 2026-09-22, and the correction is kept because the first value
+        // LOOKED right: 0x606B60 calls IN_MouseEvent, IN_RecenterMouse and
+        // DefWindowProcA, so it reads exactly like a WndProc. It is not one -- it is a
+        // message HELPER the real proc calls. The class registration settles it:
+        //   005FF47A  mov [esp+0x10], 0x606BE0   ; WNDCLASSEX.lpfnWndProc (cbSize @ +8)
+        //   005FF4B1  mov [esp+0x2C], 0x883150   ; lpszClassName = "CoD-WaW"
+        //   005FF4B9  call [RegisterClassExA]
+        // and 0x606BE0 has the proc shape: hwnd@[ebp+8], msg@[ebp+0xC], wParam@[ebp+0x10],
+        // lParam@[ebp+0x14]. Two independent signals, as the map's rule 2 requires.
+        constexpr std::uintptr_t WndProc_game               = 0x606BE0; // [V] lpfnWndProc of the "CoD-WaW" class
+        constexpr std::uintptr_t WndProc_game_msg_helper    = 0x606B60; // [V] called by it; routes mouse buttons -> IN_MouseEvent. NOT the proc
+        constexpr std::uintptr_t Sys_RegisterGameWindowClass= 0x5FF450; // [V] RegisterClassExA("CoD-WaW"); Com_Error EXE_ERR_COULDNT_REGISTER_WINDOW on failure
+        constexpr std::uintptr_t WndProc_winconsole         = 0x605210; // [V] proc of the "Call of Duty WinConsole" class; only handles WM 5..0x14
+        constexpr std::uintptr_t Sys_CreateConsoleWindow    = 0x605500; // [V] RegisterClassA + CreateWindowExA for "Call of Duty WinConsole" -- NOT the game window
         constexpr std::uintptr_t Sys_QueEvent               = 0x5FEB30; // [V] 256-entry ring (mask 0xFF, stride 0x18); overflow prints "Sys_QueEvent: overflow"
         constexpr std::uintptr_t Sys_GetEvent               = 0x5FEC60; // [V] drains the ring; when empty pumps PeekMessageA/GetMessageA/TranslateMessage/DispatchMessageA until the queue is empty
         constexpr std::uintptr_t Com_EventLoop              = 0x5FEDE0; // [C] calls Sys_GetEvent until evType == 0
