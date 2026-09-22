@@ -322,28 +322,7 @@ async function createWindow() {
   log('site', state.siteInfo.url, state.siteInfo.what)
   await wc.loadURL(state.siteInfo.url).catch((e) => log('site load failed', e.message))
 
-  // The site API shares the page's cookie jar, so a signed-in page means signed-in API
-  // calls from the main process — one session, no second auth path, nothing to leak
-  // (launcher-v0 §1). Without a site we simply have no api and Play stays local-only.
-  state.api = null
-  if (!state.siteInfo.placeholder) {
-    const api = new SiteApi({
-      baseUrl: state.siteInfo.url,
-      cookieProvider: electronCookieProvider(electronSession.defaultSession),
-      appVersion: app.getVersion(),
-      password: cfg.load().sitePassword,
-    })
-    try {
-      const hello = await api.sayHello()
-      state.api = api
-      log('site hello', `protocol ${hello.protocol}, auth ${hello.auth}, signed in as ${hello.you?.name || 'nobody'}`)
-      // From here the launcher keeps up with the party by itself: the staged map is
-      // downloaded and reported, and somebody else's Start becomes our launch.
-      state.startPartyWatch?.()
-    } catch (e) {
-      log('site hello failed', e.message)
-    }
-  }
+  await connectSiteApi()
 
   win.once('ready-to-show', () => win.show())
   win.show()
@@ -1364,11 +1343,44 @@ function steamSignIn() {
   })
 }
 
+// The site API shares the page's cookie jar, so a signed-in page means signed-in API
+// calls from the main process — one session, no second auth path, nothing to leak
+// (launcher-v0 §1). Without a site we simply have no api and Play stays local-only.
+//
+// Called at startup AND from reloadSite: a launcher opened while the site was down
+// (2026-09-22, the keepalive loop had died with its shell) used to stay on the
+// placeholder with no api for its whole life, reload button or not, and Play never
+// came back until the player restarted the launcher.
+async function connectSiteApi() {
+  // A watcher from an earlier connect holds the earlier api; drop it so the new one starts fresh.
+  if (state.playWatcher) { state.playWatcher.stop(); state.playWatcher = null }
+  state.api = null
+  if (state.siteInfo.placeholder) return
+  const api = new SiteApi({
+    baseUrl: state.siteInfo.url,
+    cookieProvider: electronCookieProvider(electronSession.defaultSession),
+    appVersion: app.getVersion(),
+    password: cfg.load().sitePassword,
+  })
+  try {
+    const hello = await api.sayHello()
+    state.api = api
+    log('site hello', `protocol ${hello.protocol}, auth ${hello.auth}, signed in as ${hello.you?.name || 'nobody'}`)
+    // From here the launcher keeps up with the party by itself: the staged map is
+    // downloaded and reported, and somebody else's Start becomes our launch.
+    state.startPartyWatch?.()
+  } catch (e) {
+    log('site hello failed', e.message)
+  }
+}
+
 async function reloadSite(url) {
   if (url) cfg.save({ siteUrl: url })
   state.siteInfo = await cfg.resolveSiteUrl()
+  log('site', state.siteInfo.url, state.siteInfo.what)
   await state.siteView?.webContents.loadURL(state.siteInfo.url).catch(() => {})
-  push('site', { loaded: true, url: state.siteInfo.url, what: state.siteInfo.what })
+  await connectSiteApi()
+  push('site', { loaded: true, url: state.siteInfo.url, what: state.siteInfo.what, placeholder: state.siteInfo.placeholder })
   return state.siteInfo
 }
 
