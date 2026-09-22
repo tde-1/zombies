@@ -319,11 +319,41 @@ await test('the stock four are ready without an install, and are not "installed 
 
 // The Play card is the verified journey. It defaulted to 'custom', so a stock map read
 // "CUSTOM / Untracked." and the lease the site opened said mode=custom.
-await test('the Play page starts in Verified', async () => {
+// The mode has ONE owner now: the site's party (`parties.js :: create` defaults to
+// verified). The launcher shell defaulted it too, and the shell's copy was the one that
+// reached POST /api/launcher/play - which is how B's lease came out `mode: custom` under
+// a card the site thought was Verified. The rail is gone and so is that second owner.
+await test('the shell owns no mode of its own, and still spells the one it is told', async () => {
   const src = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
-  assert.ok(/mode: 'verified',/.test(src), 'the renderer state must start in Verified')
-  assert.ok(!/mode: 'custom',/.test(src), 'nothing may default the mode back to Custom')
-  assert.ok(/const modeLabel = /.test(src), 'one spelling of the mode, drawn everywhere')
+  assert.ok(!/mode: 'custom',/.test(src), 'nothing may default the mode to Custom')
+  assert.ok(!/mode: 'verified',/.test(src), 'the shell must not hold a mode at all now')
+  assert.ok(/const modeLabel = /.test(src), 'one spelling of the mode, for the boot screen')
+})
+
+// The rail is gone, and it has to STAY gone: a map list in the shell is a second copy of
+// the site's, with its own idea of what is installed.
+await test('the launcher shell draws no rail, no map list and no Play button', async () => {
+  const html = String(fs.readFileSync(new URL('../src/renderer/shell.html', import.meta.url)))
+  const css = String(fs.readFileSync(new URL('../src/renderer/shell.css', import.meta.url)))
+  const js = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
+  for (const id of ['id="rail"', 'id="mapList"', 'id="playBtn"', 'id="playLocalBtn"', 'id="modeBtn"', 'id="cornerCard"']) {
+    assert.ok(!html.includes(id), `${id} is still in the shell`)
+  }
+  assert.ok(!/#rail\s*\{|\.maplist/.test(css), 'rail CSS survived')
+  assert.ok(!/window\.enw\.maps\(/.test(js), 'the shell is still fetching its own map catalogue')
+  // What it keeps: the boot screen, and the status block that moved into Settings.
+  assert.ok(html.includes('id="bootSteps"') && html.includes('id="statusBody"'))
+})
+
+// The site's home folds to one column at 1080px, so the window has to be wide enough for
+// the site view - which is now the whole window - to stay above it.
+await test('the window is wide enough for the site home to be two columns', async () => {
+  const src = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  const num = (name) => Number((new RegExp('const ' + name + ' = ([0-9]+)').exec(src) || [])[1])
+  assert.ok(num('MIN_WIDTH') > 1080, `MIN_WIDTH ${num('MIN_WIDTH')} is not above the site's 1080px fold`)
+  assert.ok(num('DEFAULT_WIDTH') >= num('MIN_WIDTH'))
+  // The constant is named once more, in the paragraph that explains why it is gone.
+  assert.ok(!/w - RAIL_WIDTH/.test(src), 'the site view is still having a rail subtracted from it')
 })
 
 await test("a map the player installed themselves is never touched", async () => {
@@ -710,6 +740,36 @@ await test('THE INVITE TOKEN IS NEVER IN IT', () => {
   assert.equal(a.includes(secret), false)
   assert.equal(a.includes('token'), false)
   assert.equal(a.toLowerCase().includes('secret'), false)
+})
+
+await test('every launch carries `+set name <ENW name>`, local games included', () => {
+  // B, 2026-09-23: "right now it says Unknown Soldier, which is annoying". That string is
+  // the ENGINE's default for the `name` dvar and the reason it appeared is simply that
+  // nothing ever passed `+name`. Local too: a local game never reaches a server, so the
+  // referee's lock cannot apply and this line is all there is.
+  const a = launch.buildArgs({ map: 'nazi_zombie_prototype', playerName: 'enw-tester' })
+  const i = a.indexOf('name')
+  assert.ok(i > 0 && a[i - 1] === '+set', '`+set name` is not on the line')
+  assert.equal(a[i + 1], 'enw-tester')
+  const joined = launch.buildArgs({ host: '10.0.0.5:28960', playerName: 'enw-tester' }).join(' ')
+  assert.match(joined, /\+set name enw-tester/)
+})
+
+await test('a name cannot break out of the infostring or smuggle a second command', () => {
+  // The engine's userinfo is backslash-delimited and `set` is console input, so a
+  // backslash, a quote or a semicolon in a name would split the key/value pairs or run
+  // something else. Stripped here and stripped again server-side by Info_SetValueForKey.
+  const a = launch.buildArgs({ map: 'x', playerName: 'ev\il";quit' })
+  const i = a.indexOf('name')
+  assert.equal(a[i + 1], 'evilquit')
+})
+
+await test('no name on the session means no `+set name`, not an invented one', () => {
+  // An account that has not picked yet gets the engine's own default rather than a
+  // SteamID or a placeholder pretending to be a name.
+  const a = launch.buildArgs({ map: 'x', playerName: null })
+  const i = a.indexOf('name')
+  assert.equal(i === -1 || a[i - 1] !== '+set', true, 'a nameless session still set a name')
 })
 
 await test('fs_homepath has no space in it (the engine parses its own command line)', () => {

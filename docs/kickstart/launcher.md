@@ -1967,3 +1967,113 @@ with Play Local / Custom / client status moved into it, the left column pinned a
 and a default window size that shows it at first open. That is a shell rewrite and B was waiting to
 play, so the Play fix shipped first.
 
+
+---
+
+## 2026-09-22, late — the right rail is gone, and the site's left column finally fits
+
+B, looking at the launcher window: the shell's own right-hand rail — selected-map card,
+Play / Play Local / Custom, the map list, a status block — has to go. The LEFT column is
+the one place a party is managed and a map is picked (Movement's home layout), the site's
+home already does exactly that, and *"its default window is too small for the site's left
+column to appear at all."*
+
+That last clause is the whole finding, and it is arithmetic.
+
+### The rail was not merely duplicating the left column. It was hiding it.
+
+`theme.css`:
+
+```css
+.home { grid-template-columns: var(--rail-w) minmax(0, 1fr); }   /* --rail-w: 302px */
+@media (max-width: 1080px) { .home { grid-template-columns: 1fr; } }
+```
+
+`main.js`: the window opened at **1400** wide and the site view was given
+`width - RAIL_WIDTH`, with `RAIL_WIDTH = 320`. **1400 − 320 = 1080.** Exactly the
+breakpoint, on the wrong side of it — so inside the launcher, and only inside the
+launcher, the home folded to one column and the party panel and map list stacked above the
+map instead of standing beside it. At the old `minWidth: 1000` the site got 680 and there
+was no argument at all. The rail was not competing with the left column for attention; it
+was 320 px of why there was no left column.
+
+### What was deleted, and where each thing already lived
+
+| the rail had | it is on the site at |
+|---|---|
+| the map list (its own `STOCK` four + the archive catalogue) | `MapListPanel`, 19 maps, in `.home-left` |
+| Play | `PartyPanel`'s **Start**, and the map page's own **Play** |
+| Play Local | the map page, beside Play (`MapPage.jsx :: PlayLocal`) |
+| Verified / Custom | `PartyPanel`'s mode chips |
+| the status block | moved into the launcher's **Settings** screen; the summary is still a topbar pill |
+
+**The duplication was not harmless, and there is a receipt for it.** The rail held its own
+mode, and the rail's mode was the one that reached `POST /api/launcher/play` — which is how
+this morning's lease came out `mode: custom` under a card the site's party thought was
+Verified. One owner now: `parties.js :: create` defaults a party to `verified`, so
+Verified-by-default survives the deletion.
+
+**Pressing Start on the site already launches the game here** and always has:
+`main.js :: onPlay` follows any match the site hands this player, in its own words *"a game
+was started for you"*. Nothing had to be built for the Play button's removal — the path it
+used was the less-travelled one.
+
+### What the shell keeps
+
+Only what a native app can do: finding World at War, installing the ENW client, the
+first-run screens, Settings (now with Status at the top), the boot screen, the tray, and
+the topbar — brand, back/forward/reload, `site:`, `client:`, the account pill, Settings.
+A map deep link (`enw-zombies://map/<bsp>`) is now a navigation of the wrapped view to
+`/m/<bsp>`, exactly as a party link has always been; it still presses nothing.
+
+### The numbers, derived rather than picked
+
+```
+MIN_WIDTH      1180   > the site's 1080px fold, with 100px of slack
+MIN_HEIGHT      700
+DEFAULT_WIDTH  1500
+DEFAULT_HEIGHT  940   fits a 1080p desktop with its taskbar
+```
+
+There is **no Movement launcher to copy** — Movement is a web client, and its layout *is*
+that breakpoint, which is the better source anyway. A test asserts `MIN_WIDTH > 1080` and
+that nothing subtracts a rail from the site view again.
+
+### Proof
+
+`docs/kickstart/ui/launcher-left-only.png` — the launcher at its **default** size, signed
+in, against a private site (mock auth, `VACUUM INTO` copy; `web/data` untouched). Measured
+in the running app rather than read off the picture:
+
+```
+site view innerWidth   1484        (was 1080)
+.home-left             present, 302px wide
+  party panel          Verified | Custom | Private | Start | Invite | Leave
+  map list             19 maps
+.home-right            nazi_zombie_prototype — Nacht der Untoten, ROUND 20, VERIFIED,
+                       Play | Play Local | UNTRACKED
+launcher chrome        #rail absent, #mapList absent
+```
+
+The screenshot is composed from the two webContents through the DevTools protocol, not
+grabbed off the desktop — the launcher is one native view inside another and a desktop grab
+takes whatever else is on B's screen. (It did, once. That file was deleted unviewed-by-
+anyone-else and the method changed.)
+
+`npm test` **124 passed, 0 failed** — three new: the shell draws no rail, no map list and
+no Play button and must not grow one back; the shell owns no mode of its own; the window is
+wide enough for the site home to be two columns. `npm run smoke` 9 of 10, the same
+`%LOCALAPPDATA%` sandbox notice as every agent-shell run.
+
+**Not published.** This is a shell commit sitting on `main` for whoever publishes next —
+the client lane's 0.2.5, then identity's 0.2.6. B's installed 0.2.4 is unaffected.
+
+### One consequence, written down rather than discovered later
+
+**With the site unreachable the launcher now has no map list and no Play of its own.** It
+keeps setup, settings and the boot screen, and the topbar says `site: placeholder` — but
+the offline affordance the rail gave (pick a stock map, Play Local, with no site at all) is
+gone with it. That is the cost of having one copy of the map list instead of two, and it is
+the right trade while the site is the product; if it ever matters, the answer is a
+placeholder page that offers the four stock maps, not a second rail.
+

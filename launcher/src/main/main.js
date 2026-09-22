@@ -3,8 +3,9 @@
 // Shape (spec 13 §2 / 99 §4.3):
 //   * an Electron app that LOOKS LIKE THE LOGGED-IN SITE, because it wraps the live
 //     site rather than reimplementing it;
-//   * the chrome around it is ours: a right-hand rail whose top card is the selected
-//     map + Play (Movement's party-rail top card), and a full-window boot screen;
+//   * the chrome around it is ours, and it is now ONLY what a native app can do: a
+//     topbar, the first-run/setup screens, settings, and a full-window boot screen.
+//     The right-hand rail is GONE (2026-09-22) - see shell.js for why;
 //   * window + tray — closing the window minimises, quit from the tray;
 //   * deep links: zombies.enw.gg/m/<map> and enwzombies://m/<map>;
 //   * NO OVERLAY, EVER. B was emphatic. The site lives in a native WebContentsView and
@@ -43,8 +44,28 @@ const RENDERER = path.resolve(HERE, '..', 'renderer')
 // .cjs, not .js: Electron decides a preload's module type by extension, and this app
 // is "type": "module". An ambiguous preload fails at load with nothing useful in it.
 const PRELOAD = path.resolve(HERE, '..', 'preload', 'preload.cjs')
-const RAIL_WIDTH = 320
 const TOPBAR_HEIGHT = 44
+
+// ---------------------------------------------------------------------------
+// WINDOW SIZE IS A LAYOUT DECISION, AND IT WAS THE WRONG ONE
+// ---------------------------------------------------------------------------
+// `RAIL_WIDTH = 320` used to come off the site view's width. The site's home is
+// `grid-template-columns: var(--rail-w) minmax(0, 1fr)` and `theme.css` folds it into a
+// SINGLE column at `max-width: 1080px`. The default window was 1400 wide, so the site got
+// 1400 - 320 = **1080**: exactly the breakpoint, on the wrong side of it. The left column
+// B asked for - party, map list, Start, Verified/Custom - therefore never appeared in the
+// launcher, and appeared in any browser of the same size. At the old 1000 px minimum it
+// was 680 and hopeless.
+//
+// So the rail is gone and the numbers below are derived from that breakpoint rather than
+// picked: the minimum is the first width at which the site's home is two columns with room
+// to spare, and the default leaves the map page a comfortable column beside it. (There is
+// no Movement launcher to copy: Movement is a web client, and its layout IS this
+// breakpoint.)
+const MIN_WIDTH = 1180          // > the site's 1080px single-column fold, with 100px of slack
+const MIN_HEIGHT = 700
+const DEFAULT_WIDTH = 1500
+const DEFAULT_HEIGHT = 940      // fits a 1080p desktop with its taskbar
 
 const state = {
   win: null,
@@ -226,7 +247,8 @@ function wireSitePassword() {
 function layout() {
   if (!state.win || !state.siteView) return
   const [w, h] = state.win.getContentSize()
-  state.siteView.setBounds({ x: 0, y: TOPBAR_HEIGHT, width: Math.max(0, w - RAIL_WIDTH), height: Math.max(0, h - TOPBAR_HEIGHT) })
+  // Edge to edge. The site's own left column is the only column now.
+  state.siteView.setBounds({ x: 0, y: TOPBAR_HEIGHT, width: Math.max(0, w), height: Math.max(0, h - TOPBAR_HEIGHT) })
 }
 
 // The site is hidden, never covered: an overlay over a native view is exactly the
@@ -239,10 +261,10 @@ function showSite(visible) {
 
 async function createWindow() {
   const win = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1000,
-    minHeight: 640,
+    width: DEFAULT_WIDTH,
+    height: DEFAULT_HEIGHT,
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
     show: false,
     backgroundColor: '#12130e',
     autoHideMenuBar: true,
@@ -454,6 +476,11 @@ function handleDeepLink(raw) {
   // navigation of the site view. Joining-if-invited is the SITE's decision on that page
   // — the launcher must not invent a join, because it does not know the invite list.
   if (link.kind === 'party') openSitePath(`/party/${encodeURIComponent(link.party)}`, 'a party deep link')
+  // A MAP LIVES IN THE SITE NOW. This used to be handled entirely in the renderer, by
+  // selecting the map in the launcher's own rail; with the rail gone the link has to
+  // navigate the wrapped view to the map's own page, which is where Play Local, the
+  // party's Start and the download all are. It still does not press anything.
+  if (link.kind === 'map' || link.kind === 'play') openSitePath(`/m/${encodeURIComponent(link.map)}`, 'a map deep link')
   if (link.kind === 'home') { log('deeplink', 'opening home:', link.why || 'nothing to route to'); showSite(true) }
   // A cold start reaches here while the chrome is still loading, and a `send` into a
   // page that has not run its script yet is a message nobody hears — which looks, from
@@ -1107,7 +1134,7 @@ function wireIpc() {
     const inParty = Number(p.party?.id || 0) > 0
 
     // 1. pre-download the party's map
-    if (inParty && bsp && !library.isInstalled(bsp) && !state.installs.has(bsp) && !state.flow) {
+    if (inParty && bsp && !library.mapReady(bsp) && !state.installs.has(bsp) && !state.flow) {
       ensureMapInstalled(bsp).catch((e) => log('party', `could not install ${bsp}: ${e.message}`))
     }
 
@@ -1488,7 +1515,10 @@ if (!single) {
           setup: setup.status().installed,
           preloadApi: await state.win?.webContents.executeJavaScript('Object.keys(window.enw||{}).length').catch((e) => `ERROR ${e.message}`),
           shellRendered: await state.win?.webContents.executeJavaScript(
-            'JSON.stringify({rail:!!document.getElementById("rail"),maps:document.querySelectorAll("#mapList button").length,screen:[...document.querySelectorAll(".screen.on")].map(x=>x.id),status:document.getElementById("statusBody").innerText.replace(/\\n/g," | ")})'
+            // `rail` is reported so it can be asserted ABSENT: the launcher draws no map
+            // list and no Play button of its own any more, and a smoke run that stopped
+            // mentioning it could not tell a removal from a regression.
+            'JSON.stringify({rail:!!document.getElementById("rail"),mapList:!!document.getElementById("mapList"),screen:[...document.querySelectorAll(".screen.on")].map(x=>x.id),status:document.getElementById("statusBody").innerText.replace(/\\n/g," | ")})'
           ).catch((e) => `ERROR ${e.message}`),
           consoleMessages: state.consoleMessages.slice(0, 20),
           deepLink: parseDeepLink('https://zombies.enw.gg/m/nazi_zombie_sumpf'),
@@ -1561,33 +1591,19 @@ if (!single) {
           showSite(false)
           await new Promise((r) => setTimeout(r, 900))
         }
-        // ENW_SMOKE_PLAYLOCAL=<bsp>: click the rail's map and press Play Local, the
-        // way B will. Proves the button, not just the plumbing behind it.
+        // ENW_SMOKE_PLAYLOCAL=<bsp>: start a local game the way the SITE does.
+        //
+        // It used to click the launcher rail's map row and then its Play Local button.
+        // There is no rail: Play Local is on the site's own map page and it calls
+        // `window.enw.playLocal`, which is exactly what this calls. The button it used
+        // to press is the site's now, and the site has its own tests for it.
         if (process.env.ENW_SMOKE_PLAYLOCAL) {
           const bsp = process.env.ENW_SMOKE_PLAYLOCAL
           report.playLocal = await state.win?.webContents.executeJavaScript(
             `(async () => {
-               const btns = [...document.querySelectorAll('#mapList button')]
-               const b = btns.find((x) => (x.title || '').includes(${JSON.stringify(bsp)}))
-               if (!b) return 'no such map in the rail'
-               b.click()
-               await new Promise((r) => setTimeout(r, 300))
-               // If the map is not installed the primary button says Install. Press it
-               // and wait: these are hundreds of MB, so the wait is the point.
-               const primary = document.getElementById('playBtn')
-               if (/^Install/.test(primary.textContent)) {
-                 primary.click()
-                 const until = Date.now() + 600000
-                 while (Date.now() < until && !document.getElementById('playLocalBtn').disabled === false) {
-                   await new Promise((r) => setTimeout(r, 1000))
-                   if (!document.getElementById('playLocalBtn').disabled) break
-                 }
-               }
-               const pl = document.getElementById('playLocalBtn')
-               if (pl.disabled) return 'Play Local is disabled: ' + document.getElementById('cardNote').textContent
-               pl.click()
+               try { await window.enw.playLocal(${JSON.stringify(bsp)}) } catch (e) { return 'ERROR ' + e.message }
                await new Promise((r) => setTimeout(r, 4000))
-               return 'clicked; boot screen: ' + [...document.querySelectorAll('#bootSteps .step')]
+               return 'started; boot screen: ' + [...document.querySelectorAll('#bootSteps .step')]
                  .map((s) => s.querySelector('.title').textContent + '=' + (s.className.replace('step ','') || 'pending')).join(' | ')
              })()`
           ).catch((e) => `ERROR ${e.message}`)

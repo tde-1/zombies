@@ -11,57 +11,37 @@ const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls)
 
 const S = {
   status: null,
-  map: null,
-  // VERIFIED IS THE DEFAULT, and Play is the verified journey.
-  //
-  // This said 'custom', so the card under a stock map read "CUSTOM / Untracked." on a
-  // launcher whose Play button leases one of our own boxes and credits the game — and
-  // the lease the site opened for B said `mode: custom` too, because this value is
-  // what `POST /api/launcher/play` is given. The one place the mode is chosen is the
-  // Mode button beside Play, and until somebody presses it the answer is Verified.
-  mode: 'verified',
   boot: null,
   screen: null,
 }
 
-// The map list. Real, from the archive agent's normalised maps via window.enw.maps().
+// ---------------------------------------------------------------------------
+// THE MAP LIST, THE MAP CARD AND THE PLAY BUTTON ARE NOT HERE ANY MORE (2026-09-22)
+// ---------------------------------------------------------------------------
+// They were: a `STOCK` constant naming the four Treyarch maps, a catalogue fetch, a rail
+// of map rows, a selected-map card, Play / Play Local / a Verified-Custom toggle, and a
+// status block. Every one of them is on the site's own home, in the LEFT column B decided
+// is the one place a party is managed and a map is picked - `PartyPanel` (Start, Verified /
+// Custom, the per-member download bars) and `MapListPanel`, with the selected map's page
+// filling the rest and its own **Play Local** on it.
 //
-// THE BSP NAME IS NOT THE TITLE. `water` is "Alcatraz", `nazi_zombie_test` is "Project
-// Viking". The player sees the title everywhere; the bsp is engine detail, shown small
-// and only because it is what a map's folder and its old download are called.
-let MAPS = []
-
-// Stock maps ship with World at War, so they are always playable and never installed.
-const STOCK = [
-  { bsp: 'nazi_zombie_prototype', title: 'Nacht der Untoten', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
-  { bsp: 'nazi_zombie_asylum', title: 'Verrückt', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
-  { bsp: 'nazi_zombie_sumpf', title: 'Shi No Numa', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
-  { bsp: 'nazi_zombie_factory', title: 'Der Riese', author: 'Treyarch', stock: true, installed: true, available: true, bytes: 0, fsGame: null },
-]
-
-// Installed is not the same as playable.
+// Two copies of that is not redundancy, it is a disagreement waiting to happen. The rail
+// had its own stock list, its own idea of "installed" and its own mode - and the rail's
+// mode was the one that reached `POST /api/launcher/play`, which is how B's Nacht der
+// Untoten lease came out `mode: custom` while the site's party said Verified. The site
+// defaults a party to Verified (`parties.js :: create`), so Verified-by-default survives
+// this deletion; it just has one owner now instead of two.
 //
-// A custom map installs cleanly, launches, renders and holds 60 fps, and its server
-// script is already dead from a GSC runtime error before the player can move. Three
-// tried, three different errors. "Play" followed by a silent dead map is worse than a
-// row that says so, so the rail says so.
+// And the rail's 320 px is what pushed the site view to 1080 px, which is exactly the
+// width at which `theme.css` folds the home into ONE column - so the left column B asked
+// for was invisible in the launcher, and only in the launcher. main.js has the numbers.
 //
-// The catalogue does not carry that verdict yet. When the main process adds `playable`
-// to a record this reads it; until then a stock map is playable and a custom one is not,
-// which is today's truth. Delete the fallback, not this function, when it stops being.
-const playable = (m) => (m && m.playable !== undefined ? !!m.playable : !!(m && m.stock))
-
-// Can anyone host a game for us right now? The site answers honestly — `play` is true
-// only when a box is actually online — so this needs no release to flip: the day the
-// dedicated server takes clients, the Play button turns itself on.
+// Pressing **Start** on the site already launches the game here: `main.js :: onPlay`
+// follows any match the site hands this player, in its own words "a game was started for
+// you". That is the party path, so it is the same one a friend's Start goes through.
 //
-// An older site that does not report the capability at all is treated as UP rather than
-// down, so this never greys out a working button on a site we have not updated yet.
-const serversUp = () => {
-  const c = S.status?.site_api?.capabilities
-  return !c || c.play !== false
-}
-const UNPLAYABLE_NOTE = 'Installs and launches, but its script dies on load.'
+// What the shell keeps is what only a native app can do: finding World at War, installing
+// the client, the boot screen, settings, the topbar and the tray.
 
 // ------------------------------------------------------------------- screens --
 
@@ -88,128 +68,10 @@ function toast(text, kind = 'info') {
 
 const mb = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`)
 
-async function loadMaps() {
-  let cat = { maps: [] }
-  try { cat = await window.enw.maps() } catch {}
-  // Stock first (always playable), then the archive by title.
-  MAPS = [...STOCK, ...cat.maps]
-  renderMaps()
-  if (!S.map) selectMap(MAPS[0]?.bsp)
-  return cat
-}
-
-function renderMaps() {
-  const list = $('mapList')
-  list.replaceChildren()
-  for (const m of MAPS) {
-    const b = el('button', S.map === m.bsp ? 'sel' : '')
-    const name = el('span', 'mapname', m.title)
-    b.append(name)
-    // The state a player cares about: can I press Play, and if not what is in the way.
-    // "not on this PC" is a real state and has to look different from "download me":
-    // nothing serves the rescued map files yet, so on a friend's machine most of this
-    // list cannot be installed at all. Saying "453 MB" there would be a lie.
-    const dead = !playable(m)
-    const tag = el('span', 'tag',
-      m.stock ? 'stock' : dead && m.installed ? 'unplayable' : m.installed ? 'installed' : m.available ? mb(m.bytes) : 'unavailable')
-    if (dead && m.installed) tag.classList.add('dead')
-    else if (!m.stock && !m.installed) tag.classList.add(m.available ? 'needs' : 'absent')
-    b.append(tag)
-    // The bsp, small — it is what the folder and the original download are called, and
-    // people searching for a map will have seen it.
-    b.append(el('span', 'bsp', m.bsp))
-    b.title = `${m.title}
-${m.bsp}${m.author ? `
-by ${m.author}` : ''}`
-    b.onclick = () => selectMap(m.bsp)
-    list.append(b)
-  }
-  if (!MAPS.length) list.append(el('div', 'card-note', 'No maps yet.'))
-}
-
-function selectMap(bsp) {
-  if (!bsp) return
-  S.map = bsp
-  const m = MAPS.find((x) => x.bsp === bsp)
-  S.selected = m || null
-  $('cardMap').textContent = m ? m.title : bsp
-  $('cardSub').textContent = m && m.author ? `${m.bsp}  ·  ${m.author}` : bsp
-  renderMaps()
-  updatePlay()
-}
-
 // One spelling of the mode, everywhere it is drawn. `local` is its own answer: a game
 // on your own PC is neither Verified nor Custom, and calling it "Custom" on the boot
 // screen was the screen guessing.
 const modeLabel = (m) => (m === 'verified' ? 'Verified' : m === 'local' ? 'Untracked' : 'Custom')
-
-function updatePlay() {
-  const ready = !!S.status?.setup?.installed
-  const busy = !!S.boot && !S.boot.done && !S.boot.failed
-  const m = S.selected
-  const needsInstall = !!m && !m.stock && !m.installed && m.available
-  const unavailable = !!m && !m.stock && !m.installed && !m.available
-  const installing = !!S.installing
-
-  $('modeBtn').textContent = modeLabel(S.mode)
-  $('cardMode').textContent = modeLabel(S.mode)
-
-  // One button, three jobs, and it says which. A map you have not downloaded cannot be
-  // played, so offering Play and failing would be the wrong thing.
-  const play = $('playBtn')
-  if (unavailable) {
-    play.textContent = 'Unavailable'
-    play.disabled = true
-    play.onclick = null
-  } else if (needsInstall) {
-    play.textContent = installing ? `Installing… ${S.installPct || 0}%` : `Install (${mb(m.bytes)})`
-    play.disabled = !ready || installing
-    play.onclick = () => installSelected()
-  } else {
-    // Play on OUR servers. Off unless the site says a box is actually online — the
-    // dedicated server does not take clients yet, and an enabled button that parks on
-    // "Reserving server" forever is worse than one that says why it is off.
-    play.textContent = 'Play'
-    play.disabled = !S.map || !ready || busy || installing || !serversUp()
-    play.onclick = () => play_(false)
-  }
-  $('playLocalBtn').disabled = !S.map || !ready || busy || needsInstall || unavailable || installing
-  // One line, and only when it says something the buttons do not.
-  const note = $('cardNote')
-  note.textContent =
-    !ready ? 'ENW client not installed.'
-      : installing ? (S.installFile || 'Copying files.')
-        : busy ? 'Starting.'
-          : !S.map ? 'Pick a map.'
-            : unavailable ? 'Not on this PC. Nacht der Untoten works.'
-              : needsInstall ? 'Not installed yet.'
-                : !serversUp() ? 'No servers yet — use Play Local.'
-                : !playable(m) ? UNPLAYABLE_NOTE
-                  : S.mode === 'verified' ? 'Records and badges count.'
-                    : 'Untracked.'
-  note.classList.toggle('bad', !!m && !needsInstall && !unavailable && !installing && !playable(m))
-}
-
-async function installSelected() {
-  const m = S.selected
-  if (!m) return
-  S.installing = m.bsp
-  S.installPct = 0
-  S.installFile = null
-  updatePlay()
-  try {
-    const rec = await window.enw.installMap(m.bsp)
-    toast(`${rec.title} installed — ${rec.files.length} files, hashes checked.`)
-    await loadMaps()
-    selectMap(m.bsp)
-  } catch (e) {
-    toast(e.message, 'error')
-  } finally {
-    S.installing = null
-    S.installFile = null
-    updatePlay()
-  }
-}
 
 function renderStatus() {
   const b = $('statusBody')
@@ -454,8 +316,8 @@ function renderBoot(snap) {
   show('boot')
   $('bootCancel').classList.remove('off')
   $('bootClose').classList.remove('on')
-  const m = MAPS.find((x) => x.bsp === snap.map)
-  $('bootMap').textContent = m ? m.title : snap.map || '—'
+  // The title when the site told us one, the bsp when it did not. Never a blank.
+  $('bootMap').textContent = snap.title || snap.map || '—'
   $('bootMode').textContent = modeLabel(snap.mode)
 
   // `download` is the party/late-joiner map install, and it is the one step that is
@@ -496,15 +358,6 @@ function renderBoot(snap) {
     c.append(el('div', 'body', `No host agent answered: ${snap.simulated.join(', ')}.`))
     notes.append(c)
   }
-  updatePlay()
-}
-
-async function play_(local) {
-  if (!S.map) return
-  try {
-    const snap = await window.enw.play({ map: S.map, mode: S.mode, local, fsGame: S.selected?.fsGame || null })
-    renderBoot(snap)
-  } catch (e) { toast(e.message, 'error') }
 }
 
 // --------------------------------------------------------------- settings --
@@ -698,7 +551,6 @@ async function renderStorage() {
 async function refresh() {
   S.status = await window.enw.status()
   renderStatus()
-  updatePlay()
   const st = S.status
   $('sitePill').textContent = `site: ${st.site?.placeholder ? 'placeholder' : new URL(st.site?.url || 'about:blank').host || 'file'}`
   $('sitePill').className = `pill ${st.site?.placeholder ? 'warn' : 'ok'}`
@@ -739,8 +591,6 @@ function wire() {
     }
     refresh()
   }
-  $('playLocalBtn').onclick = () => play_(true)
-  $('modeBtn').onclick = () => { S.mode = S.mode === 'verified' ? 'custom' : 'verified'; updatePlay() }
   $('bootCancel').onclick = () => window.enw.cancelPlay()
   $('bootClose').onclick = () => { window.enw.closeBoot(); hideAll() }
   $('settingsClose').onclick = hideAll
@@ -761,22 +611,25 @@ function wire() {
     $('bootCancel').classList.add('off')
     $('bootClose').classList.add('on')
   })
+  // A map install still reports, and the one place it can be seen from the chrome is a
+  // toast on the terminal states: the bar itself belongs to the page that started it
+  // (the site's party panel and its map page both draw one).
   window.enw.onMapProgress((p) => {
-    if (p.bsp !== S.installing) return
-    S.installPct = p.total ? Math.round((p.done / p.total) * 100) : 0
-    S.installFile = `${p.file} (${S.installPct}%)`
-    updatePlay()
+    if (!p.done || !p.total || p.done < p.total) return
+    if (p.file) toast(`${p.bsp}: ${p.file}`)
   })
   window.enw.onToast((t) => toast(t.text, t.kind))
   window.enw.onSession(() => refresh())
   window.enw.onSettings(() => refresh())
   window.enw.onSite(() => refresh())
   window.enw.onDeepLink((link) => {
+    // A map lives in the wrapped site now, exactly as a party always did: the main
+    // process has already navigated the site view to /m/<key>, and the chrome's only job
+    // is to get out of the way. It deliberately does NOT press Play - the player presses
+    // it, on the site, having seen what they are about to download (launcher-v0 §7).
     if (link.kind === 'map' || link.kind === 'play') {
-      if (!MAPS.some((m) => m.bsp === link.map)) MAPS.unshift({ bsp: link.map, title: link.map, stock: false, installed: false, available: false, bytes: 0 })
-      selectMap(link.map)
+      hideAll()
       toast(`Opened from a link: ${link.map}`)
-      if (link.kind === 'play') play_(false)
       return
     }
     // A party lives in the wrapped site, and the main process has already navigated the
@@ -795,6 +648,5 @@ function wire() {
 ;(async () => {
   wire()
   const st = await refresh()
-  await loadMaps()
   if (!st.setup?.installed) { await renderFirstRun(); show('firstRun') }
 })()

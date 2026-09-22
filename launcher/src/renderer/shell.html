@@ -22,8 +22,16 @@
   <span class="pill" id="settingsPill">Settings</span>
 </div>
 
-<!-- The wrapped site is a native view underneath; these screens replace it, never
-     cover it. There is no overlay anywhere in this app. -->
+<!-- The wrapped site is a native view underneath, edge to edge below the topbar; these
+     screens replace it, never cover it. There is no overlay anywhere in this app.
+
+     THERE IS NO RAIL ANY MORE (2026-09-22). The launcher used to draw its own right-hand
+     column - selected-map card, Play / Play Local / Custom, a map list and a status block -
+     and every one of those is on the site's own home, in ITS left column, which is the one
+     place B decided a party is managed and a map is picked. Two copies of the map list is
+     one copy too many, and the rail's 320 px was what squeezed the site under its own
+     1080 px breakpoint so that left column never appeared at all. The shell keeps what only
+     a native app can do: setup, settings, the boot screen, and the topbar. -->
 
 <div class="screen wide" id="firstRun">
   <h1>Set up</h1>
@@ -48,6 +56,8 @@
 
 <div class="screen" id="settings">
   <h1>Settings</h1>
+  <h2>Status</h2>
+  <div id="statusBody"></div>
   <div id="settingsBody"></div>
   <h2>Where things are</h2>
   <div id="pathsBody"></div>
@@ -65,36 +75,6 @@
   <h1 id="detailTitle">Detection</h1>
   <div id="detailBody"></div>
   <div class="actions"><button id="detailClose">Close</button></div>
-</div>
-
-<div id="rail">
-  <div class="rail-scroll">
-    <div id="cornerCard">
-      <div class="card-art" id="cardArt"><div class="label">
-        <div class="mode" id="cardMode">Custom</div>
-        <div class="name" id="cardMap">No map selected</div>
-        <div class="sub" id="cardSub">Pick a map</div>
-      </div></div>
-      <div class="card-actions">
-        <button class="primary" id="playBtn" disabled>Play</button>
-        <div class="row">
-          <button id="playLocalBtn" disabled title="Runs on your own PC. Untracked.">Play Local</button>
-          <button id="modeBtn" title="Verified counts for records. Custom does not.">Custom</button>
-        </div>
-        <div class="card-note" id="cardNote"></div>
-      </div>
-    </div>
-
-    <div class="rail-section">
-      <h3>Maps</h3>
-      <div class="maplist" id="mapList"></div>
-    </div>
-
-    <div class="rail-section">
-      <h3>Status</h3>
-      <div id="statusBody"></div>
-    </div>
-  </div>
 </div>
 
 <div class="toast-wrap" id="toasts"></div>

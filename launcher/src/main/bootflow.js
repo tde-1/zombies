@@ -68,6 +68,10 @@ export class BootFlow extends EventEmitter {
   snapshot() {
     return {
       map: this.opts.map,
+      // The bsp is not the title (dev-box rule). The boot screen used to look the title
+      // up in the launcher's own map rail; there is no rail any more, so the flow carries
+      // it - from the site when the site knows it, and never invented when it does not.
+      title: this.mapTitle || this.opts.mapTitle || null,
       mode: this.opts.mode || 'custom',
       steps: this.steps,
       simulated: this.simulated,
@@ -262,6 +266,7 @@ export class BootFlow extends EventEmitter {
         const s = SITE_STEP[p.state]
         if (s) this.step(s[0], s[1], s[2])
         if (p.state === 'loading') this.step('reserving', 'done', `match ${p.match?.match_id || ''}`)
+        if (p.map?.title) this.mapTitle = p.map.title
         if (p.match?.connect) {
           this.matchId = p.match.match_id
           this.host = p.match.connect
