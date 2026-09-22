@@ -4283,3 +4283,45 @@ reboot. `play: true`.**
   the `r_watersim_*` dvars beside it; 0x7E1894 is `_setjmp3` and **Com_Frame calls it every frame
   at 0x59E4C1** on a per-thread jmp_buf from `fs:[0x2c]`, which is the landing place for every
   non-local exit out of the frame body.
+
+**vps, 2026-09-22 08:00 — `5606cfd` is on the box and the frame body returns at 60 Hz under a
+300-second storm. No player on it yet: `dedi` held `game.lock` the whole window.**
+
+- 07:40 vps: **TRAP, and it cost three deploys: `build\dedi` is the `dedi` lane's build
+  directory.** `build.ps1 -Name dedi` writes there and the `dedi` agent was rebuilding into it at
+  the same time, so three consecutive deploys shipped three different DLLs — `dd1141f5…`,
+  `ba226bdb…`, `882a2da9…` — none of them the build whose hash had just been printed, and the one
+  that landed still logged `enw_t4 build Sep 20`. dev-box rule 11 is about exactly this and
+  `-Name dedi` **is** somebody else's directory. **Build into your own: `build\vps`.** Second half
+  of the same trap: `infra/vps/05-run-dedi.sh` defaults `DLL=/tmp/enw_t4.dll` and copies it over
+  `binkw32.dll` every run, so a stale `/tmp` silently undoes a fresh deploy. Pass `DLL=`
+  explicitly and check the `enw_t4 build <date>` line rather than trusting the copy.
+- 07:45 vps: **the DLL on the box is `25524244dddc24635e8590ef8ce180916559ecbbdcd876b8479ca4c6a90f52f4`**
+  (1,535,488 bytes, `enw_t4 build Sep 22 2026 07:38:34`, built from HEAD `b8b553a`), in every
+  `zdev/waw-*` copy and in `/home/waw/waw-en/`. Both of `5606cfd`'s components arm first try:
+  `dedi_no_save_reload` (the `SV_LoadGame` ERR_DROP at `0x0062C10D` returns instead of dropping)
+  and `dedi_watersim_pool` (`guard=0 → guard=1`, six pool pointers filled).
+- 07:55 vps: **the fifth gate passes on Wine, under load.** 300-second `getstatus` storm from B's
+  PC at 10 Hz: **sent=2145 answered=2145 unanswered=0**, worst RTT 83 ms. Throughout it the box
+  logged `Com_Frame-body 59.2–59.7 Hz` with **`frame-body-entered` equal to `Com_Frame-body` at
+  every sample** — every frame that enters the body also returns from it, which is precisely what
+  `5606cfd` fixed, now observed on Hetzner and not only on B's PC. `com_frameTime` 726097 →
+  731099 → 736108 (+5002, +5009 ms per 5 s window). 12 m 20 s uptime, 312 MB, 20.7 % of one core
+  with the storm running.
+- 07:55 vps: **for `dedi`, about the harness and not the fix.** `dedi_rate_probe`'s in-line
+  `delta` field reads **0** on every line while `com_frameTime` on those same lines advances by
+  ~5000 ms per window. `jointest-proof.ps1`'s fifth gate reads `delta`, so **as written it would
+  FAIL a server that is demonstrably simulating.** Either `delta` is not "how far com_frameTime
+  moved in the last window" or its two samples are taken at the same instant. *Observation, not a
+  diagnosis — I have not read the code behind the field.*
+- 08:00 vps: **a real client join to the box did NOT happen, and nothing was pushed past to get
+  it.** `dedi` held `game.lock` for the entire window — `join69`, then `map05`'s map boots
+  (`nazi_zombie_test1`, `sanatorium`). `deploy.ps1` refused correctly with `CoDWaW is running
+  (pid 14860)`, and rule 3 says wait, so it waited. **The server half is proved; a player has not
+  been on it.**
+- 08:00 vps: the harness for when the lock frees is **`infra/vps/join-remote.ps1`** — jointest's
+  client half aimed at the box, because `jointest.ps1` runs both halves locally and has no remote
+  path. It waits for the lock instead of barging, kills only its own PID, and it is **not
+  `+connect`**: that is the server-side out-of-band name and the engine answers `Unknown command`.
+  `ENW_CLIENT_CONNECT` + `ENW_CONNECT_ADDR=2.28.235.236:28960` is the only route to a second
+  machine, because `CL_ConnectLocal` hard-codes "localhost" and that string is `NA_LOOPBACK`.

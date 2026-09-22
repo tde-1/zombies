@@ -830,3 +830,85 @@ After the fix, the same run reaches `map_loaded` in **6 seconds** and logs `PER-
 ### Capped at two
 
 `max_instances` is **2** in the box row and `--max-instances 2` in `/home/waw/run-host.sh`. Both are the measured ceiling from §15, not a guess.
+
+## 17. The watersim fix on the box: the frame body returns, under load (2026-09-22 07:55)
+
+`dedi`'s `5606cfd` (`watersim_pool.cpp` + `no_save_reload.cpp`) was rebuilt from HEAD `b8b553a`
+and deployed to every game copy on the box.
+
+**The DLL on the box** — `binkw32.dll` in `zdev/waw-{vps1,inst-01…04,stock,probe}` and
+`/home/waw/waw-en/enw_t4.dll`, all identical:
+
+```
+sha256  25524244dddc24635e8590ef8ce180916559ecbbdcd876b8479ca4c6a90f52f4
+size    1,535,488 bytes
+[INFO ] enw_t4 build Sep 22 2026 07:38:34
+```
+
+Both new components arm on the box, first try:
+
+```
+dedi_no_save_reload: SV_LoadGame's "Unable to find save." ERR_DROP at 0x0062C10D now returns
+                     instead of dropping the server. Dedicated only.
+dedi_watersim_pool: before: guard=0 [04DD0A10]=00000000 [04DD4AF0]=00000000 [04DD8BD0]=00000000 …
+dedi_watersim_pool: after : guard=1 [04DD0A10]=0C4B0020 [04DD4AF0]=0C5C0020 [04DD8BD0]=0908F138 …
+```
+
+### The fifth gate, under a 300-second getstatus storm from B's PC
+
+```
+storm: sent=2145 answered=2145 unanswered=0 over 300s, worst RTT 83 ms
+```
+
+and on the box, throughout that storm:
+
+```
+dedi_rate_probe: com_maxfps=60 target=16ms | ours 59.7 Hz | Com_Frame-body 59.7 Hz |
+                 frame-body-entered 59.7 Hz | com_frameTime=726097 … delta=0 | outer-pace 38627
+dedi_rate_probe: … | Com_Frame-body 59.2 Hz | frame-body-entered 59.2 Hz | com_frameTime=731099 …
+dedi_rate_probe: … | Com_Frame-body 59.5 Hz | frame-body-entered 59.5 Hz | com_frameTime=736108 …
+dedicated: liveness t=735s frame::count=44112 (+298 in 5s = 59.6 Hz)
+```
+
+**`frame-body-entered` and `Com_Frame-body` are equal at every sample.** Every frame that enters
+the body also returns from it — which is exactly what `5606cfd` fixed, now observed on Wine on
+Hetzner and not only on B's PC. 12 m 20 s uptime, 312 MB, 20.7 % of one core with the storm
+running.
+
+**One thing for `dedi` to look at, and it is about the harness, not the fix.** The in-line
+`delta` field reads **0** on every line, while `com_frameTime` on those same three lines goes
+726097 → 731099 → 736108: **+5002 and +5009 ms per 5-second window**, which is real time passing.
+`jointest-proof.ps1`'s fifth gate reads `delta`, so as written **it would FAIL this server**, which
+is demonstrably simulating. Either `delta` is not "how far com_frameTime moved in the last window"
+or it is computed from a sample taken at the same instant as the reference. *Observation, not a
+diagnosis* — I have not read the code that produces the field.
+
+### A real client join from B's PC: NOT done, and why
+
+**The `dedi` lane held `game.lock` for the whole window** — `join69`, then a run of map boots
+(`map05`: `nazi_zombie_test1`, `sanatorium`). `deploy.ps1` refused correctly (`CoDWaW is running
+(pid 14860). Close it before deploying.`) and nothing of theirs was touched. Kickstart rule 3 says
+wait, so this waited.
+
+The client half is ready when the lock is: `tools/dev/jointest.ps1` has **no remote-client path**
+— it launches both halves locally — so the harness for this is
+`infra/vps/join-remote.ps1`, which is jointest's client half with the address pointed at the box.
+**It is not `+connect`**: that is not a client command in this exe, it is the *server*-side
+out-of-band name. `ENW_CLIENT_CONNECT=<map>` arms `connect_local.cpp`, and
+`ENW_CONNECT_ADDR=2.28.235.236:28960` makes `connect_address.cpp` rewrite the operand
+`CL_ConnectLocal` would otherwise resolve to `NA_LOOPBACK`. `ENW_RAW_SOCKETS=1` on both halves.
+
+So: **the server is proved to simulate under load from off-box; a player has not yet been on it.**
+
+### A trap that cost three restarts: `build\dedi` is the dedi lane's build directory
+
+`build.ps1 -Name dedi` writes to `build\dedi`, and the `dedi` agent was rebuilding into it at the
+same time. Three consecutive deploys shipped three different DLLs — `dd1141f5…`, `ba226bdb…`,
+`882a2da9…` — none of which was the build whose hash had just been printed, and the one that
+landed still logged `enw_t4 build Sep 20`. dev-box rule 11 (never a shared build dir) is about
+exactly this, and `-Name dedi` **is** another lane's dir. **Build into `build\vps`.**
+
+Second half of the same trap: `05-run-dedi.sh` defaults `DLL=/tmp/enw_t4.dll` and copies it over
+`binkw32.dll` on every run, so a stale `/tmp` silently undoes a fresh deploy. Pass `DLL=`
+explicitly — `DLL=/tmp/enw_t4_vps.dll` — and check the `enw_t4 build <date>` line in the log
+rather than trusting the copy.
