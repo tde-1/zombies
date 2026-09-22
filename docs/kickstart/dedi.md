@@ -2613,3 +2613,14 @@ string is fresh): 39 server/client component sources (+13 core), `sha256 680ac0a
 `game.lock` held by the launcher) and **no box deploy** (a verified lease was live on inst-03).
 The DLL is staged at `zombies-dev:/tmp/enw_t4_msgbox.dll` (hash checked). The hook has not yet
 answered a real dialog; the first proof is a `no_msgbox: armed` line, then a retire-then-boot.
+
+### 2026-09-22 19:30 — deployed and proven on the box
+
+Installed `680ac0ae…` (build Sep 22 2026 19:27:41) into all seven game copies while the box was
+idle, restarted the host agent, then two fake-ID leases 30 s apart (retire-then-boot path). **Both
+instances raised "Set Optimal Settings?" / "Your computer appears to have changed…" at boot** — so
+the prompt is on every boot on this box, not only beside a retiring instance; before tonight only
+the host agent's timing decided whether anyone noticed. `no_msgbox` answered it in ~2 s on both,
+`map_loaded` came 6 s after link each time. The host agent's Escape belt stays as a second layer.
+Oddity: the journal's `linked (… Sep 20 2026 00:58:12)` build string is stale while the DLL log
+says Sep 22 — the hello's `dll_build` is not the build macro the log uses; cosmetic, unfixed.

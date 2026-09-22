@@ -1130,3 +1130,14 @@ with the right match id, a bad signature is caught, the row is stripped, and the
   still `318dfd60…`. Deploy only when the journal's last line is `assignment changed: idle` and no
   `CoDWaW` runs: `rm` + `cp` to `binkw32.dll` in every `zdev/waw-*` copy, verify sha256, restart
   `enw-host-agent`. See dedi.md §17.
+
+### 2026-09-22 19:30 — deployed and proven on the box
+
+Installed `680ac0ae…` (build Sep 22 2026 19:27:41) into all seven game copies while the box was
+idle, restarted the host agent, then two fake-ID leases 30 s apart (retire-then-boot path). **Both
+instances raised "Set Optimal Settings?" / "Your computer appears to have changed…" at boot** — so
+the prompt is on every boot on this box, not only beside a retiring instance; before tonight only
+the host agent's timing decided whether anyone noticed. `no_msgbox` answered it in ~2 s on both,
+`map_loaded` came 6 s after link each time. The host agent's Escape belt stays as a second layer.
+Oddity: the journal's `linked (… Sep 20 2026 00:58:12)` build string is stale while the DLL log
+says Sep 22 — the hello's `dll_build` is not the build macro the log uses; cosmetic, unfixed.
