@@ -40,7 +40,12 @@ export const PHASES = ['reserving', 'loading', 'ready', 'launching', 'in_game', 
 // The pipe name is random per launch and passed in ENW_TOKEN_PIPE; the token itself
 // never appears in the command line, and (unless the fallback is on) never in the
 // environment either.
-export function serveToken(token, { timeoutMs = 120000 } = {}) {
+// The same pipe carries the in-game chat pass (`chat: {base, bearer}`) when there is
+// one: the site mints it for the signed-in player (`POST /api/launcher/chat-token`),
+// it is good for /api/game-chat/* only, and the DLL's chat overlay reads it here
+// (client-dll/components/chat_link.hpp). Either half may be absent -- a Play Local
+// game has no invite token and still chats.
+export function serveToken(token, { timeoutMs = 120000, chat = null } = {}) {
   const name = `enw-launch-${crypto.randomBytes(8).toString('hex')}`
   const pipePath = `\\\\.\\pipe\\${name}`
   const state = { pipePath, delivered: false, connections: 0, closed: false }
@@ -48,7 +53,10 @@ export function serveToken(token, { timeoutMs = 120000 } = {}) {
   const server = net.createServer((sock) => {
     state.connections++
     sock.on('error', () => {})
-    sock.end(`${JSON.stringify({ v: 0, token })}\n`, () => {
+    const line = { v: 0 }
+    if (token) line.token = token
+    if (chat && chat.base && chat.bearer) line.chat = { base: chat.base, bearer: chat.bearer }
+    sock.end(`${JSON.stringify(line)}\n`, () => {
       state.delivered = true
     })
   })
@@ -479,10 +487,14 @@ export class GameLaunch extends EventEmitter {
       if (o.linkHost) env.ENW_HOST = o.linkHost
       else delete env.ENW_HOST
 
-      // The token. Pipe first; env only if explicitly allowed.
-      if (o.token) {
-        this.tokenPipe = serveToken(o.token)
+      // The token (and the chat pass). Pipe first; env only if explicitly allowed.
+      const chat = o.chat && o.chat.base && o.chat.bearer ? o.chat : null
+      if (o.token || chat) {
+        this.tokenPipe = serveToken(o.token || null, { chat })
         env.ENW_TOKEN_PIPE = this.tokenPipe.pipePath
+        if (chat) this.note('in-game chat pass offered over the same private pipe')
+      }
+      if (o.token) {
         if (o.tokenViaEnv) {
           env.ENW_TOKEN = o.token
           this.note('invite token passed in the environment (fallback) — never on the command line')

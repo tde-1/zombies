@@ -833,6 +833,31 @@ await test('the token pipe hands over exactly one token and then closes', async 
   srv.close()
 })
 
+await test('the same pipe carries the in-game chat pass, with or without an invite token', async () => {
+  const net = await import('node:net')
+  const read = (p) => new Promise((resolve, reject) => {
+    const c = net.connect(p)
+    let buf = ''
+    c.on('data', (d) => { buf += d })
+    c.on('end', () => resolve(JSON.parse(buf)))
+    c.on('error', reject)
+    setTimeout(() => reject(new Error('pipe timeout')), 4000)
+  })
+  const chat = { base: 'https://zombies.enw.gg', bearer: 'gc1.abc.def' }
+  const both = launch.serveToken('TOKEN-ABC', { chat })
+  const a = await read(both.pipePath)
+  assert.equal(a.v, 0)
+  assert.equal(a.token, 'TOKEN-ABC')
+  assert.deepEqual(a.chat, chat)
+  both.close()
+  // Play Local: no invite, chat only. The DLL (auth_token.cpp) must not see a token.
+  const only = launch.serveToken(null, { chat })
+  const b = await read(only.pipePath)
+  assert.equal('token' in b, false)
+  assert.deepEqual(b.chat, chat)
+  only.close()
+})
+
 // ---------------------------------------------------------------- deep links --
 group('Deep links')
 

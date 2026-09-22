@@ -179,7 +179,9 @@ export class BootFlow extends EventEmitter {
     // Last chance to bail: cancel() during the poll above must not still start a game.
     if (this.cancelled) return this.snapshot()
     this.step('launching', 'active', 'starting World at War')
+    const chat = await this.chatPass()
     const l = new GameLaunch({
+      chat,
       host,
       map: o.map,
       token,
@@ -218,6 +220,18 @@ export class BootFlow extends EventEmitter {
   // the SITE leases the box, because it is the thing that knows the party, the map,
   // the mode and who is ready. `state` comes from the site so the boot screen and the
   // site can never disagree about what is happening.
+  // The in-game chat pass, if the launcher can get one (main.js hands us the provider;
+  // siteapi.js :: chatPass). Never allowed to hold up or fail a launch.
+  async chatPass() {
+    const f = this.opts.chatPass
+    if (typeof f !== 'function') return null
+    try {
+      return await Promise.race([f(), new Promise((r) => setTimeout(() => r(null), 4000))])
+    } catch {
+      return null
+    }
+  }
+
   async runViaSite(api) {
     const o = this.opts
     const { PlayWatcher } = await import('./siteapi.js')
@@ -342,7 +356,9 @@ export class BootFlow extends EventEmitter {
 
     if (o.launch === false) return this.snapshot()
     this.step('launching', 'active', 'starting World at War')
+    const chat = await this.chatPass()
     const l = new GameLaunch({
+      chat,
       host: p.match.connect,
       // The map name is not decoration here: CL_ConnectLocal takes one, and without it
       // the client never dials the server at all (launch.js :: connectEnv).
@@ -398,7 +414,9 @@ export class BootFlow extends EventEmitter {
     if (this.cancelled) return this.snapshot()
 
     this.step('launching', 'active', 'starting World at War')
+    const chat = await this.chatPass()
     const l = new GameLaunch({
+      chat,
       host: null,                 // never both +map and +connect
       token: null,                // untracked: there is nothing to authorise
       map: o.localMap,

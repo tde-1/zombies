@@ -923,6 +923,9 @@ function wireIpc() {
       // launcher-v0: when the site is there, IT leases and we watch. The old
       // mock-site lease path stays only for a machine with no site running.
       api: opts.local ? null : state.api,
+      // The in-game chat overlay's pass, for every launch including Play Local: chat is
+      // not tracking, it is the player's account talking to the site.
+      chatPass: state.api ? () => state.api.chatPass() : null,
       // Somebody else pressed Start: skip POST /api/launcher/play (only the leader may
       // call it) and go straight to watching for the match the site already leased.
       follow: !!opts.follow,

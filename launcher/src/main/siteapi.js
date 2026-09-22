@@ -84,6 +84,19 @@ export class SiteApi extends EventEmitter {
   get signedIn() { return !!this.hello?.you }
   get who() { return this.hello?.you || null }
 
+  // The in-game chat overlay's pass (web: POST /api/launcher/chat-token). Asked for at
+  // every game launch and handed to the game on the token pipe, so the game never holds
+  // this session. Null when signed out or the site is too old to have it.
+  async chatPass() {
+    try {
+      const r = await this.req('/api/launcher/chat-token', { method: 'POST', body: {} })
+      if (!r.ok || !r.data?.token) return null
+      return { base: this.baseUrl, bearer: r.data.token }
+    } catch {
+      return null
+    }
+  }
+
   // The boot screen's source of truth. `state` is decided by the site so the two
   // cannot disagree about what is happening.
   async play() {
