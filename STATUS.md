@@ -7,7 +7,7 @@
 
 ## B: do this first (the morning checklist)
 
-1. **Install the launcher 0.2.1** from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
+1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
    the feed is live). Sign in with Steam. It repairs the game-folder DLL on every Play now — the
    "windowed at native size" you saw was a stale 0.1.x DLL that no update ever copied in.
 2. **Play Local on Nacht once.** Expect: borderless 2560x1440 covering the taskbar, 250 FPS cap,
@@ -24,6 +24,15 @@
    Give them the gate password and `/download`.
 5. **Custom maps with friends**: today that is Minecraft Village Remastered plus the stock four on the box. The rest is the list under *Known and unfixed*.
 6. **Replay viewer**: any finished game's page → replay. Nacht renders with full world geometry.
+
+## Since the morning checklist was written (afternoon)
+
+- **Isolation rule, done and proven**: our session redirects the game's LocalAppData into `%LOCALAPPDATA%\ENWZombies\home\localappdata` (DLL `enw_localappdata.cpp`); maps, config, saves, profiles all live there; B's `Activision\CoDWaW` tree is byte-identical before/after a Play Local. B's own mods folder was cleaned into `ZombiesDevackup-user-mods-20260923\`.
+- **LAA / 4 GB flag: impossible on the Steam exe.** SteamStub refuses a flagged exe (`Application load error 3:0000065432`, measured). ORBiT and UGX Requiem clients therefore still stall at ~1.6 GB. The launcher refuses to flag any exe with a `.bind` section.
+- **Player identity**: only the site's signed invite token; parsed at connect, verified by the host, forged → kicked in 27 ms; `identity: none|claimed|verified|refused`; the integration test scores 2 players.
+- **`flag_wait` is fatal on a stock listen game too**; the fatal script arrives in an add-on IWD (`zombie_hitmarker_bythesuzho.iwd`) our archive install ships — an agent is stripping add-ons and retesting the four maps.
+- **0.2.2** on the feed: LAA plumbing (off), isolation, `enw-zombies://map|party` deep links, Check for updates.
+- Web pass in progress: Movement's list/card views, home rows, one theme, Maps · Records · Admin nav, browser Play → `/download`.
 
 ## The headline
 
