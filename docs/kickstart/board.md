@@ -4146,3 +4146,59 @@ PC, the host agent runs on it under Linux, and two instances fit. Retracting my 
   and `jointest.ps1` does not run it — every join run logs `game-link: connect ... failed,
   retrying`. With `SV_Frame` stopped ~5 s into a custom map there was also nothing to sample. This
   needs a host-agent run, which is `host.md`'s lane, once the frame escape is fixed.
+
+**vps, 2026-09-22 05:35 — the box is registered, online at the live site, and comes back after a
+reboot. `play: true`.**
+
+- 05:14 vps: **`zombies-dev` is box #3 at the live site**, `region=nbg1`, `max_instances=2`,
+  `enabled`, and `boxes.list().some(b => b.online)` — which *is* `capabilities.play` — is **true**.
+  `replay key 1cbc9958b50941ed is PINNED at the site — replays from this box are record-grade`.
+- 05:14 vps: **the one authorised write to `web/data`, and how it was made safe.** B lifted rule 7
+  for this row and only this row. The database was copied to
+  **`web/data/backup-20260922T051411Z/`** first (the convention already in that folder) and exactly
+  one row was inserted. New CLI **`web/tools/register-box.js`** — a twin of
+  `POST /api/admin/boxes`, which exists and is the right way when a human is at a browser but
+  needs an admin **session**, the one credential an agent must not hold. The tool **never prints
+  the secret**: 32 random bytes to a 0600 `--out` file, moved to **`/root/enw-host.env`
+  (0600 root:root)** and deleted locally. It is in no unit file, no script, no command line, and
+  `boxes.list()` omits `match_key` by design. It also **refuses** to re-create an existing box
+  rather than mint a second secret and orphan the first.
+- 05:20 vps: **`play: true` was computed with the site's own `boxes.list()`, not fetched over
+  HTTP** — `GET /api/launcher/hello` is behind the closed-beta gate (`401 … Ask B for the
+  password`) and entering a password is not something an agent does. `/api/gs/*` is exempt by
+  design, which is why the box polls fine. `middleware/gate.js` has the list.
+- 05:27 vps: **five systemd units, all enabled, so the box rebuilds itself after a reboot**
+  (Steam's auto-login is on): `enw-xvfb`, `enw-x11vnc`, `enw-novnc`, `enw-steam`,
+  **`enw-host-agent`** (`--wine --site https://zombies.enw.gg`, `Restart=on-failure`, journal
+  logs). Only the agent was started; the other four were already running by hand and a second copy
+  of any of them is worse than none. Three non-obvious bits in `vps.md` §16: `EnvironmentFile` is
+  read as root *before* systemd drops to `User=waw`; `ExecStartPre` waits for Xvfb **and** Steam
+  whoever started them; and `enw-steam` cannot be `Type=simple` because Steam re-execs and
+  outlives its `wine`, so systemd would start a second one.
+- 05:27 vps: **a VALID, signed replay from a real game on the box.** `m_e455d4ba`, Nacht der
+  Untoten, 2 chunks, 20 events, 1m45s, `signed by 94a38260ca0835fa`, and `tools/verify.js` says
+  *every chunk hashes to its index entry, the chain is intact, and the footer signature checks
+  out*. The `exe sha256` in the footer is **`732900d1…` — B's `CoDWaW.exe`**, running under Wine
+  on Hetzner.
+- 05:27 vps: **the site half of lease → result was NOT driven, on purpose.** A lease comes from
+  `POST /api/admin/lease` or a party, both of which need a logged-in session; and pushing a
+  synthetic game through the live site is real XP, real records and well past the single write B
+  authorised. **B leases one and the box takes it** — nothing further needs installing.
+- 05:25 vps: **TRAP, and it cost a run: `kill -9` on a game leaves `__CoDWaW` behind and the NEXT
+  launch hangs with nothing in any log.** A stale marker makes the engine raise "Run In Safe
+  Mode?" *before* it opens `console.log`, so the symptom is a `CoDWaW.exe` at ~50 MB, no
+  `console.log` at all, and our DLL saying `engine never came up within 120000 ms`. The host
+  agent's Wine path now clears it before every launch — **unconditionally, which is right here and
+  wrong on Windows**: `launch.ps1` correctly refuses when the PID inside is live, because there
+  the marker IS the single-instance interlock; on this box the interlock is the 3074/3075 pair and
+  the marker is one shared file that instance two would always find live. With it cleared the same
+  run reaches `map_loaded` in **6 s** and logs `PER-FRAME TICK IS LIVE`.
+- 05:30 vps: second `instances.js` fix — `this.wine = wine` was missing from the constructor
+  **body** while the parameter sat in the signature, so the first service run went down the
+  `launch.ps1` path and failed with `launch script not found`. `test/run-all.js` **41/41**
+  throughout.
+- 05:35 vps: **for the host lane** — `tools/verify.js` prints `file undefined`, `size NaN GiB`,
+  `content undefined chunks` on the INVALID path. Verdict and exit code are right; the summary
+  above them is nonsense, on exactly the file somebody is already suspicious of.
+- 05:35 vps: **what is left.** A real lease from B. The box is idle, online, capped at 2, and
+  `systemctl status enw-host-agent` / `journalctl -u enw-host-agent -f` is how you watch it.

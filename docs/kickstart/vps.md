@@ -482,9 +482,10 @@ into `steamapps/common/Call of Duty World at War`.
 - ~~**The server has never answered on the wire from this box.**~~ **It does — §13**, exit 0 from
   B's PC, on `nazi_zombie_prototype`, at 60 Hz.
 - ~~**The host agent is not on the box**~~ **It is — §14**, under Linux, launching through Wine,
-  linking to the DLL and signing a replay. **The box is still NOT registered with the live site**:
-  that needs a box secret written into `web/data/zombies.db`, which this lane does not touch. §14
-  has the one command and who should run it.
+  linking to the DLL and signing a replay. ~~**The box is still NOT registered with the live
+  site**~~ — **registered 05:14, §16**: B lifted rule 7 for that one row, the database was backed
+  up first, and `capabilities.play` is now `true`. What is still not done is a **real lease**,
+  which needs a logged-in session at the site and is B's to start.
 - ~~**Instances-per-box is unmeasured.**~~ **It is two — §15**, and the limit is the lobby layer's
   UDP 3074/3075 pair, not CPU, RAM or disk.
 - ~~**The German depot is still installed.**~~ **Uninstalled** through the client; the box now runs
@@ -739,3 +740,93 @@ a bigger box. **Untested** — restarting Steam risks the login, and the login i
 UDP **28960** was widened to **28960–28970**, and 3074–3075 to **3074–3079**, so each instance is
 reachable from outside (`POST /v1/firewalls/11659901/actions/set_rules`). Rules only; **no change
 to the bill**, and §1 still holds.
+
+## 16. The box is registered, runs as a service, and survives a reboot (2026-09-22 05:30)
+
+**`capabilities.play` is `true`.** The launcher's Play button is on because of this box.
+
+```
+capabilities.play (boxes.list().some(b => b.online)) = true
+  {"id":3,"name":"zombies-dev","online":true,"last_state":"idle","region":"nbg1",
+   "max_instances":2,"key":{"pinned":"1cbc9958b50941ed","pinned_at":1790054154676}}
+```
+
+```
+info host  site invite key b74d9a7c9874d877 loaded — token checks advisory
+info host  host agent up: box=zombies-dev link=127.0.0.1:38700 key=1cbc9958b50941ed
+info host/site  assignment changed: idle   (nonce idle)
+info host  replay key 1cbc9958b50941ed is PINNED at the site — replays from this box are record-grade
+```
+
+**That value was computed with the site's own `boxes.list()`, not read from the HTTP route**, because `GET /api/launcher/hello` sits behind the closed-beta gate (`401 ENW Zombies is in closed beta. Ask B for the password.`) and entering a password is not something an agent does. `/api/gs/*` is exempt from the gate by design — which is why the box itself polls fine. `middleware/gate.js` is the list.
+
+### The box secret
+
+Created with **`web/tools/register-box.js`**, a CLI twin of `POST /api/admin/boxes` — that route exists and is the right way when a human is at a browser, but it needs an admin **session**, which is exactly the credential an agent must not hold.
+
+The database was **copied to `web/data/backup-20260922T051411Z/` before the write**, which is the convention already in that folder. One row inserted, nothing else touched. `web/data` is otherwise still off-limits to this lane; B lifted rule 7 for this write and only this write.
+
+The tool **never prints the secret** — not to stdout, not to a log, not into this repo. It writes 32 random bytes to a `--out` file at mode 0600, which was moved to **`/root/enw-host.env` (0600 root:root)** on the box and deleted locally. It is not in the unit file, not in `/home/waw/run-host.sh`, not on any command line, and `boxes.list()` deliberately omits `match_key` so it cannot come back out of the API. The tool **refuses** to re-create an existing box rather than minting a second secret and orphaning the first.
+
+### The units
+
+`infra/vps/06-host-agent.sh` installs five, all **enabled** so a reboot rebuilds the box (Steam's auto-login is on, so it comes back by itself):
+
+| unit | what |
+|---|---|
+| `enw-xvfb` | `Xvfb :99`, the display everything else needs |
+| `enw-x11vnc` | x11vnc on 127.0.0.1:5900, tunnel-only, unchanged from §5 |
+| `enw-novnc` | websockify on 127.0.0.1:6080 |
+| `enw-steam` | the Windows Steam client under Wine — SteamStub needs it |
+| **`enw-host-agent`** | the host agent, `--wine --site https://zombies.enw.gg` |
+
+Only `enw-host-agent` was **started**: the other four were already running by hand and a second copy of any of them is worse than none.
+
+Three details that are not decoration:
+
+* **`EnvironmentFile=/root/enw-host.env`.** systemd reads it as root *before* dropping to `User=waw`, so the file stays 0600 root:root and the secret never reaches a command line or another user's `/proc`. `ENW_SITE` is a plain `Environment=` line because a URL is not a secret.
+* **`ExecStartPre=/usr/local/bin/enw-wait-rig`** waits for `Xvfb :99` *and* `Steam.exe`, whoever started them, then sleeps 10 s more — SteamStub asks the client to validate app 10090, and a game started before the client is ready exits(0) in silence.
+* **`enw-steam` cannot be a plain `Type=simple` unit.** Steam re-execs itself and outlives the `wine` process that launched it (§5), so systemd would see the main process exit, call it a failure and start a *second* Steam. `/home/waw/run-steam.sh` launches it and then waits until the client actually goes away.
+
+`Restart=on-failure`, `RestartSec=15`, `KillSignal=SIGINT`, logs in the journal:
+
+```
+systemctl status enw-host-agent
+journalctl -u enw-host-agent -f
+```
+
+### A signed replay, from a real game, on the box
+
+The site half of lease → boot → replay → result cannot be driven from here: a lease is created by `POST /api/admin/lease` or by a party, and both need a logged-in session. **The box's half was proved instead, and it is signed:**
+
+```
+info host/inst-01  map_loaded nazi_zombie_prototype -> manifest "Nacht der Untoten" (read)
+info host/inst-01  recording -> …/m_e455d4ba.enwr (fingerprint aff989212886acff)
+info host/inst-01  replay closed: 3.4 KiB in 2 chunks, 20 events, 0.11 MB/game-hour
+```
+
+```
+  match         m_e455d4ba  Nacht der Untoten  (custom)
+  recorded by   box box-a, instance inst-01, Sep 20 2026 00:58:12
+  exe sha256    732900d158982c33e3121f0b86d22230be79839bbcbfe3bdfc1238f408a7d64d
+  content       2 chunks, 20 events, 1m45s of game time
+  signed by     94a38260ca0835fa
+  VALID — every chunk hashes to its index entry, the chain is intact, and the
+          footer signature checks out.
+```
+
+The `exe sha256` in that footer is **B's `CoDWaW.exe`**, recorded by a game running under Wine on Hetzner. It says `box box-a` because that one-shot was run by hand without the env file; a leased game carries `zombies-dev`.
+
+**What is left for a real end-to-end**: B leases a game from the site (a party, or `POST /api/admin/lease` with `box: "zombies-dev"`) and the box takes it — nothing further needs to be installed. No synthetic game was pushed into the live boards, because that is XP and records on the real site and it is well past the one write that was authorised.
+
+### A trap that cost a run, and a fix in the host agent
+
+**`kill -9` on a game leaves `__CoDWaW` behind, and the next launch hangs with nothing in any log.** The marker is 4 bytes holding the previous PID; a stale one makes the engine put up "Run In Safe Mode?" *before* it opens `console.log`. The symptom is a `CoDWaW.exe` sitting at ~50 MB, no `console.log` at all, and our own DLL reporting `game: engine never came up within 120000 ms`.
+
+`05-run-dedi.sh` already deleted it; the host agent's Wine path did not, and now does — **unconditionally**, which is right here and wrong on Windows. `launch.ps1` deletes it only when the PID inside is dead and refuses when it is live, because on Windows that marker is a real single-instance interlock. On this box it is not: the interlock is the 3074/3075 pair (§15), every instance has its own copy and homepath, and the marker is one shared file in one prefix that instance two would always find live. The code says so at the site of the deletion.
+
+After the fix, the same run reaches `map_loaded` in **6 seconds** and logs `PER-FRAME TICK IS LIVE`.
+
+### Capped at two
+
+`max_instances` is **2** in the box row and `--max-instances 2` in `/home/waw/run-host.sh`. Both are the measured ceiling from §15, not a guess.

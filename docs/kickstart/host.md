@@ -1268,3 +1268,47 @@ require('./server/lib/boxes').create({ name: 'zombies-dev', matchKey: <fresh ran
 
 then on the box: `/home/waw/run-host.sh --boot 1 --site https://zombies.enw.gg --secret <it>`.
 The site is pull-only, so no inbound rule and no firewall change is involved.
+
+### 11.5 The box is registered and runs as a systemd service (2026-09-22 05:30)
+
+`zombies-dev` is box **#3** at the live site, `max_instances` **2**, `enabled`, and it is **online**:
+
+```
+{"id":3,"name":"zombies-dev","online":true,"last_state":"idle","region":"nbg1",
+ "max_instances":2,"key":{"pinned":"1cbc9958b50941ed"}}
+capabilities.play (boxes.list().some(b => b.online)) = true
+```
+
+```
+info host  site invite key b74d9a7c9874d877 loaded — token checks advisory
+info host  replay key 1cbc9958b50941ed is PINNED at the site — replays from this box are record-grade
+info host/site  assignment changed: idle   (nonce idle)
+```
+
+The secret came from **`web/tools/register-box.js`** (new) — a CLI twin of `POST /api/admin/boxes`, because that route needs an admin session. It backs the database up first, refuses to re-create an existing box, and writes the secret only to a 0600 file, never to stdout. It now lives at `/root/enw-host.env`, 0600 root:root, loaded by systemd as root before the unit drops to `User=waw`, so it is on no command line.
+
+Units, all enabled for reboot: `enw-xvfb`, `enw-x11vnc`, `enw-novnc`, `enw-steam`, **`enw-host-agent`**. `infra/vps/06-host-agent.sh` installs them; `vps.md` §16 has the three that are not obvious (the env file, the `ExecStartPre` rig wait, and why `enw-steam` cannot be `Type=simple`).
+
+**A signed replay from a real game on the box**, `tools/verify.js`:
+
+```
+match       m_e455d4ba  Nacht der Untoten  (custom)
+exe sha256  732900d158982c33e3121f0b86d22230be79839bbcbfe3bdfc1238f408a7d64d
+content     2 chunks, 20 events, 1m45s of game time
+signed by   94a38260ca0835fa
+VALID — every chunk hashes to its index entry, the chain is intact, and the footer
+        signature checks out.
+```
+
+The site half — lease → result — was **not** driven from here: a lease needs `POST /api/admin/lease` or a party, both of which need a logged-in session, and pushing a synthetic game into the live boards is real XP and real records. B leases one and the box takes it; nothing further needs installing.
+
+### 11.6 Two fixes this shook out of `instances.js`
+
+1. **`this.wine = wine` was missing from `InstanceManager`'s constructor body.** The parameter was in the signature and the config was right the whole way in, so the manager silently had `undefined` and the first run went down the `launch.ps1` path and failed with `launch script not found`. The failure named the wrong thing, as they do.
+2. **The Wine path now clears `__CoDWaW` before every launch.** `kill -9` on a game leaves that 4-byte marker behind, and the *next* launch puts up "Run In Safe Mode?" **before the engine opens `console.log`** — so the symptom is a process at ~50 MB, no console.log at all, and the DLL reporting `engine never came up within 120000 ms`. It cost a run. **The deletion is unconditional and that is correct only here**: on Windows the marker is a real single-instance interlock and `launch.ps1` rightly refuses when its PID is live; on the box the interlock is the 3074/3075 pair, every instance has its own copy and homepath, and the marker is one shared file in one Wine prefix that instance two would always find live. The comment at the deletion says so, and the Windows path is untouched.
+
+`node test/run-all.js`: **41 passed, 0 failed** throughout.
+
+### 11.7 One thing for this lane to settle
+
+`tools/verify.js` prints `file undefined`, `size NaN GiB` and `content undefined chunks` on the **INVALID** path — the header is rendered before the fields it needs exist. The verdict line is right and the exit code is right; only the summary above it is nonsense. Cosmetic, but it is the tool somebody reaches for when a replay is already suspect.

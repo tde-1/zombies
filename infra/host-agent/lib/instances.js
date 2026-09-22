@@ -237,6 +237,28 @@ export class Instance extends EventEmitter {
         this.failReason = `no game copy at ${gameDir} (infra/vps/05-run-dedi.sh builds one)`
         this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
       }
+      // The safe-mode marker, or the next launch hangs with NOTHING in any log.
+      //
+      // `%LOCALAPPDATA%\Activision\CoDWaW\__CoDWaW` is a 4-byte file holding the PID of
+      // the running instance, written at startup and deleted on a clean exit. If a game
+      // is killed hard it survives, and the next launch puts up a modal "Run In Safe
+      // Mode?" *before* the engine opens console.log — so the symptom is a process
+      // sitting at ~50 MB, no console.log at all, and our own DLL reporting
+      // `engine never came up within 120000 ms`. It cost a run here.
+      //
+      // launch.ps1 deletes it only when the PID inside is dead and REFUSES when it is
+      // live, because on Windows that marker is a real single-instance interlock. On
+      // this box it is not: the interlock is the lobby layer's UDP 3074/3075 pair
+      // (vps.md §15), every instance has its own game copy and fs_homepath, and the
+      // marker is one shared file in one Wine prefix that instance two would always
+      // find live. So here it is removed unconditionally. DO NOT copy this to the
+      // Windows path.
+      if (!this.mgr.dryRun && this.mgr.wine.marker !== false) {
+        const marker = this.mgr.wine.marker
+          || path.join(this.mgr.wine.prefix, 'drive_c', 'users', 'waw', 'AppData', 'Local', 'Activision', 'CoDWaW', '__CoDWaW')
+        try { if (fs.existsSync(marker)) { fs.unlinkSync(marker); this.log.debug(`cleared the stale safe-mode marker ${marker}`) } } catch (e) { this.log.warn(`could not clear ${marker}: ${e.message}`) }
+      }
+      try { fs.mkdirSync(path.join(this.mgr.wine.prefix, 'drive_c', ...homeWin.replace(/^[A-Za-z]:\\/, '').split('\\'), 'main'), { recursive: true }) } catch { /* best effort */ }
       this.log.info(`wine: ${gameDir} -> fs_homepath ${homeWin}`)
     } else if (this.kind === 'game') {
       // ONE REAL GAME PER BOX, and say so out loud.
