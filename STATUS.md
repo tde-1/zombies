@@ -27,9 +27,9 @@ was the *client* giving up while the server was fine.
 stops: `frame::count` frozen, CPU pegged at a whole core. Pegged, not idle, so it is a spin rather
 than a wait. That is the one thing between here and a playable dedicated game.
 
-**For the next agent**: `docs/kickstart/next-session.md` is the one-page handoff — the next task,
-the command that reproduces this state, which logs to read and the traps. `docs/kickstart/README.md`
-is the entry point and the hard rules; `docs/kickstart/board.md` ends with what is open.
+Those two pages named at the top: `README.md` has the hard rules and says which doc belongs to
+which lane; `next-session.md` has the one next task, the command that reproduces this state, which
+logs to read and the traps. `docs/kickstart/board.md` ends with what is open right now.
 
 ## The two things to do next
 
