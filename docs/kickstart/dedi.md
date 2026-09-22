@@ -2478,3 +2478,89 @@ So **stock WaW loads raw GSC from mod-folder IWDs, and that raw copy is the one 
 it is live code, not leftover source the author forgot to strip. Every custom map in the archive
 that ships a `maps/` tree inside its IWD is running that tree, which is why the engine's error line
 numbers have matched the IWD's raw files exactly in every trace since §13.
+
+## 16. 2026-09-23 — the four `flag_wait` maps are not broken; `+set logfile 2` is
+
+Full working in [`scripts.md`](scripts.md). This is what the dedi lane has to carry.
+
+### 16.1 RETRACTION, in place: §14.2's stock-exe control was not a retail launch
+
+§14.2 ran the four maps on a **stock `CoDWaW.exe`** with the binkw32 proxy reverted, got
+the byte-identical script runtime error, and concluded "the maps do this on their own …
+nothing in this lane can fix it". The first half is right. The second half is wrong, and
+the reason is in the run's own command line:
+
+```
++set dedicated 1 +set zombiemode 1 +set logfile 2 …
+```
+
+`maptest.ps1 -NoEnw` removes our DLL and keeps `+set logfile 2`. So does `launch.ps1`,
+`jointest.ps1`, `dediprobe.ps1` and `launcher\src\main\launch.js`. Every measurement this
+project has ever taken of a custom map was taken with `logfile` on, and **`logfile` is
+not a passive dvar**:
+
+```
+0059C840  mov eax, [0x1F55288]      ; `developer`
+0059C84D  mov ecx, [0x1F552BC]      ; `logfile`
+0059C880  mov byte [0x3882B76], al  ; scrVarPub.developer     = developer || logfile
+0059C885  mov byte [0x3BD4715], cl  ; scrVmPub.abort_on_error = developer
+```
+
+`Com_SetScriptSettings` 0x59C840 puts the script VM into **developer mode** when either
+one is set. `Scr_ErrorInternal` 0x693CF0 then promotes an ordinary script runtime error
+to `scrVmPub.terminal_error` — the store at **0x693D35**, which is reachable only under
+that flag — and `RuntimeError` 0x68B790 turns `terminal_error` into
+`Com_Error(5 = ERR_SCRIPT_DROP)`. With both dvars clear, `RuntimeError` returns in
+silence at 0x68B7B9, the VM repairs the thread's operand stack at 0x6971D6, and the
+thread carries on. `flag_wait` spins until `_load::main()` creates `level.flag`, and the
+map plays.
+
+**That is why the community plays these maps**, and §14.2 could not see it because the
+control run carried the cause.
+
+### 16.2 The three runs
+
+```
+scr01  nazi_zombie_test1, dedicated, logfile 2, ENW_NO_SCRIPT_ERROR_RETAIL=1
+       Com_Error TRAPPED  arg1 = 00000005  "undefined is not an array, string, or vector"
+       ----- Server Shutdown -----          getstatus never answered
+
+scr02  identical, ONLY `logfile 0`, still no patch of any kind
+       alive=True  getstatus=True  com_frameTime +35001 ms over 8 probes
+
+scr03  logfile 2 + shared/core/components/script_error_retail.cpp
+       nazi_zombie_test1 +34994 ms   nazi_zombie_test +35007 ms
+       mw2rust           +35002 ms   sanatorium       +34994 ms
+       all four alive, all four answering getstatus, and the full
+       ******* script runtime error ******* trace still in console.log
+```
+
+One dvar between `scr01` and `scr02`, and no code change in either. `scr02` is the run
+that does not reproduce.
+
+### 16.3 The fix, and why it is seven NOPs and not a dvar change
+
+`script_error_retail.cpp` NOPs the promotion store at 0x693D35 after verifying its bytes
+and `RuntimeError`'s prologue. It keeps `scrVarPub.developer` set, so `console.log` still
+gets the whole error trace — **we lose the kill and keep the diagnostics**. The other four
+writers of `terminal_error` (memory-allocation failure, the two variable-table exhaustion
+sites, `Scr_TerminalError`) are untouched, so a genuinely unrecoverable VM state still
+ends the game. The store cannot execute on a retail launch, so removing it cannot change
+retail behaviour.
+
+It is in `shared/core/components/`, not here, because a listen game and Play Local die in
+exactly the same place. `ENW_NO_SCRIPT_ERROR_RETAIL=1` is the control arm, and
+`maptest.ps1` gained `-LogFile` and `-NoScriptFix` so both halves reproduce in one command.
+
+### 16.4 What this does NOT reach
+
+Der Berg's `localVars` overrun (§13.2), Octogonal's `snddriverglobals` singleton and
+Water's memory reserve are engine-limit failures of the class T4M exists to raise, and
+none of them goes through `Scr_Error`. They are unchanged by this and stay unfixed.
+
+### 16.5 A trap for every lane
+
+**`+set logfile` changes engine behaviour, not just output.** It is the second dvar with
+that property this project has found, and unlike `+set developer 1` (README rule 5) it
+was in every launch line in the repo and in the shipped launcher. If a future bisect
+wants a genuinely stock control, it needs `-NoEnw` **and** `-LogFile 0`.
