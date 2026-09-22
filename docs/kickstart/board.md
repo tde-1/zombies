@@ -3803,3 +3803,21 @@ a route to several instances.
   is one UPDATE.
 - Nothing outside `web/`, `docs/kickstart/web.md`, `docs/protocol/launcher-v0.md`, this board and
   one `.gitignore` line was edited. The tunnel was not touched. No game was launched.
+
+### 05:05 launcher: 0.2.0 published to the update feed (B said go)
+
+- `node tools/publish-update.js` wrote `latest.yml`, `ENW-Zombies-Launcher-Setup-0.2.0.exe` and
+  its blockmap into `web/public/updates`. That directory is the only thing this lane touched
+  under `web/`, and only through the publish tool. **The site was not restarted** — web's one
+  restart tonight picks it up.
+- URL the site serves it at: **`/updates/ENW-Zombies-Launcher-Setup-0.2.0.exe`**
+  (`https://zombies.enw.gg/updates/...`), sha256
+  `71f55c9ec70a2641e2dcef5aaa7ed7abe25735fe210aa139fe8b0962a35745f3`, 94,479,989 bytes —
+  byte-identical to `launcher\dist\`'s copy. The feed's sha512 was verified against the served
+  file, not taken on trust.
+- Dry run with electron-updater's own `semver`: 0.1.0 → update available, 0.1.1 → update
+  available, 0.2.0 → no update. Feed `version: 0.2.0`, `path:` and `files[0].url` both name the
+  exe beside it.
+- Nothing to commit for this: the exe, the blockmap and `latest.yml` are all gitignored.
+- Worth one check after the restart, because it has bitten before: `curl` `/updates/latest.yml`
+  and confirm YAML, not the React catch-all answering 200 with `text/html`.

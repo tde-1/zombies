@@ -986,8 +986,14 @@ new one from the 0.2.0 installer.
   tests drive `BootFlow` and the reporter against fakes — no site, no game, nothing downloaded.
   The thing to watch on the first real party game is whether a member's poll sees
   `match.connect` before the leader's game is already loading.
-* The feed (`latest.yml` + the exe + its blockmap) went to a scratch directory, **not** to
-  `web/public/updates`. `node tools/publish-update.js` publishes it when B wants friends to get
-  it; until then 0.1.1 is what the auto-updater sees.
+* ~~The feed went to a scratch directory, not to `web/public/updates`.~~ **Superseded at
+  05:05: B said publish.** `node tools/publish-update.js` wrote `latest.yml`, the exe and its
+  blockmap into `web/public/updates`, so the site serves the installer at
+  **`/updates/ENW-Zombies-Launcher-Setup-0.2.0.exe`** (sha256
+  `71f55c9ec70a2641e2dcef5aaa7ed7abe25735fe210aa139fe8b0962a35745f3`, 94,479,989 B, identical to
+  the one in `launcher\dist`). The feed's sha512 was checked against the served bytes, and
+  electron-updater's own `semver` says 0.1.0 and 0.1.1 both see 0.2.0 as an update and 0.2.0
+  does not. **The site was not restarted** — the web lane's restart picks the files up. All three
+  files are gitignored, so there is nothing to commit for it.
 * The launcher posts progress but never *reads* the party's other bars — the panel in the
   wrapped page is where a player sees them, which is the right place and is the web lane's.
