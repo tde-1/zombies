@@ -1158,3 +1158,113 @@ precondition of using it. `waw-host` should be recreated before anybody tries it
 2. **`waw-host` wants recreating** (`new-copy.ps1 host -Force`) so its private profile is
    seeded. Harmless either way while `ENW_PRIVATE_PROFILE` stays off, which is the
    recommendation in §10.6.
+
+---
+
+## 11. Session 2026-09-22 — `vps`: the agent runs on Linux, launches through Wine, and two instances fit
+
+Written by the **vps** lane, against the Hetzner box `zombies-dev`. The full story of the box is
+`docs/kickstart/vps.md` §13–§15; this section is only what changed in `infra/host-agent/`.
+
+### 11.1 `--wine`: a second launch path, off by default
+
+`spawnArgs()` had exactly one way to start a real game — `powershell -Command tools\dev\launch.ps1`
+— and on the Linux box there is no PowerShell, no Windows game copy and no
+`ZombiesDev\locks\game.lock`. Rather than fork the file, `--wine` adds a branch:
+
+| | Windows (default) | `--wine` |
+|---|---|---|
+| spawned | `powershell.exe -Command & launch.ps1 …` | `wine CoDWaW.exe …`, `cwd` = the game copy |
+| the PID we sample | adopted from the `PID <n>` line the launcher prints | **the child itself** |
+| `game.lock` | `launch.ps1` takes it, we check and release it | none — there is no lock on Linux |
+| `SteamAppId` / `WINEPREFIX` / `DISPLAY` | `launch.ps1` sets them | the agent sets them |
+| instances | exactly one (shared copy, homepath and lock) | one per `{id}` path — see 11.3 |
+
+Everything else is shared on purpose: `gameArgs()`, `gameEnv()` (`ENW_RAW_SOCKETS`,
+`ENW_DEDI_SUPPRESS_MAPSUMMARY`), `ProcSampler`, stop-by-PID, the restart policy. If the two ever
+disagree about how a server is launched, that is a bug, not a configuration.
+
+Flags: `--wine`, `--wine-bin` (`wine`), `--wine-prefix` (`/home/waw/pfx`), `--wine-display`
+(`:99`), `--wine-debug` (`-all`), `--wine-game-dir`, `--wine-homepath`, `--wine-maxfps` (60).
+`{id}` in either path is replaced with the instance id.
+
+`node test/run-all.js`: **41 passed, 0 failed**, unchanged. `cfg.wine` is `null` without the flag,
+so the Windows path is byte-for-byte what it was.
+
+**One thing the Windows path is missing and the Wine path has**: `+set com_maxfps 60`.
+`gameArgs()` never passed one, and `jointest.ps1` is emphatic that without it a dedicated server
+free-runs at ~237 Hz and burns a whole core (`dedi.md` §7j). The Wine branch passes it; the
+PowerShell branch still does not, because `launch.ps1`'s own defaults are the host lane's call.
+Worth settling.
+
+### 11.2 It ran, against a real game, on Linux
+
+```
+info host/inst/inst-01  wine: /home/waw/pfx/drive_c/zdev/waw-vps1 -> fs_homepath C:\zdev\homes\vps1
+info host/inst/inst-01  start game port 28960 -> CoDWaW.exe
+info host                instance inst-01 linked (pid 2764, Sep 20 2026 00:58:12)
+info host/inst-01        map_loaded nazi_zombie_prototype -> manifest "Nacht der Untoten" (read)
+info host/inst-01        recording -> /home/waw/zdev-host/replays/m_662ac3c0.enwr (fingerprint bee9057f5a57a2bf)
+```
+
+and from **B's PC**, against the box's public address:
+
+```
+> python tools\dev\oob.py 28960 --host 2.28.235.236 --allow-remote
+getstatus  ANSWERED  674 bytes: statusResponse | … \mapname\nazi_zombie_prototype\sv_maxclients\4…
+OOB EXIT CODE = 0
+```
+
+Per instance, no players: **0.30 of one core, 301 MB RSS, 60.0–60.8 Hz, 11 threads, 10 s from
+launch to answering.** That is **6× §10.3's 0.050 of a core** on B's PC for identical work — a
+cx23's shared Skylake vCPU plus Wine, not a regression.
+
+**Node 24 is required** (zstd, Ed25519, `node:sqlite`) and Ubuntu 24.04 ships 18.
+`infra/vps/06-node-host-agent.sh` puts the official tarball in `/opt/node24` and leaves
+`/usr/bin/node` alone.
+
+### 11.3 Two instances per box, and §9's "one real game per box" is now a Windows-only rule
+
+§9 and `instances.js` said one game per box because every instance shared a game copy, an
+`fs_homepath` and the lock. On Linux, `{id}` in `--wine-game-dir` and `--wine-homepath` gives each
+instance its own, and the refusal only fires when the configured paths have no `{id}` in them —
+which is still the honest default.
+
+With four per-instance copies (8 MB of real files each; `main/` and `zone/` are symlinks into one
+shared tree), started **one at a time and waited on**:
+
+| | udp | answered | fps | RSS | CPU | `oob.py` from B's PC |
+|---|---|---|---|---|---|---|
+| inst-01 | 28960 | 5 s | 60.6 | 301 MB | 0.281 core | **exit 0** |
+| inst-02 | 28962 | 5 s | 60.3 | 301 MB | 0.286 core | **exit 0** |
+| inst-03 | 28964 | never | — | 156 MB | 0.003 | exit 1 |
+| inst-04 | 28966 | never | — | 44 MB | 0.036 | exit 1 |
+
+**Two.** And the limit is not CPU (0.57 of two cores), not RAM (no OOM in `dmesg`) and not disk
+(21 GB spare): it is the party/lobby layer's hard-coded **UDP 3074 with a single fallback to
+3075**. `ss -ulnp` shows inst-01 on 3074, inst-02 on 3075, and instances three and four binding
+**nothing at all** — they park inside `Com_Init` before they open even their game port. §10.5
+measured the 3074/3075 pair and correctly said they do not collide; nobody had tried a third.
+
+**Two operational consequences for this lane:**
+
+1. **Start instances one at a time and gate on the wire.** `--boot 4` in a single tick is *worse*
+   than sequential — it got one instance to a loaded map and left three stalled at 44 MB. The
+   `--boot N` path should serialise and wait for `getstatus`, the way `jointest.ps1` does.
+2. **`max_instances` for a Wine box is 2**, until somebody finds the 3074 bind site and widens it.
+
+### 11.4 Not done: the box is not registered with the live site
+
+`--site https://zombies.enw.gg` needs a per-box `match_key`, and the only place one can come from
+is `boxes.create()` against the live site's `web/data/zombies.db`. The vps lane does not write to
+`web/data`, so this stopped here. The live table holds one box, `box-a` (B's PC), with `polls: 0`.
+
+For whoever owns the site — one call, then the box is online with no further work:
+
+```js
+require('./server/lib/boxes').create({ name: 'zombies-dev', matchKey: <fresh random secret>,
+  region: 'nbg1', note: 'Hetzner cx23, Wine', maxInstances: 2 })
+```
+
+then on the box: `/home/waw/run-host.sh --boot 1 --site https://zombies.enw.gg --secret <it>`.
+The site is pull-only, so no inbound rule and no firewall change is involved.

@@ -29,7 +29,12 @@ REBUILD=${REBUILD:-0}
 DLL=${DLL:-/tmp/enw_t4.dll}
 
 PFX=/home/waw/pfx
-GAME="$PFX/drive_c/Program Files/Steam/steamapps/common/Call of Duty World at War"
+# GAME is what the dev copy is made FROM. The default is the box's own Steam
+# install; set GAME=/home/waw/waw-en to build the copy from B's English tree
+# instead (vps.md section 13 -- the box's Steam account is German, so its own
+# install is the low-violence edition with a different address map and no
+# nazi_zombie_prototype).
+GAME=${GAME:-"$PFX/drive_c/Program Files/Steam/steamapps/common/Call of Duty World at War"}
 DEST="$PFX/drive_c/zdev/waw-$NAME"
 HOME_U="$PFX/drive_c/zdev/homes/$NAME"
 HOME_W="C:\\zdev\\homes\\$NAME"

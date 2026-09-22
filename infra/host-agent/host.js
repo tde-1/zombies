@@ -9,6 +9,7 @@
 //   node host.js --boot 1 --sim-players 4                 # standalone, one simulated game
 //   node host.js --site http://127.0.0.1:8080 --secret devkey-a --box box-a
 //   node host.js --game --map nazi_zombie_asylum          # a real CoDWaW.exe (takes game.lock)
+//   node host.js --game --wine --map nazi_zombie_prototype  # the Linux box: wine, no lock
 //
 // Nothing here needs the game to exist: --boot runs the simulator, and the real DLL drops
 // into the same socket.
@@ -54,6 +55,23 @@ const cfg = {
   basePort: Number(a['base-port'] ?? 28960),
   launchScript: a['launch-script'] || path.join(REPO, 'tools', 'dev', 'launch.ps1'),
   gameCopy: a['game-copy'] || 'host',   // ZombiesDev\waw-<this>, and the game.lock owner
+  // ---- WINE MODE (the Linux box; off unless --wine, docs/kickstart/vps.md §13) --------
+  // `--game` normally shells out to tools/dev/launch.ps1, which needs PowerShell, a
+  // Windows game copy and ZombiesDev\locks\game.lock. On zombies-dev there is none of
+  // that, so --wine spawns `wine CoDWaW.exe` directly instead. `{id}` in either path is
+  // replaced with the instance id, which is what allows more than one instance: sharing a
+  // game copy and a homepath is the only reason the Windows path allows exactly one.
+  wine: a.wine
+    ? {
+        bin: a['wine-bin'] || 'wine',
+        prefix: a['wine-prefix'] || '/home/waw/pfx',
+        display: a['wine-display'] || ':99',
+        debug: a['wine-debug'] || '-all',
+        gameDir: a['wine-game-dir'] || '/home/waw/pfx/drive_c/zdev/waw-{id}',
+        homeWin: a['wine-homepath'] || 'C:\\zdev\\homes\\{id}',
+        maxFps: Number(a['wine-maxfps'] ?? 60),
+      }
+    : null,
   dryRun: !!a['dry-run'],
   requireToken: a['require-token'] != null ? a['require-token'] !== 'false' : !!a.site,
   chunkMs: Number(a['chunk-ms'] ?? 60_000),
@@ -346,7 +364,7 @@ class HostAgent {
     this.instances = new InstanceManager({
       root: __dirname, logDir: cfg.logDir, linkHost: cfg.linkHost, linkPort: cfg.linkPort,
       basePort: cfg.basePort, maxInstances: cfg.maxInstances, launchScript: cfg.launchScript,
-      lockOwner: cfg.gameCopy, gameCopy: cfg.gameCopy, dryRun: cfg.dryRun, log: log.child('inst'),
+      lockOwner: cfg.gameCopy, gameCopy: cfg.gameCopy, wine: cfg.wine, dryRun: cfg.dryRun, log: log.child('inst'),
     })
   }
 

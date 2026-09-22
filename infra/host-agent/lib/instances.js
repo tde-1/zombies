@@ -7,6 +7,13 @@
 //                 `tools/dev/launch.ps1` (owned by the foundation agent). Only this kind
 //                 takes the game lock.
 //
+// WINE MODE (`--wine`, off by default, docs/kickstart/vps.md §13). On the Linux box there
+// is no PowerShell, no `launch.ps1` and no `ZombiesDev\locks\game.lock`, so a 'game'
+// instance is spawned as `wine CoDWaW.exe …` directly and the child IS the game: no
+// launcher wrapper, no PID to adopt, no lock to take or release. Everything else — the
+// argument list, the environment, sampling, stop-by-PID — is shared with the Windows path
+// on purpose, so the two cannot drift.
+//
 // SAFETY (docs/dev-box.md rules 4 and 5)
 //   * We keep the PID of every process WE started and only ever kill those, by PID.
 //     There is no name-based kill anywhere in this file, on purpose: B or another agent
@@ -148,9 +155,41 @@ export class Instance extends EventEmitter {
     return { ENW_RAW_SOCKETS: '1', ENW_DEDI_SUPPRESS_MAPSUMMARY: '1' }
   }
 
+  /**
+   * Wine mode: where THIS instance's game copy and homepath live. `{id}` in either
+   * configured path is replaced with the instance id, which is what makes several
+   * instances on one box possible — they are the two things Windows instances have to
+   * share (host.md §10.5 / vps.md §13) and the reason the Windows path allows only one.
+   */
+  winePaths() {
+    const w = this.mgr.wine
+    const sub = (s) => String(s).replace(/\{id\}/g, this.id)
+    return { gameDir: sub(w.gameDir), homeWin: sub(w.homeWin), perInstance: /\{id\}/.test(w.gameDir) }
+  }
+
   spawnArgs() {
     if (this.kind === 'sim') {
       return { cmd: process.execPath, argv: [path.join(this.mgr.root, 'sim', 'sim-instance.js'), ...this.args] }
+    }
+    if (this.mgr.wine) {
+      // The child is the game. `wine` execs the loader in place, so the pid we spawn is
+      // the pid we sample and the pid we kill.
+      const w = this.mgr.wine
+      const { gameDir, homeWin } = this.winePaths()
+      const argv = [
+        'CoDWaW.exe',
+        '+set', 'fs_homepath', homeWin,
+        '+set', 'r_fullscreen', '0', '+set', 'r_mode', '800x600',
+        '+set', 'vid_xpos', '-4000', '+set', 'vid_ypos', '-4000',
+        '+set', 'com_introPlayed', '1', '+set', 'com_startupIntroPlayed', '1',
+        '+set', 'sys_configureGHz', '1', '+set', 'ui_autoContinue', '1',
+        '+set', 'cl_allowDownload', '0', '+set', 'developer', '0', '+set', 'con_minicon', '1',
+        // com_maxfps: without it dedicated mode free-runs at ~237 Hz and burns a whole
+        // core (dedi.md §7j). jointest.ps1 passes 60; so do we.
+        '+set', 'com_maxfps', String(w.maxFps || 60),
+        ...this.gameArgs().flatMap((s) => s.split(' ')),
+      ]
+      return { cmd: w.bin || 'wine', argv, cwd: gameDir }
     }
     // A real CoDWaW.exe, through the foundation agent's tools/dev/launch.ps1. Its real
     // signature (read from the script, not assumed) is:
@@ -179,7 +218,27 @@ export class Instance extends EventEmitter {
   }
 
   start() {
-    if (this.kind === 'game') {
+    if (this.kind === 'game' && this.mgr.wine) {
+      // Wine mode: no launch.ps1, no game.lock, no Windows game copy to look for. The
+      // one-game-per-box rule is a consequence of SHARING a game copy and a homepath, so
+      // it only applies when the configured paths have no `{id}` in them.
+      const { gameDir, homeWin, perInstance } = this.winePaths()
+      if (!perInstance) {
+        const otherGame = [...this.mgr.instances.values()].find(
+          (i) => i !== this && i.kind === 'game' && (i.state === 'starting' || i.state === 'running'))
+        if (otherGame && !this.mgr.dryRun) {
+          this.state = 'failed'
+          this.failReason = `only one real game per box: ${otherGame.id} already holds game copy "${gameDir}". Put {id} in --wine-game-dir and --wine-homepath to run several.`
+          this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
+        }
+      }
+      if (!fs.existsSync(path.join(gameDir, 'CoDWaW.exe')) && !this.mgr.dryRun) {
+        this.state = 'failed'
+        this.failReason = `no game copy at ${gameDir} (infra/vps/05-run-dedi.sh builds one)`
+        this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
+      }
+      this.log.info(`wine: ${gameDir} -> fs_homepath ${homeWin}`)
+    } else if (this.kind === 'game') {
       // ONE REAL GAME PER BOX, and say so out loud.
       //
       // Every game instance this manager starts uses the same `gameCopy`, so the same
@@ -224,7 +283,7 @@ export class Instance extends EventEmitter {
         this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
       }
     }
-    const { cmd, argv } = this.spawnArgs()
+    const { cmd, argv, cwd } = this.spawnArgs()
     const env = {
       ...process.env,
       ENW_HOST: `${this.mgr.linkHost}:${this.mgr.linkPort}`,
@@ -233,13 +292,26 @@ export class Instance extends EventEmitter {
       ENW_MATCH: this.matchId || '',
       ENW_PORT: String(this.port),
       ...(this.kind === 'game' ? this.gameEnv() : {}),
+      // Wine mode: launch.ps1 is not there to set these, so we do. SteamAppId/SteamGameId
+      // are what stop SteamStub asking Steam to relaunch app 10090 out of the Steam
+      // folder (foundation.md §7); DISPLAY and WINEPREFIX pick the headless X server and
+      // the 32-bit prefix the Steam client is logged in under.
+      ...(this.kind === 'game' && this.mgr.wine
+        ? {
+            WINEPREFIX: this.mgr.wine.prefix,
+            DISPLAY: this.mgr.wine.display,
+            WINEDEBUG: this.mgr.wine.debug || '-all',
+            SteamAppId: '10090',
+            SteamGameId: '10090',
+          }
+        : {}),
       ...this.env,
     }
     this.state = 'starting'
     this.startedAt = Date.now()
     this.log.info(`start ${this.kind} port ${this.port} -> ${path.basename(argv[0] || cmd)}`)
     this.logStream.write(`\n=== ${new Date().toISOString()} start ${this.kind} ${cmd} ${argv.join(' ')}\n`)
-    const child = spawn(cmd, argv, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+    const child = spawn(cmd, argv, { env, cwd, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
     this.child = child
     this.pid = child.pid
     this.mgr.ownedPids.add(child.pid)
@@ -296,7 +368,8 @@ export class Instance extends EventEmitter {
     // launch.ps1 took the lock in OUR game-copy's name and then returned, so releasing it
     // is our job. releaseGameLock only deletes a lock whose owner matches, so we can never
     // free another agent's.
-    if (this.kind === 'game') releaseGameLock(this.mgr.gameCopy)
+    // Wine mode never took a lock, so it has none to release.
+    if (this.kind === 'game' && !this.mgr.wine) releaseGameLock(this.mgr.gameCopy)
     this.emit('exit', { code, sig, wanted })
     if (!wanted && this.restartPolicy() ) {
       this.restarts++
@@ -392,7 +465,7 @@ export class Instance extends EventEmitter {
 }
 
 export class InstanceManager extends EventEmitter {
-  constructor({ root, logDir, linkHost, linkPort, basePort = 28960, maxInstances = 8, launchScript, lockOwner = 'host', gameCopy = 'host', dryRun = false, sampleMs = 5000, log } = {}) {
+  constructor({ root, logDir, linkHost, linkPort, basePort = 28960, maxInstances = 8, launchScript, lockOwner = 'host', gameCopy = 'host', wine = null, dryRun = false, sampleMs = 5000, log } = {}) {
     super()
     this.root = root
     this.logDir = logDir
@@ -405,6 +478,9 @@ export class InstanceManager extends EventEmitter {
     // The dev game copy (ZombiesDev\waw-<gameCopy>) AND the name launch.ps1 writes into
     // game.lock — they are the same string in launch.ps1, so they must be here too.
     this.gameCopy = gameCopy
+    // null on Windows. Set (by --wine) it replaces launch.ps1 with a direct `wine
+    // CoDWaW.exe`, and with it the lock, the PID adoption and the Windows game copy.
+    this.wine = wine
     this.dryRun = dryRun
     this.sampleMs = sampleMs
     this.log = log || makeLog('instances')

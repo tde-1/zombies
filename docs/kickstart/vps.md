@@ -303,6 +303,11 @@ download. **No reason to move to a win64 prefix was found.**
 
 ## 10. The headless server under Wine: it boots, and it will not answer
 
+> **SUPERSEDED 2026-09-22 05:10 by §13 — with B's ENGLISH copy on the box the server boots AND
+> ANSWERS** (`oob.py` from B's PC, exit 0). Everything below is a true account of the box running
+> its *own* German install, and the measurements are kept because they are what identified the
+> edition difference. Read §13 for what the box does now.
+
 **Verdict: no.** Our dedicated build runs on the box, loads a zombies map, and then shuts itself
 down. `tools/dev/oob.py` from B's PC against the public address is the gate and it **fails**:
 
@@ -472,11 +477,265 @@ into `steamapps/common/Call of Duty World at War`.
 
 ## 12. What this lane still has NOT done
 
-- **The server has never answered on the wire from this box.** §10.
-- **The host agent is not on the box**, the box is not registered with the site, and it cannot be
-  the game host for a session with friends. That plan was conditional on §10 succeeding.
-- **Instances-per-box is unmeasured.** One instance does not stay up, so counting several is not
-  yet a question that can be asked.
-- **The German depot is still installed.** §9.
+> **Four of these five were closed the same night; kept with their corrections beside them.**
+
+- ~~**The server has never answered on the wire from this box.**~~ **It does — §13**, exit 0 from
+  B's PC, on `nazi_zombie_prototype`, at 60 Hz.
+- ~~**The host agent is not on the box**~~ **It is — §14**, under Linux, launching through Wine,
+  linking to the DLL and signing a replay. **The box is still NOT registered with the live site**:
+  that needs a box secret written into `web/data/zombies.db`, which this lane does not touch. §14
+  has the one command and who should run it.
+- ~~**Instances-per-box is unmeasured.**~~ **It is two — §15**, and the limit is the lobby layer's
+  UDP 3074/3075 pair, not CPU, RAM or disk.
+- ~~**The German depot is still installed.**~~ **Uninstalled** through the client; the box now runs
+  off B's English tree at `/home/waw/waw-en`. §13.
 - Steam offline mode, and whether SteamStub tolerates several simultaneous decryptions, are both
   still untested.
+
+---
+
+## 13. It works. B's English copy on the box, and the server answers (2026-09-22 04:40)
+
+**Verdict: yes.** With B's own English game tree on the box, our headless dedicated server boots
+under Wine, loads `nazi_zombie_prototype`, holds 60 Hz, and answers `getstatus` **from B's PC
+against the public address**:
+
+```
+> python tools\dev\oob.py 28960 --host 2.28.235.236 --allow-remote --timeout 3.0
+getstatus      ANSWERED  674 bytes: statusResponse | … \mapname\nazi_zombie_prototype\
+                                     \sv_maxclients\4\protocol\62\sv_hostname\CoDWaWHost…
+getchallenge   ANSWERED  44 bytes: challengeResponse 365449751 glDasy645zI=
+OOB EXIT CODE = 0
+```
+
+§10's verdict is superseded. §10's *measurements* stand, and so does its retraction (§10's own
+box): the German edition is a different binary, and that was the whole problem.
+
+### The one fact that decides it: SteamStub validates the APP, not the depot
+
+**Observation.** B's `CoDWaW.exe` (sha256 `732900d1…`) decrypts on the box under the box's own
+German Steam login, in **676–715 ms**:
+
+```
+steamstub: image base 00400000, .text 00401000+3E99FF, first dword 9EF490B8, .bind present
+steamstub: decrypted after 676 ms (234 polls); 0x401000 = 55 8B EC 83 E4 F8 D9 45 08 …
+game: Com_Printf    @ 0059A2C0 LOOKS OK  bytes: B8 00 10 00 00 E8 46 5C 21 00 8B 8C 24 08 10 00
+game: Dvar_FindVar  @ 005EDE30 LOOKS OK  bytes: 56 57 B8 3C CF 1A 02 B9 01 00 00 00 F0 0F C1 08
+```
+
+`LOOKS OK`, not `SUSPECT` — B's address map applies byte for byte. So a box needs a Steam client
+logged in to an account that **owns app 10090**; it does not need that account to be licensed for
+the depot the game files came from. Every patch we own then applies:
+
+```
+frame: tick installed by retargeting the call at 005FF7BD
+raw_sockets: every packet now goes out as plain UDP (`je` -> `jmp` at 0x00600109)
+dedicated: Dvar_FindVar("dedicated")=021B19C0  com_dedicated=021B19C0  (agree)
+```
+
+**That was worth testing before the 8 GB transfer finished**, and it was: the top-level files land
+first in a `tar` stream, so `CoDWaW.exe` was on the box 90 seconds in. A 20-line probe directory
+(the exe, the stock `binkw32_org.dll`, our DLL as `binkw32.dll`, `steam_appid.txt`) answers the
+only question that matters — does it decrypt — without `main/` or `zone/` existing at all. Do that
+first next time.
+
+### The transfer
+
+`C:\Users\b\ZombiesDev\waw-base` (B's copy, **never the Steam folder**) to `/home/waw/waw-en`, one
+ssh session, one `tar` stream, no compression (`.iwd` is zip and `.ff` is zlib, so gzip buys
+nothing and costs CPU on a 2-vCPU box):
+
+```bash
+cd /c/Users/b/ZombiesDev/waw-base
+tar -cf - --exclude=./CoDWaWmp.exe --exclude=./DirectX --exclude=./Docs \
+          --exclude=./installers --exclude=./pb . \
+  | ssh -o BatchMode=yes zombies-dev 'mkdir -p /home/waw/waw-en && tar -xf - -C /home/waw/waw-en \
+      && chown -R waw:waw /home/waw/waw-en'
+```
+
+| | |
+|---|---|
+| Size | **8,238 MB**, 195 files |
+| Time | **22 m 59 s** |
+| Rate | **6.0 MB/s (≈48 Mbit/s)** — B's uplink, not the box |
+| Disk after | **21 GB free of 38** |
+
+`CoDWaWmp.exe` is excluded on purpose (kickstart rule 2 — a file that cannot be run is the
+cheapest way to honour it). `DirectX`, `Docs`, `installers` and `pb` are 84 MB of installer junk a
+dedicated server never opens. **`main/video` was NOT excluded**, even though it is 1.4 GB and a
+headless server should never play a Bink: `dedi.md` §9.1 is what an incomplete copy costs, and an
+extra four minutes is cheaper than one wrong diagnosis.
+
+Before sending, all 35 `.iwd`s in `waw-base` were opened as zips locally: **35 ok, 0 bad**,
+including `iw_13.iwd`, which `dedi.md` §9.1 recorded as damaged in *both* Steam and the copy. The
+`referee` lane's repair took; the source tree is good.
+
+The German install was removed first, through the client (`steam://uninstall/10090`, then its
+Uninstall button at (502, 490)), which took it from `Fully Installed` to
+`AppID 10090 finished uninstall (No Error)` and freed 8.35 GB. Steam simply marks it not installed;
+nothing re-downloads.
+
+### The launch line that answers
+
+```bash
+cd /home/waw/pfx/drive_c/zdev/waw-vps1
+WINEPREFIX=/home/waw/pfx DISPLAY=:99 WINEDEBUG=-all \
+SteamAppId=10090 SteamGameId=10090 \
+ENW_DEDI_SUPPRESS_MAPSUMMARY=1 ENW_RAW_SOCKETS=1 ENW_ROLE=server ENW_INSTANCE=vps1 \
+wine CoDWaW.exe \
+  +set fs_homepath 'C:\zdev\homes\vps1' \
+  +set logfile 2 +set r_fullscreen 0 +set r_mode 800x600 \
+  +set vid_xpos -4000 +set vid_ypos -4000 \
+  +set s_volume 0 +set snd_volume 0 +set snd_menu_master 0 \
+  +set com_introPlayed 1 +set com_startupIntroPlayed 1 \
+  +set sys_configureGHz 1 +set ui_autoContinue 1 +set cl_allowDownload 0 \
+  +set developer 0 +set con_minicon 1 \
+  +set dedicated 1 +set zombiemode 1 +set com_maxfps 60 \
+  +set con_typewriterColorBase '1.0 1.0 1.0' +set hud_drawhud 1 +set ui_campaign american \
+  +set sv_maxclients 4 +set net_port 28960 \
+  +map nazi_zombie_prototype
+```
+
+`infra/vps/05-run-dedi.sh` is that plus the dev copy, the player profile and the readiness probe:
+
+```bash
+ssh -o BatchMode=yes zombies-dev 'GAME=/home/waw/waw-en REBUILD=1 NAME=vps1 \
+  MAP=nazi_zombie_prototype PORT=28960 SECONDS_TO_RUN=120 bash -s' < infra/vps/05-run-dedi.sh
+```
+
+### The numbers, one instance, no players
+
+| | |
+|---|---|
+| Boot to answering | **10 s** |
+| Frame rate | **60.0–60.8 Hz**, flat for 605 s (`com_maxfps 60` honoured) |
+| `SV_Frame` | 20.1 fps — `sv_fps` exactly |
+| RSS | **301 MB** (361 MB peak during the map load) |
+| CPU | **0.30 of one core**, steady-state, sampled from `/proc/<pid>/stat` over 30 s |
+| Threads | 11 |
+
+**That is 6× B's PC** (`host.md` §10.3: 0.050 of a core) for the same work. A cx23's shared vCPU is
+a *"Intel Xeon (Skylake, IBRS, no TSX)"* against B's 9800X3D, plus Wine's syscall translation. It
+is a real cost and it is still only a third of one of the two cores.
+
+## 14. The host agent runs on the box, under Linux, launching through Wine
+
+`infra/host-agent/` now has a **`--wine`** mode. It is off by default and changes nothing on
+Windows; `node test/run-all.js` is **41 passed, 0 failed** with and without it.
+
+```bash
+# on the box, as waw
+cd /home/waw/enw/infra/host-agent
+ZOMBIES_DEV=/home/waw/zdev-host /opt/node24/bin/node host.js \
+  --box zombies-dev --boot 1 --game --wine \
+  --wine-game-dir '/home/waw/pfx/drive_c/zdev/waw-{id}' \
+  --wine-homepath 'C:\zdev\homes\{id}' \
+  --map nazi_zombie_prototype --base-port 28960 --dash off
+```
+
+```
+info host/inst/inst-01  wine: /home/waw/pfx/drive_c/zdev/waw-vps1 -> fs_homepath C:\zdev\homes\vps1
+info host/inst/inst-01  start game port 28960 -> CoDWaW.exe
+info host                instance inst-01 linked (pid 2764, Sep 20 2026 00:58:12)
+info host/inst-01        map_loaded nazi_zombie_prototype -> manifest "Nacht der Untoten" (read)
+info host/inst-01        recording -> /home/waw/zdev-host/replays/m_662ac3c0.enwr (fingerprint bee9057f5a57a2bf)
+```
+
+and `oob.py getstatus` from B's PC against that instance exits **0**. So: lease → launch → game
+link → map manifest → signed replay, all of it on Linux, against a real game.
+
+What `--wine` changes, and only for `kind === 'game'`: `wine CoDWaW.exe` is spawned directly
+instead of `powershell -Command launch.ps1`, so **the child is the game** — no launcher wrapper, no
+`PID <n>` line to adopt, and no `ZombiesDev\locks\game.lock` to take or release, because none of
+those exist on Linux. The agent sets `SteamAppId`/`SteamGameId`, `WINEPREFIX` and `DISPLAY` itself,
+since `launch.ps1` is not there to do it. Everything else — the argument list, `gameEnv()`,
+sampling, stop-by-PID — is the shared code path on purpose.
+
+**Node 24 is required and Ubuntu 24.04 ships 18.** `/opt/node24` from the official tarball
+(`infra/vps/06-node-host-agent.sh`), left beside the distro's `node` rather than replacing it.
+
+**One bug of mine worth the line**: the first run still went down the `launch.ps1` path and failed
+with `launch script not found`. I had added `wine` to `InstanceManager`'s constructor *signature*
+and never assigned `this.wine = wine` in the body, so it was `undefined` on the manager while the
+config was right all the way in. The failure named the wrong thing, as they do.
+
+### NOT done: the box is not registered with the live site
+
+`--site https://zombies.enw.gg` needs a **per-box shared secret**, and the only place a box row and
+its `match_key` can come from is `boxes.create()` against the live site's SQLite at
+`web/data/zombies.db`. The live database currently holds exactly one box:
+
+```
+{ "id": 1, "name": "box-a", "region": "dev", "note": "B's PC — the host agent's default dev box",
+  "polls": 0, "last_state": null }
+```
+
+Writing to `web/data` is the one thing this lane is told not to do, so **it was not done**. It is
+one command for whoever owns the site, and then the box is online with no further work:
+
+```js
+// in web/, against the live data dir
+require('./server/lib/boxes').create({ name: 'zombies-dev', matchKey: <a fresh random secret>,
+  region: 'nbg1', note: 'Hetzner cx23, Wine', maxInstances: 2 })
+```
+
+then on the box add `--site https://zombies.enw.gg --secret <that secret> --box zombies-dev`. The
+site is pull-only (`host.md` §1), so no inbound rule is needed and the Hetzner firewall does not
+change.
+
+## 15. Instances per box: **two**, and the limit is not CPU, RAM or disk
+
+Four per-instance game copies (`waw-inst-01…04`, each 8 MB of real files with `main/` and `zone/`
+symlinked into `waw-en`), each with its own `fs_homepath`, started **one at a time**, each waited
+on until it answered:
+
+| instance | udp | answered | frame rate | RSS | CPU (30 s sample) | `oob.py` from B's PC |
+|---|---|---|---|---|---|---|
+| inst-01 | 28960 | **5 s** | 60.6 Hz | 301 MB | **0.281 core** | **exit 0** |
+| inst-02 | 28962 | **5 s** | 60.3 Hz | 301 MB | **0.286 core** | **exit 0** |
+| inst-03 | 28964 | never | — | 156 MB | 0.003 core | exit 1 |
+| inst-04 | 28966 | never | — | 44 MB | 0.036 core | exit 1 |
+
+**Two instances: 0.57 of one core of two, 602 MB of RAM, 21 GB of disk spare.** Neither of the
+other two ever wrote a `console.log`, reached `frame::count > 0`, or bound a socket
+(`dedicated: liveness t=565s frame::count=0 … bringup_hits=0`). They are parked inside `Com_Init`,
+not killed: **there is no OOM anywhere in `dmesg`**.
+
+### Why two, exactly
+
+`ss -ulnp`, per PID:
+
+```
+pid 34782  inst-01   0.0.0.0:28960   0.0.0.0:3074
+pid 34811  inst-02   0.0.0.0:28962   0.0.0.0:3075
+pid 34838  inst-03   (nothing)
+pid 34897  inst-04   (nothing)
+```
+
+The party/lobby layer binds **UDP 3074 with no dvar to change it** and falls back to **3075** —
+that is `dedi.md` §1, and `host.md` §10.5 already measured A on 3074 and B on 3075 and correctly
+concluded they do not collide. **Nobody had tried a third.** There is no 3076: the third instance
+has nowhere to put its lobby socket and parks in `Com_Init` before it opens *any* socket,
+including its game port.
+
+*Inference, not observation*: that the fallback stops at 3075 is what the port table shows and what
+"the third one binds nothing at all" is consistent with. It has not been read off an instruction.
+Somebody should find the bind site and see whether the range is two wide or whether 3076 was busy
+for another reason — if it is a two-entry table, a one-byte patch is worth more than a bigger box.
+
+**Starting them simultaneously is worse**: `--boot 4` in one tick got *one* instance to a loaded
+map and left three at 44 MB. Sequential, waiting for each to answer, got two. So the host agent
+should start instances one at a time and gate on the wire, exactly as `jointest.ps1` does.
+
+### The next ceiling after the port pair is Steam, not the game
+
+`ps` across the 9 Steam processes: **2,324 MB of the box's 3,819 MB**, most of it steamwebhelper's
+CEF. The two servers together are 602 MB. If the 3074/3075 limit were lifted tomorrow, RAM would
+bite at roughly four instances, and the cheapest fix is a Steam client with no browser rather than
+a bigger box. **Untested** — restarting Steam risks the login, and the login is B's.
+
+### Firewall
+
+UDP **28960** was widened to **28960–28970**, and 3074–3075 to **3074–3079**, so each instance is
+reachable from outside (`POST /v1/firewalls/11659901/actions/set_rules`). Rules only; **no change
+to the bill**, and §1 still holds.

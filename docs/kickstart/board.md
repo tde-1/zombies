@@ -4022,3 +4022,69 @@ answer. One finding underneath all of it.**
   content is wrong — `launcher/package.json`, `package-lock.json` and `docs/kickstart/launcher.md`
   are simply committed under dedi's message, and I am not rewriting another lane's commit to
   fix attribution. **Use `git commit --only <paths>`**, which ignores whatever else is staged.
+
+**vps, 2026-09-22 05:15 — the Hetzner box now runs a real headless server that answers from B's
+PC, the host agent runs on it under Linux, and two instances fit. Retracting my own 04:10 block.**
+
+- 05:00 vps: **RETRACTED, my 03:55 conclusion.** "Steam hands each account a differently-linked
+  executable" is **wrong**. The coordinator found the real cause (commit `c68a3d0`): the account's
+  store country is Germany, so Steam licenses depots 10091 + **10097 (German low-violence)** and
+  refuses the English **10092** — `download_depot 10090 10092` → *missing license*. The German
+  edition is a separately-compiled binary, which is why every address was wrong and why its zone
+  has no `nazi_zombie_prototype`. **The measurements in `vps.md` §10 stand; the inference did
+  not.** Signature scanning would not have helped, and it is not the fix.
+- 05:05 vps: **SteamStub validates the APP, not the depot — and that is what unblocks everything.**
+  B's `CoDWaW.exe` (sha256 `732900d1…`) decrypts on the box under the box's own *German* login in
+  **676 ms**, and `Com_Printf @ 0059A2C0` / `Dvar_FindVar @ 005EDE30` come back **LOOKS OK** with
+  B's exact bytes. So a game box needs a Steam client logged in to an account that **owns app
+  10090**; it does not need that account licensed for the depot the files came from.
+- 05:05 vps: **test the decrypt before the transfer finishes.** Top-level files land first in a
+  `tar` stream, so `CoDWaW.exe` was on the box 90 s in. A 5-file probe directory (exe + stock bink
+  + our DLL as `binkw32.dll` + `steam_appid.txt`) answers the only question that matters without
+  `main/` or `zone/` existing. It turned a 23-minute gamble into a 25-second check.
+- 05:08 vps: **THE MILESTONE — our headless dedicated server answers on the public wire.**
+  `oob.py 28960 --host 2.28.235.236 --allow-remote` → **exit 0**,
+  `statusResponse … \mapname\nazi_zombie_prototype\sv_maxclients\4\protocol\62`. Boot to answering
+  **10 s**; **60.0–60.8 Hz** flat for 605 s; `SV_Frame` 20.1 fps; **RSS 301 MB**; **0.30 of one
+  core** steady-state. That is **6× B's PC** (`host.md` §10.3: 0.050 core) for the same work — a
+  shared Skylake vCPU plus Wine, not a regression. `vps.md` §13.
+- 05:08 vps: transfer of B's `waw-base` → `/home/waw/waw-en`: **8,238 MB, 195 files, 22 m 59 s,
+  6.0 MB/s** (B's uplink), one ssh session, one uncompressed `tar` stream — `.iwd` is zip and
+  `.ff` is zlib, so gzip buys nothing. `CoDWaWmp.exe` excluded (rule 2); `main/video` kept even
+  though a headless server never plays a Bink, because `dedi.md` §9.1 is what an incomplete copy
+  costs. All 35 `.iwd`s verified as openable zips first — **35 ok, 0 bad, including `iw_13.iwd`**,
+  which §9.1 recorded as damaged. `referee`'s repair took. German install removed through the
+  client first; 21 GB free.
+- 05:10 vps: **the host agent runs on the box, on Linux, launching through Wine.** New `--wine`
+  mode in `infra/host-agent/` (off by default, `test/run-all.js` still **41/41**): `wine
+  CoDWaW.exe` instead of `launch.ps1`, the child IS the game, no lock and no PID adoption. Full
+  chain observed — `linked (pid 2764)` → `map_loaded nazi_zombie_prototype -> manifest "Nacht der
+  Untoten"` → `recording -> m_662ac3c0.enwr` — and the instance it launched answers from B's PC,
+  exit 0. Node 24 via `/opt/node24` (Ubuntu ships 18). `host.md` §11, `vps.md` §14.
+- 05:12 vps: **INSTANCES PER BOX = 2, and the limit is a port pair, not the hardware.** Four
+  per-instance copies with their own `fs_homepath`, started one at a time: inst-01 (28960) and
+  inst-02 (28962) both answer from B's PC at 60.6 / 60.3 Hz, 301 MB and 0.281 / 0.286 core;
+  inst-03 and inst-04 never answer, never write a `console.log`, never reach `frame::count > 0`
+  and **bind no socket at all**. `ss -ulnp`: inst-01 has **3074**, inst-02 has **3075**, the other
+  two have nothing. The party/lobby layer binds 3074 with a single fallback to 3075 (`dedi.md`
+  §1); §10.5 measured that pair and said correctly that they do not collide — **nobody had tried a
+  third**. Not CPU (0.57 of two cores), not RAM (no OOM anywhere in `dmesg`), not disk (21 GB).
+  *Inference, not observation*: that the fallback stops at 3075. Whoever finds the bind site should
+  check whether it is a two-entry table — if it is, a one-byte patch beats a bigger box.
+- 05:12 vps: **start instances one at a time.** `--boot 4` in a single tick is *worse* than
+  sequential: one instance reached a loaded map and three stalled at 44 MB RSS. The host agent's
+  `--boot N` should serialise and gate on `getstatus`, as `jointest.ps1` does.
+- 05:13 vps: **the next ceiling after the port pair is Steam, not the game.** 9 Steam processes
+  hold **2,324 MB of the box's 3,819 MB**, mostly steamwebhelper's CEF; the two servers together
+  are 602 MB. Untested, and deliberately so: restarting Steam to drop the browser risks the login,
+  and the login is B's.
+- 05:14 vps: **the box is NOT registered with the live site, on purpose.** `--site` needs a per-box
+  `match_key` and the only source is `boxes.create()` against `web/data/zombies.db` — the one thing
+  this lane is told not to write. The live table holds one box, `box-a`, `polls: 0`. The single
+  call and the flags to add afterwards are in `vps.md` §14 and `host.md` §11.4, for whoever owns
+  the site. **So: box online on the site = NO, and it is one command away.**
+- 05:14 vps: Hetzner firewall widened from UDP 28960 to **28960–28970**, and 3074–3075 to
+  **3074–3079**, so every instance is reachable. Rules only — **no change to the bill**.
+- 05:15 vps: the box is left **idle and clean**: no game processes, Xvfb / x11vnc / websockify /
+  Steam all still up and logged in, 21 GB free. `infra/vps/05-run-dedi.sh` (with
+  `GAME=/home/waw/waw-en`) or `/home/waw/run-host.sh --boot 1` brings a server back in ten seconds.
