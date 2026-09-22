@@ -12,7 +12,14 @@ const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls)
 const S = {
   status: null,
   map: null,
-  mode: 'custom',
+  // VERIFIED IS THE DEFAULT, and Play is the verified journey.
+  //
+  // This said 'custom', so the card under a stock map read "CUSTOM / Untracked." on a
+  // launcher whose Play button leases one of our own boxes and credits the game — and
+  // the lease the site opened for B said `mode: custom` too, because this value is
+  // what `POST /api/launcher/play` is given. The one place the mode is chosen is the
+  // Mode button beside Play, and until somebody presses it the answer is Verified.
+  mode: 'verified',
   boot: null,
   screen: null,
 }
@@ -131,6 +138,11 @@ function selectMap(bsp) {
   updatePlay()
 }
 
+// One spelling of the mode, everywhere it is drawn. `local` is its own answer: a game
+// on your own PC is neither Verified nor Custom, and calling it "Custom" on the boot
+// screen was the screen guessing.
+const modeLabel = (m) => (m === 'verified' ? 'Verified' : m === 'local' ? 'Untracked' : 'Custom')
+
 function updatePlay() {
   const ready = !!S.status?.setup?.installed
   const busy = !!S.boot && !S.boot.done && !S.boot.failed
@@ -139,8 +151,8 @@ function updatePlay() {
   const unavailable = !!m && !m.stock && !m.installed && !m.available
   const installing = !!S.installing
 
-  $('modeBtn').textContent = S.mode === 'verified' ? 'Verified' : 'Custom'
-  $('cardMode').textContent = S.mode === 'verified' ? 'Verified' : 'Custom'
+  $('modeBtn').textContent = modeLabel(S.mode)
+  $('cardMode').textContent = modeLabel(S.mode)
 
   // One button, three jobs, and it says which. A map you have not downloaded cannot be
   // played, so offering Play and failing would be the wrong thing.
@@ -444,7 +456,7 @@ function renderBoot(snap) {
   $('bootClose').classList.remove('on')
   const m = MAPS.find((x) => x.bsp === snap.map)
   $('bootMap').textContent = m ? m.title : snap.map || '—'
-  $('bootMode').textContent = snap.mode === 'verified' ? 'Verified' : 'Custom'
+  $('bootMode').textContent = modeLabel(snap.mode)
 
   // `download` is the party/late-joiner map install, and it is the one step that is
   // only drawn when it happened: most launches have the map already and a permanently

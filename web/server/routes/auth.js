@@ -211,7 +211,14 @@ function router() {
     }
 
     req.session.launcher = { port, state, challenge, at: Date.now() }
-    res.redirect('/auth/steam')
+    // The launcher's loopback flow sent EVERY site to `/auth/steam`, including a site
+    // running the mock provider — which answers 404, because in mock mode that route is
+    // not registered at all. So the one sign-in path a developer (or an agent) can
+    // actually drive was the one path this flow could not use, and the launcher's own
+    // `supportsLoopbackSignIn()` probe said yes to it regardless. `finishLauncherFlow`
+    // is already called by both providers; only the door was wrong. Live is
+    // `ZM_AUTH=steam` and is not affected by this line.
+    res.redirect(effectiveMode() === 'mock' ? '/auth/mock' : '/auth/steam')
   })
 
   // Step 6: the launcher redeems its code. This is the only request in the flow that comes

@@ -114,6 +114,29 @@ const summary = (o = {}) => ({
 async function main() {
   seedMinimal()
 
+  // ── the stock four have no payload, and that is not a failure ────────────
+  check('a stock map answers "nothing to download", not "no files"', () => {
+    const mapfiles = require('../server/lib/mapfiles')
+    db.prepare(`INSERT INTO maps (key, slug, title, author, source, health, round_n, added_at)
+                VALUES ('nazi_zombie_prototype','nacht','Nacht der Untoten','Treyarch','stock','verified',20,?)`).run(now())
+    const stock = mapfiles.forMap('nazi_zombie_prototype')
+    eq(stock.source, 'stock', 'source')
+    eq(stock.stock, true, 'stock')
+    eq(stock.needs_download, false, 'needs_download')
+    // `install_known` is what the launcher used to read as "the site has no files for
+    // this map yet" and refuse to launch. For a stock map the install IS known: it is
+    // already installed, by Treyarch.
+    eq(stock.install_known, true, 'install_known')
+    eq(stock.files.length, 0, 'files')
+    // A CUSTOM map we cannot serve must still say so, or a real missing download would
+    // be waved through and the engine handed a map that is not there.
+    const custom = mapfiles.forMap('nazi_zombie_no_such_map_' + Date.now())
+    eq(custom.install_known, false, 'a custom map with no files is still unknown')
+    eq(custom.needs_download, true, 'a custom map still needs downloading')
+    eq(custom.stock, false, 'a custom map is not stock')
+    db.prepare("DELETE FROM maps WHERE key='nazi_zombie_prototype'").run()
+  })
+
   // ── the token contract with the game box ──────────────────────────────────
   await checkAsync('an invite token this site issues verifies with the HOST AGENT’s own checker', async () => {
     const hostTokens = await import('../../infra/host-agent/lib/tokens.js')

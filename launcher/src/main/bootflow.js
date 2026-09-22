@@ -80,6 +80,21 @@ export class BootFlow extends EventEmitter {
     }
   }
 
+  // The launch is over and it did not get there. Every step that never ran is written
+  // down as stopped rather than left absent, because an absent step is drawn as
+  // "waiting" and a screen that says "waiting" about something that has already given
+  // up is the worst thing this screen can do: B sat in front of one.
+  stop(why) {
+    const order = ['download', 'reserving', 'loading', 'ready', 'launching', 'in_game']
+    for (const id of order) {
+      const s = this.steps.find((x) => x.id === id)
+      if (!s) { if (id !== 'download') this.step(id, 'failed', `stopped: ${why}`) }
+      else if (s.state === 'active') this.step(id, 'failed', `stopped: ${why}`)
+    }
+    this.stopped = why
+    return this.snapshot()
+  }
+
   cancel(reason = 'cancelled') {
     this.cancelled = true
     try { this.launch?.stop(reason) } catch {}
@@ -185,7 +200,7 @@ export class BootFlow extends EventEmitter {
       this.emit('launched', started)
     } catch (e) {
       this.step('launching', 'failed', e.message)
-      return this.snapshot()
+      return this.stop(e.message)
     }
 
     // -------------------------------------------------------------- in game --
@@ -268,7 +283,7 @@ export class BootFlow extends EventEmitter {
     if (done.error) {
       const stepId = this.steps.find((s) => s.state === 'active')?.id || 'ready'
       this.step(stepId, 'failed', done.error)
-      return this.snapshot()
+      return this.stop(done.error)
     }
 
     const p = done.play
@@ -279,8 +294,20 @@ export class BootFlow extends EventEmitter {
     // the party was forming (main.js starts it the moment the leader stages a map, and
     // the party panel has been watching the bar) — `ensureMap` then returns in
     // milliseconds. This is the backstop for the member who joined late.
-    if (o.ensureMap) {
-      const bsp = p.map?.key || o.map
+    const bsp0 = p.map?.key || o.map
+    // A STOCK MAP IS ALREADY THERE. Nacht der Untoten, Verrückt, Shi No Numa and Der
+    // Riese are inside World at War; the site's row for them says `source: stock` and
+    // its file list is empty because there is nothing to serve. Asking anyway is what
+    // stopped B's launch — step 1 failed with "The site has no files for
+    // nazi_zombie_prototype yet" while the server sat ready on 2.28.235.236:28960.
+    //
+    // The site is asked as well as the local list, and either answer is enough: a
+    // launcher that is one release behind the map table still gets this right.
+    const stock = o.isStock?.(bsp0) || p.map?.source === 'stock' || p.map?.stock === true
+    if (stock) {
+      this.step('download', 'done', 'installed: stock')
+    } else if (o.ensureMap) {
+      const bsp = bsp0
       this.step('download', 'active', 'checking the map')
       try {
         const r = await o.ensureMap(bsp, (pr) => {
@@ -289,10 +316,21 @@ export class BootFlow extends EventEmitter {
             ? `${pr.file || bsp}`
             : `${pct}% of ${(pr.total / 1e6).toFixed(0)} MB${pr.file ? ` — ${pr.file}` : ''}`)
         })
-        this.step('download', 'done', r?.already ? 'already installed' : r?.skipped || 'installed and hash-checked')
+        this.step('download', 'done', r?.stock ? 'installed: stock' : r?.already ? 'already installed' : r?.skipped || 'installed and hash-checked')
       } catch (e) {
-        this.step('download', 'failed', e.message)
-        return this.snapshot()
+        // A download that failed on a map that is nonetheless ON DISK is not a reason
+        // to refuse to play: the server is ready, the engine can load the map, and the
+        // only thing that broke is a check.
+        if (o.mapReady?.(bsp)) {
+          this.step('download', 'done', `already on this PC (the site could not be asked: ${e.message})`)
+        } else {
+          // A GENUINE failure stops the launch, and SAYS it stopped. The steps after
+          // this one used to be left with no record at all, which the boot screen draws
+          // as "waiting" — so a launch that had already given up looked like one that
+          // was still trying, for ever. B watched that happen.
+          this.step('download', 'failed', e.message)
+          return this.stop(`the map could not be downloaded: ${e.message}`)
+        }
       }
       if (this.cancelled) return this.snapshot()
     }
@@ -325,7 +363,7 @@ export class BootFlow extends EventEmitter {
       this.emit('launched', st)
     } catch (e) {
       this.step('launching', 'failed', e.message)
-      return this.snapshot()
+      return this.stop(e.message)
     }
 
     this.step('in_game', 'active', 'waiting for the game to connect')
@@ -390,7 +428,7 @@ export class BootFlow extends EventEmitter {
       this.emit('launched', started)
     } catch (e) {
       this.step('launching', 'failed', e.message)
-      return this.snapshot()
+      return this.stop(e.message)
     }
     this.step('in_game', 'active', 'loading the map on your PC', { label: 'In game (untracked)' })
     // The only honest confirmation for a local game is the engine's own log, and the

@@ -70,14 +70,49 @@ function read () {
 // What the launcher needs to install a map: every file, its size and its hash.
 // `install_known` is false when we cannot actually hand the bytes over, which the
 // launcher shows as "Not available yet" rather than offering a download that 404s.
+// THE STOCK FOUR HAVE NO PAYLOAD, AND THAT IS NOT A FAILURE.
+//
+// Nacht der Untoten, Verrückt, Shi No Numa and Der Riese are inside World at War.
+// There is nothing in the archive for them and there never will be, so this used to
+// answer the same `install_known: false` it gives a custom map whose bytes we have
+// lost — and a launcher cannot tell those two apart. It could not, and it did not:
+// on 2026-09-22 B pressed Play on Nacht der Untoten and his boot screen stopped at
+// "The site has no files for nazi_zombie_prototype yet" with the server ready.
+//
+// So the answer now says WHY there are no files. `source: 'stock'` and
+// `needs_download: false` mean "you already have this map"; `install_known: false`
+// with `source: 'custom'` still means "we cannot give you this map". The source is
+// the maps table's own column, not a list kept here, so a map reclassified there is
+// reclassified here.
+function sourceOf (bsp) {
+  try { return require('./maps').byKey(String(bsp))?.source || null } catch { return null }
+}
+
 function forMap (bsp) {
   const e = read().get(String(bsp))
+  const source = sourceOf(bsp)
+  if (source === 'stock') {
+    return {
+      bsp: String(bsp),
+      source: 'stock',
+      stock: true,
+      // There is nothing to install and nothing missing: the install IS known.
+      install_known: true,
+      needs_download: false,
+      files: [],
+      size_bytes: 0,
+      note: 'This map ships with World at War. There is nothing to download.'
+    }
+  }
   if (!e || !e.files.length) {
-    return { bsp: String(bsp), install_known: false, files: [], size_bytes: 0 }
+    return { bsp: String(bsp), source: source || 'custom', stock: false, install_known: false, needs_download: true, files: [], size_bytes: 0 }
   }
   return {
     bsp: e.bsp,
+    source: source || 'custom',
+    stock: false,
     install_known: true,
+    needs_download: true,
     size_bytes: e.bytes,
     files: e.files.map(f => ({
       path: f.path,

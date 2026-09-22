@@ -34,6 +34,7 @@ import * as partyprogress from './partyprogress.js'
 import { AutoUpdater, resolveFeed } from './autoupdate.js'
 import { UpdateCheck } from './updatecheck.js'
 import * as deeplink from './deeplink.js'
+import { makeWindowRaiser } from './focusguard.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
 
@@ -107,6 +108,16 @@ function log(...a) {
 }
 
 const setupInstalledSafe = () => { try { return !!setup.status().installed } catch { return false } }
+
+// Raising our own window is only ever safe when no game is running: see focusguard.js.
+// `state.flow` is truthy exactly while a launch/game is in flight, so it IS the
+// game-running flag.
+const raiser = makeWindowRaiser({
+  win: () => state.win,
+  busy: () => !!state.flow,
+  log: (line) => log('focus', line),
+})
+const raiseWindow = (why) => raiser.raise(why)
 
 // Anything unhandled is a crash report and a short plain message. Never a stack trace
 // in the player's face.
@@ -436,7 +447,9 @@ function handleDeepLink(raw) {
     state.pendingDeepLink = raw
     return
   }
-  state.win.show(); state.win.focus()
+  // The RAISE is deferred while a game is running; the routing below is not, so a
+  // party invite still navigates the site view and is waiting when the game ends.
+  raiseWindow('a deep link')
   // A party lives in the wrapped site, not in our chrome, so "open on that party" is a
   // navigation of the site view. Joining-if-invited is the SITE's decision on that page
   // — the launcher must not invent a join, because it does not know the invite list.
@@ -571,6 +584,10 @@ function wireIpc() {
   // launched at a map that was not there. That is the first clause of B's MVP sentence
   // ("load one of the test maps -> it installs") failing silently for everyone but him.
   async function ensureMapInstalled(bsp, { announce = false, onProgress: extra = null } = {}) {
+    // A stock map ships with World at War. There is nothing to download, the site
+    // holds no files for it by design, and asking anyway is what failed B's Nacht der
+    // Untoten launch (library.js :: STOCK_MAPS).
+    if (library.isStock(bsp)) return { already: true, stock: true, skipped: 'installed: stock' }
     if (library.isInstalled(bsp)) return { already: true }
     // One install per map at a time. The party watcher starts the download the moment
     // the leader stages a map; the boot flow then asks for the same map again a minute
@@ -754,6 +771,24 @@ function wireIpc() {
     return { run, matchId, linkHost, agent, info }
   }
 
+  // Give the box back.
+  //
+  // A lease that nobody launches into is not free: the site keeps it `ready`, the box
+  // keeps the instance up with the map loaded, and the ghost-lease reaper will not
+  // touch it because the box is honestly reporting it. So every way a launch can end
+  // without a game — a failed step, a cancel, an exception — has to say so out loud.
+  // `POST /api/launcher/cancel` is the site's own route for it and it is best effort:
+  // a launcher that cannot reach the site cannot free anything, and saying so in the
+  // log is all it can do.
+  function releaseLease(why) {
+    const api = state.api
+    if (!api || !api.signedIn) return
+    Promise.resolve()
+      .then(() => api.cancel())
+      .then((r) => log('play', `released the lease (${why}): ${r?.ok ? 'the site let the box go' : JSON.stringify(r)}`))
+      .catch((e) => log('play', `could NOT release the lease (${why}): ${e.message}`))
+  }
+
   async function startPlay(opts = {}) {
     if (state.flow) throw new Error('A launch is already in progress.')
 
@@ -825,6 +860,11 @@ function wireIpc() {
       // ensureMapInstalled hands back the in-flight install rather than starting a
       // second one, so a member whose download is still running simply waits for it.
       ensureMap: opts.local ? null : (bsp, onProgress) => ensureMapInstalled(bsp, { onProgress }),
+      // Two questions the boot flow has to be able to ask without downloading
+      // anything: is this map stock (skip the step entirely), and is it on disk
+      // already (a download that failed does not matter if the map is there).
+      isStock: (bsp) => library.isStock(bsp),
+      mapReady: (bsp) => library.mapReady(bsp),
       siteUrl: opts.hostApi || conf.hostApi,
       hostDashboard: local?.info?.dashUrl || conf.hostDashboard,
       // The address the referee IS listening on, read back from the referee. The old
@@ -904,6 +944,7 @@ function wireIpc() {
       state.gate.unblock('game')
       state.tray?.rebuild()
       showSite(true)
+      raiser.flush()   // a raise we refused mid-game (focusguard.js) happens now
       push('boot_done', { ...flow.snapshot(), phase: p.phase, detail: p.detail })
     })
     const clear = () => {
@@ -912,17 +953,32 @@ function wireIpc() {
       state.gate.unblock('game')
       state.tray?.rebuild()
       showSite(true)
+      raiser.flush()   // a raise we refused mid-game (focusguard.js) happens now
     }
     flow.run().then((snap) => {
       push('boot', snap)
       // A step can fail without the game ever starting (no server, setup missing), in
       // which case there is no 'ended' event to clean up after us. Without this the
       // launcher refuses every later Play with "a launch is already in progress".
-      if (snap.failed) clear()
+      if (snap.failed) {
+        clear()
+        // AND THE LEASE HAS TO GO BACK. A flow that failed after the site leased a box
+        // left the lease `ready` and the instance parked with a map loaded for nobody:
+        // measured on 2026-09-22 as m_dca96c74, still holding inst-01 three minutes
+        // after B closed the boot screen. The site's own reaper cannot help — the box
+        // *is* reporting that instance, so it is not a ghost.
+        releaseLease('the launch failed')
+        // The boot screen swaps Cancel for Close on `boot_done`, and a failed flow
+        // never sent one: the screen sat with a Cancel button over a launch that had
+        // already stopped. That is the "waiting forever" B saw.
+        push('boot_done', { ...snap, phase: 'failed', detail: snap.steps.find((s) => s.state === 'failed')?.detail || 'the launch stopped' })
+      }
     }).catch(async (e) => {
       await reportCrash('server_unreachable', e, { map: opts.map })
       push('boot', { ...flow.snapshot(), error: e.message })
       clear()
+      releaseLease('the launch threw')
+      push('boot_done', { ...flow.snapshot(), phase: 'failed', detail: e.message })
     })
     return flow.snapshot()
   }
@@ -980,7 +1036,10 @@ function wireIpc() {
     })
   })
 
-  handle('cancelPlay', () => { state.flow?.cancel('you cancelled'); showSite(true); return true })
+  // Cancelling gives the box back too. Without this, every cancelled Start left a
+  // lease `ready` and an instance parked on the box until somebody pressed Start
+  // again — which is how m_dca96c74 outlived the boot screen that made it.
+  handle('cancelPlay', () => { state.flow?.cancel('you cancelled'); releaseLease('you cancelled'); showSite(true); return true })
   handle('closeBoot', () => { showSite(true); return true })
 
   handle('setConfig', (patch) => {
@@ -1230,7 +1289,7 @@ function steamSignIn() {
         // The wrapped page loaded signed out; it needs to see the cookie.
         try { await state.api.sayHello() } catch {}
         try { state.siteView?.webContents.reload() } catch {}
-        state.win?.show(); state.win?.focus()
+        raiseWindow('the Steam sign-in finishing')
         done(resolve, s)
       } catch (e) {
         fail('could not reach the site to finish signing in (' + e.message + ')')
@@ -1308,7 +1367,7 @@ if (!single) {
   // which is the half the tests drive against fakes.
   const forward = deeplink.makeSecondInstance({
     onLink: (url) => handleDeepLink(url),
-    onFocus: () => { state.win?.show(); state.win?.focus() },
+    onFocus: () => raiseWindow('a second launch of the launcher'),
     log: (...a) => log('deeplink', ...a),
   })
   app.on('second-instance', (_e, argv) => {
@@ -1340,6 +1399,15 @@ if (!single) {
     // which folder either of them meant. Now it does, before anything else can fail.
     log('root', P.root, `(client ${setupInstalledSafe() ? 'installed' : 'NOT installed'} here)`,
       `log ${LOG}`, dirsError ? `- could not create our folders: ${dirsError}` : '')
+
+    // One-time repairs of saved settings. Same moment as the pending update and for
+    // the same reason: never mid-game. Evidence: B's account held `maxFps: 60` and
+    // `fov: 65`, the engine's 2008 stock defaults, written there by the 0.2.3
+    // read-back bug rather than chosen (settings.js MIGRATIONS).
+    try {
+      const m = settings.migrate({ log: (line) => log('settings', line) })
+      if (!m.ran.length) log('settings', 'no settings migrations to run')
+    } catch (e) { log('settings', `could not run the settings migrations: ${e.message}`) }
 
     // Updates are applied HERE, before anything opens: the only moment that is never
     // mid-game and never mid-action (spec 13 §2).

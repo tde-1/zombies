@@ -450,6 +450,13 @@ function mapPayload(m) {
     size_bytes: served.size_bytes || (v ? v.size_bytes : null),
     files,
     install_known: served.install_known,
+    // `stock` means the map is inside World at War, so there is nothing to download —
+    // which is a different answer from "we have no files", and the launcher's boot
+    // flow needs to be able to tell them apart (mapfiles.js). `m.source` is the maps
+    // table's own column and the launcher trusts either this or its own stock list.
+    source: m.source || served.source || null,
+    stock: !!served.stock,
+    needs_download: served.needs_download !== false,
     // Said out loud when the archive recorded more files than this server holds, so a
     // partial install is visible before it fails rather than after.
     files_note: served.note || null,

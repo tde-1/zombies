@@ -1812,3 +1812,158 @@ dev harness's own `fs_homepath`, not the launcher's. The first Play on 0.2.3 sho
 `<ENW>\home\localappdata\Activision\CoDWaW\players\profiles\$$$\config.cfg` holding
 `seta r_mode "2560x1440"`, `seta vid_xpos "0"` and `bind MOUSE2 "+speed_throw"` — that file is the
 check.
+
+---
+
+## 2026-09-22, evening — 0.2.4: the stock map the launcher tried to download, and the launch that never said it had stopped
+
+B pressed Play on **Nacht der Untoten** in 0.2.3 and his boot screen read:
+
+```
+1 Downloading the map     X  The site has no files for nazi_zombie_prototype yet
+2 Reserving server        ok match m_dca96c74, invite token issued
+3 Loading map             ok the server loaded the map
+4 Ready                   ok the server is ready on 2.28.235.236:28960
+5 Launching World at War  .. waiting
+```
+
+Five faults, and the first two are one sentence each.
+
+### 1. The launcher asked the site to send it a map that ships with the game
+
+`ensureMap` goes to `library.isInstalled`, which means **"WE installed it"** — false for a stock
+map on every machine for ever. So the boot flow asked `/api/maps/nazi_zombie_prototype/files`, the
+site answered `install_known: false` because it genuinely holds no files for it, and the launcher
+read that as *"the site has no files for this map yet"* and stopped.
+
+The site could not have helped, because its answer could not tell "you already have this map" apart
+from "we have lost this map". It can now. `mapfiles.forMap()` reads the maps table's own `source`
+column and answers a stock map with `source: 'stock'`, `stock: true`, `needs_download: false` and
+`install_known: TRUE` — the install IS known; Treyarch did it. `mapPayload` carries the same three
+fields into `/api/launcher/play`.
+
+On this side, `library.js` gains `STOCK_MAPS`, `isStock()` and `mapReady()` — *"can the engine load
+this map now"*, which is the question the boot flow was actually asking. `ensureMapInstalled`
+returns `{ stock: true }` without a request, and **BootFlow skips the step entirely**, drawing
+`Downloading the map — installed: stock`. Either source is enough: the launcher's own list, or the
+site saying `source: stock`, so a launcher one release behind the map table still gets it right.
+
+### 2. A launch that had given up looked exactly like one that was still trying
+
+The renderer draws a step with **no record at all** as `waiting`. A failed download returned the
+snapshot, so `launching` and `in_game` had no record, and the screen sat on *waiting* for ever over
+a launch that had stopped a second earlier. There is no timeout behind that word.
+
+`BootFlow.stop(why)` now writes every un-run step down as `failed — stopped: <why>`, and every
+failure path goes through it. `main.js` pushes `boot_done` on a failed flow as well, so the boot
+screen swaps Cancel for **Close** instead of offering to cancel something that is already over.
+
+And a download that fails on a map that is **on disk anyway** is a broken check, not a reason to
+refuse a ready server: `mapReady(bsp)` lets the launch continue and says which.
+
+### 3. The lease was never given back — twice over
+
+`m_dca96c74` was still `ready` on the site and still holding `inst-01` on `zombies-dev`, with Nacht
+loaded for nobody, long after B closed the screen. The ghost-lease reaper cannot help: the box
+**is** reporting that instance, honestly, so it is not a ghost. Nothing called
+`POST /api/launcher/cancel` on a failure, and **nothing called it on Cancel either** — the cancel
+button only stopped the local game.
+
+`releaseLease()` in `main.js` now runs on all three endings (failed step, exception, Cancel), best
+effort, logged either way. That lease was released by hand this session
+(`node web/tools/lease-cli.js --match m_dca96c74 --cancel`; the box then logged
+`assignment changed: idle`). Note what that did NOT do: the host agent leaves the instance PROCESS
+up when a lease goes idle, and only the next boot on a different match id retires it. Worth a
+host-lane line; not a blocker, because a closed lease no longer counts against the box.
+
+### 4. Play defaulted to Custom
+
+`S.mode` in `shell.js` was `'custom'`, so a stock map's card read **CUSTOM / "Untracked."** on the
+verified journey — and the lease the site opened said `mode: custom` too, because that value is
+what `POST /api/launcher/play` is given. The box's own line for B's game is
+`host lease m_dca96c74: nazi_zombie_prototype custom 1p`. It is `'verified'` now, and `modeLabel()`
+is the one spelling, used by the mode button, the map card and the boot screen. `local` gets its
+own word — *Untracked* — instead of being called "Custom".
+
+**"Unknown Soldier" is not a signed-out launcher.** `users.username` for `76561198126330106` is
+literally `Unknown Soldier`; B was signed in, the token in that lease carries his SteamID, and the
+header was showing the site's stored name for his account. Nothing to fix.
+
+### 5. The launcher's loopback sign-in could not reach a mock site
+
+Found while proving the above. `/auth/launcher/start` redirected to `/auth/steam` unconditionally,
+and in mock mode that route **is not registered** — 404. So the one provider an agent can drive was
+the one the loopback flow could not use. One line, inside the mode check; live is `ZM_AUTH=steam`
+and is untouched (checked after the deploy: `/auth/steam` still 302s to Steam).
+
+### What is proven, in the real UI, and what is not
+
+Driven through the **shipped renderer** in a dev-mode launcher (`electron .`), over the DevTools
+protocol — clicks on the real buttons, readings off the real DOM. Sign-in is the launcher's own
+loopback flow (`ENW_SIGNIN_NO_BROWSER`, the path already in the source for exactly this), against a
+private site on 3399 holding a `VACUUM INTO` copy of the live database with `ZM_AUTH=mock`, and a
+**real host agent on B's PC** as the box. `web/data` was not touched.
+
+```
+Play page       mode "Verified", card "Verified", note "Records and badges count."
+Play pressed -> Downloading the map     ok installed: stock
+                Reserving server        ok match m_dba28b35, invite token issued
+                Loading map             ok the server loaded the map
+                Ready                   ok the server is ready on 127.0.0.1:28970
+                Launching World at War  ok World at War is running (process 41312)
+                In game                 ok connected
+box             host lease m_dba28b35: nazi_zombie_prototype VERIFIED 1p
+                host/inst-01 map_loaded nazi_zombie_prototype -> manifest "Nacht der Untoten"
+                host/inst-01 game live: nazi_zombie_prototype (verified) cap 24.0h
+Cancel pressed  host/site assignment changed: idle      <- the lease came back
+                assignments row m_dba28b35 = cancelled
+```
+
+Against the **LIVE** site, read-only through the tunnel, after deploying the site half:
+
+```
+GET /api/maps/nazi_zombie_prototype/files
+  -> {"source":"stock","stock":true,"install_known":true,"needs_download":false,"files":[]}
+GET /api/maps/nazi_zombie_fear_mc_2/files
+  -> {"source":"custom","stock":false,"install_known":true,"needs_download":true,...}
+```
+
+**Not proven, and named:** signing in to the **live** site (`ZM_AUTH=steam`; an agent must not have
+a password — unchanged since lp5), a lease against the **Hetzner** box through the UI (the box
+polls the live site only, and repointing it would mean touching box services), and
+**game over then a result on the site** — this run was ended with Cancel, which is an abandon and
+not a result. That leg is lp5's and nothing here touches it. Two real clients: still one.
+
+### 0.2.4
+
+```
+ENW-Zombies-Launcher-Setup-0.2.4.exe   94.5 MB
+  sha256 0aef3013dd2164c0c5c74456ddc5007c357f10bc9ed8079be051bc3fe8e61dc2
+client enw_t4.dll  1,577,472 B
+  sha256 8a7b7b30f5f8e97c644b3bcffa7b77328f1d3210eb55b2ea0bc9817744e843bc   <- byte-identical to 0.2.3
+```
+
+`npm test` **119 passed, 0 failed** (new: the stock four are ready without an install; a stock map
+skips the download; the site saying `source: stock` is enough on its own; a failed download on a
+map that is here still launches; a stopped launch writes its remaining steps down; the Play page
+starts in Verified). `web` **85 / 33 / 14** (new: the stock payload, and the launcher flow going to
+the provider the site actually has). `npm run smoke` 9 of 10 — the one failure is the agent shell's
+own `%LOCALAPPDATA%` sandbox notice, exactly as in 0.2.3, plus the usual warning that B's launcher
+holds the single-instance lock. Published to `web/public/updates`; `latest.yml` reads
+`version: 0.2.4` and the tunnel serves it as `text/yaml`.
+
+**Two things said out loud about this build.** `stage-client` was overridden with `--allow-stale`:
+the client lane had edited `mouse_polling.cpp` half an hour earlier and the gate refuses a DLL older
+than the source. Rebuilding would have shipped an untested, in-flight client change inside a
+hotfix; the staged DLL is byte-identical to the one 0.2.3 proved in the running game
+(`client.md` section 5f), which is what that gate exists to protect. For the same reason the
+packaged `src/**` carries whatever the launcher tree held at 17:11 — including another lane's
+in-flight `focusguard.js`, `gamecfg.js`, `launch.js` and `settings.js`. `npm test` and
+`npm run smoke` were green on exactly that tree.
+
+**Still open, and deliberately not in 0.2.4:** the shell's own right rail. B wants the LEFT column
+to be the only place a party is managed and a map is picked (Movement's home layout), the rail gone
+with Play Local / Custom / client status moved into it, the left column pinned at a fixed width,
+and a default window size that shows it at first open. That is a shell rewrite and B was waiting to
+play, so the Play fix shipped first.
+

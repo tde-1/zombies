@@ -133,7 +133,11 @@ export function catalogue() {
       verifiable: !!ex?.files?.length,
       files: files.length,
       bytes: files.reduce((n, f) => n + (f.size || 0), 0),
-      installed: isInstalled(bsp),
+      // A stock map is never "installed by us" and never needs to be: it ships with
+      // the game. Saying so here keeps the rail, the Play button and the boot flow
+      // reading one fact instead of three copies of a list of four names.
+      stock: isStock(bsp),
+      installed: isStock(bsp) || isInstalled(bsp),
     })
   }
 
@@ -330,6 +334,36 @@ export function isInstalled(bsp) {
   const d = installDir(bsp)
   try { return fs.existsSync(path.join(d, RECORD)) && fs.readdirSync(d).length > 1 } catch { return false }
 }
+
+// ---------------------------------------------------------------------------
+// THE STOCK FOUR — and the download that asked the site for a map it ships with
+// ---------------------------------------------------------------------------
+// The four Treyarch zombies maps are INSIDE World at War. There is no mod folder,
+// no .ff of ours, nothing to install and nothing for the site to serve: the site's
+// own row for them is `source: stock` and `/api/maps/<bsp>/files` answers
+// `install_known: false` because there genuinely are no files.
+//
+// Nothing knew that on this side. `isInstalled` means "WE installed it", which is
+// false for a stock map and always will be, so the boot flow's `ensureMap` went to
+// the site, the site said it had no files, and the launcher stopped B's Nacht der
+// Untoten launch with *"The site has no files for nazi_zombie_prototype yet."* —
+// on a map that was already on his disk, for a server that was already ready.
+//
+// So "installed" is the wrong question and `mapReady` is the right one: is this map
+// something the engine can load right now. For a stock map the answer is yes,
+// always, on any machine that has World at War at all — which setup already proved
+// before the launcher would let anyone press Play.
+export const STOCK_MAPS = Object.freeze([
+  'nazi_zombie_prototype',   // Nacht der Untoten
+  'nazi_zombie_asylum',      // Verrückt
+  'nazi_zombie_sumpf',       // Shi No Numa
+  'nazi_zombie_factory',     // Der Riese
+])
+
+export const isStock = (bsp) => STOCK_MAPS.includes(String(bsp || ''))
+
+// "Can the engine load this map now?" — stock, or we installed it.
+export const mapReady = (bsp) => isStock(bsp) || isInstalled(bsp)
 
 // A map in that folder that we did not put there belongs to the player. B's own
 // `nazi_zombie_ali` is exactly this case, and overwriting it — or deleting it on an

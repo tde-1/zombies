@@ -300,6 +300,32 @@ await test('maps install under OUR LocalAppData, and never into the player own f
   assert.match(ls, /ENW_LOCALAPPDATA: P\.localAppData/, 'every launch must pass ENW_LOCALAPPDATA')
 })
 
+// The four Treyarch maps are inside World at War. `isInstalled` means "WE installed
+// it", which is false for them for ever — which is why the boot flow asked the site
+// for Nacht der Untoten's files and stopped B's launch when it had none.
+await test('the stock four are ready without an install, and are not "installed by us"', async () => {
+  const lib = await import('../src/main/library.js')
+  for (const bsp of ['nazi_zombie_prototype', 'nazi_zombie_asylum', 'nazi_zombie_sumpf', 'nazi_zombie_factory']) {
+    assert.equal(lib.isStock(bsp), true, bsp)
+    assert.equal(lib.mapReady(bsp), true, bsp)
+  }
+  assert.equal(lib.isStock('nazi_zombie_fear_mc_2'), false)
+  assert.equal(lib.isStock(''), false)
+  assert.equal(lib.isStock(undefined), false)
+  // A custom map nobody has installed is NOT ready, or the download would be skipped
+  // for a map that really is missing.
+  assert.equal(lib.mapReady('definitely_not_a_real_map_' + Date.now()), false)
+})
+
+// The Play card is the verified journey. It defaulted to 'custom', so a stock map read
+// "CUSTOM / Untracked." and the lease the site opened said mode=custom.
+await test('the Play page starts in Verified', async () => {
+  const src = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
+  assert.ok(/mode: 'verified',/.test(src), 'the renderer state must start in Verified')
+  assert.ok(!/mode: 'custom',/.test(src), 'nothing may default the mode back to Custom')
+  assert.ok(/const modeLabel = /.test(src), 'one spelling of the mode, drawn everywhere')
+})
+
 await test("a map the player installed themselves is never touched", async () => {
   const lib = await import('../src/main/library.js')
   // B's own nazi_zombie_ali lives in that folder. Ours carry a record file; theirs
@@ -1502,7 +1528,253 @@ await test('the map is installed before the game is launched, and a failed insta
   const s2 = await bad.runViaSite(api)
   assert.equal(s2.failed, true)
   assert.equal(s2.steps.find((s) => s.id === 'download').state, 'failed')
-  assert.equal(s2.steps.some((s) => s.id === 'launching'), false, 'a map that did not install is never launched')
+  // The game is still never launched — but the steps after the failure are now WRITTEN
+  // DOWN as stopped rather than left absent. An absent step is drawn as "waiting", and
+  // a boot screen saying "waiting" about a launch that has already given up is what B
+  // sat in front of on 0.2.3.
+  assert.equal(bad.launch, null, 'a map that did not install is never launched')
+  const l2 = s2.steps.find((s) => s.id === 'launching')
+  assert.equal(l2.state, 'failed')
+  assert.ok(/^stopped: /.test(l2.detail), 'the launch step says it stopped and why')
+  assert.equal(s2.steps.find((s) => s.id === 'in_game').state, 'failed')
+})
+
+// A stock map has no payload ANYWHERE: the site holds no files for it by design, so
+// the download step must never run. This is the exact launch B lost.
+await test('a stock map skips the download step instead of asking the site for files', async () => {
+  const api = fakeApi()
+  api.play = async () => ({ state: 'ready', party: { id: 7, is_leader: false },
+                            map: { key: 'nazi_zombie_prototype', source: 'stock' },
+                            match: { match_id: 'm_stock', connect: '10.0.0.5:28960', token: 't' } })
+  let asked = null
+  const flow = new BootFlow({
+    map: 'nazi_zombie_prototype', api, follow: true, launch: false, serverTimeoutMs: 4000,
+    isStock: (b) => b === 'nazi_zombie_prototype',
+    ensureMap: async (bsp) => { asked = bsp; throw new Error('The site has no files for nazi_zombie_prototype yet.') },
+  })
+  const snap = await flow.runViaSite(api)
+  assert.equal(asked, null, 'nothing is downloaded for a map that ships with the game')
+  assert.equal(snap.steps.find((s) => s.id === 'download').state, 'done')
+  assert.equal(snap.steps.find((s) => s.id === 'download').detail, 'installed: stock')
+  assert.equal(snap.failed, false)
+})
+
+// The site's own answer is enough on its own, so a launcher one release behind the
+// map table still gets this right.
+await test('the site saying source: stock is enough on its own', async () => {
+  const api = fakeApi()
+  api.play = async () => ({ state: 'ready', party: { id: 7, is_leader: false },
+                            map: { key: 'nazi_zombie_sumpf', source: 'stock' },
+                            match: { match_id: 'm_s2', connect: '10.0.0.5:28960', token: 't' } })
+  const flow = new BootFlow({
+    map: 'nazi_zombie_sumpf', api, follow: true, launch: false, serverTimeoutMs: 4000,
+    ensureMap: async () => { throw new Error('the site has no files') },
+  })
+  const snap = await flow.runViaSite(api)
+  assert.equal(snap.steps.find((s) => s.id === 'download').detail, 'installed: stock')
+})
+
+// A download that broke on a map that is nonetheless on disk is a broken CHECK, not a
+// reason to refuse a ready server.
+await test('a failed download on a map that is already on this PC still launches', async () => {
+  const api = fakeApi()
+  api.play = async () => ({ state: 'ready', party: { id: 7, is_leader: false }, map: { key: 'water' },
+                            match: { match_id: 'm_w', connect: '10.0.0.5:28960', token: 't' } })
+  const flow = new BootFlow({
+    map: 'water', api, follow: true, launch: false, serverTimeoutMs: 4000,
+    mapReady: () => true,
+    ensureMap: async () => { throw new Error('the site answered 503') },
+  })
+  const snap = await flow.runViaSite(api)
+  assert.equal(snap.steps.find((s) => s.id === 'download').state, 'done')
+  assert.equal(snap.failed, false)
+})
+
+// ------------------------------------- 2026-09-22, 0.2.4: what B actually played --
+// B played windowed-with-a-border, at 60 fps, with toggle ADS. Three saved-state bugs,
+// all of them "a value that was never chosen became the value we use".
+group('0.2.4: the settings that were never chosen')
+
+const focusguard = await import('../src/main/focusguard.js')
+
+await test('an account block never shadows a key it does not define', () => {
+  // B's real state\settings.json: the account block keyed by his steamid carries
+  // resolution/fov/maxFps/binds and NO `mode`, while `local` says mode "borderless".
+  // get() used to pick ONE of the two objects, so signing in threw the local block
+  // away whole and every key the account happened not to carry fell back to a bare
+  // default instead of to what this computer was playing with.
+  settings.signOut()
+  settings.set({ mode: 'borderless', chatChannel: 'local', maxFps: 250 })   // the local block
+  settings.signIn({ steamid: '76561190000000009', name: 'shadow' })
+  settings.set({ resolution: '2560x1440' })                                 // the account block
+  const s = settings.get()
+  assert.equal(s.mode, 'borderless', 'a key the account does not define must fall through to local')
+  assert.equal(s.chatChannel, 'local')
+  assert.equal(s.resolution, '2560x1440', 'a key the account DOES define still wins')
+  // And the general case: a null/undefined IN THE ACCOUNT BLOCK is "no opinion", not
+  // an override. Written straight to the state file, because set() deliberately keeps
+  // the local copy in step and so cannot produce this shape on its own.
+  const raw = JSON.parse(fs.readFileSync(paths.P.settings, 'utf8'))
+  raw.accounts['76561190000000009'] = { resolution: null, fov: undefined, maxFps: 190 }
+  raw.local = { ...raw.local, resolution: '3440x1440', fov: 110, mode: 'borderless' }
+  fs.writeFileSync(paths.P.settings, JSON.stringify(raw, null, 2))
+  const t = settings.get('76561190000000009')
+  assert.equal(t.resolution, '3440x1440', 'a null account value must not shadow the local one')
+  assert.equal(t.fov, 110, 'nor an undefined one')
+  assert.equal(t.maxFps, 190, 'a defined account value still wins')
+  settings.signOut()
+})
+
+await test('ENW_BORDERLESS is 1 for an account with no mode and a local borderless', () => {
+  // The env var the DLL's borderless component reads. It must follow the EFFECTIVE
+  // resolved mode, not a raw account block.
+  settings.signOut()
+  settings.set({ mode: 'borderless' })
+  settings.signIn({ steamid: '76561190000000010', name: 'noMode' })
+  settings.set({ resolution: '2560x1440' })
+  const s = settings.get()
+  assert.equal(s.mode, 'borderless')
+  assert.equal(launch.borderlessEnv(s, true), '1')
+  // A dev window mode still gets an explicit '0' rather than inheriting one.
+  assert.equal(launch.borderlessEnv(s, false), '0')
+  assert.equal(launch.borderlessEnv({ mode: 'windowed' }, true), '0')
+  settings.signOut()
+})
+
+await test('the read-back never persists a value the engine defaulted to', () => {
+  // B's account ended up holding maxFps 60 and fov 65 -- the engine's 2008 stock
+  // defaults, saved there because until 0.2.3 we read back a profile the seed had
+  // never reached. A first read-back must refuse them.
+  const H = path.join(process.env.ENW_ROOT, 'stockhome')
+  const cfgDir = path.join(H, 'players', 'profiles', gamecfg.PROFILE)
+  fs.mkdirSync(cfgDir, { recursive: true })
+  fs.writeFileSync(path.join(cfgDir, 'config.cfg'),
+    'seta com_maxfps "60"\r\nseta cg_fov "65"\r\nseta r_mode "800x600"\r\nseta sensitivity "4.2"\r\n')
+  const r = gamecfg.applyReadBack({ homeDir: H, saved: { maxFps: 250, fov: 80, resolution: '2560x1440' } })
+  assert.equal('maxFps' in r.changed, false, 'com_maxfps 60 is the engine default, not a choice')
+  assert.equal('fov' in r.changed, false, 'cg_fov 65 is the engine default, not a choice')
+  assert.equal('resolution' in r.changed, false, 'r_mode 800x600 is the engine default')
+  assert.equal(r.changed.sensitivity, 4.2, 'a value that is NOT a stock default still comes back')
+
+  // And a value identical to the one we seeded is not a change either, whatever it is.
+  const S = path.join(process.env.ENW_ROOT, 'seedhome')
+  gamecfg.seedHome({ homeDir: S, settings: { fov: 95 }, display: SCREENS[0] })
+  fs.writeFileSync(path.join(S, 'players', 'profiles', gamecfg.PROFILE, 'config.cfg'),
+    'seta cg_fov "95"\r\nseta com_maxfps "125"\r\n')
+  const r2 = gamecfg.applyReadBack({ homeDir: S, saved: { fov: 80, maxFps: 250 } })
+  assert.equal('fov' in r2.changed, false, 'cg_fov 95 is exactly what we seeded; the player changed nothing')
+  assert.equal(r2.changed.maxFps, 125, 'com_maxfps 125 is not what we seeded, so it is a real in-game change')
+
+  // A LATER read-back believes the player: 65 is only refused on the first one.
+  fs.writeFileSync(path.join(S, 'players', 'profiles', gamecfg.PROFILE, 'config.cfg'), 'seta cg_fov "65"\r\n')
+  const r3 = gamecfg.applyReadBack({ homeDir: S, saved: { fov: 80 } })
+  assert.equal(r3.changed.fov, 65, 'a player who really picks 65 later is believed')
+})
+
+await test('the stock-defaults repair runs once per account and is idempotent', () => {
+  settings.signOut()
+  settings.signIn({ steamid: '76561190000000011', name: 'sixty' })
+  settings.set({ maxFps: 60, fov: 65 })
+  const lines = []
+  const first = settings.migrate({ log: (l) => lines.push(l) })
+  const after = settings.get('76561190000000011')
+  assert.equal(after.maxFps, 250, 'back to the seeded baseline')
+  assert.equal(after.fov, 80)
+  assert.ok(first.ran.length, 'the migration reports what it changed')
+  assert.ok(lines.join(' ').includes('maxFps 60 -> 250'), 'and says so in one line')
+  // Idempotent: a player who then really chooses 60 keeps it.
+  settings.set({ maxFps: 60 }, '76561190000000011')
+  const second = settings.migrate({ log: () => {} })
+  assert.equal(second.ran.length, 0, 'the marker stops it running twice')
+  assert.equal(settings.get('76561190000000011').maxFps, 60, 'a real choice of 60 survives')
+  settings.signOut()
+})
+
+await test('the ADS bind repair is once-only and never clobbers a player-changed bind', () => {
+  // The engine's active profile is whatever active.txt names -- `$$$` on B's box, not
+  // our `enw` -- and it held the stock `bind MOUSE2 "+toggleads_throw"`. seedHome()
+  // will not revisit a config already at BASELINE_VERSION, so this has to.
+  const H = path.join(process.env.ENW_ROOT, 'adsmigrate')
+  const profiles = path.join(H, 'localappdata', 'Activision', 'CoDWaW', 'players', 'profiles')
+  fs.mkdirSync(path.join(profiles, '$$$'), { recursive: true })
+  fs.writeFileSync(path.join(profiles, 'active.txt'), '$$$')
+  const engineCfg = path.join(profiles, '$$$', 'config.cfg')
+  fs.writeFileSync(engineCfg, 'unbindall\r\nbind W "+forward"\r\nbind MOUSE2 "+toggleads_throw"\r\n')
+  fs.mkdirSync(path.join(H, 'players', 'profiles', gamecfg.PROFILE), { recursive: true })
+
+  // It reads active.txt rather than imposing our own profile name.
+  assert.equal(gamecfg.configPaths(H).engineProfile, '$$$')
+  assert.equal(gamecfg.configPaths(H).engineCfg, engineCfg)
+
+  const r = gamecfg.migrateAdsBind({ homeDir: H })
+  assert.equal(r.ran, true)
+  assert.deepEqual(r.changed, [engineCfg])
+  const text = fs.readFileSync(engineCfg, 'utf8')
+  assert.match(text, /bind MOUSE2 "\+speed_throw"/)
+  assert.doesNotMatch(text, /\+toggleads_throw/)
+  assert.match(text, /bind W "\+forward"/, 'nothing else is touched')
+
+  // Once only: a player who goes back to toggle in the Controls menu keeps it.
+  fs.writeFileSync(engineCfg, 'bind MOUSE2 "+toggleads_throw"\r\n')
+  const again = gamecfg.migrateAdsBind({ homeDir: H })
+  assert.equal(again.ran, false)
+  assert.match(fs.readFileSync(engineCfg, 'utf8'), /\+toggleads_throw/, 'a later choice of toggle survives')
+
+  // And a bind that is not the stock toggle one is never rewritten, even on the first run.
+  const H2 = path.join(process.env.ENW_ROOT, 'adskeep')
+  const p2 = path.join(H2, 'localappdata', 'Activision', 'CoDWaW', 'players', 'profiles', gamecfg.PROFILE)
+  fs.mkdirSync(p2, { recursive: true })
+  fs.mkdirSync(path.join(H2, 'players', 'profiles', gamecfg.PROFILE), { recursive: true })
+  fs.writeFileSync(path.join(p2, 'config.cfg'), 'bind MOUSE2 "+melee"\r\n')
+  const keep = gamecfg.migrateAdsBind({ homeDir: H2 })
+  assert.equal(keep.ran, true)
+  assert.deepEqual(keep.changed, [], 'a player-changed bind is left exactly alone')
+  assert.match(fs.readFileSync(path.join(p2, 'config.cfg'), 'utf8'), /\+melee/)
+})
+
+await test('the launcher never takes focus from a running game', () => {
+  // A focus flap makes the Q3-lineage engine deactivate the mouse and drop button
+  // events; B played windowed, so our window is on the same desktop as the game.
+  let shown = 0
+  let focused = 0
+  let running = false
+  const win = { show: () => shown++, focus: () => focused++ }
+  const r = focusguard.makeWindowRaiser({ win: () => win, busy: () => running })
+
+  running = true
+  const deferred = r.raise('a party deep link')
+  assert.equal(deferred.deferred, true)
+  assert.equal(shown, 0, 'the game keeps focus')
+  assert.equal(focused, 0)
+  // ...and it is not dropped: the window comes up once the game is gone.
+  running = false
+  r.flush()
+  assert.equal(shown, 1)
+  assert.equal(focused, 1)
+  r.flush()
+  assert.equal(shown, 1, 'flushing twice raises once')
+
+  // With no game running a raise is immediate.
+  r.raise('the Steam sign-in finishing')
+  assert.equal(shown, 2)
+  assert.equal(focused, 2)
+})
+
+await test('a deep link still routes while its window raise is deferred', () => {
+  // main.js imports electron and cannot be loaded here, so this is the same contract
+  // check the deep-link group already uses: the RAISE is deferred, the side effects
+  // are not -- a party invite that arrives mid-game must still navigate the site view.
+  const navigated = []
+  const running = true
+  const r = focusguard.makeWindowRaiser({ win: () => ({ show: () => {}, focus: () => {} }), busy: () => running })
+  const handle = (link) => {
+    const raised = r.raise('a deep link')
+    if (link.kind === 'party') navigated.push(`/party/${link.party}`)
+    return raised
+  }
+  const res = handle({ kind: 'party', party: '1234' })
+  assert.equal(res.deferred, true)
+  assert.deepEqual(navigated, ['/party/1234'], 'the party page is opened even though the window stayed down')
 })
 
 // ---------------------------------------------------------------------------

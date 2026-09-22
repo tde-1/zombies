@@ -103,6 +103,12 @@ async function main () {
   await check('a launcher flow ends at 127.0.0.1 with a code and the state it sent', async () => {
     const started = await get(`/auth/launcher/start?port=41234&state=${state}&challenge=${challenge}`)
     assert.strictEqual(started.status, 302)
+    // AND IT MUST GO TO THE PROVIDER THIS SITE ACTUALLY HAS. This redirected to
+    // `/auth/steam` unconditionally, which on a mock site is a 404 — so the one
+    // sign-in the launcher's loopback flow could be driven against was the one it
+    // could not reach. Found by driving it (2026-09-22).
+    assert.strictEqual(started.headers.get('location'), '/auth/mock',
+      'a mock site must send the launcher flow to the mock provider')
     for (const c of started.headers.getSetCookie()) jar.push(c.split(';')[0])
 
     const done = await fetch(BASE + '/auth/mock', {
