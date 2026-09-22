@@ -1152,3 +1152,35 @@ remove.
 One caveat worth keeping: **`--hold` is what makes any of this measurable.** Without it the CLI
 stops the game the instant `flow.run()` resolves, which is about two seconds after `post_init`.
 
+
+### 0.2.1: tonight's client, published (2026-09-22, 05:40)
+
+0.2.0 shipped a DLL that predates `20e47ed`, `4803fbb`, `e7bd955`, `78534c6` and `81c80d5` — the
+map-install ownership fix, `setup.ensureClientDll()`'s hash-repair on every Play, the `frametime`
+histogram, the raw-mouse fixes (plus opt-in `ENW_RAW_MOUSE_NOLEGACY`) and borderless reading
+`rcMonitor`. Rebuilt with the full `build.ps1 -Name launcher` (no `-CoreOnly`, which would drop
+`client-dll/` along with `server/`): **`enw_t4.dll` 1,501,184 B, sha256
+`40a9d77434fa230f02311358c2d03d70bc42012a88f9c19bedd4fbb499e6e7ca`** — the hash the client lane
+predicted, to the byte. **42** components register now (12 core, 24 server, 6 client-dll — the new
+one is `frametime`); the client lane's own run read *30 of 41 online*, so expect 31 of 42 on a
+player, and that line, not this one, is the evidence.
+
+`npm test` 86 passed / 0 failed. `npm run smoke` 9 of 10 — the one failure is still the MSIX
+sandbox check doing its job, so no install claim from this lane is evidence. Installer
+**`launcher\dist\ENW-Zombies-Launcher-Setup-0.2.1.exe`**, 94,490,882 B, sha256
+`42387a8580eba0f45e0a087ab4a2bd53a7a706a520d0c30e0f278ae5b2683344`, with that DLL verified inside
+`win-unpacked\resources\client\`.
+
+Published to `web/public/updates` (the only thing this lane writes under `web/`, and only through
+`tools/publish-update.js`). **The site was not restarted.** Checked against the running site on
+127.0.0.1:3200 rather than assumed:
+
+* `GET /updates/latest.yml` → `200`, `Content-Type: text/yaml`, `version: 0.2.1` — not the React
+  catch-all answering 200 with `text/html`, which is the failure this check exists for;
+* `GET /updates/ENW-Zombies-Launcher-Setup-0.2.1.exe` with `Range: bytes=0-1023` → **`206 Partial
+  Content`**, `Content-Range: bytes 0-1023/94490882`, and the bytes start `MZ`. That is what
+  electron-updater's differential download needs;
+* the feed's `sha512` recomputed from the served file matches;
+* electron-updater's own `semver`: 0.1.1 → update, **0.2.0 → update**, 0.2.1 → no update.
+
+The exe, its blockmap and `latest.yml` are all gitignored, so none of it is in a commit.
