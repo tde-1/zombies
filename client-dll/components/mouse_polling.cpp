@@ -163,6 +163,24 @@ long g_events_peak_frame = 0;
 long g_frames_with_events = 0;
 uint64_t g_last_report_frame = 0;
 
+// THE MESSAGE FLOOD, counted (2026-09-22). B: "the stutter happens only while
+// the mouse is moving", and he normally has to drop an 8 kHz mouse to 250 Hz to
+// make old CoD smooth. Run A measured exactly that shape -- with the counters
+// frozen (no input at all) the same scene held p99 6.75 ms and 0.00% of frames
+// over 16.7 ms at the 250 fps cap; with the mouse moving, p99 20-27 ms and 3-4%
+// of frames over 16.7 ms.
+//
+// WM_INPUT alone does not explain it, because we asked for `dwFlags = 0`, which
+// KEEPS the legacy messages: every device report produces a WM_MOUSEMOVE **and**
+// a WM_INPUT, and `Sys_GetEvent` (0x5FEC60) drains the queue completely every
+// frame. So these count both, per frame, and the report prints them side by side.
+volatile long g_wm_mousemove_total = 0;
+volatile long g_wm_mousemove_frame = 0;
+long g_wm_mousemove_peak = 0;
+volatile long g_msgs_total = 0;   // everything through our subclass
+volatile long g_msgs_frame = 0;
+long g_msgs_peak = 0;
+
 // ------------------------------------------------------- engine entry points
 using void_fn = void(__cdecl*)();
 
@@ -262,7 +280,15 @@ void OnRawInput(LPARAM lparam) {
 }
 
 LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+    ::InterlockedIncrement(&g_msgs_total);
+    ::InterlockedIncrement(&g_msgs_frame);
     switch (msg) {
+    case WM_MOUSEMOVE:
+        // The legacy half of the flood. We do not consume it -- the menu cursor
+        // and the engine's own button routing live on this path -- we count it.
+        ::InterlockedIncrement(&g_wm_mousemove_total);
+        ::InterlockedIncrement(&g_wm_mousemove_frame);
+        break;
     case WM_INPUT:
         OnRawInput(lparam);
         break;  // and fall through to the engine/DefWindowProc, as MSDN requires
@@ -446,6 +472,10 @@ public:
                 ++g_frames_with_events;
                 if (ev > g_events_peak_frame) g_events_peak_frame = ev;
             }
+            const long mm = ::InterlockedExchange(&g_wm_mousemove_frame, 0);
+            if (mm > g_wm_mousemove_peak) g_wm_mousemove_peak = mm;
+            const long ms = ::InterlockedExchange(&g_msgs_frame, 0);
+            if (ms > g_msgs_peak) g_msgs_peak = ms;
 
             // One line every ~15 s at 60 fps. This is the evidence B's real
             // test produces: events/frame scales with the report rate, and at
@@ -453,9 +483,12 @@ public:
             if (n - g_last_report_frame >= 900) {
                 g_last_report_frame = n;
                 ENW_INFO("mouse_polling: WM_INPUT total=%ld, peak/frame=%ld, frames with "
-                         "motion=%ld, raw=%s focus=%s",
+                         "motion=%ld, raw=%s focus=%s | legacy WM_MOUSEMOVE total=%ld "
+                         "peak/frame=%ld | ALL messages through our proc total=%ld "
+                         "peak/frame=%ld",
                          g_events_total, g_events_peak_frame, g_frames_with_events,
-                         g_in_raw_input ? "on" : "off", g_in_focus ? "yes" : "no");
+                         g_in_raw_input ? "on" : "off", g_in_focus ? "yes" : "no",
+                         g_wm_mousemove_total, g_wm_mousemove_peak, g_msgs_total, g_msgs_peak);
             }
         });
     }

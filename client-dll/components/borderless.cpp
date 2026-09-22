@@ -142,6 +142,29 @@ bool env_is(const char* name, char value) {
     return v && v[0] == value && v[1] == '\0';
 }
 
+// ---------------------------------------------------------------- the monitor
+// The FULL monitor rect, taskbar area included: MONITORINFO.rcMonitor, never
+// rcWork. rcWork is the desktop working area -- it stops at the taskbar -- and a
+// "borderless" window sized to it leaves a strip of desktop showing, which is
+// one of the two things B saw. This is the one technique taken from Borderless
+// Gaming (github.com/Codeusa/Borderless-Gaming); it is GPL-2.0-only and we are
+// GPL-3.0, so it was READ, not copied: rcMonitor-not-rcWork is a fact about the
+// Win32 API, and the code below is ours.
+bool monitor_rect_for(HWND h, int x, int y, RECT* out) {
+    MONITORINFO mi = {};
+    mi.cbSize = sizeof mi;
+    // Prefer the monitor the requested ORIGIN lands on -- the launcher passes
+    // vid_xpos/vid_ypos of the display the player picked, and on this box the
+    // second display starts at (-1440,-340), so "the monitor the window happens
+    // to be on right now" is the wrong one until after the move.
+    const POINT pt = {x, y};
+    HMONITOR mon = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONULL);
+    if (!mon) mon = ::MonitorFromWindow(h, MONITOR_DEFAULTTOPRIMARY);
+    if (!mon || !::GetMonitorInfoA(mon, &mi)) return false;
+    *out = mi.rcMonitor;
+    return true;
+}
+
 // ------------------------------------------------------------------- the work
 void resolve_target_rect() {
     int w = 0, h = 0;
@@ -157,28 +180,55 @@ void resolve_target_rect() {
         g_want_y = have_y ? y : 0;
         g_have_size = true;
         ENW_INFO("borderless: target %dx%d at (%d,%d) from the command line "
-                 "(r_mode%s, vid_xpos%s, vid_ypos%s)",
-                 g_want_w, g_want_h, g_want_x, g_want_y, have_mode ? "" : " missing",
-                 have_x ? "" : " missing", have_y ? "" : " missing");
+                 "(r_mode, vid_xpos%s, vid_ypos%s)",
+                 g_want_w, g_want_h, g_want_x, g_want_y, have_x ? "" : " missing",
+                 have_y ? "" : " missing");
+
+        // COVER THE MONITOR. B's report on the 0.2.0 build was "windowed at
+        // native size" -- a window that is the right size is still not
+        // borderless if it does not cover the screen. If the r_mode rect and the
+        // monitor disagree, say so by name and take the monitor, because
+        // "borderless" that leaves desktop showing is the bug, not the feature.
+        RECT m = {};
+        if (monitor_rect_for(g_hwnd, g_want_x, g_want_y, &m)) {
+            const int mw = m.right - m.left, mh = m.bottom - m.top;
+            if (mw != g_want_w || mh != g_want_h || m.left != g_want_x || m.top != g_want_y) {
+                if (env_is("ENW_BORDERLESS_COVER", '0')) {
+                    ENW_WARN("borderless: the command line asks for %dx%d at (%d,%d) but that "
+                             "monitor is %dx%d at (%ld,%ld) -- honouring the command line "
+                             "because ENW_BORDERLESS_COVER=0. The window will NOT cover the "
+                             "screen.",
+                             g_want_w, g_want_h, g_want_x, g_want_y, mw, mh, m.left, m.top);
+                } else {
+                    ENW_WARN("borderless: the command line asks for %dx%d at (%d,%d) but the "
+                             "monitor at that point is %dx%d at (%ld,%ld). Covering the "
+                             "monitor -- borderless means the whole screen, taskbar included. "
+                             "(ENW_BORDERLESS_COVER=0 to honour r_mode instead.)",
+                             g_want_w, g_want_h, g_want_x, g_want_y, mw, mh, m.left, m.top);
+                    g_want_x = m.left;
+                    g_want_y = m.top;
+                    g_want_w = mw;
+                    g_want_h = mh;
+                }
+            }
+        }
         return;
     }
 
-    // Fall back to the whole monitor the window is on -- B's default: borderless
-    // at the main display's native resolution.
-    MONITORINFO mi = {};
-    mi.cbSize = sizeof mi;
-    HMONITOR mon = ::MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTOPRIMARY);
-    if (mon && ::GetMonitorInfoA(mon, &mi)) {
-        g_want_x = mi.rcMonitor.left;
-        g_want_y = mi.rcMonitor.top;
-        g_want_w = mi.rcMonitor.right - mi.rcMonitor.left;
-        g_want_h = mi.rcMonitor.bottom - mi.rcMonitor.top;
+    // No usable r_mode: the whole monitor the window is on -- B's default,
+    // borderless at the main display's native resolution.
+    RECT m = {};
+    if (monitor_rect_for(g_hwnd, 0, 0, &m)) {
+        g_want_x = m.left;
+        g_want_y = m.top;
+        g_want_w = m.right - m.left;
+        g_want_h = m.bottom - m.top;
         g_have_size = true;
         ENW_INFO("borderless: no usable r_mode on the command line; using the whole monitor "
                  "rect %dx%d at (%d,%d)", g_want_w, g_want_h, g_want_x, g_want_y);
         return;
     }
-    ENW_WARN("borderless: no r_mode and MonitorFromWindow/GetMonitorInfo failed; the frame "
+    ENW_WARN("borderless: no r_mode and MonitorFromPoint/GetMonitorInfo failed; the frame "
              "will be removed but the window will not be moved or resized.");
     g_have_size = false;
 }
@@ -187,6 +237,18 @@ bool has_frame(HWND h) {
     const LONG s = ::GetWindowLongA(h, GWL_STYLE);
     const LONG e = ::GetWindowLongA(h, GWL_EXSTYLE);
     return (s & kFrameStyles) != 0 || (e & kFrameExStyles) != 0 || (s & WS_POPUP) == 0;
+}
+
+// Style is only half of it. The engine moves and resizes its own window on a
+// mode change, and a popup window that is no longer over the whole monitor is
+// exactly what "windowed at native size" looks like from the outside. So the
+// poll checks the RECT too, with a pixel of slack for nothing in particular.
+bool wrong_rect(HWND h) {
+    if (!g_have_size) return false;
+    RECT wr = {};
+    if (!::GetWindowRect(h, &wr)) return false;
+    return wr.left != g_want_x || wr.top != g_want_y ||
+           (wr.right - wr.left) != g_want_w || (wr.bottom - wr.top) != g_want_h;
 }
 
 // Returns true if the window is borderless afterwards.
@@ -200,9 +262,14 @@ bool strip_frame(HWND h, bool first_time) {
     ::SetWindowLongA(h, GWL_STYLE, want);
     ::SetWindowLongA(h, GWL_EXSTYLE, want_ex);
 
-    UINT flags = SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER;
+    // HWND_TOP, not SWP_NOZORDER. A borderless window that is behind the taskbar
+    // -- or behind anything else -- is not covering the screen, and bringing it
+    // to the top of the z-order is what every borderless tool does after the
+    // style change. SWP_NOACTIVATE stays: we are running from a frame tick and
+    // must not steal focus from whatever the player is doing mid-load.
+    UINT flags = SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOOWNERZORDER;
     if (!g_have_size) flags |= SWP_NOMOVE | SWP_NOSIZE;
-    ::SetWindowPos(h, nullptr, g_want_x, g_want_y, g_want_w, g_want_h, flags);
+    ::SetWindowPos(h, HWND_TOP, g_want_x, g_want_y, g_want_w, g_want_h, flags);
 
     // Read it back. A call returning without error is not evidence.
     const LONG after = ::GetWindowLongA(h, GWL_STYLE);
@@ -289,13 +356,17 @@ public:
                 return;
             }
 
-            // Alt-tab, restore, or anything else that puts the frame back.
-            if (has_frame(h)) {
+            // Alt-tab, restore, a mode change, or anything else that puts the
+            // frame back OR moves the window off the monitor rect.
+            if (has_frame(h) || wrong_rect(h)) {
+                // Minimised windows have a bogus rect; leave them alone or we
+                // fight the taskbar every 20 frames.
+                if (::IsIconic(h)) return;
                 strip_frame(h, false);
                 if (++g_reapplied == 1)
-                    ENW_INFO("borderless: the window got its frame back (alt-tab or a mode "
-                             "change); removed it again. Further re-applications are counted, "
-                             "not logged.");
+                    ENW_INFO("borderless: the window got its frame back, or moved off the "
+                             "monitor rect (alt-tab or a mode change); re-applied. Further "
+                             "re-applications are counted, not logged.");
             }
         });
     }
