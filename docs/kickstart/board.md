@@ -3581,6 +3581,33 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
 
 ---
 
+- 04:15 launcher: **B's 800x600 at 60 fps was three dvars we were not sending, not a bug.**
+  `settingsArgs` defaulted `r_mode` to `''` ("leave it to the game") and never passed `r_vsync`
+  at all. Our `fs_homepath` is fresh by design, so "the game" is the engine's own defaults: the
+  decrypted image carries the literals `set r_mode 800x600` and `set r_fullscreen 0`, `com_maxfps`
+  is 85, `cg_fov` is 65, and **vsync is ON — which clamps the frame rate to the panel's refresh
+  whatever `com_maxfps` says**. 60 Hz panel, 60 fps. Evidence is the image plus
+  `%LOCALAPPDATA%\Activision\codwaw\players\profiles\anna-jpg\config.cfg`
+  (`seta r_mode "800x600"`, `seta r_displayRefresh "60 Hz"`), not a launch — the lock was held.
+- 04:15 launcher: the baseline is now explicit (`launcher/src/main/gamecfg.js`): borderless
+  windowed at the chosen display's native size, `r_vsync 0`, `com_maxfps 250`, plus the
+  pure-config PCGamingWiki/Plutonium fixes, each with a reason and a source URL in
+  `launcher.md`. **Every dvar was grepped out of `ZombiesDev\dumps\codwaw-1.7-a.exe` before being
+  used** — `r_noborder` is the only one that is not there, which is what client measured, and it
+  is passed anyway because the DLL reads it (`ENW_BORDERLESS=1` on the environment too).
+- 04:15 launcher: **a command-line `+set` leaves the in-game settings menu lying.** The menu reads
+  `config.cfg`, so it still showed the 2008 defaults and the first thing a player changed wrote
+  them back over ours. The launcher now seeds `<fs_homepath>\players\profiles\enw\config.cfg`
+  (plus `active.txt`, without which the engine loads a different profile and never reads ours) on
+  a first launch or a baseline-version bump, and **never on top of a config the player now owns**.
+  The §4.3 round trip is in: `config.cfg` is parsed after the game exits and written to the
+  account, only for keys the game actually wrote.
+- 04:15 launcher: two traps worth stealing. **Electron's `display.bounds` are DIP, not pixels** —
+  a 4K screen at 150% reports 2560x1440 and `r_mode 2560x1440` would be a mode the game does not
+  have; multiply by `scaleFactor` (or use `nativeOrigin`). And **borderless and windowed both
+  write `r_fullscreen 0`** with no vanilla `r_noborder` to tell them apart, so a naive read-back
+  demotes the default mode to windowed on every single launch.
+
 ## What is open right now (2026-09-22, after the docsweep pass)
 
 This is the end of the board and it is meant to be the first thing a new agent reads after

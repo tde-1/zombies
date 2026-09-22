@@ -168,7 +168,7 @@ entries, `main/` still has 36.
   +set fs_game mods/enw
   +set com_startupIntroPlayed 1  +set ui_autoContinue 1
   +set cl_allowDownload 0        +set logfile 2
-  <the account's settings: cg_fov, com_maxfps, r_fullscreen, …>
+  <the launch baseline + the account's settings: r_mode, r_noborder, r_vsync, com_maxfps, cg_fov, … — see the 2026-09-22 section at the end of this page>
   +connect <host>
 ```
 
@@ -638,3 +638,220 @@ when B wants it.
 Nobody signed in to Steam for real in this pass — that needs a password and this lane does
 not type one. Hops 5 and 6 with a *genuine* Steam assertion remain unexercised; everything
 either side of them is covered by `web/test/launcher-signin.js` (13 checks).
+
+---
+
+## The launch baseline — why B got 800x600 at 60 FPS, and what runs now (2026-09-22)
+
+B launched World at War through the launcher and got **~60 FPS at about 800x600**: a worse game
+than double-clicking it in Steam. This section is the cause, the fix, and the list of what the
+launcher now sets and why.
+
+### The cause, confirmed
+
+Nothing was broken. **We simply never told the game anything about the display**, and the game's
+own opinion is a 2008 one.
+
+`settingsArgs` pushed `cg_fov`, `com_maxfps`, `r_fullscreen`, `r_mode` and the volume — and
+`r_mode` defaulted to `''`, which the code called *"leave it to the game"*. Our copy runs with its
+own `fs_homepath` (by design: B's Steam config is never read or written), so on a fresh profile
+"the game" means the engine's built-in defaults:
+
+| Evidence | Where |
+|---|---|
+| the image carries the literals `set r_mode 800x600` and `set r_fullscreen 0` | grepped out of `ZombiesDev\dumps\codwaw-1.7-a.exe`, the decrypted 1.7 image |
+| the `config.cfg` on this box reads `seta r_mode "800x600"`, `seta r_displayRefresh "60 Hz"` | `%LOCALAPPDATA%\Activision\codwaw\players\profiles\anna-jpg\config.cfg`, written 2026-09-22 03:58 |
+| `com_maxfps` defaults to **85** | PCGamingWiki, and the dvar table in `dedi.md` §7 reads `0x55` = 85 out of the image |
+| "Sync Every Frame" (`r_vsync`) is **on**, and clamps the frame rate to the monitor's refresh | PCGamingWiki. 60 Hz panel → 60 FPS, whatever `com_maxfps` says |
+| `cg_fov` defaults to **65** | PCGamingWiki |
+
+So: 800x600 because `r_mode` was never passed; 60 FPS because `r_vsync` was never passed and the
+panel is 60 Hz; and 65 FOV whenever the account had not set one. Three dvars we were not sending.
+
+**Not proven from inside this lane**: nobody ran the game. Two other agents hold
+`ZombiesDev\locks\game.lock`, so this is read-from-the-image-and-the-config-on-disk plus
+`--dry-run`, and B does the launch. The one thing a launch will settle is whether `r_noborder`
+(passed, absent from vanilla) plus the DLL really produces a borderless window.
+
+### What the launcher produces now
+
+`node src/main/play-cli.js --dry-run --window player --local`, on B's machine (2560x1440 main
+display, a 1440x2560 portrait second display at `-1440,-340`):
+
+```
+disp: Display 1 2560x1440 at 0,0 (main)   <- chosen
+disp: Display 2 1440x2560 at -1440,-340
+mode: borderless at 2560x1440   (windowMode player)
+
+"…\ENWZombies\game\CoDWaW.exe"
+  +set fs_homepath …\ENWZombies\home
+  +set com_introPlayed 1  +set fs_game mods/enw
+  +set com_startupIntroPlayed 1  +set ui_autoContinue 1
+  +set cl_allowDownload 0  +set logfile 2
+  +set r_fullscreen 0  +set r_mode 2560x1440  +set r_aspectRatio auto
+  +set r_noborder 1  +set vid_xpos 0  +set vid_ypos 0  +set r_monitor 0
+  +set r_vsync 0  +set com_maxfps 250  +set cg_fov 80
+  +set m_filter 0  +set cl_mouseAccel 0
+  +set r_texFilterAnisoMin 16  +set r_texFilterAnisoMax 16
+  +set r_picmip 0  +set r_picmip_bump 0  +set r_picmip_spec 0
+  +set r_multiGpu 1  +set sm_enable 1
+  +set cl_maxpackets 100  +set snaps 30  +set rate 25000
+  +set snd_volume 1
+  +map <map>   /   +connect <host>
+
+env : … ENW_BORDERLESS=1
+```
+
+`ENW_BORDERLESS` is for the client lane's `borderless.cpp`, which takes either it or a
+text-matched `+set r_noborder 1` and reads its geometry from the **last** `r_mode` / `vid_xpos` /
+`vid_ypos` on the line. There is a test asserting `r_mode` appears exactly once and is never
+followed by another.
+
+**`windowMode 'small'` and `'offscreen'` are unchanged** — still 800x600, muted, and `offscreen`
+still parks at `-4000,-4000`. They are the dev modes; a test asserts none of the baseline reaches
+them, and neither the seed nor the read-back runs for them (a dev run must never put 800x600 into
+a player's account).
+
+### The bundled fixes
+
+Every dvar below was **grepped out of the decrypted 1.7 image** before being used, so none of them
+is a guess about what this exe has. `r_noborder` is the one exception: **zero occurrences**, which
+is exactly what `client.md` §2c found, and it is passed anyway because an unknown `+set` is
+harmless and it is the switch the DLL reads.
+
+| Dvar | Value | Why | Source |
+|---|---|---|---|
+| `r_fullscreen` | `0` | Borderless/windowed. Spec §4.3 makes Borderless the default. | Plutonium T4 borderless recipe |
+| `r_mode` | `<native WxH>` | **The 800x600.** A string, not an index (`client.md` §2b). Borderless always uses the chosen display's native size. | the image's own `set r_mode 800x600` |
+| `r_noborder` | `1` | Borderless. Not a vanilla dvar — the DLL does the window style. | [Plutonium](https://plutonium.pw/docs/client/t4/perfect-borderless-window/) |
+| `vid_xpos` / `vid_ypos` | `<display origin>` | So a borderless window lands on the **chosen** monitor, not always the primary at 0,0. | Plutonium, as above |
+| `r_monitor` | `<index>` | The monitor picker, vanilla. | `client.md` §2c |
+| `r_vsync` | `0` | **The 60 FPS.** Sync Every Frame caps the game at the panel's refresh. | [PCGW](https://www.pcgamingwiki.com/wiki/Call_of_Duty:_World_at_War) |
+| `com_maxfps` | `250` | Stock cap is 85. Spec §4.5 cap is 250 — **the server still enforces allowed values** for a record game. | PCGW |
+| `cg_fov` | `80` | Stock is 65; 80 is the top of the in-game slider. Spec §4.5 bounds it at 120. | PCGW |
+| `r_aspectRatio` | `auto` | Picks the aspect from the resolution instead of stretching 16:9 into a 4:3 frame. | PCGW (widescreen) |
+| `m_filter` | `0` | "Smooth Mouse" off. Keeps the DLL's raw-input fix meaningful. | PCGW (mouse acceleration) |
+| `cl_mouseAccel` | `0` | PCGW's catch: the menu's Smooth Mouse toggle only writes `m_filter`; acceleration stays on unless this is set too. | PCGW |
+| `r_texFilterAnisoMin` / `Max` | `16` | Stock max is 4x. Free on any modern GPU. | PCGW (anisotropic filtering) |
+| `r_picmip` / `_bump` / `_spec` | `0` | Full-resolution textures, pinned so a "Set Optimal Settings?" pass cannot leave them downscaled. | PCGW |
+| `r_multiGpu` | `1` | PCGW's named fix for *"stuttering on modern systems despite a locked frame rate"* — the menu calls it Dual Video Cards. | PCGW (stuttering) |
+| `sm_enable` | `1` | Shadow maps, pinned at the stock value. | PCGW |
+| `cl_maxpackets` | `100` | Stock 30 is a dial-up default. Netcode only; the server clamps what it will not take. | Plutonium T4 docs |
+| `snaps` | `30` | Asks for 30 snapshots/s instead of 20. The server decides what it sends. | Plutonium T4 docs |
+| `rate` | `25000` | The engine maximum, already the value on this box. | Plutonium T4 docs |
+
+Intro skipping (`com_introPlayed`, `com_startupIntroPlayed`, `ui_autoContinue`) was already passed
+and is PCGW's documented `config.cfg` fix for the same thing.
+
+**Deliberately not bundled**, so nobody re-adds them by accident (the reasons are in
+`gamecfg.js` beside the list):
+
+* `r_aaSamples 16` — PCGW records an **alt-tab hang** caused by AA above 2x on this game. A default
+  that can freeze a player's game is not a fix.
+* `sys_smp_allowed 0` — PCGW's multi-core workaround; it disables the render thread and on most
+  machines costs frames. An opt-in at most.
+* `snd_force51` / `snd_force71` — only correct when auto-detection fails.
+* `r_gamma` / `r_ignorehwgamma` — a colour-profile preference, not a fix.
+
+Nothing in the table changes what the game **simulates**. There is a test that fails if a dvar
+matching `g_ / sv_ / zombie / perk / player_ / jump_ / bg_ / ai_ / cg_gun / timescale` ever appears
+in it. The only two things a records rule cares about — FPS cap and FOV — are the ones the spec
+already bounds, and both are clamped (`<=250`, `<=120`).
+
+### Needs the DLL or an exe edit — listed, not applied
+
+| | Why it is not ours |
+|---|---|
+| Perfect borderless window | `r_noborder` has **zero** occurrences in the image. The DLL strips the window style (`client-dll/components/borderless.cpp`). |
+| LAA / 4 GB flag | A PE header bit on a 32-bit exe. dev-box rule 1 (never modify the player's install), and spec §4.5 excludes it explicitly. |
+| 25-day uptime timer | An engine millisecond-counter overflow. Code, not config. |
+| Raised asset / memory limits | What T4M does: a loaded module, not a dvar. |
+| The audio fix | PCGW's workaround is "delete `%LOCALAPPDATA%\Activision\CoDWaW\players` and let the game rebuild". That is the **player's** profile folder; we do not delete a player's files. Our own fresh profile gets the effect for free. |
+| High-polling-rate mouse | Already built, in the DLL — `client.md` §1. |
+
+### Seeding the home folder: `+set` alone leaves the menu lying
+
+A command-line `+set` changes the running game and nothing else. Open Video in the game's own menu
+and it still reads the 2008 defaults — and **the first thing the player changes writes those stale
+values back over ours.** Spec §4.3 is explicit that the in-game settings menu keeps working, so the
+menu has to agree with the launch.
+
+`gamecfg.seedHome()` writes the baseline as a real `config.cfg` under our `fs_homepath`:
+
+```
+<fs_homepath>\players\profiles\enw\config.cfg     the profile config (path string at 0x883E64)
+<fs_homepath>\players\profiles\active.txt         = "enw"   -- without this the engine loads a
+                                                             different profile and never reads ours
+<fs_homepath>\main\config.cfg                     the plain one beside it
+<fs_homepath>\players\profiles\enw\.enw-baseline.json   what we wrote, and at which version
+```
+
+It runs on a **first launch** (no `config.cfg`) and whenever `BASELINE_VERSION` changes — so a fix
+added later reaches players who already have a config — and **never otherwise**. Once the player
+has a config, the game owns it and we only read.
+
+### The round trip (spec §4.3)
+
+After the game exits — *after*, because the engine writes the file on shutdown and anything read
+earlier is the previous run's (`client.md` §2b) — `applyReadBack()` parses `config.cfg` and saves
+`r_mode` / `r_fullscreen` / `r_noborder` / `cg_fov` / `com_maxfps` / `r_vsync` / `sensitivity` /
+`snd_volume` / `cg_drawFPS` / `r_monitor` and the `bind` lines into the account. `main.js` listens
+for `settings_readback` and calls `settings.set()`. So an in-game resolution change is what the
+next launch uses, with nothing pressed twice.
+
+Two rules, both tested:
+
+1. **Only keys the game actually wrote come back.** An absent dvar is "no opinion", not "back to
+   the default" — otherwise every launch would quietly reset the settings the player changed in
+   the *launcher*.
+2. **Borderless is not demoted to windowed every launch.** Borderless and windowed both write
+   `r_fullscreen 0`, and vanilla has no `r_noborder` to tell them apart. If that is all we see and
+   the account says borderless, borderless stands; if the DLL wrote `r_noborder 0`, the player
+   really did pick windowed and we believe it.
+
+### Settings, and the UI
+
+`settings.js` gains `display` (`'primary'` or a display id), `mode`
+(`borderless` | `fullscreen` | `windowed`), `resolution` (`WxH`, blank = the chosen display's
+native size) and `vsync`, with `maxFps` raised to 250 — plus `validate()`, because these end up on
+a command line the engine parses itself and `+set r_mode 1920 x 1080` is three arguments. The
+legacy `fullscreen` flag is kept and derived from `mode`, and an account saved before Display
+settings existed gets **borderless** rather than inheriting the old `fullscreen: true` default,
+which was never a choice anyone made.
+
+The Settings page now has Monitor, Window mode, Resolution (shown only when the mode is not
+borderless), FOV, Max FPS, Vsync and Show FPS. It is the existing plain list of fields, not a new
+screen.
+
+`display.js` gets the monitor list from Electron's `screen` (injected by `main.js` after
+`app.whenReady()`, so the module has no static Electron dependency), caches it to
+`state/displays.json`, and for plain-node callers falls back to `tools/displays.ps1`
+(`SetProcessDPIAware()` **first**, or a 4K display at 150% reports 2560x1440 and `r_mode` would be
+a mode the game does not have). `ENW_NO_DISPLAY_PROBE=1` turns the PowerShell probe off, which is
+what the unit tests set.
+
+### What B should do
+
+```powershell
+cd launcher
+npm test                                        # 77 checks, 0 failed
+node src\main\play-cli.js --dry-run --window player --local     # read the line above back
+```
+
+Then launch for real from the app, on a map you know, and check three things:
+
+1. the window is borderless at 2560x1440 and alt-tabs cleanly;
+2. `/cg_drawFPS 1` (or Show FPS in Settings) reads well above 60;
+3. change the resolution in the game's **own** Video menu, quit, and press Play again — it should
+   come back at what you picked. `%LOCALAPPDATA%\ENWZombies\logs\launcher.log` has a `settings`
+   line naming exactly which keys were saved.
+
+If borderless does not happen, that is the DLL half (`ENW_BORDERLESS=1` is on the environment and
+`+set r_noborder 1` on the line); everything else is launcher-side and independent of it.
+
+### Still open
+
+* The Display UI is the plain field list, not the designed one.
+* Nobody has run the game with this line. The lock is held by two other agents.
+* `r_displayRefresh` is left alone. The engine's format is the string `"60 Hz"`, and guessing a
+  refresh rate is how you get a black screen; it is a candidate once someone has measured it.
