@@ -41,8 +41,14 @@ const SERVER_PROVEN = new Set([
   'nazi_zombie_fear_mc_2',
 ])
 
+// A PROOF lease, and nothing else: `lease-cli.js --proof` sets ZM_PROOF_MAPS in its own
+// process so the archive lane can boot a not-yet-proven map on the box to FIND OUT whether
+// it loads (archive.md §10). The live site never sets it, so the Maps list, the party map
+// picker and every Start a player presses still see SERVER_PROVEN alone.
+const PROOF_MAPS = new Set(String(process.env.ZM_PROOF_MAPS || '').split(',').map((s) => s.trim()).filter(Boolean))
+
 /** Playable on OUR boxes: proven headless, and not broken since. */
-const onServer = (row) => !!row && SERVER_PROVEN.has(row.key) && row.health !== 'broken'
+const onServer = (row) => !!row && (SERVER_PROVEN.has(row.key) || PROOF_MAPS.has(row.key)) && row.health !== 'broken'
 
 function project(row, { me = null } = {}) {
   if (!row) return null

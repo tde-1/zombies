@@ -1,0 +1,212 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_arkham",
+  "title": "CHRISTMAS WITH THE JOKER (ARKHAM)",
+  "source": "custom",
+  "author": "whippytrout",
+  "released": "December 19, 2013, 10:14:04 pm",
+  "fs_game": "mods/nazi_zombie_arkham",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_arkham.iwd": "373f4db53c09fcb097197e6e3d13447f3389f7479be5cdd5f4e02e2d72320051"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "buyable_ladder",
+        "end_game",
+        "joker_escape_trig",
+        "riddler_win"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        10000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "buyable_ladder, end_game, joker_escape_trig, riddler_win name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 130,
+    "script_count": 130,
+    "entities": 2970,
+    "ee_candidates": [],
+    "ending_words": [
+      "buyable_ladder",
+      "end_game",
+      "joker_escape_trig",
+      "riddler_win"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      10000,
+      20000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0"
+    ],
+    "top_costs": [
+      [
+        10000,
+        "zombie_door",
+        "freeze_door4"
+      ],
+      [
+        7000,
+        "zombie_door",
+        "second_door"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "rid_door"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "first_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "last_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "373f4db53c09fcb097197e6e3d13447f3389f7479be5cdd5f4e02e2d72320051",
+    "map_specific_triggers": [
+      "bell_1_choice",
+      "bell_2_choice",
+      "bell_3_choice",
+      "blade_trigger",
+      "call_down",
+      "call_up",
+      "dig_site",
+      "disable_dialog",
+      "elevator_trigger_down",
+      "elevator_trigger_up",
+      "freezegun_trig",
+      "joker_escape_trig",
+      "joker_intro_trig",
+      "jukebox",
+      "ladder_trig",
+      "left_",
+      "moon_teleporter_a_trigger",
+      "moving_platform_1",
+      "mrfreeze_intro_trig",
+      "mrfreezemusic_trig",
+      "pap_box_trig",
+      "riddler_intro_trig",
+      "right_",
+      "saw_trigger",
+      "song1",
+      "song2",
+      "song3",
+      "song4",
+      "song5",
+      "song6",
+      "support_spawn_button",
+      "trap_damage",
+      "trap_end",
+      "trap_start",
+      "trap_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_arkham.exe",
+    "original_sha256": "4b632ff7d429aaf1e30f0ddc1b295020518c2c0998398d4bf8c878baca016f67",
+    "original_size": 207415849,
+    "source_url": "https://www.mediafire.com/file/ru3f84mwdaxxhmb/nazi_zombie_arkham.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T20:00:22Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 126.9,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_arkham.ff",
+      "nazi_zombie_arkham_patch.ff",
+      "nazi_zombie_arkham.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

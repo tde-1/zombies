@@ -1,0 +1,188 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_nuked",
+  "title": "Nuketown 1886 Zombies Map",
+  "source": "custom",
+  "author": "Mrhmh199",
+  "released": "2015-08-07",
+  "fs_game": "mods/zm_nuked",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nuketown.iwd": "2fb939bfdd39fc4417ac60602f150e4e89266f698ef639e41c091239bd50c1dc"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "easter"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "easter look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 122,
+    "script_count": 122,
+    "entities": 1382,
+    "ee_candidates": [
+      "easter"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf2239_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf2193_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "rox"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "rox"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "rox"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "2fb939bfdd39fc4417ac60602f150e4e89266f698ef639e41c091239bd50c1dc",
+    "map_specific_triggers": [
+      "easter",
+      "harrybo21_perk_trigger",
+      "rotating_door"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Nuketown-1886.exe",
+    "original_sha256": "9cfdc734d32f67454356c6de582ba73bcf198d9a4823e1b3d8eb3aa8b1688256",
+    "original_size": 490889258,
+    "source_url": "http://www.mediafire.com/file/0889eu6ldebijim/Nuketown-1886.exe",
+    "source_page": "https://callofdutyrepo.com/2015/08/07/nuketown-1886-zombies-map/",
+    "fetched": "2026-09-22T19:15:17Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "___________________________________________________________________",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zm_nuked",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nuketown.iwd:images/background_american_w.iwi",
+        "nuketown.iwd:images/background_blur.iwi",
+        "nuketown.iwd:images/background_generic_blurred.iwi",
+        "nuketown.iwd:images/background_mp_crash.iwi",
+        "nuketown.iwd:images/background_party.iwi",
+        "nuketown.iwd:images/board_title.iwi",
+        "nuketown.iwd:images/loadscreen_zm_nuked.iwi",
+        "nuketown.iwd:images/logo_nuked.iwi",
+        "nuketown.iwd:images/menu_map_zm_nuked.iwi",
+        "nuketown.iwd:images/mtl_p_rus_mj1_wpn_loader_tire_n.iwi",
+        "nuketown.iwd:images/specialty_fastreload_zombies.iwi",
+        "nuketown.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nuketown.iwd:images/_-gmtl_t6_attach_speedloader_col.iwi",
+        "nuketown.iwd:images/_-gp6_zm_nuked_shelter_logo_c.iwi",
+        "nuketown.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nuketown.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "nuketown.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nuketown.iwd:images/__-gmtl_p_rus_mj1_wpn_loader__3d5b67ee - Copy.iwi",
+        "nuketown.iwd:images/__-gmtl_p_rus_mj1_wpn_loader__3d5b67ee.iwi",
+        "nuketown.iwd:images/__-gp_zm_nuked_background_roc_705922a6.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_nuked"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 113.4,
+    "addon_iwds": [
+      {
+        "file": "buried.iwd",
+        "entries": 84,
+        "scripts": 17,
+        "bytes": 18321193
+      },
+      {
+        "file": "nuketown.iwd",
+        "entries": 2403,
+        "scripts": 25,
+        "bytes": 326791393
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zm_nuked_patch.ff",
+      "nuketown.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

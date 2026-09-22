@@ -1,0 +1,171 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_dcv2",
+  "title": "DECONTAMINATION",
+  "source": "custom",
+  "author": "smasher248",
+  "released": "September 30, 2014, 11:59:17 pm",
+  "fs_game": "mods/nazi_zombie_dcv2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_dcv2.iwd": "84e8737f695cb0355b9a935ce88d461459347ccd19c3169c37071d31bf18cca5"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 112,
+    "script_count": 112,
+    "entities": 1447,
+    "ee_candidates": [
+      "part"
+    ],
+    "ending_words": [
+      "endgame"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        50000,
+        "zombie_door",
+        "arm"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto7"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto504"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto8"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto494"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 50000,
+      "targetname": "zombie_door",
+      "target": "arm",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "84e8737f695cb0355b9a935ce88d461459347ccd19c3169c37071d31bf18cca5",
+    "map_specific_triggers": [
+      "endgame",
+      "huey_part1",
+      "huey_part2",
+      "huey_part3",
+      "windtrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "decontamination_v2.exe",
+    "original_sha256": "0be0d0c4f1d3aa890dbd72dedba55641f38cc7ba85f12c83fc20acb173f8a65b",
+    "original_size": 215204641,
+    "source_url": "http://www.mediafire.com/file/qdr1yavjuzo67vc/decontamination_v2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:54:09Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_aaa"
+      ],
+      "iwd_images": [
+        "nazi_zombie_dcv2.iwd:images/loadscreen_nazi_zombie_aaa.iwi",
+        "nazi_zombie_dcv2.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_dcv2.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_dcv2.iwd:images/weapon_red_cross_background_2.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 86.3,
+    "addon_iwds": [
+      {
+        "file": "nuketown_zombies.iwd",
+        "entries": 48,
+        "scripts": 17,
+        "bytes": 10343048
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_dcv2_patch.ff",
+      "nazi_zombie_dcv2.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

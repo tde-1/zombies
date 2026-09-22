@@ -1,0 +1,240 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "cxca",
+  "title": "CXCA",
+  "source": "custom",
+  "author": "death_reaper0",
+  "released": "2015-09-04",
+  "fs_game": "mods/cxca",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@cxca.iwd": "963da7b51e9ec1230428aab8b9f66312b785bc5ecfa0244f73a3a3a4b0c26277"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "egg_1",
+        "egg_2",
+        "egg_3",
+        "egg_4",
+        "egg_5",
+        "egg_6",
+        "egg_door"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "egg_1, egg_2, egg_3, egg_4, egg_5, egg_6 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 513,
+    "ee_candidates": [
+      "egg_1",
+      "egg_2",
+      "egg_3",
+      "egg_4",
+      "egg_5",
+      "egg_6",
+      "egg_door"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000,
+      5500,
+      6000,
+      7000,
+      8000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_door",
+        "door3"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door7"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door6"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door5"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "963da7b51e9ec1230428aab8b9f66312b785bc5ecfa0244f73a3a3a4b0c26277",
+    "map_specific_triggers": [
+      "egg1",
+      "egg2",
+      "egg3",
+      "egg4",
+      "egg5",
+      "egg6",
+      "scavenger1",
+      "scavenger2",
+      "scavenger3",
+      "shoot_me",
+      "thunder1",
+      "thunder2",
+      "thunder3",
+      "trig1",
+      "trig2",
+      "trig3",
+      "wunderfizz_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "cxca.exe",
+    "original_sha256": "be2abdc2ed64f2292a4579383a94ea46d88f3c122f39474b5ded52f84b83cd25",
+    "original_size": 162559509,
+    "source_url": "https://www.mediafire.com/file/z7pf37q4mcgj5w5/cxca.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:31:59Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "this is just a quick map i created over a long weekend there is no story line but it is set in Beijing China features: 20 perks (new one added in v1.1) MOTD zombies custom power-ups teddy bear song no dogs buyable ending solo quick revive double tap 2.0 der wunderfizz imported weapons (papable but without camo or lasers) zombie counter custom perks appear in the wunderfizz origins styled perk bottle drops 8 perk limit to start no power switch (power already on) 1.1 update new perk! easter egg electric cherry gives points new wall weapons thundergun and scavenger fixed constant freezing in solo better guardian angel ale custom perks and their effects: deep impact \u2013 increased knife damage flash cola \u2013 double running speed point crusher \u2013 double points on the kill discount soda \u2013 25% of everything (need original price) no bear brew \u2013 no bear from box for that player blood bullets \u2013 regenerating bullets repairman rum \u2013 instantly repair barriers power-down punch \u2013 power-up effects when downed guardian angel ale \u2013 5 seconds of god mode when hit by zombie (icon inverts when in use, black and white when cooling down) point palosa \u2013 multiplies points on when damaging zombies how to unlock pap: 1. shoot the pink light in the other building (this will open a new perk) 2. find all 6 parts 3. look for the monkey and offer to it 4. a new door will open reveling a hidden room with the pap and buyable ending credits: (all stated also in map opening credits) bamskater33 for bo1&2 perks as wel",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "cxca.iwd:images/bear_logo.iwi",
+        "cxca.iwd:images/blood_logo.iwi",
+        "cxca.iwd:images/deep_impact_logo.iwi",
+        "cxca.iwd:images/discount_logo.iwi",
+        "cxca.iwd:images/down_logo.iwi",
+        "cxca.iwd:images/flash_logo.iwi",
+        "cxca.iwd:images/guardian_logo.iwi",
+        "cxca.iwd:images/point_logo.iwi",
+        "cxca.iwd:images/polosa_logo.iwi",
+        "cxca.iwd:images/repair_logo.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 85.6,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273528
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953535
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 556950
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019811
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "cxca.ff",
+      "cxca_patch.ff",
+      "mod.ff",
+      "nazi_zombie_cxca_patch.ff",
+      "cxca.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

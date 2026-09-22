@@ -1,0 +1,168 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_hospital",
+  "title": "UNDEAD HOSPITAL",
+  "source": "custom",
+  "author": "chromastone10",
+  "released": "November 06, 2015, 01:58:39 am",
+  "fs_game": "mods/zm_hospital",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "32b248dbdea7fc45122e4f99b1bd149d4c031cca0d1e6c0624a2e6cc19bc960b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "EndGame"
+        }
+      },
+      "candidates": [
+        "EndGame"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "EndGame name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 1492,
+    "ee_candidates": [],
+    "ending_words": [
+      "EndGame"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "bears_trig"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "nipples_are_down2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "nipples_are_down"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "zone1_enter"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "nipples_are_up_2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "32b248dbdea7fc45122e4f99b1bd149d4c031cca0d1e6c0624a2e6cc19bc960b",
+    "map_specific_triggers": [
+      "DoorTrig",
+      "EndGame",
+      "Key",
+      "Laptop",
+      "Radio",
+      "activate_by_touch",
+      "kinorock1",
+      "kinorock2",
+      "kinorock3",
+      "radio1_trigger",
+      "secret_trigger1",
+      "secret_trigger2"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "zm_hospital.zip",
+    "original_sha256": "030f66843a852bad0e5041d140c64963545122c0fff4f019a44efa95d34d5426",
+    "original_size": 338864899,
+    "source_url": "http://www.mediafire.com/file/14z0o9g6z05ro57/zm_hospital.zip/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:32:38Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "zip",
+    "shipped_executables": [],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_zm_hospital"
+      ],
+      "iwd_images": [
+        "zm_hospital.iwd:images/loadscreen_zm_hospital.iwi",
+        "zm_hospital.iwd:images/weapon_red_cross_background.iwi",
+        "zm_hospital.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "zm_hospital.iwd:images/_-gzombie_vending_three_gun_logo_on_c.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_hospital"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.4,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "zm_hospital_patch.ff"
+    ]
+  }
+}

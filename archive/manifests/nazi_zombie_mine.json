@@ -1,0 +1,169 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_mine",
+  "title": "MINECRAFT",
+  "source": "custom",
+  "author": "shippuden1592",
+  "released": "December 30, 2013, 09:59:20 pm",
+  "fs_game": "mods/nazi_zombie_mine",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_mine.iwd": "c2ab7faf4f8fce6900c74f93cd9011b0623eefc9117bb9c2cbca973e1f494a02"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        45000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger name an ending and are this map's own; script hardcodes cost 45000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1480,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      45000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c2ab7faf4f8fce6900c74f93cd9011b0623eefc9117bb9c2cbca973e1f494a02",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "end_trigger",
+      "jukebox",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Minecraft_v1.exe",
+    "original_sha256": "c82918215d16f490362cbcb423623e77c496cf8361818b4342621703bb400237",
+    "original_size": 274990434,
+    "source_url": "https://www.mediafire.com/file/gw61s660zuy86f4/Minecraft_v1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:35:09Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_mine",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_mine.iwd:images/loadscreen_nazi_zombie_mine.iwi",
+        "nazi_zombie_mine.iwd:images/mc_zmlogo.iwi",
+        "nazi_zombie_mine.iwd:images/menu_map_nazi_zombie_mine.iwi",
+        "nazi_zombie_mine.iwd:images/minecraft_menu.iwi",
+        "nazi_zombie_mine.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_mine"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 88.2,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_mine_patch.ff",
+      "nazi_zombie_mine.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "cube",
+  "title": "CUBE",
+  "source": "custom",
+  "author": "Soy-Yo",
+  "released": "2016-05-27",
+  "fs_game": "mods/cube",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@cube.iwd": "302f7d60c78ae179e519f9a426996607a89510189be6eee8942be7d0d655fb57"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "cube_corpse_ee",
+        "cube_printer_ee",
+        "ee_item"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "cube_corpse_ee, cube_printer_ee, ee_item look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 131,
+    "script_count": 131,
+    "entities": 2771,
+    "ee_candidates": [
+      "cube_corpse_ee",
+      "cube_printer_ee",
+      "ee_item"
+    ],
+    "ending_words": [
+      "end_game",
+      "ending_door",
+      "ending_room"
+    ],
+    "hardcoded_costs": [
+      1000,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf2497_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf2810_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2500_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2807_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2488_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "302f7d60c78ae179e519f9a426996607a89510189be6eee8942be7d0d655fb57",
+    "map_specific_triggers": [
+      "cube_box_use",
+      "cube_corpse_ee",
+      "cube_printer_ee",
+      "cube_trap_trig",
+      "falling_trig",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "CUBE.exe",
+    "original_sha256": "e0a7f2edd7e5280554770892e12998816779d7e6d8f3fb96d64b620fa6f18828",
+    "original_size": 330101879,
+    "source_url": "http://www.mediafire.com/file/e3ric3xn2x2rrti/CUBE.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:25:09Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge",
+      "archive_file"
+    ],
+    "catalogue_description": "So, after about 7 months of work, I bring you today my new map. If you are going to complain, yes, you can say this is a box map, more or less lol. This map is based on the movie with its same name, CUBE ( http://www.imdb.com/title/tt0123755/ ). I really recommend you to watch it and you\u2019ll probably understand more things about the map. But if you play the map before watching the movie, I warn you that you\u2019ll probably see some spoilers. Well, in the film some people were trapped inside a cube surrounded by other cubes with different colors. Then, they realized the cubes were moving. The characters had to find the way out of this labyrinth of moving cubes. And, basically, my map is more or less the same, but with zombies, perks, weapons, etc. This map is not prepared to do rounds; just to escape, but you can try it if you want. v1.1 Fixes \u2013 Fixed a bug where some doors could be paid multiple times if the player kept pressing use. \u2013 Fixed infinite perks glitch. \u2013 Fixed a missing \u201cwall\u201d weapon. \u2013 Fixed MP-40 hintstring. \u2013 Added missing PaP knuckle crack. \u2013 Improved teleporting method. \u2013 Made it easier to get the 6th perk slot. Shit. Just realized the code is wrong, so it has the same difficulty\u2026 Sorry. \u2013 Changed some weapon stats. \u2013 Probably fixed non solid doors and rounds not ending (not sure, can\u2019t test that). v1.1.1 Fixes \u2013 Fixed jumping bug. \u2013 \u201cTransparent\u201d doors bug might be fixed (I think it had to do with the jumping bug; if not, it\u2019s probably not fixed). \u2013 Now it\u2019s actu",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_cube",
+        "loadscreen_cube_mini",
+        "loadscreen_mak",
+        "loadscreen_mini"
+      ],
+      "iwd_images": [
+        "cube.iwd:images/cube_loadscreen.iwi",
+        "cube.iwd:images/cube_loadscreen_mini.iwi",
+        "cube.iwd:images/cube_menu_blue.iwi",
+        "cube.iwd:images/cube_menu_green.iwi",
+        "cube.iwd:images/cube_menu_orange.iwi",
+        "cube.iwd:images/cube_menu_white.iwi",
+        "cube.iwd:images/custom_zombies_menu.iwi",
+        "cube.iwd:images/custom_zombies_menu2.iwi",
+        "cube.iwd:images/custom_zombies_menu3.iwi",
+        "cube.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "cube.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "cube.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "cube.iwd:images/specialty_fastreload_zombies.iwi",
+        "cube.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "cube.iwd:images/ugx_mod_menu_template.iwi",
+        "cube.iwd:images/weapon_red_cross_background.iwi",
+        "cube.iwd:images/weapon_red_cross_background_2.iwi",
+        "cube.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "cube.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "cube.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_cube"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.4,
+    "addon_iwds": [
+      {
+        "file": "ascencion_zombies.iwd",
+        "entries": 27,
+        "scripts": 6,
+        "bytes": 4714616
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "cube_patch.ff",
+      "mod.ff",
+      "cube.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

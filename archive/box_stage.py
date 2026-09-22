@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Install an archived map on the Hetzner game box (`zombies-dev`) WITHOUT pushing the
+bytes up B's home connection.
+
+The box fetches the release itself from the same MediaFire page the archive used, and
+refuses it unless its sha256 is the sha256 of the original we fetched, AV-scanned and
+extracted here. Same bytes, so the same scan. It then extracts with 7-Zip (data only,
+nothing is run -- dev-box rule 6) and copies out exactly the files `extract.json`
+lists for `mods/<bsp>/`, matched by sha256, into `/home/waw/waw-en/mods/<bsp>/`.
+That one directory is what all three symlinks on the box point at
+(`waw-inst-*/mods`, `homes/inst-*/mods`, `AppData/Local/Activision/CoDWaW/mods`,
+launcher.md "three symlinks, not one"). The download and the extraction are deleted
+afterwards; the box keeps only the install.
+
+    python archive/box_stage.py --map nuketown_remastered
+    python archive/box_stage.py --map nuketown_remastered --remove
+    python archive/box_stage.py --map x --rsync      # fallback: push from here, 4 MB/s cap
+
+Heavy steps run under `nice -n 19 ionice -c3`: B plays on this box.
+"""
+import argparse
+import base64
+import json
+import os
+import subprocess
+
+WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
+HOST = "zombies-dev"
+BOX_MODS = "/home/waw/waw-en/mods"
+SKIP_EXT = (".exe", ".dll", ".bat", ".cmd", ".ps1", ".scr", ".msi")
+
+REMOTE = r'''
+import base64, hashlib, json, os, re, shutil, subprocess, sys, urllib.request
+spec = json.loads(base64.b64decode(sys.argv[1]))
+bsp, MODS = spec["bsp"], spec["mods"]
+tmp = "/home/waw/zdl/" + bsp
+out = {"bsp": bsp}
+UA = ("ENWZombiesArchive/0.1 (+https://enw.gg; World at War custom-zombies map preservation; "
+      "one request at a time)")
+def sha(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as fh:
+        for c in iter(lambda: fh.read(1 << 20), b""):
+            h.update(c)
+    return h.hexdigest()
+def get(url):
+    return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=120)
+try:
+    final = os.path.join(MODS, bsp)
+    if os.path.isdir(final) and all(os.path.exists(os.path.join(final, f["rel"])) and
+                                    os.path.getsize(os.path.join(final, f["rel"])) == f["size"]
+                                    for f in spec["files"]):
+        out.update(status="ok", note="already installed")
+        raise SystemExit
+    os.makedirs(tmp, exist_ok=True)
+    orig = os.path.join(tmp, "original.bin")
+    url = spec["url"]
+    if "mediafire.com" in url and not re.match(r"https?://download\d+\.", url):
+        page = get(url).read().decode("utf-8", "replace")
+        m = re.search(r'href="(https?://download\d*\.mediafire\.com/[^"]+)"', page)
+        if not m:
+            raise RuntimeError("no download button on the MediaFire page")
+        url = m.group(1)
+    r = get(url)
+    if "text/html" in (r.headers.get("Content-Type") or ""):
+        raise RuntimeError("got HTML, not the file (%s)" % r.geturl().split("?")[0])
+    with open(orig, "wb") as fh:
+        shutil.copyfileobj(r, fh, 1 << 20)
+    got = sha(orig)
+    if got != spec["sha256"]:
+        raise RuntimeError("sha256 mismatch: box got %s, archive has %s" % (got[:12], spec["sha256"][:12]))
+    ex = os.path.join(tmp, "x")
+    subprocess.run(["nice", "-n", "19", "ionice", "-c3", "7z", "x", "-y", "-bso0", "-bsp0", "-o" + ex, orig],
+                   check=False, capture_output=True)
+    need = {f["sha256"]: f for f in spec["files"]}
+    found = {}
+    def index(root):
+        for d, _, fs in os.walk(root):
+            for f in fs:
+                p = os.path.join(d, f)
+                sz = os.path.getsize(p)
+                for n in spec["files"]:
+                    if n["size"] == sz and n["sha256"] not in found and sha(p) == n["sha256"]:
+                        found[n["sha256"]] = p
+                        break
+    index(ex)
+    if len(found) < len(need):
+        inner = sorted((os.path.join(d, f) for d, _, fs in os.walk(ex) for f in fs
+                        if f.lower().endswith((".exe", ".rar", ".zip", ".7z"))),
+                       key=os.path.getsize, reverse=True)
+        for p in inner[:1]:
+            subprocess.run(["nice", "-n", "19", "7z", "x", "-y", "-bso0", "-bsp0",
+                            "-o" + os.path.join(ex, "_inner"), p], check=False, capture_output=True)
+            index(os.path.join(ex, "_inner"))
+    missing = [need[h]["rel"] for h in need if h not in found]
+    if missing:
+        raise RuntimeError("not in the box's extraction: %s" % ", ".join(missing[:5]))
+    stage = final + ".staging"
+    shutil.rmtree(stage, ignore_errors=True)
+    for h, f in need.items():
+        dst = os.path.join(stage, f["rel"])
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.move(found[h], dst)
+    shutil.rmtree(final, ignore_errors=True)
+    os.rename(stage, final)
+    subprocess.run(["chown", "-R", "waw:waw", final])
+    out.update(status="ok", files=len(need), bytes=sum(f["size"] for f in spec["files"]))
+except SystemExit:
+    pass
+except Exception as e:
+    out.update(status="fail", error=str(e))
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+st = os.statvfs(MODS)
+out["box_free_gb"] = round(st.f_bavail * st.f_frsize / 2**30, 1)
+print(json.dumps(out))
+'''
+
+
+def spec_for(bsp):
+    ex = json.load(open(os.path.join(WORK, "reports", "extract.json"), encoding="utf-8"))
+    for e in ex:
+        for m in e.get("mods", []):
+            if m["map"] != bsp:
+                continue
+            d = os.path.join(WORK, "originals", e["norm"])
+            metas = [f for f in os.listdir(d) if f.endswith(".meta.json")]
+            meta = json.load(open(os.path.join(d, metas[0]), encoding="utf-8"))
+            files = []
+            for f in m["files"]:
+                rel = f["path"].split("/", 2)[2]
+                if rel.lower().endswith(SKIP_EXT) or os.path.basename(rel).lower() == "console.log":
+                    continue
+                files.append({"rel": rel, "sha256": f["sha256"], "size": f["size"]})
+            return {"bsp": bsp, "mods": BOX_MODS, "url": meta["download_url"],
+                    "sha256": meta["sha256"], "size": meta["size"], "files": files,
+                    "local_dir": m["dest"]}
+    raise SystemExit("no extract.json entry for %s" % bsp)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--map", required=True)
+    ap.add_argument("--remove", action="store_true")
+    ap.add_argument("--rsync", action="store_true")
+    a = ap.parse_args()
+    bsp = a.map
+    if not bsp or "/" in bsp or bsp in (".", "..") or " " in bsp:
+        raise SystemExit("bad map name")
+    if a.remove:
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST,
+                            "rm -rf %s/%s && echo removed %s" % (BOX_MODS, bsp, bsp)],
+                           capture_output=True, text=True)
+        print(r.stdout.strip() or r.stderr.strip())
+        return
+    spec = spec_for(bsp)
+    if a.rsync:
+        src = spec["local_dir"].replace("\\", "/")
+        if len(src) > 1 and src[1] == ":":
+            src = "/" + src[0].lower() + src[2:]
+        r = subprocess.run(["rsync", "-a", "--bwlimit=4000", "--exclude=console.log", "--exclude=*.exe",
+                            "--exclude=*.dll", src + "/", "%s:%s/%s/" % (HOST, BOX_MODS, bsp)],
+                           capture_output=True, text=True)
+        subprocess.run(["ssh", "-o", "BatchMode=yes", HOST, "chown -R waw:waw %s/%s" % (BOX_MODS, bsp)])
+        res = {"bsp": bsp, "status": "ok" if r.returncode == 0 else "fail", "error": r.stderr[-300:],
+               "via": "rsync"}
+        record(bsp, res)
+        print(json.dumps(res))
+        return
+    spec.pop("local_dir")
+    arg = base64.b64encode(json.dumps(spec).encode()).decode()
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST, "python3 - " + arg], input=REMOTE,
+                       capture_output=True, text=True, timeout=1800)
+    line = (r.stdout.strip().splitlines() or [""])[-1]
+    line = line or json.dumps({"bsp": bsp, "status": "fail", "error": r.stderr[-400:]})
+    record(bsp, json.loads(line))
+    print(line)
+
+
+def record(bsp, res):
+    path = os.path.join(WORK, "reports", "boxstage.json")
+    rep = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+    rep[bsp] = res
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(rep, fh, indent=1)
+
+
+if __name__ == "__main__":
+    main()

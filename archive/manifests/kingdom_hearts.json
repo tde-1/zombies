@@ -1,0 +1,257 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "kingdom_hearts",
+  "title": "Kingdom Hearts",
+  "source": "custom",
+  "author": "shinged",
+  "released": "2016-08-10",
+  "fs_game": "mods/kingdom_hearts",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@kingdom_hearts.iwd": "f7f323ef384bd9163671f5f65494879e718f53a5036c2523ea0a2adea1a2265e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        6000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 107,
+    "script_count": 107,
+    "entities": 2823,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "door8"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door5"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door4"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door3"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "door2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f7f323ef384bd9163671f5f65494879e718f53a5036c2523ea0a2adea1a2265e",
+    "map_specific_triggers": [
+      "handle_build_trig",
+      "handle_pick_trig",
+      "music_box_player",
+      "painting_trigger",
+      "panel_build_trig",
+      "panel_pick_trig",
+      "pap1_build_trig",
+      "pap1_pick_trig",
+      "pap2_build_trig",
+      "pap2_pick_trig",
+      "secret_trigger",
+      "secret_trigger1",
+      "secret_trigger2",
+      "song_trig",
+      "tgun1_build_trig",
+      "tgun1_pick_trig",
+      "tgun2_build_trig",
+      "tgun2_pick_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Kingdom_Hearts.exe",
+    "original_sha256": "bfb91c09b4fb0b15d8df0f8f46b2f693879cd3dba599c189ae7f91bec5ccae46",
+    "original_size": 192920926,
+    "source_url": "http://www.mediafire.com/file/wraogeayngnei83/Kingdom_Hearts.exe",
+    "source_page": "https://callofdutyrepo.com/2016/08/10/kingdom-hearts/",
+    "fetched": "2026-09-22T19:38:51Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending"
+    ],
+    "catalogue_description": "Hey guys, this map is based on the game Kingdom Hearts, with various model\u2019s ripped from the game and rigged by me and my friend Josemassacre. The map offers buildable power, buildable mystery box, and a buildable wonder weapon. There are 4 ported stages/worlds ripped the game and clipped out by me. There is a 3 Keyblade easter egg required to reach the buyable endgame area that will play a cinematic (Cinematic only works in SOLO play but buyable endgame still functions in coop). Any questions or bug\u2019s found please let me know in the comments. ~Credits~",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "kingdom_hearts.iwd:images/custom_zombies_menu.iwi",
+        "kingdom_hearts.iwd:images/custom_zombies_menu2.iwi",
+        "kingdom_hearts.iwd:images/custom_zombies_menu3.iwi",
+        "kingdom_hearts.iwd:images/d_i_logo.iwi",
+        "kingdom_hearts.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "kingdom_hearts.iwd:images/olympus_logo.iwi",
+        "kingdom_hearts.iwd:images/specialty_fastreload_zombies.iwi",
+        "kingdom_hearts.iwd:images/trav_town_logo.iwi",
+        "kingdom_hearts.iwd:images/weaponbackground.iwi",
+        "kingdom_hearts.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "kingdom_hearts.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "kingdom_hearts.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "kingdom_hearts.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.0,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273628
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 41,
+        "scripts": 0,
+        "bytes": 100172
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "lunar_lander.iwd",
+        "entries": 30,
+        "scripts": 1,
+        "bytes": 2609997
+      },
+      {
+        "file": "origins_generators.iwd",
+        "entries": 25,
+        "scripts": 1,
+        "bytes": 7455195
+      },
+      {
+        "file": "porter_punch.iwd",
+        "entries": 6,
+        "scripts": 2,
+        "bytes": 293841
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 12,
+        "scripts": 1,
+        "bytes": 580109
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019295
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 4826
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "kingdom_hearts.ff",
+      "kingdom_hearts_patch.ff",
+      "mod.ff",
+      "kingdom_hearts.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

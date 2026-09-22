@@ -1,0 +1,195 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_dome_snow",
+  "title": "ZOMBIE DOME",
+  "source": "custom",
+  "author": "FreeFall",
+  "released": "2014-09-06",
+  "fs_game": "mods/nazi_zombie_dome_snow",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_dome_snow.iwd": "2695ea29fac3ed22b7f150ff98f2c432a62bbb1cfd8bddc54d0723532b523ad6"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 108,
+    "script_count": 108,
+    "entities": 1041,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "auto9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto8"
+      ],
+      [
+        2000,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "2695ea29fac3ed22b7f150ff98f2c432a62bbb1cfd8bddc54d0723532b523ad6",
+    "map_specific_triggers": [
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 41,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_dome_snow_1.1.exe",
+    "original_sha256": "1d9cd5b9120b0a64579420c0196912b6132db37cf2c1b06cd5622904ffbfcafd",
+    "original_size": 401333186,
+    "source_url": "https://www.mediafire.com/file/9z6yf9z3aq7ka51/nazi_zombie_dome_snow_1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:13:34Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Some Features: Bo2, Mw2,Mw3,Bo guns Doubletap 2 Custom PAP Camo PAP Attachments 9 Perks Kino Style teleporter Expanded map/ Hidden rooms Buyable Ending Snow/ Snowstorm 80 Fov Custom Player Models Custom Loadscreen Weapon list: (All weapons have fire sounds, reload sounds, muzzle flashes, shell ejects, footsteps, and PAP versions.) SkorpionEvo Ak47 ACR M200 KSG Ballista Hk416 Chicom LSAT USP.45 (starting pistol) MP7 MG4 Striker MSMC Vector M4a1 R870MCS MTAR Peacekeeper Deagle P226 PDW57 DSR50 MP9 B23R M16a4 Python Stg44 MG36 SMR (full auto) ray gun wunderwaffe BO2 crossbow(non explosive) Credits: Infinity Ward (original map design) Treminaor (Ugx weapon editor) Tom_Bmx (Lime, zombie counter) ValenciaRicardo1 (beta tester, help with mapping and scripting) Bamskater33 (Bo1/Bo2 perks) ConvictioNDR (doubletap 2 script) YaPhil1 (typewriter intro) Aidan (kino teleporter tut) InFInIX (player model tut) thezombiekilla6 (pap camo tut) HitmanVere (deadshot fix) Everyone at CFGfactory for the weapons UGX Members who helped me And ME for creating this map If I forgot anyone pm me ENJOY THE MAP!!!! If you find any bugs please PM me",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_dome_snow"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_dome_snow.iwd:images/loadscreen_nazi_zombie_dome.iwi",
+        "nazi_zombie_dome_snow.iwd:images/loadscreen_nazi_zombie_dome_snow.iwi",
+        "nazi_zombie_dome_snow.iwd:images/loadscreen_nazi_zombie_winter_dome.iwi",
+        "nazi_zombie_dome_snow.iwd:images/menu_map_nazi_zombie_dome.iwi",
+        "nazi_zombie_dome_snow.iwd:images/menu_map_nazi_zombie_dome_snow.iwi",
+        "nazi_zombie_dome_snow.iwd:images/menu_map_nazi_zombie_winter_dome.iwi",
+        "nazi_zombie_dome_snow.iwd:images/sandman_delta_loadout_col.iwi",
+        "nazi_zombie_dome_snow.iwd:images/sandman_delta_loadout_nml.iwi",
+        "nazi_zombie_dome_snow.iwd:images/specialty_fastreload_zombies.dds",
+        "nazi_zombie_dome_snow.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_dome_snow.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_dome_snow.iwd:images/weapon_red_cross_background_2.iwi",
+        "nazi_zombie_dome_snow.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "nazi_zombie_dome_snow.iwd:images/_-gzombie_vending_doubletap2_c_logo.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_dome_snow"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 101.5,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985247
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_dome_snow_patch.ff",
+      "nazi_zombie_dome_snow.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

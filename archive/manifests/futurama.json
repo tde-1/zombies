@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "futurama",
+  "title": "FUTURAMA 1.1",
+  "source": "custom",
+  "author": "CanadianTyler",
+  "released": "2016-01-25",
+  "fs_game": "mods/futurama",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "3c13cf79fc9430aacb952c72687ac46131f5bb23f1e3b1cd7b2f790fed7c3a25"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 145,
+    "script_count": 145,
+    "entities": 932,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "s_room"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "planet_door"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "clue2"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "bottom_lab"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "bottom_lab"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "3c13cf79fc9430aacb952c72687ac46131f5bb23f1e3b1cd7b2f790fed7c3a25",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "futurama.exe",
+    "original_sha256": "c542231a97f086e422a2b4ce316e6f0bc51619e7b51c6b4ba4f3fae60ace3245",
+    "original_size": 218113904,
+    "source_url": "http://www.mediafire.com/file/916mf1tf67rly02/futurama.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:18:23Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "ugx_mod",
+      "ugx_modded",
+      "archive_file"
+    ],
+    "catalogue_description": "Futurama The Mutant Uprising The Mutants are taking over Planet Express! They have shutdown the power to the ship door. You must find another way to get it open. If not, we\u2019re DOOOOOOMED!!! Features UGX Mod Lots of custom models Objective Zombie Counter Cartoon Textures Modded Guns/Names/textures Custom Mystery Box Custom Perk Machines Buy-able Ending 50,000 Points Credits Treyarch \u2013 for making the game UGX \u2013 UGX Mod ZOMB1E-KLLR \u2013 helpful tutorials MakeCents \u2013 scripting the objective \u2013 zombie counter xSanchez78 \u2013 end game script Me \u2013 all custom models Also thanks to all the staff and members of UGX for helping me out with all the questions I had!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "futurama.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "futurama.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 64.3,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30477179
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 76110434
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "futurama.ff",
+      "futurama_patch.ff",
+      "localized_common.ff",
+      "localized_futurama.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

@@ -4,6 +4,7 @@
 //   node web/tools/lease-cli.js --map nazi_zombie_prototype --player 76561198126330106
 //   node web/tools/lease-cli.js --match m_1234abcd --watch        # follow a lease to ready
 //   node web/tools/lease-cli.js --match m_1234abcd --cancel
+//   node web/tools/lease-cli.js --map <bsp> --player 76561198000000001 --proof   # a map not yet in SERVER_PROVEN
 //
 // WHY THIS EXISTS, and what it is NOT. The real Start button is `POST /api/launcher/play`
 // -> `parties.launch()`, and it needs a signed-in SESSION. On the live site a session can
@@ -43,6 +44,10 @@ if (!mapKey && !watchId) {
   console.error('       lease-cli.js --match <match_id> [--watch | --cancel]')
   process.exit(2)
 }
+
+// --proof: boot a map that is not (yet) in maps.js SERVER_PROVEN, to prove whether it loads
+// on the box at all. Only this process sees the override; see maps.js PROOF_MAPS.
+if (arg('proof') === true && mapKey) process.env.ZM_PROOF_MAPS = String(mapKey)
 
 const DATA_DIR = process.env.ZM_DATA_DIR || path.join(__dirname, '..', 'data')
 const DB_PATH = process.env.ZM_DB_PATH || path.join(DATA_DIR, 'zombies.db')

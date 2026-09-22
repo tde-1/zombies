@@ -94,7 +94,7 @@ def resolve(ps, url):
     """
     host = urllib.parse.urlsplit(url).netloc.lower().removeprefix("www.")
     if "mediafire.com" in host and not host.startswith("download"):
-        p, verdict = linkcheck.probe_mediafire(ps, url)
+        p, verdict = linkcheck.probe_mediafire(ps, url, fresh=True)
         if verdict != "alive" or not p.get("final_url"):
             return None, p.get("error") or ("mediafire: %s" % verdict), False
         return p["final_url"], None, True
@@ -175,6 +175,13 @@ def download(ps, url, dest_dir, max_bytes, fallback_name, from_landing=False):
     if r.status_code >= 400:
         r.close()
         return None, "HTTP %d" % r.status_code
+    # A map is never an HTML page. MediaFire answers a stale download key with
+    # `download_repair.php`, HTTP 200 -- the first version of this saved it as the
+    # "original" and reported ok (2026-09-22). Refuse anything that says it is HTML.
+    ctype = (r.headers.get("Content-Type") or "").lower()
+    if "text/html" in ctype or r.url.lower().split("?")[0].endswith(".php"):
+        r.close()
+        return None, "got an HTML page, not a file (%s) -- stale download key?" % r.url.split("?")[0]
     total = r.headers.get("Content-Length")
     total = int(total) if total and total.isdigit() else None
     if total and total > max_bytes:

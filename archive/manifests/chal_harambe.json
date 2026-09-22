@@ -1,0 +1,166 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "chal_harambe",
+  "title": "Harambe",
+  "source": "custom",
+  "author": "GUNNS4HIRE (YouAlwaysWin)",
+  "released": "2016-10-03",
+  "fs_game": "mods/chal_harambe",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "feaf85be0a14e830413b209c5ae6420e9e43bd4174f681d9c79d072329dd2457"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 156,
+    "script_count": 156,
+    "entities": 463,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3500,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "feaf85be0a14e830413b209c5ae6420e9e43bd4174f681d9c79d072329dd2457",
+    "map_specific_triggers": [
+      "enter",
+      "ugx_wallweapon"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "chal_harambe.exe",
+    "original_sha256": "b54f56cfddfda3dc1c38ca60942027fc6dfc809b6da062aa9bee0a376eef417e",
+    "original_size": 353795037,
+    "source_url": "http://www.mediafire.com/file/qt8afab6b0l6la7/chal_harambe.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/10/03/harambe/",
+    "fetched": "2026-09-22T19:55:55Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "IMPORTANT You need to go into UGX Mod Options and set the Weapon Bob/Sway to \u201cON\u201d for the map to be playable. This is an known issue with the Mod. Features: Pack-A-Punch Machine Elemental Pack-A-Punch Machine Does NOT require T4M No Buyable Ending Uses UGX Mod 1.1 Credits: Thanks to UGX for Mods and Tools Tom_Bmx WinCat (Please help with this section as the YouAlwaysWin maps are made by staff, that may be unaware as to where the features came from. If you could PM me details, I would greatly appreciate it and be sure to include in other map posts)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_lego",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_camp.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_temp_background.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_template.iwi",
+        "ugxm_guns.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugxm_guns.iwd:images/ugx_logo_menu.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_arrow.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_overlay.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: enter, ugx_wallweapon. ",
+  "precheck": {
+    "map_zone_inflated_mb": 47.7,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 220,
+        "scripts": 71,
+        "bytes": 28385680
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 1137,
+        "scripts": 2,
+        "bytes": 183248876
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "chal_harambe_patch.ff",
+      "mod.ff",
+      "ugx_mod.iwd:animscripts/death.gsc"
+    ]
+  }
+}

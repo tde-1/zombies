@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ugxm_garage",
+  "title": "Zombie Garage",
+  "source": "custom",
+  "author": "Scobalula",
+  "released": "2016-07-10",
+  "fs_game": "mods/ugxm_garage",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 157,
+    "script_count": 157,
+    "entities": 583,
+    "ee_candidates": [
+      "ee"
+    ],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "rotating_door",
+        "auto2122"
+      ],
+      [
+        1250,
+        "rotating_door",
+        "auto239"
+      ],
+      [
+        1000,
+        "rotating_door",
+        "door_power"
+      ],
+      [
+        600,
+        "rotating_door",
+        "auto2131"
+      ],
+      [
+        600,
+        "rotating_door",
+        "auto2128"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1",
+    "map_specific_triggers": [
+      "ee",
+      "rotating_door",
+      "ugx_wallweapon",
+      "ugxm_trap_machine"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Zombie_Garage.exe",
+    "original_sha256": "68184b82a99181c3bb2153bd205817687bb4d6bcaf8f71066ddbc04aea71438b",
+    "original_size": 447205121,
+    "source_url": "http://www.mediafire.com/file/d1bzsv67q5s5j84/Zombie_Garage.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/07/10/zombie-garage/",
+    "fetched": "2026-09-22T20:01:46Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "challenge",
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_leviosa",
+        "loadscreen_template",
+        "loadscreen_user"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_camp.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_temp_background.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "ugxm_garage.iwd:images/ugx_mod_menu_template.iwi",
+        "ugxm_guns.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugxm_guns.iwd:images/ugx_logo_menu.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_arrow.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_overlay.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.4,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 217,
+        "scripts": 71,
+        "bytes": 27231097
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 1137,
+        "scripts": 2,
+        "bytes": 183252345
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "ugxm_garage.ff",
+      "ugxm_garage_patch.ff",
+      "ugx_mod.iwd:animscripts/death.gsc"
+    ]
+  }
+}

@@ -1,0 +1,321 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_inferno",
+  "title": "Inferno",
+  "source": "custom",
+  "author": "Trooper94",
+  "released": "2017-04-05",
+  "fs_game": "mods/nazi_zombie_inferno",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_inferno.iwd": "25ec87b58cf453ae7456ea8ef2554ee958b8ef005d0e470e337a5cd80d25380a"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "change_ee_hud",
+        "ee_ai_temple_hold",
+        "ee_ai_temple_indicate",
+        "ee_earth_orb_hotel",
+        "ee_final_camera",
+        "ee_hel_puzzle_solved",
+        "ee_orb_hunt_0",
+        "ee_orb_hunt_1",
+        "ee_orb_hunt_10",
+        "ee_orb_hunt_11",
+        "ee_orb_hunt_12",
+        "ee_orb_hunt_2",
+        "ee_orb_hunt_3",
+        "ee_orb_hunt_4",
+        "ee_orb_hunt_5",
+        "ee_orb_hunt_6",
+        "ee_orb_hunt_7",
+        "ee_orb_hunt_8",
+        "ee_orb_hunt_9",
+        "ee_orb_hunt_end",
+        "ee_orb_hunt_init",
+        "ee_raw_orb_fire",
+        "ee_raw_orb_hotel",
+        "ee_raw_orb_hotel_fire",
+        "ee_raw_orb_hotel_lightning",
+        "ee_raw_orb_hotel_water",
+        "ee_raw_orb_hotel_wind",
+        "ee_raw_orb_lightning",
+        "ee_raw_orb_water",
+        "ee_raw_orb_wind",
+        "ee_star_ara_origin",
+        "ee_star_cassiopeia_origin",
+        "ee_star_common_origin",
+        "ee_star_cygnus_origin",
+        "ee_star_orion_origin",
+        "ee_temple_flood_brush",
+        "ee_temple_lever_down",
+        "ee_temple_lever_up",
+        "ee_temple_selector",
+        "ee_upgrader_orb_0",
+        "ee_upgrader_orb_1",
+        "ee_upgrader_orb_2",
+        "elevator_zone_ee",
+        "hotel_ee_barrier",
+        "launcher_ee_trigger",
+        "music_ee_trigger",
+        "richtofen_ee_goal",
+        "richtofen_ee_goal1",
+        "spawn_dempsey_ee",
+        "spawn_nikolai_ee",
+        "spawn_richtofen_ee",
+        "spawn_takeo_ee",
+        "trigger_ee_spearup",
+        "v2_rocket_ee"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "change_ee_hud, ee_ai_temple_hold, ee_ai_temple_indicate, ee_earth_orb_hotel, ee_final_camera, ee_hel_puzzle_solved look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 183,
+    "script_count": 183,
+    "entities": 2905,
+    "ee_candidates": [
+      "change_ee_hud",
+      "ee_ai_temple_hold",
+      "ee_ai_temple_indicate",
+      "ee_earth_orb_hotel",
+      "ee_final_camera",
+      "ee_hel_puzzle_solved",
+      "ee_orb_hunt_0",
+      "ee_orb_hunt_1",
+      "ee_orb_hunt_10",
+      "ee_orb_hunt_11",
+      "ee_orb_hunt_12",
+      "ee_orb_hunt_2",
+      "ee_orb_hunt_3",
+      "ee_orb_hunt_4",
+      "ee_orb_hunt_5",
+      "ee_orb_hunt_6",
+      "ee_orb_hunt_7",
+      "ee_orb_hunt_8",
+      "ee_orb_hunt_9",
+      "ee_orb_hunt_end",
+      "ee_orb_hunt_init",
+      "ee_raw_orb_fire",
+      "ee_raw_orb_hotel",
+      "ee_raw_orb_hotel_fire",
+      "ee_raw_orb_hotel_lightning",
+      "ee_raw_orb_hotel_water",
+      "ee_raw_orb_hotel_wind",
+      "ee_raw_orb_lightning",
+      "ee_raw_orb_water",
+      "ee_raw_orb_wind",
+      "ee_star_ara_origin",
+      "ee_star_cassiopeia_origin",
+      "ee_star_common_origin",
+      "ee_star_cygnus_origin",
+      "ee_star_orion_origin",
+      "ee_temple_flood_brush",
+      "ee_temple_lever_down",
+      "ee_temple_lever_up",
+      "ee_temple_selector",
+      "ee_upgrader_orb_0",
+      "ee_upgrader_orb_1",
+      "ee_upgrader_orb_2",
+      "elevator_zone_ee",
+      "hotel_ee_barrier",
+      "launcher_ee_trigger",
+      "music_ee_trigger",
+      "richtofen_ee_goal",
+      "richtofen_ee_goal1",
+      "spawn_dempsey_ee",
+      "spawn_nikolai_ee",
+      "spawn_richtofen_ee",
+      "spawn_takeo_ee",
+      "trigger_ee_spearup",
+      "v2_rocket_ee"
+    ],
+    "ending_words": [
+      "hel_teleport_interest"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      4500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "auto2252"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "portatren"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "portatren"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto2261"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "auto7"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "25ec87b58cf453ae7456ea8ef2554ee958b8ef005d0e470e337a5cd80d25380a",
+    "map_specific_triggers": [
+      "ally_spawner_trigger_assault",
+      "ally_spawner_trigger_mggunner",
+      "ally_spawner_trigger_rifleman",
+      "ally_spawner_trigger_shotgunner",
+      "ally_upgrader_trigger_assault",
+      "ally_upgrader_trigger_mggunner",
+      "ally_upgrader_trigger_rifleman",
+      "ally_upgrader_trigger_shotgunner",
+      "bridge_platform_trigger",
+      "cath_chest_trigger",
+      "cath_elevator_trigger_0",
+      "cath_elevator_trigger_1",
+      "cath_elevator_trigger_2",
+      "cath_elevator_trigger_3",
+      "cath_elevator_trigger_4",
+      "cath_high_trigger_0",
+      "cath_high_trigger_1",
+      "cath_high_trigger_2",
+      "cath_high_trigger_3",
+      "cath_high_trigger_4",
+      "cath_jump_fix",
+      "ee_earth_orb_hotel",
+      "ee_temple_lever_down",
+      "ee_temple_lever_up",
+      "ee_temple_selector",
+      "elemental_perkupgrade_trigger_inner_fastreload",
+      "elemental_perkupgrade_trigger_med_fastreload",
+      "elemental_perkupgrade_trigger_orb_fastreload",
+      "elemental_perkupgrade_trigger_orb_fire",
+      "elemental_perkupgrade_trigger_orb_water",
+      "elemental_perkupgrade_trigger_orb_wind",
+      "elemental_perkupgrade_trigger_outer_fastreload",
+      "elevator_zone_0",
+      "elevator_zone_1",
+      "elevator_zone_ee",
+      "enemy_zone_0",
+      "enemy_zone_1",
+      "enemy_zone_2",
+      "enemy_zone_3",
+      "enemy_zone_4"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Inferno.exe",
+    "original_sha256": "cb9fc0bc3c1757406712da1c42a64c2ace3d387c25a4414d1b4b8831e1cbe1f6",
+    "original_size": 385059808,
+    "source_url": "http://www.mediafire.com/file/nef1d5ztejkm2j8/nazi_zombie_Inferno.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/04/05/inferno/",
+    "fetched": "2026-09-22T19:59:36Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg"
+    ],
+    "catalogue_description": "This is a map I started a long time ago and I have decided to finish and release it, as it took me a lot of work. Scenario and Story The map is placed on an abandoned and partally flooded town where the war ended long ago, and now only the remains of the trenches and the destroyed buidings last. Vegetation has grown all around and swamps, burned terrain and the dead challenge anybody who dares to explore its secrets. A gate to another reality was opened there, and it grew up during the war, when the battle fed it. Find the way to save the world as we know it, in a place where past, present and future merge. Features -Main Easter Egg with two endings. -Musical Easter Egg. -Two weapon Easter Eggs. -Power activation divided in 6 zones that have to be captured and are attacked randomly by the enemy. -Elemental orb system (Fire, Water, Wind and Lightning orbs) that can be created from raw orbs in the four elemental stone circles in the map. -Elevators -Custom models -Custom textures -Custom sounds -6 Perks (Juggernog, Sleight, BO Quick Revive, Double Tap, Mule kick and Stamin-Up) -The four original perks are elementally upgradeable with puzzles: +Juggernog -> health incremented 50% when upgraded (Wind) +Sleight of Hand -> Electric cherry effect when upgraded (Lightning) +Double Tap -> Damage increased 100% when upgraded (Water) +Quick Revive -> An explosion kills all the zombies surrounding the player when downed (Fire) Weapons -All COD WAW Weapons except Type 100, double barreled",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mp_airfield",
+        "loadscreen_mp_asylum",
+        "loadscreen_mp_bgate",
+        "loadscreen_mp_castle",
+        "loadscreen_mp_courtyard",
+        "loadscreen_mp_docks",
+        "loadscreen_mp_dome",
+        "loadscreen_mp_downfall",
+        "loadscreen_mp_drum",
+        "loadscreen_mp_hangar",
+        "loadscreen_mp_kneedeep",
+        "loadscreen_mp_kwai"
+      ],
+      "iwd_images": [
+        "nazi_zombie_inferno.iwd:images/background_buildable_shader.iwi",
+        "nazi_zombie_inferno.iwd:images/background_cod5_blur.iwi",
+        "nazi_zombie_inferno.iwd:images/bar_menubackground.iwi",
+        "nazi_zombie_inferno.iwd:images/custom_zombies_menu.iwi",
+        "nazi_zombie_inferno.iwd:images/custom_zombies_menu2.iwi",
+        "nazi_zombie_inferno.iwd:images/custom_zombies_menu3.iwi",
+        "nazi_zombie_inferno.iwd:images/inferno_mainmenu.iwi",
+        "nazi_zombie_inferno.iwd:images/loadscreen_nazi_zombie_inferno.iwi",
+        "nazi_zombie_inferno.iwd:images/menu_background_coop.iwi",
+        "nazi_zombie_inferno.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "nazi_zombie_inferno.iwd:images/specialty_fastreloadcherry_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_inferno"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 189.9,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_inferno.ff",
+      "nazi_zombie_inferno_patch.ff",
+      "nazi_zombie_inferno.iwd:animscripts/death.gsc"
+    ]
+  }
+}

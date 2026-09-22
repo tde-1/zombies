@@ -1,0 +1,227 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_zhunterz",
+  "title": "ZHunterZ",
+  "source": "custom",
+  "author": "007makis",
+  "released": "2015-08-10",
+  "fs_game": "mods/nazi_zombie_zhunterz",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@^1zhunterz.iwd": "796a47e61e4630caa764b2da97dd0dfad8622948014eb404f4e45fd4cfd79074"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        7000,
+        55000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 55000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 2274,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      7000,
+      55000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_door",
+        "auto2123"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "thezone6"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "thezone5"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "thezone5"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "thezone5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "796a47e61e4630caa764b2da97dd0dfad8622948014eb404f4e45fd4cfd79074",
+    "map_specific_triggers": [
+      "axe_triger",
+      "ball1_trig",
+      "ball2_trig",
+      "ball3_trig",
+      "ball4_trig",
+      "ball5_trig",
+      "ball6_trig",
+      "billiard_balls",
+      "break_wall",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "give_ammo",
+      "hankey_slidedoor",
+      "jukebox",
+      "level_01_door_light_build_trig",
+      "level_01_door_light_pick_trig",
+      "level_01_door_panel_build_trig",
+      "level_01_door_panel_pick_trig",
+      "level_01_door_switch_build_trig",
+      "level_01_door_switch_pick_trig",
+      "level_01_door_switch_use_trig",
+      "radio1_trigger",
+      "radio2_trigger",
+      "radio3_trigger",
+      "scare_him_now",
+      "scare_him_now2",
+      "shovel_triger",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "_1ZhunterZ_V1.1.exe",
+    "original_sha256": "1609075c246318abab59539e27c1cc84dd5bfb77718705de4aed221edb7f88b4",
+    "original_size": 383307002,
+    "source_url": "http://www.mediafire.com/file/yf4hfbp61bjdhjx/%255E1ZhunterZ_V1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/08/10/zhunterz/",
+    "fetched": "2026-09-22T19:18:48Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "leaderboard",
+      "top_100"
+    ],
+    "catalogue_description": "FIXES IN NEW UPDATE!! *Perk drop jug was still 2 hit for some reason. *1 out of map glitch and other necessary clipping. *Power triggers was hard to find *Blundergat is no longer PAP cause of broken files. *Reduced Boss chance of span. *and a few other smaller bugs! If you find more bugs please comment down bellow letting me know http://youtu.be/1dXo_nZiQbY http://youtu.be/8UcM-vfYW14 This is a reasonably challenging map, for real pro custom zombies lovers! I gave this map my full time and dedication! So im hoping you all with enjoy it Also sorry to inform you guys but this will be my last custom zombie map ,at least for now, because i\u2019ll be starting university in september and I won\u2019t have any time to create new maps! This is a Youtube-friendly map and has NO copyrighted music in it! Features: FIXED Double Points (If the player has double points and get a nuke or Carpenter, The points are doubled) BO1 Perks + Electrick chery + 1 Custom perk + Double Tap 2.0 FOV changer Buyable max ammo Runners from round 3 Custom font in game Some cod4 + mw2 + bo1 + bo2 guns Thundergun + scavenger + blundergat included Random Box Locations Custom Player Models Custom sounds Buyable ending (55K) Custom Boss Custom melee weapons Soul Chest (thundergun) Custom HUD Buildable power switch Hitmarkers Custom PAP Camos Custom Powerups + FX by me Jukebox (all songs youtube safe) Teleporters from the map five Credits: Custom font in game: DidUknowiPwn FOV slider: Scobalula buildable power switch : scr",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_zhunterz",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "^1zhunterz.iwd:images/guardian_logo.iwi",
+        "^1zhunterz.iwd:images/loadscreen_nazi_zombie_zhunterz.iwi",
+        "^1zhunterz.iwd:images/menu_map_nazi_zombie_zhunterz.iwi",
+        "^1zhunterz.iwd:images/specialty_fastreload_zombies.iwi",
+        "^1zhunterz.iwd:images/weapon_red_cross_background.iwi",
+        "^1zhunterz.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_zhunterz"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 143.3,
+    "addon_iwds": [
+      {
+        "file": "^1zhunterz.iwd",
+        "entries": 1553,
+        "scripts": 42,
+        "bytes": 154503191
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 10320
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "1mod.ff",
+      "mod.ff",
+      "nazi_zombie_ma_patch.ff",
+      "nazi_zombie_zhunterz.ff",
+      "nazi_zombie_zhunterz_patch.ff",
+      "^1zhunterz.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

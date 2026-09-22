@@ -1,0 +1,245 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "shinomori",
+  "title": "Shi No Mori - Nacht der Untoten reborn",
+  "source": "custom",
+  "author": "ERAWEX Version: 2.0",
+  "released": "2020-06-14",
+  "fs_game": "mods/shinomori",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@shinomori.iwd": "0972f1c74a03a5ba28424c33e6250d1be1b1a51d4c8ee6a38db487ba99d74a04"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_light1",
+        "ee_light2",
+        "ee_trigger",
+        "ee_trigger2",
+        "ee_trigger3",
+        "ee_trigger4"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_light1, ee_light2, ee_trigger, ee_trigger2, ee_trigger3, ee_trigger4 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 129,
+    "script_count": 129,
+    "entities": 1402,
+    "ee_candidates": [
+      "ee_light1",
+      "ee_light2",
+      "ee_trigger",
+      "ee_trigger2",
+      "ee_trigger3",
+      "ee_trigger4"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf2438_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf2529_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2514_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf3315_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2518_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0972f1c74a03a5ba28424c33e6250d1be1b1a51d4c8ee6a38db487ba99d74a04",
+    "map_specific_triggers": [
+      "Temp_1",
+      "Temp_2",
+      "Temp_3",
+      "Temp_4",
+      "Temp_5",
+      "acid_build_trigger",
+      "bear_1",
+      "bear_2",
+      "bear_3",
+      "blund_1",
+      "blund_2",
+      "blunder_trigg",
+      "bolt1_trigger",
+      "bolt2_trigger",
+      "bolt3_trigger",
+      "bolt4_trigger",
+      "bolt5_trigger",
+      "button_1",
+      "cup_1",
+      "cup_2",
+      "cup_3",
+      "desert_1",
+      "desert_2",
+      "desert_3",
+      "drip1_trigger",
+      "drip2_trigger",
+      "dubstep2_trigger",
+      "ee_trigger",
+      "ee_trigger2",
+      "ee_trigger3",
+      "ee_trigger4",
+      "fire1_trigger",
+      "fire2_trigger",
+      "fire3_trigger",
+      "fire4_trigger",
+      "fire5_trigger",
+      "harrybo21_perk_trigger",
+      "ice1_trigger",
+      "ice2_trigger",
+      "ice3_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Shi_No_Mori_2.0.exe",
+    "original_sha256": "0bcca771eefcc6a25657a30fabdea652eb76d4d5661ae23d3a8f94a6ee6aa72d",
+    "original_size": 808265756,
+    "source_url": "https://www.mediafire.com/file/9e9iy57ywgiw1ud/Shi_No_Mori_2.0.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/06/14/shi-no-mori-nacht-der-untoten-reborn/",
+    "fetched": "2026-09-22T19:40:46Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_shinomori",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "shinomori.iwd:images/loadscreen_shinomori.iwi",
+        "shinomori.iwd:images/menu_button_backing_right.iwi",
+        "shinomori.iwd:images/menu_map_shinomori.iwi",
+        "shinomori.iwd:images/p6_zm_al_food_menu_n.iwi"
+      ],
+      "loadscreen": "loadscreen_shinomori"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 125.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 76,
+        "scripts": 0,
+        "bytes": 201816
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "shinomori.ff",
+      "shinomori_patch.ff",
+      "shinomori.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

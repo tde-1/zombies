@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_cargo",
+  "title": "CARGO",
+  "source": "custom",
+  "author": "FreeFall",
+  "released": "2015-02-16",
+  "fs_game": "mods/nazi_zombie_cargo",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_cargo.iwd": "21229053bfa7ae5efaec730e77242348a9a4dd9d6cbb8d2c8a2b652782f92185"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "part_location"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "part_location look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 2555,
+    "ee_candidates": [
+      "part_location"
+    ],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door9"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door8"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door15"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "21229053bfa7ae5efaec730e77242348a9a4dd9d6cbb8d2c8a2b652782f92185",
+    "map_specific_triggers": [
+      "PerkSlots",
+      "Switches",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Zombie_Cargo.exe",
+    "original_sha256": "3dd7bca6d90d66cdab9f9e363cc84f9206abe57aa48fe9b98bcd88c33ac2c7fb",
+    "original_size": 373890779,
+    "source_url": "http://www.mediafire.com/file/uid9inc62zya8c6/Zombie_Cargo.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:22:02Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Description: This is my second map and it is a complete zombies remake of the BO2 multiplayer map, Cargo. It is a 1:1 replica and it is just like the original map with new areas to explore. Features: 9 Perks BO2 weapons with a few MW guns Kino Style Teleporter Expanded map and hidden rooms Buildables 80 FOV Rain FX and Rain SFX Custom PAP camo DoubleTap 2.0 A unique way to obtain perk slots Zombie Counter Buyable Ending Nuketown Zombie Models Weapon list: ( I\u2019ve spent countless hours on these guns trying my best to make sure that they are just like their originals) Black Ops 2 AN-94 B23R Ballista Chicom Dsr-50 Fal-Osw HAMR KSG LSAT M1216 M27 M8A1 MP7 MSMC Mtar Peacekeeper PDW-57 QBB-LSW R870mcs S12 SkorpionEvo SMR SWAT-556 Tac-45 Type25 XPR-50 Modern Warfare 2 Desert Eagle Fn2000 Intervention M4A1 MG4 Vector Modern Warfare 3 ACR 6.8 Wonder Weapons Ray Gun Mark2 Scavenger Credits: Treyarch (original map design) thezombiekilla6 (tons of help with weapons,scripting and beta testing) PROxFTW (scripting help, beta tester) DidUknowiPwn (beta tester, weapons assets) Chromastone10 (beta tester) rdvlpr (scripting help, beta tester) Billybob217 (beta tester) conn6orsuper117 (beta tester) Tom_BMX (Lime) Cod_ne\u00f1e (scavenger script) jei9363 (BO perks) JR-Imagine (buildable script) ConvictioNDR (doubletap 2 script) Aidan (kino teleporter) Metroman260 (zombie models) Everyone at CFGfactory for the weapons All UGX Members who helped me make this map Enjoy the map!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_cargo.iwd:images/cargo_load.iwi",
+        "nazi_zombie_cargo.iwd:images/cargo_main_menu.iwi",
+        "nazi_zombie_cargo.iwd:images/custom_zombies_menu.iwi",
+        "nazi_zombie_cargo.iwd:images/custom_zombies_menu2.iwi",
+        "nazi_zombie_cargo.iwd:images/custom_zombies_menu3.iwi",
+        "nazi_zombie_cargo.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "nazi_zombie_cargo.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_cargo.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_cargo.iwd:images/weapon_red_cross_background_2.iwi",
+        "nazi_zombie_cargo.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "nazi_zombie_cargo.iwd:images/_-gp6_cargo_container_side_logo_blue_c.iwi",
+        "nazi_zombie_cargo.iwd:images/_-gp6_cargo_container_side_logo_red_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 117.8,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 62,
+        "scripts": 3,
+        "bytes": 3410381
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "nuketown_zombies.iwd",
+        "entries": 48,
+        "scripts": 17,
+        "bytes": 10343048
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_cargo_patch.ff",
+      "nazi_zombie_cargo.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

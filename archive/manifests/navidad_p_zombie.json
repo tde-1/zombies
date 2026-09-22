@@ -1,0 +1,217 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "navidad_p_zombie",
+  "title": "CHRISTMAS IN PRISON",
+  "source": "custom",
+  "author": "Cod_ne",
+  "released": "February 08, 2015, 04:16:53 pm",
+  "fs_game": "mods/navidad_p_zombie",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@navidad_p_zombie.iwd": "879fa0724290ad6553522442c142df24d0c235043f883549a484ac7d9f5d1551"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_texture",
+        "gen_part",
+        "panel1_part",
+        "panel_part",
+        "parts_added",
+        "wire_part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_texture, gen_part, panel1_part, panel_part, parts_added, wire_part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 114,
+    "script_count": 114,
+    "entities": 1208,
+    "ee_candidates": [
+      "ee_texture",
+      "gen_part",
+      "panel1_part",
+      "panel_part",
+      "parts_added",
+      "wire_part"
+    ],
+    "ending_words": [
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      7000,
+      10000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door_8"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_8"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_2"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door_3"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door_5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "879fa0724290ad6553522442c142df24d0c235043f883549a484ac7d9f5d1551",
+    "map_specific_triggers": [
+      "bell",
+      "bell1",
+      "bell2",
+      "blunder_trigg",
+      "claymore_trigg",
+      "end_trigger",
+      "gen",
+      "gen_true",
+      "handle",
+      "handle_true",
+      "panel",
+      "panel1",
+      "panel1_true",
+      "panel_true",
+      "secret_trigger",
+      "secret_trigger1",
+      "secret_trigger2",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "teddy1",
+      "teddy2",
+      "teddy3",
+      "troll_trigg",
+      "wire",
+      "wire_true",
+      "wunderfizz_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "navidad_p_zombie_v1.2.exe",
+    "original_sha256": "5d14bee44f3a775c0658504ccb94a14a95b2e795037653b8e9b8dce55b366afa",
+    "original_size": 342127298,
+    "source_url": "http://www.mediafire.com/file/9068cs82aj9fd8v/navidad_p_zombie_v1.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:26:06Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_navidad_p_zombie"
+      ],
+      "iwd_images": [
+        "navidad_p_zombie.iwd:images/loadscreen_navidad_p_zombie.iwi",
+        "navidad_p_zombie.iwd:images/loadscreen_nazi_zombie_wahnsinn.iwi",
+        "navidad_p_zombie.iwd:images/menu_map_navidad_p_zombie.iwi",
+        "navidad_p_zombie.iwd:images/menu_map_nazi_zombie_wahnsinn.iwi",
+        "navidad_p_zombie.iwd:images/menu_rats.iwi",
+        "navidad_p_zombie.iwd:images/menu_wahnsinn.iwi",
+        "navidad_p_zombie.iwd:images/specialty_fastreload_zombies.iwi",
+        "navidad_p_zombie.iwd:images/weapon_red_cross_background.iwi",
+        "navidad_p_zombie.iwd:images/weapon_red_cross_background_2.iwi",
+        "navidad_p_zombie.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "navidad_p_zombie.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "navidad_p_zombie.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "navidad_p_zombie.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "navidad_p_zombie.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_navidad_p_zombie"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 82.2,
+    "addon_iwds": [
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "zombie_hitmarker_bythesuzho.iwd",
+        "entries": 4,
+        "scripts": 1,
+        "bytes": 2663
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "navidad_p_zombie_patch.ff",
+      "navidad_p_zombie.iwd:animscripts/death.gsc",
+      "navidad_p_zombie.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

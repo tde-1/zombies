@@ -1,0 +1,128 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_arena",
+  "title": "Arena Challenge Map",
+  "source": "custom",
+  "author": "coochy",
+  "released": "2016-10-29",
+  "fs_game": "mods/nazi_zombie_arena",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_Arena.iwd": "c3604601b2b14db0fb4672dfc0ca5c73bfdb84d96a2b4b49d5e84213801409de"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 96,
+    "script_count": 96,
+    "entities": 630,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c3604601b2b14db0fb4672dfc0ca5c73bfdb84d96a2b4b49d5e84213801409de",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Arena.exe",
+    "original_sha256": "b5e9909aeacdf4c08ec916776a6bcffc0d84af8b9ce85db9455df4ec73083bec",
+    "original_size": 62139555,
+    "source_url": "https://www.mediafire.com/file/x3qc5exny4m1n53/nazi_zombie_Arena.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/10/29/arena-challenge-map/",
+    "fetched": "2026-09-22T19:26:54Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "fight a horde of zombies with only a handgun and pump action shotgun to the end in the Arena juggernog speed cola double tap for extra help. Can you survive to 20000 points and buy your way out Good Luck.. In game juggernog speed cola double tap Guns 911 pump action shotgun credits sniper bolts ugx creator",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 82.4,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_arena.ff",
+      "nazi_zombie_arena_patch.ff"
+    ]
+  }
+}

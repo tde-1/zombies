@@ -1,0 +1,198 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_library",
+  "title": "ZOMBIE LIBRARY",
+  "source": "custom",
+  "author": "jzob1234",
+  "released": "2014-07-02",
+  "fs_game": "mods/nazi_zombie_library",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@library.iwd": "2bd95c73af35a0aa9f6b85c137f5597a34cf14ff87318792c573623b7062f082"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "secret_trigger_ee"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "secret_trigger_ee look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 120,
+    "script_count": 120,
+    "entities": 695,
+    "ee_candidates": [
+      "secret_trigger_ee"
+    ],
+    "ending_words": [
+      "Finale",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "theend"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "Paradise"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "Keller"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "Finale"
+      ],
+      [
+        2000,
+        "satchel_purchase",
+        "weapon_charge"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "2bd95c73af35a0aa9f6b85c137f5597a34cf14ff87318792c573623b7062f082",
+    "map_specific_triggers": [
+      "button1",
+      "dvii_bench",
+      "jukebox",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "mortar_purchase",
+      "pick_pic_four_trigger",
+      "pick_pic_one_trigger",
+      "pick_pic_three_trigger",
+      "pick_pic_two_trigger",
+      "satchel_purchase",
+      "secret_trigger1",
+      "secret_trigger115",
+      "secret_trigger2",
+      "secret_trigger3",
+      "secret_trigger4",
+      "secret_trigger_ee"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Library.exe",
+    "original_sha256": "35e6820c91dfb79b1a5823f0d3c8fd266aad6053185fe0c6debf00fcbf276915",
+    "original_size": 343568806,
+    "source_url": "https://www.mediafire.com/file/v55b0dp06pvrdi6/Library.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:34:08Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "hi guys this is my 3rd map i have made theres are a lot of features to the map for example bo2 guns ghosts guns bo1 perks bo2 perks and boss zombies credit list of library if i forgot any credit to anyone just pm me tom-bmx P0rkRoyalz Redspace200 YaPh1l xXxCowmanxXx09 BlackJackJonnyy Nikolai Belinski Tito RumoreQuimico ellocokiller Nukem BlackBoss42 offth ewall jjbradman elfenlied (Apex) claytonm456 echo000 cfgfactory Sanya Swazzy misterhoff2 InFInIX DuaLVII koene007 bamskater33 Gamer9294 Addicted haxman123 Jake [Apex] quizz sajeone Paragalor ASTR0 Mrhankey91 JR-Imagine http://tf3dm.com zm tuts ugx tuts Azyru Rollonmath42 ps i hope u guys enjoy this map if theres any bugs let me know.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_library",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "library.iwd:images/library_background.iwi",
+        "library.iwd:images/library_menubackground.iwi",
+        "library.iwd:images/loadscreen_nazi_zombie_library.iwi",
+        "library.iwd:images/menu_map_nazi_zombie_library.iwi",
+        "library.iwd:images/specialty_fastreload_zombies.iwi",
+        "library.iwd:images/weapon_red_cross_background.iwi",
+        "library.iwd:images/weapon_red_cross_background_2.iwi",
+        "library.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "library.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "library.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "library.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "library.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_library"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 95.7,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "library.iwd",
+        "entries": 1508,
+        "scripts": 41,
+        "bytes": 184174170
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_library.ff",
+      "nazi_zombie_library_patch(old).ff",
+      "nazi_zombie_library_patch.ff",
+      "library.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

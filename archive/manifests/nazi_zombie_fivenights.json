@@ -1,0 +1,195 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_fivenights",
+  "title": "FIVE NIGHTS AT FREDDY\u2019S",
+  "source": "custom",
+  "author": "playingtowin89",
+  "released": "2014-12-07",
+  "fs_game": "mods/nazi_zombie_fivenights",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "audio_ee"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "audio_ee look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 142,
+    "script_count": 142,
+    "entities": 425,
+    "ee_candidates": [
+      "audio_ee"
+    ],
+    "ending_words": [
+      "ending"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "auto247"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto244"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto241"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto241"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto238"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8",
+    "map_specific_triggers": [
+      "audio_ee",
+      "bonnie_jumpscare",
+      "chica_jumpscare",
+      "ending",
+      "freddy_jumpscare",
+      "soul_chest_start"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_fivenights.exe",
+    "original_sha256": "0f3b2808c07b2e89d643818492af15a409410196fa616e9b8a8ff060184a10a2",
+    "original_size": 241941788,
+    "source_url": "http://www.mediafire.com/file/c77x1dfxkk1bfb3/nazi_zombie_fivenights.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:17:21Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge",
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "Hello everyone This map is based off the popular 2d click game of the same name. This map features UGX Mod v1.0.4! Features: \u2013 UGX Mod v1.0.4 \u2013 UGX Viewhands fix \u2013 Soul chest (doesnt look normal!) \u2013 Buyable ending (30,000) \u2013 Nights pass from 1 to 5, can\u2019t end game until night 5 \u2013 custom zombie models mixed with regular zombie models \u2013 triggerable jumpscares (if you dont like being suprised then this should appeal to you more) \u2013 secret sound EE in starting room for FN@F fans Hints: \u2013 You need to find all three jumpscares and turn on the power before you can turn on the soul ches. \u2013 You will hear a sound when the soul chest is done, and souls will stop flying to it \u2013 You can\u2019t escape until night 5 Credits: \u2013 freddy character model obj files from deadmanwalking289 on deviantart.com (unrigged) \u2013 textures from steam workshop community \u2013 some mapping and all scripts by me \u2013 rest of the mapping by my friend. he isn\u2019t on this site yet but his name is dudeofthehour. \u2013 UGX for the mod (awesome!)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "nazi_zombie_fivenights.iwd:images/menuscreen.iwi",
+        "nazi_zombie_fivenights.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_fivenights.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 67.4,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476885
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      },
+      {
+        "file": "viewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_nazi_zombie_fivenights.ff",
+      "mod.ff",
+      "nazi_zombie_fivenights_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

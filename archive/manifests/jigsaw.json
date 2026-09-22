@@ -1,0 +1,241 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "jigsaw",
+  "title": "JIGSAW",
+  "source": "custom",
+  "author": "whippytrout",
+  "released": "2016-10-22",
+  "fs_game": "mods/jigsaw",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@jigsaw.iwd": "abf67b933fee6784077cc62d93a66fa44020a7c0c3e10848bb783a9578c5170b"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_battle_door",
+        "boss_ladder",
+        "boss_ladder_model",
+        "boss_wall_left",
+        "boss_wall_right",
+        "boss_zone",
+        "final_boss_switch",
+        "final_boss_switch_brush",
+        "get_boss_battle",
+        "start_boss_battle"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_battle_door, boss_ladder, boss_ladder_model, boss_wall_left, boss_wall_right, boss_zone look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 131,
+    "script_count": 131,
+    "entities": 1339,
+    "ee_candidates": [
+      "boss_battle_door",
+      "boss_ladder",
+      "boss_ladder_model",
+      "boss_wall_left",
+      "boss_wall_right",
+      "boss_zone",
+      "final_boss_switch",
+      "final_boss_switch_brush",
+      "get_boss_battle",
+      "start_boss_battle"
+    ],
+    "ending_words": [
+      "end_game",
+      "escape_floor",
+      "mech_escape_trigger",
+      "trap3_win",
+      "trap3_win_door",
+      "trap_4_win_door",
+      "trap_4_win_door_trig"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "axe_door"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        350,
+        "crushtrig",
+        "?"
+      ],
+      [
+        350,
+        "crushtrig",
+        "?"
+      ],
+      [
+        100,
+        "zombie_door",
+        "trap_door_laser"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "abf67b933fee6784077cc62d93a66fa44020a7c0c3e10848bb783a9578c5170b",
+    "map_specific_triggers": [
+      "bar_guy_idle_trig",
+      "barel",
+      "bareltrue",
+      "bbq_trig",
+      "car_run_trig",
+      "congrats_sound_trig",
+      "crushdmg",
+      "crushtrig",
+      "door_lock_trig",
+      "end_trap3_trig",
+      "fire_trig",
+      "grip",
+      "griptrue",
+      "hankey_slidedoor",
+      "hurt_away",
+      "hurt_home",
+      "jigsaw_laughtrig",
+      "key1_trig",
+      "key2_trig",
+      "key3_trig",
+      "key4_trig",
+      "key5_trig",
+      "key6_trig",
+      "mech_escape_trigger",
+      "metal_trig",
+      "moon_teleporter_a_trigger",
+      "moon_teleporter_b_trigger",
+      "pap_box_trig",
+      "portal",
+      "radius_dmg_trigs",
+      "riseandshine_sound_trig",
+      "room",
+      "room2",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "shock_trigs",
+      "start_boss_battle",
+      "start_rounds",
+      "support_spawn_button"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Jigsaw.exe",
+    "original_sha256": "74f45ef1150c0b172444a741ff8a8a162b4df22dc40f83e577eb8fba191799cf",
+    "original_size": 172390605,
+    "source_url": "http://www.mediafire.com/file/a7s5q3cx45g95zo/Jigsaw.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:52:08Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Story: You have been captured by Jigsaw and will be put through several excruciating traps and tests in order to test your will to survive. Will you be able to survive? About Map: This map is unlike any other zombie map. It is mainly traps and obstacles similar to those seen in the \u201cSaw\u201d movies. Don\u2019t worry there are zombies, just not like in other maps. This map features two maps in one. If you play solo the traps and obstacles will be completely different than Co-op. Co-op features fun thrilling traps that involve teamwork. You find out who your real friends are while playing this map. Solo is equally as exciting with time based traps and skill based traps. You will more than likely die several times while attempting either of these modes. Don\u2019t get discouraged though, dying is part of the map just as it was in the movies. I don\u2019t want to give any more away about the map because I want it to be a surprise. So have fun and \u201cLet the Game Begin\u201d. (Note! Must Use T4M Or Game Will Crash!!!!)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_jigsaw"
+      ],
+      "iwd_images": [
+        "jigsaw.iwd:images/loadscreen_nazi_zombie_jigsaw.iwi",
+        "jigsaw.iwd:images/menu_background_coop.iwi",
+        "jigsaw.iwd:images/menu_map_nazi_zombie_jigsaw.iwi",
+        "jigsaw.iwd:images/saw_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 118.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "trem_hintstrings.iwd",
+        "entries": 1,
+        "scripts": 1,
+        "bytes": 1108
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "jigsaw.ff",
+      "jigsaw_patch.ff",
+      "mod.ff",
+      "jigsaw.iwd:animscripts/death.gsc",
+      "jigsaw.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

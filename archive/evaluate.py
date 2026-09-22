@@ -29,7 +29,12 @@ MANIFESTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manifests"
 
 
 def main():
-    scan = json.load(open(os.path.join(WORK, "reports", "scan.json"), encoding="utf-8"))
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--scan", default="scan.json", help="report written by scan_maps.py --report")
+    ap.add_argument("--out", default="evaluate.json")
+    a = ap.parse_args()
+    scan = json.load(open(os.path.join(WORK, "reports", a.scan), encoding="utf-8"))
     rows = []
     for r in scan["rows"]:
         mf = os.path.join(MANIFESTS, r["map"] + ".json")
@@ -81,7 +86,7 @@ def main():
               "human, %d were silently called Round N"
               % (len(tagged), agree, flagged,
                  len(tagged) - agree - flagged))
-    out = os.path.join(WORK, "reports", "evaluate.json")
+    out = os.path.join(WORK, "reports", a.out)
     with open(out, "w", encoding="utf-8") as fh:
         json.dump({"counts": counts, "rows": rows}, fh, indent=2)
     print("wrote", out)

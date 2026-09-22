@@ -1,0 +1,216 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "cryogenic",
+  "title": "CRYOGENIC",
+  "source": "custom",
+  "author": "MidgetBlaster",
+  "released": "2015-03-06",
+  "fs_game": "mods/cryogenic",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@cryogenic.iwd": "920ba4f3376c4ad9ba7877dd844050991a797836bc402b4755ba54d8f9babf55"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 100000
+        }
+      },
+      "candidates": [
+        "end_trigger",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        420000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger, teleport_power_up name an ending and are this map's own; script hardcodes cost 420000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 132,
+    "script_count": 132,
+    "entities": 6237,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      420000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        100000,
+        "zombie_door",
+        "door3"
+      ],
+      [
+        10000,
+        "weapon_upgrade",
+        "thundergun"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "door7"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "door7"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "door6"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 100000,
+      "targetname": "zombie_door",
+      "target": "door3",
+      "next_highest": 10000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "920ba4f3376c4ad9ba7877dd844050991a797836bc402b4755ba54d8f9babf55",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "elemental_ammo",
+      "end_trigger",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "give_ammo",
+      "jukebox",
+      "lander_use",
+      "laser_control",
+      "laser_hurt",
+      "lunar_lander_call_1",
+      "lunar_lander_call_2",
+      "lunar_lander_call_3",
+      "lunar_lander_call_home",
+      "music_box_player",
+      "para_eggtrig",
+      "purchase",
+      "scare_him_now",
+      "select",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "trem_bank_trig",
+      "trig_c"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Cryogenic.exe",
+    "original_sha256": "030cdf3cecde715b04192a1655be5bdc51044b554d60e8ce4ca07fa9ef89d70a",
+    "original_size": 488515013,
+    "source_url": "http://www.mediafire.com/file/ph4v9y8mzv9uvjo/Cryogenic.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:16:51Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "challenge",
+      "leaderboard",
+      "top_100"
+    ],
+    "catalogue_description": "Cryogenic is a very fast paced I made just for fun. There is a lot of space to run around and there are some cool camping spots to eliminate endless zombie hordes. Since this is my first map there are going to be some bugs, but I do not plan to continue working on this map anymore since I just want to start on a brand new one. I really hope you guys enjoy this! Features: 9 Perks Custom Voice overs Mob of the Dead Zombies Halo Weapons Nuketown 2025 Player Models Snowing Blood Buyable Ending Buyable Max Ammo & Double Points Double Tap 2.0 Zombie Counter Verruckt Sprinters Five Style Teleporters Laser Trap Ride-able Centrifuge Fan Blade Trap Weapons List: Thundergun Scavenger Blundergat Acidgat Commando Fal Galil Honeybadger AE4 Raygun Ppsh M2 Flamethrower Wunderwaffe Halo Energy Sword Halo Battle Rifle Halo DMR Halo Magnum Credits: MrDunlop4 (Spike Knife, AE4 Camo, Blundergat, Gun Smoke FX, Acidgat FX, Nuketown 2025 Models) sevengpluke (All Halo Weapons & BO Camo\u2019s) Rorke aka Zombie Madness (Thundergun, Scavenger, Galil, Fal, Commando) Rollonmath42 (AE4) elfenliedtopfan5 (Honey Badger) AwesomePieMan (Five Teleporters) DidUknowiPwn (Zombie Blood, DUKIP Menu Mod V1.2, Custom Font) bamskater33 (Ridable Centrifuge, Laser Tap, Powerup Machine) shippuden1592 (Pack-A-Punch Camo) OfficialMT22 (Pro Perk & Power Drop Shaders) Ege115 (Acidgat Script) ficklebickle (Cryogenic Logo) ZOMB1E-KLLR (Tutorials) Marsvinking (Swinging Corpses, and Lights MakeCents (Fanblade Trap) HitmanVere (Dr Fri",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_cryogenic",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "cryogenic.iwd:images/c_logo.iwi",
+        "cryogenic.iwd:images/dukip_menu.iwi",
+        "cryogenic.iwd:images/dukip_menu2.iwi",
+        "cryogenic.iwd:images/loadscreen_cryogenic.iwi",
+        "cryogenic.iwd:images/nzr_menu2.iwi",
+        "cryogenic.iwd:images/specialty_fastreload_zombies.iwi",
+        "cryogenic.iwd:images/weapon_red_cross_background.iwi",
+        "cryogenic.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": "loadscreen_cryogenic"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 143.9,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "cryogenic_patch.ff",
+      "mod.ff",
+      "cryogenic.iwd:animscripts/death.gsc",
+      "cryogenic.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

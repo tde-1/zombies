@@ -1,0 +1,167 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_poke",
+  "title": "POKEMON WHERE LEGENDS BEGIN",
+  "source": "custom",
+  "author": "josemassacre",
+  "released": "2016-02-02",
+  "fs_game": "mods/nazi_zombie_poke",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@pokemonwherelegendsbegin.iwd": "d7ec0065894a81f26f9dba06b6427a14db37b8dbbc273f2ee674917282d3ec43"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "egg"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "egg look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 129,
+    "script_count": 129,
+    "entities": 1044,
+    "ee_candidates": [
+      "egg"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "d7ec0065894a81f26f9dba06b6427a14db37b8dbbc273f2ee674917282d3ec43",
+    "map_specific_triggers": [
+      "bagtrig",
+      "birch_sign",
+      "dextrig",
+      "eggtrig",
+      "elmsign",
+      "handle_build_trig",
+      "oak",
+      "oak_sign",
+      "panel_build_trig",
+      "secret_trigger",
+      "secret_trigger2",
+      "turn_power_on",
+      "wire_build_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 41,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "PokemonWhereLegendsBeginv1.2.exe",
+    "original_sha256": "df17a5893b0b2321e1d4a7d640a9dfe31d80d5eb873c72ca30ea78c062e038c3",
+    "original_size": 237901345,
+    "source_url": "https://www.mediafire.com/file/zy75rt56ibk1r5t/PokemonWhereLegendsBeginv1.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:13:03Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "After much longer than anticipated I give you pokemon. I plan on revisiting the pokemon theme. I learned how to somewhat script simple things, and I\u2019ll just get better So the new map will have a much lager ee and be of one game. Back to this map. It features Pallet Town, New Bark Town, Route 1(gen 1), and Littleroot Town The ee cant\u2019t be started until the power is on turn the power on by building it you need to find 9 pokeballs 3 per town. some are hard to find so I added a picture you can find bits to. The ladder is convienit but not nessisary the map is pretty challenging good luck. bug when dogs spawn with zombies it makes the zombie counter go negative (not really a problem so i probably wont mess with it) Features zombies- meowth delibird electabuzz kangaskan napalm- magmar boss- secret dogs \u2013 houndoom 8 perks- Double tap does double damage and increases fire rate SUPER STAMINUP!!! Deadshot laser Flopper can flop (jump from any higher ground while going prone) 9 shootable pokeballs opening the three labs you have to shoot all three in one town and it opens one lab Hidden-ish pack a punch Crap tons of ported weapons (thanks to Rorke for 99 percent of them, Elfenlied for his Honeybadger) All ported weapons can be packed and almost all have new names and custom stats weapon trader buildable ladder Scrolling camo Custom zombie models Custom HUD Custom points per kill Zombie run and sprint very close to the start Custom solo (hopefully coop) load screen Custom start screen an",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "pokemonwherelegendsbegin.iwd:images/marley_griffin_moving_logo_col.iwi",
+        "pokemonwherelegendsbegin.iwd:images/msr_logo.iwi",
+        "pokemonwherelegendsbegin.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 98.0,
+    "addon_iwds": [
+      {
+        "file": "pokemonwherelegendsbegin.iwd",
+        "entries": 443,
+        "scripts": 39,
+        "bytes": 80115335
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 13814
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "allwip.ff",
+      "allwip_patch.ff",
+      "mod.ff",
+      "nazi_zombie_pallet.ff",
+      "nazi_zombie_poke.ff",
+      "nazi_zombie_poke_patch.ff",
+      "pokemonwherelegendsbegin.iwd:maps/_loadout.gsc",
+      "pokemonwherelegendsbegin.iwd:maps_loadout.gsc"
+    ]
+  }
+}

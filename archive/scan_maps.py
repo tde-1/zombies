@@ -226,6 +226,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mods", default=MODS)
     ap.add_argument("--corpus-fraction", type=float, default=CORPUS_FRACTION)
+    # 2026-09-22 evening, the popular-50 run: a rescan over a bigger corpus moves the
+    # corpus-boilerplate set and therefore every OLD verdict, and it would overwrite the
+    # hand-added fields (archive.cover, install.exclude, dedi notes) in the 14 MVP
+    # manifests. --keep-existing still scans everything (the corpus rule needs it) but
+    # writes a manifest only for a map that has none, and --report keeps the 14-map
+    # scan.json that archive.md sections 3-4 are generated from.
+    ap.add_argument("--keep-existing", action="store_true")
+    ap.add_argument("--report", default="scan.json")
     a = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
     try:
@@ -303,8 +311,12 @@ def main():
                 and n not in stock_ents)[:40],
         }
         man = manifest_for(mapname, res, ee, meta, db, extras)
-        with open(os.path.join(OUT, mapname + ".json"), "w", encoding="utf-8") as fh:
-            json.dump(man, fh, indent=2)
+        mpath = os.path.join(OUT, mapname + ".json")
+        if a.keep_existing and os.path.exists(mpath):
+            pass
+        else:
+            with open(mpath, "w", encoding="utf-8") as fh:
+                json.dump(man, fh, indent=2)
         v = res["verdict"]["finish"]
         rows.append({"map": mapname, "verdict": v,
                      "verdict_stock_only": extras["verdict_no_ignore"],
@@ -359,7 +371,7 @@ def main():
             },
         },
     }
-    with open(os.path.join(WORK, "reports", "scan.json"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(WORK, "reports", a.report), "w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2)
 
 

@@ -1,0 +1,218 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_snowglobe",
+  "title": "SNOW GLOBE",
+  "source": "custom",
+  "author": "JBird632",
+  "released": "2014-12-28",
+  "fs_game": "mods/nazi_zombie_snowglobe",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e242bc30bf09bf343bed614f88bed342b2712f900bb81d85233a900f04f690ce"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_christmas_presents",
+        "ee_christmas_star",
+        "ee_christmas_tree",
+        "ee_hunt_hat",
+        "ee_snowman",
+        "ee_soul_portal"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_christmas_presents, ee_christmas_star, ee_christmas_tree, ee_hunt_hat, ee_snowman, ee_soul_portal look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 172,
+    "script_count": 172,
+    "entities": 1619,
+    "ee_candidates": [
+      "ee_christmas_presents",
+      "ee_christmas_star",
+      "ee_christmas_tree",
+      "ee_hunt_hat",
+      "ee_snowman",
+      "ee_soul_portal"
+    ],
+    "ending_words": [
+      "teleport_spots"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1000,
+        "zombie_door",
+        "church_side_door"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "church_side_door"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "church_enterance"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "church_enterance"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "cheeseshop_backdoor"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e242bc30bf09bf343bed614f88bed342b2712f900bb81d85233a900f04f690ce",
+    "map_specific_triggers": [
+      "cgm_damage_trigger",
+      "cgm_trigger",
+      "christmas_tree_trigger",
+      "church_bell_trigger",
+      "claymore_purchase",
+      "glass_debris_trigger",
+      "ice_slide",
+      "packtower_trig",
+      "power_box_damage_triggger",
+      "power_box_hint_triggger",
+      "power_trigger_home",
+      "power_trigger_pub",
+      "power_trigger_shops",
+      "shooting_range_trigger",
+      "sleigh_damage_trigger",
+      "sleigh_zone",
+      "snowman_damage_triggers"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_snowglobe.exe",
+    "original_sha256": "d94560aa37ebe5c1514c9ea9b8c8c7faed72c9c9903977a3b74e52b8104b6ae3",
+    "original_size": 326892706,
+    "source_url": "http://www.mediafire.com/file/frngqchgm11tvp5/nazi_zombie_snowglobe.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:55:19Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "christmas_map",
+      "top_100"
+    ],
+    "catalogue_description": "This map features UGX Mod v1.0.4! Merry Christmas! This map is a contest submission for the YouAlwaysWin Christmas Mapping contest. The map takes place in a giant snowglobe, which players have to survive in and find the secrets of Christmas. Features: \u2013 UGX Mod 1.04 \u2013 Black Ops Weapons \u2013 Dive to Prone \u2013 Custom Wonderweapon \u2013 Easter Egg \u2013 New Domination Gamemode Special Thanks: \u2013 Treminaor for menu help and general help \u2013 Rollonmath42 xmas raygun animations \u2013 Awesome Pieman for scripting help and beta testing \u2013 HexZombies beta testing \u2013 Fatkidslov3cak3 beta testing \u2013 TheScotchGuy beta testing \u2013 RadimaX beta testing",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "nazi_zombie_snowglobe.iwd:images/christmas_ammo_background.iwi",
+        "nazi_zombie_snowglobe.iwd:images/christmas_ammo_background2.iwi",
+        "nazi_zombie_snowglobe.iwd:images/snowglobe_loadscreen.iwi",
+        "nazi_zombie_snowglobe.iwd:images/snowglobe_main_menu.iwi",
+        "nazi_zombie_snowglobe.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_snowglobe.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_snowglobe.iwd:images/ugx_mod_menu_template.iwi",
+        "nazi_zombie_snowglobe.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_snowglobe.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_zombie_snowglobe.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_snowglobe.iwd:images/_-gzombie_vending_three_gun_logo_on.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 82.4,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 112,
+        "scripts": 30,
+        "bytes": 28633937
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 15,
+        "scripts": 10,
+        "bytes": 411236
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_nazi_zombie_snowglobe.ff",
+      "nazi_zombie_snowglobe_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "nazi_zombie_snowglobe.iwd:maps/ugx_pap_handle.gsc",
+      "nazi_zombie_snowglobe.iwd:maps/_loadout.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

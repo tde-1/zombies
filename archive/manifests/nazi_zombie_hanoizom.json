@@ -1,0 +1,213 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_hanoizom",
+  "title": "HANOI",
+  "source": "custom",
+  "author": "ihmiskeho",
+  "released": "2016-07-12",
+  "fs_game": "mods/nazi_zombie_hanoizom",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@hanoi.iwd": "e32932ce4c37b4d91377745636f499d58dfac97613e41673498009aa3768ff79"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger name an ending and are this map's own; script hardcodes cost 3000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 118,
+    "script_count": 118,
+    "entities": 2108,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf6059_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf6538_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf6038_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf6041_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf6035_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e32932ce4c37b4d91377745636f499d58dfac97613e41673498009aa3768ff79",
+    "map_specific_triggers": [
+      "activation1_trig",
+      "activation2_trig",
+      "activation3_trig",
+      "activation4_trig",
+      "dubstep_trigger",
+      "end_trigger",
+      "harrybo21_perk_trigger",
+      "hidden_skull_trig",
+      "key_panel_trig",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "moon_teleporter_a_trigger",
+      "panel1_trig",
+      "panel2_trig",
+      "panel3_trig",
+      "players_in_room",
+      "rock_cell_trig",
+      "rock_middle_trig",
+      "rock_packa_trig",
+      "rock_sewer_trig",
+      "rock_tele_trig",
+      "rotating_door",
+      "sewer_trig",
+      "shootable_panel",
+      "shootable_panel2",
+      "shootable_panel3",
+      "shootable_panel4",
+      "tesla_coil1",
+      "tesla_coil2",
+      "tesla_coil3",
+      "test_trig",
+      "thunder_trig",
+      "thunderstorm_trigger",
+      "well_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Hanoi_1.2.exe",
+    "original_sha256": "827deab88e3cdbedc0c5d7b00cd15d50ea9d28fbdd71e59dd4938aa16ab6ba83",
+    "original_size": 373322631,
+    "source_url": "https://www.mediafire.com/file/f3pnk8xrxymyir4/Hanoi_1.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:47:10Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "After the cold war the American soldiers left Hanoi. They soon forgot this place and had no idea what it had become. Vietnamese scientists formed their research on this forgotten prison. The experiments were kept hidden and no other humans were allowed near. That is until the outbreak started. After that Hanoi was left to rot. There is something in Hanoi that we were yet to understand. An evil force that no one has dared to use. Until now\u2026",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "hanoi.iwd:images/menu_mp_weapons_attach_masterkey.iwi",
+        "hanoi.iwd:images/weapon_red_cross_background.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 122.7,
+    "addon_iwds": [
+      {
+        "file": "hanoi.iwd",
+        "entries": 681,
+        "scripts": 41,
+        "bytes": 158769813
+      },
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45675050
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_hanoizom_patch.ff",
+      "hanoi.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

@@ -1,0 +1,226 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_beachtown",
+  "title": "BEACHTOWN",
+  "source": "custom",
+  "author": "jei9363",
+  "released": "2013-07-23",
+  "fs_game": "mods/nazi_zombie_beachtown",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "0f1ddbd181a7106204f35bd16c096f079cedc91623559fe1e5aa0101284df082"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "EE_BOAT_clipping",
+        "EE_BOAT_enter",
+        "EE_boat_flag_support",
+        "EE_boat_flags",
+        "EE_boat_origin",
+        "EE_boat_rope",
+        "EE_collect_TRIG",
+        "EE_collect_post1",
+        "EE_collect_post2",
+        "EE_collect_post3",
+        "EE_collect_post4",
+        "EE_engine",
+        "EE_engine_collect",
+        "ee_boat_support",
+        "ee_dest_1",
+        "ee_dest_2",
+        "ee_interact"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "EE_BOAT_clipping, EE_BOAT_enter, EE_boat_flag_support, EE_boat_flags, EE_boat_origin, EE_boat_rope look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 146,
+    "script_count": 146,
+    "entities": 1826,
+    "ee_candidates": [
+      "EE_BOAT_clipping",
+      "EE_BOAT_enter",
+      "EE_boat_flag_support",
+      "EE_boat_flags",
+      "EE_boat_origin",
+      "EE_boat_rope",
+      "EE_collect_TRIG",
+      "EE_collect_post1",
+      "EE_collect_post2",
+      "EE_collect_post3",
+      "EE_collect_post4",
+      "EE_engine",
+      "EE_engine_collect",
+      "ee_boat_support",
+      "ee_dest_1",
+      "ee_dest_2",
+      "ee_interact"
+    ],
+    "ending_words": [
+      "ending_link"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "door_left2"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door_left"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "red_area_debris"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "red_area_debris"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "red_area_debris"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "0f1ddbd181a7106204f35bd16c096f079cedc91623559fe1e5aa0101284df082",
+    "map_specific_triggers": [
+      "EE_collect_TRIG",
+      "drop_off",
+      "dumpster_trig",
+      "ee_interact",
+      "engine_trigger",
+      "flag_trig1",
+      "flag_trig2",
+      "main_crane_trig",
+      "main_crane_trig_final",
+      "net_on_tree_trig",
+      "net_pickup"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_beachtown.exe",
+    "original_sha256": "813b583585bbdc8f1d57881cf8b0af8513cd9232610710b1076611bc9d359606",
+    "original_size": 269715019,
+    "source_url": "http://www.mediafire.com/file/0dpn69b9z9ds025/nazi_zombie_beachtown.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:30:48Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "he Basics: Jay was kind enough to take a basic idea I had for a map and to make it a reality using his own creative vision and expert mapping jiu jitsu. This map was birthed from my own desire for a NukeTown style map with more places to go and things to do and even some additional mystery. What We Like: The map looks beautiful with its tropical theme being brought to life complete with fog and wind and lots of detail in many areas. The layout I feel is a great strength of the map with its narrow pathways and tight choke points as well as many ramps, ziplines and escape routes so you never feel completely trapped. It\u2019s got a short easter egg that will require some thinking to complete as well as a mini easter egg to gain access to the PAP machine. The UGX Mod was a must for me and is a great addition to what I feel is a complete experience. What We Didn\u2019t Like: There was the plan to make a water tornado that would move around the map to keep players from camping anywhere for too long but it just didn\u2019t make the cut due to time and some mapping issues. There were also some steps to the easter egg that didn\u2019t make the final version which could have added to the adventure and replayablilty. Final Word: I am very proud of this map and I know a ton of effort went into making this map the best it could be. It\u2019s a heck of a lot of fun with many great areas to run around and just have a good time in. I imagine with 3 or 4 players all running around things would get pretty crazy. A bi",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user"
+      ],
+      "iwd_images": [
+        "nazi_zombie_beachtown.iwd:images/ugx_camp_beta_menu.iwi",
+        "nazi_zombie_beachtown.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_beachtown.iwd:images/ugx_mod_menu_template.iwi",
+        "nazi_zombie_beachtown.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.8,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 117,
+        "scripts": 29,
+        "bytes": 30476182
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_nazi_zombie_beachtown.ff",
+      "mod.ff",
+      "nazi_zombie_beachtown_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

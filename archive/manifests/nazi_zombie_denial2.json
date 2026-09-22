@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_denial2",
+  "title": "LEGACY",
+  "source": "custom",
+  "author": "NascarFanatic24",
+  "released": "September 26, 2014, 05:04:49 am",
+  "fs_game": "mods/nazi_zombie_denial2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_denial2.iwd": "5139d93790961bdfa34a309aab9ad66bf71e7b1ee05e9eb2c8f4ac71b475d3c4"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "ending_song",
+        "thief_teleport_location"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, ending_song, thief_teleport_location name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 2101,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "ending_song",
+      "thief_teleport_location"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "auto51"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto50"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto9"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto1"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "upstairs_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5139d93790961bdfa34a309aab9ad66bf71e7b1ee05e9eb2c8f4ac71b475d3c4",
+    "map_specific_triggers": [
+      "ending_song",
+      "explosive_door_trigger",
+      "jukebox",
+      "number_trigger1",
+      "number_trigger2",
+      "number_trigger3",
+      "number_triggers",
+      "radio1_trigger",
+      "radio_trigger",
+      "scare_him_now",
+      "secret_trigger",
+      "shoot_me",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "supply_trig",
+      "teddy1",
+      "teddy2",
+      "teddy3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "_2_Legacy.exe",
+    "original_sha256": "0be6f007ee825e4eda6848ef4d9eb6a1698a315a40f5325c5b5fa5ff90870036",
+    "original_size": 192841140,
+    "source_url": "https://www.mediafire.com/file/lwjwx494j2v8zh4/%255E2_Legacy.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:47:33Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_denial2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_denial2.iwd:images/loadscreen_nazi_zombie_denial2.iwi",
+        "nazi_zombie_denial2.iwd:images/menu_legacy.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_denial2"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 126.6,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_denial2.ff",
+      "nazi_zombie_denial2_patch.ff"
+    ]
+  }
+}

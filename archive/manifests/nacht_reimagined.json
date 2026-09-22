@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nacht_reimagined",
+  "title": "NACHT DER UNTOTEN: REIMAGINED",
+  "source": "custom",
+  "author": "ProRevenge",
+  "released": "2015-07-12",
+  "fs_game": "mods/nacht_reimagined",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nacht_reimagined.iwd": "0325c4f05b0389a7dfbde6a98f1f8a3ab9c72a41e9866160910ef05a90522f18"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game",
+          "zombie_cost": 85000
+        }
+      },
+      "candidates": [
+        "end_game",
+        "endgame_open"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        65000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, endgame_open name an ending and are this map's own; script hardcodes cost 65000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 130,
+    "script_count": 130,
+    "entities": 1228,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "endgame_open"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      65000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        85000,
+        "end_game",
+        "?"
+      ],
+      [
+        5000,
+        "pf2316_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf2175_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1724_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2313_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 85000,
+      "targetname": "end_game",
+      "target": "?",
+      "next_highest": 5000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0325c4f05b0389a7dfbde6a98f1f8a3ab9c72a41e9866160910ef05a90522f18",
+    "map_specific_triggers": [
+      "auto_turret_trigger",
+      "cabinet_trigger",
+      "claymore_purchase",
+      "dubstep_trigger",
+      "endbottle",
+      "harrybo21_perk_trigger",
+      "papbottle"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 41,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Nacht_ReimaginedV2.1_2_.exe",
+    "original_sha256": "75cb06681c596f410318def4d0c268d67752faf316a7c371818783d3e6819282",
+    "original_size": 308553442,
+    "source_url": "https://www.mediafire.com/file/i3ftbzvsb0szuet/Nacht_ReimaginedV2.1%25282%2529.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:12:40Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "This is the second map I have made, and have spent lots of time on it creating it and fixing bugs. I expanded around the base NDU, adding my own areas, whilst maintaining the original layout and feel of NDU. VERSION 2 CHANGES:",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "nacht_reimagined.iwd:images/nacht_menuscreen.iwi",
+        "nacht_reimagined.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "nacht_reimagined.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "nacht_reimagined.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "nacht_reimagined.iwd:images/specialty_fastreload_zombies.iwi",
+        "nacht_reimagined.iwd:images/weapon_red_cross_background.iwi",
+        "nacht_reimagined.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "nacht_reimagined.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nacht_reimagined.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "nacht_reimagined.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "nacht_reimagined.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 143.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      },
+      {
+        "file": "zz_sal_chalkmakers.iwd",
+        "entries": 6,
+        "scripts": 0,
+        "bytes": 31042
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nacht_reimagined.ff",
+      "nacht_reimagined_patch.ff",
+      "nacht_reimagined.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

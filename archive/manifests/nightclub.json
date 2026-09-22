@@ -1,0 +1,187 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nightclub",
+  "title": "NIGHTCLUB",
+  "source": "custom",
+  "author": "death_reaper0",
+  "released": "2016-04-22",
+  "fs_game": "mods/nightclub",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@gumball_patch.ff": "53041db0a23c30c3bd346137dc7704ff1c7b4fa340e2ef30628dc54937d959dd"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "enter_boss_zone"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "enter_boss_zone look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 144,
+    "script_count": 144,
+    "entities": 69,
+    "ee_candidates": [
+      "enter_boss_zone"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      20000,
+      30000,
+      80000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "53041db0a23c30c3bd346137dc7704ff1c7b4fa340e2ef30628dc54937d959dd",
+    "map_specific_triggers": [
+      "arcade_1",
+      "arcade_2",
+      "gumball_leave",
+      "gumball_recycle",
+      "gumball_spin",
+      "gumball_switch1",
+      "gumball_switch2",
+      "gumball_switch3",
+      "gumball_switch4",
+      "gumball_switch5",
+      "nade_toss",
+      "nade_toss_damage",
+      "sharpshooter",
+      "shop_buy1",
+      "shop_buy2",
+      "shop_buy3",
+      "shop_buy4",
+      "shop_buy5"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "zm_nightclub.exe",
+    "original_sha256": "bcf9aed4a97e2093d02116fcfb63e8f1267a411860acb15471443a13890a3fbe",
+    "original_size": 503633584,
+    "source_url": "http://www.mediafire.com/file/88i7sppvj4ym13y/zm_nightclub.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:22:40Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "bossfight_ending"
+    ],
+    "catalogue_description": "this map was created using ideas and input from TheRelaxingEnd and myself, and an indirect sequel to saloon NOTE: one of the perks is tombstone, which will not appear in solo, so please don\u2019t complain about a missing perk this is a standalone version of nightclub. it is also avaliable in the Reaper Mod Pack along with some of my other maps here \u2013 http://ugx-mods.com/forum/index.php/topic,12233.0.html it will have the same features as the mod pack version, just without the extra maps there are many easter eggs to this map, heres a playlist on how a few are done http://www.youtube.com/playlist?list=PLnYKoDM_SxCTbSG49PXDVU-FscMFzgSG- features: gobblegum system from bo3 with custom gums bo3 style sliding option to remove perks you dont want (re-approach the machine and use it) multiple gamemodes and extra settings bo3 re-pack-a-punching abilities weapons from various cods (cod4-bo3) custom wounder weapon 3 hit down without jugg xp system (currently has no real use) a ton of hidden easter eggs, some only i know\u2026 a staggering TWENTY-SEVEN PERKS (breaking the previous record of 23, which was also mine xD) easter egg ending with a special boss for the theme custom players (russman, misty, sarah michelle gellar (COTD) and richtofen) some wide areas (a common complaint on fortress, much easier to train now) multiple hidden mini bosses lots, lots more, happy hunting! PERKS: this is a list of custom perks within the mod BANANA COLADA \u2013 sliding causes you to leave a trail of slime making ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_ds",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nightclub",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "fortress.iwd:images/arcade_plane_background.iwi",
+        "fortress.iwd:images/bonfire_menu.iwi",
+        "fortress.iwd:images/loadscreen_ds.iwi",
+        "fortress.iwd:images/loadscreen_nightclub.iwi",
+        "fortress.iwd:images/marley_griffin_moving_logo_col.iwi",
+        "fortress.iwd:images/menu_button_backing_right.iwi",
+        "fortress.iwd:images/menu_map_ds.iwi",
+        "fortress.iwd:images/menu_map_nightclub.iwi",
+        "fortress.iwd:images/menu_mp_weapons_saritch.iwi",
+        "fortress.iwd:images/mtl_arcade_controller_splash.iwi",
+        "fortress.iwd:images/mtl_arcade_splash_front.iwi",
+        "fortress.iwd:images/mtl_arcade_splash_left.iwi",
+        "fortress.iwd:images/mtl_arcade_splash_right.iwi",
+        "fortress.iwd:images/mtl_arcade_splash_top.iwi",
+        "fortress.iwd:images/mtl_banana_logo.iwi",
+        "fortress.iwd:images/mtl_downers_logo.iwi",
+        "fortress.iwd:images/mtl_magnet_logo.iwi",
+        "fortress.iwd:images/mtl_nitrogen_cooled_logo.iwi",
+        "fortress.iwd:images/mtl_packbox_logo.iwi",
+        "fortress.iwd:images/mtl_repair_logo.iwi"
+      ],
+      "loadscreen": "loadscreen_nightclub"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 76.4,
+    "addon_iwds": [
+      {
+        "file": "BlSt_PanzerSoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4280271
+      },
+      {
+        "file": "fortress.iwd",
+        "entries": 1222,
+        "scripts": 1,
+        "bytes": 350422202
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "gumball.ff",
+      "gumball_patch.ff",
+      "mod.ff",
+      "nightclub.ff",
+      "nightclub_patch.ff"
+    ]
+  }
+}

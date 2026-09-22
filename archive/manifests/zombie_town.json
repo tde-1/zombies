@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zombie_town",
+  "title": "TOWN OF THE DEAD",
+  "source": "custom",
+  "author": "xXxCowmanxXx",
+  "released": "2016-07-02",
+  "fs_game": "mods/zombie_town",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "a00ac4a36fd7994aad34c9fbcfa26d58c2e169f8f3b965fc17c6ea6a84d66740"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 113,
+    "script_count": 113,
+    "entities": 4253,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2750,
+        "weapon_upgrade",
+        "ppsh"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "pap_door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "basement"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "jug_enter"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "door_mp40"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a00ac4a36fd7994aad34c9fbcfa26d58c2e169f8f3b965fc17c6ea6a84d66740",
+    "map_specific_triggers": [
+      "activate_by_touch",
+      "drop_trig",
+      "firstmap_easteregg",
+      "free_weapon_trig",
+      "jump_scare",
+      "papsee_trig",
+      "picture_sound",
+      "secret_trigger1",
+      "secret_trigger2",
+      "secret_trigger3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Town_of_the_Dead_v1.1_-_Final_Release_UGX.exe",
+    "original_sha256": "9c6595fb0226b3c56eacba6dfaca413f273229a3b9403c29cd3f3fead056bbbe",
+    "original_size": 506767306,
+    "source_url": "https://www.mediafire.com/file/ee66imldnv55c4c/Town_of_the_Dead_v1.1_-_Final_Release_UGX.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:18:02Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Description I have been working on this map for over two years now and after all that time the map is final done and released. This map I started working on after my most famous map bridge and since then I have took small breaks and came back to release the map. I have try to work very hard in order to find all the bugs in the map because I wanted the map bug free but if you find any bugs feel free to send me a PM telling me when the bug happened and take a picture and I\u2019ll take a look into it. The map is also very large and lots to look for throughout the map so keep your eye out. Also big credit goes to my good friend jzob who kept asking me to finish this map so I did. Credits of the map: Big thanks to the people below for the help with the map Biggest thanks to Tom_Bmx/WinCat for (Lime & Lemon and all his other helpful tools) Jzob123 (Big help around, Some guns, Sounds, Ideas, Beta Tester) Real big thanks to Partisan Executioner (More then 95% of the custom weapon sounds, Ideas, Beta Tester) ClaytonM456 (Scirpts) Redspace200 (Custom Scripts, Beta Tester) Offthewall (Vulture Aid, Dual Wields) ProxFtw (Custom Scripts) Arceus (Beta Tester, Scripts) Radimax (Mapping) YaPh1l (Scirpts) DidUknowiPwn (New COD: WAW launcher, MW3 Hud, Textures/Models) JiffyNoodles (Beta Tester) ASTR0 (Gfx) Idogftw (Beta tester) JBird632 (HD Mystery Box) Bwc66930 (Beta Tester, Purple Square) Hitman (Bo1 paused menu) RayZ (PPSH-41 Custom) GEARS228 (Ideas) Mitsurugi (Guns) Tf3dm.com (Models) Turbosqui",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_zombie_town"
+      ],
+      "iwd_images": [
+        "zombie_town.iwd:images/loadscreen_sp_makin.iwi",
+        "zombie_town.iwd:images/marley_griffin_moving_logo_col.iwi",
+        "zombie_town.iwd:images/menu_button_backing_right.iwi",
+        "zombie_town.iwd:images/specialty_fastreload_zombies.iwi",
+        "zombie_town.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "zombie_town.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "zombie_town.iwd:images/_-gzombie_vending_sleight_logo_nml.iwi",
+        "zombie_town.iwd:images/_-gzombie_vending_sleight_logo_on_c.iwi",
+        "zombie_town.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "zombie_town.iwd:images/~_-gzombie_vending_ads_logo_s~15fd2e6f.iwi"
+      ],
+      "loadscreen": "loadscreen_zombie_town"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 201.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zombie_town_patch.ff"
+    ]
+  }
+}

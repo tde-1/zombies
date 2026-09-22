@@ -52,14 +52,19 @@ def _mf_size(text):
     return None
 
 
-def probe_mediafire(ps, url):
+def probe_mediafire(ps, url, fresh=False):
+    """`fresh=True` bypasses the on-disk cache. A DOWNLOAD must use it: the direct
+    download<N>.mediafire.com URL on the file page carries a short-lived key, and a
+    cached page from the link check days earlier hands back a dead key that MediaFire
+    answers with `download_repair.php` ("Generating new download key"), HTTP 200,
+    35 KB of HTML (measured 2026-09-22, three maps in a row)."""
     out = {"url": url, "status": None, "size": None, "final_url": None,
            "content_type": None, "error": None, "filename": None}
     # A direct download<N>.mediafire.com URL is a real file; HEAD it.
     if re.match(r"https?://download\d+\.mediafire\.com/", url):
         return _generic(ps, url)
     try:
-        t = ps.get(url)
+        t = ps.get(url, allow_cache=not fresh)
     except net.Dropped as exc:
         out["error"] = str(exc)
         return out, "blocked"

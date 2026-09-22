@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "battlestar_galactica",
+  "title": "BATTLESTAR GALACTICA",
+  "source": "custom",
+  "author": "CanadianTyler",
+  "released": "2015-05-31",
+  "fs_game": "mods/battlestar_galactica",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e47ee29a877a9c5945d0baa9e2979797c1d00bd4bf21e6518d006f04876ba159"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 145,
+    "script_count": 145,
+    "entities": 1115,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "cicdoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "tooldoor2"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "tooldoor3"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "hide_door"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "armorydoor1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e47ee29a877a9c5945d0baa9e2979797c1d00bd4bf21e6518d006f04876ba159",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "battlestar_galactica.exe",
+    "original_sha256": "c04d425a0461dc039ee1b502cda47586d95cf20576f326d9c3382d925f497d16",
+    "original_size": 223842086,
+    "source_url": "https://www.mediafire.com/file/cop1ookqoz8w2fd/battlestar_galactica.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:38:23Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "ugx_mod",
+      "top_100",
+      "ugx_modded"
+    ],
+    "catalogue_description": "Story You are aboard the Battlestar Galactica. A space battleship on a quest to find Earth. All of a sudden three ships are picked up on DRADIS. It\u2019s the Cylons. (Cylons are a race of robots that were made by humans, then turned against them. Red Alert can be heard throughout the ship. Admiral Adama gives the command to launch all the Vipers. After a few minutes all the Cylon ships are destroyed, and the Vipers return to Galactica. A short time later you hear screams. They\u2019re members of your crew running at you. Something is not right, they are trying to eat you!! The Cylons must have somehow infected the crew. HOW TO WIN You must destroy all 11 hidden Cylon spy devices Once done you will be able to buy the ending ! Features UGX Mod Lots of custom models Objective Zombie Counter Black Ops Knifing Buy-able Ending 35000 Credits Treyarch \u2013 for making the game ZOMB1E-KLLR \u2013 helpful tutorials MakeCents \u2013 scripting the objective \u2013 zombie counter xSanchez78 \u2013 end game script rdv \u2013 Black Ops Knifing ME!!!!! \u2013 All custom models Also thanks to all the staff and members of UGX for helping me out with all the questions I had",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "battlestar_galactica.iwd:images/bsg_logo.iwi",
+        "battlestar_galactica.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "battlestar_galactica.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.0,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476269
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      },
+      {
+        "file": "viewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "battlestar_galactica.ff",
+      "battlestar_galactica_patch.ff",
+      "localized_battlestar_galactica.ff",
+      "localized_common.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

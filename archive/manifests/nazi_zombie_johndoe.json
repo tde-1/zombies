@@ -1,0 +1,224 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_johndoe",
+  "title": "Relinquished/Project Nova",
+  "source": "custom",
+  "author": "BluntStuffy",
+  "released": "2016-10-07",
+  "fs_game": "mods/nazi_zombie_johndoe",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_johndoe.iwd": "9922a74b677022a824305bb87d9b9b87baf55d0bb5dd3ea185da14298ad27e79"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "blst_repair_part_broken",
+        "blst_repair_part_fixed",
+        "cage_parts",
+        "ee_pap_fx_struct",
+        "ee_pole1_1",
+        "ee_pole1_2",
+        "ee_pole1_3",
+        "ee_pole1_4",
+        "ee_pole1_5",
+        "ee_pole1_6",
+        "ee_pole2_1",
+        "ee_pole2_2",
+        "ee_pole2_3",
+        "ee_pole2_4",
+        "ee_pole2_5",
+        "ee_pole2_6"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "blst_repair_part_broken, blst_repair_part_fixed, cage_parts, ee_pap_fx_struct, ee_pole1_1, ee_pole1_2 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 156,
+    "script_count": 156,
+    "entities": 2164,
+    "ee_candidates": [
+      "blst_repair_part_broken",
+      "blst_repair_part_fixed",
+      "cage_parts",
+      "ee_pap_fx_struct",
+      "ee_pole1_1",
+      "ee_pole1_2",
+      "ee_pole1_3",
+      "ee_pole1_4",
+      "ee_pole1_5",
+      "ee_pole1_6",
+      "ee_pole2_1",
+      "ee_pole2_2",
+      "ee_pole2_3",
+      "ee_pole2_4",
+      "ee_pole2_5",
+      "ee_pole2_6"
+    ],
+    "ending_words": [
+      "back_left_zone_quad_teleport_target",
+      "back_right_zone_quad_teleport_target",
+      "cave_zone_quad_teleport_target",
+      "mech_escape_trigger",
+      "pap_zone_quad_teleport_target",
+      "quad_teleport_target"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "9922a74b677022a824305bb87d9b9b87baf55d0bb5dd3ea185da14298ad27e79",
+    "map_specific_triggers": [
+      "blst_repair_solo_trigger",
+      "blst_repair_trigger",
+      "challenge_trigger_end",
+      "challenge_trigger_start",
+      "challenge_unlock",
+      "fire_trap_effect_trig",
+      "fire_trap_fuel",
+      "fire_trap_trigger",
+      "gen_area",
+      "gen_trigger",
+      "mech_escape_trigger",
+      "packasplat_trigger",
+      "perk_activation",
+      "pickup_reward",
+      "quad_traverse",
+      "reward_chests",
+      "reward_gen",
+      "reward_heads",
+      "reward_points",
+      "shoot_step1",
+      "soul_chest_area",
+      "trap_fuel",
+      "trap_trigger",
+      "turned_plr_damage_trig",
+      "workbench"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 41,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Project_Nova.exe",
+    "original_sha256": "51fd4f12e6491b29825dc7ba2c67c4289d8d166a0af592b62c903fe838dacf0f",
+    "original_size": 352319051,
+    "source_url": "https://www.mediafire.com/file/41b6ttb5e7644mi/Project_Nova.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/10/07/relinquished-project-nova/",
+    "fetched": "2026-09-22T19:14:23Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg"
+    ],
+    "catalogue_description": "CAUTION: This map is not fully finished. There will be some bugs and unfinished features!! NOTE: The main issue\u2019s seem to be caused by the gun-game challenge. Avoid the challenge/mini-game and you should be good. does NOT require T4m",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_johndoe.iwd:images/msr_logo.iwi",
+        "nazi_zombie_johndoe.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_johndoe.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_johndoe.iwd:images/weapon_shotgun_speedloader_col.iwi",
+        "nazi_zombie_johndoe.iwd:images/zm_al_vending_ads_logo_col.iwi",
+        "nazi_zombie_johndoe.iwd:images/zm_al_vending_three_gun_logo_col.iwi",
+        "nazi_zombie_johndoe.iwd:images/zm_al_vending_three_gun_logo_nml.iwi",
+        "nazi_zombie_johndoe.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_johndoe.iwd:images/zombie_vending_ads_logo_nml.iwi",
+        "nazi_zombie_johndoe.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_johndoe.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_zombie_johndoe.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_johndoe.iwd:images/~zm_al_vending_three_gun_logo~01cadfbd.iwi",
+        "nazi_zombie_johndoe.iwd:images/~zombie_vending_ads_logo_spc-~8108126d.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 85.1,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_johndoe.ff",
+      "nazi_zombie_johndoe_patch.ff",
+      "nazi_zombie_johndoe.iwd:animscripts/death.gsc",
+      "nazi_zombie_johndoe.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

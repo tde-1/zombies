@@ -1,0 +1,209 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_enclosed",
+  "title": "Enclosed (A.K.A. BaconCube)",
+  "source": "custom",
+  "author": "gympie6",
+  "released": "2020-03-07",
+  "fs_game": "mods/nazi_zombie_enclosed",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_enclosed.iwd": "32b667484e8e7376752d22f11afda5828e3c30b42ce066304931b5daf2ec3401"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1250,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        7500,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 118,
+    "script_count": 118,
+    "entities": 956,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      7500,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris17"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris16"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "debris15"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "debris14"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "debris13"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "32b667484e8e7376752d22f11afda5828e3c30b42ce066304931b5daf2ec3401",
+    "map_specific_triggers": [
+      "easteregg_shootable_bear",
+      "switch_fov"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_enclosed-V1.0.exe",
+    "original_sha256": "527bb4218286dd04bb4017ef094f7ebbf282f9faf42ea37d3156678bec9133b3",
+    "original_size": 429166231,
+    "source_url": "https://www.mediafire.com/file/bnlyzisxfg1lnho/nazi_zombie_enclosed-V1.0.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/03/07/enclosed-a-k-a-baconcube/",
+    "fetched": "2026-09-22T19:33:17Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "No T4M Required! Warning, if you are about to stream this map please turn off the music. Features: 6 Custom Perks (Raging Devil, Chainbind, Blitzkrieg Soda, Primo Victoria, Baron Samedi and Rewind Time Barcardi) Black Ops 1/2 Perks Black Ops 1 HUD Black Ops 3 Shader for perks and powerups Double papable weapons Custom Boss Banzai Zombies (Fast running zombies with bayonets) Stalker Zombies (Zombies with the skill of teleportation) Hextech Zombies (Zombies with the power to shock players) Boom Zombies (Zombies that go explode closely) Ghost Weapons BO1 Weapons WAW Weapons 4 Wonder weapons Custom Powerup/Box Fx Unlimited Ammo Powerup (Shoot infinite ammo until time runs out) DogHunter Powerup (Dogs will hunt down zombies) EasterEgg EasterEgg (Song: Opeth \u2013 The Baying of the Hounds) Buyable Ending Weapons: WAW PSHH MP40 Type99 LMG Panzerschrek RayGun Mark 1 BO1 MP5/MP5K Spectre Spas12 Commando Dragunov HK21 Python M1911 Bo1 colt Ghosts Mk14 EBR MTS 225 SC2010 K7 PP-19 Bizon L115a3 Venom-X M27IAR Other RayGun Mark 2 Galleria Duplet Shotgun Stg44 Blitzkrieg grenades (Can be bought from Blitzkrieg perk vending machine) Perks:",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_enclosed",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_enclosed.iwd:images/dukip_menu.iwi",
+        "nazi_zombie_enclosed.iwd:images/dukip_menu2.iwi",
+        "nazi_zombie_enclosed.iwd:images/loadscreen_nazi_zombie_enclosed.iwi",
+        "nazi_zombie_enclosed.iwd:images/menu_map_nazi_zombie_enclosed.iwi",
+        "nazi_zombie_enclosed.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_enclosed.iwd:images/untitled.iwi",
+        "nazi_zombie_enclosed.iwd:images/untitled_nml.iwi",
+        "nazi_zombie_enclosed.iwd:images/vending_chain_perklogo.iwi",
+        "nazi_zombie_enclosed.iwd:images/vending_chain_perklogo.tga.iwi",
+        "nazi_zombie_enclosed.iwd:images/weapon_shotgun_speedloader_col.iwi",
+        "nazi_zombie_enclosed.iwd:images/weapon_shotgun_speedloader_nml.iwi",
+        "nazi_zombie_enclosed.iwd:images/~~weapon_shotgun_speedloader_~4a9289c2.iwi",
+        "nazi_zombie_enclosed.iwd:images/~~weapon_shotgun_speedloader_~973fda74.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_enclosed"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 63.9,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 59,
+        "scripts": 3,
+        "bytes": 3002025
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 77,
+        "scripts": 0,
+        "bytes": 205593
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953651
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_enclosed_patch.ff",
+      "nazi_zombie_enclosed.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

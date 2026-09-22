@@ -1,0 +1,276 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "dead_palace",
+  "title": "DEAD PALACE",
+  "source": "custom",
+  "author": "Riptide",
+  "released": "2016-04-14",
+  "fs_game": "mods/dead_palace",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "4166f16706f751ed32d3bdb33961ff363d015afb8a209453dc31bab2ad528207"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "bottle_egg_doubletap",
+        "bottle_egg_doubletap_trig",
+        "bottle_egg_jugg",
+        "bottle_egg_jugg_trig",
+        "bottle_egg_revive",
+        "bottle_egg_revive_trig",
+        "bottle_egg_sleight",
+        "bottle_egg_sleight_trig",
+        "ee_ammo",
+        "ee_double",
+        "ee_insta",
+        "ee_song1",
+        "ee_song2",
+        "ee_song3",
+        "ee_song4",
+        "ee_song5",
+        "table_bottle_egg_doubletap",
+        "table_bottle_egg_doubletap_trig",
+        "table_bottle_egg_jugg",
+        "table_bottle_egg_jugg_trig",
+        "table_bottle_egg_revive",
+        "table_bottle_egg_revive_trig",
+        "table_bottle_egg_sleight",
+        "table_bottle_egg_sleight_trig"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "bottle_egg_doubletap, bottle_egg_doubletap_trig, bottle_egg_jugg, bottle_egg_jugg_trig, bottle_egg_revive, bottle_egg_revive_trig look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 149,
+    "script_count": 149,
+    "entities": 1769,
+    "ee_candidates": [
+      "bottle_egg_doubletap",
+      "bottle_egg_doubletap_trig",
+      "bottle_egg_jugg",
+      "bottle_egg_jugg_trig",
+      "bottle_egg_revive",
+      "bottle_egg_revive_trig",
+      "bottle_egg_sleight",
+      "bottle_egg_sleight_trig",
+      "ee_ammo",
+      "ee_double",
+      "ee_insta",
+      "ee_song1",
+      "ee_song2",
+      "ee_song3",
+      "ee_song4",
+      "ee_song5",
+      "table_bottle_egg_doubletap",
+      "table_bottle_egg_doubletap_trig",
+      "table_bottle_egg_jugg",
+      "table_bottle_egg_jugg_trig",
+      "table_bottle_egg_revive",
+      "table_bottle_egg_revive_trig",
+      "table_bottle_egg_sleight",
+      "table_bottle_egg_sleight_trig"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      40000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "blocker5"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "crap_house_door"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "blocker4half"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "4166f16706f751ed32d3bdb33961ff363d015afb8a209453dc31bab2ad528207",
+    "map_specific_triggers": [
+      "bottle_egg_doubletap_trig",
+      "bottle_egg_jugg_trig",
+      "bottle_egg_revive_trig",
+      "bottle_egg_sleight_trig",
+      "ee_song1",
+      "ee_song2",
+      "ee_song3",
+      "ee_song4",
+      "ee_song5",
+      "my_reward_trig",
+      "note_table_play_trig",
+      "note_table_trig_1",
+      "note_table_trig_2",
+      "note_table_trig_3",
+      "note_table_trig_4",
+      "note_table_trig_5",
+      "pump_trigger",
+      "pump_trigger2",
+      "pump_trigger3",
+      "pump_trigger4",
+      "pump_trigger5",
+      "pump_trigger6",
+      "pump_trigger7",
+      "rewardtrigger",
+      "secret_trig1",
+      "secret_trig2",
+      "secret_trig3",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "statue_trig1",
+      "statue_trig2",
+      "stocking_target1",
+      "stocking_target2",
+      "stocking_target3",
+      "stocking_target4",
+      "stocking_target5",
+      "table_bottle_egg_doubletap_trig",
+      "table_bottle_egg_jugg_trig",
+      "table_bottle_egg_revive_trig",
+      "table_bottle_egg_sleight_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "dead_palace_v1.1.exe",
+    "original_sha256": "76378f0f2cfde72bd3b71e199f33df1f4f5a473b77e9bdb1489b9efddc362052",
+    "original_size": 241874716,
+    "source_url": "https://www.mediafire.com/file/c2ckl41fo5af4bu/dead_palace_v1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:23:31Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Description: You find yourself on a small island\u2026 and the tide is rising. It doesn\u2019t help that you can\u2019t swim. You must find a way get to safety before you are overtaken by the water. And if that\u2019s not bad enough, the natives are all Zombies!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "dead_palace.iwd:images/riptide_logo.iwi",
+        "dead_palace.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "dead_palace.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 90.7,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 119,
+        "scripts": 31,
+        "bytes": 30477211
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820561
+      },
+      {
+        "file": "viewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "dead_palace.ff",
+      "dead_palace_patch.ff",
+      "localized_common.ff",
+      "localized_mod.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

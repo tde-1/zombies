@@ -1,0 +1,256 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "thirty_seven",
+  "title": "Thirty Seven Christmas Zombies",
+  "source": "custom",
+  "author": "rdvlpr",
+  "released": "2014-12-25",
+  "fs_game": "mods/thirty_seven",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "096b20d38ecfade36e4fcf528416da34233f0a2b072ebc36f80324a130d8d30f"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_simianaut_spawn",
+        "power_part_coil",
+        "power_part_fusebox"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_simianaut_spawn, power_part_coil, power_part_fusebox look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 183,
+    "script_count": 183,
+    "entities": 3843,
+    "ee_candidates": [
+      "boss_simianaut_spawn",
+      "power_part_coil",
+      "power_part_fusebox"
+    ],
+    "ending_words": [
+      "reindeer_fly_endgame",
+      "santa_endgame",
+      "santa_ending_game",
+      "santa_sleigh_fly_endgame",
+      "santa_sleigh_fly_path_endgame",
+      "teleport_link_area",
+      "teleport_link_clip"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "gate_ramp"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "gate_ramp"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "wood_gate"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "parking_gate"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "parking_gate"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "096b20d38ecfade36e4fcf528416da34233f0a2b072ebc36f80324a130d8d30f",
+    "map_specific_triggers": [
+      "activate_hint_trigger",
+      "bench_trigger",
+      "candle_dmg_trigger",
+      "end_game_trigger",
+      "fusebox_trigger",
+      "gate_key_door_trigger",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "ladder_barn_buy",
+      "pickup_hidden_key",
+      "power_trigger_hint",
+      "sleight_tarp_trigger",
+      "snow_blower_buy_trigger",
+      "snow_blower_dmg_trigger",
+      "snowblower_clear_1_end_trigger",
+      "snowblower_clear_1_trigger",
+      "snowman_dmg_trigger",
+      "trampoline_move_trigger",
+      "tree_fall_trigger",
+      "trem_bank_trig",
+      "zipline_activate",
+      "zipline_weapon_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "thirty_seven.exe",
+    "original_sha256": "8f6d36cc5378b9c5d4723f2a1472be5d14be0ebbfb716bfbfd355cb289897ca1",
+    "original_size": 343854775,
+    "source_url": "http://www.mediafire.com/file/dtklu8kq0bxotqi/thirty_seven.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/12/25/thirty-seven-christmas-zombies/",
+    "fetched": "2026-09-22T19:26:47Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "christmas_map",
+      "top_100"
+    ],
+    "catalogue_description": "This map features UGX Mod v1.0.4! I proudly present my first released map that is based on our house with a christmas theme. Features: Custom Characters (BO1 & BO2) Custom Sounds Call of the Dead Zombies Custom Mysterybox Buyable Ending [100.000] Zipline Custom Trap Mob of the Dead Modified Wolf Buildable Bank Weapon Locker Credits: UGX-Mods (UGX-Mod V1.0.4) Hitmanvere (Custom Texture) Treminaor (Bank System & Hintstring Fix) Bamskater/jei9363 (Black Ops Perks) Jr-Imagine (Buildable) Send me a message if i forgot someone If you find any bugs, please reply to this thread or send me a pm. If u have any suggestions for the map, i\u2019d love to hear them. Thirty Seven V2",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_template",
+        "loadscreen_user"
+      ],
+      "iwd_images": [
+        "thirty_seven_images.iwd:images/rdv_zombie_vending_three_gun_logo_c.iwi",
+        "thirty_seven_images.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "thirty_seven_images.iwd:images/ugx_mod_menu_template.iwi",
+        "thirty_seven_images.iwd:images/weapon_red_cross_background.iwi",
+        "thirty_seven_images.iwd:images/rdv_dreamcatcher_logo.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 78.9,
+    "addon_iwds": [
+      {
+        "file": "trem_hintstrings.iwd",
+        "entries": 1,
+        "scripts": 1,
+        "bytes": 1108
+      },
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 117,
+        "scripts": 30,
+        "bytes": 30482508
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 394,
+        "scripts": 10,
+        "bytes": 78824188
+      },
+      {
+        "file": "zom_player_engineer.iwd",
+        "entries": 7,
+        "scripts": 0,
+        "bytes": 1754431
+      },
+      {
+        "file": "zom_player_farmgirl.iwd",
+        "entries": 7,
+        "scripts": 0,
+        "bytes": 2121838
+      },
+      {
+        "file": "zom_player_robert.iwd",
+        "entries": 8,
+        "scripts": 0,
+        "bytes": 2011467
+      },
+      {
+        "file": "zom_player_sarah.iwd",
+        "entries": 7,
+        "scripts": 0,
+        "bytes": 1675107
+      },
+      {
+        "file": "zzzbo1_perks_ugx_mod.iwd",
+        "entries": 5,
+        "scripts": 5,
+        "bytes": 50327
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_thirty_seven.ff",
+      "mod.ff",
+      "thirty_seven.ff",
+      "thirty_seven_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc",
+      "zzzbo1_perks_ugx_mod.iwd:maps/_zombiemode_weapons.gsc"
+    ]
+  }
+}

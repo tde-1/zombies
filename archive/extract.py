@@ -141,6 +141,21 @@ def guess_names(folder, files):
     mod_folder = os.path.basename(folder.rstrip("\\/")) or "unknown"
     ffs = {f.lower() for f in files if f.lower().endswith(".ff")}
     stems = {f[:-3] for f in ffs}
+    # The installer's own `mod.arena` names the zombies map outright (`gametype "zom"`),
+    # and it wins when it names a fastfile that is actually here. MEASURED 2026-09-22:
+    # Futurama ships `futurama` and UGX Mod's `ugxm_customize_room`, both .ff + _patch,
+    # and the score below picked the customize room.
+    arena = os.path.join(folder, "mod.arena")
+    if os.path.exists(arena):
+        try:
+            txt = open(arena, encoding="latin-1").read()
+            for blk in re.findall(r"\{(.*?)\}", txt, re.S):
+                mm = re.search(r'\bmap\s+"([^"]+)"', blk)
+                gt = re.search(r'\bgametype\s+"([^"]*)"', blk)
+                if mm and gt and "zom" in gt.group(1).lower() and mm.group(1).lower() in stems:
+                    return mod_folder, mm.group(1).lower()
+        except OSError:
+            pass
     scored = []
     for s in stems:
         if s in ("mod",) or s.startswith(("localized_", "common", "code_post_gfx", "ui_")):
@@ -238,6 +253,11 @@ def process(norm, original, report):
         return out
     # Strip the wrapper: report how deep below the extraction root the map sat.
     for folder, files in sorted(roots.items()):
+        # A folder INSIDE another mod root is already copied with it (normalise walks the
+        # tree). MEASURED 2026-09-22: Library ships `Library/images/z_greenscope.iwd` and it
+        # became a map called `images`.
+        if any(folder != o and folder.startswith(o + os.sep) for o in roots):
+            continue
         depth = len(os.path.relpath(folder, exdir).split(os.sep)) if folder != exdir else 0
         modname, bsp = guess_names(folder, files)
         # The normalised install is named after the BSP, not after whatever the

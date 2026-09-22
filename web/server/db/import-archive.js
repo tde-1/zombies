@@ -131,7 +131,11 @@ function importPipelineMaps() {
     // Verified play.
     const scannerVerdict = (m.scanner && m.scanner.verdict) || null
     const undecided = !!m.needs_human || scannerVerdict === 'manual'
-    const health = scannerVerdict === 'not_a_zombies_map' ? 'broken' : undecided ? 'custom-only' : 'playable'
+    // A manifest the dedi proof marked `health: "broken"` (archive.md §10: the map did not
+    // reach map_loaded on the box, or died right after) stays broken — the Maps list hides
+    // it and a lease refuses it. Any other `health` value is not this importer's to trust.
+    const health = m.health === 'broken' || scannerVerdict === 'not_a_zombies_map' ? 'broken'
+      : undecided ? 'custom-only' : 'playable'
 
     const desc = (a.catalogue_description || '').trim().slice(0, MAX_DESC) || null
     const released = m.released ? Date.parse(m.released) : null

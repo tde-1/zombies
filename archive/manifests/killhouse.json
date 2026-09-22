@@ -1,0 +1,167 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "killhouse",
+  "title": "Killhouse IW",
+  "source": "custom",
+  "author": "shippuden",
+  "released": "2018-01-02",
+  "fs_game": "mods/killhouse",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@KillHouse.iwd": "20d1395b4ccac467742ab43787e6ce07a44b158f1ea8f8b46b0587218e7e98ba"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        60000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 60000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 133,
+    "script_count": 133,
+    "entities": 612,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      60000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "20d1395b4ccac467742ab43787e6ce07a44b158f1ea8f8b46b0587218e7e98ba",
+    "map_specific_triggers": [
+      "magic_wheel_use"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "IW_KillHouse.exe",
+    "original_sha256": "a2dc7e028727c1c0e029123af32ab4454c2f94704a61c8cc0d569de22c2506bc",
+    "original_size": 381392692,
+    "source_url": "http://www.mediafire.com/file/zh7vu8g7j0g3cd9/IW_KillHouse.exe/file",
+    "source_page": "https://callofdutyrepo.com/2018/01/02/killhouse-iw-mod/",
+    "fetched": "2026-09-22T19:15:48Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "challenge",
+      "top_100"
+    ],
+    "catalogue_description": "A little overheated last year\u2026 Some users have been asking me for an update and here it is \u2026 I\u2019ve played it with my friends and it\u2019s been fun and they told me to publish it \u2026 I hope you like it \u2026 Any mistake or idea leave it in the comments \u2026. Happy Holidays! The reason for a new post is that you can not edit the previous if I discover how he edited the other and I delete this \u2026 I hope not to disturb and have fun !!! Features: Original Textures Weapons IW ( 27 ) Candy Perks 5 Wonder Weapons 4 Bosses Buyable Ending Special thanks: DTZxPorter Dr.Squidbot Harry Bo21 ricko0z Gogeta Jerri13hdez Deper espi_thekiller jerri13 ElTitoPricus jei9363 YaPh1l DamianoTBM XSanchez RDV ProRevenge BluntStuffy PROxFTW Rollonmath42 CFGFACTORY ConvictioNDR My memory is bad so if someone needed me sorry Tell me right away and I add",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_killhouse",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_cobos",
+        "loadscreen_xmas_cobos",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "KillHouse.iwd:images/killhouse_menu.iwi",
+        "KillHouse.iwd:images/loadscreen_killhouse.iwi",
+        "KillHouse.iwd:images/specialty_fastreload_zombies.iwi",
+        "KillHouse.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_killhouse"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 65.6,
+    "addon_iwds": [
+      {
+        "file": "nuketown.iwd",
+        "entries": 39,
+        "scripts": 7,
+        "bytes": 9752251
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "killhouse_patch.ff",
+      "mod.ff",
+      "KillHouse.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

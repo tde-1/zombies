@@ -1,0 +1,319 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_malibu",
+  "title": "Malibu Drive Age of Apocalypse",
+  "source": "custom",
+  "author": "ZK Studios",
+  "released": "2016-01-24",
+  "fs_game": "mods/nazi_zombie_malibu",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_malibu.iwd": "822ee47b904d24e26b2f74bcab7215be1a3e750e2b2dcf98178cf4ecc8e3188f"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_ccube_ending",
+        "ee_step_10_part0_model0",
+        "ee_step_10_part0_model1",
+        "ee_step_10_part0_trig",
+        "ee_step_10_part1_model0",
+        "ee_step_10_part1_model1",
+        "ee_step_10_part1_trig",
+        "ee_step_10_part2_model0",
+        "ee_step_10_part2_model1",
+        "ee_step_10_part2_trig",
+        "ee_step_10_tony_attach",
+        "ee_step_10_trig",
+        "ee_step_10_trig_charge",
+        "ee_step_13_trig",
+        "ee_step_14_door",
+        "ee_step_14_door_clip",
+        "ee_step_14_door_trig",
+        "ee_step_14_key",
+        "ee_step_14_key_trig",
+        "ee_step_14_spawn_hulk_trig",
+        "ee_step_14_spawn_red_hulk",
+        "ee_step_17_a_bar",
+        "ee_step_17_a_fx",
+        "ee_step_17_b_fx",
+        "ee_step_17_b_plate",
+        "ee_step_17_b_plate_lit",
+        "ee_step_17_c_fx",
+        "ee_step_17_c_target",
+        "ee_step_17_d_dish",
+        "ee_step_17_d_fx",
+        "ee_step_1_holo",
+        "ee_step_1_screen",
+        "ee_step_1_trig",
+        "ee_step_3_screen1",
+        "ee_step_3_screen2",
+        "ee_step_3_trig",
+        "ee_step_4_bolt1",
+        "ee_step_4_bolt2",
+        "ee_step_4_bolt3",
+        "ee_step_4_lock3_fx",
+        "ee_step_4_lock3_trig",
+        "ee_step_4_trig2",
+        "ee_step_4_trig3",
+        "ee_step_4_trig5",
+        "ee_step_5_vault",
+        "ee_step_5_vault2",
+        "ee_step_5_vault2_trig",
+        "ee_step_5_vault3",
+        "ee_step_5_vault3_trig",
+        "ee_step_7_trig1",
+        "ee_step_7_trig_array",
+        "piece_left_ric",
+        "piece_middle_ric",
+        "piece_right_ric"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_ccube_ending, ee_step_10_part0_model0, ee_step_10_part0_model1, ee_step_10_part0_trig, ee_step_10_part1_model0, ee_step_10_part1_model1 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 145,
+    "script_count": 145,
+    "entities": 7225,
+    "ee_candidates": [
+      "ee_ccube_ending",
+      "ee_step_10_part0_model0",
+      "ee_step_10_part0_model1",
+      "ee_step_10_part0_trig",
+      "ee_step_10_part1_model0",
+      "ee_step_10_part1_model1",
+      "ee_step_10_part1_trig",
+      "ee_step_10_part2_model0",
+      "ee_step_10_part2_model1",
+      "ee_step_10_part2_trig",
+      "ee_step_10_tony_attach",
+      "ee_step_10_trig",
+      "ee_step_10_trig_charge",
+      "ee_step_13_trig",
+      "ee_step_14_door",
+      "ee_step_14_door_clip",
+      "ee_step_14_door_trig",
+      "ee_step_14_key",
+      "ee_step_14_key_trig",
+      "ee_step_14_spawn_hulk_trig",
+      "ee_step_14_spawn_red_hulk",
+      "ee_step_17_a_bar",
+      "ee_step_17_a_fx",
+      "ee_step_17_b_fx",
+      "ee_step_17_b_plate",
+      "ee_step_17_b_plate_lit",
+      "ee_step_17_c_fx",
+      "ee_step_17_c_target",
+      "ee_step_17_d_dish",
+      "ee_step_17_d_fx",
+      "ee_step_1_holo",
+      "ee_step_1_screen",
+      "ee_step_1_trig",
+      "ee_step_3_screen1",
+      "ee_step_3_screen2",
+      "ee_step_3_trig",
+      "ee_step_4_bolt1",
+      "ee_step_4_bolt2",
+      "ee_step_4_bolt3",
+      "ee_step_4_lock3_fx",
+      "ee_step_4_lock3_trig",
+      "ee_step_4_trig2",
+      "ee_step_4_trig3",
+      "ee_step_4_trig5",
+      "ee_step_5_vault",
+      "ee_step_5_vault2",
+      "ee_step_5_vault2_trig",
+      "ee_step_5_vault3",
+      "ee_step_5_vault3_trig",
+      "ee_step_7_trig1",
+      "ee_step_7_trig_array",
+      "piece_left_ric",
+      "piece_middle_ric",
+      "piece_right_ric"
+    ],
+    "ending_words": [
+      "ee_ccube_ending"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4500,
+      5000,
+      9000,
+      10000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2500,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "822ee47b904d24e26b2f74bcab7215be1a3e750e2b2dcf98178cf4ecc8e3188f",
+    "map_specific_triggers": [
+      "armor_return_location",
+      "armor_trig",
+      "asgard_summon_trig",
+      "asgard_trig",
+      "batarang",
+      "batarang_scene_trig",
+      "batman_smoke_trig",
+      "batmobile_trig",
+      "buy_cheese_gun",
+      "cap_shield_trig",
+      "charge_battery_trig",
+      "ee_step_10_part0_trig",
+      "ee_step_10_part1_trig",
+      "ee_step_10_part2_trig",
+      "ee_step_10_trig",
+      "ee_step_10_trig_charge",
+      "ee_step_13_trig",
+      "ee_step_14_door_trig",
+      "ee_step_14_key_trig",
+      "ee_step_14_spawn_hulk_trig",
+      "ee_step_1_trig",
+      "ee_step_3_trig",
+      "ee_step_4_lock3_trig",
+      "ee_step_4_trig2",
+      "ee_step_4_trig3",
+      "ee_step_4_trig5",
+      "ee_step_5_vault2_trig",
+      "ee_step_5_vault3_trig",
+      "ee_step_7_trig1",
+      "ee_step_7_trig_array",
+      "get_new_weapon",
+      "give_wm",
+      "grapple_location",
+      "hawkeye_bow_trig",
+      "hidden_brick_trig",
+      "iron_man_transport_0_trig",
+      "iron_man_transport_1_trig",
+      "jarvis_console_main_trig",
+      "jarvis_console_trig",
+      "left_trig_ric"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 41,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Malibu_Drive_v1.0_.exe",
+    "original_sha256": "9396dd2907450c008aade6740963656546d28352e87742e806b52f7c5a5c3a49",
+    "original_size": 370133879,
+    "source_url": "http://www.mediafire.com/file/4ao45618921dpmv/Malibu_Drive_(v1.0).exe",
+    "source_page": "https://callofdutyrepo.com/2016/01/24/malibu-drive-age-of-apocalypse/",
+    "fetched": "2026-09-22T19:14:00Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Hey guys! Have you ever wanted to be a superhero amongst the undead? Well, you can quit dreaming! Malibu Drive brings the Avengers to the world of COD Zombies. Play as all your favorite heroes from Avengers: Age of Ultron including Iron Man, Captain America, Thor, Vision, Hulk, Quicksilver, Scarlet Witch, Black Widow, War Machine, Hawkeye and even Spider-Man (Spidey is an Avenger in the comics, don\u2019t give me grief ) The map features a VERY large world to explore and a massive easter egg requiring the use of all the Avengers and their abilities. Get ready to dive into a world of superpowered action!!! NOTE: Please be aware that you may experience lag or other problems if you are using a low-end PC or components not supported by Call of Duty: World at War _____________________________________________________________________________ A very special thanks to the folks that helped me with random stuff! Please take a moment to recognize them for their help OfftheWall: Player models, targeting, random script advice Redspace: thunder punch, boost, random script advice ASTR0: Character icon images ipwnatzombies: Main Menu Gerards0406: Hitmarkers Chromeastone10: random help with little stuff RDV: hugging zombies __________________________ Map Testers NascarFanatic24 Chromastone10 TheScotchGuy DeathBringerZen",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_malibu",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_malibu.iwd:images/custom_zombies_menu.iwi",
+        "nazi_zombie_malibu.iwd:images/custom_zombies_menu2.iwi",
+        "nazi_zombie_malibu.iwd:images/custom_zombies_menu3.iwi",
+        "nazi_zombie_malibu.iwd:images/dukip_main_menu.iwi",
+        "nazi_zombie_malibu.iwd:images/food_menu.iwi",
+        "nazi_zombie_malibu.iwd:images/hud_avengers_logo.iwi",
+        "nazi_zombie_malibu.iwd:images/hud_shield_logo.iwi",
+        "nazi_zombie_malibu.iwd:images/loadscreen_nazi_zombie_malibu.iwi",
+        "nazi_zombie_malibu.iwd:images/malibu_city_chick_menu.iwi",
+        "nazi_zombie_malibu.iwd:images/malibu_city_hotel_menu.iwi",
+        "nazi_zombie_malibu.iwd:images/malibu_city_shell_logo.iwi",
+        "nazi_zombie_malibu.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "nazi_zombie_malibu.iwd:images/shield_logo1.iwi",
+        "nazi_zombie_malibu.iwd:images/shield_logo2.iwi",
+        "nazi_zombie_malibu.iwd:images/shield_logo3.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_malibu"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 190.2,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_malibu_patch.ff",
+      "nazi_zombie_malibu.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

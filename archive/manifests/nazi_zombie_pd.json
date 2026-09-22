@@ -1,0 +1,214 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_pd",
+  "title": "PURPLE DIMENSION",
+  "source": "custom",
+  "author": "Bwc66930",
+  "released": "2014-12-21",
+  "fs_game": "mods/nazi_zombie_pd",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@purpledimension.iwd": "954b9a035fa82bec437eac5c88a45f0f26f8fa453e27ed47dd04d67fcc52945b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        85000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 85000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 123,
+    "script_count": 123,
+    "entities": 2101,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      85000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "testr"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "te"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "op111"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "4tq"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "testyt3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "954b9a035fa82bec437eac5c88a45f0f26f8fa453e27ed47dd04d67fcc52945b",
+    "map_specific_triggers": [
+      "damage_trigger",
+      "dvii_bench",
+      "fish_pick",
+      "fish_place_trig",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "music_box_player",
+      "para_eggtrig3",
+      "secret_pictrig",
+      "secret_purpletrig",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "start_trig",
+      "troll"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "PurpleDimension.exe",
+    "original_sha256": "31d41291ff83aa5e40afb1ce2ce7f9b81fa91664f7d2f411386321b1b6b99f27",
+    "original_size": 313111136,
+    "source_url": "https://www.mediafire.com/file/fgc47eljelhkooz/PurpleDimension.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:34:33Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "IMPORTANT: if you upload video tell me, i love watching them :3 FEATURES: nuke town zombies five teleporters kino teleporter all bo1 perks buildable BUYABLE ENDING!!! purple snow different players change of veiwhands moving textures bob imported weapons spinning stuff music box solo revive fx all waw weapons removed (except ray gun) fire sale moving perks buyable ending and more WEAPONS: 108 (WAW) (BO2) (GHOST) (BO1) (BF3) (COD4) (MW3) (MW2) (5 custom weapons ( 2 using toms melee anims, and 1 my Weapon List: (WAW) RAYGUN [because just wanted to keep it] (BO2) AN94 B23R BLUNDERGAT SCAR-H CHICOM DSR M8A1 MAUSER MGO8 [only in the maze] MINIGUN MP5 MP7 MSMC PDW RAYGUN MARK 2 Remington New Model Army RPG STG44 [bo2 version] SVU TOMMY GUN KSG-12 (GHOST) AK121 ARX-160 RIPPER HONEYBADGER (BO1) AK47 AK74U AUG COMMANDO DRAGUNOV GAIL HK12 M14 OLYMPIA PYTHON STAKEOUT THUNDERGUN UZI Scavenger (BF3) BF3 PDW (COD4) P90 PEACEMAKER G36C (MW3) MG36 STRIKER (MW2) FN2000 (3 custom weapons) INSANE Blakes sword BWC SCYTHE Feline MACH-12 Halo 3 Assault Rifle r101-c CREDITS: bwc66930 (Apex) [creator of the map and lots of stuff] elfenlied (Apex) [helped with alot] zombie madness (rorke) [dont remember] Weezy428 [helped with mapping and glowing head tut] rollonmath42 [i think\u2026. stuff idk] SammyCustom [dont remember] Bigkittyjr [dont remember] tom bmx [lots of stuff] Swazzy [dont remember] bamskater33 [perks and disabling character sounds] YaPh1l [stuff] JBird632 [dont remember] gtlad (Apex) [lots of ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_pd",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "purpledimension.iwd:images/935_logo.iwi",
+        "purpledimension.iwd:images/custom_zombies_menu.iwi",
+        "purpledimension.iwd:images/custom_zombies_menu2.iwi",
+        "purpledimension.iwd:images/custom_zombies_menu3.iwi",
+        "purpledimension.iwd:images/loadscreen_nazi_zombie_pd.iwi",
+        "purpledimension.iwd:images/menu_deathcard_thunder.iwi",
+        "purpledimension.iwd:images/menu_deathcard_thunder_mini.iwi",
+        "purpledimension.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "purpledimension.iwd:images/menu_map_nazi_zombie_pd.iwi",
+        "purpledimension.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_pd"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 137.8,
+    "addon_iwds": [
+      {
+        "file": "purpledimension.iwd",
+        "entries": 789,
+        "scripts": 40,
+        "bytes": 176192282
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 5276
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_pd.ff",
+      "nazi_zombie_pd_patch.ff",
+      "nazi_zombie_pt_patch.ff",
+      "nazi_zombie_test_patch.ff",
+      "purpledimension.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

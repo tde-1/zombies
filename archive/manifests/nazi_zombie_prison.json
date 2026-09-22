@@ -1,0 +1,238 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_prison",
+  "title": "PRISON MISSION V1.1",
+  "source": "custom",
+  "author": "ZK Studios",
+  "released": "2013-12-29",
+  "fs_game": "mods/nazi_zombie_prison",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_prison.iwd": "a90ed5b25f5c9ad4096bb9ccf25b41c930f3111774857882af7a66ecdd87f8a8"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "bottle_part",
+        "easter_egg_complete",
+        "iron_part",
+        "iron_part_get",
+        "iron_part_place",
+        "iron_part_placed",
+        "piece_bottom",
+        "piece_bottom2",
+        "piece_bottom_move",
+        "piece_bottom_move_pillar",
+        "piece_left_ric",
+        "piece_middle",
+        "piece_middle_move",
+        "piece_middle_move_pillar",
+        "piece_middle_ric",
+        "piece_right_ric",
+        "piece_top",
+        "piece_top_move",
+        "piece_top_move_pillar"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "bottle_part, easter_egg_complete, iron_part, iron_part_get, iron_part_place, iron_part_placed look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 2066,
+    "ee_candidates": [
+      "bottle_part",
+      "easter_egg_complete",
+      "iron_part",
+      "iron_part_get",
+      "iron_part_place",
+      "iron_part_placed",
+      "piece_bottom",
+      "piece_bottom2",
+      "piece_bottom_move",
+      "piece_bottom_move_pillar",
+      "piece_left_ric",
+      "piece_middle",
+      "piece_middle_move",
+      "piece_middle_move_pillar",
+      "piece_middle_ric",
+      "piece_right_ric",
+      "piece_top",
+      "piece_top_move",
+      "piece_top_move_pillar"
+    ],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1200,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000,
+      9000,
+      10000,
+      15000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "tunnel1_door2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "test2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "test1"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "zone1_fence3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "zone1_fence2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a90ed5b25f5c9ad4096bb9ccf25b41c930f3111774857882af7a66ecdd87f8a8",
+    "map_specific_triggers": [
+      " buy_m1927",
+      "bacon_trig",
+      "bottle_take",
+      "bottle_true",
+      "buy_thompson",
+      "cheese_trig1",
+      "cheese_trig2",
+      "cheese_trig3",
+      "crystal_take",
+      "game_start",
+      "gas_cantrue",
+      "gen1",
+      "gen2",
+      "gen3",
+      "gen4",
+      "gen5",
+      "gen_all",
+      "haus_radio",
+      "iron_man_door_trig",
+      "iron_man_start",
+      "iron_part_get",
+      "iron_part_place",
+      "jump1",
+      "jump2",
+      "jump3",
+      "knight_rider",
+      "left_trig_ric",
+      "luther_window_trig",
+      "map_start",
+      "max_power",
+      "max_step1",
+      "max_trapped_trig",
+      "maxis_build_start",
+      "middle_trig_ric",
+      "oil",
+      "oiltrue",
+      "pc1",
+      "pc2",
+      "pc3",
+      "pc4"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Prison_Mission_-_v1.1.zip",
+    "original_sha256": "2efc349cbe0e1cd9e27d92f3709a54026be78253dc14c7929c55948daef8f7cc",
+    "original_size": 352771453,
+    "source_url": "https://www.mediafire.com/file/zeg2fz3cdimo2mt/Prison_Mission_-_v1.1.zip/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:27:57Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "zip",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_prison",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_prison.iwd:images/food_menu.iwi",
+        "nazi_zombie_prison.iwd:images/loadscreen_nazi_zombie_prison.iwi",
+        "nazi_zombie_prison.iwd:images/menu_map_nazi_zombie_prison.iwi",
+        "nazi_zombie_prison.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_prison.iwd:images/superman_logo.iwi",
+        "nazi_zombie_prison.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_prison"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 124.5,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_prison.ff",
+      "nazi_zombie_prison_patch.ff",
+      "nazi_zombie_prison.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

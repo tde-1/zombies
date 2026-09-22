@@ -1,0 +1,199 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "escape_asylum",
+  "title": "DIXMOR ASYLUM",
+  "source": "custom",
+  "author": "sevenpluke",
+  "released": "2015-07-23",
+  "fs_game": "mods/escape_asylum",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@escape_asylum.iwd": "4d7a7eb20a7aef6daa6951c4b79cb373317cb586ee4158631aec999b10db4845"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "endgame_unlocked"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        27000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, endgame_unlocked name an ending and are this map's own; script hardcodes cost 27000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 1662,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "endgame_unlocked"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      27000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door11"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door10"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door7"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door6"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "4d7a7eb20a7aef6daa6951c4b79cb373317cb586ee4158631aec999b10db4845",
+    "map_specific_triggers": [
+      "bed_hint",
+      "buy_elev",
+      "gun_trig",
+      "gun_triggers",
+      "outside_zone",
+      "pap_box_trig",
+      "satchel_build_trig",
+      "satchel_exp_damage_trig",
+      "satchel_pick_trig",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "statue",
+      "teddy1",
+      "teddy2",
+      "teddy3",
+      "teddy4",
+      "teddy5",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "ugx_escape_asylum_v1.2.exe",
+    "original_sha256": "013328eb7ffa999bc486759c97d2c29aafe24d61fa63117670e7fcdde207bdbd",
+    "original_size": 311649954,
+    "source_url": "http://www.mediafire.com/file/c09an8md6xaicdn/ugx_escape_asylum_v1.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:27:26Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "escape_asylum.iwd:images/fe_mainmenu_layer03.iwi",
+        "escape_asylum.iwd:images/mtl_t6_attach_speedloader_col.iwi",
+        "escape_asylum.iwd:images/mtl_t6_attach_speedloader_nml.iwi",
+        "escape_asylum.iwd:images/picload.iwi",
+        "escape_asylum.iwd:images/specialty_fastreload_zombies.iwi",
+        "escape_asylum.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "escape_asylum.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "escape_asylum.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "escape_asylum.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 82.9,
+    "addon_iwds": [
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "escape_asylum.ff",
+      "escape_asylum_patch.ff",
+      "mod.ff",
+      "escape_asylum.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

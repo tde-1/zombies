@@ -1,0 +1,246 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_lorkeep",
+  "title": "LORKEEP STATION",
+  "source": "custom",
+  "author": "chromastone10",
+  "released": "May 19, 2014, 04:09:36 am",
+  "fs_game": "mods/nazi_zombie_lorkeep",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_lorkeep.iwd": "41d08e98a33107d913c54a6335f18f3377b1ad29023c406e0bec1452cb4b4ebb"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "escape_train",
+        "escape_trig",
+        "train_escape_path"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        6500,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, escape_train, escape_trig, train_escape_path name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 134,
+    "script_count": 134,
+    "entities": 2194,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "escape_train",
+      "escape_trig",
+      "train_escape_path"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6500,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "41d08e98a33107d913c54a6335f18f3377b1ad29023c406e0bec1452cb4b4ebb",
+    "map_specific_triggers": [
+      "anti_porter_trig",
+      "brutus_trig",
+      "bug_trigger",
+      "button1",
+      "button2",
+      "button3",
+      "button4",
+      "can1",
+      "can2",
+      "can3",
+      "can4",
+      "can5",
+      "disable_jump1",
+      "dvii_bench",
+      "easteregg",
+      "elec_gen_trig",
+      "elec_trig",
+      "escape_trig",
+      "fire_gen_trig",
+      "fire_trig",
+      "handle_build_trig",
+      "handle_pick_trig",
+      "ice_gen_trig",
+      "ice_trig",
+      "kill_zombies",
+      "kinorock1",
+      "kinorock2",
+      "kinorock3",
+      "link_players",
+      "panel_build_trig",
+      "panel_pick_trig",
+      "portal_trig",
+      "radio7",
+      "radio8",
+      "radio9",
+      "start_rounds",
+      "stick_trigger",
+      "subway_damage_trig",
+      "turn_power_on",
+      "wind_gen_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_lorkeep.zip",
+    "original_sha256": "193a1a14270cea8c573193e5fbc8cf47c7f6e1be25501742e351a879cba9e925",
+    "original_size": 194374794,
+    "source_url": "https://www.mediafire.com/file/rmkerl1kkf79vto/nazi_zombie_lorkeep.zip/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:24:20Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "zip",
+    "shipped_executables": [
+      "nazi_zombie_lorkeep.exe"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_lorkeep"
+      ],
+      "iwd_images": [
+        "nazi_zombie_lorkeep.iwd:images/loadscreen_nazi_zombie_lorkeep.iwi",
+        "nazi_zombie_lorkeep.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_lorkeep.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_lorkeep.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_lorkeep.iwd:images/_-gp6_bullet_train_logo_c.iwi",
+        "nazi_zombie_lorkeep.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_zombie_lorkeep.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_lorkeep"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 1 executable(s): nazi_zombie_lorkeep.exe. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 98.1,
+    "addon_iwds": [
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "porter_punch.iwd",
+        "entries": 6,
+        "scripts": 2,
+        "bytes": 293841
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 12,
+        "scripts": 1,
+        "bytes": 580109
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019295
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_lorkeep.ff",
+      "nazi_zombie_lorkeep_patch.ff",
+      "nazi_zombie_lorkeep.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

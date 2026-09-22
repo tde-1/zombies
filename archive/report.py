@@ -252,6 +252,10 @@ def maps_table():
     for e in sorted(extract, key=lambda e: e["norm"]):
         f = fetch.get(e["norm"], {})
         for m in e["mods"]:
+            # Section 3 is the 14-map MVP run, and scan.json is its record. Maps added
+            # later (the popular-50 run, section 10) have their own table.
+            if byscan and m["map"] not in byscan:
+                continue
             s = byscan.get(m["map"], {})
             v = ev.get(m["map"], {})
             tags = ",".join(t for t in v.get("tags", [])

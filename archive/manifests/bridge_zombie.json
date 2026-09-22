@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "bridge_zombie",
+  "title": "BRIDGE",
+  "source": "custom",
+  "author": "cinnober",
+  "released": "May 19, 2012, 04:36:44 pm",
+  "fs_game": "mods/bridge_zombie",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@bridge_zombie.iwd": "de844ef4a21d9fb05408dca74ce9455930ef38b8d956dda86abfe40da0ce43db"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "wheel_endgame_trig"
+        }
+      },
+      "candidates": [
+        "wheel_endgame_trig"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        6000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "wheel_endgame_trig name an ending and are this map's own; script hardcodes cost 6000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 756,
+    "ee_candidates": [],
+    "ending_words": [
+      "wheel_endgame_trig"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto58"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto57"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto56"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "de844ef4a21d9fb05408dca74ce9455930ef38b8d956dda86abfe40da0ce43db",
+    "map_specific_triggers": [
+      "badguyendgame",
+      "banktrigd",
+      "banktrigw",
+      "boat_trig",
+      "car1",
+      "car2",
+      "car3",
+      "carendgame",
+      "control_build_trig",
+      "control_used",
+      "endgame2",
+      "gasendtrig",
+      "gastrigger",
+      "radio1_trigger",
+      "radio2_trigger",
+      "radio3_trigger",
+      "scare_him_now",
+      "scare_him_now2",
+      "weapon_storage",
+      "wheel_endgame_trig",
+      "wonderfizz",
+      "wood_trig",
+      "woodendtrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "bridge_V1.6.exe",
+    "original_sha256": "49ef337a497557414a8e2a5dd37c64c891363ed2e1d34e2ef73c1b5036f47975",
+    "original_size": 140786277,
+    "source_url": "http://www.mediafire.com/file/jl6yqqacloejom4/bridge_V1.6.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-22T19:22:53Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_bridge_zombie"
+      ],
+      "iwd_images": [
+        "bridge_zombie.iwd:images/loadscreen_bridge_zombie.iwi",
+        "bridge_zombie.iwd:images/menu_map_bridge_zombie.iwi",
+        "bridge_zombie.iwd:images/specialty_fastreload_zombies.iwi",
+        "bridge_zombie.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "bridge_zombie.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "bridge_zombie.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "bridge_zombie.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_bridge_zombie"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 133.2,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "bridge_zombie.ff",
+      "bridge_zombie_patch.ff",
+      "mod.ff",
+      "bridge_zombie.iwd:maps/_loadout.gsc"
+    ]
+  }
+}

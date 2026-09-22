@@ -18,6 +18,7 @@ REPO = os.path.dirname(HERE)
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 sys.path.insert(0, HERE)
 import report  # noqa: E402
+import popular  # noqa: E402
 from lib import catalogue  # noqa: E402
 
 TMPL = os.path.join(HERE, "archive.md.tmpl")
@@ -40,6 +41,12 @@ def main():
     fetch = load("fetch.json", [])
     extract = load("extract.json", [])
 
+    # Sections 1-4 describe the 14-map MVP run and are measured over exactly that set
+    # (scan.json's rows); later runs get their own section and their own reports.
+    mvp_maps = {row["map"] for row in scan.get("rows", [])}
+    extract = [e for e in extract if any(m["map"] in mvp_maps for m in e.get("mods", []))]         if mvp_maps else extract
+    mvp_norms = {e["norm"] for e in extract}
+    fetch = [f for f in fetch if f.get("norm") in mvp_norms] if mvp_norms else fetch
     tagged = [x for x in ev["rows"] if x["outcome"] != "untagged"]
     vals = {
         "link_table": report.to_md(r),
@@ -82,7 +89,9 @@ def main():
         "agree": len([x for x in tagged if x["outcome"] == "agree"]),
         "missed": len([x for x in tagged if x["outcome"].startswith("missed")]),
         "fetched_ok": len([f for f in fetch if f.get("status") == "ok"]),
-        "fetched_total": len(fetch),
+        # the MVP run attempted 15 and lost ZHunterZ (MEGA-only then); frozen here
+        # because a later run re-fetched it from MediaFire.
+        "fetched_total": max(len(fetch), 15) if mvp_maps else len(fetch),
         "fetched_bytes": report.human(sum(f.get("size") or 0 for f in fetch
                                           if f.get("status") == "ok")),
         "extracted": len(extract),
@@ -106,6 +115,7 @@ def main():
         "tags": " · ".join("%s %d" % (k, v) for k, v in sorted(
             r["tags"].items(), key=lambda kv: -kv[1]) if not k.startswith("archive_")),
     }
+    vals.update(popular.doc_values())
     with open(TMPL, encoding="utf-8") as fh:
         text = fh.read()
     missing = set(re.findall(r"\{\{(\w+)\}\}", text)) - set(vals)
