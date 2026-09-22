@@ -32,8 +32,8 @@ export default function MapListRow({ map, archive = false }) {
       style={{ '--h': String(mapHue(map.key)) }}
     >
       <span className="mlrow-art">
-        {map.art
-          ? <img src={map.art} alt="" loading="lazy" />
+        {(map.thumb || map.art)
+          ? <img src={(map.thumb || map.art)} alt="" loading="lazy" />
           : <span>{(map.key || '').replace(/^nazi_zombie_/, '').slice(0, 8)}</span>}
       </span>
       <span className="mlrow-name">
