@@ -72,6 +72,18 @@ std::string cmdline_value(const char* flag, const char* word) {
     return out;
 }
 
+// The engine's userinfo string is a run of backslash-delimited key/value pairs.
+// Returns the value for `key`, or empty when it is not there.
+std::string userinfo_value(const std::string& userinfo, const char* key) {
+    if (userinfo.empty()) return {};
+    const std::string k = std::string("\\") + key + "\\";
+    const size_t p = userinfo.find(k);
+    if (p == std::string::npos) return {};
+    const size_t b = p + k.size();
+    const size_t e = userinfo.find('\\', b);
+    return userinfo.substr(b, e == std::string::npos ? std::string::npos : e - b);
+}
+
 std::string env_str(const char* name) {
     char buf[512]{};
     const DWORD n = ::GetEnvironmentVariableA(name, buf, sizeof(buf));
@@ -146,6 +158,15 @@ public:
     }
 
     void post_unpack() override {
+        // THE CONTROL ARM -- see replay.cpp. ENW_NO_SAMPLERS=1 leaves the engine
+        // entirely alone: no SV_Frame hook, no per-frame entity read, no notify
+        // handler. The map then boots with nothing of ours running inside the game
+        // loop, which is the only way to say "ours" or "the map's" with evidence.
+        if (env_str("ENW_NO_SAMPLERS") == "1") {
+            ENW_INFO("referee: NOT armed -- ENW_NO_SAMPLERS=1. No SV_Frame hook and no "
+                     "per-frame state read; rounds and game over will not be reported.");
+            return;
+        }
         referee::bind();
         referee::on_notify([this](const notify_event& ev) { on_notify(ev); });
         referee::on_frame([this](uint32_t ms) { on_frame(ms); });
@@ -424,10 +445,102 @@ private:
         poll_players(ms);
     }
 
+    // ------------------------------------------------------------- roster --
+    //
+    // THE EVENTS THE HOST BUILDS ITS RESULT FROM, and until now nothing in the game
+    // ever sent them. `player_connect` / `player_spawn` / `player_disconnect` have
+    // been in docs/protocol/game-link-v0.md since v0 and were emitted only by
+    // infra/host-agent/sim/engine.js, so every integration test passed and every
+    // REAL game scored nobody: `lib/referee.js` builds `this.players` in
+    // ev_player_connect alone, and ev_player_spawn / ev_player_disconnect both bail
+    // out when the row does not exist. Game id 2 on the box -- a real player,
+    // CS_ACTIVE, `slot 0 ENTERED THE WORLD`, a signed replay -- reported
+    // game_players = 0 with result_mismatch for exactly this reason.
+    //
+    // There is no connect callback bound (no Scr_NotifyNum, no SV_ClientConnect
+    // hook), so this is an EDGE DETECTOR over the same per-frame client poll that
+    // already runs. `client(slot).active` is `gentity != 0 && name non-empty`,
+    // which a client has from CS_CONNECTED onward, so the connect edge lands early
+    // -- which is what the host wants, since it opens the replay on the first
+    // player_connect. `player_spawn` waits for a live player entity, which is the
+    // honest signal for "in the world".
+    void poll_roster(int slot, uint32_t ms) {
+        auto& p = players_[slot];
+        auto c = referee::client(slot);
+        const bool active = c && c->active;
+
+        if (active && !p.connected) {
+            p.connected = true;
+            p.spawned = false;
+            p.name = c->name;
+            // client_view already pulls xuid/steamid/guid out of userinfo; the host
+            // reads `ev.steamid || ev.xuid` and keys identity on it, so send both
+            // names for the one value rather than making the host guess.
+            p.steamid = c->xuid;
+            const std::string token = userinfo_value(c->userinfo, "enw_token").empty()
+                                          ? userinfo_value(c->userinfo, "token")
+                                          : userinfo_value(c->userinfo, "enw_token");
+            json::writer w;
+            w.str("t", "player_connect").integer("ms", ms).integer("slot", slot);
+            w.str("name", p.name);
+            if (!p.steamid.empty()) { w.str("steamid", p.steamid).str("xuid", p.steamid); }
+            if (!token.empty()) w.str("token", token);
+            game_link::get().send(w);
+            ENW_INFO("referee: player_connect slot %d name='%s' steamid=%s token=%s",
+                     slot, p.name.c_str(),
+                     p.steamid.empty() ? "(none - userinfo carried no xuid/steamid/guid)"
+                                       : p.steamid.c_str(),
+                     token.empty() ? "(none)" : "present");
+            // MEASURED join85: the steamid came back EMPTY on a real client, so the
+            // host gets a roster row it cannot attach XP or a record to. client_view
+            // looks for \xuid\, \steamid\ and \guid\ and this client's userinfo has
+            // none of them. Print the KEY NAMES once per connect -- not the values,
+            // which carry the player's id -- so the next session can name the right
+            // key instead of guessing at three.
+            if (p.steamid.empty() && !c->userinfo.empty()) {
+                std::string keys;
+                // userinfo starts WITH a backslash, so the first field after the first
+                // separator is a key: start outside and let the separator flip us in.
+                bool is_key = false;
+                for (size_t i = 0; i < c->userinfo.size(); ++i) {
+                    if (c->userinfo[i] == '\\') { is_key = !is_key; if (is_key) keys += ' '; continue; }
+                    if (is_key) keys += c->userinfo[i];
+                }
+                ENW_WARN("referee: slot %d has NO steam id. userinfo keys: %s -- the host will "
+                         "open a roster row with a name and no identity, so nothing can be "
+                         "attached to an account. referee.md 12.", slot, keys.c_str());
+            }
+            referee::lp_player_event(slot, "player_connect", p.name);
+        }
+
+        if (p.connected && !p.spawned) {
+            if (auto e = referee::player_ent(slot); e && e->alive) {
+                p.spawned = true;
+                json::writer w;
+                w.str("t", "player_spawn").integer("ms", ms).integer("slot", slot);
+                game_link::get().send(w);
+                ENW_INFO("referee: player_spawn slot %d ('%s')", slot, p.name.c_str());
+            }
+        }
+
+        if (!active && p.connected) {
+            p.connected = false;
+            p.spawned = false;
+            json::writer w;
+            w.str("t", "player_disconnect").integer("ms", ms).integer("slot", slot);
+            w.str("reason", "slot no longer active");
+            game_link::get().send(w);
+            ENW_INFO("referee: player_disconnect slot %d ('%s')", slot, p.name.c_str());
+            referee::lp_player_event(slot, "player_disconnect", p.name);
+        }
+    }
+
     void poll_players(uint32_t ms) {
         const int n = referee::max_clients();
         for (int slot = 0; slot < n && slot < kMaxPlayers; ++slot) {
             auto& p = players_[slot];
+
+            poll_roster(slot, ms);
 
             // Points: no script notify exists, so this is the only way. Sampling
             // at server-frame rate is exact enough to attribute a purchase.
@@ -563,7 +676,14 @@ private:
             if ((!c || !c->active) && !p.have_score && !p.have_downs) continue;
             json::writer pw;
             pw.integer("slot", slot);
-            if (c) pw.str("name", c->name).boolean("connected", c->active);
+            // Identity on the row as well as on player_connect. A host that lost the
+            // link mid-match, or that only stores the final result, still has to be
+            // able to attach XP and records to an account, and a name cannot do that.
+            const std::string nm = (c && !c->name.empty()) ? c->name : p.name;
+            const std::string sid = (c && !c->xuid.empty()) ? c->xuid : p.steamid;
+            if (!nm.empty()) pw.str("name", nm);
+            if (c) pw.boolean("connected", c->active);
+            if (!sid.empty()) pw.str("steamid", sid).str("xuid", sid);
             if (p.have_score) { pw.integer("score", p.score); total_points += p.score; }
             if (p.have_downs) { pw.integer("downs", p.downs); total_downs += p.downs; }
             pw.integer("revives", p.revives);
@@ -740,6 +860,17 @@ private:
         int downs = 0;
         bool have_downs = false;
         int revives = 0;      // counted off the player_revived notify
+        // --- identity and presence (2026-09-22, referee.md 12) ------------------
+        // Without these the host agent has no roster at all: `lib/referee.js`
+        // creates a player row ONLY in ev_player_connect, and ev_player_spawn /
+        // ev_player_disconnect both `return` when the row is missing. That is why
+        // the box's first real game (replay m_5de3842b, site game id 2) finished
+        // with game_players = 0 and result_mismatch while the SIMULATOR, which does
+        // emit player_connect, produces full rosters.
+        bool connected = false;   // last seen state, for edge detection
+        bool spawned = false;     // player_spawn already sent for this connection
+        std::string name;
+        std::string steamid;
     };
 
     player_state players_[kMaxPlayers];

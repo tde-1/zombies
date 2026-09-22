@@ -136,5 +136,8 @@
     "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/minecraft-village-remastered-1.jpg",
     "cover_size": 215052
   },
-  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile.  DEDI/REFEREE 2026-09-22 (runs mapC and join83): THE FIRST CUSTOM MAP TO PASS THE FIVE-GATE 300 s PROOF WITH A REAL CLIENT. join83: CS_ACTIVE=1, referee ROUND 1, 76 of 76 getstatus answered, frame::count +293 in 5 s = 58.6 Hz, com_frameTime advanced 30031 ms over the last 30 s, Com_Frame-body 58.4 Hz, server RSS 323 MB flat -- PASS. Booted headless with ENW_DEDI_BIG_HEAP=1 (422 MB reserve). dedi.md 14.6.",
+  "dedi_status": "pass_five_gates",
+  "status": null,
+  "dedi_verdict_source": "dedi.md 14.6; runs mapC and join83"
 }

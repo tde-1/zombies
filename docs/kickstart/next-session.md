@@ -1,6 +1,7 @@
 # Next session — one page
 
-Written 2026-09-22 at 09:00, after the game-over session. If this page and `../../STATUS.md` ever
+Written 2026-09-22 at 09:00 after the game-over session; the custom-map and roster sections
+rewritten at 10:30 after the dedi/referee bisect. If this page and `../../STATUS.md` ever
 disagree, STATUS wins; it is rewritten at the end of every session.
 
 ## Read this first, because it changes what you think is true
@@ -55,33 +56,59 @@ and re-announces `map_loaded` — open a new replay on that) or terminate the pr
 of the two. The contract is `referee.md` §10.3 and the rows are in
 `../protocol/game-link-v0.md`. **That is the single highest-value task on this page.**
 
-## The six custom maps, measured
+## The custom maps, measured — and the "broken" suspicion is dead
 
-| Map | bsp | boots | client | R1 | R2 | verdict |
-|---|---|---|---|---|---|---|
-| Der Berg | `nazi_zombie_derberg` | yes, getstatus 3 s | no | no | no | **broken**: GSC `localVars` overflow stops the engine at 5.6 s (§13.2) |
-| Leviathan | `nazi_zombie_leviathan` | loads, then GSC error | — | — | — | **broken**: `unknown item 'napalmblob'` in its own `_loadout::init_loadout()` |
-| Zombie Desert | `nazi_zombie_test1` | loads, then GSC error | — | — | — | **broken**: `flag_wait` before `flag_init` (`level.flag` undefined) |
-| Project Viking | `nazi_zombie_test` | loads, then GSC error | — | — | — | **broken**: same shape, `_zombiemode_ai_mech.gsc:38` |
-| MW2 Rust | `mw2rust` | loads, then GSC error | — | — | — | **broken**: same shape, `mw2rust.gsc:179 flag_wait("electricity_on")` |
-| Clinic of Evil | `sanatorium` | loads, then GSC error | — | — | — | **broken**: same shape, `_zombiemode_rotating_door.gsc:34` |
+**Rewritten 2026-09-22 10:30 after the bisect.** The previous version of this page asked why four
+maps died the same way and said "nobody has run one of them on a listen server — that is the cheap
+test". It has been run.
 
-All six now get as far as `------ Server Initialization ------`, which is new — the mount fix did
-that. All six then die in the map's own scripts. `status: "broken"` and the exact traceback are in
-each `archive/manifests/<bsp>.json`. **`nazi_zombie_prototype` remains the only map that plays.**
+**`mapA`: all four boot on a STOCK `CoDWaW.exe` with the binkw32 proxy reverted — zero ENW code in
+the process — as a listen server, and produce the byte-identical script runtime error.** Each map's
+own `main()` starts a flag-dependent thread *before* it calls `maps\_zombiemode::main()`, which is
+what calls `maps\_load::main()`, which is where `flag_init("all_players_connected")` lives. Zombie
+Desert's author even labelled the block `FUNCTION CALLS - PRE _Load`. **`mapB`: Der Berg stops
+simulating at `com_frameTime=5651` with `ENW_NO_SAMPLERS=1`** — no `SV_Frame` hook, no entity read,
+no replay — against 5659 and 5662 with everything on. Neither the overlay hypothesis nor the
+sampler hypothesis survives. `dedi.md` §14, `referee.md` §11.
+
+| Map | bsp | verdict |
+|---|---|---|
+| Zombie Desert | `nazi_zombie_test1` | **broken, the map's own script order** — proven on a stock exe (`mapA`) |
+| Project Viking | `nazi_zombie_test` | same (`mapA`) |
+| MW2 Rust | `mw2rust` | same (`mapA`) |
+| Clinic of Evil | `sanatorium` | same (`mapA`) |
+| Der Berg | `nazi_zombie_derberg` | **broken, the map's own script** — `localVars` overflow with our samplers off (`mapB`) |
+| Leviathan | `nazi_zombie_leviathan` | **broken on the existing evidence**; not re-tested — one `maptest.ps1 -NoEnw` run would settle it |
+| **Minecraft Village Remastered** | `nazi_zombie_fear_mc_2` | **PASSES the five-gate 300 s proof with a real client (`join83`)** — the first custom map ever to |
+| ORBIT | `nazi_zombie_orbit` | server gates 2-5 PASS over 320 s; **the CLIENT** stalls loading the 128 MB zone at ~1.5 GB RSS and is dropped (`join80`) |
+| UGX Requiem | `ugx_artemovsk` | the same (`join81`) |
+| Water / School / Hijacked / Octogonal / DT2 | | do not boot; first causes in `dedi.md` §14.6 |
+
+**`nazi_zombie_prototype` is no longer the only map that plays.**
+
+## The host agent gets a roster now, and it still has no identity
+
+`player_connect` / `player_spawn` / `player_disconnect` **had never been emitted by the game** —
+only by `infra/host-agent/sim/engine.js` — and `lib/referee.js` creates a player row in
+`ev_player_connect` and nowhere else. That is why the box's first real game (replay `m_5de3842b`,
+site game id 2) finished with **`game_players = 0`** and `result_mismatch` while every simulator
+test passed. The referee emits all three now, off an edge detector over the client poll, and the
+`game_over` rows carry `name` + `steamid`/`xuid`. Proven in `join85`.
+
+**But the steam id is empty, and that is the half that matters.** `join87` printed the whole
+userinfo key list a real T4 client sends: `cg_predictItems cl_punkbuster cl_voice rate snaps name
+protocol challenge invited qport bdTicket bdTicketTime`. **No `xuid`, no `steamid`, no `guid`** —
+the identity is inside **`bdTicket`**, the Demonware ticket. Treat the roster as *attendance* until
+that is decoded, and do not award anything to it. `referee.md` §12.
 
 ## The next tasks, in order
 
 1. **The host agent must answer `match_end`.** See above. Without it a finished game leaves an
    instance up for ever and the next lease never starts. `host.md`'s lane.
-2. **Four maps die the same way and nobody has explained it.** `level.flag` is undefined when a
-   map-provided script touches it, which means `maps/_load.gsc:97`'s
-   `flag_init("all_players_connected")` has not run. All four ship their own `maps/_load.gsc`.
-   It is **not** our overlay (we mount none), **not** `fs_game` (Der Berg answers getstatus with
-   the same mount) and **not** a missing `.ff` (the console shows `Loading fastfile 'mod'` and the
-   map fastfile on all four). The open question is why the same script survives on a listen
-   server — and the cheapest way to answer it is **to run one of them on a listen server and
-   diff the console**, which nobody has done.
+2. **Decode `bdTicket`, or bind the auth path, so a roster row has a steam id.** Without it the
+   result scores an attendance list and no XP or record can attach to an account. `referee.md`
+   §12.3 has the measured key list. `invited` is worth a look at the same time — it is a natural
+   carrier for the invite token of feature 12.
 3. **Round 2 needs a player who shoots.** A round ends when its zombies are dead; an idle client
    kills nothing and gets eaten in round one. There is no server-side substitute:
    `Scr_NotifyNum` unbound, script-variable writes unbound, and the exe has no AI-kill console

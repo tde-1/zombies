@@ -100,6 +100,26 @@ if (-not $NoDeploy) {
     }
 }
 
+# CLEAR THE CONSOLE LOGS FIRST. The engine APPENDS, and `Get-ChildItem -Recurse` does
+# not follow directory junctions -- so on a custom-map run the newest console.log it
+# could see under homes\<copy> was the one in main\ from some earlier prototype run.
+# join80 was read for fifteen minutes as "the client loaded nazi_zombie_prototype"
+# before the file turned out to be a week-old prototype log. Delete both, and on a
+# custom map delete the one in the mod folder by its explicit path.
+foreach ($copy in @($ServerName, $ClientName)) {
+    $paths = @((Join-Path $DevRoot "homes\$copy\main\console.log"))
+    if ($FsGame) { $paths += (Join-Path $DevRoot ("homes\$copy\" + ($FsGame -replace '/', '') + '\console.log')) }
+    foreach ($p in $paths) {
+        if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
+    }
+}
+if ($FsGame) {
+    Say ("NOTE: on a custom map both homes' mods\<bsp> are junctions onto the SAME " +
+         "archive folder, so the server and the client write ONE shared console.log. " +
+         "That -- not the path computation -- is why join59's two console logs were " +
+         "byte-identical. Both collected copies below come from that one file.") 'Yellow'
+}
+
 $serverPid = 0
 $clientPid = 0
 $lockFile = Join-Path $DevRoot 'locks\game.lock'
@@ -233,8 +253,17 @@ finally {
     foreach ($copy in $roles.Keys) {
         $who = @($copy, $roles[$copy])
         $homeDir = Join-Path $DevRoot "homes\$($who[0])"
-        $src = Get-ChildItem -LiteralPath $homeDir -Filter console.log -Recurse -File -ErrorAction SilentlyContinue |
-               Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        # Explicit path when fs_game is set: -Recurse does not cross the junction, so
+        # the search silently fell back to main\console.log (see the clear-down above).
+        $src = $null
+        if ($FsGame) {
+            $modLog = Join-Path $homeDir (($FsGame -replace '/', '') + '\console.log')
+            if (Test-Path -LiteralPath $modLog) { $src = Get-Item -LiteralPath $modLog }
+        }
+        if (-not $src) {
+            $src = Get-ChildItem -LiteralPath $homeDir -Filter console.log -Recurse -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        }
         if (-not $src) { Say "MISSING console.log anywhere under $homeDir" 'Yellow'; continue }
         $dst = Join-Path $logDir "$Tag.$($who[1]).console.log"
         Copy-Item -LiteralPath $src.FullName -Destination $dst -Force

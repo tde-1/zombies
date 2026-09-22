@@ -1258,3 +1258,133 @@ that will not open a door or start a timer until `first_player_ready` fires. Non
 tested tonight is such a map. If one turns up, the fix is `Scr_NotifyNum` plus raising it exactly
 once, when the first client reaches `CS_ACTIVE` (that is when a listen host would have), and never
 on a server that has no clients.
+
+## 11. 2026-09-22, 09:10–10:30 — the samplers are not what breaks custom maps, and `ENW_NO_SAMPLERS`
+
+### 11.1 The accusation, and the control that answers it
+
+The custom-map bisect (`dedi.md` §14) put this lane in the frame twice: tonight's replay additions
+(`kill` inferred from entity state, `zombies_alive`, `kills_round` on every snap) and the referee's
+per-frame state read were the obvious suspects for Der Berg's `scrVmPub.localVars` overflow, which is
+a **script child-variable enumeration** of ~3,900 entries.
+
+There was no way to run without them, so there is one now. **`ENW_NO_SAMPLERS=1`** makes
+`referee_component::post_unpack()` and `replay::post_unpack()` return immediately: no
+`referee::bind()`, no `SV_Frame` hook, no `on_frame` subscription, no snap. The dedicated server is
+otherwise untouched. It is a **measurement knob and never a shipping one** — with it set there is no
+`ROUND 1`, no `game_over` and no replay, so a run that uses it can never pass the five gates. That is
+the point: it answers one question and refuses to answer any other.
+
+**Run `mapB`** — Der Berg, dedicated, `ENW_NO_SAMPLERS=1`, held 30 s — stopped simulating at
+`com_frameTime=5651`, against 5659 (`join69`) and 5662 (`join59`) with everything on. **Not ours.**
+
+### 11.2 Why it could never have been ours, stated so nobody re-tests it
+
+* `referee::zombie_ents()` walks `g_entities[4..1024]` — a **bounded entity-array** walk reading
+  `gentity_s` fields (`classname`, `health`, `currentOrigin`) straight out of memory. It does not
+  enter the script VM.
+* `binding_report::script_vars` has been **`no` in every run this project has ever recorded**
+  (`referee.md` §10, §9.3, the `referee/bind:` line in every log). Script-variable reads and writes
+  are unbound, which is why game over still reports `0 point(s)` / `0 down(s)`.
+* The one thing this lane has that *does* enumerate children — `dump_level_vars()` in `t4_bind.cpp`
+  — is behind **`ENW_LEVELVARS=1`**, off since all four extractions scored zero, and it reads
+  `childVariables` with a `peek()` per entry rather than calling the engine's walker.
+
+**This lane has never called 0x697B60.** The bound on that loop is still an engine-limit job and
+still nobody's today.
+
+### 11.3 What the referee can actually referee
+
+Of fourteen archived customs, **three** boot headless, answer `getstatus` and keep the engine
+simulating: `nazi_zombie_orbit`, `ugx_artemovsk`, `nazi_zombie_fear_mc_2`. The six previously marked
+`broken` all die in the maps' own scripts and do so on a stock exe as well (`dedi.md` §14.2), so
+there is nothing for this lane to fix in them. The five-gate results for the three that work are in
+`dedi.md` §14.6.
+
+## 12. 2026-09-22 — `game_players = 0` on the box's first real game: the roster events were never sent
+
+### 12.1 The fault
+
+The Hetzner box's first real game (replay `m_5de3842b`, site game id **2**) reached game over, wrote
+a signed replay and produced a result row — with **`game_players = 0`** and `result_mismatch`. The
+player was demonstrably in the world: `CS_ACTIVE`, `join_probe: *** slot 0 ENTERED THE WORLD`,
+`referee: ROUND 1`.
+
+**The cause is that this DLL has never emitted a roster event.** `player_connect`,
+`player_spawn` and `player_disconnect` have been in `../protocol/game-link-v0.md` since v0 and the
+only thing in the repository that sent them was **`infra/host-agent/sim/engine.js`**. Host-side,
+`infra/host-agent/lib/referee.js` creates a player row in **`ev_player_connect` and nowhere else**:
+
+```js
+ev_player_spawn(ev)      { const p = this.players.get(ev.slot); if (!p) return; … }
+ev_player_disconnect(ev) { const p = this.players.get(ev.slot); if (!p) return; … }
+```
+
+So the simulator produced full rosters and every integration test passed, and a **real** game
+scored nobody. `grep -rn player_connect server/ shared/ client-dll/` returned nothing before
+tonight. This is the same shape of fault as `map_loaded` (§referee.md 3) and `console_command()`
+(§10.4): a protocol row that everything downstream depends on and nothing upstream ever wrote.
+
+### 12.2 The fix, on the server side
+
+There is no connect callback bound — no `Scr_NotifyNum`, no `SV_ClientConnect` hook — so this is an
+**edge detector over the per-frame client poll that `poll_players()` already runs**.
+`referee::client(slot).active` is `gentity != 0 && name non-empty`, which a client has from
+`CS_CONNECTED` onward, so the connect edge lands early. That is what the host wants: `host.js`
+opens the replay on the first `player_connect`.
+
+| edge | event sent |
+|---|---|
+| slot becomes active | `player_connect {ms, slot, name, steamid, xuid, token?}` |
+| the player entity is first alive | `player_spawn {ms, slot}` |
+| slot stops being active | `player_disconnect {ms, slot, reason}` |
+
+`steamid` and `xuid` carry the **same** value under both names, because `lib/referee.js` reads
+`ev.steamid || ev.xuid` and keys identity on it; making the host guess which one a server sends is
+not a contract. `token` is pulled from userinfo (`\enw_token\`, else `\token\`) and is what
+`lib/tokens.js` answers with `auth`. The `game_over` player rows carry `name` and `steamid`/`xuid`
+too, so a host that only stores the final result can still attach XP to an account.
+
+**PROVEN, `join85`, prototype, real client:**
+
+```
+referee: player_connect slot 0 name='anna-jpg' steamid=(none …) token=(none)
+join_probe: *** slot 0 ENTERED THE WORLD
+referee: ROUND 1 (all_players_connected)
+referee: player_spawn slot 0 ('anna-jpg')
+referee: GAME OVER at round 1 … 0 point(s) over 1 player row(s), 0 down(s), 1 alive
+```
+
+### 12.3 WHAT IS STILL BROKEN, and it is the half that matters for XP
+
+**The client carried no steam id.** `client_view` looks for `\xuid\`, `\steamid\` and `\guid\` in
+userinfo and this client's userinfo has none of them, so `player_connect` went out with an empty
+`steamid`. The host will now open a roster row — `game_players` will not be 0 any more — but that
+row has **a name and no identity**, and a name cannot carry XP or a record.
+
+A `WARN` on the connect edge prints the **key names** present in that client's userinfo (the names
+only, never the values), once per connect. **MEASURED, `join87`** — this is the whole list a real
+T4 client sends:
+
+```
+cg_predictItems  cl_punkbuster  cl_voice  rate  snaps  name  protocol
+challenge  invited  qport  bdTicket  bdTicketTime
+```
+
+**There is no `xuid`, no `steamid` and no `guid`.** The identity is inside **`bdTicket`** — the
+Demonware auth ticket, a long base64 blob, which is also why the engine printed `Connecting player
+#0 has a zero GUID`. Reading a steam id out of a WaW client therefore means decoding `bdTicket`
+(or binding `SV_DirectConnect`/the auth path and taking the id the engine resolves), and that is a
+piece of work, not a missing string lookup. `invited` is the other key worth a look: it is a
+natural carrier for the invite token of feature 12 and nothing has checked what the client puts in
+it.
+
+Until that is done, **treat the roster as *attendance*, not as *identity***, and do not let
+anything downstream award XP or a record to it.
+
+Two other things this does not do, stated so they are not assumed:
+
+* **`score` and `downs` are still zero** in the result on a real game. They are script-variable
+  reads and `scriptvars=no` (§10, §11.2). The roster fix does not change that.
+* **`player_disconnect` has not been observed firing** — `join85`'s client stayed to the end. The
+  edge is symmetric with the connect edge that did fire, which is an argument, not a measurement.

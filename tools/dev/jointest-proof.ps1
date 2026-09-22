@@ -43,7 +43,14 @@ $out = "$dev\logs\dedi\$Tag-proof.txt"
 
 $deadline = (Get-Date).AddMinutes(25)
 while ((Test-Path -LiteralPath $lock) -and (Get-Date) -lt $deadline) {
-    Write-Host "waiting for game.lock: $((Get-Content $lock -Raw).Trim())"
+    # The holder can release between Test-Path and the read, and then `Get-Content`
+    # returns $null and `.Trim()` throws -- which is how join84 died having waited
+    # correctly for three minutes. Read it defensively; losing the wait to a race is
+    # not a reason to lose the run.
+    $held = $null
+    try { $held = Get-Content -LiteralPath $lock -Raw -ErrorAction Stop } catch {}
+    if (-not $held) { break }
+    Write-Host "waiting for game.lock: $($held.Trim())"
     Start-Sleep -Seconds 5
 }
 if (Test-Path -LiteralPath $lock) { throw 'game.lock still held' }

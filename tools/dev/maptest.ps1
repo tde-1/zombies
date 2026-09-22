@@ -37,8 +37,35 @@ param(
     # Raise the engine's main memory reserve from 300 MB to 422 MB before the map
     # loads (shared/t4/addresses.hpp :: t4::mem). Off unless asked for.
     [switch]$BigHeap,
+
+    # ---- the bisect arms (2026-09-22, dedi.md 14) -------------------------------
+    # The question these exist to answer is "is this map dying on something OURS?",
+    # and the only honest way to answer it is to take ours away and run the map again.
+    #
+    #   -NoSamplers  ENW_NO_SAMPLERS=1: the referee does not hook SV_Frame and the
+    #                replay sampler does not arm. The dedicated server still runs.
+    #   -Listen      a LISTEN server: `dedicated 0`, role solo, i.e. the engine's own
+    #                stock path, the one the community plays these maps on. The
+    #                dedicated component's patches do not apply.
+    #   -NoEnw       revert the binkw32 proxy for the duration, so ZERO ENW code is in
+    #                the process. Implies -Listen (a stock exe cannot run headless --
+    #                that is what dedicated.cpp is for) and restores the proxy in the
+    #                finally block whatever happens.
+    [switch]$NoSamplers,
+    [switch]$Listen,
+    [switch]$NoEnw,
+
+    # How long to hold a map that DID boot before killing it. The default 8 s was
+    # only ever meant to let a load-time GSC error land in the log. Der Berg's frame
+    # body stops at 5.6 s, so anything that wants to see the engine stop simulating
+    # needs 25 s or more: dedi_rate_probe prints every 5 s and the fifth gate needs
+    # two lines to compare.
+    [int]$HoldSeconds = 8,
+
     [string]$DevRoot = 'C:\Users\b\ZombiesDev'
 )
+
+if ($NoEnw) { $Listen = $true }
 
 $ErrorActionPreference = 'Stop'
 $logDir = Join-Path $DevRoot 'logs\dedi'
@@ -54,10 +81,18 @@ Set-Content -LiteralPath $transcript -Value "maptest $Tag  $(Get-Date -Format o)
 
 . (Join-Path $PSScriptRoot 'mapmount.ps1')
 
-if (-not $NoDeploy) {
+if ($NoEnw) {
+    & (Join-Path $PSScriptRoot 'deploy.ps1') $ServerName -Revert | Out-Null
+    Say "-NoEnw: reverted the binkw32 proxy in waw-$ServerName -- this run has NO ENW code in it" 'Magenta'
+}
+elseif (-not $NoDeploy) {
     & (Join-Path $PSScriptRoot 'deploy.ps1') $ServerName -From $ServerFrom | Out-Null
     Say "deployed build\$ServerFrom -> waw-$ServerName"
 }
+Say ("arms: samplers={0} mode={1} enw={2}" -f
+     $(if ($NoSamplers) { 'off' } else { 'on' }),
+     $(if ($Listen) { 'listen' } else { 'dedicated' }),
+     $(if ($NoEnw) { 'absent' } else { 'present' })) 'Cyan'
 
 $stock = @('nazi_zombie_prototype', 'nazi_zombie_asylum', 'nazi_zombie_sumpf', 'nazi_zombie_factory')
 $results = @()
@@ -65,7 +100,7 @@ $results = @()
 foreach ($map in $Maps) {
     Say "" ; Say "=================== $map ===================" 'Cyan'
     $fsGame = if ($stock -contains $map) { '' } else { "mods/$map" }
-    $row = [ordered]@{ map = $map; fs_game = $fsGame; alive = $false; answered = $false; error = '' }
+    $row = [ordered]@{ map = $map; fs_game = $fsGame; alive = $false; answered = $false; sim = ''; error = '' }
 
     if ($fsGame) {
         $dst = Join-Path $DevRoot "homes\$ServerName\mods\$map"
@@ -101,9 +136,10 @@ foreach ($map in $Maps) {
         $env:ENW_CONNECT_ADDR = $null
         $env:ENW_RAW_SOCKETS = '1'
         $env:ENW_DEDI_BIG_HEAP = $(if ($BigHeap) { '1' } else { $null })
+        $env:ENW_NO_SAMPLERS = $(if ($NoSamplers) { '1' } else { $null })
 
         $args = @(
-            '+set', 'dedicated', '1', '+set', 'zombiemode', '1', '+set', 'logfile', '2',
+            '+set', 'dedicated', $(if ($Listen) { '0' } else { '1' }), '+set', 'zombiemode', '1', '+set', 'logfile', '2',
             '+set', 'com_maxfps', '60',
             '+set', 's_volume', '0', '+set', 'snd_volume', '0',
             '+set', 'con_typewriterColorBase', '1.0 1.0 1.0',
@@ -113,7 +149,8 @@ foreach ($map in $Maps) {
         if ($fsGame) { $args += @('+set', 'fs_game', $fsGame) }
         $args += @('+map', $map)
 
-        $serverPid = & (Join-Path $PSScriptRoot 'launch.ps1') $ServerName -Role server -HomePath own `
+        $role = $(if ($Listen) { 'solo' } else { 'server' })
+        $serverPid = & (Join-Path $PSScriptRoot 'launch.ps1') $ServerName -Role $role -HomePath own `
             -GameArgs $args -Why "dedi $Tag map boot: $map" | Select-Object -Last 1
         if (-not $serverPid) { throw 'launch.ps1 did not return a PID' }
         Say "server PID $serverPid  fs_game='$fsGame'" 'Green'
@@ -135,7 +172,7 @@ foreach ($map in $Maps) {
             $(if ($row.answered) { 'Green' } else { 'Yellow' })
         # Give a booted server a few more seconds so a GSC error that fires on the
         # first frames lands in the log before we read it.
-        if ($row.answered) { Start-Sleep -Seconds 8 }
+        if ($row.answered) { Start-Sleep -Seconds $HoldSeconds }
     }
     catch { Say "EXCEPTION: $_" 'Red'; $row.error = "$_" }
     finally {
@@ -163,9 +200,30 @@ foreach ($map in $Maps) {
         else { Say "MISSING $($pair[0])" 'Yellow' }
     }
 
+    # ---- did the ENGINE keep simulating? (dedi.md 11.1, the fifth gate) ---------
+    # Only the dedicated server prints dedi_rate_probe, and only when our DLL is in,
+    # so this stays silent on -NoEnw / -Listen runs rather than pretending to know.
+    $enwCopy = Join-Path $logDir "$Tag.$map.enw.log"
+    if (Test-Path -LiteralPath $enwCopy) {
+        $ft = @(Select-String -LiteralPath $enwCopy -Pattern 'com_frameTime=(\d+)' |
+                ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        if ($ft.Count -ge 2) {
+            $d = $ft[-1] - $ft[0]
+            $row.sim = "com_frameTime +$d ms over $($ft.Count) probes (last $($ft[-1]))"
+            Say ("engine clock: {0}" -f $row.sim) $(if ($d -gt 0) { 'Green' } else { 'Red' })
+            if ($d -le 0) { Say '    THE ENGINE STOPPED SIMULATING -- com_frameTime frozen' 'Red' }
+        }
+        elseif ($ft.Count -eq 1) { $row.sim = "only one probe (com_frameTime=$($ft[0])) -- raise -HoldSeconds" }
+    }
+
     # ---- what did the engine actually say? -------------------------------------
     if (Test-Path -LiteralPath $conLog) {
         $txt = Get-Content -LiteralPath $conLog -ErrorAction SilentlyContinue
+        # OUR OWN log lines say "Sys_Error" because dedi_error_trap announces the hook it
+        # just installed, and mapC read that as every map's first error. Drop [enw] lines
+        # before looking for the engine's complaint: a harness that misattributes the cause
+        # is worse than one that reports none.
+        $txt = $txt | Where-Object { $_ -notmatch '^\[enw\]|^\s*\[enw\]' }
         $bad = $txt | Select-String -Pattern '\*\*\*\*|Error:|error:|Sys_Error|ERROR|unknown item|cannot cast|not found|Could not load|Exceeded limit|linkTo|Waited .* frames' |
                Select-Object -First 25
         if ($bad) {
@@ -182,11 +240,16 @@ foreach ($map in $Maps) {
     $results += [pscustomobject]$row
 }
 
+if ($NoEnw) {
+    & (Join-Path $PSScriptRoot 'deploy.ps1') $ServerName -From $ServerFrom | Out-Null
+    Say "-NoEnw: put the binkw32 proxy back in waw-$ServerName" 'Magenta'
+}
+
 Say ""
 Say "================= $Tag summary =================" 'Cyan'
 foreach ($r in $results) {
-    Say ("{0,-24} fs_game={1,-28} alive={2,-5} getstatus={3,-5} {4}" -f
-         $r.map, $r.fs_game, $r.alive, $r.answered, $r.error)
+    Say ("{0,-24} alive={1,-5} getstatus={2,-5} {3}  {4}" -f
+         $r.map, $r.alive, $r.answered, $r.sim, $r.error)
 }
 Say "transcript: $transcript" 'Cyan'
 $results | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $logDir "$Tag.json") -Encoding utf8

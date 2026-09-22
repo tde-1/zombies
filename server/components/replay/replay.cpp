@@ -27,8 +27,20 @@
 #include <cstdio>
 #include <cstring>
 
+#include <windows.h>
+
 namespace enw {
 namespace {
+
+// THE CONTROL ARM. `ENW_NO_SAMPLERS=1` takes the replay sampler and the referee's
+// per-frame state read out of a run without a second build, so "is the map dying
+// because of something WE do every frame?" is one environment variable and a
+// re-run rather than a bisect over the component list. Added 2026-09-22 for the
+// custom-map bisect (dedi.md 14); it is a measurement knob, never a shipping one.
+bool samplers_disabled() {
+    char buf[8]{};
+    return ::GetEnvironmentVariableA("ENW_NO_SAMPLERS", buf, sizeof(buf)) && buf[0] == '1';
+}
 
 constexpr int kMaxPlayers = 4;
 constexpr size_t kMaxZombies = 64;   // level.zombie_vars max_ai is 24 stock; headroom for customs
@@ -87,6 +99,11 @@ public:
     const char* name() const override { return "replay"; }
 
     void post_unpack() override {
+        if (samplers_disabled()) {
+            ENW_INFO("replay: sampler NOT armed -- ENW_NO_SAMPLERS=1. This run records nothing; "
+                     "it exists to answer whether the sampler is what a map is dying on.");
+            return;
+        }
         referee::bind();
         referee::on_frame([this](uint32_t ms) { on_frame(ms); });
         ENW_INFO("replay: sampler armed (players 20 Hz, zombies 10 Hz)");

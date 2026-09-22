@@ -4520,3 +4520,49 @@ the live site, instance warm again.**
   `EnvironmentFile=/root/enw-host.env`, so the secret stayed in systemd's hands and off every
   command line. The result row is therefore from a real game on the real box against the real
   site, reached without a party. A leased game is still B's to start.
+
+- 10:30 dedi/referee: **the "six broken maps have one shared cause on our side" theory is dead, and
+  it was killed by runs.** `maptest.ps1` grew `-NoEnw` (revert the binkw32 proxy: zero ENW code in
+  the process, implies `-Listen`), `-Listen` (`dedicated 0`, role solo) and `-NoSamplers`
+  (`ENW_NO_SAMPLERS=1`: no `SV_Frame` hook, no entity read, no replay snap). Run **`mapA`**: Zombie
+  Desert, Project Viking, MW2 Rust and Clinic of Evil all boot on a **stock `CoDWaW.exe` listen
+  server** and produce the **byte-identical** script runtime error. Run **`mapB`**: Der Berg stops
+  simulating at `com_frameTime=5651` with our samplers off, against 5659/5662 with them on. Neither
+  hypothesis survives. dedi.md 14, referee.md 11.
+- 10:30 dedi: the shared cause is the **maps'** own script order — each `main()` starts a
+  flag-dependent thread before `maps\_zombiemode::main()`, which is what calls `maps\_load::main()`
+  and therefore `flag_init`. Read out of their own raw GSC: Zombie Desert threads
+  `zombie_hitmarker::main()` at line 136 and calls `_zombiemode::main()` at 143, under the author's
+  own comment "FUNCTION CALLS - PRE _Load". **Why the community plays them anyway is NOT
+  established** and is written down as unestablished. All six keep `status: "broken"`.
+- 10:30 dedi: **`nazi_zombie_fear_mc_2` (Minecraft Village Remastered) PASSES the five-gate 300 s
+  proof with a real client — `join83`, the first custom map ever to.** CS_ACTIVE, `ROUND 1`, 76/76
+  getstatus, `com_frameTime` +30,031 ms, `Com_Frame-body` 58.4 Hz, server RSS 323 MB flat.
+  `nazi_zombie_prototype` is no longer the only map that plays.
+- 10:30 dedi: `nazi_zombie_orbit` (`join80`) and `ugx_artemovsk` (`join81`) pass **gates 2-5** over
+  320 s and fail gate 1 **on the CLIENT**: it reaches `CS_CLIENTLOADING`, stalls after
+  `Loading fastfile` in `CL_InitCGame` at ~1.5 GB RSS (against 860 MB on prototype) and is dropped
+  45 s later. A 32-bit client and a large custom zone. Neither gets `status: "broken"`; this is the
+  **client** lane's, not dedi's.
+- 10:30 dedi: harness, three fixes. `maptest.ps1` gained `-HoldSeconds` and its own fifth-gate
+  readout (it used to hold a booted map 8 s, less than Der Berg's 5.6 s stop). Its "first error"
+  heuristic was matching `Sys_Error` in **our own** log lines and blamed that on all eight maps in
+  `mapC`. `jointest.ps1` was collecting a **stale** client console log, because `-Recurse` does not
+  cross the junction a custom map's log lives behind — and **both homes share one console.log**,
+  which is the real reason `join59`'s two logs were byte-identical, not the path computation that
+  §11.4 blamed. `jointest-proof.ps1` threw on a null lock read and took `join84` down with it.
+- 10:35 referee: **`game_players = 0` on the box's first real game is ours, and it is that the game
+  never sent a roster.** `player_connect` / `player_spawn` / `player_disconnect` are in
+  `protocol/game-link-v0.md` and were emitted **only by `infra/host-agent/sim/engine.js`**;
+  `lib/referee.js` creates a player row in `ev_player_connect` and nowhere else, so the simulator
+  produced full rosters and every real game scored nobody. The referee emits all three now, off an
+  edge detector over the client poll it already ran, and the `game_over` rows carry `name` +
+  `steamid`/`xuid`. **PROVEN `join85`**: `player_connect slot 0 name='anna-jpg'`, then `ENTERED THE
+  WORLD`, `ROUND 1`, `player_spawn slot 0`.
+- 10:35 referee: **and the steam id is still empty.** `join87` printed the whole userinfo key list a
+  real T4 client sends: `cg_predictItems cl_punkbuster cl_voice rate snaps name protocol challenge
+  invited qport bdTicket bdTicketTime`. **No `xuid`, no `steamid`, no `guid`** — the identity is
+  inside **`bdTicket`**, the Demonware ticket, which is also why the engine says "zero GUID".
+  `game_players` will not be 0 any more, but the row is **attendance, not identity**: nothing
+  downstream may award XP or a record to it until `bdTicket` is decoded or the auth path is bound.
+  `invited` is worth a look at the same time. referee.md 12.

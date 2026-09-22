@@ -2197,3 +2197,209 @@ written by it.
 
 `jointest-proof.ps1` also grew `-Map`, `-BigHeap` and `-Deploy`, because the five-gate proof was
 prototype-only and a custom map could never be taken through it.
+
+## 14. 2026-09-22, 09:10–10:30 — the six "broken" maps were not broken by us, and three other customs play
+
+### 14.1 The claim I was sent to break, and the two hypotheses that died
+
+§13 and `next-session.md` left six custom maps marked `status: "broken"`, four of them on the
+**same** error — a map script touching `level.flag` before `maps/_load.gsc`'s `flag_init` has run —
+and one (Der Berg) on an unbounded push into `scrVmPub.localVars`. One shared cause on *our* side is
+a far better prior than five independently broken maps, so two hypotheses were put up:
+
+1. **Ordering / overlay** — our referee GSC overlay, or the way `dedicated.cpp` starts the level,
+   runs flag-dependent code before the map's `_load::main()`.
+2. **Enumeration** — the replay sampler's `zombies_alive` / kill-from-entity-state read, or the
+   referee's per-frame state read, is what walks ~3,900 child variables on Der Berg.
+
+**Both are dead, and they were killed by runs, not by reading.**
+
+### 14.2 Hypothesis 1 is dead: the four maps fail identically on a STOCK exe
+
+`maptest.ps1` grew three arms, because the only honest way to ask "is this ours?" is to take ours
+away and run the map again:
+
+| arm | what it does |
+|---|---|
+| `-NoSamplers` | `ENW_NO_SAMPLERS=1`: the referee does not hook `SV_Frame`, the replay sampler does not arm. The dedicated server still runs. |
+| `-Listen` | `dedicated 0`, role `solo` — the engine's own listen-server path, the one the community plays these maps on. |
+| `-NoEnw` | `deploy.ps1 -Revert` for the duration: **zero ENW code in the process**. Implies `-Listen`, and the proxy goes back in a `finally`. |
+
+Run **`mapA`** is the control the last three sessions kept asking for and nobody ran: all four maps,
+`-NoEnw`, on a stock `CoDWaW.exe` listen server. **All four produce the same script runtime error,
+in the same file, at the same line:**
+
+```
+mapA  nazi_zombie_test1  common_scripts/utility.gsc:463  while( !level.flag[ msg ] )
+                         <- maps/zombie_hitmarker.gsc:38      flag_wait( "all_players_connected" )
+                         <- maps/nazi_zombie_test1.gsc:136    thread maps\zombie_hitmarker::main()
+                         <- maps/nazi_zombie_test1.gsc:9      main()
+mapA  nazi_zombie_test   <- maps/_zombiemode_ai_mech.gsc:38   flag_wait("all_players_connected")
+                         <- maps/_zombiemode.gsc:40           level thread ..::mech_init()
+mapA  mw2rust           <- maps/mw2rust.gsc:179              flag_wait( "electricity_on" )
+                         <- common_scripts/utility.gsc:586    array_thread
+                         <- maps/mw2rust.gsc:119              array_thread( end_trig, ::end_game )
+mapA  sanatorium        <- maps/_zombiemode_rotating_door.gsc:34  !IsDefined( level.flag[...] )
+                         <- maps/_zombiemode_rotating_door.gsc:24  array_thread( rotating_doors, ... )
+                         <- maps/sanatorium.gsc:21            maps\_zombiemode_rotating_door::init()
+```
+
+There is no ENW DLL in those processes. There is no dedicated server in those processes. **The
+maps do this on their own**, and hypothesis 1 is refuted.
+
+**And the shape is one thing, not four.** Every one of these maps' own `main()` starts a
+flag-dependent thread **before** it calls `maps\_zombiemode::main()`, and `_zombiemode::main()` is
+what calls `maps\_load::main()`, which is where `flag_init( "all_players_connected" )` lives. Read
+straight out of the maps' own raw GSC in their IWDs:
+
+```
+nazi_zombie_test1.gsc:136  thread maps\zombie_hitmarker::main();   <- the author's own comment
+nazi_zombie_test1.gsc:143  maps\_zombiemode::main();                  above line 113 reads
+  its _zombiemode.gsc:51   maps\_load::main();                        "FUNCTION CALLS - PRE _Load"
+mw2rust.gsc:119            array_thread( end_trig, ::end_game );
+mw2rust.gsc:122            maps\_zombiemode::main();
+nazi_zombie_test           _zombiemode.gsc:40 threads mech_init; _load.gsc:99 has the flag_init
+sanatorium.gsc:21          rotating_door::init() at the top of main()
+```
+
+A `thread` in T4 GSC begins executing immediately and runs until it yields; `flag_wait`'s first act
+is to index `level.flag`, so it faults before anything can have created the array. **Why the
+community plays these maps anyway is still not established** — the most likely answer is that the
+archived downloads are repacks (Zombie Desert's `flag_wait` is inside
+`zombie_hitmarker_bythesuzho.iwd`, a third-party add-on sitting loose in the mod folder), but that
+is inference and it is written down as inference. What is *measured* is that it is not ours.
+
+### 14.3 Hypothesis 2 is dead: Der Berg overflows with our samplers switched off
+
+`ENW_NO_SAMPLERS=1` leaves the engine completely alone — no `SV_Frame` hook, no per-frame entity
+read, no replay snap. Run **`mapB`**, Der Berg, dedicated, big heap, held 30 s:
+
+```
+mapB  nazi_zombie_derberg  alive=True  getstatus=True
+      engine clock: com_frameTime +0 ms over 8 probes (last 5651)
+      THE ENGINE STOPPED SIMULATING -- com_frameTime frozen
+```
+
+5651 ms, against 5659 / 5662 in `join69` / `join59` with everything on. **Identical stop with
+nothing of ours running inside the game loop**, so the ~3,900-child enumeration at 0x697B60 is the
+map's script, not our sampler. §13.2's mechanism stands; §13.2's *blame* was never ours to take.
+
+Reading the code says the same thing and should have been said earlier: `referee::zombie_ents()`
+walks `g_entities[4..1024]` and reads `gentity_s` fields directly, `scriptvars` has been `no` in
+every run this project has ever done, and the `level.*` child-variable probe is opt-in behind
+`ENW_LEVELVARS=1` and has been off since it scored zero. **We have never called 0x697B60.**
+
+### 14.4 The mount is confirmed, and the harness already does it
+
+`mapmount.ps1`'s `fs_localAppData` finding is correct and every run above depends on it. `maptest.ps1`
+and `jointest.ps1` both dot-source it and call `Mount-EnwMap` unconditionally, so it *is* the default;
+the line it prints (`map-exists check will find %LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>\<bsp>.ff`)
+appeared before every boot in `mapA`, `mapB` and `mapC` and no map failed the existence check again.
+
+**One thing it does that is worth knowing**: the junction means `fs_homepath\mods\<bsp>` *is*
+`archive\mods\<bsp>`, so the engine writes its `console.log` into the archive folder. Nothing of ours
+writes there, but the engine does. Harmless; do not mistake it for the crawler.
+
+### 14.5 Two harness bugs fixed while bisecting
+
+* `maptest.ps1` held a booted map for a fixed 8 s, which is less than Der Berg's 5.6 s stop plus one
+  `dedi_rate_probe` window, so a map could "pass" a boot test on a server that had already stopped
+  simulating. `-HoldSeconds` (default 8, use 30) and a **fifth-gate readout** — `com_frameTime`
+  differenced across the probe lines in the copied `enw` log — are in it now, and the summary prints
+  it per map.
+* Its "first error" heuristic matched `Sys_Error` **in our own log lines**
+  (`dedi_error_trap: Sys_Error trapped at 0x005FE8C0`), so run `mapC` attributed that to all eight
+  maps as their first cause. `[enw]` lines are filtered out before the search now. A harness that
+  misattributes a cause is worse than one that reports none.
+
+### 14.6 The six-map table, and A CUSTOM MAP FINALLY PASSES THE FIVE GATES
+
+"overlay off" means a stock `CoDWaW.exe` with the proxy reverted and no ENW code at all
+(`maptest.ps1 -NoEnw`, which implies `-Listen`). "sampler off" means our dedicated server with
+`ENW_NO_SAMPLERS=1`. A cell marked *not run* says so and says why.
+
+| Map | bsp | overlay off | sampler off | both on | verdict |
+|---|---|---|---|---|---|
+| Zombie Desert | `nazi_zombie_test1` | **same GSC error** (`mapA`) | not run — the map dies at level load, before a sampler frame exists; the stock-exe arm is strictly stronger | same GSC error (`map05`) | **broken, map's own script** |
+| Project Viking | `nazi_zombie_test` | **same GSC error** (`mapA`) | as above | same (`map05`) | **broken, map's own script** |
+| MW2 Rust | `mw2rust` | **same GSC error** (`mapA`) | as above | same (`map01`) | **broken, map's own script** |
+| Clinic of Evil | `sanatorium` | **same GSC error** (`mapA`) | as above | same (`map01`) | **broken, map's own script** |
+| Der Berg | `nazi_zombie_derberg` | not run — the stop is inside the script VM 5.6 s in and the sampler-off arm already excludes us | **still stops, `com_frameTime=5651`** (`mapB`) | stops, 5659 / 5662 (`join69` / `join59`) | **broken, map's own script** |
+| Leviathan | `nazi_zombie_leviathan` | **not run this session** | not run | `unknown item 'napalmblob'` from its own `_loadout::init_loadout()` (`map01`, `map03`) | **broken on the existing evidence; one `-NoEnw` run would settle it** |
+
+**All six keep `status: "broken"`, and every one of them is broken by the map.** Nothing was
+overturned because nothing of ours was ever in the way; what is overturned is the *suspicion*, and
+the manifests now carry the run that killed it.
+
+**Then run `mapC` asked the question nobody had asked: are there customs that DO work?** Eight
+archived maps that had never been booted, dedicated, big heap, held 30 s:
+
+| Map | bsp | boots | getstatus | engine still simulating | first cause if not |
+|---|---|---|---|---|---|
+| Minecraft Village Remastered | `nazi_zombie_fear_mc_2` | yes | yes | **yes**, `com_frameTime` +35,027 ms | — |
+| ORBIT | `nazi_zombie_orbit` | yes | yes | **yes**, +34,988 ms | — |
+| UGX Requiem | `ugx_artemovsk` | yes | yes | **yes**, +35,022 ms | — |
+| Water | `water` | no | no | — | `Need 89174697 more bytes of 'main' physical ram` — out of memory **with** the 422 MB reserve |
+| Zombie School | `nazi_zombie_school` | no | no | — | `cannot cast undefined to string`, `_zombiemode_weapons.gsc:351` <- `init_weapon_upgrade()` — a weapon spawn with no `target` |
+| Hijacked | `nazi_zombie_hijacked` | no | no | — | the same, `_zombiemode_weapons.gsc:412` |
+| Octogonal | `nazi_zombie_octogonal` | no | no | — | `Exceeded limit of 1 'snddriverglobals' assets` as the **first** trapped error, not as a restart symptom — its `mod.ff` carries a second singleton |
+| DT2 | `nazi_zombie_dt2` | no | no | — | `entity already has linkTo enabled` (already known) |
+
+**`join83`: `nazi_zombie_fear_mc_2`, 300 s, five gates, PASS.** The first custom map ever to do it:
+
+```
+join83  CS_ACTIVE=1   referee ROUND 1
+        76 of 76 getstatus answered, 0 unanswered after the first
+        frame::count +293 in 5 s = 58.6 Hz
+        com_frameTime advanced 30031 ms over the last 30 s, Com_Frame-body 58.4 Hz
+        server RSS 323 MB flat                                              PASS
+```
+
+### 14.7 ORBIT and UGX Requiem: the server is proven, the CLIENT is the blocker
+
+`join80` (ORBIT) and `join81` (UGX Requiem) both went the same way, and it is worth being precise
+about which half failed:
+
+```
+join80  gates 2-5 PASS over 320 s: 76/76 getstatus, 59.0 Hz, com_frameTime +30,013 ms,
+        Com_Frame-body 59.0 Hz, server RSS 353 MB flat
+        gate 1 FAIL: CS_ACTIVE=0, ROUND1=0
+join81  identical shape: 76/76, 59.4 Hz, +29,996 ms, server RSS 366 MB
+```
+
+The server was never the problem. The **client** was:
+
+```
+08:29:05  slot 0 CS_CONNECTED      name="anna-jpg"
+08:29:06  slot 0 CS_CLIENTLOADING
+          client: Loading fastfile 'nazi_zombie_orbit'  (128.38 MB in DB alloc)
+          ... and then nothing. CPU flat from t=25 s, RSS 1.62 GB.
+08:29:51  slot 0 CS_ZOMBIE -> CS_FREE -- it was dropped
+```
+
+Against `nazi_zombie_prototype`, where the client sits at **860 MB and its CPU keeps climbing**.
+`nazi_zombie_fear_mc_2` has a client that keeps working and passes, so this is **not** systemic and
+it is **not** a property of the dedicated server: it is a 32-bit client and a large custom zone.
+`ENW_DEDI_BIG_HEAP` is inherited by the client in a `jointest` run, so the 422 MB reserve was
+already in effect and did not help. **Neither map gets `status: "broken"`** — nothing has been
+shown to be wrong with either of them. `dedi_status` is `server_ok_client_blocked`, and the next
+step is the client lane's, not this one's.
+
+### 14.8 Two more harness bugs, both of which cost time in this session
+
+* **`jointest.ps1` collected a stale client console log.** `Get-ChildItem -Recurse` does not follow
+  directory junctions, and a custom map's console log is *behind* one (`homes\<copy>\mods\<bsp>` is
+  a junction onto `archive\mods\<bsp>`). So the newest `console.log` it could see under the client
+  home was the one in `main\` from an old prototype run — and `join80` was read for fifteen minutes
+  as "the client loaded `nazi_zombie_prototype`" before the file turned out to be a week old. Both
+  logs are now deleted before the run and the mod-folder one is opened by its explicit path.
+* **And the two homes share one console log.** Both `homes\d2\mods\<bsp>` and `homes\c1\mods\<bsp>`
+  are junctions onto the *same* archive folder, so the server and the client write the same file.
+  **That, and not the path computation, is why `join59`'s two console logs were byte-identical** —
+  §11.4's note about that is corrected here. `jointest.ps1` says so out loud at the top of every
+  custom-map run. (It also means the engine writes into `archive\mods\<bsp>`; `mapmount.ps1` never
+  writes there, but the game does.)
+* **`jointest-proof.ps1` threw while waiting for the lock.** `Get-Content $lock -Raw` returns
+  `$null` when the holder releases between the `Test-Path` and the read, and `.Trim()` on it killed
+  `join84` after it had waited correctly for three minutes — and took its own `Start-Job` and the
+  running game down with it, leaving a stale lock behind. The read is guarded now.
