@@ -3,32 +3,25 @@
 You are picking up an in-flight prototype. Read this page, then `../../STATUS.md`, then the one
 lane doc you are working in. Three minutes.
 
-## Where things stand (2026-09-22)
+## Where things stand (2026-09-22, evening)
 
-A real client **connects to our headless dedicated server and spawns into the game**, and the
-referee logs `ROUND 1`. That was the milestone the whole Stage C estimate hung on.
+**The dedicated server runs real games to game over, on the Hetzner box, with a real player, a
+signed replay and a result credited through the site's invite token.** The site is Movement's map
+browser, launcher 0.2.2 is on the feed, the client is isolated from the player's own WaW data.
+`next-session.md` has the one-page state; `../../STATUS.md` is the current truth; each lane doc's
+newest dated section is the detail.
 
-```
-Going from CS_CONNECTED to CS_CLIENTLOADING for anna-jpg
-Going from CS_CLIENTLOADING to CS_ACTIVE for anna-jpg
-referee: ROUND 1 (all_players_connected)
-```
+Corrections that pre-date you and will save you a wrong turn:
 
-**And the server does not survive it.** About ten seconds after the player spawns the frame loop
-stops, with the CPU pegged at a whole core — pegged, not idle, so it is a spin rather than a wait.
-That is the one thing between here and a playable dedicated game.
-
-**`../../STATUS.md` is where things stand.** It is rewritten at the end of each session and it is
-the current truth. `board.md` ends with a *What is open right now* list. `next-session.md` is the
-one-page handoff: what to run, which logs to read, and the traps that have already cost time.
-
-Three corrections that pre-date you and will save you a wrong turn:
-
-- **T4 has no `CS_PRIMED`.** The middle state is `CS_CLIENTLOADING` (value 3). `CS_PRIMED` is
-  Quake 3 / CoD 4. Any older note naming it is wrong about the *name*, not the transition.
-- **The server was never burning a whole core.** `frame_pacing.cpp` made dedicated mode honour
-  `com_maxfps`; the join harness was simply passing none. It passes 60 now and holds a flat 61 Hz.
-- **UDP 3074 does not collide** between two headless instances — the engine falls back to 3075.
+- **T4 has no `CS_PRIMED`.** The middle state is `CS_CLIENTLOADING`.
+- **A `getstatus` reply is not simulation.** The water-sim access violation unwound every frame out
+  of `Com_Frame` for two days while status packets kept answering. Gate 5 (`com_frameTime`
+  advancing) exists for this; never call a server healthy without it.
+- **WaW has no DirectInput**; the mouse is `GetCursorPos` once a frame. The raw-input port is the fix.
+- **LAA / the 4 GB patch is impossible on the Steam exe** — SteamStub refuses a flagged exe.
+- **A real client's userinfo has no steamid**; identity is our `enw_token` and nothing else.
+- **Nothing of ours goes under the player's `Activision\CoDWaW`** — ever. Our session's data lives
+  under `%LOCALAPPDATA%\ENWZombies` (the DLL redirects the engine there).
 
 ## Hard rules
 

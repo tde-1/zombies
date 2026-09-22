@@ -32,7 +32,10 @@
 - **Player identity**: only the site's signed invite token; parsed at connect, verified by the host, forged → kicked in 27 ms; `identity: none|claimed|verified|refused`; the integration test scores 2 players.
 - **`flag_wait` is fatal on a stock listen game too**; the fatal script arrives in an add-on IWD (`zombie_hitmarker_bythesuzho.iwd`) our archive install ships — an agent is stripping add-ons and retesting the four maps.
 - **0.2.2** on the feed: LAA plumbing (off), isolation, `enw-zombies://map|party` deep links, Check for updates.
-- Web pass in progress: Movement's list/card views, home rows, one theme, Maps · Records · Admin nav, browser Play → `/download`.
+- **Web pass done** (`406607b`): Movement's list/card views, home rows from a table, one theme, Maps · Records · Admin nav, search top-left, user dropdown, browser Play → `/download`. `npm test` 120/0.
+- **Box redeployed with the identity build** (`403b150`): DLL `318dfd60…` in every game copy on the box, host agent shipped, 46/46, box idle, `play: true`. A forged token against the live key → `identity refused` → kicked in 129 ms. **Bug found**: `host.js` took `requireToken` from the `--site` argument, not `cfg.site`, so the env-configured box had been advisory-only all evening; running with `--require-token true` until the one-line fix lands (evening agent).
+- **Host rows** (`9506d04`): `identity` travels with the result, `steamid` only when verified; `end` carries the next match id; a warm instance took a second lease (integration 36/0).
+- **Evening (B, 2026-09-22)**: three agents running for a friends' party game in two hours — the real launcher path against the box, the replay viewer live on the site for Nacht, and cross-server chat (Movement's port + game-event lines + Discord link; in-game T overlay planned in `docs/kickstart/chat-overlay.md`). Custom map for tonight is held for the add-on IWD retest. Read the newest section of `launcher.md`, `replay.md`, `web.md`, `archive.md`.
 
 ## The headline
 
@@ -44,7 +47,7 @@ is why every earlier "proof" passed (`watersim_pool.cpp`, plus `no_save_reload.c
 **join65/join66: 300 s each, five gates, through game over, 4–6 % of a core.** The proof harness
 now has a fifth gate (`com_frameTime` advancing) so a dead server can never pass again.
 
-## What exists now (all committed, nothing pushed)
+## What exists now (pushed to `github.com/tde-1/zombies` through `403b150`)
 
 | Lane | Tonight |
 |---|---|

@@ -1,4 +1,93 @@
-# Next session — one page
+# Next session — start here
+
+Rewritten 2026-09-22 (evening) by the coordinator. If this page and `../../STATUS.md` disagree,
+STATUS wins. The vault (`C:\Users\b\Desktop\shared-notes\ENW COD Zombies`, note `19 - Build Log`)
+carries the same state in story form; `00 - Status` has every decision B has made.
+
+## What is true now (do not re-derive any of it)
+
+- **The dedicated server survives players and runs to game over.** Three fixes: a 128 KB temp-memory
+  leak per client message (`temp_stack_guard.cpp`), an every-frame access violation in the water
+  simulation whose buffers only the renderer allocates (`watersim_pool.cpp` — this one hid behind
+  `getstatus` still answering, hence gate 5), and a save-reload at game over (`no_save_reload.cpp`).
+  `dedi.md` §12–14. Proof = `jointest-proof.ps1`, five gates, 300 s.
+- **The Hetzner box `zombies-dev` hosts real games** from B's English game copy (`/home/waw/waw-en`)
+  under Wine 11; `enw-host-agent` systemd, `--wine`, box #3 on the site, **2 instances**, 0.30 core /
+  301 MB each. The account is German-region (low-violence depot only); SteamStub checks app ownership,
+  so B's files decrypt. A real player from B's PC played there to game over; replay `m_5de3842b`, site
+  game id 2. `vps.md`.
+- **Identity = the site's signed invite token**, parsed at connect (`referee.cpp::parse_token`),
+  verified by the host (`TokenGuard`); forged → `clientkick` in 27 ms; `identity: none|claimed|
+  verified|refused`, only `verified` creates a `game_players` row. Bug fixed on the box tonight:
+  `host.js` read `requireToken` from the `--site` argument, not `cfg.site`, so an env-configured box
+  was advisory-only. `referee.md` §13, `host.md` §12.
+- **Client**: raw-input mouse (iw4x port; WaW has no DirectInput), borderless, frametime probe,
+  config round trip, **isolation** (`enw_localappdata.cpp` redirects LocalAppData to
+  `%LOCALAPPDATA%\ENWZombies\home\localappdata`; B's own `Activision\CoDWaW` is never touched).
+  Stutter is mouse-bound; the no-legacy mode awaits B's three runs. `client.md` §1e. **LAA is
+  impossible on the Steam exe** (SteamStub refuses; `launcher.md`, vault R14).
+- **Launcher 0.2.2** on the feed (`web/public/updates`, `/download`), DLL hash-repair on Play,
+  party progress, follow-the-leader, deep links `enw-zombies://map|party`, Check for updates.
+- **Site** = Movement's map browser (both views, home rows from `collections`, one theme, nav
+  Maps · Records · Admin, party panel left, `/download` gate for browser Play). Demo data wiped;
+  Steam-only; seven approvals. `web.md` §10–11.
+- **Replay viewer** ported; Nacht GLB exported (OpenAssetTools + Husky). `replay.md`.
+- **Custom maps on the dedi**: fear_mc_2 passes; ORBiT/Requiem = client 2 GB ceiling; four
+  `flag_wait` maps = a third-party add-on IWD shipped beside the map (archive `install.exclude` +
+  `--stage` view; retest in `archive.md`/`dedi.md`); Der Berg = engine `localVars` limit; Leviathan
+  = `napalmblob`.
+
+## What was running when this was written (2026-09-22 evening)
+
+Three agents, results in the newest dated section of their lane doc: the **real launcher path
+against the box** (`launcher.md`), the **replay viewer live on the site** (`replay.md`), and
+**cross-server chat** (Movement's chat + game-event lines + Discord link; `web.md`, plus the
+in-game overlay plan `chat-overlay.md`). And the **add-on IWD retest** (`archive.md`, `dedi.md`).
+Read those sections before believing anything on this page about them.
+
+## The next tasks, in order
+
+1. **B's morning checklist in `STATUS.md`** (0.2.2, Play Local, three mouse runs, a party game).
+2. Whatever the three evening agents left UNPROVEN in their sections.
+3. **Four real players in one game, and round 2** — only friends can prove these.
+4. **In-game chat overlay** (`chat-overlay.md`): DLL 2D draw + input capture + solo pause. Do not
+   build on `say`/`tell` injection; it is unproven (`board.md`).
+5. **Big maps**: reduce peak RSS in the DLL (vault R14) — parked until a map demands it.
+6. **LICENSE file** on the public repo (GPL-3.0 client / AGPL-3.0 server, decided in principle).
+7. Art for 2,270 archive maps; `/maps` vs home duplication; difficulty filter data.
+
+## How to run things
+
+```powershell
+tools\dev\build.ps1 -Name dedi ; tools\dev\deploy.ps1 d2 -From dedi
+tools\dev\jointest-proof.ps1 -Tag joinNN -Watch 300                       # five gates, local
+tools\dev\jointest-proof.ps1 -Tag joinNN -Watch 300 -Map nazi_zombie_fear_mc_2 -BigHeap
+node tools\dev\authhost.mjs selftest                                       # token issuer vs TokenGuard
+infra\vps\join-remote.ps1 ...                                              # a real client → the box
+cd launcher; npm test; npm run smoke; npm run pack; node tools\publish-update.js
+cd web; npm test                                                           # 120/0 before chat landed
+ssh zombies-dev 'systemctl status enw-host-agent; journalctl -u enw-host-agent -n 50'
+```
+
+Diagnostics (all off by default): `ENW_DEDI_ESCAPE_PROBE=1`, `ENW_DEDI_WATCH_PROBE_SLOT=1`,
+`ENW_DEDI_NO_WATERSIM_POOL=1`, `ENW_DEDI_NO_OUTER_PACE=1`, `ENW_NO_HUFFMAN_GUARD=1`,
+`ENW_FRAMETIME=1`, `ENW_RAW_MOUSE=0`, `ENW_RAW_MOUSE_NOLEGACY=1`, `ENW_BORDERLESS=0`,
+`ENW_DEV_KNOBS=1` (never in a Verified game).
+
+## Traps that are still traps
+
+Never `+set developer 1`; never `ENW_PRIVATE_PROFILE`; always pass `com_maxfps`; clear `__CoDWaW`
+before a deploy; `CS_CLIENTLOADING`, never `CS_PRIMED`; a status reply is not simulation (read
+`com_frameTime`); `dedi_rate_probe delta=` reads 0 on a healthy server (read two lines);
+`SendInput` at 8 kHz is discarded (only a real mouse tests the mouse path); agents' writes under
+`%LOCALAPPDATA%` are sandbox-redirected ("installed" from an agent means nothing); the shared git
+index (`git commit --only <paths>`); `-Maps` must be a real array; **never touch B's
+`Activision\CoDWaW`** — our session's data is under `%LOCALAPPDATA%\ENWZombies`.
+
+---
+
+# The previous page (2026-09-22 09:00 / 10:30 / 15:45), kept for the run tags
+
 
 Written 2026-09-22 at 09:00 after the game-over session; the custom-map and roster sections
 rewritten at 10:30 after the dedi/referee bisect. If this page and `../../STATUS.md` ever
