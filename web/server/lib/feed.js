@@ -38,7 +38,7 @@ function recent(limit = 30) {
     data: safeJson(r.data_json, null),
     player: r.steam_id ? {
       steam_id: r.steam_id,
-      name: r.deleted ? 'Deleted player' : (r.enw_name || r.username || r.steam_id),
+      name: r.deleted ? 'Deleted player' : (r.enw_name || r.steam_id),
       avatar: r.deleted ? null : r.avatar,
     } : null,
     map: r.map_key ? { key: r.map_key, title: r.map_title || r.map_key } : null,

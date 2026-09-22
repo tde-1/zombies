@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, SIGN_IN, SIGN_IN_STEAM } from '../api'
+import { api, SIGN_IN } from '../api'
 import { useSession } from '../session'
 import { Level } from './Bits'
 import { bridge, useLauncherStatus, describeLauncher } from './launcherBridge'
@@ -27,7 +27,7 @@ import { bridge, useLauncherStatus, describeLauncher } from './launcherBridge'
 const initials = (name) => (name || '?').trim().slice(0, 2).toUpperCase()
 
 export default function UserMenu() {
-  const { me, standing, loading, signedIn, authMode, refresh } = useSession()
+  const { me, standing, loading, signedIn, refresh } = useSession()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const nav = useNavigate()
@@ -74,9 +74,7 @@ export default function UserMenu() {
       )
     }
     return (
-      <a className="btn small primary" href={authMode === 'steam' ? SIGN_IN_STEAM : SIGN_IN}>
-        {authMode === 'steam' ? 'Sign in' : 'Sign in (dev)'}
-      </a>
+      <a className="btn small primary" href={SIGN_IN}>Sign in</a>
     )
   }
 

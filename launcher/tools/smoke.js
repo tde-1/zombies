@@ -142,7 +142,7 @@ check('site: reachable, and says how to sign in', async () => {
   const auth = hello.auth || 'unknown'
   const detail = `${base} · protocol ${hello.protocol} · auth ${auth} · sign in at ${hello.sign_in_url || '?'}`
   if (auth === 'steam') return ok(detail)
-  return warn(`${detail} — the launcher will fall back to MOCK sign-in`)
+  return warn(`${detail} — the launcher cannot sign in to this site (there is no fallback sign-in any more)`)
 })
 
 check('site: /auth/steam really redirects to Steam', async () => {

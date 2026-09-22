@@ -919,7 +919,7 @@ function migrate() {
  * The marker is the replay pointer. `seedDemo()` is the only thing that has ever written
  * `demo.enwr`, and it writes it for every game it makes.
  *
- * It is deliberately NOT "every player on it is a demo account". The mock sign-in page
+ * It is deliberately NOT "every player on it is a demo account". The (since removed) mock sign-in page
  * hands those reserved ids out, so on this dev box B plays as one of them, and that rule
  * would mark his own runs as fake — which is the exact failure this column exists to
  * prevent, inverted.

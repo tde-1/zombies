@@ -92,9 +92,9 @@ function router() {
       site: 'ENW Zombies',
       protocol: PROTOCOL_VERSION,
       auth: require('./auth').effectiveMode(),
-      // The launcher shows a sign-in button; this is where it sends the player. With the
-      // mock provider that is a local page, with Steam it is Steam.
-      sign_in_url: require('./auth').effectiveMode() === 'steam' ? '/auth/steam' : '/auth/mock',
+      // The launcher shows a sign-in button; this is where it sends the player. Steam is
+      // the only provider (2026-09-22) — there is no mock page to send anybody to.
+      sign_in_url: '/auth/steam',
       capabilities: {
         // Playing on OUR servers. This said `true` unconditionally, which is the same
         // lie `replay_downloads: false` was, pointing the other way: the launcher offered
@@ -131,6 +131,10 @@ function router() {
       },
       enw: enw.status(),
       you: req.me ? users.pub(req.me) : null,
+      // True while this Steam account has not chosen its ENW username. `you.name` is then a
+      // bare SteamID, which the launcher must not put behind `+set name`; the wrapped site
+      // shows the picker, and every lease is refused until it is done (middleware/auth.js).
+      needs_name: req.me ? require('../lib/names').needsName(req.me.steam_id) : false,
     })
   })
 

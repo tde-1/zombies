@@ -13,7 +13,8 @@ const names = require('../lib/names')
 const parties = require('../lib/parties')
 const bans = require('../lib/bans')
 const discord = require('../lib/discord')
-const { requireUser } = require('../middleware/auth')
+const { requireUser, requireSignedIn } = require('../middleware/auth')
+const movementName = require('../lib/movementName')
 
 function router() {
   const r = express.Router()
@@ -104,16 +105,32 @@ function router() {
   // Live availability, so the field can say "taken" before the player presses anything.
   // It answers only available/not — never who holds a name, which would make this an
   // account-enumeration endpoint for anybody with a session.
-  r.get('/username/check', requireUser, (req, res) => {
+  //
+  // These three are `requireSignedIn`, not `requireUser`: `requireUser` now means a NAMED
+  // user (middleware/auth.js), and these are how a nameless one becomes one.
+  r.get('/username/check', requireSignedIn, (req, res) => {
     const c = names.check(String((req.query && req.query.username) || ''), req.me.steam_id)
     res.json({ available: c.available, reason: c.reason, error: c.error || null })
   })
 
-  r.post('/username', requireUser, (req, res) => {
+  // The name this Steam account already wears on ENW Movement, for the picker to offer
+  // (lib/movementName.js). A suggestion the player confirms, never an adoption: Movement's
+  // public profile cannot say whether its name is the shared ENW one or a Steam persona.
+  // Run through OUR check, so a Movement name that is taken here or would be refused here
+  // arrives saying so rather than as a prefill the claim then rejects.
+  r.get('/username/suggest', requireSignedIn, async (req, res) => {
+    if (!names.needsName(req.me.steam_id)) return res.json({ name: null })
+    const name = await movementName.lookup(req.me.steam_id)
+    if (!name) return res.json({ name: null })
+    const c = names.check(name, req.me.steam_id)
+    res.json({ name, source: 'movement', available: c.available, reason: c.reason })
+  })
+
+  r.post('/username', requireSignedIn, (req, res) => {
     const r0 = names.claim(req.me.steam_id, (req.body && req.body.username) || '')
     if (!r0.ok) {
       const status = r0.reason === 'invalid' ? 400
-        : r0.reason === 'taken' || r0.reason === 'already_set' ? 409
+        : r0.reason === 'taken' || r0.reason === 'blocked' || r0.reason === 'already_set' ? 409
           : r0.reason === 'authority' ? 503 : 404
       return res.status(status).json({ error: r0.error, reason: r0.reason })
     }
@@ -124,7 +141,7 @@ function router() {
     res.json({ ok: true, pinned: badges.setPinned(req.me.steam_id, (req.body && req.body.ids) || []) })
   })
 
-  r.post('/delete', requireUser, (req, res) => {
+  r.post('/delete', requireSignedIn, (req, res) => {
     // 99 §4.1: deletion anonymises. Records and replays are kept, attached to
     // "Deleted player", because a board with a hole in it is not a board.
     users.anonymise(req.me.steam_id)

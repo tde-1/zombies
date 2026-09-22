@@ -52,9 +52,7 @@ function router() {
         archive_total: db.prepare('SELECT COUNT(*) c FROM maps').get().c,
         // Each of these is a thing a visitor can see and might reasonably expect to work.
         stubbed: [
-          require('./auth').effectiveMode() === 'mock'
-            && 'Sign-in is a local development page, not Steam. Pick any name; it makes a local account and nothing leaves this machine.',
-          !enw.status().enabled && 'ENW names and VIP are not connected, so names come from the Steam persona and VIP is whatever is set locally.',
+          !enw.status().enabled && 'The ENW name service is not connected, so the name you choose here is checked against the ENW rules but not against drops.ws itself, and VIP is whatever is set locally.',
           'Map art is missing everywhere, so cards show the map’s engine name instead.',
           'The launcher is not installed here, so Play Local and map downloads have nothing to launch or fetch.',
           'Badge art is not drawn yet — every badge is a hexagon with the map name in it.',

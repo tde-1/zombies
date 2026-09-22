@@ -36,6 +36,16 @@ gun (procedural, no downloaded asset). DLL: zombie yaw, grenades + `explode`, cl
 census - deployed to the box, booted a map, **grenades unproven** until a game with a throw.
 Der Riese: props-only export; the shell needs one Husky lock hold.
 
+## Sign-in = Steam + an ENW username (2026-09-22, evening, branch `web-identity`)
+
+Every dev/mock login is gone (site `/auth/mock` + `ZM_AUTH`, the launcher's persona fallback); Steam
+OpenID is the only sign-in; `ZM_TEST_LOGIN=1` is a test-only hook that refuses to boot in production.
+A signed-in account with no ENW name gets Movement's "Choose your name" picker and is refused
+everything else server-side; rules, wording and the 754-term blocklist are drops.ws's, verbatim.
+`users.pub().name` is the ENW name, never the Steam persona. All seven approved accounts already have
+names, so nobody sees the picker. Open: Q-id-1 (shared store vs mirrored rules); `jamie` is `Jamie`
+on Movement (`tools/align-enw-names.js`). Not deployed. `docs/kickstart/web.md` §13.
+
 ## Since the morning checklist was written (afternoon)
 
 - **Isolation rule, done and proven**: our session redirects the game's LocalAppData into `%LOCALAPPDATA%\ENWZombies\home\localappdata` (DLL `enw_localappdata.cpp`); maps, config, saves, profiles all live there; B's `Activision\CoDWaW` tree is byte-identical before/after a Play Local. B's own mods folder was cleaned into `ZombiesDevackup-user-mods-20260923\`.

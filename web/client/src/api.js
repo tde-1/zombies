@@ -30,8 +30,8 @@ export const api = {
   del: (p) => req(p, { method: 'DELETE' }),
 }
 
-export const SIGN_IN = '/auth/mock'
-export const SIGN_IN_STEAM = '/auth/steam'
+// Steam is the only sign-in (2026-09-22). There is no dev page to fall back to.
+export const SIGN_IN = '/auth/steam'
 
 // ---- formatting ---------------------------------------------------------------------
 export function dur(ms) {

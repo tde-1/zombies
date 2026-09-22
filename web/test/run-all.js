@@ -1053,11 +1053,82 @@ async function main() {
     // Mirrors Movement's dropsNames RULES, including its all-digits divergence: a number
     // is an ADDRESS on an ENW site, so a player called "5" would claim somebody's link.
     for (const bad of ['ab', 'x'.repeat(21), 'has space', String.raw`back\slash`, 'semi;colon',
-                       'quo"te', '12345', 'admin', 'Unknown']) {
+                       'quo"te', '12345', '2026-09-22']) {
       eq(!!names_.validate(bad), true, `"${bad}" was accepted as a username`)
     }
+    // `admin` and `Unknown` are the right SHAPE; they are refused by drops.ws's blocklist,
+    // which check()/claim() apply after validate(), as drops.ws's availability() does.
+    for (const reserved of ['admin', 'Unknown']) eq(names_.check(reserved).reason, 'blocked', `"${reserved}"`)
     eq(names_.validate('enw-tester'), null, 'a legal name was refused')
     eq(names_.validate('a'.repeat(20)), null, 'a 20-character name was refused (drops allows 20)')
+  })
+
+  // ---- one ENW name, the same on every ENW site (2026-09-22) ------------------
+  check('validation speaks Movement’s words, character for character', () => {
+    // CSGO-Matchmaker/server/lib/dropsNames.js:63-72 == csgo-server/src/utils/usernameRules.js:13-30.
+    // If any of these drift, a player sees one sentence on Movement and another here.
+    const want = [
+      ['', 'Username is required'],
+      ['   ', 'Username is required'],
+      ['ab', 'Username must be at least 3 characters'],
+      ['x'.repeat(21), 'Username must be 20 characters or fewer'],
+      ['no spaces', 'Username can only contain letters, numbers, underscores and hyphens'],
+      ['2026-09-22-me', 'Invalid username'],
+      ['1234', 'Usernames cannot be only numbers'],
+      ['  myu  ', null],   // trimmed first, as both of theirs do
+    ]
+    for (const [name, msg] of want) eq(names_.validate(name), msg, JSON.stringify(name))
+  })
+
+  check('the drops.ws blocklist is mirrored, leetspeak folding and allowlist included', () => {
+    const bl = require('../server/lib/usernames/blocklist')
+    truthy(bl.size > 700, `the copied list has ${bl.size} rows; drops.ws has 754`)
+    eq(names_.check('4dmin').reason, 'blocked', 'leet on the candidate (4dmin -> admin)')
+    eq(names_.check('s1mple').reason, 'blocked', 'an exact handle entry')
+    eq(names_.check('Hancock').reason, 'ok', 'an allowlisted surname')
+    eq(names_.check('myu').reason, 'ok', 'an ordinary handle')
+    const a = '76561198000000041'
+    users.ensure(a, {})
+    eq(names_.claim(a, 'Administrator').reason, 'blocked', 'a claim ignored the blocklist')
+    eq(names_.claim(a, 'Administrator').error, 'That username is not available')
+  })
+
+  check('the display name is the ENW name, never the Steam persona', () => {
+    const sid = '76561198000000042'
+    users.ensure(sid, { username: 'Some Steam Persona' })
+    const nameless = users.publicById(sid)
+    eq(nameless.name, sid, 'a nameless account showed its Steam persona')
+    eq('username' in nameless, false, 'the persona is still on the public projection')
+    eq(names_.displayName(sid), sid, 'displayName fell back to the persona')
+    eq(users.resolve('Some Steam Persona'), null, 'a profile link resolved through a persona')
+    // Uniqueness is on the ENW name only, like drops.ws's index: a persona is nobody's name here.
+    eq(names_.check('Some-Steam-Persona').reason, 'ok')
+    eq(names_.claim(sid, 'persona-free').ok, true)
+    eq(users.publicById(sid).name, 'persona-free', 'the ENW name is not the name')
+    eq(users.resolve('PERSONA-FREE').steam_id, sid, 'the ENW name does not resolve')
+  })
+
+  check('the name gate: a nameless session may pick a name and nothing else', () => {
+    const mw = require('../server/middleware/auth')
+    const sid = '76561198000000043'
+    users.ensure(sid, {})
+    db.prepare('UPDATE users SET approved=1 WHERE steam_id=?').run(sid)
+    const run = (guard) => {
+      let status = 200; let body = null; let passed = false
+      const res = { status (s) { status = s; return this }, json (b) { body = b; return this } }
+      guard({ me: users.byId(sid) }, res, () => { passed = true })
+      return { status, body, passed }
+    }
+    for (const g of ['requireUser', 'requireApproved', 'requireMod', 'requireAdmin', 'requireArchivist']) {
+      const r = run(mw[g])
+      eq(r.passed, false, `${g} let a nameless account through`)
+      eq(r.status, 403, g)
+      eq(r.body.needs_name, true, `${g} did not say why`)
+    }
+    eq(run(mw.requireSignedIn).passed, true, 'the picker’s own guard refused a nameless account')
+    names_.claim(sid, 'gate-passer')
+    eq(run(mw.requireUser).passed, true, 'a named account was still gated')
+    eq(run(mw.requireApproved).passed, true, 'a named, approved account was still gated')
   })
 
   check('the invite token carries the ACCOUNT’s name, not the one the caller asked for', () => {

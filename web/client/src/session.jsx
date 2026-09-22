@@ -37,7 +37,8 @@ export function SessionProvider({ children }) {
     isAdmin: !!(me && me.user && me.user.admin),
     isMod: !!(me && me.user && (me.user.mod || me.user.admin)),
     approved: !!(me && me.user && (me.user.approved || me.user.admin)),
-    authMode: (me && me.auth) || 'mock',
+    // The first-login name gate (App.jsx). Movement's `needs_username`, under our name.
+    needsName: !!(me && me.signed_in && me.needs_name),
     // { linked, invite }. `invite` is null when there is nothing to show — either nobody
     // configured one or this person has already linked — so the nav draws the link if and
     // only if it has a URL. The rule lives on the server (server/lib/discord.js).

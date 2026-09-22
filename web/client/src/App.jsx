@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { SessionProvider } from './session'
+import { SessionProvider, useSession } from './session'
 import Nav from './components/Nav'
 import ChatDock from './components/ChatDock'
 import Home from './pages/Home'
@@ -8,6 +8,9 @@ import Home from './pages/Home'
 // whatever this line says, and a lazy route over a module that is already loaded only buys
 // a Suspense boundary nobody ever sees.
 import MapPage from './pages/MapPage'
+// NOT lazy either: it is the first thing every new account sees, and a spinner in front of
+// the one screen standing between a player and the site is a spinner too many.
+import UsernameSetup from './pages/UsernameSetup'
 
 // Everything past the front door is split out, Movement's rule: a visitor who opens the home
 // page should not download the admin console with it.
@@ -47,6 +50,7 @@ export default function App() {
       <div className="shell no-rail">
         <div className="main">
           <Nav />
+          <NameGate>
           <Suspense fallback={<div className="page"><div className="loading"><span className="spinner" /></div></div>}>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -82,9 +86,28 @@ export default function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          </NameGate>
         </div>
       </div>
-      <ChatDock />
+      <DockUnlessNameless />
     </SessionProvider>
   )
+}
+
+// ── The name gate (2026-09-22) ─────────────────────────────────────────────────────────
+// Movement's App.jsx `Gate`, the one line of it this site needs: signed in with no ENW name
+// means the picker and nothing else, AHEAD of the approval wall. Signed out is untouched —
+// the map pages stay public. The nav stays because in the launcher it is the title bar.
+// The server refuses a nameless account everything but the picker's own routes
+// (server/middleware/auth.js), so this is the polite half of a gate, not the gate.
+function NameGate ({ children }) {
+  const { me, needsName, refresh } = useSession()
+  if (needsName) return <UsernameSetup me={me} onDone={refresh} />
+  return children
+}
+
+// The chat dock signs lines with the ENW name; there is none to sign with yet.
+function DockUnlessNameless () {
+  const { needsName } = useSession()
+  return needsName ? null : <ChatDock />
 }

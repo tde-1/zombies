@@ -60,7 +60,10 @@ function resolve(who) {
   const s = String(who || '').trim()
   if (!s) return null
   if (/^7656119\d{10}$/.test(s)) return byId(s) || null
-  return db.prepare('SELECT * FROM users WHERE lower(enw_name)=lower(?) OR lower(username)=lower(?) LIMIT 1').get(s, s) || null
+  // The ENW name only (2026-09-22). It used to match `username` too, which is the Steam
+  // persona: a persona is not unique and is not a name the site shows, so a link that
+  // resolved through it could land on whoever happened to share it.
+  return db.prepare('SELECT * FROM users WHERE lower(enw_name)=lower(?) AND deleted=0 LIMIT 1').get(s) || null
 }
 
 // What the API hands out about somebody else. Never the settings blob, never the raw VIP
@@ -75,8 +78,13 @@ function pub(row) {
   }
   return {
     steam_id: row.steam_id,
-    name: row.enw_name || row.username || row.steam_id,
-    username: row.username || null,
+    // THE ENW USERNAME, and nothing else (B, 2026-09-22). This is what the launcher puts
+    // behind `+set name`, what the invite token's `n` carries and what every page draws, so
+    // it is never the Steam persona in `username` and never a word the site made up. A row
+    // with no ENW name (a verified player who has never opened the site) shows its SteamID,
+    // which looks unfinished because it is; a signed-in account cannot get past the name
+    // gate without one (middleware/auth.js).
+    name: row.enw_name || row.steam_id,
     enw_name: row.enw_name || null,
     avatar: row.avatar || null,
     vip: !!row.vip_is,
@@ -92,10 +100,10 @@ function pub(row) {
     // A seeded account, so the client can mark it rather than hardcoding the id range.
     //
     // It is derived, not stored: `7656119000000000x` is outside the real SteamID64 space,
-    // so nothing signed in through Steam can ever land in it. On this dev box the mock
-    // sign-in page hands these ids out, so B himself plays as one of them — which is
-    // exactly why it is a property of the ACCOUNT and never of the game. Whether a run is
-    // real is `games.demo`, and nothing else.
+    // so nothing signed in through Steam can ever land in it. (The mock sign-in page that
+    // used to hand these ids out is gone, 2026-09-22; the seed and the test-only hook are
+    // the only things that make them now.) It is a property of the ACCOUNT and never of the
+    // game. Whether a run is real is `games.demo`, and nothing else.
     demo_account: isDemoId(row.steam_id),
   }
 }

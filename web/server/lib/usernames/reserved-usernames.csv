@@ -1,0 +1,755 @@
+name,match,category,reason
+100thieves,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+apeks,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+astralis,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+astralisgg,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+blastpremier,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+cloud9,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+complexity,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+dignitas,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+dreamhack,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+ence,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+envyus,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+eternalfire,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+evilgeniuses,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+falcons,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+faze,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+fazeclan,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+fnatic,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+furia,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+g2esports,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+gambit,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+gamerlegion,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+imperial,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+ldlc,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+luminosity,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+madlions,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+mibr,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+monte,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+mousesports,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+mouz,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+natusvincere,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+navi,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+ninjasinpyjamas,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+nip,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+nrg,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+optic,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+renegades,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+skgaming,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+teamliquid,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+teamvitality,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+tyloo,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+verygames,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+virtuspro,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+vitality,exact,CS organisations,"Team/org names. ""NAVI"" or ""Astralis"" as a username reads as official."
+adren,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+aleksib,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+allu,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+apex,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+autimatic,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+ax1le,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+azr,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+b1t,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+blamef,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+boombl4,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+brehze,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+broky,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+bubzkji,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+byali,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+cadian,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+calyx,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+chopper,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+coldzera,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+dazed,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+dev1ce,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+device1,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+dexter,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+donk,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+dosia,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+dupreeh,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+electronic,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+elige,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+es3tag,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+ethan,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+f0rest,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+fallen,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+fifflaren,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+flamie,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+flusha,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+friberg,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+frozen,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+getright,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+gla1ve,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+hallzerk,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+hampus,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+headtr1ck,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+hiko,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+hobbit,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+hooxi,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+hunter,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+hunter2,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+interz,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+jabbi,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+jame,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+jkaem,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+jks,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+jugi,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+k0nfig,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+karrigan,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+kennys,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+kioshima,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+krimz,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+kscerato,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+kyojin,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+m0nesy,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+magisk,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+magixx,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+maj3r,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+mantuu,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+misutaaa,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+n0thing,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+nafany,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+nbk,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+niko,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+nitr0,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+nivera,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+olof,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+olofmeister,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+osee,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+pasha,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+perfecto,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+pronax,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+qikert,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+rain,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+refrezh,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+ropz,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+ropz1,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+rpk,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+s1mple,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+scream,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+sdy,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+seangares,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+seized,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+sergej,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+sh1ro,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+shox,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+shroud,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+sjuush,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+skadoodle,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+snappi,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+snax,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+spinx,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+stanislaw,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+stavn,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+stewie2k,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+sunny,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+syrson,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+tabsen,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+tarik,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+teses,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+tizian,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+torzsi,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+twistzz,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+woxic,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+xantares,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+xizt,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+xyp9x,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+yekindar,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+yuurih,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+zeus,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+zont1x,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+zywoo,exact,CS pro players,Pro player handles. Prevents impersonation of a known figure.
+3kliksphilip,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+anders,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+anomaly,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+counterstrike2,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+ddk,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+dust2,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+fugly,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+henryg,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+launders,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+m0etv,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+mcskillet,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+moetv,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+nadeshot,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+ohnepixel,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+phantoml0rd,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+pimpcs,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+richardlewis,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+sadokist,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+semmler,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+sparkles,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+spunj,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+summit1g,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+thewarowl,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+thorin,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+valvenews,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+vanityxd,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+voocsgo,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+warowl,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+ynk,exact,"CS streamers, casters & creators",Well-known CS personalities and content creators.
+boost,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+booster,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+bronze,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+diamond,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+donate,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+donations,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+donator,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+donor,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+donors,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+elite,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+founderpack,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+gold,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+legend,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+legendary,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+nitro,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+patron,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+platinum,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+premium,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+silver,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+sponsor,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+subscriber,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+supporter,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+vip,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+viponly,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+vips,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+vipteam,exact,Donations & VIP,"Entitlement words. A user called ""VIP"" or ""Donor"" fakes status."
+dropbot,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+drops,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+dropsbot,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+dropsite,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+dropsws,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+dropswsofficial,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+gnomed,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+gnomedonline,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+gnomedws,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+officialdrops,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+thedrops,exact,drops.ws brand,"The site itself, its old domain, and its own name."
+about,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+account,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+accounts,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+adminpanel,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+agent,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+agents,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+announcement,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+announcements,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+appeal,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+appeals,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+armory,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+armorypass,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+ban,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+banned,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+bans,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+capsule,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+capsules,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+case,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+caseopening,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+cases,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+contact,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+dashboard,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+database,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+economy,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+event,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+events,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+faq,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+floatdb,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+giveaway,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+giveaways,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+glove,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+gloves,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+help,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+infraction,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+infractions,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+inventory,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+knife,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+knives,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+loadout,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+login,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+logout,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+market,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+marketplace,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+moderation,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+mute,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+muted,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+news,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+patchnotes,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+privacy,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+profile,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+profiles,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+register,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+report,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+reports,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+rules,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+settings,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+shop,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+showcase,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+signin,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+signup,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+skin,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+skins,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+star,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+stars,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+sticker,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+stickers,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+store,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+terms,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+trade,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+tradebot,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+trades,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+tradeup,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+tradeups,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+trading,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+unbox,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+unboxing,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+updates,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+wildcard,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+wipe,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+wiped,exact,drops.ws features & pages,Feature and page names. Confusing in every list on the site.
+anticheat,exact,ENW brand & projects,ENW network identity and its sister projects.
+communityhub,exact,ENW brand & projects,ENW network identity and its sister projects.
+enw,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwac,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwanticheat,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwbans,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwbot,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwcomp,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwdonate,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwdonations,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwdrops,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwgg,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwhub,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwinfected,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwjailbreak,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwjb,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwkz,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwnet,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwranks,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwretakes,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwshop,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwstore,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwsurf,exact,ENW brand & projects,ENW network identity and its sister projects.
+enwvip,exact,ENW brand & projects,ENW network identity and its sister projects.
+gnext,exact,ENW brand & projects,ENW network identity and its sister projects.
+gonext,exact,ENW brand & projects,ENW network identity and its sister projects.
+gonextgg,exact,ENW brand & projects,ENW network identity and its sister projects.
+goplay,exact,ENW brand & projects,ENW network identity and its sister projects.
+hub,exact,ENW brand & projects,ENW network identity and its sister projects.
+infected,exact,ENW brand & projects,ENW network identity and its sister projects.
+ranks,exact,ENW brand & projects,ENW network identity and its sister projects.
+roadmap,exact,ENW brand & projects,ENW network identity and its sister projects.
+titan,exact,ENW brand & projects,ENW network identity and its sister projects.
+titanclassic,exact,ENW brand & projects,ENW network identity and its sister projects.
+bitskins,exact,External brands (impersonation),Impersonating a real company or platform.
+buff,exact,External brands (impersonation),Impersonating a real company or platform.
+buff163,exact,External brands (impersonation),Impersonating a real company or platform.
+cloudflare,exact,External brands (impersonation),Impersonating a real company or platform.
+counterstrike,exact,External brands (impersonation),Impersonating a real company or platform.
+cs2,exact,External brands (impersonation),Impersonating a real company or platform.
+csfloat,exact,External brands (impersonation),Impersonating a real company or platform.
+csgo,exact,External brands (impersonation),Impersonating a real company or platform.
+csmoney,exact,External brands (impersonation),Impersonating a real company or platform.
+discord,exact,External brands (impersonation),Impersonating a real company or platform.
+discordbot,exact,External brands (impersonation),Impersonating a real company or platform.
+discordstaff,exact,External brands (impersonation),Impersonating a real company or platform.
+dmarket,exact,External brands (impersonation),Impersonating a real company or platform.
+esea,exact,External brands (impersonation),Impersonating a real company or platform.
+esportal,exact,External brands (impersonation),Impersonating a real company or platform.
+faceit,exact,External brands (impersonation),Impersonating a real company or platform.
+gamersclub,exact,External brands (impersonation),Impersonating a real company or platform.
+google,exact,External brands (impersonation),Impersonating a real company or platform.
+hltv,exact,External brands (impersonation),Impersonating a real company or platform.
+klarna,exact,External brands (impersonation),Impersonating a real company or platform.
+mastercard,exact,External brands (impersonation),Impersonating a real company or platform.
+microsoft,exact,External brands (impersonation),Impersonating a real company or platform.
+opskins,exact,External brands (impersonation),Impersonating a real company or platform.
+paypal,exact,External brands (impersonation),Impersonating a real company or platform.
+reddit,exact,External brands (impersonation),Impersonating a real company or platform.
+skinbaron,exact,External brands (impersonation),Impersonating a real company or platform.
+skinport,exact,External brands (impersonation),Impersonating a real company or platform.
+sourcebans,exact,External brands (impersonation),Impersonating a real company or platform.
+steam,exact,External brands (impersonation),Impersonating a real company or platform.
+steamcommunity,exact,External brands (impersonation),Impersonating a real company or platform.
+steamid,exact,External brands (impersonation),Impersonating a real company or platform.
+steampowered,exact,External brands (impersonation),Impersonating a real company or platform.
+steamrep,exact,External brands (impersonation),Impersonating a real company or platform.
+steamsupport,exact,External brands (impersonation),Impersonating a real company or platform.
+stripe,exact,External brands (impersonation),Impersonating a real company or platform.
+tradeit,exact,External brands (impersonation),Impersonating a real company or platform.
+twitch,exact,External brands (impersonation),Impersonating a real company or platform.
+twitter,exact,External brands (impersonation),Impersonating a real company or platform.
+valve,exact,External brands (impersonation),Impersonating a real company or platform.
+valvesoftware,exact,External brands (impersonation),Impersonating a real company or platform.
+visa,exact,External brands (impersonation),Impersonating a real company or platform.
+youtube,exact,External brands (impersonation),Impersonating a real company or platform.
+analfuck,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+analrape,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+analsex,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+bigcock,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+cockhead,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+cockslut,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+cocksuck,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+cuntface,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+cunthead,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+cuntlicker,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+dickface,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+dicksuck,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+dicksucker,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+dogshit,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+gangrape,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+hoebag,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+penisface,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+penishead,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+rapeme,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+raperape,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+rapisti,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+shitbag,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+shitface,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+shithead,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+shitstain,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+smallcock,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+suckcock,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+thothoe,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+twatface,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+twatwaffle,contains,Profanity (compound),Compound form of a term demoted to exact-match to protect innocent words.
+anal,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+arsehole,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+asshole,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+bastard,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+biatch,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+bitch,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+bollocks,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+bullshit,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+cock,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+cocksucker,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+cunt,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+dick,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+dickhead,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+ejaculate,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+fuck,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+fucker,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+fucking,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+fuk,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+hoe,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+jizz,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+killyourself,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+kys,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+masturbate,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+motherfucker,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+penis,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+phuck,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+porn,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+pornhub,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+porno,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+prick,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+pussy,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+rape,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+rapist,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+scrotum,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+shit,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+shite,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+slut,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+suicide,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+testicle,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+twat,exact,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+vagina,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+wank,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+wanker,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+whore,contains,Profanity (contains),Unambiguous profanity. Long enough not to hit innocent words.
+arse,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+ass,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+boob,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+boobs,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+butt,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+crap,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+cum,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+damn,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+fart,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+fml,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+hell,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+nude,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+nudes,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+piss,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+poop,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+sex,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+sexy,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+stfu,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+tit,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+tits,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+turd,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+wtf,exact,Profanity (exact only),"Short profanity that is a substring of innocent words, so exact-match only."
+antifraud,exact,Scam & phishing bait,Phrases used to bait trades.
+balance,exact,Scam & phishing bait,Phrases used to bait trades.
+billing,exact,Scam & phishing bait,Phrases used to bait trades.
+broker,exact,Scam & phishing bait,Phrases used to bait trades.
+cashout,exact,Scam & phishing bait,Phrases used to bait trades.
+claim,exact,Scam & phishing bait,Phrases used to bait trades.
+claimprize,exact,Scam & phishing bait,Phrases used to bait trades.
+credits,exact,Scam & phishing bait,Phrases used to bait trades.
+deposit,exact,Scam & phishing bait,Phrases used to bait trades.
+escrow,exact,Scam & phishing bait,Phrases used to bait trades.
+fraud,exact,Scam & phishing bait,Phrases used to bait trades.
+freeknife,exact,Scam & phishing bait,Phrases used to bait trades.
+freeskins,exact,Scam & phishing bait,Phrases used to bait trades.
+giveawaybot,exact,Scam & phishing bait,Phrases used to bait trades.
+invoice,exact,Scam & phishing bait,Phrases used to bait trades.
+legitcheck,exact,Scam & phishing bait,Phrases used to bait trades.
+middleman,exact,Scam & phishing bait,Phrases used to bait trades.
+payment,exact,Scam & phishing bait,Phrases used to bait trades.
+payments,exact,Scam & phishing bait,Phrases used to bait trades.
+prize,exact,Scam & phishing bait,Phrases used to bait trades.
+prizes,exact,Scam & phishing bait,Phrases used to bait trades.
+refund,exact,Scam & phishing bait,Phrases used to bait trades.
+refunds,exact,Scam & phishing bait,Phrases used to bait trades.
+reward,exact,Scam & phishing bait,Phrases used to bait trades.
+rewards,exact,Scam & phishing bait,Phrases used to bait trades.
+tradelink,exact,Scam & phishing bait,Phrases used to bait trades.
+tradeoffer,exact,Scam & phishing bait,Phrases used to bait trades.
+transaction,exact,Scam & phishing bait,Phrases used to bait trades.
+trusted,exact,Scam & phishing bait,Phrases used to bait trades.
+trustedtrader,exact,Scam & phishing bait,Phrases used to bait trades.
+verification,exact,Scam & phishing bait,Phrases used to bait trades.
+verified,exact,Scam & phishing bait,Phrases used to bait trades.
+verify,exact,Scam & phishing bait,Phrases used to bait trades.
+wallet,exact,Scam & phishing bait,Phrases used to bait trades.
+winner,exact,Scam & phishing bait,Phrases used to bait trades.
+winners,exact,Scam & phishing bait,Phrases used to bait trades.
+withdraw,exact,Scam & phishing bait,Phrases used to bait trades.
+aim,exact,Servers & game modes,"ENW server and mode names, live and planned."
+arena,exact,Servers & game modes,"ENW server and mode names, live and planned."
+awp,exact,Servers & game modes,"ENW server and mode names, live and planned."
+bhop,exact,Servers & game modes,"ENW server and mode names, live and planned."
+climb,exact,Servers & game modes,"ENW server and mode names, live and planned."
+combatsurf,exact,Servers & game modes,"ENW server and mode names, live and planned."
+comp1,exact,Servers & game modes,"ENW server and mode names, live and planned."
+competitive,exact,Servers & game modes,"ENW server and mode names, live and planned."
+deathmatch,exact,Servers & game modes,"ENW server and mode names, live and planned."
+hideandseek,exact,Servers & game modes,"ENW server and mode names, live and planned."
+hns,exact,Servers & game modes,"ENW server and mode names, live and planned."
+infection,exact,Servers & game modes,"ENW server and mode names, live and planned."
+jailbreak,exact,Servers & game modes,"ENW server and mode names, live and planned."
+jbtest,exact,Servers & game modes,"ENW server and mode names, live and planned."
+kzclimb,exact,Servers & game modes,"ENW server and mode names, live and planned."
+lobby,exact,Servers & game modes,"ENW server and mode names, live and planned."
+matchmaking,exact,Servers & game modes,"ENW server and mode names, live and planned."
+minigames,exact,Servers & game modes,"ENW server and mode names, live and planned."
+mix,exact,Servers & game modes,"ENW server and mode names, live and planned."
+prophunt,exact,Servers & game modes,"ENW server and mode names, live and planned."
+pug,exact,Servers & game modes,"ENW server and mode names, live and planned."
+pugs,exact,Servers & game modes,"ENW server and mode names, live and planned."
+queue,exact,Servers & game modes,"ENW server and mode names, live and planned."
+retake,exact,Servers & game modes,"ENW server and mode names, live and planned."
+retakes,exact,Servers & game modes,"ENW server and mode names, live and planned."
+retakes1,exact,Servers & game modes,"ENW server and mode names, live and planned."
+scrim,exact,Servers & game modes,"ENW server and mode names, live and planned."
+surf,exact,Servers & game modes,"ENW server and mode names, live and planned."
+tenman,exact,Servers & game modes,"ENW server and mode names, live and planned."
+ttt,exact,Servers & game modes,"ENW server and mode names, live and planned."
+warmup,exact,Servers & game modes,"ENW server and mode names, live and planned."
+zombie,exact,Servers & game modes,"ENW server and mode names, live and planned."
+zombies,exact,Servers & game modes,"ENW server and mode names, live and planned."
+beaner,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+cameljockey,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+childporn,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+chink,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+coon,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+cracker,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+curry,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+dyke,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+fag,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+faggit,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+faggot,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+fagot,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+gaschamber,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+gasthejews,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+gook,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+groomer,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+gyppo,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+gypsy,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+heeb,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+heilhitler,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+hitler,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+holocaust,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+homo,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+honky,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+jigaboo,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+kike,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+killallj,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+kkk,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+klansman,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+lesbo,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+lynch,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+mongoloid,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+nazi,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+negro,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+niger,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+nigg,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+nigga,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+nigger,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+niggr,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+nonce,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+paedo,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+paki,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+pedo,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+pedophile,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+phaggot,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+porchmonkey,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+queer,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+raghead,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+retard,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+retarded,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+sandnigger,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+seigheil,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+shemale,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+sieghitler,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+slant,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+spastic,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+spic,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+tard,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+towelhead,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+trannie,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+tranny,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+wetback,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+whitepower,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+whitepride,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+whitetrash,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+yid,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+zipperhead,contains,Slurs (hate speech),"Hate speech. Blocked anywhere in the name, leetspeak folded."
+admin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+administrator,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+administrators,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+admins,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+adminteam,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+boss,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+ceo,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+coadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+cofounder,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+coowner,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+customersupport,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+dropsadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+dropsmod,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+dropsofficial,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+dropsstaff,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+dropssupport,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+dropsteam,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+enwadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+enwmod,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+enwofficial,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+enwstaff,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+enwsupport,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+enwteam,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+founder,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+gameadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+gonextadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+gonextstaff,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+headadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+headmod,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+helpdesk,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+helper,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+helpers,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+jbadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+jbstaff,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+junioradmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+juniormod,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+management,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+manager,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+mod,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+moderator,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+moderators,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+mods,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+modteam,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+official,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+officialstaff,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+operator,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+owner,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+owners,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+root,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+seniormod,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+seniorstaff,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+serveradmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+servicedesk,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+staff,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+staffteam,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+superadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+superuser,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+supervisor,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+support,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+supportteam,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+sysadmin,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+sysop,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+team,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+trialmod,exact,Staff & authority,Reads as site staff. The main impersonation risk in a trade window.
+abuse,exact,System & automation,Reads as the site itself or an automated actor.
+alert,exact,System & automation,Reads as the site itself or an automated actor.
+alerts,exact,System & automation,Reads as the site itself or an automated actor.
+anon,exact,System & automation,Reads as the site itself or an automated actor.
+anonymous,exact,System & automation,Reads as the site itself or an automated actor.
+api,exact,System & automation,Reads as the site itself or an automated actor.
+apibot,exact,System & automation,Reads as the site itself or an automated actor.
+auto,exact,System & automation,Reads as the site itself or an automated actor.
+automation,exact,System & automation,Reads as the site itself or an automated actor.
+blank,exact,System & automation,Reads as the site itself or an automated actor.
+bot,exact,System & automation,Reads as the site itself or an automated actor.
+bots,exact,System & automation,Reads as the site itself or an automated actor.
+console,exact,System & automation,Reads as the site itself or an automated actor.
+cron,exact,System & automation,Reads as the site itself or an automated actor.
+daemon,exact,System & automation,Reads as the site itself or an automated actor.
+debug,exact,System & automation,Reads as the site itself or an automated actor.
+default,exact,System & automation,Reads as the site itself or an automated actor.
+deleted,exact,System & automation,Reads as the site itself or an automated actor.
+demo,exact,System & automation,Reads as the site itself or an automated actor.
+dev,exact,System & automation,Reads as the site itself or an automated actor.
+developer,exact,System & automation,Reads as the site itself or an automated actor.
+development,exact,System & automation,Reads as the site itself or an automated actor.
+donotreply,exact,System & automation,Reads as the site itself or an automated actor.
+empty,exact,System & automation,Reads as the site itself or an automated actor.
+everyone,exact,System & automation,Reads as the site itself or an automated actor.
+example,exact,System & automation,Reads as the site itself or an automated actor.
+guest,exact,System & automation,Reads as the site itself or an automated actor.
+hostmaster,exact,System & automation,Reads as the site itself or an automated actor.
+localhost,exact,System & automation,Reads as the site itself or an automated actor.
+mailer,exact,System & automation,Reads as the site itself or an automated actor.
+mailerdaemon,exact,System & automation,Reads as the site itself or an automated actor.
+metamod,exact,System & automation,Reads as the site itself or an automated actor.
+nan,exact,System & automation,Reads as the site itself or an automated actor.
+nil,exact,System & automation,Reads as the site itself or an automated actor.
+nobody,exact,System & automation,Reads as the site itself or an automated actor.
+none,exact,System & automation,Reads as the site itself or an automated actor.
+noreply,exact,System & automation,Reads as the site itself or an automated actor.
+notification,exact,System & automation,Reads as the site itself or an automated actor.
+notifications,exact,System & automation,Reads as the site itself or an automated actor.
+null,exact,System & automation,Reads as the site itself or an automated actor.
+placeholder,exact,System & automation,Reads as the site itself or an automated actor.
+player,exact,System & automation,Reads as the site itself or an automated actor.
+players,exact,System & automation,Reads as the site itself or an automated actor.
+plugin,exact,System & automation,Reads as the site itself or an automated actor.
+plugins,exact,System & automation,Reads as the site itself or an automated actor.
+postmaster,exact,System & automation,Reads as the site itself or an automated actor.
+production,exact,System & automation,Reads as the site itself or an automated actor.
+rcon,exact,System & automation,Reads as the site itself or an automated actor.
+removed,exact,System & automation,Reads as the site itself or an automated actor.
+robot,exact,System & automation,Reads as the site itself or an automated actor.
+sample,exact,System & automation,Reads as the site itself or an automated actor.
+scheduler,exact,System & automation,Reads as the site itself or an automated actor.
+script,exact,System & automation,Reads as the site itself or an automated actor.
+security,exact,System & automation,Reads as the site itself or an automated actor.
+securityteam,exact,System & automation,Reads as the site itself or an automated actor.
+service,exact,System & automation,Reads as the site itself or an automated actor.
+someone,exact,System & automation,Reads as the site itself or an automated actor.
+sourcemod,exact,System & automation,Reads as the site itself or an automated actor.
+staging,exact,System & automation,Reads as the site itself or an automated actor.
+system,exact,System & automation,Reads as the site itself or an automated actor.
+systembot,exact,System & automation,Reads as the site itself or an automated actor.
+temp,exact,System & automation,Reads as the site itself or an automated actor.
+temporary,exact,System & automation,Reads as the site itself or an automated actor.
+test,exact,System & automation,Reads as the site itself or an automated actor.
+testaccount,exact,System & automation,Reads as the site itself or an automated actor.
+testing,exact,System & automation,Reads as the site itself or an automated actor.
+testuser,exact,System & automation,Reads as the site itself or an automated actor.
+undefined,exact,System & automation,Reads as the site itself or an automated actor.
+unknown,exact,System & automation,Reads as the site itself or an automated actor.
+user,exact,System & automation,Reads as the site itself or an automated actor.
+users,exact,System & automation,Reads as the site itself or an automated actor.
+void,exact,System & automation,Reads as the site itself or an automated actor.
+webhook,exact,System & automation,Reads as the site itself or an automated actor.
+webmaster,exact,System & automation,Reads as the site itself or an automated actor.
+worker,exact,System & automation,Reads as the site itself or an automated actor.

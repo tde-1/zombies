@@ -9,7 +9,8 @@
 //
 // What it does, in the order the launcher will do it:
 //
-//   1. sign in            (the launcher already has the session; here we post to /auth/mock)
+//   1. sign in            (the launcher already has the session; here we post to the test-only
+//                          /auth/test-login, so the site must be started with ZM_TEST_LOGIN=1)
 //   2. POST /api/launcher/local/start   -> a match id, the map, and the account's settings
 //   3. …the launcher installs the map and launches World at War with our DLL…
 //   4. POST /api/launcher/local/live    -> frames, so a friend can watch on the site
@@ -68,7 +69,7 @@ async function main() {
   console.log(`site ${SITE}   host agent ${DASH}   player ${STEAMID}`)
 
   // 1. sign in
-  await call('/auth/mock', { method: 'POST', form: `steam_id=${encodeURIComponent(STEAMID)}` })
+  await call('/auth/test-login', { method: 'POST', form: `steam_id=${encodeURIComponent(STEAMID)}` })
   const me = await call('/api/me')
   if (!me.signed_in) throw new Error('sign-in failed')
   console.log(`signed in as ${me.user.name}`)

@@ -33,14 +33,15 @@ const SECONDS = Number(val('--seconds', '240'))
 const say = (...a) => console.log(...a)
 const step = (n, t) => say(`\n${n}. ${t}\n${'-'.repeat(t.length + 3)}`)
 
-// A cookie jar for the CLI. In the app this is the wrapped page's session; here we
-// sign in through the site's own mock endpoint, which is the same session either way.
-// `/auth/mock` is a FORM post with a steam_id, not JSON — and it answers with a 302,
-// so `redirect: 'manual'` is what lets us read the Set-Cookie.
+// A cookie jar for the CLI. In the app this is the wrapped page's session, from the Steam
+// round trip. Here it is the site's TEST-ONLY hook, `POST /auth/test-login` — which exists
+// only on a site started with ZM_TEST_LOGIN=1 on this machine (web/server/routes/auth.js;
+// the /auth/mock page this used to post to is gone, 2026-09-22). It answers JSON, not a
+// redirect; `redirect: 'manual'` is kept so a misconfigured site cannot bounce us anywhere.
 let JAR = ''
 const STEAMID = val('--steamid', '76561198126330106')
 async function signIn() {
-  const res = await fetch(`${SITE}/auth/mock`, {
+  const res = await fetch(`${SITE}/auth/test-login`, {
     method: 'POST',
     redirect: 'manual',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -49,7 +50,7 @@ async function signIn() {
   for (const c of res.headers.getSetCookie?.() || []) {
     if (c.startsWith('zm.sid=')) JAR = c.split(';')[0]
   }
-  if (!JAR) throw new Error(`no session cookie from /auth/mock (${res.status})`)
+  if (!JAR) throw new Error(`no session cookie from /auth/test-login (${res.status}) — was the site started with ZM_TEST_LOGIN=1?`)
   return JAR
 }
 
@@ -59,7 +60,7 @@ async function main() {
   step(1, 'Sign in')
   await signIn()
   const hello = await api.sayHello()
-  if (!hello.you) throw new Error('mock sign-in did not produce a session')
+  if (!hello.you) throw new Error('the test sign-in did not produce a session')
   say(`   signed in as ${hello.you.name} (${hello.you.steam_id})`)
   say(`   site protocol ${hello.protocol}, auth ${hello.auth}, local games ${hello.capabilities.local ? 'supported' : 'NOT supported'}`)
 
