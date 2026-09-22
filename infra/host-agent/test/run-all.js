@@ -465,6 +465,19 @@ t('re-signing a tampered file with a different key is still detectable', () => {
   ok(!verifyFile(f, { expectPub: hostKey.pub }).ok, 'but not signed by the box that claims to have run it')
 })
 
+t('zombie yaw, the nade list and explode survive the signed container (replay.md 8.4, 8.6)', () => {
+  const f = path.join(TMP, 'nades.enwr')
+  const w = new ReplayWriter({ file: f, header: { match_id: 'm_nades', map: 'nazi_zombie_prototype', mode: 'verified' }, privateKey: hostKey.privateKey, pub: hostKey.pub, keyId: hostKey.keyId, chunkMs: 1000 })
+  w.append({ t: 'snap', ms: 0, zombies_alive: 1, zombies: [{ id: 40, pos: [1, 2, 3], yaw: 91.5, health: 150 }], nades: [{ id: 300, pos: [4, 5, 6] }] })
+  w.append({ t: 'explode', ms: 100, id: 300, pos: [4, 5, 7] })
+  w.close()
+  ok(verifyFile(f, { expectPub: hostKey.pub }).ok, 'verifies')
+  const ev = [...readEvents(f)]
+  eq(ev[0].zombies[0].yaw, 91.5)
+  eq(ev[0].nades[0].id, 300)
+  eq(ev[1].t, 'explode')
+})
+
 t('a truncated file is detected', () => {
   const f = path.join(TMP, 'truncated.enwr')
   const buf = fs.readFileSync(sample)

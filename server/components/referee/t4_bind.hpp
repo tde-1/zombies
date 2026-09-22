@@ -134,7 +134,17 @@ struct ent_view {
 std::optional<ent_view> player_ent(int slot);
 
 // Live AI entities that are zombies. `max` caps the copy; returns how many were written.
+// `angles` is filled (currentOrigin + 12, the same read player_ent makes) -- replay.md 8.4.
 size_t zombie_ents(ent_view* out, size_t max);
+
+// Non-player, non-actor entities whose classname starts with `prefix` ("grenade"),
+// health not required. For the replay's grenade track (replay.md 8.6).
+size_t classname_ents(const char* prefix, ent_view* out, size_t max);
+
+// Calls `fn(classname)` once per DISTINCT classname seen on a non-player entity this
+// process, the first time it is seen. A census, so the first real game tells us what a
+// T4 thrown grenade is actually called instead of us guessing.
+void classname_census(void (*fn)(const char* classname, int entnum));
 
 // Script fields on an arbitrary entity, for the trigger identification in
 // referee/manifests (targetname, script_noteworthy, zombie_cost, script_flag).

@@ -43,7 +43,9 @@ bool samplers_disabled() {
 }
 
 constexpr int kMaxPlayers = 4;
-constexpr size_t kMaxZombies = 64;   // level.zombie_vars max_ai is 24 stock; headroom for customs
+constexpr size_t kMaxZombies = 64;
+constexpr size_t kMaxNades = 16;
+constexpr int kNadeIds = 1024;   // level.zombie_vars max_ai is 24 stock; headroom for customs
 
 std::string fmt_vec3_10th(const float v[3]) {
     char b[80];
@@ -180,6 +182,7 @@ private:
         }
 
         json::array zombies;
+        json::array nades;
         const bool zombie_frame = (frame_ % 2) == 0;
         size_t alive_zombies = 0;
         if (zombie_frame) {
@@ -207,6 +210,10 @@ private:
                 json::writer z;
                 z.integer("id", id);
                 z.raw("pos", fmt_vec3_10th(buf[i].origin));
+                // Facing, so the viewer can turn a zombie (replay.md 8.4). One decimal.
+                char yaw[16];
+                std::snprintf(yaw, sizeof(yaw), "%.1f", buf[i].angles[1]);
+                z.raw("yaw", yaw);
                 z.integer("health", buf[i].health);
                 zombies.raw(z.done());
             }
@@ -221,6 +228,38 @@ private:
                 ++kills_this_round_;
             }
             std::memcpy(was_live_, seen, sizeof(seen));
+
+            // ---------------------------------------------------- grenades --
+            // replay.md 8.6. `grenade` is CoD's G_FireGrenade classname through CoD4;
+            // on T4 it is UNVERIFIED, which is what the census below is for: the first
+            // game with a throw in it logs the real name. A nade that leaves the list
+            // has exploded (or been picked up / deleted -- the event says "gone", the
+            // viewer draws it as a blast either way).
+            referee::ent_view nb[kMaxNades];
+            const size_t ng = referee::classname_ents("grenade", nb, kMaxNades);
+            bool nseen[kNadeIds] = {};
+            for (size_t i = 0; i < ng; ++i) {
+                const int id = nb[i].entnum;
+                if (id < 0 || id >= kNadeIds) continue;
+                nseen[id] = true;
+                std::memcpy(nade_pos_[id], nb[i].origin, sizeof(nade_pos_[id]));
+                json::writer g;
+                g.integer("id", id);
+                g.raw("pos", fmt_vec3_10th(nb[i].origin));
+                nades.raw(g.done());
+            }
+            for (int id = 0; id < kNadeIds; ++id) {
+                if (!nade_live_[id] || nseen[id]) continue;
+                json::writer x;
+                x.str("t", "explode").integer("ms", ms).integer("id", id)
+                 .raw("pos", fmt_vec3_10th(nade_pos_[id]));
+                game_link::get().send(x);
+            }
+            std::memcpy(nade_live_, nseen, sizeof(nseen));
+
+            referee::classname_census([](const char* cls, int entnum) {
+                ENW_INFO("replay: classname census: first \"%s\" (ent %d)", cls, entnum);
+            });
         }
 
         if (players.count() == 0 && zombies.count() == 0) return;
@@ -250,6 +289,7 @@ private:
         }
         if (players.count()) w.raw("players", players.done());
         if (zombies.count()) w.raw("zombies", zombies.done());
+        if (nades.count()) w.raw("nades", nades.done());
         std::string line = w.done();
         bytes_ += line.size() + 1;
         ++snaps_;
@@ -283,6 +323,8 @@ private:
 
     player_prev players_[kMaxPlayers];
     bool was_live_[kMaxZombies * 4] = {};
+    bool nade_live_[kNadeIds] = {};
+    float nade_pos_[kNadeIds][3] = {};
     bool stopped_said_ = false;
     int last_round_ = -1;
     uint64_t kills_ = 0;

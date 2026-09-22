@@ -863,11 +863,53 @@ size_t zombie_ents(ent_view* out, size_t max) {
         ent_view v;
         v.entnum = e;
         if (!peek(ent + t4::gentity_off::currentOrigin, &v.origin)) continue;
+        peek(ent + t4::gentity_off::currentOrigin + 12, &v.angles);
         v.health = health;
         v.alive = true;
         out[n++] = v;
     }
     return n;
+}
+
+size_t classname_ents(const char* prefix, ent_view* out, size_t max) {
+    if (!g_report.entities || !out || max == 0 || !prefix) return 0;
+    const size_t plen = std::strlen(prefix);
+    size_t n = 0;
+    for (int e = kMaxClients; e < 1024 && n < max; ++e) {
+        const uintptr_t ent = gentity_at(e);
+        uint16_t cls = 0;
+        if (!peek(ent + t4::gentity_off::classname, &cls) || cls == 0) continue;
+        const char* name = sl_string(cls);
+        if (!name || !memory::is_readable(const_cast<char*>(name), plen + 1)) continue;
+        if (std::strncmp(name, prefix, plen) != 0) continue;
+        ent_view v;
+        v.entnum = e;
+        if (!peek(ent + t4::gentity_off::currentOrigin, &v.origin)) continue;
+        peek(ent + t4::gentity_off::currentOrigin + 12, &v.angles);
+        peek(ent + t4::gentity_off::health, &v.health);
+        v.alive = true;
+        v.classname = name;
+        out[n++] = v;
+    }
+    return n;
+}
+
+void classname_census(void (*fn)(const char* classname, int entnum)) {
+    if (!g_report.entities || !fn) return;
+    static uint16_t seen[256];
+    static size_t nseen = 0;
+    for (int e = kMaxClients; e < 1024; ++e) {
+        uint16_t cls = 0;
+        if (!peek(gentity_at(e) + t4::gentity_off::classname, &cls) || cls == 0) continue;
+        bool old = false;
+        for (size_t i = 0; i < nseen; ++i) if (seen[i] == cls) { old = true; break; }
+        if (old) continue;
+        if (nseen < sizeof(seen) / sizeof(seen[0])) seen[nseen++] = cls;
+        else return;   // a full census table is the end of the census, not an overflow
+        const char* name = sl_string(cls);
+        if (!name || !memory::is_readable(const_cast<char*>(name), 2)) continue;
+        fn(name, e);
+    }
 }
 
 std::optional<std::string> ent_string_field(int entnum, const char* field) {
