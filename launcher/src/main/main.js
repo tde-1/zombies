@@ -863,9 +863,33 @@ function signInPage(title, body) {
     '<body><div class="c"><h1>' + title + '</h1>' + body + '</div></body></html>'
 }
 
+// How long the player has to finish in their browser.
+//
+// This was 125 seconds, to match a 120-second window on the site, and that pairing was
+// the bug that stopped B signing in. Both clocks were sized for a machine spending a
+// code; the thing they were actually timing is a PERSON opening a tab, signing in to
+// Steam and reading a Steam Guard code off a phone. Two minutes is regularly not
+// enough, and when it ran out the site redirected the browser to `/` — the closed-beta
+// password box — while the launcher said "Sign-in timed out". Neither end named the
+// real reason, because neither end knew it.
+//
+// Ten minutes here, fifteen on the site (routes/auth.js LAUNCHER_FLOW_TTL_MS), so the
+// LAUNCHER is always the one that gives up first and the message the player gets is
+// ours. The loopback listener is bound to 127.0.0.1, answers one callback, and checks
+// `state` before it believes anything, so a longer bind is not a longer exposure.
+const SIGNIN_WINDOW_MS = 10 * 60_000
+
 // One sign-in at a time, and never a listener left bound.
 function steamSignIn() {
-  if (state.signIn) throw new Error('A sign-in is already open in your browser. Finish it there, or wait for it to time out.')
+  // Pressing Sign in again REPLACES the open attempt rather than refusing. With a
+  // ten-minute window, refusing would leave a player who closed the tab — or who was
+  // never shown one, because `shell.openExternal` can fail quietly — locked out of
+  // their own launcher for ten minutes with nothing to press.
+  if (state.signIn) {
+    log('sign-in', 'a sign-in was already open; abandoning it and starting a new one')
+    try { state.signIn.abandon() } catch {}
+    state.signIn = null
+  }
 
   const base = String(state.siteInfo?.url || '').replace(/\/$/, '')
   if (!/^https?:/i.test(base)) throw new Error('There is no site to sign in to yet.')
@@ -952,7 +976,13 @@ function steamSignIn() {
     server.listen(0, '127.0.0.1', () => {
       const port = server.address().port
       if (port < 1024) return done(reject, new Error('the operating system gave us a privileged port'))
-      state.signIn = { port, since: Date.now() }
+      state.signIn = {
+        port,
+        since: Date.now(),
+        // What a replacing sign-in calls: close the listener and settle this promise,
+        // so nothing is left bound and nothing is left pending.
+        abandon: () => done(reject, new Error('That sign-in was replaced by a new one.')),
+      }
       const url = base + '/auth/launcher/start?port=' + port +
         '&state=' + encodeURIComponent(stateTok) +
         '&challenge=' + encodeURIComponent(challenge)
@@ -968,12 +998,13 @@ function steamSignIn() {
       shell.openExternal(url).catch((e) => done(reject, new Error('could not open your browser: ' + e.message)))
     })
 
-    // Time-boxed whatever happens. The server's codes expire at 120 s, and a listener
-    // left bound is a local service nobody asked for.
+    // Time-boxed whatever happens: a listener left bound is a local service nobody
+    // asked for. The message names the browser, because that is where the sign-in
+    // actually lives and where the player will have left it.
     timer = setTimeout(() => {
-      log('sign-in', 'Steam: timed out after two minutes; the listener is closed')
-      done(reject, new Error('Sign-in timed out. Press Sign in again when you are ready.'))
-    }, 125000)
+      log('sign-in', `Steam: gave up after ${Math.round(SIGNIN_WINDOW_MS / 60000)} minutes; the listener is closed`)
+      done(reject, new Error('Sign-in timed out — the browser tab was never finished. Press Sign in again to open a fresh one.'))
+    }, SIGNIN_WINDOW_MS)
     timer.unref?.()
   })
 }

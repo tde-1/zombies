@@ -61,6 +61,26 @@ const { db, now } = require('../db/database')
 //     pointed elsewhere by DNS or the hosts file.
 //   * Codes are single use with a 120-second life, and the store is capped, so a flood
 //     of starts cannot grow memory without bound.
+//
+// ── Two clocks, not one (2026-09-22) ──────────────────────────────────────────────
+// This used to be ONE constant, and that was the bug that stopped B signing in. The
+// 120-second life is right for a CODE: it is minted by a machine and spent by a machine
+// milliseconds later, so anything longer is only exposure. It is completely wrong for
+// the BROWSER LEG, which is a person: opening a tab, logging in to Steam, and reading a
+// Steam Guard code off a phone. Two minutes is routinely not enough for that, and when
+// it ran out `finishLauncherFlow` quietly declined to fire, the browser was redirected
+// to `/`, and the player got the closed-beta password box instead of a sign-in — which
+// looks exactly like "I could not log in through the website". The launcher, meanwhile,
+// gave up at 125 s with "Sign-in timed out".
+//
+//   LAUNCHER_FLOW_TTL_MS   start -> Steam -> return.  A HUMAN is in this one.
+//   LAUNCHER_CODE_TTL_MS   return -> exchange.        Only the launcher is in this one.
+//
+// The site's window is deliberately LONGER than the launcher's own timeout, so the
+// launcher is always the party that gives up first and can say so in its own words.
+// `ZM_LAUNCHER_FLOW_TTL_MS` exists so test/launcher-signin.js can prove the expiry page
+// without sleeping for a quarter of an hour. Nothing sets it in production.
+const LAUNCHER_FLOW_TTL_MS = Number(process.env.ZM_LAUNCHER_FLOW_TTL_MS) || 15 * 60_000
 const LAUNCHER_CODE_TTL_MS = 120_000
 const LAUNCHER_MAX_PENDING = 200
 const launcherCodes = new Map()
@@ -92,7 +112,17 @@ const sha256b64url = (s) => b64url(crypto.createHash('sha256').update(String(s))
 // never left the launcher.
 function finishLauncherFlow (req, res) {
   const flow = req.session && req.session.launcher
-  if (!flow || Date.now() - flow.at >= LAUNCHER_CODE_TTL_MS) return false
+  if (!flow) return false
+  if (Date.now() - flow.at >= LAUNCHER_FLOW_TTL_MS) {
+    // Say so, rather than falling through to a redirect to `/` that the beta gate then
+    // answers with a password box. The player did nothing wrong and deserves to be told
+    // which thing ran out.
+    delete req.session.launcher
+    signInProblem(res, 'That sign-in took too long',
+      'The launcher opened this page more than fifteen minutes ago, so it stopped waiting.',
+      'Close this tab and press <b>Sign in</b> in ENW Zombies again.')
+    return true
+  }
   delete req.session.launcher
   sweepLauncherCodes()
   const code = b64url(crypto.randomBytes(32))
@@ -153,6 +183,31 @@ function router() {
     // devices that cannot hash, which does not describe an Electron app.
     if (!/^[A-Za-z0-9_-]{43}$/.test(challenge)) {
       return res.status(400).type('text/plain').send('bad PKCE challenge')
+    }
+
+    // ── The origin has to be the one Steam will come back to ────────────────────────
+    //
+    // Steam's `return_to` is built from ZM_PUBLIC_URL and nothing else, so the return
+    // leg ALWAYS lands on that origin. If the launcher opened this page on a different
+    // one — it fell back to http://127.0.0.1:3200, or somebody pinned a site URL — then
+    // the `launcher` flow we are about to write goes into a session belonging to a
+    // different cookie jar, the return finds nothing, and the whole thing dies silently
+    // with the player parked on a page that cannot explain itself.
+    //
+    // It is fixable rather than merely reportable: send the browser to the public
+    // origin's copy of this exact URL and carry on there. Built from ZM_PUBLIC_URL and
+    // the three values already validated above — nothing the caller supplied reaches
+    // the Location header, so this is not an open redirect. `moved` stops a loop if
+    // ZM_PUBLIC_URL disagrees with what the proxy actually passes us.
+    if (PUBLIC_URL && !req.query.moved) {
+      let want = null
+      try { want = new URL(PUBLIC_URL) } catch { /* misconfigured; carry on regardless */ }
+      const here = `${req.protocol}://${req.get('host') || ''}`
+      if (want && want.origin && want.origin !== here) {
+        console.warn(`[auth] launcher sign-in started on ${here} but ZM_PUBLIC_URL is ${want.origin}; moving the browser there`)
+        return res.redirect(`${want.origin}/auth/launcher/start?port=${port}`
+          + `&state=${encodeURIComponent(state)}&challenge=${encodeURIComponent(challenge)}&moved=1`)
+      }
     }
 
     req.session.launcher = { port, state, challenge, at: Date.now() }
@@ -264,7 +319,45 @@ function router() {
       }, (identifier, profile, done) => done(null, { identifier, profile })))
       r.use(passport.initialize())
       r.get('/steam', passport.authenticate('steam', { session: false }))
-      r.get('/steam/return', passport.authenticate('steam', { session: false, failureRedirect: '/' }), (req, res) => {
+
+      // The return leg, and why it is wrapped rather than handed straight to passport.
+      //
+      // Two things were wrong here and both of them ended with the player looking at
+      // something that is not a sign-in page:
+      //
+      //  * `failureRedirect: '/'` sent every refusal — Steam cancelled, an assertion
+      //    that would not verify — to the site root, which is behind the closed-beta
+      //    password. The player pressed "sign in" and got a browser password box. The
+      //    root is the ONE place this handler must not send anybody: `/auth/*` is
+      //    exempt from the gate precisely because a freshly opened browser has no
+      //    password, and redirecting off `/auth/*` throws that exemption away.
+      //  * `failureRedirect` does not cover an ERROR, only a failure. passport-openid
+      //    raises `InternalOpenIDError: Failed to verify assertion` as an error, so it
+      //    went to Express's default handler: **HTTP 500 with a full Node stack trace**,
+      //    on a path that is deliberately reachable without the beta password. Verified
+      //    on a private instance on 3399.
+      //
+      // So: no redirect, no stack. The page is rendered here, on a gate-exempt path,
+      // and it says which leg failed.
+      const steamReturn = (req, res, next) => {
+        passport.authenticate('steam', { session: false }, (err, user) => {
+          if (err) {
+            console.warn(`[auth] Steam return failed: ${err.message || err}`)
+            return signInProblem(res, 'Steam could not confirm that sign-in',
+              'Steam sent us back, but the answer did not check out. That is usually a sign-in that was left open too long, or Steam having a bad minute.',
+              'Close this tab and try <b>Sign in</b> again.', 400)
+          }
+          if (!user) {
+            return signInProblem(res, 'That sign-in was cancelled',
+              'Steam did not sign you in, so nothing changed here.',
+              'Close this tab and press <b>Sign in</b> again when you are ready.', 400)
+          }
+          req.user = user
+          next()
+        })(req, res, next)
+      }
+
+      r.get('/steam/return', steamReturn, (req, res) => {
         // With no key there is no profile object, so the SteamID64 comes out of the
         // OpenID identifier itself — which is the part Steam signed, and therefore the
         // part worth trusting. passport-steam has already checked the endpoint, the
@@ -335,6 +428,27 @@ function mockAllowed (req) {
 }
 
 function localOnly (req) { return mockAllowed(req) }
+
+// A sign-in that did not work, said out loud, ON A GATE-EXEMPT PATH.
+//
+// Every failure in the browser leg used to end at `/`, and `/` is behind the
+// closed-beta password — so the last thing a player saw after pressing "Sign in" was a
+// browser password box, or a bare 500 with a Node stack in it. Neither says what
+// happened and neither is something the launcher can recover from. This is rendered
+// in place, under /auth/, so nothing is redirected out of the exemption.
+function signInProblem (res, title, what, next, status = 410) {
+  res.status(status).type('html').send(`<!doctype html><meta charset="utf-8">
+<title>ENW Zombies — ${esc(title)}</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;
+    background:#11120e;color:#e4dfd1;font:15px/1.6 'Open Sans',system-ui,sans-serif}
+  main{max-width:34rem;padding:2rem}
+  h1{font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:#b0342c;margin:0 0 .8rem}
+  p{color:#9a9684;margin:.4rem 0}
+  b{color:#e4dfd1;font-weight:600}
+</style>
+<main><h1>${esc(title)}</h1><p>${esc(what)}</p><p>${next}</p></main>`)
+}
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 

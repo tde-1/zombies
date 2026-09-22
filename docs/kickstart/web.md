@@ -149,7 +149,7 @@ web/
 | **Playlists** | `pages/Playlists.jsx` | curated + **automatic per creator**, completion badges via `reward_badge` |
 | **Custom knobs** 13 §4c | `pages/Custom.jsx` | all eight groups with the spec's caps, presets, share codes, the four locked challenge presets |
 | **Admin / mod tools** 99 §4.9 | `pages/Admin.jsx` | reports queue, infractions, bans (griefing = public-play), **record review with the replay and its evidence grade**, boxes + key warnings, waitlist, lease-by-hand |
-| **Sign-in** | `routes/auth.js` | mock provider (default) + the real Steam OpenID path behind two env vars |
+| **Sign-in** | `routes/auth.js` | ~~mock provider (default) + the real Steam OpenID path behind two env vars~~ — **updated 2026-09-22**: Steam OpenID is **on** in production (`ZM_AUTH=steam`, `ZM_PUBLIC_URL=https://zombies.enw.gg`) and needs no Steam Web API key; the mock stays as the labelled beta fallback. Three faults in the launcher leg are fixed below (§9) |
 | **VIP** | `lib/enw.js` | stub reader with the seam, plus a local force list and an admin override |
 | **Theme** 06 | `client/src/themes.js`, `theme.css` | the zombies palette as the default, **Ember and Dusk as the other two**, switcher in the nav |
 | **Logo A** | `components/Bits.jsx` `<Lockup>` | the ENW mark from `assets/logo-mockups.html` with ZOMBIES as the width-matched foot; the favicon is the mark alone |
@@ -730,3 +730,87 @@ No cloud, no spending, no deploys, no pushes, no production data, no commits. `n
 from npm. Nothing here calls ENW, Steam, or anything else unless an env var is set, and none of
 those env vars is set. `CSGO-Matchmaker` was read only — never modified, never run, and none of its
 credentials or its database was touched.
+
+---
+
+## 9. On sign-in — what the browser leg does when it goes wrong (2026-09-22)
+
+B could not sign in from the launcher. The launcher's own half of the flow is documented in
+`launcher.md` §on sign-in with all nine hops; this is the site's half and what was wrong in
+`server/routes/auth.js`.
+
+### Measured, read-only, against the live site
+
+```
+curl -I https://zombies.enw.gg/auth/launcher/start   400  (the probe answer — route present, no params)
+curl -I https://zombies.enw.gg/auth/steam            302  -> steamcommunity.com/openid/login
+                                                          openid.return_to=https://zombies.enw.gg/auth/steam/return
+                                                          openid.realm=https://zombies.enw.gg
+curl -I https://zombies.enw.gg/auth/mode             401  WWW-Authenticate: Basic realm="ENW Zombies (closed beta)"
+```
+
+So **the gate exemptions are correct and the realm is correct.** The original hypothesis —
+that Basic auth was blocking the Steam leg — is **not what was wrong**. `/auth/steam*` and
+`/auth/launcher*` are exempt (`middleware/gate.js`) and answer without a password. What was
+wrong is that every *unhappy* exit from those paths **left** them.
+
+### The three faults
+
+**a. `failureRedirect: '/'` sent every refusal to the one page it must not.** Steam
+cancelled, an assertion that would not verify, a flow that had expired: all of them ended at
+the site root, which is behind the beta password. The player pressed "sign in" and got a
+browser password box. `/auth/*` is exempt precisely so a freshly opened browser can reach
+it, and redirecting off `/auth/*` throws that exemption away.
+
+**b. `failureRedirect` does not cover an ERROR, only a failure**, and `passport-openid`
+raises `InternalOpenIDError: Failed to verify assertion` as an *error*. So it reached
+Express's default handler: **HTTP 500 with a full Node stack trace**, on a path that is
+deliberately reachable without the beta password. Reproduced on a private instance on 3399
+with `ZM_AUTH=steam`:
+
+```
+$ curl -i http://localhost:3399/auth/steam/return?openid.mode=id_res
+HTTP/1.1 500 Internal Server Error
+<pre>InternalOpenIDError: Failed to verify assertion<br>    at …\node_modules\@passport-next\passport-openid\lib\…strategy.js:184:36
+```
+
+Both are fixed the same way: the return leg is wrapped in a custom `passport.authenticate`
+callback, and every non-success renders `signInProblem()` **in place, on the gate-exempt
+path**, naming which leg failed. No redirect, no stack. Same URL now answers `400` with a
+page that says "Steam could not confirm that sign-in".
+
+**c. One TTL was timing two completely different things.** `LAUNCHER_CODE_TTL_MS` (120 s)
+governed both the single-use code *and* the browser leg — and the browser leg contains a
+human doing a Steam Guard login. When it expired, `finishLauncherFlow` quietly returned
+false and fault (a) took over. Split into `LAUNCHER_FLOW_TTL_MS` (15 min, the human) and
+`LAUNCHER_CODE_TTL_MS` (120 s, the machine, unchanged). This is the one most likely to be
+what actually bit B.
+
+### And one that was latent
+
+`/auth/launcher/start` now checks that the origin it was opened on is the `ZM_PUBLIC_URL`
+origin, and **moves the browser there** if not. Steam's `return_to` is built from
+`ZM_PUBLIC_URL` and nothing else, so a launcher that opened hop 3 on `http://127.0.0.1:3200`
+(a pinned `ZM_SITE`, or the `siteCandidates` fallback) wrote its flow into a different
+cookie jar from the one the return reads, and the sign-in died with no error anywhere. The
+redirect is built from config plus the three already-validated values — nothing the caller
+supplied reaches the `Location` header — and carries `moved=1` so a misconfigured
+`ZM_PUBLIC_URL` cannot loop.
+
+### Tests
+
+`web/test/launcher-signin.js` (`npm run check:signin`) went from 8 checks to **13**. The new
+five run against a **second server in `ZM_AUTH=steam` mode** — the old suite ran only in mock
+mode, where the `/auth/steam` routes are not registered at all, so it could never have seen
+any of this. They cover: `/auth/steam` really redirecting to Steam with the right
+`return_to`; a bad return being explained rather than 500-ing or leaking a stack; an expired
+flow getting a page instead of the password box; and the origin move, including that it
+happens once. `ZM_LAUNCHER_FLOW_TTL_MS` exists only so that test need not sleep for fifteen
+minutes; nothing sets it in production.
+
+### THIS NEEDS A RESTART TO TAKE EFFECT
+
+The live site is the `node` process on port 3200 and it is still running the old
+`routes/auth.js`. Nothing here is live until it is restarted. `infra/keepalive.ps1` owns
+that process — **B or the coordinator does it, not this lane** (README hard rule 7).
+`web/data` was not written; the repro ran on 3399 with its own `ZM_DATA_DIR`.

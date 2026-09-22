@@ -508,7 +508,7 @@ preload (`src/preload/preload.cjs`) that is the entire API surface.
 | **Play (our server), end to end** | **Blocked, not faked.** Everything up to and including "Ready" is real. ~~the client cannot actually join because no WaW dedicated server accepts clients yet (dedi's Stage C)~~ — **updated 2026-09-22**: a WaW dedicated server *does* now accept a client and spawn it in (`dedi.md` §7h), but it stops about ten seconds later (`dedi.md` §7j), so there is still nothing a player could finish a run on. The box the launcher reserved runs `sim-instance.js`, which speaks the protocol but is not a game a client can connect to |
 | Electron shell, tray, deep links, settings, idle-gated refresh | **Real** |
 | Crash reporting | **Real**, to a local endpoint |
-| Sign-in | **Mocked.** It reads the SteamID this PC is signed into, so the ID is real; Steam OpenID needs the site and a secret we do not have locally |
+| Sign-in | ~~**Mocked.** It reads the SteamID this PC is signed into, so the ID is real; Steam OpenID needs the site and a secret we do not have locally~~ — **retracted 2026-09-22**: real Steam sign-in is built and switched on (`ZM_AUTH=steam`, no Steam Web API key needed), over a loopback redirect in the player's own browser. It did not work for B, and why is the new section at the end of this page. The mock remains as the labelled fallback |
 | The map list in the rail | **Placeholder**, and labelled as one in the UI |
 | Map art | **Placeholder** (gradient); comes from the site |
 | Storage page (folder and per-map sizes) | **Real**; junctions are reported as links, not counted, so the ENW folder does not "weigh" the player's 12 GB install |
@@ -568,3 +568,73 @@ Remove-Item -Recurse -Force $dist; New-Item -ItemType Directory -Force $dist
 Expand-Archive "$env:LOCALAPPDATA\electron\Cache\<hash>\electron-v38.8.6-win32-x64.zip" $dist -Force
 'electron.exe' | Out-File -Encoding ascii -NoNewline 'launcher\node_modules\electron\path.txt'
 ```
+
+---
+
+## On sign-in — the loopback flow, and the two clocks that broke it (2026-09-22)
+
+B installed the launcher, pressed **Sign in**, his default browser opened, and he could not
+get in. This is what that flow is, hop by hop, and which hops were wrong.
+
+### The hops
+
+| # | Who | What | What can fail here |
+|---|---|---|---|
+| 0 | launcher | `GET <site>/auth/launcher/start` with **no parameters**, as a probe | a site without the route answers 404 and the launcher falls back to the mock. A 400 means "the route is there, you sent nothing" — which is the answer we want |
+| 1 | launcher | binds `127.0.0.1:0`, invents `state` + a PKCE verifier | the OS handing us a privileged port (checked) |
+| 2 | launcher | `shell.openExternal(<site>/auth/launcher/start?port&state&challenge)` | the browser never opening, and nothing telling the player so |
+| 3 | site | validates the three values, writes `session.launcher`, `302 /auth/steam` | **the browser is on a different origin from `ZM_PUBLIC_URL`**, so the session it writes is in a jar Steam's return never reaches |
+| 4 | site | `passport-steam` `302` to `steamcommunity.com`, `return_to` + `realm` built from `ZM_PUBLIC_URL` | a wrong or unset `ZM_PUBLIC_URL` |
+| 5 | Steam | **the player signs in here, and nowhere else** | Steam Guard. This hop is a human with a phone and it is not fast |
+| 6 | site | `GET /auth/steam/return`, assertion verified, user row ensured | an assertion that will not verify; the player cancelling |
+| 7 | site | `finishLauncherFlow` mints a single-use code, `302 http://127.0.0.1:<port>/cb?code&state` | **the flow having expired**, in which case this did not fire at all |
+| 8 | launcher | checks `state`, `POST /auth/launcher/exchange {code, verifier}` **through the Electron session** | the site refusing the code; the cookie landing in the wrong jar |
+| 9 | site | checks `SHA-256(verifier)`, burns the code, sets `zm.sid` on that response | — |
+
+Hops 3, 4, 6, 7 and 8 are all exempt from the closed-beta password gate
+(`web/server/middleware/gate.js`), because Steam cannot type a password and neither can a
+browser the launcher has just opened for the first time.
+
+### What was actually wrong
+
+**1. One clock was doing two jobs, and it was sized for the wrong one.** `LAUNCHER_CODE_TTL_MS`
+was 120 seconds and it governed *both* the code (hop 7 → hop 8, machine to machine, over in
+milliseconds) *and* the whole browser leg (hop 3 → hop 7, which contains **a person doing a
+Steam Guard login**). Two minutes is routinely not enough for that. When it ran out,
+`finishLauncherFlow` silently declined to fire and the return handler fell through to
+`res.redirect('/')` — and `/` **is** gated, so the last thing the player saw after pressing
+Sign in was the browser's password box. Meanwhile the launcher gave up at 125 s with
+"Sign-in timed out". Neither end named the real reason because neither end knew it.
+
+Now two clocks: `LAUNCHER_FLOW_TTL_MS` = 15 min for the human leg, `LAUNCHER_CODE_TTL_MS` =
+120 s for the code, and `SIGNIN_WINDOW_MS` = 10 min in the launcher — **deliberately shorter
+than the site's**, so the launcher is always the party that gives up first and the message
+the player reads is ours.
+
+**2. Pressing Sign in twice used to be refused** ("a sign-in is already open"). With a
+ten-minute window that would have locked a player out of their own launcher for ten minutes
+with nothing to press — and `shell.openExternal` can fail quietly, so "already open" is not
+always true. A second press now abandons the first listener and opens a fresh flow.
+
+**3. A launcher pointed at the wrong origin died silently.** `siteCandidates` tries
+`https://zombies.enw.gg` first, but a pinned `ZM_SITE`, an old `config.siteUrl`, or a
+fallback to `http://127.0.0.1:3200` all put hop 3 on an origin that is not `ZM_PUBLIC_URL` —
+and hop 6 always lands on `ZM_PUBLIC_URL`, because that is what `return_to` is built from.
+Different origin, different cookie jar, flow gone. The site now **moves the browser** to the
+public origin's copy of `/auth/launcher/start` (built from config plus the three
+already-validated values, with `moved=1` so it cannot loop).
+
+### Rebuilt
+
+`npm run pack` is the installer build (**not** `npm run dist`). Version bumped 0.1.0 → 0.1.1,
+because electron-updater compares versions and a rebuild at the same version is invisible to
+it. The installer is at `launcher/dist/ENW-Zombies-Launcher-Setup-0.1.1.exe`; the feed was
+written to a scratch directory, **not** to `web/public/updates`, so nothing was pushed at
+friends before the site half of the fix is live. `node tools/publish-update.js` publishes it
+when B wants it.
+
+### Not proven
+
+Nobody signed in to Steam for real in this pass — that needs a password and this lane does
+not type one. Hops 5 and 6 with a *genuine* Steam assertion remain unexercised; everything
+either side of them is covered by `web/test/launcher-signin.js` (13 checks).

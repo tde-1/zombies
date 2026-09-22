@@ -3447,6 +3447,48 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   80 GB) €8.49/mo net / €10.188 gross; cpx22 €19.49 net / €23.388 gross. Waiting on B for a yes or
   a new ceiling.
 
+- 02:05 web: B could not sign in from the launcher. The Basic-auth hypothesis is WRONG — measured
+  read-only on the live site, `/auth/launcher/start` answers 400 and `/auth/steam` answers 302 to
+  steamcommunity.com with realm and return_to both `https://zombies.enw.gg`. The gate exemptions
+  are correct.
+- 02:05 web: what is wrong is that every UNHAPPY exit from `/auth/*` leaves the exemption.
+  `failureRedirect: '/'` sends a cancelled or unverifiable Steam return to the gated site root, so
+  the player gets the closed-beta password box after pressing Sign in.
+- 02:05 web: and `failureRedirect` does not cover an ERROR. `passport-openid` raises
+  `InternalOpenIDError: Failed to verify assertion` as an error, so it reached Express's default
+  handler — **HTTP 500 with a full Node stack trace on a path deliberately reachable without the
+  beta password**. Reproduced on a private site on 3399 with `ZM_AUTH=steam`.
+- 02:05 web: the most likely thing that actually bit B — ONE 120-second TTL was timing two
+  different things. It governed the single-use code (machine to machine, milliseconds) AND the
+  whole browser leg, which contains a human doing a Steam Guard login. When it expired,
+  `finishLauncherFlow` returned false and the redirect-to-`/` above took over. The launcher gave up
+  at 125 s. Neither end named the reason.
+- 02:05 web: fixed in `web/server/routes/auth.js` — two clocks (`LAUNCHER_FLOW_TTL_MS` 15 min for
+  the human, `LAUNCHER_CODE_TTL_MS` 120 s unchanged), and every non-success on the return leg now
+  renders an explanation IN PLACE on the gate-exempt path instead of redirecting or 500-ing.
+- 02:05 web: latent fault also fixed — `/auth/launcher/start` opened on an origin that is not
+  `ZM_PUBLIC_URL` wrote its flow into a cookie jar the Steam return never reads, and died silently.
+  The browser is now moved to the public origin, built from config only, `moved=1` so it cannot loop.
+- 02:05 launcher: `SIGNIN_WINDOW_MS` 125 s -> 10 min (shorter than the site's 15 so the launcher is
+  always the one that gives up first and the message is ours), and pressing Sign in twice now
+  replaces the open attempt instead of being refused for ten minutes.
+- 02:05 web: `test/launcher-signin.js` 8 checks -> 13. The new five run a SECOND server in
+  `ZM_AUTH=steam` mode; the old suite only ever ran in mock mode, where `/auth/steam` is not even
+  registered, so it could not have seen any of this. 13 passed, 0 failed. `web/test/run-all.js` 55
+  and `launcher/test/run-all.js` 54 still pass.
+- 02:05 launcher: rebuilt — the script is `npm run pack`, not `npm run dist`. Version bumped
+  0.1.0 -> 0.1.1 because electron-updater compares versions and a rebuild at the same version is
+  invisible to it. Installer at `launcher/dist/ENW-Zombies-Launcher-Setup-0.1.1.exe`; the feed went
+  to a scratch dir, NOT `web/public/updates`, so nothing was pushed at friends before the site half
+  is live.
+- 02:05 web: **the web fix is not live.** The `node` process on 3200 still runs the old
+  `routes/auth.js`. `infra/keepalive.ps1` owns it; B or the coordinator restarts it. The live site
+  and the tunnel were not touched and `web/data` was not written — the repro ran on 3399 with its
+  own `ZM_DATA_DIR`.
+- 02:05 web: unproven — nobody signed in to Steam for real. Hops 5 and 6 with a genuine assertion
+  need a password and this lane does not type one. If the fix does not match what B saw, the final
+  URL and the page text from his browser is the one thing that would settle it.
+
 ---
 
 ## What is open right now (2026-09-22, after the docsweep pass)
