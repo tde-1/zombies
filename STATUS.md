@@ -65,6 +65,16 @@ everything else server-side; rules, wording and the 754-term blocklist are drops
 names, so nobody sees the picker. Open: Q-id-1 (shared store vs mirrored rules); `jamie` is `Jamie`
 on Movement (`tools/align-enw-names.js`). Not deployed. `docs/kickstart/web.md` §13.
 
+## Pause (2026-09-22, evening)
+
+The dedi now really pauses: Esc solo (and typing, with the "pause when using global chat"
+setting), co-op only when everyone is in the menu, typing never pauses co-op; a disconnect counts
+as unpaused; no ceiling, logged. Engine-side and total (`G_RunFrame` gated, clocks held, snapshots
+flowing), paused time excluded from in-game time and records untouched (`dedi.md` §18,
+`referee.md` §15). **The client half is one userinfo key** (`chat-overlay.md` §8) and is not built;
+until it is, nothing a player does can freeze a game. Box deploy/proof: see `dedi.md` §18.4. What a
+real client draws while frozen is unproven.
+
 ## Since the morning checklist was written (afternoon)
 
 - **Isolation rule, done and proven**: our session redirects the game's LocalAppData into `%LOCALAPPDATA%\ENWZombies\home\localappdata` (DLL `enw_localappdata.cpp`); maps, config, saves, profiles all live there; B's `Activision\CoDWaW` tree is byte-identical before/after a Play Local. B's own mods folder was cleaned into `ZombiesDevackup-user-mods-20260923\`.
