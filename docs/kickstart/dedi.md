@@ -2869,3 +2869,85 @@ service instance and booted on slot 0 with the new DLL and host code: `map_loade
   left on the box for the next multi-instance test (about 70 MB).
 * The `linked (… Sep 22 2026 20:28:57)` build string in the journal is still stale (§17's cosmetic
   note).
+
+## 20. 2026-09-22 evening / 23 early: the popular 64 on the box, server-side only
+
+The archive lane's popular run (`docs/kickstart/archive.md` §10) booted every one of its 64
+installs on this box through the real lease path. It used `archive/box_proof.py`, with a
+fake-ID `lease-cli --proof` lease, one map at a time. A pass means `map_loaded`, then
+`com_frameTime` advancing at least 15 s over a 35 s hold, with the process alive. Results are
+in `ZombiesDev\archive\reports\boxproof.json`, each map's manifest (`box_proof`), and
+`web/server/lib/boxProven.json`.
+
+### 20.1 Result: 59 pass, 5 fail
+
+| bsp | zone | result | the engine's first complaint |
+|---|---:|---|---|
+| `nazi_zombie_shore` (Zombie Revolution Infinite) | < 110 MB | **FAIL**, Com_Error before map_loaded | `Could not load rawfile "animscripts/dog_init.gsc"` (missing script) |
+| `cxca` | < 110 MB | **FAIL**, Com_Error before map_loaded | `Could not load rawfile "maps/_zombiemode_dogs.gsc"` (missing script) |
+| `shinomori` (Shi No Mori reborn) | 126 MB | **FAIL**, Com_Error before map_loaded | `Need 36283957 more bytes of 'main' physical ram` |
+| `dpp` (Desce Pro Play) | 113 MB | **FAIL**, Com_Error before map_loaded | `Need 37230375 more bytes of 'main' physical ram` |
+| `nazi_zombie_inferno` | 190 MB | **FAIL**, Com_Error before map_loaded | `Need 81538024 more bytes of 'main' physical ram` |
+| `mr_freeze` (Heart of Ice) | 118 MB | **PASS** (reclassified) | map_loaded, `com_frameTime` +35.1 s. The first run was logged as "process exited", but that was another lane's Nacht lease SIGTERMing the instance 44 s after load (22:33:43 box time). |
+| the other 58 | | **PASS** | map_loaded, `com_frameTime` +35 to 40 s |
+
+**Passing maps:** `nuketown`, `nacht_reimagined`, `nazi_zombie_poke`, `nazi_zombie_dome_snow`, `nazi_zombie_malibu`, `nazi_zombie_johndoe`, `ut_box_map`, `zm_nuked`, `killhouse`, `cryogenic`, `nazi_zombie_path`, `nazi_zombie_fivenights`, `zombie_town`, `futurama`, `nazi_zombie_zhunterz`, `nazi_zombie_bloodsport`, `nazi_zombie_cargo`, `nightclub`, `bridge_zombie`, `dead_palace`, `hghrise`, `nazi_zombie_lorkeep`, `cube`, `navidad_p_zombie`, `thirty_seven`, `nazi_zombie_arena`, `escape_asylum`, `nazi_zombie_prison`, `nazi_zombie_temple`, `nazi_zombie_hotelv2`, `chal_dual_wield`, `nazi_zombie_beachtown`, `nazi_zombie_bored`, `zm_hospital`, `nazi_zombie_enclosed`, `nazi_zombie_library`, `nazi_zombie_pd`, `nazi_zombie_mine`, `aliendefense`, `battlestar_galactica`, `kingdom_hearts`, `nazi_zombie_legion`, `nazi_zombie_hanoizom`, `nazi_zombie_denial2`, `nazi_zombie_rats`, `nazi_zombie_tank`, `jigsaw`, `mr_freeze`, `nazi_zombie_relax`, `nazi_zombie_dcv2`, `nazi_zombie_snowglobe`, `chal_harambe`, `nazi_zombie_ils`, `bank_job`, `nazi_zombie_forest`, `nazi_zombie_arkham`, `bcast`, `ugxm_garage`, `nazi_zombie_crazyplace`.
+
+**Why the 5 fail after one clean run, not two:** all five die in an engine `Com_Error`, which
+waiting longer cannot change. Their second attempts (`--load-wait 300`) were all pre-empted and
+are recorded, not counted:
+- 23:27–23:33 box time: another lane's instance-slot bug dropped every lease to idle about 3 s
+  after it was made, and one run found "no game copy". The host agent was restarted at 23:38.
+- From 23:44: B's live Nacht game, then a Minecraft Village game.
+
+The coordinator stopped all box leases for the night at about 23:55. `popular.py --apply` set
+`health: "broken"` plus `health_reason` on the five, and `import-archive.js` imported them as
+`broken`. The Maps list hides them and a lease refuses them.
+
+**The 'main' physical ram failures are not the zone size alone.** `zombie_town` (201 MB) and
+`nazi_zombie_malibu` (190 MB) pass, while `dpp` (113 MB) fails. The shortfall is in the
+server's own `'main'` hunk under Wine. Nobody has tried raising it (a `com_hunkmegs`-style
+setting on the dedi) yet.
+
+### 20.2 Two traps for anyone leasing the box
+
+1. **Journal `idle` is not a safe signal.** The site expires a lease about 5 min after it is
+   created, even while its game is live (a site bug another agent is fixing). At 23:50:11 the
+   journal said `idle` in the middle of B's Nacht game (round 2). The archive lane's cxca lease at 23:50:23
+   replaced it. Until that is fixed, ask the coordinator before leasing, even when the journal
+   says idle.
+2. **Anybody's lease replaces yours.** The host runs one assignment and SIGTERMs the old
+   instance. `box_proof.py` now records either case as **skipped**, not failed: a foreign
+   `assignment changed: leased` line, or our lease going `idle` before we cancel it.
+   `--load-wait` sets how long to wait for map_loaded (default 150 s).
+
+### 20.3 What the 59 carry that a client will meet
+
+- **Add-on IWDs** (not the map's own; `*` means the IWD has scripts in it), 51 of the 64. §9.4
+  showed these can be hard dependencies, so they are never dropped: `nacht_reimagined` (dlc3_weapons, zombies_tranzit*, zz_sal_chalkmakers); `nazi_zombie_poke` (pokemonwherelegendsbegin*, z_hud); `nazi_zombie_dome_snow` (_bam_bo1_perks_mod*, electric_cherry*); `ut_box_map` (dlc3_weapons); `zm_nuked` (buried*, nuketown*); `killhouse` (nuketown*); `nazi_zombie_path` (thepath*, z_thepath); `nazi_zombie_fivenights` (ugx_mod*, ugxm_guns*, viewhands_m14_patch); `futurama` (ugx_mod*, ugxm_guns*); `nazi_zombie_zhunterz` (^1zhunterz*, electric_cherry*, z_hud); `nazi_zombie_bloodsport` (nuketown_zombies*); `nazi_zombie_cargo` (_bam_bo1_perks_mod*, electric_cherry*, nuketown_zombies*); `nightclub` (BlSt_PanzerSoldat*, fortress*); `dead_palace` (ugx_mod*, ugxm_guns*, viewhands_m14_patch); `hghrise` (die_rise*, highrise*); `nazi_zombie_lorkeep` (electric_cherry*, porter_punch*, vulture_aid*, wunderfizz*, z_hud); `cube` (ascencion_zombies*); `navidad_p_zombie` (electric_cherry*, zombie_hitmarker_bythesuzho*); `thirty_seven` (trem_hintstrings*, ugx_mod*, ugxm_guns*, zom_player_engineer, zom_player_farmgirl, zom_player_robert, zom_player_sarah, zzzbo1_perks_ugx_mod*); `escape_asylum` (z_hud); `nazi_zombie_shore` (images, nazi_zombie_streets, zombierevolutioninfinite*); `nazi_zombie_temple` (harrybo21_bo1_2_3_perks_v5.0.0); `nazi_zombie_hotelv2` (nuketown*); `chal_dual_wield` (ugx_mod*, ugxm_guns*); `nazi_zombie_beachtown` (ugx_mod*, ugxm_guns*); `nazi_zombie_bored` (dlc3_weapons, harrybo21_perks v3.0.6*, zombies_tranzit*); `cxca` (_bam_bo1_perks_mod*, electric_cherry*, motd_zombie_images, nazi_zombie_asylum*, vulture_aid*, wunderfizz*); `nazi_zombie_enclosed` (_bam_bo1_perks_mod*, dlc3_weapons, electric_cherry*); `nazi_zombie_library` (dlc3_weapons, library*); `nazi_zombie_pd` (purpledimension*, z_hud); `battlestar_galactica` (ugx_mod*, ugxm_guns*, viewhands_m14_patch); `kingdom_hearts` (_bam_bo1_perks_mod*, dlc3_weapons, electric_cherry*, lunar_lander*, origins_generators*, porter_punch*, vulture_aid*, wunderfizz*, z_hud); `shinomori` (dlc3_weapons, electric_cherry*, harrybo21_bo1_2_3_perks_v5.0.0); `nazi_zombie_legion` (z_hud); `nazi_zombie_hanoizom` (hanoi*, harrybo21_perks*); `nazi_zombie_rats` (electric_cherry*, vulture_aid*); `nazi_zombie_tank` (z_hud); `jigsaw` (dlc3_weapons, trem_hintstrings*); `mr_freeze` (ugx_mod*, ugxm_guns*); `nazi_zombie_relax` (_bam_bo1_perks_mod*, buried*, electric_cherry*, vulture_aid*, wunderfizz*); `nazi_zombie_dcv2` (nuketown_zombies*); `nazi_zombie_snowglobe` (ugx_mod*, ugxm_guns*); `chal_harambe` (ugx_mod*, ugxm_guns*); `nazi_zombie_ils` (dlc3_weapons); `dpp` (harrybo21_bo1_2_3_perks_v5.0.0); `bank_job` (dlc3_weapons, zz_sal_chalkmakers); `nazi_zombie_forest` (ugx_mod*, ugxm_guns*, viewhands_m14_patch, z_hud); `nazi_zombie_arkham` (dlc3_weapons); `bcast` (_bam_bo1_perks_mod*, dlc3_weapons, electric_cherry*, lunar_lander*, porter_punch*); `ugxm_garage` (ugx_mod*, ugxm_guns*); `nazi_zombie_crazyplace` (mp_rollon_evopro, nuketown_zombies*, thecrazyplace*, trem_hintstrings*).
+- **22 map zones are 110 MB or more inflated** and carry `client_memory_risk` (ORBiT, 137 MB,
+  parks its client at about 1.6 GB, §14.7): `zombie_town` 201, `nazi_zombie_malibu` 190,
+  `nazi_zombie_inferno` 190, `nuketown` 184, `nazi_zombie_ils` 144, `cryogenic` 144,
+  `nacht_reimagined` 143, `nazi_zombie_zhunterz` 143, `nazi_zombie_pd` 138,
+  `bridge_zombie` 133, `nazi_zombie_arkham` 127, `nazi_zombie_denial2` 127,
+  `nazi_zombie_legion` 126, `shinomori` 126, `nazi_zombie_prison` 124,
+  `nazi_zombie_hanoizom` 123, `jigsaw` 118, `nazi_zombie_cargo` 118, `mr_freeze` 118,
+  `zm_nuked` 113, `dpp` 113, `hghrise` 110 (MB). 19 of them pass on the server, and any
+  of those 19 may still hit the 32-bit client's 2 GB ceiling.
+- Many passing maps log non-fatal `script runtime error` and missing xmodel/xanim/weapon-file
+  warnings (the `first_error` in each manifest). None stopped the server. A client may show
+  them.
+
+### 20.4 Unproven
+
+**No client joined any of these games.** Nothing here covers:
+- client-side load, including the 2 GB ceiling for the 19 big passing zones
+- a mid-game join
+- round 2
+- game over or a refereed finish
+
+On B's word ("push all the maps that currently work so I can try them out"), the site now
+offers the 59 to a party at a second level. `lib/maps.js` `BOX_PROVEN` gives them
+`server_level: "box"`, and the site tags them **New** with the caveat on hover.
+`SERVER_PROVEN` still means five gates with a real client. The first real player on each
+map is the client proof.
