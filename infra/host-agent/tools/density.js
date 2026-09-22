@@ -14,9 +14,12 @@
 // fleet is full — and whether the game-link, the referee timers and the replay writers
 // degrade as games are piled on.
 //
-// `dedi` has also found that the engine binds a hardcoded UDP 3074 party socket with no
-// dvar to move it, which may cap real instances per machine at ONE regardless of anything
-// measured here. That is a separate, harder ceiling; see docs/kickstart/dedi.md.
+// An earlier note here said `dedi` had found the engine binds a hardcoded UDP 3074 party
+// socket with no dvar to move it, which "may cap real instances per machine at ONE". That
+// ceiling turned out not to exist: measured on 2026-09-22, two headless servers ran at the
+// same time, A on udp 3074 and B on udp 3075 -- the engine falls back. See
+// docs/kickstart/host.md 10.5. The one-game-per-box limit in this codebase is ours (a shared
+// game copy, homepath and game.lock), not the engine's.
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'

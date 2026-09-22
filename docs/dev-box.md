@@ -64,6 +64,13 @@ Steam exe facts: `CoDWaW.exe` 1.7, 5,902,336 bytes, SHA-256
 13. **Never pass `+set developer 1` to a game you want to keep running.** It promotes missing-asset
     warnings to fatal modal errors, and stock WaW is missing at least one image
     (`images/sun_flare.iwi`). `tools\dev\launch.ps1` has it off by default; `-Developer` opts in.
+    It is tempting on the connect path, because every interesting line there is a `Com_DPrintf` —
+    `server/components/dedicated/join_probe.cpp` mirrors `Com_DPrintf` instead, precisely so that
+    nobody needs to.
+14. **Do not touch the live site or the tunnel.** The `node` process on port **3200** is B's public
+    site and `cloudflared` is the tunnel to `zombies.enw.gg`. Do not restart either, and do not
+    write to `web/data`. If you need a web server of your own, take **3399** or another free port.
+    If you think the site needs restarting, say so in your report; do not do it yourself.
 
 ## Game copies
 - `waw-base` is a full copy of the Steam folder (made once by the foundation agent).
@@ -76,7 +83,13 @@ Steam exe facts: `CoDWaW.exe` 1.7, 5,902,336 bytes, SHA-256
 
 ## Known traps
 - WaW may show a **"run in safe mode?"** dialog after a crash, which blocks automation. Find the
-  marker it uses and clear it, or patch the prompt out in the DLL.
+  marker it uses and clear it, or patch the prompt out in the DLL. (Solved: it is
+  `%LOCALAPPDATA%\Activision\codwaw\__CoDWaW`, a 4-byte file holding the running PID.
+  `launch.ps1` deletes it when it is stale and refuses to launch when it names a live process.)
+- **Windows Firewall prompts on every new dev copy**, because each copy is a new program binding a
+  listening socket. `infra\firewall.ps1`, run **once, elevated** by B, covers the copies that exist
+  and the ones that do not yet. `-Remove` undoes it. Agents cannot run it: firewall rules are a
+  system setting and it needs a UAC prompt B answers.
 - First-run dialogs (optimal settings, profile) also block. Note what appears.
 - Steam may relaunch the game from its own folder instead of a copy (SteamStub). If copies can't
   run, stop and write it on the board. Don't fall back to writing in the Steam folder.

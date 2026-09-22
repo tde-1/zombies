@@ -1,5 +1,9 @@
 # Morning brief for B (drafted overnight, 2026-09-20)
 
+> **This is a snapshot of 2026-09-20 and it is kept as written. For where things stand now, read
+> `STATUS.md`.** Two items under "What is still not proven" below have since been settled and are
+> marked in place: a client joining our server (item 1) and several games on one box (item 3).
+
 Plain summary of what happened while B slept. Detail: `docs/kickstart/*.md`, and the vault's
 `17 - Kickstart- Server Viability Prototype.md`.
 
@@ -33,10 +37,17 @@ invite tokens and live spectating all work together on real data.
 | Map scanner | **10/12** on real custom maps (0/14 before it was fixed) |
 
 ## What is still not proven
-1. **A client joining our server.** The test is staged and runs on the first green build; one blocker
-   remains (the engine parks in a hidden console window's text drawing, which a server doesn't need).
+1. ~~**A client joining our server.**~~ **Done 2026-09-22**: a client connects to the headless
+   dedicated server and spawns in, and the referee logs round 1 (`dedi.md` §7h, runs
+   `join12`–`join18`). The server then stops about ten seconds later, which is the open blocker now
+   (`dedi.md` §7j). *As written on 2026-09-20:* The test is staged and runs on the first green
+   build; one blocker remains (the engine parks in a hidden console window's text drawing, which a
+   server doesn't need).
 2. **Performance under load** — only idle numbers exist.
-3. **Several games on one box** — the engine binds a fixed party socket that may cap it.
+3. ~~**Several games on one box** — the engine binds a fixed party socket that may cap it.~~
+   **Measured 2026-09-22 and the fear was unfounded**: two headless servers ran at once, the second
+   taking UDP 3075 when 3074 was busy (`host.md` §10.5). The one-game-per-box limit that remains is
+   ours (a shared game copy, homepath and lock), not the engine's.
 4. **Rounds, score and custom-game knobs**, which need script-variable reads; the published layout was
    disproved rather than guessed at.
 5. **Sending text into a running game** — withdrawn, not merely unproven. It was reported working on

@@ -1,7 +1,8 @@
 # dedi — Stage C spike: can `CoDWaW.exe` be a headless dedicated zombies server?
 
 Owner: `dedi` agent. Scope: `server/components/dedicated/`, `server/components/net/`, this file.
-Everything below was measured on B's PC on 2026-09-20 against a copy of the Steam build 1.7.1263.
+Everything below was measured on B's PC between 2026-09-20 and 2026-09-22 against a copy of the
+Steam build 1.7.1263.
 Observation and inference are kept apart, and where I have had to walk a claim back I have said so
 rather than quietly editing it.
 
@@ -45,11 +46,26 @@ refusal landed:
 - The previously recorded diagnosis ("a bounded Sleep(1) pacing loop at 0x59DD90") is **retracted**
   in §7b: that stack is what a *healthy* headless server looks like.
 
-**Next, in order**: (1) the `Sys_GetEvent` `GetMessageA` stall (§7c); (2) the loopback join —
+**Next, in order** — *written 2026-09-21; items (1) and (2) are now done, see the update below*:
+(1) the `Sys_GetEvent` `GetMessageA` stall (§7c); (2) the loopback join —
 `CL_ConnectLocal` 0x641730 and `tools\dev\jointest.ps1`; (3) the 14-map sweep; (4) solo-on-dedicated
 co-op rules. The join is cheaper than feared: R14 says T4 SP has no party layer, and CLL's source
 confirms no launcher in this scene implements one — Plutonium's `connect ip:port` lives inside
 *their* binary, not in stock T4.
+
+**Update 2026-09-22 — milestone (d) is DONE, and the blocker has moved.** A second `CoDWaW.exe`
+connects to this headless server and **spawns in**: `Going from CS_CLIENTLOADING to CS_ACTIVE`,
+then `referee: ROUND 1 (all_players_connected)`. Reproduced in every join run from `join12` to
+`join18` (§7h). §7c's `GetMessageA` stall is fixed; the 14-map sweep and solo-on-dedicated co-op
+rules are still owed. **What is open now** is that the server does not survive the spawn: the frame
+loop stops about ten seconds later with the CPU pegged — a spin, not a wait — and a second failure
+mode raises `exceeded maximum number of script variables` (§7j).
+
+Two corrections that change how you read everything older in this file: **T4 has no `CS_PRIMED`**
+(§7h), and **the server was never burning a whole core** — the join harness was passing no
+`com_maxfps` (§7j).
+
+**Where the whole project stands is `STATUS.md`.** This file is the dedi lane only.
 
 **One question only B can answer**: whether a game box needs a logged-in Steam client (§8).
 
@@ -271,7 +287,7 @@ map, then zombies GSC setting `g_spawnai 1`, `ai_disableSpawn 0`, `dynEnt_spawne
 | 2 | `maps/_load.gsc:3767` via `:324` | stock GSC calls `SetSavedDvar` on `con_typewriterColorBase`, a client-only dvar. `+set` creates it but without the SAVED flag; `seta` does not help | **CLEARED, but crudely.** Our DLL ORs flag bits into the existing `dvar_s`. See the honesty note below |
 | 3 | `ERR_MAPLOADERRORSUMMARY` raised from `SV_SpawnServer+0x3CD` (call at `0x62B7AD`) | The dedicated path tripped the map-load error summary **with an empty accumulated list**, and `Com_Error(7, "")` tail-called `Sys_Error`, which parked the main thread in `win32u!NtUserGetMessage` for ever inside `Com_Init`. Found by suspending the thread and reading its context; confirmed by trapping `Com_Error` | **CLEARED.** Our DLL retargets that one call to a stub that logs and returns. `Com_Init` now returns, the frame loop starts, and the server dispatches packets (`SV_PacketEvent`/`SV_ConnectionlessPacket`/`SV_DirectConnect` all fired) |
 | 5 | console text output; repeated validated caller **`0x5B0830`**, plus `0x60594E` in the WinConsole region | after ~2 frames the main thread sits in GDI. A validated stack walk (accepting an address only if a `call` precedes it) shows the EIP **moving between `win32u!NtUserExtTextOutW` and `win32u!NtUserScrollDC`**, so it is **grinding, not deadlocked** — consistent with the console edit control being hammered: each appended line is a synchronous `SendMessage` → wndproc → paint + scroll, quadratic in the text. `0x49414E`, which I reported earlier, is **not** a return address and was a false positive | **OPEN. Two fixes tried, both failed — see below. The address that would unlock it is `0x5B0830`** |
-| — | UDP 3074 | the party socket is bound with no dvar to move it | not a crash; blocks several instances per box |
+| — | UDP 3074 | the party socket is bound with no dvar to move it | not a crash. ~~blocks several instances per box~~ — **wrong, corrected 2026-09-22**: two headless instances ran at once, A on 3074 and B on **3075**, so the engine falls back rather than failing to bind. `host.md` §10.5; §9.2 item 4 below |
 
 ### How site 2 was settled, and what it cost
 
@@ -979,6 +995,13 @@ patched is preceded by the `0x582740` call.
 
 ### What is NOT done, precisely
 
+> **SUPERSEDED 2026-09-22 by §7h — kept, because the reasoning and one wrong name in it are both
+> worth reading.** The player *does* spawn now, and nothing new had to be patched to get there.
+> Item 1 below is answered: the connection did not "time out after the map loads" — `join11`'s
+> `Server connection timed out` was the **client** giving up while the server was fine. The state
+> name it sends you looking for, `CS_PRIMED`, **does not exist in T4** (§7h). Item 2 is answered in
+> §7j: the server was never burning a core, the harness was passing no `com_maxfps`.
+
 **The player has not spawned.** `CS_CONNECTED` is not `CS_ACTIVE`; the server never logged the
 client entering the game, and `client_s.lastUsercmd` (+0x11108) and `gentity_s.currentOrigin`
 (+0x160) were never sampled because there was nothing to sample. Connected is not spawned, and the
@@ -986,15 +1009,19 @@ success criterion is spawned and moving.
 
 Two concrete things for the next session, in order:
 
-1. **Why the connection times out after the map loads.** The client goes
-   `CS_CONNECTED -> (gamestate) -> CS_PRIMED -> CS_ACTIVE`, and it stalled somewhere after loading.
+1. **Why the connection times out after the map loads.** *(Answered: it did not — see the box
+   above.)* The client goes `CS_CONNECTED -> (gamestate) -> CS_PRIMED -> CS_ACTIVE` — **there is
+   no `CS_PRIMED` in T4; the middle state is `CS_CLIENTLOADING`, §7h** — and it stalled
+   somewhere after loading.
    `SV_PacketEvent` stopped climbing at 275, so the conversation died rather than never started. The
    places to look are the `clc_move`/usercmd path (`0x630BF0`, "Invalid command time %i from
    client") and whether the server ever sends the "entered the game" server command.
-2. **The server burns a whole core with a client connected.** Idle it is 4.85% of one core; in
-   `join11` it was **62.4 s of CPU in 60 s**. That is not the frame rate (`jointest.ps1` does not
-   pass `com_maxfps`, so Com_Frame free-runs) but it is worth measuring properly with the cap on
-   before anyone concludes the server is expensive.
+2. **The server burns a whole core with a client connected.** *(Answered in §7j, and the guess
+   in the parenthesis below was the whole of it — it **was** the frame rate. `jointest.ps1`
+   passes `+set com_maxfps 60` now and the server holds a flat 61 Hz.)* Idle it is 4.85% of one
+   core; in `join11` it was **62.4 s of CPU in 60 s**. That is not the frame rate (`jointest.ps1`
+   does not pass `com_maxfps`, so Com_Frame free-runs) but it is worth measuring properly with the
+   cap on before anyone concludes the server is expensive.
 
 Also still true and still untested: on a dedicated server the game runs **co-op rules even with one
 player** (Quick Revive, prices, revives). For a speedrun platform that is the difference between a
@@ -1005,7 +1032,11 @@ hosted.
 
 ## 7h. MILESTONE (d) DONE — a player spawns in, and round 1 starts
 
-**Runs `join12` (00:24), `join13` (00:32), `join14` (00:37), 2026-09-22. Three for three.**
+**Runs `join12` (00:24), `join13` (00:32), `join14` (00:37) — and then `join15` to `join18`.
+2026-09-22, seven for seven.** Every one of `join12`–`join18` has both
+`Going from CS_CLIENTLOADING to CS_ACTIVE` and `referee: ROUND 1` in its
+`ZombiesDev\logs\dedi\joinNN.server.enw.log`. The spawn is not what varies between those runs;
+how the server dies *afterwards* is (§7j).
 
 ```
 dprint[15] Going from CS_CONNECTED to CS_CLIENTLOADING for %s
@@ -1285,8 +1316,16 @@ the copy and neither opens as a zip. Worth B running Steam's "Verify integrity o
 3. Both modal boxes are plain `#32770` and answer to `PostMessage(hwnd, WM_COMMAND, IDNO, 0)`.
 4. **Per-instance user data is unsolved.** `fs_homepath` moves `main` and the console log but not the
    profile directory, and `LOCALAPPDATA` is ignored (`SHGetFolderPath`). Several games on one box
-   share `%LOCALAPPDATA%\Activision\codwaw` including the single-instance PID marker, and collide on
-   **UDP 3074**.
+   share `%LOCALAPPDATA%\Activision\codwaw` including the single-instance PID marker, ~~and collide
+   on **UDP 3074**~~.
+   **CORRECTION 2026-09-22, from `hostlane`'s measurement: the UDP 3074 half of that is wrong.**
+   Two headless instances ran at the same time on one box, both answering `getstatus` — **A on
+   3074, B on 3075**. The engine falls back to the next port; it is not an exclusive bind, and
+   neither instance was blocked by the `__CoDWaW` marker. `host.md` §10.5 has the transcript.
+   The **shared-profile** half of the item may still hold; it has not been re-tested. And do not
+   reach for `ENW_PRIVATE_PROFILE` to fix it: an empty private-profile tree makes the engine raise
+   `Exceeded limit of 1 'snddriverglobals' assets` and then answer nothing at all, reproduced three
+   times (`host.md` §10.6).
 5. **`Measured CPU speed is 0.01 GHz` / `Total CPU performance is estimated as 0.03 GHz`** on a Ryzen
    9800X3D — the engine's CPU benchmark is broken on modern hardware. Do not trust engine-side timing.
 6. **`System memory is 1024 MB (capped at 1 GB)`** — a 32-bit process with a hard cap.
@@ -1302,10 +1341,15 @@ the copy and neither opens as a zip. Worth B running Steam's "Verify integrity o
 | (a) runs with no renderer/window | **done, by the stock exe** |
 | (b) loads `nazi_zombie_prototype` and runs script frames | **done** (p21) — map, collision, zombies GSC |
 | (c) stable frame rate with sleep-based pacing, CPU and RAM | **done, soaked 10 min** — 61 Hz, `SV_Frame` **20.0 fps**, **4.85% of one core**, **186.3 MB flat**, 1 hitch (the map load). §7d |
-| (d) a client connects and spawns in | **DONE** — `Going from CS_CLIENTLOADING to CS_ACTIVE`, then `referee: ROUND 1 (all_players_connected)`. Runs `join12`, `join13`, `join14`, reproduced three times out of three. §7h |
-| (e) the server survives the first round | **not yet.** ~18 s after the player spawns the script VM reports `exceeded maximum number of script variables` and keeps reporting it until it dies. §7h |
+| (d) a client connects and spawns in | **DONE** — `Going from CS_CLIENTLOADING to CS_ACTIVE`, then `referee: ROUND 1 (all_players_connected)`. Reproduced in **every** run from `join12` to `join18` — seven out of seven. §7h |
+| (e) the server survives the first round | **not yet, and it is the only blocker left.** ~10 s after the player spawns the frame loop stops with the CPU pegged — a spin, not a wait. The autosave fix did not change it. §7j |
+| (e2) the script VM stops refusing | **not yet.** A second failure mode, seen twice: `exceeded maximum number of script variables`, raised 2,151 times while every category the engine itself reports stays flat at ~2,300 variables. §7j |
 
-**Estimate for a focused swarm to finish Stage C**, assuming `re` keeps supplying addresses and the
+**Estimate for a focused swarm to finish Stage C** — *written 2026-09-20 and kept as written. Read
+it against what happened: a client connecting and spawning came in inside two days rather than
+2–4, and "several instances per box (3074…)" turned out not to be work at all, because 3074 never
+collided (§9.2 item 4). The frame-loop freeze of §7j is not in this estimate, because nobody knew
+it existed when the estimate was made.* Assuming `re` keeps supplying addresses and the
 Steam question is answered: narrowing the SAVED flag to one bit, hours. Site 3 (the wire), 1–2 days —
 this is the real unknown now. Frame pacing, CPU and a soak, 1 day. A client connecting and spawning,
 2–4 days, less than I feared before R14 removed the party layer from the problem. Several instances

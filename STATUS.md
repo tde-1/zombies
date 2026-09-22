@@ -10,7 +10,8 @@
 
 **A real client now connects to the headless dedicated server and spawns into the game**, and the
 referee logs `ROUND 1`. That was the milestone the whole Stage C estimate hung on and it was
-written down yesterday as "2–4 days away". Reproduced in five separate runs.
+written down yesterday as "2–4 days away". Reproduced in **seven** runs, `join12` to `join18` —
+every join run since it first worked has both lines in its server log.
 
 ```
 Going from CS_CONNECTED to CS_CLIENTLOADING for anna-jpg
@@ -25,6 +26,10 @@ was the *client* giving up while the server was fine.
 **And the server does not survive it.** About ten seconds after the player spawns the frame loop
 stops: `frame::count` frozen, CPU pegged at a whole core. Pegged, not idle, so it is a spin rather
 than a wait. That is the one thing between here and a playable dedicated game.
+
+**For the next agent**: `docs/kickstart/next-session.md` is the one-page handoff — the next task,
+the command that reproduces this state, which logs to read and the traps. `docs/kickstart/README.md`
+is the entry point and the hard rules; `docs/kickstart/board.md` ends with what is open.
 
 ## The two things to do next
 

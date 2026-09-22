@@ -548,7 +548,15 @@ New, and load-bearing for milestone (d):
 
 A second `CoDWaW.exe` now reaches `Going from CS_FREE to CS_CONNECTED` on our headless server. Five
 things stood in the way, each found by running the test and reading the instruction that produced
-the failure. All five addresses below were verified before being patched, and every patch site was
+the failure.
+
+> **Update 2026-09-22.** These five gates turned out to be the whole of it: with them cleared the
+> client walks on to `CS_CLIENTLOADING` and then **`CS_ACTIVE`** with nothing further patched.
+> **T4 has no `CS_PRIMED`** — that is Quake 3 / CoD 4, and any note in this file or elsewhere that
+> names it is wrong. The middle state is **`CS_CLIENTLOADING`** (value 3). The addresses for the
+> rest of the walk — `SV_SendClientGameState` `0x62F500`, `SV_ClientEnterWorld` `0x62FC30`,
+> `SV_ExecuteClientMessage`'s low-nibble serverId gate at `0x631008`, and the `client_s` offsets —
+> are in `docs/kickstart/dedi.md` §7h, each one read off an instruction. All five addresses below were verified before being patched, and every patch site was
 checked for the caller's own stack cleanup rather than a guessed convention.
 
 | # | Gate | Address | What it does | How we pass it |

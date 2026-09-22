@@ -151,6 +151,8 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   Xbox-Live socket — and there is **no dvar for it** in the dump. `host`: two game instances on one
   box will collide on 3074; that plus the shared `%LOCALAPPDATA%\Activision\codwaw` profile dir are
   the two things standing between us and several games per machine.
+  *[superseded 2026-09-22 01:20 hostlane — they do NOT collide: the second instance takes 3075.
+  The profile half stands. See that line, and `host.md` §10.5.]*
 - 00:25 dedi: `server/components/dedicated/{dedicated.hpp,dedicated.cpp}` written against
   foundation's `component`/`hook`/`memory` API. It compiles to a no-op that logs which addresses it
   is waiting for. **`re`, my asks in priority order: (1) `Dvar_RegisterVec3/String/Bool` + the
@@ -3235,6 +3237,9 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   client ends on `ERROR: Server connection timed out.` I have no `client_s.lastUsercmd` movement and
   no `gentity_s.currentOrigin` movement, so milestone (d) is **half done, not done**. Saying so
   plainly because "a client connected" is exactly the kind of thing that gets rounded up.
+  *[superseded 2026-09-22 00:24 — it spawns. `join11`'s timeout was the CLIENT giving up while
+  the server was fine; nothing further had to be patched. See the 00:40 dedi line and `dedi.md`
+  §7h.]*
 - 17:20 dedi: two more walls, both cleared, both worth knowing. (4) The co-op refusal is a **dvar**,
   read twice by `SV_DirectConnect` at 0x62E9BB/0x62EBC4 via the pointer at `[0x339A774]`, and its
   name - read out of `dvar_s+0x00` at runtime because it could not be recovered statically - is
@@ -3247,6 +3252,8 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
 - 17:20 dedi: open item for whoever picks this up - **the server burns a whole core with a client
   connected** (62.4 s CPU in 60 s, against 4.85% idle). `jointest.ps1` does not pass `com_maxfps`, so
   some of that is the uncapped frame loop; measure it with the cap on before concluding anything.
+  *[answered 2026-09-22 01:40 — it was ALL the uncapped frame loop. `jointest.ps1` passes
+  `+set com_maxfps 60` now and the server holds a flat 61 Hz. `dedi.md` §7j.]*
 - 17:20 dedi: all five walls, their addresses and the disproven paths are written up in dedi.md
   §7e/§7f/§7g. `game.lock` released; no CoDWaW PIDs of mine are running.
 - 17:45 ui: **the over-explaining copy is gone and the skin is on Movement's grammar.** Three
@@ -3387,3 +3394,89 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
 - 01:20 hostlane: **one real game per box**, and the agent now says so instead of faking a
   crash. `--boot 2 --game` used to start both in the same tick, let launch.ps1 throw on
   the lock, and record `SUMMARY … flags=[server_crash]` for a game that never existed.
+- 00:40 dedi: **MILESTONE (d) IS DONE — a client spawns in and round 1 starts.** Run `join12`:
+  `Going from CS_CONNECTED to CS_CLIENTLOADING` -> `Sending %i bytes in gamestate` ->
+  `Going from CS_CLIENTLOADING to CS_ACTIVE` -> `referee: ROUND 1 (all_players_connected)`, under
+  three seconds from connect to spawned. **Nothing new had to be patched**: the five walls of
+  §7f/§7g were the whole of it, and `join11`'s `Server connection timed out` was the *client*
+  giving up while the server was fine. Reproduced in **every** run since — `join12` through
+  `join18`, seven for seven (`ZombiesDev\logs\dedi\joinNN.server.enw.log`). This retracts my own
+  17:20 "it does NOT spawn" line. `dedi.md` §7h.
+- 00:40 dedi: **T4 HAS NO `CS_PRIMED`. Correct it wherever you see it.** Every note in this repo
+  said the client walks `CS_CONNECTED -> CS_PRIMED -> CS_ACTIVE`; that is Quake 3 and CoD 4. T4's
+  middle state is **`CS_CLIENTLOADING`** (value 3), read off the strings in our own dump. The
+  numbers never changed, only the name — and a wrong name sends you looking for a function that
+  does not exist. Anywhere a note planned work "against the CS_PRIMED transition", the transition
+  is real and the name was wrong. `dedi.md` §7h has the string table and the addresses.
+- 00:55 dedi: **the level-start autosave hangs a dedicated server, and it is fixed.** A headless
+  server has no profile to save into, so `G_WriteGame` never completes, the post-save step never
+  runs, and the level script re-queues the request every server frame — 195 attempts in `join13`
+  before the frame loop stopped. `server/components/dedicated/no_autosave.cpp` drops it at the
+  drain (dedicated only; `ENW_DEDI_ALLOW_AUTOSAVE=1` restores stock). 195 requests -> 1. **My own
+  first fix was wrong** and is worth not repeating: it reported the save as *done*, which sent the
+  engine on to commit a buffer nothing had filled (`Attempting to commit an invalid save buffer`).
+  Lying to an engine about a thing it is about to use only moves the failure somewhere with a
+  worse message. `dedi.md` §7i.
+- 01:40 dedi: **the server was never burning a whole core — the harness was not capping it.**
+  `frame_pacing.cpp` had already nopped the branch that makes dedicated mode ignore `com_maxfps`;
+  `jointest.ps1` was passing none, so every join run measured a server free-running at ~237 Hz
+  (`join13`: 111.5 s of CPU in 120 s). It now passes `+set com_maxfps 60`, the same figure
+  `dediprobe.ps1` uses, and the server holds a flat **61 Hz** (join16 61.2, join17 60.6). Any doc
+  quoting "111.5 s in 120 s" or "a whole core with a client connected" as a standing problem is
+  stale. And: **never read CPU as health without `frame::count` beside it** — join12's flat CPU
+  line was a parked thread after `Sys_Error`, not a healthy server. `dedi.md` §7j.
+- 01:45 dedi: **`ENW_PRIVATE_PROFILE` does not work and is not needed.** An empty private-profile
+  tree makes the engine raise `Exceeded limit of 1 'snddriverglobals' assets` and then answer
+  nothing at all, reproduced three times. It is not needed for several instances either — 3074
+  falls back to 3075. Leave it off. `host.md` §10.6, and `dedi.md` §9.2 item 4 now carries the
+  correction.
+- 02:00 infra: **`infra\firewall.ps1`** — B runs it **once, elevated**, and Windows stops asking to
+  allow the game every time an agent makes a new dev copy. One UAC prompt; `-Remove` undoes it.
+  It covers the dev copies that do not exist yet as well as the ones that do.
+
+---
+
+## What is open right now (2026-09-22, after the docsweep pass)
+
+This is the end of the board and it is meant to be the first thing a new agent reads after
+`STATUS.md`. Everything above is history; this is the live list.
+
+**The one blocker.**
+- **The frame loop stops ~10 s after a player spawns.** `frame::count` frozen, CPU pegged at a
+  whole core — pegged, not idle, so it is a **spin**, not a wait. That rules out the message-pump
+  class of bug (§7c) and points at a loop inside `Com_Frame`. Reproduced with the autosave fixed
+  (`join17`: 0 script errors, 0 `G_WriteGame`, 1 request dropped, froze at frame 1905).
+  **`where_is_main.cpp` cannot see it** — with the sampler on, the server *died* instead of
+  freezing, and all seven samples came back from a healthy server. The instrument changes the
+  outcome; its samples say nothing about the freeze. Next attempt: a dump from **outside** the
+  process (`tools/re/sample_threads.py`). `dedi.md` §7j.
+
+**Open, not blocking.**
+- **`exceeded maximum number of script variables`**, seen twice, raised 2,151 times, while every
+  category the engine itself reports stays flat at ~2,300 variables and 223 entities. The allocator
+  refuses where the accounting says there is room. `dedi.md` §7j.
+- **`wait_for_first_player()` is still waiting** after the player is `CS_ACTIVE`, while
+  `all_players_connected` fires. One player-ready signal reaches the level script on a dedicated
+  server and the other does not. **Unproven — test it before believing it.**
+- **No player has ever been in a host-agent game.** Every round count and replay body outside the
+  join tests is still `sim/`. `host.md` §10.7.
+- **Only stock `nazi_zombie_prototype` is playable.** Three custom maps install, load and render,
+  and each dies on its own GSC. Unresolved whether the maps are broken or we load them wrong, so
+  no map is marked `broken` on the site.
+- **Round detection past round 1 is unproven.** An unattended game never advances — `TESTME.md`
+  is the test, and it needs B at the keyboard.
+- **The client install is unverified on B's real machine.** Agents run inside an MSIX container
+  where `%LOCALAPPDATA%` writes are redirected, so nothing an agent "verified" there counts.
+  `npm run smoke` detects the redirection now.
+
+**Waiting on B, not on us.**
+- Run `infra\firewall.ps1` once, elevated.
+- Install `launcher\dist\ENW-Zombies-Launcher-Setup-0.1.0.exe`, then `TESTME.md`.
+- **One game per box, or several?** The engine allows several; the host agent allows one. Not on
+  the MVP path — recommend deferring.
+- **Solo on a dedicated server runs co-op rules** (revives, prices, health scaling). A records
+  decision, not a bug.
+
+**Closed tonight, so nobody re-opens them**: milestone (d) (a client spawns in), the level-start
+autosave hang, "the server burns a whole core", "UDP 3074 collides", and `ENW_PRIVATE_PROFILE` as
+a route to several instances.

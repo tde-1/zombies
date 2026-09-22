@@ -8,8 +8,12 @@
 > `getstatus`/`getchallenge` on the wire (`tools/dev/oob.py`, exit 0), for **0.046 of a core and
 > 185 MiB with no players** — the first per-game figures that are not the simulator. §10.3. Then it
 > stops cleanly, by PID, and releases the lock. **Still simulator-only**: everything a *player*
-> does. No real zombies game has been refereed, because no client spawns in yet, so every replay
-> size and every per-game cost *under load* in §3 is still `sim/`. **Off by default and must stay
+> does. No real zombies game has been refereed. ~~because no client spawns in yet~~ — **corrected
+> 2026-09-22**: a real client now connects to a headless dedicated server and *does* spawn in
+> (`dedi.md` §7h), but that is the `dedi` lane's own `jointest.ps1` harness, not a game this agent
+> launched, and the server's frame loop stops about ten seconds after the spawn (`dedi.md` §7j).
+> So every replay size and every per-game cost *under load* in §3 is still `sim/`, and what this
+> lane is waiting for is now that freeze rather than the spawn. **Off by default and must stay
 > that way**: local adoption (`--local` / `--adopt-local`, refused outright on a box with `--site`)
 > and blind adoption of an unregistered `hello`. Cold start: `infra/host-agent/README.md`.
 
@@ -49,6 +53,13 @@ debug host/inst/inst-01  launcher exited (0); game PID 22048 is up
 So the whole chain — lease, launch, lock, PID adoption, game link — works against the real thing,
 not just the simulator. The run was cut short before the map loaded, so there is still no real
 per-game CPU figure; see §3d.
+
+> **Read that with §10.3 beside it.** `--game` did not pass `+set dedicated 1` until commit
+> `6c2e1a4`, so the process this run started was a **windowed single-player game** wearing a
+> server's name. The chain above — lease, launch, lock, PID adoption, game link — is still what it
+> proved, and it is still true. What it did **not** prove is that a dedicated server had been
+> launched. Any `--game` measurement in this file taken before `6c2e1a4` is a measurement of a
+> single-player game. §10.3 is the first one that is not.
 
 ---
 
@@ -341,8 +352,9 @@ At the vault's 45-games-per-box figure the agent would want ~300 MiB and a twent
 **What this does NOT say.** The 51.8 MiB per instance is a Node simulator, not `CoDWaW.exe`, and
 says nothing about the 0.3–0.8 core per game the cost model turns on. What it does establish is
 that **the host agent is not the constraint** — it adds roughly 0.003 core and 5 MiB per game, so
-whatever the density limit turns out to be, it will be set by the game process or by the engine's
-hardcoded UDP 3074 party socket (`dedi`'s finding), not by us.
+whatever the density limit turns out to be, it will be set by the game process, ~~or by the
+engine's hardcoded UDP 3074 party socket (`dedi`'s finding)~~ — **that half is withdrawn, §10.5**:
+3074 is not an exclusive bind, the second instance takes 3075 — not by us.
 
 ### 3f. Live frames to the site's spectator view
 
@@ -1124,7 +1136,11 @@ precondition of using it. `waw-host` should be recreated before anybody tries it
 
 * **No player has ever been in one of these games.** Everything above is a server with an
   empty roster. The referee, the rounds, the replay contents and every per-game cost *under
-  load* are still the simulator. That waits on the client spawning in.
+  load* are still the simulator. ~~That waits on the client spawning in.~~ **The client spawning
+  in happened later the same night** (`dedi.md` §7h, runs `join12`–`join18`) — but under
+  `tools\dev\jointest.ps1`, not under this agent, and the server stops about ten seconds
+  afterwards (`dedi.md` §7j). So what this now waits on is that freeze, and then pointing a real
+  client at a game **this** agent launched.
 * **0.050 of a core is the idle floor, not the per-game cost.** A player, zombies and 20 Hz
   snapshots are all still to come.
 * **`getinfo` gets NO REPLY** while `getstatus` and `getchallenge` answer. Seen on every

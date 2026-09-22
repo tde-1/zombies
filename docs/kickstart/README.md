@@ -1,4 +1,108 @@
-# Kickstart: server-side viability prototype (2026-09-19)
+# Kickstart — start here
+
+You are picking up an in-flight prototype. Read this page, then `../../STATUS.md`, then the one
+lane doc you are working in. Three minutes.
+
+## Where things stand (2026-09-22)
+
+A real client **connects to our headless dedicated server and spawns into the game**, and the
+referee logs `ROUND 1`. That was the milestone the whole Stage C estimate hung on.
+
+```
+Going from CS_CONNECTED to CS_CLIENTLOADING for anna-jpg
+Going from CS_CLIENTLOADING to CS_ACTIVE for anna-jpg
+referee: ROUND 1 (all_players_connected)
+```
+
+**And the server does not survive it.** About ten seconds after the player spawns the frame loop
+stops, with the CPU pegged at a whole core — pegged, not idle, so it is a spin rather than a wait.
+That is the one thing between here and a playable dedicated game.
+
+**`../../STATUS.md` is where things stand.** It is rewritten at the end of each session and it is
+the current truth. `board.md` ends with a *What is open right now* list. `next-session.md` is the
+one-page handoff: what to run, which logs to read, and the traps that have already cost time.
+
+Three corrections that pre-date you and will save you a wrong turn:
+
+- **T4 has no `CS_PRIMED`.** The middle state is `CS_CLIENTLOADING` (value 3). `CS_PRIMED` is
+  Quake 3 / CoD 4. Any older note naming it is wrong about the *name*, not the transition.
+- **The server was never burning a whole core.** `frame_pacing.cpp` made dedicated mode honour
+  `com_maxfps`; the join harness was simply passing none. It passes 60 now and holds a flat 61 Hz.
+- **UDP 3074 does not collide** between two headless instances — the engine falls back to 3075.
+
+## Hard rules
+
+The source is `../dev-box.md`. This is the short list, and none of it is negotiable.
+
+1. **Never modify B's Steam install** (`C:\Program Files (x86)\Steam\steamapps\common\Call of Duty
+   World at War`). Read-only, always. Copy out, never write in.
+2. **Never launch `CoDWaWmp.exe`**, and never connect to public servers or the Activision master
+   server. The single-player exe `CoDWaW.exe`, on localhost or LAN, is the only one we run.
+3. **Honour the game lock.** `C:\Users\b\ZombiesDev\locks\game.lock`, one game instance at a time.
+   Take it, release it, never release a lock you did not take. A server-plus-client experiment
+   holds the one lock for both.
+4. **Kill only your own PIDs.** Never `taskkill /IM CoDWaW.exe`, never `Stop-Process -Name`.
+   Another agent, or B, may be running the game.
+5. **Never pass `+set developer 1`** to a game you want to keep running. It promotes missing-asset
+   warnings to fatal modal errors, and it has cost us two wrong diagnoses already.
+6. **Never run an `.exe` that came with a map.** Map files are data.
+7. **Do not touch the live site or the tunnel.** The `node` process on port **3200** is B's public
+   site and `cloudflared` is the tunnel to `zombies.enw.gg`. Do not restart either, and do not
+   write to `web/data`. If you need a web server, take 3399 or another free port.
+8. **No money, no accounts, no passwords.** If something costs money, stop and say so.
+9. **Hooks are owned, not shared.** MinHook allows exactly one hook per target address and the
+   loser only finds out from a log line. Use `enw::frame::subscribe`; never hook `Com_Frame`
+   yourself. `dev-box.md` rule 12 has the detail.
+10. **Never write "CoolGombies"** — a voice-to-text artefact. The name is **ENW Zombies**.
+
+One convenience, not a rule: `infra\firewall.ps1`, run **once, elevated** by B, stops Windows
+prompting to allow the game every time an agent makes a new dev copy. `-Remove` undoes it.
+
+## The docs, and who owns what
+
+| Doc | Lane | Owns (write only here) |
+|---|---|---|
+| [`dedi.md`](dedi.md) | **dedi** | `server/components/dedicated/`, `server/components/net/`, `tools/dev/` — the headless dedicated server. Read §7h (the spawn), §7i (the autosave), §7j (the open freeze) first |
+| [`host.md`](host.md) | **host** | `infra/host-agent/` — the Node agent that runs game instances, referees them, signs replays, talks to the site. §10 is the latest session |
+| [`referee.md`](referee.md) | **referee** | `server/components/{referee,replay,chat,afk,pause,knobs}/`, `referee/` — rounds, game over, EE flags, replay sampling, chat |
+| [`foundation.md`](foundation.md) | **foundation** | `shared/core/`, root `CMakeLists.txt`, `tools/dev/`, `ZombiesDev\waw-base` and the per-agent copies — the proxy-DLL loader that waits for SteamStub, logging, the game-link client, component registration |
+| [`launcher.md`](launcher.md) | **launcher** | `launcher/` — the Electron client: find WaW, install the ENW client, install maps, launch |
+| [`web.md`](web.md) | **web** | `web/` — the site at `zombies.enw.gg`, a port of ENW Movement |
+| [`archive.md`](archive.md) | **archive** | `archive/` — the crawler, the catalogue and the link report |
+| [`../re/t4-sp-map.md`](../re/t4-sp-map.md) | **re** | `shared/t4/`, `docs/re/`, `tools/re/`, `ZombiesDev\dumps` — the decrypted exe, verified addresses, structs, the security audit (Huffman / OOB handlers) |
+
+Shared, and owned by nobody:
+
+| | |
+|---|---|
+| [`board.md`](board.md) | The coordination log. **Append-only**, `- HH:MM <lane>: <fact>`, newest last. Corrections go on as new lines; nothing is deleted. It ends with *What is open right now* |
+| [`next-session.md`](next-session.md) | The one-page handoff. Start here if you are the next session |
+| [`questions.md`](questions.md) | Things only B can answer. Append-only |
+| [`../dev-box.md`](../dev-box.md) | The rules, in full, plus paths and known traps |
+| [`../protocol/game-link-v0.md`](../protocol/game-link-v0.md) | The contract between the game DLL and the host agent |
+| [`for-players.md`](for-players.md) | What B sends to friends. No jargon |
+| [`../../QUICKSTART.md`](../../QUICKSTART.md), [`../../TESTME.md`](../../TESTME.md) | The two run books B follows by hand |
+
+Dated and kept as written, *not* current — read them as history: [`morning.md`](morning.md) (the
+2026-09-20 brief), [`overnight.md`](overnight.md) (the 2026-09-20 plan),
+[`session-2026-09-21.md`](session-2026-09-21.md) (the 2026-09-21 brief), and
+[`archive.md`](archive.md)'s link report, which is a measurement of one night and rots.
+
+## How this project writes things down
+
+Four habits, and they are the reason the docs are worth reading:
+
+- **Evidence or it did not happen.** A call returning without error is not evidence. If you cannot
+  show the effect, write "unproven".
+- **Retract in writing, in place.** A wrong claim is never quietly deleted; it is left where it
+  was with the correction beside it. That is how the next session avoids re-deriving it. Several
+  of the most useful paragraphs in `dedi.md` are retractions.
+- **Observation and inference are kept apart**, and a number taken in a sandbox says so.
+- **Append to `board.md` as you go**, with your lane name and the time.
+
+---
+
+## The original brief (2026-09-19)
 
 **B's ask**: build enough of the server side, locally on B's PC, to prove the product is viable and
 give the real build something to start from. "Server" means our server software (the game-server DLL
@@ -8,19 +112,7 @@ on the server (the list below) and give each one a verdict with evidence.
 This is discovery that is kept: the code is prototype quality but lives in the real repo layout, so the
 Fable build can pick it up.
 
-## Agents and ownership
-| Agent | Owns (write only here) | Goal |
-|---|---|---|
-| **foundation** | `shared/core/`, `CMakeLists.txt` (root), `tools/dev/`, `ZombiesDev\waw-base` + copies | Build system, dev game copies, the proxy-DLL loader that waits for SteamStub, logging, the game-link client (TCP NDJSON), component registration. Milestone **E1**: our DLL prints in the game console. |
-| **re** | `shared/t4/`, `docs/re/`, `tools/re/`, `ZombiesDev\dumps` | Dump the decrypted exe, verify the vault's public addresses, map the functions/globals everyone needs, security audit (Huffman / OOB handlers). |
-| **dedi** | `server/components/dedicated/`, `server/components/net/`, `docs/kickstart/dedi.md` | Stage C spike: how far `CoDWaW.exe` gets as a headless dedicated server; count crash sites; get it to load a map with no window; get a client on the same PC to connect. |
-| **referee** | `server/components/{referee,replay,chat,afk,pause,knobs}/`, `referee/`, `docs/kickstart/referee.md` | Script extraction and hook points; the in-process referee (rounds, game over, EE/ending flags); replay sampling; chat capture + injection; AFK input; pause; knobs. Proven first in a solo game. |
-| **host** | `infra/host-agent/`, `docs/kickstart/host.md` | The host agent (Node, zero-dependency where possible): instance manager, game-link server, referee state machine, signed replay writer, cross-server chat hub, invite tokens, pull-protocol stub, local dashboard with a live 2D view. |
-
-Shared files: `docs/protocol/game-link-v0.md` (contract), `docs/dev-box.md` (rules), `docs/kickstart/board.md`
-(the coordination board: append-only dated lines).
-
-## The features to judge (verdict + evidence each)
+### The features to judge (verdict + evidence each)
 1. Headless dedicated server (Stage C) boots a zombies map; clients connect.
 2. Server CPU/RAM per game (render-skip).
 3. Several games on one machine.
@@ -37,6 +129,10 @@ Shared files: `docs/protocol/game-link-v0.md` (contract), `docs/dev-box.md` (rul
 14. Security: the Huffman bound (CVE-2018-10718 class) present or not in T4; OOB handlers we can close.
 15. The 24 h cap / warnings / clean end.
 
-## Output
+Feature 1 is **done** as far as "a client connects and spawns in"; it is not done as far as "the
+server survives it". The rest of the verdicts are in each lane's doc, and `dedi.md` §10 carries the
+milestone table.
+
+### Output
 Each agent keeps its own findings file current as it works (so the coordinator can read progress) and
 ends with a report. The coordinator writes the verdict table into the vault (`17 - Kickstart`).

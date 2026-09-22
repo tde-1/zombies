@@ -4,7 +4,8 @@ Every World at War custom zombies map, archived and playable. `zombies.enw.gg`.
 
 The spec is in the shared vault: `shared-notes/ENW COD Zombies/99 - Build Spec (for Fable).md`.
 
-Status: **kickstart prototype** (server-side viability). See `docs/kickstart/`.
+Status: **kickstart prototype** (server-side viability). Where things stand: **`STATUS.md`**.
+New here? **`docs/kickstart/README.md`** — the entry point, the hard rules and the lane docs.
 
 | Folder | What | Licence |
 |---|---|---|

@@ -505,7 +505,7 @@ preload (`src/preload/preload.cjs`) that is the entire API surface.
 | Dialog answering, SteamStub pid adoption | **Real** (ported from launch.ps1 + referee's fix) |
 | Reserving a server + invite token | **Real** against `mock-site`; no production site exists |
 | "Loading map" / "Ready" confirmations | **Real when a host agent answers** (verified against a live box), otherwise labelled SIMULATED in the UI |
-| **Play (our server), end to end** | **Blocked, not faked.** Everything up to and including "Ready" is real; the client cannot actually join because no WaW dedicated server accepts clients yet (dedi's Stage C). The box the launcher reserved runs `sim-instance.js`, which speaks the protocol but is not a game a client can connect to |
+| **Play (our server), end to end** | **Blocked, not faked.** Everything up to and including "Ready" is real. ~~the client cannot actually join because no WaW dedicated server accepts clients yet (dedi's Stage C)~~ — **updated 2026-09-22**: a WaW dedicated server *does* now accept a client and spawn it in (`dedi.md` §7h), but it stops about ten seconds later (`dedi.md` §7j), so there is still nothing a player could finish a run on. The box the launcher reserved runs `sim-instance.js`, which speaks the protocol but is not a game a client can connect to |
 | Electron shell, tray, deep links, settings, idle-gated refresh | **Real** |
 | Crash reporting | **Real**, to a local endpoint |
 | Sign-in | **Mocked.** It reads the SteamID this PC is signed into, so the ID is real; Steam OpenID needs the site and a secret we do not have locally |

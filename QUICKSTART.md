@@ -1,7 +1,10 @@
 # Try it
 
 Two things work end to end today: **the website**, and **the launcher playing a rescued map**.
-Playing on *our* server does not work yet — one engine blocker remains (`docs/kickstart/dedi.md`).
+Playing on *our* server does not work yet. A client now connects to our headless dedicated server
+and **spawns in**, and the referee calls round 1 — but the server stops about ten seconds later, so
+there is nothing you could finish a run on. Two engine problems are open:
+`docs/kickstart/dedi.md` §7j. `STATUS.md` is the short version.
 
 ## 1. The website — it may already be running
 
@@ -37,16 +40,17 @@ First run shows a setup screen: it will already have found your World at War and
 8 MB into `%LOCALAPPDATA%\ENWZombies`. **Your Steam copy is not touched**; the screen lists exactly
 what changed and the installer fingerprints the folder before and after.
 
-Then pick a map and press **Play**. It installs the map (hash-checked), launches World at War, and
-you play. It is labelled **Local — untracked: no badges, no records, no XP**, and the site refuses
+Then pick a map and press **Play Local**. (The plain **Play** beside it stays greyed out until a
+game box is online — that is deliberate: it used to offer a game that could not start.) It installs
+the map (hash-checked), launches World at War, and you play. It is labelled **Local — untracked: no badges, no records, no XP**, and the site refuses
 to count it even if something claims otherwise.
 
 Full detail, including what to do if Electron misbehaves: `launcher/README.md`, `web/README.md`.
 
 ## If you actually play for a few minutes, you finish something we couldn't
-The one thing no agent could do is **be at the keyboard**. An unattended game sits at round 0 with
-nobody spawning, so the zombies script never starts — every capture tonight was a player standing
-still. If you press Play, load in and play a few rounds, the referee records it and the site should
+The one thing no agent could do is **be at the keyboard**. An unattended game sits at round 1 with
+nobody killing anything, so the script that advances the round never runs — every capture so far
+was a player standing still. If you press Play, load in and play a few rounds, the referee records it and the site should
 show the game, the round, the live view and a signed replay. That would be the first complete run of
 the whole chain, and the honest test of whether rounds and finishes are detected in a real game.
 
@@ -60,4 +64,6 @@ the whole chain, and the honest test of whether rounds and finishes are detected
 
 ## If something goes wrong
 Every area has notes in `docs/kickstart/` — `web.md`, `launcher.md`, `host.md`, `referee.md`,
-`dedi.md`, `foundation.md`, `archive.md` — and `morning.md` is the plain-language summary.
+`dedi.md`, `foundation.md`, `archive.md` — and **`STATUS.md`** at the repo root is the
+plain-language summary of where everything stands. (`docs/kickstart/morning.md` reads like one, but
+it is a frozen brief from 2026-09-20.)
