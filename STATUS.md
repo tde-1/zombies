@@ -25,6 +25,17 @@
 5. **Custom maps with friends**: today that is Minecraft Village Remastered plus the stock four on the box. The rest is the list under *Known and unfixed*.
 6. **Replay viewer**: any finished game's page → replay. Nacht renders with full world geometry.
 
+## Replay viewer parity pass (2026-09-22, late)
+
+B's eight complaints about `m_0afb449b` have a spec (`docs/kickstart/replay.md` §8) and
+results (§8.10). Play and First person were dead to the mouse (pointer capture on the viewer
+wrapper, and the chat dock over the Play button) - fixed. Zombies were recorded all along and
+dropped by the 10 Hz track sampler - fixed (0 -> 13). Props lay on their sides (OAT glTF is
+Y-up) - fixed and Nacht re-exported. Replay ends at the intermission. Crosshair + placeholder
+gun (procedural, no downloaded asset). DLL: zombie yaw, grenades + `explode`, classname
+census - deployed to the box, booted a map, **grenades unproven** until a game with a throw.
+Der Riese: props-only export; the shell needs one Husky lock hold.
+
 ## Since the morning checklist was written (afternoon)
 
 - **Isolation rule, done and proven**: our session redirects the game's LocalAppData into `%LOCALAPPDATA%\ENWZombies\home\localappdata` (DLL `enw_localappdata.cpp`); maps, config, saves, profiles all live there; B's `Activision\CoDWaW` tree is byte-identical before/after a Play Local. B's own mods folder was cleaned into `ZombiesDevackup-user-mods-20260923\`.

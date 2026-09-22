@@ -670,3 +670,21 @@ six-minute lock hold (§4b's four commands, `+map nazi_zombie_factory`).
 
 2026-09-22 IP posture: stock-map `.glb` on `/mapdata` is a closed-testing carve-out only; before public the scene comes from a local export on the player PC via loopback or the launcher.
 See [`ip-posture.md`](ip-posture.md) §4-§5 and §9 (Q-replay-2 resolved in `questions.md`).
+
+### 8.10 Done tonight, and what is proven
+
+| Item | State | Evidence |
+|---|---|---|
+| 8.1 First person | **fixed, proven** | mouse click on *First person* in a local instance of the same build (port 3399, copy of the DB, gate off): rail shows it on, placeholder gun + crosshair drawn |
+| 8.2 Play | **fixed, proven** | a SECOND cause turned up: the site's `.chatdock` (fixed, z 70) spans the whole bottom edge at a narrow width and sat on the Play button (`elementFromPoint` on Play → `DIV.chatdock`). Hidden on the replay page in `r3d.css`. Mouse click on Play → clock 0:07 → 0:11 in 4 s |
+| 8.3 Props | **fixed** (`export_map.py`, `Rx(+90)`), Nacht re-exported (37.8 MB, 1 560 props) and live; old file kept at `maps/_work/nazi_zombie_prototype.glb.pre-axisfix`. Sandbags on wall tops and crates on floors in the verify pane; **B's eye on the full map is the real proof** |
+| 8.4 Zombies | **fixed in the track, proven**: `m_0afb449b` 0 → 13 zombie tracks; a red capsule drawn behind the player at 0:50. DLL now also writes `yaw` (deployed, not yet seen with a zombie in a file) |
+| 8.5 Outro | **clamped, proven**: `end_ms` 122 304 (the `intermission` notify); scrubber 1:55 instead of 2:10; playhead starts at the first live tick (0:07) |
+| 8.6 Grenades | DLL + track + viewer written; DLL deployed to all 7 box copies and booted a map (`m_10609df5`, fake player, cancelled). **Unproven**: the census on that boot saw no grenade (nobody threw one); whether T4 calls it `grenade` is B's next game — `grep census enw-*.log` |
+| 8.7 Crosshair / gun | scaffold live; `fire` = `input.buttons & 1` **[H]**; every weapon uses the rifle row until names resolve |
+| 8.8 Der Riese | OAT half exported (13.6 MB, 125 props + sky, `world_shell: false`) and served; the shell still needs one Husky lock hold |
+
+The live `/replay/m_0afb449b` was **not** opened in a browser by this session: the beta gate
+needs its password typed, which this agent may not do. The site was restarted on the new
+build through the authorised path, `/mapdata` (ungated) answers with both maps, and the
+identical build was driven in the verify instance. B's first look is the live proof.
