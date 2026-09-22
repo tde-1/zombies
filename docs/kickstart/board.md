@@ -3971,3 +3971,36 @@ answer. One finding underneath all of it.**
   already had focus when we subclassed never sends WM_SETFOCUS, so the flag can be stuck false for a
   whole session and **every raw report is discarded in silence**. Gate removed: `dwFlags = 0` is
   foreground-only by definition, so a report arriving at all is the proof the flag was trying to be.
+
+- 05:30 replay: **the viewer is up and it plays a real signed Nacht replay.** `/replay/:matchId`,
+  linked from the game page. `scene.js`, `skywall.js`, `assets.js` and `Boot.jsx` are copied from
+  ENW Movement byte-for-byte; the chrome is its CSS class-for-class; `ReplayViewer.jsx` and
+  `actors.js` (four players, instanced zombies, points/round/downs, round ticks on the scrubber)
+  are new. `m_cf25a5dd.enwr` — `nazi_zombie_prototype`, verified, 1 h 19 m — decodes to a 47 662-tick
+  track, **78 KB gzipped**, in ~180 ms. Picture: `ui/replay-nacht.png`.
+- 05:30 replay: **a WaW world map cannot be exported from a fastfile, by any tool, and this is
+  measured.** OpenAssetTools v0.33.0 (GPL-3.0) loads the T4 zone completely — `--list` reports
+  1 gfxworld, 1 clipmap, 1 comworld beside the 297 xmodels — and has **no writer** for any of the
+  three: `--include-assets gfxworld,clipmap,comworld -o <dir>` produces a directory with only the
+  zone source in it. Husky and C2M (both GPL) do export a WaW world and both read it out of the
+  **running game's memory**, which this lane will not do. `tools/maps/export_map.py` therefore ships
+  54 correctly-placed props, the map's own sky dome and 37 textures in a 12.6 MB `.glb`, with
+  `--world <file>` as the seam. **For whoever next holds `game.lock`: ~20 minutes with Husky on
+  `nazi_zombie_prototype` finishes this.** `replay.md` §4.
+- 05:30 replay: **for `referee`, seven track gaps, two of them one-liners** — no `kill` event (kills
+  are inferred from `points.why`), no zombies-remaining-this-round, `round` is an event and never a
+  `snap` field (so a chunk is not self-describing), no roll on `ang`, `weapon` is an int in
+  `replay.cpp` and a string in every file on disk, `stance` is in the protocol and in `referee.md`
+  but `replay.cpp` does not emit it, and **no signed replay from a real DLL exists** — every footer
+  on this box says `dll_build: sim-*`. `replay.md` §3.
+- 05:30 replay: **two bugs in the ported viewer, both fixed, both worth knowing.** (1) React
+  StrictMode's double-mount kills the WebGL context for good — `renderer.dispose()` on cleanup, then
+  the second `createScene` over the same canvas throws `Cannot read properties of null (reading
+  'precision')`. The canvas has to be created inside the effect. (2) Movement's render loop is
+  change-driven, and **nothing in asset loading is an input event**: the map, the sky and the grid
+  sat in the scene graph un-drawn until something resized or dragged the viewer. Invisible with a
+  human present, fatal to a headless screenshot, which is how it was found.
+- 05:30 replay: **neither repo has a LICENSE file** — not `Zombies`, not `CSGO-Matchmaker`. Same
+  owner, so nothing is in conflict and the port is fine; there is also no licence *grant*, which
+  matters the day either is published. For `questions.md`, not decided here.
+
