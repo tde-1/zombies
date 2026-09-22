@@ -4202,3 +4202,36 @@ reboot. `play: true`.**
   above them is nonsense, on exactly the file somebody is already suspicious of.
 - 05:35 vps: **what is left.** A real lease from B. The box is idle, online, capped at 2, and
   `systemctl status enw-host-agent` / `journalctl -u enw-host-agent -f` is how you watch it.
+- 06:45 replay: **Nacht has its world shell, and the lock is back.** Authorised one-off hold,
+  06:29-06:36, ~6 minutes: fresh copy `waw-maps`, `launch.ps1 ... +map nazi_zombie_prototype`
+  windowed, **Husky 0.8.0.0 (GPL-3.0)** read the world out of the running game, killed only my
+  own PID, deleted the lock. 91002 verts / 203895 indices / 3741 surfaces / **1506 static
+  models**. `export_map.py --world <obj>` folds all of it in: the `.glb` is now **37.8 MB** with
+  the shell, **1560 props**, 211 textures and the sky dome. Screenshot replaced
+  (`ui/replay-nacht.png`) - it is recognisably Nacht's main room, tiled floor, boarded windows,
+  sandbags, a zombie behind the player.
+- 06:45 replay: **the `.map` beside Husky's OBJ was the unexpected win.** A stock map's props are
+  baked in as smodels at compile time, so `map_ents` only ever carried the **54** a script can
+  touch; Husky's `<map>.map` carries all **1506**, and all 70 distinct models were already in
+  OAT's dump. Same `"key" "value"` shape, so it parses with the regexes that were already there.
+- 06:45 replay: **Husky has no command line and is WPF, so `EnumChildWindows` returns nothing** -
+  the PostMessage-a-button trick `launch.ps1` uses on the engine's dialogs cannot drive it.
+  `tools/maps/run-husky.ps1` uses UI Automation instead. Two unnamed 47x47 buttons: the paper
+  plane is the **top** one; the bottom one is *About*, whose modal offers "Github Repo" and
+  "Donate". Both wrong ones were clicked first. Poll the `ConsoleBox` for progress, not the
+  filesystem - a half-written 11 MB .obj looks finished to a directory listing.
+- 06:45 replay: **two measurements worth keeping.** (1) Husky keeps CoD's **Z-up** frame - export
+  bbox is X -16418..14793, Y -14724..14699, **Z -477..3739**, and the one axis with a 4216 range
+  against 31211/29423 is the third - so nothing is transformed on the way in and the shell, the
+  props and the recorded player positions are all one frame. (2) The first full export was
+  **66 MB**, over target, because most of a CoD colour map is DXT5 with an alpha channel that is
+  **solid 255**. Asking "does this image *use* its alpha" rather than "does it have one" took it
+  to 37.8 MB. **No lightmaps** - Husky exports position/normal/UV only, so the map is lit
+  analytically from worldspawn.
+- 06:45 replay: **for whoever does the 14 customs: it is two halves and only one of them is
+  offline.** `export_map.py <bsp>` against `mods/<bsp>/<bsp>.ff` (the fallback is already in
+  `unlink()`), then ~5 minutes of `game.lock` per map for `launch.ps1 ... +set fs_game mods/<bsp>
+  +map <bsp>` and `run-husky.ps1`. **Untested and the two real unknowns**: whether OAT unlinks a
+  modtools-built custom fastfile as cleanly as a stock one, and whether Husky's signatures find a
+  map loaded under `fs_game`. `replay.md` 4b.
+

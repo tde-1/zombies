@@ -23,13 +23,16 @@ Working, on this box, against a **real signed replay**:
 |---|---|
 | Replay | `C:\Users\b\ZombiesDev\replays\m_cf25a5dd.enwr` — `nazi_zombie_prototype`, `mode: verified`, signed footer, 1 player, 1 h 19 m, 5 rounds |
 | Track endpoint | `GET /api/replay/m_cf25a5dd/track?hz=10` — 47 662 ticks, 4.4 MB JSON, **78 KB gzipped**, built in ~180 ms |
-| Map | `C:\Users\b\ZombiesDev\maps\nazi_zombie_prototype\nazi_zombie_prototype.glb` — **12.6 MB**, 54 props, 18 meshes, 37 textures, the map's own sky dome |
+| Map | `C:\Users\b\ZombiesDev\maps\nazi_zombie_prototype\nazi_zombie_prototype.glb` — **37.8 MB**: the **world shell** (91 002 verts, 3 741 surfaces, 163 materials), **1 560 props** (54 script_model + 1 506 static), 211 textures, the map's own sky dome |
 | Page | `/replay/:matchId`, linked from the game page's Replay card |
 | Picture | [`ui/replay-nacht.png`](ui/replay-nacht.png) — round 5, five zombies up, third person |
 
-**Not working, and it is the headline:** the map has **no world shell**. No floor, no
-walls, no ceiling. §4 is why, and it is a tooling wall rather than a bug. The viewer draws
-a grid at the real floor height instead and says so on screen.
+**The world shell landed** on the follow-up run (2026-09-22 06:29–06:36, one authorised
+game.lock hold of about six minutes). Husky read it out of the running game and
+`export_map.py --world` folds it in, so the `.glb` is now the whole map: floors, walls,
+boarded windows, the debris, and 1 506 baked static models that `map_ents` never had.
+The grid and the "props and sky only" note are gone; both were conditional on
+`world_shell: false` and that is now `true`.
 
 ---
 
@@ -187,7 +190,8 @@ out of a stock map is a game asset however many times it has been re-encoded, so
 | Tool | Licence | Version | Used for |
 |---|---|---|---|
 | [OpenAssetTools](https://github.com/Laupetin/OpenAssetTools) Unlinker | **GPL-3.0** | release **v0.33.0**, 2026-08-31, prebuilt `oat-windows.zip` | Reading the T4 fastfile; xmodels → glTF, materials → JSON, images → DDS, map_ents → `.ents` |
-| Pillow | MIT-CMU | 12.3.0 | DDS (DXT1/3/5) decode, resize, re-encode |
+| [Husky](https://github.com/Scobalula/Husky) | **GPL-3.0** | release **0.8.0.0**, 2022-06-05, `Husky.0.8.0.0.zip` | The world shell, out of the **running game's memory**. Also writes `<map>.map`, the static model placements |
+| Pillow | MIT-CMU | 12.3.0 | DDS (DXT1/3/5) decode, alpha test, resize, re-encode |
 
 OAT lives in `C:\Users\b\ZombiesDev\tools\oat\` — **not in the repo**. It is run as an
 external program and nothing of it is linked or vendored, so its copyleft does not reach
@@ -249,20 +253,88 @@ which is *why* every WaW map exporter is memory-based.
 | [Greyhound](https://github.com/Scobalula/Greyhound) | GPL-3.0 | WaW yes | `Load File` handles XPAK/IPAK/IWD/SAB — **not `.ff`** — so WaW is memory-only in practice; no world geometry either way |
 | [cod-asset-importer](https://github.com/mauserzjeh/cod-asset-importer) | GPL-3.0 | Blender, file-based | WaW: **XModel only, D3DBSP ✗**. Only CoD1/UO/CoD2 get BSP |
 
-Every one of them needs the game running, which is this lane's hard no: two agents share
-`ZombiesDev\locks\game.lock` and this lane never takes it.
+Every one of them needs the game running. That was this lane's hard no until the
+coordinator authorised **one** `game.lock` hold, which is the next section.
 
-**So the seam is `--world`:**
+### 4b. The Husky run — done, 2026-09-22, and how to repeat it
+
+Authorised, time-boxed, and it took about six minutes end to end. The record, because
+the next map has to do exactly this again:
 
 ```
-python tools/maps/export_map.py nazi_zombie_prototype --world <husky-export>.gltf
+# 1. a fresh dev copy (never waw-d2 / waw-c1 / waw-c2 -- those are other agents')
+powershell -File tools\dev\new-copy.ps1 maps
+
+# 2. windowed, on the map, never `developer 1`. launch.ps1 takes game.lock, clears
+#    __CoDWaW and answers the startup dialogs.
+powershell -File tools\dev\launch.ps1 maps -Role solo -Visible `
+  -GameArgs '+set r_fullscreen 0','+set r_mode "1280x720"','+map nazi_zombie_prototype'
+
+# 3. drive Husky's GUI
+powershell -File tools\maps\run-husky.ps1
+
+# 4. kill ONLY our pid, delete the lock. Then, with the lock already released:
+python tools\maps\export_map.py nazi_zombie_prototype --world <...>\nazi_zombie_prototype.obj
 ```
 
-It merges the shell as a `__world` node and the output is the whole map. That is a
-twenty-minute job for whoever next holds the game lock: launch WaW on
-`nazi_zombie_prototype`, run Husky or C2M, convert the `.obj` to `.gltf`, re-run the
-script. Until then `<bsp>.meta.json` carries `"world_shell": false`, the viewer draws a
-grid at the real floor height, and the page says why.
+**Husky has no command line**, which is the part that costs the time if you do not know
+it. `tools/maps/run-husky.ps1` clicks the button for you, and here is what it had to
+learn the hard way:
+
+- Husky 0.8.0.0 is **WPF**, so the window has **no child HWNDs** — `EnumChildWindows`
+  returns nothing and the `PostMessage`-a-button trick that `launch.ps1` uses on the
+  engine's dialogs cannot work. It is driven through **UI Automation** instead
+  (`UIAutomationClient`, `InvokePattern`).
+- The window has exactly **two unnamed 47×47 buttons and a `ConsoleBox`**. The paper
+  plane is the **top** one (y≈83). The bottom one (y≈447) is *About* — clicking it
+  opens a modal whose two buttons are "Github Repo" and "Donate", and clicking the
+  first of those opens a browser. Both were clicked before the right one was found.
+- `ConsoleBox` is the progress readout. Poll its `ValuePattern` rather than watching
+  the filesystem: a half-written 11 MB `.obj` looks finished to a directory listing.
+
+What it printed, which is also the proof it worked:
+
+```
+Found supported game: Call of Duty: World At War
+Loaded Gfx Map     -   maps/nazi_zombie_prototype.d3dbsp
+Vertex Count       -   91002      Indices Count  -   203895
+Surface Count      -   3741       Model Count    -   1506
+Converted to OBJ in 0.45 seconds.
+```
+
+Output, in `exported_maps\world_at_war\sp\<map>\`:
+
+| File | Size | What we do with it |
+|---|---|---|
+| `<map>.obj` | 11.5 MB | The shell. Parsed by `read_obj`, grouped by `usemtl`, one glTF primitive per material |
+| `<map>.mtl` | 23 KB | 163 materials, each naming `_images\<stem>.png`. We ignore the PNG path and take `<stem>.dds` from OAT's dump — **162 of the 163 are there**; the miss is `global_black_c`, which is a flat black material with no texture to find |
+| `<map>.map` | 281 KB | **1 506 `misc_model` placements** with origin/angles/modelscale, and all 70 distinct models are in OAT's `model_export`. This is the other half of what GfxWorld was hiding: a stock map's props are baked in as smodels at compile time, and `map_ents` only ever carried the 54 a script can touch |
+| `<map>_search_string.txt` | 1.7 KB | A Wraith/Greyhound search string. Unused — we already have every image from OAT |
+
+**No lightmaps.** Husky exports position, normal and UV and nothing else; there is no
+second UV set and no lightmap texture in the output. So the viewer lights the map with
+`scene.js`'s analytic sun and hemisphere driven by the map's own worldspawn values,
+exactly as it does for a Source map, and Nacht reads as the night map it is.
+
+**Two things that had to be checked, not assumed:**
+
+1. **Husky keeps CoD's Z-up frame.** Measured on the export: the bounding box is
+   X −16418 → 14793, Y −14724 → 14699, **Z −477 → 3739**. One axis has a range of 4 216
+   against 31 211 and 29 423, and that axis is the third — so Z is up, the file is in
+   the same frame as the props, `map_ents` and the recorded player positions, and
+   **nothing is transformed on the way in**. (The ±16 000 extent is the outer terrain
+   shell, not the playable area.)
+2. **The UV V axis is flipped on the way in.** OBJ's texture origin is bottom-left,
+   glTF's is top-left; Husky already flipped CoD's top-left UVs on the way out, so
+   flipping again puts them back. On a brick wall this is almost invisible; check it
+   against a sign.
+
+**And one size trap.** The first full export came out at **66 MB**, over the 60 MB
+target, and almost all of it was textures kept as PNG. Most of a CoD map's colour maps
+are DXT5 with an alpha channel that is **solid 255** — the format was chosen for the
+material, not for that texture. `load_dds` now asks "does this image *use* its alpha"
+(`getchannel('A').getextrema()[0] == 255`) rather than "does it have one", which moved
+211 textures mostly to JPEG and the file to **37.8 MB**.
 
 ### Coordinates
 
@@ -304,7 +376,9 @@ vocabularies meet.
 
 ## 5. What is stubbed
 
-- **The world shell.** §4.
+- **Lightmaps.** Husky does not export them (§4b), so the map is lit analytically from
+  worldspawn rather than with the light the map was baked with. It is the single biggest
+  remaining difference from how Nacht looks in game.
 - **Zombies are capsules.** The 297 xmodels in the zone include
   `char_ger_honorgd_body1_*` — the actual zombie — and it exports. Placing a skinned model
   per zombie and animating it from positions alone is a bigger job than it looks and is
@@ -320,11 +394,15 @@ vocabularies meet.
 
 ## 6. What is next
 
-1. **The world shell**, by the route in §4. Everything else is cosmetics until this lands.
-2. **The 14 customs.** Same pipeline against `mods/<bsp>/<bsp>.ff` — `export_map.py`
-   already falls back to that path when the map is not in `zone/english`. Untested: no
-   custom map's fastfile was exported tonight. Expect the same shell problem and the same
-   fix, once per map.
+1. **The 14 customs.** Each one needs **both halves**, and the second half needs the game:
+   `export_map.py <bsp>` against `mods/<bsp>/<bsp>.ff` (the fallback path is already in
+   `unlink()`, but no custom fastfile has been tried), then one `game.lock` hold per map
+   to run `launch.ps1 ... +set fs_game mods/<bsp> +map <bsp>` and `run-husky.ps1`. Call it
+   five minutes of lock per map once the first one has gone through. The unknowns are
+   whether OAT unlinks a *custom* T4 fastfile as cleanly as a stock one (custom maps are
+   built with modtools and may carry assets OAT's T4 list does not cover) and whether
+   Husky's signatures find a map loaded under `fs_game`. Neither has been tested.
+2. **Lightmaps**, if the map is ever to look the way it does in game — §5.
 3. **The referee gaps in §3**, in the order they are listed — a `kill` event and a round
    number on `snap` are both one line.
 4. **A replay from the real DLL**, so the viewer is proven against the game and not the

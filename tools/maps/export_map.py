@@ -25,12 +25,16 @@ which is a *measurement* and not a guess:
     box lid, a couch) and 127 `script_brushmodel`s, and a brushmodel is a
     reference (`*2`, `*3`, ...) into the same GfxWorld we cannot read.
   * Every tool that *does* export a WaW world -- Husky, C2M -- reads it out of the
-    running game's memory. That needs the game lock, so it is not this lane's to
-    run. `--world <file.obj|.gltf>` is the seam: drop a Husky/C2M export in and
-    this script merges it as the shell, and the output is the whole map.
+    running game's memory, so the shell needs one game.lock hold per map.
+    `--world <file.obj|.gltf>` is that seam: point it at a Husky export and this
+    script merges the shell AND reads the `<same-name>.map` beside it for the
+    static model placements, which is where a stock map keeps its props (1506 of
+    them on Nacht against map_ents' 54).
 
-So: today's .glb is a correct, correctly-placed, correctly-scaled *prop and sky*
-export with the shell missing. That is an honest partial, not a broken pipeline.
+Without --world the output is a correct, correctly-placed *prop and sky* export
+with the shell missing -- an honest partial, and what the viewer draws a floor
+grid for. With it, the output is the whole map. See replay.md section 4b for the
+Husky run itself, which is scripted in tools/maps/run-husky.ps1.
 
 COORDINATES
 -----------
@@ -47,6 +51,9 @@ LICENCES (also recorded in the vault's Reuse Register)
     Release v0.33.0 (2026-08-31), prebuilt `oat-windows.zip`. Run as an external
     program only; nothing of it is linked or vendored, so its copyleft does not
     reach this repo.
+  * Husky -- GPL-3.0 -- https://github.com/Scobalula/Husky, release 0.8.0.0.
+    Also an external program; the world shell it produces is game-derived data
+    and is subject to the same never-commit rule as everything else here.
   * Pillow -- MIT-CMU -- DDS (DXT1/3/5) decoding.
 Neither the fastfile nor anything derived from it may be committed: a texture
 lifted out of a stock map is a game asset however many times it has been
@@ -250,6 +257,133 @@ class Glb:
         return total
 
 
+def read_obj(obj_path: Path):
+    """Husky's OBJ -> {material: {pos, nrm, uv, idx}}, ready to become primitives.
+
+    Written here rather than pulled from a library because the whole file is three
+    line prefixes and the only subtlety is the one below.
+
+    THE V FLIP. OBJ puts the texture origin bottom-left; glTF puts it top-left.
+    Husky already flipped CoD's top-left UVs on the way out, so flipping again on
+    the way in is what puts them back. Get this wrong and every texture in the map
+    is mirrored vertically, which on a brick wall is almost invisible and on a sign
+    is obvious -- so it is checked against a sign, not a wall.
+    """
+    V, VT, VN = [], [], []
+    groups = {}
+    cur = None
+    remap = {}
+
+    def group(name):
+        nonlocal cur, remap
+        if name not in groups:
+            groups[name] = {'pos': [], 'nrm': [], 'uv': [], 'idx': []}
+        cur = groups[name]
+        remap = {}
+        return cur
+
+    group('__default')
+    with open(obj_path, encoding='utf8', errors='replace') as f:
+        for line in f:
+            if line.startswith('v '):
+                p = line.split()
+                V.append((float(p[1]), float(p[2]), float(p[3])))
+            elif line.startswith('vt '):
+                p = line.split()
+                VT.append((float(p[1]), 1.0 - float(p[2])))
+            elif line.startswith('vn '):
+                p = line.split()
+                VN.append((float(p[1]), float(p[2]), float(p[3])))
+            elif line.startswith('usemtl'):
+                group(line.split(None, 1)[1].strip())
+            elif line.startswith('f '):
+                corners = line.split()[1:]
+                poly = []
+                for c in corners:
+                    if c not in remap:
+                        bits = c.split('/')
+                        vi = int(bits[0]) - 1
+                        ti = int(bits[1]) - 1 if len(bits) > 1 and bits[1] else -1
+                        ni = int(bits[2]) - 1 if len(bits) > 2 and bits[2] else -1
+                        cur['pos'].extend(V[vi])
+                        cur['uv'].extend(VT[ti] if 0 <= ti < len(VT) else (0.0, 0.0))
+                        cur['nrm'].extend(VN[ni] if 0 <= ni < len(VN) else (0.0, 0.0, 1.0))
+                        remap[c] = len(cur['pos']) // 3 - 1
+                    poly.append(remap[c])
+                # Fan-triangulate. Husky writes triangles today (67 965 faces for
+                # 203 895 indices, exactly 3 each), but a quad costs one line to
+                # survive and a crash to not.
+                for k in range(1, len(poly) - 1):
+                    cur['idx'].extend((poly[0], poly[k], poly[k + 1]))
+
+    return {k: v for k, v in groups.items() if v['idx']}
+
+
+def read_mtl(mtl_path: Path):
+    """material name -> diffuse texture stem, e.g. 'global_black' -> 'global_black_c'."""
+    out = {}
+    cur = None
+    if not mtl_path.is_file():
+        return out
+    for line in mtl_path.read_text(encoding='utf8', errors='replace').splitlines():
+        line = line.strip()
+        if line.startswith('newmtl'):
+            cur = line.split(None, 1)[1].strip()
+        elif line.startswith('map_Kd') and cur:
+            ref = line.split(None, 1)[1].strip().replace('\\', '/')
+            out[cur] = Path(ref).stem
+    return out
+
+
+def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
+    """Fold a Husky world export into `glb` as one mesh. Returns the mesh index."""
+    groups = read_obj(obj_path)
+    tex_of = read_mtl(obj_path.with_suffix('.mtl'))
+    prims = []
+    for name, g in groups.items():
+        pos = struct.pack(f'<{len(g["pos"])}f', *g['pos'])
+        nrm = struct.pack(f'<{len(g["nrm"])}f', *g['nrm'])
+        uv = struct.pack(f'<{len(g["uv"])}f', *g['uv'])
+        idx = struct.pack(f'<{len(g["idx"])}I', *g['idx'])
+        n = len(g['pos']) // 3
+        xs = g['pos'][0::3]
+        ys = g['pos'][1::3]
+        zs = g['pos'][2::3]
+
+        def acc(view, ctype, count, typ, extra=None):
+            a = {'bufferView': view, 'componentType': ctype, 'count': count, 'type': typ}
+            if extra:
+                a.update(extra)
+            glb.j['accessors'].append(a)
+            return len(glb.j['accessors']) - 1
+
+        ap = acc(glb.add_view(pos, target=34962), 5126, n, 'VEC3',
+                 {'min': [min(xs), min(ys), min(zs)], 'max': [max(xs), max(ys), max(zs)]})
+        an = acc(glb.add_view(nrm, target=34962), 5126, n, 'VEC3')
+        au = acc(glb.add_view(uv, target=34962), 5126, n, 'VEC2')
+        ai = acc(glb.add_view(idx, target=34963), 5125, len(g['idx']), 'SCALAR')
+
+        key = f'world:{name}'
+        if key not in mat_cache:
+            m = {'name': key, 'doubleSided': True,
+                 'pbrMetallicRoughness': {'metallicFactor': 0.0, 'roughnessFactor': 0.9}}
+            stem = tex_of.get(name)
+            if stem:
+                got = load_dds(images_dir / f'{stem}.dds')
+                if got:
+                    ti = glb.add_image_bytes(f'{stem}.dds', got[0], got[1])
+                    m['pbrMetallicRoughness']['baseColorTexture'] = {'index': ti}
+            glb.j['materials'].append(m)
+            mat_cache[key] = len(glb.j['materials']) - 1
+        prims.append({'attributes': {'POSITION': ap, 'NORMAL': an, 'TEXCOORD_0': au},
+                      'indices': ai, 'material': mat_cache[key]})
+
+    if not prims:
+        return None
+    glb.j['meshes'].append({'name': 'world', 'primitives': prims})
+    return len(glb.j['meshes']) - 1
+
+
 def load_dds(path: Path):
     """DDS -> (png_or_jpeg_bytes, mime). Returns None if it cannot be read."""
     try:
@@ -270,9 +404,20 @@ def load_dds(path: Path):
     # Alpha survives as PNG; everything else is a photo and compresses far better
     # as JPEG. A 1024 DXT1 diffuse is 680 KB as PNG and 38 KB as JPEG, and with
     # ~60 props in a map that is the difference between a 40 MB and a 6 MB .glb.
+    #
+    # But *most* of a CoD map's colour maps are DXT5 with an alpha channel that is
+    # solid 255 -- the format was chosen for the material, not for this texture --
+    # and taking that at face value is what made the first full export 66 MB. So
+    # the question asked is "does this image USE its alpha", not "does it have
+    # one". On Nacht that moves 211 textures from mostly-PNG to mostly-JPEG.
     if im.mode in ("RGBA", "LA", "P"):
-        im.convert("RGBA").save(buf, "PNG", optimize=True)
-        return buf.getvalue(), "image/png"
+        rgba = im.convert("RGBA")
+        lo, hi = rgba.getchannel("A").getextrema()
+        if lo == 255:
+            im = rgba.convert("RGB")
+        else:
+            rgba.save(buf, "PNG", optimize=True)
+            return buf.getvalue(), "image/png"
     im.convert("RGB").save(buf, "JPEG", quality=JPEG_QUALITY, optimize=True)
     return buf.getvalue(), "image/jpeg"
 
@@ -360,6 +505,25 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
     models = dump / "model_export"
     images = dump / "images"
 
+    # Husky writes a `<map>.map` beside the OBJ holding the **static** model
+    # placements -- 1506 of them on Nacht against map_ents' 54. That is the other
+    # half of what GfxWorld was hiding: a stock map's props are baked in at compile
+    # time as smodels, and map_ents only ever carried the ones a script can touch.
+    # Same `"key" "value"` shape and the same classname vocabulary (misc_model,
+    # origin, angles, modelscale), so it parses with the same two regexes.
+    world_models = 0
+    if world:
+        side = world.with_suffix(".map")
+        if side.is_file():
+            txt = side.read_text(encoding="utf8", errors="replace")
+            extra = [dict(ENT_KV.findall(b)) for b in ENT_BLOCK.findall(txt)]
+            # Appended, never prepended: the worldspawn lookup below must keep
+            # finding map_ents' worldspawn, which is the one with the real sun.
+            extra = [e for e in extra if e.get("classname") in PLACEABLE]
+            world_models = len(extra)
+            ents = ents + extra
+            log(f"{world_models} static models from {side.name}")
+
     glb = Glb()
     mat_cache = {}
     mesh_of = {}          # model name -> mesh index (one copy, many nodes)
@@ -417,10 +581,12 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
             sky_ok = True
 
     if world and world.is_file():
-        mi = merge_model(glb, world, images, mat_cache) if world.suffix == ".gltf" else None
+        mi = (merge_world(glb, world, images, mat_cache) if world.suffix.lower() == ".obj"
+              else merge_model(glb, world, images, mat_cache))
         if mi is not None:
             glb.j["nodes"].append({"name": "__world", "mesh": mi})
             glb.j["scenes"][0]["nodes"].append(len(glb.j["nodes"]) - 1)
+            log(f"world shell merged from {world.name}")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     size = glb.write(out_dir / f"{bsp}.glb")
@@ -439,6 +605,8 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         "props_missing_model": skipped,
         "sky_model": sky_name if sky_ok else None,
         "world_shell": bool(world and world.is_file()),
+        "world_source": world.name if (world and world.is_file()) else None,
+        "static_models_placed": world_models,
         "spawn": vec(next((e.get("origin") for e in ents
                            if e.get("classname") == "info_player_start"), "0 0 0")),
         "sun": {
@@ -474,7 +642,8 @@ def main():
     ap.add_argument("--out", default=None, help="output dir (default ZombiesDev/maps/<bsp>)")
     ap.add_argument("--work", default=None, help="scratch dir (default ZombiesDev/maps/_work)")
     ap.add_argument("--world", default=None,
-                    help="a .gltf of the world shell from Husky/C2M, merged as __world")
+                    help="the world shell from Husky/C2M (.obj or .gltf), merged as __world. "
+                         "A `<same-name>.map` beside it is read for static model placements")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
 
