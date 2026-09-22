@@ -1218,12 +1218,17 @@ One more clue, unexplained: the last thing the console holds before every freeze
 194 pairs in join17, 390 in join15, and then nothing. `cl_network_warning` being written at all
 in a server process is odd on its face.
 
-Also still open and now measured properly: **the server burns a whole core with a client
-connected** — join13, 111.5 s of CPU in 120 s of wall clock, against 4.85% of one core idle. The
-frame loop free-runs at about 237 Hz because `jointest.ps1` passes no `com_maxfps`. join12's flat
-CPU reading was not a healthy server, it was a **parked** one: the process had already hit
-`Sys_Error` at t=39 s and the remaining 160 s of "low CPU" was a dead thread. Do not read a flat CPU
-line as health without checking `frame::count` alongside it.
+### FIXED: the server did not burn a whole core, the harness was not capping it
+
+join13 measured 111.5 s of CPU in 120 s of wall clock with a client connected, against 4.85% of
+one core idle, and the frame loop free-running at about 237 Hz. `frame_pacing.cpp` had already
+nopped the branch that made dedicated mode ignore `com_maxfps` -- **nothing was passing one**.
+`jointest.ps1` now passes `+set com_maxfps 60`, the same figure `dediprobe.ps1` uses, and the
+server holds a flat **61 Hz** (join16 t=20s: 61.2 Hz; join17 t=15s: 60.6 Hz).
+
+And a reading error worth not repeating: **join12's flat CPU line was not a healthy server, it was
+a parked one.** The process had hit `Sys_Error` at t=39 s and the remaining 160 s of "low CPU" was
+a dead thread. Never read CPU as health without `frame::count` beside it.
 
 ## 8. Does a game box need a Steam client?
 
