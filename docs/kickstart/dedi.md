@@ -2014,7 +2014,7 @@ had never actually been read on a custom-map run. It now searches the whole home
 `console.log`, takes the newest, prints the path it came from and the `Working directory:` line
 inside it, and warns in red when that names a different game copy.
 
-### 12.5 Der Berg: the same mechanism, a different fault — named, not fixed
+### 12.5 Der Berg: the same mechanism, a different fault — named, not fixed *(RETRACTED — see §13.1. The conclusion "a dvar the dedicated server never registered" is wrong: the dvar exists, the engine registers it, and the slot is later overwritten by a GSC local-variable overflow. The measurements below stand; the diagnosis does not.)*
 
 `join67`, Der Berg, 300 s: the pool is allocated (`[04DD0A10] -> 0D5AD020`) and the server
 **still** stops, at `com_frameTime=5666`, 5.6 s in, before the client reaches `CS_ACTIVE`. Same
@@ -2040,3 +2040,160 @@ register it, rather than patch the read. Stock maps do not reach it in 320 s; De
 `join67` numbers for the record: 7.0 s of CPU over 300 s (**2.3% of a core**), RSS flat 346 MB,
 no `Com_Error`, no `Sys_Error`, process alive at the end — a stopped server that is cheap rather
 than expensive, exactly as 11.3 said it would be.
+
+## 13. 2026-09-22, 07:20–09:00 — Der Berg is a script-VM overflow, not a dvar; and `Can't find map` was never `fs_game`
+
+### 13.1 RETRACTION, in place: §12.5's "a dvar the dedicated server never registered" is wrong
+
+§12.5 read the Der Berg fault correctly and drew the wrong conclusion from it. The fault is real:
+
+```
+005FFE0A  call 0x75A94E                ; WSAGetLastError
+005FFE0F  cmp eax, 0x2733              ; 10035 WSAEWOULDBLOCK
+005FFE14  je  0x5FFE1D
+005FFE1D  mov ecx, [0x3BFD478]         ; a dvar_s*
+005FFE23  cmp byte ptr [ecx + 0x10], 0 ; <- the access violation
+```
+
+and the dvar was found. The image contains **exactly one** write to that slot — one
+`mov [0x3BFD478], eax`, and no indexed form with that base:
+
+```
+006ED650  push edi
+006ED651  push 0x89FD08              ; "Generate cube maps for reflection probes."
+006ED656  push 0                     ; flags
+006ED658  xor al, al                 ; value = false
+006ED65A  mov edi, 0x89FD34          ; "r_reflectionProbeGenerate"
+006ED65F  call 0x5EEE20              ; Dvar_RegisterBool(name@edi, value@al, flags, desc)
+006ED664  mov [0x3BFD478], eax
+```
+
+So `[0x3BFD478]` is **`r_reflectionProbeGenerate`**, a bool, default false, no flags, registered by
+0x6ED650 — a no-argument cdecl reached only from 0x5E3CA0 and 0x70B358, both inside the renderer
+bring-up `dedicated.cpp` skips at 0x5FF799. The read is the engine's "are we baking cube maps?"
+test, which tolerates a dead socket instead of reporting it.
+
+`server/components/dedicated/reflection_probe_dvars.cpp` calls 0x6ED650, verifying its first eight
+bytes first, so the type, default, flags and description are the engine's own. All three dvars
+register, the log walks each `dvar_s`'s name pointer back to the string the engine pushed, and all
+three say `name OK`.
+
+**`join69` (Der Berg, 300 s, five gates): FAIL.** Identical stop, `com_frameTime` frozen at 5659,
+`Com_Frame-body 0.0 Hz`. And the fault register had changed:
+
+| run | ecx at 0x5FFE23 |
+|---|---|
+| `join68` (before the fix) | `00000000` |
+| `join69` (after) | `00000FE9` |
+| `join71` | `00000F34` |
+
+A garbage pointer, not a null one — and one that changes between runs. So something **writes** to
+that slot, which no static search could find, because nothing in the image does.
+
+### 13.2 The write watch, and the real mechanism
+
+`ENW_DEDI_WATCH_PROBE_SLOT=1` puts a **data breakpoint** on the slot: DR0 = 0x3BFD478, DR7 asking
+for a 4-byte write watch, armed from a helper thread that suspends the game thread (you cannot
+reliably set your own debug registers), and a vectored handler that reports the faulting EIP — the
+instruction *after* the store. `join72`:
+
+```
+dedi_reflection_dvars: WRITE #1 to [0x03BFD478] -- the store is just before eip=00697B99.
+  eax=0000ECD0 ebx=03BFD478 ecx=03BD4700 esi=00000F34 edi=00000107 ... slot now 00000F34
+  bytes: 8B 19 | 03 C2 | C1 E0 04 | 0F B7 B0 00 47 97 03 | 89 33 | 0F B7 80 02 47 97 03
+```
+
+and the function it lands in is 0x697B60:
+
+```
+00697B71  imul ecx, ecx, 0x4320       ; sizeof(scrVmPub_t) -- verified in t4-sp-map.md
+00697B79  lea  ecx, [ecx + 0x3BD4700] ; &gScrVmPub[inst]
+00697B7F  imul edx, edx, 0x16000      ; the per-instance variable table stride
+00697B86  add  dword ptr [ecx], 4     ; scrVmPub.localVars++      <-- the scratch pointer
+00697B89  mov  ebx, dword ptr [ecx]
+00697B8D  shl  eax, 4                 ; 16-byte variable rows
+00697B90  movzx esi, word ptr [eax + 0x3974700]   ; this child's name id
+00697B97  mov  dword ptr [ebx], esi   ; <<< THE STORE. No bound check.
+00697B99  movzx eax, word ptr [eax + 0x3974702]   ; next sibling
+00697BA5  jne  0x697B86               ; ...and round again
+```
+
+0x697B60 walks a script object's **child variables** and pushes each one's name id into
+`scrVmPub.localVars`. The loop's only exit is running out of siblings. Der Berg enumerates
+something with about **3,900 children** (0xF34 in `join72`, 0xFE9 in `join70` — it varies with the
+run, which is what a live object count does), the scratch is sized for a few dozen, and the overrun
+walks 0x28D78 bytes past `gScrVmPub` into `.bss`, where the first thing it hits is the
+`r_reflectionProbeGenerate` pointer.
+
+**The order of events, then:**
+
+```
+a GSC enumeration overflows the VM's local-variable scratch
+  -> the overflow writes a count over [0x3BFD478]
+    -> the next WSAEWOULDBLOCK in the packet receive dereferences that count
+      -> the frame body unwinds (§12.1's mechanism, unchanged)
+        -> com_frameTime stops, 5.6 s in
+```
+
+The dvar was the **victim**, never the cause. "Find the dvar and register it" could not have
+worked, and §12.5 is retracted in place.
+
+**`reflection_probe_dvars.cpp` stays**, because the slot really was NULL at `post_init` in `join69`
+and a NULL there is a fault waiting for the first socket error on *any* map — but it must not be
+described as the Der Berg fix, and its own header now says so. The Der Berg fix is a bound on
+0x697B60's push loop or a larger `localVars`, which is an engine-limit job — the class of thing
+T4M exists to raise — and it is not attempted here.
+
+**For `re`**: 0x697B60 is the child-variable enumeration that fills `scrVmPub.localVars`;
+`gScrVmPub` is at **0x3BD4700**, stride 0x4320, with `localVars` (or whatever the field is called on
+this build) as the **first dword**; the variable table is at **0x3974700**, 16-byte rows, per-script-
+instance stride 0x16000, with the name id at +0 and the next-sibling index at +2, both `uint16`.
+`Cbuf_AddText` = **0x594200**, `text` in `eax` and `localClient` in `ecx`, nothing on the stack
+(`referee.md` §10.4).
+
+### 13.3 `Can't find map` was never about `fs_game`, and the write-protected line is a red herring
+
+§11.4 blamed Zombie Desert's and Project Viking's failure on the line printed just above it:
+
+```
+      dvar set fs_game mods/nazi_zombie_test1
+fs_game is write protected.
+Error: Can't find map "nazi_zombie_test1".
+A mod is required for custom maps
+```
+
+and proposed clearing `<fs_homepath>\main\config.cfg`. **Both halves are wrong.** There is no
+`config.cfg` anywhere under `ZombiesDev\homes` — never has been — and **every** map prints
+`fs_game is write protected`, including the ones that boot. It is the engine re-applying our `+set`
+block after the dvar dump; `fs_homepath`, `sys_configureGHz` and `dedicated` print the same
+complaint in the same block on Der Berg, which boots fine.
+
+The real check is on disk and does not use the FS search path at all:
+
+```
+0062B592  cmp byte ptr [eax + 0x10], 0   ; the `useFastFile` dvar at [0x1F552FC] -- 1
+0062B607  push 0 / call 0x48FC10         ; <basepath>\zone\<lang>\<bsp>.ff
+0062B623  push 1 / call 0x48FC10         ; <fs_localAppData>\<fs_game>\<bsp>.ff
+0062B635  push 2 / call 0x48FC10         ; <fs_localAppData>\<fs_game>\usermaps\<bsp>\<bsp>.ff
+0062B650  push 0x886374                  ; `Can't find map "%s".\nA mod is required for custom maps`
+```
+
+0x48FC10 builds the path with 0x48E3D0 and opens it with `CreateFileA`. Mode 1's first component
+comes from the dvar at `[0x2122AF0]`, and that dvar is registered at 0x5DDFD8 as
+**`fs_localAppData`** — `%LOCALAPPDATA%\Activision\CoDWaW`. **Not** `fs_homepath`, which is the one
+`launch.ps1` redirects per game copy.
+
+So a custom map is only "found" when its fastfile is at
+`%LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>\<bsp>.ff`. Der Berg, Leviathan, Clinic of Evil and
+MW2 Rust already had an entry there from an earlier session. Zombie Desert and Project Viking did
+not. **That is the entire difference**, and it is ours, not the maps'.
+
+`tools\dev\mapmount.ps1` is the fix, dot-sourced by both `jointest.ps1` and `maptest.ps1`: one
+`Mount-EnwMap` that makes *both* junctions — the per-home one the search path needs and the
+`fs_localAppData` one the existence check opens — onto `archive\mods\<bsp>`, and then prints the
+exact path the check will open, in green if it is there and in red with the error message the
+engine is about to print if it is not. Nothing is copied and the archive's own files are never
+written by it.
+
+`jointest-proof.ps1` also grew `-Map`, `-BigHeap` and `-Deploy`, because the five-gate proof was
+prototype-only and a custom map could never be taken through it.

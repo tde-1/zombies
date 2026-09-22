@@ -26,7 +26,14 @@
 param(
     [Parameter(Mandatory = $true)][string]$Tag,
     [int]$Port = 28960,
-    [int]$Watch = 120
+    [int]$Watch = 120,
+    # The proof used to be prototype-only, which meant a custom map could never be
+    # taken through the five gates. jointest.ps1 already knows how to do a custom map
+    # (fs_game auto = mods/<bsp>); it just had no way through from here.
+    [string]$Map = 'nazi_zombie_prototype',
+    [switch]$Deploy,
+    # Der Berg and friends want the 422 MB reserve (dedi.md 11.4).
+    [switch]$BigHeap
 )
 $ErrorActionPreference = 'Stop'
 $repo = 'C:\Users\b\Desktop\Zombies'
@@ -41,11 +48,16 @@ while ((Test-Path -LiteralPath $lock) -and (Get-Date) -lt $deadline) {
 }
 if (Test-Path -LiteralPath $lock) { throw 'game.lock still held' }
 
+if ($BigHeap) { $env:ENW_DEDI_BIG_HEAP = '1' } else { $env:ENW_DEDI_BIG_HEAP = $null }
+
 $job = Start-Job -ScriptBlock {
-    param($repo, $tag, $watch)
+    param($repo, $tag, $watch, $map, $deploy, $bigHeap)
     Set-Location $repo
-    & powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" -Tag $tag -NoDeploy -WatchSeconds $watch 2>&1
-} -ArgumentList $repo, $Tag, $Watch
+    if ($bigHeap) { $env:ENW_DEDI_BIG_HEAP = '1' }
+    $a = @('-Tag', $tag, '-WatchSeconds', $watch, '-Map', $map)
+    if (-not $deploy) { $a += '-NoDeploy' }
+    & powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" @a 2>&1
+} -ArgumentList $repo, $Tag, $Watch, $Map, [bool]$Deploy, [bool]$BigHeap
 
 # --- find the server PID, then poll the wire -------------------------------------
 $serverPid = 0

@@ -52,6 +52,8 @@ function Say($msg, $colour = 'Gray') {
 
 Set-Content -LiteralPath $transcript -Value "maptest $Tag  $(Get-Date -Format o)" -Encoding utf8
 
+. (Join-Path $PSScriptRoot 'mapmount.ps1')
+
 if (-not $NoDeploy) {
     & (Join-Path $PSScriptRoot 'deploy.ps1') $ServerName -From $ServerFrom | Out-Null
     Say "deployed build\$ServerFrom -> waw-$ServerName"
@@ -68,16 +70,17 @@ foreach ($map in $Maps) {
     if ($fsGame) {
         $dst = Join-Path $DevRoot "homes\$ServerName\mods\$map"
         $src = Join-Path $DevRoot "archive\mods\$map"
-        if (-not (Test-Path -LiteralPath $dst)) {
-            if (-not (Test-Path -LiteralPath $src)) {
-                Say "NOT INSTALLED: $src" 'Red'
-                $row.error = 'not installed in the archive'
-                $results += [pscustomobject]$row
-                continue
-            }
-            New-Item -ItemType Directory -Path (Split-Path -Parent $dst) -Force | Out-Null
-            cmd /c mklink /J "$dst" "$src" | Out-Null
-            Say "junctioned $dst -> $src"
+        try {
+            # Both mounts: the search-path one and the fs_localAppData one the
+            # map-exists check at 0x62B623 opens with CreateFileA. See mapmount.ps1.
+            Mount-EnwMap -Bsp $map -Homes @($ServerName) -DevRoot $DevRoot `
+                -Log { param($m, $c) Say $m $c }
+        }
+        catch {
+            Say "NOT INSTALLED: $src" 'Red'
+            $row.error = 'not installed in the archive'
+            $results += [pscustomobject]$row
+            continue
         }
         Get-ChildItem -LiteralPath $dst -Filter *.ff | ForEach-Object {
             Say ("  {0}  {1:N1} MB" -f $_.Name, ($_.Length / 1MB))

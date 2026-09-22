@@ -75,22 +75,16 @@ if ($FsGame -eq 'auto') {
 Set-Content -LiteralPath $transcript -Value "jointest $Tag  $(Get-Date -Format o)" -Encoding utf8
 Say "server=waw-$ServerName client=waw-$ClientName map=$Map fs_game='$FsGame' port=$Port" 'Cyan'
 
-# The map's mod folder has to be visible from BOTH homepaths. install_map.py makes a
-# directory junction per map, so this costs one filesystem entry, not 500 MB.
+# The map's mod folder has to be visible from BOTH homepaths AND from fs_localAppData:
+# the engine's map-exists check opens <fs_localAppData>\<fs_game>\<bsp>.ff with
+# CreateFileA and ignores the FS search path entirely. mapmount.ps1 carries the proof
+# and makes all three junctions. Missing the fs_localAppData one is what produced
+# `Can't find map` on Zombie Desert and Project Viking in map01 (dedi.md 12.6).
+. (Join-Path $PSScriptRoot 'mapmount.ps1')
 if ($FsGame) {
     $modName = Split-Path -Leaf $FsGame
-    foreach ($h in @($ServerName, $ClientName)) {
-        $dst = Join-Path $DevRoot "homes\$h\mods\$modName"
-        if (Test-Path -LiteralPath $dst) { continue }
-        $src = Join-Path $DevRoot "archive\mods\$modName"
-        if (-not (Test-Path -LiteralPath $src)) {
-            Say "NO SUCH MAP: $src -- run archive\install_map.py first" 'Red'
-            throw "map $modName is not in the archive at $src"
-        }
-        New-Item -ItemType Directory -Path (Split-Path -Parent $dst) -Force | Out-Null
-        cmd /c mklink /J "$dst" "$src" | Out-Null
-        Say "junctioned $dst -> $src"
-    }
+    Mount-EnwMap -Bsp $modName -Homes @($ServerName, $ClientName) -DevRoot $DevRoot `
+        -Log { param($m, $c) Say $m $c }
 }
 
 # ---------------------------------------------------------------------- deploy --
