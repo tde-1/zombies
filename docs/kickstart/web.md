@@ -2181,7 +2181,7 @@ codes on every row, ENW tags and the per-menu footers are gone; the dvar and sou
 
 ### Proof
 
-* `web npm test`: **107 / 37 / 15 / 19, 0 failed**. New check: every catalogue item is placed in
+* `web npm test` (after rebasing on main with web-profile): **112 / 41 / 15 / 19, 0 failed**. One earlier run had a single `local-run` failure in the username-claim test ("already_set"), which passed on the next three runs - not this change, likely a concurrent run; noted. New check: every catalogue item is placed in
   exactly one section, no layout id is foreign, and the union of the section resets equals
   `allDefaults()` — the regroup cannot change what a reset writes.
 * **Dev port `:3462`** (own copy of the DB in scratch, `ZM_TEST_LOGIN=1`, a fake SteamID and the
