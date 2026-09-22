@@ -98,3 +98,23 @@ now has a fifth gate (`com_frameTime` advancing) so a dead server can never pass
 - `SendInput` at 8 kHz is silently discarded on this box; only a real mouse tests the mouse path.
 - `kill -9` on the box leaves `__CoDWaW` and hangs the next launch; the Wine path clears it.
 - Steam's German-region accounts get depot 10097; `download_depot` of 10092 → missing license.
+
+## 2026-09-22 late: the site went down with its shell (B could not play)
+
+B opened the launcher after updating to 0.2.6 and got the built-in placeholder ("No site is
+answering"). Cause: `zombies.enw.gg` is two processes on B's PC (node on 3200 + cloudflared) and
+**nothing persistent was keeping them alive** - every `keepalive.ps1` run tonight was `-Once`, so
+the site and the tunnel were children of whichever agent shell last restarted them, and died with
+it (log: last start 18:38, dead by 19:00). Fixed two ways:
+
+- The keepalive loop now runs **detached** (started via WMI, pid in `infra\keepalive.log`) and a
+  shortcut in B's Startup folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\ENW
+  Zombies keepalive.lnk`) restarts it at logon. A scheduled task needs an elevated shell, which
+  agents do not have. **Agents: never `-Once` as the only keepalive; if the loop is not running
+  (`Get-Process powershell` with `keepalive.ps1` in the command line), start it detached.**
+- **Launcher 0.2.7** (feed): a launcher opened while the site was down never connected the site
+  API, reload button or not, so Play stayed dead until a restart. `reloadSite` now calls the
+  extracted `connectSiteApi()` (stops a stale party watcher first). 124/0 tests.
+
+B's step: restart the launcher (or Check for updates -> 0.2.7); the site pill must read
+`site: 127.0.0.1:3200`, not `placeholder`.
