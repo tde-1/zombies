@@ -19,9 +19,14 @@
 import { EventEmitter } from 'node:events'
 
 export class AutoUpdater extends EventEmitter {
-  constructor({ feedUrl, currentVersion, gate, log = () => {}, sitePassword = null, siteUser = 'beta' }) {
+  constructor({ feedUrl, currentVersion, gate, log = () => {}, sitePassword = null, siteUser = 'beta', backgroundDownload = true }) {
     super()
     this.feedUrl = feedUrl || null
+    // 0.2.11 (B: "Update now / Restart now / Update later"): main.js passes false. The
+    // launch-time check still runs here and the nav chip hears it (updatecheck.js
+    // `attach()`); the DOWNLOAD waits for the player's Update now. Apply-on-quit is
+    // unchanged: whatever the player did download is installed when they quit.
+    this.backgroundDownload = backgroundDownload
     this.currentVersion = currentVersion
     // THE FEED IS BEHIND THE CLOSED-BETA PASSWORD, and electron-updater does not know
     // that. B's own log, three times: `updates: check failed — net::ERR_ABORTED`. What
@@ -87,6 +92,7 @@ export class AutoUpdater extends EventEmitter {
         this.state.available = info?.version || null
         this.log('updates:', this.state.available, 'is available; downloading in the background')
         this.emit('status', this.status())
+        if (!this.backgroundDownload) { this.log('updates: waiting for the player to press Update now'); return }
         // Download when nothing is busy. `when` already means "not in game, not
         // mid-install, not mid-action".
         this.gate.when(() => {

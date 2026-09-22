@@ -33,7 +33,7 @@ import * as library from './library.js'
 import { SiteApi, PlayWatcher, electronCookieProvider } from './siteapi.js'
 import * as partyprogress from './partyprogress.js'
 import { AutoUpdater, resolveFeed } from './autoupdate.js'
-import { UpdateCheck } from './updatecheck.js'
+import { UpdateCheck, fakeUpdater } from './updatecheck.js'
 import * as deeplink from './deeplink.js'
 import { makeWindowRaiser } from './focusguard.js'
 import { hostAgent } from './hostagent.js'
@@ -98,6 +98,11 @@ const state = {
   lastPlay: null,
   playWatcher: null,
   installs: new Map(),   // bsp -> the in-flight install, so two callers share one
+  // 0.2.11: bsp -> { done, total } of the running install, and bsp -> the last failure,
+  // so a page that opens mid-download (the map page's Download button, the rail's card)
+  // can draw where it has got to instead of waiting for the next progress event.
+  installProgress: new Map(),
+  installErrors: new Map(),
 }
 
 // ------------------------------------------------------------------- logging --
@@ -425,8 +430,25 @@ function push(channel, payload) {
 // Progress reaches the renderer by PUSH, on the existing `enw:` event channel. The
 // alternative — the Settings page polling `updateStatus` — would mean a percentage that
 // moves in steps and a poll that keeps running after the page is closed.
+// ENW_FAKE_UPDATE=<version>: a dev checkout only. Drives the chip through its phases with
+// updatecheck.js's `fakeUpdater` instead of electron-updater (which refuses to run
+// unpacked). Ignored by a packaged app, so no player can ever be shown a fake update.
+const FAKE_UPDATE = !app.isPackaged && process.env.ENW_FAKE_UPDATE ? String(process.env.ENW_FAKE_UPDATE) : null
+
 function updateCheck() {
   if (state.updateCheck) return state.updateCheck
+  if (FAKE_UPDATE) {
+    const fake = fakeUpdater(FAKE_UPDATE, { stepMs: Number(process.env.ENW_FAKE_UPDATE_STEP_MS) || 400, log: (...a) => log('update', ...a) })
+    state.updateCheck = new UpdateCheck({
+      feedUrl: 'fake://ENW_FAKE_UPDATE',
+      currentVersion: app.getVersion(),
+      isDev: false,
+      log: (...a) => log('update', '[fake]', ...a),
+      loadUpdater: async () => ({ autoUpdater: fake }),
+    })
+    state.updateCheck.on('status', (s) => push('update_status', s))
+    return state.updateCheck
+  }
   state.updateCheck = new UpdateCheck({
     feedUrl: resolveFeed({ config: cfg.load(), siteUrl: state.siteInfo?.url }),
     currentVersion: app.getVersion(),
@@ -681,7 +703,11 @@ function wireIpc() {
     // install or a local game sends nothing at all.
     const reporter = partyprogress.attach(state.api, state.lastPlay, bsp, { log: (m) => log('party', m) })
     if (reporter) log('party', `reporting ${bsp} to party ${reporter.partyId}`)
+    state.installErrors.delete(bsp)
+    state.installProgress.set(bsp, { done: 0, total: 0 })
+    push('mapState', mapState(bsp))
     const onProgress = (p) => {
+      state.installProgress.set(bsp, { done: p.done ?? p.bytes ?? 0, total: p.total ?? 0 })
       push('mapProgress', { bsp, ...p })
       try { extra?.(p) } catch {}
       reporter?.downloading(p.done ?? p.bytes ?? 0, p.total ?? 0)
@@ -702,6 +728,7 @@ function wireIpc() {
         // because from the leader's side "this member cannot get the map" and "this
         // member's download broke" are the same fact: do not press Start.
         reporter?.failed('there is no source for this map')
+        state.installErrors.set(bsp, 'the site has no files for this map')
         return { skipped: 'no source for this map: the site cannot serve it and there is no local archive' }
       }
       // `installed` means the hash check passed: both install routes throw instead of
@@ -710,9 +737,64 @@ function wireIpc() {
       return rec
     } catch (e) {
       reporter?.failed(e)
+      state.installErrors.set(bsp, e?.message || String(e))
       throw e
-    } finally { state.gate.unblock('mapinstall') }
+    } finally {
+      state.gate.unblock('mapinstall')
+      state.installProgress.delete(bsp)
+      // `installs` still holds this promise until its own .finally runs, so say
+      // "not installing" explicitly rather than read it back.
+      push('mapState', { ...mapState(bsp), installing: false })
+    }
   }
+
+  // One map's state for the site's Download button: stock (ships with the game),
+  // installed (we put it there), installing with how far, or the last failure.
+  function mapState(bsp) {
+    const prog = state.installProgress.get(bsp) || null
+    const installing = state.installs.has(bsp) || !!prog
+    const pct = prog && prog.total ? Math.max(0, Math.min(100, Math.floor((prog.done / prog.total) * 100))) : (installing ? 0 : null)
+    return {
+      bsp,
+      stock: library.isStock(bsp),
+      installed: library.mapReady(bsp),
+      installing,
+      done: prog ? prog.done : null,
+      total: prog ? prog.total : null,
+      pct,
+      error: state.installErrors.get(bsp) || null,
+      // `theirs` means the player's own folder sits where ours would go; the Download
+      // button says so instead of offering a download the library would refuse.
+      theirs: library.ownership(bsp).state === 'theirs',
+    }
+  }
+  handle('mapState', (bsp) => mapState(String(bsp || '')))
+  // Settings → Installed maps. Largest first; see library.installedList for what is and
+  // is never listed.
+  handle('installedMaps', () => ({
+    maps: library.installedList().map((m) => ({ ...m, installing: state.installs.has(m.bsp) })),
+    installing: [...state.installProgress.entries()].map(([bsp, p]) => ({ bsp, ...p })),
+  }))
+  // Remove several at once. A map that is downloading, or any map while a game is
+  // running (its files are open), is refused by name rather than half-deleted.
+  handle('removeMaps', (list) => {
+    const out = []
+    const inGame = state.gate.blockers.has('game')
+    for (const raw of Array.isArray(list) ? list : [list]) {
+      const bsp = String(raw || '')
+      if (!bsp) continue
+      if (library.isStock(bsp)) { out.push({ bsp, ok: false, why: 'ships with World at War' }); continue }
+      if (state.installs.has(bsp)) { out.push({ bsp, ok: false, why: 'still downloading' }); continue }
+      if (inGame) { out.push({ bsp, ok: false, why: 'a game is running' }); continue }
+      try {
+        const done = library.uninstall(bsp)
+        log('maps', `removed ${bsp}: ${done.join('; ')}`)
+        out.push({ bsp, ok: !library.isInstalled(bsp), done })
+      } catch (e) { out.push({ bsp, ok: false, why: e.message }) }
+      push('mapState', mapState(bsp))
+    }
+    return out
+  })
 
   handle('installMap', async (bsp) => {
     try {
@@ -792,7 +874,15 @@ function wireIpc() {
   // nothing useful; the state machine's own message is always better than an errno.
   handle('updateStatus', () => updateCheck().status())
   handle('checkForUpdates', () => updateCheck().check())
+  // 0.2.11, the nav chip: Update now downloads, Later hides the chip until next launch.
+  handle('updateNow', () => updateCheck().download())
+  handle('updateLater', () => updateCheck().later())
   handle('restartAndUpdate', () => {
+    // Restarting closes the game with the launcher's children; never mid-game.
+    if (state.gate.blockers.has('game')) {
+      push('toast', { kind: 'warn', text: 'Finish your game first. The update installs when you restart.' })
+      return { ok: false, why: 'a game is running' }
+    }
     const r = updateCheck().quitAndInstall()
     if (!r.ok) push('toast', { kind: 'error', text: `Could not restart to install the update: ${r.why}` })
     return r
@@ -1596,13 +1686,22 @@ if (!single) {
       log: (...a) => log('updater', ...a),
       // The same password the player already typed to see the site. Never logged.
       sitePassword: cfg.load().sitePassword || null,
+      // 0.2.11: find it here, download it on the player's Update now (the nav chip).
+      backgroundDownload: false,
     })
     state.updater.on('ready', (r) => push('toast', {
       kind: 'info',
       text: `Version ${r.version} is ready. It will be applied the next time you start ENW Zombies — never during a game.`,
     }))
     state.updater.on('status', () => push('update', state.updater.status()))
-    state.updater.start()
+    // The nav chip's state machine listens BEFORE the launch-time check runs, so the
+    // check's `update-available` reaches the site as "Update 0.2.11" (updatecheck.js
+    // `attach()`; both lanes share electron-updater's one autoUpdater).
+    if (FAKE_UPDATE) updateCheck().check()
+    // Only with a feed: `updateCheck()` is built once, and one built with no feed would
+    // answer "no update server" for the whole session (see its own comment).
+    else if (feed) updateCheck().attach().catch(() => {}).finally(() => state.updater.start())
+    else state.updater.start()
 
     // ENW_SMOKE_MS: boot, report what came up, quit. Lets the whole app be tested on a
     // machine somebody is using without leaving a window on their screen, and makes

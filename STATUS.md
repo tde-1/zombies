@@ -25,6 +25,19 @@
 5. **Custom maps with friends**: today that is Minecraft Village Remastered plus the stock four on the box. The rest is the list under *Known and unfixed*.
 6. **Replay viewer**: any finished game's page → replay. Nacht renders with full world geometry.
 
+## 2026-09-22 (late evening): launcher 0.2.12 — update chip, Download, installed maps (branch `updates-downloads`, not merged, not published)
+
+* **Update chip, top right**: `Update 0.2.13` · Update now · Later → a bar → Restart now · Later. The
+  check runs every launch; the download waits for Update now; Later hides it until next launch.
+  The launcher's "site is not answering" page has the same chip.
+* **Download** beside Play on the map page and small on the rail's card: Download → bar + % →
+  Downloaded. In a browser it goes to /download.
+* **Settings → ENW**: an Update button and an *installed maps* box (picture, title, key, size,
+  largest first, select and Remove). Only maps ENW installed are listed.
+* **Download bars** everywhere a download shows, bar before the %, rail-row height.
+* **Proven** in a dev launcher window on a DB copy (screenshots `docs/kickstart/ui/2026-09-22-launcher-0.2.12-*`),
+  tests green. **Not proven**: a real feed, a real restart. Write-ups: `launcher.md` and `web.md`, newest sections.
+
 ## 2026-09-22 (late): the rail cleaned up (branch `web-cleanup`, not merged)
 
 * **The card opens the map page.** It works like Movement's, and the page has a Back that goes

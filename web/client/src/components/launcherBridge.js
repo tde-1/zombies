@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
 import { toLauncherPatch, fromLauncher, newer } from '../data/wawSettings'
+import { chipPhase, clampPct, fmtSize, bySizeDesc } from './launcherFormat'
+
+export { chipPhase, clampPct, fmtSize }
 
 // THE LAUNCHER'S OWN BAR IS GONE (B, 2026-09-22). The launcher window is frameless and the
 // site IS its chrome: this nav bar is the title bar (drag region), and the three window
@@ -46,6 +49,107 @@ export function useLauncherStatus() {
   return st
 }
 
+// ── 0.2.11: updates, map downloads, installed maps ─────────────────────────────────────
+//
+// B: "The launcher should detect updates, show it top right, and say Update now / Restart
+// now / Update later"; "a Download button separate from Play"; "a list of maps you have
+// installed ... sort by size". All three are the launcher's to do (it holds the files and
+// the updater); the site draws them through the bridge. An older launcher that lacks a
+// call gets nothing drawn rather than a button that throws.
+
+// The update checker's state (launcher/src/main/updatecheck.js), pushed, never polled.
+export function useUpdateStatus() {
+  const [u, setU] = useState(null)
+  useEffect(() => {
+    const enw = bridge()
+    if (!enw || !enw.updateStatus || !enw.updateNow) return undefined
+    let live = true
+    enw.updateStatus().then((s) => { if (live) setU(s) }).catch(() => {})
+    const off = enw.onUpdateStatus ? enw.onUpdateStatus((s) => { if (live) setU(s) }) : null
+    return () => { live = false; try { off && off() } catch { /* gone */ } }
+  }, [])
+  return u
+}
+
+// One map's install state for a Download button. `supported` is false outside the
+// launcher (or on one too old for `mapState`), and the button then goes to /download.
+export function useMapInstall(key) {
+  const [st, setSt] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const enw = bridge()
+  // `installMap` is enough to download (every launcher since 0.1 has it). `mapState` is
+  // 0.2.12's: without it (a 0.2.11 launcher on the new site) the button starts as Download
+  // and learns "Downloaded" from installMap's own answer ({already:true} or the record).
+  const supported = !!(enw && enw.installMap)
+  const hasState = !!(enw && enw.mapState)
+  useEffect(() => {
+    if (!supported || !key) { setSt(null); return undefined }
+    let live = true
+    const read = () => (hasState
+      ? enw.mapState(key).then((s) => { if (live) setSt(s) }).catch(() => {})
+      : setSt({ bsp: key, installed: false, installing: false, pct: null }))
+    read()
+    const offs = []
+    if (enw.onMapProgress) {
+      offs.push(enw.onMapProgress((p) => {
+        if (!live || !p || p.bsp !== key) return
+        const total = p.total || 0
+        const done = p.done ?? p.bytes ?? 0
+        setSt((s) => ({ ...(s || { bsp: key }), installing: true, done, total, pct: total ? Math.floor((done / total) * 100) : 0, error: null }))
+      }))
+    }
+    if (enw.onMapState) offs.push(enw.onMapState((s) => { if (live && s && s.bsp === key) read() }))
+    return () => { live = false; offs.forEach((off) => { try { off && off() } catch { /* gone */ } }) }
+  }, [key, supported]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const download = async () => {
+    if (!supported || !key) return
+    setBusy(true)
+    setSt((s) => ({ ...(s || { bsp: key }), installing: true, pct: (s && s.pct) || 0, error: null }))
+    try {
+      const r = await enw.installMap(key)
+      if (r && r.skipped && !r.already) setSt((s) => ({ ...(s || {}), installing: false, error: r.skipped }))
+      else setSt((s) => ({ ...(s || {}), installing: false, installed: true, error: null }))
+    } catch (e) {
+      setSt((s) => ({ ...(s || {}), installing: false, error: String((e && e.message) || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }))
+    }
+    setBusy(false)
+    if (hasState) { try { setSt(await enw.mapState(key)) } catch { /* keep what we have */ } }
+  }
+
+  const phase = !supported ? 'browser'
+    : !st ? 'unknown'
+      : st.installed ? 'installed'
+        : (st.installing || busy) ? 'downloading'
+          : st.theirs ? 'theirs'
+            : st.error ? 'failed' : 'absent'
+  return { supported, phase, pct: st && st.pct != null ? clampPct(st.pct) : null, error: st && st.error, stock: !!(st && st.stock), download }
+}
+
+// Settings → Installed maps: the launcher's list (largest first), refreshed when a map
+// is installed or removed anywhere.
+export function useInstalledMaps() {
+  const enw = bridge()
+  const supported = !!(enw && enw.installedMaps && enw.removeMaps)
+  const [list, setList] = useState(null)
+  const read = useCallback(() => {
+    if (!supported) return
+    enw.installedMaps().then((r) => setList(bySizeDesc((r && r.maps) || []))).catch(() => setList([]))
+  }, [supported]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!supported) return undefined
+    read()
+    const off = enw.onMapState ? enw.onMapState(() => read()) : null
+    return () => { try { off && off() } catch { /* gone */ } }
+  }, [supported, read]) // eslint-disable-line react-hooks/exhaustive-deps
+  const remove = async (keys) => {
+    const out = await enw.removeMaps(keys)
+    read()
+    return out
+  }
+  return { supported, list, remove, refresh: read }
+}
+
 // One line for the menu, in the launcher's plain voice.
 export function describeLauncher(st) {
   if (!st) return null
@@ -58,7 +162,10 @@ export function describeLauncher(st) {
   let update = null
   if (u && u.phase && u.phase !== 'idle') update = u.message || u.phase
   const updateReady = !!(u && u.phase === 'ready' && u.canInstall !== false)
+  // After "Later" the chip is gone until the next launch; the menu keeps the way back.
+  const updateAvailable = !!(u && u.available && !updateReady && u.phase !== 'downloading')
   return {
+    updateAvailable,
     client: installed ? 'ENW client installed' : 'ENW client not installed',
     installed: !!installed,
     version,

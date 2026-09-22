@@ -2302,3 +2302,99 @@ Hetzner bucket (`enw-zombies-files`, key `updates/<name>`) via a 302 from the si
   (`providerFactory.js:53`). If the bucket does not answer multi-range, electron-updater falls back
   to a full download (`NsisUpdater.js:170`) — from the bucket. A future release can pass
   `useMultipleRangeRequest: false` to `setFeedURL` (`autoupdate.js`, `updatecheck.js`).
+
+
+## 2026-09-22, late evening — 0.2.12: the update chip, Download on its own, installed maps, the bar
+
+Branch `updates-downloads` (rebased on main after 0.2.11 was published from main; so this is
+**0.2.12**). B's four asks: *"detect updates, show it top right, Update now / Restart now / Update
+later"*; *"a Download button separate from Play … concise, like Movement"*; *"a list of maps you
+have installed with a picture, the name, the title, how many gigabytes … select and remove … sort
+by size, in a little box"*; *"a bar before the percentage … the size of the online-player rows"*.
+The site half is `web.md`, same date.
+
+### Updates: found by itself, downloaded when the player says
+
+- **One state machine for the UI** (`updatecheck.js`). New: `attach()` listens to electron-updater's
+  shared `autoUpdater` **without** checking; `download()` (Update now; a second press is the same
+  download — electron-updater returns its in-flight promise); `later()` (a `later: true` flag in
+  the status, held in the main process so a reload or the fallback page does not bring the chip
+  back; a new launch does). `autoDownload` is now **false**; `describe('available')` is
+  `Update 0.2.13 available` (was "…starting the download").
+- **The launch-time check** is still the silent lane (`autoupdate.js`), which now takes
+  `backgroundDownload` and main.js passes **false**: it finds the update, the chip shows it, and
+  the download waits for Update now. Apply-on-quit is unchanged, so an update the player
+  downloaded and then said Later to is installed when they quit. `main.js` attaches the chip's
+  machine **before** `state.updater.start()` so the check's `update-available` reaches it (both
+  lanes share the one `autoUpdater`); only when a feed exists, because `updateCheck()` is built
+  once per session.
+- **IPC/bridge:** `updateNow`, `updateLater`; `restartAndUpdate` now refuses while a game is
+  running (toast *Finish your game first*). Shell Settings gains an **Update now** button beside
+  Check for updates / **Restart now**.
+- **The fallback page** (`placeholder.html`, what the window shows when the site does not
+  answer) draws the same chip in its nav, so an update is reachable with the site down.
+- **Dev only:** `ENW_FAKE_UPDATE=<version>` (+ `ENW_FAKE_UPDATE_STEP_MS`) swaps electron-updater
+  for `updatecheck.fakeUpdater`, which finds, downloads in 20 steps and logs a fake restart. Guarded
+  by `!app.isPackaged`, so no installed copy can ever show a fake update. The screenshots used it.
+
+### Maps: state, the installed list, removal
+
+- `library.dirBytes(dir)` (on-disk size, links not followed) and `library.installedList()`: only
+  folders under `P.maps` (= `%LOCALAPPDATA%\ENWZombies\home\localappdata\Activision\CoDWaW\mods`)
+  that carry **our** `.enw-installed.json` and that `ownership()` calls `ours`; stock maps never;
+  largest first. The player's own WaW mods live in a different folder that nothing reads, and a
+  folder in ours without our record is `theirs` and is never listed, so never removable.
+- `main.js`: `state.installProgress` / `state.installErrors`; `runInstall` pushes a new
+  `mapState` event at start and end. New IPC `mapState(bsp)` → `{installed, installing, pct,
+  done, total, error, stock, theirs}`, `installedMaps()`, `removeMaps([bsp])` (refuses a map
+  that is still downloading and anything while a game runs; otherwise `library.uninstall`, which
+  removes only the files our record lists). Download uses the existing `installMap` →
+  `ensureMapInstalled`, so a Download and a later Play or party auto-download share one install.
+- Bridge: `mapState`, `installedMaps`, `removeMaps`, `onMapState`.
+
+### Proof
+
+- `npm test` **134 + 14 passed, 0 failed** (new: chip machine end to end on a fake updater — attach
+  does not check, Update now before a find refuses, Later, double press = one download, Restart;
+  the dev fake walks checking→available→downloading→ready; the silent lane no longer downloads by
+  itself and `FAKE_UPDATE` is packaged-guarded; `installedList` is ours-only, on-disk, largest
+  first, and uninstall leaves a player's folder alone; bridge names in preload and main; the
+  fallback page has the chip; version 0.2.12 and both suites in `npm test`).
+- **A dev launcher window** (the real `main.js`, loaded by a scratch harness that stubs protocol
+  registration and gives it its own `userData`/`ENW_ROOT`) on a private site on **:3471** holding a
+  `VACUUM INTO` copy of the live DB and one fake approved account. Driven over CDP. Screenshots,
+  `docs/kickstart/ui/2026-09-22-launcher-0.2.12-*`:
+  `update-1-available`, `update-2-downloading` (+ `2b-bar-crop`), `update-3-ready`,
+  `update-4-fallback-page` (site stopped; chip on the placeholder; its **Later** hid it and after
+  **Try again** the site's chip stayed hidden — `update-5-after-later-crop`); `map-1-download`,
+  `map-2-downloading`, `map-2b-downloading-rebased`, `map-3-downloaded`; `settings-1-installed-maps`
+  (three maps, largest first), `settings-2-selected-updating`, `settings-3-removed` (two removed;
+  the folders were gone from disk and `launcher.log` says `removed 9/12 file(s) ENW installed`);
+  `bars-1-page-card-row`, `bars-2-member-row`. Restart now reached `quitAndInstall(true,true)` on
+  the fake (logged); no real restart.
+- In a plain browser the map page's Download went to `/download?map=…&then=/m/…` and no chip drew.
+
+### Not proven, and one incident
+
+- **A real feed.** Nobody has seen 0.2.12 find 0.2.13 on `zombies.enw.gg/updates`; the chip's
+  real path is electron-updater's events, which only the fake drove here.
+- **Restart now in a packaged app** (only the fake's log line).
+- **INCIDENT (B's desktop, 21:21–21:26 local):** the first two dev windows were "off-screen" at
+  x=-2400; Windows/Chromium pulled them back onto B's primary monitor (measured at 810,257), and B
+  clicked in them (IPC log: Update now, Restart now ×2 and Try again ×2 on the fallback page,
+  Maps, `/settings#combat`). They never took focus (`showInactive`, `focus` stubbed) and
+  everything they did was the dev fake and a scratch site. Fixed for the rest of the run: shown at
+  **opacity 0, click-through, not focusable, no taskbar button**, tray icon blanked. Separately, one
+  mis-quoted relaunch started Electron's **default app window** for about a minute (PowerShell
+  `$s`/`$S` are the same variable). Both were killed by PID. Rule for the next agent: a dev
+  window is either invisible like this or not started.
+
+### Publish (coordinator)
+
+After merge, from the main checkout: `cd C:\Users\b\Desktop\Zombies\launcher; npm test; npm run pack`
+(stage-client → electron-builder → `tools/publish-update.js` into `web/public/updates`, and —
+since main's `54f7a95` — up to the files bucket when `infra/s3.env` has keys), then
+`node tools/publish-update.js --check` and `https://zombies.enw.gg/updates/latest.yml` must say
+`version: 0.2.12`. The site half needs `web/client` rebuilt and the site restarted; deploy the
+site first or together — a 0.2.11 launcher on the new site gets no chip (it lacks `updateNow`) and
+a Download that still works through `installMap`.

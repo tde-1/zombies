@@ -2465,3 +2465,38 @@ files; the full design, cost and commands are **[`storage.md`](storage.md)**.
   usual way (keepalive). `npm install` in `web` first: `@aws-sdk/client-s3` and
   `@aws-sdk/lib-storage` are new dependencies (only the tools use them; the site does not load
   them).
+
+
+## 2026-09-22, late evening — the update chip, Download on its own, installed maps, the bar (launcher 0.2.12)
+
+Branch `updates-downloads`. The launcher half (IPC, the updater change, what "installed" means,
+the incident with the dev window) is `launcher.md`, same date. Everything here draws **only
+inside the launcher** except Download, which in a browser goes to `/download` like Play.
+
+| What | Where | Words |
+|---|---|---|
+| Update chip, top right of the nav, left of Discord | `components/UpdateChip.jsx` in `Nav.jsx` | `Update 0.2.13` [Update now] Later → `Updating ━━ 37%` → `Update 0.2.13 ready` [Restart now] Later; a broken download: `Update failed` [Retry] Later |
+| Download beside Play on the map page | `components/MapDownload.jsx` `DownloadButton` in `pages/MapPage.jsx` | Download → Downloading ━━ 37% → ✓ Downloaded (Retry download + the reason on failure) |
+| Download on the rail's server card, small | `CardDownload` in `PartyRail.jsx` (only while forming / ready check, only for a playable map) | Download → ━━ 37% → ✓ Downloaded |
+| The bar | `DlBar` (same file); `.dlbar*`, `.dlrow` in `theme.css` | a slim track **then** the % in tabular mono; a standalone progress row is 54 px, the online block's row height |
+| Party members downloading | `PlayerCard` / `roleOf` in `PartyRail.jsx` | the role line becomes the bar + % |
+| Settings → ENW → **update** and **installed maps** | `components/LauncherBoxes.jsx`, rendered in web-settings-2's slot in `components/settings/EnwSection.jsx` | `launcher 0.2.12` [Check for updates / Update now / Updating bar / Restart now] + the launcher's own line; a little box of rows (art, title, key, size), checkboxes, Select all, `Remove 2 · 447 MB`, a confirm naming the maps and the space freed |
+
+* **Data:** `launcherBridge.js` hooks `useUpdateStatus`, `useMapInstall(key)`, `useInstalledMaps()`;
+  pure helpers `components/launcherFormat.js` (`chipPhase`, `clampPct`, `fmtSize` — binary GB with
+  one decimal, MB under 1 GB, the numbers Explorer shows — `bySizeDesc`), tested in
+  `web/test/run-all.js`. Art for installed maps comes from the rail's pool, else `/api/maps/<key>`.
+* **Older launcher on this site:** no chip (0.2.11 has no `updateNow`); Download still works through
+  `installMap` and learns Downloaded from its answer. The account menu keeps *Restart to update* and
+  gains *Update now* (the way back after Later). The ENW tab's own `update` text row was removed —
+  the update section says it with the button.
+* **Merged over main:** web-cleanup's card (no picker, `Not playable`, the Back link) and
+  web-settings-2's Gaff layout; my earlier pause-on-chat box was dropped because EnwSection's
+  *chat* section already has it.
+* **Tests:** `npm test` **118 / 41 / 15 / 19, 0 failed** (three new: the chip's phases and Later;
+  sizes and sort; every bridge call the UI uses exists in `preload.cjs`, Download in a browser goes
+  through the play gate, and EnwSection renders both sections).
+* **Proof:** the launcher.md section's screenshots (`ui/2026-09-22-launcher-0.2.12-*`), on a private
+  :3471 with a DB copy; the settings shots are after the rebase onto the Gaff layout.
+* **Not proven:** phone widths; the chip against a real feed; a member's bar fed by a *second* real
+  launcher (the shot is our own row, through the site's party-progress path).

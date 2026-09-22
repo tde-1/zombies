@@ -1570,6 +1570,43 @@ async function main() {
     eq(flat(all), flat(ref), 'group resets differ from the catalogue defaults')
   })
 
+  // ---- launcher 0.2.12: update chip, Download, installed maps ---------------
+  const lf = await import('../client/src/components/launcherFormat.js')
+  check('the update chip shows only an update there is, and Later hides every phase', () => {
+    eq(lf.chipPhase(null), null)
+    eq(lf.chipPhase({ phase: 'idle' }), null)
+    eq(lf.chipPhase({ phase: 'up_to_date', current: '0.2.12' }), null)
+    eq(lf.chipPhase({ phase: 'unreachable' }), null, 'a failed CHECK is not an update to offer')
+    eq(lf.chipPhase({ phase: 'available', available: '0.2.13' }), 'available')
+    eq(lf.chipPhase({ phase: 'downloading', available: '0.2.13', percent: 40 }), 'downloading')
+    eq(lf.chipPhase({ phase: 'ready', downloaded: '0.2.13', canInstall: true }), 'ready')
+    eq(lf.chipPhase({ phase: 'failed', available: '0.2.13' }), 'failed', 'a broken download offers Retry')
+    for (const phase of ['available', 'downloading', 'ready']) eq(lf.chipPhase({ phase, available: '0.2.13', canInstall: true, later: true }), null)
+  })
+  check('sizes read as GB with one decimal and MB under 1 GB; the list sorts largest first', () => {
+    eq(lf.fmtSize(1.5 * 1024 ** 3), '1.5 GB')
+    eq(lf.fmtSize(1024 ** 3), '1.0 GB')
+    eq(lf.fmtSize(543 * 1024 ** 2), '543 MB')
+    eq(lf.fmtSize(0.4 * 1024 ** 2), '410 KB')
+    eq(lf.clampPct(4300), 100); eq(lf.clampPct(-3), 0); eq(lf.clampPct(37.4), 37)
+    const s = lf.bySizeDesc([{ bsp: 'a', bytes: 5 }, { bsp: 'b', bytes: 50 }, { bsp: 'c', bytes: 5 }])
+    eq(s.map((m) => m.bsp).join(','), 'b,a,c')
+  })
+  check('the launcher bridge carries every call the 0.2.12 UI uses', () => {
+    const pre = fs.readFileSync(path.join(__dirname, '..', '..', 'launcher', 'src', 'preload', 'preload.cjs'), 'utf8')
+    const ui = ['launcherBridge.js', 'UpdateChip.jsx', 'MapDownload.jsx', 'LauncherBoxes.jsx']
+      .map((f) => fs.readFileSync(path.join(__dirname, '..', 'client', 'src', 'components', f), 'utf8')).join('\n')
+    for (const n of ['updateNow', 'updateLater', 'restartAndUpdate', 'updateStatus', 'onUpdateStatus', 'mapState', 'installedMaps', 'removeMaps', 'onMapState', 'installMap', 'onMapProgress']) {
+      truthy(new RegExp(`\\b${n}\\b`).test(ui), `the UI does not use ${n}`)
+      truthy(new RegExp(`\\b${n}: `).test(pre), `preload.cjs has no ${n}`)
+    }
+    // The browser half: Download goes to /download like Play, through the play gate.
+    truthy(/guard\(\{ map: mapKey/.test(ui), 'Download in a browser must go through the play gate')
+    // The Update button and the Installed maps box sit in web-settings-2's ENW slot.
+    const enwSec = fs.readFileSync(path.join(__dirname, '..', 'client', 'src', 'components', 'settings', 'EnwSection.jsx'), 'utf8')
+    truthy(/<LauncherUpdateBox \/>/.test(enwSec) && /<InstalledMapsBox \/>/.test(enwSec), 'EnwSection must render the update and installed-maps sections')
+  })
+
   // ---- report ---------------------------------------------------------------
   for (const [s, n] of results) console.log(`${s}  ${n}`)
   console.log(`\n${pass} passed, ${fail} failed`)

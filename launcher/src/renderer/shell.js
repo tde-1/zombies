@@ -492,18 +492,25 @@ function renderUpdateCheck(p) {
     catch (e) { S.update = { phase: 'failed', message: `The update could not be checked. (${e.message})` } }
     paintUpdate()
   }
-  const restart = el('button', null, 'Restart and update')
+  const restart = el('button', null, 'Restart now')
   restart.onclick = () => window.enw.restartAndUpdate().catch((e) => toast(e.message, 'error'))
+  // 0.2.11: a check finds the update; downloading it is the player's Update now.
+  const now = el('button', null, 'Update now')
+  now.onclick = async () => {
+    try { S.update = await window.enw.updateNow() } catch (e) { toast(e.message, 'error') }
+    paintUpdate()
+  }
 
   const line = el('div', 'hint update-line', '')
   const bar = el('div', 'update-row')
   bar.append(btn)
+  bar.append(now)
   bar.append(restart)
   box.append(bar)
   box.append(line)
   p.append(box)
 
-  S.updateNodes = { btn, restart, line }
+  S.updateNodes = { btn, now, restart, line }
   paintUpdate()
 }
 
@@ -515,8 +522,9 @@ function paintUpdate() {
   n.line.classList.toggle('bad', u.phase === 'failed' || u.phase === 'unreachable')
   // Busy only while we are genuinely mid-check or mid-download; a finished check must
   // be repeatable without closing the page.
-  n.btn.disabled = u.phase === 'checking' || u.phase === 'available' || u.phase === 'downloading'
+  n.btn.disabled = u.phase === 'checking' || u.phase === 'downloading'
   n.restart.classList.toggle('hidden', !u.canInstall)
+  n.now.classList.toggle('hidden', !(u.available && !u.canInstall && u.phase !== 'downloading'))
 }
 
 async function renderStorage() {

@@ -8,6 +8,7 @@ import { useRail } from '../rail'
 import { Section, Empty, Loading, Stat, FinishChips, Health, Untracked, PlayerLink, NotPlayable } from '../components/Bits'
 import BackButton from '../components/BackButton'
 import Comments from '../components/Comments'
+import { DownloadButton } from '../components/MapDownload'
 
 // The map page = Movement's storefront (13 §3): the big action at the top is Play / Join,
 // with Play Local beside it and "Download original" below as a secondary link; then the
@@ -106,6 +107,9 @@ export function MapBody({ mapKey: key }) {
                       title={m.on_server === false ? (m.server_note || undefined) : undefined}>
                 {!approved && signedIn ? 'Approval required' : d.live.length ? 'Join' : 'Play'}
               </button>
+              {/* Download, separate from Play (0.2.11): get the map now, play it later
+                  without waiting on the download in the party. */}
+              <DownloadButton mapKey={m.key} />
               {/* Play Local launches WaW straight into the map on the player's own PC, with
                   the console and cheats available, so nothing from it counts. The Untracked
                   tag beside it says that once. */}

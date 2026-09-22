@@ -3,6 +3,7 @@ import { api } from '../../api'
 import { useSession } from '../../session'
 import { OMITTED } from '../../data/wawSettings'
 import { bridge, useLauncherStatus, describeLauncher } from '../launcherBridge'
+import { LauncherUpdateBox, InstalledMapsBox } from '../LauncherBoxes'
 
 // /settings -> ENW. Its own file on purpose: this tab is where the launcher's own things
 // live (the client, its version, and - next - the installed maps and the Update button),
@@ -40,7 +41,7 @@ export default function EnwSection({ onStatus }) {
           <>
             <div className="set-item"><div className="set-row"><span className="set-label">client</span><span className="set-value">{launcher.installed ? 'installed' : 'not installed'}</span></div></div>
             {launcher.version && <div className="set-item"><div className="set-row"><span className="set-label">version</span><span className="set-value">{launcher.version}</span></div></div>}
-            {launcher.update && <div className="set-item"><div className="set-row"><span className="set-label">update</span><span className="set-value">{launcher.update}</span></div></div>}
+            {/* ~~an `update` line here~~ — the "update" section below (LauncherBoxes) says it, with the button. */}
           </>
         ) : (
           <div className="set-hint">open this page in the ENW launcher to see the client here</div>
@@ -61,7 +62,10 @@ export default function EnwSection({ onStatus }) {
           "Installed maps" and the Update button go here, as their own <div className="set-group">
           blocks (heading: <div className="set-section"><span>maps</span></div>). Nothing else
           on /settings depends on what is in this slot. */}
-      <div className="set-slot" data-slot="updates-downloads" />
+      {/* Filled by `updates-downloads` (launcher 0.2.12): both draw nothing outside the
+          launcher, where there is nothing to update and no map folder. */}
+      <LauncherUpdateBox />
+      <InstalledMapsBox />
       {/* ── end SLOT ──────────────────────────────────────────────────────────────── */}
 
       <div className="set-group">
