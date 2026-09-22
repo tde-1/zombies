@@ -2138,3 +2138,68 @@ confirm**, and so is 0.2.3's config round trip, which no published build has yet
 
 2026-09-22 IP posture: the launcher must never ship or download a game file; stock asset conversion (OAT, world-shell reader) runs locally into `%LOCALAPPDATA%\ENWZombies`.
 See [`ip-posture.md`](ip-posture.md) §6-§7 and §9 (installer extension guard, LICENSE files, ownership record).
+
+
+## 2026-09-22, evening — 0.2.9: no launcher bar; the site's nav is the title bar
+
+B: get rid of the launcher's own top bar (the dark-green strip — brand, back/forward/reload,
+`site:` pill, `client:` pill, account pill, Settings) and the green theme with it. The whole
+launcher must look like the site, and the window buttons go into the site's nav.
+
+**What changed**
+
+- `main.js`: the window is `frame: false`, `TOPBAR_HEIGHT = 0` (the site view is the whole
+  window), `backgroundColor #101010`. MIN/DEFAULT sizes unchanged. New IPC: `winMinimize`,
+  `winMaximize` (toggle, returns the new state), `winClose` (`close()`, so the tray rule still
+  decides what Close means), `winIsMaximized`, and `openScreen('settings'|'firstRun')` which the
+  site uses to open a shell screen. `push()` now reaches the site view too (session, update
+  status, `window` {maximized}). **Ctrl+R / F5** from either webContents reloads the SITE (the
+  default menu's Ctrl+R would reload the focused view, i.e. the shell mid-setup). A main-frame
+  `did-fail-load` loads `placeholder.html` instead of Chromium's error page.
+- `preload.cjs`: `enw.win.{minimize,maximize,close,isMaximized,onState}`, `enw.openScreen`,
+  `enw.onOpenScreen`.
+- Site (`web/client`): `components/launcherBridge.js` tags `<html class="in-launcher">` only when
+  `window.enw.win` exists; `WindowControls.jsx` (46 px buttons at the nav's right, panel wash on
+  hover, close goes the site's one red `--bad`); `theme.css` makes `.mv-nav-bar` the drag region
+  with every control `no-drag` (double-click maximises — Windows' own behaviour). `UserMenu`:
+  signed in, the menu gains a status row (client installed / not, launcher version, the update
+  checker's own sentence), **Install the ENW client** when missing, **Restart to update** when
+  ready, and **Launcher settings**; sign-out also clears the launcher's session. Signed out in the
+  launcher: **Sign in** runs the launcher's Steam round trip (`enw.signIn`, the wrapped view cannot
+  follow Steam's page) plus a cog for Launcher settings. A browser gets none of it — the header
+  alone is not enough to draw buttons that cannot work.
+- Shell: the topbar is gone. The screens (setup, settings, boot) still hide the site; they get a
+  slim site-styled strip (`#chrome`: ENW ZOMBIES lockup, **← Back to the site**, the three
+  buttons) that is covered by the site view whenever the site shows. `shell.css` tokens are the
+  site's palette (old token names kept). Back/forward and the `site:` pill are gone for good.
+- `placeholder.html`: rewritten site-styled — nav bar as drag region, window buttons, *The site is
+  not answering*, **Try again** (`reloadSite`) and **Launcher settings**. Trap found: a top-level
+  `const enw` in the page is a SyntaxError (the preload's `window.enw` is non-configurable), which
+  silently killed the script; it is wrapped in an IIFE.
+
+**Proof**
+
+- `launcher npm test` **125/0** (new: no bar ids in shell html/js, no green/olive/bone palette,
+  `frame: false`, `TOPBAR_HEIGHT = 0`, the five IPC names in main and preload, buttons + drag
+  region in the strip and the placeholder, Ctrl+R/F5 wired). `web npm test` 90/33/14, 0 failed.
+- A scratch Electron harness (launcher preload + frameless window + the window IPC mirrored,
+  offscreen, **not** the app) against the rebuilt live site at `:3200`: `html.in-launcher`,
+  buttons Minimise/Maximise/Close at the nav's right (x 1347–1485 of 1500, 62 px tall — the page
+  scrollbar is the last 15 px), `.mv-nav-bar` computes `drag`, `.wc` `no-drag`; clicking
+  Maximise maximised the window and the glyph became **Restore**; placeholder rendered with its
+  buttons. Screenshots were looked at and not committed.
+- Site rebuilt and restarted (node pid → keepalive `-Once`; the detached loop was left alone).
+- **0.2.9 published**: `ENW-Zombies-Launcher-Setup-0.2.9.exe`, sha512 `4XVycEic…36dszw==`;
+  `https://zombies.enw.gg/updates/latest.yml` answers `200 text/yaml`, `version: 0.2.9`, sha512
+  byte-equal to the file. stage-client passed without `--allow-stale` (DLL `510109dc…`, built
+  18:34Z — the 0.2.8 client). A re-run minutes later was refused as stale because another lane
+  was editing `server/components/replay/replay.cpp`; nothing was published by that run.
+- `npm run smoke`: 9/10, the one failure is "already running" (B's launcher is open) — so the
+  **packaged** 0.2.9 has not been started by anyone.
+
+**Unproven, named:** the real packaged window — drag, Aero snap, double-click-maximise and resize
+edges on a frameless window whose client area is a `WebContentsView`; the shell screens' strip
+in the running app; the menu's Launcher settings / Install / Restart-to-update round trips; and
+launcher sign-in from the site's button. All are B's first look after updating to 0.2.9.
+Note: an accidental dev `electron .` during this session hit B's running launcher's single-instance
+lock and forwarded an empty argv (it may have raised his window once).

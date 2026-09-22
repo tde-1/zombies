@@ -119,6 +119,14 @@ it (log: last start 18:38, dead by 19:00). Fixed two ways:
 B's step: restart the launcher (or Check for updates -> 0.2.7); the site pill must read
 `site: 127.0.0.1:3200`, not `placeholder`.
 
+## 2026-09-22 19:50: launcher 0.2.9 — no launcher bar; the site's nav is the title bar
+
+Frameless window; the green top bar and theme are gone. Min/max/close live at the right of the
+site's nav (launcher only, via `enw.win`); the nav is the drag region. Settings, client/update status,
+Install and Restart-to-update are in the account menu; sign-in uses the launcher's Steam round trip;
+reload is Ctrl+R / F5; an unreachable site shows a site-styled fallback. On the feed; packaged
+window unproven until B updates. `launcher.md` 2026-09-22 evening, 0.2.9.
+
 ## 2026-09-22 19:35: launcher 0.2.8 — no cinematic over the game on a box join
 
 The "intro over the HUD" was the map's **load video** (`<map>_load.bik`, open 28 s, level live at
