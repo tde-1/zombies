@@ -1214,21 +1214,219 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
 .mrow .name span { display: block; font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mlist-foot { padding: 7px 10px; border-top: 1px solid var(--line); flex: 0 0 auto; }
 
-/* ── the map, opened ──────────────────────────────────────────────────────── */
-/* The hero is the map's own art at the top of its page. It is the ONE place the full-size
-   cover is shown rather than the blurred projection, so a map with no art shows its key in
-   the same mono the cards use rather than a grey box pretending to be a photograph. */
-.maphero {
-  position: relative; border-radius: var(--radius); overflow: hidden;
-  aspect-ratio: 21 / 7; max-height: 280px; margin-bottom: 14px;
-  background: rgba(var(--text-rgb), .04);
-  display: flex; align-items: flex-end;
+/* ── the map, opened ─────────────────────────────────────────────────────── */
+/* ~~`.maphero`: a 21:7 strip of the cover with the name on a scrim.~~ Replaced 2026-09-22 by
+   Movement's map page (web.md §13), below.
+
+   MOVEMENT'S MAP PAGE. Copied from movement-client/src/theme.css's MAP DASHBOARD block —
+   `.mapdash`, `-atmo`, `-banner`, `-two`, `-still`, `-side`, `-name`, `-facts`, `-figs`,
+   `.mdfig-*`, `.playbtn`, `.mdscope`, `.mdboard` — with its measurements and its reasons.
+   What is ours: the "What's in it" strip (`.mapdash-feats`), the picture credit and the
+   Cover / Loading-screen switch on the frame, and the split's contents.
+
+   --map-c is "H S% L%", the map's own colour sampled from its art in the browser and graded
+   by the ambience's own colourist (MapPage.jsx useMapColour). It only ever goes through
+   hsl(); color-mix() on it is an invalid declaration that silently drops (Movement's note). */
+.mapdash-card { max-width: 1240px; }
+.mapdash {
+  --map-c: 66 9% 32%;
+  --map-c2: 20 8% 22%;
+  position: relative; padding: 18px; border-radius: var(--radius);
+  overflow: hidden; isolation: isolate;
+  background: linear-gradient(180deg, hsl(var(--map-c) / .5), hsl(var(--map-c) / .2) 340px, hsl(var(--map-c) / .07) 100%);
 }
-.maphero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.maphero .scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,.05) 62%); }
-.maphero .on-top { position: relative; padding: 16px 18px; width: 100%; }
-.maphero .none { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+.mapdash-atmo {
+  position: absolute; inset: 0 0 auto; height: 560px; z-index: -1; pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 96%);
+  mask-image: linear-gradient(180deg, #000 30%, transparent 96%);
+}
+.mapdash-atmo .map-banner {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transform: scale(1.5); filter: blur(52px) saturate(1.2) brightness(.62);
+}
+.mapdash-atmo::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(var(--scrim-rgb), .22), rgba(var(--scrim-rgb), .45) 90%);
+}
+
+/* the banner: the picture and the map's line, one object, two closed shapes (Movement R1) */
+.mapdash-banner {
+  background: hsl(var(--map-c) / .16); border-radius: var(--radius); overflow: hidden;
+  box-shadow: 0 18px 60px hsl(var(--map-c) / .30);
+  padding: 14px;
+}
+.mapdash-two { display: grid; grid-template-columns: minmax(0, 1fr) 372px; column-gap: 14px; align-items: stretch; }
+/* 16:9 IS THE FLOOR, NOT THE SHAPE — an in-flow ::before carries the ratio and the picture
+   fills whatever height the row turns out to be (Movement's reasoning, measured there). */
+.mapdash-still { position: relative; overflow: hidden; background: #0b0d12; border-radius: var(--radius); align-self: stretch; }
+.mapdash-still::before { content: ''; display: block; aspect-ratio: 16 / 9; }
+.mapdash-still .map-banner { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mapdash-none { position: absolute; inset: 0; display: grid; place-items: center;
   font-family: var(--mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--faint); }
+/* What the picture is — a generated card must never pass for a screenshot. Bottom left, on a
+   scrim of its own so it reads over the brightest cover. */
+.mapdash-credit {
+  position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px);
+  padding: 4px 9px; border-radius: var(--pill); background: rgba(var(--scrim-rgb), .62);
+  font-family: var(--mono); font-size: 10px; letter-spacing: .6px; text-transform: uppercase; color: rgba(255,255,255,.72);
+  pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mapdash-credit:empty { display: none; }
+.mapdash-shots { position: absolute; right: 10px; top: 10px; background: rgba(var(--scrim-rgb), .62); }
+.mapdash-shots button { font-size: 11.5px; padding: 5px 11px; }
+
+.mapdash-side {
+  align-self: stretch; min-width: 0;
+  border-radius: var(--radius);
+  background: hsl(var(--map-c) / .34);
+  box-shadow: inset 0 0 0 1px hsl(var(--map-c) / .6);
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 14px;
+  justify-content: space-between;
+  container-type: inline-size; container-name: mdside;
+}
+.mapdash-id { min-width: 0; }
+.mapdash-name {
+  font-family: var(--display); font-size: 25px; font-weight: 750; letter-spacing: -.5px;
+  line-height: 1.15; color: var(--text); display: flex; align-items: center; gap: 10px;
+  min-width: 0; flex-wrap: wrap;
+}
+.mapdash-bsp { margin-top: 3px; font-size: 11.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mapdash-fav {
+  display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; padding: 0;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: rgba(var(--text-rgb), .06); color: var(--faint);
+  transition: color .14s ease, background .14s ease;
+}
+.mapdash-fav:hover { color: var(--muted); background: rgba(var(--text-rgb), .11); }
+.mapdash-fav.on { color: var(--gold); }
+/* what the map IS: dots drawn by the row, so an absent fact takes its separator with it */
+.mapdash-facts {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 3px 9px; margin-top: 9px;
+  font-size: 12px; color: var(--muted);
+}
+.mapdash-facts > * + *::before { content: '·'; color: var(--faint); margin-right: 9px; }
+.mapdash-facts b { font-family: var(--num); font-variant-numeric: tabular-nums; color: var(--text); font-weight: 650; }
+.mapdash-facts a { color: var(--muted); }
+.mapdash-facts a:hover { color: var(--text); }
+.mapdash-by { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mapdash-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.mapdash-chips:empty { display: none; }
+
+/* the standing: four figures, two across — the map's down the left, yours and the counts right */
+.mapdash-figs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px;
+  border-top: 1px solid var(--line); padding-top: 14px;
+}
+.mdfig { min-width: 0; text-align: left; }
+.mdfig-k {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.3px; text-transform: uppercase;
+  color: var(--faint); font-weight: 700;
+}
+.mdfig-v {
+  font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 23px; font-weight: 700;
+  line-height: 1.2; margin-top: 2px; color: var(--text);
+}
+.mdfig-v.gold { color: var(--text); }
+.mdfig-v.mine { color: var(--muted); }
+.mdfig-s { margin-top: 2px; min-height: 1.15em; font-size: 11.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdfig-pts {
+  font-family: var(--num); font-variant-numeric: tabular-nums; color: var(--muted);
+  margin-left: 6px; padding-left: 6px; border-left: 1px solid var(--line);
+}
+@container mdside (min-width: 560px) { .mapdash-figs { grid-template-columns: repeat(4, 1fr); } }
+@container mdside (max-width: 240px) { .mapdash-figs { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
+
+/* the map page's primary action, at the foot of the column */
+.mapdash-play { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.playbtn {
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit;
+  background: var(--accent); border: none; border-radius: var(--pill); color: var(--accent-ink);
+  font-size: 15.5px; font-weight: 700; padding: 13px 30px; white-space: nowrap;
+  box-shadow: 0 6px 22px hsl(var(--map-c) / .45);
+  transition: transform .14s ease, box-shadow .16s ease, background .16s ease;
+}
+.playbtn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 30px hsl(var(--map-c) / .6); }
+.playbtn:disabled { cursor: not-allowed; background: rgba(var(--scrim-rgb), .68); color: rgba(255,255,255,.6); box-shadow: none; }
+.playbtn-note { font-size: 11.5px; color: var(--muted); text-align: center; }
+.mapdash-play-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.mapdash-rate { display: inline-flex; gap: 5px; }
+.mapdash-live { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+.mapdash-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--good); flex: none; }
+/* quiet by default: the map page's one loud thing is Play */
+.mapdash-tool {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; text-decoration: none;
+  padding: 6px 11px; border-radius: var(--pill);
+  color: var(--muted); background: rgba(var(--text-rgb), .06); border: none;
+  transition: color .14s ease, background .14s ease;
+}
+.mapdash-tool:hover:not(:disabled) { color: var(--text); background: rgba(var(--text-rgb), .11); }
+.mapdash-tool.on { color: var(--accent-ink); background: var(--accent); }
+.mapdash-tool:disabled { opacity: .5; cursor: default; }
+
+/* ── What's in it: the Call of Duty facts, read out of the map's own fastfile ── */
+.mapdash-feats {
+  margin-top: 14px; padding: 14px 16px 16px; border-radius: var(--radius);
+  background: hsl(var(--map-c) / .14); box-shadow: inset 0 0 0 1px hsl(var(--map-c) / .32);
+}
+.mapdash-feats-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.mdfeat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.mdfeat { min-width: 0; padding: 10px 12px; border-radius: var(--radius-sm); background: rgba(var(--scrim-rgb), .28); }
+.mdfeat-v { font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 750; line-height: 1.25; margin-top: 3px; color: var(--text); }
+.mdfeat-s { margin-top: 2px; font-size: 11.5px; color: var(--muted); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mdfeat.off .mdfeat-v { color: var(--faint); }
+.mdfeat.off .mdfeat-s { color: var(--faint); }
+
+/* under the banner: the map's own record keeps two thirds, the thread the rest */
+.mapdash-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 22px; margin-top: 20px; align-items: start; }
+.mds-main, .mds-comments { min-width: 0; }
+.mds-about { background: rgba(var(--scrim-rgb), .22); border-radius: var(--radius); padding: 14px 16px; }
+.mds-desc { white-space: pre-wrap; margin: 0; line-height: 1.6; color: var(--text); }
+.mds-board + .mds-board { margin-top: 12px; }
+
+/* which board, and which player count — Movement's track and chips */
+.mdscope { display: inline-flex; gap: 2px; padding: 3px; background: var(--panel-2); border-radius: var(--pill); }
+.mdscope-b {
+  background: none; border: none; border-radius: var(--pill); cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--muted);
+  padding: 5px 12px; white-space: nowrap; transition: color .16s ease, background .16s ease;
+}
+.mdscope-b:hover { color: var(--text); }
+.mdscope-b.on { color: var(--text); font-weight: 750; background: hsl(var(--map-c) / .58); box-shadow: inset 0 0 0 1px hsl(var(--map-c) / .85); }
+.mdboards { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.mdboard {
+  background: none; border: 1px solid var(--line); border-radius: var(--pill); cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 600; color: var(--muted);
+  padding: 5px 11px; white-space: nowrap; transition: color .16s ease, background .16s ease, border-color .16s ease;
+}
+.mdboard:hover { color: var(--text); }
+.mdboard.on { color: var(--text); border-color: hsl(var(--map-c) / .9); background: hsl(var(--map-c) / .3); }
+
+/* WHEN THE TWO-UP STACKS. Movement stacks at a 1180px VIEWPORT, because below that its column
+   (five KZ figures) outgrows the 16:9 frame. Two things differ here: our column is shorter
+   (four figures, no styles), and this page is drawn in two frames — /m/<map> at full width
+   and home's right-hand region beside the 302px pool, which at a 1440 window is ~1080px. A
+   viewport query cannot tell those apart, so the steps are keyed on the page's OWN width
+   (the wrapper below is the container; the page cannot query itself). Measured at 1440 with
+   the pool out: the frame is ~660px wide and ~370px tall, the column ~340px, so two-up
+   holds; it stacks under 900px of page. */
+.mapdash-wrap { container-type: inline-size; container-name: mapdash; }
+@container mapdash (max-width: 900px) {
+  .mapdash-two { grid-template-columns: minmax(0, 1fr); row-gap: 14px; }
+  .mapdash-side { padding: 14px 16px; gap: 13px; justify-content: flex-start; }
+  .mapdash-name { font-size: 22px; }
+  .mdfig-v { font-size: 21px; }
+}
+@container mapdash (max-width: 1060px) { .mapdash-two { grid-template-columns: minmax(0, 1fr) 330px; } }
+@container mapdash (max-width: 900px) { .mapdash-two { grid-template-columns: minmax(0, 1fr); } }
+@container mapdash (max-width: 860px) { .mapdash-split { grid-template-columns: minmax(0, 1fr); } }
+@container mapdash (max-width: 560px) {
+  .mapdash { padding: 10px; }
+  .mapdash-banner { padding: 10px; }
+  .mapdash-side { padding: 14px 12px; }
+  .mapdash-name { font-size: 21px; }
+}
 
 @media (max-width: 1080px) {
   .home { grid-template-columns: 1fr; }

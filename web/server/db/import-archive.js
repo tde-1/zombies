@@ -179,8 +179,15 @@ function importPipelineMaps() {
 
     // The cover, if the media step got one. Written after the map row exists so a failed
     // copy leaves a map with no art rather than a map with a broken one.
+    // ...but never over tools/maps/map_art.py's output (2026-09-22). That script owns the
+    // picture for every map now — it reads this same cover as its first choice and writes a
+    // web-sized copy with a thumb beside it — so a re-import that put the raw cover back
+    // would take the thumb away from every card showing this map.
     const art = importCover(m.map, a.cover)
-    if (art) { db.prepare('UPDATE maps SET art=? WHERE id=?').run(art, map.id); stats.covers++ }
+    if (art) {
+      db.prepare("UPDATE maps SET art=? WHERE id=? AND (art IS NULL OR art NOT LIKE '/media/maps/%.webp%')").run(art, map.id)
+      stats.covers++
+    }
 
     // The version, and the ORIGINAL as a file row. 99 §4.8: originals are sacred — the
     // exact file, its sha256, where it came from and when. That is this row, and nothing
@@ -296,9 +303,11 @@ function importCatalogue() {
         description=COALESCE(excluded.description, maps.description),
         release_post=COALESCE(excluded.release_post, maps.release_post),
         released_at=COALESCE(excluded.released_at, maps.released_at)`)
-  const insSrc = db.prepare(`INSERT INTO archive_sources (url, site, kind, map_key, status, http_status, note, last_checked, created_at)
-      VALUES (?,?,?,?,?,?,?,?,?)
-      ON CONFLICT DO NOTHING`)
+  // The link's size rides along (2026-09-22) and is refreshed on a re-import: the checker
+  // measures it, and the map page says how big a map is from it.
+  const insSrc = db.prepare(`INSERT INTO archive_sources (url, site, kind, map_key, status, http_status, note, last_checked, created_at, size_bytes)
+      VALUES (?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(url, map_key) DO UPDATE SET size_bytes=COALESCE(excluded.size_bytes, archive_sources.size_bytes)`)
 
   const tx = db.transaction(() => {
     for (const r of rows) {
@@ -334,7 +343,7 @@ function importCatalogue() {
         // as-is — this table is a record of what the checker found, not a second opinion.
         const res = insSrc.run(l.url, l.host || hostOf(l.url), 'download', key,
           l.verdict || 'unchecked', null, l.error || l.label || null,
-          l.checked ? Date.parse(l.checked) : null, now())
+          l.checked ? Date.parse(l.checked) : null, now(), Number.isFinite(l.size) && l.size > 0 ? l.size : null)
         if (res.changes) stats.sources++
       }
     }

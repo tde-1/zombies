@@ -15,11 +15,15 @@ import { NotPlayable } from './Bits'
 // on the bar instead. A label that is true of a quarter of the archive and printed under all
 // of it is not information, it is furniture.
 //
-// The art slot falls back to the engine-name stem rather than a placeholder image: 04 says
+// ~~The art slot falls back to the engine-name stem rather than a placeholder image: 04 says
 // community screenshots come first and we measure the gaps later, so a map with no art
-// should look like a map with no art, not like a broken image. `--h` is the map's own
-// holding hue, so a card with no picture is still washed by something stable rather than
-// sitting in a grey hole.
+// should look like a map with no art, not like a broken image.~~ Superseded 2026-09-22, B:
+// "make sure every map has an image". Every map now has one (tools/maps/map_art.py): the
+// scraped cover, else the map's own loading screen, else WaW's, else a generated card that
+// says NO SCREENSHOT ON FILE on its face — so it still reads as a map with no art, which was
+// the point of the old rule. The card takes the 400px `thumb`; the stem fallback stays for
+// a row the script has not reached yet. `--h` is the map's own holding hue, and the
+// generated card is drawn in the same hue, so the two agree.
 
 export default function MapCard({ map, big = false, flag = null }) {
   // Where the map page's back control returns to (components/BackButton.jsx).
@@ -42,8 +46,8 @@ export default function MapCard({ map, big = false, flag = null }) {
       onMouseLeave={endHoverAmbience}
     >
       <span className="map-art" style={big ? { paddingTop: '42.85%' } : undefined}>
-        {map.art
-          ? <img src={map.art} alt="" loading="lazy" />
+        {(map.thumb || map.art)
+          ? <img src={(map.thumb || map.art)} alt="" loading="lazy" />
           : <span className="map-art-stem">{(map.key || '').replace(/^nazi_zombie_/, '')}</span>}
         {flag && <span className={'map-flag' + (flag === 'New' ? ' new' : '')}>{flag}</span>}
         {/* The one mark that earns its place on the picture, and only when it is true. */}

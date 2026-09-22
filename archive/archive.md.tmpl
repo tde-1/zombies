@@ -659,3 +659,41 @@ dedicated server under Wine loads the map and keeps simulating"*. It says nothin
 32-bit client's memory ceiling (ORBiT and UGX Requiem pass server-side and stall their client,
 `dedi.md` §14.7), a mid-game join, round 2, or a finish being refereed. The 22
 `client_memory_risk` maps are the ones to expect trouble from.
+
+## 10. 2026-09-22 (evening) — a picture for every catalogued map (web-maps lane)
+
+B: every map on the site gets an image. §8 fetched 14 covers by hand. The rest were already
+half-fetched: callofdutyrepo's **list pages**, crawled in pass A, draw every post as a card with
+its featured image, so the cache named a picture for most of the catalogue without one new page
+request.
+
+`archive/fetch_art.py` makes **no page requests**. It reads the cache — codrepo list-page cards
+(post URL → the 768px WordPress rendition from `data-srcset`), codrepo post pages' `og:image`,
+moddb addon pages' `og:image` — drops any image URL more than three pages share (a site logo, not
+a map), maps each catalogue entry to its picture through its sightings, and downloads **only the
+images**, through `lib/net.py`'s politeness (one request at a time per host, the 6 s delay,
+robots.txt, a host that errors twice is dropped). Each lands in
+`media/catalogue/<norm>/cover.<ext>` with a `.meta.json` sidecar (url, page, source, sha256,
+size, content type, fetched), the same shape as §8's. `reports/art_urls.json` is the plan.
+Re-runnable: a map with its sidecar is skipped without a request.
+
+**The run:** the cache named a picture for **1,418** of 2,276 catalogue entries (1,399
+callofdutyrepo, 19 moddb). Started 20:14, one image every ~6.6 s; at 22:26, **1,200 fetched,
+2 failed**, still running (`logs/fetch_art.log`). The remaining ~858 entries have no page in
+our cache that shows a picture.
+
+The rest of the chain is the web lane's (`tools/maps/map_art.py`, web.md's dated section): scraped
+art first, then the map's own loading screen out of its `.iwd` (an `.iwi` decoded by
+`tools/maps/iwi.py` — IWI v6, DXT1/3/5, the full-size level is the file's tail), then WaW's stock
+loading screens (read-only), then a generated card. Loading screens found in the 14 pipeline
+installs: `nazi_zombie_dt2`, `nazi_zombie_fear_mc_2` (in `fortress.iwd`, beside a copy of
+Verrückt's which is rejected as stock), `nazi_zombie_hijacked`, `nazi_zombie_derberg`,
+`nazi_zombie_school`, `nazi_zombie_test`, `nazi_zombie_test1`, `sanatorium`, `ugx_artemovsk`,
+`water`. None in Leviathan, ORBiT, MW2 Rust (only the UGX perk pack's template) or Octagonal
+(only texture previews). Nazi Zombie Ali's `_load.ff` names `loadscreen_nazi_zombie_ali` and no
+file in the release carries it.
+
+**Where to widen it next:** the ~1,012 codrepo posts pass C never fetched are already on the list
+pages, so they are covered; what is left uncovered is catalogue entries seen only on ZWR, UGX or
+archive.org. UGX thread bodies (§8) carry attachments; archive.org items carry files. Both are a
+page request per map and were not made tonight.

@@ -633,6 +633,44 @@ async function main() {
     eq(seen[0].payload.progress['76561198000000004'].pct, 50)
   })
 
+  // ── map art and the map page's facts (web.md §13) ───────────────────────────
+  check("a map's picture brings its thumb, and a raw cover is left alone", () => {
+    db.prepare(`INSERT INTO maps (key, slug, title, source, health, round_n, added_at, art, art_source)
+                VALUES ('nazi_zombie_arttest','arttest','Art Test','custom','playable',20,?, '/media/maps/nazi_zombie_arttest.webp?v=abc123', 'iwd')`).run(now())
+    const p = maps.detail('nazi_zombie_arttest')
+    eq(p.thumb, '/media/maps/nazi_zombie_arttest.thumb.webp?v=abc123', 'thumb')
+    eq(p.art_source, 'iwd', 'art_source')
+    // A cover the importer copied (not map_art's output) has no thumb beside it: the card
+    // must use the cover itself rather than a path that 404s.
+    db.prepare("UPDATE maps SET art='/media/maps/nazi_zombie_arttest.jpg' WHERE key='nazi_zombie_arttest'").run()
+    eq(maps.detail('nazi_zombie_arttest').thumb, '/media/maps/nazi_zombie_arttest.jpg', 'fallback thumb')
+    // And a path that tries to walk out of the media directory is not dressed up as one.
+    db.prepare("UPDATE maps SET art='/media/maps/../../x.webp' WHERE key='nazi_zombie_arttest'").run()
+    eq(maps.detail('nazi_zombie_arttest').loadscreen, null, 'no loadscreen for a bad path')
+  })
+
+  check('the features block is the committed scan, and a map with none has none', () => {
+    db.prepare(`INSERT OR IGNORE INTO maps (key, slug, title, source, health, round_n, added_at)
+                VALUES ('nazi_zombie_prototype','nacht-feat','Nacht der Untoten','stock','verified',20,?)`).run(now())
+    const f = maps.detail('nazi_zombie_prototype').features
+    truthy(f, 'Nacht has a features entry')
+    eq(f.perks.length, 0, 'Nacht has no perk machines')
+    eq(f.pack_a_punch, false, 'Nacht has no Pack-a-Punch')
+    eq(f.box, 1, 'Nacht has one box location')
+    eq(f.entities, undefined, 'scan internals are not sent to the page')
+    eq(maps.detail('nazi_zombie_arttest').features, null, 'an unscanned map gets null, not a guess')
+  })
+
+  check("the download size is the original we hold, else the largest live link", () => {
+    db.prepare(`INSERT INTO archive_sources (url, site, kind, map_key, status, size_bytes, created_at)
+                VALUES ('https://a.example/x','a.example','download','nazi_zombie_arttest','alive',300,?),
+                       ('https://b.example/x','b.example','download','nazi_zombie_arttest','dead',900,?)`).run(now(), now())
+    const dl = maps.detail('nazi_zombie_arttest').download
+    eq(dl.size_bytes, 300, 'a dead link is not the size')
+    eq(dl.links, 2); eq(dl.links_alive, 1); eq(dl.links_dead, 1)
+    eq(dl.held, false)
+  })
+
   // ── the wipe script, and the backup it refuses to skip ──────────────────────
   checkWipe()
 

@@ -82,7 +82,7 @@ export default function MapListPanel({ maps, selected, onPick }) {
                   className={`mrow${m.key === selected ? ' on' : ''}`}
                   onClick={() => onPick(m)}>
             <span className="plate">
-              {m.art ? <img src={m.art} alt="" loading="lazy" /> : <span>{(m.key || '').replace('nazi_zombie_', '').slice(0, 6)}</span>}
+              {m.art ? <img src={m.thumb || m.art} alt="" loading="lazy" /> : <span>{(m.key || '').replace('nazi_zombie_', '').slice(0, 6)}</span>}
             </span>
             <span className="name">
               <b>{m.title}</b>

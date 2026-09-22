@@ -767,6 +767,15 @@ function migrate() {
   // it is `127.0.0.1`.
   addColumn('boxes', 'address', 'TEXT')
 
+  // Where a map's picture came from (2026-09-22, tools/maps/map_art.py): `site` (scraped
+  // art), `iwd` (the map's own loading screen), `stock` (WaW's), or `placeholder` (a
+  // generated card). The map page credits it, and a generated card must never pass for a
+  // screenshot. The script adds the same column itself if it runs before a server has.
+  addColumn('maps', 'art_source', 'TEXT')
+  // A download link's size as the link checker measured it, so the map page can say how
+  // big the map is before anybody clicks. Written by db/import-archive.js --catalogue.
+  addColumn('archive_sources', 'size_bytes', 'INTEGER')
+
   // A chat line is either something a person typed (`chat`) or a sentence the site
   // composed out of a game event (`system`, lib/chatSystem.js). The panel draws them
   // differently. It is a column and not a prefix on the text, because a marker inside

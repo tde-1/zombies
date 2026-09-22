@@ -1607,6 +1607,131 @@ Read [`ip-posture.md`](ip-posture.md) before serving anything new: no Activision
 by the site before public (§4 table); `/mapdata` stock exports are a testing-only carve-out (§5);
 footer disclaimer and per-map "not made or supported by Activision" line are on the Before-public list (§9).
 
+## 2026-09-22 (evening) — every map has a picture, and the map page is Movement's
+
+Branch `web-maps`, rebased on main after web-cleanup / web-settings-2 / storage. B's two asks:
+*"make sure every map has an image — if they don't have an image from the websites, rip an image
+from the game files or something"*, and *"I kind of like what we've done here, but redesign the
+map page to make it look a bit nicer"* — Movement's map page, with Call of Duty facts where
+Movement has surf ones.
+
+### The picture: four sources, first one wins
+
+`tools/maps/map_art.py` (Python + Pillow, re-runnable, incremental). For every row in `maps`:
+
+| Order | Source | What it is |
+|---|---|---|
+| 1 | **site** | the archive's scraped art: the 14 pipeline covers (§10c) and the catalogue covers `archive/fetch_art.py` pulled (archive.md §10) |
+| 2 | **iwd** | the map's **own loading screen**, out of its own `.iwd`: an `.iwi` texture decoded by `tools/maps/iwi.py` |
+| 3 | **stock** | WaW's own loading screens for the four Treyarch maps, read (never written) out of the Steam install's stock `.iwd`s |
+| 4 | **placeholder** | a generated card: the map's name on the zombies ground, in the map's own `mapHue(key)`, **NO SCREENSHOT ON FILE** printed on its face. Seeded by the key, so a re-run writes the same bytes |
+
+Output in `web/public/media/maps/` (gitignored, like the §10c covers): `<stem>.webp` 960x540,
+`<stem>.thumb.webp` 400x225 for cards, rows, the pool and search, and `<stem>.loadscreen.webp`
+where a map has scraped art **and** its own loading screen (the page offers both).
+`manifest.json` beside them says, per map, which source won, where it came from and the source's
+sha256. `--write-db` sets `maps.art` (`/media/maps/<stem>.webp?v=<hash>`; the hash is the
+cache-buster, since `/media` is served with a 7-day max-age) and the new `maps.art_source`.
+
+**Counts** (dev copy of the live DB, 2,284 maps, at 22:30 with the catalogue fetch at 1,200 of
+1,415): **site 1,256 · iwd 0 · stock 4 · placeholder 1,024**, plus 10 own-loading-screen
+second pictures. *iwd 0* is not a miss: every map whose files we hold also has a release-post
+cover, which wins; their own loading screens are the 10 second pictures, and the `iwd` rung is
+what a held map with no cover would get. When the fetch finishes, re-run `map_art.py --write-db`
+(seconds, incremental); expected about 1,470 site / 810 placeholder.
+
+Two things measured on the first run and fixed, kept because each looks right until it is not:
+
+* **Verrückt got a community remake's cover.** The catalogue entry whose name normalises to
+  `asylum` is "Asylum v2", and the norm match put its screenshot on the stock map. A stock map now
+  never takes catalogue art.
+* **A stale `<stem>.loadscreen.webp`** would make the page offer the same picture twice (the server
+  offers the switch when the file exists). The script removes one its manifest no longer names.
+
+**IP posture (ip-posture.md §4).** WaW's four loading screens are Activision's images. §4 allows
+them in closed testing and says *"before public: no stock loadscreen on any served page"*.
+`map_art.py --no-stock` (or `ZM_NO_STOCK_ART=1`) is that switch: the stock four fall to the
+generated card, one flag and a re-run. Custom maps' own loading screens are the mapper's published
+art, the same class as the release-post covers.
+
+### The server
+
+* `maps.art_source` and `archive_sources.size_bytes`, two additive columns (`db/database.js`).
+* `lib/maps.js` `project()` adds `thumb` (derived from `art` by name; a non-`map_art` URL is its
+  own thumb, so a card never points at a 404) and `art_source`. `detail()` adds `loadscreen`
+  (when the file exists), `features`, and `download`: the size (the original we hold, else the
+  largest **live** link) and the alive/dead link counts.
+* `db/import-archive.js --catalogue` stores each link's measured size and refreshes it on a
+  re-import; the pipeline-cover step no longer overwrites a `map_art` picture (it would take the
+  thumb away from every card).
+* `features` comes from `web/server/data/map-features.json`, **committed**, written by
+  `tools/maps/map_features.py`, which reuses the referee scanner's two readers
+  (`referee/scan_map.py`: MapEnts + GSC) on the maps whose files we hold: perk machines
+  (`zombie_vending`; WaW's four named, a custom pack's extras **counted, not named**, because packs
+  reuse specialty names for different perks), Pack-a-Punch (`zombie_vending_upgrade`), box
+  locations (`treasure_chest_use`), wall buys (`weapon_upgrade`), wonder weapons (the map's
+  `include_weapon` list against a named set), hellhounds (the dog AI type in the zone), traps,
+  teleporters, power switch. Checked against the stock four: Nacht 0 perks, 1 box, Ray Gun, no dogs,
+  no power; Verrückt 4 perks, power, traps, no PaP; Shi No Numa 4 perks, Wunderwaffe, dogs; Der
+  Riese PaP, 3 teleporters, dogs, Wunderwaffe, monkeys. No files, no block: the page prints nothing.
+
+### The page
+
+`client/src/pages/MapPage.jsx` is Movement's `MapDashboard` shape, and theme.css's `.mapdash`
+block is Movement's CSS with its reasons (the old `.maphero` is struck through in place):
+
+* **The banner**: the picture on a 16:9 floor on the left; beside it the name (+ favourite star),
+  the bsp, *Created by · Released · size*, finish/tag chips, health and web-cleanup's *Not playable*,
+  four figures (best round on the board with who and how many, your best, beaten by, games) and
+  **Play** at the foot with Play Local (Untracked) and the rating. The picture wears a credit
+  (*Screenshot from the release post / The map's own loading screen / WaW's loading screen*) and a
+  **Cover | Loading screen** switch when it has both. `--map-c` is sampled from the art in the
+  browser and graded by the ambience's own colourist, so each page is washed in its map's colour.
+* **What's in it**: the Call of Duty facts above, as tiles, labelled *Read from the map's own files*.
+* **The split**: About, Records (Movement's board chips + player-count track), Recent games, What
+  counts as beating it, Download (the archived original + every link with its checker verdict) and
+  Versions on the left two thirds; Live now, Friends who beat it and Comments on the right.
+* **Kept from web-cleanup** (merged first, rebased onto): the `‹ Maps` back button, Play as the
+  rail's Play, *Not playable* with the reason on hover and Play disabled, *Approval required* as the
+  button's label, updates-downloads' Download button beside Play Local, no dead "Download original" link and no "Play needs approval" line. The two long
+  empty states are now *No records yet.* and *Round 20, the default.*; a catalogued map's Play reads
+  *Not playable* with the reason on hover instead of a sentence under it.
+* **The two-up is keyed on the page's own width** (`.mapdash-wrap` is an inline-size container),
+  not the viewport as Movement does: this body is drawn on `/m/<map>` beside the rail and in home's
+  right-hand region, and a viewport query cannot tell those apart. Measured in the home frame at
+  1440: 578px picture + 330px column, figures two across.
+* `Recent games` / `Live now` are tables now; they had been wearing `.maprow`, which §11 turned into
+  the home page's card row.
+
+### Proof
+
+`docs/kickstart/ui/`: `map-page-stock.png` (Der Riese: WaW loading screen, every feature tile),
+`map-page-custom.png` (Leviathan: release-post screenshot, 432 MB, 9 perks = 4 + 5 custom, the
+archived original and six links), `map-page-placeholder.png` (a catalogued map, generated card),
+`home-cards-art.png`, `maps-cards-art.png`, `maps-list-art.png`. The Cover | Loading screen switch
+was clicked in the home frame on Minecraft Village Remastered and showed its own loading screen out
+of `fortress.iwd`. `npm test` after the rebase: **121 + 41 + 15 + 19 + 12, 0 failed** (three new
+in-process checks: thumb/loadscreen derivation, the features block, the download size).
+
+### Deploy (coordinator)
+
+On B's PC after merging: `node web/server/db/import-archive.js --catalogue` (link sizes; requiring
+the database runs `migrate()`, so the new columns exist first), then
+`python tools/maps/map_art.py --write-db` (about 6 minutes cold, seconds incremental), then
+`npm --prefix web run build`. No restart is needed for the data; the server code (`lib/maps.js`)
+needs one.
+
+### Unproven / open
+
+* The page has not been seen signed in with runs on a board (the dev copy has no records), so Best
+  round has only shown its empty state.
+* The feature scan is what the entities say. City of Hell reports 1 perk machine and ORBiT 12; both
+  are real `zombie_vending` counts and neither has been checked in game.
+* Nazi Zombie Ali ships no loading screen in its `.iwd` (its `_load.ff` names
+  `loadscreen_nazi_zombie_ali`; no file carries it). It has its callofdutyrepo cover.
+* Maps with no picture in our crawl cache (callofdutyrepo posts pass C never reached, UGX threads,
+  archive.org items) have the generated card; `fetch_art.py` picks more up as the crawl grows.
+
 ## 2026-09-22 (evening) — Movement's left rail, and the plain ENW logo
 
 Branch `web-dock`. B: *the map on the left with its image, Movement's server card in the bottom

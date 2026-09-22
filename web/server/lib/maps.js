@@ -10,8 +10,48 @@
 //   * the search RANKS: map name (including the `nazi_zombie_*` alias) first, then author,
 //     then tags, then the description/readme. One box, clear results.
 
+const fs = require('fs')
+const path = require('path')
 const { db, now } = require('../db/database')
 const { safeJson } = require('./util')
+
+// ---- the picture ------------------------------------------------------------------------
+// tools/maps/map_art.py writes three files per map into public/media/maps and `maps.art`
+// names the 960px one (`/media/maps/<stem>.webp?v=<hash>`). The 400px thumb and the map's own
+// loading screen sit beside it under names derived from the same stem, so they are derived
+// here rather than stored: a column per size is three columns to keep in step for one fact.
+const MEDIA_DIR = process.env.ZM_MEDIA_DIR || path.join(__dirname, '..', '..', 'public', 'media')
+const ART_RE = /^\/media\/maps\/([a-z0-9_-]+)\.webp(\?v=[0-9a-f]+)?$/
+function thumbOf(art) {
+  const m = ART_RE.exec(art || '')
+  return m ? `/media/maps/${m[1]}.thumb.webp${m[2] || ''}` : (art || null)
+}
+function loadscreenOf(art) {
+  const m = ART_RE.exec(art || '')
+  if (!m) return null
+  const file = path.join(MEDIA_DIR, 'maps', `${m[1]}.loadscreen.webp`)
+  try { const st = fs.statSync(file); return `/media/maps/${m[1]}.loadscreen.webp?v=${Math.round(st.mtimeMs).toString(16)}` } catch { return null }
+}
+
+// ---- what is in the map -------------------------------------------------------------------
+// tools/maps/map_features.py reads perks, Pack-a-Punch, the box, wall buys, wonder weapons,
+// hellhounds, traps, teleporters and power out of the map's own fastfile, for the maps whose
+// files we hold. Committed JSON, read once and re-read when it changes on disk. A map with no
+// entry has no features block and the page prints nothing — never a guess.
+const FEATURES_FILE = path.join(__dirname, '..', 'data', 'map-features.json')
+let featuresCache = { mtime: 0, maps: {} }
+function featuresFor(key) {
+  try {
+    const st = fs.statSync(FEATURES_FILE)
+    if (st.mtimeMs !== featuresCache.mtime) {
+      featuresCache = { mtime: st.mtimeMs, maps: (safeJson(fs.readFileSync(FEATURES_FILE, 'utf8'), {}) || {}).maps || {} }
+    }
+  } catch { return null }
+  const f = featuresCache.maps[key]
+  if (!f) return null
+  const { entities, scripts, ...rest } = f
+  return rest
+}
 
 const LIST_HEALTH = ['verified', 'playable', 'custom-only']
 // Which of those our own boxes will actually referee. `custom-only` is a map a player can
@@ -66,6 +106,8 @@ function project(row, { me = null } = {}) {
     has_buyable: !!row.has_buyable,
     description: row.description || null,
     art: row.art || null,
+    thumb: thumbOf(row.art),
+    art_source: row.art_source || null,
     // Playable on our boxes, as its own field rather than something every card has to
     // re-derive from `health`. The map browser filters on it and the list row prints it.
     on_server: onServer(row),
@@ -270,6 +312,27 @@ function detail(key, { me = null } = {}) {
     manifest_confidence: m.confidence || null,
     manifest_notes: m.notes || null,
     files: latest ? db.prepare('SELECT path, sha256, size, kind FROM map_files WHERE map_version_id=?').all(latest.id) : [],
+    loadscreen: loadscreenOf(row.art),
+    features: featuresFor(row.key),
+    download: downloadOf(row.key, latest),
+  }
+}
+
+// How big the map is and whether it can still be had. The original we hold beats a link's
+// measured size, because it is the exact bytes; otherwise the largest live link, which is the
+// install a player would actually pull.
+function downloadOf(key, latest) {
+  const orig = latest ? db.prepare("SELECT size FROM map_files WHERE map_version_id=? AND kind='original' AND size IS NOT NULL ORDER BY size DESC LIMIT 1").get(latest.id) : null
+  const links = db.prepare("SELECT status, size_bytes FROM archive_sources WHERE map_key=? AND kind='download'").all(String(key))
+  const alive = links.filter((l) => l.status === 'alive' || l.status === 'fetched')
+  const sized = alive.map((l) => l.size_bytes).filter((n) => n > 0)
+  const size = orig && orig.size ? orig.size : (sized.length ? Math.max(...sized) : null)
+  return {
+    size_bytes: size || null,
+    held: !!orig,
+    links: links.length,
+    links_alive: alive.length,
+    links_dead: links.filter((l) => l.status === 'dead').length,
   }
 }
 

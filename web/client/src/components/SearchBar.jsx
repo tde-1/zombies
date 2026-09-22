@@ -171,7 +171,7 @@ export default function SearchBar() {
                           onClick={() => go({ kind: 'map', m })}>
                     <span className="nav-search-art" style={{
                       '--h': String(mapHue(m.key)),
-                      backgroundImage: m.art ? `url(${m.art})` : undefined,
+                      backgroundImage: m.art ? `url(${m.thumb || m.art})` : undefined,
                     }} />
                     {/* Name first, bsp underneath — the same order as every other map entry
                         on the site (data/mapText.js). */}

@@ -1,0 +1,937 @@
+{
+ "generated": "2026-09-22T19:29:37Z",
+ "maps": {
+  "bridge_zombie": {
+   "box": 2,
+   "dogs": false,
+   "entities": 756,
+   "other_perks": 6,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\bridge_zombie",
+   "scripts": 106,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 6,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "cryogenic": {
+   "box": 5,
+   "dogs": true,
+   "entities": 6237,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\cryogenic",
+   "scripts": 132,
+   "teleporters": 3,
+   "traps": false,
+   "wall_weapons": 4,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Thundergun",
+    "Blundergat",
+    "Monkey Bombs"
+   ]
+  },
+  "cube": {
+   "box": 0,
+   "dogs": false,
+   "entities": 2771,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [],
+   "power_switch": false,
+   "read_from": "archive\\mods\\cube",
+   "scripts": 131,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 0,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Thundergun",
+    "Monkey Bombs"
+   ]
+  },
+  "dead_palace": {
+   "box": 1,
+   "dogs": true,
+   "entities": 1769,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\dead_palace",
+   "scripts": 131,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 11,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "futurama": {
+   "box": 1,
+   "dogs": true,
+   "entities": 932,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\futurama",
+   "scripts": 127,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 18,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "hghrise": {
+   "box": 5,
+   "dogs": false,
+   "entities": 1968,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\hghrise",
+   "scripts": 122,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 7,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Thundergun",
+    "Monkey Bombs"
+   ]
+  },
+  "killhouse": {
+   "box": 0,
+   "dogs": false,
+   "entities": 612,
+   "other_perks": 8,
+   "pack_a_punch": false,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\killhouse",
+   "scripts": 133,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 1,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "mw2rust": {
+   "box": 1,
+   "dogs": false,
+   "entities": 479,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [],
+   "power_switch": false,
+   "read_from": "archive\\mods\\mw2rust",
+   "scripts": 125,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 0,
+   "wonder_weapons": [
+    "Monkey Bombs"
+   ]
+  },
+  "nacht_reimagined": {
+   "box": 7,
+   "dogs": false,
+   "entities": 1228,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nacht_reimagined",
+   "scripts": 130,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 10,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Thundergun"
+   ]
+  },
+  "nazi_zombie_asylum": {
+   "box": 5,
+   "dogs": false,
+   "entities": 2746,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "WaW zone/english",
+   "scripts": 51,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 18,
+   "wonder_weapons": [
+    "Ray Gun"
+   ]
+  },
+  "nazi_zombie_bloodsport": {
+   "box": 2,
+   "dogs": true,
+   "entities": 1020,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_bloodsport",
+   "scripts": 114,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 6,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_cargo": {
+   "box": 6,
+   "dogs": false,
+   "entities": 2555,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_cargo",
+   "scripts": 109,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 6,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_derberg": {
+   "box": 8,
+   "dogs": true,
+   "entities": 2900,
+   "other_perks": 2,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_derberg",
+   "scripts": 104,
+   "teleporters": 3,
+   "traps": true,
+   "wall_weapons": 13,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_dome_snow": {
+   "box": 6,
+   "dogs": false,
+   "entities": 1041,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_dome_snow",
+   "scripts": 108,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 5,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_dt2": {
+   "box": 10,
+   "dogs": true,
+   "entities": 7624,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Quick Revive"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\nazi_zombie_dt2",
+   "scripts": 172,
+   "teleporters": 3,
+   "traps": false,
+   "wall_weapons": 6,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_factory": {
+   "box": 6,
+   "dogs": true,
+   "entities": 2398,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "WaW zone/english",
+   "scripts": 96,
+   "teleporters": 3,
+   "traps": true,
+   "wall_weapons": 13,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_fear_mc_2": {
+   "box": 5,
+   "dogs": false,
+   "entities": 2928,
+   "other_perks": 15,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_fear_mc_2",
+   "scripts": 151,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 9,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Thundergun",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_fivenights": {
+   "box": 1,
+   "dogs": false,
+   "entities": 425,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_fivenights",
+   "scripts": 124,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 5,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_hijacked": {
+   "box": 6,
+   "dogs": false,
+   "entities": 2562,
+   "other_perks": 2,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_hijacked",
+   "scripts": 117,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 7,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Thundergun",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_johndoe": {
+   "box": 5,
+   "dogs": true,
+   "entities": 2164,
+   "other_perks": 4,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\nazi_zombie_johndoe",
+   "scripts": 156,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 8,
+   "wonder_weapons": [
+    "Blundergat",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_leviathan": {
+   "box": 10,
+   "dogs": false,
+   "entities": 4303,
+   "other_perks": 5,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_leviathan",
+   "scripts": 120,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 17,
+   "wonder_weapons": [
+    "Thundergun"
+   ]
+  },
+  "nazi_zombie_lorkeep": {
+   "box": 6,
+   "dogs": true,
+   "entities": 2194,
+   "other_perks": 4,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_lorkeep",
+   "scripts": 134,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 12,
+   "wonder_weapons": [
+    "Blundergat",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_malibu": {
+   "box": 0,
+   "dogs": false,
+   "entities": 7225,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [],
+   "power_switch": false,
+   "read_from": "archive\\mods\\nazi_zombie_malibu",
+   "scripts": 145,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 0,
+   "wonder_weapons": [
+    "Ray Gun"
+   ]
+  },
+  "nazi_zombie_octogonal": {
+   "box": 1,
+   "dogs": true,
+   "entities": 1938,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [],
+   "power_switch": false,
+   "read_from": "archive\\mods\\nazi_zombie_octogonal",
+   "scripts": 117,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 8,
+   "wonder_weapons": [
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_orbit": {
+   "box": 4,
+   "dogs": false,
+   "entities": 4727,
+   "other_perks": 8,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\nazi_zombie_orbit",
+   "scripts": 199,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 0,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Blundergat",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_path": {
+   "box": 2,
+   "dogs": false,
+   "entities": 269,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_path",
+   "scripts": 98,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 0,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_poke": {
+   "box": 6,
+   "dogs": true,
+   "entities": 4584,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_poke",
+   "scripts": 118,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 10,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_prototype": {
+   "box": 1,
+   "dogs": false,
+   "entities": 1037,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [],
+   "power_switch": false,
+   "read_from": "WaW zone/english",
+   "scripts": 35,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 8,
+   "wonder_weapons": [
+    "Ray Gun"
+   ]
+  },
+  "nazi_zombie_school": {
+   "box": 6,
+   "dogs": false,
+   "entities": 1543,
+   "other_perks": 5,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_school",
+   "scripts": 135,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 10,
+   "wonder_weapons": [
+    "Thundergun"
+   ]
+  },
+  "nazi_zombie_sumpf": {
+   "box": 6,
+   "dogs": true,
+   "entities": 5369,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "WaW zone/english",
+   "scripts": 88,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 11,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2"
+   ]
+  },
+  "nazi_zombie_test": {
+   "box": 6,
+   "dogs": true,
+   "entities": 2493,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_test",
+   "scripts": 132,
+   "teleporters": 1,
+   "traps": true,
+   "wall_weapons": 7,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Thundergun",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_test1": {
+   "box": 1,
+   "dogs": true,
+   "entities": 478,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [
+    "Juggernog",
+    "Quick Revive"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_test1",
+   "scripts": 109,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 4,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "nazi_zombie_zhunterz": {
+   "box": 5,
+   "dogs": false,
+   "entities": 2274,
+   "other_perks": 1,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\nazi_zombie_zhunterz",
+   "scripts": 119,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 14,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Thundergun",
+    "Blundergat",
+    "Monkey Bombs"
+   ]
+  },
+  "nightclub": {
+   "box": 4,
+   "dogs": true,
+   "entities": 1499,
+   "other_perks": 23,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\nightclub",
+   "scripts": 139,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 8,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Monkey Bombs"
+   ]
+  },
+  "nuketown": {
+   "box": 0,
+   "dogs": false,
+   "entities": 3451,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\nuketown",
+   "scripts": 135,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 11,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "sanatorium": {
+   "box": 6,
+   "dogs": false,
+   "entities": 2923,
+   "other_perks": 1,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\sanatorium",
+   "scripts": 128,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 7,
+   "wonder_weapons": [
+    "Blundergat",
+    "Monkey Bombs"
+   ]
+  },
+  "ugx_artemovsk": {
+   "box": 6,
+   "dogs": false,
+   "entities": 2226,
+   "other_perks": 7,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\ugx_artemovsk",
+   "scripts": 116,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 0,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "ut_box_map": {
+   "box": 1,
+   "dogs": true,
+   "entities": 126,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": false,
+   "read_from": "archive\\mods\\ut_box_map",
+   "scripts": 100,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 4,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Monkey Bombs"
+   ]
+  },
+  "water": {
+   "box": 6,
+   "dogs": false,
+   "entities": 6674,
+   "other_perks": 0,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\water",
+   "scripts": 160,
+   "teleporters": 0,
+   "traps": true,
+   "wall_weapons": 13,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Thundergun",
+    "Blundergat",
+    "Monkey Bombs"
+   ]
+  },
+  "zm_nuked": {
+   "box": 5,
+   "dogs": false,
+   "entities": 1382,
+   "other_perks": 0,
+   "pack_a_punch": false,
+   "perks": [],
+   "power_switch": true,
+   "read_from": "archive\\mods\\zm_nuked",
+   "scripts": 122,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 7,
+   "wonder_weapons": [
+    "Monkey Bombs"
+   ]
+  },
+  "zombie_town": {
+   "box": 6,
+   "dogs": false,
+   "entities": 4253,
+   "other_perks": 3,
+   "pack_a_punch": true,
+   "perks": [
+    "Juggernog",
+    "Quick Revive",
+    "Speed Cola",
+    "Double Tap"
+   ],
+   "power_switch": true,
+   "read_from": "archive\\mods\\zombie_town",
+   "scripts": 113,
+   "teleporters": 0,
+   "traps": false,
+   "wall_weapons": 20,
+   "wonder_weapons": [
+    "Ray Gun",
+    "Wunderwaffe DG-2",
+    "Thundergun",
+    "Monkey Bombs"
+   ]
+  }
+ },
+ "tool": "tools/maps/map_features.py"
+}
