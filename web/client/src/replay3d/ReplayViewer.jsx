@@ -26,7 +26,7 @@
 //     feed, and round markers on the scrubber.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createScene, isWebGL2Available } from './scene.js'
-import { createActors, installSkyDome, SLOT_COLORS } from './actors.js'
+import { createActors, installSkyDome, createPlaceholderGun, SLOT_COLORS } from './actors.js'
 import { fetchAsset, fetchJson } from './assets.js'
 import Boot from './Boot.jsx'
 import './r3d.css'
@@ -45,6 +45,28 @@ const clock = (s) => {
   const ss = String(t % 60).padStart(2, '0')
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
 }
+
+// The first-person crosshair (replay.md §8.7). WaW's hip crosshair is four ticks round a
+// gap that opens with movement and with each shot and closes again; these are per-class
+// numbers in screen pixels, eyeballed against the game, not read out of the weapon files.
+// The weapon is `#<index>` until the DLL resolves names (§3 gap 5), so every weapon is a
+// rifle today and the table is the seam for the day it is not.
+const XH_CLASS = {
+  pistol: { base: 10, move: 16, shot: 7, max: 46, recover: 60 },
+  rifle: { base: 14, move: 24, shot: 9, max: 60, recover: 45 },
+  smg: { base: 12, move: 18, shot: 5, max: 50, recover: 70 },
+  mg: { base: 20, move: 30, shot: 4, max: 70, recover: 35 },
+  shotgun: { base: 26, move: 20, shot: 12, max: 70, recover: 40 },
+}
+const xhClass = (weapon) => {
+  const w = String(weapon || '')
+  if (/colt|walther|nambu|tokarev|357|m1911|pistol/i.test(w)) return XH_CLASS.pistol
+  if (/thompson|mp40|ppsh|type100|mp44|stg/i.test(w)) return XH_CLASS.smg
+  if (/30cal|mg42|dp28|fg42|bar|type99/i.test(w)) return XH_CLASS.mg
+  if (/shotgun|trench|doublebarrel/i.test(w)) return XH_CLASS.shotgun
+  return XH_CLASS.rifle
+}
+const WAW_RUN = 190   // units a second; the engine's sprint is a little over this
 
 const lerpAngle = (a, b, f) => {
   let d = ((b - a + 540) % 360) - 180
@@ -91,6 +113,9 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const focusRef = useRef(focus)
   const dirtyRef = useRef(true)
   const camRef = useRef('follow')
+  const xhRef = useRef(null)
+  const gunRef = useRef(null)
+  const bloomRef = useRef(0)
 
   // THE TIMELINE'S ZERO IS THE FIRST SNAPSHOT, NOT THE FIRST EVENT.
   //
@@ -107,9 +132,22 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   // from the simulator, whose first snap is at ms 0 -- so `t0_ms` was 0 and the bug was
   // exactly zero ticks wide. Found 2026-09-23 against the first real game.
   const t0 = track ? (track.t0_ms || 0) : 0
-  const total = track ? Math.max(0, (track.duration_ms - t0) / 1000) : 0
+  // The END is game over (or the intermission), not the last byte (replay.md §8.5). The
+  // sampler kept writing through the intermission on m_0afb449b and the camera then
+  // "flew" with the intermission path; Movement's scrubber ends where the run does.
+  const endMs = track ? (track.end_ms && track.end_ms > t0 ? Math.min(track.end_ms, track.duration_ms) : track.duration_ms) : 0
+  const total = track ? Math.max(0, (endMs - t0) / 1000) : 0
+  // The START is the first tick anybody is alive: on a real game tick 0 is a dead player
+  // at [0,0,0] for the seven seconds before the spawn.
+  const firstLive = useMemo(() => {
+    if (!track) return 0
+    let k = Infinity
+    for (const p of track.players) { const a = p.alive.indexOf(1); if (a >= 0 && a < k) k = a }
+    return Number.isFinite(k) ? k : 0
+  }, [track])
   const tickMs = track ? track.tick_ms : 50
 
+  useEffect(() => { timeRef.current = (firstLive * (track ? track.tick_ms : 50)) / 1000; dirtyRef.current = true }, [track, firstLive])
   useEffect(() => { playingRef.current = playing }, [playing])
   useEffect(() => { speedRef.current = speed }, [speed])
   useEffect(() => { focusRef.current = focus; dirtyRef.current = true }, [focus])
@@ -164,6 +202,9 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     sceneRef.current = api
     const actors = createActors(api)
     actorsRef.current = actors
+    const gun = createPlaceholderGun()
+    gunRef.current = gun
+    api.setViewmodel(gun.object)
     api.resize()
 
     // The floor to stand a gridded, model-less replay on: the lowest thing anybody or
@@ -274,6 +315,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       canvas.remove()
       sceneRef.current = null
       actorsRef.current = null
+      gunRef.current = null
     }
   }, [track, mapUrl, metaUrl])
 
@@ -328,9 +370,32 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     }
     actors.setZombies(zs)
 
+    // Grenades in flight, and a fireball where each grenade track ends (§8.6).
+    const ns = []
+    const booms = []
+    for (const n of track.nades || []) {
+      const k = i - n.t0
+      const len = n.pos.length / 3
+      if (k >= 0 && k < len) ns.push({ x: n.pos[k * 3], y: n.pos[k * 3 + 1], z: n.pos[k * 3 + 2] })
+      const age = ((tf - (n.t0 + len)) * tickMs) / 1000
+      if (age >= 0 && age < 0.8 && len) booms.push({ x: n.pos[len * 3 - 3], y: n.pos[len * 3 - 2], z: n.pos[len * 3 - 1], age })
+    }
+    actors.setNades(ns)
+    actors.setExplosions(booms)
+
+    // What the crosshair and the gun need: the focused player's ground speed and trigger.
+    let speed = 0
+    let fire = false
+    const fp = focusP && track.players.find((p) => p.slot === focusP.slot)
+    if (fp) {
+      const dx = fp.pos[j * 3] - fp.pos[i * 3], dy = fp.pos[j * 3 + 1] - fp.pos[i * 3 + 1]
+      if (j > i) speed = Math.min(400, Math.hypot(dx, dy) / (tickMs / 1000))
+      fire = !!(fp.fire && fp.fire[i]) && focusP.alive
+    }
+
     const zl = track.zombies_alive ? track.zombies_alive[i] : null
     const kr = track.kills_round ? track.kills_round[i] : null
-    return { i, list, alive: zs.length, left: zl === undefined ? null : zl, kills: kr === undefined ? null : kr, round: roundAt[i] || 0 }
+    return { speed, fire, i, list, alive: zs.length, left: zl === undefined ? null : zl, kills: kr === undefined ? null : kr, round: roundAt[i] || 0 }
   }, [track, tickMs, roundAt])
 
   // ---- frame loop -------------------------------------------------------------
@@ -359,6 +424,22 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
       const s = sample()
       if (skyRef.current) skyRef.current()
+      // Crosshair and gun: only animated while time moves -- a paused frame is a still,
+      // the same as Movement's.
+      if (s) {
+        const moving = playingRef.current
+        const step = moving ? dt * speedRef.current : 0
+        const g = gunRef.current
+        if (g) g.update(moving && s.fire, step)
+        const el = xhRef.current
+        if (el) {
+          const c = xhClass(null)
+          if (moving && s.fire) bloomRef.current = Math.min(c.max, bloomRef.current + c.shot * step * 10)
+          bloomRef.current = Math.max(0, bloomRef.current - c.recover * step)
+          const gap = Math.min(c.max, c.base + c.move * Math.min(1, s.speed / WAW_RUN) + bloomRef.current)
+          el.style.setProperty('--xh-gap', `${gap.toFixed(1)}px`)
+        }
+      }
       api.render()
 
       if (s && now - hudAt > 66) {
@@ -381,7 +462,16 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     let dragging = false
     let px = 0
     let py = 0
-    const down = (e) => { dragging = true; px = e.clientX; py = e.clientY; el.setPointerCapture?.(e.pointerId) }
+    // THE PLAY / FIRST-PERSON BUG (replay.md §8.1). This handler used to take every press
+    // on the wrapper and capture the pointer to it -- and the wrapper holds the top rail and
+    // the control bar. With the pointer captured, `click` fires on the wrapper, never on the
+    // button: Play and the camera rail were dead to the mouse while Space and 1/2/3 worked.
+    // Movement puts the drag on the canvas; so does this, now.
+    const down = (e) => {
+      if (e.button !== 0 || e.target !== canvasRef.current) return
+      dragging = true; px = e.clientX; py = e.clientY
+      e.target.setPointerCapture?.(e.pointerId)
+    }
     const move = (e) => {
       if (!dragging || !sceneRef.current) return
       sceneRef.current.drag(e.clientX - px, e.clientY - py)
@@ -469,6 +559,12 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       </div>
 
       {note && <div className="r3d-note">{note}</div>}
+
+      {camMode === 'eyes' && (
+        <div className="r3d-zm-xh" ref={xhRef} aria-hidden="true">
+          <i className="u" /><i className="d" /><i className="l" /><i className="r" />
+        </div>
+      )}
 
       <div className="r3d-zm-round">
         <span className="r3d-zm-round-lab">Round</span>

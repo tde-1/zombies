@@ -18,14 +18,16 @@
 import {
   Group, Mesh, MeshStandardMaterial, CapsuleGeometry, InstancedMesh, Object3D,
   Color, Sprite, SpriteMaterial, CanvasTexture, RingGeometry, MeshBasicMaterial,
-  DoubleSide,
+  DoubleSide, SphereGeometry, BoxGeometry, CylinderGeometry, AdditiveBlending,
 } from 'three'
 import { toThree, STAND_H, DUCK_H, CAPSULE_R } from './scene.js'
 
 // Slot colours. Four, distinguishable at a glance and distinguishable from the
 // zombies, which are the one colour that must never be mistaken for a player.
 export const SLOT_COLORS = ['#5ec6ff', '#ffd166', '#8ce99a', '#ff9ec6']
-const ZOMBIE_COLOR = 0x8a5a3c
+// Red, not the old mud brown: on Nacht's night lighting the brown read as part of the
+// floor, and "I cannot see the zombies" was half of B's complaint (replay.md §8.4).
+const ZOMBIE_COLOR = 0xc8402c
 const MAX_ZOMBIES = 64        // the sampler's own cap (replay.cpp kMaxZombies)
 
 function nameplate(text, color) {
@@ -136,6 +138,51 @@ export function createActors(api) {
     zombies.instanceMatrix.needsUpdate = true
   }
 
+  // Grenades (replay.md §8.6): small dark spheres, one InstancedMesh like the zombies,
+  // and a pool of short-lived additive fireballs where a grenade track ends.
+  const MAX_NADES = 16
+  const nades = new InstancedMesh(new SphereGeometry(3, 10, 8),
+    new MeshStandardMaterial({ color: 0x3d4a2a, roughness: 0.6, fog: false }), MAX_NADES)
+  nades.count = 0
+  nades.frustumCulled = false
+  group.add(nades)
+  /** @param list [{ x, y, z }] in ENGINE coordinates */
+  function setNades(list) {
+    const n = Math.min(list.length, MAX_NADES)
+    for (let i = 0; i < n; i++) {
+      const v = toThree(list[i].x, list[i].y, list[i].z)
+      dummy.position.set(v.x, v.y + 3, v.z)
+      dummy.rotation.set(0, 0, 0)
+      dummy.scale.set(1, 1, 1)
+      dummy.updateMatrix()
+      nades.setMatrixAt(i, dummy.matrix)
+    }
+    nades.count = n
+    nades.instanceMatrix.needsUpdate = true
+  }
+  const booms = []
+  for (let i = 0; i < 8; i++) {
+    const m = new Mesh(new SphereGeometry(1, 16, 12),
+      new MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false, fog: false }))
+    m.visible = false
+    group.add(m)
+    booms.push(m)
+  }
+  /** @param list [{ x, y, z, age }] age in seconds since the explosion, 0..0.8 */
+  function setExplosions(list) {
+    for (let i = 0; i < booms.length; i++) {
+      const b = booms[i]
+      const e = list[i]
+      if (!e) { b.visible = false; continue }
+      const k = Math.min(1, e.age / 0.8)
+      const v = toThree(e.x, e.y, e.z)
+      b.position.set(v.x, v.y + 20, v.z)
+      b.scale.setScalar(20 + 180 * k)   // WaW frag radius is 256; the ball grows most of it
+      b.material.opacity = 0.85 * (1 - k)
+      b.visible = true
+    }
+  }
+
   function setNames(byslot) {
     for (const [slot, rec] of players) {
       const want = byslot[slot]
@@ -165,7 +212,7 @@ export function createActors(api) {
     })
   }
 
-  return { group, setPlayers, setZombies, setNames, setNameplatesVisible, dispose }
+  return { group, setPlayers, setZombies, setNades, setExplosions, setNames, setNameplatesVisible, dispose }
 }
 
 /**
@@ -202,5 +249,53 @@ export function installSkyDome(api) {
     // camera's world position has to come back through that rotation or the sky
     // tracks the camera along the wrong axis and shears past the horizon.
     parent.worldToLocal(sky.position.copy(camera.position))
+  }
+}
+
+/**
+ * The placeholder first-person gun (replay.md §8.7). Built from three primitives so there
+ * is no downloaded asset and no licence question; it is NOT a WaW viewmodel and never
+ * will be. Camera space, Source/CoD units: x right, y up, -z forward.
+ *
+ * Returns { object, update(fire, dt) }: `fire` true kicks it back and shows the flash.
+ */
+export function createPlaceholderGun() {
+  const g = new Group()
+  g.name = 'placeholder-gun'
+  const metal = new MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.45, metalness: 0.6 })
+  const wood = new MeshStandardMaterial({ color: 0x5a3b22, roughness: 0.8, metalness: 0 })
+  const body = new Mesh(new BoxGeometry(2.2, 2.6, 12), metal)
+  body.position.set(0, 0, -2)
+  const barrel = new Mesh(new CylinderGeometry(0.45, 0.45, 12, 10), metal)
+  barrel.rotation.x = Math.PI / 2
+  barrel.position.set(0, 0.6, -13)
+  const stock = new Mesh(new BoxGeometry(2, 3.4, 8), wood)
+  stock.position.set(0, -1.2, 6)
+  const grip = new Mesh(new BoxGeometry(1.8, 4, 2), wood)
+  grip.position.set(0, -3, 1)
+  grip.rotation.x = 0.35
+  const flash = new Mesh(new SphereGeometry(1.6, 10, 8),
+    new MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.9, blending: AdditiveBlending, depthWrite: false }))
+  flash.position.set(0, 0.6, -20)
+  flash.visible = false
+  g.add(body, barrel, stock, grip, flash)
+  const rest = { x: 7, y: -7.5, z: -14 }
+  g.position.set(rest.x, rest.y, rest.z)
+  let kick = 0
+  let phase = 0
+  return {
+    object: g,
+    update(fire, dt) {
+      if (fire) {
+        phase += dt
+        // ~10 rounds a second while the trigger is held: a kick on every cycle.
+        if (phase >= 0.1 || kick === 0) { phase = 0; kick = 1 }
+      } else phase = 0
+      kick = Math.max(0, kick - dt * 12)
+      g.position.set(rest.x, rest.y + kick * 0.4, rest.z + kick * 2.2)
+      g.rotation.x = kick * 0.12
+      flash.visible = kick > 0.6
+      flash.scale.setScalar(0.6 + Math.random() * 0.8)
+    },
   }
 }

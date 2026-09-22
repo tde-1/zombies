@@ -134,3 +134,19 @@
    over the tick. */
 .r3d-zm-rtick { position: absolute; top: 0; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: rgba(176, 52, 44, .95); pointer-events: none; }
 .r3d-zm-rnum { position: absolute; bottom: calc(50% + 9px); transform: translateX(-50%); font-size: 9.5px; font-weight: 700; color: var(--muted); pointer-events: none; }
+
+/* WaW-style dynamic crosshair (replay.md 8.7). --xh-gap is set per frame by the viewer. */
+.r3d-zm-xh { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 3; --xh-gap: 14px; }
+.r3d-zm-xh i { position: absolute; background: rgba(255, 255, 255, .9); box-shadow: 0 0 1px rgba(0, 0, 0, .9); }
+.r3d-zm-xh .u, .r3d-zm-xh .d { width: 2px; height: 9px; left: -1px; }
+.r3d-zm-xh .l, .r3d-zm-xh .r { width: 9px; height: 2px; top: -1px; }
+.r3d-zm-xh .u { bottom: var(--xh-gap); }
+.r3d-zm-xh .d { top: var(--xh-gap); }
+.r3d-zm-xh .l { right: var(--xh-gap); }
+.r3d-zm-xh .r { left: var(--xh-gap); }
+
+/* The site's chat dock is position:fixed at z 70 and, at a narrow width (the launcher's
+   embedded view), spans the whole bottom edge -- right over the Play button, which then
+   never saw a click (replay.md 8.2). Movement's viewer has nothing floating over its bar;
+   neither does this one. */
+body:has(.r3d) .chatdock { display: none; }
