@@ -9,6 +9,9 @@
 // --dry-run prints the exact command line and environment and starts nothing.
 import { BootFlow } from './bootflow.js'
 import { buildArgs } from './launch.js'
+import { listDisplays, pickDisplay, resolutionOf } from './display.js'
+import { resolveMode } from './gamecfg.js'
+import * as settings from './settings.js'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { P } from './paths.js'
@@ -34,6 +37,11 @@ const siteUrl = val('--site', 'http://127.0.0.1:8099')
 const fsGame = val('--fs-game', null)
 
 if (has('--dry-run')) {
+  // The account's real settings, not a stub: the point of a dry run is to see the
+  // line the player would actually get.
+  const s = settings.get()
+  const displays = listDisplays()
+  const display = pickDisplay(displays, s.display)
   // Local play never gets a +connect: the engine would leave the map for the server
   // the moment it loaded.
   const args = buildArgs({
@@ -41,14 +49,25 @@ if (has('--dry-run')) {
     map: has('--local') ? map : null,
     ...(fsGame ? { fsGame } : {}),
     windowMode,
-    settings: { fov: 80, maxFps: 125 },
+    settings: s,
+    display,
   })
+  const borderless = windowMode === 'player' && resolveMode(s) === 'borderless'
   console.log(`exe : ${P.game}\\CoDWaW.exe`)
   console.log(`cwd : ${P.game}`)
+  console.log(`home: ${P.home}`)
+  if (displays.length) {
+    for (const d of displays) console.log(`disp: ${d.label} ${d.width}x${d.height} at ${d.x},${d.y}${d.primary ? ' (main)' : ''}${d === display ? '   <- chosen' : ''}`)
+  } else {
+    console.log('disp: no monitor list on this run (plain node, and the app has cached none yet).')
+    console.log(`      Start the app once to cache it; until then the baseline uses the saved resolution (${s.resolution || 'none saved'}).`)
+  }
+  console.log(`mode: ${resolveMode(s)}${display ? ` at ${resolutionOf(display)}` : ''}   (windowMode ${windowMode})`)
   console.log('')
   console.log(`"${P.game}\\CoDWaW.exe" ${args.join(' ')}`)
   console.log('')
-  console.log('env : SteamAppId=10090 SteamGameId=10090 ENW_HOST=... ENW_INSTANCE=... ENW_ROLE=client')
+  console.log(`env : SteamAppId=10090 SteamGameId=10090 ENW_BORDERLESS=${borderless ? '1' : '0'}`)
+  console.log('      ENW_HOST=... ENW_INSTANCE=... ENW_ROLE=client')
   console.log('      ENW_TOKEN_PIPE=\\\\.\\pipe\\enw-launch-<random>   <- the invite token goes here')
   console.log('')
   console.log('note: the token is NOT in the command line above, and will not be.')
@@ -95,7 +114,7 @@ const flow = new BootFlow({
   serverTimeoutMs: Number(val('--server-timeout', '8000')),
   connectTimeoutMs: seconds * 1000,
   nannySeconds: seconds + 30,
-  settings: { fov: 80, maxFps: 125 },
+  settings: settings.get(),
 })
 
 flow.on('step', (s) => {

@@ -22,6 +22,8 @@ import * as cfg from './config.js'
 import * as detect from './detect.js'
 import * as setup from './setup.js'
 import * as settings from './settings.js'
+import { useScreen, listDisplays, cacheDisplays } from './display.js'
+import { MODES } from './gamecfg.js'
 import * as crash from './crash.js'
 import * as lock from './gamelock.js'
 import { Updater, IdleGate, applyPending, pending } from './updates.js'
@@ -557,6 +559,8 @@ function wireIpc() {
 
   handle('getSettings', () => settings.get())
   handle('setSettings', (patch) => { const s = settings.set(patch); push('settings', s); return s })
+  // Display settings need the monitor list, and only the main process can get it.
+  handle('getDisplays', () => ({ displays: listDisplays(), modes: MODES }))
 
   // --------------------------------------------------- a tracked local game --
   //
@@ -650,6 +654,23 @@ function wireIpc() {
     showSite(false)
     push('boot', flow.snapshot())
     flow.on('update', (snap) => push('boot', snap))
+
+    // Spec §4.3 round trip. Whatever the player changed in the game's own settings
+    // menus is read out of config.cfg once the process is gone, and saved to the
+    // account -- so the NEXT launch starts at that resolution and mode without them
+    // touching anything twice. Only keys the game actually wrote are saved, so this
+    // can never override an in-game choice with a stale one.
+    flow.on('settings_readback', (r) => {
+      const keys = Object.keys(r?.changed || {})
+      if (!keys.length) return
+      try {
+        const saved = settings.set(r.changed)
+        push('settings', saved)
+        log('settings', `saved ${keys.length} in-game change${keys.length === 1 ? '' : 's'} to the account: ${keys.join(', ')} (from ${r.file})`)
+      } catch (e) {
+        log('settings', `could not save the in-game changes: ${e.message}`)
+      }
+    })
 
     // The relay runs for as long as the game does: it watches the referee, pushes
     // live frames at the site's spectator view, and posts the summary and the replay
@@ -1038,6 +1059,18 @@ if (!single) {
   })
 
   app.whenReady().then(async () => {
+    // The monitor list, for the Display settings and for the borderless geometry.
+    // It is cached to state/displays.json so play-cli.js and the boot flow -- which
+    // are plain node and have no `screen` -- can still build a correct command line.
+    try {
+      const { screen } = await import('electron')
+      useScreen(screen)
+      const list = listDisplays()
+      cacheDisplays(list)
+      log('display', `${list.length} display${list.length === 1 ? '' : 's'}: ${list.map((d) => `${d.label} ${d.width}x${d.height} @ ${d.x},${d.y}${d.primary ? ' (primary)' : ''}`).join('; ')}`)
+    } catch (e) {
+      log('display', `could not read the monitor list (${e.message}); the game will keep its own resolution`)
+    }
     // THE FIRST LINE OF EVERY RUN NAMES THE FOLDER THIS PROCESS IS USING.
     //
     // B's launcher said "client: not installed" while `setup-cli.js status` on the same

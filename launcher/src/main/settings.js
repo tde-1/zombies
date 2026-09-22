@@ -10,15 +10,25 @@
 // point: when the endpoint appears, nothing else changes.
 import fs from 'node:fs'
 import { P, ensureDirs, assertWritable } from './paths.js'
+import { MODES, clampFov, clampFps } from './gamecfg.js'
+import { validResolution } from './display.js'
 
 export const DEFAULT_SETTINGS = {
   fov: 80,            // spec 4.5: cap ~90-100 for the gun model, <=120 for speedruns
-  maxFps: 125,        // spec 4.5: <=250, server enforces allowed values
-  fullscreen: true,
-  resolution: '',     // '' = leave it to the game
+  maxFps: 250,        // spec 4.5: <=250, SERVER ENFORCES ALLOWED VALUES for a record game
+  // Display (spec 4.3 "Display defaults", B 2026-09-22). The game launches borderless
+  // windowed at the primary display's native resolution, and it is these three that
+  // say so -- `resolution: ''` no longer means "leave it to the game", because the
+  // game's own answer to that was 800x600 (see gamecfg.js).
+  display: 'primary',       // 'primary', or a display id / index from display.js
+  mode: 'borderless',       // 'borderless' | 'fullscreen' | 'windowed'
+  resolution: '',           // '' = the chosen display's native size. Borderless ignores it.
+  vsync: false,             // stock is ON, and on a 60 Hz panel that IS the 60 fps cap
+  fullscreen: false,        // kept only so older code and older saved files still read
   volume: 1,
   sensitivity: null,
   showFps: false,
+  binds: null,              // round-tripped out of config.cfg; the launcher does not edit them
   chatChannel: 'auto', // spec 2b: solo -> Global, group -> Local, then it sticks
   autoRemoveUnplayedMaps: false, // spec: off by default
   autoRemoveDays: 30,
@@ -71,7 +81,30 @@ export function get(steamid = null) {
   return { ...DEFAULT_SETTINGS, ...stored, _scope: id ? `account ${id}` : 'this computer (not signed in)' }
 }
 
-export function set(patch, steamid = null) {
+// Validation, in one place, because these values end up on a command line the engine
+// parses itself and in a config.cfg the engine execs. A bad `resolution` is not a
+// cosmetic problem: `+set r_mode 1920 x 1080` is three arguments.
+export function validate(patch = {}) {
+  const out = { ...patch }
+  const notes = []
+  if ('mode' in out && !MODES.includes(out.mode)) { notes.push(`mode "${out.mode}" is not one of ${MODES.join('/')}; kept the saved one`); delete out.mode }
+  if ('resolution' in out && out.resolution !== '' && out.resolution !== null) {
+    const r = validResolution(out.resolution)
+    if (!r) { notes.push(`resolution "${out.resolution}" is not WxH; kept the saved one`); delete out.resolution }
+    else out.resolution = r
+  }
+  if ('fov' in out && out.fov !== null) out.fov = Number(clampFov(out.fov))
+  if ('maxFps' in out && out.maxFps !== null) out.maxFps = Number(clampFps(out.maxFps))
+  if ('vsync' in out) out.vsync = !!out.vsync
+  if ('display' in out && out.display !== null) out.display = String(out.display)
+  // Keep the legacy flag in step with the mode so nothing that still reads it lies.
+  if ('mode' in out) out.fullscreen = out.mode === 'fullscreen'
+  if ('volume' in out && out.volume !== null) out.volume = Math.min(1, Math.max(0, Number(out.volume) || 0))
+  return { patch: out, notes }
+}
+
+export function set(rawPatch, steamid = null) {
+  const { patch } = validate(rawPatch)
   const a = all()
   const id = steamid || session().steamid
   const target = id ? (a.accounts[id] = { ...(a.accounts[id] || {}), ...patch }) : (a.local = { ...(a.local || {}), ...patch })

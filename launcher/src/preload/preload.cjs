@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld('enw', {
   // Settings (saved to the account, applied over the top at launch).
   getSettings: () => call('getSettings'),
   setSettings: (patch) => call('setSettings', patch),
+  getDisplays: () => call('getDisplays'),
 
   // Playing.
   play: (opts) => call('play', opts),

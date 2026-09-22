@@ -387,6 +387,10 @@ export class BootFlow extends EventEmitter {
       }
     })
     l.on('console', (line) => this.emit('console', line))
+    // Spec §4.3 round trip: what the player changed in the game's own menus, read out
+    // of config.cfg after the process is gone. Forwarded, not applied -- main.js owns
+    // the account store.
+    l.on('settings_readback', (r) => this.emit('settings_readback', r))
   }
 
   // Two places can answer "is the server up?", and they answer different halves:

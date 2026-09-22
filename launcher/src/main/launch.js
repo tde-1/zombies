@@ -19,6 +19,8 @@ import { EventEmitter } from 'node:events'
 import { P, ensureDirs, isInside, protectedRoots, dirOfModule, unpacked } from './paths.js'
 import { MOD_NAME } from './setup.js'
 import * as lock from './gamelock.js'
+import { listDisplays, pickDisplay } from './display.js'
+import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, PROFILE } from './gamecfg.js'
 
 // PACKAGED TRAP: this is handed to powershell.exe, which is not us and cannot read
 // inside app.asar. `asarUnpack: ["tools/**"]` in package.json puts a real copy beside
@@ -100,19 +102,19 @@ export function clearStartupBlockers({ homeDir = P.home, gameDir = P.game } = {}
 
 // ------------------------------------------------------------------ arguments --
 
-// The account's settings, applied over the top at launch. The player's own WaW config
-// is never edited: these are command-line dvars on OUR copy, with OUR fs_homepath.
-function settingsArgs(s = {}) {
-  const a = []
-  const push = (dvar, v) => { if (v !== undefined && v !== null && v !== '') a.push('+set', dvar, String(v)) }
-  push('cg_fov', s.fov)
-  push('com_maxfps', s.maxFps)
-  push('r_fullscreen', s.fullscreen === undefined ? undefined : s.fullscreen ? '1' : '0')
-  if (s.resolution) push('r_mode', s.resolution)
-  push('snd_volume', s.volume)
-  push('cg_drawFPS', s.showFps ? '1' : undefined)
-  push('sensitivity', s.sensitivity)
-  return a
+// The account's settings AND the launch baseline, applied over the top at launch. The
+// player's own WaW config is never edited: these are command-line dvars on OUR copy,
+// with OUR fs_homepath.
+//
+// RETRACTED 2026-09-22: this function used to push only `cg_fov`, `com_maxfps`,
+// `r_fullscreen`, an empty-by-default `r_mode` and the volume, on the theory that an
+// unset dvar means "leave it to the game". It does not. Our fs_homepath is fresh, so
+// "the game" means the engine's built-in 2008 defaults — `set r_mode 800x600` and
+// `set r_fullscreen 0` are literals in the image, vsync is on, `com_maxfps` is 85 and
+// `cg_fov` is 65. B pressed Play and got 800x600 at 60 fps. The baseline is now
+// explicit and lives in gamecfg.js, with every value sourced.
+export function settingsArgs(s = {}, display = null) {
+  return dvarsToArgs(baselineDvars(s, display))
 }
 
 export function buildArgs({
@@ -120,6 +122,7 @@ export function buildArgs({
   map = null,
   fsGame = MOD_NAME,
   settings = {},
+  display = undefined,
   homeDir = P.home,
   stealth = false,
   windowMode = null,
@@ -172,7 +175,10 @@ export function buildArgs({
       a.push('+set', 'vid_xpos', '40', '+set', 'vid_ypos', '40')
     }
   } else {
-    a.push(...settingsArgs(settings))
+    // `display === undefined` means "work it out"; `null` means "we know there is no
+    // display information", which is what the test harness and a headless CLI pass.
+    const d = display === undefined ? pickDisplay(listDisplays(), settings.display) : display
+    a.push(...settingsArgs(settings, d))
   }
 
   a.push(...extra.filter(Boolean))
@@ -252,11 +258,31 @@ export class GameLaunch extends EventEmitter {
       if (!blockers.ok) throw new Error(blockers.reason)
       for (const n of blockers.notes) this.note(n)
 
+      // Seed the home folder so the in-game settings MENU shows the same values we
+      // launch with. `+set` alone leaves the menu lying: the player opens Video, sees
+      // the 2008 defaults, and the first thing they change writes those back.
+      // seedHome() writes only on a first launch or a baseline-version bump -- once
+      // the player has a config, the game owns it and we only ever read it.
+      const display = o.display === undefined ? pickDisplay(listDisplays(), o.settings?.display) : o.display
+      this.display = display
+      // Dev window modes are left exactly as they were: 'small' and 'offscreen' force
+      // 800x600 muted on the command line, and seeding a config.cfg (or reading one
+      // back) from a dev run would put 800x600 into the player's account.
+      this.playerMode = (o.windowMode || (o.stealth ? 'offscreen' : 'player')) === 'player'
+      try {
+        if (!this.playerMode) throw new Error('dev window mode: no baseline is seeded')
+        const seed = seedHome({ homeDir, profile: o.profile || PROFILE, settings: o.settings || {}, display, force: !!o.reseed })
+        if (seed.written) this.note(`wrote the ENW settings baseline into ${seed.paths.profileCfg} (${seed.reason})`)
+      } catch (e) {
+        this.note(`could not write the settings baseline (${e.message}); the game will use its own config`)
+      }
+
       const args = buildArgs({
         host: o.host,
         map: o.map,
         fsGame: o.fsGame,
         settings: o.settings,
+        display,
         homeDir,
         stealth: !!o.stealth,
         windowMode: o.windowMode || null,
@@ -280,6 +306,14 @@ export class GameLaunch extends EventEmitter {
         // "the launcher says nothing happened" into a file with the round numbers in
         // it. The dvar that is supposed to control it cannot be read yet.
         ENW_LOGPRINT: o.logprint === false ? '0' : '1',
+        // The DLL's borderless component (client-dll/components/borderless.cpp) takes
+        // either this or a text-matched `+set r_noborder 1` on the command line, and
+        // reads its geometry from the LAST `r_mode` / `vid_xpos` / `vid_ypos` on the
+        // line. We pass both switches: the env var is unambiguous, and `r_noborder`
+        // is what a future engine or a Plutonium-style client would read. In a dev
+        // window mode it is explicitly '0' rather than absent, so a dev run can never
+        // inherit a borderless flag from somewhere else.
+        ENW_BORDERLESS: this.playerMode && resolveMode(o.settings || {}) === 'borderless' ? '1' : '0',
       }
       // Only point the game-link somewhere when there is something to point it at.
       // A local game has no host agent, and the DLL's documented behaviour for an
@@ -518,10 +552,36 @@ export class GameLaunch extends EventEmitter {
     this.finish('ended', reason)
   }
 
+  // Spec §4.3 round trip: after the game exits, read config.cfg back out of our
+  // fs_homepath so an in-game change is what the NEXT launch uses.
+  //
+  // Read-after-exit, not read-while-running: the engine writes the file on shutdown,
+  // so anything read earlier is the previous run's (client.md §2b). And only keys the
+  // game actually wrote come back -- a saved value is never overridden by a default.
+  readBackSettings() {
+    if (this.opts.readBack === false || !this.playerMode) return null
+    try {
+      const r = applyReadBack({
+        homeDir: this.opts.homeDir || P.home,
+        profile: this.opts.profile || PROFILE,
+        saved: this.opts.settings || {},
+      })
+      this.readBack = r
+      const n = Object.keys(r.changed || {}).length
+      if (n) this.note(`the player changed ${n} setting${n === 1 ? '' : 's'} in game; saving them to the account (${Object.keys(r.changed).join(', ')})`)
+      this.emit('settings_readback', r)
+      return r
+    } catch (e) {
+      this.note(`could not read the game's settings back (${e.message})`)
+      return null
+    }
+  }
+
   finish(phase, detail) {
     if (this.ended) return
     this.ended = true
     clearTimeout(this._logTimer)
+    this.readBackSettings()
     try { this.tokenPipe?.close() } catch {}
     try { this.nanny?.kill() } catch {}
     this.releaseLock()

@@ -16,6 +16,7 @@ import crypto from 'node:crypto'
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'enw-launcher-test-'))
 process.env.ENW_ROOT = path.join(TMP, 'enwroot')
 process.env.ENW_DEV_ROOT = path.join(TMP, 'nodevbox') // keep the real game lock out of it
+process.env.ENW_NO_DISPLAY_PROBE = '1'                 // no PowerShell, no per-machine answers
 
 const vdf = await import('../src/main/vdf.js')
 const pe = await import('../src/main/pe.js')
@@ -27,6 +28,8 @@ const crash = await import('../src/main/crash.js')
 const settings = await import('../src/main/settings.js')
 const updates = await import('../src/main/updates.js')
 const hostagent = await import('../src/main/hostagent.js')
+const gamecfg = await import('../src/main/gamecfg.js')
+const display = await import('../src/main/display.js')
 
 let pass = 0
 let fail = 0
@@ -620,6 +623,240 @@ await test('the idle gate holds a refresh until nothing is busy', async () => {
   g.unblock('game')
   await new Promise((r) => setTimeout(r, 80))
   assert.equal(ran, true, 'should refresh once idle')
+})
+
+
+// ------------------------------------------------- the launch baseline (§4.3) --
+group('The launch baseline: borderless, native, vsync off')
+
+const SCREENS = [
+  { id: 'DISPLAY1', index: 0, label: 'Display 1', x: 0, y: 0, width: 2560, height: 1440, scaleFactor: 1, primary: true },
+  { id: 'DISPLAY2', index: 1, label: 'Display 2', x: -1440, y: -340, width: 1440, height: 2560, scaleFactor: 1, primary: false },
+]
+const dvarsOf = (args) => {
+  const m = new Map()
+  for (let i = 0; i < args.length; i++) if (args[i] === '+set') m.set(args[i + 1], args[i + 2])
+  return m
+}
+
+await test('the default launch is borderless at the primary display native size', () => {
+  const d = display.pickDisplay(SCREENS, undefined)
+  const v = new Map(gamecfg.baselineDvars({}, d))
+  assert.equal(v.get('r_mode'), '2560x1440', 'r_mode must be the primary display native size')
+  assert.equal(v.get('r_fullscreen'), '0')
+  assert.equal(v.get('r_noborder'), '1')
+  assert.equal(v.get('vid_xpos'), '0')
+  assert.equal(v.get('vid_ypos'), '0')
+  assert.equal(v.get('r_monitor'), '0')
+})
+
+await test('THE 60 FPS AND THE 800x600 ARE BOTH GONE', () => {
+  const v = dvarsOf(launch.buildArgs({ settings: {}, display: display.pickDisplay(SCREENS) }))
+  assert.equal(v.get('r_vsync'), '0', 'vsync on is what capped the game at the monitor refresh')
+  assert.equal(v.get('com_maxfps'), '250', 'the stock cap is 85')
+  assert.notEqual(v.get('r_mode'), '800x600', 'the engine default is 800x600 and must not survive')
+  assert.equal(v.get('r_mode'), '2560x1440')
+})
+
+await test('r_mode is a STRING WxH, never an index', () => {
+  const v = new Map(gamecfg.baselineDvars({ mode: 'windowed', resolution: '1920x1080' }, SCREENS[0]))
+  assert.equal(v.get('r_mode'), '1920x1080')
+  assert.equal(display.validResolution('1920 x 1080'), '1920x1080')
+  assert.equal(display.validResolution('1080p'), null)
+  assert.equal(display.validResolution('6'), null)
+  assert.equal(display.validResolution(6), null)
+})
+
+await test('a second monitor is launched on, at its own origin', () => {
+  const d = display.pickDisplay(SCREENS, 'DISPLAY2')
+  const v = new Map(gamecfg.baselineDvars({ display: 'DISPLAY2' }, d))
+  assert.equal(v.get('r_mode'), '1440x2560')
+  assert.equal(v.get('vid_xpos'), '-1440')
+  assert.equal(v.get('vid_ypos'), '-340')
+  assert.equal(v.get('r_monitor'), '1')
+})
+
+await test('a monitor that has been unplugged falls back to the primary, not to a failure', () => {
+  assert.equal(display.pickDisplay(SCREENS, 'DISPLAY9-GONE').id, 'DISPLAY1')
+})
+
+await test('borderless ignores a saved resolution; fullscreen and windowed honour it', () => {
+  const b = new Map(gamecfg.baselineDvars({ mode: 'borderless', resolution: '1280x720' }, SCREENS[0]))
+  assert.equal(b.get('r_mode'), '2560x1440', 'borderless always uses the display native size (spec 4.3)')
+  const f = new Map(gamecfg.baselineDvars({ mode: 'fullscreen', resolution: '1280x720' }, SCREENS[0]))
+  assert.equal(f.get('r_mode'), '1280x720')
+  assert.equal(f.get('r_fullscreen'), '1')
+  assert.equal(f.get('r_noborder'), undefined, 'fullscreen is not borderless')
+  assert.equal(f.get('vid_xpos'), undefined, 'a fullscreen window is not positioned')
+})
+
+await test('no display information at all: nothing is invented', () => {
+  const v = new Map(gamecfg.baselineDvars({ mode: 'borderless' }, null))
+  assert.equal(v.get('r_mode'), undefined, 'better to leave the game its own resolution than to guess one')
+  assert.equal(v.get('r_vsync'), '0', 'the rest of the baseline still applies')
+})
+
+await test('an account saved before Display settings existed still gets borderless', () => {
+  // DEFAULT_SETTINGS used to be `fullscreen: true`, which was the old default rather
+  // than a choice, so it must not pin the mode. An explicit `false` is a choice.
+  assert.equal(gamecfg.resolveMode({ fullscreen: true }), 'borderless')
+  assert.equal(gamecfg.resolveMode({ fullscreen: false }), 'windowed')
+  assert.equal(gamecfg.resolveMode({ mode: 'fullscreen', fullscreen: false }), 'fullscreen')
+})
+
+await test('the dev window modes are untouched by all of this', () => {
+  for (const mode of ['small', 'offscreen']) {
+    const v = dvarsOf(launch.buildArgs({ windowMode: mode, settings: { mode: 'borderless' }, display: SCREENS[0] }))
+    assert.equal(v.get('r_mode'), '800x600', `${mode} must stay 800x600`)
+    assert.equal(v.get('snd_volume'), '0')
+    assert.equal(v.get('r_noborder'), undefined)
+  }
+})
+
+await test('nothing appends a resolution after the player one (the DLL reads the LAST +set)', () => {
+  const args = launch.buildArgs({ settings: {}, display: SCREENS[0], map: 'nazi_zombie_prototype', extra: ['+set', 'sv_cheats', '0'] })
+  assert.equal(dvarsOf(args).get('r_mode'), '2560x1440')
+  assert.equal(args.filter((x, i) => x === 'r_mode' && args[i - 1] === '+set').length, 1, 'r_mode must appear exactly once')
+})
+
+await test('every bundled fix has a reason and a source', () => {
+  assert.ok(gamecfg.COMMUNITY_FIXES.length >= 10)
+  for (const f of gamecfg.COMMUNITY_FIXES) {
+    assert.ok(f.dvar && f.value !== undefined, `${f.name} needs a dvar and a value`)
+    assert.ok(f.why && f.why.length > 20, `${f.name} needs a reason`)
+    assert.match(f.source, /^https?:\/\//, `${f.name} needs a source URL`)
+  }
+})
+
+await test('no bundled fix touches gameplay', () => {
+  // Records rules care about FPS and FOV, which the spec already bounds. Nothing
+  // else may change what the game simulates.
+  const forbidden = /^(g_|sv_|zombie|perk|player_|jump_|bg_|ai_|cg_gun|timescale)/i
+  for (const f of gamecfg.COMMUNITY_FIXES) assert.equal(forbidden.test(f.dvar), false, `${f.dvar} is a gameplay dvar`)
+})
+
+await test('the FPS and FOV caps from spec 4.5 are enforced', () => {
+  assert.equal(gamecfg.clampFps(9999), '250')
+  assert.equal(gamecfg.clampFps(0), '250')
+  assert.equal(gamecfg.clampFps('abc'), '250')
+  assert.equal(gamecfg.clampFps(144), '144')
+  assert.equal(gamecfg.clampFov(500), '120')
+  assert.equal(gamecfg.clampFov(10), '65')
+  assert.equal(gamecfg.clampFov(90), '90')
+})
+
+// ---------------------------------------------- seeding, and the round trip --
+group('The home folder seed and the round trip')
+
+const HOME = path.join(process.env.ENW_ROOT, 'testhome')
+const PCFG = () => path.join(HOME, 'players', 'profiles', gamecfg.PROFILE, 'config.cfg')
+
+await test('the first launch seeds config.cfg so the in-game menu is not lying', () => {
+  const r = gamecfg.seedHome({ homeDir: HOME, settings: {}, display: SCREENS[0] })
+  assert.equal(r.written, true, r.reason)
+  const text = fs.readFileSync(r.paths.profileCfg, 'utf8')
+  assert.match(text, /seta r_mode "2560x1440"/)
+  assert.match(text, /seta r_vsync "0"/)
+  assert.match(text, /seta com_maxfps "250"/)
+  assert.match(text, /seta cg_fov "80"/)
+  assert.equal(fs.readFileSync(r.paths.activeTxt, 'utf8'), gamecfg.PROFILE, 'active.txt must name the profile or the engine reads a different one')
+  assert.ok(fs.existsSync(r.paths.plainCfg))
+})
+
+await test('a second launch does NOT overwrite the config the player now owns', () => {
+  fs.writeFileSync(PCFG(), 'seta r_mode "1280x720"\nseta cg_fov "95"\n')
+  const r = gamecfg.seedHome({ homeDir: HOME, settings: {}, display: SCREENS[0] })
+  assert.equal(r.written, false, 'the game owns config.cfg once it exists')
+  assert.match(fs.readFileSync(r.paths.profileCfg, 'utf8'), /1280x720/)
+})
+
+await test('parses seta, set, quoted and bare, and binds', () => {
+  const { dvars, binds } = gamecfg.parseConfigCfg([
+    '// generated by Call of Duty, do not modify',
+    'seta r_mode "1920x1080"',
+    'seta r_fullscreen "0"',
+    'set com_maxfps 125',
+    'seta cg_fov "95"',
+    'bind W "+forward"',
+    'bind SPACE +gostand',
+    '',
+  ].join('\r\n'))
+  assert.equal(dvars.get('r_mode'), '1920x1080')
+  assert.equal(dvars.get('com_maxfps'), '125')
+  assert.equal(binds.get('W'), '+forward')
+  assert.equal(binds.get('SPACE'), '+gostand')
+  assert.equal(dvars.has('//'), false)
+})
+
+await test('an in-game change is read back and becomes the next launch', () => {
+  const saved = { mode: 'borderless', resolution: '2560x1440', fov: 80, maxFps: 250, vsync: false }
+  fs.writeFileSync(PCFG(), 'seta r_mode "1920x1080"\nseta r_fullscreen "1"\nseta cg_fov "95"\nseta com_maxfps "125"\nseta r_vsync "1"\n')
+  const r = gamecfg.applyReadBack({ homeDir: HOME, saved })
+  assert.equal(r.changed.resolution, '1920x1080')
+  assert.equal(r.changed.mode, 'fullscreen')
+  assert.equal(r.changed.fov, 95)
+  assert.equal(r.changed.maxFps, 125)
+  assert.equal(r.changed.vsync, true)
+  // And the next launch really does use them.
+  const v = new Map(gamecfg.baselineDvars({ ...saved, ...r.changed }, SCREENS[0]))
+  assert.equal(v.get('r_mode'), '1920x1080')
+  assert.equal(v.get('r_fullscreen'), '1')
+  assert.equal(v.get('r_vsync'), '1')
+})
+
+await test('a stale saved value NEVER overrides an in-game change, and vice versa', () => {
+  // The game wrote only a resolution. Everything else the account holds must survive
+  // untouched -- absence in config.cfg is "no opinion", not "back to the default".
+  fs.writeFileSync(PCFG(), 'seta r_mode "3440x1440"\n')
+  const r = gamecfg.applyReadBack({ homeDir: HOME, saved: { mode: 'borderless', resolution: '2560x1440', fov: 110, maxFps: 190 } })
+  assert.deepEqual(Object.keys(r.changed), ['resolution'])
+  assert.equal(r.changed.resolution, '3440x1440')
+})
+
+await test('borderless is not silently demoted to windowed every single launch', () => {
+  // Borderless and windowed both write `r_fullscreen 0`, and vanilla has no
+  // r_noborder to tell them apart. Without this the default mode would decay.
+  fs.writeFileSync(PCFG(), 'seta r_fullscreen "0"\nseta r_mode "2560x1440"\n')
+  const r = gamecfg.applyReadBack({ homeDir: HOME, saved: { mode: 'borderless', resolution: '2560x1440' } })
+  assert.equal('mode' in r.changed, false, 'must stay borderless')
+  // But a player who really did pick windowed in game (the DLL writes r_noborder 0)
+  // is believed.
+  fs.writeFileSync(PCFG(), 'seta r_fullscreen "0"\nseta r_noborder "0"\nseta r_mode "1280x720"\n')
+  const r2 = gamecfg.applyReadBack({ homeDir: HOME, saved: { mode: 'borderless', resolution: '2560x1440' } })
+  assert.equal(r2.changed.mode, 'windowed')
+})
+
+await test('no config.cfg at all is not an error', () => {
+  const r = gamecfg.applyReadBack({ homeDir: path.join(process.env.ENW_ROOT, 'emptyhome'), saved: {} })
+  assert.deepEqual(r.changed, {})
+  assert.equal(r.file, null)
+})
+
+await test('the display probe parses what the PowerShell helper prints', () => {
+  const list = display.parseDisplayLines('\\\\.\\DISPLAY1|0|0|2560|1440|True\r\n\\\\.\\DISPLAY2|-1440|-340|1440|2560|False\r\nnot a display line\r\n')
+  assert.equal(list.length, 2)
+  assert.equal(list[0].width, 2560)
+  assert.equal(list[0].primary, true)
+  assert.equal(list[1].x, -1440)
+  assert.equal(list[1].primary, false)
+})
+
+await test('settings validation refuses a resolution that would break the command line', () => {
+  const bad = settings.validate({ resolution: '1920 by 1080' })
+  assert.equal('resolution' in bad.patch, false)
+  assert.equal(bad.notes.length, 1)
+  assert.equal(settings.validate({ resolution: '1920x1080' }).patch.resolution, '1920x1080')
+  assert.equal(settings.validate({ mode: 'fullscreen' }).patch.fullscreen, true)
+  assert.equal(settings.validate({ mode: 'borderless' }).patch.fullscreen, false)
+  assert.equal('mode' in settings.validate({ mode: 'kiosk' }).patch, false)
+  assert.equal(settings.validate({ maxFps: 9000 }).patch.maxFps, 250)
+})
+
+await test('the shipped defaults are the ones the spec asks for', () => {
+  assert.equal(settings.DEFAULT_SETTINGS.mode, 'borderless')
+  assert.equal(settings.DEFAULT_SETTINGS.vsync, false)
+  assert.equal(settings.DEFAULT_SETTINGS.maxFps, 250)
+  assert.equal(settings.DEFAULT_SETTINGS.display, 'primary')
 })
 
 // ---------------------------------------------------------------------------

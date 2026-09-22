@@ -490,7 +490,7 @@ async function play_(local) {
 
 // --------------------------------------------------------------- settings --
 
-function renderSettings() {
+async function renderSettings() {
   show('settings')
   const b = $('settingsBody')
   b.replaceChildren()
@@ -514,9 +514,48 @@ function renderSettings() {
     i.onchange = () => window.enw.setSettings({ [key]: i.checked }).then(refresh)
     return i
   }
+  const sel = (key, options, onset) => {
+    const i = document.createElement('select')
+    for (const [value, label] of options) {
+      const o = document.createElement('option')
+      o.value = value; o.textContent = label
+      if (String(s[key] ?? '') === String(value)) o.selected = true
+      i.append(o)
+    }
+    i.onchange = () => (onset ? onset(i.value) : window.enw.setSettings({ [key]: i.value })).then(refresh)
+    return i
+  }
+  const text = (key, placeholder) => {
+    const i = document.createElement('input')
+    i.value = s[key] || ''
+    i.placeholder = placeholder
+    i.onchange = () => window.enw.setSettings({ [key]: i.value.trim() }).then(refresh)
+    return i
+  }
+
+  // ------------------------------------------------------------------ display --
+  // Spec 4.3: borderless windowed at the chosen display's native resolution is the
+  // default, and resolution is only editable once Fullscreen or Windowed is picked.
+  let displays = []
+  try { displays = (await window.enw.getDisplays()).displays || [] } catch {}
+  const mode = s.mode || 'borderless'
+  if (displays.length) {
+    field('Monitor', sel('display', [
+      ['primary', 'Main display'],
+      ...displays.map((d) => [d.id, `${d.label} — ${d.width}x${d.height}${d.primary ? ' (main)' : ''}`]),
+    ]), 'Borderless always fills this display.')
+  }
+  field('Window mode', sel('mode', [
+    ['borderless', 'Borderless windowed (recommended)'],
+    ['fullscreen', 'Fullscreen'],
+    ['windowed', 'Windowed'],
+  ]), 'Borderless uses the native size of that display and alt-tabs instantly.')
+  if (mode !== 'borderless') {
+    field('Resolution', text('resolution', displays.find((d) => d.primary) ? `${displays.find((d) => d.primary).width}x${displays.find((d) => d.primary).height}` : '1920x1080'), 'WxH. Blank means the native size of the chosen display.')
+  }
   field('Field of view', num('fov', 65, 120), 'Records allow up to 120.')
-  field('Max FPS', num('maxFps', 60, 250), 'Records allow up to 250.')
-  field('Fullscreen', check('fullscreen'))
+  field('Max FPS', num('maxFps', 60, 250), 'Records allow up to 250; the server enforces allowed values.')
+  field('Vsync', check('vsync'), "Off by default: with it on the game is capped to your monitor's refresh rate.")
   field('Show FPS', check('showFps'))
   field('Streamer mode', check('streamerMode'), 'Hides join codes and incoming invite details.')
   field('Remove unplayed maps', check('autoRemoveUnplayedMaps'))
