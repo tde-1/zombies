@@ -1,7 +1,9 @@
 import { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useMatch } from 'react-router-dom'
 import { SessionProvider, useSession } from './session'
+import { RailProvider } from './rail'
 import Nav from './components/Nav'
+import PartyRail from './components/PartyRail'
 import ChatDock from './components/ChatDock'
 import Home from './pages/Home'
 // NOT lazy: home renders `MapBody` out of this module, so it lands in the first chunk
@@ -36,28 +38,44 @@ const NotFound = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Not
 export default function App() {
   return (
     <SessionProvider>
-      {/* ~~The rail sits ABOVE the router (Movement's party.jsx): it survives navigation~~
-          — **retracted 2026-09-22, B: no right column at all.** The party is a panel at the
-          top of home's left column now (`components/PartyPanel.jsx`), beside the map pool it
-          is for. What the rail bought was a party that survived navigation; what it cost was
-          a third region on every page, including the ones — a profile, the archive, a badge
-          directory — where a lobby has nothing to do with what you are reading. The party
-          itself survives everything, because it is a row in the database and always was. */}
-      {/* THE CHAT DOCK SITS ABOVE THE ROUTER, for the one reason the rail did: it
-          survives navigation. What killed the rail was that it was a third REGION on
-          every page; this is a tab in the corner, collapsed until somebody opens it,
-          so the map browser B approved is untouched until they do. */}
+      <RailProvider>
+        <Shell />
+      </RailProvider>
+    </SessionProvider>
+  )
+}
+
+function Shell() {
+  // The replay viewer is a full-bleed 3D view; Movement renders its replay page without the
+  // shell for the same reason. Everything else carries the rail.
+  const bare = !!useMatch('/replay/:matchId')
+  return (
+    <>
+      {/* THE RAIL IS BACK, ON THE LEFT, and it is Movement's (B, 2026-09-22 evening: "the
+          leftmost stuck thing that has all online players, your current party, and your map
+          in the bottom left with the Play button"). It sits ABOVE the router, Movement's
+          reason: it survives navigation, so a party, a staged map and a ready check are on
+          screen whatever page you are reading.
+          ~~The party is a panel at the top of home's left column (`PartyPanel.jsx`)~~ —
+          superseded by this; that panel is deleted and everything it did is in the rail's
+          roster and server card. The earlier objection to a rail was a THIRD region, on the
+          right; this is the left spine, the nav stays one bar across the top because it is
+          the launcher's title bar, and there is still no right column. */}
+      {/* THE CHAT DOCK SITS ABOVE THE ROUTER, for the same reason: it survives navigation. */}
       <div className="shell no-rail">
         <div className="main">
           <Nav />
           <NameGate>
+          <div className={'shell-row' + (bare ? ' bare' : '')}>
+          {!bare && <PartyRail />}
+          <div className="shell-page">
           <Suspense fallback={<div className="page"><div className="loading"><span className="spinner" /></div></div>}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/home" element={<Navigate to="/" replace />} />
               {/* `enw-zombies://party/<id>` opens /party/<id> in the launcher's wrapped view
-                  (docs/protocol/launcher-v0.md §7), and the party lives on home in a panel —
-                  there is no page of its own to send it to. So the route exists and lands on
+                  (docs/protocol/launcher-v0.md §7), and the party lives in the rail, on every
+                  page — there is no page of its own to send it to. So the route exists and lands on
                   home rather than on a 404. It does NOT try to join anything: the launcher
                   says joining is the site's decision, and the site's decision is made by the
                   invite the person already holds. */}
@@ -86,11 +104,13 @@ export default function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          </div>
+          </div>
           </NameGate>
         </div>
       </div>
       <DockUnlessNameless />
-    </SessionProvider>
+    </>
   )
 }
 

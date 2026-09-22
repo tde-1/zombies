@@ -20,6 +20,7 @@ const live = require('../lib/live')
 const replays = require('../lib/replays')
 const enw = require('../lib/enw')
 const users = require('../lib/users')
+const roster = require('../lib/roster')
 const { safeJson } = require('../lib/util')
 const { db } = require('../db/database')
 const { requireUser, requireApproved } = require('../middleware/auth')
@@ -178,7 +179,33 @@ function router() {
   r.post('/party/ready', requireApproved, partyAction((req) => parties.setReady(req.me.steam_id, !!(req.body && req.body.ready))))
   r.post('/party/cancel', requireApproved, partyAction((req) => parties.cancelReadyCheck(req.me.steam_id)))
   r.post('/party/launch', requireApproved, partyAction((req) => parties.launch(req.me.steam_id, { force: !!(req.body && req.body.force) })))
-  r.post('/party/invite', requireApproved, partyAction((req) => parties.invite(req.me.steam_id, String((req.body && req.body.steam_id) || ''))))
+  // By SteamID (a row in the online list) or by ENW name (the invite box). A name is
+  // resolved here and nowhere else, so the client never needs to learn anybody's id first.
+  // `stage` is what the rail had picked before a party existed (lib/parties.invite).
+  r.post('/party/invite', requireApproved, partyAction((req) => {
+    const b = req.body || {}
+    let to = String(b.steam_id || '')
+    if (!to && b.username) {
+      const u = users.resolve(String(b.username))
+      if (!u) return { ok: false, error: 'no player by that name' }
+      to = u.steam_id
+    }
+    const stage = b.stage && typeof b.stage === 'object' ? b.stage : null
+    return parties.invite(req.me.steam_id, to, stage)
+  }))
+  r.post('/party/invites/:id/decline', requireUser, partyAction((req) => parties.declineInvite(req.me.steam_id, Number(req.params.id))))
+  r.post('/party/invites/:id/cancel', requireUser, partyAction((req) => parties.cancelInvite(req.me.steam_id, Number(req.params.id))))
+  r.post('/party/kick', requireApproved, partyAction((req) => parties.kick(req.me.steam_id, String((req.body && req.body.steam_id) || ''))))
+
+  // The rail's online block and its invite search (lib/roster.js). Signed out there is
+  // nobody to be online FOR, so it is an empty list rather than a 401 the rail has to catch.
+  r.get('/party/online', (req, res) => {
+    if (!req.me) return res.json({ scope: 'online', players: [] })
+    res.json(roster.forViewer(req.me.steam_id))
+  })
+  r.get('/party/invite-search', requireUser, (req, res) => {
+    res.json({ results: roster.search(req.me.steam_id, req.query.q) })
+  })
   r.post('/party/quick-join', requireApproved, partyAction((req) => parties.quickJoin(req.me.steam_id, (req.body && req.body.map_key) || null)))
 
   // ---- presets (the Custom knobs) ---------------------------------------------------

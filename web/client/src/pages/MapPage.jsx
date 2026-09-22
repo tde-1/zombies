@@ -4,6 +4,7 @@ import { usePlayGate } from '../components/playGate'
 import { setAmbienceOverride } from '../ambience'
 import { api, ago, clock, num } from '../api'
 import { useSession } from '../session'
+import { useRail } from '../rail'
 import { Section, Empty, Loading, Stat, FinishChips, Health, Untracked, PlayerLink } from '../components/Bits'
 import Comments from '../components/Comments'
 
@@ -23,12 +24,21 @@ import Comments from '../components/Comments'
 // when it does. One component, two frames; there is no second map page to keep in step.
 export default function MapPage() {
   const { key } = useParams()
+  const R = useRail()
+  // Opening a map stages it on the rail's card when that moves nobody else — Movement's flow,
+  // where the map you open is the map you would launch. With no party it is your own stage
+  // and costs nothing; a party's map is the leader's, and only the card or its picker (or
+  // home's pool, for the leader) moves it, so reading a map page never resets a lobby.
+  useEffect(() => {
+    if (R && R.signedIn && !R.party && key) R.stageMap(key)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, R && R.signedIn, R && !!R.party])
   return <div className="page wide"><MapBody mapKey={key} /></div>
 }
 
 export function MapBody({ mapKey: key }) {
-  const { signedIn, approved, refresh } = useSession()
-  const { guard } = usePlayGate()
+  const { signedIn, approved } = useSession()
+  const R = useRail()
   const [d, setD] = useState(null)
   const [err, setErr] = useState(null)
   const [version, setVersion] = useState(null)
@@ -53,14 +63,13 @@ export function MapBody({ mapKey: key }) {
   if (!d) return <Loading />
 
   const m = d.map
-  // The play gate (B, 2026-09-22): in a plain browser this button cannot do the thing it
-  // says, so it goes to /download carrying this map — "install the launcher to play Clinic
-  // of Evil" — rather than staging a party nobody can join. Inside the launcher `guard`
-  // returns false and the request goes as it always did.
-  const play = async () => {
-    if (guard({ map: m.key, then: `/m/${m.key}` })) return
-    try { await api.post(`/api/maps/${m.key}/play`); refresh() } catch (e) { setErr(e.message) }
-  }
+  // Play here is the RAIL's Play with this map staged first — Movement's map page "Spin up"
+  // is the rail's launch too, so there is one way to start a game and one place (the server
+  // card) that shows where it has got to. The play gate is inside it: in a plain browser this
+  // goes to /download carrying this map, inside the launcher it carries on.
+  // ~~`POST /api/maps/:key/play`, which only staged the map~~ — the route stays for the
+  // launcher; the page no longer calls it.
+  const play = () => R.play({ mapKey: m.key })
   const rate = async (t) => { try { await api.post(`/api/maps/${m.key}/rate`, { thumbs: t }); load() } catch (e) { setErr(e.message) } }
   const fav = async () => { await api.post(`/api/maps/${m.key}/favourite`, { on: !m.favourite }); load() }
 

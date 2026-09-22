@@ -420,6 +420,86 @@ async function main() {
     eq(parties.MAX_PLAYERS, 4)
   })
 
+  // ── the rail: invite by name, the online block (lib/roster.js) ─────────────
+  // Fresh ids so nothing above leaks in: echo invites, foxtrot is invited, golf is a
+  // stranger, hotel is on the waiting list.
+  const [E, F, G, H] = ['76561198000000011', '76561198000000012', '76561198000000013', '76561198000000014']
+  for (const [sid, n, ok] of [[E, 'echo', 1], [F, 'foxtrot', 1], [G, 'golf', 1], [H, 'hotel', 0]]) {
+    users.ensure(sid, { username: n })
+    db.prepare('UPDATE users SET approved=?, enw_name=? WHERE steam_id=?').run(ok, n, sid)
+  }
+
+  check('an invite from somebody with no party makes one, carrying what the rail had staged', () => {
+    eq(parties.forPlayer(E), null, 'echo starts with no party')
+    const r = parties.invite(E, F, { map_key: 'nazi_zombie_test', mode: 'custom', visibility: 'friends' })
+    truthy(r.ok, r.error)
+    const p = parties.forPlayer(E)
+    eq(p.map && p.map.key, 'nazi_zombie_test', 'the staged map came with it')
+    eq(p.mode, 'custom', 'and the staged mode')
+    eq(p.invited.length, 1, 'the roster lists who was invited')
+    eq(p.invited[0].steam_id, F)
+    truthy(parties.invite(E, F).ok, 'pressing + twice is fine')
+    eq(db.prepare("SELECT COUNT(*) c FROM party_invites WHERE to_steam=? AND state='pending'").get(F).c, 1, 'and is still one invite')
+    eq(parties.invite(E, E).ok, false, 'not yourself')
+    eq(parties.invite(E, '76561198000000999').ok, false, 'not somebody with no account')
+  })
+
+  check('a staged value the server does not recognise is not written into a party', () => {
+    const p = parties.create(G, { mode: 'hardcore', visibility: 'everyone', mapKey: 'nazi_zombie_nope' })
+    eq(p.mode, 'verified'); eq(p.visibility, 'friends'); eq(p.map, null)
+    parties.leave(G)
+  })
+
+  check('an invite opens a friends-only lobby to the person invited, and to nobody else', () => {
+    const id = parties.forPlayer(E).id
+    eq(parties.join(G, id).ok, false, 'a stranger is still refused')
+    const inv = parties.invitesFor(F)
+    eq(inv.length, 1); eq(inv[0].map_title, 'Test Map', 'the invite card can name the map')
+    truthy(parties.join(F, id).ok, 'foxtrot is not a friend of echo, and the invite let them in')
+    eq(parties.invitesFor(F).length, 0, 'the invite is used up')
+    eq(parties.invite(E, F).ok, false, 'already in the party')
+  })
+
+  check('the invitee can decline, the party can take an invite back, and the leader can kick', () => {
+    parties.invite(E, G)
+    const gi = parties.invitesFor(G)[0]
+    eq(parties.declineInvite(F, gi.id).ok, false, 'only the person invited can decline it')
+    truthy(parties.declineInvite(G, gi.id).ok)
+    eq(parties.invitesFor(G).length, 0)
+    parties.invite(E, G)
+    const again = parties.forPlayer(E).invited.find((u) => u.steam_id === G)
+    truthy(parties.cancelInvite(E, again.invite_id).ok, 'echo takes it back')
+    eq(parties.invitesFor(G).length, 0)
+    eq(parties.kick(F, E).ok, false, 'a member cannot kick the leader')
+    truthy(parties.kick(E, F).ok, 'the leader removes foxtrot')
+    eq(parties.forPlayer(F), null)
+  })
+
+  check('the online block: everyone for an approved reader, friends only for anybody else', () => {
+    const presence = require('../server/lib/presence')
+    const roster = require('../server/lib/roster')
+    for (const sid of [E, F, G, H]) presence.connected(sid, 'sock-' + sid)
+    parties.invite(E, F)
+    const forF = roster.forViewer(F)
+    eq(forF.scope, 'online')
+    const echo = forF.players.find((p) => p.steam_id === E)
+    truthy(echo && echo.lobby, 'echo is shown sitting in a lobby')
+    eq(echo.lobby.invited, true, 'with the invite to foxtrot on it')
+    eq(echo.lobby.joinable, true, 'which makes it joinable for foxtrot')
+    eq(forF.players.some((p) => p.steam_id === F), false, 'the reader is not in their own list')
+    const forG = roster.forViewer(G)
+    eq(forG.players.find((p) => p.steam_id === E).lobby.joinable, false, 'a friends-only lobby is not joinable for a stranger')
+    const forE = roster.forViewer(E)
+    eq(forE.players.find((p) => p.steam_id === F).held, 'invited', 'the inviter sees foxtrot as invited')
+    const forH = roster.forViewer(H)
+    eq(forH.scope, 'friends', 'the waiting list gets the friends scope')
+    eq(forH.players.length, 0, 'and hotel has no friends online')
+    eq(roster.search(E, 'fox')[0].steam_id, F, 'the invite box finds foxtrot by ENW name')
+    eq(roster.search(E, 'f').length, 0, 'one character is not a search')
+    for (const sid of [E, F, G, H]) presence.disconnected(sid, 'sock-' + sid)
+    parties.leave(E)
+  })
+
   // ── map download progress (docs/protocol/launcher-v0.md) ───────────────────
   check('a member reports progress, and only for a party they are in', () => {
     partyProgress._reset()
