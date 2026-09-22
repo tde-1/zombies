@@ -556,3 +556,106 @@ tried to find something of ours in the way — an overlay, a sampler, the mount,
 — and there has never been anything there. The remaining honest question is the one §14 left open
 and this session did not close: **why the community plays four of these anyway.** The add-on IWDs
 are not the answer.
+
+## 10. 2026-09-22 (evening) — the popular 64: fetched, extracted, on the site, and booted on the box
+
+B's ask: *"get a bunch more maps and make sure they work — download another ~50 popular maps."*
+
+### 10.1 How the 64 were picked
+
+`archive/rank_popular.py` ranks the catalogue with signals the crawlers already held — no new
+traffic: **UGX-Mods release-thread views** and **callofdutyrepo post views** (the larger of the
+two), +25% for callofdutyrepo's `top100` tag. A map is a candidate only when it has a link
+`fetch.py` can actually pull — **MediaFire or archive.org, verdict alive**, 20 MB–1.4 GB — is
+not already archived, is not tagged `t4m_req` (we run the stock exe) and is not a pack.
+The list is `archive/shortlist3.txt`; the ranking with its numbers is
+`reports/popular.json`. UGX views dominate (they run to hundreds of thousands against
+callofdutyrepo's tens of thousands), so this is in effect the UGX-Mods popularity order.
+Every one of the 65 chosen links was MediaFire: archive.org's items are file dumps and none
+cleared the size / name filter.
+
+### 10.2 What went wrong on the way, and is fixed
+
+1. **The first three "originals" were a 35 KB HTML page.** `fetch.py` resolved the MediaFire
+   file page through the on-disk HTTP cache; the page was from the link check days earlier,
+   its `download<N>.mediafire.com` key had expired, and MediaFire answers a stale key with
+   `download_repair.php` — *"Generating new download key"*, HTTP 200. `fetch.py` saved it,
+   hashed it, AV-scanned it and said `ok`. The download now reads the file page **fresh**
+   (`probe_mediafire(..., fresh=True)`) and **refuses anything served as HTML**. The three bad
+   files were deleted and re-fetched.
+2. **Futurama became `ugxm_customize_room`.** It ships UGX Mod's customize-room zone beside
+   its own, both `.ff` + `_patch.ff`, and `guess_names()` broke the tie alphabetically. The
+   installer's own **`mod.arena`** names the zombies map (`gametype "zom"`) and now decides
+   whenever it names a fastfile that is present. Re-checked over all 78 installs: Futurama
+   was the only one it changes.
+3. **Library produced a map called `images`.** Its installer has `Library/images/z_greenscope.iwd`;
+   a folder *inside* another mod root is now skipped (it is already copied with its parent).
+4. **A rescan would have rewritten the 14 MVP manifests** (the corpus-boilerplate set moves
+   with the corpus, and a rewrite drops `archive.cover`, `install.exclude` and the dedi
+   notes). `scan_maps.py --keep-existing --report scan-popular.json` scans all 78, writes a
+   manifest only for a map that has none, and leaves `scan.json` — which sections 3–4 are
+   generated from — as the 14-map record. `report.py`/`make_doc.py` now scope sections 1–4 to
+   that set.
+5. **One timeout**: Pokémon Kanto Carnage — Nighttime (`download1320.mediafire.com` read
+   timeout, twice). Not retried tonight.
+
+### 10.3 The static pre-check (`archive/precheck.py`)
+
+Run over every new install before booting it, against the killers the dedi lane has named:
+
+- **Add-on IWDs** (§9): 51 of 64 ship at least one IWD that is not the map's own, 42 of them
+  with scripts inside. §9.4 proved those can be hard dependencies of the map's own script,
+  so they are recorded and **never dropped**.
+- **Client memory** (`dedi.md` §14.7): the map zone's inflated size is recorded; ORBiT's is
+  137 MB and its client parks at ~1.6 GB. 22 of 64 are ≥ 110 MB and carry
+  `client_memory_risk` — a prediction about the *client*, which nothing tonight could test.
+- **`napalmblob`** (Leviathan): **recorded, not a flag.** The string is in every map zone
+  measured, including Minecraft Village's, which passes five gates. It predicts nothing.
+- **`localVars`** (Der Berg): not predictable statically; only a boot says.
+
+It also records the **art each map ships**, for the site-art lane, in the manifest as
+`archive.art`: `loadscreen` (the map's own `loadscreen_<bsp>` material — 31 of 64 have one),
+every `loadscreen_*` name in its zones, and the menu/load/preview-looking images in its IWDs.
+Names only; nothing converted. The importer does not read `archive.art` — it reads only
+`archive.cover`, which none of the 64 has yet.
+
+### 10.4 On the site
+
+`node web/server/db/import-archive.js` — the documented ingestion — took all 64:
+`+58 maps` on the final run (6 were imported earlier to prove the path). Each has a map row, a
+version with `fs_game mods/<bsp>`, the original as a file row (sha256, source URL) and its
+manifest. The launcher's download (`/api/maps/<bsp>/files`) serves from `extract.json` +
+`mods/<bsp>/`, so every extracted map is installable by a player's launcher with per-file
+sha256. The importer now honours a manifest's `health: "broken"`, which is how a map the box
+could not load is hidden from the Maps list and refused by a lease.
+
+**Not changed, deliberately:** `web/server/lib/maps.js` `SERVER_PROVEN` — the list a party's
+Start may lease. It demands a five-gate run *with a real client* and none of the 64 has one,
+so none of them is offered as a party map yet. The box proofs below went through
+`lease-cli.js --proof`, which widens that set **inside the CLI process only**; the live site
+never sets it.
+
+### 10.5 The box proof
+
+`archive/box_stage.py` installs a map on the box **without pushing it up B's connection**: the
+box downloads the release from the same MediaFire page, refuses it unless its sha256 is the
+original we fetched and scanned here, extracts it with 7-Zip (nothing run), and moves exactly
+the files `extract.json` lists — matched by sha256 — into `/home/waw/waw-en/mods/<bsp>/`, the
+one directory the box's three `mods` symlinks point at. Heavy steps under `nice 19 / ionice idle`.
+
+`archive/box_proof.py` then, per map and strictly one at a time: waits for the host agent's
+last `assignment changed:` to be `idle`; leases with
+`lease-cli.js --map <bsp> --player 76561198000000001 --proof` (the fake SteamID); waits for
+`map_loaded <bsp>` in the journal; holds 35 s; reads the instance's own ENW log and requires
+**`com_frameTime` to have advanced ≥ 15 s** (the fifth gate — a map that loads and stops
+simulating is not a pass) and the process alive; cancels; waits for idle again.
+
+{{popular_summary}}
+
+{{popular_table}}
+
+**What this does not prove.** No client joined any of these games. A pass here is *"the
+dedicated server under Wine loads the map and keeps simulating"*. It says nothing about a
+32-bit client's memory ceiling (ORBiT and UGX Requiem pass server-side and stall their client,
+`dedi.md` §14.7), a mid-game join, round 2, or a finish being refereed. The 22
+`client_memory_risk` maps are the ones to expect trouble from.
