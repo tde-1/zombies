@@ -4403,3 +4403,22 @@ reboot. `play: true`.**
   not `fs_game`, not a missing `.ff`. **Open: why the same script survives on a listen server.
   Nobody has run one of them on a listen server and diffed the console — that is the cheap test.**
   All six manifests now carry `status: "broken"` and the exact traceback.
+
+- 08:06 vps: **CORRECTION to my 08:00 line — the client join DID happen, and all five gates pass.**
+  `dedi`'s lock freed, `infra/vps/join-remote.ps1` took it on the second attempt, and **a player on
+  B's PC spawned into the server on the Hetzner box over the internet**: `CS_FREE -> CS_CONNECTED
+  -> CS_CLIENTLOADING -> CS_ACTIVE` for `anna-jpg`, `join_probe: *** slot 0 ENTERED THE WORLD`,
+  `referee: ROUND 1 (all_players_connected)`. Gates over a 300 s watch: (1) CS_ACTIVE + ROUND 1
+  **PASS**; (2) `getstatus` **83/83** from B's PC over 252 s **PASS**; (3) `frame::count=95489
+  (+304 in 5s = 60.8 Hz)` **PASS**; (4) `com_frameTime` 1587588 -> 1592590, **+5002 ms per 5 s
+  window**, **PASS**; (5) `Com_Frame-body 61.0-61.1 Hz` with `frame-body-entered` equal to it,
+  **PASS**. `SV_PacketEvent` 2161 -> **11457** — real gameplay traffic at ~62/s, not the
+  out-of-band path.
+- 08:06 vps: **the server survived the player AND survived them leaving.** Before `5606cfd` the
+  frame loop stopped ~10 s after a spawn; here it ran the full 300 s with the player in the world
+  and was still at **60.9 Hz, 97,624 frames, 314 MB, 20.8 % of one core, 27 min uptime** after the
+  client was killed, still answering `getstatus` from B's PC. The client was stopped by PID and
+  `game.lock` released; `dedi`'s runs were never touched and its lock was waited for twice.
+- 08:06 vps: gate 4 had to be read off **two** probe lines because the in-line `delta` field still
+  reads 0 — the harness note above stands, and it is the only thing in the way of
+  `jointest-proof.ps1` being usable verbatim against the box.

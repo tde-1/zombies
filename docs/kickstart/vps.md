@@ -900,6 +900,48 @@ out-of-band name. `ENW_CLIENT_CONNECT=<map>` arms `connect_local.cpp`, and
 
 So: **the server is proved to simulate under load from off-box; a player has not yet been on it.**
 
+### CORRECTION, 08:06 — the client join DID happen, and all five gates pass
+
+The paragraph above ("A real client join from B's PC: NOT done") is **kept as written and
+superseded**: the `dedi` lane's lock freed a few minutes later, `infra/vps/join-remote.ps1` took it
+on the second attempt, and **a real player on B's PC spawned into the server on the Hetzner box,
+over the internet.**
+
+```
+Going from CS_FREE to CS_CONNECTED for  (num 0 guid 0)
+join_probe: slot 0 CS_CONNECTED  name="anna-jpg" …
+dprint[15] Going from CS_CONNECTED to CS_CLIENTLOADING for %s
+dprint[15] Going from CS_CLIENTLOADING to CS_ACTIVE for %s
+join_probe: *** slot 0 ENTERED THE WORLD (CS_CLIENTLOADING -> CS_ACTIVE). Milestone (d).
+referee: ROUND 1 (all_players_connected)
+```
+
+**The five gates of `jointest-proof.ps1`, over a 300-second watch:**
+
+| # | gate | result |
+|---|---|---|
+| 1 | client reached `CS_ACTIVE` and the referee logged `ROUND 1` | **PASS** — both above, 2 s apart |
+| 2 | every `getstatus` in the window answered | **PASS** — 83/83 from B's PC over 252 s, plus 2145/2145 in the earlier storm |
+| 3 | `frame::count` still advancing at the end | **PASS** — `frame::count=95489 (+304 in 5s = 60.8 Hz)` |
+| 4 | `com_frameTime` advancing | **PASS** — 1587588 → 1592590, **+5002 ms per 5 s window** |
+| 5 | the frame body still returning | **PASS** — `Com_Frame-body 61.0–61.1 Hz`, `frame-body-entered` equal to it |
+
+`SV_PacketEvent` went 2161 → **11457** across the join: real gameplay traffic at ~62 packets/s,
+not the out-of-band path. `dedi_no_autosave` fired once at the spawn, as designed.
+
+**The server survived the player, and survived them leaving.** Before `5606cfd` the frame loop
+stopped about ten seconds after a spawn. Here it ran the full 300 s with the player in the world
+and was still at **60.9 Hz, 97,624 frames, 314 MB, 20.8 % of one core** after the client was
+killed — 27 minutes of uptime, still answering `getstatus` from B's PC.
+
+The client was stopped by PID and **`game.lock` was released**; the `dedi` lane's runs were never
+touched, and its lock was waited for twice rather than pushed past.
+
+**Gate 4 is the one to read carefully.** It passes on `com_frameTime` advancing between probe
+lines. The in-line `delta` field still reads `0` on every line — see the note above; that is a
+harness question for `dedi`, and it is the only reason this had to be read off two lines instead
+of one.
+
 ### A trap that cost three restarts: `build\dedi` is the dedi lane's build directory
 
 `build.ps1 -Name dedi` writes to `build\dedi`, and the `dedi` agent was rebuilding into it at the
