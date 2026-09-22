@@ -24,17 +24,23 @@ let emit = null         // set by the socket layer: (line) => void
 
 function setEmitter(fn) { emit = fn }
 
-function push({ from, text, steamId = null, origin = 'web', mapKey = null, instance = null, channel = 'global' }) {
+// `kind` is 'chat' for something a person typed and 'system' for a line the site
+// composed out of an event (`lib/chatSystem.js`). It is a COLUMN rather than a prefix on
+// the text, because the panel draws the two differently and a marker inside the text is a
+// marker a player can type.
+function push({ from, text, steamId = null, origin = 'web', mapKey = null, instance = null, channel = 'global', kind = 'chat' }) {
   const clean = String(text || '').replace(/[\r\n]+/g, ' ').slice(0, MAX_LEN).trim()
   if (!clean) return null
-  const info = db.prepare(`INSERT INTO chat_network (at, origin, channel, from_name, steam_id, text, map_key, instance)
-                           VALUES (?,?,?,?,?,?,?,?)`)
-    .run(now(), origin, channel, from || 'player', steamId, clean, mapKey, instance)
+  const k = kind === 'system' ? 'system' : 'chat'
+  const info = db.prepare(`INSERT INTO chat_network (at, origin, channel, kind, from_name, steam_id, text, map_key, instance)
+                           VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(now(), origin, channel, k, from || 'player', steamId, clean, mapKey, instance)
   const line = {
     id: info.lastInsertRowid,
     at: now(),
     origin,
     channel,
+    kind: k,
     from: from || 'player',
     steamid: steamId,
     text: clean,
@@ -69,7 +75,7 @@ function tail(limit = 40) {
 }
 
 const project = (r) => ({
-  id: r.id, at: r.at, origin: r.origin, channel: r.channel, from: r.from_name,
+  id: r.id, at: r.at, origin: r.origin, channel: r.channel, kind: r.kind || 'chat', from: r.from_name,
   steamid: r.steam_id, text: r.text, map: r.map_key, instance: r.instance,
 })
 

@@ -241,4 +241,22 @@ export class SiteClient extends EventEmitter {
     this.stats.chatOut++
     return this.req('/api/gs/chat', { method: 'POST', body: msg }).catch((e) => { this.log.debug(`chat post: ${e.message}`); return null })
   }
+
+  /**
+   * A thing that HAPPENED in one of our games, for the site's system lines.
+   *
+   * The box sends the FACT and never the sentence. Two reasons, and they are the same
+   * reason twice: the handle a line should carry is the site's user for a `verified`
+   * identity and the in-game name otherwise, and only the site holds the user table;
+   * and a box that composed its own prose would be a box that could write any sentence
+   * it liked into a channel everybody reads.
+   *
+   * A failure here is swallowed. A system line is a nicety and must never be able to
+   * interfere with a game, a result or a replay.
+   */
+  postEvent(ev) {
+    this.stats.eventsOut = (this.stats.eventsOut || 0) + 1
+    return this.req('/api/gs/event', { method: 'POST', body: ev, timeoutMs: 2500 })
+      .catch((e) => { this.log.debug(`event post: ${e.message}`); return null })
+  }
 }

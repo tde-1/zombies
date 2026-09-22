@@ -683,6 +683,7 @@ function migrate() {
       at       INTEGER,
       origin   TEXT,
       channel  TEXT DEFAULT 'global',
+      kind     TEXT DEFAULT 'chat',
       from_name TEXT,
       steam_id TEXT,
       text     TEXT NOT NULL,
@@ -755,6 +756,23 @@ function migrate() {
   // and the connect string is what a player's game dials. For a dev box on this machine
   // it is `127.0.0.1`.
   addColumn('boxes', 'address', 'TEXT')
+
+  // A chat line is either something a person typed (`chat`) or a sentence the site
+  // composed out of a game event (`system`, lib/chatSystem.js). The panel draws them
+  // differently. It is a column and not a prefix on the text, because a marker inside
+  // the text is a marker a player can type.
+  addColumn('chat_network', 'kind', "TEXT DEFAULT 'chat'")
+
+  // Discord. `discord_id` is the snowflake, and its presence is the WHOLE "is this person
+  // in the Discord" test the top-right link asks (see routes/site.js `/api/me`): a user
+  // who has linked is a user we stop advertising the invite to. Linking itself is not
+  // built yet — `docs/kickstart/web.md` §12d — so today nothing ever sets it and the link
+  // shows for everyone, which is the honest failure direction: an invite shown to somebody
+  // already inside is a mild annoyance, an invite hidden from somebody outside is the
+  // feature not working.
+  addColumn('users', 'discord_id', 'TEXT')
+  addColumn('users', 'discord_name', 'TEXT')
+  addColumn('users', 'discord_linked_at', 'INTEGER')
 
   // A game the SITE did not referee on a box it controls.
   //

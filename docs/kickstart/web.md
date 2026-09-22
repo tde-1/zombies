@@ -1302,3 +1302,188 @@ after: `127.0.0.1:3200` answers 401, `zombies.enw.gg` serves the same bundle has
 * **The global chat panel still has no page.** §10i, unchanged.
 * **Collections have no drag-reorder** — add and remove, and the row's own order is the order they
   were added in. `reorder()` exists on the server and nothing calls it.
+
+## 12. The night chat got its dock, and the Discord link (2026-09-23)
+
+B: *cross-server chat exactly like ENW Movement's, across every Zombies game; you see other
+players launching a server and joining a map; you see friends go down ("`<name>` just downed on
+round 30 on `<map>`"); a link to the ENW Discord at the top right like Movement, shown only if you
+are not in the Discord.* The in-game overlay half is `chat-overlay.md` and is a plan, not code.
+
+**§10i and §11j's open item is closed.** The global chat has been real since the first week —
+`lib/chatNetwork.js`, the ring the boxes drain over `/api/gs/chat-feed` — and has had nowhere to
+live since the party rail came off. It has a dock now, on every page.
+
+### 12a. What was already built, and what tonight actually added
+
+Most of the server side existed. This is the honest accounting, because "ported Movement's chat"
+would otherwise read as more work than it was:
+
+| | |
+|---|---|
+| Already there | the ring, the cursor, the long-poll drain, `POST /api/gs/chat`, `GET /api/chat`, the socket emitter, the host agent's bridge in both directions |
+| New tonight | the dock (`components/ChatDock.jsx`), `kind` on a line, the system lines (`lib/chatSystem.js` + `POST /api/gs/event`), the `player_down` event in the referee and its bridge, the Discord link, `#chat` |
+
+### 12b. A dock, not a page
+
+A page was the wrong answer to "the chat has no page". Chat is the thing you keep half an eye on
+while doing something else, and a page is the one place you cannot be while you are browsing maps.
+So it is a **dock**: a tab in the bottom-right corner, **collapsed by default**, opening into
+Movement's chat console. It sits above the router for the one reason the party rail did — it
+survives navigation — and it is a corner rather than a column for the reason the rail was
+deleted: B had just approved a map browser with no third region in it, and the launcher wraps this
+site on every page.
+
+Open/closed is remembered per browser in `localStorage`, and **`#chat` on any URL opens it**,
+which is the closest thing to the page and a better one: a link somebody pastes lands them on a
+real page of the site with the conversation open beside it rather than on a page that is only the
+conversation.
+
+The console is `movement-client/src/components/admin/ChatConsole.jsx`, copied in mechanism and in
+reasoning: the opaque black log (*a see-through console reads as a panel with text on it*), the
+`csc-*` line grammar, `[net]` printed for a line that belongs to no map, the character count, and
+the scroll rule that pins to the bottom **only while the reader is already there**. What changed
+on the way over is the game's nouns — no team colours (zombies has no sides), no `*DEAD*`, no
+per-mode channel chips, because there is one room.
+
+**Enter sends, and it had to be made to.** The form has a submit button, so implicit submission
+should have worked, and against the live bundle it did not: Send worked and Enter silently did
+nothing. Home binds the keyboard for the map rows (`MapRow.jsx`) and the dock floats over every
+page, so a key pressed in the box is a key another component is also listening for. It is an
+explicit `onKeyDown` with `stopPropagation` now — the second half matters too, or a line you just
+sent also pages the map list behind the panel. Found by trying it, not by reading it.
+
+### 12c. System lines: the box sends the fact, the site writes the sentence
+
+Four lines, in the same channel as everything else, because the whole point of them is that they
+read as part of the conversation — you see a friend start a game, you see them go down, you say
+something about it. An activity feed beside the chat would be the same information in a column
+nobody looks at.
+
+```
+  tinned_peaches started a game on Verrückt
+  mule_kicker joined Verrückt
+  mule_kicker just went down on round 30 on Verrückt
+  tinned_peaches's game on Verrückt ended on round 30
+```
+
+**They are composed on the site, never on the box.** `POST /api/gs/event` takes
+`{event, name, steamid?, identity, map, round, match_id, instance}` and `lib/chatSystem.js` writes
+the prose. Two reasons and they are the same reason twice: the handle a line should carry is the
+site's user for a `verified` identity and the in-game name otherwise, and only the site holds the
+user table; and a box that composed its own sentence could put any sentence it liked in a channel
+everybody reads. The worst a broken box can now do is claim a wrong name, which is all it could
+ever claim.
+
+**`verified` or the in-game name — the same gate as §11h.** `claimed` is the dangerous one and it
+is the one that looks safe: a token arrived and *parsed*, and nothing has checked the signature.
+A line printing a site handle is the site saying *this was them*, so it fails closed to the name
+the server actually saw. An absent identity is treated as `none`.
+
+Four more decisions with tests behind them:
+
+* **`kind` is a column, not a prefix.** A marker inside the text is a marker a player can type.
+* **The ring origin is the reporting box**, so the box that just watched it happen does not get
+  the line back on its next drain and re-announce it to those same players.
+* **Dedupe and a per-match ceiling.** The same (event, map, handle, round) inside 20 s is one
+  line; no one match may produce more than 20 lines a minute. A player who goes down four times
+  in a round is four lines; a box that reconnects and replays its roster is not; a looping box
+  cannot make the room unusable.
+* **A refused player is never announced.** A game saying somebody it just kicked joined it is the
+  one system line that would be a lie.
+
+**Which connect is a "start" is the host's decision**, because only it can make it: the first
+player to connect started the game, everybody after them joined it, reset on `map_loaded` so a
+warm instance's next game does not read as five people walking into the last one.
+
+### 12d. `player_down` — a new event, and why `down` stayed
+
+`server/components/referee/referee.cpp` already emitted `down` on the down edge, carrying a slot
+and nothing else. That is everything a ruling needs and nothing a *sentence* needs: by the time a
+line reaches the chat ring, a slot is a number belonging to a game nobody reading it is in.
+
+So the referee now emits **both** on that one edge: `down` unchanged, and `player_down` with the
+name, the round and the map. Not a rename — hosts fold `down`, and renaming it would silently stop
+counting downs on every box not redeployed the same night. It carries **no `steamid`**: the host
+already holds the roster and the identity, and §13's rule is not relaxed for a chat line. Protocol
+table and the full reasoning: `docs/protocol/game-link-v0.md`.
+
+The host's referee has no `ev_player_down`, which under the protocol's "unknown types are ignored"
+means it changes no ruling — and it must still be counted and recorded, because the stream is
+evidence. There is a test for exactly that, and one for the thing it would be easy to get wrong:
+`down` and `player_down` arriving together is **one** down, not two.
+
+### 12e. The Discord link — and what Movement actually has
+
+**Correction to the brief, and it matters for what B has to supply.** Movement's top-right Discord
+link is *not* on its `main`: it is `movement-client/src/components/DiscordNavLink.jsx` on the
+branch `claude/pvp-url-rewrite-installer` (commit `37b7ef58`). And **its invite is a hard-coded
+module constant, `https://discord.enw.gg`** — not env, not config, not a row; there is no
+`discord.gg/…` literal anywhere in that repo. So there is nothing for B to supply for the link
+itself: it is the same community and it is the same URL, with `ENW_DISCORD_INVITE` in
+`infra/site.env` as an override for the day that changes.
+
+The component is a port, mechanism and reasoning: shown to anybody the site has not linked to a
+Discord account; shown when signed out, because signed out nobody is known to be in the Discord;
+an X that hides it for 24 hours on that browser and then it comes back; a tab left open all day
+gets it back on a timer rather than on a reload. Blurple (`#5865F2`) is the one branded colour on
+a grey site, and it is Movement's choice for Movement's reason — it is a third party's mark, and
+drawing it in our accent would be drawing our badge on their door.
+
+**What is honestly missing: nothing writes `users.discord_id`.** The column exists
+(`discord_id`, `discord_name`, `discord_linked_at`, additive), the gate exists
+(`server/lib/discord.js`, surfaced as `session.discord`), and the two things that fill it in
+Movement did not come over: its **OAuth link flow** (`server/lib/discordLink.js`,
+`server/routes/discord.js` — scopes `identify connections`, ships dark behind
+`DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` / `DISCORD_REDIRECT_URI`, refuses a Discord account
+whose own Steam connection names somebody else) and its **in-game verification importer**
+(`discordVerifiedSync.js`). Both port straight in. Until one does, **the link shows for everyone**
+— which is the failure direction that is merely untidy: an invite shown to somebody already inside
+is a link they ignore, an invite hidden from somebody outside is the feature not working.
+
+The client is never handed a URL it is not supposed to draw: `/api/me` returns
+`discord: { linked, invite }` with `invite: null` once linked, so the rule lives in one place and
+the nav cannot get it wrong in a second one.
+
+### 12f. Tests, the proof, and the deploy
+
+`npm test` is **131 checks** (was 120): 84 in-process, 33 over HTTP, 14 sign-in. New: the `kind`
+column and that a player typing "system" does not make one; the four sentences; the handle gate in
+all three directions; the ring origin; dedupe and the per-match ceiling; an unknown event
+producing nothing; a map with no title named by its bsp rather than by a blank; the Discord gate
+and the invite override refusing a nonsense value. Over HTTP: `POST /api/gs/event` refusing a
+player session carrying a guessed box secret, and the ring being readable signed out — the dock is
+on pages a stranger sees, so the fill must not need a session even though talking does.
+`infra/host-agent`'s `run-all.js` is **49** (was 46), for `player_down`.
+
+**The proof, and what it is not.** `ui/chat-live.png`: two sessions, three system lines, an
+exchange. Session A is a browser; session B is a second session with its own cookie jar on the
+same socket the dock uses, plus the box door for the system lines. It is **not** on
+`zombies.enw.gg` and it could not be: the live site is `ZM_AUTH=steam` and an agent cannot sign in
+as a Steam account, so two signed-in browser sessions there is something only B can do. It is a
+private instance on **3401** holding a `VACUUM INTO` copy of the live database, with invented
+handles set **on the copy only**; `web/data` was not touched. What *was* checked on the live site,
+through the beta gate and read-only: the served bundle contains the dock and the Discord link,
+`/api/me` answers `discord: { linked: false, invite: "https://discord.enw.gg" }`, `/api/chat`
+answers 200 signed out, and `POST /api/gs/event` without a box secret answers 401. The live ring
+is still empty — nothing of this test reached it.
+
+**Deployed**, by the path §11i established: `npm run build` in `client`, `Stop-Process` on the
+site's pid, `infra\keepalive.ps1 -Once` (which loads `infra/site.env`, so the beta password and
+Steam mode came back with it). `cloudflared` was not touched.
+
+### 12g. Still open
+
+* **Nothing links a Discord account** — §12e. It is the one thing B has to decide about, and the
+  decision is whether to create the Discord app (client id, secret, redirect URI) or to leave the
+  link shown to everyone, which is not a bad state.
+* **One channel.** No per-map rooms, no DMs, no channel picker. Every one of those is a schema
+  change wearing a UI, and one room is what the ring holds.
+* **A system line about a game nobody can watch is still announced.** The live view has a
+  visibility rule (`lib/live.js` `canWatch`) and the chat does not consult it: a private party's
+  game announces its start to everyone. It is a name and a map, it is what B asked for, and it is
+  written down here because it is the kind of thing that is obvious only after somebody minds.
+* **The unread count is per-tab and resets on reload**, because it is derived from what arrived on
+  this socket rather than from a read cursor.
+* **The in-game overlay** — `chat-overlay.md`, 3.5–5.5 days with the whole risk in finding T4's
+  2D text draw.

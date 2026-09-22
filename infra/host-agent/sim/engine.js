@@ -465,6 +465,10 @@ export class ZombiesSim extends EventEmitter {
     p.downUntil = this.ms + 30_000
     p.downs++
     this.emitEv({ t: 'down', slot: p.slot })
+    // The same edge said in full, for the site's system line. Both are emitted, as the
+    // real referee does (`server/components/referee/referee.cpp`): `down` is what the
+    // host's fold counts, `player_down` is what a sentence needs.
+    this.emitEv({ t: 'player_down', slot: p.slot, name: p.name, round: this.round, map: this.map, downs: p.downs })
     // A team-mate usually gets there.
     const helpers = this.shooters().filter((x) => x.slot !== p.slot)
     if (helpers.length && this.rng() < 0.8) {

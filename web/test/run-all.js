@@ -55,6 +55,8 @@ const parties = require('../server/lib/parties')
 const partyProgress = require('../server/lib/partyProgress')
 const bans = require('../server/lib/bans')
 const chat = require('../server/lib/chatNetwork')
+const chatSystem = require('../server/lib/chatSystem')
+const discord = require('../server/lib/discord')
 const live = require('../server/lib/live')
 const replays = require('../server/lib/replays')
 const tokens = require('../server/lib/tokens')
@@ -65,6 +67,11 @@ const { canonical } = require('../server/lib/util')
 
 // ---- fixtures -------------------------------------------------------------------
 function seedMinimal() {
+  // `on_server` is a MEASURED list of maps we have booted headless to game over
+  // (server/lib/maps.js :: SERVER_PROVEN), not a function of `health` — so the fixture map
+  // has to join it, or every lease in this suite is refused by the thing that is supposed
+  // to keep un-booted maps off the box.
+  maps.SERVER_PROVEN.add('nazi_zombie_test')
   db.prepare(`INSERT INTO maps (key, slug, title, author, source, health, main_finish, round_n, has_ee, added_at)
               VALUES ('nazi_zombie_test','test','Test Map','tester','custom','verified','easter_egg',20,1,?)`).run(now())
   const m = db.prepare("SELECT * FROM maps WHERE key='nazi_zombie_test'").get()
@@ -650,6 +657,108 @@ async function main() {
     const l = chat.push({ from: 'p', text: 'a\nb\r\nc' + 'x'.repeat(500), origin: 'web' })
     eq(l.text.includes('\n'), false)
     truthy(l.text.length <= chat.MAX_LEN)
+  })
+
+  check('a chat line carries its kind, and only `system` is a system line', () => {
+    const a = chat.push({ from: 'p', text: 'hello', origin: 'web' })
+    const b = chat.push({ from: 'ENW', text: 'x started a game on y', origin: 'box-a', kind: 'system' })
+    eq(a.kind, 'chat', 'the default is a person talking')
+    eq(b.kind, 'system')
+    // A player typing the word does not make a system line: the kind is a column, not a
+    // prefix on the text.
+    eq(chat.push({ from: 'p', text: 'system', origin: 'web', kind: 'nonsense' }).kind, 'chat')
+    truthy(chat.tail(5).some((l) => l.id === b.id && l.kind === 'system'), 'and it survives the read back')
+  })
+
+  // ── system lines (lib/chatSystem.js) ───────────────────────────────────────
+  check('the four system lines read as sentences', () => {
+    chatSystem._reset()
+    const ev = { name: 'ingameName', map: 'nazi_zombie_asylum', map_name: 'Verrückt', round: 30, match_id: 'm_sys1', instance: 'i1' }
+    eq(chatSystem.record('box-a', { ...ev, event: 'started' }).text, 'ingameName started a game on Verrückt')
+    eq(chatSystem.record('box-a', { ...ev, event: 'joined' }).text, 'ingameName joined Verrückt')
+    eq(chatSystem.record('box-a', { ...ev, event: 'down' }).text, 'ingameName just went down on round 30 on Verrückt')
+    eq(chatSystem.record('box-a', { ...ev, event: 'ended' }).text, "ingameName's game on Verrückt ended on round 30")
+  })
+
+  check('the handle is the SITE user only for a verified identity', () => {
+    chatSystem._reset()
+    const sid = '76561198000000001'
+    const siteName = users.pub(users.byId(sid)).name
+    const base = { name: 'somethingElseEntirely', steamid: sid, map: 'nazi_zombie_asylum', round: 3, match_id: 'm_sys2' }
+    const v = chatSystem.record('box-a', { ...base, event: 'down', identity: 'verified' })
+    truthy(v.text.startsWith(siteName), `verified uses the account (${v.text})`)
+    eq(v.steamid, sid, 'and the line carries the account')
+    chatSystem._reset()
+    // `claimed` is the dangerous one and it is the one that looks safe: a token arrived
+    // and parsed, and nothing has checked the signature. Same gate as /api/gs/result.
+    const c = chatSystem.record('box-a', { ...base, event: 'down', identity: 'claimed' })
+    truthy(c.text.startsWith('somethingElseEntirely'), 'claimed falls back to the in-game name')
+    eq(c.steamid, null, 'and carries no account')
+    chatSystem._reset()
+    eq(chatSystem.record('box-a', { ...base, event: 'down' }).steamid, null, 'an absent identity fails closed')
+  })
+
+  check('a system line goes in the ring as `system`, from the box that reported it', () => {
+    chatSystem._reset()
+    const l = chatSystem.record('test-box', { event: 'started', name: 'p', map: 'nazi_zombie_asylum', match_id: 'm_sys3' })
+    eq(l.kind, 'system')
+    // Origin is the BOX, so the box that just watched it happen does not get the line
+    // back on its next drain and re-announce it to those same players.
+    eq(l.origin, 'test-box')
+    eq(chat.since(l.id - 1, { excludeOrigin: 'test-box' }).some((x) => x.id === l.id), false)
+  })
+
+  check('the same event arriving twice is one line, and a looping box cannot flood the room', () => {
+    chatSystem._reset()
+    const ev = { event: 'down', name: 'p', map: 'nazi_zombie_asylum', round: 7, match_id: 'm_sys4' }
+    truthy(chatSystem.record('box-a', ev), 'the first one lands')
+    eq(chatSystem.record('box-a', ev), null, 'the repeat does not')
+    // A different round IS a different event, even inside the dedupe window.
+    truthy(chatSystem.record('box-a', { ...ev, round: 8 }), 'round 8 is not round 7')
+    chatSystem._reset()
+    let taken = 0
+    for (let i = 0; i < chatSystem.PER_MATCH_PER_MIN + 10; i++) {
+      if (chatSystem.record('box-a', { event: 'down', name: 'p', map: 'm', round: i, match_id: 'm_flood' })) taken++
+    }
+    eq(taken, chatSystem.PER_MATCH_PER_MIN, 'the per-match ceiling holds')
+  })
+
+  check('an event nobody has a sentence for produces nothing', () => {
+    chatSystem._reset()
+    eq(chatSystem.record('box-a', { event: 'exploded', name: 'p', map: 'm' }), null)
+    eq(chatSystem.record('box-a', {}), null)
+  })
+
+  check('a map with no title is named by its bsp rather than by a blank', () => {
+    chatSystem._reset()
+    eq(chatSystem.mapLabel('nazi_zombie_not_in_the_archive', null), 'nazi_zombie_not_in_the_archive')
+    eq(chatSystem.mapLabel(null, null), null, 'and a game with no map at all says no map')
+    const l = chatSystem.record('box-a', { event: 'joined', name: 'p', match_id: 'm_sys5' })
+    eq(l.text, 'p joined a game', 'which reads as a sentence rather than "joined null"')
+  })
+
+  // ── the Discord invite (lib/discord.js) ────────────────────────────────────
+  check('the Discord link shows until the account has linked one', () => {
+    const sid = '76561198000000001'
+    eq(discord.forMe(null).linked, false, 'signed out, nobody is known to be in it')
+    truthy(discord.forMe(null).invite, 'so the invite is offered')
+    eq(discord.forMe(sid).linked, false, 'and nothing writes discord_id yet')
+    db.prepare('UPDATE users SET discord_id=? WHERE steam_id=?').run('1234567890', sid)
+    eq(discord.forMe(sid).linked, true)
+    eq(discord.forMe(sid).invite, null, 'a linked account is handed no URL at all to draw')
+    db.prepare('UPDATE users SET discord_id=NULL WHERE steam_id=?').run(sid)
+  })
+
+  check('the invite is Movement’s constant unless this deployment names another', () => {
+    const was = process.env.ENW_DISCORD_INVITE
+    delete process.env.ENW_DISCORD_INVITE
+    eq(discord.invite(), 'https://discord.enw.gg')
+    process.env.ENW_DISCORD_INVITE = 'https://discord.gg/example'
+    eq(discord.invite(), 'https://discord.gg/example')
+    // An env var is a thing that gets pasted wrong at 2am, and this goes in an href.
+    process.env.ENW_DISCORD_INVITE = 'javascript:alert(1)'
+    eq(discord.invite(), 'https://discord.enw.gg', 'a nonsense value falls back rather than shipping')
+    if (was == null) delete process.env.ENW_DISCORD_INVITE; else process.env.ENW_DISCORD_INVITE = was
   })
 
   // ── privacy and deletion ───────────────────────────────────────────────────

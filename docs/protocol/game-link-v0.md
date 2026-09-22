@@ -33,6 +33,7 @@ can be built in parallel. Change it by editing this file and noting the change o
 | `player_connect` | `slot, name, steamid, xuid, identity, party_slot?, identity_reason?, token?` | a client connects. **`steamid` is the steamid64 the SITE put in the invite token** — the engine's userinfo carries no id at all on a real WaW client (`referee.md` §12.3). `xuid` carries the same value, because `lib/referee.js` reads `ev.steamid \|\| ev.xuid`. **`identity` is what that id is worth** and is the field a host must read before awarding anything: `none` (no token — a Local/dev run; the row is attendance, there is no `steamid`), `claimed` (a token was presented and parsed, signature NOT yet checked), `verified` (the host answered `auth allow:true` with a real check), `refused` (the host said no, or the game refused it itself — **no `steamid` is sent**, and `identity_reason` says why). `party_slot` is the seat the site sold, when the token carried one. *(identity fields added 2026-09-22, referee.md §13)* |
 | `player_spawn` / `player_disconnect` | `slot` (+`reason`) | |
 | `down` / `revive` / `bleedout` | `slot` (+`by`) | |
+| `player_down` | `slot, name, round, downs, map?` | **the same edge as `down`, said in full.** Both are emitted; neither replaces the other. `down` is what a host's fold counts and it carries a slot and nothing else, which is everything a ruling needs and nothing a *sentence* needs — by the time a line reaches the site's chat ring, a slot is a number belonging to a game nobody reading it is in. This one carries the name, the round and the map so the site can compose "*&lt;handle&gt; just went down on round 30 on Verrückt*" (`web/server/lib/chatSystem.js`). **It carries no `steamid`**, deliberately: the host already holds the roster and the identity, and §13's rule — an account travels only on a `verified` row — is not relaxed for a chat line. A host with no handler for it must still record it (the referee's `ev_*` table has none, so it changes no ruling and goes into the replay unmodified, which is what "unknown types are ignored" has to mean for an EVIDENCE stream). *(added 2026-09-23, `server/components/referee/referee.cpp`; the host bridges it to the site as an `event`, `host.js` `onGameSystemEvent`)* |
 | `points` | `slot, score` (optionally `delta, why`) | score changes |
 | `chat` | `slot, text, team:bool` | a player says something |
 | `notify` | `ent ("level"/"player:<slot>"/…), name, args?` | allow-listed script notifies (EE flags, buyable ending). `flag_set(x)` reaches us as `{ent:"level", name:"x"}` — that is what a manifest's `{"flag":"x"}` matches. **A trigger use is `{name:"trigger", args:{targetname, zombie_cost, …}}`**; the manifest's `{"trigger_used":{…}}` matches every named key against `args`, compared as strings |
@@ -98,6 +99,17 @@ leave open:
   unknown fields are ignored by both sides). It hands the fake game the next party and their
   tokens, because the simulator invents its players; a real client brings its own token in its
   userinfo when it connects, so the real server needs nothing but `match`.
+
+**System lines, host side (implemented 2026-09-23, `web.md` §12).** Three of the messages above
+— `player_connect`, `player_down` and `game_over` — are additionally bridged to the SITE as a
+**fact**, `POST /api/gs/event` with `{event, name, steamid?, identity, map, map_name?, round,
+match_id, instance}`, and the site composes the sentence. The split is deliberate and is the same
+one as everywhere else in this protocol: the box reports what happened, and the thing that holds
+the user table decides whose name is on it. A `steamid` is sent only when the roster says
+`verified`; a `refused` slot is never announced at all. The host also decides the one thing only
+it can — **which `player_connect` is a start**: the first player to connect to a game started it
+and everybody after them joined it, reset on every `map_loaded` so a warm instance's next game
+does not read as five people walking into the last one.
 
 **Reconciling `game_over`'s numbers with the host's own fold.** Both are *lower bounds* on a
 monotonic counter, so the host takes the larger. `game < host` is expected and honest — the game's

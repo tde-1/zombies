@@ -815,6 +815,23 @@ private:
                     json::writer w;
                     w.str("t", "down").integer("ms", ms).integer("slot", slot);
                     game_link::get().send(w);
+                    // `player_down` is the SAME EDGE, said in full. `down` carries a
+                    // slot and nothing else, which is everything the referee's own fold
+                    // needs and nothing a sentence needs: by the time a line reaches the
+                    // site's chat ring the slot is a number belonging to a game nobody
+                    // reading it is in. So this one carries the name, the round and the
+                    // map, and the two are emitted together rather than one replacing
+                    // the other — `down` is in the protocol table, hosts fold it, and a
+                    // rename would silently stop counting downs on every box not
+                    // redeployed the same night. (2026-09-23, game-link-v0.)
+                    json::writer pw;
+                    pw.str("t", "player_down").integer("ms", ms).integer("slot", slot);
+                    if (!p.name.empty()) pw.str("name", p.name);
+                    // Only a verified row carries an account anywhere else in this
+                    // file, and a chat line is not the place to start.
+                    pw.integer("round", round_).integer("downs", *d);
+                    if (!map_.empty()) pw.str("map", map_);
+                    game_link::get().send(pw);
                 }
                 p.downs = *d;
                 p.have_downs = true;
@@ -853,6 +870,9 @@ private:
         if (map.empty()) map = cmdline_value("+devmap", nullptr);
         if (map.empty()) map = env_str("ENW_MAP");
         std::string fs_game = cmdline_value("+set", "fs_game");
+        // Kept, because `player_down` says which map somebody went down on and this
+        // is the only place the name is derived.
+        map_ = map;
 
         json::writer w;
         w.str("t", "map_loaded").integer("ms", ms);
@@ -1170,6 +1190,7 @@ private:
     uint64_t round_notifies_ = 0;
     uint32_t last_round_ms_ = 0;
     bool map_announced_ = false;
+    std::string map_;                        // the bsp name announced in map_loaded
     bool game_over_ = false;
     uint32_t game_ms_ = 0;
     uint64_t frames_ = 0;

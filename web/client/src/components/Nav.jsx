@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { useSession } from '../session'
 import { Lockup } from './Bits'
@@ -32,6 +33,79 @@ import UserMenu from './UserMenu'
 // would be a fourth region. It stays linked from the party panel's signed-out state, the map
 // page and the gate, which is where somebody actually wants it.
 
+// ── The ENW Discord, top right ────────────────────────────────────────────────
+//
+// A port of Movement's `movement-client/src/components/DiscordNavLink.jsx` (its branch
+// `claude/pvp-url-rewrite-installer`), mechanism and reasoning:
+//
+//   * it is shown to anybody the site has NOT linked to a Discord account, and signed
+//     out it shows, because signed out nobody is known to be in the Discord;
+//   * the X hides it for 24 hours ON THIS BROWSER and then it comes back until they
+//     link. localStorage is right for that and only that: it is one viewer's
+//     convenience, and an unreadable store simply means the link shows;
+//   * a tab left open all day gets the link back — the snooze wakes itself on a timer
+//     rather than waiting for a reload.
+//
+// WHAT IS DIFFERENT HERE, and it is the honest part. Movement's gate is `me.discord`,
+// truthy once its Discord OAuth link or its in-game verification importer has written
+// `users.discord_id`. Zombies has the COLUMN (`server/db/database.js`) and the gate
+// (`server/lib/discord.js`, surfaced as `session.discord`), and **nothing that writes
+// it**: neither the OAuth flow (`server/lib/discordLink.js`, `server/routes/discord.js`
+// in Movement — it ports straight in and needs an app's client id, secret and redirect
+// URI) nor the verification feed came over tonight. So today every signed-in player is
+// unlinked and everybody sees the link. TODO, `docs/kickstart/web.md` §12d.
+//
+// The invite is Movement's own constant, `https://discord.enw.gg`, served by the API so
+// the "already linked" rule lives in exactly one place. `ENW_DISCORD_INVITE` overrides.
+const DISCORD_SNOOZE_KEY = 'zm.discordNav.dismissedAt'
+const DISCORD_SNOOZE_MS = 24 * 60 * 60 * 1000
+
+const readDismissed = () => {
+  try { return Number(window.localStorage.getItem(DISCORD_SNOOZE_KEY)) || 0 } catch { return 0 }
+}
+
+function DiscordNavLink() {
+  const { discord, loading } = useSession()
+  const [dismissedAt, setDismissedAt] = useState(readDismissed)
+  const [now, setNow] = useState(() => Date.now())
+
+  const wakeIn = dismissedAt ? dismissedAt + DISCORD_SNOOZE_MS - now : 0
+  useEffect(() => {
+    if (wakeIn <= 0) return undefined
+    const id = setTimeout(() => setNow(Date.now()), Math.min(wakeIn + 1000, 2147483000))
+    return () => clearTimeout(id)
+  }, [wakeIn])
+
+  if (loading) return null
+  // `invite` is null when the server says there is nothing to show — either this account
+  // has linked, or nobody configured a URL. One rule, one place.
+  if (!discord || !discord.invite) return null
+  if (wakeIn > 0) return null
+
+  const dismiss = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const t = Date.now()
+    try { window.localStorage.setItem(DISCORD_SNOOZE_KEY, String(t)) } catch { /* hides for this page only */ }
+    setDismissedAt(t)
+    setNow(t)
+  }
+
+  return (
+    <span className="mv-discord">
+      <a className="mv-inv mv-discord-link" href={discord.invite} target="_blank" rel="noopener noreferrer">
+        Discord<span className="ext-arrow">↗</span>
+      </a>
+      <button type="button" className="mv-discord-x" onClick={dismiss}
+              aria-label="Hide the Discord link for a day" title="Hide for a day">
+        <svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true">
+          <path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
+    </span>
+  )
+}
+
 export default function Nav() {
   const { isMod } = useSession()
 
@@ -49,6 +123,7 @@ export default function Nav() {
           {isMod && <NavLink to="/admin" className={({ isActive }) => 'mv-navlink' + (isActive ? ' active' : '')}>Admin</NavLink>}
         </div>
         <div className="mv-nav-right">
+          <DiscordNavLink />
           <UserMenu />
         </div>
       </div>

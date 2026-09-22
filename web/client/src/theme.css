@@ -984,3 +984,114 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
   font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--accent);
 }
 .steps b { font-weight: 700; }
+
+/* ---- THE CHAT DOCK (2026-09-23) ---------------------------------------------
+   Movement's chat console (`movement-client/src/theme.css`, the `.csc-*` block), in a
+   dock. The console block is copied verbatim in mechanism and in reasoning — OPAQUE,
+   because it is a console and a see-through console reads as a panel with text on it,
+   and its ground is its own, darker than the panel around it, so it reads as a window
+   into the game rather than as more site.
+
+   What changed on the way over is the game's nouns, not the drawing: no team colours
+   (zombies has no sides), no *DEAD* marker, no per-mode channel — one room.
+
+   THE DOCK ITSELF is ours, and it is a tab rather than a column on purpose. B had just
+   approved a map browser with no third region in it and the launcher wraps this site on
+   every page, so the resting state of a global chat has to be something you can ignore. */
+.chatdock {
+  position: fixed; right: 16px; bottom: 0; z-index: 70;
+  width: min(380px, calc(100vw - 32px));
+  display: flex; flex-direction: column; align-items: stretch;
+  font-size: 12.5px;
+}
+.chatdock-tab {
+  display: flex; align-items: center; gap: 8px; align-self: flex-end;
+  background: var(--panel-solid); border: 1px solid var(--line); border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--text); font: inherit; font-weight: 600;
+  padding: 7px 14px; cursor: pointer;
+}
+.chatdock-tab:hover { background: var(--panel-2); }
+.chatdock.is-open .chatdock-tab { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.chatdock-chev { color: var(--faint); font-size: 10px; }
+/* The count, not a dot. "Six things happened" is a different decision from "something
+   happened", and this panel is one you choose to open. */
+.chatdock-unread {
+  min-width: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--gold); color: #161616; font-weight: 700; font-size: 11px;
+  text-align: center; font-variant-numeric: tabular-nums;
+}
+/* Opaque (--panel-solid, not --panel): it floats over whatever page is behind it, and
+   Movement's translucent elevation only works against a known ground. */
+.chatdock-body {
+  background: var(--panel-solid); border: 1px solid var(--line); border-bottom: none;
+  border-radius: var(--radius-sm) 0 0 0; padding: 10px;
+}
+
+/* ---- the console, from Movement ---- */
+.csc { display: flex; flex-direction: column; gap: 8px; }
+.csc-log {
+  background: #0b0d10; border: 1px solid #1c2026; border-radius: var(--radius-sm);
+  padding: 10px 12px; overflow-y: auto; max-height: 320px; min-height: 160px;
+  display: flex; flex-direction: column; gap: 1px;
+  /* Numerals line up down the time column without a mono face: numbers are the body
+     face with tabular figures, never a slashed-zero mono. */
+  line-height: 1.55; font-variant-numeric: tabular-nums;
+}
+.csc-empty { color: #5c646e; padding: 8px 0; }
+
+.csc-line { display: block; overflow-wrap: anywhere; color: #c8ccd2; }
+.csc-line > span { margin-right: 5px; }
+.csc-time { color: #4d555f; font-size: 11px; }
+/* The tags place the line; they are not the line, and they are drawn at the weight
+   that says so. */
+.csc-tag { color: #6b7683; }
+.csc-name { color: #dfe3e8; font-weight: 700; }
+.csc-sep { color: #6b7683; }
+.csc-msg { color: #c8ccd2; }
+/* A system line — "jamie just went down on round 30 on Verrückt". It is in the room
+   because that is the conversation, and it is subordinate to it because nobody said it. */
+.csc-line.is-note { color: #6b7683; }
+.csc-note { color: #6b7683; }
+
+/* The input: a form, so Enter sends. That is the only way a chat box should work and is
+   why this is not a textarea with a Send button beside it. */
+.csc-say { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.csc-say-caret { color: #6b7683; font-weight: 700; }
+.csc-say input {
+  flex: 1; min-width: 120px; background: #0b0d10; border: 1px solid #1c2026; color: #dfe3e8;
+  border-radius: var(--radius-sm); padding: 8px 10px; font-family: inherit; font-size: 12.5px;
+}
+.csc-say input:focus { outline: none; border-color: #2f3742; }
+.csc-say input::placeholder { color: #4d555f; }
+.csc-say-count { color: #4d555f; font-size: 11px; min-width: 22px; text-align: right; }
+/* WHERE THE LINE GOES, under the input. It leaves this site for every live game, and a
+   box that does not say so is a box people are careful in for the wrong reason. */
+.csc-say-hint { flex-basis: 100%; color: var(--faint); font-size: 11px; }
+
+/* ---- the Discord invite, top right ----
+   Movement's block, verbatim in measurement and colour (`movement-client/src/theme.css`,
+   its `claude/pvp-url-rewrite-installer` branch): the same type and arrow as its
+   Inventory link, in Discord blurple, with an X that hides it for a day. Blurple is the
+   one branded colour on a site whose whole palette is grey — it is a third party's mark,
+   and drawing it in our accent would be drawing OUR badge on their door. */
+.mv-inv {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 13.5px;
+  letter-spacing: 0; text-transform: none; color: var(--muted); white-space: nowrap;
+  text-decoration: none;
+}
+.mv-inv:hover { color: var(--text); }
+.ext-arrow { font-size: 11px; color: var(--faint); }
+.mv-inv:hover .ext-arrow { color: var(--accent); }
+.mv-discord { display: inline-flex; align-items: flex-start; gap: 1px; }
+.mv-inv.mv-discord-link { color: #5865F2; }
+.mv-inv.mv-discord-link .ext-arrow { color: #5865F2; opacity: .7; }
+.mv-inv.mv-discord-link:hover { color: #7984F5; }
+.mv-inv.mv-discord-link:hover .ext-arrow { color: #7984F5; opacity: 1; }
+.mv-discord-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; margin-top: -6px; padding: 0;
+  background: transparent; border: none; border-radius: 50%;
+  color: var(--faint); cursor: pointer;
+}
+.mv-discord-x:hover { color: var(--text); background: var(--panel-2); }

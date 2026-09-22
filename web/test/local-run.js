@@ -526,6 +526,28 @@ async function main() {
     eq(r.json.launcher_version.length, 32, 'an unbounded header value was echoed back')
   })
 
+  // ---- the chat dock's two doors ------------------------------------------------------
+
+  await check('the system-line door is the BOX door, and a player session is not a key to it', async () => {
+    // Same reasoning as /api/gs/result above: if this ever 200s, anybody with an account
+    // can write "<somebody> just went down on round 40" into a channel everybody reads.
+    const res = await fetch(SITE + '/api/gs/event', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-match-secret': 'devkey-a-guess' },
+      body: JSON.stringify({ event: 'started', name: 'forged', map: MAP }),
+    })
+    truthy(res.status === 401 || res.status === 403, `expected a refusal, got ${res.status}`)
+  })
+
+  await check('the chat ring is readable signed out, and a line says which kind it is', async () => {
+    // The dock is on every page including the ones a stranger sees, so the fill must not
+    // need a session. Talking does (the socket checks it); reading does not.
+    const r = await call('/api/chat?limit=5', { anon: true })
+    eq(r.status, 200)
+    truthy(Array.isArray(r.json.chat), 'a list came back')
+    truthy(r.json.chat.every((l) => l.kind === 'chat' || l.kind === 'system'), 'every line is one of the two kinds')
+  })
+
   // ---- report -------------------------------------------------------------------------
   for (const [s, n] of lines) console.log(`${s}  ${n}`)
   console.log(`\n${pass} passed, ${fail} failed`)

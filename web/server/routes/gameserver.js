@@ -14,6 +14,9 @@
 //   POST /api/gs/result                  the summary + where the replay went
 //   GET  /api/gs/chat-feed?since=&wait=  long-poll drain of the global chat ring
 //   POST /api/gs/chat                    a player said something in one of our games
+//   POST /api/gs/event                   something HAPPENED in one of our games, and the
+//                                        site turns it into a system line in that same
+//                                        channel (ours, not the mock's — lib/chatSystem.js)
 //
 // Two routes are OURS, added because the site needs something the mock did not have:
 //
@@ -37,6 +40,7 @@ const boxes = require('../lib/boxes')
 const assignments = require('../lib/assignments')
 const results = require('../lib/results')
 const chat = require('../lib/chatNetwork')
+const chatSystem = require('../lib/chatSystem')
 const presence = require('../lib/presence')
 const live = require('../lib/live')
 const siteKeys = require('../lib/siteKeys')
@@ -156,6 +160,17 @@ function router() {
     req.on('close', () => { done = true })
     await chat.wait(wait, req.box.name)
     finish()
+  })
+
+  // ---- system lines ---------------------------------------------------------------
+  // The box sends the FACT; the site writes the sentence. It has to be this way round:
+  // the handle a line carries is the site's user for a `verified` identity and the
+  // in-game name otherwise, and only the site holds the user table. It also means the
+  // worst a broken box can put in the global channel is a wrong name, rather than a
+  // sentence of its choosing. Dedupe and the per-match rate limit are in chatSystem.
+  r.post('/event', (req, res) => {
+    const line = chatSystem.record(req.box.name, req.body || {})
+    res.json({ ok: true, line: line || null, latest: chat.latest() })
   })
 
   r.post('/chat', (req, res) => {

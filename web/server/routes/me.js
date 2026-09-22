@@ -11,6 +11,7 @@ const xp = require('../lib/xp')
 const enw = require('../lib/enw')
 const parties = require('../lib/parties')
 const bans = require('../lib/bans')
+const discord = require('../lib/discord')
 const { requireUser } = require('../middleware/auth')
 
 function router() {
@@ -30,7 +31,7 @@ function router() {
   }
 
   r.get('/', (req, res) => {
-    if (!req.me) return res.json({ signed_in: false, auth: require('./auth').effectiveMode(), ...launcherOf(req) })
+    if (!req.me) return res.json({ signed_in: false, auth: require('./auth').effectiveMode(), ...launcherOf(req), discord: discord.forMe(null) })
     const sid = req.me.steam_id
     // Both ENW lookups are fire-and-forget AFTER the response is composed: a slow or absent
     // ENW must never delay the site's own boot call.
@@ -39,6 +40,10 @@ function router() {
       signed_in: true,
       auth: require('./auth').effectiveMode(),
       ...launcherOf(req),
+      // The top-right Discord link. `invite` is null when the person has already linked
+      // (or when nobody configured one), so the client has no URL to draw and cannot get
+      // the rule wrong in a second place. lib/discord.js.
+      discord: discord.forMe(sid),
       user: {
         ...users.pub(req.me),
         settings: users.settings(sid),

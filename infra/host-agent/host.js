@@ -40,13 +40,20 @@ const a = parseArgs(process.argv.slice(2))
 if (a.debug) setLogLevel('debug')
 const log = makeLog('host')
 
+// The site URL, resolved ONCE. It used to be resolved twice — `a.site || ENW_SITE` for
+// `cfg.site`, and a bare `a.site` for `cfg.requireToken` — so a box configured the way the
+// systemd unit configures it (ENW_SITE in the environment, no `--site` flag) talked to the
+// site, loaded its invite key, and then ran every join with token checks *advisory*. The
+// log said so out loud (`token checks advisory`) and nobody read it. One name, one answer.
+const SITE = a.site || process.env.ENW_SITE || null
+
 const cfg = {
   boxName: a.box || process.env.ENW_BOX || 'box-a',
   linkHost: a['link-host'] || '127.0.0.1',
   linkPort: Number(a['link-port'] ?? 38700),
   dashPort: Number(a['dash-port'] ?? 8787),
   dash: a.dash !== 'off',
-  site: a.site || process.env.ENW_SITE || null,
+  site: SITE,
   secret: a.secret || process.env.ENW_SECRET || 'devkey-a',
   replayDir: a['replay-dir'] || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'replays'),
   // THE SPOOL WAS NEVER WIRED UP. `cfg.spoolDir` was read by the SiteClient constructor
@@ -79,7 +86,7 @@ const cfg = {
       }
     : null,
   dryRun: !!a['dry-run'],
-  requireToken: a['require-token'] != null ? a['require-token'] !== 'false' : !!a.site,
+  requireToken: a['require-token'] != null ? a['require-token'] !== 'false' : !!SITE,
   chunkMs: Number(a['chunk-ms'] ?? 60_000),
   zstdLevel: Number(a['zstd-level'] ?? 10),
   gameLog: a['game-log'] !== 'off',   // the IW4MAdmin/B3-readable games_mp.log mirror
@@ -249,6 +256,9 @@ class Game extends EventEmitter {
     // 2. it goes into the replay, unmodified
     this.record(m)
     // 3. the side effects that are the HOST's job, not the referee's
+    // A warm instance re-announces `map_loaded` after `end`, and the next game's first
+    // connect must read as a START rather than as a join of the game that just finished.
+    if (m.t === 'map_loaded') { this.announcedStart = false; this.starter = null }
     if (m.t === 'map_loaded') this.onMapLoaded(m)
     if (m.t === 'match_end') this.onMatchEnd(m)
     if (m.t === 'player_connect') this.authPlayer(m)
@@ -257,6 +267,10 @@ class Game extends EventEmitter {
     // nothing is lost and the header carries the match the game turned out to be.
     if (this.deferReplay && (m.t === 'player_connect' || m.t === 'round') && this.mapEv) this.openReplay(this.mapEv)
     if (m.t === 'chat') this.host.onGameChat(this, m)
+    // 4. the four events the site turns into a system line in the same chat channel
+    if (m.t === 'player_connect' || m.t === 'player_down' || m.t === 'game_over') {
+      this.host.onGameSystemEvent(this, m)
+    }
     this.gameLog.onEvent(m, this.referee)
     this.host.dash?.push('event', { instance: this.instance.id, ev: m })
   }
@@ -1052,6 +1066,69 @@ class HostAgent {
     }
     this.dash?.push('chat', { origin: game.instance.id, from, text: ev.text, map: game.referee.map, steamid: p?.steamid || null })
     this.site?.sayToNetwork({ from, steamid: p?.steamid || null, text: ev.text, map: game.referee.map, instance: game.instance.id })
+  }
+
+  /**
+   * Somebody started a game, joined one, went down, or finished — the four facts the
+   * site turns into a system line in the global chat channel ("<handle> just went down
+   * on round 30 on Verrückt").
+   *
+   * THE BOX SENDS FACTS, NOT SENTENCES (`siteclient.postEvent`). What it does decide,
+   * because only it can, is **which connect is a start**: the first player to connect
+   * to a given game started it and everybody after them joined it. There is no
+   * "started" event in the protocol to read instead — `map_loaded` is the map coming
+   * up, which on a warm instance happened before anybody leased it — and a game that
+   * announced no start and then five joins reads like something everyone walked into.
+   *
+   * `steamid` goes only where the game marked the row `verified`; `game-link-v0` has
+   * had that rule since §13 and a chat line is not where it gets relaxed.
+   */
+  onGameSystemEvent(game, ev) {
+    if (!this.site) return
+    const ref = game.referee
+    let kind = null
+    let name = ev.name || null
+    let identity = ev.identity || null
+    let steamid = ev.steamid || null
+
+    if (ev.t === 'player_connect') {
+      // `authPlayer` has already run for this message (it is earlier in
+      // `onGameMessage`), so the referee's row holds the identity AFTER the check
+      // rather than the `claimed` the game arrived with.
+      // A REFUSED player has no row at all — `authPlayer` deletes it — and says
+      // nothing in chat. A game announcing that somebody it just kicked joined it is
+      // the one system line that would be a lie.
+      const p = ref.players.get(ev.slot)
+      if (!p || p.identity === 'refused') return
+      identity = p.identity || identity; steamid = p.steamid || steamid; name = p.name || name
+      kind = game.announcedStart ? 'joined' : 'started'
+      game.announcedStart = true
+      game.starter = { name, steamid, identity }
+    } else if (ev.t === 'player_down') {
+      kind = 'down'
+      if (!name) name = ref.players.get(ev.slot)?.name || null
+    } else if (ev.t === 'game_over') {
+      kind = 'ended'
+      // The game belongs to whoever started it; game_over names every player and
+      // none of them in particular.
+      name = game.starter?.name || null
+      steamid = game.starter?.steamid || null
+      identity = game.starter?.identity || null
+    }
+    if (!kind) return
+
+    this.site.postEvent({
+      event: kind,
+      name,
+      // Only a verified row travels with an account. Anything less is a claim.
+      steamid: identity === 'verified' ? steamid : null,
+      identity: identity || 'none',
+      map: ev.map || ref.map || null,
+      map_name: ref.manifest?.title || null,
+      round: Number.isFinite(Number(ev.round)) ? Number(ev.round) : ref.round || 0,
+      match_id: game.matchId || null,
+      instance: game.instance.id,
+    })
   }
 
   /** The site's global channel said something. Push it into every live game here. */

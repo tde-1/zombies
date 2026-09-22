@@ -569,6 +569,41 @@ t('a player the GAME reports and we never saw is carried through with no account
   ok(s.flags.includes('result_mismatch'), 'and the disagreement is flagged')
 })
 
+console.log('\n== player_down (the system-line event, game-link-v0 2026-09-23) ==')
+
+t('player_down does NOT double-count a down: `down` is the counter, it is the sentence', () => {
+  const r = makeRef()
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'round', ms: 1000, n: 30 })
+  r.onEvent({ t: 'down', ms: 2000, slot: 0 })
+  r.onEvent({ t: 'player_down', ms: 2000, slot: 0, name: 'P0', round: 30, map: 'nazi_zombie_prototype', downs: 1 })
+  eq(r.players.get(0).downs, 1, 'one edge, one down')
+})
+
+t('an unknown-to-the-referee event is still counted and still re-emitted for the bridge', () => {
+  // The protocol rule is "unknown `t` values are ignored", and the host's referee has no
+  // ev_player_down. Ignored must mean "changes no ruling", NOT "dropped": the event is
+  // evidence, it goes into the replay, and the host bridges it to the site's chat ring.
+  const r = makeRef()
+  bootGame(r, { players: 1 })
+  const before = r.events
+  const seen = []
+  r.on('event', (e) => seen.push(e.t))
+  r.onEvent({ t: 'player_down', ms: 2000, slot: 0, name: 'P0', round: 5, map: 'x' })
+  ok(r.events === before + 1, 'counted')
+  ok(seen.includes('player_down'), 'and re-emitted for the host to bridge')
+})
+
+t('player_down carries what a sentence needs and no account', () => {
+  // The shape the site formats from. A steamid is NOT on this event by design: the host
+  // takes identity from the roster it already holds, and `game-link-v0` says a steamid
+  // travels only on a verified row.
+  const ev = { t: 'player_down', ms: 1, slot: 2, name: 'jamie', round: 30, map: 'nazi_zombie_asylum', downs: 3 }
+  ok(ev.name && Number.isFinite(ev.round) && ev.map, 'name, round and map')
+  eq(ev.steamid, undefined, 'and no account on the wire')
+})
+
+
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`)
 if (fail) { for (const [s, n, m] of results) if (s === 'FAIL') console.log(`  FAIL ${n}: ${m}`) }
 process.exit(fail ? 1 : 0)

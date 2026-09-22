@@ -38,6 +38,10 @@ export function SessionProvider({ children }) {
     isMod: !!(me && me.user && (me.user.mod || me.user.admin)),
     approved: !!(me && me.user && (me.user.approved || me.user.admin)),
     authMode: (me && me.auth) || 'mock',
+    // { linked, invite }. `invite` is null when there is nothing to show — either nobody
+    // configured one or this person has already linked — so the nav draws the link if and
+    // only if it has a URL. The rule lives on the server (server/lib/discord.js).
+    discord: (me && me.discord) || { linked: false, invite: null },
     refresh,
   }), [me, loading, refresh])
 

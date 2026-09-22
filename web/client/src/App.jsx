@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { SessionProvider } from './session'
 import Nav from './components/Nav'
+import ChatDock from './components/ChatDock'
 import Home from './pages/Home'
 // NOT lazy: home renders `MapBody` out of this module, so it lands in the first chunk
 // whatever this line says, and a lazy route over a module that is already loaded only buys
@@ -39,6 +40,10 @@ export default function App() {
           a third region on every page, including the ones — a profile, the archive, a badge
           directory — where a lobby has nothing to do with what you are reading. The party
           itself survives everything, because it is a row in the database and always was. */}
+      {/* THE CHAT DOCK SITS ABOVE THE ROUTER, for the one reason the rail did: it
+          survives navigation. What killed the rail was that it was a third REGION on
+          every page; this is a tab in the corner, collapsed until somebody opens it,
+          so the map browser B approved is untouched until they do. */}
       <div className="shell no-rail">
         <div className="main">
           <Nav />
@@ -79,6 +84,7 @@ export default function App() {
           </Suspense>
         </div>
       </div>
+      <ChatDock />
     </SessionProvider>
   )
 }
