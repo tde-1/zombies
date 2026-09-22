@@ -48,12 +48,9 @@ now has a fifth gate (`com_frameTime` advancing) so a dead server can never pass
 
 ## Known and unfixed
 
-- **Custom maps on the dedicated server**: an agent is on it now. Der Berg (NULL dvar), Zombie
-  Desert + Project Viking (`fs_game is write protected` — ours), Leviathan (`napalmblob`), MW2 Rust
-  and Clinic (`undefined is not an array`). Stock maps work.
-- **Game over on a dedicated server does nothing yet** (same agent): result event, stop replay,
-  tell the host agent. Round 2 unproven without a player killing things.
-- **The Hetzner box runs the pre-fix DLL until the deploy lands** (in progress).
+- **Custom maps on the dedicated server**: none yet. All six reach `Server Initialization` (the map mount needed `fs_localAppData` — `tools\dev\mapmount.ps1`). Four then die on the same `flag_wait` before `flag_init`, Leviathan on `napalmblob`, Der Berg on a script-variable enumeration overflowing `localVars`. One shared cause on our side is suspected (overlay ordering, or the replay sampler enumerating ~3,900 children); a bisect agent is running. Manifests currently say `broken`; that verdict is provisional. Stock maps work.
+- **Game over**: the referee now emits the full result + `match_end`, stops the replay, and the host agent finishes the match (above). Proven with the simulator and on the server (join73); never yet with a real player on a real box. Round 2 is unprovable unattended — nobody kills zombies.
+- ~~The Hetzner box runs the pre-fix DLL~~ **Deployed.** A real client from B's PC joined the box over the internet, spawned, and the server survived the player joining and leaving: five gates over 300 s, 61 Hz. Host agent's game-over path (sign replay → post result → warm restart or terminate; box back to idle; 26/26 integration checks) landed in `a9f5d92` and is being redeployed to the box.
 - **Mouse stutter**: fix built, unproven; B's three runs decide.
 - **`wait_for_first_player()`** never fires on a dedicated server; `all_players_connected` does.
 - 2,270 archive maps have no cover; global chat has no page since the rail went; `/maps` is a
