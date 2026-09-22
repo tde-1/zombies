@@ -24,6 +24,7 @@ const Admin = lazy(() => import('./pages/Admin'))
 const Creator = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Creator })))
 const Game = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Game })))
 const Archive = lazy(() => import('./pages/Archive'))
+const Download = lazy(() => import('./pages/Download'))
 const NotFound = lazy(() => import('./pages/Misc').then((m) => ({ default: m.NotFound })))
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
                   short on purpose and must never change. */}
               <Route path="/m/:key" element={<MapPage />} />
               <Route path="/archive" element={<Archive />} />
+              <Route path="/download" element={<Download />} />
               <Route path="/records" element={<Records />} />
               <Route path="/badges" element={<Badges />} />
               <Route path="/badges/:slug" element={<BadgePage />} />

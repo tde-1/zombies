@@ -1009,3 +1009,29 @@ what the wipe removed, and the keep/delete split including the counters).
 * **A second account holds admin.** `76561198396250036` (zeroh) was already `is_admin=1` on
   the live database before tonight; `approve.js` did not grant it and has not removed it. If
   that was not deliberate, it is one UPDATE.
+
+### 10j. `/download` (added after the deploy, same night)
+
+A short install page behind the beta gate: the lockup, the installer, three steps, one line
+saying it is a beta. `client/src/pages/Download.jsx`, linked from the nav — Movement has no
+equivalent because it has no client to install, and the other candidate (the party panel's
+empty state) is only on home and only when signed out, while the person who most needs this
+is a signed-in player whose launcher is out of date. It is in both places now, the nav tab
+being the one on every page.
+
+**The version is read, not written.** The page fetches `/updates/latest.yml` — the feed the
+launcher lane publishes — and takes the filename, the version and the size out of it. Hard
+coding `0.2.0` would mean this page and the auto-updater could disagree the moment 0.2.1
+ships, and the page would be the one pointing at a file that no longer exists.
+
+**No restart was needed and none was taken.** `/updates` was already served statically and is
+gate-exempt (an installer is not a secret, and electron-updater cannot answer a password
+prompt); `client/dist` is served by `express.static`, which reads from disk per request, so a
+rebuild is live as soon as it lands. Verified on the public URL: `/download` served the new
+bundle hash, `/updates/latest.yml` returned `version: 0.2.0` with no password, and the 94 MB
+installer answered a range request with `206`, which is what the updater needs.
+
+**Party default mode is `verified`** — confirmed in both places it could be wrong:
+`parties.create()` defaults `mode = 'verified'` and the `parties.mode` column is
+`TEXT NOT NULL DEFAULT 'verified'`. The panel's segmented control reflects it, so a party made
+by pressing "Start a party" and then Start plays stock settings and is tracked.

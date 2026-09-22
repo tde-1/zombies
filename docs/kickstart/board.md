@@ -3608,28 +3608,52 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   write `r_fullscreen 0`** with no vanilla `r_noborder` to tell them apart, so a naive read-back
   demotes the default mode to windowed on every single launch.
 
+- 04:20 dedi: the damage in the variable pool is 16 bytes repeated every 128 KB across 3/4 MB. No hash table does that to itself - something else's buffer is being written through it.
+- 04:25 dedi: not huffman_guard (join45, ENW_NO_HUFFMAN_GUARD=1: leak and freeze identical), and not a Com_Error longjmp (error_trap counted zero in the whole of join44).
+- 04:40 dedi: CAUSE. The server leaks one 0x20000 frame of the engine's temp-memory stack per client message ([0x046E5054]); the decode destination 0x0212B2F8+offset marches 128 KB at a time and writes through gScrVarGlob. The 0x0068F090 spin is what happens next, not the bug.
+- 04:55 dedi: FIXED. server/components/dedicated/temp_stack_guard.cpp puts the offset back to its measured frame-boundary baseline every frame. join52 and join53: two consecutive 120 s runs, CS_ACTIVE + ROUND 1 + 32/32 getstatus answered + frame::count advancing. Control join54 (guard off) froze at frame 2200.
+- 04:55 dedi: two things left open and written up as open - why the engine's own pop is skipped (the call wrap sees 2,502 balanced calls), and a ~5,900 Hz frame rate once a player is in that predates the fix.
+
 ## What is open right now (2026-09-22, after the docsweep pass)
 
 This is the end of the board and it is meant to be the first thing a new agent reads after
 `STATUS.md`. Everything above is history; this is the live list.
 
-**The one blocker.**
-- **The frame loop stops ~10 s after a player spawns**, and as of 03:15 we know *where*, from
-  outside the process: the main thread spins in **`0x0068F090`** (150/150 samples), in the
-  predecessor search at `0x0068F3B4..0x0068F3DB` — a walk of a **circular list of script
-  variables** looking for an id that **is not in the list**, so it never ends. Reached through
-  `SV_Frame`; entry point `RemoveVariable 0x0068F4A0`. The same function raises
-  `exceeded maximum number of script variables`, so §7j's two failure modes are one function.
-  **Not a full pool** (join25: child 13,534/65,536 and parent 2,672/24,576, both with live free
-  lists) and **not ours** (join24: froze identically with referee/replay/chat/afk/pause/knobs
-  removed from the build). What is still unknown is how a removal comes to be asked for on a list
-  that does not hold the variable. `dedi.md` §7j has the loop, the tools and the dead ends.
-  **Superseding the old note here:** `where_is_main.cpp` still must not be used (it kills the
-  server instead of freezing it), but "next attempt: a dump from outside" is done —
-  `tools/dev/freeze_probe.py` and `tools/dev/varpool.py` are that dump, and the live freeze
-  signal is `oob.py getstatus`, not the DLL log, which cannot be read while the process runs.
+**The one blocker — CLOSED 04:55.**
+- ~~**The frame loop stops ~10 s after a player spawns.**~~ **Fixed, 2026-09-22 04:55 dedi.** The
+  spin in `0x0068F090` was real and everything the entry below says about it is still true — it was
+  a **symptom**. The server leaks one **0x20000 frame of the engine's temp-memory stack per client
+  message** (`[0x046E5054]`, decode destination `0x0212B2F8 + offset`), so the destination marches
+  forward 128 KB at a time and eventually writes straight through `gScrVarGlob`'s child-variable
+  pool. `join40` caught it crossing (offset 0x038AB2F8 → 0x03D0B2F8 against a pool at
+  0x03974700-0x03A74700) in the same half second the pool's chain invariant broke; `join37` matched
+  the slot the spin was hunting (0x16C0) to a slot `varcheck.py` had already flagged.
+  Fix: `server/components/dedicated/temp_stack_guard.cpp` puts the offset back to its measured
+  frame-boundary baseline at the end of every frame. Proof: **join52 and join53, two consecutive
+  120 s runs, CS_ACTIVE + ROUND 1 + 32/32 `oob.py getstatus` answered + `frame::count` still
+  advancing**; `join48` 120 s with `varcheck.py` sweeping showed **0 orphans for the whole run**;
+  control `join54` (`ENW_DEDI_NO_TEMP_GUARD=1`) froze at frame 2200 with 22 orphans.
+  `dedi.md` §7j, section "SOLVED (runs join31-join54)".
+- The original entry, kept because its addresses are all still correct: the main thread spins in
+  **`0x0068F090`** (150/150 samples), in the predecessor search at `0x0068F3B4..0x0068F3DB` — a walk
+  of a circular list of script variables looking for a slot that is **not in the list**. Reached
+  through `SV_Frame`; entry point `0x0068F4A0`. Not a full pool (join25), not ours (join24).
+  **What is no longer unknown is "how a removal comes to be asked for on a list that does not hold
+  the variable": it does not — the list was overwritten from outside.**
+  `where_is_main.cpp` still must not be used.
 
 **Open, not blocking.**
+- **Why the engine's own pop is skipped is still unknown** (dedi 04:55). Every return path in
+  `SV_ExecuteClientMessage` 0x630F70 writes `[0x046E5054]` back, `error_trap.cpp` counted zero
+  `Com_Error`/`Sys_Error` in the whole of join44, and the function plainly returns.
+  `ENW_DEDI_TEMP_THUNK=1` wraps the tail jump at 0x6357AA and corrects the offset across that call:
+  **2,502 wrapped calls, 0 corrections** in join49-join51, while the frame-boundary reset put 2,034
+  frames back in the same run. So that function's own frame is balanced and the unpopped push is
+  reached some other way. The guard works regardless; this is a loose end, not a risk.
+- **The server runs at ~5,900 Hz once a player is in** (dedi 04:55), at about 70% of one core,
+  against a flat 61 Hz with no player and `+set com_maxfps 60` passed. **Not new and not the
+  guard** — the same ramp (61 → 102 → 123 Hz) is in every pre-fix run right up to the freeze. The
+  server answers, spawns and referees correctly for the whole 120 s, but nobody has looked at this.
 - ~~**`exceeded maximum number of script variables`** is a second, separate failure.~~
   **Retracted 03:15: it is the same failure.** `0x0068F090` both spins and raises that error
   (sites `0x0068F235` / `0x0068F301`). And "the allocator refuses where the accounting says there
@@ -3821,3 +3845,19 @@ a route to several instances.
 - Nothing to commit for this: the exe, the blockmap and `latest.yml` are all gitignored.
 - Worth one check after the restart, because it has bitten before: `curl` `/updates/latest.yml`
   and confirm YAML, not the React catch-all answering 200 with `text/html`.
+
+### 05:22 web: /download, and the party default confirmed
+
+- **`https://zombies.enw.gg/download`** — install page behind the beta gate: lockup, the
+  installer, three steps (run it → sign in with Steam → it finds WaW and installs the ENW
+  client), one beta line. Linked from the nav on every page and from the signed-out party
+  panel. **The version is read from `/updates/latest.yml`, not written into the page**, so a
+  new release from the launcher lane shows up here with no deploy — it says 0.2.0 today.
+- **No restart.** `/updates` was already static and gate-exempt, and `client/dist` is
+  `express.static`, which reads from disk per request. Verified live: `/download` serves the
+  new bundle hash, `latest.yml` returns `version: 0.2.0` with no password, and the 94,479,989
+  byte installer answers a range request with `206` — which is the bit electron-updater needs.
+- **Party default mode is `verified`**, confirmed in both places it could have been wrong:
+  `parties.create()`'s default argument and the `parties.mode` column default. Stock settings,
+  tracked. Nothing to flip.
+- `npm test` 105 passed, 0 failed.

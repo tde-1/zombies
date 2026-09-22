@@ -654,3 +654,15 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
   .home-left { position: static; max-height: none; }
   .mlist .mscroll { max-height: 46vh; }
 }
+
+/* The install page's three steps. Numbered in the display face at the size of a section
+   heading, because the number IS the heading — the alternative is a bold lead-in on every
+   line saying the same thing twice. */
+.steps { list-style: none; counter-reset: step; margin: 0; padding: 0; }
+.steps li { counter-increment: step; position: relative; padding: 0 0 0 40px; min-height: 28px; }
+.steps li + li { margin-top: 16px; }
+.steps li::before {
+  content: counter(step); position: absolute; left: 0; top: -2px;
+  font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--accent);
+}
+.steps b { font-weight: 700; }

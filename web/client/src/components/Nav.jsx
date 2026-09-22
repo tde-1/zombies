@@ -38,6 +38,11 @@ export default function Nav() {
       <NavLink to="/badges" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Badges</NavLink>
       <NavLink to="/playlists" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Playlists</NavLink>
       <NavLink to="/custom" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Custom</NavLink>
+      {/* Movement has no equivalent — it is a CS:GO site and there is no client to install.
+          The nav is the right place for ours anyway: the other candidate, the party panel's
+          empty state, is only on home and only when signed out, and the person who needs
+          this most is a signed-in player whose launcher is out of date. */}
+      <NavLink to="/download" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Download</NavLink>
       {isMod && <NavLink to="/admin" className={({ isActive }) => `tab ${isActive ? 'on' : ''}`}>Admin</NavLink>}
 
       <div className="spacer" />

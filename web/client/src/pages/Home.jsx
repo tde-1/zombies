@@ -119,7 +119,9 @@ function SignIn({ authMode, count }) {
       <a className="btn primary" style={{ width: '100%' }} href={authMode === 'steam' ? '/auth/steam' : '/auth/mock'}>
         {authMode === 'steam' ? 'Sign in with Steam' : 'Sign in (dev)'}
       </a>
-      <p className="tiny" style={{ margin: '10px 0 0' }}>{num(count)} maps. Browsing needs no account.</p>
+      <p className="tiny" style={{ margin: '10px 0 0' }}>
+        {num(count)} maps. Browsing needs no account. <Link to="/download">Get the launcher</Link> to play.
+      </p>
     </section>
   )
 }
