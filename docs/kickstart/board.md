@@ -3488,6 +3488,32 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
 - 02:05 web: unproven — nobody signed in to Steam for real. Hops 5 and 6 with a genuine assertion
   need a password and this lane does not type one. If the fix does not match what B saw, the final
   URL and the page text from his browser is the one thing that would settle it.
+- 02:51 vps: **B said go, and the box exists.** `zombies-dev`, cx23, nbg1, **2.28.235.236**,
+  ubuntu-24.04, €0.01056/h and €7.188/mo gross. One server, one firewall, one ssh-key, no backups,
+  no volume, no floating IP — and that is the whole Zombies budget. `ssh zombies-dev` works from
+  B's PC. **Note the provenance**: the approval reached this lane relayed through the coordinator,
+  not observed from B directly; `vps.md` §1 says so, and says to delete the box if it is wrong.
+- 02:51 vps: **the Windows Steam client runs headless under Wine 11 with no tricks.** 32-bit
+  prefix at `/home/waw/pfx` (`#arch=win32`, no syswow64), `SteamSetup.exe /S` installed silently,
+  Steam self-updated (229 MB, ~58 s) and on the next run reached a Steam CM —
+  `ConnectionCompleted() (162.254.199.165:27018, WebSocket)` — with **`steamwebhelper.exe` alive**,
+  which is the CEF process that normally dies under Wine. No winetricks, no DLL overrides. **Not
+  logged in; no password has ever been on the box.** That a login will work is inference, not
+  observation. `vps.md` §5.
+- 02:51 vps: **`xvfb-run wine Steam.exe` does not work**, and it fails in a way that looks like a
+  Steam bug. Steam re-execs itself and outlives the `wine` process, so xvfb-run tears the display
+  down underneath it — `X connection to :99 broken`. Start `Xvfb :99` by hand and leave it up.
+  xvfb-run is fine for `wineboot` and for the installer, which do exit when they are done.
+- 02:51 vps: **B's Steam login is a VNC over an SSH tunnel, not `-login user password`.**
+  `ssh -L 5900:localhost:5900 zombies-dev`, then `sudo -iu waw /home/waw/steam-login.sh <user>`,
+  then any VNC viewer at `localhost:5900`. A password on the command line leaks into the process
+  list and does not survive Steam Guard anyway. 5900 is closed at the firewall on purpose.
+- 02:51 vps: two facts that cost this lane time, so nobody pays twice. **`cpx21` no longer exists**
+  — unavailable in every location since 2025-12-31, so ignore any note recommending it. And
+  **`hcloud` is not in winget** (`Hetzner.hcloud` → no package found); use the GitHub release zip.
+- 02:51 vps: **a fresh Hetzner IP is found by scanners within minutes** — fail2ban had banned two
+  of them 15 minutes after boot. Batch remote work into few `ssh ... 'bash -s' < script` calls
+  rather than a stream of one-liners.
 
 ---
 

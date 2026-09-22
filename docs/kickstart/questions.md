@@ -429,6 +429,12 @@ the Steam client, so I have stopped rather than work around it.
 nothing can launch.
 
 ## vps — the Hetzner dev box costs €7.19/month gross, not under €6 (2026-09-22 02:32)
+**ANSWERED — B: go at €7.19 gross, 2026-09-22.** Option 1. B's words, relayed through the
+coordinator: "spin it up, that's fine, just make sure we don't cost any more than that." The box
+exists: `zombies-dev`, cx23, nbg1, 2.28.235.236. `vps.md` is the lane doc; §1 records that the
+approval was relayed rather than observed, and §8 is how to delete it. The question is left below
+as it was asked.
+
 You authorised one Hetzner box with the rule "if it is over €6.00 a month, stop and ask". It is
 over, so I stopped before creating anything. Nothing has been spent and the `enw-zombies` project
 is still empty.

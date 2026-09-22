@@ -49,7 +49,10 @@ The source is `../dev-box.md`. This is the short list, and none of it is negotia
 7. **Do not touch the live site or the tunnel.** The `node` process on port **3200** is B's public
    site and `cloudflared` is the tunnel to `zombies.enw.gg`. Do not restart either, and do not
    write to `web/data`. If you need a web server, take 3399 or another free port.
-8. **No money, no accounts, no passwords.** If something costs money, stop and say so.
+8. **No money, no accounts, no passwords.** If something costs money, stop and say so. **One
+   exception, authorised by B on 2026-09-22 and no wider than its own words**: the Hetzner box
+   `zombies-dev`, €7.19/month gross, [`vps.md`](vps.md). Anything that would raise that bill —
+   a second box, a bigger type, a volume, a backup, a floating IP — is still rule 8.
 9. **Hooks are owned, not shared.** MinHook allows exactly one hook per target address and the
    loser only finds out from a log line. Use `enw::frame::subscribe`; never hook `Com_Frame`
    yourself. `dev-box.md` rule 12 has the detail.
@@ -69,6 +72,7 @@ prompting to allow the game every time an agent makes a new dev copy. `-Remove` 
 | [`launcher.md`](launcher.md) | **launcher** | `launcher/` — the Electron client: find WaW, install the ENW client, install maps, launch |
 | [`web.md`](web.md) | **web** | `web/` — the site at `zombies.enw.gg`, a port of ENW Movement |
 | [`archive.md`](archive.md) | **archive** | `archive/` — the crawler, the catalogue and the link report |
+| [`vps.md`](vps.md) | **vps** | `infra/vps/` and the Hetzner box `zombies-dev` — the one Linux dev box, Wine, and the headless Windows Steam client. It is the project's **only** spend; read the cost section before touching anything there |
 | [`../re/t4-sp-map.md`](../re/t4-sp-map.md) | **re** | `shared/t4/`, `docs/re/`, `tools/re/`, `ZombiesDev\dumps` — the decrypted exe, verified addresses, structs, the security audit (Huffman / OOB handlers) |
 
 Shared, and owned by nobody:
