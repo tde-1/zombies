@@ -22,6 +22,20 @@ const EXEMPT = [
   // holding it up. Nothing under /updates identifies anyone or reveals anything the
   // installer itself does not.
   /^\/updates(\/|$)/,
+  // Exported map geometry for the replay viewer (/mapdata, routes/replay.js). Asked for
+  // by B through the coordinator, 2026-09-23, and it is worth being honest about the
+  // trade rather than filing it under "static assets".
+  //
+  // FOR: it is one 38 MB file per map fetched by a loader, not a page. A gate cookie that
+  // has expired mid-session turns that fetch into a 401 body the glb parser reads as
+  // corrupt geometry, and the viewer then reports "the map failed to load" for a map that
+  // is sitting right there. Nothing under here identifies anyone or says anything about
+  // a game, a player or a record.
+  // AGAINST, and unresolved: a `.glb` built by tools/maps/export_map.py is DERIVED FROM
+  // THE GAME — Treyarch's geometry and Treyarch's textures, re-encoded. Exempting it puts
+  // game assets on a public URL with no password in front of them. That is a redistribution
+  // question, not a security one, and it is B's to answer; it is in questions.md.
+  /^\/mapdata(\/|$)/,
   // Signing in with Steam. These have to be reachable without the beta password because
   // two of the parties in the handshake cannot possibly supply one: Steam, which redirects
   // the browser back to us and knows nothing about a password, and the player's own

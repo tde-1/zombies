@@ -487,3 +487,25 @@ places that matters, neither of them today:
 Nothing is blocked. This is a "decide before the first public push" item, not a now item.
 The audit trail of what was taken from where is in the vault's
 `18 - Reuse Register (projects to mine).md` §10 and in `replay.md` §2.
+
+---
+
+## Q-replay-2 (2026-09-23) — may game-derived map geometry be served without the beta password?
+
+The replay viewer needs `/mapdata/<bsp>/<bsp>.glb` — 37.8 MB for Nacht, and one file per map
+thereafter. It is now **exempt from the closed-beta gate**, as `/updates` is, and that is what
+was asked for; this is the part that was not decided.
+
+A `.glb` from `tools/maps/export_map.py` is not our art. It is **Treyarch geometry and Treyarch
+textures**, read out of the fastfile and out of the running game and re-encoded. Exempting the
+route puts it on a public URL with nothing in front of it, so anyone with the link can download
+Nacht der Untoten's world mesh and 211 of its textures. Nothing under `/mapdata` identifies a
+person, a game or a record, so this is a redistribution question, not a security one.
+
+The argument for exempting it: a gate cookie that expires mid-session turns the fetch into a 401
+body that the glTF parser reads as corrupt geometry, and the viewer then reports "the map failed
+to load" for a map sitting right there on disk.
+
+Three ways out, none of them taken: leave it exempt; put the gate back and accept the failure
+mode (the viewer now degrades to the grid, so it is no longer fatal); or sign short-lived URLs
+per session. **B decides.** `replay.md` §7a, `web/server/middleware/gate.js`.

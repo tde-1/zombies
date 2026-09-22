@@ -20,7 +20,9 @@
 const express = require('express')
 const path = require('node:path')
 const fs = require('node:fs')
+const os = require('node:os')
 const zlib = require('node:zlib')
+const { execFile } = require('node:child_process')
 const replays = require('../lib/replays')
 
 // Exported map geometry (tools/maps). Game-derived, so it is NEVER in git — it lives in
@@ -56,8 +58,12 @@ class SlotState {
 
 // Events that are worth a marker on the timeline or a line in the feed. `input` and
 // `perf` are dropped: 47k input events is half the file and the viewer shows none of it.
+// `kill` is here because the referee emits it now (2026-09-22 DLL builds) and §3 gap 1
+// asked for it: a kill that scored no points -- and the first real game's ONE kill is
+// exactly that, `{"t":"kill","id":254,"round":1,"how":"entity_gone"}` with no `points`
+// beside it -- was invisible to a feed that inferred kills from `points.why`.
 const FEED_EVENTS = new Set([
-  'round', 'points', 'down', 'revive', 'bleedout', 'chat', 'notify', 'referee',
+  'round', 'points', 'kill', 'down', 'revive', 'bleedout', 'chat', 'notify', 'referee',
   'player_connect', 'player_spawn', 'player_disconnect', 'game_over', 'auth_decision',
 ])
 
@@ -79,6 +85,18 @@ function buildTrack(file, replayLib, hz = 10) {
   const zLast = new Map()        // entnum -> key, so a reused entnum starts a new track
   const rounds = []
   const feed = []
+
+  // §3 gap 2, closed by the referee: `snap.zombies_alive` is the number the ROUND has
+  // left to send, which is not `snap.zombies.length` (the engine only ever has 24-31 out
+  // at once). `kills_round` is its other half. Both are delta-coded like every other snap
+  // field, so they are carried forward, and both are `null` for every file recorded before
+  // they existed -- which is why they are separate arrays with a `has_` flag rather than
+  // zeros the HUD could not tell apart from a quiet round.
+  const zAlive = []
+  const kRound = []
+  let zAliveCur = null
+  let kRoundCur = null
+  let sawCounters = false
 
   let snapIndex = -1
   let ticks = 0
@@ -109,7 +127,7 @@ function buildTrack(file, replayLib, hz = 10) {
 
     if (FEED_EVENTS.has(e.t)) {
       const f = { ms: e.ms || 0, t: e.t }
-      for (const k of ['slot', 'n', 'score', 'delta', 'why', 'text', 'name', 'label', 'id', 'kind', 'reason']) {
+      for (const k of ['slot', 'n', 'score', 'delta', 'why', 'text', 'name', 'label', 'id', 'kind', 'reason', 'how', 'round']) {
         if (e[k] !== undefined) f[k] = e[k]
       }
       feed.push(f)
@@ -124,6 +142,8 @@ function buildTrack(file, replayLib, hz = 10) {
       if (!slots.has(p.slot)) slots.set(p.slot, new SlotState())
       slots.get(p.slot).apply(p)
     }
+    if (e.zombies_alive !== undefined) { zAliveCur = e.zombies_alive; sawCounters = true }
+    if (e.kills_round !== undefined) { kRoundCur = e.kills_round; sawCounters = true }
     if (snapIndex % stride !== 0) continue
     if (firstSnapMs === null) firstSnapMs = e.ms
 
@@ -135,6 +155,8 @@ function buildTrack(file, replayLib, hz = 10) {
       c.score.push(s.score)
       c.alive.push(s.alive ? 1 : 0)
     }
+    zAlive.push(zAliveCur)
+    kRound.push(kRoundCur)
     ticks++
 
     // Zombies. `zombies` absent and `zombies: []` mean the same thing (the sampler only
@@ -186,6 +208,14 @@ function buildTrack(file, replayLib, hz = 10) {
     ticks,
     duration_ms: lastMs,
     max_round: rounds.length ? rounds[rounds.length - 1].n : round,
+    // Whether this map has geometry on this machine, and which version of it. The viewer
+    // needs both before it fetches anything: see mapExportFor.
+    map_export: mapExportFor(header.map),
+    // Absent on every file older than the counters, and the viewer must say "Zombies up"
+    // off its own zombie tracks in that case rather than draw a confident 0.
+    has_counters: sawCounters,
+    zombies_alive: sawCounters ? zAlive : null,
+    kills_round: sawCounters ? kRound : null,
     players,
     // Zombies with a single sample are spawn flicker and cost a draw call each.
     zombies: [...zombies.values()].filter((z) => z.pos.length >= 6),
@@ -195,6 +225,33 @@ function buildTrack(file, replayLib, hz = 10) {
 }
 
 const r1 = (v) => Math.round(Number(v) * 10) / 10
+
+/**
+ * What geometry exists for a bsp, answered by the server rather than discovered by the
+ * browser through a failed 38 MB fetch.
+ *
+ * The viewer used to find out by asking for the `.glb` and catching the error, which made
+ * "this map has never been exported" indistinguishable from "the network died halfway"
+ * and drew a red error string over a black page either way. Telling it up front is one
+ * `statSync` on a path it was going to build anyway, and it is what lets the page say
+ * *no world model yet* and still play the game over a floor.
+ *
+ * `built_at` is the cache key: the `.glb` is served `immutable` for a year, so a re-export
+ * has to change the URL, and the sidecar is the only thing that knows it changed.
+ */
+function mapExportFor(bsp) {
+  const out = { bsp: bsp || null, glb: false, meta: false, built_at: null, bytes: 0, world_shell: null }
+  if (!bsp || !/^[A-Za-z0-9._-]+$/.test(bsp)) return out
+  const dir = path.join(MAPS_DIR, bsp)
+  try { const st = fs.statSync(path.join(dir, `${bsp}.glb`)); out.glb = st.isFile(); out.bytes = st.size } catch { /* not exported */ }
+  try {
+    const meta = JSON.parse(fs.readFileSync(path.join(dir, `${bsp}.meta.json`), 'utf8'))
+    out.meta = true
+    out.built_at = meta.built_at || null
+    out.world_shell = !!meta.world_shell
+  } catch { /* geometry without a sidecar still draws */ }
+  return out
+}
 
 /** Answer with a pre-gzipped body, or inflate it for the rare client that says it cannot. */
 function send(req, res, gz) {
@@ -220,14 +277,117 @@ function send(req, res, gz) {
  * and the resolved path must still be inside REPLAY_DIR.
  */
 function fileFor(matchId) {
+  // `replays.fileFor` answers with a DESCRIPTOR -- { path, name, size, row } -- not a
+  // path, and this took the object straight through to `readHeader(file)`, which threw
+  // `The "path" argument must be of type string ... Received an instance of Object` and
+  // came back as a 422 "unsigned or truncated replay". It never showed up in testing
+  // because the only replays on this box were the simulator's, which have NO `replays`
+  // row, so every test went down the fallback branch below -- which does return a string.
+  // The first replay that ever had a row was the first real game, and the viewer had
+  // never once been down this path. Found 2026-09-23 against game 2 (`m_5de3842b`).
   const viaDb = replays.fileFor(matchId)
-  if (viaDb) return viaDb
+  if (viaDb) return viaDb.path
   const id = String(matchId)
   if (!/^[ml]_[0-9a-f]{8,16}$/i.test(id)) return null
   const p = path.join(replays.REPLAY_DIR, `${id}.enwr`)
   const rel = path.relative(replays.REPLAY_DIR, p)
   if (rel.startsWith('..') || path.isAbsolute(rel)) return null
   return fs.existsSync(p) ? p : null
+}
+
+// ---- pulling the bytes off the box that recorded them --------------------------------
+//
+// THE PROBLEM THIS SOLVES, and it is the one that stopped the viewer being usable for a
+// real game. A box posts a *pointer* on `/api/gs/result` — `file` is an absolute path on
+// ITS filesystem — and it never posts the bytes. On the dev box that was invisible,
+// because the box and the site were the same machine. The Hetzner box is not: game 2's
+// replay row says `/home/waw/zdev-host/replays/m_5de3842b.enwr`, which does not exist on
+// B's PC, so `/api/replay/m_5de3842b/track` answered 404 for every real game ever played.
+//
+// The right long-term fix is object storage (lib/replays.js's `object_key` seam) or the
+// host agent POSTing the file. Both are other lanes'. What this does instead is the
+// smallest thing that makes a real game watchable tonight: when the file is missing
+// locally, `scp` it once from the box over the ssh alias that is already configured for
+// it, into REPLAY_DIR, where every other part of the site already looks. After the first
+// watch it is a local file like any other.
+//
+// What is NOT trusted: the box's path string. Only the BASENAME is used, it must be
+// exactly `<matchId>.enwr`, and the destination is resolved back inside REPLAY_DIR. The
+// remote directory comes from the row's own dirname but is required to be a plain
+// absolute POSIX path with no shell metacharacters, and `scp` is spawned with execFile,
+// so there is no shell to inject into.
+const PULL_ENABLED = process.env.ZM_REPLAY_PULL !== 'off'
+const PULL_TIMEOUT_MS = Number(process.env.ZM_REPLAY_PULL_TIMEOUT_MS || 60_000)
+const inflight = new Map()      // matchId -> Promise<string|null>
+const failedAt = new Map()      // matchId -> ms, so a dead box is not dialled per request
+const FAIL_BACKOFF_MS = 60_000
+
+/** The ssh host alias for a box name. Defaults to the box name itself, which is how
+ *  `zombies-dev` is already spelled in B's `~/.ssh/config`. */
+function sshHostFor(box) {
+  if (!box) return null
+  try {
+    const map = JSON.parse(process.env.ZM_REPLAY_PULL_HOSTS || '{}')
+    if (map && map[box]) return String(map[box])
+  } catch { /* a malformed map is not a reason to refuse the default */ }
+  if (process.env.ZM_REPLAY_PULL_HOST) return String(process.env.ZM_REPLAY_PULL_HOST)
+  return /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(box) ? box : null
+}
+
+function pullFromBox(matchId) {
+  if (!PULL_ENABLED) return Promise.resolve(null)
+  const id = String(matchId)
+  if (!/^m_[0-9a-f]{8,16}$/i.test(id)) return Promise.resolve(null)   // local games are already local
+  if (inflight.has(id)) return inflight.get(id)
+  const failed = failedAt.get(id)
+  if (failed && Date.now() - failed < FAIL_BACKOFF_MS) return Promise.resolve(null)
+
+  const row = replays.rowFor(id)
+  const host = sshHostFor(row && row.box)
+  if (!row || !row.file || !host) return Promise.resolve(null)
+
+  // The box's own path, split into a directory we re-use and a basename we do not.
+  const remote = String(row.file).replace(/\\/g, '/')
+  if (!/^\/[A-Za-z0-9._\-/]+$/.test(remote)) return Promise.resolve(null)
+  const dir = remote.slice(0, remote.lastIndexOf('/'))
+  if (path.posix.basename(remote) !== `${id}.enwr`) return Promise.resolve(null)
+
+  const dest = path.join(replays.REPLAY_DIR, `${id}.enwr`)
+  const rel = path.relative(replays.REPLAY_DIR, dest)
+  if (rel.startsWith('..') || path.isAbsolute(rel)) return Promise.resolve(null)
+
+  // Written to a temp name and renamed, so a half-copied file is never readable as a
+  // replay — `readEvents` on a truncated container fails a long way from the cause.
+  const tmp = path.join(os.tmpdir(), `zm-pull-${id}-${process.pid}.part`)
+  const p = new Promise((resolve) => {
+    fs.mkdirSync(replays.REPLAY_DIR, { recursive: true })
+    execFile('scp', [
+      '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'StrictHostKeyChecking=accept-new',
+      `${host}:${dir}/${id}.enwr`, tmp,
+    ], { timeout: PULL_TIMEOUT_MS, windowsHide: true }, (err) => {
+      if (err) {
+        console.warn(`[replay] could not pull ${id} from ${host}: ${err.message.trim()}`)
+        try { fs.unlinkSync(tmp) } catch { /* nothing to clean */ }
+        failedAt.set(id, Date.now())
+        return resolve(null)
+      }
+      try {
+        fs.renameSync(tmp, dest)
+      } catch {
+        // Different volumes: copy then remove.
+        try { fs.copyFileSync(tmp, dest); fs.unlinkSync(tmp) } catch (e2) {
+          console.warn(`[replay] pulled ${id} but could not place it: ${e2.message}`)
+          failedAt.set(id, Date.now())
+          return resolve(null)
+        }
+      }
+      console.log(`[replay] pulled ${id}.enwr from ${host} (${fs.statSync(dest).size} B)`)
+      failedAt.delete(id)
+      resolve(dest)
+    })
+  }).finally(() => inflight.delete(id))
+  inflight.set(id, p)
+  return p
 }
 
 function router() {
@@ -242,7 +402,13 @@ function router() {
     const key = `${req.params.matchId}:${hz}`
     if (cache.has(key)) return send(req, res, cache.get(key))
 
-    const file = fileFor(req.params.matchId)
+    let file = fileFor(req.params.matchId)
+    // Not here yet? It may still be on the box that recorded it. One scp, then the
+    // normal path — including the REPLAY_DIR containment check — decides.
+    if (!file) {
+      await pullFromBox(req.params.matchId)
+      file = fileFor(req.params.matchId)
+    }
     if (!file) return res.status(404).json({ error: 'no replay file for that match on this machine' })
 
     let lib
@@ -278,9 +444,55 @@ function router() {
   return r
 }
 
-/** Mounted by index.js. Exported separately so the static mount stays out of the router. */
+/**
+ * Mounted by index.js. Exported separately so the static mount stays out of the router.
+ *
+ * CACHING. A `.glb` is 38 MB and the URL is stable, so a one-hour cache (what this was)
+ * meant a browser re-downloaded the whole map on the second visit of the afternoon. It is
+ * a year now, and the re-export problem §5 warned about is solved by the viewer asking
+ * for `?v=<built_at>` — a query string is part of the cache key, so a new export is a new
+ * URL and an old one is never served stale. The `.meta.json` is small and is the thing
+ * that CARRIES `built_at`, so it is the one file that must revalidate: `no-cache` on it,
+ * a year on everything else.
+ *
+ * RANGES. `express.static` answers `Range` with 206 by itself; the viewer does not use
+ * ranges, but a browser that resumes an interrupted 38 MB download does, and so does
+ * anything that ever proxies this. Nothing here disables it.
+ */
 function mapsStatic() {
-  return [MAPS_DIR, express.static(MAPS_DIR, { index: false, maxAge: '1h', fallthrough: false })]
+  return [MAPS_DIR, express.static(MAPS_DIR, {
+    index: false,
+    // Fall through to index.js's plain-text 404 for a map nobody has exported, rather
+    // than to express's default HTML error page. It must never fall through to the
+    // React app — a loader handed index.html to parse as a glb fails a long way from
+    // the cause — and index.js's own `/mapdata` catch-all is what guarantees that.
+    fallthrough: true,
+    setHeaders(res, filePath) {
+      if (filePath.endsWith('.meta.json')) res.setHeader('Cache-Control', 'no-cache')
+      else res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    },
+  })]
 }
 
-module.exports = { router, mapsStatic, MAPS_DIR, buildTrack }
+/** Which maps have an export, for the viewer and for anyone asking what is served. */
+function listMaps() {
+  try {
+    return fs.readdirSync(MAPS_DIR, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !d.name.startsWith('_'))
+      .map((d) => {
+        const glb = path.join(MAPS_DIR, d.name, `${d.name}.glb`)
+        if (!fs.existsSync(glb)) return null
+        let meta = null
+        try { meta = JSON.parse(fs.readFileSync(path.join(MAPS_DIR, d.name, `${d.name}.meta.json`), 'utf8')) } catch { /* geometry without a sidecar still draws */ }
+        return {
+          bsp: d.name,
+          bytes: fs.statSync(glb).size,
+          built_at: (meta && meta.built_at) || null,
+          world_shell: meta ? !!meta.world_shell : null,
+        }
+      })
+      .filter(Boolean)
+  } catch { return [] }
+}
+
+module.exports = { router, mapsStatic, listMaps, MAPS_DIR, buildTrack }

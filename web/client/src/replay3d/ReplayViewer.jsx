@@ -83,7 +83,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   // ~15 times a second. Every other per-frame value lives in a ref: a setState per
   // frame is a React render per frame, and the viewer's whole frame budget is the
   // scene's.
-  const [hud, setHud] = useState({ t: 0, round: 0, alive: 0, players: [] })
+  const [hud, setHud] = useState({ t: 0, round: 0, alive: 0, left: null, kills: null, players: [] })
 
   const timeRef = useRef(0)
   const playingRef = useRef(false)
@@ -92,7 +92,22 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const dirtyRef = useRef(true)
   const camRef = useRef('follow')
 
-  const total = track ? track.duration_ms / 1000 : 0
+  // THE TIMELINE'S ZERO IS THE FIRST SNAPSHOT, NOT THE FIRST EVENT.
+  //
+  // A replay starts recording when the game process starts, and a real dedicated server
+  // spends minutes booting, loading the map and waiting for a player before there is a
+  // single snapshot to record. Game 2's first snap is at ms 311_355 -- five and a quarter
+  // minutes of `hello`, `log` and `map_loaded` before tick 0. Tick k is therefore at
+  // `t0_ms + k * tick_ms`, and an event's tick is `(e.ms - t0_ms) / tick_ms`.
+  //
+  // Without that subtraction every event lands 3_113 ticks past the end of an 880-tick
+  // track: the round counter stays on "—" for a game that reached round 1, the feed is
+  // empty for its whole length, and the round marks sit off the right-hand end of the
+  // scrubber. It never showed up before because every replay this was built against came
+  // from the simulator, whose first snap is at ms 0 -- so `t0_ms` was 0 and the bug was
+  // exactly zero ticks wide. Found 2026-09-23 against the first real game.
+  const t0 = track ? (track.t0_ms || 0) : 0
+  const total = track ? Math.max(0, (track.duration_ms - t0) / 1000) : 0
   const tickMs = track ? track.tick_ms : 50
 
   useEffect(() => { playingRef.current = playing }, [playing])
@@ -107,12 +122,12 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     if (!track) return out
     for (const e of track.events) {
       if (e.t === 'round' || e.t === 'auth_decision' || e.t === 'player_connect') continue
-      const k = Math.floor(e.ms / tickMs)
+      const k = Math.floor((e.ms - t0) / tickMs)
       if (!out.has(k)) out.set(k, [])
       out.get(k).push(e)
     }
     return out
-  }, [track, tickMs])
+  }, [track, tickMs, t0])
 
   const roundAt = useMemo(() => {
     // A flat array of round number per tick. `round` is an event, never a snap field
@@ -122,11 +137,11 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     let r = 0
     let i = 0
     for (let k = 0; k < track.ticks; k++) {
-      while (i < track.rounds.length && track.rounds[i].ms <= k * tickMs) { r = track.rounds[i].n; i++ }
+      while (i < track.rounds.length && track.rounds[i].ms - t0 <= k * tickMs) { r = track.rounds[i].n; i++ }
       a[k] = r
     }
     return a
-  }, [track, tickMs])
+  }, [track, tickMs, t0])
 
   // ---- scene ------------------------------------------------------------------
   useEffect(() => {
@@ -151,8 +166,40 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     actorsRef.current = actors
     api.resize()
 
+    // The floor to stand a gridded, model-less replay on: the lowest thing anybody or
+    // anything is recorded at. T4 puts a player's origin at the feet, so the lowest
+    // recorded z IS the floor of the lowest room they reached, to within a step.
+    const floorFromTrack = () => {
+      let lo = Infinity
+      for (const p of track.players) for (let i = 2; i < p.pos.length; i += 3) if (p.pos[i] < lo) lo = p.pos[i]
+      for (const z of track.zombies) for (let i = 2; i < z.pos.length; i += 3) if (z.pos[i] < lo) lo = z.pos[i]
+      const first = track.players[0]
+      return {
+        z: Number.isFinite(lo) ? lo : 0,
+        cx: first && first.pos.length ? first.pos[0] : 0,
+        cy: first && first.pos.length ? first.pos[1] : 0,
+      }
+    }
+
+    // Everything the actors need is already in hand; only the world is in question. So a
+    // map that is missing, refused or broken ends here — a grid at the real floor height,
+    // a plain sentence saying so, and a replay that plays. It is NEVER an error overlay
+    // over a black page: the commonest case by far is a map nobody has exported yet, and
+    // a custom map with no export is the normal state of the archive.
+    const actorsOnly = (why) => {
+      setNote(why)
+      const f = floorFromTrack()
+      api.setGrid(f.cx, f.cy, f.z, true)
+    }
+
     ;(async () => {
       try {
+        if (!mapUrl) {
+          actorsOnly(`No world model for ${track.map} yet — showing players and zombies over a grid at the floor they walked on.`)
+          await api.precompile()
+          dirtyRef.current = true
+          return
+        }
         const got = await fetchAsset([mapUrl], {
           onProgress: (loaded, size) => !dead && setProgress(size ? loaded / size : null),
         })
@@ -209,7 +256,12 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         // does, and how this was found.
         dirtyRef.current = true
       } catch (e) {
-        if (!dead) setErr(String(e.message || e))
+        // Same landing as "never exported". The cause is printed, because a network
+        // failure and a missing export want different actions from whoever reads it,
+        // but the outcome is a watchable replay either way.
+        if (!dead) {
+          try { actorsOnly(`No world model for ${track.map} — ${String(e.message || e)}. Players and zombies only.`) } catch { setErr(String(e.message || e)) }
+        }
       } finally {
         if (!dead) { setBoot('out'); setTimeout(() => !dead && setBoot('off'), 220) }
       }
@@ -276,7 +328,9 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     }
     actors.setZombies(zs)
 
-    return { i, list, alive: zs.length, round: roundAt[i] || 0 }
+    const zl = track.zombies_alive ? track.zombies_alive[i] : null
+    const kr = track.kills_round ? track.kills_round[i] : null
+    return { i, list, alive: zs.length, left: zl === undefined ? null : zl, kills: kr === undefined ? null : kr, round: roundAt[i] || 0 }
   }, [track, tickMs, roundAt])
 
   // ---- frame loop -------------------------------------------------------------
@@ -309,7 +363,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
       if (s && now - hudAt > 66) {
         hudAt = now
-        setHud({ t: timeRef.current, round: s.round, alive: s.alive, players: s.list, tick: s.i })
+        setHud({ t: timeRef.current, round: s.round, alive: s.alive, left: s.left, kills: s.kills, players: s.list, tick: s.i })
       }
     }
     raf = requestAnimationFrame(tick)
@@ -391,7 +445,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
   if (!track) return <div className="r3d"><Boot /></div>
 
-  const pct = (ms) => `${Math.max(0, Math.min(100, (ms / 1000 / (total || 1)) * 100))}%`
+  const pct = (ms) => `${Math.max(0, Math.min(100, ((ms - t0) / 1000 / (total || 1)) * 100))}%`
 
   return (
     <div className="r3d" ref={wrapRef}>
@@ -419,7 +473,14 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       <div className="r3d-zm-round">
         <span className="r3d-zm-round-lab">Round</span>
         <span className="r3d-zm-round-n">{hud.round || '—'}</span>
-        <span className="r3d-zm-alive">Zombies up <b>{hud.alive}</b></span>
+        {/* "Zombies up" is the number of zombies the VIEWER has, which is what it can
+            honestly claim from positions alone. When the referee sends the round's own
+            counters (2026-09-22 DLL builds onward) they are the better number and they
+            are labelled as what they are: `zombies_alive` is the round's remaining pool,
+            not what is on screen. */}
+        {hud.left == null
+          ? <span className="r3d-zm-alive">Zombies up <b>{hud.alive}</b></span>
+          : <span className="r3d-zm-alive">Zombies left <b>{hud.left}</b>{hud.kills == null ? null : <> · killed <b>{hud.kills}</b></>}</span>}
       </div>
 
       <div className="r3d-zm-score">
@@ -439,8 +500,14 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       <div className="r3d-zm-feed">
         {feed.map((e, n) => (
           <div key={n} className={'r3d-zm-ev' + (e.t === 'points' ? ' pts' : (e.t === 'down' || e.t === 'bleedout') ? ' bad' : '')}>
-            <span className="r3d-zm-ev-t">{clock(e.ms / 1000)}</span>
+            {/* The same clock the scrubber shows, so a line in the feed and the time
+                under the playhead are the same number: both are measured from the first
+                snapshot, not from the moment the server process started. */}
+            <span className="r3d-zm-ev-t">{clock((e.ms - t0) / 1000)}</span>
             {e.t === 'points' && <span>slot {e.slot} <b>+{e.delta}</b> {e.why}</span>}
+            {/* A kill is its own record now, not an inference off a points line. `how`
+                is the referee's word for why the zombie stopped existing. */}
+            {e.t === 'kill' && <span><b>kill</b>{e.slot === undefined ? '' : ` · slot ${e.slot}`}{e.how ? ` · ${e.how}` : ''}</span>}
             {e.t === 'down' && <span>slot {e.slot} <b>down</b></span>}
             {e.t === 'revive' && <span>slot {e.slot} <b>revived</b></span>}
             {e.t === 'bleedout' && <span>slot {e.slot} <b>bled out</b></span>}

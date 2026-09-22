@@ -17,6 +17,10 @@ the router with it. So ours is `web/client/src/replay3d/` and the page is `/repl
 
 ## 1. Where things stand
 
+> **§7 (2026-09-23) is newer than this section and supersedes it.** The viewer is live on
+> `zombies.enw.gg`, it plays the box's own game (`m_5de3842b`), and two bugs that only a
+> real replay could find are fixed. Read §7 first.
+
 Working, on this box, against a **real signed replay**:
 
 | | |
@@ -410,3 +414,150 @@ vocabularies meet.
 5. **Multi-player in anger.** The four-slot path is written and exercised only by
    single-player data; `m_2e346de4.enwr` (Der Riese, two players, signed) is the file to
    test it with once a two-player Nacht replay exists.
+
+---
+
+## 7. 2026-09-23 — the viewer goes live, and two bugs that only a real game could find
+
+The goal for this session: when B and friends finish a Nacht game on the Hetzner box, the
+game's page on <https://zombies.enw.gg> links to `/replay/:matchId` and the viewer plays it
+with Nacht's world geometry. It does. What follows is what is served from where, what is
+proven on the live site, and what is not.
+
+### 7a. What is served from where
+
+| URL | Served from | Headers | Gate |
+|---|---|---|---|
+| `/mapdata/<bsp>/<bsp>.glb` | `C:\Users\b\ZombiesDev\maps\<bsp>\` (**outside the repo**, git-ignored; `ZM_MAPS_DIR` overrides) | `Cache-Control: public, max-age=31536000, immutable`, `Accept-Ranges: bytes`, 206 on a `Range` | **exempt** |
+| `/mapdata/<bsp>/<bsp>.meta.json` | the same directory | `Cache-Control: no-cache` | **exempt** |
+| `/mapdata/<anything missing>` | — | `404 text/plain`, never `index.html` | **exempt** |
+| `/api/replay/<match>/track?hz=10` | decoded from the `.enwr` in `C:\Users\b\ZombiesDev\replays\` | gzip, in-memory cache by (match, hz) | behind the gate |
+| `/replay/:matchId` | `web/client/dist` | — | behind the gate |
+
+The `.glb` is 37.8 MB and **must never be committed** — §4's rule is unchanged. It is not
+copied into `web/public` either: there is one copy on the box and the site mounts it.
+
+**The cache pair is one mechanism, not two settings.** A year of `immutable` on a stable URL
+would serve stale bytes forever after a re-export — §5's open item. So the sidecar carries
+`built_at`, the track carries the sidecar's `built_at` (`map_export`), and the page asks for
+`<bsp>.glb?v=<built_at>`. A re-export is a new URL for every browser at once, and the only
+file that has to revalidate is the 30 KB one that knows the answer.
+
+**`/mapdata` is now beta-gate-exempt**, alongside `/updates`. The case for it is in
+`middleware/gate.js` and so is the case against, which is real and is B's to settle: a `.glb`
+built by `export_map.py` is Treyarch's geometry and Treyarch's textures re-encoded, and
+exempting it puts game-derived assets on a public URL with no password in front of them.
+Nothing under `/mapdata` identifies a person, a game or a record. → `questions.md`.
+
+**The mount is decided at boot** (`index.js` checks the directory exists). Export a map the
+running site has never seen and it takes one restart to appear.
+
+### 7b. Two bugs, and why every earlier proof missed both
+
+Both were invisible until a replay recorded by the **real DLL on the real box** was put
+through the viewer. Every replay this lane had ever tested against came from the simulator,
+and the simulator differs from the game in exactly the two ways that hid them.
+
+1. **`fileFor` returned a descriptor, not a path.** `lib/replays.fileFor()` answers
+   `{ path, name, size, row }`; `routes/replay.js` passed that object straight to
+   `readHeader(file)`, which threw `The "path" argument must be of type string ... Received an
+   instance of Object`, and the endpoint dressed it up as a **422 "unsigned or truncated
+   replay"**. It only ever took that branch when the match had a `replays` row — and no
+   simulator replay has one, so every test went down the fallback branch, which returns a
+   string. **The viewer had never once worked for a game the site had ingested.**
+2. **The timeline's zero is the first snapshot, and the viewer measured from zero.** A real
+   dedicated server boots, loads the map and waits for a player before there is anything to
+   snapshot: game 2's first snap is at **ms 311 355**. Ticks are relative to that (`t0_ms`,
+   which the track already carried); events are absolute. So every event landed 3 113 ticks
+   past the end of an 880-tick track — the round counter stayed on "—" for a game that
+   reached round 1, the feed was empty for its whole length, and the round marks sat off the
+   right-hand end of the scrubber. The simulator's first snap is at ms 0, so the bug was
+   exactly zero ticks wide for every file it was tested against.
+
+### 7c. A box's replay is a pointer, and the bytes were never here
+
+`/api/gs/result` posts `file` — an absolute path on the **box's** filesystem. Game 2's row
+says `/home/waw/zdev-host/replays/m_5de3842b.enwr`, which does not exist on B's PC, so the
+track endpoint answered "no replay file for that match on this machine" for every real game
+ever played. On the dev box this was invisible because the box and the site were one machine.
+
+`routes/replay.js` now **pulls the file once** when it is missing: `scp` over the ssh alias
+named by the box (`zombies-dev` is already a `Host` in `~/.ssh/config`), into
+`ZM_REPLAY_DIR`, after which it is a local file like any other. Only the basename is used and
+it must equal `<matchId>.enwr`; the destination is re-checked inside `REPLAY_DIR`; `scp` is
+spawned with `execFile`, so there is no shell; a failure is cached for 60 s so a dead box is
+not dialled once per request. `ZM_REPLAY_PULL=off` disables it, `ZM_REPLAY_PULL_HOSTS` is a
+JSON map for boxes whose name is not their ssh alias. All three are in `infra/site.env.example`.
+
+**This is a stopgap and should be retired.** The right answer is `lib/replays.js`'s
+`object_key` seam (R2) or the host agent POSTing the bytes with the result — both other
+lanes'. What it buys is that tonight's games are watchable without anybody running a command.
+
+### 7d. The referee's new fields are now used (§3 gaps 1, 2, 3 — closed)
+
+The 2026-09-22 DLL emits what §3 asked for, and the track and the viewer read it:
+
+* **`kill`** is its own event (`{t:"kill", id, round, how}`) and is in `FEED_EVENTS`. It is
+  drawn in the feed as `kill · <how>`. This matters more than it sounds: the first real
+  game's one kill is `how: "entity_gone"` with **no `points` line beside it**, which is
+  precisely the kill §3 said an inference off `points.why` could never attribute.
+* **`snap.zombies_alive` and `snap.kills_round`** come down as two per-tick columns
+  (delta-carried like every other snap field) behind a `has_counters` flag. The HUD says
+  **"Zombies left N · killed M"** when they are present and falls back to its old
+  "Zombies up N" — its own count of zombie tracks — when they are not. The two are
+  different numbers and are labelled differently on purpose.
+* A file recorded before the counters existed gets `null`, not `0`, so a quiet round and an
+  old format are never confused.
+
+`weapon` and `stance` are emitted now (`"#0"`, `"stand"`) and are still carried-but-not-drawn
+— §5 is unchanged on that.
+
+### 7e. A replay whose map has no export still plays
+
+Previously a missing `.glb` threw, and the page was a red error string over black. Now the
+**server says up front** whether geometry exists (`map_export` on the track), the page passes
+`mapUrl: null`, and the viewer draws the actors over `scene.js`'s grid **at the lowest z any
+player or zombie is recorded at** — a floor, because T4 puts a player's origin at the feet —
+with the note *"No world model for `<bsp>` yet — showing players and zombies over a grid at
+the floor they walked on."* A fetch that fails for any other reason lands in the same place
+with the cause printed. **There is no path from here to a blank page.**
+
+### 7f. Proven live, with URLs
+
+The site was rebuilt and restarted four times through the authorised path (`npm run build`,
+`Stop-Process` the port-3200 pid, `infra\keepalive.ps1 -Once`, which loads `infra/site.env`).
+`cloudflared` was not touched and `web/data` was not written to by hand.
+
+| Claim | Evidence |
+|---|---|
+| The map is served publicly, cached and range-able | `GET https://zombies.enw.gg/mapdata/nazi_zombie_prototype/nazi_zombie_prototype.glb` with `Range: bytes=0-1023` → **206**, `Content-Range: bytes 0-1023/39612576`, `Cache-Control: public, max-age=31536000, immutable`, **no password** |
+| The sidecar revalidates | `.../nazi_zombie_prototype.meta.json` → 200, 30 107 B, `Cache-Control: no-cache` |
+| A map with no export is a 404, not the React app | `.../mapdata/no_such/no_such.glb` → 404 `text/plain` |
+| **The box's real game plays, with world geometry** | <https://zombies.enw.gg/replay/m_5de3842b> (game id 2, `nazi_zombie_prototype`, box `zombies-dev`, real DLL `Sep 22 2026 07:38:34`) — **`ui/replay-live-nacht.png`**: Nacht's walls, floor, crates and debris; the player capsule; **ROUND 1**; **Zombies left 3 · killed 1**; `1:14 kill · entity_gone` in the feed; the round mark on the scrubber; 1:15 / 1:27 |
+| The track is real, not a stub | `GET /api/replay/m_5de3842b/track?hz=10` → 200, `ticks=880`, `has_counters=true`, `map_export.glb=true`, one `kill` event, `zombies_alive` peaks at 4 |
+| A replay whose map has no export still plays | <https://zombies.enw.gg/replay/m_2e346de4> (`nazi_zombie_factory`) — **`ui/replay-live-noworld.png`**: two named players with scores, **ROUND 7**, a bleed-out in the feed, eight round marks, and the note. `map_export.glb=false` |
+| The link from the game page exists | `/game/m_5de3842b` → the Replay card → **Watch in 3D** → `/replay/m_5de3842b` (`pages/Misc.jsx`) |
+
+Screenshots are headless Edge at 1600x900 over CDP (`--headless=new --enable-unsafe-swiftshader
+--use-angle=swiftshader`), driven with `Network.setCookie` for the beta gate and a
+`Runtime.evaluate` that clicks the +15 s button to seek. WebGL 2 works under SwiftShader; the
+only console line is `KHR_parallel_shader_compile extension not supported`.
+
+### 7g. What is NOT proven, and what is still wrong
+
+* **No Nacht replay with downs or a multi-player round exists.** The box's five games are all
+  round 1, one player, one kill. Kills-and-downs on a Nacht map is **unproven**; the downs,
+  revives and bleed-outs in `ui/replay-live-noworld.png` are the **simulator's** Der Riese
+  file. Tonight's game is the first chance to see a real one.
+* **Player names are missing from a real replay.** `m_5de3842b` has no `player_connect`, so
+  the viewer says **"Slot 0"**. That is STATUS's open identity item, not a viewer bug — the
+  referee has to derive the Steam id from the invite token before there is a name to draw.
+* **The stretch was not attempted.** Verrückt, Shi No Numa and Der Riese are still unexported:
+  each needs a `game.lock` hold for Husky, and the lock was held by the launcher lane
+  (`launcher 31164 ... nazi_zombie_prototype`) for the whole session. `nazi_zombie_prototype`
+  is the **only** map with geometry; every other replay takes the grid path of §7e.
+* **The pull is untested against a box that is offline or slow.** The 60 s timeout and the
+  60 s failure backoff are written; only the success path has been run.
+* **The track cache outlives an export.** A track decoded before a map was exported keeps
+  `map_export.glb: false` until the site restarts — the same restart §7a already needs.
+* **`weapon`, `stance`, lightmaps, skinned zombies** — §5, unchanged.

@@ -15,8 +15,15 @@ const ReplayViewer = lazy(() => import('../replay3d/ReplayViewer.jsx'))
 
 // Exported map geometry, served from a git-ignored ZombiesDev path by
 // web/server/routes/replay.js. A stock map is a game asset and never enters the repo.
-const mapUrl = (bsp) => `/mapdata/${encodeURIComponent(bsp)}/${encodeURIComponent(bsp)}.glb`
-const metaUrl = (bsp) => `/mapdata/${encodeURIComponent(bsp)}/${encodeURIComponent(bsp)}.meta.json`
+//
+// `?v=<built_at>` is the cache key. The .glb is 38 MB and is served `immutable` for a
+// year, which is right for a file that only changes when somebody re-exports the map —
+// and wrong the moment somebody does, because the URL would not have changed. The
+// sidecar's `built_at` comes down with the track (`map_export`), so a re-export is a new
+// URL for every browser at once and there is no stale-bytes window to reason about.
+const q = (v) => (v ? `?v=${encodeURIComponent(v)}` : '')
+const mapUrl = (bsp, v) => `/mapdata/${encodeURIComponent(bsp)}/${encodeURIComponent(bsp)}.glb${q(v)}`
+const metaUrl = (bsp, v) => `/mapdata/${encodeURIComponent(bsp)}/${encodeURIComponent(bsp)}.meta.json${q(v)}`
 
 export default function Replay() {
   const { matchId } = useParams()
@@ -50,14 +57,22 @@ export default function Replay() {
     // bottom of a 100vh element and takes the control bar with it.
     <div style={{ position: 'fixed', left: 0, right: 0, top: 56, bottom: 0 }}>
       <Suspense fallback={<div className="r3d" />}>
-        {track && (
-          <ReplayViewer
-            track={track}
-            mapUrl={mapUrl(track.map)}
-            metaUrl={metaUrl(track.map)}
-            title={track.map_name}
-          />
-        )}
+        {track && (() => {
+          // A map with no export is not an error: the actors, the timeline, the rounds
+          // and the scores are all in the track, and they are most of what a replay is
+          // for. The viewer is told there is no geometry rather than being left to find
+          // out by failing to fetch it.
+          const ex = track.map_export || {}
+          const v = ex.built_at || null
+          return (
+            <ReplayViewer
+              track={track}
+              mapUrl={ex.glb === false ? null : mapUrl(track.map, v)}
+              metaUrl={ex.glb === false ? null : metaUrl(track.map, v)}
+              title={track.map_name}
+            />
+          )
+        })()}
       </Suspense>
     </div>
   )
