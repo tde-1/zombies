@@ -77,11 +77,17 @@ export function useMapInstall(key) {
   const [st, setSt] = useState(null)
   const [busy, setBusy] = useState(false)
   const enw = bridge()
-  const supported = !!(enw && enw.mapState && enw.installMap)
+  // `installMap` is enough to download (every launcher since 0.1 has it). `mapState` is
+  // 0.2.12's: without it (a 0.2.11 launcher on the new site) the button starts as Download
+  // and learns "Downloaded" from installMap's own answer ({already:true} or the record).
+  const supported = !!(enw && enw.installMap)
+  const hasState = !!(enw && enw.mapState)
   useEffect(() => {
     if (!supported || !key) { setSt(null); return undefined }
     let live = true
-    const read = () => enw.mapState(key).then((s) => { if (live) setSt(s) }).catch(() => {})
+    const read = () => (hasState
+      ? enw.mapState(key).then((s) => { if (live) setSt(s) }).catch(() => {})
+      : setSt({ bsp: key, installed: false, installing: false, pct: null }))
     read()
     const offs = []
     if (enw.onMapProgress) {
@@ -103,11 +109,12 @@ export function useMapInstall(key) {
     try {
       const r = await enw.installMap(key)
       if (r && r.skipped && !r.already) setSt((s) => ({ ...(s || {}), installing: false, error: r.skipped }))
+      else setSt((s) => ({ ...(s || {}), installing: false, installed: true, error: null }))
     } catch (e) {
       setSt((s) => ({ ...(s || {}), installing: false, error: String((e && e.message) || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }))
     }
     setBusy(false)
-    try { setSt(await enw.mapState(key)) } catch { /* keep what we have */ }
+    if (hasState) { try { setSt(await enw.mapState(key)) } catch { /* keep what we have */ } }
   }
 
   const phase = !supported ? 'browser'
