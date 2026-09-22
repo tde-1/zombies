@@ -3,43 +3,83 @@
 <head>
 <meta charset="utf-8">
 <title>ENW Zombies</title>
+<!-- Shown in the site's place when no site answers. It is drawn like the SITE (its nav,
+     its palette, its one red), not like the launcher's old green shell, because since
+     2026-09-22 the launcher has no chrome of its own: the window is frameless and this
+     page's bar is the title bar, with the same three window buttons the site draws. -->
 <style>
-  :root { --bg:#11120e; --bg2:#15170f; --line:rgba(228,223,209,.09); --bone:#e4dfd1; --dim:#9a9684; --blood:#b0342c; --olive:#7b7e58; }
+  :root { --bg:#101010; --panel:rgba(255,255,255,.05); --panel-2:rgba(255,255,255,.085); --text:#e7e7e7; --muted:#9b9b9b; --faint:#6e6e6e; --bad:#e1675a; --nav-h:62px }
   * { box-sizing:border-box }
-  body { margin:0; background:var(--bg); color:var(--bone); font:14px/1.6 "Segoe UI",system-ui,sans-serif; }
-  .wrap { max-width:760px; margin:0 auto; padding:64px 32px; }
-  h1 { font-size:26px; margin:0 0 2px; font-weight:800; letter-spacing:.02em }
-  h1 .zm { color:var(--blood); letter-spacing:.3em; font-size:15px; margin-left:8px }
-  .one-liner { color:var(--dim); margin:0 0 36px }
-  h2 { font-size:13.5px; font-weight:600; color:var(--dim); margin:28px 0 10px }
-  .box { border:none; background:rgba(228,223,209,.05); border-radius:14px; padding:16px 18px; margin-bottom:10px }
-  .box b { color:var(--bone) }
-  .box p { margin:6px 0 0; color:var(--dim) }
-  code { font-family:Consolas,monospace; font-size:12px; color:var(--olive) }
-  ul { color:var(--dim); padding-left:20px }
+  html, body { margin:0; background:var(--bg); color:var(--text); font:14px/1.6 "Segoe UI",system-ui,sans-serif }
+  nav { position:sticky; top:0; height:var(--nav-h); display:flex; align-items:center; -webkit-app-region:drag; user-select:none }
+  nav button, nav a { -webkit-app-region:no-drag }
+  .lockup { position:absolute; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:flex-start; line-height:1 }
+  .lockup .enw { font-weight:800; font-size:17px; letter-spacing:.08em }
+  .lockup .zm { font-weight:600; font-size:7.5px; letter-spacing:.42em; margin-top:2px }
+  .wc { margin-left:auto; display:none; height:100% }
+  .wc button { width:46px; height:100%; display:grid; place-items:center; background:transparent; border:none; color:var(--muted); cursor:pointer; transition:background .16s, color .16s }
+  .wc button:hover { background:var(--panel-2); color:var(--text) }
+  .wc button.close:hover { background:var(--bad); color:#fff }
+  .wrap { max-width:720px; margin:0 auto; padding:72px 32px }
+  h1 { font-family:"Trebuchet MS","Segoe UI",sans-serif; font-size:30px; font-weight:750; letter-spacing:-.3px; margin:0 0 6px }
+  .one-liner { color:var(--muted); margin:0 0 28px }
+  .box { background:var(--panel); border-radius:14px; padding:16px 18px; margin-bottom:10px }
+  .box p { margin:6px 0 0; color:var(--muted) }
+  .actions { display:flex; gap:8px; margin:22px 0 34px }
+  .btn { font:inherit; font-size:13px; font-weight:600; color:var(--text); background:var(--panel-2); border:none; border-radius:999px; padding:9px 18px; cursor:pointer }
+  .btn:hover { background:rgba(255,255,255,.13) }
+  .btn.primary { background:var(--text); color:#161616; font-weight:700 }
+  .btn.primary:hover { background:#fff }
+  h2 { font-size:13.5px; font-weight:600; color:var(--muted); margin:0 0 10px }
+  code { font-family:Consolas,monospace; font-size:12px; color:var(--muted) }
+  ul { color:var(--muted); padding-left:20px; margin:0 }
   li { margin:4px 0 }
 </style>
 </head>
 <body>
+<nav>
+  <div class="lockup" aria-label="ENW Zombies"><span class="enw">ENW</span><span class="zm">ZOMBIES</span></div>
+  <div class="wc" id="wc">
+    <button id="wcMin" title="Minimise" aria-label="Minimise"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+    <button id="wcMax" title="Maximise" aria-label="Maximise"><svg viewBox="0 0 10 10" width="10" height="10"><rect x=".5" y=".5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
+    <button id="wcClose" class="close" title="Close" aria-label="Close"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M.5.5l9 9M9.5.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
+  </div>
+</nav>
 <div class="wrap">
-  <h1>ENW<span class="zm">ZOMBIES</span></h1>
-  <p class="one-liner">Every World at War custom zombies map, archived and playable.</p>
+  <h1>The site is not answering</h1>
+  <p class="one-liner">ENW Zombies lives on the site, so there is nothing to show until it is back.
+  The launcher keeps checking when you press Try again (or Ctrl+R).</p>
 
-  <div class="box">
-    <b>No site is answering.</b>
-    <p>The rail on the right still works: it finds your game, installs the ENW client and
-    launches it.</p>
+  <div class="actions">
+    <button class="btn primary" id="retry">Try again</button>
+    <button class="btn" id="settings">Launcher settings</button>
   </div>
 
   <h2>Where it looks</h2>
   <div class="box">
     <ul>
-      <li><code>http://127.0.0.1:3200</code> and <code>:5173</code> — the ENW Zombies site (<code>web/</code>)</li>
+      <li><code>https://zombies.enw.gg</code> — the ENW Zombies site</li>
+      <li><code>http://127.0.0.1:3200</code> and <code>:5173</code> — a local copy of the site (<code>web/</code>)</li>
       <li><code>http://127.0.0.1:8080</code> — the mock site (<code>infra/host-agent/mock-site</code>)</li>
-      <li><code>http://127.0.0.1:8787</code> — the host agent's dashboard</li>
     </ul>
-    <p>Pin one in Settings, or set <code>ENW_SITE_URL</code> before starting the launcher.</p>
+    <p>Pin one in Launcher settings, or set <code>ENW_SITE_URL</code> before starting the launcher.</p>
   </div>
 </div>
+<script>
+;(() => {
+  // Not `const enw` at the top level: the preload's `window.enw` is a non-configurable
+  // global, and a global lexical binding of the same name is a SyntaxError that kills
+  // the whole script.
+  const enw = window.enw
+  if (enw && enw.win) {
+    document.getElementById('wc').style.display = 'flex'
+    document.getElementById('wcMin').onclick = () => enw.win.minimize()
+    document.getElementById('wcMax').onclick = () => enw.win.maximize()
+    document.getElementById('wcClose').onclick = () => enw.win.close()
+  }
+  document.getElementById('retry').onclick = () => enw && enw.reloadSite()
+  document.getElementById('settings').onclick = () => enw && enw.openScreen && enw.openScreen('settings')
+})()
+</script>
 </body>
 </html>

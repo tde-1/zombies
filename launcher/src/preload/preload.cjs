@@ -80,6 +80,20 @@ contextBridge.exposeInMainWorld('enw', {
   setBusy: (key, busy, why) => call('setBusy', { key, busy, why }),
   requestSiteRefresh: () => call('requestSiteRefresh'),
 
+  // The frameless window (no launcher bar since 2026-09-22): the site's nav and the
+  // shell's screens draw these three buttons. `onState` hears maximise / restore.
+  win: {
+    minimize: () => call('winMinimize'),
+    maximize: () => call('winMaximize'),
+    close: () => call('winClose'),
+    isMaximized: () => call('winIsMaximized'),
+    onState: (fn) => on('window', fn),
+  },
+  // Settings and the client install are shell screens; the site opens them from its
+  // account menu. 'settings' | 'firstRun'.
+  openScreen: (name) => call('openScreen', name),
+  onOpenScreen: (fn) => on('openScreen', fn),
+
   // Events.
   onBoot: (fn) => on('boot', fn),
   onBootDone: (fn) => on('boot_done', fn),

@@ -44,7 +44,13 @@ const RENDERER = path.resolve(HERE, '..', 'renderer')
 // .cjs, not .js: Electron decides a preload's module type by extension, and this app
 // is "type": "module". An ambiguous preload fails at load with nothing useful in it.
 const PRELOAD = path.resolve(HERE, '..', 'preload', 'preload.cjs')
-const TOPBAR_HEIGHT = 44
+// THE LAUNCHER HAS NO BAR OF ITS OWN (B, 2026-09-22). The window is frameless and the
+// site's own nav is its title bar: drag region, and minimise / maximise / close drawn by
+// the site (web/client/src/components/WindowControls.jsx) through `enw.win` below. The
+// site view is the whole window. The shell's screens (setup, settings, boot) still hide
+// the site while they show, and carry their own slim site-styled bar for the same three
+// buttons.
+const TOPBAR_HEIGHT = 0
 
 // ---------------------------------------------------------------------------
 // WINDOW SIZE IS A LAYOUT DECISION, AND IT WAS THE WRONG ONE
@@ -181,7 +187,7 @@ async function askForPassword({ site, retry = false }) {
       minimizable: false,
       maximizable: false,
       title: 'ENW Zombies',
-      backgroundColor: '#12130e',
+      backgroundColor: '#101010',
       autoHideMenuBar: true,
       webPreferences: { contextIsolation: false, nodeIntegration: false, sandbox: false },
     })
@@ -266,7 +272,8 @@ async function createWindow() {
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     show: false,
-    backgroundColor: '#12130e',
+    frame: false,
+    backgroundColor: '#101010',
     autoHideMenuBar: true,
     title: 'ENW Zombies',
     webPreferences: {
@@ -294,6 +301,24 @@ async function createWindow() {
   win.contentView.addChildView(view)
   layout()
   win.on('resize', layout)
+  // The site draws the maximise / restore glyph, so it has to be told which one.
+  for (const ev of ['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) {
+    win.on(ev, () => push('window', { maximized: win.isMaximized() }))
+  }
+  // Reload was a button on the old bar. It is Ctrl+R / F5 now, from either webContents,
+  // and it always reloads the SITE: the default menu's own Ctrl+R would reload whichever
+  // view has focus, and reloading the shell throws away a setup in progress.
+  const reloadKeys = (e, input) => {
+    if (input.type !== 'keyDown') return
+    const k = String(input.key || '').toLowerCase()
+    if (k === 'f5' || ((input.control || input.meta) && k === 'r')) {
+      e.preventDefault()
+      if (state.siteInfo?.placeholder) reloadSite().catch(() => {})
+      else view.webContents.reload()
+    }
+  }
+  win.webContents.on('before-input-event', reloadKeys)
+  view.webContents.on('before-input-event', reloadKeys)
 
   // web asked how to tell "this is the launcher" server-side. This: every request the
   // wrapped page makes carries the header, navigations included, so a server-rendered
@@ -313,9 +338,15 @@ async function createWindow() {
     if (!allowed.includes(u.hostname) && u.protocol !== 'file:') { e.preventDefault(); shell.openExternal(url) }
   })
   wc.on('did-finish-load', () => push('site', { loaded: true, url: wc.getURL() }))
-  wc.on('did-fail-load', (_e, code, desc, url) => {
+  wc.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
     if (code === -3) return
     push('site', { loaded: false, url, error: `${desc} (${code})` })
+    // The site went away under us (or never came). Chromium's own error page has no
+    // window buttons and the window has no frame, so show OUR fallback, drawn like the
+    // site, with Try again (reloadSite) and the three buttons. (2026-09-22)
+    if (isMainFrame && !String(url || '').startsWith('file:')) {
+      wc.loadFile(cfg.PLACEHOLDER).catch(() => {})
+    }
   })
 
   state.siteInfo = await cfg.resolveSiteUrl()
@@ -361,6 +392,9 @@ function createTray() {
 
 function push(channel, payload) {
   try { state.win?.webContents.send(`enw:${channel}`, payload) } catch {}
+  // The site is the launcher's chrome now, so it hears the same events (session, update
+  // status, window state) the shell does. A page that does not listen ignores them.
+  try { state.siteView?.webContents.send(`enw:${channel}`, payload) } catch {}
 }
 
 // ------------------------------------------------------- the update check --
@@ -551,6 +585,24 @@ function wireIpc() {
   // web page. Only the boot screen ever worked, because the PLAY path happened to call
   // `showSite(false)` from the main process.
   handle('screen', (name) => { showSite(!name); return { site: !name, screen: name || null } })
+  // The site asks for a shell screen (Settings, the client install) from its account
+  // menu; the shell renders it and hides the site through `screen` above.
+  handle('openScreen', (name) => {
+    if (!['settings', 'firstRun'].includes(name)) throw new Error(`no screen called ${name}`)
+    try { state.win?.webContents.send('enw:openScreen', name) } catch {}
+    return true
+  })
+  // The frameless window's three buttons, for the site's nav and the shell's bar.
+  handle('winMinimize', () => { state.win?.minimize(); return true })
+  handle('winMaximize', () => {
+    const w = state.win
+    if (!w) return false
+    if (w.isMaximized()) w.unmaximize(); else w.maximize()
+    return w.isMaximized()
+  })
+  // close(), not destroy(): the tray rule in createWindow still decides what Close means.
+  handle('winClose', () => { state.win?.close(); return true })
+  handle('winIsMaximized', () => !!state.win?.isMaximized())
 
   handle('detect', (opts) => detect.detect(opts || {}))
   handle('browse', async () => {

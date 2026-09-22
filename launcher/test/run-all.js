@@ -345,6 +345,34 @@ await test('the launcher shell draws no rail, no map list and no Play button', a
   assert.ok(html.includes('id="bootSteps"') && html.includes('id="statusBody"'))
 })
 
+// B, 2026-09-22: the launcher's own top bar and its green theme are gone. The window is
+// frameless, the site's nav is the title bar, and the window buttons are drawn by the site
+// through a four-call IPC surface. None of the old bar may come back.
+await test('the launcher draws no bar of its own over the site, and the window is frameless', async () => {
+  const html = String(fs.readFileSync(new URL('../src/renderer/shell.html', import.meta.url)))
+  const css = String(fs.readFileSync(new URL('../src/renderer/shell.css', import.meta.url)))
+  const js = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
+  const ph = String(fs.readFileSync(new URL('../src/renderer/placeholder.html', import.meta.url)))
+  for (const id of ['id="topbar"', 'id="navBack"', 'id="navFwd"', 'id="navReload"', 'id="sitePill"', 'id="setupPill"', 'id="accountPill"', 'id="settingsPill"']) {
+    assert.ok(!html.includes(id), `${id} is still in the shell`)
+  }
+  assert.ok(!/sitePill|accountPill|navBack/.test(js), 'shell.js still wires the old bar')
+  assert.ok(!/#11120e|#7b7e58|#e4dfd1/i.test(css + ph), 'the green/olive/bone palette survived')
+  assert.ok(/frame: false/.test(main), 'the main window must be frameless')
+  assert.ok(/const TOPBAR_HEIGHT = 0$/m.test(main), 'the site view must start at the top of the window')
+  for (const ch of ['winMinimize', 'winMaximize', 'winClose', 'winIsMaximized', 'openScreen']) {
+    assert.ok(main.includes(`handle('${ch}'`), `main.js has no ${ch} handler`)
+    assert.ok(pre.includes(`'${ch}'`), `the preload does not expose ${ch}`)
+  }
+  // The screens' strip and the fallback page both carry the three buttons.
+  for (const src of [html, ph]) for (const id of ['wcMin', 'wcMax', 'wcClose']) assert.ok(src.includes(`id="${id}"`))
+  assert.ok(/-webkit-app-region:\s*drag/.test(css) && /-webkit-app-region:\s*drag/.test(ph), 'no drag region')
+  // Reload moved to the keyboard, and it reloads the site, not the shell.
+  assert.ok(/before-input-event/.test(main) && /'f5'/.test(main), 'Ctrl+R / F5 are not wired')
+})
+
 // The site's home folds to one column at 1080px, so the window has to be wide enough for
 // the site view - which is now the whole window - to stay above it.
 await test('the window is wide enough for the site home to be two columns', async () => {

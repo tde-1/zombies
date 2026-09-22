@@ -41,7 +41,7 @@ const S = {
 // you". That is the party path, so it is the same one a friend's Start goes through.
 //
 // What the shell keeps is what only a native app can do: finding World at War, installing
-// the client, the boot screen, settings, the topbar and the tray.
+// the client, the boot screen, settings and the tray.
 
 // ------------------------------------------------------------------- screens --
 
@@ -552,45 +552,34 @@ async function refresh() {
   S.status = await window.enw.status()
   renderStatus()
   const st = S.status
-  $('sitePill').textContent = `site: ${st.site?.placeholder ? 'placeholder' : new URL(st.site?.url || 'about:blank').host || 'file'}`
-  $('sitePill').className = `pill ${st.site?.placeholder ? 'warn' : 'ok'}`
-  $('setupPill').textContent = st.setup?.installed ? 'client: installed' : 'client: not installed'
-  $('setupPill').className = `pill ${st.setup?.installed ? 'ok' : 'warn'}`
-  $('setupPill').title = st.setup?.installed
-    ? `Installed in ${st.paths?.game || ''}`
-    : `Not installed in ${st.paths?.game || 'the ENW folder'} — click to install it`
-  const signedIn = st.session?.signedIn
-  $('accountPill').textContent = signedIn
-    ? `${st.session.name || st.session.steamid}${st.session.mock ? ' (mock)' : ''}`
-    : (st.site_api?.auth === 'steam' ? 'Sign in with Steam' : 'Sign in')
   return st
 }
 
 function wire() {
-  $('navBack').onclick = () => window.enw.siteNav('back')
-  $('navFwd').onclick = () => window.enw.siteNav('forward')
-  $('navReload').onclick = () => window.enw.siteNav('reload')
-  $('sitePill').onclick = () => renderSettings()
-  $('setupPill').onclick = () => renderFirstRun().then(() => show('firstRun'))
-  $('settingsPill').onclick = renderSettings
-  $('accountPill').onclick = async () => {
-    const st = await window.enw.status()
-    if (st.session?.signedIn && !st.session?.mock) { await window.enw.signOut(); toast('Signed out.') }
-    else {
-      // Steam sign-in happens IN THE PLAYER'S OWN BROWSER (RFC 8252) and takes as long
-      // as they take, so the pill has to say what is going on or the launcher looks
-      // frozen — and has to come back to a real state, never a spinner, if they close
-      // the tab.
-      const steam = st.site_api?.auth === 'steam'
-      if (steam) {
-        $('accountPill').textContent = 'Waiting for your browser…'
-        toast('Signing in to Steam in your browser. Come back here when it says you can close the tab.')
-      }
-      try { const s = await window.enw.signIn(); toast(`Signed in as ${s.name || s.steamid}${s.mock ? ' (mock)' : ''}.`) }
-      catch (e) { toast(`${e.message} Press Sign in to try again.`, 'error') }
-    }
-    refresh()
+  // The old top bar's back / forward / reload / site pill / client pill / account pill
+  // are gone with the bar (2026-09-22): reload is Ctrl+R / F5 (main.js), Settings, the
+  // client status, sign-in and sign-out are in the site's account menu. What is left
+  // here is the screens' own strip: the way back, and the frameless window's buttons.
+  $('chromeBack').onclick = () => {
+    if (S.screen === 'boot') window.enw.closeBoot()
+    hideAll()
   }
+  $('wcMin').onclick = () => window.enw.win.minimize()
+  $('wcMax').onclick = () => window.enw.win.maximize()
+  $('wcClose').onclick = () => window.enw.win.close()
+  const paintMax = (m) => {
+    $('wcMax').title = m ? 'Restore' : 'Maximise'
+    $('wcMax').innerHTML = m
+      ? '<svg viewBox="0 0 10 10"><path d="M2.5 2.5V.5h7v7h-2M.5 2.5h7v7h-7z" fill="none" stroke="currentColor" stroke-width="1"/></svg>'
+      : '<svg viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg>'
+  }
+  window.enw.win.isMaximized().then(paintMax).catch(() => {})
+  window.enw.win.onState((s) => paintMax(!!s?.maximized))
+  // The site's account menu asks for Settings or the client install.
+  window.enw.onOpenScreen((name) => {
+    if (name === 'settings') renderSettings()
+    else if (name === 'firstRun') renderFirstRun().then(() => show('firstRun'))
+  })
   $('bootCancel').onclick = () => window.enw.cancelPlay()
   $('bootClose').onclick = () => { window.enw.closeBoot(); hideAll() }
   $('settingsClose').onclick = hideAll

@@ -4,27 +4,31 @@
    buttons and inputs, 13.5px sentence-case labels, and
    the em dash for a missing value. Tone: plain, dry, functional words only. */
 :root {
-  --bg: #11120e;
-  --bg-2: #15170f;
-  --panel: rgba(228, 223, 209, .05);
-  --panel-2: rgba(228, 223, 209, .085);
-  --line: rgba(228, 223, 209, .09);
-  --olive: #7b7e58;
-  --olive-dim: #565a3c;
-  --bone: #e4dfd1;
-  --bone-dim: #9a9684;
-  --text: #e4dfd1;
-  --text-dim: #9a9684;
-  --faint: #6e6b5d;
-  --blood: #8c2c22;
-  --blood-bright: #b0342c;
-  --ok: #7f9a5c;
-  --warn: #c9a94a;
+  /* The SITE's palette (web/client/src/theme.css, Movement's): near-black, zero-hue greys,
+     white-wash panels, and the one red. The green/olive/bone theme went with the old bar
+     (2026-09-22) - the launcher is supposed to look like the site, because it is the site.
+     Old token names are kept so the rules below did not all have to be rewritten. */
+  --bg: #101010;
+  --bg-2: #0a0a0a;
+  --panel: rgba(255, 255, 255, .05);
+  --panel-2: rgba(255, 255, 255, .085);
+  --line: rgba(255, 255, 255, .09);
+  --olive: #d9d9d9;
+  --olive-dim: #a8a8a8;
+  --bone: #e7e7e7;
+  --bone-dim: #9b9b9b;
+  --text: #e7e7e7;
+  --text-dim: #9b9b9b;
+  --faint: #6e6e6e;
+  --blood: #8c3830;
+  --blood-bright: #e1675a;
+  --ok: #7acf7a;
+  --warn: #d9c148;
   --radius: 14px;
   --radius-sm: 10px;
   --pill: 999px;
   --mono: Consolas, 'Cascadia Mono', ui-monospace, monospace;
-  --topbar: 48px;
+  --topbar: 62px;
 }
 
 * { box-sizing: border-box; }
@@ -47,7 +51,7 @@ button {
   cursor: pointer;
   transition: background .16s ease, color .16s ease;
 }
-button:hover:not(:disabled) { background: rgba(228, 223, 209, .13); }
+button:hover:not(:disabled) { background: rgba(255, 255, 255, .13); }
 button:disabled { opacity: .4; cursor: default; }
 button.primary {
   background: var(--blood-bright);
@@ -62,7 +66,7 @@ input, select {
   background: var(--panel-2); border: none;
   border-radius: var(--pill); padding: 8px 14px; width: 100%; outline: none;
 }
-input:focus, select:focus { background: rgba(228, 223, 209, .12); box-shadow: 0 0 0 2px rgba(123, 126, 88, .3); }
+input:focus, select:focus { background: rgba(255, 255, 255, .12); box-shadow: 0 0 0 2px rgba(123, 126, 88, .3); }
 /* A checkbox is not a text field: the browser default is a white box that reads as a
    different application to everything around it. */
 input[type=checkbox] {
@@ -79,29 +83,33 @@ code { font-family: var(--mono); font-size: 12px; color: var(--bone-dim); word-b
   text-transform: uppercase; color: var(--faint);
 }
 
-/* ------------------------------------------------------------------ top bar */
-#topbar {
-  height: var(--topbar);
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 14px;
-  background: var(--bg-2);
+/* ------------------------------------------------------- the screens' bar */
+/* There is no launcher bar over the SITE (2026-09-22): the window is frameless and the
+   site's nav is the title bar. This strip exists only for the shell's own screens (setup,
+   settings, boot), which hide the site while they show - so it is drawn like the site's
+   nav: the lockup, one way back, and the three window buttons. Under the site view it is
+   covered and never seen. */
+#chrome {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--topbar);
+  display: flex; align-items: center; gap: 10px; padding: 0 0 0 18px;
+  background: var(--bg);
   -webkit-app-region: drag;
 }
-#topbar button, #topbar .pill { -webkit-app-region: no-drag; }
-.brand { display: flex; align-items: baseline; gap: 7px; margin-right: 8px; }
-.brand .enw { font-weight: 800; letter-spacing: .14em; color: var(--bone); }
-.brand .zm { font-weight: 700; letter-spacing: .3em; font-size: 10px; color: var(--blood-bright); }
-.nav { display: flex; gap: 2px; }
-.nav button { padding: 4px 10px; background: transparent; color: var(--text-dim); }
-.nav button:hover { color: var(--text); background: var(--panel); }
+#chrome button { -webkit-app-region: no-drag; }
+.lockup { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; margin-right: 10px; }
+.lockup .enw { font-weight: 800; font-size: 17px; letter-spacing: .08em; color: var(--text); }
+.lockup .zm { font-weight: 600; font-size: 7.5px; letter-spacing: .42em; color: var(--text); margin-top: 2px; }
+#chromeBack { background: transparent; color: var(--text-dim); padding: 9px 18px; }
+#chromeBack:hover:not(:disabled) { background: var(--panel); color: var(--text); }
 .spacer { flex: 1; }
-.pill {
-  font-size: 11.5px; font-weight: 600; color: var(--text-dim); border: none;
-  border-radius: var(--pill); padding: 5px 12px; cursor: pointer; background: var(--panel);
+.wc { display: flex; align-self: stretch; }
+.wc button {
+  width: 46px; height: 100%; border-radius: 0; padding: 0; display: grid; place-items: center;
+  background: transparent; color: var(--text-dim);
 }
-.pill:hover { background: var(--panel-2); color: var(--text); }
-.pill.warn { color: var(--warn); }
-.pill.ok { color: var(--ok); }
+.wc button:hover:not(:disabled) { background: var(--panel-2); color: var(--text); }
+.wc button.close:hover:not(:disabled) { background: var(--blood-bright); color: #fff; }
+.wc svg { width: 10px; height: 10px; }
 
 /* The rail is gone (2026-09-22). `.kv` stays: the status block it drew now lives in the
    Settings screen, which is the only place left that draws key/value rows. */

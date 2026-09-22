@@ -8,21 +8,22 @@
 </head>
 <body>
 
-<div id="topbar">
-  <div class="brand"><span class="enw">ENW</span><span class="zm">ZOMBIES</span></div>
-  <div class="nav">
-    <button id="navBack" title="Back">&#8592;</button>
-    <button id="navFwd" title="Forward">&#8594;</button>
-    <button id="navReload" title="Reload">&#8635;</button>
-  </div>
-  <span class="pill" id="sitePill" title="Which site the launcher is showing">site: …</span>
+<!-- NO LAUNCHER BAR (B, 2026-09-22). The window is frameless and the wrapped site's own
+     nav is the title bar, with minimise / maximise / close drawn by the site. This strip
+     only shows while one of the screens below has hidden the site; it is drawn like the
+     site's nav and carries the same three buttons. -->
+<div id="chrome">
+  <div class="lockup" aria-label="ENW Zombies"><span class="enw">ENW</span><span class="zm">ZOMBIES</span></div>
+  <button id="chromeBack" title="Back to the site">&#8592; Back to the site</button>
   <div class="spacer"></div>
-  <span class="pill" id="setupPill" title="Where the ENW client is installed">client: …</span>
-  <span class="pill" id="accountPill">Sign in</span>
-  <span class="pill" id="settingsPill">Settings</span>
+  <div class="wc">
+    <button id="wcMin" title="Minimise" aria-label="Minimise"><svg viewBox="0 0 10 10"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+    <button id="wcMax" title="Maximise" aria-label="Maximise"><svg viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
+    <button id="wcClose" class="close" title="Close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
+  </div>
 </div>
 
-<!-- The wrapped site is a native view underneath, edge to edge below the topbar; these
+<!-- The wrapped site is a native view on top, the whole window; these
      screens replace it, never cover it. There is no overlay anywhere in this app.
 
      THERE IS NO RAIL ANY MORE (2026-09-22). The launcher used to draw its own right-hand
@@ -31,7 +32,7 @@
      place B decided a party is managed and a map is picked. Two copies of the map list is
      one copy too many, and the rail's 320 px was what squeezed the site under its own
      1080 px breakpoint so that left column never appeared at all. The shell keeps what only
-     a native app can do: setup, settings, the boot screen, and the topbar. -->
+     a native app can do: setup, settings and the boot screen. -->
 
 <div class="screen wide" id="firstRun">
   <h1>Set up</h1>
