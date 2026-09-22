@@ -3949,3 +3949,25 @@ answer. One finding underneath all of it.**
   process** (`components: dedi_frame_pacing not supported here, skipped`), so it does **not** pace the client;
   and **our proxy DLL is `binkw32.dll`, so there is no filename collision with DXVK's `d3d9.dll`** — DXVK
   remains droppable alongside, untested.
+- 05:35 client: **RETRACTION of the 05:20 synthetic-input line.** "8 kHz synthetic input with
+  `ENW_RAW_MOUSE=0` changes nothing, so the legacy WM_MOUSEMOVE flood alone is cheap" is **wrong and
+  withdrawn.** The `SendInput` harness never delivered to the game on this box: one arm injected
+  **456,000 moves at a measured 8,000/s** onto a window it had verified was foreground, and the DLL
+  counted `WM_INPUT total=0 ... legacy WM_MOUSEMOVE total=58`. B's own mouse logs **78,958** WM_INPUT
+  in 190 s for comparison. Most likely UIPI dropping injected input from a lower-integrity process;
+  whatever the mechanism, every synthetic arm measured an idle game. `client.md` §1e carries the
+  retraction in place.
+- 05:35 client: **what survives is still the answer to B's question.** The control stands (no mouse
+  input → 250.0 fps, p99 6.25 ms, 0.00 % over 16.7 ms, sixteen consecutive windows, with `logfile 2`,
+  `r_vsync 0`, `com_maxfps 250` and borderless all on), and so does the in-band A/B on B's **real**
+  mouse in one run: p99 **6.75 ms / 0.00 %** with the counters frozen vs p99 **20–27 ms / 3–4.4 %**
+  at peak 42–57 WM_INPUT per frame. The stutter is mouse-bound. **Which side of the mouse path costs
+  it — our raw-input component or the engine's legacy flood — is NOT established**, and needs B's
+  hand on the mouse for three one-minute runs (`ENW_FRAMETIME=1`, then `+ENW_RAW_MOUSE=0`, then
+  `+ENW_RAW_MOUSE_NOLEGACY=1`). Nothing was made default on this evidence.
+- 05:35 client: **a real bug found while chasing it**: `mouse_polling`'s `OnRawInput` began
+  `if (!g_in_focus) return;`, and `g_in_focus` is seeded from `GetForegroundWindow()` — which
+  `focus_guard` **hooks** — and only updated by WM_SETFOCUS/WM_KILLFOCUS afterwards. A window that
+  already had focus when we subclassed never sends WM_SETFOCUS, so the flag can be stuck false for a
+  whole session and **every raw report is discarded in silence**. Gate removed: `dwFlags = 0` is
+  foreground-only by definition, so a report arriving at all is the proof the flag was trying to be.

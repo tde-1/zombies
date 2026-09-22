@@ -219,21 +219,81 @@ __declspec(naked) int __cdecl cl_mouse_event(int /*x*/, int /*y*/, int /*dx*/, i
     }
 }
 
-// ------------------------------------------------------------- the raw input
+// ---------------------------------------------------------------- NO LEGACY
+// ===========================================================================
+// WHY (2026-09-22, measured -- see frametime.cpp and the run table in
+// client.md 1e)
+// ===========================================================================
+// With `dwFlags = 0` Windows generates BOTH a WM_MOUSEMOVE and a WM_INPUT for
+// every device report. `Sys_GetEvent` (0x5FEC60) drains the queue COMPLETELY
+// every frame -- `Com_EventLoop` (0x5FEDE0) calls it until the event type is 0
+// -- so at 8 kHz that is ~16,000 messages a second, two per report, being
+// dispatched one at a time on the game thread. Run A peaked at 57 WM_INPUT in a
+// single frame, and the frame-time histogram is unambiguous: with input frozen
+// the same scene holds p99 6.75 ms and 0.00% of frames over 16.7 ms at the
+// 250 fps cap; with the mouse moving, p99 20-27 ms and 3-4% over. B says the
+// same thing from the chair, and that he normally has to drop an 8 kHz mouse to
+// 250 Hz to make old CoD smooth.
+//
+// RIDEV_NOLEGACY removes the WM_MOUSEMOVE half outright, and reading the raw
+// input in BULK (GetRawInputBuffer, once per frame, from our replacement
+// IN_MouseMove) collapses the other half into one call instead of one dispatch
+// per report.
+//
+// ===========================================================================
+// WHAT NOLEGACY COSTS, AND HOW IT IS PAID FOR
+// ===========================================================================
+// RIDEV_NOLEGACY means, per MSDN, no legacy messages AND THE OS CURSOR STOPS
+// MOVING. T4's menu cursor is the OS cursor -- `IN_MouseMove` reads it with
+// GetCursorPos -- so leaving it on in the menu would freeze the pointer, and
+// client.md 2a makes "the in-game menu must keep working" non-negotiable. Two
+// things pay for it:
+//
+//   1. IT IS ONLY ON WHILE THE ENGINE IS RECENTRING. CL_MouseEvent returns
+//      non-zero exactly when the engine wants the cursor recentred, i.e. when
+//      the game -- not the menu or the console -- owns the mouse. We already
+//      read that value every frame. When it goes false we put the legacy
+//      messages straight back, so the menu gets its cursor. This is the same
+//      distinction iw4x-client's RawMouse draws; it just draws it with a dvar
+//      and a menu check, and we have a per-frame signal that is cheaper and
+//      cannot go stale.
+//   2. BUTTONS ARE SYNTHESISED BACK ONTO THE ENGINE'S OWN PATH. With legacy off
+//      there is no WM_LBUTTONDOWN either, and T4 routes buttons through the game
+//      WndProc -> 0x606B60 -> IN_MouseEvent -> Sys_QueEvent. Rather than call
+//      IN_MouseEvent with a convention nobody has verified (addresses.hpp rule 2,
+//      and this project has paid for guessing one), we hand the ORIGINAL WndProc
+//      the exact legacy message it would have received, through CallWindowProcA.
+//      Documented Win32 plus the engine's own proc; no new address, no guessed
+//      prototype. Button transitions are a handful a second, so nothing about
+//      the flood comes back with them.
+//
+// OFF BY DEFAULT. ENW_RAW_MOUSE_NOLEGACY=1 turns it on; ENW_RAW_MOUSE=0 is still
+// the full revert to the stock path.
+bool g_nolegacy_wanted = false;  // ENW_RAW_MOUSE_NOLEGACY
+bool g_nolegacy_now = false;     // what is actually registered right now
+bool g_engine_recentring = false;
+long g_nolegacy_flips = 0;
+long g_buffered_reads = 0;
+long g_buffered_reports = 0;
+
+bool register_raw(bool enable, bool nolegacy) {
+    RAWINPUTDEVICE rid[1] = {};
+    rid[0].usUsagePage = 0x01;  // HID_USAGE_PAGE_GENERIC
+    rid[0].usUsage = 0x02;      // HID_USAGE_GENERIC_MOUSE
+    // DEVIATION 1 from upstream stands for the DEFAULT: dwFlags = 0, legacy
+    // messages kept. Foreground-only is what we want anyway -- a background
+    // game must not read the mouse -- and it is why the counters go to
+    // focus=no and stop.
+    rid[0].dwFlags = enable ? (nolegacy ? RIDEV_NOLEGACY : 0u) : RIDEV_REMOVE;
+    rid[0].hwndTarget = enable ? g_hwnd : nullptr;
+    return ::RegisterRawInputDevices(rid, 1, sizeof rid[0]) == TRUE;
+}
+
 bool ToggleRawInput(bool enable) {
     if (!g_enabled) enable = false;
     if (g_in_raw_input == enable) return g_in_raw_input;
 
-    RAWINPUTDEVICE rid[1] = {};
-    rid[0].usUsagePage = 0x01;  // HID_USAGE_PAGE_GENERIC
-    rid[0].usUsage = 0x02;      // HID_USAGE_GENERIC_MOUSE
-    // DEVIATION 1: dwFlags = 0, not RIDEV_INPUTSINK|RIDEV_NOLEGACY. See the
-    // header. Foreground-only is what we want anyway: a background game must
-    // not read the mouse.
-    rid[0].dwFlags = enable ? 0u : RIDEV_REMOVE;
-    rid[0].hwndTarget = enable ? g_hwnd : nullptr;
-
-    if (::RegisterRawInputDevices(rid, 1, sizeof rid[0]) != TRUE) {
+    if (!register_raw(enable, false)) {
         ENW_WARN("mouse_polling: RegisterRawInputDevices(%s) failed, GetLastError=%lu. "
                  "Staying on the stock GetCursorPos path.",
                  enable ? "on" : "off", ::GetLastError());
@@ -241,21 +301,148 @@ bool ToggleRawInput(bool enable) {
     }
 
     g_in_raw_input = enable;
+    g_nolegacy_now = false;
     g_first_raw_update = true;
     if (g_verbose)
         ENW_INFO("mouse_polling: raw input %s", enable ? "enabled" : "disabled");
     return g_in_raw_input;
 }
 
+// Put the legacy messages back, or take them away, to match whether the game
+// currently owns the mouse. Called once per frame; does nothing unless the
+// answer changed.
+void set_nolegacy(bool want) {
+    if (!g_in_raw_input || !g_nolegacy_wanted) want = false;
+    if (want == g_nolegacy_now) return;
+    if (!register_raw(true, want)) {
+        ENW_WARN("mouse_polling: RegisterRawInputDevices(NOLEGACY=%d) failed, "
+                 "GetLastError=%lu. Staying as we are.", want ? 1 : 0, ::GetLastError());
+        return;
+    }
+    g_nolegacy_now = want;
+    if (++g_nolegacy_flips <= 2 || g_verbose)
+        ENW_INFO("mouse_polling: legacy mouse messages %s -- the %s owns the mouse now. "
+                 "With NOLEGACY on, Windows stops generating a WM_MOUSEMOVE per device "
+                 "report (and stops moving the OS cursor), which is half the message "
+                 "flood. Flip %ld.",
+                 want ? "OFF" : "back ON", want ? "game" : "menu/console", g_nolegacy_flips);
+}
+
+// The buttons, put back on the engine's own path as the legacy messages it
+// expects. One message per transition, never per motion report.
+void synth_buttons(USHORT flags, SHORT wheel) {
+    if (!flags || !g_prev_wndproc || !g_hwnd) return;
+    POINT p = {};
+    ::GetCursorPos(&p);
+    ::ScreenToClient(g_hwnd, &p);
+    const LPARAM lp = MAKELPARAM(static_cast<WORD>(p.x), static_cast<WORD>(p.y));
+
+    // The engine reads the *other* buttons' state out of wParam, so build it the
+    // way Windows would rather than passing zero.
+    WPARAM wp = 0;
+    if (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) wp |= MK_LBUTTON;
+    if (::GetAsyncKeyState(VK_RBUTTON) & 0x8000) wp |= MK_RBUTTON;
+    if (::GetAsyncKeyState(VK_MBUTTON) & 0x8000) wp |= MK_MBUTTON;
+    if (::GetAsyncKeyState(VK_XBUTTON1) & 0x8000) wp |= MK_XBUTTON1;
+    if (::GetAsyncKeyState(VK_XBUTTON2) & 0x8000) wp |= MK_XBUTTON2;
+    if (::GetAsyncKeyState(VK_SHIFT) & 0x8000) wp |= MK_SHIFT;
+    if (::GetAsyncKeyState(VK_CONTROL) & 0x8000) wp |= MK_CONTROL;
+
+    struct { USHORT flag; UINT msg; WPARAM extra; } map[] = {
+        {RI_MOUSE_LEFT_BUTTON_DOWN, WM_LBUTTONDOWN, 0},
+        {RI_MOUSE_LEFT_BUTTON_UP, WM_LBUTTONUP, 0},
+        {RI_MOUSE_RIGHT_BUTTON_DOWN, WM_RBUTTONDOWN, 0},
+        {RI_MOUSE_RIGHT_BUTTON_UP, WM_RBUTTONUP, 0},
+        {RI_MOUSE_MIDDLE_BUTTON_DOWN, WM_MBUTTONDOWN, 0},
+        {RI_MOUSE_MIDDLE_BUTTON_UP, WM_MBUTTONUP, 0},
+        {RI_MOUSE_BUTTON_4_DOWN, WM_XBUTTONDOWN, XBUTTON1},
+        {RI_MOUSE_BUTTON_4_UP, WM_XBUTTONUP, XBUTTON1},
+        {RI_MOUSE_BUTTON_5_DOWN, WM_XBUTTONDOWN, XBUTTON2},
+        {RI_MOUSE_BUTTON_5_UP, WM_XBUTTONUP, XBUTTON2},
+    };
+    for (const auto& m : map) {
+        if (!(flags & m.flag)) continue;
+        const WPARAM w = m.extra ? MAKEWPARAM(static_cast<WORD>(wp), static_cast<WORD>(m.extra)) : wp;
+        ::CallWindowProcA(g_prev_wndproc, g_hwnd, m.msg, w, lp);
+    }
+    if (flags & RI_MOUSE_WHEEL)
+        ::CallWindowProcA(g_prev_wndproc, g_hwnd, WM_MOUSEWHEEL,
+                          MAKEWPARAM(static_cast<WORD>(wp), static_cast<WORD>(wheel)), lp);
+}
+
+// Read every pending raw report in ONE call instead of one WM_INPUT dispatch
+// each. Returns how many reports it consumed.
+long drain_raw_buffer() {
+    if (!g_in_raw_input) return 0;
+    // 512 reports is ~4 frames' worth at 8 kHz / 250 fps; the loop runs again if
+    // there is more.
+    static BYTE buf[512 * (sizeof(RAWINPUT) + 16)];
+    long consumed = 0;
+    for (;;) {
+        UINT size = sizeof buf;
+        const UINT n = ::GetRawInputBuffer(reinterpret_cast<PRAWINPUT>(buf), &size,
+                                           sizeof(RAWINPUTHEADER));
+        if (n == 0 || n == static_cast<UINT>(-1)) break;
+
+        PRAWINPUT ri = reinterpret_cast<PRAWINPUT>(buf);
+        for (UINT i = 0; i < n; ++i) {
+            // Same reasoning as OnRawInput: no `g_in_focus` gate. A stuck flag
+            // silently discarded every report.
+            if (ri->header.dwType == RIM_TYPEMOUSE) {
+                const RAWMOUSE& m = ri->data.mouse;
+                const bool absolute = (m.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
+                g_raw_x.Update(m.lLastX, absolute);
+                g_raw_y.Update(m.lLastY, absolute);
+                if (m.usButtonFlags)
+                    synth_buttons(m.usButtonFlags, static_cast<SHORT>(m.usButtonData));
+                ::InterlockedIncrement(&g_events_total);
+                ::InterlockedIncrement(&g_events_this_frame);
+                ++consumed;
+            }
+            ri = NEXTRAWINPUTBLOCK(ri);
+        }
+        ++g_buffered_reads;
+        if (n * (sizeof(RAWINPUT) + 16) < sizeof buf / 2) break;  // it all fitted
+    }
+    g_buffered_reports += consumed;
+    if (consumed && g_first_raw_update) {
+        g_raw_x.ResetDelta();
+        g_raw_y.ResetDelta();
+        g_first_raw_update = false;
+    }
+    return consumed;
+}
+
 void OnRawInput(LPARAM lparam) {
     if (!g_in_raw_input) return;
+    // In bulk mode the once-per-frame GetRawInputBuffer owns the reading. Taking
+    // the same report here as well would double every delta.
+    if (g_nolegacy_wanted) return;
 
     RAWINPUT raw = {};
     UINT size = sizeof raw;
     const UINT got = ::GetRawInputData(reinterpret_cast<HRAWINPUT>(lparam), RID_INPUT, &raw,
                                        &size, sizeof(RAWINPUTHEADER));
     if (got == static_cast<UINT>(-1) || raw.header.dwType != RIM_TYPEMOUSE) return;
-    if (!g_in_focus) return;
+
+    // NO `if (!g_in_focus) return;` HERE, and that is a fix, not an omission.
+    //
+    // MEASURED 2026-09-22. `g_in_focus` starts as `GetForegroundWindow() ==
+    // g_hwnd` -- and `focus_guard` HOOKS GetForegroundWindow -- and is only
+    // updated afterwards by WM_SETFOCUS / WM_KILLFOCUS. A window that already
+    // had focus when we subclassed it never sends WM_SETFOCUS, so the flag can
+    // be stuck false for the whole session, and this early return then threw
+    // away EVERY report in silence: a bisect run took 360,000 injected mouse
+    // moves at 8 kHz and logged `WM_INPUT total=0, focus=no` while the game sat
+    // there feeling like the stock path. It looks exactly like "raw input is not
+    // reaching us" and is really "we received it and dropped it".
+    //
+    // The check was also redundant. We register with `dwFlags = 0`, which is
+    // foreground-only BY DEFINITION -- Windows does not deliver WM_INPUT to a
+    // window that is not in the foreground -- so arriving at all is the proof
+    // the old flag was trying to be. `g_in_focus` is kept for the log line and
+    // for `g_first_raw_update`, which is what actually needs focus transitions
+    // (upstream's alt-tab angle-snap fix).
 
     const bool absolute = (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
     g_raw_x.Update(raw.data.mouse.lLastX, absolute);
@@ -318,6 +505,12 @@ void __cdecl in_mousemove() {
     // turn the player.
     if (::GetForegroundWindow() != game_hwnd()) return;
 
+    // Bulk read, once per frame, instead of one WM_INPUT dispatch per report.
+    // Only when NOLEGACY is armed: with legacy messages on, the per-message
+    // WM_INPUT path in our WndProc is already draining them and doing both
+    // would double-count the deltas.
+    if (g_nolegacy_wanted) drain_raw_buffer();
+
     const int dx = g_raw_x.GetDelta();
     const int dy = g_raw_y.GetDelta();
     g_raw_x.ResetDelta();
@@ -338,6 +531,14 @@ void __cdecl in_mousemove() {
         *enw::ptr<int>(t4::var::s_wmv_oldPos_x) = *enw::ptr<int>(t4::var::s_wmv_centre_x);
         *enw::ptr<int>(t4::var::s_wmv_oldPos_y) = *enw::ptr<int>(t4::var::s_wmv_centre_y);
     }
+
+    // CL_MouseEvent's return is the engine's own answer to "does the GAME own
+    // the mouse right now, or the menu?" -- it is what decides whether to
+    // recentre. Use the same answer to decide whether the legacy messages (and
+    // therefore the OS cursor the menu needs) may be taken away. It is read
+    // fresh every frame, so it cannot go stale the way a cached menu flag can.
+    g_engine_recentring = recentre != 0;
+    set_nolegacy(g_engine_recentring);
 }
 
 // ------------------------------------------------------------------ component
@@ -411,6 +612,14 @@ public:
             return;
         }
         g_verbose = env_on("ENW_RAW_MOUSE_VERBOSE");
+        g_nolegacy_wanted = env_on("ENW_RAW_MOUSE_NOLEGACY");
+        if (g_nolegacy_wanted)
+            ENW_INFO("mouse_polling: NOLEGACY mode armed (ENW_RAW_MOUSE_NOLEGACY=1). While the "
+                     "game owns the mouse, Windows will not generate a WM_MOUSEMOVE per device "
+                     "report, reports are read in bulk with GetRawInputBuffer once a frame, and "
+                     "buttons are handed back to the engine's own WndProc as legacy messages. "
+                     "The legacy path comes straight back the moment the menu or console takes "
+                     "the mouse, so the cursor still works. ENW_RAW_MOUSE=0 is the full revert.");
 
         // Self-verifying check #1: is 0x5FA8E4 really `call IN_MouseMove`?
         const uintptr_t site = enw::at(t4::fn::IN_MouseMove_callsite);
@@ -489,11 +698,23 @@ public:
                          g_events_total, g_events_peak_frame, g_frames_with_events,
                          g_in_raw_input ? "on" : "off", g_in_focus ? "yes" : "no",
                          g_wm_mousemove_total, g_wm_mousemove_peak, g_msgs_total, g_msgs_peak);
+                if (g_nolegacy_wanted)
+                    ENW_INFO("mouse_polling: NOLEGACY is %s right now (%ld flips); "
+                             "GetRawInputBuffer: %ld call(s) for %ld report(s) = %.1f "
+                             "reports per call",
+                             g_nolegacy_now ? "ON" : "off", g_nolegacy_flips, g_buffered_reads,
+                             g_buffered_reports,
+                             g_buffered_reads ? static_cast<double>(g_buffered_reports) /
+                                                    static_cast<double>(g_buffered_reads)
+                                              : 0.0);
             }
         });
     }
 
     void pre_destroy() override {
+        // Put the legacy messages back BEFORE unregistering, so a game that is
+        // shutting down never leaves the desktop without a moving cursor.
+        set_nolegacy(false);
         if (g_in_raw_input) ToggleRawInput(false);
         if (g_hwnd && g_prev_wndproc && ::IsWindow(g_hwnd))
             ::SetWindowLongPtrA(g_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(g_prev_wndproc));

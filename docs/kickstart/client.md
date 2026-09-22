@@ -312,3 +312,183 @@ branch or a stride — not inferred from a single string. `CL_MouseEvent`'s conv
 x, ecx = client y, `[esp+4]` = dx, `[esp+8]` = dy, caller cleans 8) was read off the call at
 `0x5FA74B` and the `add esp, 8` at `0x5FA750`, and is used through a naked thunk rather than a
 guessed C prototype.
+
+---
+
+## 1e. The stutter: measuring it, and what it is not (2026-09-22)
+
+B: *"when I'm in the game there's stuttery performance; it needs to run smooth and flawless on
+modern systems"*, and then, while this was being measured: *the stutter happens only while the
+mouse is moving*, and he normally has to drop his mouse to 250 Hz to make old CoD smooth.
+
+### The instrument: `components/frametime.cpp`, `ENW_FRAMETIME=1`, off by default
+
+An average frame rate is the one statistic that cannot see a stutter. 175 fps average is what you
+get from 2,600 frames at 5.5 ms plus forty at 120 ms, and it is also what you get from a perfectly
+smooth 175. The eye sees the forty. `heartbeat` prints the average; this prints the **distribution**
+— p50 / p95 / p99 / max and the count of frames over **16.7 / 33.3 / 50 ms** ("dropped a frame at
+60 Hz", "visible hitch", "unmistakable") per 10-second window, out of 0.25 ms buckets.
+
+One `QueryPerformanceCounter` and one array increment per frame off the shared frame tick
+(`enw::frame::subscribe` — we do not hook `Com_Frame`, foundation §3). No allocation, no I/O on the
+frame path, and **nothing at all** unless the env var is set. `ENW_FRAMETIME_WINDOW=<seconds>`
+changes the window.
+
+### The control, and it is the most useful number in this section
+
+`nazi_zombie_prototype`, Local, B's 2560x1440 **240 Hz** panel, borderless, the launcher's full
+baseline command line (`logfile 2`, `r_vsync 0`, `com_maxfps 250`, `r_picmip 0`, aniso 16), with
+**nothing touching the mouse**:
+
+```
+frametime: window 12 -- 2501 frames, 250.0 fps avg | p50 4.25 ms  p95 5.75 ms  p99 6.25 ms
+           max 7.61 ms | over 16.7ms: 0 (0.00%)  over 33.3ms: 0 (0.00%)  over 50ms: 0
+```
+
+and that is not one lucky window — it is **sixteen consecutive ten-second windows** at the
+`com_maxfps` cap with **0.00 %** of frames over 16.7 ms. The game is flawless when the mouse is
+still.
+
+**So the following are excluded as the cause on this box, each by the same run rather than by
+argument:**
+
+| Suspect | Why it is not it |
+|---|---|
+| `logfile 2` (a per-frame log write) | was **on** for every window above |
+| `r_vsync 0` + uncapped fps fighting DWM in a borderless window | 250.0 fps held flat, p99 6.25 ms, in a borderless window |
+| the fps cap vs the panel | `com_maxfps 250` on a **240 Hz** panel, and it sits exactly on the cap |
+| `r_picmip 0` + 16× aniso texture stalls | pinned that way throughout |
+| our own per-frame components | `referee`, `replay` (20 Hz sampler) and `frametime` itself all ran |
+| `dedi_frame_pacing` pacing the client | it is compiled into the player DLL but `is_supported()` is false for a non-dedicated process — `components: dedi_frame_pacing not supported here, skipped`. It does **not** pace the client |
+
+For the record on the other candidate from the brief: **our proxy DLL is `binkw32.dll`, so there is
+no filename collision with DXVK's `d3d9.dll`** — DXVK can be dropped in beside us. It has not been
+tried, and on this evidence there is no reason to: an idle scene that holds 250 fps with a 0.00 %
+hitch rate does not have a D3D9 driver problem.
+
+### With the mouse moving, same build, same scene
+
+The very first 190-second run, with B's own mouse (nobody at the machine; the counters move anyway):
+
+| window | mouse | p50 | p95 | p99 | max | >16.7 ms | fps |
+|---|---|---|---|---|---|---|---|
+| 12 | **none** (counters frozen) | 4.25 | 5.75 | **6.75** | 8.69 | **0.00 %** | 249.0 |
+| 1 | heavy, peak 29–42 WM_INPUT/frame | 4.75 | 13.50 | **23.00** | 62.36 | **4.03 %** | 168.7 |
+| 5 | heavy, peak 54 | 5.25 | 15.25 | **23.00** | 53.75 | **4.23 %** | 148.7 |
+| 6 | heavy, peak 54 | 5.25 | 15.75 | **27.25** | 45.31 | **4.44 %** | 148.2 |
+| 9 | light | 4.25 | 7.50 | 11.00 | 48.45 | 0.13 % | 230.9 |
+
+p99 goes from 6.75 ms to 27 ms and the frame rate falls by a third, on the same scene, with the
+only variable being how much mouse input is arriving. B's description was exactly right.
+
+### Two harness traps that produced false results first, both written down because they are the kind of thing that wastes a night
+
+1. **`play-cli --seconds` was only an upper bound.** `flow.run()` resolves the instant the map is
+   playable and the CLI then stopped the game, about two seconds after `post_init`. The first
+   stutter run produced a log with **zero frames in it**. `--hold` exists now (launcher.md).
+2. **A bare `spawn` gives a window that never receives `WM_SETFOCUS`** — and `mouse_polling`'s
+   `OnRawInput` began `if (!g_in_focus) return;`. `g_in_focus` is initialised from
+   `GetForegroundWindow()`, which **`focus_guard` hooks**, and is only updated by focus messages
+   afterwards. So the flag can be stuck false for a whole session and **every raw report is thrown
+   away in silence**: a run took **360,000 injected moves at 8 kHz** and logged
+   `WM_INPUT total=0, focus=no`. It reads as "raw input never reached us" and is really "we
+   received it and dropped it".
+
+   **That gate is now gone, and its removal is a fix rather than an omission.** We register with
+   `dwFlags = 0`, which is foreground-only *by definition* — Windows does not deliver `WM_INPUT` to
+   a window that is not in the foreground — so a report arriving at all is the proof the flag was
+   trying to be. `g_in_focus` is kept for the log line and for `g_first_raw_update`, which is what
+   genuinely needs focus transitions (upstream's alt-tab angle-snap fix).
+
+### Driving the mouse without B — ATTEMPTED, AND IT DOES NOT WORK ON THIS BOX
+
+**Retracted before it was ever relied on.** The plan was to reproduce B's 8 kHz mouse with
+`SendInput` (`MOUSEEVENTF_MOVE`, tiny deltas, busy-waited to a chosen rate) so the raw-input arms
+could be bisected without a hand on the mouse. The harness reports success and the numbers look
+clean, and **every one of those runs is void**, because the game never received the input.
+
+The game's own counters are the check, and they are unambiguous. Across one arm, **456,000 moves
+were injected at a measured 7,999–8,000/s** onto a window the harness had verified was the
+foreground window, and the DLL logged:
+
+```
+mouse_polling: WM_INPUT total=0, peak/frame=0, frames with motion=0, raw=on focus=yes
+               | legacy WM_MOUSEMOVE total=58 peak/frame=2
+```
+
+58 legacy messages and **zero** raw reports, against B's own mouse in the same build producing
+**78,958** WM_INPUT in a 190-second run. The most likely reason is UIPI: injected input from a
+process at a lower integrity level than the target window is discarded in silence, and
+`SetForegroundWindow`/`BringWindowToTop` can still appear to succeed. Whatever the mechanism, the
+measurement is the verdict.
+
+So **nothing in this section is bisect evidence**, and two earlier conclusions that were written
+down from it are withdrawn here rather than deleted:
+
+* ~~"8 kHz synthetic input with `ENW_RAW_MOUSE=0` changes nothing, so the legacy WM_MOUSEMOVE flood
+  alone is cheap."~~ **Wrong** — that arm had our component off, so it had no counters, and there is
+  now no reason to believe its input arrived either. It measured an idle game.
+* ~~"`ENW_RAW_MOUSE=1` at 8 kHz is smooth."~~ **Wrong**, same reason. The 252 FPS on the on-screen
+  counter in `shot-RAWON.png` is a one-second average and could not have shown a 4 % hitch rate
+  anyway.
+
+Two window-finding notes, because each cost a run and both are true regardless:
+**`FindWindowA("CoD-WaW", NULL)` returns NULL on this box** even with the game up, and
+`Process.MainWindowHandle` **is** the right window (class `CoD-WaW`, 2560x1440 at (0,0)) — the
+`CoD Splash Screen` and IME windows are the others. `SetForegroundWindow` is also refused outright
+to a process that is not already foreground; the documented `AttachThreadInput` dance gets past
+that part, and does not get past the input filtering.
+
+### So what is proven, and what is still open
+
+**Proven.** The stutter tracks mouse input volume, on B's own hardware, in one run, with the scene
+and every dvar held constant — the table above. And the usual suspects are excluded by the control.
+
+**Not proven, and it needs B's hand on the mouse for five minutes.** Whether the cost is *ours*
+(the `WM_INPUT` registration and the per-message `GetRawInputData`) or the *engine's* (the legacy
+`WM_MOUSEMOVE` flood through `Sys_GetEvent`, which drains the queue completely every frame). The
+synthetic harness cannot tell them apart on this machine, and guessing is what this project does
+not do.
+
+**The A/B for B**, same map, a minute each, moving the mouse the whole time, reading the three
+`frametime: window` lines out of `%LOCALAPPDATA%\ENWZombies\logs\enw-<pid>.log`:
+
+| run | environment | what it tells us |
+|---|---|---|
+| 1 | `ENW_FRAMETIME=1` | today's default: raw input on, legacy messages kept |
+| 2 | `ENW_FRAMETIME=1 ENW_RAW_MOUSE=0` | the stock engine path. If this is *also* bad, the flood is the engine's and NOLEGACY is the fix |
+| 3 | `ENW_FRAMETIME=1 ENW_RAW_MOUSE_NOLEGACY=1` | the candidate fix below |
+
+If run 3 wins, it becomes the default. **Nothing has been made default on this evidence.**
+
+### The candidate fix, built and off by default: `ENW_RAW_MOUSE_NOLEGACY=1`
+
+The mechanism it targets, which is a fact about the code rather than a measurement: we register raw
+input with `dwFlags = 0`, which **keeps** the legacy messages (deviation 1 in §1b, and deliberate —
+the buttons and the menu cursor live on that path). So every device report produces a
+`WM_MOUSEMOVE` **and** a `WM_INPUT`, and `Sys_GetEvent` (`0x5FEC60`) drains the queue completely
+every frame while `Com_EventLoop` (`0x5FEDE0`) calls it until the event type is 0. At 8 kHz that is
+~16,000 messages a second dispatched one at a time on the game thread; run A peaked at **57
+`WM_INPUT` in a single frame** at only ~4,500 reports/s.
+
+What the switch does:
+
+* **`RIDEV_NOLEGACY`**, so Windows stops generating the `WM_MOUSEMOVE` half at all;
+* **`GetRawInputBuffer` once per frame** from our replacement `IN_MouseMove`, so the other half is
+  one call instead of one dispatch per report;
+* **only while the game owns the mouse.** `RIDEV_NOLEGACY` also stops the OS cursor moving, and
+  T4's menu cursor *is* the OS cursor, so leaving it on in the menu would freeze the pointer and
+  §2a is non-negotiable. `CL_MouseEvent`'s return value is the engine's own answer to "should the
+  cursor be recentred", i.e. "does the game own the mouse" — we already read it every frame, and it
+  cannot go stale the way a cached menu flag can. The legacy messages go straight back when it is 0,
+  and the flip is logged.
+* **buttons are handed back to the engine's own path.** With legacy off there is no
+  `WM_LBUTTONDOWN` either. Rather than call `IN_MouseEvent` (`0x5FA5F0`) with a convention nobody
+  has verified — `addresses.hpp` rule 2, and this project has paid for guessing one — we give the
+  **original WndProc** the exact legacy message it would have received, through `CallWindowProcA`,
+  with `wParam` rebuilt from `GetAsyncKeyState`. Documented Win32 plus the engine's own proc: no new
+  address, no guessed prototype. Button transitions are a handful a second, so none of the flood
+  comes back with them.
+
+`ENW_RAW_MOUSE=0` remains the full revert. **Untested against a real high-rate mouse**, for the
+reason above; it compiles, loads and arms, and that is all that is claimed.
