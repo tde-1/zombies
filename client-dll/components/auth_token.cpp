@@ -34,6 +34,7 @@
 #include "../../shared/core/json.hpp"
 #include "../../shared/core/game_link.hpp"
 #include "../../shared/core/logger.hpp"
+#include "chat_link.hpp"
 
 namespace enw {
 namespace auth {
@@ -43,6 +44,11 @@ namespace {
 std::string g_token;
 bool g_present = false;
 bool g_installed = false;
+
+// Cross-server chat (chat_link.hpp). Rides the same one-shot pipe as the invite
+// token; either may be absent. A Play Local game has no invite and still chats.
+std::string g_chat_base;
+std::string g_chat_bearer;
 
 // b64url alphabet plus the single separating dot. Anything else is not one of
 // ours and we would rather say so here than have the server reject it later.
@@ -114,6 +120,10 @@ std::string read_token_pipe(const std::string& pipe_path) {
         }
         const long long v = msg.int_or("v", -1);
         std::string token = msg.str_or("token");
+        if (const json::value* chat = msg.find("chat"); chat && chat->type == json::kind::object) {
+            g_chat_base = chat->str_or("base");
+            g_chat_bearer = chat->str_or("bearer");
+        }
         SecureZeroMemory(&line[0], line.size());
         if (v != 0) {
             ENW_ERROR("auth: token pipe spoke version %lld, we understand 0", v);
@@ -136,6 +146,13 @@ std::string fingerprint(const std::string& t) {
 std::string read_token_pipe_public(const std::string& p) { return read_token_pipe(p); }
 
 bool have_token() { return g_present; }
+
+bool chat_credentials(std::string* base, std::string* bearer) {
+    if (g_chat_base.empty() || g_chat_bearer.empty()) return false;
+    if (base) *base = g_chat_base;
+    if (bearer) *bearer = g_chat_bearer;
+    return true;
+}
 const std::string& token() { return g_token; }
 
 // Where we drop the one-line config the engine execs for us. Instance-private.
@@ -248,6 +265,21 @@ public:
         }
         SecureZeroMemory(buf, sizeof(buf));
 
+        // Chat, dev fallback: the harness has no launcher and no pipe.
+        if (auth::g_chat_bearer.empty()) {
+            char cb[1024]{};
+            const DWORD bn = ::GetEnvironmentVariableA("ENW_CHAT_BASE", cb, sizeof(cb));
+            if (bn > 0 && bn < sizeof(cb)) auth::g_chat_base.assign(cb, bn);
+            SecureZeroMemory(cb, sizeof(cb));
+            const DWORD tn = ::GetEnvironmentVariableA("ENW_CHAT_BEARER", cb, sizeof(cb));
+            if (tn > 0 && tn < sizeof(cb)) auth::g_chat_bearer.assign(cb, tn);
+            SecureZeroMemory(cb, sizeof(cb));
+            ::SetEnvironmentVariableA("ENW_CHAT_BEARER", nullptr);
+        }
+        if (!auth::g_chat_bearer.empty() && !auth::g_chat_base.empty())
+            ENW_INFO("auth: chat credentials offered for %s (%s)", auth::g_chat_base.c_str(),
+                     auth::fingerprint(auth::g_chat_bearer).c_str());
+
         if (t.empty()) {
             ENW_DEBUG("auth: no invite token offered (fine for a solo run)");
             return;
@@ -320,6 +352,10 @@ public:
         if (!auth::g_token.empty()) {
             SecureZeroMemory(&auth::g_token[0], auth::g_token.size());
             auth::g_token.clear();
+        }
+        if (!auth::g_chat_bearer.empty()) {
+            SecureZeroMemory(&auth::g_chat_bearer[0], auth::g_chat_bearer.size());
+            auth::g_chat_bearer.clear();
         }
     }
 };

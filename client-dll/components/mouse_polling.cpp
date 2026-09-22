@@ -238,6 +238,7 @@
 
 #include "component.hpp"
 #include "frame.hpp"
+#include "input_gate.hpp"
 #include "logger.hpp"
 #include "memory.hpp"
 
@@ -283,6 +284,15 @@ bool g_installed = false;
 
 HWND g_hwnd = nullptr;
 WNDPROC g_prev_wndproc = nullptr;
+
+// The input gate (input_gate.hpp). The chat overlay is the one consumer today.
+// PASSTHROUGH is the subclass without raw input: with ENW_RAW_MOUSE=0 the stock
+// mouse path runs exactly as before, but the subclass and the IN_MouseMove
+// retarget still go in so the overlay's filter and its capture have somewhere to
+// run. ENW_CHAT_OVERLAY=0 together with ENW_RAW_MOUSE=0 installs nothing at all.
+input_gate::filter_fn g_filter = nullptr;
+bool g_captured = false;
+bool g_passthrough = false;
 
 // Evidence counters. B cannot hand us a feeling; these are what the log shows.
 volatile long g_events_total = 0;
@@ -596,6 +606,9 @@ WPARAM rewrite_mask(WPARAM wp) {
 
 void send_to_engine(UINT msg, WPARAM wp, LPARAM lp) {
     if (!g_prev_wndproc || !g_hwnd) return;
+    // An overlay owns the mouse: the engine gets no button from us. The tracker
+    // keeps counting (g_btn_mask), so leaving capture resyncs to the truth.
+    if (g_captured) return;
     ::CallWindowProcA(g_prev_wndproc, g_hwnd, msg, wp, lp);
 }
 
@@ -927,6 +940,30 @@ LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     ::InterlockedIncrement(&g_msgs_total);
     ::InterlockedIncrement(&g_msgs_frame);
 
+    // ---- the input gate: a consumer's filter runs FIRST (input_gate.hpp).
+    if (g_filter) {
+        LRESULT r = 0;
+        if (g_filter(hwnd, msg, wparam, lparam, &r)) return r;
+    }
+    // Captured by an overlay: no mouse message reaches the engine, whatever the
+    // filter chose to let through. WM_INPUT still runs below so the button
+    // tracker stays true (and send_to_engine drops what it would emit).
+    if (g_captured) {
+        switch (msg) {
+        case WM_MOUSEMOVE:
+        case WM_LBUTTONDOWN: case WM_LBUTTONUP: case WM_LBUTTONDBLCLK:
+        case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_RBUTTONDBLCLK:
+        case WM_MBUTTONDOWN: case WM_MBUTTONUP: case WM_MBUTTONDBLCLK:
+        case WM_XBUTTONDOWN: case WM_XBUTTONUP: case WM_XBUTTONDBLCLK:
+        case WM_MOUSEWHEEL:
+            return 0;
+        default:
+            break;
+        }
+    }
+    // Passthrough (ENW_RAW_MOUSE=0): the subclass exists only for the gate.
+    if (!g_in_raw_input) return ::CallWindowProcA(g_prev_wndproc, hwnd, msg, wparam, lparam);
+
     // ---- mouse messages: FORWARDED, never swallowed, with the mask corrected.
     // The engine derives every button edge from wParam's MK_ bits alone
     // (addresses.hpp, WndProc_mouse_case 0x6070F7) and WM_MOUSEMOVE feeds the
@@ -1032,6 +1069,20 @@ LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 // Upstream's RawMouse::IN_MouseMove + IN_RawMouseMove, collapsed and mapped
 // onto T4's own IN_MouseMove (0x5FA6D0), whose shape is quoted at the top.
 void __cdecl in_mousemove() {
+    // An overlay owns the mouse: no motion reaches the engine and nothing
+    // recentres or clips, so the OS cursor moves freely for the overlay. Raw
+    // reports are still drained so the button tracker stays true and no stale
+    // delta is waiting when the overlay closes.
+    if (g_captured) {
+        if (g_in_raw_input) {
+            if (g_nolegacy_wanted) drain_raw_buffer();
+            g_raw_x.ResetDelta();
+            g_raw_y.ResetDelta();
+            set_nolegacy(false);
+        }
+        clip_cursor_to_client(false);
+        return;
+    }
     if (!g_enabled || !g_in_raw_input) {
         real_in_mousemove()();
         return;
@@ -1138,6 +1189,13 @@ bool install_window_hook() {
         return false;
     }
 
+    if (g_passthrough) {
+        ENW_INFO("mouse_polling: PASSTHROUGH subclass on hwnd=0x%p (WndProc 0x%08X). Raw input is "
+                 "OFF (ENW_RAW_MOUSE=0) and the stock mouse path runs unchanged; the subclass is "
+                 "there only for the input gate (the chat overlay). ENW_CHAT_OVERLAY=0 removes it.",
+                 g_hwnd, static_cast<unsigned>(expected));
+        return true;
+    }
     if (!ToggleRawInput(true)) {
         // Put the proc back rather than leave a subclass that does nothing.
         ::SetWindowLongPtrA(g_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(g_prev_wndproc));
@@ -1170,7 +1228,11 @@ public:
             g_enabled = false;
             ENW_INFO("mouse_polling: OFF (ENW_RAW_MOUSE=0). The stock GetCursorPos mouse path "
                      "runs unchanged -- expect the high-polling-rate stutter back.");
-            return;
+            // The chat overlay still needs the one subclass (input_gate.hpp).
+            if (env_off("ENW_CHAT_OVERLAY")) return;
+            g_passthrough = true;
+            ENW_INFO("mouse_polling: installing the subclass and the IN_MouseMove retarget in "
+                     "PASSTHROUGH mode for the input gate; both hand straight to the engine.");
         }
         g_verbose = env_on("ENW_RAW_MOUSE_VERBOSE");
 
@@ -1231,6 +1293,7 @@ public:
                       static_cast<unsigned>(t4::fn::IN_MouseMove_callsite),
                       static_cast<unsigned>(target), static_cast<unsigned>(expected));
             g_enabled = false;
+            g_passthrough = false;
             return;
         }
         // Self-verifying check #1b. `looks_like_function()` is the WRONG tool here and
@@ -1246,6 +1309,7 @@ public:
                       static_cast<unsigned>(t4::fn::CL_MouseEvent),
                       memory::hex_dump(enw::at(t4::fn::CL_MouseEvent), 8).c_str());
             g_enabled = false;
+            g_passthrough = false;
             return;
         }
         g_cl_mouse_event = enw::at(t4::fn::CL_MouseEvent);
@@ -1254,6 +1318,7 @@ public:
             ENW_ERROR("mouse_polling: retarget_call on 0x%08X failed",
                       static_cast<unsigned>(t4::fn::IN_MouseMove_callsite));
             g_enabled = false;
+            g_passthrough = false;
             return;
         }
         ENW_INFO("mouse_polling: IN_Frame's `call IN_MouseMove` (0x%08X -> 0x%08X) now goes to "
@@ -1264,16 +1329,17 @@ public:
     }
 
     void post_init() override {
-        if (!g_enabled) return;
+        if (!g_enabled && !g_passthrough) return;
 
         // The window does not exist yet at post_unpack (~110 ms, before the
         // renderer). Install from the frame tick, first chance we get.
         frame::subscribe("mouse_polling", [](uint64_t n) {
             if (!g_installed) {
-                if (!g_enabled) return;
+                if (!g_enabled && !g_passthrough) return;
                 if (install_window_hook()) g_installed = true;
                 return;
             }
+            if (!g_in_raw_input) return;  // passthrough: nothing to count
 
             // Ground truth for the trace, and cheap: two reads and a walk of
             // whatever the engine queued since the last frame. Only when asked.
@@ -1376,4 +1442,57 @@ public:
 ENW_REGISTER_COMPONENT(mouse_polling)
 
 }  // namespace
+
+// ------------------------------------------------------------ the input gate
+// input_gate.hpp. Main thread only, like everything else on the message path.
+namespace input_gate {
+#ifdef ENW_HAVE_T4_ADDRESSES
+
+void set_filter(filter_fn fn) { g_filter = fn; }
+
+void set_captured(bool on) {
+    if (on == g_captured) return;
+    if (on) {
+        // Release BEFORE the flag goes up, while send_to_engine still delivers:
+        // a button held when the overlay opens must not stay held in the engine's
+        // differ (a stuck +attack while typing).
+        if (g_btn_track && g_in_raw_input) {
+            release_all_buttons("overlay opened");
+        } else if (g_prev_wndproc && g_hwnd) {
+            ::CallWindowProcA(g_prev_wndproc, g_hwnd, WM_MOUSEMOVE, 0, cursor_lparam());
+        }
+        g_captured = true;
+        set_nolegacy(false);
+        clip_cursor_to_client(false);
+        g_raw_x.ResetDelta();
+        g_raw_y.ResetDelta();
+    } else {
+        g_captured = false;
+        g_first_raw_update = true;
+        g_raw_x.ResetDelta();
+        g_raw_y.ResetDelta();
+        // The tracker kept counting while captured; hand the engine the truth
+        // once so a button still physically held is one clean edge, not a loss.
+        if (g_btn_track && g_in_raw_input) resync_buttons_from_os("overlay closed");
+    }
+}
+
+bool captured() { return g_captured; }
+bool installed() { return g_installed && g_prev_wndproc != nullptr; }
+HWND window() { return g_hwnd; }
+
+LRESULT send_to_engine(UINT msg, WPARAM wparam, LPARAM lparam) {
+    if (!g_prev_wndproc || !g_hwnd) return 0;
+    return ::CallWindowProcA(g_prev_wndproc, g_hwnd, msg, wparam, lparam);
+}
+
+#else
+void set_filter(filter_fn) {}
+void set_captured(bool) {}
+bool captured() { return false; }
+bool installed() { return false; }
+HWND window() { return nullptr; }
+LRESULT send_to_engine(UINT, WPARAM, LPARAM) { return 0; }
+#endif
+}  // namespace input_gate
 }  // namespace enw::client
