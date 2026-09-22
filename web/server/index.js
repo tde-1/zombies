@@ -76,6 +76,10 @@ app.use(attach)
 // The pull protocol first and outside everything else: it has its own auth (the per-box
 // shared secret), its own body limit, and no session.
 app.use('/api/gs', require('./routes/gameserver').router())
+// The in-game chat overlay (routes/gamechat.js): its own auth, the chat pass the launcher
+// hands the game. Gate-exempt like /api/gs; refuses everything without a pass.
+require('./lib/gameChat').setSecret(secret)
+app.use('/api/game-chat', require('./routes/gamechat').router())
 
 app.use('/auth', authRoutes.router())
 app.use('/api/me', require('./routes/me').router())
@@ -213,6 +217,11 @@ io.on('connection', (socket) => {
 
 // The chat ring pushes to the browsers; the boxes drain it over the long poll.
 chat.setEmitter((line) => io.emit('chat', line))
+// Party lines and DMs from lib/gameChat.js go to their recipients' own rooms, never to
+// everybody: `chat-private`, for whenever the site grows party/DM tabs of its own.
+require('./lib/gameChat').setEmitter((steamIds, line) => {
+  for (const sid of new Set(steamIds)) io.to(`user:${sid}`).emit('chat-private', line)
+})
 // A live frame goes only to the room watching that game.
 live.setEmitter((matchId, frame) => io.to(`live:${matchId}`).emit('live', frame))
 

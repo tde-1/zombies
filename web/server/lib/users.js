@@ -28,6 +28,10 @@ const DEFAULT_SETTINGS = {
   ee_helper: false,       // unranked only, and only where step data is verified
   chat_channel: 'auto',   // auto = solo Global, group Local (13 §2b)
   streamer_mode: false,
+  // "Pause when using global chat" (B, 2026-09-22): a SOLO verified game freezes while the
+  // in-game chat overlay is open. The game reads it from /api/game-chat/me and reports it
+  // as userinfo enw_pchat (chat-overlay.md §8); co-op never pauses for typing.
+  pause_on_chat: true,
   toasts: { badges: true, invites: true, friends: true },
 }
 

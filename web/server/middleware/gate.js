@@ -14,6 +14,10 @@ const crypto = require('node:crypto')
 const REALM = 'ENW Zombies (closed beta)'
 const EXEMPT = [
   /^\/api\/gs(\/|$)/,
+  // The in-game chat overlay (routes/gamechat.js). The game cannot type a password either,
+  // and every route under it refuses without a chat pass, which only a signed-in
+  // launcher can get (POST /api/launcher/chat-token, which IS behind the gate).
+  /^\/api\/game-chat(\/|$)/,
   /^\/healthz$/,
   // The launcher's update feed. An installer is not a secret, and a silently dead updater
   // is much the worse failure: electron-updater would get a 401 it cannot answer, every

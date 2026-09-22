@@ -201,6 +201,16 @@ function router() {
     return res.json({ ok: true, match_id: out.match_id, state: 'reserving' })
   })
 
+  // ---- the in-game chat pass -------------------------------------------------------
+  // The launcher asks for this at every game launch and hands it to the game on the
+  // one-shot token pipe (launch.js serveToken, `chat: {base, bearer}`). It is good for
+  // /api/game-chat/* only, for twelve hours (lib/gameChat.js), so the game never holds
+  // the player's session. Signed in is enough: chat is not play.
+  r.post('/chat-token', requireUser, (req, res) => {
+    const pass = require('../lib/gameChat').mintPass(req.me.steam_id)
+    res.json({ ok: true, token: pass.token, expires_at: pass.expires_at, path: '/api/game-chat' })
+  })
+
   r.post('/cancel', requireUser, (req, res) => {
     const party = parties.forPlayer(req.me.steam_id)
     if (party && party.match_id) return res.json(require('../lib/assignments').cancel(party.match_id, req.me.steam_id))
