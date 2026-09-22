@@ -189,6 +189,27 @@ def euler_to_quat(pitch, yaw, roll):
     ]
 
 
+# OAT's glTF is Y-UP. A sandbag's POSITION max is [10.5, 9.7, 16.5] -- its height is on
+# Y -- and a skinned model's `tag_origin` root carries the -90 deg X that put it there.
+# `merge_model` copies meshes and drops node transforms, so without this every prop was
+# placed on its side in our Z-up map: chairs, crates and sandbags jutting out of walls
+# and floating (replay.md 8.3, B's report on m_0afb449b). Rx(+90) takes Y-up back to Z-up
+# and is applied BEFORE the placement's own angles.
+Y_UP_TO_Z_UP = [0.7071067811865476, 0.0, 0.0, 0.7071067811865476]
+
+
+def quat_mul(a, b):
+    """Hamilton product a*b, glTF order [x, y, z, w]."""
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return [
+        aw * bx + ax * bw + ay * bz - az * by,
+        aw * by - ax * bz + ay * bw + az * bx,
+        aw * bz + ax * by - ay * bx + az * bw,
+        aw * bw - ax * bx - ay * by - az * bz,
+    ]
+
+
 # ---------------------------------------------------------------------------
 # step 3 -- glTF merge
 # ---------------------------------------------------------------------------
@@ -553,8 +574,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
             continue
         node = {"name": name, "mesh": mi, "translation": vec(e.get("origin"))}
         ang = vec(e.get("angles"))
-        if any(ang):
-            node["rotation"] = euler_to_quat(*ang)
+        node["rotation"] = quat_mul(euler_to_quat(*ang), Y_UP_TO_Z_UP)
         sc = e.get("modelscale")
         if sc:
             try:
@@ -576,7 +596,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
     if sky_name:
         mi = mesh_for(sky_name)
         if mi is not None:
-            glb.j["nodes"].append({"name": "__sky", "mesh": mi})
+            glb.j["nodes"].append({"name": "__sky", "mesh": mi, "rotation": Y_UP_TO_Z_UP})
             glb.j["scenes"][0]["nodes"].append(len(glb.j["nodes"]) - 1)
             sky_ok = True
 
