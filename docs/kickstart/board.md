@@ -3913,3 +3913,6 @@ answer. One finding underneath all of it.**
   was not touched, and instances-per-box stays unmeasured because one instance does not stay up.
   Idle cost of the one instance, for the record: **RSS 362 MB, 10 threads, 6.31 s of CPU in 563 s
   (1.1 % of one core)**; no frame rate, because `frame_dispatch` reports `no per-frame tick`.
+- 05:40 coordinator: **the box's "differently-linked exe" is the German low-violence edition.** Account store
+  country = Germany → depots 10091+10097 only; `download_depot 10090 10092` → missing license. Not an RE problem;
+  needs a non-German account. `vps.md` §10 retracted in place. Tomorrow's games run on B's PC.

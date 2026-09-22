@@ -371,7 +371,16 @@ mapped at 0x400000 like any other process, so no Windows tooling is needed) and 
 | `MSG_ReadBitsCompress` | 0x6751D0 | **-0x300** |
 | `VM_Notify` | 0x698670 | **-0x300** |
 
-So: **Steam hands each account a differently-linked executable of the identical build.** Same code,
+> **Retracted 2026-09-23 05:40 by the coordinator — the conclusion below is wrong, the measurements are right.**
+> The box's exe differs because it is the **German low-violence edition**, not a per-account link. The account's
+> store country is Germany (store account page), so Steam licenses it depots 10091 + **10097 (German)** and refuses
+> the English 10092: `download_depot 10090 10092 3607600095703252129` in the client console → *"Depot download
+> failed: missing license for depot"*. B's PC has 10091 + 10092. The German build is a separate binary (hence the
+> shifted functions and the different data pointers) and its zone has no `nazi_zombie_prototype`. Signature
+> scanning would not give us the English maps either. **The way forward is a non-German Steam account on the box**
+> (or a store-country change, which Steam only allows with a payment method from the new country) — B's call.
+
+~~So: **Steam hands each account a differently-linked executable of the identical build.**~~ Same code,
 relocated by a few hundred bytes in bands. A hardcoded address map is therefore a property of *one
 copy of the game*, not of "WaW 1.7", and **`docs/re/t4-sp-map.md` is B's-exe-specific**.
 
