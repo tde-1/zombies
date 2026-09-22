@@ -2696,7 +2696,22 @@ reader of it on this path also requires `cl_paused`, which stays 0 on the dedi, 
 
 ### 18.4 Proof
 
-**Staged, not deployed** (the box was lent to a demo when this was written): clean build from
+### 2026-09-22 19:58–19:59 box time — deployed and proven on the box
+
+Installed `f8a835bb9fb22372d917026932e1fd61b4e8230cf346a7fe96afe150006efb4c` into all seven
+`waw-*/binkw32.dll` (journal idle first; rollback copy of `b36fe140…3174f` kept at
+`/home/waw/binkw32.rollback-b36fe140.dll`), restarted the host agent. Fake-ID lease `m_c7fbbd67`
+(Nacht, 76561198000000001): inst-01 linked with the new build (Sep 22 2026 20:28:57), `pause: armed …
+sv_paused=0`, `map_loaded` 6 s after link. Trigger 12 s: `PAUSED at level.time 11150`, `FROZEN 5 s …
+level.time 11150, svs.time 11150, 100 G frame(s) held, sv_paused 1`, `FROZEN 10 s … 11150 … 200
+held`; the Com_Frame loop stayed at 52.6 Hz throughout. Removed: `RESUMED after 12356 ms … 247 G
+frame(s) held`, `first G frame after resume at level.time 11200 (+50 ms: no catch-up)`. Running
+unpaused, level.time went 11200 → 23600 in 12.46 s of wall time (the second trigger's PAUSED
+line), i.e. normal speed; second freeze 7 s, resumed at 23650. Process alive throughout, no
+error. Lease cancelled; journal `assignment changed: idle` at 19:59:45. With no player in the game
+the host was still in `loading`, so correctly accounted nothing (15.2).
+
+Build notes, as staged: **Staged, not deployed** (the box was lent to a demo when this was written): clean build from
 `e6be04e` in a detached worktree (the main checkout carries the overlay lane's uncommitted client
 components, which a `-Name dedi` build picks up), `sha256 f8a835bb…6efb4c` (1,622,016 bytes), at
 `zombies-dev:/tmp/enw_t4_pause.dll`. The box's current `binkw32.dll` is `b36fe140…3174f`.
