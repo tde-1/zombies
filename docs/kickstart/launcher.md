@@ -1117,3 +1117,38 @@ The first stutter run of the night produced a log with **zero frames in it** for
 reason. `--hold` stays in the map until the window elapses, which is what makes the launch path
 measurable at all.
 
+
+### 4. Play to in-map, timed — and there is nothing left to kill
+
+Five real launches tonight through `play-cli --window player --local --hold`, on
+`nazi_zombie_prototype`. The clock below is the DLL's own log, which opens as the exe starts:
+
+| from exe start | event |
+|---|---|
+| +0.00 s | `enw_t4 log opened`, **41 components registered** |
+| +0.03 s | dvar system up (`logfile` exists) |
+| +0.36 s | engine fully up (`sys_gpu` exists) |
+| +0.41 s | `enw_t4: ready` — **30 of 41 online** (11 drop out on `is_supported()`, mostly the `dedi_*` ones) |
+| +2.47 s | `referee: map_loaded map=nazi_zombie_prototype` |
+| +2.59 s | `borderless: … window rect 2560x1440 at (0,0) … BORDERLESS` |
+| **+3.05 s** | **`referee: ROUND 1` — in the map, playable** |
+
+Three runs agree to within a few hundred milliseconds (3.05 s, 3.41 s, 4.05 s; the spread is the
+`Waited 311–327 msec for asset 'maps/nazi_zombie_prototype.d3dbsp'` line and normal disk variance).
+The launcher's own steps before the spawn — lock, local-run prep, boot flow — are all local and
+complete without a measurable wait for a Local game: the boot screen prints
+`Playing locally` → `Map` → `Ready` → `Launching World at War` with no gap, and the game lock is
+stamped with the pid in the same second the log opens.
+
+**So Play to in-map is about three and a half seconds**, and that is with our full baseline command
+line, a custom `fs_homepath`, SteamStub decrypting (125 ms on this box) and the client DLL doing
+its component bring-up.
+
+**Dialogs: zero.** Every one of tonight's runs printed no `Windows dialogs answered` section at all
+— `tools/window-nanny.ps1` had nothing to answer, and `__CoDWaW` is cleared before each launch so
+the crash-marker prompt never appears. There is no double-prompt and no pause left on this path to
+remove.
+
+One caveat worth keeping: **`--hold` is what makes any of this measurable.** Without it the CLI
+stops the game the instant `flow.run()` resolves, which is about two seconds after `post_init`.
+

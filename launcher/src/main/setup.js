@@ -555,10 +555,25 @@ export function ensureClientDll({ repoRoot = null } = {}) {
 
   // Write beside it and rename, so a failure half way cannot leave the game
   // with a truncated proxy DLL — without binkw32.dll the exe does not start.
+  //
+  // MEASURED 2026-09-22: with World at War RUNNING, the rename fails EPERM
+  // because the game has binkw32.dll loaded and mapped. The ordering above is
+  // already safe — the rm fails first and the working proxy survives — but the
+  // half-written `.new` was left in the game folder, and the error a player saw
+  // was a raw errno. Both fixed: the temp file is always cleaned up, and the
+  // message says the one thing they can act on.
   const tmp = assertWritable(`${proxy}.new`)
-  fs.copyFileSync(shipped.path, tmp)
-  try { fs.rmSync(proxy, { force: true }) } catch {}
-  fs.renameSync(tmp, proxy)
+  try {
+    fs.copyFileSync(shipped.path, tmp)
+    try { fs.rmSync(proxy, { force: true }) } catch {}
+    fs.renameSync(tmp, proxy)
+  } catch (e) {
+    try { fs.rmSync(tmp, { force: true }) } catch {}
+    if (e?.code === 'EPERM' || e?.code === 'EBUSY') {
+      throw new Error('The ENW client could not be updated because World at War is still running. Quit the game and press Play again. (Your existing client is untouched.)')
+    }
+    throw e
+  }
 
   const after = sha256File(proxy)
   if (after !== shipped.sha256) throw new Error(`Updating the ENW client failed: ${proxy} is ${after}, expected ${shipped.sha256}.`)
