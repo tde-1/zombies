@@ -30,6 +30,8 @@ const updates = await import('../src/main/updates.js')
 const hostagent = await import('../src/main/hostagent.js')
 const gamecfg = await import('../src/main/gamecfg.js')
 const display = await import('../src/main/display.js')
+const partyprogress = await import('../src/main/partyprogress.js')
+const { BootFlow } = await import('../src/main/bootflow.js')
 
 let pass = 0
 let fail = 0
@@ -857,6 +859,131 @@ await test('the shipped defaults are the ones the spec asks for', () => {
   assert.equal(settings.DEFAULT_SETTINGS.vsync, false)
   assert.equal(settings.DEFAULT_SETTINGS.maxFps, 250)
   assert.equal(settings.DEFAULT_SETTINGS.display, 'primary')
+})
+
+// ------------------------------------------------------------ party progress --
+group('Party download progress')
+
+// A stand-in SiteApi: records what would have gone to the site, answers ok.
+function fakeApi(hello = {}) {
+  const calls = []
+  return {
+    baseUrl: 'http://site.test',
+    calls,
+    hello,
+    can: (c) => !!hello?.capabilities?.[c],
+    async req(p, opts = {}) { calls.push({ path: p, ...opts }); return { ok: true, status: 200, data: { ok: true } } },
+    async startPlay() { calls.push({ startPlay: true }); return { ok: true } },
+  }
+}
+
+await test('nothing is sent when the player is not in a party', () => {
+  const api = fakeApi()
+  assert.equal(partyprogress.attach(api, { state: 'idle', party: null, map: { key: 'water' } }, 'water'), null)
+  assert.equal(partyprogress.attach(api, null, 'water'), null)
+  assert.equal(partyprogress.attach(api, { signedOut: true }, 'water'), null)
+  assert.equal(api.calls.length, 0)
+})
+
+await test('nothing is sent for a map the party did not stage', () => {
+  const api = fakeApi()
+  const play = { party: { id: 7 }, map: { key: 'water' } }
+  assert.equal(partyprogress.attach(api, play, 'nazi_zombie_leviathan'), null)
+  assert.ok(partyprogress.attach(api, play, 'water'))
+  assert.equal(api.calls.length, 0)     // attach alone posts nothing
+})
+
+await test('it posts to the party route at about 1 Hz, and terminal states always land', async () => {
+  const api = fakeApi()
+  const r = partyprogress.attach(api, { party: { id: 7 }, map: { key: 'water' } }, 'water')
+  r.downloading(10, 100)                 // the first one goes
+  r.downloading(20, 100)                 // too soon: accepted and dropped
+  r.downloading(30, 100)
+  r.lastAt = 0                           // a second has passed
+  r.downloading(40, 100)
+  await r.installed(100)
+  assert.equal(api.calls.length, 3)
+  for (const c of api.calls) {
+    assert.equal(c.path, '/api/party/7/progress')
+    assert.equal(c.method, 'POST')
+    assert.equal(c.body.map, 'water')
+  }
+  assert.deepEqual(api.calls.map((c) => c.body.state), ['downloading', 'downloading', 'installed'])
+  assert.equal(api.calls[0].body.bytes, 10)
+  assert.equal(api.calls[0].body.total, 100)
+  // `installed` is sent once the hash check has passed, and nothing follows it.
+  r.downloading(50, 100)
+  assert.equal(api.calls.length, 3)
+})
+
+await test('a failed install tells the party, with the reason', async () => {
+  const api = fakeApi()
+  const r = partyprogress.attach(api, { party: { id: 3 }, map: { key: 'water' } }, 'water')
+  await r.failed(new Error('water.iwd did not match the hash the archive recorded'))
+  assert.equal(api.calls.length, 1)
+  assert.equal(api.calls[0].body.state, 'failed')
+  assert.match(api.calls[0].body.error, /did not match the hash/)
+})
+
+await test('a site that hangs up never breaks the download', async () => {
+  const api = { baseUrl: 'http://site.test', async req() { throw new Error('socket hang up') } }
+  const r = new partyprogress.PartyProgress({ api, partyId: 1, map: 'water' })
+  await r.downloading(1, 2)
+  await r.installed(2)
+  assert.equal(r.failedPosts, 2)         // both noticed, neither thrown
+})
+
+// ------------------------------------------------------------- joined launch --
+group('Following somebody else pressing Start')
+
+await test('a follower never presses Play for the party, and launches at the match the site leased', async () => {
+  const api = fakeApi()
+  const play = {
+    state: 'ready',
+    party: { id: 7, is_leader: false },
+    map: { key: 'water' },
+    match: { match_id: 'm_abc', connect: '10.0.0.5:28960', token: 'tok_follower' },
+  }
+  api.play = async () => play
+  const flow = new BootFlow({ map: 'water', api, follow: true, launch: false, serverTimeoutMs: 4000 })
+  const snap = await flow.runViaSite(api)
+  assert.equal(api.calls.some((c) => c.startPlay), false, 'a member must not POST /api/launcher/play')
+  assert.equal(flow.host, '10.0.0.5:28960')
+  assert.equal(flow.matchId, 'm_abc')
+  assert.equal(snap.steps.find((s) => s.id === 'ready').state, 'done')
+  assert.equal(snap.failed, false)
+})
+
+await test('the leader own Play still asks the site for a server', async () => {
+  const api = fakeApi()
+  api.play = async () => ({ state: 'ready', party: { id: 7, is_leader: true }, map: { key: 'water' },
+                            match: { match_id: 'm_abc', connect: '10.0.0.5:28960', token: 't' } })
+  const flow = new BootFlow({ map: 'water', api, launch: false, serverTimeoutMs: 4000 })
+  await flow.runViaSite(api)
+  assert.equal(api.calls.some((c) => c.startPlay), true)
+})
+
+await test('the map is installed before the game is launched, and a failed install stops the launch', async () => {
+  const api = fakeApi()
+  api.play = async () => ({ state: 'ready', party: { id: 7, is_leader: false }, map: { key: 'water' },
+                            match: { match_id: 'm_abc', connect: '10.0.0.5:28960', token: 't' } })
+  let asked = null
+  const flow = new BootFlow({
+    map: 'water', api, follow: true, launch: false, serverTimeoutMs: 4000,
+    ensureMap: async (bsp, onProgress) => { asked = bsp; onProgress({ file: 'water.iwd', done: 50, total: 100 }); return { already: false } },
+  })
+  const snap = await flow.runViaSite(api)
+  assert.equal(asked, 'water')
+  assert.equal(snap.steps.find((s) => s.id === 'download').state, 'done')
+
+  const bad = new BootFlow({
+    map: 'water', api, follow: true, serverTimeoutMs: 4000,
+    ensureMap: async () => { throw new Error('water.iwd did not match the hash the archive recorded') },
+  })
+  const s2 = await bad.runViaSite(api)
+  assert.equal(s2.failed, true)
+  assert.equal(s2.steps.find((s) => s.id === 'download').state, 'failed')
+  assert.equal(s2.steps.some((s) => s.id === 'launching'), false, 'a map that did not install is never launched')
 })
 
 // ---------------------------------------------------------------------------

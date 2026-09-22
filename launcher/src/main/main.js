@@ -29,7 +29,8 @@ import * as lock from './gamelock.js'
 import { Updater, IdleGate, applyPending, pending } from './updates.js'
 import { BootFlow } from './bootflow.js'
 import * as library from './library.js'
-import { SiteApi, electronCookieProvider } from './siteapi.js'
+import { SiteApi, PlayWatcher, electronCookieProvider } from './siteapi.js'
+import * as partyprogress from './partyprogress.js'
 import { AutoUpdater, resolveFeed } from './autoupdate.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
@@ -57,6 +58,13 @@ const state = {
   // The loopback listener while a browser sign-in is in flight, so a second press does
   // not bind a second port.
   signIn: null,
+  // The site's own view of this player's party/map/match, refreshed by the party
+  // watcher. It is what decides whether a map install is a party's business (and so
+  // whether progress is reported at all) and when somebody else's Start becomes our
+  // launch.
+  lastPlay: null,
+  playWatcher: null,
+  installs: new Map(),   // bsp -> the in-flight install, so two callers share one
 }
 
 // ------------------------------------------------------------------- logging --
@@ -291,6 +299,9 @@ async function createWindow() {
       const hello = await api.sayHello()
       state.api = api
       log('site hello', `protocol ${hello.protocol}, auth ${hello.auth}, signed in as ${hello.you?.name || 'nobody'}`)
+      // From here the launcher keeps up with the party by itself: the staged map is
+      // downloaded and reported, and somebody else's Start becomes our launch.
+      state.startPartyWatch?.()
     } catch (e) {
       log('site hello failed', e.message)
     }
@@ -472,22 +483,55 @@ function wireIpc() {
   // On a friend's PC the condition was false, nothing installed, and the game was
   // launched at a map that was not there. That is the first clause of B's MVP sentence
   // ("load one of the test maps -> it installs") failing silently for everyone but him.
-  async function ensureMapInstalled(bsp, { announce = false } = {}) {
+  async function ensureMapInstalled(bsp, { announce = false, onProgress: extra = null } = {}) {
     if (library.isInstalled(bsp)) return { already: true }
-    const onProgress = (p) => push('mapProgress', { bsp, ...p })
+    // One install per map at a time. The party watcher starts the download the moment
+    // the leader stages a map; the boot flow then asks for the same map again a minute
+    // later and must WAIT for that one rather than start a second copy into the same
+    // folder.
+    const running = state.installs.get(bsp)
+    if (running) return running
+    const p = runInstall(bsp, { announce, extra }).finally(() => state.installs.delete(bsp))
+    state.installs.set(bsp, p)
+    return p
+  }
+
+  async function runInstall(bsp, { announce = false, extra = null } = {}) {
+    // The party's progress bar (launcher-v0 §2b). `attach` returns null unless the
+    // site says there is a party AND this is the map that party staged, so a library
+    // install or a local game sends nothing at all.
+    const reporter = partyprogress.attach(state.api, state.lastPlay, bsp, { log: (m) => log('party', m) })
+    if (reporter) log('party', `reporting ${bsp} to party ${reporter.partyId}`)
+    const onProgress = (p) => {
+      push('mapProgress', { bsp, ...p })
+      try { extra?.(p) } catch {}
+      reporter?.downloading(p.done ?? p.bytes ?? 0, p.total ?? 0)
+    }
     state.gate.block('mapinstall', 'a map is installing')
     try {
       // From the site when we are connected to one — that is the only route that
       // works on anybody else's machine. The local archive is the dev fallback.
+      let rec = null
       if (state.api && state.api.can('map_downloads')) {
         if (announce) push('toast', { kind: 'info', text: 'Downloading the map…' })
-        return await library.installFromSite(bsp, { api: state.api, onProgress, mapsBase: cfg.load().mapsBase })
-      }
-      if (library.catalogue().maps.some((m) => m.bsp === bsp && m.available)) {
+        rec = await library.installFromSite(bsp, { api: state.api, onProgress, mapsBase: cfg.load().mapsBase })
+      } else if (library.catalogue().maps.some((m) => m.bsp === bsp && m.available)) {
         if (announce) push('toast', { kind: 'info', text: 'Installing the map…' })
-        return library.install(bsp, { onProgress })
+        rec = library.install(bsp, { onProgress })
+      } else {
+        // Nothing was downloaded and nothing failed. The party is told `failed`,
+        // because from the leader's side "this member cannot get the map" and "this
+        // member's download broke" are the same fact: do not press Start.
+        reporter?.failed('there is no source for this map')
+        return { skipped: 'no source for this map: the site cannot serve it and there is no local archive' }
       }
-      return { skipped: 'no source for this map: the site cannot serve it and there is no local archive' }
+      // `installed` means the hash check passed: both install routes throw instead of
+      // returning when a file does not match what the archive recorded.
+      reporter?.installed(rec?.bytes ?? null)
+      return rec
+    } catch (e) {
+      reporter?.failed(e)
+      throw e
     } finally { state.gate.unblock('mapinstall') }
   }
 
@@ -631,6 +675,14 @@ function wireIpc() {
       // launcher-v0: when the site is there, IT leases and we watch. The old
       // mock-site lease path stays only for a machine with no site running.
       api: opts.local ? null : state.api,
+      // Somebody else pressed Start: skip POST /api/launcher/play (only the leader may
+      // call it) and go straight to watching for the match the site already leased.
+      follow: !!opts.follow,
+      followDetail: opts.followDetail || null,
+      // The map must be on disk before +connect. Shared with the party pre-download:
+      // ensureMapInstalled hands back the in-flight install rather than starting a
+      // second one, so a member whose download is still running simply waits for it.
+      ensureMap: opts.local ? null : (bsp, onProgress) => ensureMapInstalled(bsp, { onProgress }),
       siteUrl: opts.hostApi || conf.hostApi,
       hostDashboard: local?.info?.dashUrl || conf.hostDashboard,
       // The address the referee IS listening on, read back from the referee. The old
@@ -822,6 +874,60 @@ function wireIpc() {
     else state.gate.unblock(key)
     return { blocked: state.gate.blocked, why: state.gate.why }
   })
+
+  // ------------------------------------------------------------- the party --
+  //
+  // One poll of `/api/launcher/play`, running whenever a site is connected, doing two
+  // jobs that are really the same job — *keeping up with what the party is doing when
+  // the player is not the one driving it*:
+  //
+  //   1. THE LEADER STAGED A MAP. Start downloading it now rather than at Start, and
+  //      report every second so the party panel can draw this player's bar and the
+  //      leader's Start button can stand down while it moves (launcher-v0 §2b). The
+  //      reporting lives in `ensureMapInstalled`, and the gate is in
+  //      `partyprogress.attach()`: no party, or a different map, and nothing is sent.
+  //
+  //   2. SOMEBODY ELSE PRESSED START. The site has already leased a box and minted
+  //      this player's own invite token; it is in the poll body. Open the boot screen
+  //      and follow it, exactly as if this player had pressed Play. Without this only
+  //      the leader's launcher ever launched.
+  //
+  // It is deliberately not "non-leaders only". A leader who presses Start in the
+  // wrapped page (rather than the launcher's corner card) is in the same position as
+  // everybody else: no flow running, a match waiting. The guard is `state.flow`, so
+  // the player who pressed Play in the launcher is never followed into a second one.
+  const FOLLOW_STATES = ['reserving', 'loading', 'ready', 'in-game']
+
+  function onPlay(p) {
+    if (!p || p.signedOut) { state.lastPlay = null; return }
+    state.lastPlay = p
+
+    const bsp = p.map?.key || null
+    const inParty = Number(p.party?.id || 0) > 0
+
+    // 1. pre-download the party's map
+    if (inParty && bsp && !library.isInstalled(bsp) && !state.installs.has(bsp) && !state.flow) {
+      ensureMapInstalled(bsp).catch((e) => log('party', `could not install ${bsp}: ${e.message}`))
+    }
+
+    // 2. follow somebody else's Start
+    if (state.flow || !FOLLOW_STATES.includes(p.state)) return
+    if (!p.match || !bsp) return
+    const who = p.party?.is_leader === false ? 'your party leader started a game' : 'a game was started for you'
+    log('party', `following ${p.match.match_id || '(no id yet)'} — ${who}`)
+    startPlay({ map: bsp, mode: p.match.mode || p.party?.mode || 'custom', follow: true, followDetail: who })
+      .catch((e) => log('party', `could not follow: ${e.message}`))
+  }
+
+  state.startPartyWatch = () => {
+    if (state.playWatcher || !state.api) return
+    const w = new PlayWatcher(state.api)
+    w.on('poll', (p) => { try { onPlay(p) } catch (e) { log('party', `watch: ${e.message}`) } })
+    w.on('error', () => {})     // a site that is down is not an error the player can act on
+    state.playWatcher = w
+    w.start()
+    log('party', 'watching the site for the party, the staged map and somebody else pressing Start')
+  }
 }
 
 // ------------------------------------------------------------ Steam sign-in --

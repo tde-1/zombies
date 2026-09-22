@@ -19,6 +19,7 @@ import { EventEmitter } from 'node:events'
 import { GameLaunch } from './launch.js'
 
 const STEP_LABELS = {
+  download: 'Downloading the map',
   reserving: 'Reserving server',
   loading: 'Loading map',
   ready: 'Ready',
@@ -201,12 +202,27 @@ export class BootFlow extends EventEmitter {
     const o = this.opts
     const { PlayWatcher } = await import('./siteapi.js')
 
-    this.step('reserving', 'active', 'asking the site for a server')
-    const started = await api.startPlay({ mapKey: o.map, mode: o.mode || 'custom' })
-    if (!started.ok) {
-      // 409/403 messages are written for a player to read.
-      this.step('reserving', 'failed', started.error)
-      return this.snapshot()
+    // FOLLOW MODE: somebody else pressed Start.
+    //
+    // `POST /api/launcher/play` is "I am pressing Play", and only the leader may. A
+    // member whose leader pressed Start on the site has nothing to ask for — the site
+    // has already leased the box and minted a token per whitelisted SteamID, and this
+    // player's own token is sitting in `/api/launcher/play`'s `match`. So the follower
+    // skips straight to the watching half, which is identical from here down: the same
+    // poll, the same boot screen, the same `+connect` and the same named pipe.
+    //
+    // Without this a party of four produced one player in the game and three staring at
+    // a site that said "in game".
+    if (o.follow) {
+      this.step('reserving', 'active', o.followDetail || 'your party leader started a game')
+    } else {
+      this.step('reserving', 'active', 'asking the site for a server')
+      const started = await api.startPlay({ mapKey: o.map, mode: o.mode || 'custom' })
+      if (!started.ok) {
+        // 409/403 messages are written for a player to read.
+        this.step('reserving', 'failed', started.error)
+        return this.snapshot()
+      }
     }
 
     const watcher = new PlayWatcher(api)
@@ -255,9 +271,32 @@ export class BootFlow extends EventEmitter {
     }
 
     const p = done.play
-    if (o.launch === false) return this.snapshot()
     if (this.cancelled) return this.snapshot()
 
+    // The map has to be on disk before `+connect`, or the engine connects and drops
+    // straight back out. For a party member this has usually already finished while
+    // the party was forming (main.js starts it the moment the leader stages a map, and
+    // the party panel has been watching the bar) — `ensureMap` then returns in
+    // milliseconds. This is the backstop for the member who joined late.
+    if (o.ensureMap) {
+      const bsp = p.map?.key || o.map
+      this.step('download', 'active', 'checking the map')
+      try {
+        const r = await o.ensureMap(bsp, (pr) => {
+          const pct = pr.total ? Math.round(((pr.done ?? pr.bytes ?? 0) / pr.total) * 100) : null
+          this.step('download', 'active', pct == null
+            ? `${pr.file || bsp}`
+            : `${pct}% of ${(pr.total / 1e6).toFixed(0)} MB${pr.file ? ` — ${pr.file}` : ''}`)
+        })
+        this.step('download', 'done', r?.already ? 'already installed' : r?.skipped || 'installed and hash-checked')
+      } catch (e) {
+        this.step('download', 'failed', e.message)
+        return this.snapshot()
+      }
+      if (this.cancelled) return this.snapshot()
+    }
+
+    if (o.launch === false) return this.snapshot()
     this.step('launching', 'active', 'starting World at War')
     const l = new GameLaunch({
       host: p.match.connect,

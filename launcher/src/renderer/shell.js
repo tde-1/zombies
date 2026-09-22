@@ -443,18 +443,22 @@ function renderBoot(snap) {
   $('bootMap').textContent = m ? m.title : snap.map || '—'
   $('bootMode').textContent = snap.mode === 'verified' ? 'Verified' : 'Custom'
 
-  const order = ['reserving', 'loading', 'ready', 'launching', 'in_game']
+  // `download` is the party/late-joiner map install, and it is the one step that is
+  // only drawn when it happened: most launches have the map already and a permanently
+  // greyed "Downloading the map" row would be noise on every one of them.
+  const order = ['download', 'reserving', 'loading', 'ready', 'launching', 'in_game']
   const wrap = $('bootSteps')
   wrap.replaceChildren()
   for (const id of order) {
     const s = snap.steps.find((x) => x.id === id)
+    if (id === 'download' && !s) continue
     const row = el('div', `step ${s ? s.state : ''}`)
     row.append(el('div', 'dot', !s ? '·' : s.state === 'done' ? '✓' : s.state === 'failed' ? '✕' : '›'))
     const body = el('div', 'body')
     const t = el('div', 'title')
     // The step's own label when it has one: Play Local relabels these, because
     // "Reserving server" is a lie on a game that runs on your own PC.
-    t.append(document.createTextNode(s?.label || ({ reserving: 'Reserving server', loading: 'Loading map', ready: 'Ready', launching: 'Launching World at War', in_game: 'In game' })[id]))
+    t.append(document.createTextNode(s?.label || ({ download: 'Downloading the map', reserving: 'Reserving server', loading: 'Loading map', ready: 'Ready', launching: 'Launching World at War', in_game: 'In game' })[id]))
     if (s?.simulated) t.append(el('span', 'sim', 'simulated'))
     body.append(t)
     body.append(el('div', 'detail', s ? s.detail : 'waiting'))
