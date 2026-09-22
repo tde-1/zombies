@@ -5,6 +5,8 @@
 > `docs/kickstart/README.md`, then `docs/kickstart/next-session.md`. **Every lane doc has a dated
 > section for the night of 2026-09-22/23** — read the newest section of the lane you are in.
 
+* **2026-09-22 late — object storage (`docs/kickstart/storage.md`)**: the site can 302 installers, blockmaps, map files and replay `.glb`s to two public Hetzner buckets (`S3_BUCKET_FILES`/`S3_BUCKET_MAPS` in `infra\site.env`, off until set); `tools/s3/sync.js`/`check.js`; `publish-update.js` uploads too. **Not live yet: the keys in `infra\s3.env` see no buckets** (the names are not found in nbg1/fsn1/hel1).
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
