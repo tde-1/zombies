@@ -65,6 +65,7 @@ class SlotState {
 const FEED_EVENTS = new Set([
   'round', 'points', 'kill', 'down', 'revive', 'bleedout', 'chat', 'notify', 'referee',
   'player_connect', 'player_spawn', 'player_disconnect', 'game_over', 'auth_decision',
+  'explode',
 ])
 
 /**
@@ -98,6 +99,24 @@ function buildTrack(file, replayLib, hz = 10) {
   let kRoundCur = null
   let sawCounters = false
 
+  // 2026-09-22 (replay.md §8.4): the DLL writes the zombie list on EVEN server frames,
+  // and this reader samples every OTHER snap at 10 Hz. On a real game the two phases
+  // can disagree -- on m_0afb449b every zombie list sat on an odd snap index -- and the
+  // track came out with ZERO zombies from a file holding 995 zombie lists. So the latest
+  // list is carried forward and read on the sampled tick, whatever its phase. `nades`
+  // (§8.6) is the same shape and the same rule.
+  let zCur = null
+  let nCur = null
+  const nades = new Map()        // key -> { id, t0, pos: [] }
+  const nLast = new Map()
+  // §8.5: the end of the game, not the end of the file. The sampler kept writing through
+  // the intermission on m_0afb449b (no game_over event), and the tail is the
+  // intermission camera -- the player capsule "flies". First of game_over / intermission.
+  let endMs = null
+  // §8.7: `input` carries `buttons` on change. Bit 0x1 is read as attack [H]; the
+  // crosshair and the placeholder viewmodel use it.
+  const fireCur = new Map()      // slot -> 0|1
+
   let snapIndex = -1
   let ticks = 0
   let round = 0
@@ -109,10 +128,10 @@ function buildTrack(file, replayLib, hz = 10) {
       // A slot that appears late still needs a full-length column, so it is back-filled
       // with the tick count so far. Otherwise tick N of slot 1 is tick N-k of slot 0 and
       // every player after the first is out of sync with the scrubber.
-      const c = { pos: [], ang: [], health: [], score: [], alive: [] }
+      const c = { pos: [], ang: [], health: [], score: [], alive: [], fire: [] }
       for (let i = 0; i < ticks; i++) {
         c.pos.push(0, 0, 0); c.ang.push(0, 0)
-        c.health.push(0); c.score.push(0); c.alive.push(0)
+        c.health.push(0); c.score.push(0); c.alive.push(0); c.fire.push(0)
       }
       cols.set(slot, c)
     }
@@ -124,6 +143,8 @@ function buildTrack(file, replayLib, hz = 10) {
 
     if (e.t === 'player_connect') names.set(e.slot, { name: e.name, steamid: e.steamid })
     if (e.t === 'round') { round = e.n; rounds.push({ ms: e.ms, n: e.n }) }
+    if (endMs === null && (e.t === 'game_over' || (e.t === 'notify' && e.name === 'intermission'))) endMs = e.ms
+    if (e.t === 'input' && e.slot !== undefined) fireCur.set(e.slot, (e.buttons & 1) ? 1 : 0)
 
     if (FEED_EVENTS.has(e.t)) {
       const f = { ms: e.ms || 0, t: e.t }
@@ -144,6 +165,10 @@ function buildTrack(file, replayLib, hz = 10) {
     }
     if (e.zombies_alive !== undefined) { zAliveCur = e.zombies_alive; sawCounters = true }
     if (e.kills_round !== undefined) { kRoundCur = e.kills_round; sawCounters = true }
+    if (Array.isArray(e.zombies)) zCur = e.zombies
+    else if (e.zombies_alive === 0) zCur = []   // a zombie frame with none out
+    if (Array.isArray(e.nades)) nCur = e.nades
+    else if (e.zombies_alive !== undefined) nCur = []   // a 10 Hz frame with no nade list
     if (snapIndex % stride !== 0) continue
     if (firstSnapMs === null) firstSnapMs = e.ms
 
@@ -154,6 +179,7 @@ function buildTrack(file, replayLib, hz = 10) {
       c.health.push(s.health)
       c.score.push(s.score)
       c.alive.push(s.alive ? 1 : 0)
+      c.fire.push(fireCur.get(slot) || 0)
     }
     zAlive.push(zAliveCur)
     kRound.push(kRoundCur)
@@ -161,26 +187,32 @@ function buildTrack(file, replayLib, hz = 10) {
 
     // Zombies. `zombies` absent and `zombies: []` mean the same thing (the sampler only
     // emits the list on even frames), so an absent list is NOT "they all died".
-    if (Array.isArray(e.zombies)) {
+    const track = (list, all, last, withYaw) => {
       const live = new Set()
-      for (const z of e.zombies) {
+      for (const z of list) {
         live.add(z.id)
         let key = zLast.get(z.id)
-        if (key === undefined) { key = `${z.id}:${e.ms}`; zLast.set(z.id, key) }
-        if (!zombies.has(key)) zombies.set(key, { id: z.id, t0: ticks - 1, pos: [] })
-        const zt = zombies.get(key)
+        if (key === undefined) { key = `${z.id}:${e.ms}`; last.set(z.id, key) }
+        if (!all.has(key)) all.set(key, withYaw ? { id: z.id, t0: ticks - 1, pos: [], yaw: [] } : { id: z.id, t0: ticks - 1, pos: [] })
+        const zt = all.get(key)
         // Pad if this zombie was missing for a few ticks but kept its entnum.
         while (zt.pos.length / 3 < (ticks - 1 - zt.t0)) {
           const n = zt.pos.length
           zt.pos.push(zt.pos[n - 3] || 0, zt.pos[n - 2] || 0, zt.pos[n - 1] || 0)
+          if (withYaw) zt.yaw.push(zt.yaw.length ? zt.yaw[zt.yaw.length - 1] : 0)
         }
         zt.pos.push(r1(z.pos[0]), r1(z.pos[1]), r1(z.pos[2]))
+        // Yaw is recorded from the 2026-09-22 (late) DLL on; older files have none and
+        // the viewer faces the zombie along its motion instead.
+        if (withYaw) zt.yaw.push(z.yaw === undefined ? null : r1(z.yaw))
       }
       // An entnum that stopped appearing is retired, so if the engine hands the same
       // number to a new zombie it starts a fresh track instead of teleporting across
       // the map (replay.cpp: identity is (id, first-seen), never id alone).
-      for (const id of [...zLast.keys()]) if (!live.has(id)) zLast.delete(id)
+      for (const id of [...last.keys()]) if (!live.has(id)) last.delete(id)
     }
+    if (zCur) track(zCur, zombies, zLast, true)
+    if (nCur) track(nCur, nades, nLast, false)
   }
 
   const players = []
@@ -190,7 +222,7 @@ function buildTrack(file, replayLib, hz = 10) {
       slot,
       name: meta.name || `Slot ${slot}`,
       steamid: meta.steamid || null,
-      pos: c.pos, ang: c.ang, health: c.health, score: c.score, alive: c.alive,
+      pos: c.pos, ang: c.ang, health: c.health, score: c.score, alive: c.alive, fire: c.fire,
     })
   }
 
@@ -207,6 +239,9 @@ function buildTrack(file, replayLib, hz = 10) {
     t0_ms: firstSnapMs || 0,
     ticks,
     duration_ms: lastMs,
+    // Where the viewer's scrubber stops: game over or the intermission, whichever came
+    // first; null when the file has neither (then it is the last snap).
+    end_ms: endMs,
     max_round: rounds.length ? rounds[rounds.length - 1].n : round,
     // Whether this map has geometry on this machine, and which version of it. The viewer
     // needs both before it fetches anything: see mapExportFor.
@@ -218,7 +253,10 @@ function buildTrack(file, replayLib, hz = 10) {
     kills_round: sawCounters ? kRound : null,
     players,
     // Zombies with a single sample are spawn flicker and cost a draw call each.
-    zombies: [...zombies.values()].filter((z) => z.pos.length >= 6),
+    zombies: [...zombies.values()].filter((z) => z.pos.length >= 6)
+      .map((z) => (z.yaw.every((v) => v === null) ? { id: z.id, t0: z.t0, pos: z.pos } : z)),
+    // A thrown grenade is short-lived; one sample is still a grenade, so no filter.
+    nades: [...nades.values()],
     rounds,
     events: feed,
   }

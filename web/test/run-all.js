@@ -492,6 +492,32 @@ async function main() {
   // ── the wipe script, and the backup it refuses to skip ──────────────────────
   checkWipe()
 
+  // ── the replay track (replay.md §8.4, §8.5, §8.7) ───────────────────────────
+  check('the track keeps zombies whose list sits on the snap the 10 Hz sampler skips', () => {
+    const { buildTrack } = require('../server/routes/replay')
+    const ev = [
+      { t: 'input', ms: 0, slot: 0, buttons: 1 },
+      // The DLL's zombie list on the ODD snaps only -- the phase m_0afb449b had.
+      { t: 'snap', ms: 0, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], health: 100, alive: true }] },
+      { t: 'snap', ms: 50, zombies_alive: 1, players: [{ slot: 0, pos: [1, 0, 0], ang: [0, 0] }], zombies: [{ id: 40, pos: [5, 5, 0], yaw: 90 }], nades: [{ id: 70, pos: [1, 1, 1] }] },
+      { t: 'snap', ms: 100, players: [{ slot: 0, pos: [2, 0, 0], ang: [0, 0] }] },
+      { t: 'snap', ms: 150, zombies_alive: 1, players: [{ slot: 0, pos: [3, 0, 0], ang: [0, 0] }], zombies: [{ id: 40, pos: [6, 5, 0], yaw: 91 }] },
+      { t: 'snap', ms: 200, players: [{ slot: 0, pos: [4, 0, 0], ang: [0, 0] }] },
+      { t: 'explode', ms: 160, id: 70, pos: [1, 1, 1] },
+      { t: 'notify', ms: 210, name: 'intermission' },
+      { t: 'snap', ms: 250, players: [{ slot: 0, pos: [900, 0, 0], ang: [0, 0] }] },
+    ]
+    const lib = { readHeader: () => ({ header: { match_id: 'm_t', map: 'nazi_zombie_test' } }), readEvents: () => ev }
+    const t = buildTrack('x.enwr', lib, 10)
+    eq(t.zombies.length, 1, 'the zombie was dropped by the stride')
+    eq(JSON.stringify(t.zombies[0].pos.slice(0, 3)), '[5,5,0]')
+    eq(JSON.stringify(t.zombies[0].yaw), '[90,91]', 'yaw was not carried')
+    eq(t.nades.length, 1, 'the grenade was dropped')
+    truthy(t.events.some((e) => e.t === 'explode'), 'no explode in the feed')
+    eq(t.end_ms, 210, 'the end is not the intermission')
+    eq(t.players[0].fire[0], 1, 'attack bit not carried')
+  })
+
   // ── Local is untracked, and the site enforces it rather than trusting the box ──
   check('a LOCAL game is stored, and earns nothing at all', () => {
     // Count the MAP badge's holders, not every badge in the table: ingest also runs the
