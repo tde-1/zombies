@@ -176,6 +176,20 @@ public:
     const char* name() const override { return "huffman_guard"; }
 
     void post_unpack() override {
+        // ENW_NO_HUFFMAN_GUARD=1 leaves the decoder alone. This exists because this
+        // hook sits INSIDE SV_ExecuteClientMessage, between the engine's temp-stack
+        // bump at 0x630F91 and its restore -- exactly the span that dedi.md 7j's
+        // runaway leaks -- and a component that cannot be taken out of the circuit
+        // cannot be ruled out. An unguarded server must not be exposed to untrusted
+        // clients: this is for a bisect on localhost, nothing else.
+        char opt[8]{};
+        if (::GetEnvironmentVariableA("ENW_NO_HUFFMAN_GUARD", opt, sizeof opt) &&
+            opt[0] == '1') {
+            ENW_WARN("huffman: ENW_NO_HUFFMAN_GUARD=1 - the decoder is NOT bounded. "
+                     "CVE-2018-10718-class overflow is open. Diagnostic use only.");
+            return;
+        }
+
         // Allocate scratch + an unmapped guard page directly after it.
         const size_t total = kScratch + 0x1000;
         auto* base = static_cast<uint8_t*>(
