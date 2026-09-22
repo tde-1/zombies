@@ -1184,3 +1184,310 @@ Published to `web/public/updates` (the only thing this lane writes under `web/`,
 * electron-updater's own `semver`: 0.1.1 → update, **0.2.0 → update**, 0.2.1 → no update.
 
 The exe, its blockmap and `latest.yml` are all gitignored, so none of it is in a commit.
+
+---
+
+## The 4 GB patch: asked for, built, and REFUSED BY THE GAME (2026-09-23)
+
+B's decision this morning was to apply the community's "4 GB patch" â€” the
+`IMAGE_FILE_LARGE_ADDRESS_AWARE` bit in the PE `FileHeader.Characteristics` â€” to **our own game
+copy only**, never to his Steam install, so that the big custom maps (ORBiT, UGX Requiem) stop
+running the client out of address space in `CL_InitCGame` (dedi.md Â§14.7).
+
+**It does not work, and the reason is measured rather than argued.** The spec's item 2 was "prove
+SteamStub still decrypts a flagged exe; do not assume". It does not.
+
+### The control, and the flagged run
+
+One dev copy (`waw-c1`), one DLL, one map, **two bytes the only difference**:
+
+```
+laaON   Characteristics 0x0123   dialog answered: 'Steam Error' >> Cancel
+                                 msg: Application load error 3:0000065432
+                                 the server EXITED before it answered
+                                 alive=False  getstatus=False
+laaOFF  Characteristics 0x0103   alive=True  getstatus=True
+                                 com_frameTime +15,016 ms over 4 probes
+```
+
+and from our own DLL log of the flagged run, which opens as the exe starts and outlives it by a
+quarter of a second:
+
+```
+steamstub: image base 00400000, .text 00401000+3E99FF, first dword 9EF490B8, .bind present
+=== enw_t4 log closed ===            (250 ms after it opened)
+```
+
+`9EF490B8` is the encrypted first dword. **The stub never decrypted anything**; it refused the
+image and exited. The reasoning that led to the decision is still correct as far as it goes â€” the
+flag is in the PE file header, outside the `.bind`-wrapped image, and the loader must read that
+header before the stub's entry point can run â€” but SteamStub *verifies the file it wraps*, and two
+bytes is enough to fail it. Working around that check means defeating the DRM, which is vault
+rule 7 and out of the question.
+
+The first real evidence was `join91`: ORBiT, flagged client, and the client was `GONE` at t=5 s for
+the whole 300 s watch. Read next to `join90` (the same run, unflagged) it is unambiguous.
+
+### The measurements the flag was supposed to fix, taken anyway
+
+| run | map | flag | client |
+|---|---|---|---|
+| `join90` | ORBiT (`nazi_zombie_orbit`) | off | reaches **1,623 MB RSS** and stops â€” CPU flat from tâ‰ˆ25 s, no `CS_ACTIVE`, no `ROUND 1`, dropped to `CS_ZOMBIE` |
+| `join91` | ORBiT | **on** | **never starts at all** â€” Steam Error, process gone by t=5 s |
+
+Server side both runs were perfect and identical to `join80`: gates 2â€“5 pass, 59 Hz,
+`com_frameTime` +30,013 ms, 351 MB flat. It was never the server. It is still the client, and the
+32-bit ceiling is still the reason â€” the fix for it is not this.
+
+UGX Requiem (`ugx_artemovsk`) was **not run flagged**: with ORBiT's answer in hand a second Steam
+Error proves nothing new and costs 5 minutes of the shared game lock. Its unflagged behaviour is
+`join81`'s, unchanged.
+
+### What shipped instead
+
+The code is in, tested, reversible â€” and **refuses itself on a Steam-protected exe**, by name:
+
+* `src/main/pe.js` gains `characteristics(file)` and `setLargeAddressAware(file, on)`. Two bytes at
+  `PE + 22`, idempotent (a matching bit writes nothing), and **always read back off disk**, with a
+  throw if they are not what was written. A test asserts that the rest of the file is byte-identical
+  afterwards â€” a 4 GB patch that rewrites a byte of `.text` is a corrupt game exe that only fails at
+  launch.
+* `setup.ensureLargeAddressAware()` writes the **original** `Characteristics` and the exe's sha256
+  into `state\exe-patch.json` *before* the first write and never overwrites that record with a
+  patched value, so `restoreGameExe()` can put the header back exactly. `assertWritable()` polices
+  the path, so it can only ever touch `<ENW>\game\CoDWaW.exe`.
+* â€¦and before any of that, it reads the section table: **`.bind` present â†’ refuse**, with the
+  sentence above and `skipped: 'steamstub'`. Setup reports that as an answer, not a failed step.
+  `ENW_LAA_FORCE=1` overrides it for an exe that is not stubbed.
+* Settings has **4 GB memory for big maps**, on by default; turning it off calls `restoreGameExe()`.
+  On B's machine it will report the SteamStub refusal, which is the honest thing for it to say.
+
+So the launcher's answer to "can we give the client 4 GB" is now a measured *no, not on a Steam
+copy*, in one place, with the machinery ready for a copy that is not one. The `Needs the DLL or an
+exe edit â€” listed, not applied` table's LAA row stands; only its *reason* changes, from "rule 1 and
+spec Â§4.5" to "rule 1, and the game refuses it anyway".
+
+---
+
+## Nothing of ours in the player's World at War folder (2026-09-23)
+
+B, this morning, ahead of everything else: **"our client must never touch the user's own World at
+War data."** Steam-launched vanilla WaW must see nothing of ours, and everything we add â€” maps,
+config, saves, our DLL â€” lives under `%LOCALAPPDATA%\ENWZombies\` only.
+
+Two things were violating that, and they were the same thing:
+
+1. **map installs went into `%LOCALAPPDATA%\Activision\CoDWaW\mods\`** â€” the player's folder. That
+   is why vanilla World at War's Mods menu listed ENW's maps, and it is the folder behind the
+   *"already in your own World at War mods folder"* refusal B hit on 8 of 10 Install buttons.
+2. `fs_homepath` moves `main/` and nothing else, so the **profile, `config.cfg`, saves, the
+   `__CoDWaW` marker and the engine's own map-exists check** all resolved into the player's folder
+   too (dedi.md Â§14's `fs_localAppData` finding).
+
+### The fix is one hook, and it is the client DLL's
+
+`client-dll/components/enw_localappdata.cpp` (new; written up in
+[`client.md`](client.md) Â§4) patches the engine's `SHGetFolderPathA` **import** and returns
+`ENW_LOCALAPPDATA` for the AppData CSIDLs. The engine then builds `players`, `mods`, `__CoDWaW` and
+its map-exists path under our folder by itself. It is an IAT patch installed at `post_load`, before
+SteamStub decrypts anything, because the profile path is resolved during very early init. Setting
+the `LOCALAPPDATA` *environment variable* does nothing â€” the dedi lane measured that.
+
+### The launcher half
+
+| | |
+|---|---|
+| `paths.js` | new `P.localAppData` = `<ENW>\home\localappdata`; **`P.maps` moved** to `<P.localAppData>\Activision\CoDWaW\mods`; new `P.userGameData` naming the player's folder |
+| `paths.js` | **the write-guard carve-out is gone.** `assertWritable()` used to allow the player's mods folder as the one exception to "everything under ENW_ROOT". There is no exception now, and the player's `Activision\CoDWaW` is additionally refused *by name* so this cannot be re-introduced by repointing `P.maps` |
+| `launch.js` | every launch passes `ENW_LOCALAPPDATA`; the `__CoDWaW` crash-marker clean-up and the `safemode.cfg` sweep now look in **our** folder â€” the player's marker is never read and never deleted, because its pid is not ours to judge |
+| `library.js` | `installDir()` follows `P.maps`, so installs land in our tree. The *"already in your own World at War mods folder"* throw is **deleted**: there is no shared folder left to collide in |
+| `setup.js` | `install()` creates the tree and says so in its own step; `uninstall({keepMaps})` now skips the child that *contains* the library rather than one that *is* it (the old equality test would have deleted the maps it promised to keep) |
+| `shell.js` | the "What setting up will change" list says it in the player's words |
+
+### Proof
+
+One real Play Local, through `play-cli.js --window player --hold` â€” the shipped path, not a stub â€”
+on a custom map (`nazi_zombie_fear_mc_2`, installed through the launcher's own map library), with
+the player's **whole `%LOCALAPPDATA%\Activision\CoDWaW` tree hashed before and after**: every file's
+path, size, mtime and SHA-256, every directory, and every junction recorded as a link and *not*
+followed (following one would hash our own archive and hide the thing being tested).
+
+```
+85 entries -> user-before.txt
+[done] In game (untracked)   the map is loading on your PC: gumball is up and playable
+85 entries -> user-after.txt
+=== user data diff ===
+IDENTICAL - the player's own Activision\CoDWaW tree is byte-for-byte unchanged
+```
+
+And the other half â€” that our session found its map and wrote its own config â€” from the DLL's log
+(`enw-39728.log`) and from disk:
+
+```
+components registered: 46
+enw_localappdata: LocalAppData redirected to 'C:\Users\b\AppData\Local\ENWZombies\home\localappdata'
+steamstub: decrypted after 172 ms (89 polls); 0x401000 = 55 8B EC 83 E4 F8 ...
+enw_localappdata: SHGetFolderPathA redirected 2 time(s) -> '...\home\localappdata'
+
+<ENW>\home\localappdata\Activision\CoDWaW\mods\nazi_zombie_fear_mc_2     <- the map
+<ENW>\home\localappdata\Activision\CoDWaW\players\profiles               <- the profile
+<ENW>\home\localappdata\Activision\CoDWaW\__CoDWaW                       <- the marker
+```
+
+`redirected 2 time(s)` is the number that matters: the component warns loudly at zero precisely
+because a redirect that silently did not happen looks identical to one that worked. The three paths
+under our folder were created **by the engine**, not by us.
+
+Note the `steamstub: decrypted after 172 ms` line in the same run. That is the LAA section's control
+restated: an **unmodified** exe decrypts normally with all of this in place.
+
+### The dev harness is deliberately NOT switched over yet
+
+`tools/dev/mapmount.ps1` and `tools/dev/launch.ps1` take the same redirect behind one switch,
+`ENW_USE_PRIVATE_LOCALAPPDATA=1`, and **default to today's behaviour**. That is not caution, it is
+a fact: the redirect lives in a client-dll component, and the DLLs in the dev copies (`build\dedi`,
+`build\vps`) were built before that component existed. Pointing the mount at a folder the running
+DLL does not redirect to makes every custom-map run fail with `Can't find map` â€” and the dedi/referee
+lane was mid-session while this landed. Flip the switch once those copies carry a DLL built on or
+after 2026-09-23; nothing else has to change.
+
+---
+
+## The four `flag_wait` maps: the error IS fatal, in normal play (2026-09-23)
+
+The open question in `dedi.md` Â§14.2 was whether Zombie Desert, Project Viking, MW2 Rust and
+Clinic of Evil's `flag_wait`-before-`flag_init` error is fatal *in normal play* â€” a T4 GSC
+**runtime** error normally kills only the thread it happened on, and the community plays these
+maps, so the suspicion was that something in our dedicated path (`logfile 2`, `developer_script`,
+an assert promotion) was turning a survivable error into a stop.
+
+**It is not ours, and it is not survivable.** Zombie Desert (`nazi_zombie_test1`), installed
+through the launcher's own map library and played through the shipped path â€”
+`play-cli --local --window player --hold`, a **plain windowed listen game** on B's display, no
+dedicated server anywhere in the process:
+
+```
+******* script runtime error *******
+undefined is not an array, string, or vector: (file 'common_scripts/utility.gsc', line 463)
+ while( !level.flag[ msg ] )
+(file 'maps/zombie_hitmarker.gsc', line 38)   flag_wait( "all_players_connected" );
+(file 'maps/nazi_zombie_test1.gsc', line 136) thread maps\zombie_hitmarker::main();
+(file 'maps/nazi_zombie_test1.gsc', line 9)   main()
+Error: ************************************
+[enw] === Com_Error TRAPPED ===
+[enw]   called from 0068B857   arg1 = 00000005
+[enw]   arg2 = ".script runtime error (see console for details) %s%s%s"
+[enw]   arg3 = "undefined is not an array, string, or vector"
+      dvar set com_errorMessage script runtime error
+ERROR: script runtime error
+----- Server Shutdown -----
+      dvar set sv_running 0
+----- R_Init -----
+```
+
+**`Com_Error`, then `Server Shutdown`, then `sv_running 0`, then the renderer re-initialising for
+the main menu.** The map is torn down and the player is dropped back to the menu with an error box.
+There is no round 1, no spawn, and `referee:` never logs a round. So this is not a thread dying
+quietly: the engine promotes it to a game-ending error all by itself, on a stock listen server, with
+`developer 0` and no dedicated code in the process.
+
+**Which means our dedicated path differs in nothing that matters.** No `logfile 2` effect, no
+`sv_cheats`, no `developer_script`, no assert promotion of ours â€” the dedicated runs were seeing the
+engine's own behaviour. `dedi.md` Â§14.2's conclusion ("the maps do this on their own") is confirmed
+from the opposite direction, and its open sub-question is now answered: the error is fatal, so the
+community cannot be playing *these files* and getting away with it.
+
+That leaves Â§14.2's repack inference, which this run adds one fact to and does not settle: the
+offending script arrives in a **separate third-party add-on** sitting loose in the mod folder, and
+the engine says so out loud as it mounts it â€”
+
+```
+...\mods\nazi_zombie_test1\zombie_hitmarker_bythesuzho.iwd (4 files)
+```
+
+Whether removing that `.iwd` makes the map playable was **not tested** (it is the archive/dedi
+lane's call, not this one's). Written down as the obvious next experiment, and as inference.
+
+---
+
+## 0.2.2 (2026-09-23)
+
+Four things: the LocalAppData redirect above (which is the one that matters), the 4 GB patch and
+its refusal, a **Check for updates** button, and the **`enw-zombies://`** protocol.
+
+### Check for updates, in Settings
+
+`src/main/updatecheck.js`. `UpdateCheck` takes an injectable `loadUpdater`, so the whole lane is
+driven against a fake `autoUpdater` in the tests rather than against a real feed. Five player-facing
+lines and no errnos: `Checkingâ€¦`, `You are up to date (0.2.2)`, `Downloading 37%`, `Ready to
+install`, and a failure line. **"Could not reach the update server"** is its own sentence â€” a 404, a
+DNS failure and a timeout all land on it, with the technical detail in parentheses â€” because "the
+feed is down" and "the launcher is broken" must not look the same to a player. A dev checkout says
+so plainly instead of throwing, which is what electron-updater does there.
+
+*Restart and update* appears only once something has downloaded, and calls `quitAndInstall()`.
+Every step goes to `launcher.log` under scope `update`, with **download progress logged at
+intervals, not per event** (11 lines for 101 events, asserted).
+
+### `enw-zombies://`
+
+`src/main/deeplink.js`, and the scheme and routes are written into
+[`../protocol/launcher-v0.md`](../protocol/launcher-v0.md) Â§7 because the web lane is building the
+sending side against exactly them.
+
+| | |
+|---|---|
+| `enw-zombies://map/<key>` | open the launcher on that map, selected in the browser and ready to Play or Start |
+| `enw-zombies://party/<id>` | open on that party, joining it if the player is invited |
+| anything else | home â€” logged with a `why`, and **nothing in the parser throws** |
+
+`app.requestSingleInstanceLock()` + `second-instance`, so a second launch **forwards the URL to the
+running launcher and focuses it** instead of opening a second app; the URL is also read out of
+`process.argv` on a cold start (found anywhere in argv, not only at the end) and through `open-url`.
+`package.json` gains `build.protocols`, which is what makes NSIS register the scheme at install
+time. Every received URL is logged under scope `deeplink`.
+
+One measured detail that drives the parser: for a non-special scheme `new URL()` puts the route in
+`hostname` and the key in `pathname`, and **does not lower-case the host**.
+
+### Tests, build and publish
+
+`npm test` **101 passed / 0 failed** (86 at 0.2.1; 15 new â€” 2 LAA, 1 map-library relocation
+rewritten, 5 deep link, 7 update check). `npm run smoke` **9 of 10**, and the one failure is the
+check doing its job: B's own 0.2.1 has held the single-instance lock since 04:53, so a packaged
+smoke run would exit immediately and write nothing. That is also why the packaged deep-link test
+below is unproven.
+
+| | |
+|---|---|
+| DLL | `build\launcher\enw_t4.dll`, 1,570,816 B, **sha256 `3e9d44dae0eaf38e7ecd637978891399d2cfeb13ee5c1c9119fd302747aa635f`**, 46 components register (42 at 0.2.1; the new one is `enw_localappdata`), 32 of 46 online on a player |
+| in the installer | `dist\win-unpacked\resources\client\enw_t4.dll`, same sha256 â€” checked, not assumed |
+| installer | **`ENW-Zombies-Launcher-Setup-0.2.2.exe`**, 94,530,479 B, **sha256 `57ca81b584c6cc39292b8ca49422953f356f07a18e9471dbbb2865c201d9c65f`** |
+
+Published to `web/public/updates` through `tools/publish-update.js` (the only thing this lane writes
+under `web/`). **The site was not restarted.** Checked against the running site on 127.0.0.1:3200
+rather than assumed:
+
+* `GET /updates/latest.yml` â†’ `200`, `Content-Type: text/yaml`, `version: 0.2.2` â€” not the React
+  catch-all answering 200 with `text/html`, which is the failure this check exists for;
+* `GET /updates/ENW-Zombies-Launcher-Setup-0.2.2.exe` with `Range: bytes=0-1023` â†’ **`206 Partial
+  Content`**, `Content-Range: bytes 0-1023/94530479`, bytes start `MZ`;
+* the served file's sha256 equals the one in `launcher\dist`;
+* semver: 0.2.0 â†’ update, **0.2.1 â†’ update**, 0.2.2 â†’ no update.
+
+The exe, its blockmap and `latest.yml` are gitignored, so none of it is in a commit.
+
+### Unproven, and named
+
+* **The packaged deep link.** `start enw-zombies://map/nazi_zombie_prototype` was **not** run
+  against the packaged 0.2.2, because B's 0.2.1 holds the single-instance lock and a second copy
+  exits immediately â€” the forward would go to a launcher that does not know the scheme. The NSIS
+  registry entry is likewise unproven until someone installs 0.2.2. The parse, the routing and the
+  second-instance forwarding are tested against fakes only.
+* **Real electron-updater.** Every update test uses a fake `autoUpdater`. That a live 404 / DNS
+  failure produces a message matching "could not reach the update server" is inferred from the
+  error spellings, not observed; the matcher deliberately over-matches so a new spelling still lands
+  in the right sentence.
+* **The rendered Settings page.** No Electron run, so the new button row is code-correct and not
+  seen.
+

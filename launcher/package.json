@@ -1,6 +1,6 @@
 {
   "name": "@enw-zombies/launcher",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "description": "ENW Zombies launcher",
@@ -48,6 +48,14 @@
     ],
     "asarUnpack": [
       "tools/**"
+    ],
+    "protocols": [
+      {
+        "name": "ENW Zombies",
+        "schemes": [
+          "enw-zombies"
+        ]
+      }
     ],
     "win": {
       "target": [

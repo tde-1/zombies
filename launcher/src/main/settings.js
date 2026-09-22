@@ -33,6 +33,12 @@ export const DEFAULT_SETTINGS = {
   autoRemoveUnplayedMaps: false, // spec: off by default
   autoRemoveDays: 30,
   streamerMode: false,
+  // The "4 GB patch" on OUR copy of CoDWaW.exe (setup.js, "THE LARGE ADDRESS AWARE
+  // FLAG"). On by default because without it the big custom maps — ORBiT, UGX
+  // Requiem — run the client out of address space in CL_InitCGame. Turning it off
+  // puts the header back to the bytes we recorded before we first touched it; it
+  // never reaches the player's own install either way.
+  largeAddressAware: true,
 }
 
 function read(file, fallback) {
@@ -96,6 +102,7 @@ export function validate(patch = {}) {
   if ('fov' in out && out.fov !== null) out.fov = Number(clampFov(out.fov))
   if ('maxFps' in out && out.maxFps !== null) out.maxFps = Number(clampFps(out.maxFps))
   if ('vsync' in out) out.vsync = !!out.vsync
+  if ('largeAddressAware' in out) out.largeAddressAware = !!out.largeAddressAware
   if ('display' in out && out.display !== null) out.display = String(out.display)
   // Keep the legacy flag in step with the mode so nothing that still reads it lies.
   if ('mode' in out) out.fullscreen = out.mode === 'fullscreen'

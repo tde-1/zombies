@@ -67,6 +67,14 @@ contextBridge.exposeInMainWorld('enw', {
   openExternal: (url) => call('openExternal', url),
   openFolder: (which) => call('openFolder', which),
 
+  // Updates, the player-driven lane. `checkForUpdates()` resolves with the first state
+  // it reaches; everything after that (Downloading 37%, Ready to install, a failure)
+  // arrives on `onUpdateStatus`, so nothing here has to poll.
+  updateStatus: () => call('updateStatus'),
+  checkForUpdates: () => call('checkForUpdates'),
+  restartAndUpdate: () => call('restartAndUpdate'),
+  onUpdateStatus: (fn) => on('update_status', fn),
+
   // "Never mid-something": the site says when it is busy, and asks for a refresh
   // instead of taking one.
   setBusy: (key, busy, why) => call('setBusy', { key, busy, why }),

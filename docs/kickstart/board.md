@@ -4607,3 +4607,55 @@ the live site, instance warm again.**
 - 15:45 referee: `infra/host-agent/test/integration-site.js` **0 failures** against a throwaway
   site (`:3277`, own data dir, own keys, own seeded DB — :3200, `web/data` and the live key
   untouched): `game_players` = 2, 1193 XP each, replay VALID against the pinned key.
+- 16:05 launcher: **the 4 GB / LAA patch does NOT work on a Steam copy, and that is measured.**
+  SteamStub refuses an exe whose header changed â€” `Application load error 3:0000065432`, process
+  gone in 250 ms, `.text` still `9EF490B8` in our own log. Two bytes, same copy, same DLL, same
+  map: `laaON` alive=False, `laaOFF` alive=True. `join91` (ORBiT, flagged client) had the client
+  GONE at t=5 s for the whole 300 s; `join90` (same run, unflagged) is the control and reproduces
+  `join80` exactly â€” client stuck at **1,623 MB RSS**, no `CS_ACTIVE`, no `ROUND 1`, server 351 MB
+  and 59 Hz throughout. The launcher ships the patch anyway and **refuses itself on any exe with a
+  `.bind` section**, with the record of the original bytes so repair can restore. launcher.md
+  2026-09-23.
+- 16:05 launcher/client: **nothing of ours is in the player's World at War folder any more.**
+  New client-dll component `enw_localappdata` patches the engine's `SHGetFolderPathA` import
+  (IAT, `post_load`, before SteamStub decrypts) so LocalAppData resolves to
+  `<ENW>\home\localappdata`. Proven on one real Play Local on a custom map: the player's whole
+  `Activision\CoDWaW` tree hashed before and after is **byte-for-byte identical** (85 entries,
+  SHA-256 each), the DLL logs `SHGetFolderPathA redirected 2 time(s)`, and the engine itself
+  created `players\profiles`, `mods\<bsp>` and `__CoDWaW` under our folder. `P.maps` moved with it
+  and the write-guard's carve-out for the player's mods folder is gone. The
+  *"already in your own World at War mods folder"* refusal is deleted â€” there is no shared folder
+  left to collide in. client.md Â§4, launcher.md 2026-09-23.
+- 16:05 **dedi/referee: `tools/dev/mapmount.ps1` and `launch.ps1` take the same redirect behind
+  `ENW_USE_PRIVATE_LOCALAPPDATA=1` and DEFAULT TO TODAY'S BEHAVIOUR.** Not caution â€” the redirect
+  is a client-dll component and the DLLs in `waw-d2` / `waw-c1` predate it, so flipping it before
+  those copies are rebuilt makes every custom map fail with `Can't find map`. Flip it once they
+  carry a DLL built on or after 2026-09-23. (Note: `launch.ps1`'s half of that edit went out inside
+  `bd3bd59`, the referee lane's commit â€” the shared-index trap again, content intact.)
+- 16:05 launcher: **the four `flag_wait` maps â€” the error IS fatal in normal play. Answered.**
+  Zombie Desert on a plain windowed **listen** game through the shipped path (no dedicated code in
+  the process, `developer 0`): the same `common_scripts/utility.gsc:463` runtime error, then
+  `Com_Error` (arg1=5) from `0068B857`, then `----- Server Shutdown -----`, `sv_running 0`, then
+  `R_Init` for the menu. No round 1, no spawn. **So our dedicated path differs in nothing that
+  matters** â€” no `logfile 2` effect, no `sv_cheats`, no assert promotion of ours. dedi.md Â§14.2's
+  "the maps do this on their own" is confirmed from the other side. One new fact for the repack
+  inference, untested: the offending script arrives in a separate third-party add-on the engine
+  names as it mounts it, `zombie_hitmarker_bythesuzho.iwd`. Removing it is the obvious next
+  experiment and is the archive/dedi lane's call.
+- 16:05 launcher: **0.2.2 published** â€” `/updates/ENW-Zombies-Launcher-Setup-0.2.2.exe`, 94,530,479 B,
+  sha256 `57ca81b584c6cc39292b8ca49422953f356f07a18e9471dbbb2865c201d9c65f`; DLL
+  `3e9d44dae0eaf38e7ecd637978891399d2cfeb13ee5c1c9119fd302747aa635f`, 46 components. `latest.yml`
+  200/`text/yaml`, a 206 on the installer, served sha256 = dist sha256, 0.2.1 â†’ update. Site NOT
+  restarted. `npm test` 101/0, `npm run smoke` 9 of 10. Also in it: a **Check for updates** button
+  in Settings (five plain lines, "could not reach the update server" as its own sentence,
+  `quitAndInstall` behind *Restart and update*, every step in `launcher.log`) and the
+  **`enw-zombies://`** protocol (`map/<key>`, `party/<id>`, anything else home; single-instance
+  forwarding; NSIS registration via `build.protocols`; written into `protocol/launcher-v0.md` Â§7
+  for the web lane).
+- 16:05 launcher: **unproven and named.** `start enw-zombies://map/...` was never run against the
+  packaged 0.2.2 â€” B's 0.2.1 has held the single-instance lock since 04:53, so a second copy exits
+  at once and the forward would reach a launcher that does not know the scheme. The NSIS registry
+  entry is unproven until someone installs 0.2.2. The update lane is tested against a fake
+  `autoUpdater` only. UGX Requiem was not re-run flagged: with ORBiT's Steam Error in hand a second
+  one proves nothing and costs the shared lock.
+

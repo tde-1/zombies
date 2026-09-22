@@ -32,6 +32,8 @@ import * as library from './library.js'
 import { SiteApi, PlayWatcher, electronCookieProvider } from './siteapi.js'
 import * as partyprogress from './partyprogress.js'
 import { AutoUpdater, resolveFeed } from './autoupdate.js'
+import { UpdateCheck } from './updatecheck.js'
+import * as deeplink from './deeplink.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
 
@@ -53,6 +55,9 @@ const state = {
   gate: new IdleGate(),
   pendingDeepLink: null,
   lastError: null,
+  // The player-driven "Check for updates" lane (updatecheck.js). Separate from
+  // `state.updater`, which is the silent one that checks on launch and applies on quit.
+  updateCheck: null,
   localRun: null,
   lastLocalResult: null,
   // The loopback listener while a browser sign-in is in flight, so a second press does
@@ -346,10 +351,51 @@ function push(channel, payload) {
   try { state.win?.webContents.send(`enw:${channel}`, payload) } catch {}
 }
 
+// ------------------------------------------------------- the update check --
+
+// Built on first press, not at startup, and for one measured reason: the feed URL is
+// derived from the site (`resolveFeed`), and at `whenReady` the site has often not
+// resolved yet — a check built then would carry `feed: null` for the whole session and
+// tell the player "no update server is configured" on a machine that has one. Built at
+// the moment of the press, it uses whatever the launcher knows by then.
+//
+// Progress reaches the renderer by PUSH, on the existing `enw:` event channel. The
+// alternative — the Settings page polling `updateStatus` — would mean a percentage that
+// moves in steps and a poll that keeps running after the page is closed.
+function updateCheck() {
+  if (state.updateCheck) return state.updateCheck
+  state.updateCheck = new UpdateCheck({
+    feedUrl: resolveFeed({ config: cfg.load(), siteUrl: state.siteInfo?.url }),
+    currentVersion: app.getVersion(),
+    // The same closed-beta password the player already typed to see the site, for the
+    // same reason autoupdate.js sends it: the feed is behind the gate, and a 401 there
+    // surfaces as `net::ERR_ABORTED`, which reads as a broken launcher. Never logged.
+    authHeader: cfg.load().sitePassword
+      ? 'Basic ' + Buffer.from(`beta:${cfg.load().sitePassword}`).toString('base64')
+      : null,
+    // `process.defaultApp` is Electron's own "we are running from a checkout" flag, and
+    // it is what electron-updater itself keys off when it refuses to run.
+    isDev: !!process.defaultApp || !app.isPackaged,
+    log: (...a) => log('update', ...a),
+  })
+  state.updateCheck.on('status', (s) => push('update_status', s))
+  return state.updateCheck
+}
+
 // ----------------------------------------------------------------- deep links --
 
-// zombies.enw.gg/m/<map>  and  enwzombies://m/<map>
+// THREE FORMS REACH THIS FUNCTION, and only the first is a contract with the web lane:
+//
+//   enw-zombies://map/<key>   enw-zombies://party/<id>     deeplink.js, protocol v0 §7
+//   enwzombies://m/<map>      enwzombies://play/<map>      the older, unhyphenated one
+//   https://zombies.enw.gg/m/<map>                         a plain web link we own
+//
+// The new scheme is tried first and answers for EVERY `enw-zombies:` string, including
+// the malformed ones (it returns `{kind:'home', why}` rather than null), so nothing that
+// starts with our scheme can fall through to the legacy reader and be misread there.
 export function parseDeepLink(raw) {
+  const ours = deeplink.parse(raw)
+  if (ours) return ours
   if (!raw) return null
   let u
   try { u = new URL(raw) } catch { return null }
@@ -369,17 +415,58 @@ export function parseDeepLink(raw) {
   return null
 }
 
+// EVERY URL THAT ARRIVES IS LOGGED, including the ones that go nowhere.
+//
+// A deep link is the one feature whose failures happen on somebody else's machine, at a
+// moment nobody is watching, from a string nobody kept — a friend clicks a link in
+// Discord and says "it just opened the launcher". Without a line in `launcher.log`
+// naming the exact URL and the exact reason it fell through, that report cannot be
+// turned into a fix, and the web lane and this lane can only argue about it. So the
+// `home` path logs `why`, not just the fact.
 function handleDeepLink(raw) {
   const link = parseDeepLink(raw)
-  if (!link) return
-  log('deep link', raw, link)
-  if (!state.win) { state.pendingDeepLink = link; return }
+  if (!link) { log('deeplink', 'ignored (not one of ours):', String(raw)); return }
+  log('deeplink', 'received', String(raw), '->', link.kind, link.map || link.party || link.why || '')
+  if (!state.win) {
+    // The COLD START case: Windows launched us *with* the URL, so this runs before
+    // there is anything to send it to. The RAW string is held, not the parsed link, so
+    // the replay goes through this same function and the party/home side effects below
+    // happen exactly once and in the same place.
+    log('deeplink', 'the window is not up yet; holding it until it is')
+    state.pendingDeepLink = raw
+    return
+  }
   state.win.show(); state.win.focus()
-  push('deeplink', link)
+  // A party lives in the wrapped site, not in our chrome, so "open on that party" is a
+  // navigation of the site view. Joining-if-invited is the SITE's decision on that page
+  // — the launcher must not invent a join, because it does not know the invite list.
+  if (link.kind === 'party') openSitePath(`/party/${encodeURIComponent(link.party)}`, 'a party deep link')
+  if (link.kind === 'home') { log('deeplink', 'opening home:', link.why || 'nothing to route to'); showSite(true) }
+  // A cold start reaches here while the chrome is still loading, and a `send` into a
+  // page that has not run its script yet is a message nobody hears — which looks, from
+  // the player's side, exactly like the link doing nothing.
+  const send = () => push('deeplink', link)
+  try { if (state.win.webContents.isLoading()) state.win.webContents.once('did-finish-load', send); else send() } catch { send() }
+}
+
+// Navigate the wrapped site view to one of its own paths. Never leaves the site's
+// origin: a deep link may choose a PAGE, never a host.
+function openSitePath(p, why) {
+  try {
+    const base = state.siteInfo?.url
+    if (!base) { log('deeplink', 'cannot open', p, '- no site is loaded yet'); return false }
+    const url = new URL(p, base)
+    if (new URL(base).origin !== url.origin) { log('deeplink', 'refused', p, '- it would leave the site'); return false }
+    log('deeplink', 'opening', url.href, `(${why})`)
+    showSite(true)
+    state.siteView?.webContents.loadURL(url.href).catch((e) => log('deeplink', 'could not open', url.href, '-', e.message))
+    return true
+  } catch (e) { log('deeplink', 'could not open', p, '-', e.message); return false }
 }
 
 function linkFromArgv(argv) {
-  return argv.find((a) => /^enwzombies:/i.test(a) || /^https?:\/\/(zombies|zm)\.enw\.gg\//i.test(a)) || null
+  return deeplink.fromArgv(argv) ||
+    argv.find((a) => /^enwzombies:/i.test(a) || /^https?:\/\/(zombies|zm)\.enw\.gg\//i.test(a)) || null
 }
 
 // -------------------------------------------------------------------- the IPC --
@@ -606,6 +693,23 @@ function wireIpc() {
   // Display settings need the monitor list, and only the main process can get it.
   handle('getDisplays', () => ({ displays: listDisplays(), modes: MODES }))
 
+  // ------------------------------------------------------- check for updates --
+  //
+  // The player's own button. It is deliberately NOT the silent lane (`state.updater`):
+  // that one is allowed to fail invisibly, and this one exists to say what happened.
+  // Both are safe to have at once — electron-updater is a singleton, and the worst case
+  // is the background check and this one racing to the same answer.
+  //
+  // None of these three throw. An `{ok:false}` here becomes a red toast that says
+  // nothing useful; the state machine's own message is always better than an errno.
+  handle('updateStatus', () => updateCheck().status())
+  handle('checkForUpdates', () => updateCheck().check())
+  handle('restartAndUpdate', () => {
+    const r = updateCheck().quitAndInstall()
+    if (!r.ok) push('toast', { kind: 'error', text: `Could not restart to install the update: ${r.why}` })
+    return r
+  })
+
   // --------------------------------------------------- a tracked local game --
   //
   // THE MISSING LINK, and it is why no local game has ever produced a round count.
@@ -674,6 +778,25 @@ function wireIpc() {
     const conf = cfg.load()
     const s = settings.get()
     const sess = settings.session()
+
+    // The 4 GB (large address aware) flag on our own copy's CoDWaW.exe. Same place
+    // as the DLL repair and for the same reason: an update that changes what the
+    // game copy should look like has to reach a folder that already exists. Two
+    // bytes in a PE header, idempotent, read back — and `largeAddressAware: false`
+    // in settings restores the bytes we recorded before we first wrote.
+    try {
+      const want = s.largeAddressAware !== false
+      const l = want ? setup.ensureLargeAddressAware({ enabled: true }) : setup.restoreGameExe()
+      if (l.changed) {
+        log('setup', `CoDWaW.exe: ${l.reason}`)
+        push('toast', { kind: 'ok', text: want ? 'Enabled 4 GB memory for big custom maps.' : 'Put CoDWaW.exe back to 2 GB memory.' })
+      } else if (!l.ok) {
+        log('setup', `CoDWaW.exe: ${l.reason}`)
+      }
+    } catch (e) {
+      log('setup', `CoDWaW.exe: could NOT set the 4 GB flag — ${e.message}`)
+      push('toast', { kind: 'warn', text: `Could not set the 4 GB flag on the game: ${e.message}` })
+    }
 
     // Everything a local game needs from the referee, resolved BEFORE the launch,
     // because the game only reads ENW_HOST/ENW_INSTANCE once, at startup.
@@ -1177,10 +1300,23 @@ if (!single) {
   console.log('ENW_SECOND_INSTANCE ' + note)
   app.quit()
 } else {
+  // A SECOND LAUNCH IS A MESSAGE, NOT AN APP. Clicking `enw-zombies://map/...` while the
+  // launcher is already open starts a second process; that process hands its argv to
+  // this one and quits (the `!single` branch above), and this is where it arrives. The
+  // legacy `enwzombies://` and https:// forms are still recognised — `linkFromArgv`
+  // reads both — while the new scheme's own forwarding is `deeplink.makeSecondInstance`,
+  // which is the half the tests drive against fakes.
+  const forward = deeplink.makeSecondInstance({
+    onLink: (url) => handleDeepLink(url),
+    onFocus: () => { state.win?.show(); state.win?.focus() },
+    log: (...a) => log('deeplink', ...a),
+  })
   app.on('second-instance', (_e, argv) => {
+    const r = forward(argv)
+    if (r.forwarded) return
+    // Not the new scheme: it may still be one of the older forms.
     const link = linkFromArgv(argv)
     if (link) handleDeepLink(link)
-    else { state.win?.show(); state.win?.focus() }
   })
 
   app.whenReady().then(async () => {
@@ -1213,6 +1349,12 @@ if (!single) {
     } catch (e) { log('could not apply a pending update', e.message) }
 
     // Deep-link protocol registration. Harmless if it fails (unpackaged dev run).
+    //
+    // TWO schemes are claimed: the hyphenated `enw-zombies://` the site is about to
+    // publish (protocol v0 §7) and the older `enwzombies://` that is already in the
+    // smoke report and in people's shortcuts. Windows is happy to hand one app both,
+    // and dropping the old one would break links that already exist.
+    deeplink.register(app, { log: (...a) => log('deeplink', ...a) })
     try {
       const proto = cfg.load().protocol
       if (process.defaultApp && process.argv.length >= 2) app.setAsDefaultProtocolClient(proto, process.execPath, [path.resolve(process.argv[1])])
@@ -1236,7 +1378,7 @@ if (!single) {
     await createWindow()
     createTray()
 
-    if (state.pendingDeepLink) { push('deeplink', state.pendingDeepLink); state.pendingDeepLink = null }
+    if (state.pendingDeepLink) { const held = state.pendingDeepLink; state.pendingDeepLink = null; handleDeepLink(held) }
     const link = linkFromArgv(process.argv)
     if (link) handleDeepLink(link)
 

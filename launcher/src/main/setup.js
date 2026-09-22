@@ -22,6 +22,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { P, assertWritable, protectPath, isInside, ensureDirs, dirOfModule, RESOURCES, PACKAGED } from './paths.js'
 import { validate } from './detect.js'
+import * as pe from './pe.js'
 
 // Junctioned (big, shared, read-only). Same list as tools/dev/new-copy.ps1.
 export const LINK_DIRS = ['main', 'zone', 'DirectX', 'Docs', 'installers', 'pb']
@@ -201,7 +202,7 @@ export function canMakeJunctions(dir, target) {
 
 // ------------------------------------------------------------------- install --
 
-export function install({ gameDir, dllPath = null, repoRoot = null, force = false, includeSymbols = false, onProgress = () => {} } = {}) {
+export function install({ gameDir, dllPath = null, repoRoot = null, force = false, includeSymbols = false, laa = true, onProgress = () => {} } = {}) {
   const steps = []
   const created = []
   const step = (name, detail, ok = true) => { steps.push({ name, detail, ok }); onProgress({ name, detail, ok }) }
@@ -258,6 +259,24 @@ export function install({ gameDir, dllPath = null, repoRoot = null, force = fals
   }
   step('copy_root', `${copied} root files copied (${(bytes / 1e6).toFixed(1)} MB) — the exe and its dlls, so our own files can sit beside them` +
     (skipped.length ? `; skipped ${skipped.join(', ')} (ENW never runs the multiplayer executable)` : ''))
+
+  // 1b. The large address aware flag, on the copy we just made. Two bytes in the PE
+  //     file header of OUR CoDWaW.exe; the player's is not opened for writing at any
+  //     point (`before`/`after` below prove it). See "THE LARGE ADDRESS AWARE FLAG".
+  try {
+    const l = ensureLargeAddressAware({ enabled: laa })
+    // A SteamStub refusal is an ANSWER, not a failure of setup: the copy is fine, the
+    // flag is simply not available on a Steam-protected exe. Marking it `false` would
+    // paint the whole install red for something that is working as designed.
+    step('large_address_aware', l.ok
+      ? `${l.reason} — our copy of CoDWaW.exe can now use 4 GB instead of 2 GB, which is what big custom maps need. Your own game file is not touched and "Install it again" puts this back.`
+      : l.skipped === 'steamstub'
+        ? `4 GB memory is not available on this copy: ${l.reason}`
+        : `could not set the 4 GB (large address aware) flag: ${l.reason}`,
+      !!l.ok || l.skipped === 'steamstub')
+  } catch (e) {
+    step('large_address_aware', `could not set the 4 GB (large address aware) flag: ${e.message}`, false)
+  }
 
   // 2. Junctions for the big folders. Read-only by convention AND by assertWritable.
   const links = []
@@ -337,6 +356,16 @@ export function install({ gameDir, dllPath = null, repoRoot = null, force = fals
   fs.mkdirSync(assertWritable(path.join(P.home, 'main')), { recursive: true })
   step('home', `${P.home} will hold ENW's game settings, so your own World at War config is never modified`)
 
+  // 7b. And our own LocalAppData, which is the OTHER half of that promise. `fs_homepath`
+  //     only moves `main/`; profiles, saves, the mods list, the `__CoDWaW` marker and the
+  //     engine's own map-exists check all come off LocalAppData, and until 2026-09-23
+  //     that meant the player's folder — which is why vanilla World at War's Mods menu
+  //     was listing ENW's maps. `client-dll/components/enw_localappdata.cpp` redirects
+  //     the engine's SHGetFolderPathA to this folder; the launcher passes it as
+  //     ENW_LOCALAPPDATA on every launch, and the map library installs into it.
+  fs.mkdirSync(assertWritable(P.maps), { recursive: true })
+  step('localappdata', `${P.localAppData} is ENW's own LocalAppData: profiles, saves, the map library and the game's mods list all live here. Your own %LOCALAPPDATA%\Activision\CoDWaW is never written to, and plain Steam World at War sees nothing of ENW's.`)
+
   // 8. Prove it.
   const after = fingerprintDir(src)
   const changes = diffFingerprints(before, after)
@@ -359,6 +388,7 @@ export function install({ gameDir, dllPath = null, repoRoot = null, force = fals
     created,
     links,
     steps,
+    largeAddressAware: largeAddressAwareStatus(),
     sourceUnchanged: changes.length === 0,
   }
   fs.writeFileSync(assertWritable(P.setupManifest), JSON.stringify(manifest, null, 2))
@@ -407,7 +437,11 @@ export function uninstall({ keepMaps = true } = {}) {
     if (keepMaps) {
       for (const e of fs.readdirSync(P.home, { withFileTypes: true })) {
         const full = path.join(P.home, e.name)
-        if (path.resolve(full).toLowerCase() === path.resolve(P.maps).toLowerCase()) continue
+        // P.maps now lives UNDER home (home\localappdata\Activision\CoDWaW\mods), so the
+        // old equality test against a direct child of home never matched again and
+        // "keep my maps" would have deleted them. Skip any child that CONTAINS the
+        // library, not only one that is it.
+        if (isInside(P.maps, full)) continue
         fs.rmSync(assertWritable(full), { recursive: true, force: true })
       }
       done.push(`emptied ${P.home} (kept the map library)`)
@@ -587,6 +621,191 @@ export function ensureClientDll({ repoRoot = null } = {}) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// THE LARGE ADDRESS AWARE FLAG — two bytes in OUR copy's CoDWaW.exe
+// ---------------------------------------------------------------------------
+// B's decision, 2026-09-23. A 32-bit process gets 2 GB of user address space
+// unless the image header says it can handle a pointer with the top bit set.
+// Big custom zones do not fit: ORBiT and UGX Requiem load fine on the SERVER
+// and then stall the client in `CL_InitCGame` at about 1.5 GB RSS
+// (dedi.md §14.7). That is the ceiling, not a bug in the maps, and the fix the
+// whole custom-map community uses is the "4 GB patch": set
+// IMAGE_FILE_LARGE_ADDRESS_AWARE (0x0020) in FileHeader.Characteristics.
+//
+// THE SCOPE IS THE WHOLE POINT. launcher.md used to list this under "needs an
+// exe edit — not ours", because rule 1 is that the player's Steam install is
+// never written to. That has not changed. What changed is the observation that
+// `<ENW>\game\CoDWaW.exe` is not the player's install: it is a copy WE made, in
+// a folder WE own, which `assertWritable()` already polices and `uninstall()`
+// already deletes. So the edit is applied there and nowhere else, every path is
+// checked by `assertWritable()`, and the original two bytes are written down
+// first so "repair" can put them back.
+//
+// SteamStub: the flag lives in the PE file header, outside the `.bind`-wrapped
+// image, and the Windows loader must read the file header before the stub's
+// entry point can run at all. That is the reasoning. The MEASUREMENT is in
+// launcher.md's dated section: a flagged copy logs `steamstub: decrypted` and
+// loads a map, same as an unflagged one.
+
+const LAA_RECORD_VERSION = 1
+
+function readExePatchRecord() {
+  try { return JSON.parse(fs.readFileSync(P.exePatch, 'utf8')) } catch { return null }
+}
+
+function writeExePatchRecord(rec) {
+  ensureDirs()
+  fs.writeFileSync(assertWritable(P.exePatch), JSON.stringify(rec, null, 2))
+  return rec
+}
+
+// The exe we are allowed to touch, and the reason we are allowed to touch it.
+export function enwGameExe() {
+  return path.join(P.game, 'CoDWaW.exe')
+}
+
+// Read-only: what the header says right now, plus what we recorded about it.
+export function largeAddressAwareStatus() {
+  const exe = enwGameExe()
+  if (!fs.existsSync(exe)) return { exe, present: false, laa: null, record: readExePatchRecord() }
+  const c = pe.characteristics(exe)
+  return {
+    exe,
+    present: true,
+    laa: c ? c.laa : null,
+    characteristics: c ? c.value : null,
+    offset: c ? c.offset : null,
+    record: readExePatchRecord(),
+  }
+}
+
+// Make our copy's header agree with `enabled`. Idempotent: a second call with the
+// same value writes nothing and reports `changed: false`.
+//
+// The ORIGINAL bytes are recorded BEFORE the first write, with the exe's sha256 at
+// that moment, so `restoreGameExe()` can put the header back exactly. The record is
+// never overwritten with a patched value once it exists.
+export function ensureLargeAddressAware({ enabled = true } = {}) {
+  const exe = enwGameExe()
+  if (!fs.existsSync(exe))
+    return { ok: false, changed: false, laa: null, reason: 'the ENW client is not installed yet' }
+
+  // The guard, said out loud rather than relied on: this throws for anything
+  // under the Steam install or outside our own folder.
+  assertWritable(exe)
+
+  const before = pe.characteristics(exe)
+  if (!before)
+    return { ok: false, changed: false, laa: null, reason: `${exe} is not a PE file we can read` }
+
+  // MEASURED 2026-09-23, and it kills the idea for a Steam copy: STEAMSTUB REFUSES A
+  // FLAGGED EXE. The flag really is outside the encrypted image and the loader really
+  // does read it first — but the stub verifies the file it is wrapped around, and two
+  // bytes is enough. A flagged copy of B's CoDWaW.exe puts up
+  //
+  //     Steam Error: Application load error 3:0000065432
+  //
+  // and exits about 250 ms in, with `.text` still reading 9EF490B8 (encrypted) in our
+  // own log — so the game never starts at all. Run `laaON` / `laaOFF`, same copy, same
+  // DLL, same map, the two bytes the only difference: laaON alive=False, laaOFF
+  // alive=True and answering getstatus.
+  //
+  // Working around that check means defeating the DRM, which is out of the question
+  // (vault rule 7). So the patch is refused, by name, on any exe that carries the
+  // stub's `.bind` section — and it stays here, tested and ready, for an exe that does
+  // not. This is not a failure to apply; it is the honest answer to "can we".
+  if (!/^0$|^false$/i.test(String(process.env.ENW_LAA_FORCE || ''))) {
+    const img = pe.read(exe)
+    if (img?.hasBind && enabled)
+      return {
+        ok: false,
+        changed: false,
+        skipped: 'steamstub',
+        laa: before.laa,
+        exe,
+        reason:
+          'the 4 GB (large address aware) flag cannot be used on this copy: World at War is protected by ' +
+          'SteamStub, which refuses to start an executable whose header has been changed ' +
+          '("Application load error 3:0000065432"). Measured, not assumed — launcher.md, 2026-09-23.',
+      }
+  }
+
+  let rec = readExePatchRecord()
+  if (!rec || rec.gameExe?.toLowerCase() !== exe.toLowerCase()) {
+    // First time we have ever looked at THIS exe. Whatever it says now is the
+    // original — setup copies it straight out of the player's install and this
+    // is the only code in the launcher that ever writes to it.
+    rec = writeExePatchRecord({
+      version: LAA_RECORD_VERSION,
+      gameExe: exe,
+      recordedAt: new Date().toISOString(),
+      original: {
+        characteristics: before.value,
+        laa: before.laa,
+        offset: before.offset,
+        size: fs.statSync(exe).size,
+        sha256: sha256File(exe),
+      },
+      applied: null,
+    })
+  }
+
+  const r = pe.setLargeAddressAware(exe, !!enabled)
+  if (!r.ok) return { ok: false, changed: false, laa: before.laa, reason: r.reason, record: rec }
+
+  // Read it back off disk rather than trusting the write — pe.setLargeAddressAware
+  // already does, and this is the second pair of eyes the record is written from.
+  const after = pe.characteristics(exe)
+  const laa = !!after?.laa
+  if (laa !== !!enabled)
+    throw new Error(`The large-address-aware flag did not take in ${exe}: wanted ${enabled}, the file reads ${laa}.`)
+
+  writeExePatchRecord({
+    ...rec,
+    applied: {
+      at: new Date().toISOString(),
+      laa,
+      characteristics: after.value,
+      sha256: sha256File(exe),
+    },
+  })
+
+  return {
+    ok: true,
+    changed: r.changed,
+    laa,
+    exe,
+    offset: after.offset,
+    characteristics: after.value,
+    original: rec.original,
+    reason: r.changed
+      ? `large address aware ${laa ? 'ON' : 'OFF'}: ${r.reason}`
+      : `large address aware is already ${laa ? 'ON' : 'OFF'} (Characteristics 0x${after.value.toString(16).padStart(4, '0')})`,
+  }
+}
+
+// Repair: put the header back to the bytes we recorded before our first write.
+// Used by "Install it again" and by anyone who wants the copy to be byte-identical
+// to the player's exe again. With no record there is nothing to restore and we say
+// so rather than guessing at a value.
+export function restoreGameExe() {
+  const exe = enwGameExe()
+  const rec = readExePatchRecord()
+  if (!fs.existsSync(exe)) return { ok: false, changed: false, reason: 'the ENW client is not installed yet' }
+  if (!rec?.original) return { ok: false, changed: false, reason: 'no record of an original header — nothing to restore' }
+  assertWritable(exe)
+  const r = pe.setLargeAddressAware(exe, !!rec.original.laa)
+  const after = pe.characteristics(exe)
+  if (after?.value !== rec.original.characteristics)
+    return {
+      ok: false,
+      changed: r.changed,
+      reason: `restored the LAA bit but Characteristics is 0x${after?.value?.toString(16)}, recorded 0x${rec.original.characteristics.toString(16)} — something other than this launcher changed the header`,
+    }
+  writeExePatchRecord({ ...rec, applied: null, restoredAt: new Date().toISOString() })
+  return { ok: true, changed: r.changed, reason: `restored FileHeader.Characteristics to 0x${rec.original.characteristics.toString(16).padStart(4, '0')}`, record: rec }
+}
+
 export function status({ repoRoot = null } = {}) {
   let manifest = null
   try { manifest = JSON.parse(fs.readFileSync(P.setupManifest, 'utf8')) } catch {}
@@ -608,6 +827,8 @@ export function status({ repoRoot = null } = {}) {
     gameDir: P.game,
     gameExe: fs.existsSync(gameExe) ? gameExe : null,
     clientDll,
+    // The 4 GB flag on our copy's exe, so the UI can state it rather than imply it.
+    largeAddressAware: largeAddressAwareStatus(),
     manifest,
   }
 }

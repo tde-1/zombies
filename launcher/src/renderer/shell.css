@@ -270,3 +270,10 @@ code { font-family: var(--mono); font-size: 12px; color: var(--bone-dim); word-b
 .maplist .tag.absent { color: var(--faint); }
 /* Installed, launches, and dies on load. The one tag in the rail that is a warning. */
 .maplist .tag.dead { color: var(--blood-bright); }
+
+/* Check for updates, in Settings. The line under the buttons is the ONLY thing that
+   speaks: the main process owns the wording (src/main/updatecheck.js) so the screen and
+   launcher.log can never tell two different stories about the same check. */
+.update-row { display: flex; gap: 8px; }
+.update-line.bad { color: var(--blood-bright); }
+.update-row .hidden { display: none; }

@@ -325,3 +325,55 @@ Read it, then delete it. A real run of it is in `docs/kickstart/web.md` §4i.
 * **How you signal "I am the launcher"** more generally. `window.enw` is the current sniff. A
   request header on the wrapped view's navigations would be cleaner for server-rendered decisions;
   say which you prefer.
+
+---
+
+## 7. `enw-zombies://` — the custom protocol (added 2026-09-22, implemented)
+
+The launcher registers the scheme **`enw-zombies`** (hyphenated). This is the one the web lane
+should send; §3's `enwzombies://m/<map>` is the older, unhyphenated scheme and is still parsed,
+but it is not the one to build against.
+
+Registration happens in two places, and both are needed: `app.setAsDefaultProtocolClient` at
+startup (so a dev checkout and a running app claim it) and `build.protocols` in the launcher's
+`package.json` (so the NSIS installer writes the registry keys and the link works on a machine
+where the launcher has **never been run**).
+
+### The routes — exactly two
+
+| String | The launcher does |
+|---|---|
+| `enw-zombies://map/<key>` | selects `<key>` in the map browser and shows its card, so the player can press **Play** or **Start**. It does **not** auto-play, and it does **not** auto-install. A `<key>` the launcher has never heard of is still selected, as an unavailable row, rather than being dropped |
+| `enw-zombies://party/<id>` | navigates the wrapped site view to `/party/<id>` and shows it. **Joining is yours** — the launcher does not know the invite list, so it opens the page and the site decides whether this player may join |
+| anything else | opens the launcher on home. Never an error dialog, never a crash |
+
+`<key>` is the **bsp name** (`nazi_zombie_prototype`, `water`), not the title. `<id>` is the
+party id exactly as `/api/launcher/play` reports it, as a string. Both are
+percent-decoded, so `enw-zombies://map/Foo%20Bar` selects `Foo Bar`.
+
+### The exact string forms, and what is tolerated
+
+* **Case**: the *route* is case-insensitive (`enw-zombies://MAP/x` works); the *argument* is not,
+  and is passed through exactly as sent.
+* **Trailing slash**: `enw-zombies://map/water/` is the same as `enw-zombies://map/water`.
+* **The opaque form**: `enw-zombies:map/water` (no `//`) is accepted, because some chat clients
+  rewrite links into it.
+* **Empty argument**: `enw-zombies://map/` and `enw-zombies://party/` go home, and the reason is
+  logged. Do not send these.
+* **Unknown route**: `enw-zombies://live/<id>` goes home today. Say the word and it becomes a
+  route; it is one table entry.
+
+### One launcher, always
+
+`app.requestSingleInstanceLock()` is held. Clicking a link while the launcher is open starts a
+second process, which hands its argv to the running one and **quits** — the running window is
+raised and routed. A link that arrives on a cold start (in `process.argv`) is held until the
+window exists and then routed through the same path. macOS/Linux `open-url` is handled too; on
+Windows it never fires.
+
+### What is in `launcher.log`
+
+Every URL received, under the scope `deeplink`, including the ones that go home **and why**
+(`unknown route "live"`, `a map link with no map key`). A player reporting "the link just opened
+the launcher" is otherwise unfixable, so if the site sends a form this launcher drops, the
+evidence is already on the player's disk.

@@ -263,6 +263,8 @@ async function renderFirstRun(result) {
     const bd = el('div', 'body')
     bd.append(el('div', 'mono', st.setup.gameDir || st.paths?.game || ''))
     if (st.setup.clientDll) bd.append(el('div', 'muted mono', `binkw32.dll · ${st.setup.clientDll.size.toLocaleString()} bytes`))
+    const laa = st.setup.largeAddressAware
+    if (laa?.present) bd.append(el('div', 'muted mono', `CoDWaW.exe · ${laa.laa ? '4 GB memory (large address aware)' : '2 GB memory (stock)'}${laa.characteristics != null ? ` · Characteristics 0x${laa.characteristics.toString(16).padStart(4, '0')}` : ''}`))
     bd.append(el('div', null, 'Press Play on a map. Nothing here needs doing.'))
     c.append(bd)
     body.append(c)
@@ -295,6 +297,7 @@ async function renderFirstRun(result) {
     for (const line of [
       `Create ${S.status?.enwRoot || 'an ENW folder'} with a small copy of the game (about 8 MB).`,
       'Install the ENW client there as binkw32.dll, keeping the original beside it.',
+      'Keep ENW maps, saves, profiles and settings in that folder too — so plain Steam World at War never sees anything of ENW\'s, and ENW never writes to your own World at War data.',
       'Keep ENW\'s game settings and logs in that folder.',
     ]) ul.append(el('li', null, line))
     const kept = el('li', 'kept', 'Your Steam copy is not touched.')
@@ -561,6 +564,10 @@ async function renderSettings() {
   field('Max FPS', num('maxFps', 60, 250), 'Records allow up to 250; the server enforces allowed values.')
   field('Vsync', check('vsync'), "Off by default: with it on the game is capped to your monitor's refresh rate.")
   field('Show FPS', check('showFps'))
+  field('4 GB memory for big maps', check('largeAddressAware'),
+    "Lets ENW's own copy of the game use 4 GB instead of 2 GB - the big custom maps (ORBiT, UGX Requiem) " +
+    "run out of memory without it. It is two bytes in the header of the copy ENW made; your own Steam copy " +
+    "of World at War is never modified, and turning this off puts those bytes straight back.")
   field('Streamer mode', check('streamerMode'), 'Hides join codes and incoming invite details.')
   field('Remove unplayed maps', check('autoRemoveUnplayedMaps'))
   const scope = el('div', 'muted', s._scope ? `Saved to: ${s._scope}` : '')
@@ -573,6 +580,7 @@ async function renderSettings() {
   const row = (k, v) => { const d = el('div', 'kv'); d.append(el('span', 'k', k)); d.append(el('span', 'v mono', v || '—')); p.append(d) }
   row('ENW folder', st?.enwRoot)
   row('Game copy', st?.setup?.gameDir)
+  row('Game exe memory', st?.setup?.largeAddressAware?.present ? (st.setup.largeAddressAware.laa ? '4 GB (large address aware)' : '2 GB (stock header)') : null)
   row('Your install', st?.setup?.manifest?.source?.dir)
   row('Site', st?.site?.url)
   const siteIn = document.createElement('input')
@@ -584,6 +592,66 @@ async function renderSettings() {
   f.append(siteIn)
   f.append(el('div', 'hint', 'Blank: try the usual local ports.'))
   p.append(f)
+
+  renderUpdateCheck(p)
+}
+
+// ------------------------------------------------------------- check for updates --
+//
+// This sits with the install facts rather than with the game settings, because it is
+// one: which launcher this is, and whether it is the current one. Everything it can say
+// is one line, and the line comes from the MAIN process (`updatecheck.js` owns the
+// wording) so the log and the screen can never disagree about what happened.
+//
+// "Restart and update" only exists when something is actually downloaded. A greyed
+// Restart button on every visit would train people to ignore it, and pressing one with
+// nothing staged closes the launcher and opens nothing.
+function renderUpdateCheck(p) {
+  const ver = S.status?.appVersion || '—'
+  const vrow = el('div', 'kv')
+  vrow.append(el('span', 'k', 'Launcher version'))
+  vrow.append(el('span', 'v mono', ver))
+  p.append(vrow)
+
+  const box = el('div', 'field')
+  box.append(el('label', null, 'Updates'))
+
+  const btn = el('button', null, 'Check for updates')
+  btn.onclick = async () => {
+    btn.disabled = true
+    // The main process emits `Checking…` itself, but only once it has started; saying it
+    // here too means the button never looks dead between the click and the first event.
+    S.update = { phase: 'checking', message: 'Checking…' }
+    paintUpdate()
+    try { S.update = await window.enw.checkForUpdates() }
+    catch (e) { S.update = { phase: 'failed', message: `The update could not be checked. (${e.message})` } }
+    paintUpdate()
+  }
+  const restart = el('button', null, 'Restart and update')
+  restart.onclick = () => window.enw.restartAndUpdate().catch((e) => toast(e.message, 'error'))
+
+  const line = el('div', 'hint update-line', '')
+  const bar = el('div', 'update-row')
+  bar.append(btn)
+  bar.append(restart)
+  box.append(bar)
+  box.append(line)
+  p.append(box)
+
+  S.updateNodes = { btn, restart, line }
+  paintUpdate()
+}
+
+function paintUpdate() {
+  const n = S.updateNodes
+  if (!n || !n.line.isConnected) return
+  const u = S.update || {}
+  n.line.textContent = u.message || ''
+  n.line.classList.toggle('bad', u.phase === 'failed' || u.phase === 'unreachable')
+  // Busy only while we are genuinely mid-check or mid-download; a finished check must
+  // be repeatable without closing the page.
+  n.btn.disabled = u.phase === 'checking' || u.phase === 'available' || u.phase === 'downloading'
+  n.restart.classList.toggle('hidden', !u.canInstall)
 }
 
 async function renderStorage() {
@@ -697,8 +765,19 @@ function wire() {
       selectMap(link.map)
       toast(`Opened from a link: ${link.map}`)
       if (link.kind === 'play') play_(false)
+      return
     }
+    // A party lives in the wrapped site, and the main process has already navigated the
+    // site view to it. The chrome's only job is to get out of the way: a Settings or
+    // first-run screen still up would hide the page the link just opened.
+    if (link.kind === 'party') { hideAll(); toast(`Opened from a link: party ${link.party}`); return }
+    // `home` is a real outcome, not a silent no-op — a link that pointed at nothing we
+    // recognise still opens a working launcher, and says so rather than seeming ignored.
+    if (link.kind === 'home') { hideAll(); toast('That link opened the launcher, but it did not name a map or a party.') }
   })
+  // Progress is PUSHED (main.js `push('update_status', …)`), never polled, so the
+  // percentage moves smoothly and nothing keeps ticking after Settings is closed.
+  window.enw.onUpdateStatus((s) => { S.update = s; paintUpdate() })
 }
 
 ;(async () => {

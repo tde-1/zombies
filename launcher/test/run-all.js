@@ -12,6 +12,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import { EventEmitter } from 'node:events'
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'enw-launcher-test-'))
 process.env.ENW_ROOT = path.join(TMP, 'enwroot')
@@ -267,19 +268,36 @@ await test('mkdirSync(recursive) over a DANGLING junction throws ENOENT', () => 
   assert.throws(() => fs.mkdirSync(link, { recursive: true }), /ENOENT/)
 })
 
-await test('maps install to the ONE folder World at War loads them from', async () => {
+await test('maps install under OUR LocalAppData, and never into the player own folder', async () => {
   // dedi measured this: <fs_homepath>\mods and <game copy>\mods both fail SILENTLY —
   // the .iwds mount and the search path looks right, but `mod.ff` is a zone, not a
-  // filesystem asset, so it never loads and +map never runs. Only the player's own
-  // %LOCALAPPDATA%\Activision\CoDWaW\mods works. Locking that in.
+  // filesystem asset, so it never loads and +map never runs. Only
+  // <LocalAppData>\Activision\CoDWaW\mods works.
+  //
+  // WHAT CHANGED ON 2026-09-23: <LocalAppData> no longer means the PLAYER'S
+  // LocalAppData. `client-dll/components/enw_localappdata.cpp` patches the engine's
+  // SHGetFolderPathA import, so the game resolves it to `<ENW>\home\localappdata`
+  // and the measurement above still holds with our folder in the slot. B: "our client
+  // must never touch the user's own World at War data." This test is the line.
   const paths2 = await import('../src/main/paths.js')
   const lib = await import('../src/main/library.js')
-  const want = path.join(process.env.LOCALAPPDATA, 'Activision', 'CoDWaW', 'mods')
+  const want = path.join(paths2.P.localAppData, 'Activision', 'CoDWaW', 'mods')
   assert.equal(paths2.P.maps.toLowerCase(), want.toLowerCase())
   assert.equal(lib.installDir('some_map'), path.join(want, 'some_map'))
-  // …and that folder is the one exception to "never write outside the ENW folder".
+  assert.ok(paths2.isInside(paths2.P.maps, paths2.ENW_ROOT), 'the map library must be inside the ENW folder now')
   assert.ok(paths2.assertWritable(path.join(want, 'some_map', 'mod.ff')))
-  assert.throws(() => paths2.assertWritable(path.join(process.env.LOCALAPPDATA, 'Activision', 'CoDWaW', 'players', 'x')), /Refusing to write/)
+
+  // The player's own game data: refused BY NAME, not merely by being elsewhere — and
+  // the carve-out that used to let us write to their mods folder is gone.
+  const theirs = path.join(process.env.LOCALAPPDATA, 'Activision', 'CoDWaW')
+  assert.equal(paths2.P.userGameData.toLowerCase(), theirs.toLowerCase())
+  for (const rel of [['mods'], ['mods', 'some_map', 'mod.ff'], ['players', 'x'], ['__CoDWaW']]) {
+    assert.throws(() => paths2.assertWritable(path.join(theirs, ...rel)), /Refusing to write/, rel.join('/') + ' must be refused')
+  }
+  // And the launcher must HAND the redirect to the game, or the folder above is a
+  // place the engine never looks and every map install is silently useless.
+  const ls = String(fs.readFileSync(new URL('../src/main/launch.js', import.meta.url)))
+  assert.match(ls, /ENW_LOCALAPPDATA: P\.localAppData/, 'every launch must pass ENW_LOCALAPPDATA')
 })
 
 await test("a map the player installed themselves is never touched", async () => {
@@ -290,7 +308,12 @@ await test("a map the player installed themselves is never touched", async () =>
   assert.equal(o.state, 'absent')
   const src = String(fs.readFileSync(new URL('../src/main/library.js', import.meta.url)))
   assert.ok(src.includes("state: 'theirs'"), 'ownership must be able to say a map belongs to the player')
-  assert.ok(src.includes('ENW did not put it there'), 'install must refuse to overwrite it')
+  // The "already in your own World at War mods folder" refusal is GONE (2026-09-23):
+  // there is no longer a shared folder to collide in, and that message was the one B
+  // hit when 8 of 10 Install buttons refused. What must survive is the uninstall
+  // guard, which is about ENW's own records rather than about the player's folder.
+  assert.ok(!/throw new Error\([^)]*already in your own World at War mods folder/.test(src),
+    'install must no longer refuse a map because of the player own mods folder — it is not shared any more')
   assert.ok(src.includes('that map is yours'), 'uninstall must refuse to delete it')
 })
 
@@ -513,6 +536,84 @@ await test('an updated launcher repairs the client DLL it did not install', () =
   assert.ok(!fs.existsSync(proxy), 'and it must not create a proxy with no binkw32_org beside it')
 })
 
+await test('the 4 GB (large address aware) flag is set on OUR exe, read back, and reversible', () => {
+  // dedi.md 14.7: ORBiT and UGX Requiem pass every server-side gate and then stall
+  // the CLIENT in CL_InitCGame at about 1.5 GB RSS. That is the 32-bit 2 GB user
+  // address space, and the fix the whole custom-map community uses is two bytes in
+  // IMAGE_FILE_HEADER.Characteristics. B approved it for OUR copy only, 2026-09-23.
+  const game = paths.P.game
+  fs.mkdirSync(game, { recursive: true })
+  const exe = path.join(game, 'CoDWaW.exe')
+
+  // A minimal 32-bit PE, laid out where the real one has its fields. Characteristics
+  // 0x0103 is exactly what B's own CoDWaW.exe reads (RELOCS_STRIPPED |
+  // EXECUTABLE_IMAGE | 32BIT_MACHINE), so the arithmetic below is the real one.
+  const buf = Buffer.alloc(0x600)
+  buf.write('MZ', 0, 'latin1')
+  buf.writeUInt32LE(0x100, 0x3c)
+  buf.writeUInt32LE(0x00004550, 0x100)
+  buf.writeUInt16LE(0x14c, 0x104)        // machine = i386
+  buf.writeUInt16LE(0x0103, 0x100 + 22)  // Characteristics
+  buf.writeUInt16LE(0x10b, 0x100 + 24)   // PE32 optional header magic
+  fs.writeFileSync(exe, buf)
+
+  assert.equal(pe.characteristics(exe).laa, false, 'the fixture must start without the flag')
+  assert.equal(setup.status().largeAddressAware.laa, false, 'status must report it')
+
+  const r = setup.ensureLargeAddressAware({ enabled: true })
+  assert.equal(r.ok, true, r.reason)
+  assert.equal(r.changed, true)
+  assert.equal(r.laa, true)
+  // READ BACK OFF DISK, not from the return value: a header patch that did not land
+  // is the one failure mode that matters here.
+  const onDisk = fs.readFileSync(exe).readUInt16LE(0x100 + 22)
+  assert.equal(onDisk, 0x0123, `Characteristics on disk is 0x${onDisk.toString(16)}, expected 0x0123`)
+  assert.equal(pe.characteristics(exe).laa, true)
+  assert.equal(setup.status().largeAddressAware.laa, true)
+
+  // Nothing else in the file may move. A 4 GB patch that rewrites a byte of .text is
+  // a corrupt game executable that only fails at launch.
+  const after = fs.readFileSync(exe)
+  buf.writeUInt16LE(0x0123, 0x100 + 22)
+  assert.deepEqual(after, buf, 'exactly two bytes, and only those two')
+
+  // Idempotent: pressing Play twice must not write twice.
+  assert.equal(setup.ensureLargeAddressAware({ enabled: true }).changed, false)
+
+  // The record of the original, and the restore that uses it.
+  const rec = JSON.parse(fs.readFileSync(paths.P.exePatch, 'utf8'))
+  assert.equal(rec.original.characteristics, 0x0103, 'the ORIGINAL bytes must be written down before the first patch')
+  assert.equal(rec.original.laa, false)
+  assert.equal(rec.applied.laa, true)
+
+  const back = setup.restoreGameExe()
+  assert.equal(back.ok, true, back.reason)
+  assert.equal(back.changed, true)
+  assert.equal(fs.readFileSync(exe).readUInt16LE(0x100 + 22), 0x0103, 'repair must put the recorded bytes back')
+  assert.equal(setup.status().largeAddressAware.laa, false)
+  // And a second restore records the original ONCE -- it is never overwritten with a
+  // patched value, which would make "repair" repair to the patch.
+  setup.ensureLargeAddressAware({ enabled: true })
+  assert.equal(JSON.parse(fs.readFileSync(paths.P.exePatch, 'utf8')).original.characteristics, 0x0103)
+
+  fs.rmSync(exe)
+  assert.equal(setup.ensureLargeAddressAware({ enabled: true }).ok, false, 'no install, nothing to patch')
+})
+
+await test('the LAA patch can never reach the player own install', () => {
+  // dev-box.md rule 1. The guard is assertWritable(), the same one every other write
+  // in this app goes through -- but this is the write that edits a game EXECUTABLE,
+  // so it is asserted by name rather than by inheritance.
+  assert.equal(setup.writable('C:\Program Files (x86)\Steam\steamapps\common\Call of Duty World at War\CoDWaW.exe'), false)
+  // And the tool itself refuses anything that is not a 32-bit PE, so a 64-bit or
+  // non-PE file cannot be "patched" into nonsense.
+  const junk = path.join(paths.P.state, 'not-a-pe.bin')
+  fs.mkdirSync(paths.P.state, { recursive: true })
+  fs.writeFileSync(junk, Buffer.alloc(0x800))
+  assert.equal(pe.characteristics(junk), null)
+  assert.equal(pe.setLargeAddressAware(junk, true).ok, false)
+})
+
 await test('the referee ships with the launcher and is reachable when packaged', () => {
   // A player has no repo and no Node. If host.js is not an extraResource there is no
   // referee on their machine, and a local game records nothing — silently.
@@ -609,6 +710,284 @@ await test('parses zombies.enw.gg/m/<map> and enwzombies://m/<map>', async () =>
   assert.equal(cfg.DEFAULTS.protocol, 'enwzombies')
   const u = new URL('https://zombies.enw.gg/m/nazi_zombie_sumpf')
   assert.equal(u.pathname.split('/').filter(Boolean)[1], 'nazi_zombie_sumpf')
+})
+
+// The `enw-zombies://` scheme. These are a CONTRACT WITH THE WEB LANE, not an internal
+// shape — the site is building the sending side against these exact strings and they are
+// written down in docs/protocol/launcher-v0.md §7. If one of these fails, a link
+// somebody put in a YouTube description stopped working.
+const deeplink = await import('../src/main/deeplink.js')
+
+await test('enw-zombies://map/<key> and enw-zombies://party/<id> route, and nothing else does', () => {
+  assert.equal(deeplink.SCHEME, 'enw-zombies')
+  assert.deepEqual(
+    { ...deeplink.parse('enw-zombies://map/nazi_zombie_prototype'), url: undefined },
+    { kind: 'map', map: 'nazi_zombie_prototype', url: undefined })
+  assert.deepEqual(
+    { ...deeplink.parse('enw-zombies://party/1234'), url: undefined },
+    { kind: 'party', party: '1234', url: undefined })
+  // The host of a non-special scheme is NOT lower-cased by the URL parser (measured),
+  // so the route has to be, and the argument must not be.
+  assert.equal(deeplink.parse('enw-zombies://MAP/Foo%20Bar').map, 'Foo Bar')
+  // Trailing slashes, the opaque no-slashes form some chat clients produce, and the
+  // legacy https:// deep links.
+  assert.equal(deeplink.parse('enw-zombies://map/water/').map, 'water')
+  assert.equal(deeplink.parse('enw-zombies:map/water').map, 'water')
+  assert.equal(deeplink.parse('https://zombies.enw.gg/m/water'), null, 'a web link is not ours to parse here')
+  assert.equal(deeplink.parse('enwzombies://m/water'), null, 'the legacy scheme stays with main.js')
+})
+
+await test('a malformed enw-zombies:// link goes home, says why, and never throws', () => {
+  for (const [raw, why] of [
+    ['enw-zombies://', /no route/],
+    ['enw-zombies://map/', /no map key/],
+    ['enw-zombies://party/', /no party id/],
+    ['enw-zombies://wat/x', /unknown route "wat"/],
+    ['enw-zombies://map/%E0%A4%A', /.?/],       // an undecodable escape
+  ]) {
+    const r = deeplink.parse(raw)
+    assert.ok(r, `${raw} must still answer`)
+    if (why.source !== '.?') {
+      assert.equal(r.kind, 'home', raw)
+      assert.match(r.why, why, raw)
+    }
+    assert.equal(r.url, raw)
+  }
+  // Nothing that is not ours is claimed, and no input type throws.
+  for (const junk of [null, undefined, '', 42, {}, 'not a url at all', 'https://evil.example/map/x']) {
+    assert.equal(deeplink.parse(junk), null, String(junk))
+  }
+})
+
+await test('the deep-link URL is found anywhere in argv, not only at the end', () => {
+  assert.equal(deeplink.fromArgv(['C:\\x\\ENW Zombies.exe', 'enw-zombies://map/water']), 'enw-zombies://map/water')
+  // MEASURED elsewhere and the reason this searches rather than indexes: the NSIS stub
+  // and `start` both append their own switches on some machines.
+  assert.equal(deeplink.fromArgv(['exe', 'enw-zombies://party/9', '--allow-file-access-from-files']), 'enw-zombies://party/9')
+  assert.equal(deeplink.fromArgv(['exe', '  enw-zombies://map/x  ']), 'enw-zombies://map/x', 'trimmed')
+  assert.equal(deeplink.fromArgv(['exe', '--no-sandbox']), null)
+  assert.equal(deeplink.fromArgv([]), null)
+  assert.equal(deeplink.fromArgv(), null)
+})
+
+await test('a second launcher forwards its URL to the running one and focuses it, instead of opening a second app', () => {
+  const got = { links: [], focused: 0, logs: [] }
+  const forward = deeplink.makeSecondInstance({
+    onLink: (u) => got.links.push(u),
+    onFocus: () => { got.focused++ },
+    log: (...a) => got.logs.push(a.join(' ')),
+  })
+
+  const r = forward(['C:\\x\\ENW Zombies.exe', 'enw-zombies://map/nazi_zombie_prototype'])
+  assert.equal(r.forwarded, true)
+  assert.equal(r.route.kind, 'map')
+  assert.deepEqual(got.links, ['enw-zombies://map/nazi_zombie_prototype'])
+  assert.equal(got.focused, 1, 'the window the player already has must come up')
+
+  // A second launch with no link is not an error: it means "show me the launcher".
+  const bare = forward(['C:\\x\\ENW Zombies.exe'])
+  assert.equal(bare.forwarded, false)
+  assert.equal(got.links.length, 1, 'nothing was routed')
+  assert.equal(got.focused, 2)
+
+  // A malformed one still forwards — the primary decides it means home, and the log
+  // has to carry the URL either way.
+  const bad = forward(['exe', 'enw-zombies://wat/x'])
+  assert.equal(bad.forwarded, true)
+  assert.equal(bad.route.kind, 'home')
+  assert.ok(got.logs.some((l) => l.includes('enw-zombies://wat/x')), 'every received URL is logged')
+})
+
+await test('protocol registration uses the script path in a dev checkout and never throws', () => {
+  const calls = []
+  const fakeApp = { setAsDefaultProtocolClient: (...a) => { calls.push(a); return true } }
+  deeplink.register(fakeApp, { isDev: true, argv: ['electron.exe', 'main.js'], execPath: 'C:\\e\\electron.exe' })
+  assert.equal(calls[0][0], 'enw-zombies')
+  assert.equal(calls[0][1], 'C:\\e\\electron.exe')
+  assert.equal(calls[0][2].length, 1, 'the script path is passed, or the callback starts a bare Electron')
+
+  calls.length = 0
+  deeplink.register(fakeApp, { isDev: false })
+  assert.deepEqual(calls[0], ['enw-zombies'])
+
+  // An OS that refuses, and an Electron that throws, both end with a working launcher.
+  assert.equal(deeplink.register({ setAsDefaultProtocolClient: () => false }, { isDev: false }), false)
+  assert.equal(deeplink.register({ setAsDefaultProtocolClient: () => { throw new Error('nope') } }, { isDev: false }), false)
+})
+
+// ------------------------------------------------------------ check for updates --
+group('Check for updates')
+
+const updatecheck = await import('../src/main/updatecheck.js')
+
+// A stand-in for electron-updater's `autoUpdater`: the same event names, the same
+// `checkForUpdates()` shape, and nothing else. Driving the real one would need a packed
+// app, a feed and a network.
+function fakeUpdater() {
+  const u = new EventEmitter()
+  u.calls = []
+  u.setFeedURL = (o) => u.calls.push(['setFeedURL', o])
+  u.checkForUpdates = async () => { u.calls.push(['checkForUpdates']); return u.result ?? { updateInfo: {} } }
+  u.quitAndInstall = (...a) => u.calls.push(['quitAndInstall', ...a])
+  return u
+}
+const mk = (over = {}) => {
+  const lines = []
+  const up = new updatecheck.UpdateCheck({
+    feedUrl: 'https://zombies.enw.gg/updates',
+    currentVersion: '0.2.2',
+    log: (...a) => lines.push(a.join(' ')),
+    ...over,
+  })
+  return { up, lines }
+}
+
+await test('the player-facing lines are exactly the five short sentences', () => {
+  const d = updatecheck.describe
+  assert.equal(d({ phase: 'checking' }), 'Checking…')
+  assert.equal(d({ phase: 'up_to_date', current: '0.2.2' }), 'You are up to date (0.2.2)')
+  assert.equal(d({ phase: 'downloading', percent: 37.4 }), 'Downloading 37%')
+  assert.equal(d({ phase: 'downloading', percent: 0 }), 'Downloading 0%')
+  assert.equal(d({ phase: 'ready' }), 'Ready to install')
+  assert.equal(d({ phase: 'idle' }), '')
+  // A percentage out of range is a bug somewhere else and must not reach the player as
+  // "Downloading 4300%".
+  assert.equal(d({ phase: 'downloading', percent: 4300 }), 'Downloading 100%')
+  assert.equal(d({ phase: 'downloading', percent: -2 }), 'Downloading 0%')
+})
+
+await test('a 404, a DNS failure and a timeout are all "no feed reachable", with the detail in parentheses', () => {
+  for (const raw of [
+    'HttpError: 404 Not Found',
+    'net::ERR_NAME_NOT_RESOLVED',
+    'net::ERR_ABORTED',                      // MEASURED in B's log; it was really a 401
+    'getaddrinfo ENOTFOUND zombies.enw.gg',
+    'getaddrinfo EAI_AGAIN zombies.enw.gg',
+    'connect ETIMEDOUT 1.2.3.4:443',
+    'connect ECONNREFUSED 127.0.0.1:443',
+    'Cannot find latest.yml in the latest release artifacts',
+  ]) {
+    const e = updatecheck.explain(new Error(raw))
+    assert.equal(e.kind, 'unreachable', raw)
+    assert.match(e.text, /update server could not be reached/, raw)
+    assert.ok(!/^net::|^HttpError|^getaddrinfo|^connect /.test(e.text), `the player must not be led with an errno: ${raw}`)
+    assert.ok(e.text.includes(`(${raw})`), `the technical detail is kept, in parentheses: ${raw}`)
+  }
+  // Something that is genuinely NOT a reachability problem keeps its own sentence.
+  const other = updatecheck.explain(new Error('electron-updater did not export a usable autoUpdater'))
+  assert.equal(other.kind, 'failed')
+  assert.match(other.text, /could not be checked/)
+})
+
+await test('a dev checkout says so in plain English instead of throwing', async () => {
+  const { up, lines } = mk({ isDev: true, loadUpdater: async () => { throw new Error('must not be reached') } })
+  const s = await up.check()
+  assert.equal(s.phase, 'unsupported')
+  assert.match(s.message, /development checkout/)
+  assert.ok(lines.some((l) => l.includes('development checkout')), 'and the reason is in launcher.log')
+  assert.equal(s.canInstall, false)
+
+  // No feed configured is the same kind of fact, not an error.
+  const none = mk({ feedUrl: null })
+  const s2 = await none.up.check()
+  assert.equal(s2.phase, 'unsupported')
+  assert.match(s2.message, /No update server is configured/)
+})
+
+await test('a check runs to Ready to install, pushes each state, and logs every step', async () => {
+  const fake = fakeUpdater()
+  const { up, lines } = mk({ loadUpdater: async () => ({ autoUpdater: fake }) })
+  const seen = []
+  up.on('status', (s) => seen.push(s.message))
+
+  await up.check()
+  fake.emit('update-available', { version: '0.2.3' })
+  fake.emit('download-progress', { percent: 37.4 })
+  fake.emit('update-downloaded', { version: '0.2.3' })
+
+  assert.deepEqual(seen, [
+    'Checking…',
+    'Version 0.2.3 is available — starting the download',
+    'Downloading 37%',
+    'Ready to install',
+  ])
+  assert.equal(up.status().canInstall, true, '"Restart and update" appears only now')
+  assert.equal(up.status().downloaded, '0.2.3')
+  // The log carries the whole story: started, what was found, the download, done.
+  const log = lines.join('\n')
+  for (const want of ['check started', 'update available: 0.2.3', 'downloading 37%', 'downloaded 0.2.3']) {
+    assert.ok(log.includes(want), `launcher.log must say "${want}"\n${log}`)
+  }
+  // And the feed was actually set on the updater we were handed.
+  assert.equal(fake.calls[0][0], 'setFeedURL')
+  assert.equal(fake.calls[0][1].url, 'https://zombies.enw.gg/updates')
+})
+
+await test('an already-current launcher says "You are up to date", and a failure says why', async () => {
+  const fake = fakeUpdater()
+  const { up } = mk({ loadUpdater: async () => ({ autoUpdater: fake }) })
+  await up.check()
+  fake.emit('update-not-available', {})
+  assert.equal(up.status().message, 'You are up to date (0.2.2)')
+  assert.equal(up.status().canInstall, false)
+
+  fake.emit('error', new Error('net::ERR_NAME_NOT_RESOLVED'))
+  assert.equal(up.status().phase, 'unreachable')
+  assert.match(up.status().message, /update server could not be reached.*ERR_NAME_NOT_RESOLVED/s)
+
+  // A check that throws on the way in never escapes into the IPC layer.
+  const bad = mk({ loadUpdater: async () => { throw new Error('connect ETIMEDOUT 1.2.3.4:443') } })
+  const s = await bad.up.check()
+  assert.equal(s.phase, 'unreachable')
+  assert.ok(bad.lines.some((l) => l.includes('no feed reachable')), 'the log names the reason')
+})
+
+await test('download progress is logged at intervals, not on every event', async () => {
+  const fake = fakeUpdater()
+  const { up, lines } = mk({ loadUpdater: async () => ({ autoUpdater: fake }) })
+  const pushes = []
+  up.on('status', (s) => pushes.push(s.message))
+  await up.check()
+  for (let i = 0; i <= 100; i++) fake.emit('download-progress', { percent: i })
+
+  const logged = lines.filter((l) => l.startsWith('downloading '))
+  // 0,10,20…100 — eleven marks out of a hundred and one events. A 94 MB installer
+  // produces hundreds of these, and a log the download drowns out is a log nobody reads.
+  assert.equal(logged.length, 11, `expected one line per 10%, got:\n${logged.join('\n')}`)
+  assert.equal(logged[0], 'downloading 0%')
+  assert.equal(logged.at(-1), 'downloading 100%')
+  // The UI still sees every one of them: the throttle is on the FILE, not the screen.
+  assert.equal(pushes.filter((m) => m.startsWith('Downloading ')).length, 101)
+})
+
+await test('"Restart and update" refuses when nothing is downloaded, and calls quitAndInstall when something is', async () => {
+  const fake = fakeUpdater()
+  const { up, lines } = mk({ loadUpdater: async () => ({ autoUpdater: fake }) })
+  await up.check()
+
+  const no = up.quitAndInstall()
+  assert.equal(no.ok, false)
+  assert.match(no.why, /nothing is downloaded/)
+  assert.equal(fake.calls.some((c) => c[0] === 'quitAndInstall'), false,
+    'quitAndInstall with nothing staged closes the launcher and opens nothing')
+
+  fake.emit('update-downloaded', { version: '0.2.3' })
+  const yes = up.quitAndInstall()
+  assert.equal(yes.ok, true)
+  assert.equal(yes.version, '0.2.3')
+  assert.ok(fake.calls.some((c) => c[0] === 'quitAndInstall'))
+  assert.ok(lines.some((l) => l.includes('quitAndInstall called for 0.2.3')))
+})
+
+await test('the electron-builder config registers enw-zombies for the installer', () => {
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  const protos = pkg.build.protocols
+  assert.ok(Array.isArray(protos) && protos.length === 1, 'exactly one protocol block')
+  assert.deepEqual(protos[0].schemes, ['enw-zombies'])
+  assert.ok(protos[0].name, 'NSIS needs a name for the scheme')
+  // Registration in the installer is the only reason `start enw-zombies://…` works on a
+  // machine where the launcher has never been run. UNPROVEN here: this asserts the
+  // config, not the registry key a packaged install writes.
 })
 
 // ----------------------------------------------------------------- redaction --
