@@ -1962,3 +1962,238 @@ saved value before the next launch writes it. The bundled community fixes stay s
 * The packaged launcher: this rides with the next launcher release (the files above), and needs the
   site deployed. Until both, the page saves to the account and a launch does not see it.
 * Mature *Reduced*: `cg_mature 0` only (client.md §8c).
+
+
+## 2026-09-22, late: the rail cleaned up, Not playable, Steam pictures, and fewer words
+
+Branch `web-cleanup`. B, after seeing the rail live:
+1. *Clicking the map on the bottom left should take you to the map page, with a back button to
+   the map list. Remove the redundant rubbish.*
+2. *Mark maps that aren't playable, and get rid of that error message if it says that for no
+   reason.*
+3. *Remove "Start anyway" when someone hasn't got the map. You can just kick each player.*
+4. *Make people's Steam profile pictures appear.*
+5. *No over-explaining anywhere.*
+
+### 1. The card opens the map page, Movement's flow exactly
+
+* **The server card opens `/m/<key>`.** This is Movement's `openMap`. The card does nothing when
+  you are already on that page (Movement's `mapAlreadyOpen`). An empty card opens `/maps`.
+* **Back.** `components/BackButton.jsx` is Movement's `ModeBack`: the same `.hub-back` control
+  in the page's top-left corner, reading "Maps". It returns to the list you came from, either
+  `/maps` with its filters or home. Otherwise it goes to `/maps`. The card, the cards and the
+  list rows all pass `state.back`.
+* **Home** opens on its rows. It no longer mirrors the card's map. Picking from home's list opens
+  the map in place, and a Back returns to the rows. Picking still stages the map on the card,
+  as before.
+
+**Removed**, because Movement's flow does not have them:
+* `components/MapPicker.jsx` (the sheet), and all of its CSS: `.rgm-*` and `.mpk-*`.
+* The "current" pill.
+* The picker's foot, "Open the current map's page".
+* The card's "Change map" chip (`.prail-live-change`).
+* The "Pick a map" button on an empty card.
+* The connect-address field with its copy and tick icons (`.prail-live-connect`,
+  `.prail-live-address`, `.copy-glyph`, and `CopyIcon` / `CheckIcon` / `CopyGlyph` in
+  `Icons.jsx`). The launcher connects you, so the card shows a spinner until you are in.
+* Both **Start anyway** buttons.
+* `force` from the rail's `play` and `go`. The server keeps its `force` parameter for the
+  launcher and the tests.
+
+**Kept**. Every one of these is Movement's or one B named:
+* the roster
+* invite by ENW name
+* Invites
+* the Online block
+* Verified/Custom and Private/Friends/Public
+* the card, with its × (leave)
+* Play / Ready / Go
+* **Cancel** in a ready check. Movement has no ready check. The ready check is B's party flow,
+  and Cancel is the only way out of one.
+
+**Every red line under the card is now the answer to a click.** The line, `R.err`, was only ever
+set from a button. But it lived for 6 s above the router, so a refusal from the map page sat under
+the next page's card as if that page had caused it. It is now cleared on every navigation. Two
+refusals B was most likely seeing no longer happen:
+* A map no box runs never sends Play (see 2), so "that map does not run on our servers yet" is gone.
+* A party of one whose launch is refused ("no game box is online") goes back to Play. Before, it
+  was left sitting in a ready check.
+
+### 2. Not playable
+
+`maps.on_server` already existed (`lib/maps.js`, `SERVER_PROVEN`, the measured five-gate list).
+It was the flag, but nothing on the site showed it. So there is no new column. New:
+* `lib/serverNotes.js` gives the reason, in a few words, for every map that is not on the list:
+  * Der Berg, Octagonal Ascension and Alcatraz: "Hits a game engine limit on our servers"
+    (dedi.md §13.2 and §16.4).
+  * ORBiT and UGX Requiem: "Too big for the game's memory limit".
+  * `custom-only` maps: "Play Local only".
+  * Everything else: "Not tested on our servers yet".
+* `maps.project()` carries `server_note`, and the party's `map` carries `on_server` and
+  `server_note`.
+* `NotPlayable` (`components/Bits.jsx`) is a small red tag with the reason on hover. It is on
+  map cards, `/maps` list rows, home's list rows, the map page's action row and the server card.
+* On the card, and on the map page, Play reads **Not playable** and is disabled, with the reason
+  on hover. `rail.play()` refuses such a map without a request.
+* The `/maps` filter chip "Our servers" is now **Playable**, the same word.
+
+With today's database, **5 of 25 listed maps are playable**: the stock four and Minecraft
+Village Remastered. The tag is on the other twenty, which is true.
+
+### 3. No Start anyway; the leader kicks
+
+A member's row shows where their copy of the map has got to: `downloading 42%`,
+`download failed` or `has the map`. The leader sees a × on every other member's row, and the ×
+is `POST /api/party/kick`. The card says **Waiting for downloads** until nobody is downloading.
+The proof clicked the × and the member was gone.
+
+### 4. Steam pictures, with no API key
+
+`lib/steamAvatar.js` reads `https://steamcommunity.com/profiles/<id>?xml=1`. It takes
+`<avatarFull>` (or `<avatarMedium>`), accepts only an https URL on Steam's own image hosts, and
+caches it on `users.avatar`. A new column, `users.avatar_checked`, records when.
+* It runs at Steam sign-in (forced) and then at most once a day, when the player's own `/api/me`
+  finds it stale. It never runs per page render and never for anybody else.
+* A failed read keeps the last picture and tries again in an hour.
+* `ZM_STEAM_AVATARS=off` switches it off, and all three suites set that.
+* Everywhere a player is drawn already read `user.avatar`, so the pictures appear in: the rail
+  roster, the Online rows, invites, the invite search, the user menu, comments and the profile
+  header. `Bits.Avatar` and the user menu fall back to the initial if the URL fails, as
+  Movement's `Avatar` does.
+* The records table uses Movement's rule (`initials={false}`): the picture or nothing.
+* The map page's boards are left as they were (see the MapPage note below).
+
+Live check: `lib/steamAvatar.parse` on the project account's real profile XML returned
+`https://avatars.fastly.steamstatic.com/14d5…_full.jpg`. On the dev instance, the first
+`/api/me` after sign-in stored it, and it is in `cleanup-rail-avatars.png` and
+`cleanup-menu-avatar.png`.
+
+### 5. Wording
+
+Movement's own strings, such as "Sign in to build a party." and "Nobody else is online.", are
+kept because they are Movement's. Code comments are untouched, except where a comment described
+a control that was deleted. Data is not client strings, so these are left alone and listed for
+B: collection blurbs ("The most recently added to the archive."), badge and preset blurbs, and a
+map's readme (Der Riese's shows "Scanner verdict: …").
+
+| File | Before | After |
+|---|---|---|
+| `PartyRail.jsx` | Change map (chip on the card) | (removed with the picker) |
+| `PartyRail.jsx` | Pick a map (button on an empty card) | (removed; the empty card opens /maps and says Pick a map) |
+| `PartyRail.jsx` | No map picked | Pick a map |
+| `PartyRail.jsx` | Start anyway (twice: downloads pending, and not everyone ready) | (removed; kick with ×) |
+| `PartyRail.jsx` | Waiting for the map | Waiting for downloads |
+| `PartyRail.jsx` | {leader} starts the game / Ready · waiting for {leader} | Waiting for {leader} |
+| `PartyRail.jsx` | Ready check · N of M ready | N of M ready |
+| `PartyRail.jsx` | Reserving a server / Reserving a server… | Starting / Starting… |
+| `PartyRail.jsx` | (connect address field with copy/tick icons) | (removed; the launcher connects) |
+| `PartyRail.jsx` | map install failed / downloading the map | download failed / downloading |
+| `PartyRail.jsx` | hover: Remove from the party / Take the invite back | hover: Kick / Cancel invite |
+| `PartyRail.jsx` | hover: Stock settings, records and XP count / Your own settings, nothing counts / Only the leader can change this | hover: Records and XP count / Nothing counts / Leader only |
+| `PartyRail.jsx` | Leave the party (hover) | Leave party |
+| `PartyRail.jsx` | Type an ENW name. Enter invites it as typed. | Type an ENW name |
+| `MapPicker.jsx` | Pick a map / Search N maps / current / Open the current map's page / … | (file deleted) |
+| `MapPage.jsx` | Play needs approval. Browsing does not. | (removed; the button says Approval required) |
+| `MapPage.jsx` | Download original (link that only printed "Downloads are not available yet.") | (removed) |
+| `Home.jsx` | Every World at War custom zombies map, archived and playable. Refereed on our servers. | World at War custom zombies. |
+| `Home.jsx` | {n} maps. Browsing needs no account. Get the launcher to play. | {n} maps · Get the launcher |
+| `Home.jsx` | {n} of them, and the archive holds the rest. | (removed) |
+| `Download.jsx` | Windows. You need World at War already installed. Games run in the launcher — a browser tab cannot start the game. | Windows · needs World at War |
+| `Download.jsx` | Open in the ENW Zombies launcher | Open in launcher |
+| `Download.jsx` | Nothing opened — you probably do not have it yet. Install it below. / Handing over to the launcher… / If it is installed, this brings it forward on this map. | Nothing opened? Install it below. / Opening… / (removed) |
+| `Download.jsx` | No build is published right now. Check the feed, or ask B. | No build yet. Check the feed |
+| `Download.jsx` | Looking for the latest build… | Loading… |
+| `Download.jsx` | Run the installer. Windows SmartScreen will warn you — it is unsigned. More info, then Run anyway. | Run the installer. SmartScreen: More info, then Run anyway. |
+| `Download.jsx` | Sign in with Steam. The launcher opens your browser, Steam sends you back, and you are signed in on the site too. | Sign in with Steam. |
+| `Download.jsx` | It finds World at War and installs the ENW client. Your Steam copy is never written to — the launcher makes its own copy and patches that. Then pick a map and press Play; it downloads the map and launches the game for you. | Pick a map and press Play. Your Steam install is never changed. |
+| `Download.jsx` | This is a closed beta. Things will break, and your account has to be approved before you can play — browsing does not need it. | Closed beta. Playing needs approval. |
+| `Maps.jsx` | Our servers (hover: Maps our servers will host and referee) | Playable |
+| `Maps.jsx` | hover: Maps with a record or a saved replay | (removed) |
+| `Maps.jsx` | hover: Also show maps that are broken on our servers | (removed) |
+| `Maps.jsx` | No map matches these filters. | No maps match. |
+| `Settings.jsx` | Saved to your account / Saved · the launcher applies it at your next launch / Saved to your account (the launcher did not take it: restart it) / Saved to your account · applied the next time you launch from the ENW launcher | Saved / Saved · restart the launcher |
+| `Settings.jsx` | Sign in to keep your World at War settings on your account. They follow you to any PC you launch from. | Sign in to save your settings. |
+| `Settings.jsx` | (the stock .menu file name beside each menu title) | (removed) |
+| `Settings.jsx` | ENW's own launch settings. Not in World at War's menus. / Game defaults are default_controls.cfg, with aim down sights on hold (ENW). / Changes apply at your next launch. Anything you change in the game's own menus comes back here after you quit. | Applies at next launch |
+| `Settings.jsx` | In the game's menus, not mapped here (and four paragraphs of why) | (removed) |
+| `Settings.jsx` | hover: ENW's launch baseline sets this until you choose | hover: ENW default |
+| `Settings.jsx` | hover: The game picks this itself (reset to its registered default) | hover: Game default |
+| `Settings.jsx` | (the dvar name on every row, e.g. r_picmip) | (removed) |
+| `Settings.jsx` | hover on every key row: the command and its source file | (removed) |
+| `Settings.jsx` | hover on every row: the dvar and its source file | (removed) |
+| `wawSettings.js` | Borderless always runs at the monitor's native size; pick Fullscreen or Windowed to choose. | Borderless uses the monitor's native size. |
+| `wawSettings.js` | Pick a rate your monitor has. Auto follows the display the launcher picked. | (removed) |
+| `wawSettings.js` | PCGamingWiki records alt-tab hangs above 2x on this game. | Above 2x can hang on alt-tab. |
+| `wawSettings.js` | ENW's baseline turns this on: PCGamingWiki's fix for stutter on modern PCs. | Fixes stutter on modern PCs. |
+| `wawSettings.js` | ENW's baseline sets 16x. | (removed) |
+| `wawSettings.js` | Reduced sets cg_mature 0 only; the game's own Reduced popup script was not found, so cg_blood is left as it is. | (removed) |
+| `Profile.jsx` | World at War's own options, saved to your account. | (removed) |
+| `Profile.jsx` | Auto (solo Global, group Local) | Auto |
+| `Profile.jsx` | Records and badges stay public. | (removed) |
+| `Profile.jsx` | Who can comment on your profile | Profile comments |
+| `Profile.jsx` | Forced off in record games. | (removed) |
+| `UsernameSetup.jsx` | This is your ENW username. Use the one you have on ENW Movement and drops.ws. | Your ENW username, the same as on ENW Movement. |
+| `ChatDock.jsx` | Say something to every server | Message every game |
+| `ChatDock.jsx` | goes to every ENW Zombies game as {name} | (removed) |
+| `ChatDock.jsx` | Sign in to talk. Everyone can read. | Sign in to chat. |
+| `SearchBar.jsx` | Maps come from the whole archive; players from everyone signed up. | (removed) |
+| `TopDown.jsx` | No zombie positions in this frame — the box is not reporting them for this map. | No zombie positions |
+
+### MapPage.jsx: the only edits (branch `web-maps` is redesigning it)
+
+1. `MapPage()`: `<BackButton />` before `<MapBody>`. That is one line, plus an import.
+2. The action row:
+   * `<NotPlayable map={m} />` beside Play.
+   * Play is disabled for `on_server === false`, with the reason as its title.
+   * Its label is **Approval required** for a signed-in account that is not approved.
+3. Removed: the "Download original" link, which only printed "Downloads are not available yet.",
+   and the "Play needs approval. Browsing does not." line.
+
+Left for `web-maps`:
+* "Catalogued only. Nobody has fetched it, so it cannot be played here yet."
+* "No manifest yet. The default is Round 20."
+* the boards' `avatar={false}`, which could become `avatar="real"` for Movement's records rule.
+
+### Tests and proof
+
+`npm test` passes **157/0**: 105 in-process, 37 over HTTP and 15 sign-in. There are three new
+in-process checks:
+* the Not playable reason, on the list and on the party
+* the XML parse and host check
+* sign-in plus the once-a-day read, with a stubbed `fetch`
+
+No test covered the picker.
+
+**Screenshots** (`ui/cleanup-*.png`) were taken with headless Edge over CDP at 1440×900. They
+ran against a private instance on **3457**, which held a `VACUUM INTO` copy of the live database
+with its lobbies cleared. The "before" instance was on **3458**, a `git archive HEAD` build on
+another copy. `web/data` and 3200 were not touched.
+
+The accounts:
+* Three fake accounts: `76561198000000101..103`. Their pictures are Steam's default avatar or
+  none, and `avatar_checked` was set so nothing read a real profile for them.
+* The project's own Steam account as `enwdev`, whose real picture was read from Steam.
+
+The shots:
+* `cleanup-home-wording-before` / `-after`, `cleanup-download-wording-before` / `-after`
+* `cleanup-rail-avatars`, `cleanup-menu-avatar`
+* `cleanup-card-1-maps` → `-2-map-page` (the card clicked: `/m/nazi_zombie_factory`) →
+  `-3-back` (Back: `/maps`)
+* `cleanup-notplayable-cards`, `-rows`, `-map-page` (the card reads "Not playable", disabled,
+  with the title "Hits a game engine limit on our servers")
+* `cleanup-member-no-map-kick` (perkaholic `downloading 42%` ×, ghoulbait `has the map` ×, and
+  the card reads "Waiting for downloads"), then `cleanup-member-kicked`
+
+### Unproven
+
+* **A real sign-in through Steam storing the picture.** The dev instance signs in with
+  `/auth/test-login`, which does not call `steamAvatar`. The picture came from the first
+  `/api/me`, which is the daily path. The sign-in call is the same function with `force`.
+* **Steam rate limits.** At most one read per player per day. Nobody has measured what Steam
+  does with many.
+* **The launcher window.** The back control and the card are unchecked under the frameless title
+  bar.
+* **The download state of a member whose launcher never reports.** It shows nothing, which is
+  `partyProgress`'s "silence is not a refusal" rule. That member reads "in party" until their
+  launcher posts.
+* **Phone widths.**

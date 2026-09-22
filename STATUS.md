@@ -25,6 +25,20 @@
 5. **Custom maps with friends**: today that is Minecraft Village Remastered plus the stock four on the box. The rest is the list under *Known and unfixed*.
 6. **Replay viewer**: any finished game's page → replay. Nacht renders with full world geometry.
 
+## 2026-09-22 (late): the rail cleaned up (branch `web-cleanup`, not merged)
+
+* **The card opens the map page.** It works like Movement's, and the page has a Back that goes
+  to the map list.
+* **Removed:** the picker sheet, the connect field and Start anyway. The leader kicks with ×
+  instead.
+* **Not playable:** a tag, with the reason on hover, on every map no box runs. Today that is
+  20 of 25. Play is disabled for them.
+* **Steam pictures** everywhere. They come off the public profile with no API key, read at
+  sign-in and at most once a day.
+* **Wording:** a pass over the site's text, cut down to Movement's length.
+
+The full write-up is `web.md`, newest section.
+
 ## 2026-09-22 (evening): Movement's left rail on the site; the logo is just ENW (branch `web-dock`, not merged)
 
 Movement's party rail is on the left of every page. It has four parts:
