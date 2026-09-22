@@ -11,20 +11,28 @@ So the big files are **also** in two public Hetzner Object Storage buckets, and 
 answers a download with a **302 to the bucket copy** when the bucket has it. The site's URLs
 stay the stable ones — nothing a launcher already knows changes.
 
-## 1. The buckets
+## 1. The bucket — one, `enw-zombies`
 
-| bucket | location | holds | key layout |
-|---|---|---|---|
-| `enw-zombies-files` | Nuremberg (`nbg1`) | the launcher update feed | `updates/<name>` — every file in `web/public/updates/` |
-| `enw-zombies-maps` | Nuremberg (`nbg1`) | what a launcher installs, and the replay geometry | `mods/<bsp>/<path>` — exactly the files `/api/maps/<bsp>/files` lists<br>`mapdata/<bsp>/<bsp>.glb` and `.meta.json` |
+**Superseded 2026-09-22 21:50 (coordinator, relaying B):** not two buckets, **one**, named
+`enw-zombies` (`enw-zombies-cdn` if the name is taken), in Nuremberg, created by us over the S3
+API with B's keys. `S3_BUCKET_FILES` and `S3_BUCKET_MAPS` are both set to it; the prefixes keep
+the sets apart:
+
+| prefix | holds |
+|---|---|
+| `updates/<name>` | every file in `web/public/updates/` (the launcher feed) |
+| `mods/<bsp>/<path>` | exactly the files `/api/maps/<bsp>/files` lists — what a launcher installs |
+| `mapdata/<bsp>/…` | the replay `.glb` + `.meta.json` — **NOT uploaded**: game-derived, not cleared by B for a public bucket. `sync.js --with-replay-geometry` is the opt-in; the site only redirects a `.glb` whose bucket copy exists, so they keep coming from B's PC |
 
 Endpoint `https://nbg1.your-objectstorage.com`. Public URL form (virtual-hosted):
 `https://<bucket>.nbg1.your-objectstorage.com/<key>`, e.g.
-`https://enw-zombies-files.nbg1.your-objectstorage.com/updates/latest.yml`.
+`https://enw-zombies.nbg1.your-objectstorage.com/updates/latest.yml`.
 
-Created by B in the Hetzner console (project `enw-zombies`), **public** at the bucket level.
-The key layout lives in one place, `web/server/lib/bucket.js` (`keys`), and the uploader
-imports it, so the site and the uploader cannot disagree about where a file is.
+Creating it: `node tools\s3\create-bucket.js enw-zombies` — CreateBucket, then a bucket policy
+granting `s3:GetObject` on `enw-zombies/*` to everyone, then an anonymous GET of a test object
+(`healthcheck.txt`) that must come back 200. If Hetzner refuses the policy over the API it says
+so, and public has to be set in the console. The key layout lives in one place,
+`web/server/lib/bucket.js` (`keys`).
 
 ## 2. What is public — say it plainly
 
@@ -42,7 +50,8 @@ Bucket listing: whatever B set on the bucket. The uploader never deletes anythin
 
 ## 3. The cost model
 
-**One base fee per Hetzner account, about €5/month net (≈€6/month gross at the account's 20 %
+**Creating the bucket starts the charge**: the base fee runs while the account has at least one
+bucket. **One base fee per Hetzner account, and one bucket keeps it at the minimum either way**: about €5/month net (≈€6/month gross at the account's 20 %
 VAT), which includes 1 TB of storage and 1 TB of egress across all buckets.** Two buckets cost
 the same as one. Beyond the included amounts Hetzner bills extra storage and extra egress per
 use; those rates are from Hetzner's price list as briefed, not read from the API by the agent
@@ -52,9 +61,9 @@ What we put in, 2026-09-22:
 
 | | size |
 |---|---|
-| `updates/` (12 installers + blockmaps) | 1.13 GB |
+| `updates/` (installers 0.1.0–0.2.12 + blockmaps + feed) | 1.42 GB |
 | `mods/` (78 maps, 725 files) | **26.46 GB** — not the ~0.8 GB first estimated |
-| `mapdata/` (2 exports) | 0.05 GB |
+| `mapdata/` | not uploaded (see §1) |
 
 ≈28 GB of the 1 TB. Egress: an update is 94 MB, a map 0.2–1 GB, so the 1 TB covers roughly
 ten thousand launcher updates or a thousand map installs a month. The box (`vps.md`, €7.19)
@@ -151,15 +160,17 @@ and is not what gets uploaded, so a bucket URL there would be false.
   release could pass `useMultipleRangeRequest: false` to `setFeedURL` (`autoupdate.js`,
   `updatecheck.js`); not done here.
 
-## 6. Results (2026-09-22, 21:46)
+## 6. Results
 
-* Built and tested: site redirect (`web/test/bucket.js`, 12/12; web `npm test` and launcher
-  `npm test` green), `sync.js --dry-run` (no keys), `publish-update.js --check`.
-* **Not synced yet.** With B's keys in `infra\s3.env` the keys authenticate (ListBuckets
-  succeeds in nbg1, fsn1 and hel1) but **the account those keys belong to has no buckets**:
-  `HeadBucket enw-zombies-files` / `enw-zombies-maps` → 404, and an anonymous GET on the public
-  URL answers `NoSuchBucket`. Either the buckets are not created yet, or the keys were made in a
-  different Hetzner project from the buckets (Object Storage keys are per project). Nothing was
-  uploaded and nothing was created.
+* 21:46 — B's keys authenticate (ListBuckets works in nbg1, fsn1, hel1) and see **no buckets**:
+  the two B was to create do not exist under this account/project. Nothing uploaded.
+* 21:50 — the plan became: we create one bucket, `enw-zombies`. Everything for it is ready and
+  dry-run clean (`sync.js --dry-run`: 32 feed files, 1.42 GB; 725 map files, 26.46 GB; replay
+  geometry skipped). **CreateBucket was NOT run by the agent**: it starts a monthly charge on
+  B's account, kickstart rule 8 says stop and say so, and the go-ahead reached the agent only as
+  a relay. B runs it (or tells the agent directly):
+  `node tools\s3\create-bucket.js enw-zombies` → `node tools\s3\sync.js --only updates` →
+  `node tools\s3\sync.js --only maps` → `node tools\s3\check.js --site https://zombies.enw.gg`.
 * Baseline to beat: the site's `/updates` answers a HEAD in ~120 ms, and its bytes are capped by
-  B's 6.0 MB/s uplink (`vps.md`), shared by everyone downloading.
+  B's 6.0 MB/s uplink (`vps.md`), shared by everyone downloading. The 26.5 GB of maps take
+  ≈75 min to upload over that same uplink.

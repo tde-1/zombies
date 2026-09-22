@@ -210,7 +210,11 @@ async function sync (cfg, bucket, entries, { dryRun = false, log = console.log, 
   let s3 = null
   if (hasKeys(cfg)) {
     s3 = client(cfg)
-    remote = await listAll(s3, bucket, prefix)
+    try { remote = await listAll(s3, bucket, prefix) } catch (e) {
+      if (!(dryRun && e.name === 'NoSuchBucket')) throw e
+      log(`  ${bucket}: does not exist yet (dry run carries on as if empty)`)
+      remote = new Map()
+    }
   } else if (!dryRun) {
     throw new Error(`no S3 keys: ${cfg.envFile} is ${cfg.envFilePresent ? 'missing S3_ACCESS_KEY/S3_SECRET_KEY' : 'not there'}`)
   }

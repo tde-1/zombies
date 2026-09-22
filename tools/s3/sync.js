@@ -5,7 +5,13 @@
 //   node tools/s3/sync.js --dry-run            what would go up (works with no keys at all)
 //   node tools/s3/sync.js                      everything
 //   node tools/s3/sync.js --only updates       just web/public/updates -> files bucket
-//   node tools/s3/sync.js --only maps          just the map files + replay geometry -> maps bucket
+//   node tools/s3/sync.js --only maps          just the map files -> maps bucket
+//   node tools/s3/sync.js --with-replay-geometry   ALSO the replay .glb/.meta.json (mapdata/).
+//                                              Off by default: they are game-derived and B has
+//                                              not cleared them for a public bucket.
+//
+// S3_BUCKET_FILES and S3_BUCKET_MAPS may be the same bucket (they are: `enw-zombies`); the
+// prefixes updates/, mods/ and mapdata/ keep the sets apart, and every listing is per prefix.
 //
 //   web/public/updates/*                   -> <files>/updates/<name>
 //   ZombiesDev\archive\mods\<bsp>\<files>  -> <maps>/mods/<bsp>/<path>   (what /api/maps/<bsp>/files serves)
@@ -18,6 +24,7 @@ const s3 = require('./lib.cjs')
 
 const argv = process.argv.slice(2)
 const dryRun = argv.includes('--dry-run') || argv.includes('-n')
+const withGlb = argv.includes('--with-replay-geometry')
 const only = (() => { const i = argv.indexOf('--only'); return i >= 0 ? argv[i + 1] : null })()
 
 async function main () {
@@ -35,10 +42,14 @@ async function main () {
     failed += st.failed
   }
   if (!only || only === 'maps') {
-    // The replay geometry first: two files, and the viewer is the thing that shows it works.
-    const md = await s3.sync(cfg, cfg.maps, s3.mapdataEntries(), { dryRun, prefix: 'mapdata/' })
+    if (withGlb) {
+      const md = await s3.sync(cfg, cfg.maps, s3.mapdataEntries(), { dryRun, prefix: 'mapdata/' })
+      failed += md.failed
+    } else {
+      console.log('  replay geometry (mapdata/*.glb) skipped: not cleared for public; --with-replay-geometry')
+    }
     const mf = await s3.sync(cfg, cfg.maps, s3.mapEntries(), { dryRun, prefix: 'mods/' })
-    failed += md.failed + mf.failed
+    failed += mf.failed
   }
   console.log(failed ? `  ${failed} upload(s) FAILED - run it again; it resumes where it stopped` : '  done')
   process.exit(failed ? 1 : 0)
