@@ -1370,6 +1370,120 @@ async function main() {
     for (const it of waw.ALL.filter((i) => i.to === 'waw')) truthy(new RegExp(`\\b${it.dvar}:`).test(src), `${it.dvar} is not in the launcher whitelist`)
   })
 
+  // ---- the profile: Top/Recent maps, Overall, the Movement banner (2026-09-22) ----------
+  {
+    const profile = require('../server/lib/profile')
+    const PSID = '76561198000000321'
+    users.ensure(PSID, { enw_name: 'prof-tester' })
+    db.prepare(`INSERT OR IGNORE INTO maps (key, slug, title, author, source, health, round_n, art, added_at)
+                VALUES ('nazi_zombie_proftest','proftest','Prof Test','t','custom','playable',20,'/media/maps/nazi_zombie_proftest.jpg',?)`).run(now())
+    const T0 = Date.now() - 10 * 86400000
+    let n = 0
+    const game = (map, { mode = 'custom', rounds = 5, dur = 0, start = null, end = null, demo = 0, rp = rounds, kills = 0 } = {}) => {
+      const g = db.prepare(`INSERT INTO games (match_id, mode, map_key, rounds, player_count, duration_ms, started_at, ended_at, demo)
+                            VALUES (?,?,?,?,1,?,?,?,?)`).run(`prof_${++n}`, mode, map, rounds, dur, start, end, demo)
+      db.prepare('INSERT INTO game_players (game_id, steam_id, slot, rounds_played, kills) VALUES (?,?,0,?,?)').run(g.lastInsertRowid, PSID, rp, kills)
+      return g.lastInsertRowid
+    }
+    // test map: 2 games, 30 min total (one with only start/end). proftest: 1 game, 50 min, played last.
+    game('nazi_zombie_test', { dur: 20 * 60000, start: T0, end: T0 + 20 * 60000, rounds: 12, mode: 'verified' })
+    game('nazi_zombie_test', { dur: 0, start: T0 + 86400000, end: T0 + 86400000 + 10 * 60000, rounds: 4 })
+    game('nazi_zombie_proftest', { dur: 50 * 60000, start: T0 + 3 * 86400000, end: T0 + 3 * 86400000 + 50 * 60000, rounds: 30 })
+    // seeded scaffolding must never reach a profile
+    game('nazi_zombie_test', { dur: 999 * 60000, start: T0, end: T0 + 1, rounds: 99, demo: 1, kills: 500 })
+
+    check('profile: Top maps is by time, Recent by last played, demo games left out', () => {
+      const m = profile.mapsFor(PSID)
+      eq(m.top[0].key, 'nazi_zombie_proftest', 'top[0]')
+      eq(m.top[0].time_ms, 50 * 60000, 'top[0] time')
+      eq(m.top[0].art, '/media/maps/nazi_zombie_proftest.jpg', 'art rides on the row')
+      eq(m.top[1].key, 'nazi_zombie_test', 'top[1]')
+      eq(m.top[1].games, 2, 'demo game not counted')
+      eq(m.top[1].time_ms, 30 * 60000, 'duration, else ended-started')
+      eq(m.top[1].best_round, 12, 'best round per map')
+      eq(m.recent[0].key, 'nazi_zombie_proftest', 'recent[0]')
+    })
+
+    check('profile: Overall counts real games, best round is Verified-only and names its game', () => {
+      const o = profile.overallFor(PSID, { user: users.byId(PSID) })
+      eq(o.games, 3, 'games')
+      eq(o.rounds_played, 46, 'rounds')
+      eq(o.time_ms, 80 * 60000, 'time')
+      eq(o.best_round.round, 12, 'best round (the 30 was a custom game)')
+      truthy(o.best_round.match_id, 'best round links to its game')
+      truthy(o.member_since, 'member since')
+    })
+
+    check('profile: kills/downs/revives are omitted until a real game has ever recorded one', () => {
+      // The demo game above carries 500 kills; it must not switch the stat on.
+      const before = profile.overallFor(PSID)
+      eq('kills' in before, !!profile.recordedStats().kills, 'kills shown iff recorded')
+      db.prepare('UPDATE game_players SET kills=0, downs=0, revives=0 WHERE game_id IN (SELECT id FROM games WHERE COALESCE(demo,0)=0)').run()
+      const off = profile.overallFor(PSID)
+      eq(off.kills, undefined, 'kills with nothing recorded')
+      eq(off.downs, undefined, 'downs with nothing recorded')
+      eq(off.recorded.kills, false, 'recorded.kills')
+      db.prepare("UPDATE game_players SET kills=7 WHERE steam_id=? AND game_id=(SELECT id FROM games WHERE match_id='prof_1')").run(PSID)
+      eq(profile.overallFor(PSID).kills, 7, 'kills once recorded')
+    })
+
+    check('movement profile: switched off it answers "not found" and never fetches', () => {
+      const mp = require('../server/lib/movementProfile')
+      const prev = process.env.ZM_MOVEMENT_URL
+      process.env.ZM_MOVEMENT_URL = 'off'
+      try {
+        eq(mp.enabled(), false, 'enabled')
+        const f = mp.forPlayer(PSID)
+        eq(f.found, false, 'found'); eq(f.banner, null, 'banner'); eq(f.profile_url, null, 'profile_url')
+      } finally { if (prev === undefined) delete process.env.ZM_MOVEMENT_URL; else process.env.ZM_MOVEMENT_URL = prev }
+    })
+
+    await checkAsync('movement profile: the banner FILE is copied (magic bytes checked), only whitelisted fields kept', async () => {
+      const http = require('http')
+      const mp = require('../server/lib/movementProfile')
+      const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBPVP8 '), Buffer.alloc(40)])
+      let bannerHits = 0
+      const srv = http.createServer((req, res) => {
+        res.shouldKeepAlive = false
+        if (req.url === `/api/players/${PSID}/profile`) {
+          res.writeHead(200, { 'content-type': 'application/json' })
+          return res.end(JSON.stringify({ user: { steam_id: PSID, username: 'ProfTester', banner: `/banners/${PSID}-aaaaaaaaaaaa.webp`, banner_pos: 30, country: 'gb', avatar: 'https://x.invalid/y.jpg', email: 'nope@example.invalid' } }))
+        }
+        if (req.url === `/banners/${PSID}-aaaaaaaaaaaa.webp`) { bannerHits++; res.writeHead(200, { 'content-type': 'image/webp' }); return res.end(webp) }
+        if (req.url === '/api/players/76561198000000322/profile') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ user: { steam_id: '76561198000000322', banner: '/etc/passwd' } })) }
+        res.writeHead(404, { 'content-type': 'application/json' }); res.end('{"error":"no such player"}')
+      })
+      await new Promise((r) => srv.listen(0, '127.0.0.1', r))
+      const prev = process.env.ZM_MOVEMENT_URL
+      process.env.ZM_MOVEMENT_URL = `http://127.0.0.1:${srv.address().port}`
+      try {
+        const r1 = await mp.refresh(PSID)
+        eq(r1.found, true, 'found')
+        truthy(r1.banner && r1.banner.startsWith('/media/banners/'), 'served from our media dir')
+        const f = mp.forPlayer(PSID)
+        eq(f.banner_pos, 30, 'banner_pos'); eq(f.country, 'GB', 'country')
+        truthy(fs.existsSync(path.join(mp.BANNER_DIR, path.basename(f.banner))), 'file on disk')
+        const row = db.prepare('SELECT * FROM movement_profiles WHERE steam_id=?').get(PSID)
+        eq(Object.keys(row).some((k) => /avatar|email/.test(k)), false, 'no avatar/email column')
+        eq(JSON.stringify(row).includes('example.invalid'), false, 'no email anywhere in the row')
+        await mp.refresh(PSID)
+        eq(bannerHits, 1, 'an unchanged banner is not fetched twice')
+        // A banner path that is not Movement's generated shape is never requested.
+        const r2 = await mp.refresh('76561198000000322')
+        eq(r2.banner, null, 'odd path refused')
+        // Gone from Movement -> not found.
+        const r3 = await mp.refresh('76561198000000399')
+        eq(r3.found, false, 'missing player')
+      } finally {
+        if (prev === undefined) delete process.env.ZM_MOVEMENT_URL; else process.env.ZM_MOVEMENT_URL = prev
+        // Close fetch's keep-alive sockets too, or libuv asserts on the process.exit below.
+        srv.closeAllConnections()
+        await new Promise((r) => srv.close(r))
+        await new Promise((r) => setTimeout(r, 300))
+      }
+    })
+  }
+
   // ---- report ---------------------------------------------------------------
   for (const [s, n] of results) console.log(`${s}  ${n}`)
   console.log(`\n${pass} passed, ${fail} failed`)

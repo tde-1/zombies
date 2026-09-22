@@ -1,0 +1,705 @@
+/* ENW Movement's profile, copied (B, 2026-09-22: "Copy exactly the profile from ENW Movement").
+
+   Everything below the ZOMBIES line is lifted from CSGO-Matchmaker/movement-client/src/theme.css
+   verbatim, comments and all, in this order:
+     PROFILE (cover, identity bar, two-column grid, rail facts, friend button)  6037-6446
+     .prof-split                                                                6683-6686
+     badges: shelf, marks, hover card                                           6687-6814
+     the rail folds away · played-map rows (.pm-*) and their record figures     6873-6974
+     the comment thread and the profile wall (.cmt / .msg / .cmt-wall)          4223-4294
+   Left out on purpose: the pinned drops.ws SKINS on the banner (this is not CS:GO), the rank
+   rail and its mode selector (zombies has one board, not five), the KZ global band, the PB
+   records browser and its tier bars, and the banner crop dialog (the banner is set on
+   Movement; see lib/movementProfile.js for why there is no second upload here).
+
+   The veil PNGs are Movement's (assets/prof-cover-veil*.png), for the reason its comment gives.
+
+   TOKENS. Movement's stylesheet spells three tokens differently from ours; they are aliased
+   here rather than renamed through the copied rules, so the copy stays diffable. */
+:root {
+  --panel2: var(--panel-2);
+  --accent-dim: var(--accent-2);
+  --glow: rgba(217, 217, 217, .14);
+  --display: inherit;
+}
+
+/* ============================================================================
+   PROFILE — cover, identity bar, rank rail, PB browser.
+   ============================================================================ */
+.prof-page { width: 100%; max-width: 1320px; margin: 0 auto; }
+.prof-section { min-width: 0; }
+.prof-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 20px; margin-bottom: 10px; }
+.prof-section-head .section-label { margin: 0; }
+.prof-section-game { text-transform: none; letter-spacing: 0; margin-left: 6px; font-weight: 400; }
+.prof-card { margin: 0; padding: 16px 18px; }
+
+
+/* The header is ONE object again (owner, 2026-08-05, picked from rendered mockups): the cover
+   is its lid — rounded on top, square where it meets the identity bar — and the bar is its
+   floor, rounded on the bottom. There is no gap between them, so the two read as a single
+   rounded card with a photograph for a head. The bar carries what used to be the rail's
+   identity block AND the career band; both are gone from where they were. */
+.prof-head { border: none; border-radius: var(--radius); overflow: hidden; }
+/* `z-index: 0` makes the cover a STACKING CONTEXT, which is what keeps its own overlays its own.
+   Without it the cover was merely `position: relative` with an auto z-index, so the edit hint
+   (z 2) and the two corner clusters (z 4) were hoisted out to the page's stacking context and
+   painted over anything below them in it — including the avatar, which punches up out of the
+   identity bar into the banner. Pointing at your own banner therefore greyed out your own
+   picture. Contained here, those numbers only order the cover's layers against each other, and
+   the bar (z 1, below) sits over the whole cover as the layout already implies. */
+.prof-cover { position: relative; z-index: 0; width: 100%; aspect-ratio: 5 / 1; min-height: 150px; max-height: 300px; overflow: hidden; background: rgba(0,0,0,.2); border-radius: var(--radius) var(--radius) 0 0; }
+@media (max-width: 700px) { .prof-cover { aspect-ratio: 3 / 1; min-height: 120px; } }
+.prof-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* the auto-banner: the player's most-played map through MapBanner (owner, 2026-08-28 — "Their
+   most played map should be their banner. If they don't have a banner"). Framed like the
+   played-map rows read it; the veil and the seam with the identity bar are unchanged. */
+.prof-cover .map-banner, .prof-cover .map-banner-ph { object-position: center 42%; }
+/* the map is NAMED on the art — an inferred picture is a statement the player never made, so
+   it reads as the site's choice, not theirs. Top-left: the right edge is the share/friend
+   cluster and the pinned skins, the bottom-left is the avatar's punch. */
+.prof-cover-autotag {
+  position: absolute; left: 13px; top: 10px; z-index: 2; pointer-events: none;
+  font-size: 11px; font-weight: 500; color: rgba(255,255,255,.78);
+  text-shadow: 0 1px 3px rgba(0,0,0,.9);
+}
+.prof-cover-wash {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 160% at 18% 0%, var(--accent-soft), transparent 58%),
+    radial-gradient(120% 160% at 82% 100%, rgba(var(--gold-rgb),.10), transparent 60%),
+    var(--bg-grad);
+}
+/* Two jobs in one layer. Vertically the cover SETTLES — it darkens toward its own bottom edge
+   so the artwork ends on a weighted line rather than a bright cut. Horizontally a softer scrim
+   seats the overlays: the share link and the pinned skins have to stay legible over whatever
+   artwork a player uploaded.
+   The last stop used to be var(--panel-solid), because the identity row and the mode strip sat
+   in the SAME panel directly underneath and the photograph was meant to dissolve into it. In
+   the two-column layout that panel was gone, so driving to #1c1c1c painted a hard grey band
+   across the bottom of every banner and then stopped dead against the page. It ends in its own
+   scrim, which is also what seats it against the identity bar below (2026-08-05). */
+/* The veil is a BAKED TEXTURE, not CSS gradients (2026-08-23). The two alpha ramps below used
+   to be linear-gradients, and Chrome's GPU gradient rasterizer quantizes them through a fixed
+   ramp: at fractional device-pixel geometries one scanline can sample the far end of the ramp,
+   painting a full-width 1px scrim-coloured line across the photograph — seen mid-banner at the
+   74% stop, coming and going with window size and display scale. A stretched PNG samples
+   bilinearly and has no ramp to quantize, so the line class is gone for good. The texture is
+   the exact composite of the two old ramps (vertical settle over the right-edge seat, scrim
+   12,12,12 throughout) and measures within 1/255 of the gradients it replaced. */
+.prof-cover-veil {
+  position: absolute; inset: 0; pointer-events: none;
+  background: url(./assets/prof-cover-veil.png) 0 0 / 100% 100% no-repeat;
+}
+/* no photograph to darken — the generated wash only needs the overlays seated */
+.prof-cover-empty .prof-cover-veil {
+  background: url(./assets/prof-cover-veil-empty.png) 0 0 / 100% 100% no-repeat;
+}
+.prof-cover-editable { cursor: pointer; }
+.prof-cover-hint { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; background: rgba(var(--scrim-rgb), .42); opacity: 0; transition: opacity .16s ease; }
+.prof-cover-hint span {
+  border: none; border-radius: var(--pill); color: var(--accent-ink); background: var(--accent);
+  padding: 9px 20px; font-size: 12.5px; font-weight: 700; letter-spacing: 0; text-transform: none;
+  box-shadow: 0 6px 22px var(--glow);
+}
+.prof-cover-editable:hover .prof-cover-hint, .prof-cover-editable:focus-visible .prof-cover-hint { opacity: 1; }
+.prof-cover-empty.prof-cover-editable .prof-cover-hint { opacity: .85; }
+
+/* ---- the two overlay clusters -----------------------------------------------
+   Both sit ABOVE the edit hint (z-index 2) so they stay clickable on your own profile, and
+   each stops its own clicks/keys from reaching the cover behind it. They are pinned to two
+   different corners of the right-hand half and never share vertical space. (The clock used to
+   be a third, bottom-right; it lives on the identity row now.) */
+.prof-cover-tr { position: absolute; z-index: 4; }
+.prof-cover-tr { top: 12px; right: 14px; display: flex; align-items: center; gap: 9px; }
+@media (max-width: 700px) {
+  .prof-cover-tr { top: 9px; right: 10px; gap: 7px; }
+}
+
+/* ── the identity bar ──────────────────────────────────────────────────────────
+   Owner call, 2026-08-05, picked from rendered mockups. One full-width bar welded to the
+   bottom of the cover: the picture, who they are, and the six career figures. It replaced two
+   separate blocks — the rail's identity stack and the career band's six tiles — which between
+   them said the player's name once and their numbers once, on two surfaces, in two registers.
+   Square on top, rounded below, panel-filled: the cover's floor, not a card under it. */
+/* Positioned and z-1 so the bar is ONE layer over the cover: the avatar overlaps the banner by
+   58px, and the name and the worn badges sit beside it on the same raised plane. The banner's
+   hover overlay is inside the cover's own stacking context underneath, so it greys the artwork
+   and stops at the picture. */
+.prof-idbar {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 14px 22px; background: var(--panel);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+/* flex, NOT inline-flex: an inline box sits on the text baseline, so it carries the line's
+   leading above it and swallows half of what the negative margin buys — the avatar barely
+   breaks the banner's edge. Block-level, it rises by exactly what it is told to. */
+.prof-av-wrap { display: flex; width: max-content; margin-top: -58px; }
+/* The ring is the PANEL, not the page: a slab of page-background cut a hard hole through the
+   banner it overlaps. Panel colour plus a hairline of light reads as the avatar sitting on the
+   bar, over artwork or over the empty wash alike. */
+.prof-av {
+  width: 112px; height: 112px; border-radius: 50%; font-size: 40px; object-fit: cover; flex: none;
+  border: 3px solid var(--panel-solid); background: var(--panel-solid);
+  box-shadow: var(--shadow-1), 0 0 0 1px rgba(255,255,255,.07);
+}
+/* presence: the rail's dot (.pdot), scaled to this avatar. It pins to the WRAPPER so the
+   picture itself stays a plain circle, and it sits on the circle's bottom-right edge — ringed
+   in the same panel colour as the avatar, so the two read as one object punched through the
+   banner. Absent = away.
+   `position: relative` is what the dot pins against. Display and the negative rise are declared
+   once, above — this rule must not restate `display`, or being the later of the two it silently
+   puts the avatar back on the text baseline and eats half of its overlap. */
+.prof-av-wrap { position: relative; flex: none; }
+.prof-av-dot {
+  position: absolute; right: 5px; bottom: 5px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--good); border: 3px solid var(--panel-solid);
+}
+
+/* the name and the tagline. `min-width: 0` all the way down, or a long name pushes the stat
+   strip off the right-hand edge instead of ellipsing.
+   It does NOT grow (owner, 2026-08-21). Growing, it filled the whole gap between the picture and
+   the stat strip and carried the worn badges out to the far side with it, where they read as part
+   of the numbers rather than part of the name. Content-width, the pins sit against the tagline
+   and the strip keeps the right edge on its own `margin-left: auto`. Shrink stays on, so a long
+   name still ellipses rather than pushing anything off the bar.
+   Drawn as mockups/profile-idbar (a-hug.html) against the two figures the strip can now drop. */
+.prof-ident { min-width: 0; flex: 0 1 auto; }
+.prof-name {
+  margin: 0; font-size: 24px; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* the badges this player wears, beside the name (owner, 2026-08-05 — the pins moved next to
+   the picture the same day the frames came off, and the bar is where the picture lives now).
+   In the bar they are ordinary flex items: no zero-height hack — that trick existed because
+   the rail's 32px band could not hold a 69px named badge, and the bar has no such band. The
+   caption still ALWAYS reserves its second line, or "Founder" rides higher than a wrapped
+   "Record hunter" and the artwork sits on two different lines. */
+.prof-pins { display: flex; align-items: flex-start; gap: 10px; flex: none; min-width: 0; }
+.prof-pins.is-busy { opacity: .6; pointer-events: none; }
+.prof-pins .badge-lg { width: 64px; flex: none; }
+.prof-pins .badge-cap { min-height: 2.6em; }
+/* The name is the way to this player's Steam profile (the SteamID64 rail fact it replaced is
+   gone). It stays type — no button chrome, nothing at rest — and the HOVER is what says it is a
+   link: an underline, plus the accent every other link on the site takes (owner, 2026-08-05).
+   The ↗ mark it used to carry is gone; a 24px name is the biggest type on the page and did not
+   need a glyph hung off it. The nav's Inventory link keeps its arrow — that one is a small
+   label in a row of them, where the mark is the only thing saying it leaves. */
+.prof-name-link { color: inherit; cursor: pointer; transition: color .16s ease; }
+.prof-name-link:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+.prof-name-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.prof-vip { margin-left: 10px; vertical-align: middle; }
+/* the country CODE, in the site's own mono — it replaced a regional-indicator flag emoji
+   (owner call 2026-07-30: no emoji anywhere), so it is sized as type, not as a pictograph.
+   It sits WITH the name rather than competing with it, on the name's baseline. */
+.prof-flag {
+  margin-left: 10px; font-family: var(--mono); font-size: 13px; font-weight: 700;
+  letter-spacing: .04em; color: var(--muted); line-height: 1; vertical-align: baseline;
+}
+/* the line under the name: what they're known for */
+.prof-tagline {
+  font-size: 13px; color: var(--muted); min-width: 0; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.prof-tagline b { color: var(--gold); }
+/* the board someone specialises in is named as ONE phrase — game then mode — in that game's
+   plate colour, the site's only saturated chrome. Both words wear it; the prefix stays in the
+   tagline's own grey. The prefix says WHICH FACT the line reads (owner, 2026-08-28): "Pinned:"
+   is the player's own statement, "Most played:" is the clock's inference — "Specialises in"
+   wore both in one coat. */
+.prof-tag-k { color: var(--muted); font-weight: 400; }
+.prof-tagline b.prof-plate-csgo { color: var(--plate-csgo); }
+.prof-tagline b.prof-plate-css { color: var(--plate-css); }
+
+/* the stat strip: the career band's six figures, on one line at the bar's right edge. A label
+   over a figure, hairlines between the cells, and NO sub-lines — the band's second lines
+   glossed each number, and across the top of the page the numbers carry themselves. It follows
+   the rail's mode selector exactly as the band did. */
+.prof-stats { display: flex; align-items: center; margin-left: auto; flex: none; }
+.prof-stat { padding: 2px 22px; border-left: 1px solid var(--line); white-space: nowrap; }
+.prof-stat:first-child { border-left: none; }
+.prof-stat:last-child { padding-right: 0; }
+/* the label voice at the one size it varies: six keys share a row, so 13.5px would not fit and
+   would out-weigh the figures. Sentence case and no tracking, as the rule above says. */
+.prof-stat-k {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  color: var(--faint); line-height: 1.3;
+}
+.prof-stat-v {
+  font-family: var(--num); font-variant-numeric: tabular-nums;
+  font-size: 20px; font-weight: 800; line-height: 1.25; color: var(--text); margin-top: 2px;
+}
+.prof-stat-v.gold { color: var(--gold); }
+.prof-stat-v.good { color: var(--good); }
+
+/* ≤1000: the strip drops to its own row inside the bar — a full-width three-column grid under
+   the name, with the hairlines moved to the cells that actually start a column so no row draws
+   a double. Same breakpoint the rail folds at; the header must step where the page does. */
+@media (max-width: 1000px) {
+  .prof-stats {
+    margin-left: 0; width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px;
+  }
+  .prof-stat { padding: 6px 0 6px 18px; }
+  .prof-stat:nth-child(3n + 1) { border-left: none; }
+  .prof-stat:last-child { padding-right: 0; }
+  /* FOUR figures — what a player with no world record and no podium is left with — go
+     two-by-two. In the three-column grid they are a row of three and one orphan, which reads as
+     a cell that failed to load rather than a strip that is simply shorter. The hairlines move
+     with the columns: cells 1 and 3 start a row here, cell 4 no longer does. */
+  .prof-stats.is-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prof-stats.is-four .prof-stat:nth-child(3n + 1) { border-left: 1px solid var(--line); }
+  .prof-stats.is-four .prof-stat:nth-child(2n + 1) { border-left: none; }
+}
+@media (max-width: 700px) {
+  .prof-idbar { padding: 12px 14px; gap: 12px; }
+  .prof-av { width: 84px; height: 84px; font-size: 30px; }
+  .prof-av-wrap { margin-top: -44px; }
+  .prof-av-dot { right: 3px; bottom: 3px; width: 18px; height: 18px; border-width: 2.5px; }
+  .prof-name { font-size: 20px; }
+  .prof-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* two across now: every odd cell starts a row, so the hairline goes back on the thirds and
+     comes off the odds */
+  .prof-stat:nth-child(3n + 1) { border-left: 1px solid var(--line); }
+  .prof-stat:nth-child(2n + 1) { border-left: none; }
+  .prof-stat { padding: 6px 0 6px 14px; }
+}
+
+/* ── the two-column profile ────────────────────────────────────────────────────
+   The banner spans the page; everything under it is a fixed-width identity RAIL and a fluid
+   content column. The rail is sticky, so who the player is stays on screen for the whole
+   scroll — the single-column build lost the name two screens down, which is the one thing
+   every reference profile (gokz.top, ksf.surf, osu!) gets right.
+
+   `align-items: start` is load-bearing: without it the rail stretches to the content's height
+   and `position: sticky` has nothing to travel inside, so it silently never sticks. */
+.prof-grid {
+  display: grid; grid-template-columns: 320px minmax(0, 1fr);
+  gap: 20px; align-items: start;
+  /* a real gap under the header, so the two columns read as their own objects and not as the
+     identity bar continuing downward */
+  margin-top: 12px;
+}
+.prof-rail { position: sticky; top: 12px; min-width: 0; }
+/* The card starts below the header and stays there. It carries no identity of its own any more
+   (owner, 2026-08-05) — badges, the five boards, and the facts. The avatar that used to rise
+   out of its top edge lives in the identity bar, which is the thing that crosses the banner
+   seam now. No overflow/max-height: the rail is ~560px of content and sticks at the top of the
+   viewport; on a short window the page scroll still reaches it. */
+.prof-rail-card {
+  background: var(--panel); border-radius: var(--radius); padding: 16px;
+  position: relative; z-index: 3;
+}
+/* the badge shelf leads the card now that the identity block is gone; its own 18px top margin
+   was spacing it off the tagline above it and is a band of nothing at the top of the card */
+.prof-rail-card > .badge-block:first-child { margin-top: 0; }
+.prof-main { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+/* The rail is a column of its own now: the player card, then the HUD under it. Same 18px the
+   content column uses between sections, so the two columns breathe alike. */
+.prof-rail { display: flex; flex-direction: column; gap: 18px; }
+
+/* The "Showing <mode>" line is GONE (owner, 2026-08-05) — the lit rank row in the rail is the
+   mode selector and already says which board the column is scoped to. */
+
+/* the facts at the foot of the rail — join date and founder number. A key on the left and a
+   figure on the right, one per line: in a 320px column a row of side-by-side figures would
+   wrap, and these are reference facts you look up rather than headline numbers you read at a
+   glance (those are the identity bar's stat strip). Time played left with the band. */
+.prof-rail-facts { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px; }
+.prof-fact { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 4px 0; }
+.prof-fact-k { line-height: 1.3; }
+.prof-fact-v {
+  font-family: var(--num); font-variant-numeric: tabular-nums;
+  font-size: 12.5px; font-weight: 700; color: var(--text); white-space: nowrap;
+}
+/* The UID copies its own short link, so the number is the control. It has to read as the fact
+   it replaced — same type, same weight, no button chrome — and only say it is clickable on
+   hover, because a rail of facts with one of them boxed reads as an error. */
+button.prof-fact-v {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; font-family: var(--mono); font-size: 12.5px; font-weight: 700;
+  color: var(--text); line-height: inherit;
+}
+button.prof-fact-v:hover { color: var(--accent); }
+button.prof-fact-v:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+/* the friend button, alone in the banner's top-right on someone else's profile */
+.prof-ident-act { flex: none; }
+
+/* friend button — settled states (Friends / Requested) read as a fact and only reveal the
+   undo on hover, so the control never nags from a profile you're just reading. The two
+   labels are stacked in the same grid cell, which keeps the button's width fixed and stops
+   it twitching as they swap. */
+/* The one state that ASKS for something wears the records green — the same tint a personal
+   best is written in. A tinted wash and a ring, never a filled button: it invites, it doesn't
+   shout, and it stays in the family of every other quiet control on the site. */
+.friend-btn:not(.is-friend):not(.is-pending):not(.btn-accent) {
+  background: rgba(var(--good-rgb),.14); box-shadow: inset 0 0 0 1px rgba(var(--good-rgb),.32);
+  color: var(--good);
+}
+.friend-btn:not(.is-friend):not(.is-pending):not(.btn-accent):hover {
+  background: rgba(var(--good-rgb),.22); box-shadow: inset 0 0 0 1px rgba(var(--good-rgb),.48);
+  color: var(--good);
+}
+.friend-btn.is-friend, .friend-btn.is-pending { background: transparent; box-shadow: inset 0 0 0 1px var(--panel2); color: var(--muted); }
+.friend-btn.is-friend .friend-btn-on { color: var(--good); }
+.friend-btn.is-friend > span, .friend-btn.is-pending > span { grid-area: 1 / 1; }
+.friend-btn.is-friend, .friend-btn.is-pending { display: grid; place-items: center; }
+.friend-btn.is-friend .friend-btn-off, .friend-btn.is-pending .friend-btn-off { opacity: 0; }
+.friend-btn.is-friend:hover, .friend-btn.is-pending:hover { background: transparent; box-shadow: inset 0 0 0 1px var(--bad); color: var(--bad); }
+.friend-btn.is-friend:hover .friend-btn-on, .friend-btn.is-pending:hover .friend-btn-on { opacity: 0; }
+.friend-btn.is-friend:hover .friend-btn-off, .friend-btn.is-pending:hover .friend-btn-off { opacity: 1; color: var(--bad); }
+@media (hover: none) {
+  /* no hover to reveal the undo — show the plain state and let the confirm dialog be the gate */
+  .friend-btn.is-friend .friend-btn-off, .friend-btn.is-pending .friend-btn-off { display: none; }
+}
+
+
+/* recent records beside best runs */
+.prof-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .prof-split { grid-template-columns: 1fr; } }
+
+
+/* ── badges ────────────────────────────────────────────────────────────────────
+   Two registers. The PINNED badges are drawn large with their names, up in the identity header
+   beside the picture (.prof-pins, above); everything a player owns and is not wearing is a shelf
+   of small marks down here. That split is the whole point — a player with two badges and a
+   player with forty both get a rail that reads at a glance, and the forty are all still there.
+   A pinned badge does NOT appear in the shelf as well: it is worn, and drawing it twice is what
+   made this block read as filler.
+
+   A badge is ARTWORK (server/lib/badgeArt.js — PNG or WebP, alpha required) and the artwork is
+   ALL there is. No frame, no plate, no tinted ring (owner, 2026-08-05): the art carries its own
+   alpha, so a wash behind it fought the cut-out and the green rare ring read as a status colour
+   on a thing that has no status. The hover card states the badge's KIND instead — staff badge
+   or achievement — rarity is dead outright (owner, later on 2026-08-05). There is no glyph
+   fallback anywhere in here either: a badge with no art is filtered out server-side and never
+   reaches the client, which is what keeps this from ever drawing a letter in a box. */
+.badge-block { margin-top: 18px; }
+.badge-block.is-busy { opacity: .6; pointer-events: none; }
+.badge-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.badge-head .section-label { margin-bottom: 8px; }
+.badge-count { font-family: var(--num); font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+.badge-shelf { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+
+/* One mark. The <button> form (your own profile) and the <span> form (everyone else's) are
+   the same object — only the cursor and the focus ring differ, so a shelf does not restyle
+   itself depending on who is looking at it. */
+.badge-mark {
+  position: relative; display: grid; justify-items: center; flex: none;
+  padding: 0; background: none; border: none; font-family: inherit; color: inherit;
+  text-align: center;
+}
+.badge-mark.is-actionable { cursor: pointer; }
+.badge-mark:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
+
+/* The artwork, and nothing else. The drop-shadow is not decoration — it is what seats a
+   cut-out PNG on whatever is behind it (panel, banner, or the page in the gap the pins rise
+   into) now that there is no plate under it doing that job. */
+.badge-art { display: block; }
+.badge-art > img {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,.45));
+  transition: transform .16s ease, filter .16s ease;
+}
+/* the hover state is the ICON, since there is no frame left to light up: it lifts and grows a
+   touch, which is also the only affordance saying a mark on your own profile is a control. */
+.badge-mark:hover .badge-art > img,
+.badge-mark:focus-visible .badge-art > img {
+  transform: translateY(-2px) scale(1.07);
+  filter: drop-shadow(0 3px 7px rgba(0,0,0,.5));
+}
+.badge-mark:active .badge-art > img { transform: translateY(0) scale(1.02); }
+@media (prefers-reduced-motion: reduce) {
+  .badge-art > img, .badge-mark:hover .badge-art > img, .badge-mark:focus-visible .badge-art > img { transition: none; transform: none; }
+}
+
+/* the two registers, at the two sizes. A frameless icon needs to be a little bigger than a
+   framed one to read as the same object — 24px of art inside a 24px plate was 20px of art. */
+.badge-lg .badge-art { width: 38px; height: 38px; }
+.badge-sm .badge-art { width: 28px; height: 28px; }
+
+.badge-cap {
+  font-size: 9.5px; line-height: 1.3; color: var(--muted); margin-top: 6px; max-width: 100%;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.badge-more {
+  font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--faint);
+  background: var(--panel2); border: none; border-radius: 6px; height: 24px; padding: 0 7px;
+  cursor: pointer;
+}
+.badge-more:hover { color: var(--text); }
+
+/* ── the hover card ────────────────────────────────────────────────────────────
+   It carries the things a mark cannot: the full name, its kind, what it was for, how it is
+   obtained, when it was
+   awarded and how many people hold it.
+
+   FIXED, and rendered into <body> (createPortal in BadgeShelf.jsx) — it is placed against the
+   mark's own rect in JS, so it flips below the mark when there is no room above and clamps
+   itself inside the viewport. The old card was absolutely positioned inside the mark and needed
+   a first-child special case to stop it hanging off the rail's left edge; it still went off the
+   right for the last mark in a row, and it could never sit over the banner cleanly. */
+.badge-card {
+  position: fixed; z-index: 90; left: 0; top: 0;
+  display: grid; gap: 3px; width: max-content; max-width: 250px; padding: 10px 12px;
+  background: var(--panel-solid); border-radius: 12px; text-align: left;
+  box-shadow: var(--shadow-2), inset 0 0 0 1px var(--line);
+  pointer-events: none; opacity: 0;
+}
+/* placed = measured and moved into position; only then is it allowed to be seen, so it never
+   flashes at the top-left corner on its way to the mark. The entrance is an ANIMATION rather
+   than a transition on purpose: the card is positioned in a layout effect, before its first
+   paint, so there is no earlier painted state for a transition to run from — it would simply
+   snap. A keyframe needs no such history, and it leans in from the side the card opened on. */
+/* no fill-mode: the card's RESTING state is this rule's own opacity, so anywhere the animation
+   does not run (reduced motion, a frozen tab) it is simply visible rather than stuck at the
+   keyframe's transparent first frame. */
+.badge-card.is-placed { opacity: 1; animation: badge-card-in .14s ease; }
+.badge-card.is-under.is-placed { animation-name: badge-card-in-under; }
+@keyframes badge-card-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes badge-card-in-under { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .badge-card.is-placed { animation: none; } }
+
+/* the card leads with the artwork at a size you can actually look at — the marks themselves are
+   28px, and "what is this picture" is half of why anybody points at one. */
+.badge-card-top { display: flex; align-items: center; gap: 10px; }
+.badge-card-art { flex: none; width: 40px; height: 40px; display: block; }
+.badge-card-art > img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
+.badge-card-id { display: grid; gap: 1px; min-width: 0; }
+.badge-card-n { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.25; }
+/* the kind, as a word under the name — staff badge or achievement, the split that replaced
+   rarity (owner, 2026-08-05). Stated rather than implied: the colour is a second reading of
+   the word, never the value on its own. */
+.badge-card-r {
+  font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--gold);
+}
+.badge-card-r.is-auto { color: var(--good); }
+.badge-card-d { font-size: 11.5px; color: var(--muted); line-height: 1.4; margin-top: 3px; }
+/* how it is obtained, under a hairline: the description says what a badge is, this says how it
+   is got, and they are two different questions. */
+.badge-card-o {
+  margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line);
+  font-size: 11.5px; color: var(--muted); line-height: 1.4;
+}
+.badge-card-m { font-family: var(--mono); font-size: 9.5px; color: var(--faint); margin-top: 4px; }
+.badge-card-a { font-size: 10.5px; color: var(--accent-dim); margin-top: 3px; }
+
+
+/* ── the rail folds away ───────────────────────────────────────────────────────
+   Below this width there is no room for a 320px column beside content, so the rail becomes a
+   header: it stops sticking, stops scrolling inside itself, and the ranks lay out as a wrapped
+   row of controls rather than a stack. */
+@media (max-width: 1000px) {
+  .prof-grid { grid-template-columns: 1fr; gap: 14px; }
+  .prof-rail { position: static; top: auto; }
+  .prof-rail-card { max-height: none; overflow: visible; }
+  .prof-rail-facts { display: flex; flex-wrap: wrap; gap: 8px 26px; }
+  .prof-fact { justify-content: flex-start; gap: 8px; }
+}
+/* The record columns no longer draw their own row type. Recent records and Best records wear
+   the played-map card (.pm-* below) — same band, same art, same scrim — so the four columns on
+   the profile are one object shown four ways. The old .rr-* row, its 30px gold rank badge and
+   its Show more pill went with it (owner, 2026-08-05).
+
+   Each row wears its map, borrowing the party rail's in-game friend row wholesale: ONE fixed
+   54px band, art covering it, and a scrim weighted to the LEFT where the type sits, fading out
+   to the right so the picture reads true. Legibility comes from the shadow on the type, not
+   from flooding the row. */
+.pm-list { display: flex; flex-direction: column; gap: 6px; }
+.pm-row {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  height: 54px; padding: 0 13px; overflow: hidden;
+  border-radius: var(--radius-sm); background: var(--panel2);
+  color: inherit; text-decoration: none;
+  transition: transform .17s ease, box-shadow .17s ease;
+}
+/* they are links to the map, so they lift under the pointer the way a map card does */
+.pm-row:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+.pm-row .map-banner, .pm-row .map-banner-ph { object-position: center 42%; }
+.pm-scrim {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg,
+    rgba(0,0,0,.74) 0%,
+    rgba(0,0,0,.52) 42%,
+    rgba(0,0,0,.20) 78%,
+    rgba(0,0,0,.08) 100%);
+}
+.pm-main { position: relative; z-index: 1; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pm-name {
+  font-size: 15px; font-weight: 600; line-height: 1.25; color: #fff;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-shadow: 0 1px 5px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.7);
+}
+.pm-row:hover .pm-name { color: var(--accent); }
+.pm-sub {
+  font-size: 11px; line-height: 1.55; color: rgba(255,255,255,.9);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.7);
+}
+/* The played-map rows used to name their board on this sub-line ("CS:GO Surf"), because the
+   two columns were cross-mode and the same map name could appear twice from two boards. Both
+   columns are now scoped to the selected mode, so the fragment would repeat the rail on every
+   row; the sub-line carries only the time-ago, and "Most played" carries none at all. */
+.pm-dur {
+  position: relative; z-index: 1; flex: none; text-align: right;
+  font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 700;
+  font-size: 13.5px; color: #fff; white-space: nowrap;
+  text-shadow: 0 1px 5px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.7);
+}
+
+/* ── a RECORD on the same card ────────────────────────────────────────────────
+   Recent records and Best records are played-map rows carrying two more facts. The sub-line
+   becomes a run of fragments (rank, tier, when) spaced by a gap rather than punctuated — the
+   party rail's `.fcard-sub` does the same — and the right of the row stacks the two figures
+   the column is read for: the time, and the points the ladder scores it at.
+
+   Gold and green survive on the RANK, which is where the site's data grammar puts them: a
+   server record is gold, a podium green. The 30px badge does not — big type on artwork is the
+   loudest thing on a page, and the record columns are not the page. */
+.pm-bits { display: flex; align-items: baseline; gap: 8px; }
+.pm-bits > * { flex: none; }
+.pm-rank { font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 700; }
+.pm-rank.wr { color: var(--gold); }
+.pm-rank.podium { color: var(--good); }
+.pm-of { margin-left: 4px; font-weight: 400; color: rgba(255,255,255,.62); }
+/* Between the 1000px stack and a wide desktop the split's two columns are at their narrowest
+   and the sub-line carries four fragments. "of 412" is the one that can go — the rank still
+   reads, which is what the fragment is there for. Same call .pbt-of makes on the narrow
+   table. */
+@media (max-width: 1300px) { .pm-of { display: none; } }
+.pm-bonus { font-weight: 400; color: rgba(255,255,255,.72); }
+.pm-figs {
+  position: relative; z-index: 1; flex: none;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+}
+/* the player's own time — green, the same grammar every board on the site uses for it */
+.pm-time {
+  font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 700;
+  font-size: 13.5px; line-height: 1.25; color: var(--good); white-space: nowrap;
+  text-shadow: 0 1px 5px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.7);
+}
+.pm-pts {
+  font-family: var(--num); font-variant-numeric: tabular-nums;
+  font-size: 11px; line-height: 1.4; color: rgba(255,255,255,.82); white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.7);
+}
+
+
+.cmt { display: flex; flex-direction: column; }
+.cmt-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; margin-bottom: 8px; }
+.cmt-log { flex: 1; overflow-y: auto; max-height: 460px; min-height: 120px; padding-right: 4px; overscroll-behavior: contain; }
+/* Scrolled up, the thread cuts a row in half against a hard edge and the half-row reads as a
+   rendering fault rather than as more thread. So the top edge softens — but ONLY once there is
+   something above it: a mask that is always on would dim the first line of a two-message thread
+   for nothing. The fade is driven by the box's own scroll position, so at the top it is not
+   there at all. Where scroll-driven animation is missing the edge is simply hard, which is what
+   it was. */
+@keyframes cmt-log-fade-top {
+  from { -webkit-mask-image: linear-gradient(rgb(0 0 0 / 1) 0, #000 22px); mask-image: linear-gradient(rgb(0 0 0 / 1) 0, #000 22px); }
+  to   { -webkit-mask-image: linear-gradient(rgb(0 0 0 / 0) 0, #000 22px); mask-image: linear-gradient(rgb(0 0 0 / 0) 0, #000 22px); }
+}
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .cmt-log { animation: cmt-log-fade-top linear both; animation-timeline: scroll(self); animation-range: 0 20px; }
+  }
+}
+.cmt-log::-webkit-scrollbar { width: 8px; }
+.cmt-log::-webkit-scrollbar-thumb { background: var(--panel2); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+.msg { position: relative; display: grid; grid-template-columns: 28px minmax(0,1fr); column-gap: 10px; padding: 3px 8px 3px 0; border-radius: var(--radius-sm); }
+.msg.lead { margin-top: 10px; padding-top: 8px; }
+.msg.lead + .msg.lead, .msg + .msg.lead { border-top: 1px solid var(--line); }
+.msg:first-child { margin-top: 0; border-top: none; }
+.msg:hover { background: var(--panel); }
+/* Your own post, on screen before the server has confirmed it. Dimmed rather than badged —
+   it lands for real in a few hundred ms and a spinner beside it would be noisier than useful. */
+.msg.pending { opacity: .55; }
+.msg-av { width: 28px; height: 28px; border: none; border-radius: 50%; object-fit: cover; display: block; }
+.msg-av-ph { background: var(--panel2); display: grid; place-items: center; font-weight: 700; font-size: 10px; color: var(--accent); }
+.msg-main { min-width: 0; }
+.msg-head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.msg-name { font-weight: 650; font-size: 13.5px; }
+.msg-name.me { color: var(--accent); }
+.msg-when { font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--faint); white-space: nowrap; }
+.msg-gut { font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 9.5px; color: var(--faint); text-align: right; padding-top: 3px; opacity: 0; }
+.msg:hover .msg-gut { opacity: 1; }
+.msg-body { font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.msg-del {
+  position: absolute; top: 3px; right: 3px; opacity: 0;
+  background: var(--panel2); border: none; border-radius: 50%; color: var(--faint);
+  width: 20px; height: 20px; line-height: 1; font-size: 13px; padding: 0; cursor: pointer;
+}
+.msg:hover .msg-del, .msg-del:focus-visible { opacity: 1; }
+.msg-del:hover { color: var(--bad); }
+/* ---- profile comment wall (components/ProfileComments.jsx) ----
+   The same thread parts as a map's, re-laid-out for the foot of a profile: full page width, no
+   inner scroller (the PAGE scrolls — a fixed-height box at the bottom of a long profile would
+   be a scroll trap), and a taller composer because a wall post is a paragraph, not a one-liner. */
+.cmt-wall { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
+.cmt-wall-log { display: flex; flex-direction: column; }
+.cmt-wall .msg { grid-template-columns: 34px minmax(0,1fr); column-gap: 12px; padding: 8px 8px 8px 0; }
+.cmt-wall .msg-av { width: 34px; height: 34px; }
+.cmt-wall-bar { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.cmt-wall-bar textarea {
+  width: 100%; min-height: 56px; max-height: 160px; resize: none; padding: 10px 12px;
+  border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--panel);
+  color: inherit; font: inherit; line-height: 1.45;
+}
+.cmt-wall-bar textarea:focus { outline: none; border-color: var(--accent); }
+.cmt-wall-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+
+.cmt-bar { display: flex; gap: 8px; align-items: flex-end; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cmt-bar textarea {
+  flex: 1; min-width: 0; height: 34px; max-height: 120px; resize: none;
+  border-radius: var(--pill); font-size: 13.5px; line-height: 1.4; padding: 7px 16px;
+}
+/* the profile wall's signed-out row, which has no switch beside it — one block button */
+.cmt-signin { display: block; }
+/* the map page's does: btn-block is width:100%, which overflows a flex row that also holds the
+   switch, so there it takes the leftover instead */
+.cmt-bar:not(.cmt-signin) > .btn-block { flex: 1 1 auto; width: auto; }
+
+/* ============================================================================
+   ZOMBIES — what the profile carries that Movement's does not.
+   ============================================================================ */
+
+/* The played-map rows' right edge carries three figures here, not one: the time (Movement's
+   .pm-dur), and under it the games and the best round. */
+.pm-figs .pm-dur { font-size: 13.5px; }
+.pm-figs .pm-pts b { color: #fff; font-weight: 700; }
+
+/* "Overall" — B's section. The identity bar's strip is Movement's four headline figures; this is
+   the whole list, in a card laid out as the strip is (label over figure, hairlines between),
+   wrapped into rows. */
+.prof-overall { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 14px; }
+.prof-overall .prof-stat { padding: 2px 18px; }
+.prof-overall .prof-stat:nth-child(4n + 1) { border-left: none; padding-left: 0; }
+.prof-overall .prof-stat-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prof-overall .prof-stat-sub a { color: var(--muted); }
+.prof-overall .prof-stat-sub a:hover { color: var(--accent); }
+@media (max-width: 1000px) {
+  .prof-overall { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prof-overall .prof-stat:nth-child(4n + 1) { border-left: 1px solid var(--line); padding-left: 18px; }
+  .prof-overall .prof-stat:nth-child(2n + 1) { border-left: none; padding-left: 0; }
+}
+
+/* the role tags beside the name (Admin / Mod / Archivist), after Movement's .prof-vip */
+.prof-role { margin-left: 8px; vertical-align: middle; }
+
+/* our Hex stands in for a badge with no uploaded art (a map or record badge draws the map) */
+.badge-art .hex-fallback { width: 100%; height: 100%; display: grid; place-items: center; }
+
+/* Movement's button vocabulary, which our theme spells .btn.small / .btn.accent / .btn.ghost */
+.prof-page .btn-sm, .cmt-wall .btn-sm { padding: 7px 14px; font-size: 12.5px; }
+.prof-page .btn-accent, .cmt-wall .btn-accent { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.prof-page .btn-ghost { background: transparent; color: var(--muted); }
+.prof-page .btn-ghost:hover { background: var(--panel-2); color: var(--text); }
+.prof-cover-tr .btn { backdrop-filter: blur(6px); background: rgba(var(--scrim-rgb), .55); color: #fff; }
+.prof-cover-tr .btn:hover { background: rgba(var(--scrim-rgb), .75); }
+.btn-block { display: block; width: 100%; text-align: center; }
+
+/* your own settings, at the foot of your own profile */
+.prof-settings .field { display: grid; gap: 6px; }

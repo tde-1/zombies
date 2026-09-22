@@ -370,6 +370,8 @@ function router() {
         req.session.steam_id = u.steam_id
         // Both ENW lookups happen AFTER the redirect is on its way.
         setImmediate(() => { enw.refreshName(u.steam_id).catch(() => {}); enw.refreshVip(u.steam_id).catch(() => {}) })
+        // And their ENW Movement banner (lib/movementProfile.js): public read, file copied here.
+        setImmediate(() => { require('../lib/movementProfile').refresh(u.steam_id).catch(() => {}) })
 
         if (finishLauncherFlow(req, res)) return
         res.redirect(String(req.session.next || '/'))

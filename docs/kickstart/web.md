@@ -1991,3 +1991,128 @@ and additive; nothing that existed changed behaviour.
 * Tests: `web/test/game-chat.js`, 19/0, added to `npm run check`; `run-all` 102/0, `local-run` 37/0,
   `launcher-signin` 15/0 unchanged. Proven end to end against a private instance on 3399 with the
   real game (`chat-overlay.md` §9.6).
+
+## 2026-09-22, late evening — the profile is Movement's: banner, maps, Overall, the comment wall
+
+B: *"Copy exactly the profile from ENW Movement, with the comments and the banner and everything.
+Copy people's ENW profile stuff over already — if they have a banner on Movement it should show
+here the same … No featured skins (this is not CS:GO). A separate comment section. Recent maps and
+top maps at the top like Movement … with the map images and the time spent. And another section
+with overall stats."* Branch `web-profile`.
+
+### What is on the page, in Movement's order
+
+`client/src/pages/Profile.jsx` is rewritten from `CSGO-Matchmaker/movement-client/src/pages/Profile.jsx`,
+piece for piece and under Movement's names:
+
+| Piece | From Movement | Zombies |
+|---|---|---|
+| Banner (`.prof-cover`) with the veil PNGs, Copy link, friend button | `ProfileBanner`, `FriendButton` | the banner is **the player's Movement banner, copied here** (below); with none, the auto-banner is their most-played map, named on the art (Movement, 2026-08-28) |
+| Identity bar: avatar punching through the seam, presence dot, name → Steam, country code, VIP tag | `IdentityBar`, `PresenceDot` | + Admin / Mod / Archivist tags; tagline "Most played: <map>"; strip = Games, Best round, Records held (only when > 0, gold, as Movement's WRs), Time played |
+| Worn badges in the bar, the shelf in the rail, hover card, click-to-pin on your own | `components/BadgeShelf.jsx` (copied) | a badge with no uploaded art draws our Hex; pins go to `PUT /api/me/pinned` |
+| Sticky rail with the facts | `ProfileRail` | Date registered, Level, Total time played |
+| **Top maps / Recent maps** side by side, map-art rows | `PlayedMaps` (Most played / Recently played), `.pm-*` | each row: art, title, time spent (right), games and best round (and "5h ago" on Recent) |
+| **Overall** | — (B's section) | Games played, Rounds played, Best round (→ `/game/<id>`, and `/replay/<id>` when there is one), Time played, Records held, Member since; Kills / Downs / Revives **only once recorded** (below) |
+| Records held | `RecordsBox` (the idea; the PB browser is not ported) | the records they hold, as map-art rows, the round in gold |
+| **Comment wall**, its own section at the foot | `components/ProfileComments.jsx` + `comments.js` (copied) | the same API shape (below); live by the 60 s poll, as there is no per-profile socket room here |
+| Your own privacy settings | (Movement keeps these in Settings) | kept at the foot of your own profile: history public/hidden, who can comment |
+
+CSS: `client/src/profile.css`, lifted from Movement's `theme.css` verbatim with the source line
+ranges in its header, plus a short ZOMBIES block. **Left out:** the drops.ws skins (B), the rank
+rail and its five-board mode selector, the KZ band, the PB browser and tier bars, the HUD card, the
+UID fact, the banner upload and crop dialog (why: next section).
+
+### The banner: Movement's, copied, one place to change it
+
+Movement **does** expose a public profile read by SteamID — `GET https://movement.enw.gg/api/players/<id>/profile`,
+no session (§13d) — and its `user` carries `banner` (`/banners/<steamid>-<12 hex>.<ext>`, a static
+mount on that host), `banner_pos` and `country`. So nothing touches Movement's database or box.
+
+`server/lib/movementProfile.js`:
+
+* reads that route, and **downloads the banner file** into `<data>/media/banners/<steamid>-<hash>.<ext>`
+  (served at `/media/banners/`, beside the DB — runtime data, not `public/`). The type is decided by
+  magic bytes (Movement's own four), 2 MB cap, and only a path of Movement's generated shape is ever
+  requested. Movement's banner names are content-addressed, so an unchanged banner is never fetched
+  twice and a changed one replaces the old file.
+* keeps **only** `steam_id`, the Movement username (never displayed), the banner file, `banner_pos`
+  and the two-letter country, in a new table `movement_profiles`. No avatar, no badges, no skins, no
+  last-seen. Movement's public read carries no email, real name or Discord handle, and has no bio
+  field — so there is no bio to copy.
+* runs at Steam sign-in (after the redirect, like the ENW name lookups) and, in the background, on a
+  profile view whose copy is older than 6 h. `ZM_MOVEMENT_URL=off` turns it off; the tests do.
+
+**There is no banner upload here, deliberately.** A banner set on Movement shows on Movement,
+drops.ws and now here; a second upload on this site would be a banner that disagrees with the other
+two. On your own profile the banner's top-right says *Change banner on Movement* and links there.
+
+**The seven approved accounts** — `web/tools/import-movement-profiles.js` (the same `refresh()` sign-in
+runs, for the fixed list; `--dry` reads and writes nothing). Run against a `VACUUM INTO` copy of the
+live DB: **7 on Movement, 6 with a banner** (myu, zeroh, stew, jacob, air, toku; jamie has none),
+country GB for two. **Not run against `web/data`** (rule 7). The command for the live site:
+
+```
+cd web && node tools/import-movement-profiles.js
+```
+
+(it opens whatever the server opens; the site does not need a restart for it, and a sign-in does
+the same thing per account anyway).
+
+### The numbers, and what is not printed
+
+`server/lib/profile.js`, read from `games` + `game_players`, **seeded demo games left out**:
+
+* **Time on a map** = the game's `duration_ms` credited to each player in it; a game with none falls
+  back to `ended_at - started_at`. Top maps: by time, then games. Recent: by the last game's end.
+* **Best round** follows the career strip's rule: Verified, not self-reported, not joined late. The
+  per-map row's best round counts every mode (it is their history).
+* **Rounds played** is `SUM(game_players.rounds_played)` — every round the game ran while they were in
+  it. B's list said *rounds survived*; the referee does not count survival, so the label says what
+  the number is.
+* **Kills, downs, revives are omitted.** The columns exist, but every real game on the live site holds
+  0 for all three — including a round-2 game with 0 points: the real game does not yet emit the
+  `points why:kill` event `referee.js ev_points` counts from (only the sim does). A stat is shown once
+  any real game on the site has a non-zero value for it; until then a printed zero would be the site
+  inventing a fact.
+
+### API
+
+`GET /api/players/:who` gains `movement`, `maps` (null when history is private) and `overall`;
+records carry `art`. Movement's comment API shape: `GET /api/players/:who/comments` →
+`{ comments:[{id, steam_id, username, avatar, body, created_at, mine, can_remove}], post_block }`
+(public), `POST` → `{ ok, id, comment }` (403 for friends-only / closed), `DELETE …/comments/:id`
+(own, or staff; soft, like every removal). Stored in the one `comments` table as `kind='profile',
+subject=<steamid>` — the existing profile-comment rows and the reports queue stay as they are.
+
+### Proof
+
+Private site on **3447**, a `VACUUM INTO` copy of the live DB in the agent scratchpad, `ZM_TEST_LOGIN=1`.
+Headless Edge. The seven real banners were imported from the real Movement read; an **invented**
+account (`ghoulhunter`, `76561198000000123`, ten dev games on maps that have art) went through the
+same import path against a local stand-in for Movement's read on 3448, and a second invented
+account (`deadshot-dev`) posted on its wall through the page's own composer.
+
+| Screenshot (`ui/`) | What |
+|---|---|
+| `profile-banner-maps-overall-comment.png` | full page: banner, identity bar, Top/Recent maps with art and time, Overall, the posted comment |
+| `profile-own-1440.jpg` | the same profile seen by its owner: *Change banner on Movement*, presence dot |
+| `profile-myu-movement-banner.png` | myu's real profile on the DB copy: **the banner from Movement**, GB, Admin/Archivist, a record held, a best round linked to its game and replay |
+
+`npm test` **163/0**: run-all 107 (+5: Top/Recent ordering and the duration fallback with demo games
+excluded; Overall and the Verified-only best round; kills omitted until recorded; Movement off;
+the banner file copied, magic-checked, not re-fetched, an odd path refused, only whitelisted
+fields kept), local-run 41 (+4: the profile's new blocks; post, a visitor's view, someone else's
+delete refused, the author's delete), sign-in 15.
+
+### Unproven / open
+
+* **Deploy**: needs `npm run build` and a restart (keepalive path), then the import command above.
+* **A real Steam sign-in** triggering the refresh (agents cannot sign in to Steam); the path is the
+  same `refresh()` the import ran.
+* Avatars are whatever `users.avatar` holds (the `web-cleanup` lane); until that lands everyone is
+  Movement's lettered default.
+* Movement's pinned badges are Movement's and are not copied; the shelf is zombies badges.
+* Kills/downs/revives appear by themselves once the game reports kills; nobody has checked the game
+  side for that event.
+* The banner copy is refreshed at most every 6 h on view, so a banner changed on Movement shows here
+  after the next sign-in or within 6 h.
