@@ -471,6 +471,48 @@ await test('the client DLL is never taken from inside app.asar', () => {
   assert.ok(pkg.build.files.includes('!resources/client/**'), 'and it must not be packed into the archive at all')
 })
 
+await test('an updated launcher repairs the client DLL it did not install', () => {
+  // MEASURED on B's machine, 2026-09-22. He updated to 0.2.0 and got an 0.1.x
+  // client: `resources/client/enw_t4.dll` is replaced by the update, nothing ever
+  // copies it into `<ENW>\game\binkw32.dll`, and `status().installed` is three
+  // existsSync calls so the UI said "installed" and no one re-ran setup. His DLL
+  // log read `components registered: 28` with no `borderless:` line at all, for
+  // a build whose client registers 39. Both of 0.2.0's features live in that DLL.
+  const game = paths.P.game
+  fs.mkdirSync(game, { recursive: true })
+  const proxy = path.join(game, 'binkw32.dll')
+  const original = path.join(game, 'binkw32_org.dll')
+  const shipped = setup.shippedClientDll()
+  assert.ok(shipped && shipped.sha256, 'this checkout must have a client DLL to ship')
+
+  // The stock Bink library, and an old ENW client in its place.
+  fs.writeFileSync(original, 'stock bink, must never be touched')
+  fs.writeFileSync(proxy, 'an old ENW client from a previous launcher version')
+  const stockBefore = fs.readFileSync(original)
+
+  assert.equal(setup.status().clientDll.stale, true, 'status must SAY it is stale, not just "installed"')
+
+  const r = setup.ensureClientDll()
+  assert.equal(r.ok, true)
+  assert.equal(r.changed, true, 'it must actually copy')
+  assert.equal(crypto.createHash('sha256').update(fs.readFileSync(proxy)).digest('hex'), shipped.sha256,
+    'the installed client must now BE the shipped one — read back, not assumed')
+  assert.deepEqual(fs.readFileSync(original), stockBefore, 'the stock Bink library must not be touched')
+  assert.equal(setup.status().clientDll.stale, false)
+
+  // Idempotent: pressing Play twice must not copy twice.
+  const again = setup.ensureClientDll()
+  assert.equal(again.changed, false, 'a matching client is left alone')
+  assert.ok(!fs.existsSync(`${proxy}.new`), 'no temp file may be left behind')
+
+  // And it is never a way to install from nothing: no setup, no repair.
+  fs.rmSync(proxy); fs.rmSync(original)
+  const none = setup.ensureClientDll()
+  assert.equal(none.changed, false)
+  assert.match(none.reason, /not installed/, 'it must not quietly half-install a game folder')
+  assert.ok(!fs.existsSync(proxy), 'and it must not create a proxy with no binkw32_org beside it')
+})
+
 await test('the referee ships with the launcher and is reachable when packaged', () => {
   // A player has no repo and no Node. If host.js is not an extraResource there is no
   // referee on their machine, and a local game records nothing — silently.

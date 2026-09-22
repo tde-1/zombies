@@ -652,6 +652,25 @@ function wireIpc() {
 
   async function startPlay(opts = {}) {
     if (state.flow) throw new Error('A launch is already in progress.')
+
+    // The client DLL this launcher ships must be the one the game loads. An
+    // auto-update replaces the copy beside the app and nothing else, so before
+    // 0.2.1 an updated launcher happily launched a months-old client and every
+    // feature that lives in the DLL was simply absent (setup.js, "THE STALE
+    // CLIENT DLL"). One hash compare and, at worst, one file copy.
+    try {
+      const c = setup.ensureClientDll()
+      if (c.changed) {
+        log('setup', `client dll: ${c.reason}`)
+        push('toast', { kind: 'ok', text: 'Updated the ENW client to match this launcher.' })
+      } else if (!c.ok) {
+        log('setup', `client dll: ${c.reason}`)
+      }
+    } catch (e) {
+      log('setup', `client dll: could NOT update — ${e.message}`)
+      push('toast', { kind: 'warn', text: `The ENW client could not be updated: ${e.message}` })
+    }
+
     const conf = cfg.load()
     const s = settings.get()
     const sess = settings.session()

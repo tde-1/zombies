@@ -174,7 +174,17 @@ process.on('SIGINT', () => stop('interrupted'))
 const timer = setTimeout(() => stop(`test window of ${seconds}s elapsed`), seconds * 1000)
 
 flow.run().then((snap) => {
+  if (snap.failed) { clearTimeout(timer); stop('a step failed'); return }
+  // --hold: STAY in the map until --seconds runs out, instead of quitting the
+  // instant the boot flow says "playable". Without it `--seconds` is only an
+  // upper bound and the game is killed about two seconds after post_init, which
+  // makes the launch path impossible to MEASURE: no frame ticks, no frame-time
+  // windows, no borderless read-back, nothing to see on screen. That is how the
+  // first stutter run of 2026-09-22 produced a log with zero frames in it.
+  if (has('--hold')) {
+    console.log(`\nholding the map for the rest of the ${seconds}s window (--hold)`)
+    return
+  }
   clearTimeout(timer)
-  if (snap.failed) { stop('a step failed'); return }
   stop('boot flow finished')
 })

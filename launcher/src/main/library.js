@@ -209,6 +209,14 @@ export async function installFromSite(bsp, { api, onProgress = () => {}, signal 
   if (own.state === 'theirs') {
     throw new Error(`${title} is already in your own World at War mods folder and ENW did not put it there. Leaving it alone.`)
   }
+  // A dev-box symlink into our own archive is `absent` (see `ownership`), but it
+  // must be REMOVED before we install, not written through: every byte would land
+  // inside `ZombiesDev\archive\mods\<bsp>`, which is the hash source of truth this
+  // installer verifies against. Unlinking a symlink deletes the link, never the
+  // target. Nothing like this exists on a player's machine.
+  if (own.link) {
+    fs.unlinkSync(dest)
+  }
   fs.mkdirSync(dest, { recursive: true })
 
   const total = spec.size_bytes || spec.files.reduce((n, f) => n + (f.size || 0), 0)
@@ -322,14 +330,58 @@ export function isInstalled(bsp) {
 // A map in that folder that we did not put there belongs to the player. B's own
 // `nazi_zombie_ali` is exactly this case, and overwriting it — or deleting it on an
 // uninstall — would be destroying something of theirs.
+//
+// ---------------------------------------------------------------------------
+// WHY THE DOWNLOAD BUTTON DID NOTHING (2026-09-22)
+// ---------------------------------------------------------------------------
+// B: "the maps won't download when I click download". The whole chain was wired
+// — renderer, preload, IPC, the site route, the archive — and `installFromSite`
+// threw before fetching a single byte, on THIS function, for 8 of the 10 maps
+// that drew an Install button on his machine:
+//
+//     ABANDONED SCHOOL is already in your own World at War mods folder and ENW
+//     did not put it there. Leaving it alone.          (library.js:210)
+//
+// The cause is that `isInstalled` and `ownership` disagreed about the same
+// folder. `isInstalled` wants the record file AND at least one other entry;
+// `ownership` called anything without a record `theirs` — including:
+//
+//   * SEVEN SYMLINKS INTO OUR OWN DEV ARCHIVE (`mw2rust`, `nazi_zombie_derberg`,
+//     `nazi_zombie_fear_mc_2`, `nazi_zombie_orbit`, `nazi_zombie_school`,
+//     `sanatorium`, `ugx_artemovsk`), created by ENW's earlier dev tooling on
+//     2026-09-21. Calling our own leftovers "the player's map" is wrong twice.
+//   * AN EMPTY DIRECTORY (`nazi_zombie_octogonal`, zero files). An empty folder
+//     is not a map anyone owns.
+//
+// So the UI drew "Install (543 MB)", enabled it, and the main process refused
+// it every time. Both predicates now agree: a folder is only `theirs` if it is a
+// real directory with real files in it that we did not put there. The guard that
+// matters — B's own `nazi_zombie_ali`, a genuine map he installed himself — is
+// untouched and still refuses.
 export function ownership(bsp) {
   const dir = installDir(bsp)
-  if (!fs.existsSync(dir)) return { state: 'absent', dir }
+  let lst = null
+  try { lst = fs.lstatSync(dir) } catch { return { state: 'absent', dir } }
+
   let rec = null
   try { rec = JSON.parse(fs.readFileSync(path.join(dir, RECORD), 'utf8')) } catch {}
   if (rec) return { state: 'ours', dir, record: rec }
+
+  // A symlink or junction that resolves inside our own dev archive is ENW's, not
+  // the player's. It never exists on a player's machine; it is dev-box residue.
+  if (lst.isSymbolicLink()) {
+    let target = null
+    try { target = fs.realpathSync(dir) } catch {}
+    const inArchive = target && path.resolve(target).toLowerCase().startsWith(path.resolve(ARCHIVE).toLowerCase())
+    return { state: inArchive ? 'absent' : 'theirs', dir, link: target, files: 0, reason: inArchive ? 'a symlink into ENW’s own dev archive' : 'a symlink we did not make' }
+  }
+
   let files = []
   try { files = fs.readdirSync(dir) } catch {}
+  // An empty directory is not somebody's map. Treat it as absent so it can be
+  // downloaded into; `install()` already mkdir -p's the same path anyway.
+  if (files.length === 0) return { state: 'absent', dir, files: 0, reason: 'an empty folder' }
+
   return { state: 'theirs', dir, files: files.length }
 }
 

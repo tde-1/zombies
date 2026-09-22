@@ -484,17 +484,115 @@ export function storage() {
   }
 }
 
-export function status() {
+// ---------------------------------------------------------------------------
+// THE STALE CLIENT DLL, and why `installed` was not enough
+// ---------------------------------------------------------------------------
+// `status().installed` is three `existsSync` calls. That is the right test for
+// "has setup ever run", and it is the WRONG test for "is the client that is
+// installed the client this launcher ships", which is what actually matters
+// after an auto-update.
+//
+// B upgraded to 0.2.0 and got an 0.1.x client: the launcher's own upgrade
+// replaces `resources/client/enw_t4.dll` beside the app, but nothing ever copies
+// it into `<ENW>\game\binkw32.dll`, and the UI said "installed" so nobody
+// re-ran setup. Both of 0.2.0's client features live in that DLL, so the game
+// came up with no borderless and no raw mouse and looked, from the outside, like
+// two features that did not work. It was one file that was never copied.
+//
+// Evidence it happened, from B's own machine on 2026-09-22:
+//
+//     <ENW>\game\binkw32.dll   sha256 a60d53bb…  built Sep 21 16:18, 28 components
+//     resources\client\enw_t4.dll sha256 24b3bf94…  built Sep 22 03:39, 39 components
+//     enw-34116.log: "components registered: 28", no `borderless:` line at all
+//
+// So: compare the hashes, and repair it. This is a ONE FILE copy over a file we
+// wrote ourselves; `binkw32_org.dll` -- the player's real Bink library -- is not
+// touched, read or re-derived, so the repair cannot reach the stock install.
+// It is deliberately not a full `install()`: a player pressing Play does not
+// want the folder rebuilt, and `install()` re-links and re-fingerprints.
+
+const _shippedCache = new Map()
+const sha256Cached = (f) => {
+  const st = fs.statSync(f)
+  const key = `${f}|${st.size}|${st.mtimeMs}`
+  const hit = _shippedCache.get(f)
+  if (hit && hit.key === key) return hit.sha256
+  const sha256 = sha256File(f)
+  _shippedCache.set(f, { key, sha256 })
+  return sha256
+}
+
+// The client DLL THIS launcher build would install, with its hash. Null when
+// there is none to ship (a broken package — `explainMissingClient` covers it).
+export function shippedClientDll({ repoRoot = null } = {}) {
+  const found = findClientDll({ repoRoot })
+  if (!found.dll) return null
+  return {
+    path: found.dll.path,
+    via: found.dll.via,
+    size: fs.statSync(found.dll.path).size,
+    sha256: sha256Cached(found.dll.path),
+  }
+}
+
+// Make the installed proxy match the shipped client. Returns what it did:
+//   { ok, changed, reason, installed: {...}, shipped: {...} }
+// Never throws for "nothing to do"; a real copy failure is thrown, because a
+// player who presses Play with a half-written binkw32.dll has no game at all.
+export function ensureClientDll({ repoRoot = null } = {}) {
+  const proxy = path.join(P.game, 'binkw32.dll')
+  const original = path.join(P.game, 'binkw32_org.dll')
+  const shipped = shippedClientDll({ repoRoot })
+
+  if (!fs.existsSync(proxy) || !fs.existsSync(original))
+    return { ok: false, changed: false, reason: 'the ENW client is not installed yet', shipped }
+  if (!shipped)
+    return { ok: false, changed: false, reason: 'this launcher has no client DLL to install', shipped }
+
+  const installed = { path: proxy, size: fs.statSync(proxy).size, sha256: sha256File(proxy) }
+  if (installed.sha256 === shipped.sha256)
+    return { ok: true, changed: false, reason: 'the installed client is the one this launcher ships', installed, shipped }
+
+  // Write beside it and rename, so a failure half way cannot leave the game
+  // with a truncated proxy DLL — without binkw32.dll the exe does not start.
+  const tmp = assertWritable(`${proxy}.new`)
+  fs.copyFileSync(shipped.path, tmp)
+  try { fs.rmSync(proxy, { force: true }) } catch {}
+  fs.renameSync(tmp, proxy)
+
+  const after = sha256File(proxy)
+  if (after !== shipped.sha256) throw new Error(`Updating the ENW client failed: ${proxy} is ${after}, expected ${shipped.sha256}.`)
+
+  return {
+    ok: true,
+    changed: true,
+    reason: `updated the ENW client from ${installed.sha256.slice(0, 12)} to ${shipped.sha256.slice(0, 12)} (${shipped.via})`,
+    installed,
+    shipped,
+  }
+}
+
+export function status({ repoRoot = null } = {}) {
   let manifest = null
   try { manifest = JSON.parse(fs.readFileSync(P.setupManifest, 'utf8')) } catch {}
   const gameExe = path.join(P.game, 'CoDWaW.exe')
   const proxy = path.join(P.game, 'binkw32.dll')
   const original = path.join(P.game, 'binkw32_org.dll')
+  const clientDll = fs.existsSync(proxy)
+    ? { path: proxy, size: fs.statSync(proxy).size, sha256: sha256File(proxy) }
+    : null
+  let shipped = null
+  try { shipped = shippedClientDll({ repoRoot }) } catch {}
+  if (clientDll && shipped) {
+    clientDll.shipped = shipped
+    // `stale` is what the UI should act on, and Play repairs it automatically.
+    clientDll.stale = clientDll.sha256 !== shipped.sha256
+  }
   return {
     installed: fs.existsSync(gameExe) && fs.existsSync(proxy) && fs.existsSync(original),
     gameDir: P.game,
     gameExe: fs.existsSync(gameExe) ? gameExe : null,
-    clientDll: fs.existsSync(proxy) ? { path: proxy, size: fs.statSync(proxy).size, sha256: sha256File(proxy) } : null,
+    clientDll,
     manifest,
   }
 }
