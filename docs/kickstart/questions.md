@@ -427,3 +427,31 @@ the Steam client, so I have stopped rather than work around it.
 `powershell -File scratchpad\jointest.ps1 -Tag join3 -ClientFrom dedi-client`.
 **Assumption carried:** the client-connect work is finished and correct; it is untested only because
 nothing can launch.
+
+## vps — the Hetzner dev box costs €7.19/month gross, not under €6 (2026-09-22 02:32)
+You authorised one Hetzner box with the rule "if it is over €6.00 a month, stop and ask". It is
+over, so I stopped before creating anything. Nothing has been spent and the `enw-zombies` project
+is still empty.
+
+The cheapest x86 shared-vCPU type that meets the spec (≥2 vCPU, ≥4 GB RAM, ≥40 GB disk, not
+deprecated) is **cx23** — 2 vCPU, 4 GB, 40 GB, in nbg1 or fsn1:
+
+| | net | gross (20 % VAT) |
+|---|---|---|
+| cx23 hourly | €0.0088 | €0.01056 |
+| cx23 monthly | €5.49 | €6.588 |
+| primary IPv4 monthly (not optional — WaW is IPv4-only) | €0.50 | €0.60 |
+| **all-in monthly** | **€5.99** | **€7.188** |
+
+So it is **under €6 net and over €6 gross**. The old cheap 3-vCPU `cpx21` no longer exists —
+unavailable in every location since 2025-12-31.
+
+**Ask: one of these.**
+1. **"Go"** — I create cx23 in nbg1 at €7.19/month gross, and it is deletable in one command
+   (`hcloud server delete zombies-dev`), so the real exposure is hourly: about €0.012/h gross.
+2. **Raise the ceiling to a number** (e.g. €7.50 gross) and I proceed.
+3. **No** — and the Wine/Steam experiment happens on B's own hardware or not at all.
+
+Worth knowing before you answer: 40 GB of disk is tight. Wine plus a headless Windows Steam plus
+WaW (~12 GB) fits, but with little room for a second copy or a dump. cx33 (4 vCPU, 8 GB, 80 GB) is
+€8.49 net / €10.188 gross — nearly double, and the only reason to pay it is headroom.

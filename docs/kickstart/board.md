@@ -3433,6 +3433,19 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
 - 02:00 infra: **`infra\firewall.ps1`** — B runs it **once, elevated**, and Windows stops asking to
   allow the game every time an agent makes a new dev copy. One UAC prompt; `-Remove` undoes it.
   It covers the dev copies that do not exist yet as well as the ones that do.
+- 02:32 vps: **the Hetzner dev box was NOT created — the cheapest type that meets the spec costs
+  more than the ceiling B set.** Project `enw-zombies` verified empty (server, volume, floating-ip,
+  primary-ip, firewall, ssh-key, network, load-balancer, placement-group all list zero). `hcloud`
+  1.68.0 is not in winget (`Hetzner.hcloud` → no package found); it is the GitHub release zip, run
+  from the scratchpad. Cheapest x86 shared type with ≥2 vCPU / ≥4 GB / ≥40 GB that is **not**
+  deprecated is **cx23** (2 vCPU, 4 GB, 40 GB) in nbg1/fsn1: **€0.0088/h net, €5.49/mo net;
+  €0.01056/h gross, €6.588/mo gross** (account VAT rate 20 %). A primary IPv4 is billed on top at
+  €0.50/mo net, €0.60/mo gross — and the game is IPv4-only, so it is not optional. All-in
+  **€5.99/mo net, €7.188/mo gross**. The brief's stop rule was "over €6.00/month, stop and ask",
+  so nothing was created and nothing was spent. cpx21 (the old €4-ish 3-vCPU type) is **gone** —
+  unavailable in every location since 2025-12-31. Next cheapest alternatives: cx33 (4 vCPU, 8 GB,
+  80 GB) €8.49/mo net / €10.188 gross; cpx22 €19.49 net / €23.388 gross. Waiting on B for a yes or
+  a new ceiling.
 
 ---
 
