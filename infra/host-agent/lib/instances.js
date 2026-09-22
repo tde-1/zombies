@@ -180,6 +180,26 @@ export class Instance extends EventEmitter {
 
   start() {
     if (this.kind === 'game') {
+      // ONE REAL GAME PER BOX, and say so out loud.
+      //
+      // Every game instance this manager starts uses the same `gameCopy`, so the same
+      // ZombiesDev\waw-<copy>, the same fs_homepath, and the same game.lock owner name.
+      // `launch.ps1` takes the lock exclusively, so a second one throws. Measured:
+      // `--boot 2 --game` starts both in the same tick, the lock file does not exist yet
+      // for the check below, inst-02's PowerShell exits 1, and the referee logs it as
+      // `server_crash` — a game that never existed, recorded as a crashed one.
+      //
+      // Refuse it here instead, with the actual reason. Lifting the limit needs a game
+      // copy and a homepath PER INSTANCE plus `-Companion` for the second onwards; the
+      // engine itself is fine with it (two headless servers coexist — see
+      // docs/kickstart/host.md §10.5).
+      const otherGame = [...this.mgr.instances.values()].find(
+        (i) => i !== this && i.kind === 'game' && (i.state === 'starting' || i.state === 'running'))
+      if (otherGame && !this.mgr.dryRun) {
+        this.state = 'failed'
+        this.failReason = `only one real game per box: ${otherGame.id} already holds game copy "${this.mgr.gameCopy}" and the game lock`
+        this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
+      }
       // launch.ps1 owns the lock (dev-box.md rule 5). We must NOT take it as well — two
       // holders is worse than none — but we check it first so the refusal is ours and
       // legible, rather than a PowerShell throw in a log file.

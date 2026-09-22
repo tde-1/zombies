@@ -137,10 +137,32 @@ node host.js --boot 1 --game --map nazi_zombie_prototype --dry-run   # prints th
 node host.js --boot 1 --game --map nazi_zombie_prototype             # for real
 ```
 
-That needs a game copy (`tools\dev\new-copy.ps1 host`) and the DLL deployed into it
-(`tools\dev\deploy.ps1 host -From <build>`). **`launch.ps1` takes `game.lock`, not the host agent** —
+That needs a game copy (`tools\dev\new-copy.ps1 host`) and the **dedicated** DLL deployed into it
+(`tools\dev\deploy.ps1 host -From dedi`). **`launch.ps1` takes `game.lock`, not the host agent** —
 the agent checks the lock, refuses if another agent holds it, and adopts the PID the launcher
 prints. Several agents share this machine; take the lock, use it, release it.
+
+This really is headless: `+set dedicated 1`, `+map` last, and `ENW_RAW_SOCKETS` +
+`ENW_DEDI_SUPPRESS_MAPSUMMARY` in the environment. All of it is in `lib/instances.js`
+`gameArgs()`/`gameEnv()`, and `tools/dev/jointest.ps1`'s server half is the source of truth —
+if they ever disagree, jointest wins.
+
+**Check it with the wire, not the log.** `python tools\dev\oob.py <port>` exits 0 only when the
+server actually answered:
+
+```
+getstatus      ANSWERED   statusResponse \mapname\nazi_zombie_prototype \sv_maxclients\4
+getchallenge   ANSWERED   challengeResponse 1606104307 …
+```
+
+`getinfo` gets no reply — known, harmless, and not worth chasing.
+
+**One real game per box.** Every game instance shares the manager's game copy, its homepath and
+the game lock, so a second one is refused with `only one real game per box`. The *engine* is happy
+with several (two headless servers coexist; the second takes udp 3075 when 3074 is busy) — it is
+the agent that would need a copy per instance. `docs/kickstart/host.md` §10.5.
+
+Costs, measured: **0.050 of a core and 185 MiB, headless, map loaded, no players.**
 
 ## Where things go
 

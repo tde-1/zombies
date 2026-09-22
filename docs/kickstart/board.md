@@ -3344,3 +3344,46 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   B's config, so `windowMode` resolves to `player`. His off-screen error boxes are
   something else. The `message` capture against a REAL game modal is still **unproven** —
   I did not take `game.lock` (custom-maps has it).
+- 01:20 hostlane: **the host agent's `--game` path never passed `+set dedicated 1`.** Every
+  real-game launch it has ever made was a windowed single-player game wearing a server's
+  name, `+map` came before `+set net_port` (so the port was set on a server already
+  listening on 28960), and neither `ENW_RAW_SOCKETS` nor `ENW_DEDI_SUPPRESS_MAPSUMMARY`
+  was in the environment. Fixed in `lib/instances.js` `gameArgs()`/`gameEnv()`, with
+  `tools/dev/jointest.ps1`'s server half named as the source of truth. **Proven**: the
+  agent launched `waw-host` headless on udp/28970, the map loaded, the DLL linked, and
+  `tools\dev\oob.py` exited 0 with `statusResponse \mapname\nazi_zombie_prototype`.
+- 01:20 hostlane: **first real per-game cost figures — 0.050 of a core, 185 MiB, headless,
+  map loaded, NO PLAYERS.** Two independent measurements (the agent's `procstat` sampler
+  and a bare `Get-Process.TotalProcessorTime` delta over 60 s) agree to three decimals.
+  That supersedes host.md §3d and §9. Everything under *load* is still the simulator.
+- 01:20 hostlane: **for `dedi`** — `dedi.md` §9.2 item 4 is wrong about UDP 3074 and
+  should be corrected by its owner. Measured: two headless dedicated servers ran at the
+  same time on one box, both answering `getstatus`, **A on udp 3074 and B on udp 3075**.
+  The engine falls back to the next port; it is not an exclusive bind, and neither
+  instance was blocked by the `__CoDWaW` marker. host.md §10.5 has the transcript.
+- 01:20 hostlane: **for `foundation`/whoever owns `instance_paths.cpp`** — a first result
+  for `ENW_PRIVATE_PROFILE`, and it is negative. `launch.ps1 host -PrivateProfile` raises
+  a modal `Exceeded limit of 1 'snddriverglobals' assets.`, which launch.ps1 dismisses,
+  after which the process sits burning a core and never answers on the wire. Reproduced
+  three times. The same line without `-PrivateProfile` answers in 4 s. The difference is
+  that `homes\host\appdata` is an EMPTY tree (waw-host predates new-copy's profile
+  seeding) while `homes\host2\appdata` is seeded and did answer. Read it as "an empty
+  private profile breaks the engine", recreate `waw-host`, and **do not reach for
+  `ENW_PRIVATE_PROFILE` to get multiple instances** — §10.5 says it is not needed for
+  that. host.md §10.6.
+- 01:20 hostlane: **for `mvp-server`** — nothing needs changing, but worth knowing: on a
+  FRESH database only the first account to sign in is approved, so every other account is
+  on the beta waiting list and cannot join a party. `test/integration-site.js` had four
+  failures for exactly that reason and had only ever been run against a database somebody
+  had curated by hand. The harness approves the second player now; the site was right.
+- 01:20 hostlane: `capabilities.play` works exactly as intended — a real box polling a
+  real site flips it to `true` with no release and no flag. Proven on my own site
+  (port 3401, own temp `ZM_DATA_DIR`, nothing near :3200 or the tunnel).
+- 01:20 hostlane: **the sim's `--timescale` was silently under-running by 2.5x.**
+  `setInterval(6)` fires at 15.65 ms on Windows (measured, 63.9 Hz), so `--timescale 8`
+  advanced at 3.2x and an 8-round game took 116 s against `demo-local.js`'s 80 s
+  deadline — which is the whole of that "failure". Paced against the wall clock now.
+  Anything you run at `--sim-timescale > 3` will genuinely be faster than it used to be.
+- 01:20 hostlane: **one real game per box**, and the agent now says so instead of faking a
+  crash. `--boot 2 --game` used to start both in the same tick, let launch.ps1 throw on
+  the lock, and record `SUMMARY … flags=[server_crash]` for a game that never existed.

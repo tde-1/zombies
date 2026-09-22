@@ -1,14 +1,17 @@
 # Host agent — design, how to run it, and the measured numbers
 
-> **STATUS (2026-09-20).** **Proven against the real website**: the whole control plane — party →
+> **STATUS (2026-09-22).** **Proven against the real website**: the whole control plane — party →
 > lease → boot → invite-token join → referee → signed, key-pinned replay → result → games, players,
 > XP and boards, plus live spectator frames and a spool that survives the site being down
-> (`node test/integration-site.js`, 0 failures). **Simulator-only**: everything on the *game* side.
-> No real zombies game has been refereed yet; a real `CoDWaW.exe` has connected to the game link
-> and said hello, nothing more, so every per-game CPU, RAM and replay-size figure here is measured
-> against `sim/` and moves when the DLL lands. **Off by default and must stay that way**: local
-> adoption (`--local` / `--adopt-local`, refused outright on a box with `--site`) and blind
-> adoption of an unregistered `hello`. Cold start: `infra/host-agent/README.md`.
+> (`node test/integration-site.js`, 0 failures). **Proven against a real `CoDWaW.exe`**: the host
+> agent now launches a genuine HEADLESS dedicated server, the map loads, and it answers
+> `getstatus`/`getchallenge` on the wire (`tools/dev/oob.py`, exit 0), for **0.046 of a core and
+> 185 MiB with no players** — the first per-game figures that are not the simulator. §10.3. Then it
+> stops cleanly, by PID, and releases the lock. **Still simulator-only**: everything a *player*
+> does. No real zombies game has been refereed, because no client spawns in yet, so every replay
+> size and every per-game cost *under load* in §3 is still `sim/`. **Off by default and must stay
+> that way**: local adoption (`--local` / `--adopt-local`, refused outright on a box with `--site`)
+> and blind adoption of an unregistered `hello`. Cold start: `infra/host-agent/README.md`.
 
 
 The **host agent** is the server software that runs on every game box. One process per box. It
@@ -286,6 +289,12 @@ SIMULATOR, not World at War**, and say nothing about WaW's cost:
 What this *does* establish: **the host agent's own overhead is negligible** — the game-link socket,
 the referee, the replay writer and the dashboard together cost well under a hundredth of a core per
 game, so the vault's per-game cost model is entirely about the game process.
+
+> **SUPERSEDED 2026-09-22 (§10.3).** It has now been measured: **0.050 of a core and
+> 185 MiB, headless, map loaded, no players**, by two independent methods. And the 01:02
+> launch below did *not* prove what this paragraph says it did — `+set dedicated 1` was
+> never in the launch line, so the process it started was a windowed single-player game,
+> not a server. The rest of this sub-section is kept as written.
 
 **The real game has connected but has not been measured.** The 01:02 launch above proved the path
 and was stopped before the map loaded (the game lock belongs to the dedi agent most of the time
@@ -760,10 +769,10 @@ agent touches it.
 
 ## 9. What is not done, and what to do next
 
-* **The real game has connected but not been measured.** One launch got as far as `hello`; the
-  next session should hold the lock long enough to load a map, get a round or two, and read
-  `instances[].usage` for the per-game core and RAM figures. That is still the single most valuable
-  next step, and it is now a one-liner.
+* ~~**The real game has connected but not been measured.**~~ **Done 2026-09-22, §10.3**: a real
+  headless dedicated server, launched by this agent, answering `getstatus` on the wire, at
+  **0.050 of a core and 185 MiB with no players**. What is still owed is a game with a **player**
+  in it — the round counts, the replay contents and the cost under load are all still simulator.
 * **Real-game launch notes for whoever picks this up.** The game copy is `ZombiesDev\waw-host`
   (`tools\dev\new-copy.ps1 host`), the DLL goes in with `tools\dev\deploy.ps1 host -From <build>`,
   and `launch.ps1` — not the host agent — takes `game.lock`, under the name of the copy (`host`).
@@ -796,3 +805,340 @@ agent touches it.
 * **The `games_mp.log` prefix is not settled.** The referee agent proposes `GSE;` for the DLL side;
   the host writes `ENWZombie;` today. Both are one configurable string (`--game-log-prefix`). One
   of us should win — see the note at the end of `questions.md`.
+
+---
+
+## 10. Session 2026-09-22 — `hostlane`: the box, end to end, against a real game
+
+Everything in this section was run tonight on B's PC. **Observation and inference are kept
+apart**, and where a number is a sandbox artefact it says so.
+
+### 10.0 The state before anything was changed
+
+Run first, fix second. This is what the suites said on arrival:
+
+| Suite | Result |
+|---|---|
+| `infra/host-agent/test/run-all.js` | **41 passed, 0 failed** |
+| `infra/host-agent/test/demo-network.js` | **0 failures** (two boxes, mock site, tokens, chat, cap, AFK, 3 replays verified) |
+| `infra/host-agent/test/demo-local.js` | **2 failures** then a crash — see §10.1 |
+| `web/` `npm run check` | **55 + 27 + 8, 0 failed** |
+| `infra/host-agent/test/integration-site.js` | **4 failures** on a fresh site — see §10.4 |
+
+So: three of five green, and both red ones were the harness, not the product. Neither had
+ever been run in a state that could expose them.
+
+### 10.1 `--timescale` silently under-ran by 2.5x, and that is what broke `demo-local`
+
+`test/demo-local.js` failed with `no summary` and then `replay invalid: no footer magic`.
+The obvious read — the local-adoption path is broken — was wrong. The game was refereed
+perfectly; it just took **116 s** of wall clock where the test waits **80 s**.
+
+The sim paced itself with `setInterval(TICK_MS / timescale)` and a fixed batch per fire.
+Nothing in that process raises the Windows timer resolution, so:
+
+```
+200 fires of setInterval(6) took 3130 ms => 15.65 ms each -> 63.9 Hz
+```
+
+`--timescale 8` asks for one 50 ms tick every 6 ms, gets one every 15.65 ms, and therefore
+advances at **3.2x, not 8x**. Measured, not reasoned: the 8-round solo game reports
+`sim time 6m12s` and took 116 s of wall clock. 372/116 = 3.2.
+
+Fixed by pacing against the wall clock — each fire steps as many ticks as the elapsed time
+has earned, capped at 20 s of sim time so a stalled process cannot come back and spin.
+`demo-local.js` now finishes in ~46 s: **0 failures, all 13 checks**.
+
+**Inference, not observation**: every `--sim-timescale` number in §3 was measured through
+the same pacing, so anything derived from *elapsed wall time* at a high timescale was
+optimistic. The replay sizes in §3a are per **game-hour** and come off the sim clock, so
+they do not move. The density and soak numbers in §3e/§3h are wall-clock and were taken at
+1x or low timescale, so they do not move either. Nothing in §3 is retracted — but anything
+measured at timescale > 3 from here on will genuinely run faster than it used to.
+
+### 10.2 A real box goes ONLINE and the launcher's Play button turns itself on
+
+The launcher greys Play on `capabilities.play`, which is
+`require('web/server/lib/boxes').list().some((b) => b.online)` in
+`web/server/routes/launcher.js`. That was the thing to prove.
+
+Own site on a spare port, own temp data dir, nothing near :3200 or the tunnel:
+
+```bash
+ZM_DATA_DIR=C:/Users/b/ZombiesDev/tmp-hostlane/data node web/server/db/seed.js
+ZM_DATA_DIR=... ZM_PORT=3401 node web/server/index.js
+node infra/host-agent/host.js --site http://127.0.0.1:3401 --secret devkey-a --box box-a \
+     --link-port 38871 --dash-port 8871 --base-port 29800
+```
+
+Before the box: `GET /api/launcher/hello` -> `"play": false`. After ~10 s of polling:
+
+```
+23:36:16 info host  site invite key 6d8343c234c99b8a loaded — token checks ENFORCED
+23:36:26 info host  replay key 7e9a0b0621f3c345 is PINNED at the site — replays are record-grade
+```
+
+```js
+boxes.list().some(b => b.online) === true
+{ "id": 1, "name": "box-a", "online": true, "last_state": "idle",
+  "key": { "pinned": "7e9a0b0621f3c345", "pinned_at": 1790033786078, "pending": null } }
+```
+
+and the JSON the launcher actually receives:
+
+```json
+"capabilities": { "play": true, "settings": true, "state": true, "reports": true,
+                  "live_view": true, "local": true, "map_downloads": true,
+                  "replay_downloads": true, "local_resume": true, "og_cards": false }
+```
+
+**`play` is true the moment a box polls, with no release and no flag.** That half of the
+MVP needs nothing further; it was already correct and had simply never been exercised
+against a box on a database that had one.
+
+Note for whoever runs this next: a site data dir under a long path fails with
+`SQLITE_CANTOPEN` and the message names neither the path nor the length. Keep it short —
+`C:\Users\b\ZombiesDev\tmp-...` rather than a deep scratch directory.
+
+### 10.3 A REAL headless game, launched by the host agent, answering on the wire
+
+This is the one that had never been done. §3d and §9 both say the real game has connected
+but never been measured; that is now out of date.
+
+**Three things were wrong with `--game`, and none of them could ever have worked:**
+
+1. **`+set dedicated 1` was never passed at all.** `gameArgs()` emitted `fs_game`, `map`
+   and `net_port` and nothing else. Every `--game` launch this agent has ever made was a
+   windowed single-player game wearing a server's name. The 01:02 run in the header that
+   "proved the path" proved the *launch* path; the process it started was not a server.
+2. **`+map` came before `+set net_port`.** The engine runs `+` commands in command-line
+   order and `+map` is the one that starts the server, so the port was set on a server that
+   was already listening on 28960. A box would then probe a port nothing was on.
+3. **Neither `ENW_RAW_SOCKETS` nor `ENW_DEDI_SUPPRESS_MAPSUMMARY` was set.** Both are
+   proven engine blockers (dedi.md §7f wall 2 and §0), not hygiene: without the first the
+   server answers nothing at all, and without the second `Com_Init` never returns.
+
+The recipe now lives in `lib/instances.js` `gameArgs()`/`gameEnv()` with
+`tools/dev/jointest.ps1`'s server half named as its source of truth.
+
+**The run**, `waw-host` with `build/dedi` deployed, `node host.js --boot 1 --game --map
+nazi_zombie_prototype --base-port 28970 --game-copy host`:
+
+```
+23:44:54 info host/inst/inst-01  start game port 28970
+23:44:56 info host               instance inst-01 linked (pid 24704, Sep 20 2026 00:58:12)
+[proof] udp/28970 ANSWERED after 4s (oob.py exit 0)
+    getstatus      ANSWERED   674 bytes: statusResponse \mapname\nazi_zombie_prototype
+                              \sv_maxclients\4 \protocol\62 \gamename\Call of Duty: World at War
+    getinfo        NO REPLY
+    getchallenge   ANSWERED   45 bytes: challengeResponse 1606104307 MYOMMKtyYPM=
+23:44:57 info host/inst-01       map_loaded nazi_zombie_prototype -> manifest "Nacht der Untoten"
+23:44:57 info host/inst-01       recording -> ZombiesDev\replays\m_58da71bb.enwr
+23:45:06 info host/inst/inst-01  game PID 24704 adopted (launcher holds game.lock as "host")
+```
+
+**The gate is `oob.py`'s exit code**, never a grep — jointest.ps1's own warning, because
+"REPLY" matches inside "NO REPLY".
+
+**The first real per-game cost figures. These are `CoDWaW.exe`, not the simulator:**
+
+| | value |
+|---|---|
+| CPU, headless, map loaded, no players | **0.046 of a core** (`usage.cores_avg`, over 45 s) |
+| RSS | **185 MiB**, flat, peak == current |
+| Time from `start game` to answering on udp | **4 s** |
+| Threads | 16–18 |
+
+That is **~7x lower than the 0.3–0.8 core per game** in vault 14's cost model, and it agrees
+closely with `dedi`'s own independent soak (4.85% of a core, 186.3 MB). **The caveat that
+matters: no players.** A player, zombies and 20 Hz snapshots are all still to come, so treat
+0.046 as the idle floor, not the per-game figure.
+
+**The clean stop, which is the other half of the claim:**
+
+```
+POST /api/instance/inst-01/stop -> 200
+23:45:45 info host/inst/inst-01  stopping: stopped from the dashboard
+23:45:46 info host/inst/inst-01  exit code=null signal=killed
+lock after stop: (none — released)
+CoDWaW.exe PIDs after: [none]
+every PID that existed before us is still alive — we killed only our own
+```
+
+`stop()` runs `taskkill /PID <gamePid> /T /F` — the adopted game PID, never a name — and
+`releaseGameLock` only deletes a lock whose owner string matches, so it cannot free another
+agent's. One gap found and fixed while proving it: `/api/state` reported only `pid`, which
+for a real game is the **PowerShell wrapper** that exits seconds later. The game's own PID
+is now `game_pid` in the instance info.
+
+**`getinfo` gets NO REPLY while `getstatus` and `getchallenge` answer.** Observed on two
+different instances, twice each. Not chased — `getinfo` is the server-browser heartbeat
+reply and nothing we do needs it — but it is a real asymmetry and worth knowing before
+somebody spends an evening on a master-list listing.
+
+### 10.4 The result path, on a fresh site, with nothing curated by hand
+
+`test/integration-site.js` against the temp site: **0 failures, 20 checks**, party -> lease
+-> boot -> invite tokens -> referee -> signed replay -> result -> games/players/XP.
+
+```
+game    nazi_zombie_factory round 12 finish=none mode=verified eligible=true
+player  Leader  score 3900  xp 1193  rounds 12
+player  Mate    score 3680  xp 1193  rounds 12
+replay  958891 bytes, key 96de531ff9d313d9, pinned=true
+m_ef63a067.enwr: VALID against the pinned key — 12 chunks, 28631 events
+...and it correctly FAILS against a key that is not the pin
+```
+
+The run reaches the home feed (`GET /api/home` -> `feed[].kind = "record"`, both players,
+Der Riese), and the **replay slot is real, not a placeholder**:
+
+```json
+{"match_id":"m_ef63a067","box":"box-b","size":958891,"chunks":12,"events":28631,
+ "key_id":"96de531ff9d313d9","key_pinned":true,"tier":"full","grade":"signed",
+ "reason":"signed by the box's pinned key","available":false,
+ "verify_command":"node infra/host-agent/tools/verify.js \"...m_ef63a067.enwr\" --pub 3nHwgv..."}
+```
+
+`available:false` is honest rather than broken: the bytes were written into the test run's
+own replay dir, not the site's, and the site says so instead of pretending.
+
+**Why it had four failures before.** On a fresh database only the **first** account to sign
+in is approved (`routes/auth.js` makes it admin); everybody else is on the beta waiting list
+and `requireApproved` refuses them. So the second player could not join the party, and three
+more checks fell over behind it. The harness had only ever been run against a database
+somebody had already curated. It now approves the mate through the admin route the leader
+already has rights to, best-effort and idempotent. **The site was right and the test was
+wrong** — worth saying plainly, because the first reading was "party join is broken".
+
+### 10.5 Two headless instances on one box — measured, and it works
+
+`dedi.md` §9.2 item 4 records this as unsolved: several games share
+`%LOCALAPPDATA%\Activision\codwaw` including the single-instance `__CoDWaW` marker, and
+"collide on **UDP 3074**". **The engine half of that is wrong, and the measurement is
+cheap enough that nobody should have had to guess.**
+
+Two headless dedicated servers, two game copies (`waw-host`, `waw-host2`), both on the
+**shared** profile, the second launched `-Companion` so only one `game.lock` ever exists:
+
+```
+A  waw-host   PID 29044  udp 3074, 28970   ANSWERED (oob.py exit 0)   182 -> 185 MB, 10 -> 13 threads
+B  waw-host2  PID 30208  udp 3075, 28971   ANSWERED (oob.py exit 0)   182 MB,        10 -> 12 threads
+SIMULTANEOUS: A(udp/28970) exit 0 ANSWERED   B(udp/28971) exit 0 ANSWERED
+3074 owners: 29044          (one process, not two)
+```
+
+**The engine falls back from 3074 to 3075.** It is not a hardcoded exclusive bind; the
+second instance takes the next port and neither cares. Both served `getstatus` and
+`getchallenge` at the same time, on their own `net_port`s, with `mapname
+nazi_zombie_prototype` in both replies.
+
+Neither instance was blocked by the `__CoDWaW` marker either. Markers **are** created (a
+later launch cleared a stale one naming a dead PID), but nothing refused a launch, and
+`launch.ps1 -Companion` already tolerates a marker that belongs to the experiment's first
+instance.
+
+**So the engine supports several instances per box today. The host agent does not**, and
+that is now the limit:
+
+* every game instance uses the manager's single `gameCopy`, so the same
+  `ZombiesDev\waw-<copy>`, the same `fs_homepath`, and the same `game.lock` owner name;
+* `launch.ps1` takes the lock exclusively, so the second launch throws.
+
+Observed, not reasoned — `--boot 2 --game` before the fix:
+
+```
+00:10:06 info  host/inst/inst-02  start game port 28972
+00:10:08 info  host/inst/inst-02  exit code=1 signal=- (unexpected)
+00:10:08 warn  host/inst-02       instance exited unexpectedly — saving the game up to the crash
+00:10:08 info  host/inst-02       SUMMARY null round 0 flags=[server_crash]
+```
+
+A game that never existed, recorded as a **crashed** one, because both started in the same
+tick and the lock file did not exist yet for the pre-flight check. It now refuses with the
+real reason and no fake crash:
+
+```
+00:11:51 warn  host/inst/inst-02  only one real game per box: inst-01 already holds game copy "host" and the game lock
+```
+
+**What it would take to lift it** (not done, and it is a design decision, not a bug fix):
+
+1. **A game copy per instance.** `waw-host`, `waw-host2`, … — `tools\dev\new-copy.ps1` makes
+   one for ~12 MB of real files plus junctions, so this is cheap. `gameCopy` moves from the
+   manager to the Instance.
+2. **`-Companion` for instances 2..n**, so one box still holds exactly one `game.lock`. The
+   alternative — a counting lock — changes a rule three agents rely on, and should not be
+   done quietly.
+3. **Nothing about UDP 3074.** Measured above.
+4. **Probably nothing about the profile either** — see §10.6, which is the surprise.
+
+### 10.6 `ENW_PRIVATE_PROFILE` is not the fix, and on an unseeded copy it is the problem
+
+`shared/core/components/instance_paths.cpp` exists to give each instance its own AppData
+(an IAT patch on `SHGetFolderPathA`), gated behind `ENW_PRIVATE_PROFILE=1` and marked in
+its own header as **NOT YET PROVEN END TO END**. It now has a first result, and it is a
+negative one.
+
+`launch.ps1 host -PrivateProfile`, one instance, no companion, nothing else running:
+
+```
+dialog answered: 'Error' >> Cancel [2:OK]  msg: Exceeded limit of 1 'snddriverglobals' assets.
+[cpu] answered on udp/28970: False
+```
+
+**Reproduced twice, and once more inside the two-instance run.** Without `-PrivateProfile`
+the identical launch line answers in 4 s. The difference is the profile directory:
+
+| copy | `homes\<name>\appdata\Activision\CoDWaW` | with `-PrivateProfile` |
+|---|---|---|
+| `waw-host` (made 2026-09-20, before new-copy seeded profiles) | exists but **empty** — `launch.ps1` creates the tree, nothing fills it | **fails**, `snddriverglobals`, never answers |
+| `waw-host2` (made tonight) | a full profile tree seeded from B's own | **answered** on udp/28971 |
+
+So the reading is **"an empty private profile breaks the engine"**, not "the IAT patch is
+broken" — and the failure mode is the worst kind: a modal error box that `launch.ps1`
+dismisses, after which the process sits there burning a core and answering nothing. A
+harness that gated on "is the process alive" would call that a healthy server.
+
+**Recommendation: do not turn `ENW_PRIVATE_PROFILE` on to get multiple instances.** The
+measurement in §10.5 says it is not needed for that, and this section says it costs a whole
+new failure mode. Keep it for the case it was actually written for — a player's own PC,
+where the profile genuinely must not be shared — and make `new-copy.ps1`'s seeding a hard
+precondition of using it. `waw-host` should be recreated before anybody tries it again.
+
+### 10.7 What is now proven, what is not, and what needs B
+
+**Proven tonight, with the evidence above:**
+
+| | |
+|---|---|
+| A box goes online and the launcher's Play button un-greys | §10.2 — `boxes.list().some(b => b.online) === true`, `"play": true` |
+| The host agent launches a REAL headless dedicated server | §10.3 — `oob.py` exit 0, `statusResponse \mapname\nazi_zombie_prototype` |
+| What an idle real server costs | **0.050 of a core, 185 MiB** — two independent measurements agreeing |
+| It stops cleanly, by PID, and releases the lock | §10.3 — `taskkill /PID`, `lock after stop: (none)`, nothing else killed |
+| Lease → boot → tokens → referee → signed replay → result → DB → home feed | §10.4 — 20 checks, 0 failures, on a database nobody had curated |
+| Replays have a real slot, not a placeholder | §10.4 — pointer, grade, key pin, `verify_command`, download gating |
+| Two headless servers coexist on one box | §10.5 — both answering, 3074 → 3075 |
+
+**Not proven, and nobody should claim it:**
+
+* **No player has ever been in one of these games.** Everything above is a server with an
+  empty roster. The referee, the rounds, the replay contents and every per-game cost *under
+  load* are still the simulator. That waits on the client spawning in.
+* **0.050 of a core is the idle floor, not the per-game cost.** A player, zombies and 20 Hz
+  snapshots are all still to come.
+* **`getinfo` gets NO REPLY** while `getstatus` and `getchallenge` answer. Seen on every
+  instance, every time. Nothing we do needs it; a server-browser listing would.
+* **Three or more instances** were not tried. Two work; the port fallback suggests more
+  will, but that is inference.
+* **The 20-hour soak is still owed** (§3h), and now there is a real game to point it at.
+
+**Needs a decision from B, not from us:**
+
+1. **Does a box run one game or several?** The engine allows several (§10.5) and the host
+   agent allows one. Lifting it is a copy per instance plus `-Companion`, roughly half a
+   day, and it changes how `game.lock` reads on a busy box. It is not on the MVP path —
+   one player, one map, one run — so it should probably wait.
+2. **`waw-host` wants recreating** (`new-copy.ps1 host -Force`) so its private profile is
+   seeded. Harmless either way while `ENW_PRIVATE_PROFILE` stays off, which is the
+   recommendation in §10.6.
