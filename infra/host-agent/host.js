@@ -17,6 +17,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EventEmitter } from 'node:events'
+import { execFile } from 'node:child_process'
 import { makeLog, parseArgs, setLogLevel, mkdirp, id as makeId, fmtBytes, fmtDur, sha256hex } from './lib/util.js'
 import { GameLinkServer } from './lib/gamelink.js'
 import { InstanceManager } from './lib/instances.js'
@@ -642,6 +643,54 @@ class HostAgent {
     })
   }
 
+  /**
+   * A MODAL DIALOG ON A HEADLESS SERVER IS A HANG, AND IT LOOKED LIKE THREE OTHER THINGS.
+   *
+   * MEASURED 2026-09-22 19:07 (B's first Play after 0.2.6): inst-02 linked, then sat at
+   * `frames=0` for 160 s while B's client dialled it and got PLATFORM_DISCONNECTED and a
+   * black screen. On the Xvfb display was a "Set Optimal Settings?" box from codwaw.exe:
+   * the instance had re-run the engine's hardware detection while the retiring instance
+   * was still tearing down beside it, measured the CPU at 0.04 GHz, got `sys_configSum 0`
+   * against the profile's saved sum, and the engine asked a question nobody could answer.
+   * One `xdotool key Escape` on that window and the same process ran its frames and
+   * announced `map_loaded` within seconds. Every inst-02 log on the box (six runs) had the
+   * same zero frames - the "parks inside Com_Init" note in onAssignment was this dialog.
+   *
+   * So, after `hello`: if the map has not been announced within the grace period, look for
+   * the engine's startup dialogs on the wine display and press Escape on them, every 5 s
+   * until `map_loaded` or the deadline. The real fix is a MessageBoxA hook in the dedi DLL
+   * (pending); this is the belt the box wears until it ships. Wine only - on Windows the
+   * launcher's own no_winconsole/REFUSE path covers this.
+   */
+  watchStartupDialog(g) {
+    const display = cfg.wine?.display
+    if (!cfg.wine || !display) return
+    const started = Date.now()
+    const deadline = started + 120_000
+    let done = false
+    let timer = null
+    const stop = () => { done = true; clearTimeout(timer) }
+    g.once('map_loaded', stop)
+    const titles = ['Set Optimal Settings', 'World at War Error']
+    const env = { ...process.env, DISPLAY: display }
+    const tick = () => {
+      if (done || g.finished) return
+      if (Date.now() > deadline) { g.log.warn(`no map_loaded ${Math.round((Date.now() - started) / 1000)} s after link and no dialog to dismiss - giving up the dialog watch`); return }
+      let pending = titles.length
+      for (const title of titles) {
+        execFile('xdotool', ['search', '--name', title], { env }, (_err, out) => {
+          for (const id of String(out || '').split(/\s+/).filter(Boolean)) {
+            g.log.warn(`startup dialog "${title}" (window ${id}) is blocking the engine - pressing Escape`)
+            execFile('xdotool', ['key', '--window', id, 'Escape'], { env }, () => {})
+          }
+          if (--pending === 0 && !done) { timer = setTimeout(tick, 5_000); timer.unref?.() }
+        })
+      }
+    }
+    timer = setTimeout(tick, 12_000)
+    timer.unref?.()
+  }
+
   async start() {
     await this.link.listen()
     this.instances.linkPort = this.link.port
@@ -653,6 +702,7 @@ class HostAgent {
       g.attach(conn)
       g.referee.onEvent(msg)
       g.record(msg)
+      this.watchStartupDialog(g)
     })
     this.instances.startSampling()
     this.reaper = setInterval(() => this.instances.reap(), 15_000); this.reaper.unref?.()
@@ -972,7 +1022,8 @@ class HostAgent {
     // The retire is AWAITED, and the boot is deferred until it finishes. Booting beside a
     // dying instance is not the same thing: measured on the box, the new process started
     // while the old one was still holding 3074 through its SIGTERM, bound NOTHING, and
-    // parked inside Com_Init with no `map_loaded` ever. `retire()` removes the instance
+    // parked inside Com_Init with no `map_loaded` ever (that park is the engine's "Set Optimal
+    // Settings?" dialog - see `watchStartupDialog`). `retire()` removes the instance
     // from `byInstance`, so the re-entry below sees an empty list and boots exactly once.
     const stale = [...this.byInstance.values()].filter(
       (g) => !g.finished && !this.warm.has(g.instance.id) && g.matchId !== asg.match_id)
