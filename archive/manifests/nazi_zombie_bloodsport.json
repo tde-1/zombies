@@ -168,5 +168,25 @@
       "nazi_zombie_bloodsport_patch.ff",
       "nazi_zombie_bloodsport.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30078 ms over the hold",
+    "first_error": null,
+    "match": "m_7fde1627",
+    "at": "2026-09-22T22:20:38",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30078,
+    "com_error": [],
+    "console_errors": [
+      "4121:******* script runtime error *******",
+      "4125:Error: called from:",
+      "4129:Error: called from:",
+      "4133:Error: called from:",
+      "4137:Error: started from:",
+      "4141:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

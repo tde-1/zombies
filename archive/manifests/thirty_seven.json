@@ -252,5 +252,25 @@
       "ugxm_guns.iwd:maps/_loadout.gsc",
       "zzzbo1_perks_ugx_mod.iwd:maps/_zombiemode_weapons.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40147 ms over the hold",
+    "first_error": null,
+    "match": "m_9bc26cc6",
+    "at": "2026-09-22T22:37:38",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40147,
+    "com_error": [],
+    "console_errors": [
+      "19274:Error: ************************************",
+      "19276:******* script runtime error *******",
+      "19280:Error: called from:",
+      "19284:Error: started from:",
+      "19288:Error: ************************************",
+      "19290:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

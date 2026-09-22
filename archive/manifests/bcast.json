@@ -221,5 +221,25 @@
       "mod.ff",
       "bcast.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35117 ms over the hold",
+    "first_error": "Could not load xanim \"pb_hold_run_right_satchel\".",
+    "match": "m_0f08d301",
+    "at": "2026-09-22T23:58:49",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35117,
+    "com_error": [],
+    "console_errors": [
+      "3150:Error: Could not load xanim \"pb_hold_run_right_satchel\".",
+      "3151:Error: Could not load xanim \"pb_hold_run_back_satchel\".",
+      "3152:Error: Could not load xanim \"pb_hold_run_satchel\".",
+      "3153:Error: Could not load xanim \"pb_sprint_hold_satchel\".",
+      "3154:Error: Could not load xanim \"pb_crouch_hold_idle_satchel\".",
+      "3155:Error: Could not load xanim \"pb_hold_idle_satchel\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -195,5 +195,25 @@
       "mod.ff",
       "escape_asylum.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40083 ms over the hold",
+    "first_error": null,
+    "match": "m_8b888cef",
+    "at": "2026-09-22T22:39:24",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40083,
+    "com_error": [],
+    "console_errors": [
+      "4796:******* script runtime error *******",
+      "4800:Error: called from:",
+      "4804:Error: called from:",
+      "4808:Error: called from:",
+      "4812:Error: started from:",
+      "4816:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

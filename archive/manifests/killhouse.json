@@ -163,5 +163,25 @@
       "mod.ff",
       "KillHouse.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40086 ms over the hold",
+    "first_error": "Could not load xmodel \"zombie_vending_jugg_on\".",
+    "match": "m_9179f169",
+    "at": "2026-09-22T22:09:49",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40086,
+    "com_error": [],
+    "console_errors": [
+      "5490:Error: ************************************",
+      "5499:Error: Could not load xmodel \"zombie_vending_jugg_on\".",
+      "5500:Error: Could not load xmodel \"zombie_vending_doubletap_on\".",
+      "5501:Error: Could not load xmodel \"zombie_vending_revive_on\".",
+      "5502:Error: Could not load xmodel \"zombie_vending_sleight_on\".",
+      "5503:Error: Could not load xmodel \"zombie_vending_packapunch_on\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -210,5 +210,25 @@
       "nazi_zombie_test_patch.ff",
       "purpledimension.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40097 ms over the hold",
+    "first_error": "WARNING: Could not load weapon file 'weapons/sp/zombie_bowie_flourish'",
+    "match": "m_2d210819",
+    "at": "2026-09-22T23:05:12",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40097,
+    "com_error": [],
+    "console_errors": [
+      "4238:Error: called from:",
+      "4242:Error: called from:",
+      "4246:Error: called from:",
+      "4250:Error: called from:",
+      "4254:Error: called from:",
+      "4258:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

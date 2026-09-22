@@ -175,5 +175,25 @@
       "nazi_zombie_tank_patch.ff",
       "nazi_zombie_tank.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35081 ms over the hold",
+    "first_error": null,
+    "match": "m_70870425",
+    "at": "2026-09-22T23:29:29",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35081,
+    "com_error": [],
+    "console_errors": [
+      "4399:Error: started from:",
+      "4403:Error: ************************************",
+      "4405:******* script runtime error *******",
+      "4409:Error: called from:",
+      "4413:Error: called from:",
+      "4417:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

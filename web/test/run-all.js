@@ -523,6 +523,29 @@ async function main() {
     parties.leave(G)
   })
 
+  // ── The 'box' level: loads on our servers, no client yet (B, 2026-09-23) ─────
+  check('a box-proven map is offered to a party, tagged New with its caveat; a box failure says why', () => {
+    const passKey = [...maps.BOX_PROVEN][0]
+    const failKey = Object.keys(maps.BOX).find((k) => maps.BOX[k].result === 'fail')
+    truthy(passKey, 'boxProven.json lists at least one pass')
+    const add = (key, health) => db.prepare(`INSERT OR IGNORE INTO maps (key, slug, title, source, health, main_finish, round_n, added_at)
+                                              VALUES (?,?,?,'custom',?,'round',20,?)`).run(key, key, key, health, now())
+    add(passKey, 'playable')
+    const one = (k) => maps.project(db.prepare('SELECT * FROM maps WHERE key=?').get(k))
+    eq(one(passKey).on_server, true, passKey + ' may be leased')
+    eq(one(passKey).server_level, 'box', 'at the box level')
+    truthy(/not yet played with a client/.test(one(passKey).server_note), 'with the caveat: ' + one(passKey).server_note)
+    eq(one('nazi_zombie_test').server_level, 'proven', 'the five-gate fixture is proven, not box')
+    db.prepare('UPDATE maps SET health=? WHERE key=?').run('broken', passKey)
+    eq(one(passKey).on_server, false, 'broken wins over a box pass')
+    db.prepare('UPDATE maps SET health=? WHERE key=?').run('playable', passKey)
+    if (failKey) {
+      add(failKey, 'broken')
+      eq(one(failKey).on_server, false, failKey + ' failed on the box')
+      truthy(/^Does not run on our servers: /.test(one(failKey).server_note), 'and says why: ' + one(failKey).server_note)
+    }
+  })
+
   // ── Steam pictures, no API key (lib/steamAvatar.js) ─────────────────────────
   check('the Steam picture comes out of the public profile XML, and only from Steam’s own hosts', () => {
     const steamAvatar = require('../server/lib/steamAvatar')

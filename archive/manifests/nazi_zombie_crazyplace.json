@@ -191,5 +191,25 @@
       "nazi_zombie_crazyplace_patch.ff",
       "thecrazyplace.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35088 ms over the hold",
+    "first_error": null,
+    "match": "m_3601e20c",
+    "at": "2026-09-23T00:02:04",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35088,
+    "com_error": [],
+    "console_errors": [
+      "6231:******* script runtime error *******",
+      "6235:Error: called from:",
+      "6239:Error: called from:",
+      "6243:Error: called from:",
+      "6247:Error: started from:",
+      "6251:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

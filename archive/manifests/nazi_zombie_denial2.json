@@ -178,5 +178,25 @@
       "nazi_zombie_denial2.ff",
       "nazi_zombie_denial2_patch.ff"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35082 ms over the hold",
+    "first_error": "Could not load rawfile \"shock/electrocution.shock\".",
+    "match": "m_2978f6ed",
+    "at": "2026-09-22T23:24:55",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35082,
+    "com_error": [],
+    "console_errors": [
+      "4195:Error: called from:",
+      "4199:Error: started from:",
+      "4203:Error: ************************************",
+      "4210:******* script runtime error *******",
+      "4215:Error: called from:",
+      "4219:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

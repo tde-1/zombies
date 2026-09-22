@@ -242,5 +242,25 @@
       "nazi_zombie_lorkeep_patch.ff",
       "nazi_zombie_lorkeep.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35126 ms over the hold",
+    "first_error": null,
+    "match": "m_cdb222e2",
+    "at": "2026-09-22T22:31:15",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35126,
+    "com_error": [],
+    "console_errors": [
+      "7545:Error: started from:",
+      "7549:Error: ************************************",
+      "7552:******* script runtime error *******",
+      "7556:Error: called from:",
+      "7560:Error: called from:",
+      "7564:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

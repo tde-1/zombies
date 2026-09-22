@@ -194,5 +194,25 @@
       "nazi_zombie_library_patch.ff",
       "library.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35088 ms over the hold",
+    "first_error": null,
+    "match": "m_df22eae0",
+    "at": "2026-09-22T23:03:38",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35088,
+    "com_error": [],
+    "console_errors": [
+      "4469:******* script runtime error *******",
+      "4473:Error: called from:",
+      "4477:Error: called from:",
+      "4481:Error: called from:",
+      "4485:Error: started from:",
+      "4489:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -183,5 +183,25 @@
       "nazi_zombie_ils.ff",
       "nazi_zombie_ils_patch.ff"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35082 ms over the hold",
+    "first_error": null,
+    "match": "m_f7346b9e",
+    "at": "2026-09-22T23:43:36",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35082,
+    "com_error": [],
+    "console_errors": [
+      "5394:******* script runtime error *******",
+      "5398:Error: called from:",
+      "5402:Error: called from:",
+      "5406:Error: called from:",
+      "5410:Error: started from:",
+      "5414:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

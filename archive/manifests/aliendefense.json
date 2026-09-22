@@ -170,5 +170,25 @@
       "mod.ff",
       "aliendefense.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35080 ms over the hold",
+    "first_error": null,
+    "match": "m_431b241e",
+    "at": "2026-09-22T23:09:29",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35080,
+    "com_error": [],
+    "console_errors": [
+      "4169:******* script runtime error *******",
+      "4173:Error: called from:",
+      "4177:Error: called from:",
+      "4181:Error: called from:",
+      "4185:Error: started from:",
+      "4189:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

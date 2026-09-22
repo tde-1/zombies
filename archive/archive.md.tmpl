@@ -598,6 +598,19 @@ cleared the size / name filter.
    that set.
 5. **One timeout**: Pokémon Kanto Carnage — Nighttime (`download1320.mediafire.com` read
    timeout, twice). Not retried tonight.
+6. **Two box installs failed with a `JSONDecodeError`** (Futurama, Arena Challenge). Not the
+   maps: `box_stage.py` passed its spec to the box as one base64 argument, and for a release
+   with 73 or 163 files that argument ran past ~8 KB and the Windows ssh command line cut
+   it. The spec now rides inside the script on stdin. Both installed and both passed.
+7. **A proof can be pre-empted.** The box runs one assignment; anybody's lease replaces
+   yours and the host SIGTERMs your instance. Mr. Freeze's first run was recorded as
+   *"map_loaded, then the process exited"*. The journal shows another lane's Nacht lease
+   44 s after Mr. Freeze loaded (22:33:43). Later, 23:27–23:33 box time, every lease was
+   dropped to idle about 3 s after it was made (another lane's instance-slot bug, fixed by
+   restarting the host agent at 23:38). `box_proof.py` now watches for both cases (a
+   foreign `assignment changed: leased`, or our lease going idle before we cancel it). It
+   records either as **skipped, not failed**, and a run inside that window was not counted
+   as an attempt.
 
 ### 10.3 The static pre-check (`archive/precheck.py`)
 
@@ -629,11 +642,17 @@ manifest. The launcher's download (`/api/maps/<bsp>/files`) serves from `extract
 sha256. The importer now honours a manifest's `health: "broken"`, which is how a map the box
 could not load is hidden from the Maps list and refused by a lease.
 
-**Not changed, deliberately:** `web/server/lib/maps.js` `SERVER_PROVEN` — the list a party's
-Start may lease. It demands a five-gate run *with a real client* and none of the 64 has one,
-so none of them is offered as a party map yet. The box proofs below went through
-`lease-cli.js --proof`, which widens that set **inside the CLI process only**; the live site
-never sets it.
+**`SERVER_PROVEN` is unchanged** (`web/server/lib/maps.js`): it still means a five-gate run
+*with a real client*, and none of the 64 has one. The box proofs below went through
+`lease-cli.js --proof`, which widens that set **inside the CLI process only**.
+
+**A second, weaker level, added 2026-09-23 on B's word** (*"push all the maps that
+currently work so I can try them out"*): `BOX_PROVEN`, read from the generated
+`web/server/lib/boxProven.json`. A map that passed the box proof is `on_server` at
+`server_level: "box"`. A party **may** lease it, and the site tags it **New**, with *"loads on
+our servers, not yet played with a client"* on hover. A box failure stays *Not playable*, with
+a hover of *"Does not run on our servers: <reason>"*. All 548 files of the 59 passing maps are
+on the maps bucket (HEAD-checked, sizes match).
 
 ### 10.5 The box proof
 
@@ -649,6 +668,13 @@ last `assignment changed:` to be `idle`; leases with
 `map_loaded <bsp>` in the journal; holds 35 s; reads the instance's own ENW log and requires
 **`com_frameTime` to have advanced ≥ 15 s** (the fifth gate — a map that loads and stops
 simulating is not a pass) and the process alive; cancels; waits for idle again.
+
+**Every failure got a second attempt** with `--load-wait 300` (twice the first run's 150 s,
+because some big zones load slowly under Wine). A second failure is final. `popular.py --apply`
+then writes each result into its manifest: pass → `dedi_status: "box_map_loaded"`, fail →
+`health: "broken"` + `health_reason`, and `web/server/lib/boxProven.json`. The importer
+(`import-archive.js`) turns `broken` into a map the Maps list hides and a lease refuses. The
+site offers the passes to a party as **"New"** (next section).
 
 {{popular_summary}}
 
@@ -678,9 +704,14 @@ size, content type, fetched), the same shape as §8's. `reports/art_urls.json` i
 Re-runnable: a map with its sidecar is skipped without a request.
 
 **The run:** the cache named a picture for **1,418** of 2,276 catalogue entries (1,399
-callofdutyrepo, 19 moddb). Started 20:14, one image every ~6.6 s; at 22:26, **1,200 fetched,
-2 failed**, still running (`logs/fetch_art.log`). The remaining ~858 entries have no page in
-our cache that shows a picture.
+callofdutyrepo, 19 moddb). Started 20:14, one image every ~6.6 s; at 22:26, 1,200 fetched,
+2 failed (`logs/fetch_art.log`). The remaining ~858 entries have no page in our cache that shows
+a picture.
+
+**Final, on the live site** (`web/public/media/maps/manifest.json`, 21:51Z run of
+`tools/maps/map_art.py --no-stock`, 2,348 maps): **1,449 scraped covers, 19 maps' own loading
+screens, 880 generated cards, 0 stock** (ip-posture §4), plus 25 own loading screens offered as a
+second picture.
 
 The rest of the chain is the web lane's (`tools/maps/map_art.py`, web.md's dated section): scraped
 art first, then the map's own loading screen out of its `.iwd` (an `.iwi` decoded by

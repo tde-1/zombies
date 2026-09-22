@@ -185,5 +185,25 @@
       "mod.ff",
       "bank_job.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35107 ms over the hold",
+    "first_error": "Could not load xanim \"pb_hold_run_right_satchel\".",
+    "match": "m_2618b026",
+    "at": "2026-09-22T23:49:28",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35107,
+    "com_error": [],
+    "console_errors": [
+      "3126:Error: Could not load xanim \"pb_hold_run_right_satchel\".",
+      "3127:Error: Could not load xanim \"pb_hold_run_back_satchel\".",
+      "3128:Error: Could not load xanim \"pb_hold_run_satchel\".",
+      "3129:Error: Could not load xanim \"pb_sprint_hold_satchel\".",
+      "3130:Error: Could not load xanim \"pb_crouch_hold_idle_satchel\".",
+      "3131:Error: Could not load xanim \"pb_hold_idle_satchel\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

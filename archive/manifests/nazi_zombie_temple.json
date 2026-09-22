@@ -183,5 +183,25 @@
       "nazi_zombie_temple_patch.ff",
       "nazi_zombie_temple.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35074 ms over the hold",
+    "first_error": "Could not load xmodel \"collision_geo_32x32x128\".",
+    "match": "m_be10b719",
+    "at": "2026-09-22T22:46:44",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35074,
+    "com_error": [],
+    "console_errors": [
+      "3271:Error: Could not load xmodel \"collision_geo_32x32x128\".",
+      "3278:Error: Could not load rawfile \"shock/zombie_death.shock\".",
+      "3279:Error: couldn't open 'shock/zombie_death.shock'.",
+      "4105:WARNING: Could not load weapon file 'weapons/sp/zombie_bowie_flourish'",
+      "4107:******* script runtime error *******",
+      "4111:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

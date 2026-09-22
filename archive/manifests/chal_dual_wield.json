@@ -174,5 +174,25 @@
       "mod.ff",
       "ugx_mod.iwd:animscripts/death.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40093 ms over the hold",
+    "first_error": null,
+    "match": "m_c9cc1824",
+    "at": "2026-09-22T22:49:40",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40093,
+    "com_error": [],
+    "console_errors": [
+      "4049:******* script runtime error *******",
+      "4054:Error: called from:",
+      "4058:Error: called from:",
+      "4062:Error: called from:",
+      "4066:Error: started from:",
+      "4070:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -197,5 +197,25 @@
       "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
       "ugxm_guns.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40064 ms over the hold",
+    "first_error": "Could not load rawfile \"shock/zombie_death.shock\".",
+    "match": "m_14f4bf7d",
+    "at": "2026-09-22T23:11:02",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40064,
+    "com_error": [],
+    "console_errors": [
+      "3330:Error: started from:",
+      "3334:Error: ************************************",
+      "3336:******* script runtime error *******",
+      "3340:Error: called from:",
+      "3344:Error: called from:",
+      "3348:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -315,5 +315,25 @@
       "nazi_zombie_malibu_patch.ff",
       "nazi_zombie_malibu.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40149 ms over the hold",
+    "first_error": null,
+    "match": "m_fde62e42",
+    "at": "2026-09-22T22:01:48",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40149,
+    "com_error": [],
+    "console_errors": [
+      "27581:******* script runtime error *******",
+      "27585:Error: started from:",
+      "27589:Error: ************************************",
+      "27591:******* script runtime error *******",
+      "27595:Error: started from:",
+      "27599:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

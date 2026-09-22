@@ -186,5 +186,25 @@
       "mod.ff",
       "cube.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35143 ms over the hold",
+    "first_error": "Could not load xanim \"pb_hold_run_satchel\".",
+    "match": "m_73a2488c",
+    "at": "2026-09-22T22:33:29",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35143,
+    "com_error": [],
+    "console_errors": [
+      "3140:Error: Could not load xanim \"pb_hold_run_satchel\".",
+      "3141:Error: Could not load xanim \"pb_sprint_hold_satchel\".",
+      "3142:Error: Could not load xanim \"pb_crouch_hold_idle_satchel\".",
+      "3143:Error: Could not load xanim \"pb_hold_idle_satchel\".",
+      "3144:Error: Could not load xanim \"pb_prone_hold_satchel\".",
+      "3145:Error: Could not load xanim \"pt_hold_prone_throw_satchel\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

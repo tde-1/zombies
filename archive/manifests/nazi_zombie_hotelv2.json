@@ -192,5 +192,25 @@
       "nazi_zombie_hotelv2_patch.ff",
       "nazi_zombie_hotelv2.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30072 ms over the hold",
+    "first_error": "WARNING: Could not load weapon file 'weapons/sp/zombie_bowie_flourish'",
+    "match": "m_129b5cd1",
+    "at": "2026-09-22T22:48:10",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30072,
+    "com_error": [],
+    "console_errors": [
+      "4474:WARNING: Could not load weapon file 'weapons/sp/zombie_bowie_flourish'",
+      "4475:WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_multi_perks'",
+      "4477:******* script runtime error *******",
+      "4478:unknown item 'zombie_perk_bottle_multi_perks': (file 'maps/_zombiemode_perks_black_ops.gsc', line 15)",
+      "4481:Error: called from:",
+      "4485:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

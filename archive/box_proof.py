@@ -2,7 +2,7 @@
 """Boot one archived map on the game box through the REAL lease path and say whether it
 loads -- the dedi half of "does this map work".
 
-    python archive/box_proof.py --map nuketown [--map ...] [--hold 35]
+    python archive/box_proof.py --map nuketown [--map ...] [--hold 35] [--load-wait 300]
 
 Per map, strictly one at a time:
 
@@ -107,7 +107,7 @@ def enw_evidence(inst, pid, bsp):
             "console_errors": [c.strip()[:220] for c in con.strip().splitlines()][:12]}
 
 
-def prove(bsp, hold, wait_busy):
+def prove(bsp, hold, wait_busy, load_wait=150):
     res = {"map": bsp, "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
            "unproven": "no client joined; server-side load only"}
     t0 = time.time()
@@ -118,7 +118,7 @@ def prove(bsp, hold, wait_busy):
         if time.time() - t0 > wait_busy:
             res.update(result="skipped", reason="box busy: " + line[-120:])
             return res
-        time.sleep(30)
+        time.sleep(60)
     since = box_now()
     p, match, out = lease(bsp)
     res["match"] = match
@@ -129,11 +129,24 @@ def prove(bsp, hold, wait_busy):
     inst = pid = None
     loaded_at = None
     exited = None
-    deadline = time.time() + 150
+    preempted = None
+    deadline = time.time() + load_wait
     try:
         while time.time() < deadline:
             time.sleep(5)
             j = journal_since(since)
+            # Somebody else's lease replaced ours (B, or another lane): the host SIGTERMs our
+            # instance. That says nothing about the map (mr_freeze's first run, 22:33:43).
+            other = [x for x in re.findall(r"assignment changed: leased \S+ (m_[0-9a-f]+)", j) if x != match]
+            if other:
+                preempted = other[0]
+                break
+            # ...or our lease was dropped to idle by something other than us (23:27-23:33 on
+            # 2026-09-22 every lease on the box went idle 3 s after it was made).
+            after = j.split("leased %s %s" % (bsp, match), 1)
+            if len(after) == 2 and re.search(r"assignment changed: idle\b", after[1]):
+                preempted = "idle (our lease was dropped before we cancelled it)"
+                break
             m = re.search(r"booted (inst-\d+) match=%s" % match, j)
             if m:
                 inst = m.group(1)
@@ -154,8 +167,13 @@ def prove(bsp, hold, wait_busy):
         if inst and pid:
             res.update(enw_evidence(inst, pid, bsp))
         res["exited"] = exited
-        if not loaded_at:
-            res.update(result="fail", reason="no map_loaded within 150 s" + (" (%s)" % exited if exited else ""))
+        res["preempted_by"] = preempted
+        if preempted:
+            res.update(result="skipped", reason="pre-empted: %s%s" % (
+                preempted if preempted.startswith("idle") else "another lease (%s) replaced ours" % preempted,
+                " after map_loaded" if loaded_at else ""))
+        elif not loaded_at:
+            res.update(result="fail", reason="no map_loaded within %d s" % load_wait + (" (%s)" % exited if exited else ""))
         elif exited:
             res.update(result="fail", reason="map_loaded, then the process exited: " + exited)
         elif res.get("frametime_advance_ms", 0) < 15000:
@@ -181,11 +199,13 @@ def main():
     ap.add_argument("--map", action="append", default=[])
     ap.add_argument("--hold", type=int, default=35)
     ap.add_argument("--wait-busy", type=int, default=900)
+    ap.add_argument("--load-wait", type=int, default=150,
+                    help="seconds to wait for map_loaded (big zones can take >150 s on the box)")
     a = ap.parse_args()
     path = os.path.join(WORK, "reports", "boxproof.json")
     rep = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
     for bsp in a.map:
-        r = prove(bsp, a.hold, a.wait_busy)
+        r = prove(bsp, a.hold, a.wait_busy, a.load_wait)
         rep[bsp] = r
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(rep, fh, indent=1)

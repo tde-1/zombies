@@ -272,5 +272,25 @@
       "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
       "ugxm_guns.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35107 ms over the hold",
+    "first_error": "Could not load xmodel \"zombie_zapper_cagelight_green\".",
+    "match": "m_134a81be",
+    "at": "2026-09-22T22:27:55",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35107,
+    "com_error": [],
+    "console_errors": [
+      "3296:Error: Could not load xmodel \"zombie_zapper_cagelight_green\".",
+      "3297:Error: Could not load xmodel \"lights_indlight_on\".",
+      "3298:Error: Could not load xmodel \"lights_milit_lamp_single_int_on\".",
+      "3299:Error: Could not load xmodel \"lights_tinhatlamp_on\".",
+      "3300:Error: Could not load xmodel \"lights_berlin_subway_hat_0\".",
+      "3301:Error: Could not load xmodel \"lights_berlin_subway_hat_50\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

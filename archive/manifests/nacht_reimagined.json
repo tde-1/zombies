@@ -197,5 +197,25 @@
       "nacht_reimagined_patch.ff",
       "nacht_reimagined.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35087 ms over the hold",
+    "first_error": "ERROR: Pathnode (Path) at (-1107.5 -365 -48) is in solid",
+    "match": "m_d350792b",
+    "at": "2026-09-22T21:45:53",
+    "instance": "inst-03",
+    "com_frameTime_advance_ms": 35087,
+    "com_error": [],
+    "console_errors": [
+      "3162:ERROR: Pathnode (Path) at (-1107.5 -365 -48) is in solid",
+      "3163:ERROR: Pathnode (Path) at (-636.3 -89.6 -48) is in solid",
+      "3166:Error: Could not load xmodel \"aw_hazmat_viewhands\".",
+      "3242:Error: Could not load xmodel \"zombie_zapper_cagelight_red\".",
+      "3243:Error: Could not load xmodel \"zombie_zapper_cagelight_green\".",
+      "3244:Error: Could not load xmodel \"lights_milit_lamp_single_int_on\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

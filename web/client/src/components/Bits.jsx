@@ -70,6 +70,13 @@ export function NotPlayable({ map, flag = false }) {
   return <span className={flag ? 'map-flag np' : 'tag np'} title={map.server_note || 'Not playable on our servers'}>Not playable</span>
 }
 
+// Loads on our servers but no client has played it yet (lib/maps.js BOX_PROVEN): playable,
+// with the caveat on hover.
+export function NewOnServer({ map, flag = false }) {
+  if (!map || map.server_level !== 'box') return null
+  return <span className={flag ? 'map-flag new' : 'tag new'} title={map.server_note || 'Loads on our servers, not yet played with a client'}>New</span>
+}
+
 // ---- level and prestige --------------------------------------------------------------
 export function Level({ standing, showBar = false }) {
   if (!standing) return null

@@ -167,5 +167,25 @@
       "nazi_zombie_dcv2_patch.ff",
       "nazi_zombie_dcv2.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35088 ms over the hold",
+    "first_error": "Could not load xmodel \"bo2_p6_zm_al_vending_nuke_on\".",
+    "match": "m_80c82f39",
+    "at": "2026-09-22T23:37:48",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35088,
+    "com_error": [],
+    "console_errors": [
+      "4561:Error: ************************************",
+      "4563:Error: Could not load xmodel \"bo2_p6_zm_al_vending_nuke_on\".",
+      "4564:Error: Could not load xmodel \"bo2_p6_zm_vending_chugabud\".",
+      "4566:Error: Could not load xmodel \"bo2_zombie_vending_tombstone\".",
+      "4567:Error: Could not load xmodel \"bo2_ch_tombstone1\".",
+      "4568:WARNING: Could not load weapon file 'weapons/sp/bo2_t6_wpn_zmb_perk_bottle_tombstone_view'"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

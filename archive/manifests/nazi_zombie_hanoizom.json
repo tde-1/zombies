@@ -209,5 +209,25 @@
       "nazi_zombie_hanoizom_patch.ff",
       "hanoi.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30056 ms over the hold",
+    "first_error": null,
+    "match": "m_1882b57b",
+    "at": "2026-09-22T23:23:13",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30056,
+    "com_error": [],
+    "console_errors": [
+      "4576:Error: called from:",
+      "4580:Error: called from:",
+      "4584:Error: called from:",
+      "4588:Error: started from:",
+      "4592:Error: ************************************",
+      "4595:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -205,5 +205,25 @@
       "nazi_zombie_enclosed_patch.ff",
       "nazi_zombie_enclosed.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30066 ms over the hold",
+    "first_error": null,
+    "match": "m_e2eaf614",
+    "at": "2026-09-22T23:01:17",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30066,
+    "com_error": [],
+    "console_errors": [
+      "4590:******* script runtime error *******",
+      "4594:Error: called from:",
+      "4598:Error: called from:",
+      "4602:Error: called from:",
+      "4606:Error: started from:",
+      "4610:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

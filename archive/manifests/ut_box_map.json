@@ -116,5 +116,25 @@
       "ut_box_map_patch.ff",
       "ut_box_map.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30072 ms over the hold",
+    "first_error": "Could not load xanim \"pb_hold_run_right_satchel\".",
+    "match": "m_f592ad24",
+    "at": "2026-09-22T22:05:45",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30072,
+    "com_error": [],
+    "console_errors": [
+      "3144:Error: Could not load xanim \"pb_hold_run_right_satchel\".",
+      "3145:Error: Could not load xanim \"pb_hold_run_back_satchel\".",
+      "3146:Error: Could not load xanim \"pb_hold_run_satchel\".",
+      "3147:Error: Could not load xanim \"pb_sprint_hold_satchel\".",
+      "3148:Error: Could not load xanim \"pb_crouch_hold_idle_satchel\".",
+      "3149:Error: Could not load xanim \"pb_hold_idle_satchel\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

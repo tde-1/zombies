@@ -163,5 +163,25 @@
       "nazi_zombie_hghrise_patch.ff",
       "highrise.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35057 ms over the hold",
+    "first_error": "WARNING: Could not load weapon file 'weapons/sp/zombie_bowie_flourish'",
+    "match": "m_9511caaa",
+    "at": "2026-09-22T22:29:37",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35057,
+    "com_error": [],
+    "console_errors": [
+      "4321:Error: called from:",
+      "4325:Error: called from:",
+      "4329:Error: started from:",
+      "4333:Error: ************************************",
+      "4335:******* script runtime error *******",
+      "4339:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -50,7 +50,7 @@
   "signals": [],
   "confidence": "read",
   "needs_human": false,
-  "health": null,
+  "health": "broken",
   "scanner": {
     "tool": "referee/scan_map.py",
     "verdict": "buyable_ending",
@@ -213,5 +213,53 @@
       "nazi_zombie_streets_patch.ff",
       "nazi_zombie_sumpf_patch.ff"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "fail",
+    "reason": "no map_loaded within 150 s",
+    "first_error": "Could not load rawfile \"animscripts/dog_init.gsc\".",
+    "match": "m_da4d9f62",
+    "at": "2026-09-22T22:43:07",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 0,
+    "com_error": [
+      "Com_Error TRAPPED ===",
+      "Com_Error TRAPPED ==="
+    ],
+    "console_errors": [
+      "314:[enw] hooks: Sys_Error: created at 005FE8C0 (trampoline 08770F20)",
+      "419:WARNING: Could not find zone 'C:\\zdev\\waw-inst-01\\zone\\english\\localized_common.ff'",
+      "2053:WARNING: Could not find zone 'C:\\zdev\\waw-inst-01\\zone\\english\\localized_nazi_zombie_shore.ff'",
+      "2058:WARNING: Could not find zone 'C:\\zdev\\waw-inst-01\\zone\\english\\nazi_zombie_shore_patch.ff'",
+      "2992:Error: Could not load rawfile \"animscripts/dog_init.gsc\".",
+      "2993:Error:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only",
+    "attempts": 1,
+    "retries_not_counted": [
+      {
+        "at": "2026-09-23T00:25:42",
+        "result": "fail",
+        "reason": "no map_loaded within 300 s (host/inst/inst-04 exit code=null signal=SIGTERM)",
+        "match": "m_97bb9197",
+        "instance": "inst-04",
+        "exited": "host/inst/inst-04 exit code=null signal=SIGTERM",
+        "preempted_by": null,
+        "not_counted": "23:27-23:33 box time: another lane's instance-slot bug dropped every lease (host agent restarted 23:38)"
+      },
+      {
+        "at": "2026-09-23T00:39:07",
+        "result": "skipped",
+        "reason": "pre-empted: another lease (m_6d80aa20) replaced ours",
+        "match": "m_d2e29686",
+        "instance": "inst-03",
+        "exited": null,
+        "preempted_by": "m_6d80aa20",
+        "not_counted": "another lease replaced ours (B's live game / another lane)"
+      }
+    ],
+    "final_basis": "one clean run ended in an engine Com_Error before map_loaded; a longer load wait cannot change that. The retries were pre-empted and not counted, and the coordinator stopped box leases for the night."
+  },
+  "dedi_status": "box_failed",
+  "health_reason": "box proof: no map_loaded within 150 s; first error: Could not load rawfile \"animscripts/dog_init.gsc\". (1 clean run; retries pre-empted)"
 }

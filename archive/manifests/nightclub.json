@@ -183,5 +183,25 @@
       "nightclub.ff",
       "nightclub_patch.ff"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35108 ms over the hold",
+    "first_error": "Could not load xmodel \"blst_zom_mech_body\".",
+    "match": "m_093dfc04",
+    "at": "2026-09-22T22:24:38",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35108,
+    "com_error": [],
+    "console_errors": [
+      "4144:Error: Could not load xmodel \"blst_zom_mech_body\".",
+      "4145:Error: Could not load xmodel \"c_zom_mech_claw\".",
+      "4146:Error: Could not load xmodel \"c_zom_mech_faceplate\".",
+      "4147:Error: Could not load xmodel \"bo2_c_zom_mech_armor_knee_left\".",
+      "4148:Error: Could not load xmodel \"bo2_c_zom_mech_armor_knee_right\".",
+      "4149:Error: Could not load xmodel \"bo2_c_zom_mech_armor_shoulder_left\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

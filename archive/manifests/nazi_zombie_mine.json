@@ -165,5 +165,25 @@
       "nazi_zombie_mine_patch.ff",
       "nazi_zombie_mine.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35073 ms over the hold",
+    "first_error": null,
+    "match": "m_4d723eff",
+    "at": "2026-09-22T23:07:11",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35073,
+    "com_error": [],
+    "console_errors": [
+      "7280:Error: started from:",
+      "7284:Error: ************************************",
+      "7295:******* script runtime error *******",
+      "7299:Error: called from:",
+      "7303:Error: called from:",
+      "7307:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

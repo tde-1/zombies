@@ -186,5 +186,25 @@
       "nazi_zombie_bored_patch.ff",
       "nazi_zombie_bored.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35070 ms over the hold",
+    "first_error": null,
+    "match": "m_3330d749",
+    "at": "2026-09-22T22:54:14",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35070,
+    "com_error": [],
+    "console_errors": [
+      "4217:******* script runtime error *******",
+      "4221:Error: called from:",
+      "4225:Error: called from:",
+      "4229:Error: called from:",
+      "4233:Error: started from:",
+      "4237:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

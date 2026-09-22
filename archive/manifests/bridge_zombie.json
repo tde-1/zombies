@@ -187,5 +187,25 @@
       "mod.ff",
       "bridge_zombie.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30084 ms over the hold",
+    "first_error": "Could not load xmodel \"german_sheperd_dog\".",
+    "match": "m_14773e71",
+    "at": "2026-09-22T22:26:04",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30084,
+    "com_error": [],
+    "console_errors": [
+      "3285:******* script runtime error *******",
+      "3289:Error: called from:",
+      "3293:Error: called from:",
+      "3297:Error: called from:",
+      "3301:Error: started from:",
+      "3305:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

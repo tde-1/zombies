@@ -49,7 +49,8 @@ function project(p, viewer = null) {
     map: map ? {
       key: map.key, title: map.title, art: map.art, main_finish: map.main_finish, round_n: map.round_n,
       // The card's Play stands down for a map no box will run, and says why on hover.
-      on_server: maps.onServer(map), server_note: serverNotes.noteFor(map, maps.onServer(map)),
+      on_server: maps.onServer(map), server_level: maps.serverLevel(map),
+      server_note: serverNotes.noteFor(map, maps.onServer(map), maps.serverLevel(map)),
     } : null,
     visibility: p.visibility,
     state: p.state,

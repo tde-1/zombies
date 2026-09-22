@@ -163,5 +163,25 @@
       "pokemonwherelegendsbegin.iwd:maps/_loadout.gsc",
       "pokemonwherelegendsbegin.iwd:maps_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30082 ms over the hold",
+    "first_error": null,
+    "match": "m_1ec3bf32",
+    "at": "2026-09-22T21:47:21",
+    "instance": "inst-04",
+    "com_frameTime_advance_ms": 30082,
+    "com_error": [],
+    "console_errors": [
+      "6688:Error: started from:",
+      "6692:Error: ************************************",
+      "6695:******* script runtime error *******",
+      "6699:Error: called from:",
+      "6703:Error: called from:",
+      "6707:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

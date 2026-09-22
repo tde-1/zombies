@@ -213,5 +213,25 @@
       "navidad_p_zombie.iwd:animscripts/death.gsc",
       "navidad_p_zombie.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35047 ms over the hold",
+    "first_error": "WARNING: Could not load weapon file 'weapons/sp/tesla_gun_upgraded'",
+    "match": "m_80fa40ad",
+    "at": "2026-09-22T22:35:44",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35047,
+    "com_error": [],
+    "console_errors": [
+      "5014:Error: called from:",
+      "5018:Error: started from:",
+      "5022:Error: ************************************",
+      "5023:WARNING: Could not load weapon file 'weapons/sp/tesla_gun_upgraded'",
+      "5025:******* script runtime error *******",
+      "5026:unknown item 'tesla_gun_upgraded': (file 'maps/_zombiemode_weapons.gsc', line 40)"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

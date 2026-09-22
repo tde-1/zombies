@@ -124,5 +124,25 @@
       "nazi_zombie_arena.ff",
       "nazi_zombie_arena_patch.ff"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40085 ms over the hold",
+    "first_error": "Could not load rawfile \"shock/zombie_death.shock\".",
+    "match": "m_994920c1",
+    "at": "2026-09-23T00:24:28",
+    "instance": "inst-03",
+    "com_frameTime_advance_ms": 40085,
+    "com_error": [],
+    "console_errors": [
+      "3231:Error: called from:",
+      "3235:Error: called from:",
+      "3239:Error: started from:",
+      "3243:Error: ************************************",
+      "3245:******* script runtime error *******",
+      "3249:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

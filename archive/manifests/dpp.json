@@ -44,7 +44,7 @@
   "signals": [],
   "confidence": "read",
   "needs_human": false,
-  "health": null,
+  "health": "broken",
   "scanner": {
     "tool": "referee/scan_map.py",
     "verdict": "buyable_ending",
@@ -182,5 +182,51 @@
       "mod.ff",
       "dpp.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "fail",
+    "reason": "no map_loaded within 150 s",
+    "first_error": "Need 37230375 more bytes of 'main' physical ram for alloc to succeed",
+    "match": "m_122feafb",
+    "at": "2026-09-22T23:46:18",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 0,
+    "com_error": [
+      "Com_Error TRAPPED ==="
+    ],
+    "console_errors": [
+      "281:WARNING: Could not find zone 'C:\\zdev\\waw-inst-01\\zone\\english\\localized_common.ff'",
+      "389:[enw] hooks: Com_Error: created at 0059AC50 (trampoline 08770F40)",
+      "391:[enw] hooks: Sys_Error: created at 005FE8C0 (trampoline 08770F20)",
+      "2060:WARNING: Could not find zone 'C:\\zdev\\waw-inst-01\\zone\\english\\localized_dpp.ff'",
+      "2072:Error: Need 37230375 more bytes of 'main' physical ram for alloc to succeed"
+    ],
+    "unproven": "no client joined: server-side load under Wine only",
+    "attempts": 1,
+    "retries_not_counted": [
+      {
+        "at": "2026-09-23T00:29:29",
+        "result": "skipped",
+        "reason": "pre-empted: another lease (m_a82aa346) replaced ours",
+        "match": "m_a42bb96d",
+        "instance": null,
+        "exited": null,
+        "preempted_by": "m_a82aa346",
+        "not_counted": "23:27-23:33 box time: another lane's instance-slot bug dropped every lease (host agent restarted 23:38)"
+      },
+      {
+        "at": "2026-09-23T00:29:29",
+        "result": "skipped",
+        "reason": "pre-empted: another lease (m_a82aa346) replaced ours",
+        "match": "m_a42bb96d",
+        "instance": null,
+        "exited": null,
+        "preempted_by": "m_a82aa346",
+        "not_counted": "another lease replaced ours (B's live game / another lane)"
+      }
+    ],
+    "final_basis": "one clean run ended in an engine Com_Error before map_loaded; a longer load wait cannot change that. The retries were pre-empted and not counted, and the coordinator stopped box leases for the night."
+  },
+  "dedi_status": "box_failed",
+  "health_reason": "box proof: no map_loaded within 150 s; first error: Need 37230375 more bytes of 'main' physical ram for alloc to succeed (1 clean run; retries pre-empted)"
 }

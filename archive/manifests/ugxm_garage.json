@@ -187,5 +187,25 @@
       "ugxm_garage_patch.ff",
       "ugx_mod.iwd:animscripts/death.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30050 ms over the hold",
+    "first_error": "Could not load xmodel \"collision_geo_32x32x128\".",
+    "match": "m_f4253c69",
+    "at": "2026-09-23T00:00:30",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30050,
+    "com_error": [],
+    "console_errors": [
+      "3179:Error: Could not load xmodel \"collision_geo_32x32x128\".",
+      "3326:Error: Could not load xmodel \"ugxm_acc_cigarette\".",
+      "3404:Error: Could not load rawfile \"shock/zombie_death.shock\".",
+      "3405:Error: couldn't open 'shock/zombie_death.shock'.",
+      "3921:Error: Could not load xmodel \"zombie_zapper_tesla_coil\".",
+      "4007:Error: Could not load xmodel \"weapon_m1911_upgraded_boxmodel\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

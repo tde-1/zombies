@@ -222,5 +222,25 @@
       "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
       "ugxm_guns.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35101 ms over the hold",
+    "first_error": null,
+    "match": "m_2e8c153e",
+    "at": "2026-09-22T22:51:58",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35101,
+    "com_error": [],
+    "console_errors": [
+      "5748:******* script runtime error *******",
+      "5752:Error: started from:",
+      "5756:Error: ************************************",
+      "5763:******* script runtime error *******",
+      "5767:Error: started from:",
+      "5771:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

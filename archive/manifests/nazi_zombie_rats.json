@@ -218,5 +218,25 @@
       "nazi_zombie_rats.iwd:animscripts/death.gsc",
       "nazi_zombie_rats.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30049 ms over the hold",
+    "first_error": null,
+    "match": "m_e686c198",
+    "at": "2026-09-22T23:27:20",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30049,
+    "com_error": [],
+    "console_errors": [
+      "5430:Error: started from:",
+      "5434:Error: ************************************",
+      "5524:******* script runtime error *******",
+      "5528:Error: called from:",
+      "5532:Error: called from:",
+      "5536:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

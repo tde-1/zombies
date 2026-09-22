@@ -140,5 +140,25 @@
       "nazi_zombie_path_patch.ff",
       "thepath.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +30039 ms over the hold",
+    "first_error": "Could not load rawfile \"shock/zombie_death.shock\".",
+    "match": "m_0416be4b",
+    "at": "2026-09-22T22:13:52",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 30039,
+    "com_error": [],
+    "console_errors": [
+      "3406:Error: called from:",
+      "3410:Error: started from:",
+      "3414:Error: ************************************",
+      "3416:******* script runtime error *******",
+      "3420:Error: called from:",
+      "3424:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

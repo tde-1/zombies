@@ -187,5 +187,25 @@
       "nazi_zombie_cargo_patch.ff",
       "nazi_zombie_cargo.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35102 ms over the hold",
+    "first_error": "unknown item 'napalmbloblight': (file 'maps/_loadout.gsc', line 43)",
+    "match": "m_d2a7fed7",
+    "at": "2026-09-22T22:22:45",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35102,
+    "com_error": [],
+    "console_errors": [
+      "3980:Error: called from:",
+      "3984:Error: called from:",
+      "3988:Error: started from:",
+      "3992:Error: ************************************",
+      "3994:******* script runtime error *******",
+      "3995:unknown item 'napalmbloblight': (file 'maps/_loadout.gsc', line 43)"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

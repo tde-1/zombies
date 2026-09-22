@@ -220,5 +220,25 @@
       "nazi_zombie_legion.iwd:animscripts/death.gsc",
       "nazi_zombie_legion.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40085 ms over the hold",
+    "first_error": null,
+    "match": "m_91a20d76",
+    "at": "2026-09-22T23:20:36",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40085,
+    "com_error": [],
+    "console_errors": [
+      "4221:******* script runtime error *******",
+      "4225:Error: called from:",
+      "4229:Error: called from:",
+      "4233:Error: called from:",
+      "4237:Error: started from:",
+      "4241:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

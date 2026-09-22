@@ -7,7 +7,7 @@ import { prettyTitle, releasedOf } from '../data/mapText'
 import { api, ago, clock, num } from '../api'
 import { useSession } from '../session'
 import { useRail } from '../rail'
-import { Section, Empty, Loading, Health, Untracked, PlayerLink, NotPlayable } from '../components/Bits'
+import { Section, Empty, Loading, Health, Untracked, PlayerLink, NotPlayable, NewOnServer } from '../components/Bits'
 import BackButton from '../components/BackButton'
 import Comments from '../components/Comments'
 import { DownloadButton } from '../components/MapDownload'
@@ -185,6 +185,7 @@ export function MapBody({ mapKey: key }) {
               {m.tags.some((t) => t.slug === 'top-100') && <span className="tag">Top 100</span>}
               <Health health={m.health} />
               {!catalogued && <NotPlayable map={m} />}
+              {!catalogued && <NewOnServer map={m} />}
             </div>
           </div>
 

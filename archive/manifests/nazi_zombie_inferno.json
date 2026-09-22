@@ -90,7 +90,7 @@
   "signals": [],
   "confidence": "guess",
   "needs_human": true,
-  "health": null,
+  "health": "broken",
   "scanner": {
     "tool": "referee/scan_map.py",
     "verdict": "easter_egg",
@@ -317,5 +317,51 @@
       "nazi_zombie_inferno_patch.ff",
       "nazi_zombie_inferno.iwd:animscripts/death.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "fail",
+    "reason": "no map_loaded within 150 s",
+    "first_error": "Need 81538024 more bytes of 'main' physical ram for alloc to succeed",
+    "match": "m_5b4aab85",
+    "at": "2026-09-22T23:53:16",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 0,
+    "com_error": [
+      "Com_Error TRAPPED ==="
+    ],
+    "console_errors": [
+      "268:WARNING: Could not find zone 'C:\\zdev\\waw-inst-01\\zone\\english\\localized_common.ff'",
+      "376:[enw] hooks: Com_Error: created at 0059AC50 (trampoline 08770F40)",
+      "378:[enw] hooks: Sys_Error: created at 005FE8C0 (trampoline 08770F20)",
+      "2046:WARNING: Could not find zone 'C:\\zdev\\waw-inst-01\\zone\\english\\localized_nazi_zombie_inferno.ff'",
+      "2058:Error: Need 81538024 more bytes of 'main' physical ram for alloc to succeed"
+    ],
+    "unproven": "no client joined: server-side load under Wine only",
+    "attempts": 1,
+    "retries_not_counted": [
+      {
+        "at": "2026-09-23T00:30:57",
+        "result": "skipped",
+        "reason": "pre-empted: another lease (m_3cb22d47) replaced ours",
+        "match": "m_0d175298",
+        "instance": null,
+        "exited": null,
+        "preempted_by": "m_3cb22d47",
+        "not_counted": "23:27-23:33 box time: another lane's instance-slot bug dropped every lease (host agent restarted 23:38)"
+      },
+      {
+        "at": "2026-09-23T00:30:57",
+        "result": "skipped",
+        "reason": "pre-empted: another lease (m_3cb22d47) replaced ours",
+        "match": "m_0d175298",
+        "instance": null,
+        "exited": null,
+        "preempted_by": "m_3cb22d47",
+        "not_counted": "another lease replaced ours (B's live game / another lane)"
+      }
+    ],
+    "final_basis": "one clean run ended in an engine Com_Error before map_loaded; a longer load wait cannot change that. The retries were pre-empted and not counted, and the coordinator stopped box leases for the night."
+  },
+  "dedi_status": "box_failed",
+  "health_reason": "box proof: no map_loaded within 150 s; first error: Need 81538024 more bytes of 'main' physical ram for alloc to succeed (1 clean run; retries pre-empted)"
 }

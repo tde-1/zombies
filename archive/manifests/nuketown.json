@@ -184,5 +184,25 @@
       "mod.ff",
       "nuketown_patch.ff"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35088 ms over the hold",
+    "first_error": null,
+    "match": "m_b160070f",
+    "at": "2026-09-22T21:44:26",
+    "instance": "inst-02",
+    "com_frameTime_advance_ms": 35088,
+    "com_error": [],
+    "console_errors": [
+      "17250:******* script runtime error *******",
+      "17254:Error: started from:",
+      "17258:Error: ************************************",
+      "17260:******* script runtime error *******",
+      "17264:Error: started from:",
+      "17268:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

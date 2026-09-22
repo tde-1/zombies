@@ -178,5 +178,25 @@
       "mod.ff",
       "zombie_town_patch.ff"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35151 ms over the hold",
+    "first_error": null,
+    "match": "m_37170e55",
+    "at": "2026-09-22T22:17:07",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35151,
+    "com_error": [],
+    "console_errors": [
+      "4215:Error: called from:",
+      "4219:Error: called from:",
+      "4223:Error: called from:",
+      "4227:Error: started from:",
+      "4231:Error: ************************************",
+      "4233:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

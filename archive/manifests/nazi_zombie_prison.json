@@ -234,5 +234,25 @@
       "nazi_zombie_prison_patch.ff",
       "nazi_zombie_prison.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35106 ms over the hold",
+    "first_error": null,
+    "match": "m_f55fb772",
+    "at": "2026-09-22T22:41:13",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35106,
+    "com_error": [],
+    "console_errors": [
+      "4879:Error: called from:",
+      "4883:Error: started from:",
+      "4887:Error: ************************************",
+      "4889:******* script runtime error *******",
+      "4893:Error: called from:",
+      "4897:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

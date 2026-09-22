@@ -169,7 +169,10 @@ def main():
         return
     spec.pop("local_dir")
     arg = base64.b64encode(json.dumps(spec).encode()).decode()
-    r = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST, "python3 - " + arg], input=REMOTE,
+    # The spec rides inside the script on stdin, not on argv: a map with many files makes a
+    # base64 arg past ~8 KB and the Windows ssh command line cut it (futurama, arena: JSONDecodeError).
+    script = REMOTE.replace("base64.b64decode(sys.argv[1])", "base64.b64decode(%r)" % arg)
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST, "python3 -"], input=script,
                        capture_output=True, text=True, timeout=1800)
     line = (r.stdout.strip().splitlines() or [""])[-1]
     line = line or json.dumps({"bsp": bsp, "status": "fail", "error": r.stderr[-400:]})

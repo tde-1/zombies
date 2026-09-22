@@ -164,5 +164,25 @@
     "napalmblob": [
       "zm_hospital_patch.ff"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35071 ms over the hold",
+    "first_error": "WARNING: Could not load weapon file 'weapons/sp/zombie_knuckle_crack'",
+    "match": "m_bdc5431f",
+    "at": "2026-09-22T22:59:18",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35071,
+    "com_error": [],
+    "console_errors": [
+      "4276:Error: called from:",
+      "4280:Error: called from:",
+      "4284:Error: called from:",
+      "4288:Error: started from:",
+      "4292:Error: ************************************",
+      "4296:WARNING: Could not load weapon file 'weapons/sp/zombie_knuckle_crack'"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

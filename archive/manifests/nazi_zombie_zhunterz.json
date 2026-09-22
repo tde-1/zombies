@@ -223,5 +223,25 @@
       "nazi_zombie_zhunterz_patch.ff",
       "^1zhunterz.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40167 ms over the hold",
+    "first_error": "Could not load xmodel \"bo1_scavenger_non_upgraded_projectile\".",
+    "match": "m_195b3bc8",
+    "at": "2026-09-22T22:18:47",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40167,
+    "com_error": [],
+    "console_errors": [
+      "5077:Error: called from:",
+      "5081:Error: called from:",
+      "5085:Error: called from:",
+      "5089:Error: started from:",
+      "5093:Error: ************************************",
+      "5095:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

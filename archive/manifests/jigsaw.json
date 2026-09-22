@@ -237,5 +237,25 @@
       "jigsaw.iwd:animscripts/death.gsc",
       "jigsaw.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35148 ms over the hold",
+    "first_error": null,
+    "match": "m_f20095e3",
+    "at": "2026-09-22T23:30:58",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35148,
+    "com_error": [],
+    "console_errors": [
+      "7946:******* script runtime error *******",
+      "7950:Error: called from:",
+      "7954:Error: called from:",
+      "7958:Error: started from:",
+      "7962:Error: ************************************",
+      "7964:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

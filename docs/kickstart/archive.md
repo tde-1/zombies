@@ -616,6 +616,201 @@ tried to find something of ours in the way — an overlay, a sampler, the mount,
 and this session did not close: **why the community plays four of these anyway.** The add-on IWDs
 are not the answer.
 
+## 10. 2026-09-22 (evening) — the popular 64: fetched, extracted, on the site, and booted on the box
+
+B's ask: *"get a bunch more maps and make sure they work — download another ~50 popular maps."*
+
+### 10.1 How the 64 were picked
+
+`archive/rank_popular.py` ranks the catalogue with signals the crawlers already held — no new
+traffic: **UGX-Mods release-thread views** and **callofdutyrepo post views** (the larger of the
+two), +25% for callofdutyrepo's `top100` tag. A map is a candidate only when it has a link
+`fetch.py` can actually pull — **MediaFire or archive.org, verdict alive**, 20 MB–1.4 GB — is
+not already archived, is not tagged `t4m_req` (we run the stock exe) and is not a pack.
+The list is `archive/shortlist3.txt`; the ranking with its numbers is
+`reports/popular.json`. UGX views dominate (they run to hundreds of thousands against
+callofdutyrepo's tens of thousands), so this is in effect the UGX-Mods popularity order.
+Every one of the 65 chosen links was MediaFire: archive.org's items are file dumps and none
+cleared the size / name filter.
+
+### 10.2 What went wrong on the way, and is fixed
+
+1. **The first three "originals" were a 35 KB HTML page.** `fetch.py` resolved the MediaFire
+   file page through the on-disk HTTP cache; the page was from the link check days earlier,
+   its `download<N>.mediafire.com` key had expired, and MediaFire answers a stale key with
+   `download_repair.php` — *"Generating new download key"*, HTTP 200. `fetch.py` saved it,
+   hashed it, AV-scanned it and said `ok`. The download now reads the file page **fresh**
+   (`probe_mediafire(..., fresh=True)`) and **refuses anything served as HTML**. The three bad
+   files were deleted and re-fetched.
+2. **Futurama became `ugxm_customize_room`.** It ships UGX Mod's customize-room zone beside
+   its own, both `.ff` + `_patch.ff`, and `guess_names()` broke the tie alphabetically. The
+   installer's own **`mod.arena`** names the zombies map (`gametype "zom"`) and now decides
+   whenever it names a fastfile that is present. Re-checked over all 78 installs: Futurama
+   was the only one it changes.
+3. **Library produced a map called `images`.** Its installer has `Library/images/z_greenscope.iwd`;
+   a folder *inside* another mod root is now skipped (it is already copied with its parent).
+4. **A rescan would have rewritten the 14 MVP manifests** (the corpus-boilerplate set moves
+   with the corpus, and a rewrite drops `archive.cover`, `install.exclude` and the dedi
+   notes). `scan_maps.py --keep-existing --report scan-popular.json` scans all 78, writes a
+   manifest only for a map that has none, and leaves `scan.json` — which sections 3–4 are
+   generated from — as the 14-map record. `report.py`/`make_doc.py` now scope sections 1–4 to
+   that set.
+5. **One timeout**: Pokémon Kanto Carnage — Nighttime (`download1320.mediafire.com` read
+   timeout, twice). Not retried tonight.
+6. **Two box installs failed with a `JSONDecodeError`** (Futurama, Arena Challenge). Not the
+   maps: `box_stage.py` passed its spec to the box as one base64 argument, and for a release
+   with 73 or 163 files that argument ran past ~8 KB and the Windows ssh command line cut
+   it. The spec now rides inside the script on stdin. Both installed and both passed.
+7. **A proof can be pre-empted.** The box runs one assignment; anybody's lease replaces
+   yours and the host SIGTERMs your instance. Mr. Freeze's first run was recorded as
+   *"map_loaded, then the process exited"*. The journal shows another lane's Nacht lease
+   44 s after Mr. Freeze loaded (22:33:43). Later, 23:27–23:33 box time, every lease was
+   dropped to idle about 3 s after it was made (another lane's instance-slot bug, fixed by
+   restarting the host agent at 23:38). `box_proof.py` now watches for both cases (a
+   foreign `assignment changed: leased`, or our lease going idle before we cancel it). It
+   records either as **skipped, not failed**, and a run inside that window was not counted
+   as an attempt.
+
+### 10.3 The static pre-check (`archive/precheck.py`)
+
+Run over every new install before booting it, against the killers the dedi lane has named:
+
+- **Add-on IWDs** (§9): 51 of 64 ship at least one IWD that is not the map's own, 42 of them
+  with scripts inside. §9.4 proved those can be hard dependencies of the map's own script,
+  so they are recorded and **never dropped**.
+- **Client memory** (`dedi.md` §14.7): the map zone's inflated size is recorded; ORBiT's is
+  137 MB and its client parks at ~1.6 GB. 22 of 64 are ≥ 110 MB and carry
+  `client_memory_risk` — a prediction about the *client*, which nothing tonight could test.
+- **`napalmblob`** (Leviathan): **recorded, not a flag.** The string is in every map zone
+  measured, including Minecraft Village's, which passes five gates. It predicts nothing.
+- **`localVars`** (Der Berg): not predictable statically; only a boot says.
+
+It also records the **art each map ships**, for the site-art lane, in the manifest as
+`archive.art`: `loadscreen` (the map's own `loadscreen_<bsp>` material — 31 of 64 have one),
+every `loadscreen_*` name in its zones, and the menu/load/preview-looking images in its IWDs.
+Names only; nothing converted. The importer does not read `archive.art` — it reads only
+`archive.cover`, which none of the 64 has yet.
+
+### 10.4 On the site
+
+`node web/server/db/import-archive.js` — the documented ingestion — took all 64:
+`+58 maps` on the final run (6 were imported earlier to prove the path). Each has a map row, a
+version with `fs_game mods/<bsp>`, the original as a file row (sha256, source URL) and its
+manifest. The launcher's download (`/api/maps/<bsp>/files`) serves from `extract.json` +
+`mods/<bsp>/`, so every extracted map is installable by a player's launcher with per-file
+sha256. The importer now honours a manifest's `health: "broken"`, which is how a map the box
+could not load is hidden from the Maps list and refused by a lease.
+
+**`SERVER_PROVEN` is unchanged** (`web/server/lib/maps.js`): it still means a five-gate run
+*with a real client*, and none of the 64 has one. The box proofs below went through
+`lease-cli.js --proof`, which widens that set **inside the CLI process only**.
+
+**A second, weaker level, added 2026-09-23 on B's word** (*"push all the maps that
+currently work so I can try them out"*): `BOX_PROVEN`, read from the generated
+`web/server/lib/boxProven.json`. A map that passed the box proof is `on_server` at
+`server_level: "box"`. A party **may** lease it, and the site tags it **New**, with *"loads on
+our servers, not yet played with a client"* on hover. A box failure stays *Not playable*, with
+a hover of *"Does not run on our servers: <reason>"*. All 548 files of the 59 passing maps are
+on the maps bucket (HEAD-checked, sizes match).
+
+### 10.5 The box proof
+
+`archive/box_stage.py` installs a map on the box **without pushing it up B's connection**: the
+box downloads the release from the same MediaFire page, refuses it unless its sha256 is the
+original we fetched and scanned here, extracts it with 7-Zip (nothing run), and moves exactly
+the files `extract.json` lists — matched by sha256 — into `/home/waw/waw-en/mods/<bsp>/`, the
+one directory the box's three `mods` symlinks point at. Heavy steps under `nice 19 / ionice idle`.
+
+`archive/box_proof.py` then, per map and strictly one at a time: waits for the host agent's
+last `assignment changed:` to be `idle`; leases with
+`lease-cli.js --map <bsp> --player 76561198000000001 --proof` (the fake SteamID); waits for
+`map_loaded <bsp>` in the journal; holds 35 s; reads the instance's own ENW log and requires
+**`com_frameTime` to have advanced ≥ 15 s** (the fifth gate — a map that loads and stops
+simulating is not a pass) and the process alive; cancels; waits for idle again.
+
+**Every failure got a second attempt** with `--load-wait 300` (twice the first run's 150 s,
+because some big zones load slowly under Wine). A second failure is final. `popular.py --apply`
+then writes each result into its manifest: pass → `dedi_status: "box_map_loaded"`, fail →
+`health: "broken"` + `health_reason`, and `web/server/lib/boxProven.json`. The importer
+(`import-archive.js`) turns `broken` into a map the Maps list hides and a lease refuses. The
+site offers the passes to a party as **"New"** (next section).
+
+65 ranked; 64 fetched and AV-clean; 64 extracted to a `mods/<bsp>/`; 64 booted on the box through a real lease; **59 reached `map_loaded` and kept simulating**, 5 did not; 59 are on the site's Maps list (health not `broken`).
+
+| # | Map | UGX/codrepo views | bsp | size | pre-check | box (dedicated, lease) | site |
+|---:|---|---:|---|---:|---|---|---|
+| 1 | NUKETOWN REMASTERED (top 100) | 446,842 | `nuketown` | 484 MB | client_memory_risk | **PASS** | custom-only |
+| 2 | NACHT DER UNTOTEN: REIMAGINED | 535,943 | `nacht_reimagined` | 294 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** | playable |
+| 3 | POKEMON WHERE LEGENDS BEGIN (top 100) | 403,259 | `nazi_zombie_poke` | 227 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 4 | ZOMBIE DOME | 425,536 | `nazi_zombie_dome_snow` | 383 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 5 | Malibu Drive Age of Apocalypse (top 100) | 315,865 | `nazi_zombie_malibu` | 353 MB | client_memory_risk | **PASS** | custom-only |
+| 6 | Relinquished/Project Nova | 366,141 | `nazi_zombie_johndoe` | 336 MB | - | **PASS** | custom-only |
+| 7 | UT BOX | 353,435 | `ut_box_map` | 64 MB | - | **PASS** | playable |
+| 8 | Nuketown 1886 Zombies Map | 336,245 | `zm_nuked` | 468 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** | custom-only |
+| 9 | Killhouse IW (top 100) | 261,743 | `killhouse` | 364 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 10 | CRYOGENIC (top 100) | 252,778 | `cryogenic` | 466 MB | client_memory_risk | **PASS** | playable |
+| 11 | THE PATH | 307,876 | `nazi_zombie_path` | 57 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 12 | FIVE NIGHTS AT FREDDY’S | 298,817 | `nazi_zombie_fivenights` | 231 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 13 | TOWN OF THE DEAD (top 100) | 223,765 | `zombie_town` | 483 MB | client_memory_risk | **PASS** | playable |
+| 14 | FUTURAMA 1.1 | 269,663 | `futurama` | 208 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 15 | ZHUNTERZ (top 100) | 212,844 | `nazi_zombie_zhunterz` | 366 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** | playable |
+| 16 | BLOODSPORT XMAS | 241,424 | `nazi_zombie_bloodsport` | 128 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 17 | CARGO | 238,917 | `nazi_zombie_cargo` | 357 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** | custom-only |
+| 18 | NIGHTCLUB | 227,012 | `nightclub` | 480 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 19 | BRIDGE | 217,175 | `bridge_zombie` | 134 MB | client_memory_risk | **PASS** | playable |
+| 20 | DEAD PALACE | 214,883 | `dead_palace` | 231 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 21 | HIGHRISE | 182,172 | `hghrise` | 205 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** | playable |
+| 22 | LORKEEP STATION | 181,600 | `nazi_zombie_lorkeep` | 185 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 23 | CUBE | 178,064 | `cube` | 315 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 24 | CHRISTMAS IN PRISON | 171,698 | `navidad_p_zombie` | 326 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 25 | Thirty Seven Christmas Zombies (top 100) | 134,511 | `thirty_seven` | 328 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 26 | Arena Challenge Map | 167,872 | `nazi_zombie_arena` | 59 MB | - | **PASS** | playable |
+| 27 | DIXMOR ASYLUM (top 100) | 128,213 | `escape_asylum` | 297 MB | - | **PASS** | playable |
+| 28 | PRISON MISSION V1.1 (top 100) | 126,949 | `nazi_zombie_prison` | 336 MB | client_memory_risk | **PASS** | custom-only |
+| 29 | ZOMBIE REVOLUTION INFINITE | 152,822 | `nazi_zombie_shore` | 420 MB | addon_iwd_with_scripts | **FAIL** — no map_loaded within 150 s; first error: `Could not load rawfile "animscripts/dog_init.gsc".` (1 clean run; 2 retries pre-empted, not counted) | broken |
+| 30 | ZOMBIE CELERIUM (TEMPLE) | 150,200 | `nazi_zombie_temple` | 622 MB | - | **PASS** | playable |
+| 31 | Hotel Version 2 | 150,128 | `nazi_zombie_hotelv2` | 184 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 32 | DUAL WIELD CHALLENGE MAP | 147,498 | `chal_dual_wield` | 330 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 33 | BEACHTOWN (top 100) | 115,239 | `nazi_zombie_beachtown` | 257 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 34 | BORED | 143,532 | `nazi_zombie_bored` | 346 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 35 | CXCA | 143,500 | `cxca` | 155 MB | addon_iwd_with_scripts | **FAIL** — no map_loaded within 150 s; first error: `Could not load rawfile "maps/_zombiemode_dogs.gsc".` (1 clean run; 2 retries pre-empted, not counted) | broken |
+| 36 | UNDEAD HOSPITAL | 141,540 | `zm_hospital` | 323 MB | - | **PASS** | playable |
+| 37 | ENCLOSED | 141,113 | `nazi_zombie_enclosed` | 409 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 38 | ZOMBIE LIBRARY | 139,305 | `nazi_zombie_library` | 328 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 39 | PURPLE DIMENSION (top 100) | 111,076 | `nazi_zombie_pd` | 299 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** | playable |
+| 40 | MINECRAFT | 133,407 | `nazi_zombie_mine` | 262 MB | - | **PASS** | playable |
+| 41 | ALIEN DEFENSE (top 100) | 102,851 | `aliendefense` | 276 MB | - | **PASS** | playable |
+| 42 | BATTLESTAR GALACTICA (top 100) | 101,881 | `battlestar_galactica` | 213 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 43 | KINGDOM HEARTS | 125,690 | `kingdom_hearts` | 184 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 44 | Shi No Mori - Nacht der Untoten reborn (top 100) | 96,920 | `shinomori` | 771 MB | client_memory_risk, addon_iwd_with_scripts | **FAIL** — no map_loaded within 150 s; first error: `Need 36283957 more bytes of 'main' physical ram for alloc to succeed` (1 clean run; 2 retries pre-empted, not counted) | broken |
+| 45 | LEGION | 120,866 | `nazi_zombie_legion` | 310 MB | client_memory_risk | **PASS** | custom-only |
+| 46 | POKEMON KANTO CARNAGE - NIGHTTIME | 119,401 | - | - |  | not fetched: download failed: ConnectionError: HTTPConnectionPool(host='download1320.mediafire.com', port=80): Read timed out. | - |
+| 47 | HANOI (top 100) | 95,288 | `nazi_zombie_hanoizom` | 356 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** | playable |
+| 48 | LEGACY | 118,834 | `nazi_zombie_denial2` | 184 MB | client_memory_risk | **PASS** | playable |
+| 49 | RATS | 117,921 | `nazi_zombie_rats` | 316 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 50 | TANK YARD | 117,208 | `nazi_zombie_tank` | 266 MB | - | **PASS** | playable |
+| 51 | JIGSAW | 108,230 | `jigsaw` | 164 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** | custom-only |
+| 52 | HEART OF ICE (top 100) | 85,072 | `mr_freeze` | 324 MB | client_memory_risk, addon_iwd_with_scripts | **PASS** (reclassified: the first run's exit was another lease's SIGTERM, 44 s after map_loaded) | playable |
+| 53 | SALOON (top 100) | 83,931 | `nazi_zombie_relax` | 196 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 54 | DECONTAMINATION | 101,813 | `nazi_zombie_dcv2` | 205 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 55 | SNOW GLOBE (top 100) | 78,088 | `nazi_zombie_snowglobe` | 312 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 56 | HARAMBE | 94,584 | `chal_harambe` | 337 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 57 | ILS: LETS GO HOME | 93,072 | `nazi_zombie_ils` | 133 MB | client_memory_risk | **PASS** | playable |
+| 58 | DESCE PRO PLAY FINAL | 90,419 | `dpp` | 504 MB | client_memory_risk | **FAIL** — no map_loaded within 150 s; first error: `Need 37230375 more bytes of 'main' physical ram for alloc to succeed` (1 clean run; 2 retries pre-empted, not counted) | broken |
+| 59 | BANK JOB | 87,631 | `bank_job` | 67 MB | - | **PASS** | playable |
+| 60 | UNDEAD FOREST | 86,866 | `nazi_zombie_forest` | 261 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 61 | INFERNO | 84,179 | `nazi_zombie_inferno` | 367 MB | client_memory_risk | **FAIL** — no map_loaded within 150 s; first error: `Need 81538024 more bytes of 'main' physical ram for alloc to succeed` (1 clean run; 2 retries pre-empted, not counted) | broken |
+| 62 | CHRISTMAS WITH THE JOKER (ARKHAM) | 77,417 | `nazi_zombie_arkham` | 198 MB | client_memory_risk | **PASS** | playable |
+| 63 | Bowser's Castle (top 100) | 61,909 | `bcast` | 304 MB | addon_iwd_with_scripts | **PASS** | playable |
+| 64 | GARAGE | 74,350 | `ugxm_garage` | 426 MB | addon_iwd_with_scripts | **PASS** | custom-only |
+| 65 | THE CRAZY PLACE | 72,508 | `nazi_zombie_crazyplace` | 196 MB | addon_iwd_with_scripts | **PASS** | playable |
+
+**What this does not prove.** No client joined any of these games. A pass here is *"the
+dedicated server under Wine loads the map and keeps simulating"*. It says nothing about a
+32-bit client's memory ceiling (ORBiT and UGX Requiem pass server-side and stall their client,
+`dedi.md` §14.7), a mid-game join, round 2, or a finish being refereed. The 22
+`client_memory_risk` maps are the ones to expect trouble from.
+
 ## 10. 2026-09-22 (evening) — a picture for every catalogued map (web-maps lane)
 
 B: every map on the site gets an image. §8 fetched 14 covers by hand. The rest were already

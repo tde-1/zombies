@@ -220,5 +220,25 @@
       "nazi_zombie_johndoe.iwd:animscripts/death.gsc",
       "nazi_zombie_johndoe.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35052 ms over the hold",
+    "first_error": "Could not load rawfile \"shock/zombie_death.shock\".",
+    "match": "m_6e265fe2",
+    "at": "2026-09-22T22:04:29",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35052,
+    "com_error": [],
+    "console_errors": [
+      "3247:Error: Could not load rawfile \"shock/zombie_death.shock\".",
+      "3248:Error: couldn't open 'shock/zombie_death.shock'.",
+      "3984:Error: Could not load xmodel \"char_usa_marine_player_body1_1\".",
+      "3985:Error: Could not load xmodel \"char_usa_marine_head1_1\".",
+      "3986:Error: Could not load xmodel \"char_usa_raider_helm1\".",
+      "3987:Error: Could not load xmodel \"char_usa_raider_gear2\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

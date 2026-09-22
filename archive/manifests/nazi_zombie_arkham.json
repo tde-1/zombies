@@ -208,5 +208,25 @@
       "nazi_zombie_arkham_patch.ff",
       "nazi_zombie_arkham.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +40068 ms over the hold",
+    "first_error": null,
+    "match": "m_8bc1b5c5",
+    "at": "2026-09-22T23:56:52",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 40068,
+    "com_error": [],
+    "console_errors": [
+      "4762:******* script runtime error *******",
+      "4766:Error: called from:",
+      "4770:Error: called from:",
+      "4774:Error: called from:",
+      "4778:Error: started from:",
+      "4782:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -446,6 +446,8 @@ label.field > span { display: block; font-size: 12.5px; color: var(--muted); mar
 .tag.good { color: var(--good); }
 /* Not playable on our servers (lib/serverNotes.js says why, on hover) */
 .tag.np { color: var(--bad); background: rgba(var(--bad-rgb), .12); cursor: help; }
+/* New: loads on our servers, no client has played it yet (lib/maps.js BOX_PROVEN) */
+.tag.new { color: var(--gold); cursor: help; }
 
 /* ── tables (the "server browser" grammar) ─────────────────────────────────── */
 table.data { width: 100%; border-collapse: collapse; font-size: 13px; }

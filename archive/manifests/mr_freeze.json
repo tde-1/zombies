@@ -210,5 +210,48 @@
       "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
       "ugxm_guns.iwd:maps/_loadout.gsc"
     ]
-  }
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +35126 ms over the hold (reclassified 2026-09-23: the first run's 'process exited' was a SIGTERM from another lane's Nacht lease 44 s after map_loaded, 22:33:43 box time, not the map)",
+    "first_error": null,
+    "match": "m_bdf100ee",
+    "at": "2026-09-22T23:32:46",
+    "instance": "inst-01",
+    "com_frameTime_advance_ms": 35126,
+    "com_error": [],
+    "console_errors": [
+      "6112:Error: ************************************",
+      "6114:******* script runtime error *******",
+      "6118:Error: called from:",
+      "6122:Error: started from:",
+      "6126:Error: ************************************",
+      "6128:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only",
+    "attempts": 1,
+    "retries_not_counted": [
+      {
+        "at": "2026-09-23T00:31:47",
+        "result": "fail",
+        "reason": "no map_loaded within 300 s",
+        "match": "m_65ab6413",
+        "instance": null,
+        "exited": null,
+        "preempted_by": null,
+        "not_counted": "23:27-23:33 box time: another lane's instance-slot bug dropped every lease (host agent restarted 23:38)"
+      },
+      {
+        "at": "2026-09-23T00:31:47",
+        "result": "fail",
+        "reason": "no map_loaded within 300 s",
+        "match": "m_65ab6413",
+        "instance": null,
+        "exited": null,
+        "preempted_by": null,
+        "not_counted": "another lease replaced ours (B's live game / another lane)"
+      }
+    ]
+  },
+  "dedi_status": "box_map_loaded"
 }

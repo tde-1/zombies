@@ -23,14 +23,24 @@ const KNOWN = {
 const UNTESTED = 'Not tested on our servers yet'
 const LOCAL_ONLY = 'Play Local only'
 const BROKEN = 'Does not run'
+// The "New" tag's hover: lib/maps.js BOX_PROVEN, server-side proof only.
+const UNTESTED_CLIENT = 'New: loads on our servers, not yet played with a client'
 
-/** The reason for a map row that is NOT on the server list. Null for one that is. */
-function noteFor (row, onServer) {
-  if (!row || onServer) return null
-  if (row.health === 'broken') return BROKEN
+let BOX = {}
+try { BOX = require('./boxProven.json').maps || {} } catch { BOX = {} }
+
+/** The reason for a map row that is NOT on the server list (null for one that is), or the
+ *  caveat for one that is on it only at the 'box' level. */
+function noteFor (row, onServer, level = null) {
+  if (!row) return null
+  if (onServer) return level === 'box' ? UNTESTED_CLIENT : null
+  if (row.health === 'broken') {
+    const b = BOX[row.key]
+    return b && b.result === 'fail' && b.note ? `${BROKEN} on our servers: ${b.note}` : BROKEN
+  }
   if (KNOWN[row.key]) return KNOWN[row.key]
   if (row.health === 'custom-only') return LOCAL_ONLY
   return UNTESTED
 }
 
-module.exports = { noteFor, KNOWN }
+module.exports = { noteFor, KNOWN, UNTESTED_CLIENT }
