@@ -3,8 +3,8 @@
   "map": "nazi_zombie_octogonal",
   "title": "OCTAGONAL ASCENSION",
   "source": "custom",
-  "author": null,
-  "released": null,
+  "author": "Psh",
+  "released": "2016-04-18",
   "fs_game": "mods/nazi_zombie_octogonal",
   "script_fingerprints": {
     "maps/_zombiemode.gsc@nazi_zombie_octogonal.iwd": "549a71c10e7c3ac1f066af80138fa8accad878fab38d76905f435b9d82bf6f4a"
@@ -131,8 +131,18 @@
       "$PLUGINSDIR/System.dll",
       "$PLUGINSDIR/nsDialogs.dll"
     ],
-    "catalogue_tags": [],
-    "catalogue_description": null
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "challenge",
+      "leaderboard",
+      "top_100"
+    ],
+    "catalogue_description": "The unwanted and unlovable sequel to Hex Tower; Octagon is an aim at trying to be harder than its predecessor. This map was made in my spare time so don't take it too seriously. There are a few bugs that unless people tell me how to fix are not getting fixed anytime soon. TURN OFF SPECULAR MAPS OR YOU'RE GOING TO HAVE A BAD TIME! Features: Timed Gameplay instead of regular, Harry's Perks (No Who's Who), Element Ammo (Some), Buyable ending [Cost: 75000] (Most expensive yet, tired of people beating my maps in less than 20 rounds), Extremely Hard Map, No Dogs, Ton of weapons, Super annoying hunchback boss zombies, No Perk Limit, DOES NOT REQUIRE T4M, Zombie Counter, Most perk prices are changed from their original. Credits: Tom bmx, Harry Bo21, alaurenc9, Ege115, BluntStuffy, HitmanVere, JR-Imagine, CFGFACTORY, ricko0z, LilRobot, Centric, Paragalor, DidUKnowIPwn, MAKECENTS, Relaxing.",
+    "catalogue_description_source": "https://callofdutyrepo.com/2016/04/18/octogonal/ (release post; cross-source name mismatch \u2014 ZWR lists it as 'Octagonal Ascension', callofdutyrepo as 'Octogonal Ascension', same map/bsp)",
+    "cover": "media/nazi_zombie_octogonal/octogonal-3.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/octogonal-3.jpg",
+    "cover_size": 180518
   },
   "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

@@ -126,7 +126,10 @@
     "catalogue_tags": [
       "buyable_ending"
     ],
-    "catalogue_description": "hi people today i bring you my new custom map Zombie Desert or Desert Zombie i don\u2019t know how you write. well this is a map of a single room the map is heavy because of the videos enjoy Features: *boss *custom perks shaders *verruct runners *custom pap camo *pap powerup *nuketown style perks *custom powerups *c4 *guns cod4, cod waw, bo, bo2, ghost y custom *10 perks *dogs from mp *tomahawk *special guns: thundergun, scavenger, mark2, blundergat, plasma pistol *end game *shi no numa zombies *videos *no monkey boms *mw3 intro *hitmarkers"
+    "catalogue_description": "hi people today i bring you my new custom map Zombie Desert or Desert Zombie i don\u2019t know how you write. well this is a map of a single room the map is heavy because of the videos enjoy Features: *boss *custom perks shaders *verruct runners *custom pap camo *pap powerup *nuketown style perks *custom powerups *c4 *guns cod4, cod waw, bo, bo2, ghost y custom *10 perks *dogs from mp *tomahawk *special guns: thundergun, scavenger, mark2, blundergat, plasma pistol *end game *shi no numa zombies *videos *no monkey boms *mw3 intro *hitmarkers",
+    "cover": "media/nazi_zombie_test1/zombie-desert.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/zombie-desert.jpg",
+    "cover_size": 158377
   },
   "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

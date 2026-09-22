@@ -165,7 +165,10 @@
       "$PLUGINSDIR/nsDialogs.dll"
     ],
     "catalogue_tags": [],
-    "catalogue_description": "Der Berg is the back door of Der Riese. A similar place that is built on a different place on the same world."
+    "catalogue_description": "Der Berg is the back door of Der Riese. A similar place that is built on a different place on the same world.",
+    "cover": "media/nazi_zombie_derberg/derberg-2.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/derberg-2.jpg",
+    "cover_size": 145093
   },
   "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
 }

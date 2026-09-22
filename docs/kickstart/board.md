@@ -3661,3 +3661,32 @@ This is the end of the board and it is meant to be the first thing a new agent r
 **Closed tonight, so nobody re-opens them**: milestone (d) (a client spawns in), the level-start
 autosave hang, "the server burns a whole core", "UDP 3074 collides", and `ENW_PRIVATE_PROFILE` as
 a route to several instances.
+
+**archive, 2026-09-22 (overnight pass on the 14 MVP maps):**
+- Checked all 14 pipeline maps' catalogues (ZWR, callofdutyrepo, UGX-Mods) for a newer release
+  than what is archived, using the crawl already on disk plus one live check per host where the
+  DB was ambiguous. None had a newer version. One near-miss worth a human call: "City of Hell:
+  Next Station" (2023, T4M) is a same-named but distinct sequel map, not a version of the archived
+  `nazi_zombie_dt2` — not fetched. ORBiT's UGX thread title mentions a "v2.0" in development; no
+  v2.0 download exists in any catalogue, so treated as unreleased.
+- Recovered Octagonal Ascension's description/author/date/tags (was empty — the ZWR/codrepo
+  spelling mismatch from archive.md §5's gap list, "Octagonal" vs "Octogonal", same bsp
+  `nazi_zombie_octogonal`) from its callofdutyrepo post.
+- Confirmed (again, by hand) that 13 of 14 NSIS installers do not carry recoverable release text:
+  `7z l -slt` lists no `.nsi` member, and a raw `strings` pass over two installers found only
+  NSIS's own UI chrome. Release-post-as-description stands for all 14; UGX-Mods thread bodies were
+  fetched too but the board's SMF chrome eats the crawler's 4000-char extract before the real post
+  text, so that source is not usable yet as description text.
+- Fetched a cover image for all 14 maps (one request per map, `codrepo`'s `og:image`, 82 KB–723
+  KB each) into `ZombiesDev\archive\media\<bsp>\` with sidecars, and recorded
+  `archive.cover` / `archive.cover_source_url` in each manifest. **Gap for web**:
+  `web/server/db/import-archive.js` does not read an art field yet, so `maps.art` stays null on
+  the site until that one line is added there — not this lane's file to edit.
+- Ran `node web/server/db/import-archive.js` (no `--catalogue`, index already current): 14
+  updated, 4 tags, idempotent. Site's playable count unchanged at 19.
+- Ranked next-20 by callofdutyrepo view count, all 20 confirmed with a live MediaFire mirror
+  already in the link-check data (no new fetches): Cheese Cube Unlimited, Bowser's Castle, Black
+  Ops 2 Town Remake, McDonalds, Return To Stairway To Hell top the list. Full 20 in
+  `ZombiesDev\archive\reports\next20.json`.
+- `docs/kickstart/archive.md` §8 has the per-map table. No installer run, no new full-map fetch,
+  disk had 195 GB free throughout.

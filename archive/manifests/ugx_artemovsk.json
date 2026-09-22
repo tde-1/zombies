@@ -183,7 +183,10 @@
       "top_100",
       "ugx_modded"
     ],
-    "catalogue_description": "This map features UGX Mod v1.1! For a full list of features, click here . It\u2019s finally here! UGX Requiem is the latest map from the UGX-Mods team \u2013 featuring UGX Mod v1.1."
+    "catalogue_description": "This map features UGX Mod v1.1! For a full list of features, click here . It\u2019s finally here! UGX Requiem is the latest map from the UGX-Mods team \u2013 featuring UGX Mod v1.1.",
+    "cover": "media/ugx_artemovsk/ugx-requiem-1.png",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/ugx-requiem-1.png",
+    "cover_size": 723345
   },
   "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
 }

@@ -364,3 +364,74 @@ that prompted it.
 
 Questions for B are in `docs/kickstart/questions.md` (Q-arc-1 … Q-arc-4): ZombieModding's robots
 ban, the robots judgement call on MediaFire's CDN nodes, MEGA decryption, and Google Drive.
+
+## 8. 2026-09-22 — making the first 14 (+ stock 4) complete on the site
+
+Overnight pass over the 14 pipeline maps: newer-version check, description recovery, cover art,
+endings evidence, and a ranked next-20. No new full-map fetches (nothing had a newer version), no
+installer run, nothing outside `archive/` and `web`'s existing import path written by hand.
+
+| Map (bsp) | Version held | Newer found? | Description | Art | Endings evidence |
+|---|---|---|---|---|---|
+| Abandoned School (`nazi_zombie_school`) | Patch 1.02 (codrepo desc names it) | no — MediaFire filename matches | codrepo release post (1500c) | cover fetched | tags ee+buyable, scanner `easter_egg` candidates listed |
+| Alcatraz (`water`) | current | no | codrepo release post | cover fetched | tags ee+buyable+boss |
+| BO2 Hijacked Zombies (`nazi_zombie_hijacked`) | current | no | codrepo release post | cover fetched | tag buyable_ending, scanner agrees |
+| City of Hell (`nazi_zombie_dt2`) | current (2015 map) | **maybe** — "City of Hell: Next Station" (2023, T4M) is a same-named *sequel* map on UGX/codrepo, not a version bump of this bsp; flagged as a next-20-style candidate, not fetched | codrepo post | cover fetched | tags ee+buyable |
+| Clinic of Evil (`sanatorium`) | 05/11/2018 update | no — UGX thread title confirms this is the "(updated)" release | codrepo post + shipped `readme.txt` | cover fetched | tags ee+buyable; scanner missed silently (documented gap) |
+| Der Berg (`nazi_zombie_derberg`) | current | no | codrepo post (109c — genuinely short; NSIS text not recoverable without running the installer, confirmed by `strings` on the exe) | cover fetched | untagged by community; scanner says buyable_ending on `teleport_*` — flagged as a likely false positive in §4 |
+| Zombie Desert (`nazi_zombie_test1`) | current | no | codrepo post | cover fetched | tag buyable_ending, scanner agrees |
+| Leviathan (`nazi_zombie_leviathan`) | v1.2 | no — UGX thread title is "V1.2", matches archived exe | codrepo post | cover fetched | tags ee+buyable, scanner agrees (entity-only quest) |
+| Minecraft Village Remastered (`nazi_zombie_fear_mc_2`) | v1.1 (remastered) | no — UGX thread confirms v1.1 is current; the 2015 original "Minecraft Village" is a different, earlier release, not this map | codrepo post | cover fetched | tags ee+buyable+boss |
+| MW2 Rust Zombies (`mw2rust`) | current | no | codrepo post | cover fetched | tag buyable_ending, scanner agrees (`end_game` entity) |
+| Octagonal / Octogonal Ascension (`nazi_zombie_octogonal`) | v1.3.0 | no — MediaFire filename matches | **recovered**: codrepo post (was empty; author/date/tags/description now filled) | cover fetched | tag buyable_ending, scanner agrees; §5's cross-source name-mismatch gap fixed for this one map |
+| ORBiT (`nazi_zombie_orbit`) | v1.2 | **check** — UGX thread title says "[Added 2 polls about development of v2.0]"; no v2.0 download row found in any catalogue, so v2.0 looks unreleased, not confirmed | codrepo post | cover fetched | untagged by scanner (silent miss, documented in §4); community tags ee+buyable |
+| Project Viking (`nazi_zombie_test`) | V1.1 ("Final") | no — UGX thread title matches | codrepo post | cover fetched | tags ee+boss, scanner agrees |
+| UGX Requiem (`ugx_artemovsk`) | v1.1 | no — UGX thread title matches | codrepo post (171c, genuinely short — UGX Mod's own feature list lives off-page) | cover fetched | tags ee+buyable+ugx_mod |
+
+Stock four (Nacht der Untoten, Verrückt, Shi No Numa, Der Riese) are not archive-pipeline maps —
+no installer, no third-party catalogue entry, no version to check. They stay out of this table;
+they are WaW's own content and already on the site by a different path.
+
+**Descriptions**: 13 of 14 installers are NSIS; confirmed again by hand (`7z l -slt` lists no
+`.nsi` script member, and a raw `strings` pass over two representative exes — Der Berg and UGX
+Requiem — found only NSIS's own UI chrome, nothing resembling release notes) that their release
+text is compiled into the installer's UI and not recoverable without running it, which rule 6
+forbids. Fell back to the callofdutyrepo release post for all 14, which is where 12 of them
+already had a full description; Octagonal Ascension was empty and is now filled. UGX-Mods thread
+bodies were fetched too (`fetch_ugx_threads.py`, 14 polite requests total) but the board's SMF
+skin puts ~3500 characters of forum chrome (login box, sidebar, signatures) before the actual
+post inside the crawler's fixed-length extract, so the UGX text is not usable as a description yet
+— left as a known gap rather than shipped as noise. Codrepo remains the good source.
+
+**Art**: one live request per map (14 total, one host, `net.py`'s politeness), reading each
+codrepo post's `og:image` and fetching it through `fetch.download()` (robots-checked,
+`from_landing=True`, same as any other MediaFire-style download). All 14 covers are 82 KB–723 KB,
+well under the 2 MB cap; saved to `C:\Users\b\ZombiesDev\archive\media\<bsp>\` with a
+`.meta.json` sidecar (url, sha256, size, fetched). Recorded in each manifest's
+`archive.cover` (relative path) and `archive.cover_source_url`. **Gap**: `web/server/db/import-archive.js`
+does not read `archive.cover` yet — there is no `art` write in the importer, so the site's `maps.art`
+column stays null until web's lane adds that one field read. Out of this lane's files to fix.
+
+**Endings evidence**: already carried in each manifest's `scanner.ee_candidates` /
+`hardcoded_costs` / `map_specific_triggers` plus the community's own tags from
+`archive.catalogue_tags`, both with their source URL in `archive.source_page` /
+`catalogue_description_source`. No manifest's `finishes[]` conditions were changed — §4's
+`{"manual": true}` policy for Easter Eggs stands, and ORBiT / Clinic of Evil's documented silent
+misses were not "fixed" by inventing a condition (schema: an ungated badge is worse than a
+missing one).
+
+**Import**: `node web/server/db/import-archive.js` (no `--catalogue`, the crawl index was already
+current) — re-run, idempotent, `+0 maps, 14 updated, 0 catalogued, ... 4 tags`. `playable now: 19`
+on the live counts, matching §4h's own figure.
+
+**Next 20 candidates**, ranked by callofdutyrepo view count, all with a confirmed **live
+MediaFire mirror** (checked against the existing link-checker data, no new probes): Cheese Cube
+Unlimited (25.4k views), Bowser's Castle (25.0k), Black Ops 2 Town Remake (21.3k), McDonalds
+(19.8k), Return To Stairway To Hell (18.0k), Nuketown Remastered, Spongebob Battle for Bikini
+Bottom (Fixed), Kino the Rebirth (Old Release), Five Nights at Freddy's, A Day In The Life (lewl),
+Alien Defense, Das Herrenhaus, Reapers Map Pack, Egypt Zombies, Bus Depot, Battlestar Galactica,
+Super Mario 64, Halloween Town, 1942 Forest, Ragnarok — full ranked list with URLs and view
+counts in `C:\Users\b\ZombiesDev\archive\reports\next20.json`, all 20 checked against the
+existing link-checker verdicts and all 20 have a `mediafire.com: alive` row. None fetched this
+run (rule: no new ~300–950 MB pulls without a plan for which ones B actually wants archived
+next).
