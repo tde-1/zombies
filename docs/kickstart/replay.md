@@ -561,3 +561,109 @@ only console line is `KHR_parallel_shader_compile extension not supported`.
 * **The track cache outlives an export.** A track decoded before a map was exported keeps
   `map_export.glb: false` until the site restarts — the same restart §7a already needs.
 * **`weapon`, `stance`, lightmaps, skinned zombies** — §5, unchanged.
+
+---
+
+## 8. 2026-09-22 (late) — SPEC: "functionally identical to Movement's viewer"
+
+B watched `m_0afb449b` (Nacht, site game, box `zombies-dev`) in the launcher and listed eight
+gaps. Reference: `C:\Users\b\Desktop\CSGO-Matchmaker\movement-client\src\replay3d\`. Each item
+says what is wrong, *why* (measured, not guessed, where marked), what data it needs, and
+where the work lands. Order and effort at the bottom.
+
+### 8.1 First person does not switch — viewer only, ROOT CAUSE FOUND
+
+`ReplayViewer.jsx` put the drag handler on the **wrapper** and called
+`setPointerCapture` on every `pointerdown`. The wrapper contains the top rail and the
+control bar, so a press on *First person* or *Play* captured the pointer to the wrapper;
+the `click` then fires on the common ancestor of the down/up targets — the wrapper — and
+**the button never gets its click**. Keys 1/2/3 and Space worked all along; the range
+input survived because it acts on `input`, not `click`. Movement binds the drag to the
+**canvas** (`onPointerDown` on `<canvas>`, `ReplayViewer.jsx` ~1218). Fix: drag only
+when the press lands on the canvas.
+
+### 8.2 Play does nothing — same root cause as 8.1
+
+Same capture. Also: the playhead starts at tick 0, and on a real game tick 0..~74 is the
+player at `[0,0,0]`, dead, before spawn (first `alive` at tick 74 on `m_0afb449b`). Start
+the playhead at the first live tick (Movement starts at the run's lead-in, same idea).
+
+### 8.3 Props at wrong transforms — FIX the export (not drop), cause measured
+
+OAT's glTF writes vertices **Y-up** (a sandbag's `POSITION` max is `[10.5, 9.7, 16.5]`:
+height in Y) and, on skinned models, a `tag_origin` root rotated −90° about X.
+`merge_model` copies the meshes and **drops every node transform**, then places them in a
+Z-up map with the map's own `angles`. So every prop lies on its side: its up axis points
+along world −Y, which reads as chairs, crates and sandbags floating or jutting from walls.
+The world shell (Husky OBJ) is Z-up and is right, which is why only props are wrong. Fix:
+each placement's quaternion becomes `q_angles ⊗ Rx(+90°)`, and the `__sky` dome gets
+`Rx(+90°)` too. Keeping props rather than dropping them because the cause is one
+constant and the 1 506 baked static models are most of what makes Nacht look like Nacht.
+
+### 8.4 Zombies never appear — track bug, not a DLL gap (measured)
+
+The DLL records them: `m_0afb449b` has **995 snaps with a `zombies` list, up to 7
+zombies**, each `{id, pos, health}`. `buildTrack` samples every *other* snap at 10 Hz
+(`snapIndex % 2 === 0`) and reads `zombies` only from the sampled snap — and the DLL puts
+the list on **even server frames**, which on this game are the **odd** snap indices. So
+every zombie sample was skipped: `track.zombies.length === 0`. Fix (host-side reader in
+`web/server/routes/replay.js`): carry the latest zombie list forward and sample it on the
+strided tick. Then, from the DLL, per zombie: **yaw** (`currentOrigin+12`, the same read
+the player uses — one float), later an **anim state** (walk/run/sprint/crawl, needs the
+AI struct: `re` lane) and a **gib/crawler** flag. Alive/dead is already implicit (the
+entity leaves the list) and the `kill` event marks it. Drawn as red capsules today,
+oriented by yaw once it is recorded.
+
+### 8.5 Camera flies through the outro — viewer + track
+
+Replay `m_0afb449b` has no `game_over` event; the referee's `recording()` never stopped
+the sampler, and the tail after `notify intermission` (ms 122 304) is the intermission
+camera path — the player capsule "flies". Track: carry `end_ms` = first of `game_over` /
+`notify intermission`. Viewer: the scrubber ends there. DLL (referee lane): stop
+sampling on `intermission` as well as `game_over`, so the file itself is clean.
+
+### 8.6 Grenades — DLL + host + viewer
+
+Nothing records them. DLL: in the 10 Hz zombie pass, also collect entities whose
+classname is `grenade` (CoD's `G_FireGrenade` classname; **unverified on T4**, so the
+sampler also logs each *new* non-actor classname it sees once, and B's next game settles
+it) as `snap.nades: [{id, pos}]`; when a nade id leaves the list emit
+`{t:"explode", id, pos}` at its last position. Host: `nades` carried like zombies,
+`explode` into the feed. Viewer: small dark-green spheres, and a short-lived orange
+sphere + ring at each explosion.
+
+### 8.7 Crosshair + placeholder viewmodel — viewer (+ one track column)
+
+Crosshair: WaW's is four ticks around a gap that opens with movement speed and firing
+and closes back at a per-class rate. Needs **speed** (derived from positions, already
+there) and **fire** — `input` events carry `buttons` on change; bit `0x1` is taken as
+attack (**[H]**: on `m_0afb449b` masks `1`, `8195`, `4196353` all carry it and appear
+in firing moments; confirm on B's next game), carried into the track as a `fire` column.
+Per-class base/max spread from the weapon name when the DLL resolves names (today the
+weapon is `#<index>`, §3 gap 5), a rifle default meanwhile. Viewmodel: a **procedural
+placeholder** built from three primitives in `actors.js` — no downloaded asset, no
+licence question — that kicks on `fire`. If B wants a real mesh, the proposed source is
+**Quaternius "Ultimate Guns" (CC0 1.0, quaternius.com / poly.pizza)**; it needs B's OK
+to download. No WaW viewmodel is ported, ever.
+
+### 8.8 Der Riese and Nacht
+
+Nacht: 8.3 re-export. Der Riese (`nazi_zombie_factory`): the **OAT half** (props,
+map_ents, sun, pathnodes) runs with no game; the **world shell needs Husky, which needs
+the running game** (§4b) — forbidden while B is at his PC (no `game.lock`). So Der Riese
+gets a props-and-sky export on the grid now, and the shell on the next authorised
+six-minute lock hold (§4b's four commands, `+map nazi_zombie_factory`).
+
+### 8.9 Order of work, and effort
+
+| # | Item | Lands in | Effort |
+|---|---|---|---|
+| 1 | Pointer capture → canvas (8.1, 8.2) | viewer | 10 min |
+| 2 | Zombie carry-forward (8.4) | `routes/replay.js` + test | 20 min |
+| 3 | Outro clamp + start at first live tick (8.5, 8.2) | track + viewer | 20 min |
+| 4 | Prop/sky axis fix + Nacht re-export (8.3) | `export_map.py` | 20 min |
+| 5 | Crosshair + fire column + placeholder viewmodel (8.7) | track + viewer | 1 h |
+| 6 | Zombie yaw + nades + explode (8.4, 8.6) | DLL `replay.cpp`, host test, viewer | 1.5 h |
+| 7 | Referee stops on `intermission` (8.5) | referee lane | 15 min |
+| 8 | Der Riese OAT half now; Husky half on a lock hold (8.8) | `tools/maps` | 10 min + 6 min lock |
+| 9 | Zombie anim state, skinned zombies, weapon names | `re` + DLL + viewer | days |
