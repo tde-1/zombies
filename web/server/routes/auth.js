@@ -1,23 +1,35 @@
 'use strict'
 
-// Sign-in. Steam OpenID, with a MOCK PROVIDER for local development.
+// Sign-in. **Steam OpenID, and nothing else** (B, 2026-09-22: "Remove all the dev logins and
+// all the fake logins … To be a user you have to sign in with Steam and you have to have an
+// ENW username").
 //
-// ── Why the mock is the default ───────────────────────────────────────────────────
-// Real Steam OpenID needs a Steam Web API key to turn the returned identity into a persona
-// name and avatar (passport-steam fetches the player summary). We do not have one, we are
-// not creating accounts and we are not calling anybody's production API, so:
+// ── What went, and why none of it is behind a flag ────────────────────────────────────
+// This file used to carry a MOCK PROVIDER: `ZM_AUTH=mock` (the default!) registered a page at
+// `/auth/mock` that listed every account on the site and signed you in as whichever you
+// clicked, or as any SteamID you typed. §10e narrowed it to loopback and to "not on a Steam
+// site"; it is now gone outright, with `ZM_AUTH`, `ZM_ALLOW_MOCK`, the account list and the
+// "first account on an empty site is the admin" rule. A dev box signs in with Steam too:
+// OpenID needs a URL for Steam to send the browser back to, not a public one, so with
+// `ZM_PUBLIC_URL` unset the site uses its own loopback address and real Steam sign-in works
+// on 127.0.0.1 exactly as it does on zombies.enw.gg.
 //
-//   ZM_AUTH=mock   (default)  a dev-only sign-in page. Pick or type a SteamID and you are
-//                             that person. Bound to 127.0.0.1 and refused outright when
-//                             NODE_ENV=production, because a mock login reachable from the
-//                             internet is not a login.
-//   ZM_AUTH=steam             the real thing, once STEAM_API_KEY and ZM_PUBLIC_URL are set.
-//                             passport-steam is an OPTIONAL dependency: if it is not
-//                             installed the server says so at boot and stays on the mock
-//                             rather than failing to start.
+// ── The one thing that stays: a TEST-ONLY hook ────────────────────────────────────────
+// `npm test` spawns real servers and signs in as several players over HTTP; it cannot drive
+// steamcommunity.com. So `ZM_TEST_LOGIN=1` registers `POST /auth/test-login` ({steam_id}),
+// which does exactly what a verified Steam return does — `users.ensure(steamid)`, set the
+// session, finish a launcher flow if one is open — and nothing more: no name, no approval,
+// no admin. Three locks, and it is documented in docs/kickstart/web.md (the 2026-09-22
+// identity section):
+//
+//   1. the server REFUSES TO START with ZM_TEST_LOGIN=1 and NODE_ENV=production;
+//   2. the route is not registered at all unless ZM_TEST_LOGIN=1 — on zombies.enw.gg it is a
+//      404, and `infra/site.env` / `infra/keepalive.ps1` set neither;
+//   3. it answers loopback callers only, whatever the env says.
 //
 // The ENW name is not fetched here. It is a separate narrow API (lib/enw.js) and is refreshed
-// after the response, so a slow or absent ENW never delays a login.
+// after the response, so a slow or absent ENW never delays a login. Choosing one is the first
+// thing a new account does after this file is finished with it (lib/names.js, the picker).
 
 const express = require('express')
 const crypto = require('node:crypto')
@@ -101,10 +113,8 @@ const sha256b64url = (s) => b64url(crypto.createHash('sha256').update(String(s))
 // Step 5, shared by every provider. Returns true when it has sent the browser back to the
 // launcher, false when this was an ordinary sign-in in an ordinary browser.
 //
-// It hangs off the provider rather than living inside the Steam handler because the mock
-// is still the fallback while the beta gate is up: if a launcher could only complete the
-// handshake against real Steam, then the day Steam or the redirect broke, the fallback
-// would be useless precisely when it was needed.
+// It is a function of its own rather than inline in the Steam return because the test-only
+// hook finishes the same flow, so `test/launcher-signin.js` exercises the real code.
 //
 // The code goes in the query string and the SteamID does not. A URL is the most leaked
 // string there is — history, referrers, shoulders — so what travels that way is worth
@@ -138,19 +148,21 @@ function finishLauncherFlow (req, res) {
   return true
 }
 
-const MODE = (process.env.ZM_AUTH || 'mock').toLowerCase()
-const PUBLIC_URL = process.env.ZM_PUBLIC_URL || null
+const PORT = Number(process.env.PORT || process.env.ZM_PORT || 3200)
+// Where Steam sends the browser back to. On the live site that is https://zombies.enw.gg
+// (infra/site.env). Unset — a dev box, a test — it is this process's own loopback address,
+// which Steam accepts as an OpenID realm like any other.
+const PUBLIC_URL = (process.env.ZM_PUBLIC_URL || `http://127.0.0.1:${PORT}`).replace(/\/+$/, '')
 const STEAM_API_KEY = process.env.STEAM_API_KEY || null
-
-// Dev identities the mock sign-in page offers. They are the seed's demo players plus
-// whatever else is already in the database, so signing in as somebody who has games shows a
-// populated site immediately.
-function devIdentities() {
-  return db.prepare('SELECT steam_id, username, enw_name, is_admin FROM users WHERE deleted=0 ORDER BY is_admin DESC, created_at LIMIT 25').all()
-}
+const TEST_LOGIN = process.env.ZM_TEST_LOGIN === '1'
 
 function router() {
   const r = express.Router()
+
+  // Lock 1 of the test hook: refuse to come up at all rather than serve it in production.
+  if (TEST_LOGIN && process.env.NODE_ENV === 'production') {
+    throw new Error('ZM_TEST_LOGIN=1 is set with NODE_ENV=production. The test-only sign-in is never served in production; unset ZM_TEST_LOGIN.')
+  }
 
   r.get('/mode', (req, res) => res.json({
     mode: effectiveMode(),
@@ -211,14 +223,9 @@ function router() {
     }
 
     req.session.launcher = { port, state, challenge, at: Date.now() }
-    // The launcher's loopback flow sent EVERY site to `/auth/steam`, including a site
-    // running the mock provider — which answers 404, because in mock mode that route is
-    // not registered at all. So the one sign-in path a developer (or an agent) can
-    // actually drive was the one path this flow could not use, and the launcher's own
-    // `supportsLoopbackSignIn()` probe said yes to it regardless. `finishLauncherFlow`
-    // is already called by both providers; only the door was wrong. Live is
-    // `ZM_AUTH=steam` and is not affected by this line.
-    res.redirect(effectiveMode() === 'mock' ? '/auth/mock' : '/auth/steam')
+    // Steam, always — there is no other provider (2026-09-22). The mock-mode branch that
+    // used to live here went with the mock.
+    res.redirect('/auth/steam')
   })
 
   // Step 6: the launcher redeems its code. This is the only request in the flow that comes
@@ -247,53 +254,33 @@ function router() {
     if (!u) return nope()
     req.session.steam_id = u.steam_id
     db.prepare('UPDATE users SET last_seen=? WHERE steam_id=?').run(now(), u.steam_id)
-    res.json({ ok: true, you: users.pub(u) })
+    // `needs_name`: this Steam account has not chosen its ENW username yet, so `you.name` is
+    // a bare SteamID and is not a name to put in the game. The launcher's wrapped site shows
+    // the picker next, and the launcher re-reads the name from /api/launcher/hello before a
+    // launch (launcher/src/main/main.js).
+    res.json({ ok: true, you: users.pub(u), needs_name: require('../lib/names').needsName(u.steam_id) })
   })
 
-  // ---- the mock provider -----------------------------------------------------------
-  // ~~Kept registered alongside real Steam sign-in for as long as the closed-beta gate is
-  // up~~ — **retracted 2026-09-22, B: Steam sign-in only.** The fallback was insurance
-  // against Steam OpenID not working, and Steam OpenID works (§9): `/auth/steam` redirects
-  // correctly, the realm is right, and the three faults in the browser leg are fixed. What
-  // the fallback bought us was one less way to be locked out; what it cost is a page that
-  // lets anyone who has the shared password become **anyone**, including the admin —
-  // and four people now hold that password.
-  //
-  // So it is registered ONLY in mock mode, which needs `ZM_AUTH` unset or `ZM_PUBLIC_URL`
-  // absent. The live site is `ZM_AUTH=steam` with a public URL, so on zombies.enw.gg these
-  // two routes do not exist at all. `mockAllowed()` below is the second lock, for a dev
-  // box that has been left with `NODE_ENV=production` set.
-  if (effectiveMode() === 'mock') {
-    r.get('/mock', (req, res) => {
-      if (!localOnly(req)) return res.status(403).send('the mock sign-in is not available on this site')
-      const list = devIdentities()
-      res.type('html').send(mockPage(list, String(req.query.next || '/')))
-    })
-
-    r.post('/mock', express.urlencoded({ extended: false }), (req, res) => {
-      if (!localOnly(req)) return res.status(403).send('the mock sign-in is not available on this site')
-      const sid = String(req.body.steam_id || '').trim()
-      if (!/^\d{5,20}$/.test(sid)) return res.status(400).send('that is not a SteamID')
-      const name = String(req.body.username || '').trim() || null
-      const u = users.ensure(sid, { username: name || undefined })
-      // First account on an empty site is the admin. Somebody has to be, and asking a
-      // developer to edit a row to see the admin page is friction for no safety.
-      const count = db.prepare('SELECT COUNT(*) c FROM users').get().c
-      if (count === 1) db.prepare('UPDATE users SET is_admin=1, is_mod=1, approved=1 WHERE steam_id=?').run(sid)
-      if (!isLoopback(req)) {
-        // Worth shouting about: this is a real account being created or signed into
-        // from off-box, with only the shared password in front of it.
-        console.warn(`[auth] MOCK SIGN-IN from ${req.ip} as ${sid} — allowed by ZM_ALLOW_MOCK`)
-      }
+  // ---- the test-only hook (see the top of this file) ---------------------------------
+  // ~~The mock provider~~ — **removed 2026-09-22, B: Steam sign-in only, no dev logins.** What
+  // replaced it is not a sign-in page: there is no GET, nothing lists accounts, nothing makes
+  // anybody an admin, and it does not exist unless the test suites asked for it.
+  if (TEST_LOGIN) {
+    r.post('/test-login', express.urlencoded({ extended: false }), express.json({ limit: '4kb' }), (req, res) => {
+      if (process.env.NODE_ENV === 'production' || !isLoopback(req)) return res.status(404).type('text/plain').send('Not found')
+      const sid = String((req.body && req.body.steam_id) || '').trim()
+      if (!/^\d{17}$/.test(sid)) return res.status(400).json({ error: 'steam_id must be a SteamID64' })
+      console.warn(`[auth] TEST-ONLY sign-in as ${sid} (ZM_TEST_LOGIN=1)`)
+      const u = users.ensure(sid)
       req.session.steam_id = u.steam_id
       db.prepare('UPDATE users SET last_seen=? WHERE steam_id=?').run(now(), sid)
       if (finishLauncherFlow(req, res)) return
-      res.redirect(String(req.body.next || '/'))
+      res.json({ ok: true, you: users.pub(users.byId(sid)) })
     })
   }
 
   // ---- real Steam OpenID ------------------------------------------------------------
-  if (effectiveMode() === 'steam') {
+  {
     let passport = null
     try {
       passport = require('passport')
@@ -388,7 +375,7 @@ function router() {
         res.redirect(String(req.session.next || '/'))
       })
     } catch (e) {
-      console.warn(`[auth] ZM_AUTH=steam but passport-steam is not usable (${e.message}). Sign-in is unavailable; set ZM_AUTH=mock for local work.`)
+      console.warn(`[auth] passport-steam is not usable (${e.message}). Sign-in is unavailable until it is installed (npm install).`)
       r.get('/steam', (req, res) => res.status(503).json({ error: 'Steam sign-in is not configured on this server' }))
     }
   }
@@ -403,43 +390,14 @@ function router() {
   return r
 }
 
-// The API key is deliberately NOT part of this test. Sign-in is OpenID and needs only a
-// public URL to be redirected back to; the key adds names and avatars. Requiring it here
-// is what kept real sign-in switched off while it was already available.
-function effectiveMode() {
-  if (MODE === 'steam' && PUBLIC_URL) return 'steam'
-  return 'mock'
-}
+// There is one mode. Kept as a function because /api/me, /api/launcher/hello, /api/health
+// and the site page all report it, and the launcher reads `auth` off hello.
+function effectiveMode() { return 'steam' }
 
 function isLoopback (req) {
-  const ip = String(req.ip || req.connection.remoteAddress || '')
-  return ip.includes('127.0.0.1') || ip.includes('::1') || ip === '::ffff:127.0.0.1'
+  const ip = String(req.ip || (req.connection && req.connection.remoteAddress) || '')
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1'
 }
-
-// Who may use the mock sign-in.
-//
-// It used to be loopback-only, which was right when the site only ever ran on a dev
-// box. The closed beta is served at zombies.enw.gg through a Cloudflare tunnel, so
-// nobody is loopback any more and the mock was refused for everyone — with no Steam
-// key yet, that left the site with no way in at all.
-//
-// ~~So: the shared-password gate IS the access control for the beta~~ — **retracted
-// 2026-09-22, B: Steam sign-in only.** `ZM_SITE_PASSWORD` used to open this page to
-// anybody who had typed the beta password, which is how a shared password became a way to
-// sign in as the site owner. It does not any more. The rule is back to the narrow one:
-//
-//   never when NODE_ENV=production, and otherwise loopback only.
-//
-// `ZM_ALLOW_MOCK=1` is the one escape hatch and it exists for the test suites, which spawn
-// a real server and sign in over HTTP as several different players. It is never set in
-// production; `infra/site.env` does not carry it and neither does `infra/keepalive.ps1`.
-function mockAllowed (req) {
-  if (process.env.NODE_ENV === 'production') return false
-  if (process.env.ZM_ALLOW_MOCK === '1') return true
-  return isLoopback(req)
-}
-
-function localOnly (req) { return mockAllowed(req) }
 
 // A sign-in that did not work, said out loud, ON A GATE-EXEMPT PATH.
 //
@@ -463,44 +421,5 @@ function signInProblem (res, title, what, next, status = 410) {
 }
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-
-function mockPage(list, next) {
-  const rows = list.map((u) => `
-    <form method="post" class="row">
-      <input type="hidden" name="steam_id" value="${esc(u.steam_id)}">
-      <input type="hidden" name="next" value="${esc(next)}">
-      <button type="submit"><b>${esc(u.enw_name || u.username || u.steam_id)}</b>
-        <span>${esc(u.steam_id)}${u.is_admin ? ' · admin' : ''}</span></button>
-    </form>`).join('')
-  return `<!doctype html><meta charset="utf-8"><title>ENW Zombies — dev sign-in</title>
-<style>
-  :root{--zm-bg:#11120e;--zm-panel:#1a1c15;--zm-bone:#e4dfd1;--zm-muted:#9a9684;--zm-olive:#565a3c;--zm-blood-hi:#b0342c}
-  body{margin:0;background:var(--zm-bg);color:var(--zm-bone);font:15px/1.5 'Open Sans',system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center}
-  main{width:420px;max-width:92vw}
-  h1{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--zm-muted);margin:0 0 4px}
-  p{color:var(--zm-muted);font-size:13px;margin:0 0 18px}
-  .row button{display:flex;width:100%;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 6px;
-    background:var(--zm-panel);color:var(--zm-bone);border:1px solid rgba(230,226,214,.10);border-radius:10px;
-    padding:10px 14px;font:inherit;cursor:pointer;text-align:left}
-  .row button:hover{border-color:var(--zm-olive)}
-  .row span{color:var(--zm-muted);font-size:12px}
-  form.new{margin-top:18px;display:flex;gap:8px}
-  input[type=text]{flex:1;background:#0d0e0b;border:1px solid rgba(230,226,214,.14);border-radius:8px;color:var(--zm-bone);padding:9px 12px;font:inherit}
-  form.new button{background:var(--zm-blood-hi);border:0;border-radius:8px;color:#fff;padding:9px 16px;font:inherit;cursor:pointer}
-  .note{margin-top:22px;font-size:12px;color:var(--zm-muted);border-top:1px solid rgba(230,226,214,.10);padding-top:12px}
-</style>
-<main>
-  <h1>ENW Zombies — development sign-in</h1>
-  <p>Steam OpenID is not configured on this server, so this stands in for it. Pick an account or type any SteamID.</p>
-  ${rows || '<p>No accounts yet — type a SteamID below.</p>'}
-  <form method="post" class="new">
-    <input type="hidden" name="next" value="${esc(next)}">
-    <input type="text" name="steam_id" placeholder="76561198000000000" pattern="\\d{5,20}" required>
-    <button type="submit">Sign in</button>
-  </form>
-  <div class="note">During the closed beta this is behind the shared site password. It is refused entirely when that password is not set and you are not on the machine itself.
-  It creates a local account row; it does not talk to Steam, to ENW, or to anything else.</div>
-</main>`
-}
 
 module.exports = { router, effectiveMode }

@@ -729,7 +729,7 @@ function wireIpc() {
     return setup.uninstall({ keepMaps: keepMaps !== false })
   })
 
-  handle('signIn', async ({ mock = false } = {}) => {
+  handle('signIn', async () => {
     // REAL STEAM SIGN-IN, when the site offers it.
     //
     // Steam sign-in is OpenID 2.0: a redirect round trip, not an API call. The window
@@ -742,22 +742,18 @@ function wireIpc() {
     //
     // No Steam Web API key is involved. The key only buys persona names and avatars;
     // the site runs `passport-steam` with `profile: false`.
-    const auth = state.api?.hello?.auth
-    // Decided by what the site can DO, not by what it calls itself. Keying this on
-    // `auth === 'steam'` meant a mock site silently took a completely different code
-    // path, so the fallback tested nothing and the real path could only ever be tested
-    // against production. The probe costs one request and creates nothing.
-    if (!mock && state.api && (await supportsLoopbackSignIn())) {
-      const s = await steamSignIn()
-      push('session', s)
-      return s
+    //
+    // ~~The fallback~~ — **removed 2026-09-22, B: "Remove all the dev logins and all the
+    // fake logins."** When the site could not do the loopback flow, this used to "sign in"
+    // as whichever Steam account was logged in on this PC, named after its Steam persona,
+    // without asking the site anything. That is a fake login twice over: nothing verified
+    // the account, and the persona went behind `+set name` where the ENW name belongs.
+    // No site, or a site that cannot do the round trip, now means no sign-in, said plainly.
+    if (!state.api) throw new Error('The ENW Zombies site is not reachable, so there is nothing to sign in to yet.')
+    if (!(await supportsLoopbackSignIn())) {
+      throw new Error('This site cannot do the launcher sign-in. Sign in on the site itself, in the window.')
     }
-    // The fallback, and it says so. Still useful while the beta password is set: it
-    // separates "the launcher is broken" from "auth is broken".
-    const acct = await detect.steamAccount()
-    if (!acct.current) throw new Error('No Steam account is signed in on this PC, so there is nothing to sign in as yet.')
-    const s = settings.signIn({ steamid: acct.current.steamid, name: acct.current.persona || acct.current.account, mock: true })
-    log('sign-in', `mock, as ${s.steamid}${auth === 'steam' ? ' (the site offers Steam; this was asked for explicitly)' : ` (the site's auth mode is ${auth || 'unknown'})`}`)
+    const s = await steamSignIn()
     push('session', s)
     return s
   })
@@ -870,7 +866,7 @@ function wireIpc() {
 
     const conf = cfg.load()
     const s = settings.get()
-    const sess = settings.session()
+    const sess = await sessionWithFreshName()
 
     // The 4 GB (large address aware) flag on our own copy's CoDWaW.exe. Same place
     // as the DLL repair and for the same reason: an update that changes what the
@@ -1230,6 +1226,30 @@ const b64url = (b) => Buffer.from(b).toString('base64url')
 // Asked with NO parameters on purpose: a site that has the route answers 400 ("you did
 // not send a port/state/challenge") and a site that does not answers 404. So the probe
 // distinguishes the two without minting a code that nobody will ever spend.
+// The session, with its name re-read from the site first (2026-09-22).
+//
+// The name `+set name` carries is the ENW username (`users.pub().name` on the site). The
+// launcher caches it at sign-in, and a player who signs in for the first time has NONE yet —
+// the wrapped site then shows the "Choose your name" picker, and the cached value would stay
+// empty (or, before this, a bare SteamID) until the next sign-in. So ask the site again,
+// here, before a game starts: one request, and the name in the game is the name on the site.
+// Offline or signed out, the cached session stands as it is.
+async function sessionWithFreshName() {
+  const sess = settings.session()
+  if (!state.api || !sess.signedIn) return sess
+  try {
+    const hello = await state.api.sayHello()
+    const you = hello && hello.you
+    if (!you || String(you.steam_id) !== String(sess.steamid)) return sess
+    const name = hello.needs_name ? null : (you.name || null)
+    if (name === sess.name) return sess
+    log('sign-in', name ? `ENW name is ${name}` : 'this account has not chosen its ENW name yet')
+    return settings.signIn({ steamid: sess.steamid, name, mock: false })
+  } catch {
+    return sess
+  }
+}
+
 async function supportsLoopbackSignIn() {
   const base = String(state.siteInfo?.url || '').replace(/\/$/, '')
   if (!/^https?:/i.test(base)) return false
@@ -1338,7 +1358,10 @@ function steamSignIn() {
         const you = data.you || {}
         const steamid = you.steam_id || you.steamid || null
         if (!steamid) return fail('the site signed us in but did not say who we are')
-        const s = settings.signIn({ steamid, name: you.name || you.persona || null, mock: false })
+        // The ENW username, or nothing: a first sign-in has none yet (`needs_name`), and
+        // `you.name` is then a bare SteamID, which is not a name to put behind +set name.
+        // `sessionWithFreshName()` picks the real one up before the first launch.
+        const s = settings.signIn({ steamid, name: data.needs_name ? null : (you.name || null), mock: false })
         log('sign-in', 'Steam: signed in as ' + (s.name || s.steamid))
 
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })

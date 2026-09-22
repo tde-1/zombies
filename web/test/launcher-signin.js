@@ -5,9 +5,11 @@
 //   node test/launcher-signin.js
 //
 // Steam itself is not reachable from a test, so the OpenID round trip is stood in for by
-// the mock sign-in — the part under test is everything on OUR side of it: the code, the
-// PKCE check, the redirect construction and the guards. The one thing this cannot prove
-// is that Steam redirects where we think; that needs a human and a browser.
+// the TEST-ONLY hook (`ZM_TEST_LOGIN=1` -> `POST /auth/test-login`, routes/auth.js; the
+// mock sign-in page it replaced is gone, 2026-09-22) — the part under test is everything
+// on OUR side of it: the code, the PKCE check, the redirect construction and the guards.
+// The one thing this cannot prove is that Steam redirects where we think; that needs a
+// human and a browser.
 
 const assert = require('node:assert')
 const crypto = require('node:crypto')
@@ -18,9 +20,9 @@ const os = require('node:os')
 
 const PORT = 33993
 const BASE = `http://127.0.0.1:${PORT}`
-// The second instance runs with ZM_AUTH=steam, because the checks that matter most now
-// are about what the browser sees when the STEAM leg goes wrong — and in mock mode the
-// /auth/steam routes are not even registered, so the first instance cannot see them.
+// The second instance runs WITHOUT the test hook, exactly as zombies.enw.gg does, because
+// the checks that matter most are about what the browser sees when the STEAM leg goes
+// wrong, and about the hook not existing there.
 // `localhost` rather than 127.0.0.1 on purpose: it makes the public origin DIFFERENT
 // from the one a launcher reaching 127.0.0.1 would use, which is the mismatch under test.
 const STEAM_PORT = 33994
@@ -52,7 +54,7 @@ async function main () {
   child = spawn(process.execPath, ['server/index.js'], {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env, ZM_PORT: String(PORT), ZM_DATA_DIR: DATA, ZM_SITE_PASSWORD: PASSWORD,
-           ZM_AUTH: 'mock', ZM_PUBLIC_URL: BASE, STEAM_API_KEY: '',
+           ZM_TEST_LOGIN: '1', ZM_MOVEMENT_URL: 'off', ZM_PUBLIC_URL: BASE, STEAM_API_KEY: '',
            ZM_LAUNCHER_FLOW_TTL_MS: String(FLOW_TTL_MS) },
     stdio: 'ignore',
   })
@@ -97,21 +99,18 @@ async function main () {
     assert.ok(!all.includes('evil.example'), 'the supplied host reached a header')
   })
 
-  // The full happy path. mock sign-in stands in for Steam's redirect.
+  // The full happy path. The test-only hook stands in for Steam's redirect.
   let code = null
   const jar = []
   await check('a launcher flow ends at 127.0.0.1 with a code and the state it sent', async () => {
     const started = await get(`/auth/launcher/start?port=41234&state=${state}&challenge=${challenge}`)
     assert.strictEqual(started.status, 302)
-    // AND IT MUST GO TO THE PROVIDER THIS SITE ACTUALLY HAS. This redirected to
-    // `/auth/steam` unconditionally, which on a mock site is a 404 — so the one
-    // sign-in the launcher's loopback flow could be driven against was the one it
-    // could not reach. Found by driving it (2026-09-22).
-    assert.strictEqual(started.headers.get('location'), '/auth/mock',
-      'a mock site must send the launcher flow to the mock provider')
+    // Steam, on every site: there is no other provider to send it to (2026-09-22).
+    assert.strictEqual(started.headers.get('location'), '/auth/steam',
+      'the launcher flow must go to Steam')
     for (const c of started.headers.getSetCookie()) jar.push(c.split(';')[0])
 
-    const done = await fetch(BASE + '/auth/mock', {
+    const done = await fetch(BASE + '/auth/test-login', {
       method: 'POST', redirect: 'manual',
       headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded', cookie: jar.join('; ') },
       body: 'steam_id=76561198000000009',
@@ -148,7 +147,7 @@ async function main () {
     const jar2 = []
     const started = await get(`/auth/launcher/start?port=41235&state=${st}&challenge=${challenge}`)
     for (const c of started.headers.getSetCookie()) jar2.push(c.split(';')[0])
-    const done = await fetch(BASE + '/auth/mock', {
+    const done = await fetch(BASE + '/auth/test-login', {
       method: 'POST', redirect: 'manual',
       headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded', cookie: jar2.join('; ') },
       body: 'steam_id=76561198000000009',
@@ -183,8 +182,8 @@ async function main () {
   await check('a launcher flow that ran out gets a page, not the closed-beta password box', async () => {
     // LAUNCHER_FLOW_TTL_MS times a HUMAN doing a Steam Guard login; it used to be the
     // 120-second machine TTL, and when it expired the browser was redirected to `/` —
-    // which is behind the beta password. Checked on the mock instance because that is the
-    // one where a flow can be finished without Steam; the code path is the same
+    // which is behind the beta password. Checked on the test-hook instance because that is
+    // the one where a flow can be finished without Steam; the code path is the same
     // `finishLauncherFlow` on both.
     const st = b64url(crypto.randomBytes(16))
     const jar3 = []
@@ -194,7 +193,7 @@ async function main () {
 
     await new Promise(r => setTimeout(r, FLOW_TTL_MS + 150))   // the human took too long
 
-    const done = await fetch(BASE + '/auth/mock', {
+    const done = await fetch(BASE + '/auth/test-login', {
       method: 'POST', redirect: 'manual',
       headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded', cookie: jar3.join('; ') },
       body: 'steam_id=76561198000000009',
@@ -215,7 +214,7 @@ async function main () {
   steamChild = spawn(process.execPath, ['server/index.js'], {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env, ZM_PORT: String(STEAM_PORT), ZM_DATA_DIR: DATA2, ZM_SITE_PASSWORD: PASSWORD,
-           ZM_AUTH: 'steam', ZM_PUBLIC_URL: STEAM_PUBLIC, STEAM_API_KEY: '',
+           ZM_PUBLIC_URL: STEAM_PUBLIC, STEAM_API_KEY: '', ZM_MOVEMENT_URL: 'off',
            ZM_LAUNCHER_FLOW_TTL_MS: String(FLOW_TTL_MS) },
     stdio: 'ignore',
   })
@@ -244,14 +243,44 @@ async function main () {
   })
 
   // ── Steam sign-in ONLY (B, 2026-09-22) ────────────────────────────────────────
-  await check('the mock sign-in page does not exist on a site running Steam sign-in', async () => {
-    // It used to be registered alongside Steam for as long as ZM_SITE_PASSWORD was set —
-    // which made a shared password held by four people a way to sign in as anybody,
-    // the admin included. Both verbs, because a GET-only guard is not a guard.
-    for (const init of [{}, { method: 'POST', headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded' }, body: 'steam_id=76561198000000009' }]) {
-      const r = await fetch(`${STEAM_PUBLIC}/auth/mock`, { redirect: 'manual', headers: auth, ...init })
-      assert.strictEqual(r.status, 404, `/auth/mock answered ${r.status} on a Steam site`)
+  await check('no dev sign-in exists on a site without the test hook: /auth/mock and /auth/test-login are 404', async () => {
+    // /auth/mock used to be registered alongside Steam for as long as ZM_SITE_PASSWORD was
+    // set — which made a shared password a way to sign in as anybody, the admin included.
+    // It is gone everywhere now (2026-09-22). /auth/test-login exists only with
+    // ZM_TEST_LOGIN=1, and this instance is configured the way zombies.enw.gg is. Both
+    // verbs, because a GET-only guard is not a guard.
+    for (const p of ['/auth/mock', '/auth/test-login']) {
+      for (const init of [{}, { method: 'POST', headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded' }, body: 'steam_id=76561198000000009' }]) {
+        const r = await fetch(`${STEAM_PUBLIC}${p}`, { redirect: 'manual', headers: auth, ...init })
+        assert.strictEqual(r.status, 404, `${p} answered ${r.status} on a Steam-only site`)
+      }
     }
+    // ...and the test-hook instance has no mock either: the hook is not a sign-in page.
+    const m = await fetch(`${BASE}/auth/mock`, { redirect: 'manual', headers: auth })
+    assert.strictEqual(m.status, 404, `/auth/mock answered ${m.status} on the test-hook instance`)
+    const g = await fetch(`${BASE}/auth/test-login`, { redirect: 'manual', headers: auth })
+    assert.strictEqual(g.status, 404, 'the test hook answers GET — it must be POST only, with no page')
+  })
+
+  await check('the test hook refuses to boot in production', async () => {
+    // Lock 1 of three (routes/auth.js): ZM_TEST_LOGIN=1 with NODE_ENV=production does not
+    // start a server at all, rather than starting one with a way in.
+    const DATA3 = fs.mkdtempSync(path.join(os.tmpdir(), 'zm-signin-prod-'))
+    const out = await new Promise((resolve) => {
+      const c = spawn(process.execPath, ['server/index.js'], {
+        cwd: path.join(__dirname, '..'),
+        env: { ...process.env, ZM_PORT: '33995', ZM_DATA_DIR: DATA3, NODE_ENV: 'production', ZM_TEST_LOGIN: '1', ZM_MOVEMENT_URL: 'off' },
+        stdio: ['ignore', 'ignore', 'pipe'],
+      })
+      let err = ''
+      c.stderr.on('data', (d) => { err += d })
+      const t = setTimeout(() => { c.kill(); resolve({ code: 'still running', err }) }, 8000)
+      c.on('exit', (code) => { clearTimeout(t); resolve({ code, err }) })
+    })
+    try { fs.rmSync(DATA3, { recursive: true, force: true }) } catch {}
+    assert.notStrictEqual(out.code, 'still running', 'a production server came up with the test hook set')
+    assert.notStrictEqual(out.code, 0, 'exited 0')
+    assert.ok(/ZM_TEST_LOGIN/.test(out.err), 'the refusal does not say why: ' + out.err.slice(0, 200))
   })
 
   await check('a launcher that started on the wrong origin is moved to ZM_PUBLIC_URL', async () => {

@@ -31,7 +31,7 @@ import { setBaseAmbience } from '../ambience'
 // so picking a map reads as the map arriving rather than as the site changing.
 
 export default function Home() {
-  const { signedIn, authMode } = useSession()
+  const { signedIn } = useSession()
   const [maps, setMaps] = useState(null)
   const [rows, setRows] = useState(null)
   const [party, setParty] = useState(null)
@@ -99,7 +99,7 @@ export default function Home() {
       <div className="home-left">
         {signedIn
           ? <PartyPanel party={party} launch={launch} onChange={loadParty} selected={sel} />
-          : <SignIn authMode={authMode} count={maps.length} />}
+          : <SignIn count={maps.length} />}
         <MapListPanel maps={maps} selected={sel} onPick={pick} />
       </div>
 
@@ -113,18 +113,16 @@ export default function Home() {
 }
 
 // Signed out, in the party's place. It says the one true thing about the site and offers the
-// one button that does anything. Steam sign-in is the only way in (B, 2026-09-22): the dev
-// sign-in page does not exist on a site running Steam, so this never offers it.
-function SignIn({ authMode, count }) {
+// one button that does anything. Steam sign-in is the only way in (B, 2026-09-22), and the
+// dev sign-in page it used to fall back to no longer exists anywhere.
+function SignIn({ count }) {
   return (
     <section className="ppanel">
       <Lockup h={40} />
       <p className="sub" style={{ margin: '10px 0 12px' }}>
         Every World at War custom zombies map, archived and playable. Refereed on our servers.
       </p>
-      <a className="btn primary" style={{ width: '100%' }} href={authMode === 'steam' ? '/auth/steam' : '/auth/mock'}>
-        {authMode === 'steam' ? 'Sign in with Steam' : 'Sign in (dev)'}
-      </a>
+      <a className="btn primary" style={{ width: '100%' }} href="/auth/steam">Sign in with Steam</a>
       <p className="tiny" style={{ margin: '10px 0 0' }}>
         {num(count)} maps. Browsing needs no account. <Link to="/download">Get the launcher</Link> to play.
       </p>

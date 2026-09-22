@@ -67,7 +67,7 @@ function holders(badgeId, limit = 200) {
                       WHERE a.badge_id=? ORDER BY a.awarded_at DESC LIMIT ?`).all(Number(badgeId), limit)
     .map((r) => ({
       steam_id: r.steam_id,
-      name: r.deleted ? 'Deleted player' : (r.enw_name || r.username || r.steam_id),
+      name: r.deleted ? 'Deleted player' : (r.enw_name || r.steam_id),
       avatar: r.deleted ? null : r.avatar,
       awarded_at: r.awarded_at,
       solo: !!r.solo,

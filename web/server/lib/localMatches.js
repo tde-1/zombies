@@ -191,7 +191,7 @@ function recoverAsGame(row) {
       map: row.map_key,
       solo: true,
       player_count: 1,
-      players: [{ slot: 0, steamid: row.steam_id, name: (u && (u.enw_name || u.username)) || null }],
+      players: [{ slot: 0, steamid: row.steam_id, name: (u && u.enw_name) || null }],
       rounds: row.round,
       finish: null,
       duration_ms: Math.max(0, row.last_seen - row.started_at),

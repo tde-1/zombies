@@ -44,9 +44,9 @@ $cloudflared = 'C:\Program Files (x86)\cloudflared\cloudflared.exe'
 # which means a secret cannot be picked up by accident from a stray file in the repo,
 # and a restart can never silently lose one.
 #
-# Loading it here also makes turning on real Steam sign-in a one-line paste: the server
-# falls back to the mock page unless STEAM_API_KEY and ZM_PUBLIC_URL are both set, so
-# the day a key lands in that file, the next cycle picks it up by itself.
+# ZM_PUBLIC_URL here is what Steam sign-in returns to. There is no mock page to fall back
+# to any more (web/server/routes/auth.js, 2026-09-22), and ZM_TEST_LOGIN must never be in
+# that file: with NODE_ENV=production the server refuses to start with it set.
 $envFile = Join-Path $PSScriptRoot 'site.env'
 if (Test-Path -LiteralPath $envFile) {
     foreach ($line in Get-Content -LiteralPath $envFile) {

@@ -160,7 +160,7 @@ a{color:#b0342c}</style>
 <p>The API is up on this port. The client has not been built yet:</p>
 <p><code>cd web &amp;&amp; npm run build</code></p>
 <p>Or run the Vite dev server beside it: <code>npm run client</code> (port 5173, proxies /api here).</p>
-<p><a href="/api/health">/api/health</a> &middot; <a href="/auth/mock">sign in (dev)</a></p>`)
+<p><a href="/api/health">/api/health</a> &middot; <a href="/auth/steam">sign in with Steam</a></p>`)
   })
 }
 
@@ -198,7 +198,10 @@ io.on('connection', (socket) => {
   socket.on('chat', (text) => {
     if (!sid || !text) return
     const u = users.byId(sid)
-    if (!u) return
+    if (!u || u.deleted) return
+    // The name gate reaches the socket too (middleware/auth.js): a line in the network chat
+    // is signed with the ENW name, and an account without one has nothing to sign it with.
+    if (require('./lib/names').needsName(sid)) return
     chat.push({ from: users.pub(u).name, text: String(text), steamId: sid, origin: 'web' })
   })
   socket.on('disconnect', () => {
@@ -227,7 +230,7 @@ mapRecords.startJobs()
 server.listen(PORT, HOST, () => {
   const b = require('./lib/boxes').list()
   console.log(`ENW Zombies on http://${HOST}:${PORT}`)
-  console.log(`  sign-in     ${authRoutes.effectiveMode()}${authRoutes.effectiveMode() === 'mock' ? '  (http://' + HOST + ':' + PORT + '/auth/mock)' : ''}`)
+  console.log(`  sign-in     Steam OpenID${process.env.ZM_TEST_LOGIN === '1' ? '  + TEST-ONLY /auth/test-login (ZM_TEST_LOGIN=1)' : ''}`)
   console.log(`  ENW link    ${require('./lib/enw').status().note}`)
   console.log(`  maps        ${require('./lib/maps').count()}`)
   console.log(`  invite key  ${require('./lib/siteKeys').site().keyId}`)

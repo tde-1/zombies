@@ -74,6 +74,10 @@ const env = {
   ZM_HOST: '127.0.0.1',
   ZM_SITE_PASSWORD: '',
   NODE_ENV: 'development',
+  // The test-only sign-in (routes/auth.js) — the mock page it replaced is gone — and no
+  // call out to movement.enw.gg from a test.
+  ZM_TEST_LOGIN: '1',
+  ZM_MOVEMENT_URL: 'off',
 }
 fs.mkdirSync(env.ZM_REPLAY_DIR, { recursive: true })
 
@@ -120,7 +124,7 @@ async function main() {
 
   startServer()
   await waitUp()
-  await call('/auth/mock', { method: 'POST', form: `steam_id=${ME}` })
+  await call('/auth/test-login', { method: 'POST', form: `steam_id=${ME}` })
   const me = await call('/api/me')
   if (!me.json || !me.json.signed_in) throw new Error('could not sign in to the test server')
 
@@ -335,7 +339,7 @@ async function main() {
     const mineId = s.json.match_id
     const mineCookie = cookie
     cookie = ''
-    await call('/auth/mock', { method: 'POST', form: 'steam_id=76561190000000002' })
+    await call('/auth/test-login', { method: 'POST', form: 'steam_id=76561190000000002' })
     eq((await call('/api/launcher/local/' + mineId)).status, 404, 'not visible')
     eq((await call('/api/launcher/local/live', { method: 'POST', body: { match_id: mineId, state: { round: 50 } } })).status, 404, 'no frames')
     eq((await call('/api/launcher/local/result', { method: 'POST', body: { summary: { match_id: mineId, rounds: 50, players: [{ steamid: '76561190000000002' }] } } })).status, 404, 'no result')
@@ -411,7 +415,7 @@ async function main() {
   await check('somebody else cannot download it, and is told the rule rather than a 404', async () => {
     const mineCookie = cookie
     cookie = ''
-    await call('/auth/mock', { method: 'POST', form: 'steam_id=76561190000000004' })
+    await call('/auth/test-login', { method: 'POST', form: 'steam_id=76561190000000004' })
     const res = await fetch(SITE + `/api/replays/${match}/download`, { headers: { cookie } })
     eq(res.status, 403, 'refused')
     const j = await res.json()
@@ -547,6 +551,78 @@ async function main() {
     truthy(Array.isArray(r.json.chat), 'a list came back')
     truthy(r.json.chat.every((l) => l.kind === 'chat' || l.kind === 'system'), 'every line is one of the two kinds')
   })
+
+  // ---- the name gate (2026-09-22, B: Steam sign-in AND an ENW username) ---------------
+  //
+  // A fresh SteamID, through the real HTTP stack: forced to the picker, refused everything
+  // else, told Movement's words for each rule, and named once it picks.
+  {
+    const mine = cookie
+    cookie = ''
+    const FRESH = '76561198999000123'
+    await call('/auth/test-login', { method: 'POST', form: `steam_id=${FRESH}` })
+
+    await check('a fresh Steam account is signed in but must choose an ENW username first', async () => {
+      const me = await call('/api/me')
+      eq(me.json.signed_in, true, 'not signed in')
+      eq(me.json.needs_name, true, 'a nameless account was not sent to the picker')
+      eq(me.json.user.name, FRESH, 'a nameless account shows something other than its SteamID')
+    })
+
+    await check('...and until it does, the site refuses it everything but the picker', async () => {
+      for (const [p, method, body] of [
+        ['/api/me/settings', 'PUT', { fov: 90 }],
+        ['/api/launcher/local/start', 'POST', { map_key: MAP }],
+        ['/api/me/settings', 'GET', undefined],
+      ]) {
+        const r = await call(p, { method, body })
+        eq(r.status, 403, `${method} ${p}`)
+        eq(r.json.needs_name, true, `${method} ${p} did not say why`)
+      }
+    })
+
+    await check('the picker answers in Movement’s words (drops.ws usernameRules.js)', async () => {
+      const want = {
+        ab: 'Username must be at least 3 characters',
+        [`${'x'.repeat(21)}`]: 'Username must be 20 characters or fewer',
+        'has space': 'Username can only contain letters, numbers, underscores and hyphens',
+        '2026-09-22x': 'Invalid username',
+        12345: 'Usernames cannot be only numbers',
+      }
+      for (const [name, msg] of Object.entries(want)) {
+        const r = await call('/api/me/username', { method: 'POST', body: { username: name } })
+        eq(r.status, 400, `"${name}"`)
+        eq(r.json.error, msg, `"${name}"`)
+      }
+      const blocked = await call('/api/me/username', { method: 'POST', body: { username: 'admin' } })
+      eq(blocked.status, 409, 'a drops.ws-reserved name')
+      eq(blocked.json.error, 'That username is not available')
+      // The demo seed's Jamie holds "Jamie": case-insensitive, like drops.ws's NOCASE index.
+      // (Not Dexter: "dexter" is on drops.ws's blocklist as a CS pro's handle.)
+      const taken = await call('/api/me/username', { method: 'POST', body: { username: 'JAMIE' } })
+      eq(taken.status, 409, 'a case-variant of a held name')
+      eq(taken.json.error, 'That username is already taken')
+      const chk = await call('/api/me/username/check?username=admin')
+      eq(chk.json.reason, 'blocked', 'the live check does not say blocked')
+    })
+
+    await check('a good name is taken once, and /api/me then carries it as the name', async () => {
+      const r = await call('/api/me/username', { method: 'POST', body: { username: 'fresh-player' } })
+      eq(r.status, 200, 'the claim failed: ' + JSON.stringify(r.json))
+      const me = await call('/api/me')
+      eq(me.json.needs_name, false, 'still asked for a name')
+      eq(me.json.user.name, 'fresh-player', '/api/me name')
+      eq(me.json.user.enw_name, 'fresh-player', '/api/me enw_name')
+      const again = await call('/api/me/username', { method: 'POST', body: { username: 'another-one' } })
+      eq(again.status, 409, 'set-once')
+      eq(again.json.error, 'You already have a username')
+      eq((await call('/api/me/settings', { method: 'PUT', body: { fov: 90 } })).status, 200, 'still gated after naming')
+      const hello = await call('/api/launcher/hello')
+      eq(hello.json.you.name, 'fresh-player', 'the launcher would put something else behind +set name')
+      eq(hello.json.needs_name, false)
+    })
+    cookie = mine
+  }
 
   // ---- report -------------------------------------------------------------------------
   for (const [s, n] of lines) console.log(`${s}  ${n}`)

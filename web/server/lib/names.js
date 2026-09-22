@@ -47,45 +47,64 @@
 //     picker ported from Movement's `POST /username`. Set once, unique case-insensitively,
 //     and only an admin can rename.
 //
-// The rules below are Movement's `dropsNames.RULES` character for character, including the
-// all-digits refusal, so a name picked here can never be one the authority would reject on
-// the day B wires the secret up.
-
 const { db, now } = require('../db/database')
 const enw = require('./enw')
 
-// Movement's `dropsNames.js` RULES, mirrored. 3-20 (not 3-16: a legal 17-character name on
-// the authority must stay reachable), and the all-digits refusal is the one deliberate
-// divergence Movement carries — a number is an ADDRESS on an ENW site, so a player called
-// "5" would be claiming somebody else's link.
+// ── THE RULES, 2026-09-22 (B: "everyone should have the exact same ENW username") ──────
+//
+// Retracted, in place: the earlier version of this block said the rules were Movement's
+// "character for character" and then diverged three ways — its own error wording, no
+// date-shape refusal, and a Zombies-only reserved list. Each of those is a name, or a
+// sentence, that one ENW site would treat differently from another. They are now the
+// authority's, verbatim, and where each line comes from is cited so the next copy can be
+// checked rather than trusted:
+//
+//   shape + wording   drops.ws  csgo-server/src/utils/usernameRules.js:9-30
+//                     Movement  CSGO-Matchmaker/server/lib/dropsNames.js:60-72 (validateLocally,
+//                               the same strings; Movement trims first, and so does drops.ws's
+//                               own route, csgo-server/src/routes/auth.js:127)
+//   blocklist         drops.ws  csgo-server/src/utils/usernameBlocklist.js + src/data/*.csv,
+//                               copied into ./usernames/ (see blocklist.js for why a copy)
+//   uniqueness        drops.ws  NOCASE unique index on players.site_username
+//                               (csgo-server/src/routes/auth.js:150-156 relies on it); ours is
+//                               idx_users_enw_name, NOCASE, on enw_name ONLY
+//   set once          Movement  CSGO-Matchmaker/server/routes/auth.js:198-229 (409 "You already
+//                               have a username"); renames live on drops.ws behind a 14-day
+//                               cooldown, VIP and a revert window (routes/auth.js:164,
+//                               db/database.js:1095) — none of which exists here, so a rename on
+//                               Zombies is an admin's (rename() below), exactly as on Movement
+//
+// Not mirrored, because it cannot be without the authority's data: drops.ws's
+// `username_reservations` (a name held for somebody else's 14-day revert window) and its
+// per-player name locks. A name reserved over there reads as free here. That is the gap the
+// shared-identity question (questions.md Q-id-1) exists to close.
 const RULES = { MIN: 3, MAX: 20, PATTERN: /^[a-zA-Z0-9_-]+$/ }
 const ALL_DIGITS = /^\d+$/
+const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}/
 
-// Reserved on our side, for reasons that are ours. "Unknown Soldier" fails PATTERN anyway
-// (the space), but the bare word does not, and a player called `admin` or `console` in a
-// chat line or a server console print is a spoof with no engine involved.
-const RESERVED = new Set(['admin', 'administrator', 'console', 'server', 'enw', 'system',
-  'moderator', 'unknown', 'unknownsoldier', 'deleted', 'anonymous'])
+const { checkBlocked } = require('./usernames/blocklist')
 
+// Movement's `validateLocally`, verbatim (dropsNames.js:63-72). The strings are the ones a
+// Movement player sees from `POST /username`; the picker's short per-rule lines are the
+// client's, copied from movement-client/src/pages/UsernameSetup.jsx.
 function validate (name) {
   const s = typeof name === 'string' ? name.trim() : ''
-  if (!s) return 'A username is required'
-  if (s.length < RULES.MIN) return `Your username must be at least ${RULES.MIN} characters`
-  if (s.length > RULES.MAX) return `Your username must be ${RULES.MAX} characters or fewer`
-  if (!RULES.PATTERN.test(s)) return 'Letters, numbers, underscores and hyphens only'
-  if (ALL_DIGITS.test(s)) return 'A username cannot be only numbers'
-  if (RESERVED.has(s.toLowerCase())) return 'That username is reserved'
+  if (!s) return 'Username is required'
+  if (s.length < RULES.MIN) return `Username must be at least ${RULES.MIN} characters`
+  if (s.length > RULES.MAX) return `Username must be ${RULES.MAX} characters or fewer`
+  if (!RULES.PATTERN.test(s)) return 'Username can only contain letters, numbers, underscores and hyphens'
+  if (DATE_SHAPE.test(s)) return 'Invalid username'
+  if (ALL_DIGITS.test(s)) return 'Usernames cannot be only numbers'
   return null
 }
 
-// Case-insensitive across BOTH name columns. `username` still holds the Steam persona on
-// any row that ever had one, and it is a name the site renders (`users.pub`), so letting
-// somebody claim an `enw_name` that collides with it would put two identical names on the
-// site — which is the impersonation this whole file exists to close.
+// Case-insensitive, on `enw_name` only — drops.ws's unique index is on the site name and
+// nothing else. (It used to be across `username` too, because `users.pub()` rendered the
+// Steam persona as a fallback name; it does not any more, so a persona is not a name anybody
+// sees and cannot collide with one.)
 function taken (name, exceptSteamId = null) {
   const row = db.prepare(`SELECT steam_id FROM users
-                           WHERE (lower(enw_name) = lower(?) OR lower(username) = lower(?))
-                             AND deleted = 0`).get(String(name), String(name))
+                           WHERE lower(enw_name) = lower(?) AND deleted = 0`).get(String(name).trim())
   if (!row) return false
   return exceptSteamId == null || String(row.steam_id) !== String(exceptSteamId)
 }
@@ -106,10 +125,15 @@ function needsName (steamId) {
   return !isSet(row)
 }
 
+// drops.ws's `availability()` order (csgo-server/src/utils/usernames.js:71-90): shape, then
+// the static blocklist ("a slur shouldn't be reported as merely taken"), then the holder.
+// `reason` is drops.ws's vocabulary — ok | invalid | blocked | taken — so the picker's words
+// for each are Movement's words for each.
 function check (name, steamId = null) {
   const invalid = validate(name)
   if (invalid) return { available: false, reason: 'invalid', error: invalid }
-  if (taken(name, steamId)) return { available: false, reason: 'taken', error: 'That username is taken' }
+  if (checkBlocked(String(name).trim()).blocked) return { available: false, reason: 'blocked', error: 'That username is not available' }
+  if (taken(name, steamId)) return { available: false, reason: 'taken', error: 'That username is already taken' }
   return { available: true, reason: 'ok' }
 }
 
@@ -137,7 +161,10 @@ function claim (steamId, name) {
   // authority and the claim is ours to make.
   if (enw.enabled()) return { ok: false, reason: 'authority', error: 'Your ENW name comes from your ENW account' }
 
-  if (taken(s, sid)) return { ok: false, reason: 'taken', error: 'That username is taken' }
+  // The same refusals, in the same order and the same words, as drops.ws's set-username
+  // (csgo-server/src/routes/auth.js:134-140).
+  const avail = check(s, sid)
+  if (!avail.available) return { ok: false, reason: avail.reason, error: avail.error }
 
   // UNIQUE-by-read-then-write is a race on paper. better-sqlite3 is synchronous and this
   // process is single-threaded, so the check and the write cannot interleave; the index
@@ -155,7 +182,10 @@ function rename (steamId, name, bySteamId = null) {
   if (invalid) return { ok: false, reason: 'invalid', error: invalid }
   const row = db.prepare('SELECT enw_name, deleted FROM users WHERE steam_id=?').get(sid)
   if (!row || row.deleted) return { ok: false, reason: 'no_account', error: 'no such account' }
-  if (taken(s, sid)) return { ok: false, reason: 'taken', error: 'That username is taken' }
+  // An admin rename passes the blocklist too: drops.ws's staff force-rename bypasses the
+  // cooldown and the lock, not the list (csgo-server/src/routes/cases.js:2026).
+  const avail = check(s, sid)
+  if (!avail.available) return { ok: false, reason: avail.reason, error: avail.error }
   const was = row.enw_name || null
   db.prepare('UPDATE users SET enw_name=?, enw_checked=? WHERE steam_id=?').run(s, now(), sid)
   audit('USERNAME_RENAME', bySteamId, { steam_id: sid, from: was, to: s })
@@ -169,13 +199,14 @@ function rename (steamId, name, bySteamId = null) {
  *
  * The SteamID is the last resort and is deliberately not pretty: a row with no name should
  * look unfinished, because it is. It must never fall back to something the GAME supplied,
- * which is the loop that produced "Unknown Soldier".
+ * which is the loop that produced "Unknown Soldier" — and, since 2026-09-22, never to the
+ * Steam persona in `username` either (B: the name is the ENW name, everywhere).
  */
 function displayName (steamId) {
-  const row = db.prepare('SELECT enw_name, username, deleted FROM users WHERE steam_id=?').get(String(steamId))
+  const row = db.prepare('SELECT enw_name, deleted FROM users WHERE steam_id=?').get(String(steamId))
   if (!row) return String(steamId)
   if (row.deleted) return 'Deleted player'
-  return row.enw_name || row.username || String(steamId)
+  return row.enw_name || String(steamId)
 }
 
 /** Is this name the account's own, i.e. may it be enforced in game? */
