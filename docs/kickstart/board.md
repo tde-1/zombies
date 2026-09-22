@@ -4088,3 +4088,61 @@ PC, the host agent runs on it under Linux, and two instances fit. Retracting my 
 - 05:15 vps: the box is left **idle and clean**: no game processes, Xvfb / x11vnc / websockify /
   Steam all still up and logged in, 21 GB free. `infra/vps/05-run-dedi.sh` (with
   `GAME=/home/waw/waw-en`) or `/home/waw/run-host.sh --boot 1` brings a server back in ten seconds.
+
+- 06:25 dedi: **the "5,900 Hz frame rate" is the server no longer simulating.** Three engine
+  counters, five seconds apart (`frame_pacing.cpp`, run `join55`): every frame still ENTERS the
+  frame body (`[0x1F552D4]`, 0x59DD72) and none RETURN from it (`[0x1F964BC]`, 0x59E4DC), and
+  `com_frameTime` (0x59DDC1) freezes. `SV_Frame` 0x59DEBF is past that point, so it has not run
+  since. The client is dropped ~40 s later because nothing is being sent to it. `dedi.md` §11.1.
+- 06:25 dedi: **`jointest-proof.ps1` passes in that state** — `CS_ACTIVE`, `ROUND 1`, `getstatus`
+  answered and `frame::count` moving are all true on a server that has not simulated for two
+  minutes. Add a fifth gate on `com_frameTime`. This is a gap in the test, NOT a reason to doubt
+  the temp-stack fix, whose evidence is independent.
+- 06:25 dedi: escape point measured, not argued: a wrapper on the pacing loop's own
+  `call Com_EventLoop` at 0x59DD90 counts `in=7806 out=2004` (`join57`). **Not `longjmp`** —
+  0x7AD57C hooked, zero calls in two runs, and its only three callers are `Com_Error`, `Sys_Error`
+  (both already trapped, both silent) and the script VM's 0x693CF0. **Not an SEH unwind** — a
+  vectored handler sees only `DBG_PRINTEXCEPTION_C`. **Not nesting** — the stack would be gone in a
+  minute. Open, with the instrument in the repo (`ENW_DEDI_ESCAPE_PROBE=1`).
+- 06:25 dedi: **frame rate FIXED where it can be**: the engine's cap lives inside the loop the
+  frame escapes from, so `frame_pacing.cpp` now also paces in WinMain's loop where nothing can jump
+  over it. **59.4 Hz at 1.4% of a core** with a player in (`join57`), against 5,341 Hz at ~84%
+  before. Held for 10 minutes at 1.8% and flat RSS in `join59`. `ENW_DEDI_NO_OUTER_PACE=1` is the
+  control. It does not restart `SV_Frame`; it makes the stopped server cheap instead of expensive.
+- 06:25 dedi: **custom maps: `fs_game` is `mods/<bsp>` and the "two mods at once" question is a
+  non-question.** The DLL rides the binkw32 proxy, not `fs_game`, and the referee is C++, so there
+  is only ever one mod and it is the map's. `join59`'s `getstatus` answers
+  `\fs_game\mods/nazi_zombie_derberg`. `tools\dev\maptest.ps1` is the per-map harness;
+  `jointest.ps1 -FsGame` defaults to `auto`.
+- 06:25 dedi: **Der Berg boots headless and answers `getstatus` in 3 s** (`map03`, `join59`) — and
+  it was failing on OUR command line: without `+set con_typewriterColorBase "1.0 1.0 1.0"` its
+  `_load.gsc` raises `SetSavedDvar(): The dvar ... does not exist` and the server script dies at
+  load. Of the other five: Leviathan `unknown item 'napalmblob'`, MW2 Rust and Clinic of Evil both
+  `undefined is not an array, string, or vector` — map-side; Zombie Desert and Project Viking
+  `fs_game is write protected` — ours, stateful, leftover homepath `config.cfg`, NOT broken maps.
+  Verdicts written into `archive/manifests/<bsp>.json` as `dedi_status`.
+- 06:25 dedi: **Leviathan is not the asset-limit overflow it was assumed to be** (board 17:12,
+  yesterday). `big_heap.cpp` raises the reserve 300 MB -> 422 MB at all three verified sites and
+  the error message is byte-identical with it on and off (`map01` vs `map03`).
+- 06:25 dedi: **correction for `re`** — `shared/t4/addresses.hpp` :: `t4::mem` lists the
+  INSTRUCTION starts and calls them "the true operand starts"; the immediates are at +1, +6, +6,
+  i.e. the vault's original 0x5F5492 / 0x5F54D1 / 0x5F54DB. Reading the file's numbers as operands
+  gives 0xC0000068 and 0xFAEC05C7. `big_heap.cpp` refused to patch and printed exactly that; the
+  offsets are applied locally rather than editing `re`'s file.
+- 06:25 dedi: **`wait_for_first_player()` answered.** It waits on
+  `level waittill("first_player_ready")`, which nothing raises on a dedicated server, while
+  `all_players_connected` does fire. Both parked threads stay parked for every run including
+  `join59`. It does not stop round 1 and it does not stop the map, so do not fake the notify.
+- 06:25 dedi: **round 2 was not attempted and no dev knob was used.** It is downstream of the frame
+  escape: a console command or GSC shortcut that ends a round still needs a script VM the server
+  has stopped ticking.
+- 06:25 referee: `replay.cpp` closes four of the five gaps `replay.md` §3 lists — a real `kill`
+  event from entity state (unattributed, and says so), `zombies_alive` + `kills_round` on every
+  snap, `round` on every snap via a shared cell in `t4_bind`, `stance` from the usercmd button mask
+  (bits UNVERIFIED, each distinct mask logged once so the next session can settle it), and
+  `weapon` is now a string everywhere. `zombies_remaining` is deliberately omitted rather than
+  faked: it needs `level.zombie_total` and script variables are still unbound.
+- 06:25 referee: **no real signed replay was produced tonight.** The host agent writes the `.enwr`
+  and `jointest.ps1` does not run it — every join run logs `game-link: connect ... failed,
+  retrying`. With `SV_Frame` stopped ~5 s into a custom map there was also nothing to sample. This
+  needs a host-agent run, which is `host.md`'s lane, once the frame escape is fixed.

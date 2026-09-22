@@ -1619,3 +1619,225 @@ this is the real unknown now. Frame pacing, CPU and a soak, 1 day. A client conn
 per box (3074 and the shared profile directory), 1 day. **Total 5–9 working days; 1.5–2 weeks wall
 clock with review.** That is unchanged from my first estimate: milestone (b) came in far faster than I
 expected, and site 3 appeared to take its place.
+
+---
+
+## 11. 2026-09-22, 05:00-06:30 — the frame rate, and what the frame rate turned out to be
+
+### 11.1 The 5,900 Hz was not a pacing bug. The frame body stops returning.
+
+`next-session.md` listed the frame rate as cosmetic: "the server answers, spawns and referees
+correctly for the whole 120 s, but a 5,900 Hz `Com_Frame` is not right and nobody has looked at
+it." It is not cosmetic and it is not a frame-rate bug.
+
+`frame_pacing.cpp` gained a read-only probe that prints three counters every five seconds. They
+take the question apart on their own:
+
+| counter | incremented at | means |
+|---|---|---|
+| `ours` | our tick on WinMain's `call Com_Frame` (0x5FF7BD) | `Com_Frame` was called |
+| `Com_Frame-body` | `add [0x1F964BC], 1` at **0x59E4DC** | the body call **returned** |
+| `frame-body-entered` | `add [0x1F552D4], ebx` at **0x59DD72** | the body was **entered** |
+| `com_frameTime` | `[0x1F9648C]`, written at 0x59DDC1 | how far into the body we got |
+
+`join55`, stock `nazi_zombie_prototype`, one real client:
+
+```
+t=25s  ours    61.0 Hz | body-returned  61.0 Hz | body-entered    61.0 Hz | com_frameTime 21137
+t=45s  ours   111.2 Hz | body-returned  60.6 Hz | body-entered   111.2 Hz | com_frameTime 26136
+t=55s  ours   123.4 Hz | body-returned  61.0 Hz | body-entered   123.4 Hz | com_frameTime 31141
+t=80s  ours  5236.2 Hz | body-returned   0.0 Hz | body-entered  5236.2 Hz | com_frameTime 54365
+t=...   for the remaining 90 s: identical, com_frameTime FROZEN at 54365
+```
+
+Read it in three steps.
+
+1. **The body cannot free-run.** The target it computes is clamped to a minimum of 1 ms
+   (`test eax,eax` at 0x59DD3F, `mov [esp+0x14], ebx` at 0x59DD47) and `dedicated.cpp` calls
+   `timeBeginPeriod(1)`, so the `Sleep(1)` loop bounds the body to about 1,000 Hz whatever
+   `com_maxfps` reads. **5,900 Hz was never a number the pacing arithmetic could produce.**
+2. **Half the frames stop returning the moment a player is in.** 123 Hz of entries against 61 Hz
+   of returns is not a ramp, it is one good frame and one escaped frame alternating. The
+   "61 -> 102 -> 123 Hz ramp" in every run since `join13` is that split, and it has been on the
+   record all along.
+3. **Then all of them do.** `com_frameTime` is written at 0x59DDC1, a few instructions into the
+   body. It freezes. So **`SV_Frame` at 0x59DEBF has not run since that moment** — the server is
+   spinning, not simulating.
+
+The correct statement of the bug is therefore: *about fifty seconds after a player spawns, the
+dedicated frame body stops returning and the engine stops simulating.* The player is dropped about
+forty seconds later (`join55`: slot 0 `Going to CS_ZOMBIE` at 05:09:11, the split began 05:08:32) —
+the client times out on a server that has stopped sending it anything.
+
+**This overlaps the fixed temp-stack leak and is not the same thing.** Before
+`temp_stack_guard.cpp` the server hard-froze; now it keeps ticking. Either way it stops simulating.
+`jointest-proof.ps1` cannot tell the difference — all four of its gates (CS_ACTIVE, ROUND 1,
+getstatus answered, `frame::count` moving) pass in exactly this state. **That is a gap in the
+acceptance test, not a reason to doubt the temp-stack fix**, whose evidence (the `join54` control,
+`varcheck.py` orphan counts) is independent of this.
+
+### 11.2 Where the frame leaves, measured
+
+`frame_escape_probe.cpp` (`ENW_DEDI_ESCAPE_PROBE=1`, off by default) retargets the one existing
+`call Com_EventLoop` at **0x59DD90** — the call the pacing loop makes from inside itself — and
+counts entries against exits.
+
+```
+join57  in=7806 out=2004     out frozen from the instant the split starts
+join58  in=6872 out=2097     same
+```
+
+`Com_EventLoop` **does not return**. The `Sleep(1)` that would apply `1000/com_maxfps` is in the
+same loop, after that call, so the cap is not being *ignored*: the instructions that apply it are
+being jumped over. That is the whole of the frame-rate question.
+
+**Two explanations ruled out by measurement, so nobody re-derives them:**
+
+- **It is not `longjmp`.** 0x7AD57C (verified — it builds `STATUS_LONGJUMP` 0x80000026) has exactly
+  three callers: `Com_Error` 0x59AC50 and `Sys_Error` 0x5FE8C0, both already trapped by
+  `error_trap.cpp` and both silent, and **0x693CF0**, the script VM's error path. The probe hooks
+  `longjmp` itself. `longjmps=0` through the entire storm, in two runs.
+- **It is not an SEH unwind.** A vectored exception handler sees **only** `DBG_PRINTEXCEPTION_C`
+  (0x40010006, i.e. `OutputDebugString`) — 5,063 of them against 4,775 escaped frames, about one
+  debug string per escaped frame — and never `STATUS_LONGJUMP`, never an access violation.
+
+The escaped frames are also **not nesting**: at 5,300 escapes a second the stack would be gone
+inside a minute and the process runs for hours. Something resets the stack without a longjmp and
+without unwinding, and that is where the next session starts. The probe already records the ESP it
+was entered with; compare it across escaped frames.
+
+### 11.3 The fix: pace outside the thing that stops working
+
+The engine's cap lives inside the loop the frame leaves through, so the cap has to *also* live
+somewhere a non-local exit cannot skip. There is exactly one such place: WinMain's loop, outside
+`Com_Frame`, which is where `enw::frame` already runs.
+
+`frame_pacing.cpp` now tops each frame up to the same `1000/com_maxfps` target, measured across our
+own tick, bounded to 50 ms (the same bound as `cmp edi, 0x32` at 0x59DDE1). It is self-correcting
+and cannot double-pace: a frame the engine paced properly arrives ~16 ms after the last one and
+sleeps 0; an escaped frame arrives in ~0.2 ms and sleeps the remaining ~16.
+
+| | frame rate with a player in | CPU |
+|---|---|---|
+| before (`join55`, t=75->110 s) | 5,341 Hz | 4.2 s per 5 s wall = **~84% of a core** |
+| after (`join57`, t=75->110 s) | **59.4 Hz** | 0.5 s per 35 s wall = **~1.4% of a core** |
+| after (`join59`, 10 min, Der Berg) | 59.4 Hz | **10.7 s in 582 s = 1.8% of a core**, RSS flat 345 MB |
+
+`ENW_DEDI_NO_OUTER_PACE=1` brings the spin straight back, which is the control.
+
+**What this does not fix, stated plainly:** `com_frameTime` is still frozen, so `SV_Frame` still
+does not run after that moment. The server is now *idle* rather than *spinning*, and it is stopped
+either way. This is a CPU fix and an instrument, not a cure — and it is the difference between one
+game per box and several, so it is worth having on its own.
+
+### 11.4 Custom maps on the dedicated server
+
+`tools\dev\maptest.ps1` boots a list of maps headless, one at a time, ~80 s each, and reports
+alive / answered `getstatus` / the first thing the engine complained about. `jointest.ps1` gained
+`-FsGame` (default `auto`).
+
+**A custom map is its own mod, and that settles the "how do both load at once" question: they do
+not, and they do not have to.** `fs_game` is `mods/<bsp>` — never our `mods/enw` overlay — and the
+ENW DLL rides in on the binkw32 proxy, not on `fs_game`, so there is only ever one mod and it is
+the map's. The referee is C++ (`referee.md` 3.1) and needs nothing inside the mod folder. The one
+thing that *would* need to live there is the restore-path GSC of `referee.md` 3.3, which is not
+built. `getstatus` confirms it end to end: `join59`'s status response carries
+`\fs_game\mods/nazi_zombie_derberg`.
+
+Three things had to be right and two of them were ours:
+
+1. **`fs_game` before `+map`**, or the map fastfile is not on the search path when the map loads.
+   Same class of bug as `+map` before `+set net_port`.
+2. **`+set con_typewriterColorBase "1.0 1.0 1.0"` must be passed.** `jointest.ps1` has always
+   passed it; `maptest.ps1`'s first cut did not, and **Der Berg died on exactly that** —
+   `script runtime error: SetSavedDvar(): The dvar "con_typewriterColorBase" does not exist`
+   (`map02`). Put it back and Der Berg boots (`map03`). A custom map's `_load.gsc` calls
+   `SetSavedDvar` on dvars a headless server never registered, and an unregistered one is fatal to
+   the script.
+3. **The memory reserve.** `big_heap.cpp` raises it 300 MB -> 422 MB, `ENW_DEDI_BIG_HEAP=1`.
+
+**Correction to `shared/t4/addresses.hpp` :: `t4::mem`, for `re`.** That file carries the
+*instruction* starts, calls them "the true operand starts", and says the vault's
+0x5F5492 / 0x5F54D1 / 0x5F54DB "land mid-instruction on our dump". It is the other way round:
+
+```
+0x5F5491  68 00 00 C0 12                 push 0x12C00000
+0x5F54CB  C7 05 EC FA 24 02 00 00 C0 12  mov [0x224FAEC], 0x12C00000
+0x5F54D5  C7 05 F0 FB 24 02 00 00 C0 12  mov [0x224FBF0], 0x12C00000
+```
+
+so the immediates are at **+1, +6, +6**. Reading `t4::mem`'s numbers as operands gives 0xC0000068
+and 0xFAEC05C7, which is exactly what `big_heap.cpp` refused to patch and printed (`map02`). **The
+vault was right.** `big_heap.cpp` applies the offsets locally rather than editing `re`'s file.
+
+#### Results, runs `map01`-`map03` and `join59`
+
+| Map | bsp | boots headless | answers getstatus | client CS_ACTIVE + ROUND 1 | verdict |
+|---|---|---|---|---|---|
+| Der Berg | `nazi_zombie_derberg` | **yes** (`map03`) | **yes**, 3 s (`join59`) | **no** (`join59`) | **ours was the boot bug**; the join is blocked by 11.1 |
+| Leviathan | `nazi_zombie_leviathan` | no | no | — | **map**: `unknown item 'napalmblob'` |
+| MW2 Rust | `mw2rust` | no | no | — | **map**: `undefined is not an array, string, or vector` |
+| Clinic of Evil | `sanatorium` | no | no | — | **map**: `undefined is not an array, string, or vector` |
+| Zombie Desert | `nazi_zombie_test1` | no | no | — | **ours**: `fs_game is write protected` |
+| Project Viking | `nazi_zombie_test` | no | no | — | **ours**: `fs_game is write protected` |
+
+**The failures, exactly, in the Com_Error trap's own words:**
+
+- **Leviathan** — `Com_Error(5, ".script runtime error")`, `unknown item 'napalmblob'`, raised from
+  `maps/_loadout::init_loadout()` <- `maps/_load::main()` <- `maps/_zombiemode::main()` <-
+  `maps/nazi_zombie_leviathan.gsc:23`. Preceded by ~40 `Could not load xanim` lines, all
+  `ai_flamethrower_*` / `ai_bonzai_*`. **The 422 MB reserve did not change it**: `map03` raised all
+  three sites and the message is byte-identical to `map01`'s. So the board's 17:12 reading — "the
+  classic stock-WaW asset-limit overflow that T4M exists to fix" — **is not supported by this
+  measurement**. `napalmblob` is a weapon the precache list asks for and the loaded zones do not
+  contain.
+- **MW2 Rust** and **Clinic of Evil** — the same `undefined is not an array, string, or vector`,
+  in each map's own script. Both already carry `missed-silently` scanner verdicts in `archive.md`
+  section 3, i.e. we knew their scripts were unusual before tonight.
+- **Zombie Desert** and **Project Viking** — `fs_game is write protected.`, then
+  `Can't find map "..."`, then `A mod is required for custom maps`. **This is ours and it is
+  stateful**: the engine refused our command-line `fs_game` because it was already set and
+  write-protected by the time the command line was applied. Leviathan (first in the same batch),
+  Der Berg and Clinic of Evil were all fine in that batch, so it is leftover state in the homepath,
+  not a property of these two maps. **Not a broken map, and not yet fixed.** First thing to try:
+  clear `<fs_homepath>\main\config.cfg` — which archives `fs_game` — before each launch.
+
+After the terminal error every map behaves the same way: the ERR_DROP drops the server to the front
+end, the front end re-inits the renderer and re-loads `mod.ff`, the second load of the same mod
+hits `Exceeded limit of 1 'snddriverglobals' assets` -> **`Sys_Error`** -> the main thread parks in
+the error message loop and `frame::count` stays 0 forever. So **"Exceeded limit of 1
+'snddriverglobals'" is a symptom of the restart and never the first cause** — do not chase it, and
+do not read it as the `ENW_PRIVATE_PROFILE` failure it resembles. Read the **first**
+`Com_Error TRAPPED` line in `<tag>.<map>.enw.log`; `arg3` is the message.
+
+### 11.5 Soak — `join59`, 10 minutes, Der Berg, honest
+
+One 600 s run: Der Berg headless with the big heap on, the escape probe on, and a real client
+process launched at it. Server **10.7 s of CPU in 582 s (1.8% of one core)**, RSS **flat at
+345 MB**, no `Sys_Error`, no GSC error, `getstatus` answered in 3 s with
+`\fs_game\mods/nazi_zombie_derberg`, process alive at the end and killed by the harness.
+
+**And it is not a clean soak.** `com_frameTime` froze at **5662** — 5.6 s in, before the client
+ever connected — so the server spent the whole ten minutes in the state of 11.1, and the client
+never reached `CS_ACTIVE`. On a custom map the escape happens almost immediately rather than fifty
+seconds after a spawn. What the run does prove is the pacer: 59.4 Hz and 1.8% of a core held flat
+for ten minutes in a state that used to cost most of a core.
+
+### 11.6 `wait_for_first_player()` — answered
+
+Still waiting, and now with a mechanism rather than a suspicion. It waits on
+`level waittill("first_player_ready")`; nothing raises that notify on a dedicated server, while
+`all_players_connected` does fire — the referee's `ROUND 1` comes off it. The two threads parked on
+it (`_utility.gsc:9539`, `_load.gsc:2256`) stay parked for the whole of every join run including
+`join59`. It does **not** stop round 1 and it does **not** stop the map. It is a real difference
+between a listen server and ours, it has never cost us a milestone, and it should not be "fixed" by
+faking the notify until something is shown to depend on it.
+
+### 11.7 Round 2 — not attempted, and why
+
+Round detection past round 1 needs `between_round_over` (`referee.md` 2.1), which needs
+`round_think()` to complete a round, which needs `SV_Frame` to keep running. 11.1 says it does not,
+from about fifty seconds after a spawn. **No dev knob was used and none would have helped**: a
+console command or a GSC shortcut that ends the round still has to be executed by a script VM that
+the server has stopped ticking. Round 2 is downstream of 11.1 and is blocked on it, not on the
+referee.

@@ -991,3 +991,58 @@ sensitivity to zombie count, which is what it was for.
   `BG_LoadWeaponDef` fail before GSC compiles (`dedi` p13 is on it).
 * Everything that needs the notify hook and script-VM access: round/game-over from the live `level`,
   real replay capture, chat in/out, AFK, knobs, pause.
+
+
+---
+
+## 9. 2026-09-22 — rounds, the replay sampler, and two answers
+
+### 9.1 Round 2 is blocked on the dedicated server, not on this lane
+
+Round detection past round 1 needs `between_round_over` (§2.1), which needs `round_think()` to
+complete a round, which needs `SV_Frame` to keep ticking. It does not: `dedi.md` §11.1 shows the
+engine's frame body stops returning about fifty seconds after a player spawns, and `SV_Frame` sits
+past that point in the body. `com_frameTime` freezes and never moves again.
+
+**No dev knob was used to force a round, and none would have worked.** Every route the docs allow
+— a dev-only GSC knob, a console command on the server, a `zombie_devgui`-style spawn — has to be
+executed by the script VM, and the server has stopped ticking it. `developer 1` was not used
+(hard rule 5) and is not the answer either.
+
+So the honest status of round detection is unchanged from yesterday: **`ROUND 1` is proven in every
+join run since `join12`; `ROUND 2` has never been observed and cannot be until the escape in
+`dedi.md` §11.1 is fixed.** When it is, the test is `TESTME.md` and it needs nobody at the
+keyboard: an unattended game that survives will advance on its own.
+
+### 9.2 `wait_for_first_player()` — answered
+
+It waits on `level waittill("first_player_ready")`. Nothing raises that notify on a dedicated
+server, while `all_players_connected` **does** fire — the referee's `ROUND 1` comes off it. The two
+threads parked on it (`_utility.gsc:9539` via `_utility.gsc:9698`, and `_load.gsc:2256`) are still
+parked at the end of every join run, including the ten-minute `join59`.
+
+**It does not stop round 1 and it does not stop the map.** It is a real difference between a listen
+server and ours, it has never cost us a milestone, and the board's instruction — "test it before
+believing it" — is now discharged: believe that it waits, and do **not** fake the notify to make it
+stop. Faking a player-ready signal on a server with no local client is the same class of mistake as
+telling the engine an autosave finished when it had not (`dedi.md` §7i), which produced
+`Attempting to commit an invalid save buffer` and a worse message further from the cause.
+
+### 9.3 The replay sampler: four gaps closed, one refused
+
+`replay.md` §3 lists six gaps against `server/components/replay/replay.cpp`. Five were in scope.
+
+| gap | now |
+|---|---|
+| 1. no `kill` event | **emitted**, from entity state: a zombie in the live list one sample and gone the next. A record, not an inference — and it carries `how: "entity_gone"` and **no `slot`**, because we cannot attribute it |
+| 2. no zombies-remaining | **two fields, named honestly.** `zombies_alive` is measured (live AI this sample, which the engine caps at 24–31). `kills_round` counts kills since the round changed. `zombies_remaining` is **omitted**, not faked — it is `level.zombie_total` and script variables are still unbound |
+| 3. `round` only an event | **on every snap.** `t4_bind` gained one shared cell (`set_current_round` / `current_round`) written by `referee.cpp`'s `emit_round`, rather than a second counter that could disagree with the first |
+| 4. no roll on `ang` | left alone — zombies does not need it |
+| 5. `weapon` disagreed with itself | **one type, the string.** The index is emitted as `"#37"` until `BG_GetWeaponDef` is in `shared/t4`; the consumer can see at a glance that it is unresolved, and the type never changes under it |
+| 6. `stance` never emitted | **emitted**, from the last usercmd's button mask. **The bits are not verified by us** — a contradictory mask emits nothing, and each distinct mask is logged once with the stance it produced. Crouch in a join run, read that line, and settle it |
+
+**Gap 7 — no verified replay from a real DLL — is still open, and tonight did not close it.** The
+`.enwr` container is written by the host agent (`host.md` §5), `jointest.ps1` does not run the host
+agent (every join run logs `game-link: connect to 127.0.0.1:28960 failed, retrying`), and with
+`SV_Frame` stopped there was nothing to sample anyway. It needs a host-agent game, which is
+`host.md`'s lane, after `dedi.md` §11.1.

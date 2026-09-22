@@ -170,5 +170,6 @@
     "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/derberg-2.jpg",
     "cover_size": 145093
   },
-  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3).  DEDI 2026-09-22 (runs map03, join59): boots headless on the dedicated server and answers getstatus in 3 s with fs_game=mods/nazi_zombie_derberg. It had been failing on OUR command line, not on its own script: without +set con_typewriterColorBase the map's _load.gsc raises SetSavedDvar(): The dvar \"con_typewriterColorBase\" does not exist and the server script dies at load. A client did NOT reach CS_ACTIVE in join59, blocked by the frame-body escape of dedi.md 11.1, which is a server bug and not this map's.",
+  "dedi_status": "boots"
 }
