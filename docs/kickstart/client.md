@@ -1179,6 +1179,11 @@ instead of inventing a number. That `reset` in `config.cfg` does what it should 
 `ai_corpseCount` is the one row matching the launcher's "gameplay dvar" pattern (`ai_`); it is
 corpse clean-up, a Graphics-menu item, and the test allows exactly it.
 
+**2026-09-22, late:** the page's *presentation* changed (Gaff-style tabs and small sections,
+`web.md` last section; `web/client/src/data/settingsLayout.js` places the rows). This table is still
+exactly what each row writes — no mapping changed, and `web/test/run-all.js` checks every item is
+still on the page once.
+
 ### 8c. Not mapped, and why
 
 * **Speaker Configuration** (Stereo / 5.1 / 7.1) — driven through `ui_outputConfig` and engine
