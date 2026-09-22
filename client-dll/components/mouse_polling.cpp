@@ -176,6 +176,11 @@ inline HWND game_hwnd() { return *enw::ptr<HWND>(t4::var::g_wv_hwnd); }
 // Resolved once at install time; the naked thunk below cannot call enw::at().
 uintptr_t g_cl_mouse_event = 0;
 
+// CL_MouseEvent's first eight bytes on our dump:
+//   0063D9A0  f6 05 24 84 05 03 10   test byte ptr [0x3058424], 0x10
+//   0063D9A7  56                     push esi
+constexpr uint8_t kCLMouseEventHead[] = {0xF6, 0x05, 0x24, 0x84, 0x05, 0x03, 0x10, 0x56};
+
 // CL_MouseEvent takes two of its four arguments in registers, so no C prototype
 // can express it (addresses.hpp says so, and this project has paid for guessing
 // a convention twice). A naked thunk reproduces exactly the call the engine
@@ -388,8 +393,16 @@ public:
             g_enabled = false;
             return;
         }
-        if (!memory::looks_like_function(enw::at(t4::fn::CL_MouseEvent))) {
-            ENW_ERROR("mouse_polling: 0x%08X does not look like CL_MouseEvent (%s). Refusing.",
+        // Self-verifying check #1b. `looks_like_function()` is the WRONG tool here and
+        // run 1 proved it: CL_MouseEvent is optimised and has no standard prologue --
+        // it opens `test byte ptr [0x3058424], 0x10` -- so the heuristic refused a
+        // perfectly correct address. A byte compare against the dump is both stricter
+        // and right.
+        uint8_t head[sizeof kCLMouseEventHead] = {};
+        if (!memory::read_raw(enw::at(t4::fn::CL_MouseEvent), head, sizeof head) ||
+            std::memcmp(head, kCLMouseEventHead, sizeof head) != 0) {
+            ENW_ERROR("mouse_polling: 0x%08X is not CL_MouseEvent on this image: expected "
+                      "F6 05 24 84 05 03 10 56, found %s. Refusing.",
                       static_cast<unsigned>(t4::fn::CL_MouseEvent),
                       memory::hex_dump(enw::at(t4::fn::CL_MouseEvent), 8).c_str());
             g_enabled = false;
