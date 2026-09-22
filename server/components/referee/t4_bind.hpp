@@ -148,6 +148,15 @@ bool server_say(int slot, const std::string& text);
 // Run a console command on the server.
 bool console_command(const std::string& cmd);
 
+// ------------------------------------------------------- the current round --
+// The referee counts rounds off the `between_round_over` notify (referee.cpp). The
+// replay sampler needs the same number to stamp on every `snap` so a chunk is
+// self-describing (replay.md section 3, gap 3), and the two components cannot see each
+// other's state. This is the one shared cell rather than a second counter that could
+// disagree with the first.
+void set_current_round(int n);
+int current_round();
+
 // ------------------------------------------------------------------- dvars --
 std::optional<std::string> dvar_get(const char* name);
 bool dvar_set(const char* name, const char* value);

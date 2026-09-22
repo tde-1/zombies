@@ -483,6 +483,9 @@ private:
     void emit_round(int n, uint32_t ms, const char* how) {
         if (n <= round_) return;   // never go backwards; the host treats round as a high-water mark
         round_ = n;
+        // Publish it for the replay sampler, which stamps it on every snap so a
+        // chunk that arrives alone knows what round it is in (replay.md 3, gap 3).
+        referee::set_current_round(round_);
         json::writer w;
         w.str("t", "round").integer("ms", ms).integer("n", round_);
         game_link::get().send(w);

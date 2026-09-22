@@ -25,6 +25,8 @@
 // nothing. Never dereference on a hope.
 #include "t4_bind.hpp"
 
+#include <atomic>
+
 #include "../../../shared/core/hook.hpp"
 #include "../../../shared/core/logger.hpp"
 #include "../../../shared/core/game_link.hpp"
@@ -922,6 +924,13 @@ bool console_command(const std::string&) {
     // Cbuf_AddText is not in shared/t4 yet.
     return false;
 }
+
+namespace {
+std::atomic<int> g_current_round{0};
+}  // namespace
+
+void set_current_round(int n) { g_current_round.store(n, std::memory_order_relaxed); }
+int current_round() { return g_current_round.load(std::memory_order_relaxed); }
 
 std::optional<std::string> dvar_get(const char*) { return std::nullopt; }
 bool dvar_set(const char*, const char*) { return false; }
