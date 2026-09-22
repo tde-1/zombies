@@ -6,6 +6,8 @@
 > wherever they disagree** (the draw hook was found, the input is B's spec rather than the plan's,
 > and the channel is the site over HTTP, not the game link). Exclusive fullscreen is **not yet
 > seen** (§9.8). §0-§8 are kept as written: the plan, then the server lane's contract.
+> **§10 (round 2, after B used 0.2.12):** clicks fixed (the cursor was drawn off its hot spot),
+> a real text box, selectable history, a tab per DM conversation, `/w` and `/r`.
 
 B's ask, in his words in substance: *later an in-game overlay where T opens chat, pauses the game
 if solo, and lets you type, replacing the game's own chat.*
@@ -448,3 +450,99 @@ instrument alone · `ENW_CHAT_BASE`/`ENW_CHAT_BEARER` dev credentials.
   while it was closed and before it ever opened. Rules taken from it: test only at sizes smaller
   than the desktop, always with `ENW_BORDERLESS_COVER=0`, and never exclusive fullscreen while B is
   at the PC.
+
+---
+
+## 10. Round 2 — clicks, a real text box, tabs per conversation (2026-09-22, late)
+
+B tested 0.2.12 for real: *"When you press T you can move your mouse but you can't click on the
+tabs for party and stuff. I really like how it looks, but make it more functional: you can select
+things, it's intuitive, you can click stuff properly, use tabs properly, Ctrl+A and copy and paste."*
+
+### 10.1 Why clicks missed — the cursor was drawn in the wrong place
+
+Not the input gate, not raw input, not DPI: the clicks arrived and were hit-tested correctly. **The
+picture of the pointer was wrong.** WaW's UI draws its cursor **centred** on the pointer —
+`0x5B6970`: `x - size*0.5`, size 32 from `[0x84BC9C]`, material `sharedUiInfo.assets.cursor` — so
+the arrow's tip is the middle of the 32x32 image. Round 1 drew the image from its top-left at the
+pointer, putting the visible tip **16 virtual units below-right** of where a click lands: 48 px at
+2560x1440, while the tab strip is 18 units (54 px) tall. B aimed the tip at "Party" and the click
+landed above the strip. The selftest never saw it because it clicks by coordinates, not by looking.
+Fixed by drawing the cursor exactly as the UI does. The proof is the capture with the pointer
+posted to the centre of the Party tab — the tip is on the tab — followed by the logged click:
+
+![tip on the tab at 2560x1440 borderless](ui/chat-overlay-r2-hover-party-2560x1440-borderless.jpg)
+
+Every click now logs its whole path (client → back buffer → virtual → target), and every open logs
+the client rect, back buffer, placement and window DPI:
+
+| run | mode | click (client) | virtual | target |
+|---|---|---|---|---|
+| 23:46 | windowed 1280x720 | (124,73) of 1280x720 | (82.7,48.7) | tab 1 'Party' |
+| 23:46 | | (103,321), twice | (68.7,214.0) | input, double-click → selection 'click' |
+| 23:46 | | (42,289) | (28.0,192.7) | history → the name `deadshot` → DM tab 3 |
+| 23:46 | | (382,73) | (254.7,48.7) | tab 4 '+' |
+| 23:47 | **borderless 2560x1440** (client 2560x1440, DPI 96) | (248,147) of 2560x1440 | (82.7,49.0) | tab 1 'Party' |
+| 23:47 | | (207,642), twice | (69.0,214.0) | input, double-click → 'click' |
+| 23:47 | | (85,579) | (28.3,193.0) | history → name → DM tab |
+| 23:47 | | (765,147) | (255.0,49.0) | tab 4 '+' |
+| 23:47 | | (72,246) | (24.0,82.0) | contact 'staminup' → its DM tab |
+
+Raw input on (the default, B's), NOLEGACY armed: while the overlay is open mouse_polling puts the
+legacy messages back, so a physical button is a real `WM_LBUTTONDOWN` through the gate's filter —
+which is the path the posted clicks take too. **Not proven:** a physical click on B's own mouse
+(`SendInput` is discarded on this box, `client.md` §1e); his one-minute check is below.
+
+### 10.2 What it does now
+
+* **Tabs:** Global, Party, **one tab per DM conversation**, and **+** (a picker: friends, party
+  members, anyone seen in chat — click one to open their tab). Click a tab; **Tab / Shift+Tab /
+  Ctrl+Tab** cycle them; right- or middle-click a DM tab closes it. The active tab has a gold fill
+  and underline, hover lights a tab, unread counts on the others. A DM from someone opens their tab.
+* **Names are links:** click a sender's name in any line (hover underlines it) → their DM tab.
+  **`/w name text`** (also `/msg`, `/tell`) opens the tab and sends; `/w name` just opens it; **`/r
+  text`** replies to the last person who messaged you. Friends and party are matched first, then
+  anyone seen in chat; the server still only delivers DMs to friends and party.
+* **The input line is a text box:** caret (blinks, resets on edit), Left/Right, Ctrl+Left/Right by
+  word, Home/End, **Shift+any of those selects**, mouse drag selects, **double-click selects a
+  word**, triple-click the line, **Ctrl+A** all, **Ctrl+C / Ctrl+X / Ctrl+V** through the Windows
+  clipboard (`CF_UNICODETEXT` on the game window, Latin-1 both ways; a paste becomes one line —
+  newlines and tabs to spaces, runs collapsed, `^` colour codes removed — capped at 150), Backspace
+  / Delete (Ctrl = a word) and typing replace a selection, Up/Down recall what you sent, the line
+  scrolls sideways to keep the caret in view. Selection is WaW's gold as a tinted box behind the
+  game font.
+* **History is selectable:** drag across lines (dragging past the top or bottom scrolls), double-
+  click a word, triple-click a row, Shift+click extends; **Ctrl+C** copies it (rows of one message
+  joined by spaces, messages by newlines); Ctrl+A selects the tab's whole history when the history
+  has focus (click it). The mouse wheel and PgUp/PgDn scroll; a `^` marks "more below".
+* **Hover:** tabs, the row under the pointer, names, picker rows and the close box.
+* Look and font size unchanged.
+
+Pictures: `ui/chat-overlay-r2-*.jpg` (shift-select, double-click word, history selection at
+2560x1440, a name opening a DM tab, the tab after `/w`, the picker).
+
+### 10.3 Runs, and the lock
+
+Both runs: `waw-c2`, `nazi_zombie_prototype`, the private site on 3399 feeding Global/Party/DM lines,
+`ENW_CHAT_SELFTEST=2` (the DLL posts keys, chars, clicks, a drag, a double-click and wheel notches
+into its own queue and captures the back buffer). **No window was ever activated:** the new harness
+switch `ENW_TEST_NO_ACTIVATE=1` (`components/test_no_activate.cpp`, never set by the launcher) makes
+the engine's windows `WS_EX_NOACTIVATE` and neutralises its startup `ShowWindow(SW_SHOW)` and
+`SetFocus`; a watcher sampled the window every 500 ms: **foreground 0 of 129 samples** in each run,
+and the overlay logged 0 activations. The selftest also never touches the Windows clipboard (a
+private buffer stands in for it, logged). One thing remains visible for about a second per launch:
+the engine creates its window at the centre of the screen before `launch.ps1` parks it.
+
+| lock held | run | result |
+|---|---|---|
+| 23:44:11 – 23:45:19 | windowed 1280x720 | all features; a posted Ctrl+C typed a stray "c" (fixed: a Ctrl+letter now also eats its plain-letter `WM_CHAR`) |
+| 23:46:06 – 23:47:14 | windowed 1280x720 | clean: copy "world", paste → `hello selection worldworld`, double-click → `click`, history copy 183 chars, name → DM tab, `/w staminup hi from a whisper` delivered to staminup on the site |
+| 23:47:26 – 23:48:34 | **borderless 2560x1440**, off-screen, `ENW_BORDERLESS_COVER=0` | the same, every click at 3.0 scale landing on its target (table above) |
+
+### 10.4 Still not proven
+
+* **B's own hand.** One minute: T, move onto "Party" and click, Tab/Shift+Tab, type, Shift+Left,
+  Ctrl+C, Ctrl+V, double-click a word, drag over two history lines and Ctrl+C into Notepad, click a
+  name, `/w name hi`, Esc. The DLL log shows every `click #n ... -> tab n` line.
+* The real Windows clipboard path (the selftest deliberately does not touch it).
+* Exclusive fullscreen (§9.8 still stands).

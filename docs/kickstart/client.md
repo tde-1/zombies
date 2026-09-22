@@ -1238,3 +1238,19 @@ exclusive fullscreen while B is at the PC.
 No DLL version constant exists to bump; `stage-client.js`'s gate is the build's mtime against the
 sources, so a fresh build of `build/client-lane` (or whichever build the coordinator ships) is what
 makes it stageable.
+
+### 9a. Round 2 (2026-09-22, late) — B used 0.2.12: "you can move your mouse but can't click the tabs"
+
+Cause: the overlay drew WaW's UI cursor from its top-left at the pointer, but the engine draws it
+**centred** (`0x5B6970`, `x - 32*0.5`), so the visible tip was 16 virtual units (48 px at 1440p)
+off the real hot spot. Clicks were arriving and hit-testing fine. Fixed, plus a real text box
+(selection, word/line clicks, Ctrl+A/C/X/V on `CF_UNICODETEXT`, Up/Down recall), selectable
+history, a tab per DM conversation, name-click and `/w` `/r`, hover. Proven by logged
+click → target lines at 1280x720 windowed and 2560x1440 borderless: `chat-overlay.md` §10.
+
+New harness switch **`ENW_TEST_NO_ACTIVATE=1`** (`components/test_no_activate.cpp`): the engine's
+windows are created `WS_EX_NOACTIVATE`, its startup `ShowWindow(SW_SHOW)` becomes
+`SW_SHOWNOACTIVATE` and `SetFocus` is a no-op (IAT slots `CreateWindowExA` / `ShowWindow` /
+`SetFocus`). With it a test game never takes the foreground from the person at the PC (0 of 129
+samples foreground, both round-2 runs). Never set by the launcher.
+

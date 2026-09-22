@@ -116,6 +116,13 @@ with a private site. **Exclusive fullscreen not yet looked at**; needs a site de
 release to reach anyone. The draw hook turned out to be the "withdrawn" 0x6F5F10, which is
 `R_AddCmdDrawText`. `docs/kickstart/chat-overlay.md` §9.
 
+**Round 2 (after B used 0.2.12):** clicks work — the pointer was drawn 48 px (at 1440p) away from
+where clicks land, because WaW draws its cursor centred and the overlay drew it from the corner.
+Now a real text box (select, word/line clicks, Ctrl+A/C/X/V, Up/Down recall), selectable history
+with copy, a tab per DM conversation, click a name or `/w name text` / `/r text`, hover. Proven by
+logged clicks at 1280x720 windowed and 2560x1440 borderless, with test windows that never take
+focus. B's one-minute hand check is `chat-overlay.md` §10.4.
+
 ## Pause (2026-09-22, evening)
 
 The dedi now really pauses: Esc solo (and typing, with the "pause when using global chat"
