@@ -2372,7 +2372,8 @@ The site half is `web.md`, same date.
 ### Publish (coordinator)
 
 After merge, from the main checkout: `cd C:\Users\b\Desktop\Zombies\launcher; npm test; npm run pack`
-(stage-client → electron-builder → `tools/publish-update.js` into `web/public/updates`), then
+(stage-client → electron-builder → `tools/publish-update.js` into `web/public/updates`, and —
+since main's `54f7a95` — up to the files bucket when `infra/s3.env` has keys), then
 `node tools/publish-update.js --check` and `https://zombies.enw.gg/updates/latest.yml` must say
 `version: 0.2.12`. The site half needs `web/client` rebuilt and the site restarted; deploy the
 site first or together — a 0.2.11 launcher on the new site gets no chip (it lacks `updateNow`) and
