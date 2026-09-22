@@ -1491,3 +1491,179 @@ The exe, its blockmap and `latest.yml` are gitignored, so none of it is in a com
 * **The rendered Settings page.** No Electron run, so the new button row is code-correct and not
   seen.
 
+
+---
+
+## 2026-09-22 evening — the real launcher path against the box
+
+The gap this session was opened to close, in the coordinator's words: *"the real launcher path
+has never been exercised end to end with a dedicated server"* — every identity proof so far used
+`ENW_AUTH_TOKEN` (fallback #3 in `auth_token.cpp`) through `tools/dev/jointest.ps1`, never the
+launcher's own one-shot named pipe with a token the site minted for a real lease.
+
+It is closed. **Run `lp5`, match `m_9f7b692c`, site game id 7, replay `/replay/m_9f7b692c`.**
+
+```
+client (B's PC)   auth: invite token accepted from the launcher's one-shot pipe eyJleH…7FDg (274 chars)
+                  auth: wrote the userinfo config; the launcher's +exec will register enw_token
+                  auth: enw_token is registered - the token is in userinfo
+box               host/inst-01 auth slot 0 Unknown Soldier 76561198126330106: ALLOW (ok) -> identity verified
+                  host/inst-01 game over: stop_intermission notify, round 1, 1m
+                  host/inst-01 replay closed: 39.9 KiB in 3 chunks, 2543 events, 9.7x
+site              games.id 7  ·  game_players: 76561198126330106, 1 round, xp 177
+```
+
+`identity verified` on the box, driven from the launcher, is new. So is the player row: game 7 is
+credited to a SteamID rather than to attendance. The replay's track names the player
+(`players[0].name = "Unknown Soldier"`, with `steamid`), not `Slot 0`.
+
+### Four things were broken between Start and the server, and all four were ours
+
+Listed in the order a player hits them. **Every one would have stopped B and three friends
+tonight**, and none had ever been exercised, because every previous proof went through the dev
+harness — which does all four correctly.
+
+**1. The box had no address, so `connect` was always `null`.** `assignments.connectFor()` prefers
+`boxes.address` and falls back to the box's `host.public_ip`. The column existed, **nothing in the
+codebase ever wrote it**, and the host agent's status carries no `public_ip` either — so the
+fallback was never reached, because there was nothing to fall back to. Every lease answered
+`connect: null` and the boot screen would have sat on *Reserving server* until it timed out.
+`boxes.setAddress()` is new, `register-box.js --name <box> --address <host>` writes it, and
+`zombies-dev` now answers `2.28.235.236`.
+
+**2. `+connect <host>` is not a command this exe has.** The launcher had put it on the command line
+since the first version. `CoDWaW.exe` is the single-player exe; `connect` exists only as the
+*server's* out-of-band name (`docs/re/t4-sp-map.md` §5), and the game says so in its own console:
+
+```
+Unknown command "connect"
+…
+Failed to log on.        (forever — which reads exactly like a network fault and is not one)
+```
+
+Joining is armed through the environment instead — `launch.js :: connectEnv()`:
+`ENW_CLIENT_CONNECT=<map>` fires `CL_ConnectLocal`, `ENW_CONNECT_ADDR=<host:port>` rewrites the
+hard-coded `"localhost"` it pushes, and `ENW_RAW_SOCKETS=1` stops Demonware's `bdSocketRouter`
+dropping every connect packet. `jointest.ps1` and `join-remote.ps1` have always done this; the
+launcher never did. The `+connect` line is left in the source as a retraction with the console
+output beside it. `+map` is now added **only** when there is no host, or the client boots the map
+locally before it dials.
+
+**3. The token reached the DLL and stopped there.** The pipe worked first time — *"invite token
+accepted from the launcher's one-shot pipe"* — and then:
+
+```
+auth: ENW_FS_HOMEPATH is not set, so there is nowhere instance-private to put the
+      userinfo config. Token NOT installed.
+```
+
+`auth_token.cpp` writes `setu enw_token "<token>"` into `<fs_homepath>\main\enw_auth.cfg` during
+`post_load`, and the launcher must (a) tell it where that is and (b) pass `+exec enw_auth.cfg`. The
+launcher did **neither**. Both are in `launch.js` now — `ENW_FS_HOMEPATH` in the environment, and
+the `+exec` on the line whenever a token is present, filename only. A token that never reaches
+userinfo is `identity: none` on the box: a game nobody is credited for.
+
+**4. A superseded lease's instance kept running, and owned UDP 3074.** Cancel a Start and press it
+again: the site marks the old lease `superseded`, but `onAssignment` returned early and nothing
+retired the instance. The replacement took the second port, bound **nothing**, and parked in
+`Com_Init` at `frames=0` — so the box reported `ready` on a port with no server behind it.
+`host.js` now retires every instance on a different match id before booting (the site keeps exactly
+one live lease per box, so a different match id *is* a dead lease), **awaits** it, and waits two
+seconds for Wine to hand the sockets back — a replacement started in the same tick parks the same
+way. Measured both ways.
+
+**…and a fifth, found while proving the fourth: ghost leases ate the box.** A lease only leaves
+`leased`/`ready`/`live` when a game ends with a *result*. An instance retired instead leaves its row
+live for ever, and `pickFree()` counts those rows against `max_instances` — two of them on a
+two-instance box and every Start after that gets **"no game box is online"** while the box sits
+idle. Hit twice tonight. `boxes.reapGhostLeases()` closes any lease this box's own status report
+does not mention after a 90-second grace; the box's report is the evidence, and a report carrying
+no instance list at all is ignored rather than read as "nothing".
+
+### The box now has Minecraft Village Remastered, and it needed three symlinks, not one
+
+`nazi_zombie_fear_mc_2` was staged with `archive/install_map.py --stage` (10 files, 593 MB — the
+11th is a `console.log` the stager excludes) and pushed to `/home/waw/waw-en/mods/`, hashes
+compared on both ends. Putting it only in the game folder is **not enough**, and the engine says so
+in two different ways:
+
+| what failed | where the engine actually looked |
+|---|---|
+| `Error during initialization: Unhandled exception caught` | `<fs_homepath>\mods\<bsp>` — the instance's homepath, not the game dir |
+| `Error: Can't find map "nazi_zombie_fear_mc_2"` | `%LOCALAPPDATA%\Activision\CoDWaW\mods` — the engine's own map-exists check (`dedi.md` §14's `fs_localAppData` finding, which `enw_localappdata.cpp` solves on Windows and nothing solved under Wine) |
+
+So all three are symlinks to the one copy: `waw-inst-*/mods`, `homes/inst-*/mods`, and
+`drive_c/users/waw/AppData/Local/Activision/CoDWaW/mods`. With those in place:
+
+```
+host/inst-04 map_loaded nazi_zombie_fear_mc_2 -> manifest "nazi_zombie_fear_mc_2" (built-in default)
+host/inst-04 recording -> …/m_8736f88c.enwr
+```
+
+Note *built-in default*: there is no `referee/manifests/nazi_zombie_fear_mc_2.json` on the box and
+the site holds no manifest row for that version, so it is refereed as round-20. Honest, and worth
+an entry from the referee lane before anybody claims an Easter egg on it.
+
+### The site marks exactly five maps server-playable, and the lease enforces it
+
+`on_server` was `health IN ('verified','playable')`, which answers "does this map work" — not "does
+this map work headless, under Wine, on the box". Twelve maps passed that test, including all six the
+archive lane has now confirmed broken (`18cf472`) and both whose *clients* hit the 32-bit ceiling.
+`maps.js :: SERVER_PROVEN` is a measured list of five with its evidence written beside it,
+`maps.onServer()` is what the browser and the list filter read, and `assignments.lease()` refuses
+anything else — the UI is not the boundary. Checked against the running site, through the tunnel:
+
+```
+GET /api/maps?server=1 -> nazi_zombie_prototype, nazi_zombie_factory,
+                          nazi_zombie_fear_mc_2, nazi_zombie_sumpf, nazi_zombie_asylum
+```
+
+### Signing in is the one link this session did NOT drive
+
+The live site is `ZM_AUTH=steam` and the mock provider does not exist there, by design and for
+stated reasons (`auth.js`). Steam OpenID needs a browser and a password, which an agent must not
+have. So the Start press came from **`web/tools/lease-cli.js`** (new): the site's own
+`parties.create/setMap/setReady/launch`, the site's own invite key, the site's own assignment row,
+run as an operator on the machine that owns the database — the same shape as `register-box.js`, and
+for the same reason that file already states. `play-cli.js --token` (or `ENW_LAUNCH_TOKEN`, so a
+live token never sits in the process table) then carries that token into the shipped `GameLaunch`,
+which serves it over the real pipe.
+
+**So: the lease was real, the token was real, the pipe was real, the join was real, and the identity
+check was real. Asking for the lease over HTTP as a signed-in player was not.** The boot screen
+prints `SIMULATED` against `reserving`, which is the truth.
+
+Covered by tests instead, and read critically: `launcher/test/run-all.js` **102/0** (new: `+exec
+enw_auth.cfg` present only with a token; `connectEnv`; `+map` is local-only), `npm run test:launch`
+all checks (new: the join environment, and `ENW_FS_HOMEPATH` equal to the `fs_homepath` on the
+line), `infra/host-agent` **49/0**, `web` **84/33/14**. Follow-the-leader (`startPartyWatch` /
+BootFlow `follow`) is tested against fakes only — *"a follower never presses Play for the party, and
+launches at the match the site leased"* — and stays **unproven with a second real launcher**.
+
+### Still unproven, and named
+
+* **Steam sign-in, the party UI, the ready check and `/api/launcher/play`'s poll.** Nothing here
+  drove them. B's own 0.2.2 is the only thing that can.
+* **Two or more real clients.** `sv_maxclients 4` is on the box's command line (read off the
+  running process), the site mints one token per player and the party caps at 4 — but one client is
+  all that has ever joined.
+* **The packaged 0.2.2.** This run used the repo's `src/main` against the same `binkw32.dll` the
+  installer carries (`3e9d44da…`); B's installed 0.2.2 holds the single-instance lock.
+* **The box's game DLL is `Sep 22 2026 07:38:34`** — it predates the chat lane's `player_down`
+  (`ddaec9c`), so downs will not announce in chat tonight. The host agent on the box IS from HEAD.
+* **Round 2.** The run ended at round 1 on `stop_intermission`; nobody kills zombies unattended.
+
+### Tonight, step by step
+
+**B:** open launcher 0.2.2 → *Sign in with Steam* → pick **Nacht der Untoten** (or Verrückt, Shi No
+Numa, Der Riese, Minecraft Village Remastered — the map list's *on our servers* filter shows exactly
+those five) → **Verified** → invite the others → wait for four green download bars → **Start**.
+
+**A friend, first run:** `https://zombies.enw.gg/download` (HTTP Basic: any user, the password from
+B) → install → *Sign in with Steam* → the launcher finds World at War and installs the ENW client →
+accept B's party invite → the map downloads with a bar → **Ready** → their launcher follows B's
+Start by itself. Nobody types an IP.
+
+**If the boot screen sticks on *Reserving server*:** the box has no free slot. The ghost-lease
+reaper frees it within 90 s by itself now, and pressing Start again retires whatever the box was
+still holding; `node web/tools/lease-cli.js --match <id> --cancel` is the manual version.

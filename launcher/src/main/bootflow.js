@@ -162,6 +162,7 @@ export class BootFlow extends EventEmitter {
     this.step('launching', 'active', 'starting World at War')
     const l = new GameLaunch({
       host,
+      map: o.map,
       token,
       settings: o.settings,
       stealth: !!o.stealth,
@@ -300,6 +301,9 @@ export class BootFlow extends EventEmitter {
     this.step('launching', 'active', 'starting World at War')
     const l = new GameLaunch({
       host: p.match.connect,
+      // The map name is not decoration here: CL_ConnectLocal takes one, and without it
+      // the client never dials the server at all (launch.js :: connectEnv).
+      map: p.map?.key || o.map,
       token: p.match.token,
       fsGame: p.match.fs_game || p.map?.fs_game || undefined,
       settings: o.settings,

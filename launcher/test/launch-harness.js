@@ -54,6 +54,10 @@ const out = {
     ENW_HOST: process.env.ENW_HOST, ENW_INSTANCE: process.env.ENW_INSTANCE,
     ENW_ROLE: process.env.ENW_ROLE, ENW_LOGDIR: process.env.ENW_LOGDIR,
     ENW_TOKEN_PIPE: process.env.ENW_TOKEN_PIPE, ENW_TOKEN: process.env.ENW_TOKEN || null,
+    ENW_FS_HOMEPATH: process.env.ENW_FS_HOMEPATH || null,
+    ENW_CLIENT_CONNECT: process.env.ENW_CLIENT_CONNECT || null,
+    ENW_CONNECT_ADDR: process.env.ENW_CONNECT_ADDR || null,
+    ENW_RAW_SOCKETS: process.env.ENW_RAW_SOCKETS || null,
   },
   token: null, tokenError: null,
 }
@@ -76,6 +80,7 @@ const events = []
 const l = new GameLaunch({
   gameDir,
   host: '127.0.0.1:28964',
+  map: 'nazi_zombie_prototype',   // CL_ConnectLocal takes one; a join without it throws
   token: SECRET,
   instance: 'm_harness',
   role: 'client',
@@ -114,7 +119,12 @@ const cmdline = child.argv.join(' ')
 check('the three arguments from the brief', () => {
   assert.match(cmdline, /\+set com_introPlayed 1/)
   assert.match(cmdline, /\+set fs_game mods\/enw/)
-  assert.match(cmdline, /\+connect 127\.0\.0\.1:28964/)
+  assert.equal(cmdline.includes('+connect'), false, 'this exe has no `connect` client command')
+})
+check('the join is armed in the environment, which is the only thing that works', () => {
+  assert.equal(child.env.ENW_CONNECT_ADDR, '127.0.0.1:28964')
+  assert.ok(child.env.ENW_CLIENT_CONNECT, 'ENW_CLIENT_CONNECT (the map name) is missing')
+  assert.equal(child.env.ENW_RAW_SOCKETS, '1')
 })
 check('the account settings, applied over the top', () => {
   assert.match(cmdline, /\+set cg_fov 95/)
@@ -128,6 +138,10 @@ check('fs_homepath points at the ENW folder, with no space in it', () => {
 check('THE TOKEN IS NOT IN THE COMMAND LINE THE CHILD SEES', () => {
   assert.equal(cmdline.includes(SECRET), false, 'the token reached the command line')
   assert.equal(cmdline.includes('THIS-IS-THE-INVITE-TOKEN'), false)
+})
+check('the DLL is told where to write the userinfo config, and the engine is told to exec it', () => {
+  assert.equal(child.env.ENW_FS_HOMEPATH, child.argv[child.argv.indexOf('fs_homepath') + 1])
+  assert.match(cmdline, /\+exec enw_auth\.cfg/)
 })
 check('the token IS delivered over the pipe', () => {
   assert.equal(child.tokenError, null, String(child.tokenError))

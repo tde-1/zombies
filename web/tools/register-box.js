@@ -34,6 +34,7 @@ const name = arg('name')
 const out = arg('out')
 if (!name || !out || out === true) {
   console.error('usage: register-box.js --name <box> --out <env file> [--region r] [--note n] [--max-instances 2] [--backup] [--no-backup]')
+  console.error('       register-box.js --name <box> --address <host-or-ip> --out - # set the connect address of an existing box')
   process.exit(2)
 }
 
@@ -54,6 +55,19 @@ if (arg('no-backup') !== true) {
 }
 
 const boxes = require('../server/lib/boxes')
+
+// ---- --address on an EXISTING box ------------------------------------------------------
+// The one edit that is safe to make to a box that is already running, because it mints
+// nothing: the host or IP a player's game dials. `assignments.connectFor()` prefers it over
+// anything the box asserts about itself, and a box with no address hands every lease a null
+// `connect` — which a launcher shows as "Reserving server", forever.
+const address = arg('address')
+if (address && address !== true) {
+  if (!boxes.byName(name)) { console.error(`no box named "${name}"`); process.exit(3) }
+  const b = boxes.setAddress(name, address)
+  console.log(`box "${b.name}" address = ${b.address}`)
+  process.exit(0)
+}
 
 if (boxes.byName(name)) {
   console.error(`box "${name}" already exists — refusing to mint a second secret for it.`)

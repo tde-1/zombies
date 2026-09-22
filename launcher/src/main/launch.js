@@ -127,6 +127,9 @@ export function buildArgs({
   settings = {},
   display = undefined,
   homeDir = P.home,
+  // Whether an invite token is being carried. Only its PRESENCE reaches the command line
+  // (as `+exec enw_auth.cfg`); the token itself never does.
+  token = null,
   stealth = false,
   windowMode = null,
   extra = [],
@@ -155,6 +158,19 @@ export function buildArgs({
   a.push('+set', 'ui_autoContinue', '1')
   a.push('+set', 'cl_allowDownload', '0')
   a.push('+set', 'logfile', '2')
+
+  // The invite token's last mile. `client-dll/components/auth_token.cpp` reads the token
+  // off our one-shot pipe in `post_load` — before any engine code — and writes a single
+  // line, `setu enw_token "<token>"`, into `<fs_homepath>\main\enw_auth.cfg`; `setu` is
+  // the engine's own front door for a USERINFO dvar, which is how the token ends up in
+  // the userinfo blob the server reads at SV_DirectConnect. Only the FILENAME is in argv.
+  //
+  // Both halves are needed and BOTH WERE MISSING here until 2026-09-22 evening: no
+  // `ENW_FS_HOMEPATH` (set in the environment below), so the DLL had nowhere to write the
+  // file and said so — `Token NOT installed` — and no `+exec`, so nothing would have read
+  // it anyway. `tools/dev/launch.ps1` has done both since the component landed, which is
+  // why every proof so far went through the dev harness and none through the launcher.
+  if (token) a.push('+exec', 'enw_auth.cfg')
 
   // Three window modes, and the difference matters more than it looks.
   //
@@ -188,9 +204,44 @@ export function buildArgs({
 
   // Last, because the engine runs +commands in order and connecting should be the
   // final thing it does.
-  if (map) a.push('+map', map)
-  if (host) a.push('+connect', host)
+  // `+map` is a LOCAL game. With a host to join, the map name is still needed — it is
+  // what CL_ConnectLocal is called with — but it travels in the environment, and putting
+  // it on the command line as well would boot the map on the player's own PC first.
+  if (map && !host) a.push('+map', map)
+  // `+connect <host>` USED TO BE HERE AND IT NEVER WORKED. Left as a retraction rather
+  // than a silent deletion, because it looked right for weeks and cost tonight's first
+  // real run: `CoDWaW.exe` is the SINGLE-PLAYER exe and `connect` is not one of its
+  // client commands — only the server's out-of-band name (docs/re/t4-sp-map.md §5). The
+  // game answers the line in its own console:
+  //
+  //     Unknown command "connect"
+  //
+  // …and then sits in the menu logging `Failed to log on.` forever, which reads exactly
+  // like a network problem and is not one. Joining is armed through the ENVIRONMENT
+  // instead — ENW_CLIENT_CONNECT + ENW_CONNECT_ADDR, see `connectEnv()` below — which is
+  // what `tools/dev/jointest.ps1` and `infra/vps/join-remote.ps1` have always done.
   return a
+}
+
+/**
+ * How a client actually joins a server, as three environment variables.
+ *
+ *   ENW_CLIENT_CONNECT=<map>   arms client-dll/components/connect_local.cpp, which calls
+ *                              CL_ConnectLocal(map, 0) once from the frame tick. That
+ *                              function hard-codes the string "localhost"…
+ *   ENW_CONNECT_ADDR=<h:port>  …so shared/core/components/connect_address.cpp rewrites the
+ *                              pushed "localhost" to the real address. This is the only
+ *                              route to a remote box.
+ *   ENW_RAW_SOCKETS=1          Sys_SendPacket otherwise routes through Demonware's
+ *                              bdSocketRouter, which drops every packet with addrHandle=0
+ *                              (dedi.md §7f wall 2). Both halves of a join need it.
+ *
+ * A local game passes no host and gets none of this, so solo play keeps stock behaviour.
+ */
+export function connectEnv({ host, map }) {
+  if (!host) return {}
+  if (!map) throw new Error('joining a server needs the map name: CL_ConnectLocal takes one')
+  return { ENW_CLIENT_CONNECT: map, ENW_CONNECT_ADDR: host, ENW_RAW_SOCKETS: '1' }
 }
 
 // --------------------------------------------------------------------- launch --
@@ -283,6 +334,7 @@ export class GameLaunch extends EventEmitter {
       const args = buildArgs({
         host: o.host,
         map: o.map,
+        token: o.token || null,
         fsGame: o.fsGame,
         settings: o.settings,
         display,
@@ -307,6 +359,9 @@ export class GameLaunch extends EventEmitter {
         // %LOCALAPPDATA%\Activision\CoDWaW. With it all of that is ours, and
         // vanilla World at War sees nothing we did.
         ENW_LOCALAPPDATA: P.localAppData,
+        // Where auth_token.cpp writes `main\enw_auth.cfg`. It has to be the SAME folder
+        // the engine will exec from, i.e. the `fs_homepath` on the command line.
+        ENW_FS_HOMEPATH: homeDir,
         // The map, so the DLL can say `map_loaded` without reading a dvar. It also
         // takes it off our command line, and this is the belt to that braces.
         ...(o.map ? { ENW_MAP: o.map } : {}),
@@ -323,6 +378,8 @@ export class GameLaunch extends EventEmitter {
         // window mode it is explicitly '0' rather than absent, so a dev run can never
         // inherit a borderless flag from somewhere else.
         ENW_BORDERLESS: this.playerMode && resolveMode(o.settings || {}) === 'borderless' ? '1' : '0',
+        // Joining a server. Empty for a local game.
+        ...connectEnv({ host: o.host, map: o.map }),
       }
       // Only point the game-link somewhere when there is something to point it at.
       // A local game has no host agent, and the DLL's documented behaviour for an

@@ -956,6 +956,38 @@ class HostAgent {
     if (asg.status !== 'leased') return
     if ([...this.byInstance.values()].some((g) => g.matchId === asg.match_id && !g.finished)) return
     log.info(`lease ${asg.match_id}: ${asg.map} ${asg.mode} ${asg.players?.length || 0}p`)
+
+    // A SUPERSEDED LEASE'S INSTANCE IS STILL RUNNING, AND IT OWNS UDP 3074.
+    //
+    // The site keeps exactly one live lease per box (`assignments.lease` marks the previous
+    // one `superseded` before it inserts), so an instance sitting on a DIFFERENT match id is
+    // by definition serving a lease that no longer exists. Nothing retired it: `onAssignment`
+    // returned early on `idle`, and a cancelled lease never reaches the box at all.
+    //
+    // MEASURED, 2026-09-22 evening, three runs in a row: cancel a lease, press Start again,
+    // and the stale instance keeps 3074 while the new one is handed 3075's slot and binds
+    // NOTHING (vps.md §15) — the box reports `ready` on a port with no server behind it and
+    // every player's game dials into silence. Retiring it here makes the second Start work.
+    //
+    // The retire is AWAITED, and the boot is deferred until it finishes. Booting beside a
+    // dying instance is not the same thing: measured on the box, the new process started
+    // while the old one was still holding 3074 through its SIGTERM, bound NOTHING, and
+    // parked inside Com_Init with no `map_loaded` ever. `retire()` removes the instance
+    // from `byInstance`, so the re-entry below sees an empty list and boots exactly once.
+    const stale = [...this.byInstance.values()].filter(
+      (g) => !g.finished && !this.warm.has(g.instance.id) && g.matchId !== asg.match_id)
+    if (stale.length) {
+      Promise.all(stale.map((g) => this.retire(g, `lease ${asg.match_id} supersedes ${g.matchId}`)))
+        // …and then LET THE SOCKETS GO. Wine hands the UDP ports back a moment after the
+        // process does; a replacement started in the same tick binds nothing and parks in
+        // Com_Init with `frames=0` (measured on the box). Two seconds is the difference
+        // between a second Start that works and one that leaves the box answering a port
+        // with no server behind it.
+        .then(() => new Promise((r) => setTimeout(r, 2000)))
+        .then(() => this.onAssignment(asg))
+        .catch((e) => log.error(`could not retire the superseded instance: ${e.message}`))
+      return
+    }
     // Boot, then say "ready". On the CS fleet the box announces readiness by its first
     // authenticated poll; here we say it explicitly so the site can time boot-to-joinable.
     // The roster the instance boots with: the real SteamIDs from the lobby, each with the

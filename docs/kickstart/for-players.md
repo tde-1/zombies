@@ -1,112 +1,123 @@
 # ENW Zombies — how to play
 
-For Jamie, Zeroh and Stew. Five steps. You do not need to install anything except the launcher
-itself, and you do not need to be technical.
+For Jamie, Zeroh, Stew, Jacob, Air and Toku. Five steps. You do not need to install anything except
+the launcher itself, and you do not need to be technical.
 
 **What you need:** a Windows PC with **Call of Duty: World at War on Steam**, installed. That's it.
+
+*(Last checked 2026-09-22 evening. What changed since the last version of this page: playing
+together on our server WORKS now — the big red Play is real — and Steam sign-in is real too.)*
 
 ---
 
 ### 1. Download the launcher
 
-B will send you **`ENW-Zombies-Launcher-Setup-0.1.0.exe`**. Double-click it.
+Go to **`https://zombies.enw.gg/download`**.
 
-It installs itself in a few seconds — no questions, no admin password, just you — and puts
-**ENW Zombies** on your desktop and Start menu. It installs for your account only, so it never asks
-Windows for permission to change anything.
+The site asks for a **password** first. B will have sent it. It is **one shared password for
+everybody** — a front door, so the site isn't open to the whole internet while it's half-built. It
+is not your account password and it does not identify you; the browser remembers it. Put anything
+you like in the username box.
+
+Download **`ENW-Zombies-Launcher-Setup-0.2.2.exe`** and double-click it.
+
+It installs itself in a few seconds — no questions, no admin password — and puts **ENW Zombies** on
+your desktop and Start menu. It installs for your account only, so it never asks Windows for
+permission to change anything.
 
 It installs rather than running as a single file for one reason: **so it can update itself**. We
-will be changing things for weeks, and you should not have to chase a new file from B every time.
-It checks when it starts and applies anything new the *next* time you start — never in the middle
-of a game.
+will be changing things for weeks and you should not have to chase a new file from B every time. It
+checks when it starts and applies anything new the *next* time you open it — never mid-game. There
+is also a **Check for updates** button in Settings.
 
-Windows will probably warn you that it is from an unknown publisher — **"Windows protected your
-PC"**. That is because we have not paid for a code-signing certificate, not because anything is
-wrong with the file. Click **More info** → **Run anyway**. If you would rather not, say so and
-we'll sort out signing before asking again.
+Windows will probably warn you it is from an unknown publisher — **"Windows protected your PC"**.
+That is because we have not paid for a code-signing certificate, not because anything is wrong with
+the file. Click **More info** → **Run anyway**. If you would rather not, say so and we'll sort out
+signing before asking again.
 
-### 2. Run it and type the password
+### 2. Sign in with Steam
 
-The first thing you will see is a box asking for a **password**. B will have sent it with the
-launcher.
+Top right, click **Sign in**. Your browser opens on Steam's own page, you approve it there, and the
+launcher picks it up.
 
-It is **one shared password for everybody** — a front door so the site isn't open to the whole
-internet while it's half-built. **It is not your account password**, and it does not identify you.
-You type it once and the launcher remembers it.
+This is real Steam sign-in now — no password is ever typed into anything of ours, and we never see
+one. B has to have added you to the approved list before it will let you into a game; if it says
+you're not approved, tell him.
 
-If you typed it wrong it will say so and ask again.
+### 3. Set up — first time only
 
-### 3. Sign in
+The launcher shows a setup screen. It will already have found your copy of World at War and will
+show you the folder and the version it matched. Press **Install the ENW client**.
 
-Top right of the launcher, click **Sign in**.
-
-Right now this is a stand-in: it uses whichever Steam account is already signed in on your PC, so
-your name and SteamID are real, but it does not actually ask Steam to confirm it's you. Proper
-Steam sign-in comes later.
-
-### 4. Set up and pick a map
-
-**The first time only**, the launcher shows a setup screen. It will already have found your copy of
-World at War and will show you the folder and the version it matched. Press **Install the ENW
-client**.
-
-- It takes a few seconds and uses about 8 MB.
-- **It does not touch your copy of World at War.** It makes its own small folder and checks your
-  install before and after to prove nothing changed. The screen lists exactly what it created.
+- A few seconds, about 8 MB.
+- **It does not touch your copy of World at War.** Everything we add — our client, maps, config,
+  saves, your profile — lives in a folder of ours. Vanilla World at War, launched from Steam, sees
+  nothing of ours at all. The screen lists exactly what was created.
 - If it *didn't* find your game, press **It is somewhere else** and pick any folder near it — the
-  Steam folder, or the `common` folder, or even a folder inside the game. It searches around and
-  works it out.
+  Steam folder, the `common` folder, even a folder inside the game. It searches around and works it
+  out.
 
-Then pick a map from the list on the right. There are four that come with World at War, plus the
-**14 rescued custom maps** — *Leviathan*, *Alcatraz*, *CLINIC OF EVIL*, *MW2 Rust Zombies* and
-others. The small grey text under each name is the map's internal name, which is usually nothing
-like its real title.
+### 4. Get in a party
 
-A rescued map you haven't downloaded yet shows **Install** and its size instead of Play. Press it
-and wait.
+B (or whoever is leading) invites you; the invite shows up in the party panel on the left of the
+launcher's home screen. Join it.
 
-**These are big — 200 MB to 1 GB — and they come from B's home internet, not a proper download
-service.** Expect minutes, not seconds. The launcher shows the speed and a time estimate so you can
-tell it's working rather than stuck. Leave it running; you can carry on using the rest of the
-launcher while it downloads.
+**The leader picks the map.** Tonight that is one of five: **Nacht der Untoten**, **Verrückt**,
+**Shi No Numa**, **Der Riese** and **Minecraft Village Remastered**. The map list has a filter for
+*on our servers* and it shows exactly those five — the rest of the archive is there to download and
+play on your own PC, and the list says which is which.
 
-Every file is checked against a fingerprint as it arrives. If anything doesn't match, the launcher
-throws the whole thing away and tells you, rather than installing a broken map you'd then have to
-debug.
+If the map is a custom one you don't have, your launcher starts downloading it as soon as the leader
+picks it, and the party panel shows everyone's bar. **Minecraft Village Remastered is 593 MB and it
+comes from B's home internet, not a proper download service** — expect minutes, not seconds. You can
+use the rest of the launcher while it downloads. Every file is fingerprint-checked as it arrives; if
+anything doesn't match, the launcher throws the whole thing away and tells you rather than
+installing a broken map.
 
-### 5. Press Play Local
+When your bar is green, press **Ready**.
 
-**Play Local** starts World at War and loads the map on your own PC. You'll see a screen counting
-through the steps, then the game opens.
+### 5. The leader presses Start
+
+You do nothing. **Your launcher follows.** It reserves your seat, waits for the server to load the
+map, starts World at War for you and joins you to the game. You never type an IP and there is no
+server browser.
+
+The leader decides when to go. If somebody is not ready they can start anyway — the others can still
+join late, they just don't earn anything from that game.
+
+Afterwards the game shows up on the site with everyone in it, and there is a **replay** you can
+scrub through in the browser.
+
+**Play Local** is still there, next to it: that runs a map on your own PC, solo, and counts for
+nothing. Good for trying a map out.
 
 ---
 
 ## What works, and what doesn't yet
 
-**Works:** finding your game, installing the ENW client, downloading and installing any of the 14
-rescued maps, and playing them — or the four stock maps — on your own PC.
+**Works:** finding your game, installing the ENW client, downloading maps, playing on your own PC,
+and **playing together on our server** on the five maps above — with the game and its replay landing
+on the site afterwards, credited to your Steam account.
 
 **Not ready:**
 
-- **Playing together on our servers.** The big red **Play** button will get as far as reserving a
-  server and then stop. The server side isn't finished. For now, everyone plays on their own PC.
-- **Everything is local and untracked.** No records, no XP, no badges, no leaderboards. Your games
-  won't appear anywhere. When our servers are ready, games played on them will count; games played
-  locally never will, by design — on your own PC you could change anything, so it wouldn't be fair
-  to anyone else.
-- **Steam sign-in** is a stand-in, as above.
-- **Nothing else.** Updates are automatic now: the launcher checks when it starts and the new
-  version is in place the next time you open it. The version it is running is shown in the panel on
-  the right, so if B asks "are you on the latest?" it is one screenshot.
+- **Most custom maps.** Fourteen are in the archive to download and play locally, but only
+  Minecraft Village Remastered survives on our server so far. The others crash it, and we would
+  rather say so than have a game die in round 3. Being worked on.
+- **Voice, and in-game chat.** There's a chat room on the site; the in-game overlay isn't built.
+- **One box, two games at a time.** If Start says there's no server free, wait a minute and press it
+  again.
 
 ## If something goes wrong
 
+- **The boot screen sticks on "Reserving server"** — the box is busy or a previous game did not
+  clean up. Wait about a minute and press Start again. Tell B if it happens twice.
 - **"World at War is already running"** — close it and try again. The launcher won't start a second
   copy.
-- **The game opens but the map never loads** — tell B which map. The launcher will show you where it
-  put the map files; that's the first thing to check.
-- **A download is crawling, or stops** — that's B's home connection, not you. Press Install again;
-  it starts over cleanly and will not leave a half-map behind.
+- **You land back in the menu instead of the game** — tell B the map name and roughly the time. The
+  launcher keeps a log and that is enough to find it.
+- **A download is crawling, or stops** — that's B's home connection, not you. Press it again; it
+  starts over cleanly and will not leave half a map behind.
 - **You want it gone** — Settings → **Remove the ENW client** first. It asks whether to keep your
   downloaded maps, and it only removes things it installed; your own World at War, and any maps you
   installed yourself, are left alone. Then uninstall **ENW Zombies** from Windows' Apps list as

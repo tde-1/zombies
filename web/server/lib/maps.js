@@ -19,6 +19,31 @@ const LIST_HEALTH = ['verified', 'playable', 'custom-only']
 // narrower question than "in the list".
 const SERVER_HEALTH = ['verified', 'playable']
 
+// ...and which of THOSE we have actually booted on a dedicated server, to game over, with a
+// real client attached. `health` answers "does this map work", which is a different question
+// from "does this map work HEADLESS, under Wine, on the box" — and conflating them put eight
+// customs in the party's map list that no dedicated server has ever survived (ORBiT and UGX
+// Requiem stall the *client* at the 32-bit ceiling; Zombie Desert, Project Viking, MW2 Rust
+// and Clinic of Evil `Com_Error` on `flag_wait` before `flag_init`, proven fatal on a stock
+// listen game too; Der Berg overflows `localVars`).
+//
+// So this is a measured list, not a policy, and every entry names its evidence. Adding a map
+// here without a five-gate run behind it is how a party of four gets a server that dies.
+//
+//   nazi_zombie_prototype/asylum/sumpf/factory  the stock four — join65/join66 and the box
+//   nazi_zombie_fear_mc_2                       Minecraft Village Remastered — join83,
+//                                               five gates, 300 s, real client
+const SERVER_PROVEN = new Set([
+  'nazi_zombie_prototype',
+  'nazi_zombie_asylum',
+  'nazi_zombie_sumpf',
+  'nazi_zombie_factory',
+  'nazi_zombie_fear_mc_2',
+])
+
+/** Playable on OUR boxes: proven headless, and not broken since. */
+const onServer = (row) => !!row && SERVER_PROVEN.has(row.key) && row.health !== 'broken'
+
 function project(row, { me = null } = {}) {
   if (!row) return null
   const out = {
@@ -37,7 +62,7 @@ function project(row, { me = null } = {}) {
     art: row.art || null,
     // Playable on our boxes, as its own field rather than something every card has to
     // re-derive from `health`. The map browser filters on it and the list row prints it.
-    on_server: SERVER_HEALTH.includes(row.health),
+    on_server: onServer(row),
     released_at: row.released_at || null,
     added_at: row.added_at || null,
     plays: row.plays || 0,
@@ -145,7 +170,7 @@ function list(o = {}) {
   // Playable on OUR server. `custom-only` is a real map that a real person can download and
   // run, and it is deliberately in LIST_HEALTH — it is just not one our boxes will referee.
   // So this is its own question and not a second spelling of the health filter.
-  if (o.server) rows = rows.filter((r) => SERVER_HEALTH.includes(r.health))
+  if (o.server) rows = rows.filter((r) => onServer(r))
 
   // Has anything to watch or beat. Records first, replays second, and either counts: a map
   // whose only artefact is a signed replay still has something on its page worth opening.
@@ -324,4 +349,5 @@ const count = () => db.prepare(`SELECT COUNT(*) c FROM maps WHERE hidden=0 AND h
 module.exports = {
   project, byKey, bySlug, list, detail, authors, years, tagCloud, archiveStats, sourcesFor,
   rate, recountRatings, favourite, favouritesOf, count, ratingOf, tagsFor, LIST_HEALTH, SERVER_HEALTH,
+  SERVER_PROVEN, onServer,
 }

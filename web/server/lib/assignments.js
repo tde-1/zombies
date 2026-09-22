@@ -21,6 +21,7 @@ const { canonical, sha256hex, matchId: newMatchId, safeJson } = require('./util'
 const tokens = require('./tokens')
 const boxes = require('./boxes')
 const enw = require('./enw')
+const maps = require('./maps')
 
 const nonceOf = (x) => sha256hex(canonical(x)).slice(0, 12)
 
@@ -42,6 +43,10 @@ function lease(o) {
   const map = db.prepare('SELECT * FROM maps WHERE key=?').get(String(o.mapKey))
   if (!map) return { ok: false, error: 'no such map' }
   if (map.health === 'broken') return { ok: false, error: 'that map does not run on our servers' }
+  // The map list already hides these, but the UI is not the boundary: a deep link, a stale
+  // party or a hand-made POST must not be able to lease a map no dedicated server has ever
+  // survived. `maps.onServer` is the measured list (lib/maps.js).
+  if (!maps.onServer(map)) return { ok: false, error: 'that map does not run on our servers yet' }
   const version = db.prepare('SELECT * FROM map_versions WHERE map_id=? AND latest=1').get(map.id)
 
   const players = (o.players || []).map((p, i) => (typeof p === 'string'

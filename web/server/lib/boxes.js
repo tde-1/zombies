@@ -53,9 +53,47 @@ function touch(box, patch = {}) {
     .run(now(), now(), patch.state || null, box.id)
 }
 
+// How long a lease has to be unclaimed before the box's own silence about it counts as
+// proof that it is not running. Long enough to cover a boot under Wine (measured: 6 s to
+// `map_loaded`, plus the ExecStartPre rig wait after a restart), short enough that a dead
+// lease does not eat a slot for a whole evening.
+const LEASE_GRACE_MS = 90_000
+
 function recordStatus(box, body) {
   db.prepare('UPDATE boxes SET last_status_json=?, last_state=?, last_poll=? WHERE id=?')
     .run(JSON.stringify(body || {}), (body && body.state) || null, now(), box.id)
+  reapGhostLeases(box, body)
+}
+
+/**
+ * Close leases this box is provably not running.
+ *
+ * THE BUG THIS FIXES was the second party-killer of the evening (the first was a box with
+ * no `address`). A lease only ever leaves `leased`/`ready`/`live` when a game ENDS with a
+ * result. An instance that is retired instead — a superseded lease, a host-agent restart,
+ * a cancelled Start — leaves its row live forever, and `pickFree()` counts those rows
+ * against `max_instances`. Two of them on a two-instance box and every future Start gets
+ * "no game box is online", with the box sitting there idle. Measured tonight, twice.
+ *
+ * The box's status report is the evidence: it lists the instances it actually has. So a
+ * lease for this box that the box does not mention, and that is older than the grace
+ * period, is over. Nothing here touches a lease the box IS running, and nothing here runs
+ * on a status report that carries no instance list at all — a box that says nothing must
+ * not be read as a box that says "nothing".
+ */
+function reapGhostLeases(box, body) {
+  if (!body || !Array.isArray(body.instances)) return
+  const alive = new Set(body.instances.map((i) => i && i.match_id).filter(Boolean))
+  const cutoff = now() - LEASE_GRACE_MS
+  const rows = db.prepare(`SELECT id, match_id, party_id FROM assignments
+                            WHERE box_id=? AND state IN ('leased','ready','live') AND issued_at < ?`)
+    .all(box.id, cutoff)
+  for (const a of rows) {
+    if (alive.has(a.match_id)) continue
+    db.prepare("UPDATE assignments SET state='ended', ended_at=? WHERE id=?").run(now(), a.id)
+    if (a.party_id) db.prepare("UPDATE parties SET state='forming', match_id=NULL WHERE id=?").run(a.party_id)
+    log('assignment.ghost', box.name, { match_id: a.match_id, why: 'the box is not running it' })
+  }
 }
 
 /**
@@ -153,6 +191,23 @@ function create({ name, matchKey, region = null, note = null, maxInstances = 4 }
   return byName(name)
 }
 
+/**
+ * The address a CLIENT dials to reach this box, written down by an operator.
+ *
+ * `assignments.connectFor()` prefers this over anything the box says about itself, and
+ * until 2026-09-22 evening NOTHING WROTE IT — the column existed, every box had NULL, and
+ * the host agent's status carries no `public_ip` either, so `connect` came back null for
+ * every lease and a launcher sat on "Reserving server" until it timed out. The fallback was
+ * never reached because there was nothing to fall back to.
+ */
+function setAddress(name, address) {
+  const a = address == null || address === '' ? null : String(address).trim()
+  // A host:port here would be silently concatenated with the instance port downstream.
+  if (a && /[\s/]/.test(a)) throw new Error('an address is a host or an IP, with no port, scheme or path')
+  db.prepare('UPDATE boxes SET address=? WHERE name=?').run(a, String(name))
+  return byName(name)
+}
+
 function setEnabled(id, on) {
   db.prepare('UPDATE boxes SET enabled=? WHERE id=?').run(on ? 1 : 0, Number(id))
   return byId(id)
@@ -176,5 +231,6 @@ function log(event, actor, meta) {
 
 module.exports = {
   STALE_MS, authenticate, touch, recordStatus, offerKey, keyMatchesPin,
-  acceptPendingKey, rejectPendingKey, byName, byId, nameOf, list, create, setEnabled, pickFree,
+  acceptPendingKey, rejectPendingKey, byName, byId, nameOf, list, create, setEnabled, setAddress, pickFree,
+  reapGhostLeases, LEASE_GRACE_MS,
 }

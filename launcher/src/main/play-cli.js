@@ -35,6 +35,14 @@ const siteUrl = val('--site', 'http://127.0.0.1:8099')
 // A custom map IS its own mod, so fs_game is mods/<bsp>, not mods/enw. Our DLL rides
 // in on the binkw32 proxy, not on fs_game, so it does not care which mod is loaded.
 const fsGame = val('--fs-game', null)
+// --token: an invite token the SITE minted for a real lease, carried to the game over the
+// one-shot named pipe exactly as the app carries it (launch.js :: serveToken). It is never
+// put on the command line and never printed by this CLI. Get one from
+// `node web/tools/lease-cli.js --map <bsp> --player <id64>`, which presses Start for a
+// party without a browser session; `--host` is that lease's `connect`.
+// `ENW_LAUNCH_TOKEN` is the same thing out of the environment, so a scripted run does not
+// put a live invite token in the process table for every other process on the box to read.
+const token = val('--token', process.env.ENW_LAUNCH_TOKEN || null)
 
 if (has('--dry-run')) {
   // The account's real settings, not a stub: the point of a dry run is to see the
@@ -108,6 +116,11 @@ const flow = new BootFlow({
   instance: has('--track') ? matchId : undefined,
   linkHost,
   installDir: fsGame ? path.join(P.maps, fsGame.split('/').pop()) : null,
+  token,
+  // With a token in hand there is nothing to ask a mock site for, and the site path needs a
+  // signed-in session this CLI does not have. BootFlow's fallback branch keeps the token
+  // and the host we were given, and marks `reserving` SIMULATED — which is the truth: the
+  // lease was real, the asking for it was not done by the launcher.
   useGameLock: !has('--no-lock'),
   lockName: 'launcher',
   hostDashboard: agent?.dashUrl || val('--dash', 'http://127.0.0.1:8787'),

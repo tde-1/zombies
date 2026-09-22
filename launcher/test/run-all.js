@@ -654,7 +654,28 @@ await test('has the three things the brief asks for', () => {
   const a = launch.buildArgs({ host: '10.0.0.5:28960' }).join(' ')
   assert.match(a, /\+set com_introPlayed 1/)
   assert.match(a, /\+set fs_game mods\/enw/)
-  assert.match(a, /\+connect 10\.0\.0\.5:28960/)
+  // NOT `+connect`: this exe answers that with `Unknown command "connect"` and then sits
+  // in the menu. Joining is armed in the environment instead.
+  assert.equal(a.includes('+connect'), false)
+  const e = launch.connectEnv({ host: '10.0.0.5:28960', map: 'nazi_zombie_prototype' })
+  assert.equal(e.ENW_CLIENT_CONNECT, 'nazi_zombie_prototype')
+  assert.equal(e.ENW_CONNECT_ADDR, '10.0.0.5:28960')
+  assert.equal(e.ENW_RAW_SOCKETS, '1')
+  // A local game keeps stock behaviour, and a join with no map name is a bug, not a guess.
+  assert.deepEqual(launch.connectEnv({ host: null, map: 'x' }), {})
+  assert.throws(() => launch.connectEnv({ host: '10.0.0.5:28960' }), /map name/)
+  // …and the map goes on the command line ONLY when there is no server to join.
+  assert.equal(launch.buildArgs({ host: '10.0.0.5:28960', map: 'nazi_zombie_prototype' }).includes('+map'), false)
+  assert.equal(launch.buildArgs({ map: 'nazi_zombie_prototype' }).includes('+map'), true)
+})
+
+await test('a token puts `+exec enw_auth.cfg` on the line, and nothing else does', () => {
+  // The DLL writes that file from the pipe's token; without the `+exec` nothing reads it
+  // and the token never reaches userinfo, which is `identity: none` on the box.
+  const withTok = launch.buildArgs({ host: '10.0.0.5:28960', token: 'a.b' }).join(' ')
+  assert.match(withTok, /\+exec enw_auth\.cfg/)
+  const without = launch.buildArgs({ host: '10.0.0.5:28960' }).join(' ')
+  assert.equal(without.includes('enw_auth.cfg'), false)
 })
 
 await test('THE INVITE TOKEN IS NEVER IN IT', () => {
