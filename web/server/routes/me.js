@@ -9,6 +9,7 @@ const users = require('../lib/users')
 const badges = require('../lib/badges')
 const xp = require('../lib/xp')
 const enw = require('../lib/enw')
+const names = require('../lib/names')
 const parties = require('../lib/parties')
 const bans = require('../lib/bans')
 const discord = require('../lib/discord')
@@ -50,6 +51,13 @@ function router() {
         privacy_history: req.me.privacy_history || 'public',
         profile_comments: req.me.profile_comments || 'everyone',
       },
+      // THE FIRST-LOGIN PICKER'S ONE SIGNAL (2026-09-23, lib/names.js). True means this
+      // account has no ENW name yet and the client must ask for one before anything else
+      // — it is the name the invite token carries and the referee pins in game, so a
+      // player without one cannot be given the lock. Always false once B configures the
+      // ENW name authority, because then the name is not ours to pick.
+      needs_name: names.needsName(sid),
+      name_rules: names.RULES,
       standing: xp.forPlayer(sid),
       pinned: badges.pinnedFor(sid),
       party: parties.forPlayer(sid),
@@ -81,6 +89,35 @@ function router() {
       require('../db/database').db.prepare('UPDATE users SET profile_comments=? WHERE steam_id=?').run(pc, req.me.steam_id)
     }
     res.json({ ok: true })
+  })
+
+  // ---- the first-login username picker (2026-09-23) -----------------------------------
+  //
+  // Ported from Movement's `POST /username` (`CSGO-Matchmaker/server/routes/auth.js`),
+  // minus the half that belongs to an authority we are not: there is no claim to make
+  // over the wire, because with `ZM_ENW_BASE` unset this site IS the authority for the
+  // name (lib/names.js says why, and refuses the claim outright when it is not).
+  //
+  // Set once. A rename is an admin's, and only an admin's — see the note in lib/names.js:
+  // a self-serve rename would make the in-game lock decorative.
+
+  // Live availability, so the field can say "taken" before the player presses anything.
+  // It answers only available/not — never who holds a name, which would make this an
+  // account-enumeration endpoint for anybody with a session.
+  r.get('/username/check', requireUser, (req, res) => {
+    const c = names.check(String((req.query && req.query.username) || ''), req.me.steam_id)
+    res.json({ available: c.available, reason: c.reason, error: c.error || null })
+  })
+
+  r.post('/username', requireUser, (req, res) => {
+    const r0 = names.claim(req.me.steam_id, (req.body && req.body.username) || '')
+    if (!r0.ok) {
+      const status = r0.reason === 'invalid' ? 400
+        : r0.reason === 'taken' || r0.reason === 'already_set' ? 409
+          : r0.reason === 'authority' ? 503 : 404
+      return res.status(status).json({ error: r0.error, reason: r0.reason })
+    }
+    res.json({ ok: true, name: r0.name, user: users.publicById(req.me.steam_id) })
   })
 
   r.put('/pinned', requireUser, (req, res) => {

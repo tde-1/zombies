@@ -21,8 +21,31 @@
 
 const { db, now } = require('../db/database')
 
+// ── THE CONTRACT, corrected 2026-09-23 ────────────────────────────────────────────────
+//
+// This file used to guess: `?steamid=` with an `Authorization: Bearer`. The authority's
+// real shape is in `CSGO-Matchmaker/server/lib/dropsNames.js`, which is Movement's own
+// client for the same API and has been in production since 2026-07-30:
+//
+//     GET /internal/name?steam_id=<id64>   ->  { name, changed_at, has_name }
+//     header: x-internal-secret: <the shared string>
+//
+// `steam_id`, not `steamid`; a header, not a bearer. Wired up as it was, the day B set
+// `ZM_ENW_BASE` every lookup would have 403'd on the auth and 400'd on the parameter, and
+// the failure is SILENT by design (see `call()`) — names would simply never arrive and
+// nobody would know why. Both spellings are sent now, so this works against the real
+// authority and against anything built to the older guess.
+//
+// **What this is NOT: Movement's `POST /internal/sso/redeem`.** That route takes a
+// single-use ticket and answers with a `steam_id`; it is the login handoff and it
+// exposes no player data at all. It cannot answer "what is this steamid called".
+//
+// NOT CONFIGURED TODAY, and no secret is invented here. `lib/names.js` carries the
+// Zombies-side picker that stands in until B supplies one.
 const BASE = process.env.ZM_ENW_BASE || null            // e.g. https://drops.ws
-const TOKEN = process.env.ZM_ENW_TOKEN || null          // the narrow read-only token, B's to issue
+// The shared internal secret (drops.ws calls it DROPS_INTERNAL_SECRET). B's to supply.
+const SECRET = process.env.ZM_ENW_SECRET || null
+const TOKEN = process.env.ZM_ENW_TOKEN || null          // the older bearer spelling, kept
 const TIMEOUT_MS = Number(process.env.ZM_ENW_TIMEOUT_MS || 2500)
 const NAME_TTL_MS = 6 * 3600_000
 const VIP_TTL_MS = 15 * 60_000
@@ -37,7 +60,11 @@ async function call(pathname) {
   const to = setTimeout(() => ac.abort(), TIMEOUT_MS)
   try {
     const res = await fetch(BASE.replace(/\/$/, '') + pathname, {
-      headers: TOKEN ? { authorization: `Bearer ${TOKEN}` } : {},
+      headers: {
+        accept: 'application/json',
+        ...(SECRET ? { 'x-internal-secret': SECRET } : {}),
+        ...(TOKEN ? { authorization: `Bearer ${TOKEN}` } : {}),
+      },
       signal: ac.signal,
     })
     if (!res.ok) return null
@@ -62,7 +89,10 @@ async function refreshName(steamId) {
   if (!u) return null
   if (!enabled()) return u.enw_name
   if (u.enw_checked && now() - u.enw_checked < NAME_TTL_MS) return u.enw_name
-  const j = await call(`/internal/name?steamid=${encodeURIComponent(steamId)}`)
+  const sid = encodeURIComponent(steamId)
+  const j = await call(`/internal/name?steam_id=${sid}&steamid=${sid}`)
+  // `has_name: false` is a real answer — that account has not picked on the authority yet
+  // — and it must not overwrite a cached name with null on every refresh.
   const name = j && (j.name || j.username) ? String(j.name || j.username) : u.enw_name
   db.prepare('UPDATE users SET enw_name=?, enw_checked=? WHERE steam_id=?').run(name || null, now(), String(steamId))
   return name
@@ -86,7 +116,8 @@ async function refreshVip(steamId) {
   if (!u) return false
   if (!enabled()) return !!u.vip_is
   if (u.vip_checked && now() - u.vip_checked < VIP_TTL_MS) return !!u.vip_is
-  const j = await call(`/internal/vip?steamid=${encodeURIComponent(steamId)}`)
+  const sid = encodeURIComponent(steamId)
+  const j = await call(`/internal/vip?steam_id=${sid}&steamid=${sid}`)
   if (!j) { db.prepare('UPDATE users SET vip_checked=? WHERE steam_id=?').run(now(), String(steamId)); return !!u.vip_is }
   const vip = !!(j.vip || j.is_vip)
   db.prepare('UPDATE users SET vip_is=?, vip_checked=? WHERE steam_id=?').run(vip ? 1 : 0, now(), String(steamId))
@@ -101,9 +132,13 @@ function status() {
   return {
     enabled: enabled(),
     base: BASE ? BASE.replace(/^https?:\/\//, '') : null,
-    has_token: !!TOKEN,
+    has_token: !!(SECRET || TOKEN),
+    has_secret: !!SECRET,
     forced_vip: FORCED_VIP.size,
-    note: enabled() ? 'live' : 'stubbed — no request leaves this machine; names fall back to the Steam persona and VIP to the cached value',
+    // "the Steam persona" was wrong and is corrected: there is no Steam Web API key, so
+    // there is no persona to fall back TO. Unconfigured, the name comes from the
+    // Zombies-side picker in lib/names.js.
+    note: enabled() ? 'live' : 'stubbed — no request leaves this machine; the ENW name comes from the Zombies-side picker (lib/names.js) and VIP from the cached value',
   }
 }
 

@@ -43,7 +43,19 @@ param(
     #   node tools/dev/authhost.mjs serve --match m_x --port 38795 --out <f>
     [string]$AuthToken = '',
     [string]$MatchId = '',
-    [string]$LinkHost = ''
+    [string]$LinkHost = '',
+
+    # The name the CLIENT claims, for the name-lock proof (referee.md 14). Passed
+    # straight through to jointest.ps1 as `+set name <x>` on the client's command line.
+    [string]$ClientNameDvar = '',
+
+    # build\<name> to deploy the SERVER half from. jointest.ps1 has always had this;
+    # it simply had no way through from here, so a proof run could only ever test
+    # build\dedi. A lane that builds into its own directory (dev-box.md rule 11) needs it.
+    [string]$ServerFrom = 'dedi',
+    # build\<name> for the CLIENT half. Needed to put the client DLL's `name_pin`
+    # component on the client for the name-lock proof.
+    [string]$ClientFrom = ''
 )
 $ErrorActionPreference = 'Stop'
 $repo = 'C:\Users\b\Desktop\Zombies'
@@ -68,7 +80,7 @@ if (Test-Path -LiteralPath $lock) { throw 'game.lock still held' }
 if ($BigHeap) { $env:ENW_DEDI_BIG_HEAP = '1' } else { $env:ENW_DEDI_BIG_HEAP = $null }
 
 $job = Start-Job -ScriptBlock {
-    param($repo, $tag, $watch, $map, $deploy, $bigHeap, $tok, $match, $link)
+    param($repo, $tag, $watch, $map, $deploy, $bigHeap, $tok, $match, $link, $spoof, $serverFrom, $clientFrom)
     Set-Location $repo
     if ($bigHeap) { $env:ENW_DEDI_BIG_HEAP = '1' }
     $a = @('-Tag', $tag, '-WatchSeconds', $watch, '-Map', $map)
@@ -76,8 +88,11 @@ $job = Start-Job -ScriptBlock {
     if ($tok)   { $a += @('-AuthToken', $tok) }
     if ($match) { $a += @('-MatchId', $match) }
     if ($link)  { $a += @('-LinkHost', $link) }
+    if ($spoof) { $a += @('-ClientNameDvar', $spoof) }
+    if ($serverFrom) { $a += @('-ServerFrom', $serverFrom) }
+    if ($clientFrom) { $a += @('-ClientFrom', $clientFrom) }
     & powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" @a 2>&1
-} -ArgumentList $repo, $Tag, $Watch, $Map, [bool]$Deploy, [bool]$BigHeap, $AuthToken, $MatchId, $LinkHost
+} -ArgumentList $repo, $Tag, $Watch, $Map, [bool]$Deploy, [bool]$BigHeap, $AuthToken, $MatchId, $LinkHost, $ClientNameDvar, $ServerFrom, $ClientFrom
 
 # --- find the server PID, then poll the wire -------------------------------------
 $serverPid = 0

@@ -49,9 +49,21 @@ function lease(o) {
   if (!maps.onServer(map)) return { ok: false, error: 'that map does not run on our servers yet' }
   const version = db.prepare('SELECT * FROM map_versions WHERE map_id=? AND latest=1').get(map.id)
 
-  const players = (o.players || []).map((p, i) => (typeof p === 'string'
-    ? { steamid: String(p), name: `P${i + 1}` }
-    : { steamid: String(p.steamid), name: p.name || `P${i + 1}` }))
+  // THE NAME IS NOT THE CALLER'S TO GIVE (2026-09-23).
+  //
+  // This used to take `p.name` from whoever asked for the lease. That name goes into the
+  // invite token's `n`, and the referee now OVERWRITES the client's userinfo with it — so
+  // a caller-supplied name would be a signed, server-enforced impersonation, which is
+  // worse than the spoofing it replaces. It is read from the account here, by SteamID,
+  // through the one reader in `lib/names.js`.
+  //
+  // `P1`..`P4` stays as the last resort for an account that has not picked yet, rather
+  // than a raw SteamID, because it is what a scoreboard can show without being wrong.
+  const names = require('./names')
+  const players = (o.players || []).map((p, i) => {
+    const steamid = String(typeof p === 'string' ? p : p.steamid)
+    return { steamid, name: names.hasEnforceableName(steamid) ? names.displayName(steamid) : `P${i + 1}` }
+  })
   if (!players.length) return { ok: false, error: 'nobody in the lobby' }
   if (players.length > 4) return { ok: false, error: 'World at War has four client slots' }
 

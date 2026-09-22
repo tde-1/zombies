@@ -22,6 +22,7 @@
 #include "../../../shared/core/json.hpp"
 #include "../../../shared/core/logger.hpp"
 #include "logprint_mirror.hpp"
+#include "name_lock.hpp"
 #include "t4_bind.hpp"
 
 #include <algorithm>
@@ -33,6 +34,11 @@
 #include <windows.h>
 
 namespace enw {
+
+// `name_lock.hpp` lives in enw::referee::namelock alongside the other referee bindings;
+// this is the short spelling used below, to match `referee::client()` and friends.
+namespace namelock = ::enw::referee::namelock;
+
 namespace {
 
 using referee::notify_event;
@@ -297,6 +303,17 @@ public:
             return;
         }
         referee::bind();
+        // THE NAME LOCK (B, 2026-09-23; name_lock.cpp). Armed with the rest of the
+        // bindings and BEFORE any client can connect, because the first thing it has to
+        // survive is a connect. It owns exactly one address, SV_UpdateUserinfo_f
+        // 0x6307E0, and takes it through the same one-hook-per-address rule everything
+        // else does (README rule 9). A failure to bind is loud and is not fatal: the
+        // referee still referees, the identity gate still refuses forged tokens, and the
+        // name is simply advisory -- which is what it was before today.
+        if (!namelock::bind()) {
+            ENW_WARN("referee: the name lock is NOT armed. A verified client can still "
+                     "rename itself in game; the site's own pages are unaffected.");
+        }
         referee::on_notify([this](const notify_event& ev) { on_notify(ev); });
         referee::on_frame([this](uint32_t ms) { on_frame(ms); });
 
@@ -543,6 +560,12 @@ private:
             ENW_INFO("referee: first frame tick (%s)", referee::bound().describe().c_str());
         } else if (frames_ % 1200 == 0) {
             log_id_histogram();
+            // The name lock's own counters, every ~20 s. `userinfo commands seen` is the
+            // number that settles whether the SV_UpdateUserinfo_f hook is firing at all:
+            // a client that never changes a userinfo dvar after connect sends exactly one,
+            // and re-setting a dvar to the value it already holds is not a change, so a
+            // zero here is a statement about the CLIENT, not about the hook.
+            ENW_INFO("referee: %s", namelock::report().c_str());
         }
         if (frames_ % 2000 == 0) {
             const uint32_t span = ms - first_frame_ms_;
@@ -551,6 +574,11 @@ private:
                      span ? (frames_ * 1000.0) / span : 0.0);
         }
         if (frames_ == 1) { first_frame_ms_ = ms; match_start_ms_ = ms; }
+
+        // The name lock's safety net. The hook covers the `userinfo` command, which is
+        // every path we KNOW of; this is a 32-byte compare per locked slot that would
+        // catch a path we do not. It does nothing at all when nothing is wrong.
+        namelock::tick();
 
         // The server is running a map: that IS map_loaded. SV_Frame does not tick
         // before a server exists, so the first tick is the earliest honest moment,
@@ -645,6 +673,34 @@ private:
             p.identity = 2;
             ENW_INFO("referee: slot %d identity VERIFIED by the host (steamid=%s, %s)", slot,
                      p.steamid.c_str(), reason.empty() ? "ok" : reason.c_str());
+            // THE NAME LOCK ARMS HERE, and only here (B, 2026-09-23; name_lock.cpp).
+            //
+            // The token's `n` is the account's ENW name -- the site reads it from the
+            // users row at lease time and signs it, so it is not the launcher's to
+            // choose and not the player's. From this line on, the server's copy of this
+            // client's userinfo says that name whatever the client sends, which is what
+            // stops the spoof. A slot that never reaches `verified` is never locked:
+            // Play Local and the dev harness keep whatever name they launched with.
+            //
+            // `token_name` is kept separately from `p.name` on purpose. `p.name` is what
+            // the ENGINE reports and is therefore the spoofable one; binding the lock to
+            // it would lock the slot to the lie.
+            if (!p.token_name.empty()) {
+                namelock::lock_slot(slot, p.token_name);
+                if (p.name != p.token_name) {
+                    ENW_INFO("referee: slot %d connected as '%s' but the token says '%s' -- "
+                             "the token wins; the roster and the scoreboard both say '%s'",
+                             slot, p.name.c_str(), p.token_name.c_str(), p.token_name.c_str());
+                }
+                // The roster row follows the enforced name, so game_over, player_down and
+                // the chat lines cannot disagree with what the scoreboard shows.
+                p.name = p.token_name;
+            } else {
+                ENW_WARN("referee: slot %d is verified but its token carried no name (`n`) -- "
+                         "the name is NOT locked and this client can still rename itself. "
+                         "The site must issue tokens with a name (web/server/lib/tokens.js).",
+                         slot);
+            }
         } else {
             ENW_WARN("referee: slot %d allowed with reason='%s' and identity=%s -- NOT promoted "
                      "to verified; nothing may be awarded to this row.",
@@ -720,6 +776,12 @@ private:
                     p.jti = tc.jti;
                     p.party_slot = tc.slot;
                     p.identity = 1;       // claimed -- until `auth allow:true` lands
+                    // The name the SITE signed. Kept apart from p.name, which is what the
+                    // engine reports and is therefore the one a client can lie about.
+                    // do_auth() promotes it to the enforced name once the host verifies
+                    // the signature -- never before, because an unverified `n` is just a
+                    // string somebody put in a packet.
+                    p.token_name = tc.name;
                     if (p.name.empty() && !tc.name.empty()) p.name = tc.name;
                 }
             }
@@ -786,6 +848,10 @@ private:
             game_link::get().send(w);
             ENW_INFO("referee: player_disconnect slot %d ('%s')", slot, p.name.c_str());
             referee::lp_player_event(slot, "player_disconnect", p.name);
+            // The slot is free. Whoever lands in it next is a different account and gets
+            // its own lock (or none), so a lock left behind here would rename them.
+            namelock::unlock_slot(slot);
+            p.token_name.clear();
         }
     }
 
@@ -1031,6 +1097,10 @@ private:
         // keep a stale one -- a stale id would refuse every legitimate token in the
         // successor game with `wrong_match`, which is the worse failure.
         jti_seen_.clear();
+        // Match A's name locks must not survive into match B on a warm instance: the
+        // slots are re-seated from scratch and a stale lock would rename whoever lands
+        // in slot 0 next to the previous game's player.
+        namelock::reset();
         match_id_ = next_match;
         ENW_INFO("referee: identity gate reset; next match = %s",
                  match_id_.empty() ? "(not stated by the host - tokens will not be "
@@ -1164,6 +1234,10 @@ private:
         // the box's first real game (replay m_5de3842b, site game id 2) finished
         // with game_players = 0 and result_mismatch while the SIMULATOR, which does
         // emit player_connect, produces full rosters.
+        // The name the invite token carried (`n`), i.e. the account's ENW name as the
+        // site signed it. EMPTY for an untokened client. It is what the name lock
+        // enforces once identity reaches `verified`; see do_auth() and name_lock.cpp.
+        std::string token_name;
         bool connected = false;   // last seen state, for edge detection
         bool spawned = false;     // player_spawn already sent for this connection
         std::string name;

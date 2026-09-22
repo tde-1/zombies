@@ -81,7 +81,11 @@ namespace t4
     //    svs / g_entities / a client_s with these. All from T4SP asserts, matched on our dump.
     namespace client_off
     {
-        constexpr std::size_t userinfo          = 0x6F0;   // char[] userinfo
+        // [V] as of 2026-09-23 (was [H]): re confirmed it from a SECOND function —
+        // ClientUserinfoChanged 0x67BD30 computes `0x2547780 + i*0x58D30`, and
+        // 0x2547780 == 0x2547090 + 0x6F0, which re-derives both the clients base and
+        // this offset independently of SV_UserinfoChanged's `lea ebp,[esi+0x6F0]`.
+        constexpr std::size_t userinfo          = 0x6F0;   // [V] char userinfo[0x600]
         constexpr std::size_t gentity           = 0x11544; // gentity_s*
         constexpr std::size_t name              = 0x11548; // char name[]
         constexpr std::size_t netchanOutBuffer  = 0x323F4;

@@ -266,7 +266,23 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
       stat(s.points_earned), stat(s.points_spent), stat(s.time_alive_ms),
       stat(s.rounds_played, p.rounds_played), int(p.joined_round, 1, { min: 0, max: MAX_ROUND }),
       p.late ? 1 : 0, p.afk_kicked ? 1 : 0)
-    users.ensure(sid, { username: str(p.name, 64) })
+    // ~~`users.ensure(sid, { username: str(p.name, 64) })`~~ — **REMOVED 2026-09-23, and
+    // this line is the whole of "why does the site call me Unknown Soldier".**
+    //
+    // It took the name the GAME reported and wrote it into the account. Nothing ever
+    // passed `+name`, so the engine's stock default for the `name` dvar — "Unknown
+    // Soldier" — arrived on the roster, came back in the result, and became the owner's
+    // site username. The live DB carried exactly that row.
+    //
+    // The direction is now one-way and it is the other way: the site decides the name,
+    // the token carries it (`lib/tokens.js` `n`), and the referee pins the server's copy
+    // of the client's userinfo to it. A result is still credited by `steamid` and never by
+    // name (the insert above, and `game_players` is keyed on the id) — so nothing here
+    // needs a name to attribute anything, which is why dropping it costs nothing.
+    //
+    // The row is still ENSURED, because a verified player who has never opened the site
+    // must still have an account for XP and badges to attach to. Just without a name.
+    users.ensure(sid)
     seated.push({ ...p, steam_id: sid })
   }
 

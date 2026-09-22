@@ -58,6 +58,12 @@ param(
     #   node tools/dev/authhost.mjs mint --match <id> --steamid <id64>
     # and pass BOTH here: the referee refuses a token minted for a different match.
     [string]$AuthToken = '',
+
+    # THE SPOOF (identity lane, 2026-09-23). Puts `+set name <x>` on the CLIENT's own
+    # command line, so the client honestly asks to be called something the token does
+    # not say. That is the whole of the name-lock proof: the server must ignore it and
+    # the scoreboard must show the token's name instead. Empty = no spoof.
+    [string]$ClientNameDvar = '',
     [string]$MatchId = '',
 
     # Where the SERVER's game link dials out to (ENW_HOST). Point it at
@@ -217,6 +223,17 @@ try {
     )
     # The client needs the same mod mounted or it cannot load the map it is sent to.
     if ($FsGame) { $clientArgs += @('+set', 'fs_game', $FsGame) }
+    if ($ClientNameDvar) {
+        $clientArgs += @('+set', 'name', $ClientNameDvar)
+        # AND the env var the client DLL's `name_pin` reads, which re-issues
+        # `set name "<x>"` every few seconds. That is what makes this a test of the
+        # ONGOING lock rather than only of the connect edge: each re-set sends a fresh
+        # `userinfo` command, which is exactly the path name_lock.cpp hooks. Set here
+        # and not earlier on purpose -- the server half is already running, so it never
+        # sees this variable.
+        $env:ENW_PLAYER_NAME = $ClientNameDvar
+        Say "client is launching with +set name '$ClientNameDvar' and ENW_PLAYER_NAME='$ClientNameDvar' -- if the token names somebody else, the server must win, repeatedly" 'Yellow'
+    }
     # The invite token goes to the CLIENT: launch.ps1 puts it in the environment, the
     # DLL writes `setu enw_token "<t>"` into this instance's own enw_auth.cfg, and the
     # engine carries it in userinfo on the connect packet. Never on a command line.

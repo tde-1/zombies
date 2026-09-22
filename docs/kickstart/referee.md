@@ -1594,3 +1594,157 @@ here as one. `waw-c2` is deployed and ready; the run is
 `jointest.ps1 -Tag join97 -AuthToken <the token slot 0 used> -MatchId <its match>` with a second
 `launch.ps1 c2 -Role client -Companion -AuthToken <the same token>` fired 40 s in.
 
+
+## 14. 2026-09-23 — the name in the game belongs to the account, and the server says so
+
+B: *"Make people's usernames their ENW username. When they sign in, their username in World at
+War is locked to the ENW name and they can't spoof another name at all. Right now it says
+Unknown Soldier, which is annoying."*
+
+### 14.1 Where "Unknown Soldier" came from, because it is not a string in this repo
+
+It is the **engine's stock default for the `name` dvar**. Nothing ever passed `+name`, so every
+client booted as "Unknown Soldier", the referee read that off the roster, the box posted it in
+the result, and `web/server/lib/results.js` wrote it straight back into `users.username`:
+
+```js
+users.ensure(sid, { username: str(p.name, 64) })      // removed 2026-09-23
+```
+
+The live database proves the loop closed: the owner's row held `username = 'Unknown Soldier'`
+and every other approved row held `NULL`. **The site was displaying a name the game invented
+about itself.** That write-back is gone (the retraction is in place in `results.js`), the seven
+approved accounts are named from the site's own approvals, and the direction is now one-way:
+site → token → game, never back.
+
+### 14.2 The engine's name path, mapped
+
+`re` mapped the whole chain. Every address below is **[V]** in the dump and is now in
+`shared/t4/addresses.hpp`:
+
+```
+client sends  userinfo "\name\whatever\rate\25000\..."
+  -> SV_ExecuteClientCommand 0x6308F0   walks ucmds[] at 0x8D0348 (the "userinfo" slot 0x8D034C)
+  -> SV_UpdateUserinfo_f     0x6307E0   I_strncpyz(cl+0x6F0, Cmd_Argv(1), 0x5FF)  __cdecl(client_s*)
+  -> SV_UserinfoChanged      0x630650   cl->name (+0x11548, 32B) = Info_ValueForKey("name")
+                                        **client_s* in ESI** -- never prototype this as cdecl
+  -> ClientUserinfoChanged   0x67BCF0   __cdecl(int clientNum); re-reads cl+0x6F0, ClientCleanName
+                                        0x67BC70, writes gclient+0x21F0 / +0x215C and the
+                                        clientinfo record 0x18DD258 + i*0x594, name at +0xC
+helpers  Info_SetValueForKey 0x5F71F0   __cdecl(char* s, key, value); MAX_INFO_STRING 0x600;
+                                        SILENTLY strips backslash, ';' and '"' from the value
+         Info_ValueForKey    0x5F6DF0   **infostring in ECX**, key at [esp+4], rotating static buffer
+```
+
+Two corrections fall out of this and are worth more than the feature:
+
+* **`SV_ExecuteClientCommand = 0x4621E0 [C]` is withdrawn.** That is not the function. 0x6308F0
+  is the one that dispatches `ucmds[]`, proven by the table walk.
+* **`client_s.userinfo = +0x6F0` is upgraded [H] to [V]**: `ClientUserinfoChanged` computes
+  `0x2547780 + i*0x58D30`, and `0x2547780 == 0x2547090 + 0x6F0`, which re-derives the clients
+  base and the offset from a *second* function.
+
+One thing is **not** proven and is written down as not proven: **there is no `CS_PLAYERS`
+configstring in this SP exe.** `re` found no site that computes a configstring index as
+`base + clientNum` on the userinfo path, and `ClientUserinfoChanged` never calls
+`SV_SetConfigstring` (0x6311E0). The per-player scoreboard data goes into the in-process
+clientinfo array at **0x18DD258, stride 0x594, name at +0xC** instead — *likely*, on two
+functions agreeing (the writer above and the client-side reader 0x4E94A0), not measured.
+
+Also worth recording, because it made an earlier search fail: **every `Com_Error`/`Com_Printf`
+literal in this build is 0x15-prefixed and pushed as `stringVA - 1`**, so `t4map.py sxref`
+indexes them one byte late and finds nothing for the `Info_*` helpers.
+
+### 14.3 The lock — `server/components/referee/name_lock.cpp`
+
+Hook **`SV_UpdateUserinfo_f` 0x6307E0**, one MinHook, owned by this component. It is the single
+writer of `cl->userinfo` on the client path, it is clean `__cdecl(client_s*)`, and it fires only
+on a real `userinfo` command. `SV_UserinfoChanged` and `ClientCleanName` take register arguments
+and are therefore neither hooked nor prototyped (map rule 4); they are reached only through the
+engine's own chain.
+
+The original runs **first** — it is a tail-jump into `ClientUserinfoChanged`, so the client's
+`rate`, `snaps` and `cl_voice` are applied in full, which is none of our business — and then, if
+the name it applied is not the one this slot is locked to:
+
+1. `Info_SetValueForKey(cl->userinfo, "name", locked)` — the server's authoritative copy
+2. `cl->name` (+0x11548) = locked — what `SV_UserinfoChanged` derived
+3. `ClientUserinfoChanged(slot)` — the engine rebuilds gclient and the scoreboard record **from
+   the buffer we just corrected**. Nothing downstream is poked by hand.
+
+**Only a slot whose token verified is locked.** The lock arms in `do_auth()`, on the same edge
+that promotes `claimed` to `verified`, from the token's `n` — which the site now reads out of the
+`users` row at lease time rather than taking from the lease caller (`lib/assignments.js`; a
+caller-supplied name would be a *signed, server-enforced* impersonation, strictly worse than the
+spoofing this replaces). An untokened client — Play Local, `jointest.ps1` with no `-AuthToken` —
+is never locked and keeps whatever name it launched with.
+
+`p.token_name` is kept apart from `p.name` deliberately: `p.name` is what the *engine* reports and
+is therefore the spoofable one. Binding the lock to it would lock the slot to the lie.
+
+A `tick()` in the existing per-frame poll compares `cl->name` per locked slot — a 32-byte compare
+that does nothing when nothing is wrong — and shouts if the name ever drifts outside the userinfo
+path. It never has.
+
+### 14.4 Runs — `namelock1/2/3`, five gates, PASS, and what is still open
+
+`nazi_zombie_prototype`, client launched with `+set name spoofer` **and** `ENW_PLAYER_NAME=spoofer`
+(the client DLL's `name_pin` re-asserting it every 3 s), token minted by the site's own
+`lib/tokens.js` naming `enw-tester`.
+
+```
+namelock: bound SV_UpdateUserinfo_f 006307E0 (Info_SetValueForKey 005F71F0,
+          ClientUserinfoChanged 0067BCF0). A verified client's name is the token's.
+referee: player_connect slot 0 name='anna-jpg' steamid=76561198000000042 identity=claimed
+referee: slot 0 identity VERIFIED by the host (steamid=76561198000000042, ok)
+namelock: slot 0 connected as something else; name set to 'enw-tester' at the connect edge
+referee: slot 0 connected as 'anna-jpg' but the token says 'enw-tester' -- the token wins
+[client]  name_pin: pinned `name` to 'spoofer' (re-set every 3000 ms)
+
+{"t":"game_over","ms":137610,"round":1,"players":[{"slot":0,"name":"enw-tester",
+  "steamid":"76561198000000042","identity":"verified",...}]}
+
+CS_ACTIVE=1 ROUND1=1  com_frameTime +30009 ms  Com_Frame-body 58 Hz  PASS
+```
+
+*(`anna-jpg` rather than `spoofer` on the connect line because the client's own
+`profiles/anna-jpg/config.cfg` execs `set name anna-jpg` **after** the command line is read. It
+makes no difference to the test — the client asked to be called something the token does not say,
+which is the whole case under test — but it is why the transcript does not read `spoofer` there.)*
+
+**PROVEN.** The result the host posts — the one message the contract lets it build a result from
+(§10.3) — names the ENW account and not the client's claim. The server's copy of the name did not
+drift once in 145 s of frames while the client believed it was called `spoofer`.
+
+**NOT PROVEN, and the counter says so out loud.** The periodic line reads
+
+```
+referee: namelock: bound, userinfo commands seen 0, names put back 1
+```
+
+**Zero.** The client sent no `userinfo` command after connect, so the hook has never been observed
+firing — only the connect-edge enforcement has run. The reason is not a fault: the engine marks a
+dvar modified only when the value actually *changes*, so `name_pin` re-setting `name` to the
+value it already holds sends nothing. The claim "and again on every userinfo change" is therefore
+**an argument from the hook being bound at the proven address, not a measurement**, and it is
+written here as one. The run that settles it needs a client that changes a userinfo dvar to a
+*different* value mid-game — a human typing `\name x` in the console is the cheap version — and
+what it must show is that line's first number going up and `names put back` following it.
+
+Also unproven: **what a second client's scoreboard shows.** The enforced name is rebuilt by
+`ClientUserinfoChanged` into the clientinfo record, which is the right mechanism, but nobody has
+watched it from another client's screen. Needs two real clients.
+
+One ordering note for anyone reading a transcript: **`player_connect` still carries the client's
+own name.** It is emitted at the connect edge, before the host's `auth allow` has come back, so
+the row is `claimed` and nothing is locked yet. `game_over` is the message that carries the
+enforced name, and it is the one the site credits from.
+
+### 14.5 The harness
+
+`jointest.ps1` and `jointest-proof.ps1` gained three pass-through parameters, all additive:
+`-ClientNameDvar <name>` (puts `+set name <name>` on the CLIENT's line *and* sets
+`ENW_PLAYER_NAME` for the client DLL's pin, so the client asks to be called that by every means
+it has), `-ServerFrom` and `-ClientFrom` on the proof script (it could only ever deploy
+`build\dedi`, which meant a lane building into its own directory — dev-box rule 11 — had no way
+to take its build through the five gates).

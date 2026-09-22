@@ -987,6 +987,71 @@ async function main() {
       'a local run became records-eligible')
   })
 
+  // ---- the ENW name, and the end of "Unknown Soldier" (2026-09-23) -----------
+  //
+  // B: "Make people's usernames their ENW username ... right now it says Unknown
+  // Soldier." Four things have to hold, and the first is the one that actually caused it.
+  const names_ = require("../server/lib/names")
+
+  check('a result never writes the game’s idea of a name back into the account', () => {
+    // THE REGRESSION TEST FOR "UNKNOWN SOLDIER". `lib/results.js` used to do
+    // `users.ensure(sid, { username: p.name })`, so the engine's stock default for the
+    // `name` dvar became the player's site username — which is exactly what the live
+    // database was found holding. The name travels site -> token -> game now, and never
+    // back.
+    const sid = '76561198000000031'
+    users.ensure(sid, {})
+    db.prepare('UPDATE users SET enw_name=? WHERE steam_id=?').run('enw-tester', sid)
+    const sum = summary({ match_id: 'm_nm_' + Math.random().toString(16).slice(2, 8), players: [sid] })
+    for (const p of sum.players) { p.name = 'Unknown Soldier'; p.identity = 'verified' }
+    results_.ingest({ box: 'test-box', summary: sum }, { selfReported: false })
+    const row = db.prepare('SELECT username, enw_name FROM users WHERE steam_id=?').get(sid)
+    eq(row.username, null, 'the game’s name was written into users.username')
+    eq(row.enw_name, 'enw-tester', 'the ENW name was overwritten by the game')
+  })
+
+  check('a name is set once, unique case-insensitively, and only an admin renames', () => {
+    const a = '76561198000000032'
+    const b = '76561198000000033'
+    users.ensure(a, {}); users.ensure(b, {})
+    eq(names_.claim(a, 'Spoofer').ok, true, 'a first claim was refused')
+    eq(names_.claim(a, 'somethingelse').reason, 'already_set', 'the name was not set-once')
+    // Case-insensitive: "spoofer" and "Spoofer" are the same claim to a reader, and two
+    // accounts answering to one name is an impersonation, not a cosmetic clash.
+    eq(names_.claim(b, 'spoofer').reason, 'taken', 'a case-variant duplicate was allowed')
+    eq(names_.rename(a, 'renamed-by-admin', a).ok, true, 'an admin rename was refused')
+    eq(names_.displayName(a), 'renamed-by-admin', 'the rename did not take')
+  })
+
+  check('the rules refuse the names that would break the infostring or an ENW link', () => {
+    // Mirrors Movement's dropsNames RULES, including its all-digits divergence: a number
+    // is an ADDRESS on an ENW site, so a player called "5" would claim somebody's link.
+    for (const bad of ['ab', 'x'.repeat(21), 'has space', String.raw`back\slash`, 'semi;colon',
+                       'quo"te', '12345', 'admin', 'Unknown']) {
+      eq(!!names_.validate(bad), true, `"${bad}" was accepted as a username`)
+    }
+    eq(names_.validate('enw-tester'), null, 'a legal name was refused')
+    eq(names_.validate('a'.repeat(20)), null, 'a 20-character name was refused (drops allows 20)')
+  })
+
+  check('the invite token carries the ACCOUNT’s name, not the one the caller asked for', () => {
+    // The token's `n` is what the referee pins into the server's copy of the client's
+    // userinfo, so a caller-supplied name would be a signed, server-enforced
+    // impersonation — strictly worse than the spoofing it replaces.
+    const sid = '76561198000000034'
+    users.ensure(sid, {})
+    db.prepare('UPDATE users SET enw_name=? WHERE steam_id=?').run('the-real-one', sid)
+    const tokens_ = require('../server/lib/tokens')
+    const names2 = require('../server/lib/names')
+    eq(names2.hasEnforceableName(sid), true, 'the fixture has no enforceable name')
+    // What lib/assignments.js now builds, from the row rather than from `o.players`.
+    const name = names2.displayName(sid)
+    eq(name, 'the-real-one', 'the account name is not what the lease would use')
+    const tok = tokens_.issue({ steamid: sid, matchId: 'm_nm_tok', name })
+    const payload = JSON.parse(Buffer.from(tok.split('.')[0], 'base64url').toString('utf8'))
+    eq(payload.n, 'the-real-one', 'the token did not carry the account name')
+  })
+
   // ---- report ---------------------------------------------------------------
   for (const [s, n] of results) console.log(`${s}  ${n}`)
   console.log(`\n${pass} passed, ${fail} failed`)

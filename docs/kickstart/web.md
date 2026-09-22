@@ -1487,3 +1487,114 @@ Steam mode came back with it). `cloudflared` was not touched.
   this socket rather than from a read cursor.
 * **The in-game overlay** — `chat-overlay.md`, 3.5–5.5 days with the whole risk in finding T4's
   2D text draw.
+
+## 2026-09-23 — everybody has an ENW name, and the game cannot invent one
+
+B: *"Make people's usernames their ENW username … right now it says Unknown Soldier, which is
+annoying."*
+
+### The bug, which was on this side and not in the game
+
+`lib/results.js` line 269 took the name the **game** reported and wrote it into the account:
+
+```js
+users.ensure(sid, { username: str(p.name, 64) })
+```
+
+Nothing ever passed `+name`, so the client booted as the engine's stock `name` default —
+"Unknown Soldier" — the box posted that on the roster, and this line made it the player's site
+username. The live database carried exactly that: the owner's row held `username = 'Unknown
+Soldier'` and the other six approved rows held `NULL`, so `users.pub()`'s fallback chain
+(`enw_name || username || steam_id`) was rendering either the engine's default or a raw SteamID.
+There is no Steam Web API key by decision (99 §4.1), so `username` was never going to fill in.
+
+That line is **removed**, with the retraction in place. `users.ensure(sid)` still runs — a
+verified player who has never opened the site needs an account for XP and badges to attach to —
+just without a name. Nothing downstream needed one: `game_players` is keyed on `steamid` and
+always has been.
+
+### Where the ENW name comes from — and why not from Movement's SSO
+
+The spec says the account links to *"the ENW name via SSO (a narrow API)"* (99 §4.1, 00 Q32), and
+`lib/enw.js` has been the stubbed client for it since the start. Two findings:
+
+1. **Movement's `POST /internal/sso/redeem` cannot answer this.** It takes an opaque single-use
+   **ticket** and returns the `steam_id` it was minted for — a login handoff, and its own file
+   says it exposes *"NO player data, no reads"*. It is steamid-**out**; we already know the
+   steamid and want the name. Wrong direction, and no amount of configuration changes that.
+2. **The real name authority is drops.ws, and Movement is itself only a mirror of it.**
+   `CSGO-Matchmaker/server/lib/dropsNames.js` (owner directive 2026-07-30: *"two authorities
+   would mean two identities per person"*) is the production client, and the contract is
+
+   ```
+   GET /internal/name?steam_id=<id64>   ->  { name, changed_at, has_name }
+   header: x-internal-secret: <the shared string>
+   ```
+
+   **Our `lib/enw.js` was guessing a different one** — `?steamid=` with an `Authorization:
+   Bearer`. Wired up as it was, the day `ZM_ENW_BASE` was set every lookup would have 403'd on
+   the auth and 400'd on the parameter, and `call()` swallows failures by design, so names would
+   simply never have arrived and nobody would have known why. Corrected: the header is sent, both
+   parameter spellings go on the query, and `ZM_ENW_SECRET` is the env var for the shared string.
+
+**B has to supply that secret.** No secret is invented here, so the API stays switched off, and
+until it is on the fallback below is the authority.
+
+### The fallback, which is what is actually running: a first-login picker
+
+`web/server/lib/names.js`, ported from Movement's `POST /username`, minus the half that belongs
+to an authority we are not:
+
+* **Movement's rules, character for character** — 3–20, `[A-Za-z0-9_-]`, including its deliberate
+  all-digits refusal (*a number is an ADDRESS on an ENW site*), plus a small reserved list of
+  ours (`admin`, `console`, `unknownsoldier`, …). A name picked here can therefore never be one
+  the real authority would reject on the day the secret lands.
+* **Unique case-insensitively**, across `enw_name` **and** `username`, backed by a partial
+  `UNIQUE INDEX … COLLATE NOCASE WHERE enw_name IS NOT NULL AND deleted = 0` (partial so
+  anonymisation frees the name rather than reserving it forever).
+* **Set once.** A rename is `POST /api/admin/player/:who/username` and nothing else. That is not
+  laziness: the ENW name is what the invite token carries and what the referee pins into the
+  server's copy of a client's userinfo, so a self-serve rename would hand straight back the
+  spoofing the lock removes. Movement can offer one because the cooldown, revert window and
+  rename history live on drops.ws; we have none of that apparatus.
+* **It disappears the moment the authority is live.** `names.needsName()` returns false whenever
+  `enw.enabled()`, and `claim()` refuses outright with `reason: 'authority'` — writing a name
+  locally that drops.ws never agreed to is the split identity the whole directive exists to
+  prevent.
+
+Routes: `GET /api/me/username/check?username=` (answers available/not, never *who* holds a name —
+that would make it an account-enumeration endpoint), `POST /api/me/username`. `/api/me` now
+carries `needs_name` and `name_rules` so the client can put the picker in front of everything
+else on a first login.
+
+### The token's name is the account's, not the caller's
+
+`lib/assignments.js` used to take `p.name` from whoever asked for the lease and sign it into the
+invite token's `n`. The referee now **enforces** that name server-side, which turns a
+caller-supplied string into a signed, server-enforced impersonation — strictly worse than the
+spoofing it replaces. It is read from the `users` row by SteamID now, through the one reader in
+`names.js`. An account with no name gets `P1`..`P4` rather than a raw SteamID, and is not locked.
+
+### The seven accounts
+
+`web/tools/seed-enw-names.js` (idempotent, `--dry`, `--force`): the seven approved SteamIDs
+mapped to the handles from the site's own approvals. Run against the live DB —
+**7 named, 0 kept, 0 missing, 0 refused** — and it also cleared the one `username = 'Unknown
+Soldier'` it found. `enw_name` is now set for every approved account and the string is gone from
+the database.
+
+### Tests
+
+`web/test/run-all.js` **89/0**, four of them new and the first is the regression that matters:
+
+* a result never writes the game's idea of a name back into the account
+* a name is set once, unique case-insensitively, and only an admin renames
+* the rules refuse the names that would break the infostring or an ENW link
+* the invite token carries the **account's** name, not the one the caller asked for
+
+### Still open on this side
+
+* **The picker has no UI.** The API and the `needs_name` signal are there; no React screen reads
+  them yet, so today a new account is nameless until an admin sets one or `seed-enw-names.js`
+  runs. That is the next piece of web work.
+* `enw.refreshName()` has never been run against a real endpoint, because there is not one.

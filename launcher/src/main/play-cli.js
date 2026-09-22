@@ -59,6 +59,7 @@ if (has('--dry-run')) {
     windowMode,
     settings: s,
     display,
+    playerName: settings.session().name || null,
   })
   const borderless = windowMode === 'player' && resolveMode(s) === 'borderless'
   console.log(`exe : ${P.game}\\CoDWaW.exe`)

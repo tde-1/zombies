@@ -80,6 +80,16 @@ function migrate() {
       last_seen       INTEGER
     );
 
+    -- ONE NAME, ONE ACCOUNT (2026-09-23). The ENW name is the display name everywhere —
+    -- site, launcher header, party panel, and the name the referee pins in game — so two
+    -- accounts answering to the same name is an impersonation, not a cosmetic clash.
+    -- NOCASE because "Jamie" and "jamie" are the same claim to a reader.
+    --
+    -- Partial, on \`deleted = 0\`: anonymisation NULLs the column anyway (lib/users.js), and
+    -- a freed name should be claimable again rather than reserved forever by a dead row.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_enw_name
+      ON users(enw_name COLLATE NOCASE) WHERE enw_name IS NOT NULL AND deleted = 0;
+
     -- Movement's friendships table verbatim: one row per direction-less pair, keyed on who
     -- asked, with a status so a pending request is a first-class thing.
     CREATE TABLE IF NOT EXISTS friendships (

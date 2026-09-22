@@ -2077,3 +2077,31 @@ gone with it. That is the cost of having one copy of the map list instead of two
 the right trade while the site is the product; if it ever matters, the answer is a
 placeholder page that offers the four stock maps, not a second rail.
 
+
+## 2026-09-23 — `+set name`, and the end of "Unknown Soldier"
+
+One line, and it is the whole of B's complaint. `buildArgs()` now takes `playerName` and pushes
+`+set name "<ENW name>"` on **every** launch, Play Local included — a local game never reaches a
+server, so the referee's lock cannot apply and this is all there is. The value defaults to
+`settings.session().name`, which is what the site answered at sign-in (`users.pub().name`, i.e.
+`enw_name` first), so no caller has to remember it: the name is a property of who is signed in,
+not of a particular Play button. An account that has not picked a name yet gets **nothing** —
+the engine's own default — rather than a SteamID dressed up as a name.
+
+`ENW_PLAYER_NAME` goes into the child's environment with the same sanitised value, for the client
+DLL's new `name_pin` component (`client-dll/components/name_pin.cpp`), which re-issues
+`set name "<x>"` through `Cbuf_AddText` every 3 s so an in-game change is undone. Backslashes,
+quotes and semicolons are stripped from both, because the engine's userinfo is
+backslash-delimited and `set` is console input; `Info_SetValueForKey` strips the same three
+server-side, so the two sides cannot disagree.
+
+**Both are belts, not the lock.** They run in the player's own process and anyone can edit a
+config or pass a different `+name`. What stops a spoof is the referee overwriting the *server's*
+copy of the userinfo with the invite token's name — `docs/kickstart/referee.md` §14.
+
+`launcher/test/run-all.js` **122/0**, three new: every launch carries `+set name` (local
+included); a name cannot break out of the infostring or smuggle a second command
+(`ev\il";quit` → `evilquit`); and a session with no name sets no name rather than an invented one.
+
+**Not published.** 0.2.4 (Play fix) and 0.2.5 (client) own the version line; these changes are
+committed and unversioned, for whoever publishes **0.2.6** after 0.2.5 is on `latest.yml`.

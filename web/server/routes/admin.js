@@ -101,6 +101,18 @@ function router() {
     res.json({ ok: true })
   })
 
+  // The ONLY rename (2026-09-23, lib/names.js). The picker is set-once on purpose: the
+  // ENW name is what the invite token carries and what the referee pins into the server's
+  // copy of a client's userinfo, so a self-serve rename would hand back exactly the
+  // spoofing the lock removes. An admin can still fix a typo or free a name.
+  r.post('/player/:who/username', requireAdmin, (req, res) => {
+    const u = users.resolve(req.params.who)
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    const out = require('../lib/names').rename(u.steam_id, (req.body && req.body.username) || '', req.me.steam_id)
+    if (!out.ok) return res.status(out.reason === 'taken' ? 409 : 400).json({ error: out.error, reason: out.reason })
+    res.json({ ok: true, name: out.name, from: out.from, user: users.publicById(u.steam_id) })
+  })
+
   r.get('/waitlist', requireMod, (req, res) => {
     res.json({ users: db.prepare('SELECT * FROM users WHERE approved=0 AND deleted=0 ORDER BY created_at').all().map(users.pub) })
   })

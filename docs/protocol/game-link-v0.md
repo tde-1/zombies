@@ -159,3 +159,25 @@ IW4MAdmin. Fields are sanitised (`;`, CR and LF become `_`, 128 chars max) becau
 flag name is author-supplied and their parser has no unescape step.
 
 Implementation: `server/components/referee/logprint_mirror.{hpp,cpp}`.
+
+## Addendum, 2026-09-23 — `name` is the account's, once identity is `verified`
+
+**No field changed.** What changed is what one of them means, and it is worth a line so nobody
+reads an old transcript and thinks the game is inconsistent.
+
+The invite token has carried `n` (the player's ENW name) since v0. As of `referee.md` §14 the
+referee **enforces** it: for a slot whose token the host verified, it overwrites the server's
+copy of that client's userinfo `name` with the token's, so the roster follows the account and not
+whatever the client sent.
+
+The consequence for a reader of the link:
+
+| message | `name` | why |
+|---|---|---|
+| `player_connect` | the **client's own** name | emitted at the connect edge, *before* the host's `auth {allow}` has come back. The row is `claimed`; nothing is locked yet. |
+| `player_down`, `game_over` | the **account's** ENW name, for a `verified` row | the lock armed on the `auth allow`. `game_over` is the message a host may post a result from (§10.3), and it is the one the site credits. |
+| anything, `identity != verified` | the client's own name | an untokened or refused client is never locked, and its row is unawardable anyway. |
+
+So `player_connect.name` and `game_over.name` **can legitimately differ for the same slot in the
+same game**, and when they do it is the lock working. The `steamid` is the join key throughout
+and is unaffected.
