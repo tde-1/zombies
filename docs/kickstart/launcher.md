@@ -855,3 +855,139 @@ If borderless does not happen, that is the DLL half (`ENW_BORDERLESS=1` is on th
 * Nobody has run the game with this line. The lock is held by two other agents.
 * `r_displayRefresh` is left alone. The engine's format is the string `"60 Hz"`, and guessing a
   refresh rate is how you get a black screen; it is a candidate once someone has measured it.
+
+---
+
+## Party downloads, a joined launch, and 0.2.0 (2026-09-22, later)
+
+Three things, and the first two are two halves of one failure: **a party could press Start
+while somebody was still downloading, and when it did, only the leader's launcher launched.**
+
+### 1. The party can see your download
+
+`launcher/src/main/partyprogress.js`, posting to `POST /api/party/:id/progress` (the contract
+is now written into [`../protocol/launcher-v0.md`](../protocol/launcher-v0.md) §2; the site
+half is `web/server/lib/partyProgress.js`, which the web lane landed tonight).
+
+What is sent, and when:
+
+| | |
+|---|---|
+| body | `{ map, bytes, total, state }`, plus `error` on a failure |
+| `downloading` | about **1 Hz** while bytes are arriving. The site's floor is 400 ms per member and it *accepts and drops* anything faster rather than refusing it, so the launcher never has to care what the ceiling is |
+| `installed` | once, **when the hash check has passed** — it is sent from the success path of `library.install` / `installFromSite`, and both of those throw rather than return when a file does not match the SHA-256 the archive recorded. So "installed" cannot mean "the bytes stopped arriving" |
+| `failed` | once, with the reason, on a broken download, a hash mismatch **or** no source for the map at all. From the leader's side "this member cannot get the map" and "this member's download broke" are the same fact: do not press Start |
+| auth | the ordinary session cookie the launcher already shares with the wrapped page. No second auth path |
+
+**And nothing at all is sent when the player is not in a party game.** The gate is one
+function — `partyprogress.attach(api, play, bsp)` — and it needs the *site* to say both that
+there is a party and that this is the map that party staged. A library install, a Play Local
+game, or a download of a different map never constructs a reporter, so not one request leaves
+the machine. Two tests assert that, one per half.
+
+Every post is fire-and-forget. A 4xx, a restarted site or a dead tunnel in the middle of a
+600 MB download must not take the download with it; the worst case is a bar that stops moving,
+and there is a test that hangs up on every request and asserts the download survives it.
+
+### 2. Somebody else's Start is your launch
+
+`POST /api/launcher/play` means *"I am pressing Play"*, and the site only lets the leader do
+it. A member has nothing to ask for: by the time they could, the site has leased the box and
+minted one invite token per whitelisted SteamID, and **that player's own token is already in
+their `GET /api/launcher/play` body**.
+
+So `BootFlow` gains a **follow mode**: skip the POST, go straight to the watching half. From
+there it is the path that already existed — the same 1 Hz poll, the same boot screen steps, the
+same `+connect <host>`, and the same one-shot named pipe carrying the token (§3; still never on
+the command line).
+
+What starts it is one poll of `/api/launcher/play` running whenever a site is connected
+(`main.js`, `state.startPartyWatch`), doing both jobs:
+
+1. the leader staged a map → start downloading it **now**, while the party forms, and report
+   it (§1 above) so the panel has a bar to draw and Start has something to stand down for;
+2. a `match` appeared for a party we are in → open the boot screen and follow it.
+
+It is deliberately **not** "non-leaders only". A leader who presses Start in the wrapped page
+rather than the launcher's corner card is in exactly the same position as everybody else: no
+flow running, a match waiting. The guard is `state.flow`, so the player who pressed Play *in
+the launcher* is never followed into a second launch.
+
+The boot screen gains **one line**, `Downloading the map`, and it is drawn only when it
+happened — a permanently greyed row on every launch that had the map already is noise. A map
+that did not install is never launched: the `download` step fails and `launching` is never
+reached (tested). The install is shared, not repeated: `ensureMapInstalled` hands a second
+caller the in-flight promise, so the boot flow waits for the download the party watcher
+started rather than opening a second copy into the same folder.
+
+### 3. A new installer, with tonight's client DLL
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\dev\build.ps1 -Name launcher   # the FULL build
+cd launcher
+npm run pack            # NOT `npm run dist`, which does not exist
+```
+
+`build.ps1 -Name launcher` with **no `-CoreOnly`** is the player client: `-CoreOnly` turns off
+`ENW_WITH_SERVER_COMPONENTS` *and* `ENW_WITH_CLIENT_COMPONENTS` (foundation §1), so it would
+have shipped a DLL with neither the mouse fix nor borderless in it. The build log names
+`mouse_polling.cpp` and `borderless.cpp` among the compiled files, and both strings are in the
+binary.
+
+| | |
+|---|---|
+| DLL | `build\launcher\enw_t4.dll`, RelWithDebInfo, Win32, 1,472,000 bytes, built 2026-09-22 03:39 UTC |
+| **sha256** | `24b3bf94411da497813a4addef3ef50192fbfb7d1a6bb5ff9ce9f002284aea90` |
+| staged to | `launcher\resources\client\enw_t4.dll` + `client.json` (by `tools/stage-client.js`, which refuses to build without one) |
+| in the installer | `dist\win-unpacked\resources\client\enw_t4.dll`, same sha256 — checked, not assumed |
+| installer | **`launcher\dist\ENW-Zombies-Launcher-Setup-0.2.0.exe`**, 94,479,989 bytes |
+
+"Install the ENW client" needed **no change** to find it: `setup.findClientDll()` already
+prefers the copy shipped beside the app (`process.resourcesPath\client`, outside `app.asar`)
+outright, and in a dev checkout prefers `build/launcher` over the other agents' builds. Staging
+is the whole of the wiring.
+
+**The components the DLL registers — 39**, by where they live:
+
+* **`shared/core` (12)** — `connect_address`, `direct_connect`, `focus_guard`, `frame_dispatch`,
+  `heartbeat`, `hello`, `huffman_guard`, `instance_paths`, `main_thread`, `no_winconsole`,
+  `raw_sockets`, `userinfo_guard`
+* **`client-dll/components` (5)** — `auth_token`, **`borderless`**, `connect_local`,
+  **`mouse_polling`**, `network` — the two in bold are tonight's
+* **`server/components` (22)** — `afk`, `chat`, `dedicated`, `dedi_error_trap`,
+  `dedi_frame_pacing`, `dedi_join_in_progress`, `dedi_join_probe`, `dedi_local_client`,
+  `dedi_no_autosave`, `dedi_nonblocking_pump`, `dedi_nowindows`, `dedi_probe_calls`,
+  `dedi_server_auth`, `dedi_temp_guard`, `dedi_varprobe`, `dedi_varwatch`, `dedi_whereis`,
+  `knobs`, `net`, `pause`, `referee`, `replay`
+
+**That is the registered list, not the logged one**, and the difference matters: 12 of the 39
+override `is_supported()` and drop out at load. `mouse_polling` is `!is_dedicated_process()`,
+and most of the `dedi_*` ones are the mirror of that, so the `enw_t4 online - N components`
+line a *player* prints will be smaller than 39. Nobody ran the game from this lane (the game
+lock is held elsewhere), so the exact N is unproven — read it off `console.log` after the first
+real launch and correct this line in place.
+
+### Tests
+
+```
+npm test         85 passed, 0 failed    (77 before; 8 new — 5 progress, 3 joined launch)
+npm run smoke    9 of 10 ok
+```
+
+The one smoke failure is the sandbox check, and it is the check working: this agent runs in an
+MSIX container where `%LOCALAPPDATA%` is redirected, so **nothing here may claim an install is
+verified**. The `setup: the ENW client is installed` line in that run is the *redirected* copy
+and still reports the 1,408,000-byte 0.1.1 DLL. B's own install is untouched and picks up the
+new one from the 0.2.0 installer.
+
+### Still open
+
+* Nobody has run 0.2.0's installer, and no real party has run the two features above. The
+  tests drive `BootFlow` and the reporter against fakes — no site, no game, nothing downloaded.
+  The thing to watch on the first real party game is whether a member's poll sees
+  `match.connect` before the leader's game is already loading.
+* The feed (`latest.yml` + the exe + its blockmap) went to a scratch directory, **not** to
+  `web/public/updates`. `node tools/publish-update.js` publishes it when B wants friends to get
+  it; until then 0.1.1 is what the auto-updater sees.
+* The launcher posts progress but never *reads* the party's other bars — the panel in the
+  wrapped page is where a player sees them, which is the right place and is the web lane's.

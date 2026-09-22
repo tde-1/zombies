@@ -135,6 +135,51 @@ under `kind: 'launcher'`, visible to staff only. **Always returns 200** — a cr
 fail is a crash reporter that produces a second crash to report. Redact tokens and pipe names
 before sending; the site does not scan for them.
 
+### `POST /api/party/:id/progress` — the party's download bars *(signed in)*
+
+Added 2026-09-22. Implemented site-side in `web/server/routes/site.js` +
+`web/server/lib/partyProgress.js`, launcher-side in `launcher/src/main/partyprogress.js`.
+
+```json
+{ "map": "water", "bytes": 251658240, "total": 453077300,
+  "state": "downloading" | "installed" | "failed", "error": "…" }
+```
+
+Every member's launcher posts its **own** download of the map the leader staged. The party
+panel draws a bar per member, and the leader's **Start** stands down while any of them is
+still downloading or has failed — which is the whole point: a party of four where one person
+is still pulling 600 MB used to start a game three of them could join.
+
+* **About 1 Hz while downloading, and once at every state change.** The site's floor is
+  400 ms per member and a post that arrives too soon is **accepted and dropped**, never
+  refused, so no launcher has to care what the ceiling is. `installed` and `failed` are
+  terminal, bypass the throttle, and always land.
+* **`installed` means the hash check passed**, not "the bytes stopped arriving". The
+  launcher verifies every file against the SHA-256 the archive recorded as it streams and
+  refuses to install a map that does not match, so the two cannot come apart.
+* **Nothing is sent when the player is not in a party game.** No party, or a map other than
+  the one the party staged, and the launcher makes no request at all. The gate is
+  `partyprogress.attach()` and there is a test for each half.
+* **Never fatal.** Every post is fire-and-forget; a 4xx, a restarted site or a dead tunnel
+  in the middle of a 600 MB download must not take the download with it. The worst case is
+  a bar that stops moving.
+* Nothing is stored in SQLite and nothing is trusted: `bytes`/`total` are drawn and nothing
+  else keys off them.
+
+### Following somebody else's Start
+
+Not an endpoint — a rule about an existing one, and the thing that makes a party game a
+party game. **`POST /api/launcher/play` is "I am pressing Play" and only the leader may call
+it.** A member has nothing to ask for: by the time they could, the site has leased the box
+and minted one invite token per whitelisted SteamID, and that player's own token is already
+in their `GET /api/launcher/play` body.
+
+So every member's launcher polls, and when a `match` appears for a party it is in, it opens
+the boot screen and launches at `match.connect` with `match.token` over the named pipe —
+without ever POSTing. Since 2026-09-22 the launcher does this (`BootFlow`'s follow mode);
+before it, a party of four produced one player in the game and three watching a site that
+said they were in it.
+
 ---
 
 ## 3. Deep links

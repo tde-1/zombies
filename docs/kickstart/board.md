@@ -3690,3 +3690,45 @@ a route to several instances.
   `ZombiesDev\archive\reports\next20.json`.
 - `docs/kickstart/archive.md` §8 has the per-map table. No installer run, no new full-map fetch,
   disk had 195 GB free throughout.
+
+### 04:47 launcher: party download bars, a joined launch, and installer 0.2.0
+
+- **The launcher now tells the party where its map download has got to.** `POST
+  /api/party/:id/progress` (web's route, landed tonight), `{map, bytes, total, state}`, ~1 Hz
+  while downloading and once at every state change. `installed` is sent from the success path
+  of the hash-checked install, so it means the hash check passed and not "the bytes stopped".
+  `failed` carries the reason, including "there is no source for this map" — from the leader's
+  side that is the same fact as a broken download: do not press Start. Fire-and-forget: a site
+  that 4xxs or hangs up never breaks a 600 MB download.
+- **Nothing is sent when there is no party game.** The gate needs the site to say both that
+  there is a party and that this is the map that party staged; a library install or a Play
+  Local game makes no request at all. One test per half.
+- **A non-leader's launcher now launches.** `POST /api/launcher/play` is "I am pressing Play"
+  and only the leader may call it, so `BootFlow` gained a follow mode: skip the POST, watch the
+  poll, and launch at `match.connect` with this player's own `match.token` over the existing
+  one-shot named pipe. Before this a party of four produced one player in the game and three
+  watching a site that said they were in it. It is not "non-leaders only" — a leader who
+  presses Start in the wrapped page is followed too; the guard is "no flow already running".
+- One poll of `/api/launcher/play` runs whenever a site is connected and does both jobs: start
+  the staged map downloading while the party forms, and follow somebody else's Start. The boot
+  screen gains one line, `Downloading the map`, drawn only when it happened.
+- **Client DLL rebuilt with tonight's client components** — `build.ps1 -Name launcher`, the
+  FULL build, because `-CoreOnly` drops `client-dll/` as well as `server/` and would have
+  shipped a DLL with neither `mouse_polling` nor `borderless` in it. 1,472,000 bytes, sha256
+  `24b3bf94411da497813a4addef3ef50192fbfb7d1a6bb5ff9ce9f002284aea90`, 39 components registered
+  (12 core, 5 client-dll, 22 server). The logged `online - N` will be lower: 12 of the 39
+  gate on `is_supported()`. Not read from a running game — the game lock is elsewhere.
+- **Installer: `launcher\dist\ENW-Zombies-Launcher-Setup-0.2.0.exe`** (94,479,989 B), version
+  bumped 0.1.1 → 0.2.0 because electron-updater cannot see a rebuild at the same version. The
+  DLL inside `dist\win-unpacked\resources\client\` was checked to be the same sha256. The
+  update feed went to a **scratch directory, not `web/public/updates`** — nothing is pushed at
+  friends from here; `node tools/publish-update.js` does that when B wants it.
+- `npm test` 85 passed 0 failed (8 new). `npm run smoke` 9 of 10 — the failure is the sandbox
+  check doing its job: this agent runs in an MSIX container with `%LOCALAPPDATA%` redirected,
+  so **no install claim from here is evidence**.
+- Contract written into `docs/protocol/launcher-v0.md` §2 (the progress body, the rate, what
+  `installed` means, and the rule that a member never POSTs `/api/launcher/play`). Web: if you
+  wrote a different version of that section tonight, yours wins — say so on the board and I
+  will follow it exactly.
+- Nothing in `web/`, `server/`, `client-dll/` or `STATUS.md` was edited; the client DLL was
+  built, not changed. No game was launched.
