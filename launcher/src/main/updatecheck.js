@@ -74,7 +74,9 @@ export function describe(s) {
     case 'idle': return ''
     case 'checking': return 'Checking…'
     case 'up_to_date': return `You are up to date (${s.current})`
-    case 'available': return `Version ${s.available} is available — starting the download`
+    // 0.2.11: the check is automatic and the download is the player's call (B: "Update
+    // now / Restart now / Update later"), so "available" no longer promises a download.
+    case 'available': return `Update ${s.available} available`
     case 'downloading': return `Downloading ${Math.max(0, Math.min(100, Math.round(s.percent || 0)))}%`
     case 'ready': return 'Ready to install'
     case 'unsupported': return s.message || 'Updates are not available in this copy.'
@@ -112,6 +114,10 @@ export class UpdateCheck extends EventEmitter {
       message: '',
       detail: null,
       canInstall: false,
+      // "Later" (0.2.11): the player hid the nav chip for this session. Held in the main
+      // process, not the page, so a reload or the fallback page does not bring it back;
+      // the next launch does, because this object is new.
+      later: false,
       feed: feedUrl,
     }
   }
@@ -178,7 +184,10 @@ export class UpdateCheck extends EventEmitter {
     const updater = mod.autoUpdater || mod.default?.autoUpdater || mod.default || mod
     if (!updater || typeof updater.checkForUpdates !== 'function') throw new Error('electron-updater did not export a usable autoUpdater')
 
-    updater.autoDownload = true           // the player asked; do not make them ask twice
+    // ~~autoDownload = true, "the player asked"~~ — 0.2.11: the check runs by itself on
+    // every launch (`attach()` + the silent lane), so the download waits for Update now
+    // (`download()` below).
+    updater.autoDownload = false
     updater.autoInstallOnAppQuit = false  // applying is still ours to time
     updater.allowDowngrade = false
     updater.logger = null
@@ -216,6 +225,42 @@ export class UpdateCheck extends EventEmitter {
     return updater
   }
 
+  // 0.2.11: listen to the shared electron-updater WITHOUT checking. The silent lane
+  // (autoupdate.js) runs the launch-time check; attaching first means its
+  // `update-available` moves THIS state machine too, which is what puts "Update 0.2.11"
+  // in the nav. Never throws; a dev checkout and a missing feed attach to nothing.
+  async attach() {
+    if (this.isDev || !this.feedUrl) return this.status()
+    try { await this._updater() } catch (e) { this.log('attach failed —', e?.message || String(e)) }
+    return this.status()
+  }
+
+  // Update now. Only meaningful once a check has found something. electron-updater hands
+  // back the in-flight promise when a download is already running, so a double press is
+  // one download. Progress and the end arrive as events, like everything else.
+  download() {
+    const s = this.state
+    if (s.phase === 'ready' || s.phase === 'downloading') return this.status()
+    if (!this.updater || !s.available) {
+      this.log('download refused: no update has been found yet')
+      return { ...this.status(), refused: 'no update has been found yet' }
+    }
+    this.log('download started by the player:', s.available)
+    this._set({ phase: 'downloading', percent: 0, later: false })
+    Promise.resolve()
+      .then(() => this.updater.downloadUpdate())
+      .catch((e) => this._fail(e, 'download'))
+    return this.status()
+  }
+
+  // Later: hide the chip for this session. Nothing is cancelled — a download already
+  // running finishes, and a finished one is still applied on quit by the silent lane.
+  later() {
+    this.log('player chose Later for', this.state.downloaded || this.state.available || '(nothing)')
+    this._set({ later: true })
+    return this.status()
+  }
+
   // "Restart and update". Only reachable when something is actually downloaded — the
   // button does not exist otherwise — but the guard is here too, because
   // `quitAndInstall()` with nothing staged closes the launcher and opens nothing, which
@@ -234,4 +279,33 @@ export class UpdateCheck extends EventEmitter {
       return { ok: false, why: e?.message || String(e) }
     }
   }
+}
+
+// ENW_FAKE_UPDATE=<version>, a DEV CHECKOUT ONLY (main.js ignores it in a packaged app):
+// an electron-updater stand-in that finds <version>, downloads it in twenty steps of
+// `stepMs`, and "installs" by logging. It is how the nav chip's phases were shown in a
+// dev window without publishing a release, and the tests drive the same object.
+export function fakeUpdater(version, { stepMs = 300, log = () => {} } = {}) {
+  const u = new EventEmitter()
+  u.setFeedURL = () => {}
+  u.checkForUpdates = async () => {
+    setTimeout(() => u.emit('update-available', { version }), stepMs)
+    return { updateInfo: { version } }
+  }
+  let running = null
+  u.downloadUpdate = () => {
+    if (running) return running
+    running = new Promise((resolve) => {
+      let pct = 0
+      const tick = () => {
+        pct = Math.min(100, pct + 5)
+        u.emit('download-progress', { percent: pct })
+        if (pct >= 100) { u.emit('update-downloaded', { version }); resolve([]) } else setTimeout(tick, stepMs)
+      }
+      setTimeout(tick, stepMs)
+    })
+    return running
+  }
+  u.quitAndInstall = (...a) => log('fake quitAndInstall', JSON.stringify(a), '(a dev checkout does not restart)')
+  return u
 }

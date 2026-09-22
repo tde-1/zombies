@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
 import { toLauncherPatch, fromLauncher, newer } from '../data/wawSettings'
@@ -46,6 +46,125 @@ export function useLauncherStatus() {
   return st
 }
 
+// ── 0.2.11: updates, map downloads, installed maps ─────────────────────────────────────
+//
+// B: "The launcher should detect updates, show it top right, and say Update now / Restart
+// now / Update later"; "a Download button separate from Play"; "a list of maps you have
+// installed ... sort by size". All three are the launcher's to do (it holds the files and
+// the updater); the site draws them through the bridge. An older launcher that lacks a
+// call gets nothing drawn rather than a button that throws.
+
+// The update checker's state (launcher/src/main/updatecheck.js), pushed, never polled.
+export function useUpdateStatus() {
+  const [u, setU] = useState(null)
+  useEffect(() => {
+    const enw = bridge()
+    if (!enw || !enw.updateStatus || !enw.updateNow) return undefined
+    let live = true
+    enw.updateStatus().then((s) => { if (live) setU(s) }).catch(() => {})
+    const off = enw.onUpdateStatus ? enw.onUpdateStatus((s) => { if (live) setU(s) }) : null
+    return () => { live = false; try { off && off() } catch { /* gone */ } }
+  }, [])
+  return u
+}
+
+// What the chip shows for a status: null (nothing), 'available', 'downloading', 'ready' or
+// 'failed' (a download that broke; Retry). A failed launch-time CHECK draws nothing — there
+// is no update to offer, and the Settings box already says why.
+export function chipPhase(u) {
+  if (!u || u.later) return null
+  if (u.phase === 'ready' && u.canInstall !== false) return 'ready'
+  if (u.phase === 'downloading') return 'downloading'
+  if (u.phase === 'available' && u.available) return 'available'
+  if ((u.phase === 'failed' || u.phase === 'unreachable') && u.available) return 'failed'
+  return null
+}
+
+export const clampPct = (n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)))
+
+// One map's install state for a Download button. `supported` is false outside the
+// launcher (or on one too old for `mapState`), and the button then goes to /download.
+export function useMapInstall(key) {
+  const [st, setSt] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const enw = bridge()
+  const supported = !!(enw && enw.mapState && enw.installMap)
+  useEffect(() => {
+    if (!supported || !key) { setSt(null); return undefined }
+    let live = true
+    const read = () => enw.mapState(key).then((s) => { if (live) setSt(s) }).catch(() => {})
+    read()
+    const offs = []
+    if (enw.onMapProgress) {
+      offs.push(enw.onMapProgress((p) => {
+        if (!live || !p || p.bsp !== key) return
+        const total = p.total || 0
+        const done = p.done ?? p.bytes ?? 0
+        setSt((s) => ({ ...(s || { bsp: key }), installing: true, done, total, pct: total ? Math.floor((done / total) * 100) : 0, error: null }))
+      }))
+    }
+    if (enw.onMapState) offs.push(enw.onMapState((s) => { if (live && s && s.bsp === key) read() }))
+    return () => { live = false; offs.forEach((off) => { try { off && off() } catch { /* gone */ } }) }
+  }, [key, supported]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const download = async () => {
+    if (!supported || !key) return
+    setBusy(true)
+    setSt((s) => ({ ...(s || { bsp: key }), installing: true, pct: (s && s.pct) || 0, error: null }))
+    try {
+      const r = await enw.installMap(key)
+      if (r && r.skipped && !r.already) setSt((s) => ({ ...(s || {}), installing: false, error: r.skipped }))
+    } catch (e) {
+      setSt((s) => ({ ...(s || {}), installing: false, error: String((e && e.message) || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }))
+    }
+    setBusy(false)
+    try { setSt(await enw.mapState(key)) } catch { /* keep what we have */ }
+  }
+
+  const phase = !supported ? 'browser'
+    : !st ? 'unknown'
+      : st.installed ? 'installed'
+        : (st.installing || busy) ? 'downloading'
+          : st.theirs ? 'theirs'
+            : st.error ? 'failed' : 'absent'
+  return { supported, phase, pct: st && st.pct != null ? clampPct(st.pct) : null, error: st && st.error, stock: !!(st && st.stock), download }
+}
+
+// Settings → Installed maps: the launcher's list (largest first), refreshed when a map
+// is installed or removed anywhere.
+export function useInstalledMaps() {
+  const enw = bridge()
+  const supported = !!(enw && enw.installedMaps && enw.removeMaps)
+  const [list, setList] = useState(null)
+  const read = useCallback(() => {
+    if (!supported) return
+    enw.installedMaps().then((r) => setList((r && r.maps) || [])).catch(() => setList([]))
+  }, [supported]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!supported) return undefined
+    read()
+    const off = enw.onMapState ? enw.onMapState(() => read()) : null
+    return () => { try { off && off() } catch { /* gone */ } }
+  }, [supported, read]) // eslint-disable-line react-hooks/exhaustive-deps
+  const remove = async (keys) => {
+    const out = await enw.removeMaps(keys)
+    read()
+    return out
+  }
+  return { supported, list, remove, refresh: read }
+}
+
+// GB with one decimal, MB under 1 GB (B: "how many gigabytes it is"). Binary units, which
+// is what Windows Explorer calls GB, so the number matches the folder's Properties.
+const GB = 1024 ** 3
+const MB = 1024 ** 2
+export function fmtSize(bytes) {
+  const n = Number(bytes) || 0
+  if (n >= GB) return `${(n / GB).toFixed(1)} GB`
+  if (n >= MB) return `${Math.max(1, Math.round(n / MB))} MB`
+  return `${Math.max(0, Math.round(n / 1024))} KB`
+}
+
 // One line for the menu, in the launcher's plain voice.
 export function describeLauncher(st) {
   if (!st) return null
@@ -58,7 +177,10 @@ export function describeLauncher(st) {
   let update = null
   if (u && u.phase && u.phase !== 'idle') update = u.message || u.phase
   const updateReady = !!(u && u.phase === 'ready' && u.canInstall !== false)
+  // After "Later" the chip is gone until the next launch; the menu keeps the way back.
+  const updateAvailable = !!(u && u.available && !updateReady && u.phase !== 'downloading')
   return {
+    updateAvailable,
     client: installed ? 'ENW client installed' : 'ENW client not installed',
     installed: !!installed,
     version,

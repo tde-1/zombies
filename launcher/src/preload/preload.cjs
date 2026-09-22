@@ -43,6 +43,13 @@ contextBridge.exposeInMainWorld('enw', {
   installMap: (bsp) => call('installMap', bsp),
   removeMap: (bsp) => call('removeMap', bsp),
   onMapProgress: (fn) => on('mapProgress', fn),
+  // 0.2.11. One map's state for a Download button ({installed, installing, pct, error});
+  // Settings → Installed maps (largest first, ENW's own installs only); remove several.
+  // `onMapState` fires when an install starts or ends, or a map is removed.
+  mapState: (bsp) => call('mapState', bsp),
+  installedMaps: () => call('installedMaps'),
+  removeMaps: (list) => call('removeMaps', list),
+  onMapState: (fn) => on('mapState', fn),
   installViaSteam: () => call('installViaSteam'),
   getOnSteam: () => call('getOnSteam'),
 
@@ -73,6 +80,10 @@ contextBridge.exposeInMainWorld('enw', {
   updateStatus: () => call('updateStatus'),
   checkForUpdates: () => call('checkForUpdates'),
   restartAndUpdate: () => call('restartAndUpdate'),
+  // 0.2.11, the nav chip: the launch-time check finds it, Update now downloads it,
+  // Later hides the chip until the next launch (`later: true` in the status).
+  updateNow: () => call('updateNow'),
+  updateLater: () => call('updateLater'),
   onUpdateStatus: (fn) => on('update_status', fn),
 
   // "Never mid-something": the site says when it is busy, and asks for a refresh

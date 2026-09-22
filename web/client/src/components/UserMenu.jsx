@@ -127,6 +127,9 @@ export default function UserMenu() {
               {launcher.updateReady && (
                 <button className="um-item" role="menuitem" onClick={() => { setOpen(false); enw.restartAndUpdate().catch(() => {}) }}>Restart to update</button>
               )}
+              {launcher.updateAvailable && enw.updateNow && (
+                <button className="um-item" role="menuitem" onClick={() => { setOpen(false); enw.updateNow().catch(() => {}) }}>Update now</button>
+              )}
               <button className="um-item" role="menuitem" onClick={() => openScreen('settings')}>Launcher settings</button>
             </>
           )}

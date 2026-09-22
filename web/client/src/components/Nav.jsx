@@ -5,6 +5,7 @@ import { Lockup } from './Bits'
 import SearchBar from './SearchBar'
 import UserMenu from './UserMenu'
 import WindowControls from './WindowControls'
+import UpdateChip from './UpdateChip'
 
 // Movement's nav bar (`movement-client/src/components/Nav.jsx`): search top-left where the
 // wordmark would be, the links centred and growing outward from the middle, the account in
@@ -128,6 +129,8 @@ export default function Nav() {
           {isMod && <NavLink to="/admin" className={({ isActive }) => 'mv-navlink' + (isActive ? ' active' : '')}>Admin</NavLink>}
         </div>
         <div className="mv-nav-right">
+          {/* Inside the launcher only: "Update 0.2.11 · Update now / Restart now / Later". */}
+          <UpdateChip />
           <DiscordNavLink />
           <UserMenu />
           {/* Inside the launcher only: the window is frameless and this bar is its title

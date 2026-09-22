@@ -989,6 +989,7 @@ function fakeUpdater() {
   u.setFeedURL = (o) => u.calls.push(['setFeedURL', o])
   u.checkForUpdates = async () => { u.calls.push(['checkForUpdates']); return u.result ?? { updateInfo: {} } }
   u.quitAndInstall = (...a) => u.calls.push(['quitAndInstall', ...a])
+  u.downloadUpdate = async () => { u.calls.push(['downloadUpdate']); return [] }
   return u
 }
 const mk = (over = {}) => {
@@ -1062,12 +1063,19 @@ await test('a check runs to Ready to install, pushes each state, and logs every 
 
   await up.check()
   fake.emit('update-available', { version: '0.2.3' })
+  // 0.2.11: finding it does not download it; Update now does.
+  assert.equal(fake.autoDownload, false, 'the check must not download by itself')
+  assert.equal(fake.calls.some((c) => c[0] === 'downloadUpdate'), false)
+  up.download()
+  await new Promise((r) => setImmediate(r))
+  assert.ok(fake.calls.some((c) => c[0] === 'downloadUpdate'), 'Update now starts the download')
   fake.emit('download-progress', { percent: 37.4 })
   fake.emit('update-downloaded', { version: '0.2.3' })
 
   assert.deepEqual(seen, [
     'Checking…',
-    'Version 0.2.3 is available — starting the download',
+    'Update 0.2.3 available',
+    'Downloading 0%',
     'Downloading 37%',
     'Ready to install',
   ])
@@ -1921,6 +1929,110 @@ await test('0.2.10: the shell strip is hidden while the site shows (its drag reg
   assert.match(main, /function showSite\(visible\)[\s\S]{0,200}shellStrip\(!visible\)/)
   assert.match(css, /html\.site-shown #chrome \{ display: none; \}/)
   assert.match(html, /<html lang="en" class="site-shown">/)
+})
+
+// ------------------------------------------------------------------ 0.2.11 --
+group('0.2.11: update chip, installed maps, Download')
+
+await test('0.2.11: the launch-time check reaches the chip without downloading; Update now, Later, Restart', async () => {
+  const fake = fakeUpdater()
+  const { up } = mk({ loadUpdater: async () => ({ autoUpdater: fake }) })
+  const seen = []
+  up.on('status', (s) => seen.push(s))
+  // attach() only listens: no checkForUpdates, no download.
+  await up.attach()
+  assert.equal(fake.calls.some((c) => c[0] === 'checkForUpdates'), false)
+  // Before anything is found, Update now refuses rather than guessing.
+  assert.match(up.download().refused || '', /no update has been found/)
+  // The silent lane's check fires on the shared updater; the chip's machine hears it.
+  fake.emit('update-available', { version: '0.2.11' })
+  assert.equal(up.status().phase, 'available')
+  assert.equal(up.status().available, '0.2.11')
+  assert.equal(up.status().message, 'Update 0.2.11 available')
+  assert.equal(fake.calls.some((c) => c[0] === 'downloadUpdate'), false)
+  // Later hides it for the session and is in the status the page reads.
+  assert.equal(up.later().later, true)
+  up.download()
+  await new Promise((r) => setImmediate(r))
+  assert.equal(up.status().later, false, 'pressing Update now after Later brings the chip back')
+  assert.equal(fake.calls.filter((c) => c[0] === 'downloadUpdate').length, 1)
+  up.download() // a double press is still one download
+  await new Promise((r) => setImmediate(r))
+  assert.equal(fake.calls.filter((c) => c[0] === 'downloadUpdate').length, 1)
+  fake.emit('update-downloaded', { version: '0.2.11' })
+  assert.equal(up.status().canInstall, true)
+  assert.equal(up.quitAndInstall().ok, true)
+})
+
+await test('0.2.11: the dev fake updater walks every phase (the screenshots were driven by it)', async () => {
+  const f = updatecheck.fakeUpdater('9.9.9', { stepMs: 1 })
+  const { up } = mk({ loadUpdater: async () => ({ autoUpdater: f }) })
+  const phases = new Set()
+  up.on('status', (s) => phases.add(s.phase))
+  await up.check()
+  await new Promise((r) => setTimeout(r, 20))
+  assert.equal(up.status().phase, 'available')
+  up.download()
+  await new Promise((r) => setTimeout(r, 200))
+  assert.deepEqual([...phases], ['checking', 'available', 'downloading', 'ready'])
+})
+
+await test('0.2.11: the silent lane finds an update but leaves the download to the player', async () => {
+  const { AutoUpdater } = await import('../src/main/autoupdate.js')
+  const u = new AutoUpdater({ feedUrl: 'https://example.invalid', currentVersion: '0.2.10', gate: new updates.IdleGate(), backgroundDownload: false })
+  assert.equal(u.backgroundDownload, false)
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  assert.match(main, /backgroundDownload: false/)
+  assert.match(main, /updateCheck\(\)\.attach\(\)[\s\S]{0,80}state\.updater\.start\(\)/, 'the chip listens before the launch check runs')
+  assert.match(main, /FAKE_UPDATE = !app\.isPackaged &&/, 'the fake updater can never run in a packaged app')
+  assert.match(main, /handle\('restartAndUpdate'[\s\S]{0,200}blockers\.has\('game'\)/, 'Restart now refuses mid-game')
+})
+
+await test('0.2.11: installed maps are ENW\'s own installs only, measured on disk, largest first', async () => {
+  const lib = await import('../src/main/library.js')
+  const mk1 = (bsp, bytes, record = true) => {
+    const d = lib.installDir(bsp)
+    fs.mkdirSync(path.join(d, 'sub'), { recursive: true })
+    fs.writeFileSync(path.join(d, 'mod.ff'), Buffer.alloc(bytes))
+    fs.writeFileSync(path.join(d, 'sub', 'x.iwd'), Buffer.alloc(10))
+    if (record) fs.writeFileSync(path.join(d, '.enw-installed.json'), JSON.stringify({ bsp, title: bsp.toUpperCase(), files: [{ rel: 'mod.ff', size: bytes }, { rel: 'sub\\x.iwd', size: 10 }], bytes: bytes + 10 }))
+  }
+  mk1('zm_small_0211', 1000)
+  mk1('zm_big_0211', 50000)
+  mk1('zm_theirs_0211', 99999, false) // the player's own folder: never listed
+  const list = lib.installedList().filter((m) => m.bsp.endsWith('_0211'))
+  assert.deepEqual(list.map((m) => m.bsp), ['zm_big_0211', 'zm_small_0211'])
+  assert.ok(list[0].bytes >= 50010, 'size is what is on disk, sub-folders included')
+  assert.equal(list[0].title, 'ZM_BIG_0211')
+  // Removal takes only what we recorded, and the list follows.
+  lib.uninstall('zm_small_0211')
+  assert.deepEqual(lib.installedList().filter((m) => m.bsp.endsWith('_0211')).map((m) => m.bsp), ['zm_big_0211'])
+  assert.ok(fs.existsSync(path.join(lib.installDir('zm_theirs_0211'), 'mod.ff')), 'the player\'s folder is untouched')
+  assert.match(lib.uninstall('zm_theirs_0211').join(' '), /yours/)
+})
+
+await test('0.2.11: the bridge carries the new calls, and the fallback page draws the update chip', () => {
+  const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  for (const n of ['updateNow', 'updateLater', 'mapState', 'installedMaps', 'removeMaps']) {
+    assert.match(pre, new RegExp(`${n}: \\(`), `preload: ${n}`)
+    assert.match(main, new RegExp(`handle\\('${n}'`), `main: ${n}`)
+  }
+  assert.match(pre, /onMapState: \(fn\) => on\('mapState', fn\)/)
+  const ph = String(fs.readFileSync(new URL('../src/renderer/placeholder.html', import.meta.url)))
+  for (const w of ['Update now', 'Restart now', 'Later', 'enw.updateNow()', 'enw.updateLater()', 'enw.restartAndUpdate()', 'onUpdateStatus']) {
+    assert.ok(ph.includes(w), `placeholder.html: ${w}`)
+  }
+  // removeMaps refuses a downloading map and anything mid-game.
+  assert.match(main, /still downloading/)
+  assert.match(main, /a game is running/)
+})
+
+await test('0.2.11: the version is 0.2.11 and npm test runs both suites', () => {
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.equal(pkg.version, '0.2.11')
+  assert.match(pkg.scripts.test, /run-all\.js/)
+  assert.match(pkg.scripts.test, /waw-settings\.js/)
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

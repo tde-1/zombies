@@ -16,6 +16,17 @@
   .lockup { position:absolute; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:flex-start; line-height:1 }
   .lockup .enw { font-weight:800; font-size:17px; letter-spacing:.08em }
   .lockup .zm { font-weight:600; font-size:7.5px; letter-spacing:.42em; margin-top:2px }
+  /* 0.2.11: the update chip, the same one the site's nav draws (web/client UpdateChip.jsx),
+     so an update is reachable when the site is not. */
+  .upd { margin-left:auto; margin-right:10px; display:none; align-items:center; gap:8px; height:34px; padding:0 6px 0 14px; border-radius:999px; background:var(--panel-2); font-size:12.5px; font-weight:600; -webkit-app-region:no-drag }
+  .upd .lbl { white-space:nowrap }
+  .upd .bar { width:70px; height:4px; border-radius:99px; background:rgba(255,255,255,.12); overflow:hidden }
+  .upd .bar i { display:block; height:100%; background:var(--text); width:0 }
+  .upd .pct { font:12px Consolas,monospace; color:var(--muted); min-width:34px; text-align:right; margin-right:8px }
+  .upd button { font:inherit; font-size:12px; font-weight:700; border:none; border-radius:999px; padding:5px 12px; cursor:pointer; background:var(--text); color:#161616 }
+  .upd button.ghost { background:transparent; color:var(--muted) }
+  .upd button.ghost:hover { color:var(--text) }
+  .upd + .wc { margin-left:0 }
   .wc { margin-left:auto; display:none; height:100% }
   .wc button { width:46px; height:100%; display:grid; place-items:center; background:transparent; border:none; color:var(--muted); cursor:pointer; transition:background .16s, color .16s }
   .wc button:hover { background:var(--panel-2); color:var(--text) }
@@ -39,6 +50,7 @@
 <body>
 <nav>
   <div class="lockup" aria-label="ENW"><span class="enw">ENW</span></div>
+  <div class="upd" id="upd" role="status" aria-live="polite"></div>
   <div class="wc" id="wc">
     <button id="wcMin" title="Minimise" aria-label="Minimise"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
     <button id="wcMax" title="Maximise" aria-label="Maximise"><svg viewBox="0 0 10 10" width="10" height="10"><rect x=".5" y=".5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
@@ -76,6 +88,35 @@
     document.getElementById('wcMin').onclick = () => enw.win.minimize()
     document.getElementById('wcMax').onclick = () => enw.win.maximize()
     document.getElementById('wcClose').onclick = () => enw.win.close()
+  }
+  // The update chip: same phases and words as the site's (UpdateChip.jsx).
+  const upd = document.getElementById('upd')
+  const paint = (u) => {
+    upd.replaceChildren()
+    const shown = u && !u.later && ((u.available && u.phase === 'available') || u.phase === 'downloading' || u.phase === 'ready' ||
+      (u.available && (u.phase === 'failed' || u.phase === 'unreachable')))
+    upd.style.display = shown ? 'flex' : 'none'
+    if (!shown) return
+    const v = u.downloaded || u.available || ''
+    const add = (tag, cls, text, fn) => { const n = document.createElement(tag); if (cls) n.className = cls; n.textContent = text; if (fn) n.onclick = fn; upd.append(n); return n }
+    if (u.phase === 'downloading') {
+      const pct = Math.max(0, Math.min(100, Math.round(u.percent || 0)))
+      add('span', 'lbl', 'Updating')
+      const bar = add('span', 'bar', ''); const fill = document.createElement('i'); fill.style.width = pct + '%'; bar.append(fill)
+      add('span', 'pct', pct + '%')
+    } else if (u.phase === 'ready') {
+      add('span', 'lbl', 'Update ' + v + ' ready')
+      add('button', '', 'Restart now', () => enw.restartAndUpdate().catch(() => {}))
+      add('button', 'ghost', 'Later', () => enw.updateLater().then(paint).catch(() => {}))
+    } else {
+      add('span', 'lbl', u.phase === 'available' ? 'Update ' + v : 'Update failed')
+      add('button', '', u.phase === 'available' ? 'Update now' : 'Retry', () => enw.updateNow().then(paint).catch(() => {}))
+      add('button', 'ghost', 'Later', () => enw.updateLater().then(paint).catch(() => {}))
+    }
+  }
+  if (enw && enw.updateStatus && enw.updateNow) {
+    enw.updateStatus().then(paint).catch(() => {})
+    enw.onUpdateStatus(paint)
   }
   document.getElementById('retry').onclick = () => enw && enw.reloadSite()
   document.getElementById('settings').onclick = () => enw && enw.openScreen && enw.openScreen('settings')

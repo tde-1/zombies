@@ -5,6 +5,7 @@ import { useRail } from '../rail'
 import { useSession } from '../session'
 import { prettyTitle, mapHue } from '../data/mapText'
 import { NotPlayable } from './Bits'
+import { DlBar, CardDownload } from './MapDownload'
 
 // ── The party rail ─────────────────────────────────────────────────────────
 //
@@ -123,7 +124,8 @@ function Roster({ R }) {
 // that decides whether Play can go; then the ready state during a ready check; then the role.
 function roleOf(m, p, prog) {
   if (prog && prog.state === 'failed') return 'download failed'
-  if (prog && prog.state === 'downloading') return prog.pct == null ? 'downloading' : `downloading ${prog.pct}%`
+  // ~~`downloading ${pct}%` as text~~ — launcher 0.2.12: an object, drawn as bar + % by PlayerCard.
+  if (prog && prog.state === 'downloading') return { downloading: true, pct: prog.pct == null ? null : prog.pct }
   if (p.state === 'ready-check') return m.ready ? 'ready' : 'not ready'
   if (prog && prog.state === 'installed') return m.steam_id === p.leader ? 'host · has the map' : 'has the map'
   return m.steam_id === p.leader ? 'host' : 'in party'
@@ -131,6 +133,8 @@ function roleOf(m, p, prog) {
 
 function PlayerCard({ user, role, host, onRemove, removeLabel }) {
   const name = nameOf(user)
+  // 0.2.11 (B: "a bar ... before the percentage"): a download draws the bar, then the %.
+  const dl = typeof role === 'object' && role && role.downloading
   return (
     <div className={'pcard' + (host ? ' host' : '')}>
       <Link to={profilePath(user)} className="pcard-link" title={`View ${name}'s profile`}>
@@ -138,7 +142,10 @@ function PlayerCard({ user, role, host, onRemove, removeLabel }) {
           <Avatar user={user} />
           <span className="pdot on" />
         </span>
-        <div style={{ minWidth: 0 }}><div className="pname">{name}</div><div className="prole">{role}</div></div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="pname">{name}</div>
+          <div className="prole">{dl ? <DlBar pct={role.pct} className="in-row" /> : role}</div>
+        </div>
       </Link>
       {onRemove && (
         <button className="pcard-x" title={removeLabel || "Kick"}
@@ -462,6 +469,8 @@ function ServerCard({ R }) {
           )}
           <div className="prail-live-name" title={serverName}>{map ? serverName : 'Pick a map'}</div>
           <div className="prail-live-mode">{statusLabel}</div>
+          {/* Launcher 0.2.12: Download on its own, small, so the map is ready before Play. */}
+          {map && playable && (state === 'forming' || state === 'ready-check') && <CardDownload mapKey={map.key} />}
           {booting && (
             <div className="prail-live-booting"><span className="spinner" /> {state === 'launching' ? 'Starting…' : 'Connecting…'}</div>
           )}

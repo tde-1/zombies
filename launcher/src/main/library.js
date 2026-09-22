@@ -450,6 +450,47 @@ export function installedMaps() {
   return out
 }
 
+// What a folder weighs on disk. Links are not followed (dev-box residue links into the
+// archive, and a link's target is not ours to count), and an unreadable entry counts 0.
+export function dirBytes(dir) {
+  let n = 0
+  let ents = []
+  try { ents = fs.readdirSync(dir, { withFileTypes: true }) } catch { return 0 }
+  for (const e of ents) {
+    const p = path.join(dir, e.name)
+    if (e.isSymbolicLink()) continue
+    if (e.isDirectory()) n += dirBytes(p)
+    else { try { n += fs.statSync(p).size } catch {} }
+  }
+  return n
+}
+
+// Settings → Installed maps (0.2.11, B: "a list of maps you have installed ... how many
+// gigabytes it is ... select them and uninstall them. Sort by size."). ONLY the maps ENW
+// installed — a folder with our record in it under P.maps, which is our own
+// `%LOCALAPPDATA%\ENWZombies` tree. The player's own World at War mods are in a
+// different folder that nothing here reads, and a folder in ours without our record
+// (`ownership() === 'theirs'`) is not listed, so it can never be offered for removal.
+export function installedList() {
+  const out = []
+  for (const rec of installedMaps()) {
+    if (!rec || !rec.bsp || isStock(rec.bsp)) continue
+    if (ownership(rec.bsp).state !== 'ours') continue
+    const bytes = dirBytes(installDir(rec.bsp))
+    out.push({
+      bsp: rec.bsp,
+      title: rec.title || rec.bsp,
+      author: rec.author || null,
+      installedAt: rec.installedAt || null,
+      bytes,
+      recordBytes: rec.bytes || null,
+      files: (rec.files || []).length,
+    })
+  }
+  out.sort((a, b) => b.bytes - a.bytes || a.title.localeCompare(b.title))
+  return out
+}
+
 // Copy a map into the ENW library, verifying every file against the hash the archive
 // recorded, then expose it to the engine as <fs_homepath>\mods\<bsp>.
 export function install(bsp, { homeDir = P.home, onProgress = () => {}, verify = true, force = false } = {}) {
