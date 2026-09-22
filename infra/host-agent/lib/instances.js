@@ -152,8 +152,30 @@ export class Instance extends EventEmitter {
    *                             loop never starts (dedi.md §0).
    */
   gameEnv() {
-    return { ENW_RAW_SOCKETS: '1', ENW_DEDI_SUPPRESS_MAPSUMMARY: '1' }
+    return {
+      ENW_RAW_SOCKETS: '1', ENW_DEDI_SUPPRESS_MAPSUMMARY: '1',
+      // Where this instance's Demonware game socket asks to go (dedi DLL lobby_port.cpp,
+      // dedi.md §19): 3074 for slot 0, 3075 for slot 1, ... The engine probes 100 ports up
+      // from whatever it is given, so this is not what makes a third instance possible; it
+      // makes each instance's port its own, so two booting together never race for one.
+      // The box firewall opens 3074-3079. An older DLL ignores it.
+      ENW_LOBBY_PORT: String(3074 + this.slot()),
+    }
   }
+
+  /**
+   * This instance's SLOT: 0 for the first game port, 1 for the next, ... Derived from the
+   * port, which the manager hands out lowest-free-first and takes back on remove, so it is
+   * stable for the life of the instance and reused by the next one — unlike the id, whose
+   * counter only ever grows.
+   */
+  slot() {
+    const n = Math.floor((Number(this.port) - Number(this.mgr.basePort)) / 2)
+    return Number.isFinite(n) && n >= 0 ? n : 0
+  }
+
+  /** `inst-01` for slot 0: the name of the per-slot game copy and homepath on a box. */
+  slotName() { return `inst-${String(this.slot() + 1).padStart(2, '0')}` }
 
   /**
    * Wine mode: where THIS instance's game copy and homepath live. `{id}` in either
@@ -163,8 +185,12 @@ export class Instance extends EventEmitter {
    */
   winePaths() {
     const w = this.mgr.wine
-    const sub = (s) => String(s).replace(/\{id\}/g, this.id)
-    return { gameDir: sub(w.gameDir), homeWin: sub(w.homeWin), perInstance: /\{id\}/.test(w.gameDir) }
+    // `{slot}` (inst-01, inst-02, ... by game port) is what a box should use: `{id}` grows
+    // with every boot of the agent's life, and a box only has so many copies. MEASURED
+    // 2026-09-22 23:27-23:32: after four boots one agent was at inst-05..inst-24 and every
+    // lease failed with `no game copy at .../waw-inst-05` until the agent was restarted.
+    const sub = (s) => String(s).replace(/\{id\}/g, this.id).replace(/\{slot\}/g, this.slotName())
+    return { gameDir: sub(w.gameDir), homeWin: sub(w.homeWin), perInstance: /\{id\}|\{slot\}/.test(w.gameDir) }
   }
 
   spawnArgs() {
@@ -228,7 +254,7 @@ export class Instance extends EventEmitter {
           (i) => i !== this && i.kind === 'game' && (i.state === 'starting' || i.state === 'running'))
         if (otherGame && !this.mgr.dryRun) {
           this.state = 'failed'
-          this.failReason = `only one real game per box: ${otherGame.id} already holds game copy "${gameDir}". Put {id} in --wine-game-dir and --wine-homepath to run several.`
+          this.failReason = `only one real game per box: ${otherGame.id} already holds game copy "${gameDir}". Put {slot} in --wine-game-dir and --wine-homepath to run several.`
           this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
         }
       }
@@ -248,8 +274,8 @@ export class Instance extends EventEmitter {
       //
       // launch.ps1 deletes it only when the PID inside is dead and REFUSES when it is
       // live, because on Windows that marker is a real single-instance interlock. On
-      // this box it is not: the interlock is the lobby layer's UDP 3074/3075 pair
-      // (vps.md §15), every instance has its own game copy and fs_homepath, and the
+      // this box it is not: every instance has its own lobby port (ENW_LOBBY_PORT,
+      // dedi.md §19), its own game copy and fs_homepath, and the
       // marker is one shared file in one Wine prefix that instance two would always
       // find live. So here it is removed unconditionally. DO NOT copy this to the
       // Windows path.
@@ -259,7 +285,7 @@ export class Instance extends EventEmitter {
         try { if (fs.existsSync(marker)) { fs.unlinkSync(marker); this.log.debug(`cleared the stale safe-mode marker ${marker}`) } } catch (e) { this.log.warn(`could not clear ${marker}: ${e.message}`) }
       }
       try { fs.mkdirSync(path.join(this.mgr.wine.prefix, 'drive_c', ...homeWin.replace(/^[A-Za-z]:\\/, '').split('\\'), 'main'), { recursive: true }) } catch { /* best effort */ }
-      this.log.info(`wine: ${gameDir} -> fs_homepath ${homeWin}`)
+      this.log.info(`wine: ${gameDir} -> fs_homepath ${homeWin} (slot ${this.slot()}, lobby port ${3074 + this.slot()})`)
     } else if (this.kind === 'game') {
       // ONE REAL GAME PER BOX, and say so out loud.
       //

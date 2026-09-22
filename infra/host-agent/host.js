@@ -37,6 +37,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // the box hands out a second and weapon duplication is a ban on every board.
 const LIMITED = new Set(['wunderwaffe', 'wunderwaffe_dg2', 'm2_flamethrower', 'flamethrower'])
 const REPO = path.resolve(__dirname, '..', '..')
+// The longest one game's boot may hold the next one back (see boot()). A map loads in
+// 5-10 s on the box; a boot that has not loaded in 90 s is not going to.
+const BOOT_GATE_MS = 90_000
 const a = parseArgs(process.argv.slice(2))
 if (a.debug) setLogLevel('debug')
 const log = makeLog('host')
@@ -81,8 +84,10 @@ const cfg = {
         prefix: a['wine-prefix'] || '/home/waw/pfx',
         display: a['wine-display'] || ':99',
         debug: a['wine-debug'] || '-all',
-        gameDir: a['wine-game-dir'] || '/home/waw/pfx/drive_c/zdev/waw-{id}',
-        homeWin: a['wine-homepath'] || 'C:\\zdev\\homes\\{id}',
+        // {slot}, not {id}: inst-01.. by game port, so a long-lived agent reuses its copies
+        // (lib/instances.js winePaths; the {id} counter only grows).
+        gameDir: a['wine-game-dir'] || '/home/waw/pfx/drive_c/zdev/waw-{slot}',
+        homeWin: a['wine-homepath'] || 'C:\\zdev\\homes\\{slot}',
         maxFps: Number(a['wine-maxfps'] ?? 60),
       }
     : null,
@@ -882,8 +887,29 @@ class HostAgent {
       }
     })
     inst.on('failed', (why) => { game.log.error(`instance failed: ${why}`); if (!game.finished) game.referee.finishGame('instance_failed') })
-    const ok = inst.start()
-    if (ok) log.info(`booted ${inst.id} match=${game.matchId} kind=${inst.kind} map=${opts.map || '-'}`)
+    // ONE REAL GAME BOOTS AT A TIME. vps.md §15: `--boot 4` in one tick got one instance to
+    // a loaded map; started one after another, each waited on, they came up. So a game
+    // whose predecessor is still loading waits for that one's `map_loaded` (or its end, or
+    // BOOT_GATE_MS) before its process starts. Sims are not gated: they load nothing.
+    const go = () => {
+      if (game.finished) return false
+      const ok = inst.start()
+      if (ok) log.info(`booted ${inst.id} match=${game.matchId} kind=${inst.kind} map=${opts.map || '-'}`)
+      return ok
+    }
+    if (inst.kind !== 'game') { go(); return game }
+    const settled = new Promise((resolve) => {
+      const t = setTimeout(resolve, BOOT_GATE_MS); t.unref?.()
+      game.once('map_loaded', resolve)
+      game.once('finished', resolve)
+      inst.once('failed', resolve)
+      inst.once('exit', resolve)
+    })
+    if (this.bootsPending > 0) log.info(`${inst.id} waits for the game booting before it to load its map (one game boots at a time)`)
+    this.bootsPending = (this.bootsPending || 0) + 1
+    this.bootGate = (this.bootGate || Promise.resolve())
+      .then(() => (go() ? settled : null))
+      .finally(() => { this.bootsPending-- })
     return game
   }
 
