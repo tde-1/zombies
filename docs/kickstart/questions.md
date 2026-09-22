@@ -532,3 +532,35 @@ What exactly ends "closed testing"? Proposed: the moment the site, the launcher 
 replay link is reachable by anyone outside the approved seven (i.e. the gate password is removed
 or shared publicly). Every "Before public" item (ip-posture §9) must be ticked first. Also: who
 receives legal mail (`legal@enw.gg`?) and may we register a US DMCA agent (small fee, rule 8)?
+
+## Q-id-1 (2026-09-22) — one ENW account store, or mirrored rules?
+
+**For B.** You asked for everyone to have *the exact same* ENW username on Zombies, Movement and
+drops.ws. Today Zombies can only get close, and the rest needs one decision from you.
+
+**What exists.** drops.ws is the name authority; Movement is a mirror of it
+(`CSGO-Matchmaker/server/lib/dropsNames.js`). Movement claims and reads names over drops.ws's
+internal API (`GET /internal/name?steam_id=`, `POST /internal/name`, `GET /internal/name/check`),
+authenticated by a shared secret (`x-internal-secret`). Zombies does not hold that secret.
+Movement also has a **public** read (`GET movement.enw.gg/api/players/<id>/profile`), which Zombies
+now uses to *offer* a player their Movement name, but it cannot say whether that name is the ENW
+one or a Steam persona.
+
+**What Zombies does now (mirrored rules, web.md §13).** The same validation, wording, 754-term
+blocklist and case-insensitive uniqueness as drops.ws, copied, set once. What mirroring cannot do:
+see drops.ws's reservations (a name held for someone's 14-day revert window) or staff locks, claim
+the name on drops.ws, or pick up a rename made there. So two people *could* end up holding the same
+name on the two sides.
+
+**The choice.**
+
+* **(a) Shared store — recommended.** Give the Zombies site the drops.ws internal URL and a secret
+  (ideally its own, scoped to the name endpoints). `lib/enw.js` already speaks that contract; the
+  picker would then claim on drops.ws exactly as Movement does, and existing Zombies names get
+  claimed at next sign-in (Movement's `syncOnLogin` migration). One name, everywhere, for real.
+  Cost: a Zombies box holds a credential into drops.ws, which the design has so far avoided
+  (99 §0.2). It is money-free.
+* **(b) Mirrored rules, as now.** No credential; names match only when players pick the same
+  thing, and the blocklist copy has to be refreshed by hand when drops.ws edits it.
+
+**Assumed until you answer:** (b). Nothing needs undoing to switch to (a).

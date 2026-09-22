@@ -74,7 +74,9 @@ from `npm run seed`); the site's Ed25519 invite key is generated on first boot i
 |---|---|---|
 | `PORT` / `ZM_PORT` | 3200 | |
 | `ZM_HOST` | 127.0.0.1 | bound to loopback; nothing is exposed |
-| `ZM_AUTH` | `mock` | `steam` switches to real Steam OpenID (needs the two below) |
+| ~~`ZM_AUTH`~~ | — | **removed 2026-09-22** (§13): Steam OpenID is the only sign-in, on every box |
+| `ZM_TEST_LOGIN` | unset | `1` registers the test-only `POST /auth/test-login` for `npm test`. Loopback only; the server **refuses to start** with it and `NODE_ENV=production` (§13) |
+| `ZM_MOVEMENT_URL` | `https://movement.enw.gg` | where the picker reads a player's Movement name from (public, read-only); `off` disables it (the tests do) |
 | `STEAM_API_KEY` | — | **B's to obtain.** Without it the Steam path stays off |
 | `ZM_PUBLIC_URL` | — | the OpenID realm/return origin, e.g. `https://zombies.enw.gg` |
 | `ZM_ENW_BASE` | — | the ENW name/VIP API base. **Unset = no request leaves this machine** |
@@ -1604,3 +1606,121 @@ the database.
 Read [`ip-posture.md`](ip-posture.md) before serving anything new: no Activision asset is served
 by the site before public (§4 table); `/mapdata` stock exports are a testing-only carve-out (§5);
 footer disclaimer and per-map "not made or supported by Activision" line are on the Before-public list (§9).
+
+## 13. 2026-09-22 (evening): Steam sign-in and an ENW username, and nothing else
+
+B: *"Remove all the dev logins and all the fake logins that don't exist any more. To be a user you
+have to sign in with Steam and you have to have an ENW username, and everything you set on this
+version links to your ENW account. Everyone should have the exact same ENW username … using the
+design conventions set by drops.ws and ENW Movement."* Branch `web-identity`.
+
+### 13a. What went
+
+| Gone | Where it was | What replaced it |
+|---|---|---|
+| The mock provider: `GET/POST /auth/mock`, the page listing every account, "type any SteamID" | `routes/auth.js` | nothing. `/auth/mock` is a 404 on every box |
+| `ZM_AUTH` (whose default was **`mock`**), `ZM_ALLOW_MOCK`, `mockAllowed()`, "first account on an empty site is the admin" | `routes/auth.js` | Steam OpenID always. With `ZM_PUBLIC_URL` unset the return origin is the process's own `http://127.0.0.1:<port>`, so a dev box signs in with real Steam too |
+| "Sign in (dev)" buttons, `SIGN_IN = '/auth/mock'` | `client/src/api.js`, `UserMenu.jsx`, `Home.jsx`, the `index.js` placeholder page | `/auth/steam` |
+| The launcher's fallback "sign-in" as whatever Steam account this PC is logged into, named after its persona, with no site involved | `launcher/src/main/main.js` `signIn` | an error saying the site cannot do the round trip. The loopback round trip (launcher.md) is unchanged |
+| `users.pub().name` falling back to `users.username` (the Steam persona); `resolve()` matching personas; the same fallback in `badges.js`, `feed.js`, `localMatches.js` | `lib/users.js` et al. | `name = enw_name`, else the bare SteamID (a row nobody has named: a verified player who never opened the site). `username` is off the public projection |
+
+**The test-only hook.** `npm test` spawns real servers and signs in as several players over HTTP.
+`ZM_TEST_LOGIN=1` registers **`POST /auth/test-login`** `{steam_id}` (form or JSON), which does what a
+verified Steam return does (`users.ensure`, the session, finish an open launcher flow) and nothing
+else: no name, no approval, no admin, no GET, no page. Three locks: the server **refuses to start**
+with `ZM_TEST_LOGIN=1` and `NODE_ENV=production` (tested); the route does not exist without the var
+(tested: 404 on a Steam-only instance, both verbs); loopback callers only. `infra/site.env` and
+`keepalive.ps1` must never carry it. `launcher/test/slice.js` and `web/tools/local-run.js` use it,
+so they need a site started with it.
+
+### 13b. The ENW username: the rules are the authority's, verbatim
+
+| Rule | Source (cited in `lib/names.js`) | Zombies |
+|---|---|---|
+| 3–20 chars, `[A-Za-z0-9_-]`, trimmed first | drops.ws `csgo-server/src/utils/usernameRules.js:9-20`; Movement `CSGO-Matchmaker/server/lib/dropsNames.js:60-68` | same |
+| No leading `YYYY-MM-DD` ("Invalid username") | `usernameRules.js:22`; `dropsNames.js:69` | **was missing**, added |
+| Not all digits ("Usernames cannot be only numbers") | `usernameRules.js:29`; `dropsNames.js:70` | same |
+| Wording of every refusal | the strings above, and drops.ws `src/routes/auth.js:134-141` for taken/blocked | **was our own** ("Your username must be…", "That username is reserved"); now theirs character for character. The picker's verdict lines are Movement's client's (`movement-client/src/pages/UsernameSetup.jsx:30-42`) |
+| Static blocklist: 754 terms, exact/contains, leet folding, allowlist | drops.ws `src/utils/usernameBlocklist.js` + `src/data/reserved-usernames.csv`, `username-allowlist.txt` (4a0fa29) | **copied** to `web/server/lib/usernames/` (a port of the matcher, the two data files byte for byte). Replaces our 11-word reserved list, which only added `server` and `unknownsoldier` to what drops.ws already refuses; dropped, so no name legal on drops.ws is refused here |
+| Unique, case-insensitive | drops.ws NOCASE index on `players.site_username` | `idx_users_enw_name` NOCASE on `enw_name`. **No longer also against `username`** (a persona is nobody's name now) |
+| Set once; renames elsewhere | Movement `server/routes/auth.js:198-229` (409 "You already have a username"); drops.ws renames behind VIP + 14-day cooldown + revert window (`src/routes/auth.js:164`, `src/db/database.js:1095`) | set once; an admin rename (`POST /api/admin/player/:who/username`), which now also passes the blocklist. **No cooldown here** because there is no self-serve rename to cool down, the same as Movement |
+| Reservations (revert windows), staff name locks | drops.ws `username_reservations`, `players.username_locked` | **not mirrorable** without drops.ws's data: a name held for somebody's revert window reads as free here. Q-id-1 |
+
+`names.check()` answers in drops.ws's reason vocabulary (`ok | invalid | blocked | taken`), in
+drops.ws's order (shape, blocklist, holder). Note: "Dexter" is on drops.ws's list (a CS pro's
+handle), so the demo seed's Dexter could not pick it; the seven real names are all clear.
+
+### 13c. The gate
+
+* **Client** (`App.jsx` `NameGate`): signed in with `needs_name` → `pages/UsernameSetup.jsx` (a port
+  of Movement's) replaces the routes, **ahead of the approval wall**, exactly Movement's order. The
+  nav stays because in the launcher it is the title bar; the chat dock is hidden.
+* **Server** (`middleware/auth.js`): every guard that means "a user" (`requireUser`,
+  `requireApproved`, `requireMod/Admin/Archivist`) now means a *named* user and answers
+  `403 {error:'Choose your ENW username first', needs_name:true}`. `requireSignedIn` is the one
+  exception, for `/api/me/username`, `/api/me/username/check`, `/api/me/username/suggest` and
+  `/api/me/delete`. The socket's `chat` refuses a nameless sender. So everything a user sets
+  (settings, party, the lease and its invite token `n`, comments, results) hangs off a SteamID row
+  that has an ENW name.
+* **Approvals are untouched**: the seven-account allowlist is still the beta gate on top
+  (`requireApproved`), checked after the name.
+* **Launcher**: `/auth/launcher/exchange` and `/api/launcher/hello` carry `needs_name`; the launcher
+  stores no name while it is true (it used to store `you.name`, which for a nameless row would have
+  been the SteamID) and re-reads `hello` before every launch (`sessionWithFreshName()`), so
+  `+set name` is the ENW username the moment one exists.
+
+### 13d. Compatibility with Movement: the public read, and what it cannot do
+
+Movement **does** expose a public read by SteamID: `GET https://movement.enw.gg/api/players/<id>/profile`
+(`server/routes/players.js:93`, on the movement host's `MOVEMENT_PUBLIC` list, `server/index.js:464-480`).
+No session, no credentials. `lib/movementName.js` reads it (4 s timeout, 1 h cache; `ZM_MOVEMENT_URL=off`
+disables it and the tests do) and the picker **offers** it: "On ENW Movement you are **x**", pre-filled
+if it passes our check. **Offered, not adopted**: `user.username` there is `publicUser()`, which is
+the drops.ws name when the account has one and the Steam persona when it does not, and
+`name_source` is not on the public projection. Verifying needs drops.ws `GET /internal/name`, behind
+the shared secret: [`questions.md`](questions.md) **Q-id-1**.
+
+Checked read-only for the seven approved accounts (7 public GETs, 2026-09-22): six identical,
+**one differs in case only**: Zombies `jamie`, Movement `Jamie`. drops.ws treats a re-capitalisation
+as a real change, so this is not the exact same name. `web/tools/align-enw-names.js` reports this
+and, with `--apply`, adopts Movement's casing for case-only differences (different names are only
+reported). **Not run against `web/data`** (rule 7): B's or the coordinator's call.
+
+### 13e. Existing users
+
+All seven live rows already have `enw_name` (`seed-enw-names.js`, earlier today), confirmed on a
+`VACUUM INTO` copy: `myu`, `zeroh`, `jamie`, `stew`, `jacob`, `air`, `toku`. **Nobody on the live site
+sees the picker**, B included, so no migration is needed. `myu` matches Movement exactly.
+
+### 13f. Proof, tests
+
+Private instance on **3431**, a `VACUUM INTO` copy of the live DB in the agent scratchpad,
+`ZM_TEST_LOGIN=1`, and a local stub on 3432 standing in for movement.enw.gg's profile read (two
+invented SteamIDs; `web/data` and 3200 untouched). Headless Edge over CDP:
+
+| Screenshot (`ui/`) | What |
+|---|---|
+| `name-gate-fresh.png` | invented SteamID `76561198999000123` → `/maps` shows only the picker; `/api/me` `needs_name: true`, `name` = the SteamID |
+| `name-gate-short.png`, `-blocked.png`, `-taken.png`, `-digits.png` | Movement's verdicts: "At least 3 characters." / "Not available." (`admin`) / "Taken." (`jamie`) / "Names cannot be only numbers."; the server said `Usernames cannot be only numbers` |
+| `name-gate-available.png`, `name-gate-done.png`, `name-gate-api-me.json` | `fresh-player` → Available → Continue → the site, nav shows `fresh-player`; `/api/me` `{needs_name:false, name:"fresh-player", enw_name:"fresh-player"}` |
+| `name-gate-movement-suggest.png` | a SteamID the stub knows: "On ENW Movement you are fresh-soldier.", pre-filled, Available |
+
+`npm test`: **146/0**: run-all 94 (was 89: Movement's wording table, the blocklist mirror, the
+display name never being the persona, the gate on every guard), local-run 37 (was 33: the fresh
+account forced to the picker, refused settings/lease/GET settings with `needs_name`, the server's
+five refusal sentences + blocked + case-insensitive taken, success reaching `/api/me` and
+`/api/launcher/hello`), sign-in 15 (was 14: the test hook absent on a Steam-only site, no mock
+anywhere, refuses to boot in production). Launcher `npm test` 124/1; the one failure is "this
+checkout must have a client DLL to ship", a build artefact a fresh worktree does not have.
+
+### 13g. Unproven / open
+
+* **A real Steam sign-in landing on the picker.** Agents cannot sign in to Steam. The Steam return
+  path is unchanged except that it no longer has a mock beside it; the first new friend to sign in
+  is the proof.
+* **The launcher changes** (no fallback, `sessionWithFreshName`) are syntax-checked and the launcher
+  suite passes, but no Electron run drove them.
+* **Q-id-1**: reservations and locks on drops.ws are invisible here; a name chosen here is not
+  claimed on drops.ws; Movement's public name cannot be told from a persona.
+* **Needs a client build + restart to go live** (`npm run build`, the keepalive path). Not done here.
+* `jamie` → `Jamie` (13d) awaits a decision.
