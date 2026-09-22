@@ -112,6 +112,12 @@ param(
     # Invite token, passed to the game through the environment (never argv).
     [string]$AuthToken = '',
 
+    # The lease this process serves. The host agent sets ENW_MATCH when it starts an
+    # instance; the referee uses it to refuse an invite token minted for a DIFFERENT
+    # match (referee.md 13). A dev run that mints its own token must pass the same id
+    # here or the token is refused with `wrong_match` -- which is the check working.
+    [string]$MatchId = '',
+
     # Comma-separated hostnames the game may resolve; a leading dot is a suffix
     # match. Activision/Demonware are blocked regardless.
     [string]$AllowedHosts = '.enw.gg',
@@ -595,6 +601,17 @@ try {
     # Per-instance profile (shared/core/components/instance_paths.cpp). The DLL
     # only acts on this when ENW_PRIVATE_PROFILE=1; new-copy.ps1 seeds the tree.
     $env:ENW_INSTANCE_APPDATA = Join-Path $homeDir 'appdata'
+    # The LocalAppData redirect (client-dll/components/enw_localappdata.cpp), which
+    # keeps profiles, saves, the mods list and the engine's own map-exists check out
+    # of the BOX OWNER'S %LOCALAPPDATA%\Activision\CoDWaW. OPT-IN here and not in the
+    # launcher, for one measured reason: the dev copies are running DLLs built before
+    # that component existed, and pointing the mount somewhere the running DLL does
+    # not redirect to makes every custom map fail with Can't find map. Set
+    # ENW_USE_PRIVATE_LOCALAPPDATA=1 once the copy you are launching carries a DLL
+    # from 2026-09-23 or later; mapmount.ps1 reads the same switch.
+    if ( -eq '1') {
+         = Join-Path  'localappdata'
+    } else {  =  }
     if ($PrivateProfile) { $env:ENW_PRIVATE_PROFILE = '1' } else { $env:ENW_PRIVATE_PROFILE = '0' }
     # ENW-only networking (client-dll/components/network.cpp). Activision and
     # Demonware are always blocked; strict mode denies everything else too.
@@ -604,6 +621,8 @@ try {
     # readable by any process on the box and ends up in logs and crash dumps.
     # The DLL reads it once and clears it (client-dll/components/auth_token.cpp).
     if ($AuthToken) { $env:ENW_AUTH_TOKEN = $AuthToken } else { $env:ENW_AUTH_TOKEN = $null }
+    # The lease. Read once at post_load by the referee (server side only).
+    if ($MatchId) { $env:ENW_MATCH = $MatchId } else { $env:ENW_MATCH = $null }
     # The DLL writes <fs_homepath>\main\enw_auth.cfg before the engine starts and
     # deletes it straight after; argv carries only the FILENAME, never the token.
     $env:ENW_FS_HOMEPATH = $homeDir

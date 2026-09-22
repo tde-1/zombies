@@ -1388,3 +1388,209 @@ Two other things this does not do, stated so they are not assumed:
   reads and `scriptvars=no` (§10, §11.2). The roster fix does not change that.
 * **`player_disconnect` has not been observed firing** — `join85`'s client stayed to the end. The
   edge is symmetric with the connect edge that did fire, which is an argument, not a measurement.
+
+## 13. 2026-09-22 — a result that belongs to a Steam account
+
+§12 ended with the half that matters unsolved: the roster had names and no identity, and nothing
+downstream could award XP or a record to it. This section is that half.
+
+### 13.1 The canonical path, decided
+
+**The invite token is the identity, and there is no second source.** `join87` settled the question
+by measurement — a real T4 client's userinfo is `cg_predictItems cl_punkbuster cl_voice rate snaps
+name protocol challenge invited qport bdTicket bdTicketTime`, with no `xuid`, no `steamid` and no
+`guid`. §12.3 left two candidates open, `bdTicket` and `invited`. **Both are dropped**, and for a
+better reason than difficulty: an identity our own site did not issue is an identity we cannot
+check. Decoding Demonware's ticket would give us a number from a dead service with no signature we
+hold a key for; the invite token is signed by us, bound to a match, and short-lived.
+
+Nothing new had to be invented — every piece of this already existed and no two of them had ever
+been joined up:
+
+```
+site      web/server/lib/tokens.js :: issue()   Ed25519 over canonical({v,sid,m,iat,exp,jti,slot?,n?,k?})
+          -> "<payload-b64url>.<sig-b64url>", bound to (sid, m), TTL 5 min
+launcher  launcher/src/main/launch.js :: serveToken -> a one-shot named pipe; ENW_TOKEN_PIPE holds
+          only the pipe's random NAME. Fallbacks: ENW_TOKEN (launcher), ENW_AUTH_TOKEN (dev)
+client    client-dll/components/auth_token.cpp -> writes `setu enw_token "<token>"` into this
+          instance's own main\enw_auth.cfg, +exec'd at boot. `setu` = a USERINFO dvar, so the
+          token rides the connect packet. NEVER on a command line, and cleared out of the
+          environment before any child could inherit it
+server    server/components/referee/referee.cpp -> `\enw_token\` out of client_s.userinfo at the
+          connect edge; parse; bind steamid64 + party slot to the CLIENT SLOT
+host      infra/host-agent/lib/tokens.js :: TokenGuard.admit() verifies the SIGNATURE against the
+          site's public half and answers `auth {slot, allow, reason}`
+```
+
+**The userinfo key is `enw_token`.** (`token` is still read as an alias; nothing writes it.)
+`join87` saw no `enw_token` for the simple reason that **`jointest.ps1` launched the client with no
+token at all** — it is not the launcher, it had no lease, and `auth_token.cpp` correctly does
+nothing when it is offered none. That was never evidence that the token does not arrive; nobody had
+ever passed one. `jointest.ps1 -AuthToken / -MatchId / -LinkHost` exist now so a join run can.
+
+### 13.2 Where it is parsed, and why the server parses something it cannot verify
+
+`parse_token()` in `referee.cpp` base64url-decodes the payload and reads `sid`, `m`, `jti`, `slot`
+and `n`. **It does not verify the signature, and it must not**: there is no Ed25519 in this DLL
+(the core has sha256 and nothing else), and more importantly the site issues and the box only ever
+verifies — a game box that could check a signature is one step from a game box that holds a key,
+and a stolen box must not be able to mint a join for anybody.
+
+So the parse buys the one thing the host cannot do for us: **binding a steamid64 and a party slot
+to a client slot**. Everything else is gated on a marker that says what that id is worth:
+
+| `identity` | means | `steamid` sent? |
+|---|---|---|
+| `none` | no token in userinfo — Play Local, `jointest.ps1` without `-AuthToken` | no |
+| `claimed` | a token was presented and parsed; nothing has checked the signature | on `player_connect` only |
+| `verified` | the host answered `auth allow:true` after a real check | yes, including on `game_over` |
+| `refused` | the host said no, or the game refused it itself | **no**, and `identity_reason` says why |
+
+**An unverified `sid` is safe to read precisely because a forged one cannot survive the host.** The
+signature covers the whole canonical payload, `sid` included, so editing `sid` to somebody else's
+account changes the body and `check()` returns `bad_signature`. The proof of that exact claim is
+`tools/dev/authhost.mjs selftest`, which takes a token the SITE issued, rewrites `sid` in the
+payload, keeps the site's own signature, and watches the BOX's own `check()` refuse it. Both halves
+are the shipping code; neither is a stub.
+
+### 13.3 `auth` was in the protocol since v0 and this side ignored it
+
+`infra/host-agent/host.js :: authPlayer()` answers **every** `player_connect` with
+`auth {slot, allow, reason}`. Nothing in the game had a handler. So every DENY the host has ever
+sent — a forged token, a replayed one, a token for another match, a join with no invite at all on a
+box configured to require one — was read off the socket and dropped, and the client kept playing.
+Same shape of fault as §12.1 and §10.4: a protocol row both sides believed in and one side never
+implemented.
+
+`do_auth()` implements it. `allow:false` refuses the slot; `allow:true` promotes `claimed` to
+`verified` **unless** the reason is `token_check_disabled`, which is what `TokenGuard` answers when
+it holds no site key or is not enforcing. An allow reached without checking anything is not a
+verification and does not get to look like one.
+
+### 13.4 Records safety — what the game refuses on its own
+
+The signature is the host's. These are the game's, need no key, and hold with the link down:
+
+* **single use, per match.** `jti_seen_` maps each token's `jti` to the slot it seated; a second
+  client presenting the same token is `replayed_token`. The host's `TokenGuard` also keeps a jti
+  set, but **per boot** — and, on a warm instance, across matches. This one is cleared on every
+  `reset_for_next_match()`, so match A's invites can never admit anyone to match B.
+* **bound to the lease.** A token whose `m` is not this process's match is `wrong_match`. The match
+  id comes from `ENW_MATCH`, which the host agent sets when it starts an instance.
+* **one account, one slot.** A steamid already seated in another slot is `steamid_already_seated`.
+
+and the shape checks that stop a signed token being *misread* rather than forged: exactly one dot,
+b64url alphabet only, ≤1 KiB, payload ≤4 KiB, `v == 0`, and **`sid` must be 15–20 digits** — a
+well-signed token for `"1"` is not an account and must never reach a roster row.
+
+A refusal does two things. It **clears the identity**, which is the guarantee and holds
+unconditionally, and it sends `clientkick <slot>` through the command buffer bound in §10.4. The
+kick is the second line of defence, not the first: if `clientkick` is not a command on this exe the
+console says so, the player keeps playing, and the result still names nobody.
+
+**`game_over` carries a `steamid` only for a `verified` row.** The host's fold takes its identity
+from `player_connect` (`lib/referee.js:652` posts `p.steamid`), so this is a belt over that brace —
+but `game_over` is the one message the contract says a host may post a result from without
+re-folding the stream (§10.3), and that message must not carry an account nobody checked.
+
+### 13.5 What the other lanes must do — and no code of theirs is wrong today
+
+Nothing has to be renamed. `player_connect.steamid` was already the field `lib/referee.js` keys
+identity on (`ev.steamid || ev.xuid`) and already the field `web/server/lib/results.js` inserts
+`game_players` on, and that file already refuses a row with no id: *"a row keyed on a made-up id
+would attach somebody's badge to nobody"*. The game simply never produced one. Two asks, both
+additive:
+
+* **host agent** — carry `identity` from `player_connect` into the posted summary's player rows,
+  and send `end {..., "match": "<next match id>"}` on a reuse, so a warm instance can lease-check
+  the successor game's tokens (`ENW_MATCH` is read once, at process start; the referee clears the
+  id on reset rather than keep a stale one, because a stale id refuses every legitimate token).
+* **web** — when `identity` is present and is not `verified`, store the row but award no XP and no
+  record. Today the site would credit a `claimed` row, which is only reachable when the box itself
+  was configured not to enforce.
+
+### 13.6 The harness: `tools/dev/authhost.mjs`
+
+The token half of a host agent and nothing else, because the real one needs a site, a lease and a
+box registration that a join test has no business standing up. What it does NOT stub is the part
+under test: it **issues with `web/server/lib/tokens.js`** (against a scratch `ZM_KEY_DIR`, never
+`web/keys`, never the live DB) and **verifies with `infra/host-agent/lib/tokens.js :: TokenGuard`**,
+both imported unmodified.
+
+```
+node tools/dev/authhost.mjs mint  --keydir <d> --match <m> --steamid <id64> [--slot N] [--forge]
+node tools/dev/authhost.mjs serve --keydir <d> --match <m> --port 38795 --out <transcript>
+node tools/dev/authhost.mjs selftest --keydir <d>
+```
+
+`serve` writes every line of the link in both directions to a transcript, which is where the
+`player_connect` and `game_over` JSON quoted below comes from. `--forge` keeps the site's real
+signature over an edited payload — a forged token, not a corrupt one, which is the case that has to
+be caught.
+
+### 13.7 Runs
+
+**`join94` — a result that belongs to an account, five gates, PASS.** `nazi_zombie_prototype`,
+300 s, one real client launched with an invite token this site's own code minted, one
+`authhost.mjs serve` holding the link. Token → userinfo → referee → host → back again, with
+nothing hand-copied at any step:
+
+```
+referee: identity gate armed, match=m_id94
+referee: player_connect slot 0 name='anna-jpg' steamid=76561198000000042 identity=claimed
+[authhost] auth slot 0 anna-jpg 76561198000000042 identity=claimed: ALLOW (ok)
+referee: slot 0 identity VERIFIED by the host (steamid=76561198000000042, ok)
+
+{"t":"game_over","ms":130344,"round":1,"reason":"stop_intermission notify","duration_ms":128594,
+ "players":[{"slot":0,"name":"anna-jpg","connected":true,"steamid":"76561198000000042",
+             "xuid":"76561198000000042","identity":"verified","party_slot":0,
+             "revives":0,"alive":true}]}
+
+CS_ACTIVE=1 ROUND1=1  76 of 76 getstatus answered  frame::count 59.0 Hz
+com_frameTime +30004 ms over the last 30 s  Com_Frame-body 59.2 Hz  PASS
+```
+
+**That last block is the whole point of the session.** The box's first real game (site game id 2)
+posted `game_players = 0`; §12 turned that into a row with a name; this is a row with an account,
+carried on the one message a host may post a result from. *(The steamid is an invented
+`76561198000000042`, per the standing rule that test data never carries a real person's id.)*
+
+**`join95` — a forged token is refused, and the refusal reaches the player.** Same run, same
+client, one difference: `authhost.mjs mint --forge` rewrote `sid` in the payload to
+`…999999999` and kept the site's real signature over the original body.
+
+```
+referee: player_connect slot 0 name='anna-jpg' steamid=76561198999999999 identity=claimed
+[authhost] auth slot 0 anna-jpg 76561198999999999 identity=claimed: DENY (bad_signature)
+referee: slot 0 REFUSED (bad_signature) -- its roster row carries no steamid and nothing
+         may be awarded to it. referee.md 13.
+referee: console command queued: clientkick 0
+referee: clientkick 0 (bad_signature) queued
+referee: player_disconnect slot 0 ('anna-jpg')          <- 27 ms after the DENY
+```
+
+So `clientkick <slot>` **is** a command on this exe and the second line of defence works; the
+first line (no steamid on the row) never depended on it.
+
+**`integration-site`, host agent against a real site, 0 failures.** Run against a throwaway site
+(`PORT=3277`, its own `ZM_DATA_DIR`, its own `ZM_KEY_DIR`, its own seeded DB — never :3200, never
+`web/data`, never the live key) with a scratch box key dir: *"both players are on the game with
+XP"*, `game_players` = **2**, 1193 XP each, replay VALID against the pinned key, step 4 *"a forged
+token is still refused by the real box"* green. **Nothing in `infra/host-agent` or `web/` had to
+change** — the field the site inserts `game_players` on was always `steamid`, and it was always
+the game that failed to send one.
+
+**`tools/dev/authhost.mjs selftest`, 8/8**: a site-issued token verifies at the box; a payload
+edited to another steamid is `bad_signature` and is not seated; the second presentation of the
+same token is `replayed`; a token for another match is `wrong_match`; a token past `exp` is
+`expired`.
+
+**Not run, and it is the one gap in §13.4:** the game-side `replayed_token` and `wrong_match`
+refusals have not been seen in a join run. Both need a second client (or a deliberately mismatched
+`-MatchId`) and the game lock went to a launcher-lane local game before either could be taken.
+The host-side halves are measured above and the game-side code is the same edge the measured
+`bad_signature` refusal runs through — **which is an argument, not a measurement**, and is written
+here as one. `waw-c2` is deployed and ready; the run is
+`jointest.ps1 -Tag join97 -AuthToken <the token slot 0 used> -MatchId <its match>` with a second
+`launch.ps1 c2 -Role client -Companion -AuthToken <the same token>` fired 40 s in.
+

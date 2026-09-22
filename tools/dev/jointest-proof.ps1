@@ -33,7 +33,17 @@ param(
     [string]$Map = 'nazi_zombie_prototype',
     [switch]$Deploy,
     # Der Berg and friends want the 422 MB reserve (dedi.md 11.4).
-    [switch]$BigHeap
+    [switch]$BigHeap,
+
+    # ---- identity (referee.md 13) -------------------------------------------
+    # The five gates say the server survived the player. These say WHO the player
+    # was. Pass all three together: a token is bound to a match, and the link has to
+    # be up for the host's `auth` answer to promote the row to `verified`.
+    #   $t = node tools/dev/authhost.mjs mint --match m_x --steamid <id64>
+    #   node tools/dev/authhost.mjs serve --match m_x --port 38795 --out <f>
+    [string]$AuthToken = '',
+    [string]$MatchId = '',
+    [string]$LinkHost = ''
 )
 $ErrorActionPreference = 'Stop'
 $repo = 'C:\Users\b\Desktop\Zombies'
@@ -58,13 +68,16 @@ if (Test-Path -LiteralPath $lock) { throw 'game.lock still held' }
 if ($BigHeap) { $env:ENW_DEDI_BIG_HEAP = '1' } else { $env:ENW_DEDI_BIG_HEAP = $null }
 
 $job = Start-Job -ScriptBlock {
-    param($repo, $tag, $watch, $map, $deploy, $bigHeap)
+    param($repo, $tag, $watch, $map, $deploy, $bigHeap, $tok, $match, $link)
     Set-Location $repo
     if ($bigHeap) { $env:ENW_DEDI_BIG_HEAP = '1' }
     $a = @('-Tag', $tag, '-WatchSeconds', $watch, '-Map', $map)
     if (-not $deploy) { $a += '-NoDeploy' }
+    if ($tok)   { $a += @('-AuthToken', $tok) }
+    if ($match) { $a += @('-MatchId', $match) }
+    if ($link)  { $a += @('-LinkHost', $link) }
     & powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" @a 2>&1
-} -ArgumentList $repo, $Tag, $Watch, $Map, [bool]$Deploy, [bool]$BigHeap
+} -ArgumentList $repo, $Tag, $Watch, $Map, [bool]$Deploy, [bool]$BigHeap, $AuthToken, $MatchId, $LinkHost
 
 # --- find the server PID, then poll the wire -------------------------------------
 $serverPid = 0
@@ -107,6 +120,15 @@ $round = (Select-String -Path $enw -Pattern 'referee: ROUND 1' -SimpleMatch).Cou
 $last = (Select-String -Path $enw -Pattern 'liveness t=').Line | Select-Object -Last 1
 $moving = $last -match '\+(\d+) in 5s' -and [int]$Matches[1] -gt 0
 $lines += "CS_ACTIVE=$active ROUND1=$round lastLiveness='$last'"
+
+# --- identity, read off the same log (referee.md 13) -----------------------------
+# NOT one of the five gates: a run can be a perfectly good proof that the server
+# survives a player and still be a Local/dev run that awards nobody anything. It is
+# reported because the one thing a join run could never show before is WHO played.
+$idLine = (Select-String -Path $enw -Pattern 'referee: player_connect slot').Line | Select-Object -Last 1
+$idVerified = (Select-String -Path $enw -Pattern 'identity VERIFIED by the host' -SimpleMatch).Count
+$idRefused = (Select-String -Path $enw -Pattern 'REFUSED \(').Count
+$lines += "identity: connect='$idLine' verified=$idVerified refused=$idRefused"
 
 # --- gate 5: was the ENGINE still simulating? ------------------------------------
 # NOTE: the probe's own `delta=` field is always 0 -- it compares com_frameTime with a

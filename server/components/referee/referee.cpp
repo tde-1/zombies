@@ -19,6 +19,7 @@
 
 #include "../../../shared/core/frame.hpp"
 #include "../../../shared/core/game_link.hpp"
+#include "../../../shared/core/json.hpp"
 #include "../../../shared/core/logger.hpp"
 #include "logprint_mirror.hpp"
 #include "t4_bind.hpp"
@@ -91,6 +92,116 @@ std::string env_str(const char* name) {
     return std::string(buf, n);
 }
 
+// ------------------------------------------------------------- identity --
+//
+// THE CANONICAL IDENTITY PATH, and it is the site's invite token -- not the
+// engine's userinfo, which carries no id at all (referee.md §12.3, join87).
+//
+//   site  web/server/lib/tokens.js :: issue()   Ed25519 over a canonical payload
+//         -> `<payload-b64url>.<sig-b64url>`, bound to (sid, m), 5-minute TTL
+//   launcher  one-shot named pipe (ENW_TOKEN_PIPE), never argv, never the env
+//   client    client-dll/components/auth_token.cpp writes `setu enw_token "<t>"`
+//             so the token is a USERINFO dvar and rides the connect packet
+//   server    HERE: `\enw_token\` out of client_s.userinfo at the connect edge
+//   host      infra/host-agent/lib/tokens.js :: TokenGuard.admit() verifies the
+//             SIGNATURE and answers `auth {slot, allow, reason}`
+//
+// This function PARSES; it does not verify. There is no Ed25519 in this DLL (the
+// core has sha256 and nothing else) and there must not be a signing key on a game
+// box in any case -- the site issues, the box verifies, so a stolen box cannot mint
+// a join for anybody. What the parse is for is the half the host cannot do for us:
+// binding a steamid64 and a party slot TO A CLIENT SLOT, so the roster events and
+// the game_over rows carry an account instead of a name.
+//
+// The unverified `sid` is therefore never trusted on its own. It travels as
+// `identity:"claimed"` until the host answers `auth allow:true`, and only a
+// `verified` row carries a steamid into `game_over`. A forged token cannot survive
+// that: the signature covers the payload, sid included, so changing sid changes the
+// body and `check()` returns `bad_signature`.
+struct token_claims {
+    bool parsed = false;
+    std::string sid;    // steamid64, as a string -- 2^64 does not fit a double
+    std::string match;  // the match id the site bound this token to
+    std::string jti;    // unique per issue: the single-use key
+    long long exp = 0;
+    int slot = -1;      // the party slot the site seated this player in
+    std::string name;
+};
+
+// b64url -> bytes. Rejects anything outside the alphabet rather than skipping it:
+// a token that is not shaped like ours is not one of ours.
+bool b64url_decode(std::string_view in, std::string* out) {
+    auto sextet = [](char c) -> int {
+        if (c >= 'A' && c <= 'Z') return c - 'A';
+        if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+        if (c >= '0' && c <= '9') return c - '0' + 52;
+        if (c == '-') return 62;
+        if (c == '_') return 63;
+        return -1;
+    };
+    out->clear();
+    out->reserve(in.size() * 3 / 4 + 3);
+    uint32_t acc = 0;
+    int bits = 0;
+    for (const char c : in) {
+        if (c == '=') break;  // the site never pads, but a padded token is still readable
+        const int v = sextet(c);
+        if (v < 0) return false;
+        acc = (acc << 6) | static_cast<uint32_t>(v);
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            out->push_back(static_cast<char>((acc >> bits) & 0xFF));
+        }
+    }
+    return !out->empty();
+}
+
+// `<payload>.<sig>` -> the payload's claims. Bounded: a userinfo string is attacker
+// controlled, so everything here is size-checked before it is decoded or parsed.
+token_claims parse_token(const std::string& token) {
+    token_claims c;
+    if (token.size() < 32 || token.size() > 1024) return c;
+    const size_t dot = token.find('.');
+    if (dot == std::string::npos || dot == 0 || dot + 1 >= token.size()) return c;
+    if (token.find('.', dot + 1) != std::string::npos) return c;  // exactly one dot
+    std::string body;
+    if (!b64url_decode(std::string_view(token).substr(0, dot), &body)) return c;
+    if (body.size() > 4096) return c;
+    json::value v;
+    if (!json::parse(body, &v) || v.type != json::kind::object) return c;
+    if (v.int_or("v", -1) != 0) return c;
+    c.sid = v.str_or("sid");
+    c.match = v.str_or("m");
+    c.jti = v.str_or("jti");
+    c.exp = v.int_or("exp", 0);
+    c.name = v.str_or("n");
+    const long long slot = v.int_or("slot", -1);
+    c.slot = (slot >= 0 && slot < 64) ? static_cast<int>(slot) : -1;
+    // A steamid64 is 17 digits. Anything else is not an account and must never be
+    // written into a roster row, however well signed it is.
+    if (c.sid.size() < 15 || c.sid.size() > 20) return c;
+    for (const char ch : c.sid) {
+        if (ch < '0' || ch > '9') return c;
+    }
+    if (c.jti.empty() || c.match.empty()) return c;
+    c.parsed = true;
+    return c;
+}
+
+// What a roster row's `steamid` is worth. The site already refuses a player row with
+// no steamid (web/server/lib/results.js: "a row keyed on a made-up id would attach
+// somebody's badge to nobody"), so this marker is what keeps the OTHER mistake from
+// happening -- a row that has an id nobody checked.
+const char* identity_word(int state) {
+    switch (state) {
+        case 1: return "claimed";   // a token was presented and parsed; unverified
+        case 2: return "verified";  // the host verified the signature: `auth allow:true`
+        case 3: return "refused";   // the host said no, or we refused it locally
+        default: return "none";     // no token at all -- Local/dev. Attendance only.
+    }
+}
+
 // Notifies we always forward. Everything else is subject to the novelty budget.
 // Sources: docs/kickstart/referee.md §2.
 const char* const kAlways[] = {
@@ -141,7 +252,9 @@ public:
                 [this](const json::value& msg) { reply_snapshot(msg.str_or("id")); },
                 /*want_game_thread=*/true);
         link.on("end",
-                [this](const json::value& msg) { do_end(msg.str_or("id"), msg.str_or("reason")); },
+                [this](const json::value& msg) {
+                    do_end(msg.str_or("id"), msg.str_or("reason"), msg.str_or("match"));
+                },
                 /*want_game_thread=*/true);
 
         // `exec` is in the protocol (host->game, "run a console command") and nothing
@@ -155,6 +268,22 @@ public:
         link.on("exec",
                 [this](const json::value& msg) { do_exec(msg.str_or("id"), msg.str_or("cmd")); },
                 /*want_game_thread=*/true);
+
+        // The answer to a player_connect's token check. See do_auth().
+        link.on("auth",
+                [this](const json::value& msg) {
+                    do_auth(static_cast<int>(msg.int_or("slot", -1)), msg.bool_or("allow", false),
+                            msg.str_or("reason"));
+                },
+                /*want_game_thread=*/true);
+
+        // The lease this process is serving. The host agent sets it when it starts an
+        // instance (infra/host-agent: ENW_MATCH), and it is what binds an invite token
+        // to THIS match rather than to any match this box ever runs.
+        match_id_ = env_str("ENW_MATCH");
+        ENW_INFO("referee: identity gate armed, match=%s",
+                 match_id_.empty() ? "(none - tokens will not be lease-checked here)"
+                                   : match_id_.c_str());
     }
 
     void post_unpack() override {
@@ -445,6 +574,84 @@ private:
         poll_players(ms);
     }
 
+    // ----------------------------------------------------------- identity --
+
+    // Single use, per match. Returns false if this jti has already seated somebody
+    // in this match (and is not simply this same slot reconnecting the same token).
+    bool claim_jti(const std::string& jti, int slot) {
+        auto it = jti_seen_.find(jti);
+        if (it == jti_seen_.end()) { jti_seen_[jti] = slot; return true; }
+        return it->second == slot;
+    }
+
+    // Is this steamid already seated somewhere else? Two clients cannot be the same
+    // account, and a token replayed across two PCs would otherwise produce two rows.
+    int slot_holding_sid(const std::string& sid, int slot) const {
+        if (sid.empty()) return -1;
+        for (int i = 0; i < kMaxPlayers; ++i) {
+            if (i == slot) continue;
+            if (players_[i].connected && players_[i].steamid == sid &&
+                players_[i].identity != 3) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // A refused identity keeps its SLOT -- the player is still in the world until the
+    // kick lands, and the replay should show that honestly -- but it keeps no steamid.
+    // Nothing downstream may award anything to a row without one.
+    void refuse(int slot, const char* why) {
+        auto& p = players_[slot];
+        p.identity = 3;
+        p.steamid.clear();
+        p.jti.clear();
+        p.party_slot = -1;
+        p.refusal = why;
+        ENW_WARN("referee: slot %d REFUSED (%s) -- its roster row carries no steamid and "
+                 "nothing may be awarded to it. referee.md 13.", slot, why);
+        kick_slot(slot, why);
+    }
+
+    // The engine's own front door, through the command buffer we already bind
+    // (t4_bind.cpp :: console_command / Cbuf_AddText). THE KICK IS THE SECOND LINE OF
+    // DEFENCE, NOT THE FIRST: the guarantee that matters for records is that a refused
+    // slot carries no identity, and that holds whether or not `clientkick` exists on
+    // this exe. If it does not, the console says so and the log line above still stands.
+    void kick_slot(int slot, const char* why) {
+        const bool ok = referee::console_command("clientkick " + std::to_string(slot));
+        ENW_INFO("referee: clientkick %d (%s) %s", slot, why,
+                 ok ? "queued" : "REFUSED by the command buffer - the slot keeps playing, "
+                                "but with no identity");
+    }
+
+    // `auth {slot, allow, reason}` -- host->game, in the protocol since v0 and, until
+    // now, IGNORED BY THIS SIDE. The host agent answers every single player_connect
+    // with one (infra/host-agent/host.js :: authPlayer), so a DENY was being sent on
+    // every forged or replayed token and the client stayed in the game anyway. This is
+    // what makes the signature check mean something inside the match.
+    void do_auth(int slot, bool allow, const std::string& reason) {
+        if (slot < 0 || slot >= kMaxPlayers) return;
+        auto& p = players_[slot];
+        if (!allow) {
+            if (p.identity != 3) refuse(slot, reason.empty() ? "auth_denied" : reason.c_str());
+            return;
+        }
+        // An ALLOW that the host reached without checking anything is not a
+        // verification. `token_check_disabled` is what TokenGuard answers when it has
+        // no site key or when --require-token is off; the row stays `claimed`, which
+        // the site already treats as unawardable.
+        if (p.identity == 1 && reason != "token_check_disabled") {
+            p.identity = 2;
+            ENW_INFO("referee: slot %d identity VERIFIED by the host (steamid=%s, %s)", slot,
+                     p.steamid.c_str(), reason.empty() ? "ok" : reason.c_str());
+        } else {
+            ENW_WARN("referee: slot %d allowed with reason='%s' and identity=%s -- NOT promoted "
+                     "to verified; nothing may be awarded to this row.",
+                     slot, reason.c_str(), identity_word(p.identity));
+        }
+    }
+
     // ------------------------------------------------------------- roster --
     //
     // THE EVENTS THE HOST BUILDS ITS RESULT FROM, and until now nothing in the game
@@ -477,20 +684,65 @@ private:
             // reads `ev.steamid || ev.xuid` and keys identity on it, so send both
             // names for the one value rather than making the host guess.
             p.steamid = c->xuid;
+            p.identity = 0;
+            p.jti.clear();
+            p.party_slot = -1;
+            p.refusal.clear();
             const std::string token = userinfo_value(c->userinfo, "enw_token").empty()
                                           ? userinfo_value(c->userinfo, "token")
                                           : userinfo_value(c->userinfo, "enw_token");
+
+            // THE IDENTITY BIND. Everything the engine offers is a name; the account
+            // is in the token and nowhere else. Parse it, refuse the two things a
+            // server can refuse WITHOUT a key -- a replayed token and a token for
+            // somebody else's match -- and leave the signature to the host.
+            if (!token.empty()) {
+                const token_claims tc = parse_token(token);
+                if (!tc.parsed) {
+                    refuse(slot, "malformed_token");
+                } else if (!match_id_.empty() && tc.match != match_id_) {
+                    // RECORDS SAFETY 2: bound to the lease. A token minted for match A
+                    // is worthless on match B even before the host looks at it.
+                    refuse(slot, "wrong_match");
+                } else if (!claim_jti(tc.jti, slot)) {
+                    // RECORDS SAFETY 1: single use per match. The host's TokenGuard
+                    // keeps a jti set per BOOT; this one is per MATCH and lives in the
+                    // process that actually seats the client, so a second client
+                    // presenting the same token is refused here even if the host link
+                    // is down.
+                    refuse(slot, "replayed_token");
+                } else if (const int other = slot_holding_sid(tc.sid, slot); other >= 0) {
+                    ENW_WARN("referee: slot %d presents a steamid already seated in slot %d",
+                             slot, other);
+                    refuse(slot, "steamid_already_seated");
+                } else {
+                    p.steamid = tc.sid;   // the token's sid IS the canonical steamid64
+                    p.jti = tc.jti;
+                    p.party_slot = tc.slot;
+                    p.identity = 1;       // claimed -- until `auth allow:true` lands
+                    if (p.name.empty() && !tc.name.empty()) p.name = tc.name;
+                }
+            }
+
             json::writer w;
             w.str("t", "player_connect").integer("ms", ms).integer("slot", slot);
             w.str("name", p.name);
+            // `steamid` and `xuid` carry the same value: lib/referee.js reads
+            // `ev.steamid || ev.xuid` and keys identity on it, and web's results.js
+            // inserts game_players on `steamid`, so this one field name is the whole
+            // contract. `identity` says what it is WORTH.
             if (!p.steamid.empty()) { w.str("steamid", p.steamid).str("xuid", p.steamid); }
+            w.str("identity", identity_word(p.identity));
+            if (p.party_slot >= 0) w.integer("party_slot", p.party_slot);
+            if (!p.refusal.empty()) w.str("identity_reason", p.refusal);
             if (!token.empty()) w.str("token", token);
             game_link::get().send(w);
-            ENW_INFO("referee: player_connect slot %d name='%s' steamid=%s token=%s",
+            ENW_INFO("referee: player_connect slot %d name='%s' steamid=%s identity=%s%s%s",
                      slot, p.name.c_str(),
-                     p.steamid.empty() ? "(none - userinfo carried no xuid/steamid/guid)"
-                                       : p.steamid.c_str(),
-                     token.empty() ? "(none)" : "present");
+                     p.steamid.empty() ? "(none)" : p.steamid.c_str(),
+                     identity_word(p.identity),
+                     p.refusal.empty() ? "" : " reason=",
+                     p.refusal.empty() ? "" : p.refusal.c_str());
             // MEASURED join85: the steamid came back EMPTY on a real client, so the
             // host gets a roster row it cannot attach XP or a record to. client_view
             // looks for \xuid\, \steamid\ and \guid\ and this client's userinfo has
@@ -506,9 +758,11 @@ private:
                     if (c->userinfo[i] == '\\') { is_key = !is_key; if (is_key) keys += ' '; continue; }
                     if (is_key) keys += c->userinfo[i];
                 }
-                ENW_WARN("referee: slot %d has NO steam id. userinfo keys: %s -- the host will "
-                         "open a roster row with a name and no identity, so nothing can be "
-                         "attached to an account. referee.md 12.", slot, keys.c_str());
+                ENW_WARN("referee: slot %d has NO steam id (identity=%s). userinfo keys: %s -- "
+                         "no \\enw_token\\, so this client was not launched through the ENW "
+                         "launcher (or was launched without a lease). The row is ATTENDANCE "
+                         "ONLY and nothing downstream may award XP or a record to it. "
+                         "referee.md 13.", slot, identity_word(p.identity), keys.c_str());
             }
             referee::lp_player_event(slot, "player_connect", p.name);
         }
@@ -680,10 +934,20 @@ private:
             // link mid-match, or that only stores the final result, still has to be
             // able to attach XP and records to an account, and a name cannot do that.
             const std::string nm = (c && !c->name.empty()) ? c->name : p.name;
-            const std::string sid = (c && !c->xuid.empty()) ? c->xuid : p.steamid;
+            // THE STEAMID COMES FROM THE INVITE TOKEN, AND ONLY WHEN THE HOST VERIFIED
+            // IT. The engine's xuid is empty on every real WaW client (referee.md
+            // §12.3), and an unverified claim on the one message a host may post a
+            // result from is exactly how a forged token would buy somebody else's XP.
+            // A `claimed` or `refused` row still appears -- attendance is a fact -- but
+            // with no id, and results.js drops an id-less row before it reaches
+            // game_players.
+            const std::string sid = (p.identity == 2) ? p.steamid : std::string();
             if (!nm.empty()) pw.str("name", nm);
             if (c) pw.boolean("connected", c->active);
             if (!sid.empty()) pw.str("steamid", sid).str("xuid", sid);
+            pw.str("identity", identity_word(p.identity));
+            if (p.identity == 2 && p.party_slot >= 0) pw.integer("party_slot", p.party_slot);
+            if (!p.refusal.empty()) pw.str("identity_reason", p.refusal);
             if (p.have_score) { pw.integer("score", p.score); total_points += p.score; }
             if (p.have_downs) { pw.integer("downs", p.downs); total_downs += p.downs; }
             pw.integer("revives", p.revives);
@@ -737,8 +1001,21 @@ private:
 
     // Everything a second match on the same process must not inherit from the first.
     // Called only from do_end(), and only when the map_restart actually went in.
-    void reset_for_next_match() {
+    void reset_for_next_match(const std::string& next_match) {
         for (auto& p : players_) p = player_state{};
+        // The invite tokens of the FINISHED match must not admit anybody to the next
+        // one, and the finished match's id must not be used to lease-check the next
+        // one's tokens. ENW_MATCH was read at process start and a warm instance serves
+        // a match the process has never heard of, so the host has to say which one it
+        // is: `end {..., "match":"m_xxxx"}`. Until it does we clear the id rather than
+        // keep a stale one -- a stale id would refuse every legitimate token in the
+        // successor game with `wrong_match`, which is the worse failure.
+        jti_seen_.clear();
+        match_id_ = next_match;
+        ENW_INFO("referee: identity gate reset; next match = %s",
+                 match_id_.empty() ? "(not stated by the host - tokens will not be "
+                                     "lease-checked in this game)"
+                                   : match_id_.c_str());
         seen_.clear();
         id_counts_.clear();
         level_notify_count_ = 0;
@@ -800,7 +1077,7 @@ private:
     // host-forced end still produces a result and a closed replay rather than a hole
     // in the record; and on success we reset for the next lease, which is the whole
     // point of answering `match_end` with `end` instead of killing the process.
-    void do_end(const std::string& id, const std::string& reason) {
+    void do_end(const std::string& id, const std::string& reason, const std::string& next_match) {
         if (!game_over_) emit_game_over(reason.empty() ? "host end" : reason.c_str());
 
         const bool ok = referee::console_command("map_restart");
@@ -808,7 +1085,7 @@ private:
             game_link::get().send_reply(id, ok, ok ? "" : "no command buffer bound");
         }
         if (ok) {
-            reset_for_next_match();
+            reset_for_next_match(next_match);
         } else {
             ENW_WARN("referee: host asked to end the game (%s) but the command buffer is not "
                      "bound, so map_restart could not be issued. The instance is finished and "
@@ -871,6 +1148,14 @@ private:
         bool spawned = false;     // player_spawn already sent for this connection
         std::string name;
         std::string steamid;
+        // --- identity (2026-09-22, referee.md 13) -------------------------------
+        // 0 none / 1 claimed / 2 verified / 3 refused -- see identity_word(). Only
+        // a `verified` row carries a steamid into game_over, because only a verified
+        // row has had its signature checked by something holding the site's key.
+        int identity = 0;
+        std::string jti;        // the token's single-use id, for the replay guard
+        int party_slot = -1;    // the seat the SITE gave this player, when it said one
+        std::string refusal;    // why, when identity == refused
     };
 
     player_state players_[kMaxPlayers];
@@ -892,6 +1177,8 @@ private:
     uint32_t first_frame_ms_ = 0;
     uint32_t match_start_ms_ = 0;
     bool dev_knobs_ = false;
+    std::string match_id_;                   // ENW_MATCH: the lease this process serves
+    std::map<std::string, int> jti_seen_;    // single-use invite tokens, per match
 };
 
 }  // namespace

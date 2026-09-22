@@ -150,3 +150,50 @@ write), `ENW_DEDI_NO_WATERSIM_POOL=1` and `ENW_DEDI_NO_REFLECTION_DVARS=1` (cont
 before a deploy; `CS_CLIENTLOADING`, never `CS_PRIMED`; a vectored handler that logs is a loop,
 because the ENW logger goes out through `OutputDebugString`; and never budget a diagnostic by "the
 first N events" — the first six exceptions of any run are init-time debug prints.
+
+## Identity — added 2026-09-22 15:45 (referee lane, `referee.md` §13)
+
+**A real player's result now carries their Steam account.** The identity is the site's invite
+token, parsed server-side out of userinfo key **`enw_token`**, verified by the host, and reported
+as `steamid` + `identity` on `player_connect` and on `game_over`. `join94` is the run: five gates,
+PASS, `"steamid":"76561198000000042","identity":"verified"` in the `game_over` players array.
+`join95` is the other half: a forged token → `DENY (bad_signature)` → `clientkick 0` → gone in
+27 ms.
+
+```powershell
+# mint one the way the site does, against a SCRATCH key dir (never web\keys, never the live DB)
+$t = node tools\dev\authhost.mjs mint --keydir "$env:TEMP\enw-authtest-keys" `
+        --match m_id98 --steamid 76561198000000042 --name enw-tester --slot 0
+# the token half of a host agent: issues with web's code, verifies with the host agent's own
+node tools\dev\authhost.mjs serve --keydir "$env:TEMP\enw-authtest-keys" --match m_id98 `
+        --port 38795 --out C:\Users\b\ZombiesDev\logs\dedi\join98-link.ndjson
+# five gates AND an identity readout
+tools\dev\jointest-proof.ps1 -Tag join98 -Watch 300 -AuthToken $t -MatchId m_id98 `
+        -LinkHost 127.0.0.1:38795
+
+node tools\dev\authhost.mjs selftest          # 8/8, site issuer vs the box's own TokenGuard
+node tools\dev\authhost.mjs mint ... --forge  # the site's real signature over an edited payload
+```
+
+**A join run without `-AuthToken` is still a valid proof of everything except identity** — it
+simply reports `identity=none` and nothing downstream may award to it. That is Play Local's shape
+too, and the site already refuses to count it.
+
+### The first three things to pick up
+
+1. **The two refusals that have not been seen in a game.** `replayed_token` (a second client
+   presenting the same token) and `wrong_match` (a token minted for another lease) are implemented
+   and proven host-side, not in a join run — the lock went to a launcher game. `waw-c2` is
+   deployed. Start `jointest.ps1 -Tag join97 -AuthToken <T> -MatchId <M> -WatchSeconds 200` and
+   40 s in fire `launch.ps1 c2 -Role client -HomePath own -Companion -AuthToken <the same T>
+   -EnwHost 127.0.0.1:28960` with `ENW_CLIENT_CONNECT`/`ENW_CONNECT_ADDR` set the way
+   `jointest.ps1` sets them. Expect `REFUSED (replayed_token)` on the second slot.
+2. **The host and web asks in `referee.md` §13.5** — carry `identity` into the posted result, do
+   not award XP to a row that is not `verified`, and send `end {…, "match": …}` on a reuse so a
+   warm instance can lease-check its tokens. Neither lane has a bug today; both are additive.
+3. **The real launcher path has still never been exercised end to end with a dedicated server.**
+   `join94` used `ENW_AUTH_TOKEN`, which is fallback #3 in `auth_token.cpp`. Production is the
+   one-shot named pipe (`ENW_TOKEN_PIPE`). The pipe has its own test
+   (`launcher/test/launch-harness.js`), and the two paths converge one line later at
+   `setu enw_token`, but nobody has watched a launcher-minted token come out of a dedicated
+   server's `game_over`.

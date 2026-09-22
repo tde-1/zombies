@@ -50,6 +50,21 @@ param(
     # How long to watch after the client is up.
     [int]$WatchSeconds = 120,
 
+    # ---- identity (referee.md 13) -------------------------------------------
+    # THE THING THAT MAKES A JOIN RUN COUNT. Without a token the client's userinfo
+    # carries no account at all -- a real T4 client sends name/protocol/challenge/
+    # invited/qport/bdTicket and nothing else (join87) -- so the roster is attendance
+    # and the site refuses to score it. Mint one with
+    #   node tools/dev/authhost.mjs mint --match <id> --steamid <id64>
+    # and pass BOTH here: the referee refuses a token minted for a different match.
+    [string]$AuthToken = '',
+    [string]$MatchId = '',
+
+    # Where the SERVER's game link dials out to (ENW_HOST). Point it at
+    # `authhost.mjs serve` to see player_connect / auth / game_over for real; leave it
+    # empty and the link stays off, which is fine for everything except identity.
+    [string]$LinkHost = '',
+
     # Skip deploying; use whatever is already in the copies.
     [switch]$NoDeploy,
 
@@ -152,8 +167,14 @@ try {
     # `+map` before `+set net_port`, STATUS.md "Fixed today".)
     if ($FsGame) { $serverArgs += @('+set', 'fs_game', $FsGame) }
     $serverArgs += @('+map', $Map)
+    $serverExtra = @{}
+    if ($MatchId)  { $serverExtra['MatchId'] = $MatchId }
+    if ($LinkHost) { $serverExtra['EnwHost'] = $LinkHost }
+    if ($MatchId -or $LinkHost) {
+        Say "server identity: match=$(if ($MatchId) { $MatchId } else { '(none)' }) link=$(if ($LinkHost) { $LinkHost } else { 'off' })" 'Cyan'
+    }
     $serverPid = & (Join-Path $PSScriptRoot 'launch.ps1') $ServerName -Role server -HomePath own `
-        -GameArgs $serverArgs -Why "dedi $Tag join test (server + client)" | Select-Object -Last 1
+        -GameArgs $serverArgs -Why "dedi $Tag join test (server + client)" @serverExtra | Select-Object -Last 1
     if (-not $serverPid) { throw 'launch.ps1 did not return a server PID' }
     Say "server PID $serverPid" 'Green'
 
@@ -196,8 +217,18 @@ try {
     )
     # The client needs the same mod mounted or it cannot load the map it is sent to.
     if ($FsGame) { $clientArgs += @('+set', 'fs_game', $FsGame) }
+    # The invite token goes to the CLIENT: launch.ps1 puts it in the environment, the
+    # DLL writes `setu enw_token "<t>"` into this instance's own enw_auth.cfg, and the
+    # engine carries it in userinfo on the connect packet. Never on a command line.
+    $clientExtra = @{}
+    if ($AuthToken) {
+        $clientExtra['AuthToken'] = $AuthToken
+        Say "client carries an invite token ($($AuthToken.Length) chars, not logged)" 'Cyan'
+    } else {
+        Say 'client carries NO invite token: the roster will be attendance only (identity=none)' 'Yellow'
+    }
     $clientPid = & (Join-Path $PSScriptRoot 'launch.ps1') $ClientName -Role client -HomePath own `
-        -Companion -GameArgs $clientArgs -EnwHost "127.0.0.1:$Port" | Select-Object -Last 1
+        -Companion -GameArgs $clientArgs -EnwHost "127.0.0.1:$Port" @clientExtra | Select-Object -Last 1
     if (-not $clientPid) { throw 'launch.ps1 did not return a client PID' }
     Say "client PID $clientPid (ENW_CLIENT_CONNECT=$Map)" 'Green'
 

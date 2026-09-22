@@ -4566,3 +4566,44 @@ the live site, instance warm again.**
   `game_players` will not be 0 any more, but the row is **attendance, not identity**: nothing
   downstream may award XP or a record to it until `bdTicket` is decoded or the auth path is bound.
   `invited` is worth a look at the same time. referee.md 12.
+- 15:45 referee: **a real player's result is attributed to a Steam account now — `join94`, five
+  gates, PASS.** The identity is the **site's invite token and nothing else**: `bdTicket` and
+  `invited` are both dropped, because an id our own site did not issue is an id we cannot check.
+  The userinfo key is **`enw_token`** (`client-dll/components/auth_token.cpp` writes
+  `setu enw_token "<t>"`), and `join87` saw no such key for a dull reason — **`jointest.ps1`
+  launched the client with no token at all.** It can pass one now
+  (`-AuthToken/-MatchId/-LinkHost`, and so can `jointest-proof.ps1`).
+  `player_connect slot 0 name='anna-jpg' steamid=76561198000000042 identity=claimed` → host
+  `ALLOW (ok)` → `identity VERIFIED` → `game_over` player row carrying
+  `"steamid":"76561198000000042","identity":"verified","party_slot":0`. referee.md 13.
+- 15:45 referee: **`auth {slot, allow, reason}` has been in the protocol since v0 and the game
+  ignored it.** `host.js :: authPlayer()` answers *every* `player_connect`, so every DENY it has
+  ever sent was read off the socket and dropped and the client played on. Implemented:
+  `allow:false` → identity `refused`, no steamid anywhere, `clientkick <slot>`. **`join95`**, a
+  token whose payload was edited to another steamid under the site's real signature:
+  `DENY (bad_signature)` → `REFUSED` → `clientkick 0` → `player_disconnect` **27 ms later**.
+- 15:45 referee: `game_over` player rows carry a `steamid` **only when `identity` is `verified`**.
+  `none` / `claimed` / `refused` rows are attendance and carry no account — Play Local and
+  `jointest.ps1` without a token stay exactly as unawardable as they were.
+- 15:45 **host lane, two asks, both additive and neither a bug in your code.** (1) Carry
+  `player_connect.identity` through into the posted summary's player rows — the fold takes its
+  steamid from `player_connect` (`lib/referee.js:652`), so today a `claimed` row would be scored,
+  which is reachable whenever the box is not enforcing. (2) Send `end {…, "match": "<next match
+  id>"}` on a **reuse**: the referee reads the lease from `ENW_MATCH` at process start, and a warm
+  instance serves a match that process never heard of. It clears the id on reset rather than keep a
+  stale one, because a stale id would refuse every legitimate token with `wrong_match`. Rows are in
+  `protocol/game-link-v0.md`.
+- 15:45 **web lane, one ask.** When a player row carries `identity` and it is not `verified`, store
+  the row and award **no XP and no record**. `results.js` already refuses a row with no steamid —
+  this is the other half, a row with an id nobody checked. Nothing needs renaming: `steamid` was
+  always the right field and the game was always the thing not sending one.
+- 15:45 referee: records safety, the three the game enforces **without a key and with the link
+  down** — single-use `jti` **per match** (the host's set is per *boot*, which a warm instance
+  carries across matches), the token's `m` bound to `ENW_MATCH`, and one steamid per slot; plus a
+  shape check that a signed `sid` must be 15–20 digits. Host-side halves proven by
+  `tools/dev/authhost.mjs selftest` (8/8, site issuer vs the box's own `TokenGuard`); the
+  **game-side `replayed_token` and `wrong_match` have not been seen in a join run** — the lock went
+  to a launcher game first. `waw-c2` is deployed for it. referee.md 13.7.
+- 15:45 referee: `infra/host-agent/test/integration-site.js` **0 failures** against a throwaway
+  site (`:3277`, own data dir, own keys, own seeded DB — :3200, `web/data` and the live key
+  untouched): `game_players` = 2, 1193 XP each, replay VALID against the pinned key.
