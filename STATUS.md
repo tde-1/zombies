@@ -36,6 +36,17 @@ gun (procedural, no downloaded asset). DLL: zombie yaw, grenades + `explode`, cl
 census - deployed to the box, booted a map, **grenades unproven** until a game with a throw.
 Der Riese: props-only export; the shell needs one Husky lock hold.
 
+## Settings page: World at War's Options menus (2026-09-22, evening, branch `web-settings`)
+
+`/settings` (account menu → Settings, browser and launcher) is laid out like WaW's Options menus
+with every item read out of the game's own `ui.ff` (Graphics, Texture Settings, Sound, Game
+Options, Look/Move/Combat/Interact key rows) plus an ENW tab (display mode, monitor, FOV, 250 cap,
+Show FPS, raw mouse, DOF/glow). Saved per SteamID on the site, pushed to the launcher through the
+existing bridge, put on the `+set` line and merged into the engine's `config.cfg` every launch;
+in-game changes come back after exit. Proven by test, dev port and a preload harness; **in game
+unproven** — `client.md` §8 (dvar table, §8d = B's one-minute check), `web.md` newest section.
+Needs a launcher release + site deploy to reach players.
+
 ## Since the morning checklist was written (afternoon)
 
 - **Isolation rule, done and proven**: our session redirects the game's LocalAppData into `%LOCALAPPDATA%\ENWZombies\home\localappdata` (DLL `enw_localappdata.cpp`); maps, config, saves, profiles all live there; B's `Activision\CoDWaW` tree is byte-identical before/after a Play Local. B's own mods folder was cleaned into `ZombiesDevackup-user-mods-20260923\`.
