@@ -16,6 +16,8 @@ const xp = require('../lib/xp')
 const presence = require('../lib/presence')
 const comments = require('../lib/comments')
 const maps = require('../lib/maps')
+const profile = require('../lib/profile')
+const movementProfile = require('../lib/movementProfile')
 const { db } = require('../db/database')
 const { requireUser } = require('../middleware/auth')
 
@@ -36,7 +38,7 @@ function router() {
       pinned: badges.pinnedFor(sid),
       progress: achievements.progressFor(sid),
       shelf: shelf(sid),
-      records: recordsLib.heldBy(sid),
+      records: recordsLib.heldBy(sid).map((r) => ({ ...r, art: (db.prepare('SELECT art FROM maps WHERE key=?').get(r.map_key) || {}).art || null })),
       recent: hidden ? null : results.recent({ steamId: sid, limit: 12 }),
       history_hidden: hidden,
       favourites: maps.favouritesOf(sid),
@@ -45,14 +47,61 @@ function router() {
       comments: comments.list('profile', sid),
       friend_state: req.me ? users.friendState(req.me.steam_id, sid) : 'none',
       can_comment: req.me ? comments.mayComment('profile', sid, req.me.steam_id).ok : false,
+      // Movement's profile, on ours (2026-09-22): the banner they set on ENW Movement
+      // (copied here, lib/movementProfile.js), the top/recent maps, and the Overall block.
+      // `maps` is history, so it follows the history privacy setting; Overall is the career
+      // strip it replaced, which never did.
+      movement: movementProfile.forPlayer(sid),
+      maps: hidden ? null : profile.mapsFor(sid),
+      overall: profile.overallFor(sid, { user: u }),
     })
+    // A copy older than a few hours is refreshed AFTER this answer, never in front of it.
+    movementProfile.refreshIfStale(sid)
+  })
+
+  // ── Profile comments, Movement's API shape (CSGO-Matchmaker routes/players.js comments) ──
+  // GET is public; the rows carry `mine` / `can_remove` for THIS viewer, and `post_block` is
+  // the reason a signed-in viewer may not post (friends-only, closed) or null. Stored in the
+  // one `comments` table as kind='profile', subject=<steamid>, beside map comments, so there
+  // is one reports queue and one moderation surface.
+  const wallRow = (c, me) => {
+    const a = users.publicById(c.steam_id) || {}
+    const mine = !!(me && String(me.steam_id) === String(c.steam_id))
+    return {
+      id: c.id, steam_id: c.steam_id, username: a.name || c.steam_id, avatar: a.avatar || null,
+      body: c.body, created_at: c.created_at, mine,
+      can_remove: mine || !!(me && (me.is_mod || me.is_admin)),
+    }
+  }
+  const wallList = (sid, me) => require('../db/database').db
+    .prepare(`SELECT * FROM comments WHERE kind='profile' AND subject=? AND removed=0 ORDER BY created_at ASC, id ASC LIMIT 300`)
+    .all(String(sid)).map((c) => wallRow(c, me))
+
+  r.get('/:who/comments', (req, res) => {
+    const u = users.resolve(req.params.who)
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    const may = req.me ? comments.mayComment('profile', u.steam_id, req.me.steam_id) : null
+    res.json({ comments: wallList(u.steam_id, req.me), post_block: may && !may.ok ? may.error : null })
   })
 
   r.post('/:who/comments', requireUser, (req, res) => {
     const u = users.resolve(req.params.who)
     if (!u) return res.status(404).json({ error: 'no such player' })
     const out = comments.add('profile', u.steam_id, req.me.steam_id, (req.body && req.body.body) || '')
-    res.status(out.ok ? 200 : 400).json(out)
+    if (!out.ok) return res.status(out.error === 'friends only' || /turned off/.test(out.error || '') ? 403 : 400).json(out)
+    const row = db.prepare('SELECT * FROM comments WHERE id=?').get(Number(out.id))
+    res.json({ ...out, comment: row ? wallRow(row, req.me) : null })
+  })
+
+  // Delete: your own, or anybody's if you are staff. Soft, like every removal here
+  // (lib/comments.js): a moderator must be able to see what was removed.
+  r.delete('/:who/comments/:id', requireUser, (req, res) => {
+    const u = users.resolve(req.params.who)
+    if (!u) return res.status(404).json({ error: 'no such player' })
+    const c = db.prepare("SELECT * FROM comments WHERE id=? AND kind='profile' AND subject=? AND removed=0").get(Number(req.params.id), String(u.steam_id))
+    if (!c) return res.status(404).json({ error: 'no such comment' })
+    const out = comments.remove(c.id, req.me.steam_id, { moderator: !!(req.me.is_mod || req.me.is_admin) })
+    res.status(out.ok ? 200 : 403).json(out)
   })
 
   r.post('/:who/friend', requireUser, (req, res) => {

@@ -75,6 +75,17 @@ flowing), paused time excluded from in-game time and records untouched (`dedi.md
 until it is, nothing a player does can freeze a game. Box deploy/proof: see `dedi.md` §18.4. What a
 real client draws while frozen is unproven.
 
+## Profile: Movement's, with their Movement banner (2026-09-22, late evening, branch `web-profile`, not merged)
+
+`/id/<name>` is Movement's profile: banner + identity bar, badge shelf, **Top maps / Recent maps**
+(map art, time, games, best round), **Overall** (games, rounds played, best round → its game/replay,
+time, records held, member since; kills/downs/revives hidden until the game reports them — today
+it does not), records held, and Movement's comment wall at the foot. No skins. The banner is the
+one on the player's **ENW Movement** profile, read from Movement's public profile route and the
+file copied here (`lib/movementProfile.js`); no upload here, "Change banner on Movement" instead.
+Six of the seven approved accounts have one. **To go live:** build + restart, then
+`cd web && node tools/import-movement-profiles.js`. `docs/kickstart/web.md`, last section.
+
 ## Settings page: World at War's Options menus (2026-09-22, evening, branch `web-settings`)
 
 `/settings` (account menu → Settings, browser and launcher) is laid out like WaW's Options menus

@@ -116,6 +116,11 @@ app.use('/updates', express.static(UPDATES_DIR, {
 // archive lane replaces that map's cover, and the URL is stable, so a stale week of a
 // screenshot costs nothing and a cache miss per card costs a request each.
 const MEDIA_DIR = path.join(__dirname, '..', 'public', 'media')
+// Profile banners copied from ENW Movement (lib/movementProfile.js). RUNTIME data, so they
+// live beside the database and not in the repo's public/media. Names are content-addressed
+// (a changed banner is a new file), so a long cache is safe.
+app.use('/media/banners', express.static(require('./lib/movementProfile').BANNER_DIR,
+  { index: false, maxAge: '30d', immutable: true, dotfiles: 'deny', fallthrough: false }))
 app.use('/media', express.static(MEDIA_DIR, { index: false, maxAge: '7d' }))
 app.use('/media', (req, res) => res.status(404).type('text/plain').send('no such media'))
 

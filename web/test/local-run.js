@@ -624,6 +624,55 @@ async function main() {
     cookie = mine
   }
 
+  // ══ the profile (2026-09-22): Movement's comment wall, Top/Recent maps, Overall ══════════
+  {
+    const mine = cookie
+    const meNow = await call('/api/me')
+    const meStaff = !!(meNow.json.user.mod || meNow.json.user.admin)
+    const prof = await call('/api/players/' + ME)
+    await check('a profile carries Top/Recent maps, Overall and the Movement block', async () => {
+      eq(prof.status, 200, 'profile')
+      truthy(prof.json.maps && Array.isArray(prof.json.maps.top) && Array.isArray(prof.json.maps.recent), 'maps.top / maps.recent')
+      truthy(prof.json.overall && typeof prof.json.overall.games === 'number', 'overall.games')
+      truthy('member_since' in prof.json.overall, 'overall.member_since')
+      eq(prof.json.movement.found, false, 'ZM_MOVEMENT_URL=off means no Movement data')
+      eq(prof.json.movement.banner, null, 'and no banner')
+    })
+
+    cookie = ''
+    await call('/auth/test-login', { method: 'POST', form: 'steam_id=76561198999000124' })
+    await call('/api/me/username', { method: 'POST', body: { username: 'wall-poster' } })
+    let cid = null
+    await check('profile comments: anyone signed in posts; the answer is the row, marked mine', async () => {
+      const r = await call(`/api/players/${ME}/comments`, { method: 'POST', body: { body: 'see you on round 30' } })
+      eq(r.status, 200, 'post: ' + JSON.stringify(r.json))
+      cid = r.json.comment.id
+      eq(r.json.comment.mine, true, 'mine')
+      eq(r.json.comment.can_remove, true, 'can remove own')
+      eq(r.json.comment.username, 'wall-poster', 'the ENW name')
+      const anon = await call(`/api/players/${ME}/comments`, { anon: true })
+      eq(anon.status, 200, 'the wall reads signed out')
+      truthy(anon.json.comments.some((c) => c.id === cid && !c.mine && !c.can_remove), 'a visitor sees it, and no delete')
+    })
+    cookie = mine
+    await check('profile comments: somebody else’s post is not yours to delete, unless you are staff', async () => {
+      const g = await call(`/api/players/${ME}/comments`)
+      const c = g.json.comments.find((x) => x.id === cid)
+      eq(c.mine, false, 'not mine')
+      eq(c.can_remove, meStaff, 'can_remove follows staff')
+      if (!meStaff) eq((await call(`/api/players/${ME}/comments/${cid}`, { method: 'DELETE' })).status, 403, 'refused')
+    })
+    cookie = ''
+    await call('/auth/test-login', { method: 'POST', form: 'steam_id=76561198999000124' })
+    await check('profile comments: the author deletes their own, and it is gone from the wall', async () => {
+      eq((await call(`/api/players/${ME}/comments/${cid}`, { method: 'DELETE' })).status, 200, 'delete own')
+      const g = await call(`/api/players/${ME}/comments`)
+      eq(g.json.comments.some((x) => x.id === cid), false, 'still listed')
+      eq((await call(`/api/players/${ME}/comments/${cid}`, { method: 'DELETE' })).status, 404, 'twice is a 404')
+    })
+    cookie = mine
+  }
+
   // ---- report -------------------------------------------------------------------------
   for (const [s, n] of lines) console.log(`${s}  ${n}`)
   console.log(`\n${pass} passed, ${fail} failed`)

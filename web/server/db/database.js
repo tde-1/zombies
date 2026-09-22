@@ -896,6 +896,35 @@ function migrate() {
   db.exec('CREATE INDEX IF NOT EXISTS idx_collections_live ON collections(state, sort_order)')
   seedCollections()
 
+  // ── A player's ENW Movement profile, mirrored (2026-09-22, lib/movementProfile.js) ──────
+  //
+  // The banner a player set on Movement shows on their profile here, the same picture, so
+  // it is read from Movement's public profile and the FILE is copied into <data>/media/banners
+  // (never hotlinked). Its own table rather than columns on `users`: it is a cache of another
+  // site's data with its own freshness, and a row here for somebody who has never opened
+  // this site is fine.
+  //
+  // Only what the profile shows is kept: the banner and its crop, the country code, and the
+  // Movement username (for spotting a mismatch; never displayed). No avatar, no badges, no
+  // skins, no email — Movement's public projection carries no email or real name to begin
+  // with, and nothing else is asked for.
+  //
+  //   found        1 = Movement has this SteamID; 0 = it answered "no such player"
+  //   banner_src   Movement's path (/banners/<steamid>-<hex>.<ext>), content-addressed there
+  //   banner_file  our copy's filename under media/banners, null when there is none
+  db.exec(`CREATE TABLE IF NOT EXISTS movement_profiles (
+    steam_id     TEXT PRIMARY KEY,
+    found        INTEGER NOT NULL DEFAULT 0,
+    mv_name      TEXT,
+    banner_src   TEXT,
+    banner_file  TEXT,
+    banner_pos   INTEGER DEFAULT 50,
+    country      TEXT,
+    fetched_at   INTEGER,
+    checked_at   INTEGER,
+    error        TEXT
+  )`)
+
   // Scaffolding, marked as scaffolding.
   //
   // `npm run seed -- --demo` writes six games so the pages are not empty, and it writes
