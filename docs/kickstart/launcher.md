@@ -2105,3 +2105,33 @@ included); a name cannot break out of the infostring or smuggle a second command
 
 **Not published.** 0.2.4 (Play fix) and 0.2.5 (client) own the version line; these changes are
 committed and unversioned, for whoever publishes **0.2.6** after 0.2.5 is on `latest.yml`.
+
+### 0.2.6 — published (2026-09-22, 18:43)
+
+**0.2.6 is the shell rewrite (`8da3d0d`) plus `+set name` / `name_pin` (`dcc7c31`), on top of 0.2.5's
+mouse and settings work.** Built from `main` at `8f0b92b`: `tools\dev\build.ps1 -Name launcher` →
+`build\launcher\enw_t4.dll` 1,600,512 B, sha256 `f0a9844e413c1533f540e4f7676519587d389469a7baef1803999ac0ae4cd748`,
+**48 components** (47 in 0.2.5; the new one is `name_pin` — `grep -a name_pin` finds it in this DLL
+and not in `build\client-lane`'s, which is what 0.2.5 shipped). `loadtest.exe` read the banner back:
+`the FILE is 2026-09-22 18:40:44` — minutes old, so `stage-client` took it with **no `--allow-stale`**,
+and its own line names `build\launcher` and the same sha. That is the first release since 0.2.3 whose
+client is a fresh build rather than an override.
+`npm test` **124 passed, 0 failed** (the shell's three and identity's three are both in that run).
+`npm run smoke` **9 of 10** — the one failure is the agent shell's `%LOCALAPPDATA%` sandbox notice,
+identical to 0.2.3/0.2.4/0.2.5 and not a regression.
+
+```
+ENW-Zombies-Launcher-Setup-0.2.6.exe   94,555,781 B
+  sha256 093651669ebba2f1ac47556f14e3b6bdaf63fd3e47f758a3eded07e877c08b81
+  sha512 GnVkh3/L03U7UNyfCA8ke8qYTizM37oUAfTpsxGi9pmgeACZX9eEtHEPPCT4x4Jx31nribhAn6wqXX3s5B7Rpg==
+```
+
+Verified through the **live tunnel**, read-only: `GET https://zombies.enw.gg/updates/latest.yml`
+→ `200`, `Content-Type: text/yaml`, `version: 0.2.6`, and the `sha512` in it is byte-for-byte the
+one computed from the file on disk; a `HEAD` on the installer answers `200` with
+`Content-Length: 94555781`, which is the `size` in the feed. Nothing on the site was restarted.
+
+**Unproven, and named:** nobody has installed 0.2.6 and pressed Play. The left-column shell was
+proven in a dev-mode launcher (the *late* section above) and `+set name` by unit test and by reading
+the DLL; **that a player's ENW name shows over his head in a real game is still B's first run to
+confirm**, and so is 0.2.3's config round trip, which no published build has yet been observed doing.
