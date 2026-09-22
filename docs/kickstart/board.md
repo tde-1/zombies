@@ -4477,3 +4477,46 @@ reboot. `play: true`.**
   environment at spawn). The referee's `join73` proves the game side and this proves the host side;
   the two halves have not been run against each other. `host.js --boot 1 --game --map
   nazi_zombie_prototype` with a client is the whole test and it needs nothing new.
+
+**vps, 2026-09-22 08:45 — game over, end to end, on the Hetzner box: signed replay, result row on
+the live site, instance warm again.**
+
+- 08:35 vps: **synced `infra/host-agent/` from HEAD `e9b04df` to the box and restarted
+  `enw-host-agent`.** `play: true`, box `zombies-dev` **`idle`**, 0 instances, replay key
+  `1cbc9958b50941ed` still pinned.
+- 08:35 vps: **correction to the brief — it was not "Node, no build".** `b8b553a..HEAD` also
+  touches `server/components/referee/referee.cpp` (+192), `referee/t4_bind.{cpp,hpp}`,
+  `replay.cpp` and `dedicated/reflection_probe_dvars.cpp`, and **`match_end` — which the new host
+  path waits up to 500 ms for — is emitted by that half.** So the DLL was rebuilt from HEAD into
+  `build\vps` and shipped with the agent in one session:
+  **`b979c00c5d2dfe152b81370fecefa5fbf76fd280c806d041cb640639cbc7eaf0`** (1,535,488 bytes) in every
+  `zdev/waw-*` copy. `match_end` arrived on the first game, which is the evidence the two halves
+  are in step.
+- 08:41 vps: **THE WHOLE PATH RAN.** A player from B's PC joined the box, idled and died:
+  `game over: stop_intermission notify, round 1, 1m` → `match_end: the game process says it is
+  idle (server_alive=true)` → `replay closed: 30.8 KiB in 7 chunks, 1812 events, 10.1x` →
+  `disposition: REUSE — game 1 of 5 on this instance` → `the game accepted 'end'` → `map_loaded` →
+  **`instance inst-01 is WARM: nazi_zombie_prototype loaded, no match, 1 game(s) played — ready for
+  the next lease`**.
+- 08:41 vps: **the replay is record-grade and the site took the result.** `tools/verify.js`:
+  `m_5de3842b`, 7 chunks, 1812 events, 6m39s of game time, `signed by 1cbc9958b50941ed`,
+  **VALID**, with `exe sha256 732900d1…` (B's `CoDWaW.exe`) in the footer. On the live database:
+  `games {id:2, match_id:"m_5de3842b", box:"zombies-dev", rounds:1, duration_ms:80992,
+  flags:["result_mismatch"]}` and `replays {id:2, box:"zombies-dev", game_id:2, chunks:7,
+  events:1812, key_pinned:1, tier:"full"}`.
+- 08:42 vps: **the gap, and it is the last one before a game that scores: `game_players` is 0.**
+  The host said it plainly — `the game counted 1 thing(s) we never saw on the link: slot0: in the
+  game's result, never seen on the link` — and flagged the summary `result_mismatch`. The player
+  really was in the world (§17: `CS_ACTIVE`, `ROUND 1`), but no per-player event reached the link,
+  so the result has a round count and a duration and **nobody in it**. `referee`/`host` question,
+  not a box one.
+- 08:42 vps: **TRAP — `enw_t4 build <date>` lies after an incremental build.** The instance logged
+  `linked (pid 1012, Sep 22 2026 07:38:34)`, the *previous* build's `__DATE__`/`__TIME__`, while
+  the DLL on disk was the new one: MSBuild only recompiles changed translation units and the one
+  holding those macros was not among them. **Verify a deploy with sha256, never the build string.**
+- 08:45 vps: how the game was run, because it is **not** a lease: the box cannot lease to itself
+  (a lease needs a party or `POST /api/admin/lease`, both session-authenticated), so it was
+  `--boot 1` on a **site-connected** agent started as a transient `systemd-run` unit with
+  `EnvironmentFile=/root/enw-host.env`, so the secret stayed in systemd's hands and off every
+  command line. The result row is therefore from a real game on the real box against the real
+  site, reached without a party. A leased game is still B's to start.

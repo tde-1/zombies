@@ -954,3 +954,98 @@ Second half of the same trap: `05-run-dedi.sh` defaults `DLL=/tmp/enw_t4.dll` an
 `binkw32.dll` on every run, so a stale `/tmp` silently undoes a fresh deploy. Pass `DLL=`
 explicitly — `DLL=/tmp/enw_t4_vps.dll` — and check the `enw_t4 build <date>` line in the log
 rather than trusting the copy.
+
+## 18. Game over, end to end, on the box (2026-09-22 08:45)
+
+`a9f5d92`'s game-over path was synced to the box and **a real game on Hetzner, with a player from
+B's PC, reached game over, signed its replay, posted a result to the live site, and left the
+instance warm.**
+
+```
+host/inst-01  game live: nazi_zombie_prototype (custom) cap 24.0h
+host/inst-01  game over: stop_intermission notify, round 1, 1m
+host/inst-01  match_end: the game process says it is idle (server_alive=true) at round 1
+host/inst-01  replay closed: 30.8 KiB in 7 chunks, 1812 events, 10.1x, 0.27 MB/game-hour
+host/inst-01  SUMMARY nazi_zombie_prototype round 1 finish=none 1m20s flags=[result_mismatch] eligible=true
+host/inst-01  disposition: REUSE — game 1 of 5 on this instance
+host/inst-01  the game accepted `end`; waiting for the map to come back
+host/inst-01  map_loaded nazi_zombie_prototype -> manifest "Nacht der Untoten" (read)
+host          instance inst-01 is WARM: nazi_zombie_prototype loaded, no match, 1 game(s) played
+              — ready for the next lease
+```
+
+**The replay is real and record-grade**, `tools/verify.js` on the box:
+
+```
+match       m_5de3842b  Nacht der Untoten  (custom)
+recorded by box zombies-dev, instance inst-01
+exe sha256  732900d158982c33e3121f0b86d22230be79839bbcbfe3bdfc1238f408a7d64d
+content     7 chunks, 1812 events, 6m39s of game time
+compression 310.6 KiB -> 30.8 KiB (10.1x)
+signed by   1cbc9958b50941ed
+VALID — every chunk hashes to its index entry, the chain is intact, and the footer
+        signature checks out.
+```
+
+**And the site took it.** Two rows, on the live database, from a game this box actually ran:
+
+```
+games   { id: 2, match_id: "m_5de3842b", box: "zombies-dev", mode: "custom",
+          rounds: 1, duration_ms: 80992, flags: ["result_mismatch"], ended_at: … }
+replays { id: 2, match_id: "m_5de3842b", box: "zombies-dev", game_id: 2,
+          chunks: 7, events: 1812, ratio: 10.1, key_id: "1cbc9958b50941ed",
+          key_pinned: 1, tier: "full" }
+```
+
+`postResult` logs only on failure, so the absence of a warning is the evidence that it went; the
+rows are the proof.
+
+### Two things this turned up
+
+1. **`game_players` is 0 and the summary carries `result_mismatch`.** The host's own words:
+   `the game counted 1 thing(s) we never saw on the link: slot0: in the game's result, never seen
+   on the link`. The player really was in the world — §17's join proved `CS_ACTIVE` and `ROUND 1`
+   — but no per-player event reached the link, so the result has a round count and a duration and
+   **nobody in it**. Every board that needs a player is still empty for this game. That is a
+   `referee`/`host` question, not a box one, and it is the last thing between this and a game that
+   scores.
+2. **`enw_t4 build <date>` lies after an incremental build.** The instance logged
+   `linked (pid 1012, Sep 22 2026 07:38:34)` — the *previous* build's `__DATE__`/`__TIME__` —
+   while the DLL on disk was the new one. MSBuild only recompiles changed translation units, and
+   the one holding those macros was not among them. **Verify with the sha256, never the build
+   string.** §17's deploy traps plus this one mean the version of a DLL on the box is a hash
+   question, full stop.
+
+### What was actually synced, and a correction to the brief
+
+The brief said "`infra/host-agent/` only, Node, no build". **The DLL half had also moved**:
+`b8b553a..HEAD` touches `server/components/referee/referee.cpp` (+192),
+`referee/t4_bind.{cpp,hpp}`, `replay.cpp` and `dedicated/reflection_probe_dvars.cpp` — and
+`match_end`, which the new host path waits up to 500 ms for, is emitted by *that* half. So the DLL
+was rebuilt from HEAD into `build\vps` and shipped with the agent in the same session:
+
+```
+sha256  b979c00c5d2dfe152b81370fecefa5fbf76fd280c806d041cb640639cbc7eaf0   (1,535,488 bytes)
+```
+
+in every `zdev/waw-*` copy. `match_end` then arrived on the first game, which is the evidence the
+two halves are in step.
+
+`node test/run-all.js` on B's PC: **41 passed, 0 failed** with the `--wine` branch in place.
+
+### How the game was run, and why it is not a lease
+
+The box has no way to lease a game to itself: a lease comes from a party or from
+`POST /api/admin/lease`, both of which need a logged-in session. The game was booted with
+`--boot 1` on a **site-connected** agent, started as a transient unit so the secret stayed in
+systemd's hands and off every command line:
+
+```bash
+systemd-run --unit=enw-oneshot-game --uid=waw --gid=waw \
+  -p EnvironmentFile=/root/enw-host.env -p Environment=ENW_SITE=https://zombies.enw.gg \
+  -p Restart=no -p KillSignal=SIGINT \
+  /home/waw/run-host.sh --boot 1 --map nazi_zombie_prototype
+```
+
+So the result row is from a **real game on the real box against the real site**, reached without a
+party. A leased game is still B's to start, and the box is back on `enw-host-agent`, idle.
