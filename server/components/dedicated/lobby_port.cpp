@@ -71,6 +71,7 @@ using bind_t = int(__stdcall*)(uintptr_t, const void*, int);
 bind_t g_orig_bind = nullptr;
 uint16_t g_lobby_base = kStockLobbyPort;                  // where the engine starts probing
 bool g_log_binds = true;
+bool g_dedicated = false;
 volatile LONG g_binds = 0;
 
 std::string env(const char* name) {
@@ -129,6 +130,25 @@ public:
             ENW_DEBUG("lobby_port: not a dedicated server; left alone");
             return;
         }
+        g_dedicated = true;
+        if (env("ENW_NO_BIND_LOG") == "1") {
+            g_log_binds = false;
+            return;
+        }
+        if (!memory::hook_import_ordinal("WSOCK32.dll", kWsockBindOrdinal,
+                                         reinterpret_cast<void*>(&bind_hook),
+                                         reinterpret_cast<void**>(&g_orig_bind))) {
+            ENW_WARN("lobby_port: could not hook WSOCK32#2 (bind); binds are not logged");
+            return;
+        }
+        ENW_INFO("lobby_port: bind log armed (WSOCK32#2)");
+    }
+
+    // The port constant lives in .text, which SteamStub still has encrypted in post_load
+    // (measured on the box: the site read FF 24 F8 3A 98 4F there). post_unpack runs once
+    // it is decrypted and well before Com_Init builds the Demonware params.
+    void post_unpack() override {
+        if (!g_dedicated) return;
         const std::string want = env("ENW_LOBBY_PORT");
         if (!want.empty()) {
             char* end = nullptr;
@@ -161,18 +181,6 @@ public:
         } else {
             ENW_INFO("lobby_port: ENW_LOBBY_PORT unset; stock lobby port 3074 (probes 3074..3173)");
         }
-
-        if (env("ENW_NO_BIND_LOG") == "1") {
-            g_log_binds = false;
-            return;
-        }
-        if (!memory::hook_import_ordinal("WSOCK32.dll", kWsockBindOrdinal,
-                                         reinterpret_cast<void*>(&bind_hook),
-                                         reinterpret_cast<void**>(&g_orig_bind))) {
-            ENW_WARN("lobby_port: could not hook WSOCK32#2 (bind); binds are not logged");
-            return;
-        }
-        ENW_INFO("lobby_port: bind log armed (WSOCK32#2)");
     }
 };
 
