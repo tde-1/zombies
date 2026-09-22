@@ -39,6 +39,15 @@
 
 The full write-up is `web.md`, newest section.
 
+## 2026-09-22 (late evening): `/settings` in Gaff's shape (branch `web-settings-2`, not merged)
+
+B asked for Gaff's settings menu. `/settings` is now a rail with search and six icon tabs (Display,
+Graphics, Audio, Controls, Game, ENW), small lowercase sections, one short row each: checkboxes,
+segmented buttons, selects, sliders; key capture and a reset per section kept. Every WaW dvar
+mapping unchanged (a test checks every item is placed once). New ENW row: *pause game while
+chatting (solo)* (`pause_on_chat`). ENW tab is `EnwSection.jsx` with a slot for Installed maps +
+Update. Proven on a dev port with a saved-value round trip; `web.md` last section.
+
 ## 2026-09-22 (evening): Movement's left rail on the site; the logo is just ENW (branch `web-dock`, not merged)
 
 Movement's party rail is on the left of every page. It has four parts:

@@ -2351,3 +2351,90 @@ The shots:
   `partyProgress`'s "silence is not a refusal" rule. That member reads "in party" until their
   launcher posts.
 * **Phone widths.**
+
+## 2026-09-22, late evening — `/settings` cleaned up in Gaff's shape (branch `web-settings-2`)
+
+B: *"Clean up the settings menu. It should be like my project Gaff's settings menu, split off into
+little sections and really simplified."* The WaW-menu layout from the section above is replaced;
+**what every row writes is unchanged** (`data/wawSettings.js`, `client.md` §8 table — nothing
+remapped, nothing dropped).
+
+### What was copied from Gaff, and from where
+
+Read-only, from Gaff's source (B: the repo is the authority) —
+`C:\Users\b\Desktop\WatchGame\app\src\components\SettingsScreen.jsx` and the `.settings-screen`,
+`.ss-*`, `.seg-ctl`/`.seg-btn`, `.check-field`, `.theme-select` rules in
+`WatchGame\app\src\styles.css` — cross-checked against the shipped build (`app.asar` copied to
+scratch and extracted with `@electron/asar`; the install was not touched, Gaff.exe not launched):
+
+* **One bordered screen**, a header line reading `settings`, then a **left rail** (202 px, a shade
+  darker than the panel) with a **search box** on top and **icon tabs** under it (13.5 px, 9 px
+  radius, the active tab on a raised fill). Search matches every row and shows `Tab › section` above
+  each hit, as Gaff's `ss-crumb` does. Under 680 px the rail becomes a row of tabs (Gaff's own
+  breakpoint).
+* **Little sections** inside a tab: a small lowercase heading in the accent colour on a 1.5 px rule
+  (`ss-section`), rows 9 px apart.
+* **Row types, as Gaff draws them**: on/off → a checkbox then the label (`check-field`); a few
+  choices → label left, **segmented buttons** right with the chosen one filled (`ss-seg-row` +
+  `seg-ctl`); a long list → a select (`theme-select`); a number → label, slider, value at the right
+  (the volume rows). Lowercase labels; a one-line grey hint (`ss-hint`) only where the value is not
+  self-evident — five rows have one.
+* Gaff's amber is the site's `--accent`, so the page follows the site's themes.
+
+Ours, not Gaff's: **key rows** (label + Key / Alt capture boxes; Esc cancels, Backspace clears —
+unchanged), a small **reset** at the right of every section heading (Gaff has none; the brief kept
+Reset per section), and an **`auto`** segment on rows whose game default is "the game picks"
+(`def: null` → `reset <dvar>`), because a checkbox cannot say it. The `‹ value ›` pickers, dvar
+codes on every row, ENW tags and the per-menu footers are gone; the dvar and source are on hover.
+
+### The sections
+
+| Tab | Sections (rows) |
+|---|---|
+| Display | **screen** (display mode, monitor, resolution, refresh rate, aspect ratio) · **picture** (field of view, brightness, max fps, vsync, show fps) |
+| Graphics | **quality** (anti-aliasing, shadows, specular map, glow, depth of field, dual video cards) · **world** (corpses, bullet impacts, dynamic foliage, ocean simulation) · **textures** (anisotropy, mipmaps, texture quality, texture / normal map / specular map detail — dimmed unless quality is manual, as in the game) |
+| Audio | **volume** (master, music, effects, voice, cinematics) · **sound** (line of sight occlusion) |
+| Controls | **mouse** (sensitivity, invert, smooth, free look, raw input) · **move** · **combat** · **interact** · **look** (41 key rows) |
+| Game | **game** (mature content, subtitles, hud, crosshair, console) |
+| ENW | **launcher** (client installed / version / update, inside the launcher) · **chat** (*pause game while chatting (solo)* → `pause_on_chat`, default on — the setting the overlay lane added) · **the slot** · **how settings apply** (one line + the not-mapped list) |
+
+### Files
+
+* `client/src/data/settingsLayout.js` (new) — tabs, sections, short labels, hints, short option
+  words. Presentation only; it places catalogue ids.
+* `client/src/data/wawSettings.js` — one additive helper, `defaultsFor(items)`; `sectionDefaults`
+  now calls it (same result).
+* `client/src/components/settings/SettingRow.jsx`, `TabIcon.jsx`, **`EnwSection.jsx`** (new).
+  `pages/Settings.jsx` rewritten around them; load / save / launcher sync / key capture code is
+  the same as before. `components/launcherBridge.js` untouched.
+* **For branch `updates-downloads`**: the ENW tab is its own component, `EnwSection.jsx`, with a
+  marked `SLOT` (`<div className="set-slot" data-slot="updates-downloads" />`) between *chat* and
+  *how settings apply*. Put the Installed maps box and the Update button there as
+  `<div className="set-group">` blocks with a `set-section` heading. Nothing else depends on it.
+* `theme.css`: the `.waw-*` block replaced by `.set-*`.
+* Old links (`/settings#texture`, `#look`, …) land on the new tab that holds those rows.
+
+### Proof
+
+* `web npm test` (after rebasing on main with web-profile): **112 / 41 / 15 / 19, 0 failed**. One earlier run had a single `local-run` failure in the username-claim test ("already_set"), which passed on the next three runs - not this change, likely a concurrent run; noted. New check: every catalogue item is placed in
+  exactly one section, no layout id is foreign, and the union of the section resets equals
+  `allDefaults()` — the regroup cannot change what a reset writes.
+* **Dev port `:3462`** (own copy of the DB in scratch, `ZM_TEST_LOGIN=1`, a fake SteamID and the
+  name `settings_test`), driven through the real page in headless Edge: clicked corpses → *insane*,
+  mipmaps → *trilinear*, shadows → *auto*, Forward's Alt box then **I**, and unticked *pause game
+  while chatting*. Status read *saved*; `GET /api/me/settings` returned
+  `{"pause_on_chat":false,"waw":{"ai_corpseCount":"32","r_texFilterMipMode":"Force Trilinear","sm_enable":null},"forward":["W","I"]}`;
+  after a reload the corpses row showed *insane*.
+* Screenshots in `docs/kickstart/ui/`: `settings2-{display,graphics,audio,controls,game,enw}.png`,
+  `settings2-search.png`, `settings2-mobile.png`, `settings2-graphics-saved.png` (after the round
+  trip); Gaff for comparison, its real `SettingsScreen.jsx` rendered in a read-only Vite harness in
+  scratch: `gaff-settings-{account,video,audio,personalization}.png`.
+
+### Unproven
+
+* **Inside the launcher.** Not run in the launcher's preload; the bridge code path is unchanged from
+  the section above (which did prove it), but the ENW tab's *launcher* rows were only seen in their
+  browser fallback. **In game**: nothing new — client.md §8d still stands as the check.
+* `pause_on_chat` reaching the game: the row saves it; the overlay reading it is the overlay lane's
+  proof (`/api/game-chat/me`).
+* Not deployed, not merged.

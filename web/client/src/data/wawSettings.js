@@ -236,9 +236,14 @@ export const OMITTED = [
 
 // The game defaults for one section, as a partial `game` object.
 export function sectionDefaults(section) {
+  return defaultsFor(ALL.filter((it) => it.section === section))
+}
+
+// The game defaults for any list of items (the /settings page resets its own smaller
+// groups with this - data/settingsLayout.js), as a partial `game` object.
+export function defaultsFor(items) {
   const game = { waw: {}, wawBinds: {} }
-  for (const it of ALL) {
-    if (it.section !== section) continue
+  for (const it of items) {
     if (it.to === 'waw') {
       game.waw[it.dvar] = it.def
       const extra = it.also && it.def != null ? it.also[String(it.def)] : null

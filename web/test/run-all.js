@@ -1548,6 +1548,28 @@ async function main() {
     })
   }
 
+  // The Gaff-shaped page (2026-09-22 late) regroups the rows into small tabbed sections;
+  // data/settingsLayout.js only places them. No mapping may fall off the page, or appear twice.
+  const layout = await import('../client/src/data/settingsLayout.js')
+  check('/settings layout: every WaW item is placed in exactly one little section, and each resets', () => {
+    const seen = new Map()
+    for (const g of layout.GROUPS) {
+      truthy(layout.TABS.some((t) => t.id === g.tab), `${g.id} is in no tab`)
+      for (const id of g.items) seen.set(id, (seen.get(id) || 0) + 1)
+      const d = waw.defaultsFor(layout.groupItems(g))
+      truthy(Object.keys(d.waw).length + Object.keys(d.wawBinds).length + Object.keys(d).length > 2, `${g.id} has no defaults`)
+    }
+    for (const it of waw.ALL) eq(seen.get(it.id), 1, `${it.id} is placed ${seen.get(it.id) || 0} times`)
+    eq(seen.size, waw.ALL.length, 'a layout id that is not in the catalogue')
+    // The regroup must not change what a reset writes: the union of the group resets is
+    // exactly the old whole-catalogue defaults.
+    const all = { waw: {}, wawBinds: {} }
+    for (const g of layout.GROUPS) { const { waw: w, wawBinds: b, ...k } = waw.defaultsFor(layout.groupItems(g)); Object.assign(all, k); Object.assign(all.waw, w); Object.assign(all.wawBinds, b) }
+    const ref = waw.allDefaults()
+    const flat = (o) => JSON.stringify([...Object.entries(o).filter(([k]) => k !== 'waw' && k !== 'wawBinds'), ...Object.entries(o.waw).map(([k, v]) => ['waw.' + k, v]), ...Object.entries(o.wawBinds).map(([k, v]) => ['bind.' + k, v])].sort((a, b) => (a[0] < b[0] ? -1 : 1)))
+    eq(flat(all), flat(ref), 'group resets differ from the catalogue defaults')
+  })
+
   // ---- report ---------------------------------------------------------------
   for (const [s, n] of results) console.log(`${s}  ${n}`)
   console.log(`\n${pass} passed, ${fail} failed`)
