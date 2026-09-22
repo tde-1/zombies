@@ -119,6 +119,31 @@ node test/demo-network.js
 
 ---
 
+## What happens at game over
+
+A match ends by itself, and the box finishes it without anybody watching: `game_over` carries the
+result, the replay is **closed and signed**, the result is POSTed (and held in `--spool-dir` if the
+site is down), and only then is `match_end` answered — with one of two dispositions and never
+neither:
+
+* **`end`** (the default) — the referee `map_restart`s and re-announces `map_loaded`, the instance
+  goes **warm**, and the next lease skips a whole map load;
+* **terminate** — the process is stopped by PID and the slot freed.
+
+It terminates rather than reuses on `--after-game terminate`, after `--games-per-instance N`
+(default 5), if the game refuses `end`, if the map never comes back, or if there was no `match_end`
+at all — a game process that never said it was idle is never assumed to be. Either way the box
+reports **idle** again straight away. `docs/kickstart/host.md` §12.
+
+```bash
+# one game, the instance reused, a second game on the same process, then torn down
+node host.js --boot 1 --sim-players 2 --sim-max-round 3 --sim-timescale 30      --sim-games 2 --games-per-instance 2
+
+# the failure paths, so they are reproducible rather than argued about
+node host.js --boot 1 --sim-end-fails        # the game refuses `end`  -> torn down
+node host.js --boot 1 --sim-no-match-end     # the game never says it is idle -> torn down
+```
+
 ## Measuring
 
 ```bash

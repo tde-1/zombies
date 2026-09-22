@@ -12,6 +12,14 @@
 // --timescale S          run S× faster than real time (the 24 h cap in seconds)
 // --max-round N          end the game after this round
 // --ee-round N           fire the Easter-egg notify on this round
+// --games N              play N matches on this one process (default 1). After the Nth
+//                        game over the roster does NOT come back, so the instance sits
+//                        idle exactly as a real server does and the host's disposition
+//                        has something to dispose of.
+// --end-fails            answer `end` with reply.ok:false (the contract's "command buffer
+//                        unavailable" — the instance must be torn down, never reused)
+// --no-match-end         report the result and then say nothing about being idle, the way
+//                        every server did before match_end existed
 // --stdout               no socket; print NDJSON (handy for eyeballing the stream)
 import net from 'node:net'
 import { ZombiesSim, TICK_MS } from './engine.js'
@@ -32,6 +40,10 @@ if (process.env.ENW_SIM_TOKENS) Object.assign(tokens, JSON.parse(process.env.ENW
 // to, which is the whole point of the token check.
 const roster = process.env.ENW_SIM_ROSTER ? JSON.parse(process.env.ENW_SIM_ROSTER) : null
 const nPlayers = roster ? roster.length : Number(a.players ?? 1)
+// How many matches this process plays before it goes quiet for good. A real dedicated
+// server plays as many as the host asks for; the number here is only so a test can say
+// "and then it stayed idle" and have that mean something.
+const maxGames = Number(a.games ?? process.env.ENW_SIM_GAMES ?? 1)
 
 const sim = new ZombiesSim({
   instance,
@@ -39,6 +51,8 @@ const sim = new ZombiesSim({
   map: a.map || process.env.ENW_SIM_MAP || 'nazi_zombie_asylum',
   fsGame: a['fs-game'] || process.env.ENW_SIM_FSGAME || null,
   maxRound: Number(a['max-round'] ?? process.env.ENW_SIM_MAX_ROUND ?? 15),
+  endFails: !!a['end-fails'] || process.env.ENW_SIM_END_FAILS === '1',
+  noMatchEnd: !!a['no-match-end'] || process.env.ENW_SIM_NO_MATCH_END === '1',
   eeRound: a['ee-round'] ? Number(a['ee-round']) : null,
   buyableEndingRound: a['ending-round'] ? Number(a['ending-round']) : null,
 })
@@ -106,16 +120,7 @@ function run() {
   send({ t: 'hello', v: 0, instance, role, pid: process.pid, exe_sha256: '732900D158982C33E3121F0B86D22230BE79839BBCBFE3BDFC1238F408A7D64D', dll_build: `sim-${process.version}` })
   send({ t: 'map_loaded', ms: 0, map: sim.map, fs_game: sim.fsGame, mode: 'zombies', sv_maxclients: 4 })
 
-  for (let i = 0; i < nPlayers; i++) {
-    const r = roster?.[i] || {}
-    sim.connectPlayer({
-      slot: i,
-      name: r.name || NAMES[i % NAMES.length],
-      steamid: r.steamid || undefined,
-      afk: r.afk ?? (a['afk-slot'] != null && Number(a['afk-slot']) === i),
-      token: r.token ?? tokens[i] ?? null,
-    })
-  }
+  seatRoster()
 
   if (a['late-join-ms']) {
     const at = Number(a['late-join-ms'])
@@ -155,9 +160,41 @@ function run() {
   sim.on('end', (r) => {
     const d = Object.entries(dropped).filter(([, n]) => n).map(([k, n]) => `${k}:${n}`).join(' ')
     console.error(`[sim ${instance}] game over: ${r} at round ${sim.round}, sim time ${(sim.ms / 3600000).toFixed(2)}h${d ? `, dropped ${d}` : ''}`)
+    console.error(`[sim ${instance}] match_end sent; the process is ALIVE and idle, waiting for \`end\` or a kill (game ${sim.games} of ${maxGames})`)
+  })
+
+  // THE INSTANCE IS REUSED. `end` made the engine map_restart and re-announce
+  // `map_loaded`; on a real server the clients are still connected through a map_restart,
+  // so the same roster comes back with it. After the last game they do not, and the
+  // process sits there idle — which is the state the host has to notice and clean up.
+  sim.on('restart', ({ reason, roster: back }) => {
+    if (sim.games >= maxGames) {
+      console.error(`[sim ${instance}] map_restart (${reason}) — ${sim.games} game(s) played, nobody rejoins; staying idle`)
+      return
+    }
+    console.error(`[sim ${instance}] map_restart (${reason}) — ${back.length} player(s) still connected, next match starting`)
+    setTimeout(() => seatRoster(back), 50)
   })
 }
 
-for (const s of ['SIGTERM', 'SIGINT']) process.on(s, () => { try { sim.endGame('shutdown') } catch { /* ignore */ } process.exit(0) })
+/** Seat the lobby: the leased roster on a cold boot, whoever survived the map_restart after. */
+function seatRoster(back = null) {
+  if (back) {
+    for (const r of back) sim.connectPlayer({ slot: r.slot, name: r.name, steamid: r.steamid, token: r.token ?? null })
+    return
+  }
+  for (let i = 0; i < nPlayers; i++) {
+    const r = roster?.[i] || {}
+    sim.connectPlayer({
+      slot: i,
+      name: r.name || NAMES[i % NAMES.length],
+      steamid: r.steamid || undefined,
+      afk: r.afk ?? (a['afk-slot'] != null && Number(a['afk-slot']) === i),
+      token: r.token ?? tokens[i] ?? null,
+    })
+  }
+}
+
+for (const s of ['SIGTERM', 'SIGINT']) process.on(s, () => { try { sim.dead = true; sim.endGame('shutdown') } catch { /* ignore */ } process.exit(0) })
 
 connectAndRun()

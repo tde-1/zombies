@@ -49,6 +49,12 @@ const cfg = {
   site: a.site || process.env.ENW_SITE || null,
   secret: a.secret || process.env.ENW_SECRET || 'devkey-a',
   replayDir: a['replay-dir'] || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'replays'),
+  // THE SPOOL WAS NEVER WIRED UP. `cfg.spoolDir` was read by the SiteClient constructor
+  // and never set by anything, so `--spool-dir` (which test/integration-site.js has passed
+  // all along) did nothing and a result the site refused to take was logged and dropped
+  // rather than held. Every "spooled" claim in this file before 2026-09-22 was about the
+  // SiteClient's own unit behaviour, not about a running box.
+  spoolDir: a['spool-dir'] || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'spool'),
   logDir: a['log-dir'] || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'logs', 'host'),
   keyDir: a['key-dir'] || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'keys'),
   maxInstances: Number(a['max-instances'] ?? 8),
@@ -91,6 +97,26 @@ const cfg = {
   // gets their result while they are still looking at the launcher.
   localOrphanMs: Number(a['local-orphan-ms'] ?? 15_000),
   liveHz: Number(a['live-hz'] ?? 4),   // frames per second to the site's spectator view
+  // ---- GAME OVER: what happens to the instance afterwards ----------------------------
+  // The referee sends `game_over` (the result) and then `match_end` ("this process is
+  // idle and the instance can be reclaimed"). The contract — referee.md §10.3,
+  // game-link-v0 — says the host MUST then pick one of two dispositions and must not
+  // leave it in neither: reuse (`end` -> map_restart -> a new `map_loaded`) or terminate.
+  //
+  //   --after-game end|terminate   default `end`: keep the instance warm for the next
+  //                                lease. A warm instance skips a whole map load.
+  //   --games-per-instance N       terminate after the Nth game on one process, whatever
+  //                                --after-game says. A process that has run all night is
+  //                                the one with the leak nobody has found yet.
+  //   --end-reply-ms / --map-reload-ms   how long the two halves of the handshake get
+  //                                before the instance is torn down instead.
+  //   --warm-idle-ms               a warm instance nobody leased is not free — it holds a
+  //                                UDP port and a map's worth of RSS. Retire it.
+  afterGame: (a['after-game'] || 'end') === 'terminate' ? 'terminate' : 'end',
+  gamesPerInstance: Number(a['games-per-instance'] ?? 5),
+  endReplyMs: Number(a['end-reply-ms'] ?? 10_000),
+  mapReloadMs: Number(a['map-reload-ms'] ?? 60_000),
+  warmIdleMs: Number(a['warm-idle-ms'] ?? 10 * 60_000),
   referee: {
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
     ...(a['cap-warn-ms'] ? { capWarnMs: String(a['cap-warn-ms']).split(',').map(Number) } : {}),
@@ -128,7 +154,12 @@ class Game extends EventEmitter {
       manifest: this.manifest, config: { ...cfg.referee, ...(refereeConfig || {}) }, log: this.log,
     })
     this.referee.on('command', (c) => this.sendToGame(c))
-    this.referee.on('over', (s) => this.finish(s))
+    // `finish()` is async (it closes and signs the replay, then posts the result) and the
+    // DISPOSITION of the instance must not start until it has returned — the contract is
+    // "finish the replay, post the result, THEN send `end` or terminate", in that order,
+    // because an `end` that lands first destroys the evidence of a game we had not
+    // finished writing down. So the promise is kept and `match_end` waits on it.
+    this.referee.on('over', (s) => { this.finishPromise = this.finish(s) })
     this.referee.on('manifest_wanted', (map) => { this.manifest = host.manifests.get(map); this.referee.setManifest(this.manifest) })
     // Crash recovery (vault 10 §5). The referee decides WHEN; the host does the two bits
     // of I/O: ask the game for the leaving player's state, and hand it back when they
@@ -150,13 +181,33 @@ class Game extends EventEmitter {
   attach(conn) {
     this.conn = conn
     clearTimeout(this.orphanTimer)
-    conn.on('message', (m) => this.onGameMessage(m))
-    conn.on('close', () => {
+    // Kept so `detach()` can hand this connection to the NEXT game on the same instance
+    // without leaving a dead referee listening to it. An anonymous arrow cannot be removed.
+    this.onMessageBound = (m) => this.onGameMessage(m)
+    this.onCloseBound = () => {
       this.conn = null
       this.log.info('game link closed')
       this.onLinkClosed()
-    })
+    }
+    conn.on('message', this.onMessageBound)
+    conn.on('close', this.onCloseBound)
     for (const c of this.pending.splice(0)) conn.send(c)
+  }
+
+  /**
+   * Give up this connection so the successor game on the same instance can take it.
+   * A warm instance keeps ONE socket across a map_restart — the DLL does not reconnect,
+   * because the process never went away — so the handover is here rather than in a new
+   * `hello`.
+   */
+  detach() {
+    const c = this.conn
+    if (!c) return null
+    if (this.onMessageBound) c.off('message', this.onMessageBound)
+    if (this.onCloseBound) c.off('close', this.onCloseBound)
+    this.conn = null
+    this.detached = true
+    return c
   }
 
   /**
@@ -198,8 +249,13 @@ class Game extends EventEmitter {
     // 2. it goes into the replay, unmodified
     this.record(m)
     // 3. the side effects that are the HOST's job, not the referee's
-    if (m.t === 'map_loaded') this.openReplay(m)
+    if (m.t === 'map_loaded') this.onMapLoaded(m)
+    if (m.t === 'match_end') this.onMatchEnd(m)
     if (m.t === 'player_connect') this.authPlayer(m)
+    // A WARM instance opens its replay on the first sign of an actual game rather than on
+    // `map_loaded` — see `onMapLoaded`. `record()` buffers everything until then, so
+    // nothing is lost and the header carries the match the game turned out to be.
+    if (this.deferReplay && (m.t === 'player_connect' || m.t === 'round') && this.mapEv) this.openReplay(this.mapEv)
     if (m.t === 'chat') this.host.onGameChat(this, m)
     this.gameLog.onEvent(m, this.referee)
     this.host.dash?.push('event', { instance: this.instance.id, ev: m })
@@ -250,6 +306,135 @@ class Game extends EventEmitter {
       this.recordHostEvent({ t: 'snapshot_held', slot, steamid, score: state.score ?? null, weapon: state.weapon ?? null, reserved: state.limited_weapons_held })
     }
     this.referee.on('reply', onReply)
+  }
+
+  // ---- game over, and what becomes of the instance ---------------------------------
+  /**
+   * `map_loaded` is the signal to open a replay (referee.md §10.3) — for an instance we
+   * booted for a known match. For a WARM instance it is the signal that the map came
+   * back, and the match it will carry may not exist yet, so the file is opened on the
+   * first `player_connect`/`round` instead and the buffered `map_loaded` goes into it.
+   */
+  onMapLoaded(ev) {
+    this.mapEv = ev
+    this.emit('map_loaded', ev)
+    if (!this.deferReplay) this.openReplay(ev)
+  }
+
+  /**
+   * MATCH END. The game process is idle and the instance can be reclaimed — and it is
+   * STILL ALIVE, which is the thing the contract is emphatic the host must not assume
+   * away: before `no_save_reload.cpp` a finished game took its server with it, and now a
+   * finished game leaves a server simulating an empty intermission for ever.
+   *
+   * Order, and it is not negotiable: the replay is closed and signed and the result is
+   * posted, and only then is the instance either reused or destroyed.
+   */
+  onMatchEnd(ev) {
+    if (this.matchEndSeen) return
+    this.matchEndSeen = true
+    clearTimeout(this.disposeTimer)
+    this.emit('match_end_seen', ev)
+    // Belt and braces: `game_over` is supposed to arrive first and `finish()` is supposed
+    // to be under way. If a game sends `match_end` on its own we still owe a result.
+    if (!this.finished) {
+      this.log.warn('match_end arrived without a game_over — calling the game ourselves so the replay is signed and the result posted')
+      this.referee.flags.add('match_end_without_game_over')
+      this.referee.finishGame(ev.reason || 'match_end')
+    }
+    Promise.resolve(this.finishPromise)
+      .catch((e) => this.log.error(`finish failed: ${e.message}`))
+      .then(() => this.dispose())
+  }
+
+  /**
+   * One of two dispositions, and never neither. Reuse is the default because a warm
+   * instance skips a whole map load; everything that could make reuse a lie terminates.
+   */
+  disposition() {
+    const me = this.referee.matchEnd
+    const played = (this.instance.gamesPlayed || 0) + 1
+    const bad = ['server_crash', 'instance_failed', 'link_closed', 'host_shutdown'].filter((f) => this.referee.flags.has(f))
+    if (this.instance.foreign) return { action: 'leave', why: 'a local game: the launcher owns the process, we never touch it' }
+    if (!me) return { action: 'terminate', why: 'no match_end — the game never said it was idle, so it cannot be assumed to be' }
+    if (me.server_alive === false) return { action: 'terminate', why: 'match_end said server_alive:false' }
+    if (bad.length) return { action: 'terminate', why: `the game did not end cleanly (${bad.join(', ')})` }
+    if (!this.conn) return { action: 'terminate', why: 'the link is gone' }
+    if (cfg.afterGame === 'terminate') return { action: 'terminate', why: '--after-game terminate' }
+    if (played >= cfg.gamesPerInstance) return { action: 'terminate', why: `${played} game(s) on this instance, the limit is ${cfg.gamesPerInstance}` }
+    return { action: 'reuse', why: `game ${played} of ${cfg.gamesPerInstance} on this instance` }
+  }
+
+  async dispose() {
+    if (this.disposed) return this.disposed
+    this.disposed = (async () => {
+      const plan = this.disposition()
+      this.log.info(`disposition: ${plan.action.toUpperCase()} — ${plan.why}`)
+      this.host.dash?.push('disposition', { instance: this.instance.id, match_id: this.matchId, ...plan })
+      if (plan.action === 'leave') return plan
+      if (plan.action === 'terminate') { await this.host.retire(this, plan.why); return plan }
+      const r = await this.host.reuse(this)
+      if (!r.ok) {
+        this.log.warn(`reuse refused (${r.why}) — tearing the instance down instead, which is the other half of the contract`)
+        await this.host.retire(r.game || this, r.why)
+        return { action: 'terminate', why: r.why }
+      }
+      return plan
+    })()
+    return this.disposed
+  }
+
+  /**
+   * Send `end` and see the instance all the way back to a loaded map. `reply.ok:false`
+   * means the command buffer was unavailable and the instance MUST NOT be reused; a
+   * silent reply, or a restart that never re-announces `map_loaded`, is the same answer
+   * arrived at by timeout.
+   */
+  requestRestart(reason = 'next lease') {
+    return new Promise((resolve) => {
+      let settled = false
+      let waitLoad = null
+      const cmd = this.referee.send({ t: 'end', reason })
+      const done = (ok, why) => {
+        if (settled) return
+        settled = true
+        clearTimeout(waitReply); clearTimeout(waitLoad)
+        this.referee.off('reply', onReply)
+        this.off('map_loaded', onLoaded)
+        resolve({ ok, why })
+      }
+      const onReply = (ev) => {
+        if (ev.id !== cmd.id) return
+        this.referee.off('reply', onReply)
+        clearTimeout(waitReply)
+        if (!ev.ok) return done(false, `the game refused \`end\`: ${ev.error || 'no reason given'}`)
+        this.log.info('the game accepted `end`; waiting for the map to come back')
+        waitLoad = setTimeout(() => done(false, `no map_loaded within ${cfg.mapReloadMs} ms of an accepted \`end\``), cfg.mapReloadMs)
+        waitLoad.unref?.()
+      }
+      // map_loaded can legitimately beat the reply out of the socket (both arrive in one
+      // TCP read), and a map that has demonstrably come back is the stronger evidence.
+      const onLoaded = () => done(true, 'map_loaded re-announced')
+      const waitReply = setTimeout(() => done(false, `no reply to \`end\` within ${cfg.endReplyMs} ms`), cfg.endReplyMs)
+      waitReply.unref?.()
+      this.referee.on('reply', onReply)
+      this.on('map_loaded', onLoaded)
+    })
+  }
+
+  /** A warm instance has been leased: give it the real match identity before it records. */
+  rebind(asg, tokens) {
+    this.matchId = asg.match_id
+    this.mode = asg.mode || this.mode
+    this.vip = !!asg.vip
+    this.assignment = asg
+    this.tokens = tokens || {}
+    this.referee.matchId = asg.match_id
+    this.referee.mode = this.mode
+    this.referee.vip = this.vip
+    this.instance.matchId = asg.match_id
+    this.instance.assignment = asg
+    this.log.info(`warm instance rebound to lease ${asg.match_id} (${this.mode})`)
   }
 
   // ---- replay --------------------------------------------------------------------
@@ -310,6 +495,22 @@ class Game extends EventEmitter {
     if (this.finished) return
     this.finished = true
     clearInterval(this.tickTimer)
+    // WAIT A BEAT FOR `match_end`. The referee sends it immediately after `game_over`, and
+    // a result that carries it is a result that says whether the instance was left free —
+    // which is the one fact an operator reading a finished game wants and cannot get from
+    // anywhere else. Half a second, never more, and a game that never sends one (a crash,
+    // the cap, a host shutdown) pays exactly that and no more.
+    //
+    // It happens BEFORE the replay footer is written so the footer's summary and the
+    // posted summary are the same object. `match_end` itself is NOT an event of the match
+    // and is not appended to the replay: `game_over` is the last event, by contract.
+    if (!this.matchEndSeen && this.conn) {
+      await new Promise((r) => {
+        const t = setTimeout(r, 500); t.unref?.()
+        this.once('match_end_seen', () => { clearTimeout(t); r() })
+      })
+    }
+    summary.match_end = this.referee.matchEnd
     // The game is decided; a restart now would be a new, empty game on a dead match.
     this.instance.maxRestarts = 0
     summary.fingerprint = this.fingerprint || null
@@ -342,9 +543,23 @@ class Game extends EventEmitter {
     this.host.dash?.push('summary', { instance: this.instance.id, summary, replay })
     await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay })
       .catch((e) => this.log.warn(`result post failed (${e.message}) — held in the spool, not lost`))
-    // Reap: stop the process and free the slot.
-    setTimeout(() => this.host.instances.remove(this.instance.id, 'game over'), 3000).unref?.()
     this.emit('finished', summary)
+    // The instance is NOT reaped here any more. `dispose()` decides what becomes of it,
+    // and it waits for this function to return — closing a replay and posting a result
+    // are the two things that must happen before the game process is touched. A game that
+    // ended without a `match_end` (a crash, the cap, an AFK close, a host shutdown) has
+    // no idle server to reuse, so it disposes of itself right here.
+    if (!this.matchEndSeen) {
+      // 3 s, not 0: a game that sends `match_end` a beat after `game_over` (the referee
+      // sends them back to back, but a busy link reorders nothing and delays plenty) must
+      // not have its warm instance destroyed because the result POST was quick.
+      this.disposeTimer = setTimeout(() => {
+        if (this.matchEndSeen) return
+        this.log.warn('no match_end after game over — the game may or may not still be alive, so the instance is torn down rather than assumed idle')
+        this.dispose()
+      }, 3000)
+      this.disposeTimer.unref?.()
+    }
   }
 }
 
@@ -353,7 +568,11 @@ class HostAgent {
     this.games = new Map()          // matchId -> { summary, replay }
     this.byInstance = new Map()     // instanceId -> Game
     this.expected = new Map()       // instanceId -> { match_id, map, at } (local mode)
-    mkdirp(cfg.replayDir); mkdirp(cfg.logDir); mkdirp(cfg.keyDir)
+    // A WARM instance: a game process that has finished a match, taken `end`, restarted
+    // its map and is sitting at `map_loaded` with nobody in it. It is the cheapest thing
+    // a box can hand the next lease — no process start, no map load, no 4-10 s wait.
+    this.warm = new Map()           // instanceId -> Game (idle, map loaded, no match)
+    mkdirp(cfg.replayDir); mkdirp(cfg.logDir); mkdirp(cfg.keyDir); mkdirp(cfg.spoolDir)
     this.hostKey = keys.loadOrCreate(path.join(cfg.keyDir, `host-${cfg.boxName}.json`))
     this.manifests = new ManifestStore([
       path.join(__dirname, 'manifests'),          // our fallbacks / the schema examples
@@ -443,6 +662,10 @@ class HostAgent {
           eeRound: a['sim-ee-round'] ? Number(a['sim-ee-round']) : null,
           afkSlot: a['sim-afk-slot'] != null ? Number(a['sim-afk-slot']) : null,
           lateJoinMs: a['sim-late-join-ms'] ? Number(a['sim-late-join-ms']) : null,
+          games: a['sim-games'] ? Number(a['sim-games']) : null,
+          endFails: !!a['sim-end-fails'],
+        noMatchEnd: !!a['sim-no-match-end'],
+          noMatchEnd: !!a['sim-no-match-end'],
           seed: Number(a.seed ?? 1337) + i,
         },
       })
@@ -522,6 +745,12 @@ class HostAgent {
       if (s.endingRound) simArgs.push('--ending-round', String(s.endingRound))
       if (s.afkSlot != null) simArgs.push('--afk-slot', String(s.afkSlot))
       if (s.lateJoinMs) simArgs.push('--late-join-ms', String(s.lateJoinMs))
+      // How many matches this simulated process plays before it goes quiet, and whether
+      // it refuses `end`. Both exist to exercise the game-over disposition: a real server
+      // plays as many as it is asked and its `end` either works or does not.
+      if (s.games) simArgs.push('--games', String(s.games))
+      if (s.endFails) simArgs.push('--end-fails')
+      if (s.noMatchEnd) simArgs.push('--no-match-end')
     }
     const inst = this.instances.create({
       kind: opts.kind || 'sim',
@@ -552,6 +781,116 @@ class HostAgent {
     return game
   }
 
+  // ---- game over: the two dispositions ---------------------------------------------
+  /**
+   * TERMINATE. Stop the process, free the port and the slot, and forget the game — the
+   * summary and the replay pointer are already in `this.games` and already at the site.
+   *
+   * This is also what makes `boxes.list()` say idle again: the box's `last_state` comes
+   * from the status heartbeat, and the heartbeat counts LIVE games. Leaving a finished
+   * game in `byInstance` (which is what happened before tonight) left a box reporting
+   * `live` for ever after its first match — online, leasable by `pickFree`, and showing
+   * an operator a game that ended hours ago.
+   */
+  async retire(game, why = 'game over') {
+    const id = game.instance.id
+    // Re-entry guard AND the contract: a game being retired has had its disposition made
+    // for it, so nothing downstream may pick another one.
+    game.disposed = game.disposed || Promise.resolve({ action: 'terminate', why })
+    // AN OPEN REPLAY MUST NOT GO WITH THE PROCESS. A replay with no signed footer is not
+    // a replay, it is a prefix of one (the same reasoning as `onLinkClosed`). A warm
+    // instance normally has no writer at all — it defers until a match actually starts —
+    // but one that got as far as a player joining has real events in it.
+    if (game.writer && !game.finished) {
+      game.log.warn(`retiring an instance with an open replay (${why}) — signing it first so what happened is still evidence`)
+      game.referee.flags.add('instance_retired')
+      try { game.referee.finishGame(why); await game.finishPromise } catch (e) { game.log.error(`could not close the replay: ${e.message}`) }
+    }
+    this.warm.delete(id)
+    clearTimeout(game.warmTimer)
+    game.detach()
+    log.info(`retiring instance ${id}: ${why}`)
+    await this.instances.remove(id, why).catch((e) => log.warn(`could not remove ${id}: ${e.message}`))
+    if (this.byInstance.get(id) === game) this.byInstance.delete(id)
+    this.reportStatus()
+    return true
+  }
+
+  /**
+   * REUSE. `end` -> the referee map_restarts, resets and re-announces `map_loaded`, and
+   * the instance is warm. The successor `Game` is created FIRST and takes the socket,
+   * because the reply and the new `map_loaded` can arrive in the same TCP read and a
+   * finished referee must not be the thing that sees them.
+   */
+  async reuse(old) {
+    const inst = old.instance
+    const conn = old.detach()
+    if (!conn) return { ok: false, why: 'the link is gone', game: old }
+    inst.gamesPlayed = (inst.gamesPlayed || 0) + 1
+    const next = new Game(this, inst, {
+      matchId: makeId('m', 4),
+      mode: old.mode,
+      vip: old.vip,
+      // NO assignment and NO tokens: this game belongs to no lease yet. `rebind()` gives
+      // it a real identity if and when one arrives.
+    })
+    // A warm instance does not open a replay at `map_loaded`, because the match it will
+    // carry may not have been leased yet. `record()` buffers until it does.
+    next.deferReplay = true
+    // THE PROCESS NEVER SAID `hello` TWICE, because it never went away. Without this the
+    // second game on a warm instance writes a replay header with a null `exe_sha256` and
+    // a null `dll_build` — the two fields the run fingerprint is computed over and the
+    // whole basis on which the site calls a replay record-grade. They are the same
+    // process's, so they are carried across, and the successor's replay records that they
+    // were inherited rather than heard.
+    next.referee.hashes = { ...old.referee.hashes }
+    next.referee.pid = old.referee.pid
+    next.referee.role = old.referee.role
+    next.referee.phase = 'loading'
+    next.inheritedFrom = old.matchId
+    this.byInstance.set(inst.id, next)
+    next.attach(conn)
+    const r = await next.requestRestart('next lease')
+    if (!r.ok) return { ok: false, why: r.why, game: next }
+    next.recordHostEvent({
+      t: 'instance_reused', from_match: old.matchId, games_on_instance: inst.gamesPlayed,
+      pid: old.referee.pid || null, exe_sha256: next.referee.hashes.exe_sha256 || null,
+      dll_build: next.referee.hashes.dll_build || null, inherited: true, why: r.why,
+    })
+    this.markWarm(next)
+    return { ok: true, game: next }
+  }
+
+  markWarm(game) {
+    const id = game.instance.id
+    this.warm.set(id, game)
+    log.info(`instance ${id} is WARM: ${game.referee.map || 'map'} loaded, no match, ${game.instance.gamesPlayed} game(s) played — ready for the next lease`)
+    clearTimeout(game.warmTimer)
+    // A warm instance nobody leases is not free. It holds a UDP port, a map's worth of
+    // RSS and (on Windows) the game lock, so it is retired rather than left to be somebody
+    // else's surprise.
+    game.warmTimer = setTimeout(() => {
+      if (this.warm.get(id) !== game || game.assignment) return
+      this.retire(game, `warm and unleased for ${Math.round(cfg.warmIdleMs / 1000)} s`)
+    }, cfg.warmIdleMs)
+    game.warmTimer.unref?.()
+    this.reportStatus()
+  }
+
+  /** A warm instance already sitting on this map, if there is one. */
+  takeWarm(map) {
+    for (const [id, g] of this.warm) {
+      if (g.finished || g.assignment) { this.warm.delete(id); continue }
+      // `end` is a map_restart, not a map change: a warm instance can only serve a lease
+      // for the map it is already on. Anything else has to be a fresh process.
+      if (map && g.referee.map && g.referee.map !== map) continue
+      this.warm.delete(id)
+      clearTimeout(g.warmTimer)
+      return g
+    }
+    return null
+  }
+
   // ---- the pull protocol ---------------------------------------------------------
   onAssignment(asg) {
     if (asg.status !== 'leased') return
@@ -562,6 +901,28 @@ class HostAgent {
     // The roster the instance boots with: the real SteamIDs from the lobby, each with the
     // invite token the site minted for it. The DLL will present these at connect.
     const roster = (asg.players || []).map((p, i) => ({ slot: i, name: p.name, steamid: p.steamid, token: asg.tokens?.[p.steamid] ?? null }))
+    const tokens = Object.fromEntries(roster.filter((r) => r.token).map((r) => [r.slot, r.token]))
+
+    // A WARM INSTANCE TAKES THE LEASE. No process start, no map load. It can only serve a
+    // lease for the map it is already sitting on, because `end` is a map_restart and not a
+    // map change — so warm instances on other maps are retired rather than kept for a
+    // lease that may never come.
+    //
+    // UNPROVEN AGAINST A REAL LEASE, and it says so out loud: the simulator receives its
+    // roster in its environment at spawn, so a warm sim instance cannot be handed a
+    // DIFFERENT party. What is proven tonight is the half below it — the handshake, the
+    // warm state, and a second match on the same process (host.md §12).
+    const warm = this.takeWarm(asg.map)
+    if (warm) {
+      warm.rebind(asg, tokens)
+      for (const [id, g] of this.warm) if (g !== warm) this.retire(g, `a lease for ${asg.map} arrived and this instance is on ${g.referee.map}`)
+      this.site?.status({ state: 'booting', match_id: asg.match_id, instance: warm.instance.id, nonce: asg.nonce, warm: true })
+      this.site?.status({ state: 'ready', match_id: asg.match_id, instance: warm.instance.id, port: warm.instance.port })
+      warm.referee.once('live', () => this.site?.status({ state: 'live', match_id: asg.match_id, instance: warm.instance.id }))
+      log.info(`lease ${asg.match_id} handed to WARM instance ${warm.instance.id} — no boot, no map load`)
+      return warm
+    }
+
     const game = this.boot({
       roster,
       kind: a.game ? 'game' : 'sim',
@@ -570,7 +931,7 @@ class HostAgent {
       map: asg.map,
       vip: asg.vip,
       assignment: asg,
-      tokens: Object.fromEntries(roster.filter((r) => r.token).map((r) => [r.slot, r.token])),
+      tokens,
       sim: {
         players: asg.players?.length || 1,
         timescale: Number(asg.sim?.timescale ?? a['sim-timescale'] ?? 1),
@@ -579,6 +940,8 @@ class HostAgent {
         endingRound: asg.sim?.ending_round ?? null,
         afkSlot: asg.sim?.afk_slot ?? null,
         lateJoinMs: asg.sim?.late_join_ms ?? null,
+        games: asg.sim?.games ?? (a['sim-games'] ? Number(a['sim-games']) : null),
+        endFails: !!a['sim-end-fails'],
         seed: Number(asg.sim?.seed ?? 1337),
       },
     })
@@ -592,8 +955,15 @@ class HostAgent {
   }
 
   async reportStatus() {
+    // LIVE means a match is being played, not "this process has ever seen one". Counting
+    // `byInstance` counted finished games too, so a box went `live` at its first lease and
+    // never came back — which is what an operator reads off `boxes.list()` and what an
+    // idle-box dashboard would key on.
+    const live = [...this.byInstance.values()].filter((g) => !g.finished && !this.warm.has(g.instance.id))
     const r = await this.site?.status({
-      state: this.byInstance.size ? 'live' : 'idle',
+      state: live.length ? 'live' : 'idle',
+      live_games: live.length,
+      warm_instances: [...this.warm.keys()],
       instances: this.instances.list().map((i) => i.info()),
       host: hostInfo(),
       local_mode: cfg.local ? (cfg.adoptLocal ? 'adopt' : 'expect') : false,
@@ -660,9 +1030,10 @@ class HostAgent {
       site: this.site ? { base: cfg.site, online: this.site.online, ...this.site.stats } : null,
       token_checks: { required: cfg.requireToken, ...this.tokenGuard.stats },
       local: { enabled: cfg.local, mode: cfg.adoptLocal ? 'adopt-any' : 'expected-only', lease_held: this.leaseHeld(), expected: [...this.expected.keys()] },
+      after_game: { disposition: cfg.afterGame, games_per_instance: cfg.gamesPerInstance, warm: [...this.warm.keys()] },
       instances: this.instances.list().map((i) => {
         const g = this.byInstance.get(i.id)
-        return { ...i.info(), game: g && !g.finished ? g.referee.state() : null, finished: !!g?.finished, replay: g?.replayFile || null, self_reported: !!g?.selfReported }
+        return { ...i.info(), game: g && !g.finished ? g.referee.state() : null, finished: !!g?.finished, replay: g?.replayFile || null, self_reported: !!g?.selfReported, warm: this.warm.has(i.id), games_played: i.gamesPlayed || 0 }
       }),
       games: [...this.games.entries()].map(([k, v]) => ({ match_id: k, summary: v.summary, replay: v.replay })),
       manifests: this.manifests.list().map((m) => ({ map: m.map, title: m.title, confidence: m.confidence, source: m._source })),
@@ -672,6 +1043,8 @@ class HostAgent {
   async shutdown() {
     log.info('shutting down')
     clearInterval(this.reaper); clearInterval(this.statusTimer)
+    for (const g of this.warm.values()) clearTimeout(g.warmTimer)
+    this.warm.clear()
     this.site?.stop()
     for (const g of this.byInstance.values()) if (!g.finished) { try { g.referee.finishGame('host_shutdown') } catch { /* ignore */ } }
     await this.instances.stopAll('host shutdown')

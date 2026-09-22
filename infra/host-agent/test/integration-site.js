@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // THE FULL INTEGRATION RUN: a real host agent against the REAL website.
 //
-//   party -> lease -> boot -> join (invite tokens) -> referee -> signed replay
-//         -> result -> games/players/XP/boards -> key pin
+//   party -> lease -> boot -> join (invite tokens) -> referee -> GAME OVER
+//         -> signed replay -> result -> games/players/XP/boards -> key pin
+//         -> the instance is disposed of (warm or torn down) -> the box is idle again
 //
 // Nothing is mocked on either side. The site is `web/` on :3200 with its own database and
 // its own Ed25519 invite key; the box is `host.js` with its own replay key. The only thing
@@ -85,6 +86,11 @@ function startHost() {
     // a test must not manufacture a new identity every time it runs.
     '--key-dir', BOX_KEYS, '--spool-dir', path.join(RUN, 'spool'),
     '--sim-timescale', '300', '--sim-max-round', '12',
+    // GAME OVER, end to end. The simulator now survives its own game over exactly as a
+    // real dedicated server does since `no_save_reload.cpp` (dedi.md §12.3): it reports
+    // the result, sends `match_end` and sits there idle. `--after-game end` is the
+    // default and is stated anyway, because this run is the proof of it.
+    '--after-game', 'end', '--games-per-instance', '5',
   ], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
   host.out = ''
   const tee = (d) => { host.out += d; if (a.verbose) process.stdout.write(`\x1b[90m[box]\x1b[0m ${d}`) }
@@ -199,6 +205,52 @@ try {
   if (ended && sum && rep) ok('the referee called the game and the box closed and signed the replay')
   else bad('the box did not finish the game (see the artifacts folder)')
 
+  step('5b. game over: the result, then the instance is disposed of and the box is idle')
+  // 1. the game's OWN result reached the referee (the enriched game_over of referee.md
+  //    §10.2) — this is the line the whole contract rests on.
+  if (/match_end: the game process says it is idle/.test(host.out)) {
+    ok('the box saw `match_end` and knows the game process is still alive and idle')
+  } else bad('the box never logged a match_end — it cannot have known the instance was free')
+
+  // 2. it picked ONE of the two dispositions. Never neither (referee.md §10.3 step 4).
+  const disp = /disposition: (REUSE|TERMINATE) — (.+)/.exec(host.out)
+  if (disp) ok(`disposition: ${disp[1]} (${disp[2].trim()})`)
+  else bad('the box chose neither disposition — the instance is left holding a port and a map for ever')
+
+  // 3. and it carried it out. `end` -> the referee map_restarts and re-announces
+  //    map_loaded -> the instance is warm and can take the next lease.
+  if (disp && disp[1] === 'REUSE') {
+    if (/instance \S+ is WARM:/.test(host.out)) ok('`end` was accepted, the map came back, and the instance is WARM for the next lease')
+    else bad('the box chose REUSE and the instance never reported warm')
+  } else if (disp) {
+    if (/retiring instance/.test(host.out)) ok('the instance was torn down, as chosen')
+    else bad('the box chose TERMINATE and nothing was retired')
+  }
+
+  // 4. the ORDER, which is the part that cannot be got wrong: the replay is closed and
+  //    the result is posted BEFORE anything touches the instance. An `end` that lands
+  //    first destroys the evidence of a game the host had not finished writing down.
+  const iReplay = host.out.indexOf('replay closed:')
+  const iDisp = host.out.indexOf('disposition:')
+  if (iReplay >= 0 && iDisp > iReplay) ok('the replay was closed and signed BEFORE the instance was disposed of')
+  else bad(`out of order: replay closed at ${iReplay}, disposition at ${iDisp}`)
+
+  // 5. the site agrees the lease is over and the box is free.
+  const asgAfter = await waitFor('the assignment to close', async () => {
+    const r = await gs('/api/gs/assignment')
+    return r.body && r.body.status !== 'leased' ? r.body : null
+  }, 30_000)
+  if (asgAfter) ok(`the site's assignment for this box is now "${asgAfter.status}" — the result closed the lease`)
+  else bad('the site still has this box leased after the result was posted')
+
+  const idle = await waitFor('the box to report idle', async () => {
+    const r = await leader.call('/api/admin/boxes')
+    const b = (r.boxes || []).find((x) => x.name === BOX)
+    return b && b.last_state === 'idle' ? b : null
+  }, 30_000)
+  if (idle) ok(`boxes.list() shows ${BOX} online=${idle.online} last_state=${idle.last_state} — free for the next lease`)
+  else bad(`boxes.list() never showed ${BOX} idle again; a box that stays "live" after a game is leasable but looks busy for ever`)
+
   step('6. what the site now holds')
   const g = await waitFor('the game row', async () => {
     const r = await leader.call(`/api/games/${matchId}`)
@@ -209,6 +261,15 @@ try {
     info(`game    ${game.map_key || game.map} round ${game.rounds} finish=${game.finish_kind || game.finish?.kind || 'none'} mode=${game.mode} eligible=${game.records_eligible ?? game.eligible}`)
     const players = g.players || game.players || []
     for (const p of players) info(`player  ${p.name || p.steam_id}  score ${p.score}  xp ${p.xp ?? '-'}  rounds ${p.rounds_played ?? '-'}`)
+    // The game's OWN final word, carried into the stored summary rather than re-folded
+    // out of the stream (referee.md §10.3 step 2).
+    const stored = (() => { try { return JSON.parse(game.summary_json || 'null') } catch { return null } })() || g.summary || null
+    if (stored && stored.reported && Array.isArray(stored.reported.players)) {
+      info(`reported  round ${stored.reported.round} reason=${stored.reported.reason} ${stored.reported.players.length} player row(s), ${stored.reported.points_total} point(s), ${stored.reported.downs_total} down(s)`)
+      ok("the stored result carries the game's own enriched game_over, not only our fold of the stream")
+    } else info('the stored game row does not expose summary_json to this caller — checked on the box side instead')
+    if (stored && stored.match_end && stored.match_end.server_alive) ok('...and the match_end that said the instance was free')
+
     const r = g.replay || game.replay
     if (r) {
       info(`replay  ${r.size} bytes, key ${r.key_id || 'NONE'}, pinned=${r.key_pinned}`)

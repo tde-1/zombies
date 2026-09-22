@@ -428,7 +428,15 @@ export class Instance extends EventEmitter {
     // wait for: kill the PID we adopted and release the lock launch.ps1 left behind.
     if (this.kind === 'game' && this.gamePid) {
       if (this.watch) { clearInterval(this.watch); this.watch = null }
-      try { spawn('taskkill.exe', ['/PID', String(this.gamePid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }) } catch { /* ignore */ }
+      // BY PID, OURS, AND ON EITHER PLATFORM. `taskkill.exe` does not exist on the Linux
+      // box, and in `--wine` mode the game is usually our own child so this branch does
+      // not run — but the engine prints its own `PID <n>` line on some boots, which
+      // adopts a gamePid and lands here, and a `taskkill.exe` that fails to spawn leaves
+      // the process up with the instance believing it killed it.
+      try {
+        if (process.platform === 'win32') spawn('taskkill.exe', ['/PID', String(this.gamePid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
+        else process.kill(this.gamePid, 'SIGKILL')
+      } catch (e) { this.log.debug(`kill ${this.gamePid}: ${e.message}`) }
       return new Promise((resolve) => setTimeout(() => { this.onExit(null, 'killed'); resolve() }, 1500))
     }
     return new Promise((resolve) => {

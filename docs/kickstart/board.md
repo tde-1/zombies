@@ -4422,3 +4422,58 @@ reboot. `play: true`.**
 - 08:06 vps: gate 4 had to be read off **two** probe lines because the in-line `delta` field still
   reads 0 — the harness note above stands, and it is the only thing in the way of
   `jointest-proof.ps1` being usable verbatim against the box.
+
+- 09:40 host: **game over is closed on the host side — a match now completes end to end with
+  nobody watching.** `game_over` -> the game's own result kept verbatim -> the replay closed and
+  **signed** -> `POST /api/gs/result` (spooled to disk if the site is down) -> and only then is
+  `match_end` answered with one of the two dispositions `referee.md` 10.3 allows: `end` (the
+  referee map_restarts, the instance goes **warm** and can take the next lease) or terminate.
+  Never neither. Default `end`, `--after-game terminate` to force it, `--games-per-instance N`
+  (default 5). `host.md` 12.
+- 09:40 host: **the ordering is the whole thing, and it is asserted rather than assumed.** Nothing
+  touches the instance until the replay is signed and the result is posted — an `end` that lands
+  first issues a `map_restart` and destroys the evidence of a game the host had not finished
+  writing down. `test/integration-site.js` checks it off the log: `the replay was closed and
+  signed BEFORE the instance was disposed of`.
+- 09:40 host: **all four disposition paths driven to the end** against the simulator: REUSE then a
+  second full game on the same process then TERMINATE at the limit; `end` refused with
+  `reply.ok:false` -> torn down ("the other half of the contract"); and **no `match_end` at all**
+  -> torn down rather than assumed idle. New sim flags `--games N`, `--end-fails`,
+  `--no-match-end` exist so each is reproducible.
+- 09:40 host: **`test/integration-site.js` against a FRESH database: 26 checks, 0 failures**, twice
+  (box-a and box-b, own data dir, `ZM_PORT=3403`, nothing near :3200 or the tunnel). The site's own
+  DB afterwards holds `match_end {server_alive:true, awaiting:"end_or_terminate"}`, `reported
+  {round:12, points_total:29720, 2 player rows}`, `boxes.box-a last_state=idle` and
+  `assignments.m_a14a20c9 state=done`. `run-all` 41/0, `demo-local` 0, `demo-network` 0.
+- 09:40 host: **a box has never gone idle again after its first game.** The status heartbeat said
+  `byInstance.size ? 'live' : 'idle'` and `byInstance` was never cleaned up, so a box reported
+  `live` for ever — online, still leasable, and showing an operator a game that ended hours ago.
+  It counts LIVE games now, and `retire()` reports immediately. The *lease* was always released
+  correctly: `results.js :: closeAssignment` does that off the result POST.
+- 09:40 host: **the result spool was never wired up.** `SiteClient` read `cfg.spoolDir` and nothing
+  ever set it, so `--spool-dir` (which `integration-site.js` has passed all along) did nothing and
+  a result the site refused was logged and **dropped**. Every "spooled, not lost" claim in
+  `host.md` before tonight was about the SiteClient's unit behaviour, not a running box. Defaults
+  to `ZombiesDev\spool` now.
+- 09:40 host: **the simulator used to stop stepping at game over** — exactly the behaviour
+  `no_save_reload.cpp` removed from the real server — so the host's game-over path had never been
+  exercised against a server that outlives its own game. It now reports the enriched result, sends
+  `match_end`, and sits idle emitting one `perf` line every 10 s, for ever, until `end` or a kill.
+- 09:40 host: three traps for whoever reuses a game process. **`end` does not restart the process,
+  so there is no second `hello`** — `exe_sha256`/`dll_build` must be carried across or the next
+  replay header has two nulls where the run fingerprint comes from. **The `end` reply and the new
+  `map_loaded` arrive in one TCP read**, so the successor must own the socket before `end` is sent.
+  And **a warm instance must not open a replay at `map_loaded`**: its next match may not be leased
+  yet, and the first run left an unsigned 0-round stub on disk. All three in `game-link-v0.md`.
+- 09:40 host: `game_over`'s numbers are **reconciled, not overwritten**. Both it and our fold are
+  lower bounds on a monotonic counter, so the larger wins; `game < ours` is expected and honest
+  (unbound scriptvars, and its `score` is the wallet at game over where ours is the peak), and only
+  `game > ours` is flagged, because that is the direction that means evidence went missing.
+  Comparing the game's cumulative `score_total` against our wallet peak — which the first version
+  did — flags every game that ever bought a door.
+- 09:40 host: **NOT proven and must not be claimed** — none of this has run against a real
+  `CoDWaW.exe` (`game.lock` was held all night), `--wine` is untested for this path, and a warm
+  instance has never been handed a DIFFERENT party's lease (the sim takes its roster from its
+  environment at spawn). The referee's `join73` proves the game side and this proves the host side;
+  the two halves have not been run against each other. `host.js --boot 1 --game --map
+  nazi_zombie_prototype` with a client is the whole test and it needs nothing new.

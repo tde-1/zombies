@@ -65,6 +65,29 @@ can be built in parallel. Change it by editing this file and noting the change o
 surfaced on the dashboard. `hello.exe_sha256` and `hello.dll_build` go into the signed replay
 header and are what the run fingerprint is computed over, so they must be real.
 
+**`match_end` and `end`, host side (implemented 2026-09-22, `host.md` §12).** On `match_end` the
+host closes and signs the replay, posts the result from the `game_over` message, and then takes
+exactly one disposition — `end` (reuse) or terminate. Three things this settled that the rows above
+leave open:
+
+- **`end` does not restart the process, so there is no second `hello`.** The link stays up straight
+  through the `map_restart`, and `exe_sha256` / `dll_build` arrive only once. A host that reuses an
+  instance must carry them into the next game's replay header or write two nulls into the field the
+  run fingerprint is computed over.
+- **`reply` to `end` and the re-announced `map_loaded` can arrive in the same TCP read.** Whatever
+  is going to own the next game must own the socket *before* `end` is sent; a host that waits for
+  the reply and only then hands the connection over will miss the `map_loaded` it is waiting for.
+- **`match_end` is not an event of the match** and is not appended to the replay — `game_over` is
+  the last event, by this table. The host carries it in the result instead
+  (`summary.match_end`, `summary.reported`).
+
+**Reconciling `game_over`'s numbers with the host's own fold.** Both are *lower bounds* on a
+monotonic counter, so the host takes the larger. `game < host` is expected and honest — the game's
+figures are polls of script variables that read 0 when those are unbound (`referee.md` §10.2), and
+its per-player `score` is the wallet **at game over** where a host's is the highest ever held.
+`game > host` is the one direction that means evidence went missing on the link, and that is what
+gets flagged.
+
 `infra/host-agent/sim/` is a fake game that speaks this protocol at the real rates, so the DLL has
 something to be diffed against: point both at the same host and compare the two streams.
 

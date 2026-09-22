@@ -102,6 +102,13 @@ export class ZombiesSim extends EventEmitter {
     this.lastPerfMs = 0
     this.powerOn = false
     this.papBuilt = false
+    this.games = 0                                 // matches played on this instance
+    this.gone = []                                 // players who left mid-match
+    this.dead = false                              // the process is finished, not just the game
+    this.endFails = !!opts.endFails                // model `reply.ok:false` on `end`
+    this.noMatchEnd = !!opts.noMatchEnd            // model a server that never says it is idle
+    this.startedMs = 0
+    this.loadedMs = 0
 
     // A rough playable box in WaW map units. Real maps are ~±2000.
     this.bounds = opts.bounds || { x: [-1800, 1800], y: [-1400, 1400], z: [0, 120] }
@@ -127,6 +134,13 @@ export class ZombiesSim extends EventEmitter {
       weapon: 'colt',
       stance: 'stand',
       kills: 0,
+      // Counters the enriched `game_over` reports (game-link-v0, referee.md §10.2).
+      // `scoreTotal` is CUMULATIVE points earned — `score` is the wallet and goes down
+      // when they buy a door, so the two are different numbers and the result wants both.
+      downs: 0,
+      revives: 0,
+      bleedouts: 0,
+      scoreTotal: 0,                                 // points EARNED, matching referee.js pointsEarned (the 500 you start with is not earned)
       // Each player trains a different loop, at a different phase and radius.
       radius: 500 + this.rng() * 700,
       phase: this.rng() * Math.PI * 2,
@@ -162,6 +176,8 @@ export class ZombiesSim extends EventEmitter {
 
   disconnectPlayer(slot, reason) {
     const p = this.players.get(slot); if (!p) return
+    // Keep the row: "a player who left mid-match still gets a row" (referee.md 10.2).
+    if (p.authed) (this.gone || (this.gone = [])).push({ slot: p.slot, name: p.name, steamid: p.steamid, score: p.score, score_total: p.scoreTotal, downs: p.downs, revives: p.revives })
     this.players.delete(slot)
     this.zombies = this.zombies.filter((z) => z.target !== slot)
     this.emitEv({ t: 'player_disconnect', slot, reason })
@@ -214,13 +230,26 @@ export class ZombiesSim extends EventEmitter {
   // ---- the loop ----------------------------------------------------------------
   /** Advance the simulation by one 50 ms tick and emit everything that happened. */
   step() {
-    if (this.over) return false
+    if (this.dead) return false
     if (this.paused) { return true }            // frozen: the clock does not move either
     this.ms += TICK_MS
     this.tick++
 
+    // IDLE AFTER GAME OVER. The real dedicated server does not die at game over any more
+    // (dedi.md 12.3 / no_save_reload.cpp): it sits there simulating an empty intermission
+    // until the host sends `end` or kills it, and `match_end` exists to end that state.
+    // This is that, so the host's disposition path has something honest to run against.
+    // A `perf` line every 10 s is the only thing it still emits - a server that has gone
+    // quiet and one that is idle must not look the same on the wire.
+    if (this.over) { this.perf(); return true }
+
     if (this.phase === 'loading') {
-      if (this.ms > 2000) this.startRound(1)
+      // ROUND 1 NEEDS SOMEBODY IN THE SERVER. It used to start 2 s after the map loaded
+      // whatever the lobby held, which was harmless while a map load only ever happened
+      // at boot with a roster behind it — and wrong the moment `end` made a map come back
+      // on an EMPTY server, where it produced a `round` event on a warm instance with no
+      // players in it. The real referee starts round 1 on `all_players_connected`.
+      if (this.ms > (this.loadedMs || 0) + 2000 && this.players.size) this.startRound(1)
       return true
     }
 
@@ -231,7 +260,7 @@ export class ZombiesSim extends EventEmitter {
     this.chatter()
     this.scripted()
     this.wipeCheck()
-    if (this.over) return false
+    if (this.over) return true
     this.snapshot()
     this.perf()
     this.roundTransition()
@@ -349,6 +378,7 @@ export class ZombiesSim extends EventEmitter {
       const head = this.rng() < 0.35
       const delta = head ? 100 : 60
       killer.score += delta
+      killer.scoreTotal += delta
       this.emitEv({ t: 'points', slot: killer.slot, score: killer.score, delta, why: head ? 'headshot' : 'kill' })
       if (this.rng() < 0.02) this.emitEv({ t: 'notify', ent: 'level', name: 'powerup_drop', args: { kind: ['max_ammo', 'insta_kill', 'double_points', 'nuke', 'carpenter'][Math.floor(this.rng() * 5)] } })
     }
@@ -408,6 +438,7 @@ export class ZombiesSim extends EventEmitter {
     p.down = true
     p.health = 0
     p.downUntil = this.ms + 30_000
+    p.downs++
     this.emitEv({ t: 'down', slot: p.slot })
     // A team-mate usually gets there.
     const helpers = this.shooters().filter((x) => x.slot !== p.slot)
@@ -424,6 +455,7 @@ export class ZombiesSim extends EventEmitter {
     p.alive = false
     p.health = 0
     p.score = Math.max(0, Math.floor(p.score * 0.8))
+    p.bleedouts++
     this.emitEv({ t: 'bleedout', slot: p.slot })
     // In WaW you respawn at the start of the next round; approximate that.
     p.respawnRound = this.round + 1
@@ -447,7 +479,13 @@ export class ZombiesSim extends EventEmitter {
         if (this.ms < r.at) continue
         this.reviveAt.splice(i, 1)
         const p = this.players.get(r.slot)
-        if (p?.down) { p.down = false; p.health = 100; p.alive = true; this.emitEv({ t: 'revive', slot: r.slot, by: r.by }) }
+        if (p?.down) {
+          p.down = false; p.health = 100; p.alive = true
+          // `revives` is credited to the REVIVER, which is what referee.js `ev_revive`
+          // does off the same event. Crediting the revived player is the easy mistake.
+          const by = this.players.get(r.by); if (by) by.revives++
+          this.emitEv({ t: 'revive', slot: r.slot, by: r.by })
+        }
       }
     }
     if (this.scheduleEe && this.ms >= this.scheduleEe) {
@@ -512,11 +550,98 @@ export class ZombiesSim extends EventEmitter {
     }
   }
 
+  /**
+   * GAME OVER, in the shape the referee lane settled on 2026-09-22 (referee.md 10.2/10.3,
+   * game-link-v0 `game_over` + `match_end`). Three things, in order, and the order is the
+   * contract:
+   *
+   *   1. THE RESULT - one enriched `game_over` carrying the whole answer, so a host that
+   *      loses the link a second later still has it without re-folding the stream.
+   *   2. THE REPLAY STOPS - nothing after `game_over` belongs to the match.
+   *   3. THE LEASE - `match_end`, AFTER `game_over`, saying only "this process is idle and
+   *      the instance can be reclaimed".
+   *
+   * And then the simulated server does NOTHING, exactly like the real one: it stays up,
+   * idle, for ever, until the host sends `end` or kills it. Before tonight this simulator
+   * stopped stepping at game over, which is the behaviour `no_save_reload.cpp` removed
+   * from the real server - so the host agent's game-over path had never been exercised
+   * against a server that survives its own game over.
+   */
   endGame(reason) {
     if (this.over) return
     this.over = true
-    this.emitEv({ t: 'game_over', round: this.round, reason })
+    this.endedMs = this.ms
+    const players = [...this.players.values()].map((p) => ({
+      slot: p.slot, name: p.name, steamid: p.steamid, connected: true,
+      score: p.score, score_total: p.scoreTotal,
+      downs: p.downs, revives: p.revives, alive: !!p.alive && !p.down,
+    }))
+    // A player who left mid-match still gets a row (referee.md 10.2). `this.players`
+    // no longer holds them, so the departed are kept in `gone` as they go.
+    for (const g of this.gone || []) players.push({ ...g, connected: false, alive: false })
+    players.sort((x, y) => x.slot - y.slot)
+    const durationMs = Math.round(this.ms - (this.startedMs || 0))
+    this.emitEv({
+      t: 'game_over',
+      round: this.round,
+      reason,
+      duration_ms: durationMs,
+      points_total: players.reduce((n, p) => n + (p.score_total || 0), 0),
+      downs_total: players.reduce((n, p) => n + (p.downs || 0), 0),
+      players_alive: players.filter((p) => p.alive).length,
+      players,
+    })
+    // A server that reports its result and then says NOTHING about being idle. This is
+    // what every dedicated server did before `match_end` existed, and the host must treat
+    // it as "I do not know whether this process is alive" — never as "it is gone".
+    if (this.noMatchEnd) { this.games++; this.emit('end', reason); return }
+    this.emitEv({
+      t: 'match_end',
+      round: this.round,
+      reason,
+      duration_ms: durationMs,
+      replay_closed: true,       // the GAME's sampler has stopped; the host closes the file
+      server_alive: true,        // ...and this process is still here. That is the whole point.
+      awaiting: 'end_or_terminate',
+    })
+    this.games++
     this.emit('end', reason)
+  }
+
+  /**
+   * The host answered `match_end` with `end`: `map_restart`, reset the per-match state,
+   * re-announce `map_loaded`. Clients stay connected through a `map_restart` on this
+   * engine, so the roster comes back with it - that is what makes an instance "warm".
+   *
+   * `endFails` models the one failure the contract names: `reply.ok:false` means the
+   * command buffer was unavailable and the instance MUST NOT be reused.
+   */
+  restart(reason = 'map_restart') {
+    if (this.endFails) return false
+    const roster = [...this.players.values()].map((p) => ({ slot: p.slot, name: p.name, steamid: p.steamid, token: p.token }))
+    this.players.clear()
+    this.pendingAuth.clear()
+    this.zombies = []
+    this.reviveAt = []
+    this.gone = []
+    this.round = 0
+    this.roundKills = 0
+    this.roundTotal = 0
+    this.spawnQueue = 0
+    this.betweenUntil = 0
+    this.pendingRound = null
+    this.powerOn = false
+    this.papBuilt = false
+    this.scheduleEe = null
+    this.scheduleEnding = null
+    this.over = false
+    this.phase = 'loading'
+    this.startedMs = this.ms
+    this.loadedMs = this.ms
+    this.emitEv({ t: 'log', level: 'info', msg: 'map_restart (' + reason + ')' })
+    this.emitEv({ t: 'map_loaded', map: this.map, fs_game: this.fsGame, mode: 'zombies', sv_maxclients: 4 })
+    this.emit('restart', { reason, roster })
+    return true
   }
 
   // ---- host -> game commands ------------------------------------------------------
@@ -537,7 +662,16 @@ export class ZombiesSim extends EventEmitter {
         else { this.players.delete(cmd.slot); this.emitEv({ t: 'player_disconnect', slot: cmd.slot, reason: `auth: ${cmd.reason || 'denied'}` }) }
         break
       }
-      case 'end': this.reply(cmd, true); this.endGame(cmd.reason || 'host_end'); break
+      // `end` is BOTH "end this game now" and the answer to `match_end`. If the match had
+      // not already ended, the result is reported first (so a forced end still leaves a
+      // complete record instead of a hole), and then the map restarts. `reply.ok:false`
+      // means the command buffer was unavailable and the host must tear the instance down.
+      case 'end': {
+        if (!this.over) this.endGame(cmd.reason || 'host_end')
+        const restarted = this.restart(cmd.reason || 'host end')
+        this.reply(cmd, restarted, undefined, restarted ? undefined : 'command buffer unavailable')
+        break
+      }
       case 'snapshot_state': this.reply(cmd, true, this.restorableState()); break
       case 'restore': {
         // Put a returning player back as they were. In the real DLL this is the builtins

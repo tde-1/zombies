@@ -85,6 +85,8 @@ export class Referee extends EventEmitter {
     this.held = new Map()
     this.resumeAt = null
     this.hashes = {}
+    this.reported = null       // the game's own final result, verbatim (enriched game_over)
+    this.matchEnd = null       // the game's "I am idle" (match_end)
   }
 
   // ---- clock ------------------------------------------------------------------
@@ -340,12 +342,52 @@ export class Referee extends EventEmitter {
   // nazi_zombie_ali's real ending sets `level.tom_victory`, which never notifies.
   ev_level_var(ev) { this.levelVars[ev.name] = ev.value }
 
+  /**
+   * GAME OVER, and since 2026-09-22 it carries THE RESULT (game-link-v0, referee.md
+   * §10.2): round, reason, duration, and a row per player including the ones who left.
+   *
+   * The contract says the host posts the result FROM THIS MESSAGE, not from a re-fold of
+   * the stream — because a host that loses the link a second later still has the whole
+   * answer in one line. So it is kept verbatim as `reported` and reconciled in
+   * `summary()`; it is not allowed to quietly overwrite what we folded, because the two
+   * are measured differently and a disagreement is information.
+   */
   ev_game_over(ev) {
     if (this.phase === 'over') return
     this.endedMs = ev.ms ?? this.now()
     this.endReason = ev.reason || 'game_over'
     if (Number.isFinite(ev.round)) this.maxRound = Math.max(this.maxRound, Number(ev.round))
+    this.reported = {
+      round: Number.isFinite(ev.round) ? Number(ev.round) : null,
+      reason: ev.reason || null,
+      duration_ms: Number.isFinite(ev.duration_ms) ? Number(ev.duration_ms) : null,
+      points_total: Number.isFinite(ev.points_total) ? Number(ev.points_total) : null,
+      downs_total: Number.isFinite(ev.downs_total) ? Number(ev.downs_total) : null,
+      players_alive: Number.isFinite(ev.players_alive) ? Number(ev.players_alive) : null,
+      players: Array.isArray(ev.players) ? ev.players.filter((x) => x && typeof x === 'object') : [],
+      at: new Date().toISOString(),
+    }
     this.finishGame(this.endReason)
+  }
+
+  /**
+   * MATCH END — "this game process is idle and the instance can be reclaimed" and nothing
+   * else. It changes no rule and decides no result; the DISPOSITION is the host's, in
+   * host.js `Game.dispose()`. It is recorded here only so the summary can say whether the
+   * game ever told us it was idle, which is what decides reuse from teardown.
+   */
+  ev_match_end(ev) {
+    this.matchEnd = {
+      round: Number.isFinite(ev.round) ? Number(ev.round) : null,
+      reason: ev.reason || null,
+      duration_ms: Number.isFinite(ev.duration_ms) ? Number(ev.duration_ms) : null,
+      replay_closed: ev.replay_closed !== false,
+      server_alive: ev.server_alive !== false,
+      awaiting: ev.awaiting || null,
+      at: new Date().toISOString(),
+    }
+    this.log.info(`match_end: the game process says it is idle (server_alive=${this.matchEnd.server_alive}) at round ${this.matchEnd.round ?? '?'}`)
+    this.emit('match_end', this.matchEnd)
   }
 
   ev_log(ev) { if (ev.level === 'error') this.log.warn(`game: ${ev.msg}`) }
@@ -572,11 +614,58 @@ export class Referee extends EventEmitter {
   /** What the website stores. One row in `games` plus `game_players` (vault 99 §5.5). */
   summary() {
     const endMs = this.endedMs ?? this.now()
+    // The game's own row for this slot, if it sent one. Matched on steamid first — a slot
+    // number is reused when somebody leaves and somebody else joins, and attaching one
+    // person's score to another is the worst failure this file has.
+    const rep = this.reported
+    const mismatches = []
+    const reportedFor = (p) => {
+      if (!rep) return null
+      return rep.players.find((r) => r.steamid != null && String(r.steamid) === String(p.steamid))
+          || rep.players.find((r) => r.steamid == null && Number(r.slot) === Number(p.slot))
+          || null
+    }
+    // BOTH NUMBERS ARE LOWER BOUNDS, so the larger is the better estimate and neither is
+    // a lie. The game's figure is a poll of a script variable and reads 0 when script
+    // variables are unbound (referee.md §10.2 is explicit that `0 point(s)` is honest, not
+    // a bug); ours is a fold of a stream the link is allowed to drop nothing from but
+    // which starts when we attach, so a late-attached host under-counts. Taking the max
+    // of two floors is correct for a monotonic counter — and any disagreement is recorded
+    // rather than resolved silently.
+    const reconcile = (name, folded, reportedVal, who) => {
+      if (!Number.isFinite(reportedVal)) return folded
+      // ONLY `game > folded` IS AN ANOMALY, and this is the whole of the asymmetry:
+      //   game < folded  is EXPECTED and honest. The game's figures are polls of script
+      //     variables that read 0 when the variables are unbound (referee.md 10.2), and
+      //     `score` is the wallet AT GAME OVER while ours is the highest wallet ever held
+      //     — a player who bled out or bought a door ends below their peak, every time.
+      //   game > folded  means the game counted something that never reached us, which is
+      //     the one direction that says evidence went missing. That gets flagged.
+      if (Number.isFinite(folded) && reportedVal > folded) mismatches.push(`${who}.${name}: game=${reportedVal} > ours=${folded}`)
+      return Math.max(Number(folded) || 0, reportedVal)
+    }
     const players = [...this.players.values()].map((p) => {
       this.creditAlive(p, endMs)
+      const r = reportedFor(p) || {}
+      const who = p.name || `slot${p.slot}`
       return {
         slot: p.slot, steamid: p.steamid, name: p.name,
-        score: p.maxScore, kills: p.kills, downs: p.downs, revives: p.revives, bleedouts: p.bleedouts,
+        // `score` is the HIGHEST WALLET the player held, which is what the boards have
+        // always meant by score and what the site reads. The game's `score` is the wallet
+        // at game over and its `score_total` is cumulative points EARNED — three
+        // different numbers, and reconciling across them (which the first version of this
+        // did) flags a mismatch on every game that ever bought a door.
+        score: reconcile('score', p.maxScore, Number(r.score), who),
+        score_total: reconcile('score_total', p.pointsEarned, Number(r.score_total), who),
+        kills: p.kills,
+        downs: reconcile('downs', p.downs, Number(r.downs), who),
+        revives: reconcile('revives', p.revives, Number(r.revives), who),
+        bleedouts: p.bleedouts,
+        // What the GAME said about this player, kept verbatim beside what we folded. The
+        // site reads the fields above; this is here so a dispute can be settled from the
+        // replay without re-deriving anything.
+        reported: r.slot == null && r.steamid == null ? null : { ...r },
+        folded: { score: p.maxScore, score_total: p.pointsEarned, downs: p.downs, revives: p.revives },
         rounds_played: p.roundsPlayed, joined_round: p.joinedRound, late: p.late,
         reconnects: p.reconnects, afk_kicked: p.afkKicked, connected_at_end: p.connected,
         // IW4MAdmin ZombieClientStat-shaped block (MIT, feature/zombie-stats).
@@ -588,6 +677,33 @@ export class Referee extends EventEmitter {
         },
       }
     })
+    // A player the GAME reported and we never saw connect. It should not happen; if it
+    // does, the row is carried through rather than dropped, flagged, and given no
+    // SteamID-bearing identity it did not come with.
+    if (rep) {
+      for (const r of rep.players) {
+        const seen = players.some((p) => (r.steamid != null && String(p.steamid) === String(r.steamid)) || (r.steamid == null && Number(p.slot) === Number(r.slot)))
+        if (seen) continue
+        mismatches.push(`slot${r.slot}: in the game's result, never seen on the link`)
+        players.push({
+          slot: r.slot ?? null, steamid: r.steamid ?? null, name: r.name ?? null,
+          score: Number(r.score) || 0, score_total: Number(r.score_total) || 0, kills: 0,
+          downs: Number(r.downs) || 0, revives: Number(r.revives) || 0, bleedouts: 0,
+          reported: { ...r }, folded: null,
+          rounds_played: 0, joined_round: null, late: false, reconnects: 0,
+          afk_kicked: false, connected_at_end: r.connected !== false,
+          unseen_on_link: true,
+          stats: { kills: 0, deaths: 0, headshots: 0, downs: Number(r.downs) || 0, revives: Number(r.revives) || 0,
+                   points_earned: 0, points_spent: 0, highest_points: Number(r.score_total ?? r.score) || 0,
+                   time_alive_ms: 0, rounds_played: 0 },
+        })
+      }
+      players.sort((x, y) => (x.slot ?? 99) - (y.slot ?? 99))
+    }
+    if (mismatches.length) {
+      this.flags.add('result_mismatch')
+      this.log.warn(`the game counted ${mismatches.length} thing(s) we never saw on the link: ${mismatches.slice(0, 6).join('; ')}`)
+    }
     const eligible = this.mode !== 'local' && !this.flags.has('late_join') && !this.flags.has('all_afk')
     return {
       match_id: this.matchId,
@@ -606,6 +722,12 @@ export class Referee extends EventEmitter {
       rounds: this.maxRound,
       finish: this.finish,
       duration_ms: this.elapsed(),
+      // The game's own final word, verbatim, and whether it told us it was idle. The
+      // replay carries the raw events too; this is so the SITE has them without parsing
+      // a signed container.
+      reported: rep,
+      match_end: this.matchEnd,
+      result_mismatches: mismatches.length ? mismatches : null,
       duration_rta_ms: this.elapsedRta(),
       paused_ms: this.pausedMs,
       pauses: this.pauses.length,

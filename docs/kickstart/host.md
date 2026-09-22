@@ -16,6 +16,15 @@
 > lane is waiting for is now that freeze rather than the spawn. **Off by default and must stay
 > that way**: local adoption (`--local` / `--adopt-local`, refused outright on a box with `--site`)
 > and blind adoption of an unregistered `hello`. Cold start: `infra/host-agent/README.md`.
+>
+> **GAME OVER IS CLOSED (§12, 2026-09-22).** A match now completes with nobody watching:
+> `game_over` -> the result kept verbatim -> the replay closed and **signed** -> `/api/gs/result`
+> (spooled if the site is down) -> and then `match_end` is answered with one of the two
+> dispositions the contract allows — `end` (map_restart, the instance goes **warm** and takes the
+> next lease) or terminate — never neither. The box reports **idle** again, which it had never
+> done. 26 checks, 0 failures against a fresh site; all four disposition paths driven to the end.
+> Still the simulator: `game.lock` was held all night, so this has not been run against a real
+> `CoDWaW.exe` (§12.9).
 
 
 The **host agent** is the server software that runs on every game box. One process per box. It
@@ -157,6 +166,17 @@ Useful flags: `--game` (boot a real `CoDWaW.exe` through `tools/dev/launch.ps1` 
 takes `game.lock`), `--sim-timescale N` (run a game N× faster; the 24 h cap in seconds),
 `--cap-ms`, `--afk-warn-ms`, `--afk-kick-ms`, `--require-token false`, `--dash off`, `--game-log off`,
 `--zstd-level`, `--chunk-ms`, `--max-instances`, `--debug`.
+
+What happens at game over (§12): `--after-game end|terminate` (default `end` — reuse the instance),
+`--games-per-instance N` (default 5), `--end-reply-ms`, `--map-reload-ms`, `--warm-idle-ms`, and
+`--spool-dir` (results held on disk while the site is down — **it did nothing until 2026-09-22,
+§12.8**). To drive the paths against the simulator: `--sim-games N`, `--sim-end-fails`,
+`--sim-no-match-end`.
+
+```bash
+# a full game to game over, the instance reused, a second game, then torn down
+node host.js --boot 1 --sim-players 2 --sim-max-round 3 --sim-timescale 30      --sim-games 2 --games-per-instance 2
+```
 
 Defaults: replays in `C:\Users\b\ZombiesDev\replays`, logs in `C:\Users\b\ZombiesDev\logs\host`,
 keys in `C:\Users\b\ZombiesDev\keys`. Nothing is written inside the Steam install, ever.
@@ -798,6 +818,10 @@ agent touches it.
   under-measured 4-player replays by 25%.
 * **Chunk bodies are NDJSON, not columnar CBOR.** Vault §5.4's format would cut size further;
   the container, chain, signature and index are designed so that swap changes one function.
+* ~~**Nothing happens at game over.**~~ **Done 2026-09-22, §12**: the replay is signed, the result
+  posted, and the instance either reused (`end` -> `map_restart` -> warm) or terminated, per config.
+  What is owed is running it against a **real** `CoDWaW.exe` — the logic is proven against the
+  simulator and a fresh site only (§12.9).
 * **No records tier.** Vault 10 phase 4 adds every usercmd (~300 MB for 20 h). The protocol has no
   `usercmd` message yet; add it when the boards need it.
 * **The mock site is a mock.** In-memory, no database, one shared secret per box, `/admin/*` routes
@@ -1312,3 +1336,231 @@ The site half — lease → result — was **not** driven from here: a lease nee
 ### 11.7 One thing for this lane to settle
 
 `tools/verify.js` prints `file undefined`, `size NaN GiB` and `content undefined chunks` on the **INVALID** path — the header is rendered before the fields it needs exist. The verdict line is right and the exit code is right; only the summary above it is nonsense. Cosmetic, but it is the tool somebody reaches for when a replay is already suspect.
+
+---
+
+## 12. Session 2026-09-22 — `host`: game over, end to end, with nobody watching
+
+The referee lane shipped the other half of game over tonight (`referee.md` §10.2/§10.3): an
+enriched `game_over` that carries the whole result, a replay sampler that stops, and a new
+**`match_end`** that says *this process is idle and the instance can be reclaimed*. The contract it
+wrote is explicit that the host must do four things and must not leave the fourth undone. This
+section is this lane's side of it, and it is proven against the simulator and a fresh site rather
+than reasoned about.
+
+### 12.1 What happens now, in order, and why the order is the whole thing
+
+```
+game_over   ─▶ referee folds it, keeps it VERBATIM as summary.reported
+            ─▶ finish(): wait ≤500 ms for match_end
+                         close and SIGN the replay (footer carries the summary)
+                         POST /api/gs/result   (spooled to disk if the site is down)
+match_end   ─▶ dispose(): pick ONE of two, never neither
+                 REUSE     → {"t":"end"} → reply ok → map_restart → map_loaded
+                             → the instance is WARM and the box reports idle
+                 TERMINATE → stop by PID, free the port and the slot, box reports idle
+```
+
+**Nothing touches the instance until the replay is signed and the result is posted.** That is not
+tidiness: an `end` that lands first issues a `map_restart` and destroys the evidence of a game the
+host had not finished writing down. `finish()` returns a promise, `onMatchEnd` waits on it, and
+`test/integration-site.js` asserts the ordering off the log rather than trusting it
+(`the replay was closed and signed BEFORE the instance was disposed of`).
+
+**`finish()` waits up to 500 ms for `match_end` before it writes anything.** The two messages
+arrive back to back, and a result that carries `match_end` is a result that says whether the
+instance was left free — which is a fact an operator reading a finished game wants and can get from
+nowhere else. A game that never sends one pays 500 ms and no more.
+
+### 12.2 The disposition table, and what makes it `terminate`
+
+`--after-game end|terminate` (default **`end`**), `--games-per-instance N` (default **5**),
+`--end-reply-ms` (10 s), `--map-reload-ms` (60 s), `--warm-idle-ms` (10 min).
+
+| condition | disposition |
+|---|---|
+| `foreign` instance (Play Local — the launcher owns the process) | **leave it alone** (`dev-box.md` rule 4) |
+| no `match_end` at all | **terminate** — the game never said it was idle, so it cannot be assumed to be |
+| `match_end` with `server_alive:false` | **terminate** |
+| `server_crash` / `instance_failed` / `link_closed` / `host_shutdown` | **terminate** |
+| the link is gone | **terminate** |
+| `--after-game terminate` | **terminate** |
+| this is the Nth game on the instance | **terminate** |
+| otherwise | **reuse** |
+
+and three ways a chosen **reuse** becomes a terminate anyway, all of them the contract's own words:
+
+* `reply.ok:false` — "the command buffer was unavailable and the instance **must not** be reused";
+* no reply within `--end-reply-ms`;
+* an accepted `end` whose map never comes back within `--map-reload-ms`.
+
+A **warm** instance that nobody leases is retired after `--warm-idle-ms`. It is not free: it holds
+a UDP port, a map's worth of RSS and (on Windows) the game lock.
+
+### 12.3 Reuse: the successor game takes the socket, not the finished one
+
+`end` does not restart the *process*, so **the DLL never says `hello` a second time** — the link
+stays up straight through the `map_restart`. Three consequences, and the first two were bugs
+waiting to happen:
+
+1. **The successor `Game` is created and takes the connection BEFORE `end` is sent.** The reply and
+   the new `map_loaded` can arrive in the same TCP read, and a finished referee must not be the
+   thing that sees them. `Game.detach()` exists for exactly this and removes the old game's
+   listeners by reference — an anonymous arrow cannot be removed, which is why `attach()` now keeps
+   them.
+2. **`exe_sha256` and `dll_build` are inherited.** They arrive only in `hello`, they are what the
+   run fingerprint is computed over, and they are the whole basis on which the site calls a replay
+   record-grade. Without carrying them across, the second game on a warm instance would write a
+   replay header with two nulls in it. The successor's replay records an `instance_reused`
+   host-event saying they were inherited rather than heard.
+3. **A warm instance does not open a replay at `map_loaded`.** §10.3's rule — `map_loaded` is the
+   signal to open a replay — assumes the match is known, and a warm instance's next match may not
+   have been leased yet. It defers to the first `player_connect`/`round`; `record()` already
+   buffered everything, so the buffered `map_loaded` goes into the file it opens and nothing is
+   lost. Without this the first integration run left an **unsigned 0-round stub** on disk, which
+   `tools/verify.js` correctly called `truncated or unsigned replay (no footer magic)`.
+
+### 12.4 The box goes idle again — and had never done so
+
+`boxes.list().last_state` comes from the status heartbeat, and the heartbeat said
+`this.byInstance.size ? 'live' : 'idle'`. **`byInstance` was never cleaned up**, so a box went
+`live` at its first lease and reported `live` for ever afterwards — online, still leasable by
+`pickFree` (which counts assignments, not the box's own state), and showing an operator a game that
+had ended hours ago. It now counts **live games** — not finished ones, not warm instances — and
+`retire()` removes the game as well as the instance and reports immediately.
+
+The lease itself was already closed correctly by the site: `results.js :: closeAssignment` sets the
+assignment `done` and the party back to `forming` when the result lands. So "release the lease" is
+one POST the box was already making; what was missing was the box's own state.
+
+### 12.5 The result is the GAME's, reconciled rather than overwritten
+
+The contract says post the result **from the `game_over` message, not from a re-fold of the
+stream**. It is kept verbatim as `summary.reported` (and `summary.match_end`), and each player row
+now carries `reported` and `folded` side by side. The site reads the reconciled top-level fields,
+so nothing there had to change.
+
+**The reconciliation rule, and the asymmetry is the point.** For a monotonic counter both numbers
+are *lower bounds*, so the larger is the better estimate and neither is a lie:
+
+* `game < ours` is **expected and honest**. The game's figures are polls of script variables that
+  read 0 when the variables are unbound — `referee.md` §10.2 is explicit that `0 point(s)` in a real
+  result is honest, not a bug — and its `score` is the wallet **at game over** where ours is the
+  highest wallet ever held. A player who bought a door ends below their peak, every time.
+* `game > ours` means the game counted something that never reached us. **That** is flagged
+  (`result_mismatch`, with the fields named in `summary.result_mismatches`), because it is the one
+  direction that says evidence went missing.
+
+Getting this wrong is cheap and silent, and the first version of it did: it compared the game's
+cumulative `score_total` against our wallet peak and flagged **every** game that ever killed a
+zombie. Three different quantities — wallet at end, wallet peak, cumulative earned — and they are
+now three fields (`score`, `score_total`, and the untouched `stats.points_earned`).
+
+A player the game reports and we never saw on the link is carried through, flagged, and given no
+SteamID it did not arrive with.
+
+### 12.6 The simulator survives its own game over, because the real server does
+
+`sim/` stopped stepping at `game_over` — which is precisely the behaviour `no_save_reload.cpp`
+removed from the real server (`dedi.md` §12.3). **So the host agent's game-over path had never been
+exercised against a server that outlives its own game.** The sim now:
+
+* sends the enriched `game_over` (per-player `score`, `score_total`, `downs`, `revives`, `alive`,
+  `connected`, plus totals — and a row for anyone who left mid-match), then `match_end`, then goes
+  **idle**, emitting a `perf` line every 10 s and nothing else, for ever;
+* on `end`: reports the result first if the match had not ended, replies, then `map_restart`s,
+  resets and re-announces `map_loaded` — and the roster comes back with it, because clients stay
+  connected through a `map_restart`;
+* counts `revives` against the **reviver**, matching `referee.js :: ev_revive`. Crediting the
+  revived player is the easy mistake;
+* only starts round 1 when somebody is actually in the server. It used to start 2 s after any map
+  load, which produced a `round` event on an empty warm instance.
+
+New flags, all of them there to make a failure reproducible rather than argued about:
+`--games N` (matches before the process goes quiet for good), `--end-fails` (answer `end` with
+`reply.ok:false`), `--no-match-end` (report the result and then say nothing — every server before
+tonight). Host-side: `--sim-games`, `--sim-end-fails`, `--sim-no-match-end`.
+
+### 12.7 The proof
+
+**Four dispositions, each driven to the end**, `--sim-timescale 30`, two players, three rounds:
+
+```
+REUSE then TERMINATE   --sim-games 2 --games-per-instance 2
+  SUMMARY round 3 ... replay closed: 88.8 KiB / 3720 events
+  match_end: the game process says it is idle (server_alive=true) at round 3
+  disposition: REUSE — game 1 of 2 on this instance
+  instance inst-01 is WARM: nazi_zombie_asylum loaded, no match, 1 game(s) played
+  [second game plays on the SAME process, second signed replay, second result]
+  disposition: TERMINATE — 2 game(s) on this instance, the limit is 2
+
+`end` REFUSED           --sim-end-fails
+  disposition: REUSE — game 1 of 5 on this instance
+  reuse refused (the game refused `end`: command buffer unavailable) — tearing the
+  instance down instead, which is the other half of the contract
+
+NO match_end            --sim-no-match-end
+  no match_end after game over — the game may or may not still be alive, so the
+  instance is torn down rather than assumed idle
+  disposition: TERMINATE — no match_end — the game never said it was idle
+```
+
+**`test/integration-site.js`, against a FRESH database** (`ZM_DATA_DIR` to a new dir, `seed.js`,
+`ZM_PORT=3403`; nothing near :3200 or the tunnel): **26 checks, 0 failures**, twice — once on
+`box-a` and once on `box-b`. The six new ones are step 5b:
+
+```
+ok   the box saw `match_end` and knows the game process is still alive and idle
+ok   disposition: REUSE (game 1 of 5 on this instance)
+ok   `end` was accepted, the map came back, and the instance is WARM for the next lease
+ok   the replay was closed and signed BEFORE the instance was disposed of
+ok   the site's assignment for this box is now "idle" — the result closed the lease
+ok   boxes.list() shows box-a online=true last_state=idle — free for the next lease
+```
+
+and out of the site's own database afterwards, which is the version that matters:
+
+```json
+"match_end": {"round":12,"reason":"round_target","duration_ms":715700,
+              "replay_closed":true,"server_alive":true,"awaiting":"end_or_terminate"}
+"reported":  {"round":12,"points_total":29720,"downs_total":0,"players_alive":2,
+              "players":[{"slot":0,"name":"Leader","score":970,"score_total":14620,…}]}
+boxes        box-a last_state=idle      assignments  m_a14a20c9 state=done
+```
+
+Every other suite is unchanged and green: `test/run-all.js` **41 passed, 0 failed**,
+`test/demo-local.js` **0 failures**, `test/demo-network.js` **0 failures**.
+
+### 12.8 Two bugs this shook out, neither of them about game over
+
+1. **The spool was never wired up.** `SiteClient` reads `cfg.spoolDir` and **nothing ever set it**,
+   so `--spool-dir` — which `test/integration-site.js` has passed all along — did nothing and
+   `spool()` returned `false` on its first line. A result the site could not take was logged and
+   **dropped**. Every "results are spooled, not lost" claim in this file before tonight was about
+   the SiteClient's own unit behaviour, not about a running box. It defaults to
+   `ZombiesDev\spool` now.
+2. **`stop()` shelled out to `taskkill.exe` unconditionally** for an adopted game PID. On the Linux
+   box that file does not exist, so the spawn fails and the instance believes it killed a process
+   that is still running. In `--wine` mode the game is normally our own child and this branch does
+   not run — but the engine prints its own `PID <n>` line on some boots, which adopts a `gamePid`
+   and lands there. It is `process.kill(pid, 'SIGKILL')` off Windows now. Still by PID, still ours.
+
+### 12.9 What is NOT proven, and must not be claimed
+
+* **No real game has been through this.** `game.lock` was held by the dedi lane all night, so every
+  line above is the simulator plus a real site. The referee's own `join73` proves the *game* side —
+  `game_over`, the sampler stopping, `match_end` sent, the server still alive three minutes later —
+  and this proves the *host* side, but the two halves have not yet been run against each other.
+  **That is the next thing to do and it needs nothing new**: `node host.js --boot 1 --game --map
+  nazi_zombie_prototype` with a client, and read the disposition line.
+* **`--wine` is untested for this path.** The disposition logic sits entirely above
+  `instances.js` and is launch-mode agnostic by construction; the only mode-specific code touched
+  is the kill in 12.8, which is unexercised on the box. The vps lane has the box.
+* **A warm instance has never been handed a DIFFERENT party's lease.** `onAssignment` will do it
+  (same map only — `end` is a `map_restart`, not a map change; warm instances on other maps are
+  retired), and `rebind()` gives the game its real match identity before the replay opens. But the
+  simulator receives its roster in its environment **at spawn**, so a warm sim instance cannot be
+  handed a new one, and nothing has proven the path. What *is* proven is a second match on the same
+  process with the same roster, which is what a `map_restart` actually does to real clients.
+* **`--games-per-instance 5` is a guess.** Nothing has measured what a game process costs after its
+  tenth map_restart. The 20-hour soak (§3h) is still owed and is now the thing that would settle it.
