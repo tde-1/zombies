@@ -1163,7 +1163,13 @@ this is the component to delete. `ENW_DEDI_ALLOW_AUTOSAVE=1` puts the stock beha
 
 **Result (join14): 1 autosave request instead of 195.** The retry loop is gone.
 
-## 7j. OPEN — `exceeded maximum number of script variables`, ~18 s after the player spawns
+## 7j. SOLVED — the freeze ~10 s after a player spawns (read the last section first)
+
+> Sections 7j.1-7j.4 below are the hunt, in the order it happened, and several of their readings
+> are wrong; they are kept because the wrong turns are the useful part. **The answer is in
+> "SOLVED (runs join31-join54)" near the end of this section**, and it is not where any of this
+> was looking. The original heading was *OPEN — `exceeded maximum number of script variables`,
+> ~18 s after the player spawns*.
 
 join14, with the autosave fixed, still died — at 00:37:51, **18.5 s** after `ROUND 1`. The engine's
 own words:
@@ -1404,12 +1410,107 @@ one array write per call, which matters — the engine makes about **5,700 of th
 (190,297 in 33 s, `join26`). Call-site histogram over the last 128 before a freeze (`join28`):
 `0x00694520` 48, `0x00694F59` 39, `0x00695830` 14, `0x0069AAB0` 13, the rest single figures.
 
-### No fix landed
+### No fix landed *(in that pass — see "SOLVED" below, which supersedes this heading and nothing else)*
 
 There is no fix in this pass, and a bounded-loop patch was considered and **not** taken: it would
 cover `0x0068F090` and leave `0x0068BC20` (`join23`) and the error branch (`join21`) untouched, so
 it could not produce the two clean 120 s runs that would count as proof — and papering over a
 structure the engine is about to use is the mistake §7i already recorded once.
+
+### SOLVED (runs join31-join54): the freeze is a leaked temp-memory frame, not a variable bug
+
+**The spin is real and everything §7j says about it is still true. It is a symptom.** The cause is
+one level down and it is not in the script-variable system at all:
+
+> **The server leaks one 0x20000 frame of the engine's temp-memory stack per client message. The
+> decode destination that offset controls therefore marches forward through the process 128 KB at a
+> time, and when it crosses `gScrVarGlob`'s child-variable pool it writes through it. The next
+> variable that hashes to a stomped slot sends `0x0068F090`'s predecessor search into a walk that
+> cannot end.**
+
+#### How it works, off the instructions
+
+`SV_ExecuteClientMessage` is at **0x630F70** (not 0x630C70, which is the neighbouring function the
+crude function-boundary pass merges it with). It decodes the client's compressed message into temp
+memory:
+
+```
+00630F78  mov  eax, [0x46E5054]     ; the temp-stack offset
+00630F7D  mov  ebp, eax
+00630F7F  add  eax, 0x20000         ; one 128 KB frame
+00630F8B  mov  [esp+0x10], ebp      ; remember the old offset
+00630F91  mov  [0x46E5054], eax     ; push
+00630F96  lea  ebp, [ebp+0x212B2F8] ; dst = TEMP_BASE + old offset
+00630FC7  push ebp                  ; ... into MSG_ReadBitsCompress 0x6751D0
+00630FD0  mov  dword [esp+0x28], 0x20000
+00631035  mov  [0x46E5054], edx     ; pop -- and 0x631073, 0x63115C, 0x631182,
+                                    ;        0x6311C0, 0x6311D3, one per return path
+```
+
+The only reference to 0x630F70 in the whole image is a **tail jump** at `0x6357AA`, out of
+`SV_PacketEvent` 0x635540, so the callee takes EAX and ECX and has no stack arguments.
+
+#### The measurements, in the order they were made
+
+| run | what it settled |
+|---|---|
+| `join31` | baseline reproduced on this session's build: CS_ACTIVE 03:47:11.8, ROUND 1, frozen at frame **1873** between 8 and 13 s later |
+| `join33`, `join36`, `join37` | `tools/dev/varcheck.py` sweeps the pool from outside and checks one invariant — every slot whose record is a live chain member must be named by exactly one record's `v.next`. The pool is **clean** while the map runs, then breaks in a **single step ~3 s after CS_ACTIVE**, and never recovers. The freeze follows 4-6 s later |
+| `join37` | **the loop is closed by hand**: the hash slot the spin is searching for (`index` = 0x16C0, `[ebp+0x14]`) is one of the slots `varcheck.py` had already flagged |
+| `join36` | the byte diff. The damage is 16 bytes written at slot 0x16C0 and again at 0x36C0, 0x56C0, 0x76C0, 0x96C0, 0xB6C0, 0xD6C0 — a stride of exactly **0x2000 entries = 0x20000 bytes = 128 KB** — over three quarters of a megabyte. No hash table does that to itself |
+| `join38`, `join39` | `var_watch.cpp` puts hardware write watchpoints on those slots. The writer is a `memcpy` **in our own DLL** reached from `0x00630FF5` — i.e. the return address inside `SV_ExecuteClientMessage`, immediately after `call MSG_ReadBitsCompress`. So the engine's own decode destination is inside the variable pool |
+| `join40` | `varcheck.py` starts printing `[0x46E5054]` beside the sweep. It is **0x0 at every one of the 22 samples in the 11 s before the client connects**, then climbs monotonically — and it crossed 0x038AB2F8 → 0x03D0B2F8 in the same half second that 14 slots stopped being chain members. The pool is 0x03974700 - 0x03A74700 |
+| `join43`, `join44` | a watchpoint on the offset itself. Before the client, every push has a pop. After, the pushes from `0x630F96` climb 0x60000, 0x80000, 0xA0000, 0xC0000 … one per client message, with every *nested* push/pop balanced and **not one write from any of the five restore sites in between** |
+| `join45` | **not `huffman_guard`.** That component hooks the decoder in the middle of this very span, so it had to be ruled out; with `ENW_NO_HUFFMAN_GUARD=1` the leak and the freeze are identical |
+| `join54` | **control.** `ENW_DEDI_NO_TEMP_GUARD=1`: offset ran to 0x3A60000, 22 orphans, frozen at frame 2200 |
+
+Not a Com_Error longjmp either: `error_trap.cpp` counted **zero** `Com_Error` and `Sys_Error` calls
+across the whole of `join44`.
+
+#### The fix, and exactly how far it goes
+
+`server/components/dedicated/temp_stack_guard.cpp`. At the end of every frame, if the temp-stack
+offset is above the baseline the component measured at its own first frame tick, it is put back.
+
+That is safe for a reason we measured rather than assumed: **at a frame boundary nothing holds a
+temp frame.** The offset read 0 on every sample for the 11 s before the client connected, the
+engine's own code writes it back on every balanced path, and our frame tick runs *after* Com_Frame,
+so every packet of the frame has been handled and every block taken during it is dead. The
+component reads the baseline itself instead of hard-coding 0, and only ever restores a value it
+read. `ENW_DEDI_NO_TEMP_GUARD=1` turns it off.
+
+**Proof** — `jointest.ps1` at 120 s with `oob.py getstatus` polled every 3 s throughout
+(`tools\dev\jointest-proof.ps1`, a run passes only if the client reaches CS_ACTIVE, the referee logs ROUND 1,
+every getstatus is answered and `frame::count` is still advancing in the last liveness line):
+
+| run | result |
+|---|---|
+| `join48` | 120 s, `varcheck.py` sweeping the whole time: **0 orphans for the entire run**, offset pinned at 0, ~2,000 frames put back |
+| `join49`, `join50` | PASS, PASS |
+| `join52`, `join53` | PASS, PASS — the shipping configuration (call wrap off) |
+
+#### Still open, and stated as open
+
+1. **Why the engine's own pop is skipped.** Every return path in 0x630F70 writes the offset back,
+   no `Com_Error` is raised, and the function plainly returns. `ENW_DEDI_TEMP_THUNK=1` wraps the
+   tail jump at 0x6357AA and corrects the offset across that call; in `join49`-`join51` it counted
+   **2,502 wrapped calls and 0 corrections** while the frame reset was putting 2,034 frames back in
+   the same run. So `SV_ExecuteClientMessage`'s own frame is *balanced* and the unpopped push is
+   reached some other way. The wrap is therefore off by default — it is an instrument, not a fix.
+2. **The frame rate.** Before a client, the server holds a flat 61 Hz. Once a player is in it goes
+   to ~100 Hz and then, later in the run, to **~5,900 Hz at about 70% of one core**. This is not
+   new and it is not the guard: the same ramp (61 → 102 → 123 Hz) is in every pre-fix run, right up
+   to the moment it froze. `sv_fps` still paces the simulation and the server answers, spawns and
+   referees correctly for the whole 120 s, but a 5,900 Hz `Com_Frame` is not right and nobody has
+   looked at it yet.
+3. **`wait_for_first_player()`** is unchanged by any of this and still unproven.
+
+#### Two readings retracted in place
+
+- *"A bounded-loop patch is the only lever."* It is not, and it would have been the wrong one: the
+  loop is correct code reading damaged data.
+- *"The variable pool damage is the bug."* It is the **first thing in the leaked pointer's path
+  that the engine reads back**. Anything else in the 68 MB it walked was being corrupted too.
 
 ### FIXED: the server did not burn a whole core, the harness was not capping it
 

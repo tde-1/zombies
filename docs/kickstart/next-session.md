@@ -1,44 +1,68 @@
 # Next session — one page
 
-Written 2026-09-22 after the join runs. If this page and `../../STATUS.md` ever disagree, STATUS
-wins; it is rewritten at the end of every session.
+Written 2026-09-22 after the join runs, rewritten at 04:55 once the freeze was fixed. If this page
+and `../../STATUS.md` ever disagree, STATUS wins; it is rewritten at the end of every session.
 
 ## What was just finished
 
-**Milestone (d) is done.** A real `CoDWaW.exe` connects to our headless dedicated server and
-**spawns into the game**, and the referee calls round 1. Under three seconds from connect to
-spawned, reproduced in every run from `join12` to `join18`.
+**The freeze is fixed.** The headless dedicated server now survives a real client spawning in: two
+consecutive 120 s runs (`join52`, `join53`) with `CS_ACTIVE`, `referee: ROUND 1`, every
+`oob.py getstatus` answered and `frame::count` still advancing at the end.
 
+It was never a script-variable bug. The server **leaks one 0x20000 frame of the engine's
+temp-memory stack per client message**, so the destination it decodes that message into
+(`0x0212B2F8 + [0x046E5054]`) marches forward through the process 128 KB at a time and eventually
+writes straight through `gScrVarGlob`'s child-variable pool. The endless predecessor walk in
+`0x0068F090` is what happens the next time a variable hashes into a stomped slot. Full story with
+every run tag: `dedi.md` §7j, section **"SOLVED (runs join31-join54)"**.
+
+The fix is `server/components/dedicated/temp_stack_guard.cpp`: at the end of every frame, if the
+temp-stack offset is above the baseline the component measured at its own first frame tick, put it
+back. Safe because at a frame boundary nothing holds a temp frame — measured, not assumed.
+`ENW_DEDI_NO_TEMP_GUARD=1` turns it off and the freeze comes straight back (`join54`: frozen at
+frame 2200, 22 damaged slots).
+
+Also landed: `tools/dev/varcheck.py` (checks the variable pool's chain invariant from outside the
+process, and prints `[0x046E5054]` beside it), `server/components/dedicated/var_watch.cpp`
+(hardware write watchpoints, `ENW_DEDI_VARWATCH=1`, off by default), and
+`tools/dev/jointest-proof.ps1` (the acceptance test — a 120 s jointest with `getstatus` polled
+throughout, printing PASS or FAIL).
+
+## The next tasks
+
+1. **Round 2 and beyond.** Milestone (d) is done and the server survives it. Nothing has ever
+   watched an unattended game past round 1 — `TESTME.md` is the test and it needs B at the keyboard.
+2. **The ~5,900 Hz frame rate.** With no player the server holds a flat 61 Hz with
+   `+set com_maxfps 60`. Once a player is in it ramps to ~100 Hz and then, later in the run, to
+   about **5,900 Hz at 70% of one core**. This predates the fix — the same ramp (61 → 102 → 123 Hz)
+   is in every run right up to the moment it used to freeze — and the server answers, spawns and
+   referees correctly throughout, but it is wrong and nobody has looked at it.
+3. **Why the engine's own pop is skipped.** Every return path in `SV_ExecuteClientMessage`
+   0x630F70 writes `[0x046E5054]` back, no `Com_Error` is raised (`error_trap.cpp` counted zero in
+   the whole of `join44`), and the function returns. `ENW_DEDI_TEMP_THUNK=1` wraps the tail jump at
+   0x6357AA and corrects the offset across that call: **2,502 wrapped calls, 0 corrections**, while
+   the frame-boundary reset put 2,034 frames back in the same run. So the unpopped push is reached
+   some other way. The guard works regardless; this is a loose end, not a risk.
+4. **`wait_for_first_player()`** is still waiting while `all_players_connected` fires. Unchanged by
+   any of this, still unproven — test it before believing it.
+
+## How to prove it still works
+
+```powershell
+cd C:\Users\b\Desktop\Zombies
+powershell -ExecutionPolicy Bypass -File tools\dev\build.ps1 -Name dedi
+powershell -ExecutionPolicy Bypass -File tools\dev\deploy.ps1 d2 -From dedi
+powershell -ExecutionPolicy Bypass -File tools\dev\jointest-proof.ps1 -Tag joinNN
 ```
-Going from CS_CONNECTED to CS_CLIENTLOADING for anna-jpg
-Going from CS_CLIENTLOADING to CS_ACTIVE for anna-jpg
-referee: ROUND 1 (all_players_connected)
-```
 
-Nothing new had to be patched to get there — the five engine walls of `dedi.md` §7f/§7g were the
-whole of it. Also landed: the **level-start autosave** no longer hangs a dedicated server
-(`server/components/dedicated/no_autosave.cpp`), and the **join harness now caps the frame rate**,
-which removed a "the server burns a whole core" claim that was never true.
+It waits for `game.lock` rather than taking it from anyone, runs one 120 s `jointest`, polls
+`oob.py getstatus` every 3 s throughout, and prints **PASS** only if the client reached `CS_ACTIVE`,
+the referee logged `ROUND 1`, no probe went unanswered and `frame::count` was still moving at the
+end. To watch the variable pool at the same time, run
+`python tools\dev\varcheck.py <pid> --watch 100` against the server PID out of `game.lock`; a clean
+run reports `orphans 0` throughout and `temp +0x0`.
 
-## The single next task
-
-**Find out why the frame loop stops about ten seconds after the player spawns.**
-
-`frame::count` freezes and the CPU sits pegged at a whole core. Pegged, not idle — that is a
-**spin**, not a wait, which rules out the message-pump class of bug (`dedi.md` §7c) and points at a
-loop inside `Com_Frame`. It reproduces with the autosave fixed and the frame rate capped
-(`join17`: 0 script errors, 0 `G_WriteGame`, 1 request dropped, froze at frame 1905).
-
-**Do not instrument it from inside the process.** `where_is_main.cpp` suspends the main thread to
-read its context, and with it on the server *died* instead of freezing — the instrument changes the
-outcome it is meant to observe. Its seven samples all came from a healthy server and say nothing
-about the freeze. Take a dump from **outside** the process instead: `tools/re/sample_threads.py`.
-
-Second, behind it: `exceeded maximum number of script variables`, raised 2,151 times while every
-category the engine itself reports stays flat at ~2,300 variables and 223 entities. The allocator
-refuses where the accounting says there is room. `dedi.md` §7j.
-
-## Reproduce the current state
+## Reproduce a plain join run
 
 One command. It takes `game.lock` once for both processes, launches the server, waits until it
 actually answers on the wire, then launches a client at it, and kills only its own two PIDs.
@@ -73,6 +97,16 @@ Select-String -Path C:\Users\b\ZombiesDev\logs\dedi\join19.server.enw.log `
 
 ## Traps that have already cost this project time
 
+- **"getstatus is unanswered" is not "the server froze" until it has answered once.** A server
+  still loading the map answers nothing either. A detector that skipped that check called a freeze
+  at t=5 s in a perfectly healthy run and sent a probe at a busy process for nothing.
+- **`SV_ExecuteClientMessage` 0x630F70 does not preserve EBX** (its prologue pushes only ebp, esi,
+  edi). A thunk that parked a value in EBX across the call compared against whatever the callee had
+  left there and reported "balanced" 2,503 times out of 2,503. Park values on the stack, not in a
+  callee-saved register you have not checked.
+- **The `dvar set cl_network_warning 0` run at the end of every pre-fix console log was a red
+  herring.** It is the server sending the client an ordinary per-frame server command; it is in the
+  healthy logs too, it was simply the last thing printed because everything else had stopped.
 - **T4 has no `CS_PRIMED`.** The middle state is `CS_CLIENTLOADING` (value 3). `CS_PRIMED` is
   Quake 3 / CoD 4, and a wrong name sends you looking for a function that does not exist.
 - **Never read CPU as health without `frame::count` beside it.** `join12`'s flat, low CPU line was
