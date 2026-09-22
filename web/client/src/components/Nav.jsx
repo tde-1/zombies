@@ -113,6 +113,10 @@ export default function Nav() {
   return (
     <nav className="mv-nav">
       <div className="mv-nav-bar">
+        {/* Inside the launcher the drag region is this empty underlay, never the bar itself:
+            Electron on Windows hit-tests a dragged ancestor before its no-drag children get
+            the click (B, 2026-09-22: "I can't click anything on the nav bar"). */}
+        <div className="mv-drag" aria-hidden="true" />
         <SearchBar />
         <div className="mv-nav-center">
           {/* The lockup is the way home and sits inside the centred group rather than in the
