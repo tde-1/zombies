@@ -3515,6 +3515,70 @@ build with …, deploy with …", "copies work / don't", "fs_homepath works", "a
   of them 15 minutes after boot. Batch remote work into few `ssh ... 'bash -s' < script` calls
   rather than a stream of one-liners.
 
+- 03:15 dedi: **the freeze is LOCATED, from outside the process.** Main thread, 150/150 samples,
+  EIP inside **`0x0068F090`**, reached through `SV_Frame`. The tight loop is
+  `0x0068F3B4..0x0068F3DB`: a **predecessor search over a circular list of script variables** that
+  never ends because the id it is removing **is not in the list it is searching**. `join24` caught
+  it exactly — target id `0x1534` name `'minval'`, cursor parked on id `0x347E` name `'levels'`
+  whose `v` points at itself, a one-node ring. `dedi.md` §7j.
+- 03:15 dedi: **§7j's two failure modes are ONE function.** `0x0068F090` is also where
+  `exceeded maximum number of script variables` is raised (sites `0x0068F235` / `0x0068F301`,
+  string `0x0089A600`). Which mode a run gets is which branch it reaches first:
+  join19/20/22/24/25 spun there, join23 spun in `FindVariableIndexInternal 0x0068BC20`, join21
+  took the error branch 2,087 times and parked in `Sys_Error`. Same data structure every time.
+- 03:15 dedi: **the pool is NOT full — retract that line of enquiry.** There are **two** pools with
+  two free lists: `0x0068FCE0` allocates from `parentVariables` (head `0x3914714`), `0x0068FE20`
+  from `childVariables` (head `0x3974704`), and **both raise the same error string**, so "the child
+  pool has room" was never an answer. Both measured at the freeze (join25): child
+  **13,534/65,536** free-head 4,317, parent **2,672/24,576** free-head 1,558. The links are wrong,
+  not the capacity.
+- 03:15 dedi: **it is not ours.** `join24` ran a DLL built with `referee`, `replay`, `chat`, `afk`,
+  `pause` and `knobs` deleted from the source tree — `dedicated/` + `net/` + `shared/core` only —
+  and froze at `0x0068F090` at the same point after the spawn. That clears the `VM_Notify` hook,
+  the obvious suspect. (`no_autosave` was already cleared by join16, the frame cap by join13/14.)
+- 03:15 dedi: **the DLL log cannot be followed live** — `enw-<pid>.log` is opened without
+  `FILE_SHARE_READ`, so every read fails until the process exits; join19's samples were lost to it.
+  The freeze signal that works from outside is `tools\dev\oob.py getstatus`: answered while the
+  frame loop runs, unanswered the moment it stops. Three misses with the process alive **is** the
+  freeze, and it agrees with `frame::count` afterwards in every run.
+- 03:15 dedi: **three tools for the next session**, all read-only against a live game:
+  `tools/dev/freeze_probe.py <pid>` (ordered call stack, the spinning frame's arguments, a walk of
+  the list it is stuck on, and every entry that still references the target),
+  `tools/dev/varpool.py <pid> --watch N` (both variable pools over time, with names), and
+  `server/components/dedicated/var_slot_probe.cpp` (`ENW_DEDI_VARPROBE=1`, off by default) which
+  records every call to `0x0068F4A0` with its call site and prints the last 128 when `frame::count`
+  stops. **`0x0068F4A0` takes a live `ECX` argument** (`mov ecx,[ebp-0x78]` at `0x00694B1D`), so
+  hook it with a naked thunk.
+- 03:15 dedi: **`RemoveVariable` is called ~5,700 times a second** on this server — 190,297 calls
+  in 33 s (join26). Whatever the script is doing with arrays, it is doing a great deal of it.
+- 03:15 dedi: the names on the nodes involved — `minval`, `maxval`, `statid`, `stateid`, `tier`,
+  `reward`, `desc`, `name`, `levels`, ~407 of each — are the co-op challenge table,
+  `level.challengeInfo[...]` from `maps/_challenges_coop.gsc` (lines 460-482 write exactly those
+  keys). The engine's own dump in join21 puts the failure inside `GetPlayers()`
+  (`_utility.gsc:9269`) called from `nazi_zombie_prototype.gsc:352` in a `wait 0.2` poll — and
+  40-65 iterations of a 0.2 s poll is the 8-13 s we measure from `CS_ACTIVE` to the freeze.
+- 03:20 dedi: **the mechanism, in one sentence.** `0x0068F4A0` is not "remove a variable", it is
+  **"claim this hash slot for this object"** — the two hottest call sites compute the third
+  argument with `div 0xFFFD; add edx,1; push edx` right before the call, so it is a **hash slot**,
+  not a variable id. (I wrote join28 up as "the same id removed twice, a DOUBLE REMOVAL"; **that
+  is retracted** — the same name hashing to the same slot twice is ordinary.) What hangs is
+  **evicting the entry already sitting in the slot**: `0x0068F090` copies it to a new node and
+  then fixes up its sibling ring, and the fix-up never ends because **the occupant is in the slot
+  but is not a member of the ring it claims**. join22's occupant was `'stateid'`, join24's was
+  `'minval'`, join24's cursor was parked on `'levels'` whose `v` points at itself.
+- 03:20 dedi: **the next measurement, for whoever picks this up.** What leaves an orphan in a
+  slot? **Not the allocator's error path** — `exceeded maximum number of script variables` was
+  counted in all twelve runs (join19-join30) and appears in exactly **one** (join21, 2,087). Every freeze run has
+  **zero**. So the orphan exists without the pool ever being exhausted, and join21's error flood
+  is a consequence of the same broken structure, not its cause. The measurement to make next:
+  sweep the 65,536-entry pool from outside and **count entries that occupy a slot without being
+  in the ring they claim**, sampled across the spawn, to find the frame the first orphan appears
+  on.
+- 03:20 dedi: **no fix landed, and a bounded-loop patch was considered and not taken.** It would
+  cover `0x0068F090` and leave `0x0068BC20` and the error branch untouched, so it could not produce
+  the two clean 120 s runs that would count as proof — and lying to an engine about a structure it
+  is about to use is the mistake §7i already recorded once.
+
 ---
 
 ## What is open right now (2026-09-22, after the docsweep pass)
@@ -3523,19 +3587,28 @@ This is the end of the board and it is meant to be the first thing a new agent r
 `STATUS.md`. Everything above is history; this is the live list.
 
 **The one blocker.**
-- **The frame loop stops ~10 s after a player spawns.** `frame::count` frozen, CPU pegged at a
-  whole core — pegged, not idle, so it is a **spin**, not a wait. That rules out the message-pump
-  class of bug (§7c) and points at a loop inside `Com_Frame`. Reproduced with the autosave fixed
-  (`join17`: 0 script errors, 0 `G_WriteGame`, 1 request dropped, froze at frame 1905).
-  **`where_is_main.cpp` cannot see it** — with the sampler on, the server *died* instead of
-  freezing, and all seven samples came back from a healthy server. The instrument changes the
-  outcome; its samples say nothing about the freeze. Next attempt: a dump from **outside** the
-  process (`tools/re/sample_threads.py`). `dedi.md` §7j.
+- **The frame loop stops ~10 s after a player spawns**, and as of 03:15 we know *where*, from
+  outside the process: the main thread spins in **`0x0068F090`** (150/150 samples), in the
+  predecessor search at `0x0068F3B4..0x0068F3DB` — a walk of a **circular list of script
+  variables** looking for an id that **is not in the list**, so it never ends. Reached through
+  `SV_Frame`; entry point `RemoveVariable 0x0068F4A0`. The same function raises
+  `exceeded maximum number of script variables`, so §7j's two failure modes are one function.
+  **Not a full pool** (join25: child 13,534/65,536 and parent 2,672/24,576, both with live free
+  lists) and **not ours** (join24: froze identically with referee/replay/chat/afk/pause/knobs
+  removed from the build). What is still unknown is how a removal comes to be asked for on a list
+  that does not hold the variable. `dedi.md` §7j has the loop, the tools and the dead ends.
+  **Superseding the old note here:** `where_is_main.cpp` still must not be used (it kills the
+  server instead of freezing it), but "next attempt: a dump from outside" is done —
+  `tools/dev/freeze_probe.py` and `tools/dev/varpool.py` are that dump, and the live freeze
+  signal is `oob.py getstatus`, not the DLL log, which cannot be read while the process runs.
 
 **Open, not blocking.**
-- **`exceeded maximum number of script variables`**, seen twice, raised 2,151 times, while every
-  category the engine itself reports stays flat at ~2,300 variables and 223 entities. The allocator
-  refuses where the accounting says there is room. `dedi.md` §7j.
+- ~~**`exceeded maximum number of script variables`** is a second, separate failure.~~
+  **Retracted 03:15: it is the same failure.** `0x0068F090` both spins and raises that error
+  (sites `0x0068F235` / `0x0068F301`). And "the allocator refuses where the accounting says there
+  is room" has an answer to rule out first: there are **two** pools with two free lists, parent
+  (`0x3914714`) and child (`0x3974704`), and both raise that string. Both were measured with room
+  at the freeze, so neither is exhausted. `dedi.md` §7j.
 - **`wait_for_first_player()` is still waiting** after the player is `CS_ACTIVE`, while
   `all_players_connected` fires. One player-ready signal reaches the level script on a dedicated
   server and the other does not. **Unproven — test it before believing it.**

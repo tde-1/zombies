@@ -1249,6 +1249,168 @@ One more clue, unexplained: the last thing the console holds before every freeze
 194 pairs in join17, 390 in join15, and then nothing. `cl_network_warning` being written at all
 in a server process is odd on its face.
 
+### Runs join19-join30: the spin is LOCATED, and it is a list walk that cannot terminate
+
+**The main thread spins at `0x0068F090`, 150 of 150 samples**, reached through `SV_Frame`. Taken
+from **outside** the process, which is what §7j asked for and what `where_is_main.cpp` could not
+do. Two tools now do it and both are in `tools/dev/`:
+
+| tool | what it answers |
+|---|---|
+| `tools/re/sample_threads.py <pid>` | which function every thread's EIP is in (existing, unchanged) |
+| `tools/dev/freeze_probe.py <pid>` | the ordered call stack, the spinning frame's arguments, and a walk of the variable list it is stuck on |
+| `tools/dev/varpool.py <pid> --watch N` | both script-variable pools, allocated counts and free-list heads, over time |
+
+**How the freeze is detected from outside**, because it cannot be detected from the log: the DLL
+opens `enw-<pid>.log` without `FILE_SHARE_READ`, so nothing can follow it live — join19 was lost
+to this, every read failing until the process was killed. The signal that does work is
+`tools\dev\oob.py getstatus`: it is answered while the frame loop runs and stops being answered
+the moment it stops. Three unanswered probes with the process still alive **is** the freeze, and
+it lines up with `frame::count` afterwards in every run.
+
+The loop, read off our own dump:
+
+```
+0068F3B4  movzx ecx, word ptr [ecx]              ; cur -> childVar[cur].v
+0068F3BC  movzx ecx, word ptr [ecx + 0x3974700]  ;     -> childVar[that].id
+0068F3C3  mov  [esp+0x18], ecx                   ; the cursor
+0068F3CC  movzx ebx, word ptr [ecx + 0x397470C]  ; childVar[cur].v
+0068F3D3  cmp  ebx, edx                          ; ... == the id we are removing?
+0068F3DB  jne  0x0068F3B4                        ; no -> go round again. For ever.
+```
+
+It is a **predecessor search over a circular list of script variables** — find the node whose
+`next` is the one being removed — and it never ends because **the id it wants is not in the list
+it is searching**. `join24` caught it exactly: target id `0x1534`, name **`'minval'`**; cursor
+parked on id `0x347E`, name **`'levels'`**, whose own `v` points at itself — a one-node ring that
+can never contain the target. Only two entries in the whole 65,536-entry pool still referenced
+`0x1534`. `join22` is the same shape with `'stateid'` as the target.
+
+**`0x0068F090` is also where `exceeded maximum number of script variables` comes from** — sites
+`0x0068F235` and `0x0068F301`, the same string at `0x0089A600`. So §7j's two failure modes are
+**one function**, and which one a run gets is which branch it reaches first. Six runs:
+`join19, join20, join22, join24, join25` spun at `0x0068F090`; `join23` spun in a different chain
+walk, `FindVariableIndexInternal 0x0068BC20`; `join21` took the error branch 2,087 times and ended
+parked in `Sys_Error 0x005FE8C0`. Every one of them is the same data structure.
+
+The entry point is `0x0068F4A0(instance, ownerId, hashSlot)`, `__cdecl`, three stack arguments,
+**and a live `ECX` argument** at one site (`mov ecx,[ebp-0x78]` at `0x00694B1D`; the caller cleans
+with `add esp,0xc`). Anything hooking it needs a naked thunk; a typed C++ detour would clobber
+`ECX`.
+
+**What that third argument is, and a retraction.** It was first read as "the variable being
+removed", and `join28` was written up as *the same id removed twice, a double removal*. **That is
+wrong and the correction is kept here rather than the claim deleted.** The two hottest call sites
+compute the third argument immediately before pushing it:
+
+```
+00694F3C  xor  edx, edx
+00694F3E  mov  ecx, 0xfffd
+00694F43  div  ecx            ; a hash, mod 65533
+00694F4E  add  edx, 1
+00694F51  push edx            ; a3 = A HASH SLOT
+00694F52  push eax            ; a2 = the owner object, out of gScrVmPub
+00694F53  push esi            ; a1 = script instance
+00694F54  call 0x0068F4A0
+```
+
+So `0x0068F4A0` is **"claim this hash slot for this object"** — the slot-eviction half of
+*creating* a variable, not removing one. Two calls with the same `(owner, slot)` are perfectly
+ordinary: the same name hashes to the same place every time. What hangs is **evicting whoever is
+already sitting in the slot**: `0x0068F090` allocates a replacement node, copies the occupant into
+it, and then has to fix up the occupant's sibling ring — and that fix-up is the search that never
+ends.
+
+Which gives the mechanism in one sentence, and it is the thing to carry forward:
+
+> **Some childVariables entry is marked in use and occupies a hash slot while not being a member
+> of the sibling ring it claims. It sits there harmlessly until something else hashes to its slot,
+> and then the eviction spins for ever.**
+
+`join22`'s occupant was `'stateid'`, `join24`'s was `'minval'`, and `join24`'s cursor was parked on
+`'levels'` whose `v` points at itself. All three are `level.challengeInfo[...]` keys.
+
+Call chain at the freeze, in stack order, innermost first — **unnamed functions are left as
+addresses on purpose**:
+
+```
+0x0068F090 <- 0x0068F4A0 <- 0x00693E80 (VM_Execute; the script stack-overflow guard lives here)
+  <- 0x006992E0 <- 0x00692565 <- 0x00699640 <- 0x004B5550 <- 0x004E03C0 <- 0x00519F00
+  <- 0x0067EB70 <- 0x006903B0 <- 0x0069A610 <- 0x00693E80 <- 0x00419070 <- 0x0068A750
+  <- 0x00697BB0 <- 0x006990E0 <- 0x006997E0 <- 0x00503AB0 <- ... <- 0x00635CC0 (SV_Frame)
+  <- 0x00636610 / 0x006366C0 (Com_Frame) <- 0x0059DCF0 <- 0x0059E330 <- 0x005FF600
+```
+
+### Two hypotheses tested and DEAD. Do not re-test them.
+
+1. **"The variable pool is exhausted."** No. `join25`, measured at the freeze: child pool
+   **13,534 of 65,536** allocated with a live free list (head 4,317), parent pool
+   **2,672 of 24,576** with a live free list (head 1,558). There are two pools with two free
+   lists — `0x0068FCE0` allocates from `parentVariables` (head `0x3914714`) and `0x0068FE20` from
+   `childVariables` (head `0x3974704`), and **both raise the same error string** — so "the child
+   pool has room" was never an answer on its own. Now both have been measured and both have room.
+   The pool is not full; the **links** are wrong.
+2. **"It is one of our own components."** No. `join24` ran a DLL built with `referee`, `replay`,
+   `chat`, `afk`, `pause` and `knobs` deleted from the source tree — only `dedicated/` and `net/`
+   plus `shared/core` — and it froze at `0x0068F090` exactly as before, at the same point after
+   the spawn. That also clears the `VM_Notify` hook, which was the obvious suspect because it is
+   the one thing of ours that runs inside the script VM.
+
+Also cleared, from the existing record rather than from a new run: `no_autosave.cpp` is not the
+cause (`join16` froze with the autosave **unpatched**), and neither is the frame cap (`join13`
+and `join14` froze at ~237 Hz with no cap at all).
+
+### What the script was doing
+
+The engine's own dump in `join21` names it: the error fires inside `GetPlayers()`
+(`maps/_utility.gsc`, line 9269), called from `maps/nazi_zombie_prototype.gsc:352` inside a
+`wait 0.2` poll at line 350. The variable names on the nodes involved — `minval`, `maxval`,
+`statid`, `stateid`, `tier`, `reward`, `desc`, `name`, `levels`, about 407 of each — are the
+co-op challenge table, `level.challengeInfo[...]` built by `maps/_challenges_coop.gsc` (lines
+460-482 write exactly those keys, including the `"levels"` node the walk gets stuck on).
+
+A 0.2 s poll also fits the timing: the freeze lands 8-13 s after `CS_ACTIVE`, which is 40-65
+iterations of that loop.
+
+**The unanswered question, stated honestly:** what leaves an entry in a hash slot that is not in
+the ring it claims.
+
+The allocator's own error path looked like the answer — at `0x0068F235`, with the free list empty,
+the engine prints the error and **carries on with index 0**, writing through it, which is exactly
+the shape of damage that would produce an orphan. **It is not the answer for the freeze.**
+`exceeded maximum number of script variables` was counted in the console log of all twelve runs (join19-join30)
+and appears in **one**:
+
+| run | `CS_ACTIVE` | `exceeded maximum...` | outcome |
+|---|---|---|---|
+| join19, join20, join22, join24, join25 | yes | **0** | spun in `0x0068F090` |
+| join23 | yes | **0** | spun in `0x0068BC20` |
+| join21 | yes | **2,087** | error flood, then `Sys_Error` |
+| join26-join30 | yes | **0** | spun in `0x0068F090`, with the probe on |
+
+So the orphan exists without the pool ever having been exhausted, and the error flood of `join21`
+is a *consequence* of the same broken structure rather than its cause. The two failure modes are
+one function and one structure, but neither causes the other.
+
+Next measurements, in order: count entries that occupy a slot without being in the ring they
+claim (a sweep of the 65,536-entry pool, from outside, `varpool.py` is the place for it), and
+sample it over the spawn to find the frame on which the first orphan appears.
+
+`server/components/dedicated/var_slot_probe.cpp` (`ENW_DEDI_VARPROBE=1`, off by default,
+diagnostic only, changes nothing) is the instrument that got this far: it records every call to
+`0x0068F4A0` with its call site, keeps the last 128 in a ring plus a per-slot last-claimed table,
+and prints them from its own watchdog thread once `frame::count` has not moved for 4 s. It costs
+one array write per call, which matters — the engine makes about **5,700 of these calls a second**
+(190,297 in 33 s, `join26`). Call-site histogram over the last 128 before a freeze (`join28`):
+`0x00694520` 48, `0x00694F59` 39, `0x00695830` 14, `0x0069AAB0` 13, the rest single figures.
+
+### No fix landed
+
+There is no fix in this pass, and a bounded-loop patch was considered and **not** taken: it would
+cover `0x0068F090` and leave `0x0068BC20` (`join23`) and the error branch (`join21`) untouched, so
+it could not produce the two clean 120 s runs that would count as proof — and papering over a
+structure the engine is about to use is the mistake §7i already recorded once.
+
 ### FIXED: the server did not burn a whole core, the harness was not capping it
 
 join13 measured 111.5 s of CPU in 120 s of wall clock with a client connected, against 4.85% of
