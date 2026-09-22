@@ -1180,6 +1180,44 @@ Two facts to carry into that work, neither of them yet an explanation:
    `maps/_autosave.gsc:36 flag_wait("starting final intro screen fadeout")` behind it. A headless
    server has no intro screen.
 
+### Runs join15-join18: what the autosave fix changed, and what it did not
+
+| run | autosave | com_maxfps | outcome |
+|---|---|---|---|
+| join14 | reported done (wrong) | none | `exceeded maximum number of script variables` x2,151, then `Sys_Error` |
+| join15 | reported done (wrong) | none | `Attempting to commit an invalid save buffer`, then the frame loop froze at 4496 |
+| join16 | **not patched** - the guard refused | 60 | froze at 1922. Stock behaviour, reproduces join13 |
+| join17 | dropped at the drain | 60 | **0 script errors, 0 G_WriteGame, 0 invalid buffers, 1 request dropped** - and still froze, at 1905 |
+| join18 | dropped at the drain | 60 | server **crashed outright** with `ENW_DEDI_WHEREIS=1` sampling it |
+
+So the autosave was real, is fixed, and was **not** the frame-loop freeze. With it gone the
+server still stops about ten seconds after the player spawns: `frame::count` frozen, CPU
+pegged at a whole core. Pegged, not idle - that is a **spin**, not a wait, which rules out the
+message-pump class of bug (7c) and points at a loop inside `Com_Frame`.
+
+join16 is worth keeping for a different reason. The component refused to patch and said exactly
+why - `expected add esp, 4 (83 C4 04) after the call, found 8B E8 83` - because the caller takes
+the return value first and the cleanup is at call+7, not call+5. The guard was right and the
+constant was wrong. A patch that had gone in on assumption would have unbalanced the stack and
+produced a crash nowhere near the cause.
+
+join18 is a warning about the instrument. `where_is_main.cpp` suspends the main thread to read
+its context; with it on, the server did not freeze, it **died**. Seven samples came back before
+it went, all in `ntdll!NtDelayExecution` / `NtDeviceIoControlFile` - i.e. sampled while healthy,
+never once during the freeze. **The sampler changes the outcome it is meant to observe.** Do not
+read anything into those seven samples, and find another way to see inside the freeze: a minidump
+taken from outside the process (`tools/re/sample_threads.py`) rather than a suspend from inside.
+
+One more clue, unexplained: the last thing the console holds before every freeze is a run of
+
+```
+      dvar set cl_network_warning 0
+      dvar set sv_network_warning 0
+```
+
+194 pairs in join17, 390 in join15, and then nothing. `cl_network_warning` being written at all
+in a server process is odd on its face.
+
 Also still open and now measured properly: **the server burns a whole core with a client
 connected** — join13, 111.5 s of CPU in 120 s of wall clock, against 4.85% of one core idle. The
 frame loop free-runs at about 237 Hz because `jointest.ps1` passes no `com_maxfps`. join12's flat
