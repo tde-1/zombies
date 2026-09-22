@@ -461,3 +461,29 @@ unavailable in every location since 2025-12-31.
 Worth knowing before you answer: 40 GB of disk is tight. Wine plus a headless Windows Steam plus
 WaW (~12 GB) fits, but with little room for a second copy or a dump. cx33 (4 vCPU, 8 GB, 80 GB) is
 €8.49 net / €10.188 gross — nearly double, and the only reason to pay it is headroom.
+
+---
+
+## Q-replay-1 — neither repo has a licence, and one of them now lives inside the other
+
+**Asked 2026-09-22 by the replay lane.**
+
+Tonight `web/client/src/replay3d/` took four files out of ENW Movement byte-for-byte
+(`scene.js`, `skywall.js`, `assets.js`, `Boot.jsx`) plus ~200 CSS rules and the shape of the
+viewer's chrome. That is fine as things stand: same owner, both repos private.
+
+The fact worth writing down is that **neither repo has a licence file** — checked
+`C:\Users\b\Desktop\Zombies\LICENSE`, `C:\Users\b\Desktop\CSGO-Matchmaker\LICENSE` and the
+usual variants; none exists. So there is no conflict and there is also no *grant*. Two
+places that matters, neither of them today:
+
+1. **If either repo is ever published or handed to Fable**, the copied files need a stated
+   licence or the recipient has no permission to use them. `client-dll/` is already
+   GPL-3.0 by virtue of the iw4x port, and `thirdparty/minhook` is BSD-2-Clause, so the
+   repo is already mixed and the question is not hypothetical.
+2. **If anyone ever contributes who is not B**, there is nothing saying what they are
+   agreeing to.
+
+Nothing is blocked. This is a "decide before the first public push" item, not a now item.
+The audit trail of what was taken from where is in the vault's
+`18 - Reuse Register (projects to mine).md` §10 and in `replay.md` §2.
