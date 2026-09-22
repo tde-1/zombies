@@ -1046,3 +1046,215 @@ telling the engine an autosave finished when it had not (`dedi.md` §7i), which 
 agent (every join run logs `game-link: connect to 127.0.0.1:28960 failed, retrying`), and with
 `SV_Frame` stopped there was nothing to sample anyway. It needs a host-agent game, which is
 `host.md`'s lane, after `dedi.md` §11.1.
+
+---
+
+## 10. 2026-09-22, 07:30–09:00 — game over on a dedicated server, and what the host agent must do
+
+### 10.1 Until tonight, game over did nothing
+
+The referee has detected game over correctly since `join64` (`stop_intermission` on every map,
+`end_game` on Der Riese-derived ones, §2.2) and it sent exactly one message:
+
+```json
+{"t":"game_over","ms":…,"round":1,"reason":"stop_intermission notify"}
+```
+
+That was adequate while a dedicated server **died** at game over. It no longer does:
+`dedi.md` §12.3's `no_save_reload.cpp` keeps the process, the map and the connected clients alive
+straight through it, and `join65`/`join66` ran 300 s each *through* game over with the client still
+`CS_ACTIVE`. So after the match ended, the server kept simulating an empty intermission for ever,
+the replay sampler kept writing snaps into a replay the host had already closed, nobody told the
+host the lease was free, and nothing started the next match. **Three of those four are fixed here.
+The fourth needs one thing from the host agent and it is specified below.**
+
+### 10.2 What the referee does now, in order
+
+`referee.cpp :: emit_game_over()`. It is still idempotent — the first of `level.intermission`,
+`stop_intermission` or `end_game` wins and the rest are ignored.
+
+**1. the result.** One enriched `game_over`, so a host that loses the connection a second later
+still has the whole answer in one line rather than having to fold the event stream:
+
+```json
+{"t":"game_over","ms":321107,"round":7,"reason":"stop_intermission notify",
+ "duration_ms":298640,"points_total":12450,"downs_total":3,"players_alive":0,
+ "players":[{"slot":0,"name":"anna-jpg","connected":true,"score":6200,
+             "score_total":9100,"downs":2,"revives":1,"alive":false}]}
+```
+
+A player who left mid-match still gets a row, because they are part of the result. `revives` is
+counted off the `player_revived` notify (§2.3); `downs` is the poll of `self.downs`; `score` is the
+poll of `player.score`. `score_total` appears only when the script read succeeds, which today it
+does not (`scriptvars=no`).
+
+**2. the replay stops.** `referee::set_recording(false)` — one shared cell in `t4_bind`, the same
+shape as `set_current_round` (§9.3 gap 3), read by `replay.cpp`'s sampler, which returns
+immediately from then on and says so once.
+
+**3. the lease.** One new message, sent **after** `game_over` so the host can never see "you may
+reuse this instance" before the result it is supposed to post:
+
+```json
+{"t":"match_end","ms":321107,"round":7,"reason":"stop_intermission notify",
+ "duration_ms":298640,"replay_closed":true,"server_alive":true,"awaiting":"end|teardown"}
+```
+
+`match_end` means exactly one thing: **this game process is idle and the instance can be
+reclaimed.** It is not a duplicate of `game_over`; `game_over` is evidence and belongs in the
+replay, `match_end` is lifecycle and belongs to the scheduler.
+
+**And then the referee does nothing at all.** It does not restart its own map on a timer. A server
+that recycled itself would destroy the evidence of a game the host had not finished writing down,
+and "the host was slow" is not a reason to lose a run. An idle server costs 2–6% of a core
+(`dedi.md` §12.3), which is affordable; a lost record is not.
+
+#### Proven — `join73`, `nazi_zombie_prototype`, 300 s, one real client
+
+```
+07:53:37  referee: ROUND 1 (all_players_connected)
+07:55:17  referee: GAME OVER at round 1 (stop_intermission notify) after 120953 ms;
+          0 point(s) over 1 player row(s), 0 down(s), 1 alive. Replay sampler stopped.
+          match_end sent: the server is ALIVE and idle, waiting for the host to send
+          `end` (map_restart) or to tear the instance down.
+07:55:17  replay: sampler stopped at game over after 2057 snaps / 402486 bytes.
+          It restarts when the referee reports a new match.
+07:58:36  dedi_rate_probe: ... Com_Frame-body 59.0 Hz ... com_frameTime=321195
+          com_frameTime advanced 29992 ms over the last 6 windows   simulating=True
+          answered 76, unanswered-after-first-answer 0              PASS
+```
+
+The server ran for another **three minutes past game over**, still simulating at 59 Hz, with the
+client attached — which is exactly the state `match_end` exists to end, and exactly why the
+referee must not end it by itself.
+
+**`0 point(s)` and `0 down(s)` are honest, not a bug.** `score` and `downs` are script-variable
+reads and `scriptvars=no` in every run to date (`t4_bind.cpp`), so those fields are simply absent
+from the JSON and the totals are zero. The player row itself comes from `client(slot)`, which is
+bound. When script variables land, the same code fills in without changing shape.
+
+### 10.3 THE CONTRACT — what `infra/host-agent` must do
+
+This lane may not edit `infra/host-agent/`, so this is the specification, and
+`docs/protocol/game-link-v0.md` now carries the new rows.
+
+On receiving **`match_end`** the host agent must, in this order:
+
+1. **finish the replay** — `game_over` is the last event of the match; close and sign the chunk.
+2. **post the result** — from the `game_over` message, not from a re-fold of the stream.
+3. **choose one of two dispositions, and it must choose one:**
+   - **reuse the instance** — send `{"t":"end","id":"<id>","reason":"next lease"}`. The referee
+     replies `{"t":"reply","id":…,"ok":true}`, issues `map_restart`, resets its per-match state
+     (round back to 0, players cleared, novelty budget refilled, recording on) and **re-announces
+     `map_loaded`** on the next server frame — which is the host's signal to open a new replay
+     file. A `reply` with `ok:false` means the command buffer was unavailable and the instance
+     **must not** be reused; tear it down.
+   - **tear it down** — terminate the process. Nothing further is needed from the game side.
+4. **never leave it in neither state.** An instance that gets no answer stays up for ever holding a
+   UDP port and a map's worth of RSS.
+
+`end` is also the way a host ends a game early. If it arrives before game over the referee reports
+the result first (`reason` = whatever the host sent, or `"host end"`), so a forced end still leaves
+a complete record instead of a hole.
+
+**The one thing the host must NOT do** is assume `game_over` means the process is gone. It is not;
+`server_alive` says so explicitly.
+
+### 10.4 `console_command()` was a no-op, and every "-> map_restart" line was a lie
+
+Worth writing down plainly because it invalidates an earlier claim in this file.
+`t4_bind.cpp :: console_command()` was `return false;` with the comment "Cbuf_AddText is not in
+shared/t4 yet". `do_end()` called it, did not distinguish the failure in its log line, and printed
+`referee: host asked to end the game (…) -> map_restart`. **No `map_restart` has ever been
+issued.**
+
+It is implemented now. **`Cbuf_AddText` = 0x594200**, and it is a register-argument function, so it
+is stated the way `docs/re/t4-sp-map.md` asks. Two independent signals:
+
+```
+prologue 0x594200   push ebp / push esi / push edi
+                    push 0x22990F8 ; call [0x7EB138]   EnterCriticalSection
+                    mov esi, eax      <- arg 1: const char* text
+                    mov edi, ecx      <- arg 2: int localClient
+call site 0x636157  add esp, 8 / xor ecx, ecx / call 0x594200
+                    ecx is set immediately before the call and nothing is pushed for it
+```
+
+Nothing goes on the stack and nothing has to be cleaned, so a wrong guess here cannot unbalance the
+caller — which is the specific risk that made `dedi` refuse to stub 0x605500. The call is made from
+inline asm rather than through an invented prototype, is queued onto the game thread like
+`server_say`, verifies the prologue bytes before the first call, and appends its own `\n` (without
+one the command sits in the buffer until something else adds one).
+
+**`re`: this belongs in `shared/t4/addresses.hpp` as `t4::fn::Cbuf_AddText`, with the convention
+written down.** It is in `t4_bind.cpp` only because that file is not yours.
+
+### 10.5 The `exec` dev knob — `ENW_DEV_KNOBS=1`, and off everywhere else
+
+`exec` has been in the protocol since v0 and nothing implemented it. It is implemented now and it
+is **dev-only**: the referee reads `ENW_DEV_KNOBS` from the *game process's environment* at
+`post_load`, and refuses `exec` with `"dev knobs off (ENW_DEV_KNOBS)"` unless it is `1`. A command
+containing a newline or carriage return is refused outright so one `exec` cannot smuggle in a
+second.
+
+The switch is deliberately **not** a dvar the host can set over the same link. A host that can run
+an arbitrary console command on a server that certifies records can change the rules of a run after
+it has started; the switch has to be something only whoever launched the process can set. Nothing
+that launches a Verified game sets it.
+
+### 10.6 Round 2 — still not observed, and the reason has changed
+
+§9.1 said round 2 was blocked on `SV_Frame` stopping. **That is fixed** (`dedi.md` §12) and round 2
+is still not observed, for a different and much more ordinary reason: **a round does not end until
+that round's zombies are dead, and an idle client does not kill anything.** `join65`/`join66` both
+ran the full 300 s; in both, round 1 was still round 1 when the player was eaten, and the game
+ended correctly at round 1.
+
+**No dev knob can substitute, and this is not a "we did not try" answer.** To end a round from the
+server you need one of three things and we have none of them:
+
+| route | what it needs | state |
+|---|---|---|
+| fire `between_round_over` ourselves | `Scr_NotifyNum` — raise a script notify from C++ | **unbound** (`t4_bind.cpp` header, "still missing") — and it would be a *lie to the referee*, not a real round |
+| set `level.zombie_total = 0` | script-variable **writes** | **unbound**: `scriptvars=no` in every join run |
+| kill the AI | `G_Damage`, or a console command that kills AI | not mapped; and the exe has **no** AI-kill command — the only `kill*` command strings in the image are `kill` and `killserver` |
+
+Writing `health = 0` into a `gentity_s` is **not** a fourth route and must not be tried: AI death on
+this engine is raised by the damage path, not by the field, so it would produce a zombie with zero
+health that never dies and a round that never ends — a worse state than the one we are in.
+
+So the honest status: **`ROUND 1` is proven in every join run since `join12`. `ROUND 2` needs a
+player who shoots.** That is now a client-input question (a real person at the keyboard, or an
+automated one), not a server question, and `TESTME.md` is the test.
+
+The `exec` knob of §10.5 is still worth having — `map_restart` is a real server-side action and it
+is what the `end` contract rests on — but it is honest about what it cannot do.
+
+### 10.7 `wait_for_first_player()` — the decision, and it is "no"
+
+§9.2 established the mechanism: `wait_for_first_player()` waits on
+`level waittill("first_player_ready")`, nothing raises it on a dedicated server, and two threads
+(`_utility.gsc:9539`, `_load.gsc:2256`) stay parked for the whole of every run.
+
+**Decision: the referee will NOT raise it.** Three reasons, in order of weight:
+
+1. **Nothing has been shown to depend on it.** The condition for implementing was "only if the
+   level scripts need it". Round 1 starts (`all_players_connected`), the map runs, the client
+   spawns, the game reaches game over and the result is reported — all with both threads parked,
+   across every join run to date. A change with no observable failure to fix is a change that can
+   only introduce one.
+2. **We cannot do it today anyway.** Raising a script notify from C++ needs `Scr_NotifyNum`, which
+   is one of the two things `t4_bind.cpp` has always listed as missing. "Implement it" is not a
+   small change; it is the same binding that would unblock a real round knob.
+3. **Faking a player-ready signal is the `no_autosave` mistake again.** `dedi.md` §7i: telling the
+   engine an autosave had finished when it had not produced `Attempting to commit an invalid save
+   buffer` — a worse message, further from the cause. A listen host raises `first_player_ready`
+   *because a local player really is ready*. We have no local client (`local_client.cpp` keeps slot
+   0 free on purpose, so `get_players()` sizes rounds correctly), so the condition is genuinely
+   false and saying otherwise is a lie to the scripts.
+
+**What would change the decision:** a map whose progression is gated behind it — a custom `_load`
+that will not open a door or start a timer until `first_player_ready` fires. None of the six maps
+tested tonight is such a map. If one turns up, the fix is `Scr_NotifyNum` plus raising it exactly
+once, when the first client reaches `CS_ACTIVE` (that is when a listen host would have), and never
+on a server that has no clients.

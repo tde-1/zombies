@@ -135,7 +135,8 @@
     "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/mw2-rust-aombies-1.jpg",
     "cover_size": 165687
   },
-  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3).  DEDI 2026-09-22 (runs map01, map03): does NOT boot on the dedicated server. GSC runtime error 'undefined is not an array, string, or vector' at load, with the 422 MB reserve on. The scanner already rated this map missed-silently.",
-  "dedi_status": "map_error",
-  "site_status": "map_error"
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3).  DEDI 2026-09-22 (run map05, after the mount fix): the map now LOADS and spawns a server (`------ Server Initialization ------ / Server: mw2rust`), then dies with a GSC runtime error and the server shuts down. `undefined is not an array, string, or vector` at `common_scripts/utility.gsc:463 while( !level.flag[ msg ] )`, from `maps/mw2rust.gsc:179 flag_wait(\"electricity_on\")` reached through `common_scripts/utility.gsc:586 entities[keys[i]] thread [[process]]()`, from `maps/mw2rust.gsc:119 array_thread(end_trig, ::end_game)`. `level.flag` is created by `maps/_load.gsc:97`'s `flag_init(\"all_players_connected\")`, so a map-provided script is flag_waiting before `_load::main()` has run. NOT ours: we mount no overlay (fs_game is the map's own mod, the referee is C++ and ships nothing inside it), the console shows `Loading fastfile 'mod'` and the map fastfile loading, and Der Berg answers getstatus with the same mount. Why the same script survives on a listen server is NOT established. dedi.md 13.3, referee.md 10.",
+  "dedi_status": "broken",
+  "site_status": "map_error",
+  "status": "broken"
 }

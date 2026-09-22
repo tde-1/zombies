@@ -920,17 +920,106 @@ bool server_say(int slot, const std::string& text) {
     return true;
 }
 
-bool console_command(const std::string&) {
-    // Cbuf_AddText is not in shared/t4 yet.
-    return false;
+// --------------------------------------------------------- console commands --
+//
+// `console_command()` used to be `return false;` with the note "Cbuf_AddText is not
+// in shared/t4 yet". That mattered more than it looked: `map_restart` is the only
+// thing the referee can do when the host answers `match_end` with `end`, and it has
+// never once been issued. Every "referee: host asked to end the game -> map_restart"
+// line ever logged was a lie by omission.
+//
+// **Cbuf_AddText = 0x594200**, and this is a non-cdecl, register-argument function,
+// so it is stated the way docs/re/t4-sp-map.md asks for. TWO independent signals:
+//
+//   prologue (0x594200)        push ebp / push esi / push edi
+//                              push 0x22990F8 ; call [0x7EB138] EnterCriticalSection
+//                              mov esi, eax   <- argument 1: const char* text
+//                              mov edi, ecx   <- argument 2: int localClient
+//   a call site (0x636157)     add esp, 8 / xor ecx, ecx / call 0x594200
+//                              i.e. ecx is set to 0 immediately before the call, and
+//                              nothing is pushed for it.
+//
+// It takes NOTHING on the stack (it pushes and pops three registers and `ret`s with
+// no immediate), so a wrong guess here cannot unbalance the caller -- which is the
+// specific risk that made dedi refuse to stub 0x605500 and friends.
+//
+// It must run on the GAME THREAD: it enters the command buffer's critical section
+// and appends to a per-local-client ring at 0x1F529BC + n*0x30. Off-thread it would
+// be safe against corruption but would still execute engine work from the socket
+// thread, so it is queued like server_say().
+//
+// `re`: this belongs in shared/t4/addresses.hpp as t4::fn::Cbuf_AddText with the
+// convention written down. It is here only because that file is yours.
+constexpr uintptr_t kCbuf_AddText = 0x594200;
+
+// `push ebp / push esi / push edi / push 0x22990F8` -- the first eight bytes.
+constexpr uint8_t kCbufSig[] = {0x55, 0x56, 0x57, 0x68, 0xF8, 0x90, 0x29, 0x02};
+
+bool g_cbuf_checked = false;
+bool g_cbuf_ok = false;
+
+bool cbuf_available() {
+    if (g_cbuf_checked) return g_cbuf_ok;
+    g_cbuf_checked = true;
+    const uintptr_t fn = at(kCbuf_AddText);
+    uint8_t got[sizeof kCbufSig] = {};
+    if (!memory::read_raw(fn, got, sizeof got) ||
+        std::memcmp(got, kCbufSig, sizeof got) != 0) {
+        ENW_ERROR("referee/bind: Cbuf_AddText 0x%08X does not start with the expected "
+                  "`push ebp/esi/edi; push 0x22990F8` (%s). Console commands stay "
+                  "unavailable; `end` cannot map_restart.",
+                  static_cast<unsigned>(kCbuf_AddText), memory::hex_dump(fn, sizeof got).c_str());
+        return false;
+    }
+    g_cbuf_ok = true;
+    ENW_INFO("referee/bind: Cbuf_AddText bound at 0x%08X (text in eax, localClient in ecx, "
+             "nothing on the stack).", static_cast<unsigned>(kCbuf_AddText));
+    return true;
+}
+
+// The call itself. Inline asm rather than a typed pointer because MSVC has no
+// calling convention that puts arguments in eax and ecx, and inventing a prototype
+// for a non-cdecl function is the mistake docs/re/t4-sp-map.md names by name.
+// Nothing is pushed and nothing has to be cleaned; edx is caller-saved.
+void cbuf_add_text(const char* text, int local_client) {
+    const uintptr_t fn = at(kCbuf_AddText);
+    __asm {
+        mov eax, text
+        mov ecx, local_client
+        mov edx, fn
+        call edx
+    }
+}
+
+bool console_command(const std::string& cmd) {
+    if (cmd.empty()) return false;
+    if (!cbuf_available()) return false;
+
+    if (!scheduler::on_main_thread()) {
+        const std::string c = cmd;
+        scheduler::run_on_main([c] { console_command(c); });
+        return true;
+    }
+    // Cbuf_AddText appends text to be tokenised as console input, so it needs its own
+    // terminator. Without the newline the command sits in the buffer until something
+    // else happens to add one.
+    std::string line = cmd;
+    if (line.back() != '\n') line.push_back('\n');
+    cbuf_add_text(line.c_str(), 0);
+    ENW_INFO("referee: console command queued: %s", cmd.c_str());
+    return true;
 }
 
 namespace {
 std::atomic<int> g_current_round{0};
+std::atomic<bool> g_recording{true};
 }  // namespace
 
 void set_current_round(int n) { g_current_round.store(n, std::memory_order_relaxed); }
 int current_round() { return g_current_round.load(std::memory_order_relaxed); }
+
+void set_recording(bool on) { g_recording.store(on, std::memory_order_relaxed); }
+bool recording() { return g_recording.load(std::memory_order_relaxed); }
 
 std::optional<std::string> dvar_get(const char*) { return std::nullopt; }
 bool dvar_set(const char*, const char*) { return false; }

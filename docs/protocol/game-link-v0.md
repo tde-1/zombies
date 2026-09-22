@@ -28,7 +28,8 @@ can be built in parallel. Change it by editing this file and noting the change o
 | `hello` | `v:0, instance, role, pid, exe_sha256, dll_build` | on connect |
 | `map_loaded` | `map, fs_game, mode ("zombies"), sv_maxclients` | map up, scripts running |
 | `round` | `n` | `level.round_number` changes (`between_round_over` / `new_zombie_round`) |
-| `game_over` | `round, reason` | `end_game` |
+| `game_over` | `round, reason, duration_ms, points_total, downs_total, players_alive, players:[{slot,name,connected,score,score_total,downs,revives,alive}]` | game over — **the final result**, in one message, so a host that loses the link a second later still has the whole answer without re-folding the stream. It is the last event of the match and the replay sampler stops on it. *(fields added 2026-09-22, referee.md §10.2)* |
+| `match_end` | `round, reason, duration_ms, replay_closed, server_alive, awaiting` | sent immediately **after** `game_over`. Means one thing: **this game process is idle and the instance can be reclaimed.** The server is still alive (`no_save_reload.cpp`) and will sit there for ever unless the host acts. The host must close and sign the replay, post the result, and then either send `end` (reuse: the referee `map_restart`s, resets and re-announces `map_loaded`) or terminate the process. It must do one of the two. *(added 2026-09-22, referee.md §10.3)* |
 | `player_connect` | `slot, name, xuid/steamid if known, token if presented` | a client connects |
 | `player_spawn` / `player_disconnect` | `slot` (+`reason`) | |
 | `down` / `revive` / `bleedout` | `slot` (+`by`) | |
@@ -48,12 +49,12 @@ can be built in parallel. Change it by editing this file and noting the change o
 |---|---|---|
 | `say` | `text, from?` | show a chat line to every player (Global chat relay, warnings) |
 | `tell` | `slot, text` | chat line to one player |
-| `exec` | `id, cmd` | run a console command (host-controlled only) |
+| `exec` | `id, cmd` | run a console command. **DEV ONLY**: refused with `"dev knobs off (ENW_DEV_KNOBS)"` unless the game process was launched with `ENW_DEV_KNOBS=1`, which nothing that launches a Verified game sets. Single line only. *(implemented 2026-09-22, referee.md §10.5)* |
 | `set` | `id, dvar, value` | set a dvar |
 | `pause` / `resume` | `id` | engine-level pause (players frozen and invulnerable, zombies frozen) |
 | `kick` | `id, slot, reason` | drop a client |
 | `auth` | `slot, allow:bool, reason?` | answer to a `player_connect` token check |
-| `end` | `id, reason` | end the game cleanly |
+| `end` | `id, reason` | end the game cleanly, **and the answer to `match_end` when the host wants to reuse the instance**. The referee reports the result first if the match had not already ended, issues `map_restart`, resets its per-match state and re-announces `map_loaded`. `reply.ok:false` means the command buffer was unavailable — the instance must be torn down, not reused. *(2026-09-22)* |
 | `snapshot_state` | `id` | reply `value` = full restorable state (points, weapons, perks, position per player; round). The host asks for this the moment a player DROPS, while the level still has it. |
 | `restore` | `id, slot, state` | put a returning player back as they were: `state` is that player's slice of an earlier `snapshot_state` (`score`, `weapon` incl. `_upgraded`, `perks`, `pos`, `ang`). Reply ok/error. **Only ever sent for casual/badge games** — a record-profile game gets the pause and a vanilla rejoin, because restoring by hand is not vanilla and would disqualify the run (vault 10 §5). *(added 2026-09-20)* |
 

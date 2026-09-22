@@ -157,6 +157,16 @@ bool console_command(const std::string& cmd);
 void set_current_round(int n);
 int current_round();
 
+// ------------------------------------------------------- is a match running --
+// Set false by the referee on game over and true again when a new match starts
+// (map_restart). The replay sampler reads it and stops producing `snap` messages,
+// because a dedicated server lives THROUGH game over (no_save_reload.cpp) and would
+// otherwise keep recording the intermission and the empty map into the replay file
+// the host has already closed. Same one-shared-cell reasoning as current_round():
+// the two components cannot see each other's state.
+void set_recording(bool on);
+bool recording();
+
 // ------------------------------------------------------------------- dvars --
 std::optional<std::string> dvar_get(const char* name);
 bool dvar_set(const char* name, const char* value);

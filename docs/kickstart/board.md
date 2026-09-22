@@ -4325,3 +4325,81 @@ reboot. `play: true`.**
   `+connect`**: that is the server-side out-of-band name and the engine answers `Unknown command`.
   `ENW_CLIENT_CONNECT` + `ENW_CONNECT_ADDR=2.28.235.236:28960` is the only route to a second
   machine, because `CL_ConnectLocal` hard-codes "localhost" and that string is `NA_LOOPBACK`.
+- 08:55 dedi: **RETRACTION — Der Berg is not a missing dvar.** `dedi.md` 12.5 said "find the dvar
+  at [0x3BFD478] and register it". The dvar was found (`r_reflectionProbeGenerate`, the only write
+  to that slot is at 0x6ED664) and registering it **did not fix anything** (`join69` FAIL, same
+  stop at com_frameTime=5659) — the fault register changed from `ecx=00000000` to `ecx=00000FE9`,
+  a *garbage* pointer, and it varies run to run. `dedi.md` 12.5 is retracted in place; 13.1–13.2
+  is the real mechanism.
+- 08:55 dedi: **what Der Berg actually is, named with a data breakpoint.** DR0 on the slot
+  (`ENW_DEDI_WATCH_PROBE_SLOT=1`, `reflection_probe_dvars.cpp`) caught the store:
+  `mov [ebx], esi` at 0x697B97 with `ebx=03BFD478`, inside 0x697B60 — the loop that walks a script
+  object's child variables and pushes each name id into `scrVmPub.localVars` (`gScrVmPub` =
+  0x3BD4700, stride 0x4320). **The loop has no bound check.** Der Berg enumerates ~3,900 children,
+  the scratch overflows 0x28D78 bytes into .bss, and the first casualty is the dvar pointer the
+  packet receive dereferences on every WSAEWOULDBLOCK. So: GSC overflow -> corrupted dvar slot ->
+  access violation -> the 12.1 frame unwind. Fixing it means bounding that loop or enlarging
+  `localVars` — an engine-limit job, not attempted.
+- 08:55 dedi: **`fs_game is write protected` was a red herring and cost a session.** It is printed
+  on **every** map, including the ones that boot (so are `fs_homepath`, `sys_configureGHz` and
+  `dedicated`) — it is the engine re-applying our `+set` block after the dvar dump. And there is no
+  `config.cfg` anywhere under `ZombiesDev\homes`, so 11.4's proposed fix could not have done
+  anything.
+- 08:55 dedi: **`Can't find map` is `fs_localAppData`, not `fs_game`.** The map-exists check
+  (0x62B607/0x62B623/0x62B635 -> 0x48FC10 -> CreateFileA) does not use the FS search path at all.
+  Mode 1 opens `<fs_localAppData>\<fs_game>\<bsp>.ff`, and `[0x2122AF0]` is the **`fs_localAppData`**
+  dvar registered at 0x5DDFD8 = `%LOCALAPPDATA%\Activision\CoDWaW` — never `fs_homepath`, which is
+  what `launch.ps1` redirects. Der Berg, Leviathan, Clinic of Evil and MW2 Rust had an entry there
+  from an old session; Zombie Desert and Project Viking did not. That was the whole difference.
+  `tools\dev\mapmount.ps1` now makes both junctions and prints the exact path the check will open.
+- 08:55 dedi: **for `re`** — `Cbuf_AddText` = **0x594200**, `text` in `eax`, `localClient` in
+  `ecx`, **nothing on the stack** (prologue `mov esi,eax / mov edi,ecx`; call site 0x636157 does
+  `xor ecx,ecx` immediately before). `gScrVmPub` = 0x3BD4700 stride 0x4320, first dword is the
+  `localVars` scratch pointer; the script variable table is 0x3974700, 16-byte rows, per-instance
+  stride 0x16000, name id at +0 and next sibling at +2 (both uint16). `Dvar_RegisterBool` =
+  0x5EEE20 (name@edi, value@al, flags and description on the stack); `fs_localAppData` dvar slot
+  0x2122AF0, `fs_game` 0x2122B00, `useFastFile` 0x1F552FC.
+- 08:55 referee: **game over does something now.** `game_over` carries the whole result (round,
+  reason, duration, per-player points/downs/revives/alive, totals); the replay sampler is stopped
+  through a shared cell in `t4_bind`; and a new **`match_end`** says "this process is idle, the
+  instance can be reclaimed". The referee then does nothing — it never recycles its own map,
+  because that would destroy evidence the host had not finished writing down. `referee.md` 10.
+- 08:55 referee: **FOR `host` — the contract, and it needs work in `infra/host-agent`.** On
+  `match_end`: close and sign the replay, post the result from the `game_over` message, then
+  **either** send `{"t":"end","id":…}` (the referee `map_restart`s, resets and re-announces
+  `map_loaded` — open a new replay on it) **or** terminate the process. It must do one of the two;
+  an instance that gets no answer sits up for ever. `game_over` does **not** mean the process is
+  gone (`server_alive:true` says so). `docs/protocol/game-link-v0.md` has the rows.
+- 08:55 referee: **`console_command()` was `return false;` and every "-> map_restart" line in every
+  log was a lie.** It is implemented now via `Cbuf_AddText` 0x594200, queued to the game thread,
+  prologue verified before the first call.
+- 08:55 referee: **`exec` implemented, DEV ONLY** — `ENW_DEV_KNOBS=1` in the game process's
+  environment, refused otherwise, single line only. Deliberately not a dvar a host can set over the
+  same link: a host that can run console commands on a server that certifies records can change the
+  rules mid-run.
+- 08:55 referee: **round 2 is no longer blocked on the server — it is blocked on a player who
+  shoots.** A round ends when that round's zombies are dead and an idle client kills nothing. No
+  server-side knob can substitute: firing `between_round_over` needs `Scr_NotifyNum` (unbound),
+  zeroing `level.zombie_total` needs script writes (unbound, `scriptvars=no`), and the exe has no
+  AI-kill console command (the only `kill*` strings in the image are `kill` and `killserver`).
+  Writing `health=0` into a gentity is **not** a route — AI death is raised by the damage path.
+- 08:55 referee: **`wait_for_first_player()` — decided, and the answer is no.** Nothing has been
+  shown to depend on it; we could not raise it today anyway (`Scr_NotifyNum` unbound); and faking a
+  player-ready signal on a server with no local client is the `no_autosave` mistake again.
+  `referee.md` 10.7 records what would change the decision.
+- 08:58 referee: **`join73` PASS — game over proven end to end with a real client.** prototype,
+  300 s, five gates, 76 of 76 getstatus answered, `Com_Frame-body 59.0 Hz` and
+  `com_frameTime=321195` still advancing at the end. `referee: GAME OVER at round 1
+  (stop_intermission notify) after 120953 ms ... Replay sampler stopped. match_end sent` and
+  `replay: sampler stopped at game over after 2057 snaps / 402486 bytes`. **The server then ran
+  for another three minutes past game over with the client attached** — which is exactly the
+  state `match_end` exists to end. `0 point(s)` / `0 down(s)` in the result is honest: those are
+  script-variable reads and `scriptvars=no`.
+- 08:58 dedi: **all six custom maps now reach `------ Server Initialization ------`** (run map05),
+  which is new — the fs_localAppData mount did that. All six then die in the map's own scripts.
+  Four of them (Zombie Desert, Project Viking, MW2 Rust, Clinic of Evil) die the **same** way:
+  `undefined is not an array, string, or vector` on `level.flag[...]`, i.e. a map-provided script
+  `flag_wait`s before `maps/_load.gsc:97`'s `flag_init` has run. Not our overlay (we mount none),
+  not `fs_game`, not a missing `.ff`. **Open: why the same script survives on a listen server.
+  Nobody has run one of them on a listen server and diffed the console — that is the cheap test.**
+  All six manifests now carry `status: "broken"` and the exact traceback.

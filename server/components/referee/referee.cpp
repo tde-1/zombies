@@ -131,6 +131,18 @@ public:
         link.on("end",
                 [this](const json::value& msg) { do_end(msg.str_or("id"), msg.str_or("reason")); },
                 /*want_game_thread=*/true);
+
+        // `exec` is in the protocol (host->game, "run a console command") and nothing
+        // has ever implemented it. It is implemented here and it is DEV-ONLY:
+        // ENW_DEV_KNOBS=1 in the game process's environment, off everywhere else, and
+        // never set by anything that runs a Verified game. A host that can run an
+        // arbitrary console command on a server that certifies records can change the
+        // rules of a run after it has started, so the switch is deliberately not a
+        // dvar a host can set over this same link.
+        dev_knobs_ = env_str("ENW_DEV_KNOBS") == "1";
+        link.on("exec",
+                [this](const json::value& msg) { do_exec(msg.str_or("id"), msg.str_or("cmd")); },
+                /*want_game_thread=*/true);
     }
 
     void post_unpack() override {
@@ -280,6 +292,13 @@ private:
         // starts round_think(), which is exactly "round 1 has begun".
         if (ev.name == "all_players_connected") emit_round(1, ev.game_ms, "all_players_connected");
 
+        // Revives are a notify (revive_success -> player_revived), unlike downs which
+        // are a poll of self.downs. Counting them here is what lets the final result
+        // carry a revives column without the host having to fold the event stream.
+        if (ev.name == "player_revived" && ev.slot >= 0 && ev.slot < kMaxPlayers) {
+            ++players_[ev.slot].revives;
+        }
+
         const bool always = std::any_of(std::begin(kAlways), std::end(kAlways),
                                         [&](const char* a) { return ev.name == a; });
         bool forward = always;
@@ -381,7 +400,7 @@ private:
                      static_cast<unsigned long long>(frames_), span,
                      span ? (frames_ * 1000.0) / span : 0.0);
         }
-        if (frames_ == 1) first_frame_ms_ = ms;
+        if (frames_ == 1) { first_frame_ms_ = ms; match_start_ms_ = ms; }
 
         // The server is running a map: that IS map_loaded. SV_Frame does not tick
         // before a server exists, so the first tick is the earliest honest moment,
@@ -496,15 +515,127 @@ private:
         ENW_INFO("referee: ROUND %d (%s)", round_, how);
     }
 
+    // ----------------------------------------------------------- game over --
+    //
+    // WHAT GAME OVER DOES ON A DEDICATED SERVER, AND WHY IT HAD TO CHANGE.
+    //
+    // Until tonight this sent `{"t":"game_over","round":N,"reason":…}` and stopped.
+    // That was adequate while a dedicated server DIED at game over: T4's single-player
+    // death flow reloads the last save, a headless server never wrote one, and the
+    // ERR_DROP took the whole process into the front end and parked it (dedi.md 12.3).
+    // `no_save_reload.cpp` fixed that, and it created a new problem: the server, the
+    // map and the connected clients now live on past game over for ever. Nothing
+    // stops the replay, nothing tells the host the match is finished, nothing frees
+    // the instance, and nothing starts the next one.
+    //
+    // So game over is now three things, in this order:
+    //
+    //   1. THE RESULT. One `game_over` carrying everything the host needs to post a
+    //      result without reconstructing it from the event stream: the round reached,
+    //      the finish reason, how long the match ran, and a per-player row of points,
+    //      downs, revives and whether they were alive at the end. The host's referee
+    //      can still derive all of this from the stream -- that is the design, and it
+    //      is why the replay is the record of truth -- but a summary that is one
+    //      message cannot be half-lost to a dropped connection.
+    //   2. THE REPLAY STOPS. `referee::set_recording(false)`; the sampler in
+    //      replay.cpp returns immediately from then on.
+    //   3. THE LEASE. One `match_end`, which is the message that says "this game
+    //      process is idle and the instance can be reclaimed". The host agent answers
+    //      it with `end` (we `map_restart` for the next lease and report a fresh
+    //      `map_loaded`) or by tearing the process down. If it answers with neither we
+    //      do NOTHING: a server that restarted its own map would destroy the evidence
+    //      of a game the host had not finished writing down. The exact contract is in
+    //      referee.md.
     void emit_game_over(const char* reason) {
         if (game_over_) return;
         game_over_ = true;
+
+        const uint32_t duration = (game_ms_ >= match_start_ms_) ? game_ms_ - match_start_ms_ : 0;
+
+        json::array players;
+        int total_points = 0, total_downs = 0, alive = 0;
+        const int n = referee::max_clients();
+        for (int slot = 0; slot < n && slot < kMaxPlayers; ++slot) {
+            auto c = referee::client(slot);
+            const auto& p = players_[slot];
+            // A player who left mid-match is still part of the result, so we report a
+            // row for anyone we ever saw, not just anyone connected at the end.
+            if ((!c || !c->active) && !p.have_score && !p.have_downs) continue;
+            json::writer pw;
+            pw.integer("slot", slot);
+            if (c) pw.str("name", c->name).boolean("connected", c->active);
+            if (p.have_score) { pw.integer("score", p.score); total_points += p.score; }
+            if (p.have_downs) { pw.integer("downs", p.downs); total_downs += p.downs; }
+            pw.integer("revives", p.revives);
+            if (auto s = referee::player_int(slot, "score_total")) pw.integer("score_total", *s);
+            if (auto e = referee::player_ent(slot)) {
+                pw.boolean("alive", e->alive);
+                if (e->alive) ++alive;
+            }
+            players.raw(pw.done());
+        }
+
+        const size_t rows = players.count();
         json::writer w;
-        w.str("t", "game_over").integer("ms", game_ms_).integer("round", round_).str("reason", reason);
+        w.str("t", "game_over")
+            .integer("ms", game_ms_)
+            .integer("round", round_)
+            .str("reason", reason)
+            .integer("duration_ms", static_cast<long long>(duration))
+            .integer("points_total", total_points)
+            .integer("downs_total", total_downs)
+            .integer("players_alive", alive)
+            .raw("players", players.done());
         game_link::get().send(w);
         referee::lp_player_event(-1, "match_end", std::to_string(round_));
-        ENW_INFO("referee: game over at round %d (%s); %zu distinct notifies seen, %llu suppressed",
-                 round_, reason, seen_.size(), static_cast<unsigned long long>(suppressed_));
+
+        // 2. the replay stops.
+        referee::set_recording(false);
+
+        // 3. the lease. Sent after game_over so the host can never see "you may reuse
+        // this instance" before the result it is supposed to post.
+        json::writer m;
+        m.str("t", "match_end")
+            .integer("ms", game_ms_)
+            .integer("round", round_)
+            .str("reason", reason)
+            .integer("duration_ms", static_cast<long long>(duration))
+            .boolean("replay_closed", true)
+            .boolean("server_alive", true)
+            .str("awaiting", "end|teardown");
+        game_link::get().send(m);
+
+        ENW_INFO("referee: GAME OVER at round %d (%s) after %u ms; %d point(s) over %d player "
+                 "row(s), %d down(s), %d alive. Replay sampler stopped. match_end sent: the "
+                 "server is ALIVE and idle, waiting for the host to send `end` (map_restart) "
+                 "or to tear the instance down.",
+                 round_, reason, duration, total_points,
+                 static_cast<int>(rows), total_downs, alive);
+        ENW_INFO("referee: %zu distinct notifies seen, %llu suppressed", seen_.size(),
+                 static_cast<unsigned long long>(suppressed_));
+    }
+
+    // Everything a second match on the same process must not inherit from the first.
+    // Called only from do_end(), and only when the map_restart actually went in.
+    void reset_for_next_match() {
+        for (auto& p : players_) p = player_state{};
+        seen_.clear();
+        id_counts_.clear();
+        level_notify_count_ = 0;
+        level_notify_emitted_ = 0;
+        novel_forwarded_ = 0;
+        suppressed_ = 0;
+        round_ = 0;
+        round_notifies_ = 0;
+        last_round_ms_ = 0;
+        game_over_ = false;
+        match_start_ms_ = game_ms_;
+        map_announced_ = false;   // the next frame re-announces, so the host opens a new replay
+        core_frames_ = 0;
+        referee::set_current_round(0);
+        referee::set_recording(true);
+        ENW_INFO("referee: state reset for the next match; map_loaded will be re-announced "
+                 "and the replay sampler is recording again.");
     }
 
     // ----------------------------------------------------------- host cmds --
@@ -540,16 +671,58 @@ private:
         game_link::get().send_reply(id, true, {}, v.done());
     }
 
+    // The host's answer to `match_end` -- and also the way it ends a game early.
+    //
+    // A clean end from inside the game would be the scripts' own end_game(), and Der
+    // Riese reaches it through level notify("end_game"); we cannot fire a script
+    // notify from C++ yet, so `map_restart` is what we have. What IS new is what
+    // happens around it: if the match had not already ended we report it first, so a
+    // host-forced end still produces a result and a closed replay rather than a hole
+    // in the record; and on success we reset for the next lease, which is the whole
+    // point of answering `match_end` with `end` instead of killing the process.
     void do_end(const std::string& id, const std::string& reason) {
-        // A clean end: the scripts' own path is end_game(), and Der Riese reaches
-        // it through level notify("end_game"). We cannot fire a script notify from
-        // C++ yet, so for now this is honest about what it can do.
+        if (!game_over_) emit_game_over(reason.empty() ? "host end" : reason.c_str());
+
         const bool ok = referee::console_command("map_restart");
         if (!id.empty()) {
             game_link::get().send_reply(id, ok, ok ? "" : "no command buffer bound");
         }
+        if (ok) {
+            reset_for_next_match();
+        } else {
+            ENW_WARN("referee: host asked to end the game (%s) but the command buffer is not "
+                     "bound, so map_restart could not be issued. The instance is finished and "
+                     "the host must tear it down rather than reuse it.",
+                     reason.c_str());
+        }
         ENW_INFO("referee: host asked to end the game (%s) -> %s", reason.c_str(),
-                 ok ? "map_restart" : "unavailable");
+                 ok ? "map_restart, ready for the next match" : "unavailable");
+    }
+
+    // Dev-only. See the registration in post_load() for why.
+    void do_exec(const std::string& id, const std::string& cmd) {
+        if (!dev_knobs_) {
+            ENW_WARN("referee: refused host exec \"%s\": dev knobs are off. Set "
+                     "ENW_DEV_KNOBS=1 in the server process to allow it, and never in a "
+                     "Verified game.",
+                     cmd.c_str());
+            if (!id.empty()) game_link::get().send_reply(id, false, "dev knobs off (ENW_DEV_KNOBS)");
+            return;
+        }
+        if (cmd.empty()) {
+            if (!id.empty()) game_link::get().send_reply(id, false, "empty cmd");
+            return;
+        }
+        // One line only: a newline would let one `exec` smuggle in a second command.
+        if (cmd.find('\n') != std::string::npos || cmd.find('\r') != std::string::npos) {
+            if (!id.empty()) game_link::get().send_reply(id, false, "cmd must be a single line");
+            return;
+        }
+        const bool ok = referee::console_command(cmd);
+        ENW_WARN("referee: DEV KNOB exec \"%s\" -> %s", cmd.c_str(), ok ? "queued" : "unavailable");
+        if (!id.empty()) {
+            game_link::get().send_reply(id, ok, ok ? "" : "no command buffer bound");
+        }
     }
 
     static std::string vec3(const float v[3]) {
@@ -566,6 +739,7 @@ private:
         bool have_score = false;
         int downs = 0;
         bool have_downs = false;
+        int revives = 0;      // counted off the player_revived notify
     };
 
     player_state players_[kMaxPlayers];
@@ -585,6 +759,8 @@ private:
     uint64_t frames_ = 0;
     uint64_t core_frames_ = 0;
     uint32_t first_frame_ms_ = 0;
+    uint32_t match_start_ms_ = 0;
+    bool dev_knobs_ = false;
 };
 
 }  // namespace

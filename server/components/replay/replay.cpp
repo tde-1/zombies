@@ -103,6 +103,22 @@ private:
     void on_frame(uint32_t ms) {
         ++frame_;
         if (!referee::bound().entities) return;
+        // Game over stops the replay. A dedicated server does NOT shut down at game
+        // over any more (no_save_reload.cpp keeps it, the map and the clients alive),
+        // so without this the sampler keeps writing snaps of an intermission -- and
+        // then of the next match -- into a replay the host agent has already closed.
+        // The referee turns it back on when a new match starts.
+        if (!referee::recording()) {
+            if (!stopped_said_) {
+                stopped_said_ = true;
+                ENW_INFO("replay: sampler stopped at game over after %llu snaps / %llu bytes. "
+                         "It restarts when the referee reports a new match.",
+                         static_cast<unsigned long long>(snaps_),
+                         static_cast<unsigned long long>(bytes_));
+            }
+            return;
+        }
+        stopped_said_ = false;
 
         json::array players;
         const int n = referee::max_clients();
@@ -250,6 +266,7 @@ private:
 
     player_prev players_[kMaxPlayers];
     bool was_live_[kMaxZombies * 4] = {};
+    bool stopped_said_ = false;
     int last_round_ = -1;
     uint64_t kills_ = 0;
     uint64_t kills_this_round_ = 0;
