@@ -221,3 +221,72 @@ Three more facts from R15 that belong to other lanes but must not be lost here:
   4096, LoadedSound 2400, Material 4096, Stringtable 80, Weapon 320, XModel 1500**, zone
   memory **425,721,856** bytes. That is the Der Berg / Water / Octogonal class, and
   `listassetpool` / `listassetcounts` equivalents are the instrument to build first.
+
+## 7. The next wall, and it is not the script VM (`scr10`, 2026-09-23)
+
+`jointest-proof.ps1 -Tag scr10 -Map nazi_zombie_test1 -BigHeap -Watch 300` — **FAIL**, and
+the failure is a different one from every previous Zombie Desert run.
+
+The **server was fine**. It loaded the map, answered `getstatus`, took the client's
+`SV_DirectConnect`, logged `player_connect slot 0`, and held 49.2 Hz with
+`com_frameTime` advancing. No `Com_Error` on the server at all. The map got further than
+it has ever got.
+
+**The client died.** 23 seconds after it launched:
+
+```
+scr10.client.enw.log
+  17:28:33.006  === Com_Error TRAPPED ===  called from 0046BCB4
+                arg1 = 00000001 (ERR_DROP)
+                arg2 = "Weapon index mismatch for '%s'"
+                arg3 = "kar98k"
+  17:28:36.393  Unhandled exception caught  ->  Sys_Error
+```
+
+and the server, having lost its only client, went `CS_ZOMBIE` -> `ShutdownGame` at
+17:28:33.018 — the same second. The `Exceeded limit of 1 'snddriverglobals' assets`
+80 seconds later is the restart symptom (§14.6's trap), not a cause.
+
+**0x46BC80** is the client's post-gamestate weapon check:
+
+```
+0046BC92  mov  esi, [ebx + eax*4]      ; the server's weapon name at index i
+0046BC9B  call 0x41D4C0               ; the client's own index for that name
+0046BCA3  cmp  eax, edi               ; must equal i + 1
+0046BCAF  call 0x59AC50               ; else Com_Error(ERR_DROP, "Weapon index mismatch for '%s'")
+```
+
+i.e. the client's weapon list and the server's have diverged, and Zombie Desert's
+`console.log` in `scr03` says why it might: among its 24 swallowed script errors is
+
+```
+cannot cast undefined to string: (file 'maps/_zombiemode_weapons.gsc', line 397)
+```
+
+**This is not a regression and it is not the fix misbehaving.** That script error is
+swallowed on retail too — so the same weapon registration fails on a community listen
+game — but on a *listen* server there is one process, one weapon list and nothing to
+compare, so nobody ever sees it. A dedicated server is the first configuration in which
+the two lists exist separately and can disagree. Plutonium's own T4 FAQ says the same
+thing in the other direction: *"Some custom zombie maps may not function as expected on
+the new dedicated servers as these maps were never coded with the ability for players to
+join mid game in mind."*
+
+So the honest state of Zombie Desert is: **the script-error wall is gone, a weapon-list
+wall is next, and it belongs to whoever owns weapon/asset registration on a dedicated
+server — not to this page.** No manifest verdict has been changed for it.
+
+### 7.1 The four maps' script health after the fix, which is not equal
+
+Error counts over the 30-second `scr03` holds, from each map's own `console.log`:
+
+| Map | swallowed script errors in 30 s | shape |
+|---|---|---|
+| `mw2rust` | **2** | clean: the two `flag_wait`s, then nothing |
+| `nazi_zombie_test1` | **24** | settles, but includes `_zombiemode_weapons.gsc:397` — see above |
+| `sanatorium` | 2,720 | a steady trickle from `_zombiemode_gondola.gsc` and the shield script |
+| `nazi_zombie_test` | **52,922** | an error storm — a thread raising and being repaired every frame |
+
+"Boots and simulates for 35 s" is therefore **not** the same claim for all four, and the
+five-gate runs are the only thing that can separate them. Do not promote any of these to
+the site's playable set on the strength of `scr03`.
