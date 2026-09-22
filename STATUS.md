@@ -22,7 +22,8 @@
    Start → lease → the **Hetzner box** (online, 2 instances) → everyone's launcher follows.
    Verified mode is the default. **Approved:** you, jamie, zeroh, stew, jacob, air, toku.
    Give them the gate password and `/download`.
-5. **Replay viewer**: any finished game's page → replay. Nacht renders with full world geometry.
+5. **Custom maps with friends**: today that is Minecraft Village Remastered plus the stock four on the box. The rest is the list under *Known and unfixed*.
+6. **Replay viewer**: any finished game's page → replay. Nacht renders with full world geometry.
 
 ## The headline
 
@@ -48,9 +49,9 @@ now has a fifth gate (`com_frameTime` advancing) so a dead server can never pass
 
 ## Known and unfixed
 
-- **Custom maps on the dedicated server**: none yet. All six reach `Server Initialization` (the map mount needed `fs_localAppData` — `tools\dev\mapmount.ps1`). Four then die on the same `flag_wait` before `flag_init`, Leviathan on `napalmblob`, Der Berg on a script-variable enumeration overflowing `localVars`. One shared cause on our side is suspected (overlay ordering, or the replay sampler enumerating ~3,900 children); a bisect agent is running. Manifests currently say `broken`; that verdict is provisional. Stock maps work.
+- **Custom maps on the dedicated server: one passes.** Minecraft Village Remastered (`nazi_zombie_fear_mc_2`) — five gates, 300 s, real client (`join83`). ORBiT and UGX Requiem pass server-side; their *clients* stall in `CL_InitCGame` at ~1.5 GB RSS — the 32-bit address-space ceiling, i.e. the community's **LAA / 4 GB patch**, which the spec ruled out as an exe edit; on **our own game copy** it is a two-byte PE flag the launcher could set — decide. Four maps (Zombie Desert, Project Viking, MW2 Rust, Clinic of Evil) throw the identical `flag_wait` before `flag_init` on a **stock listen server too** — their `main()` starts flag threads before `_zombiemode::main()`; why the community plays them anyway is not established (is that error fatal only under `logfile`/dedicated?). Der Berg overflows `localVars` with all our code removed. Leviathan: `napalmblob`. Verdicts are in `archive/manifests/*.json`. Stock maps work.
 - **Game over**: the referee now emits the full result + `match_end`, stops the replay, and the host agent finishes the match (above). Proven on the box with a real player (game id 2). Round 2 is unprovable unattended — nobody kills zombies.
-- ~~The Hetzner box runs the pre-fix DLL~~ **Deployed.** A real client from B's PC joined the box over the internet, spawned, and the server survived the player joining and leaving: five gates over 300 s, 61 Hz. Host agent's game-over path (sign replay → post result → warm restart or terminate; box back to idle; 26/26 integration checks) landed in `a9f5d92` and **ran for real on the box**: a player from B's PC → game over → `match_end` → replay `m_5de3842b` signed and VALID → site game id 2 → instance warm for the next lease. **One gap: `game_players` is 0 (`result_mismatch`)** — no per-player event reached the link, so nobody is scored yet; a referee agent is on it.
+- ~~The Hetzner box runs the pre-fix DLL~~ **Deployed.** A real client from B's PC joined the box over the internet, spawned, and the server survived the player joining and leaving: five gates over 300 s, 61 Hz. Host agent's game-over path (sign replay → post result → warm restart or terminate; box back to idle; 26/26 integration checks) landed in `a9f5d92` and **ran for real on the box**: a player from B's PC → game over → `match_end` → replay `m_5de3842b` signed and VALID → site game id 2 → instance warm for the next lease. **Per-player results**: the game now emits a roster (`player_connect/spawn/disconnect`, names on `game_over`, `join85`), but **identity is empty** — a real client's userinfo carries no steamid/xuid, only `bdTicket`; the referee must derive the Steam id from the invite token / `bdTicket` before anything is awarded.
 - **Mouse stutter**: fix built, unproven; B's three runs decide.
 - **`wait_for_first_player()`** never fires on a dedicated server; `all_players_connected` does.
 - 2,270 archive maps have no cover; global chat has no page since the rail went; `/maps` is a
