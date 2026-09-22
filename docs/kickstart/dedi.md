@@ -2564,3 +2564,52 @@ none of them goes through `Scr_Error`. They are unchanged by this and stay unfix
 that property this project has found, and unlike `+set developer 1` (README rule 5) it
 was in every launch line in the repo and in the shipped launcher. If a future bisect
 wants a genuinely stock control, it needs `-NoEnw` **and** `-LogFile 0`.
+
+## 17. 2026-09-22, 19:30 — a dedi must never sit behind a MessageBox ("Set Optimal Settings?")
+
+**Incident (box, 19:07 local / 18:07 UTC).** inst-02, booted 2 s after another instance was
+retired, raised *"Set Optimal Settings?"*; the main thread never reached the frame loop
+(frames=0 for 160 s, `waw-inst-02/enw-1356.log`) while a player dialled it. Invisible under
+Xvfb; `xdotool key Escape` freed it at once. The host-agent belt (`watchStartupDialog`, Escape
+after 12 s without `map_loaded`) is already on the box; this is the DLL fix.
+
+**The call site** (decrypted 1.7 image, `tools/re/t4map.py`):
+
+| addr | what |
+|---|---|
+| `0x59C7C0` | if `com_recommendedSet` (dvar ptr `0x1F96490`) is 1 → `call 0x59BCE0; test al,al; je` — **false skips applying `configure.csv`** |
+| `0x59BCE0` | checksum = (hash of the `configure.csv` bytes `& 0x0FFFFFFF`) + 1, then `0x5FE410` |
+| `0x5FE410` | if saved `sys_configSum` ≠ 0 and ≠ checksum → ask `0x5FE250`; store the new checksum either way |
+| `0x5FE250` | `MessageBoxA(GetActiveWindow(), WIN_CONFIGURE_UPDATED_BODY, _TITLE, 0x44 /*MB_YESNO\|MB_ICONINFORMATION*/)`, returns `== IDYES` |
+
+**So IDNO keeps the saved settings** (recommended set not applied, new checksum stored, startup
+continues) — the same answer `launch.ps1` has always given. Note the checksum is a hash of
+`configure.csv`, **not** of the hardware: `sys_configureGHz` (0.0448 measured) never enters it,
+and the command line already passes `+set sys_configureGHz 1` to no effect. The saved value on
+inst-02 is `206167614`. Why the recomputed sum differed on a reboot 2 s after a retire is
+**unproven**; the likeliest reading is that the `configure.csv` read failed or came back short
+under contention (a failed read hashes to 0 → checksum 1).
+
+**The fix: `server/components/dedicated/no_msgbox.cpp`.** IAT hook on USER32 `MessageBoxA`
+(IAT `0x7EB33C`, 11 engine call sites; the exe does not import `MessageBoxW` — tried, logged as
+"not imported"). Armed only when the command line carries `dedicated 1|2`, in `post_load`; a
+player's client is never hooked. Every box is logged (`ENW_WARN` + a `warn` on the game link:
+caption, text, flags) and answered at once: YESNO/YESNOCANCEL → **IDNO**, OKCANCEL/RETRYCANCEL →
+IDCANCEL, ABORTRETRYIGNORE → IDIGNORE, CANCELTRYCONTINUE → IDCONTINUE, OK → IDOK (a fatal box
+then lets the process exit and be replaced instead of hanging). Off: `ENW_NO_MSGBOX_HOOK=1`.
+
+**No dvar route was adopted.** `+set sys_configSum 0` would skip the prompt (the test is
+`saved != 0`) only if the command-line value survives the profile config exec — unproven.
+`+set com_recommendedSet 0` skips the prompt but re-applies `configure.csv` on every boot, and on
+a failed read `0x59BCE0` calls the error path at `0x59AC50` — not safe. The hook is deterministic
+and covers every other engine dialog too.
+
+**Build** (`build.ps1 -Name dedi`, from HEAD + this file, `dllmain.cpp` touched so the build
+string is fresh): 39 server/client component sources (+13 core), `sha256 680ac0ae…1e34`
+(1,605,120 bytes, 19:27:42). Includes everything since the box's `318dfd60…` (player_down,
+`script_error_retail.cpp` / `ENW_NO_SCRIPT_ERROR_RETAIL`).
+
+**Unproven at the time of writing:** no local jointest (B was playing: `CoDWaW` pid live,
+`game.lock` held by the launcher) and **no box deploy** (a verified lease was live on inst-03).
+The DLL is staged at `zombies-dev:/tmp/enw_t4_msgbox.dll` (hash checked). The hook has not yet
+answered a real dialog; the first proof is a `no_msgbox: armed` line, then a retire-then-boot.

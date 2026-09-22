@@ -1124,3 +1124,9 @@ data never carries a real person's id.)*
 **A `verified` identity has never been seen on this box.** That needs a token the live site minted
 for a real lease, which needs a party — B's to start. Everything under it is proved: the gate arms
 with the right match id, a bad signature is caught, the row is stripped, and the player is kicked.
+
+- 2026-09-22 19:30 — dedi DLL `680ac0ae…1e34` (no_msgbox + player_down + script_error_retail)
+  staged at `/tmp/enw_t4_msgbox.dll`, **not yet deployed** (live lease on inst-03). Box copies
+  still `318dfd60…`. Deploy only when the journal's last line is `assignment changed: idle` and no
+  `CoDWaW` runs: `rm` + `cp` to `binkw32.dll` in every `zdev/waw-*` copy, verify sha256, restart
+  `enw-host-agent`. See dedi.md §17.

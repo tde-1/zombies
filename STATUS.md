@@ -118,3 +118,10 @@ it (log: last start 18:38, dead by 19:00). Fixed two ways:
 
 B's step: restart the launcher (or Check for updates -> 0.2.7); the site pill must read
 `site: 127.0.0.1:3200`, not `placeholder`.
+
+## 2026-09-22 19:30: "Set Optimal Settings?" blocked a box instance — DLL fix built, not deployed
+
+`no_msgbox.cpp` (dedi only, `ENW_NO_MSGBOX_HOOK=1` off) logs and auto-answers every engine
+MessageBox; the settings prompt gets **No = keep saved settings** (verified at `0x5FE250`/`0x59C7C0`,
+dedi.md §17). Dedi DLL `680ac0ae…` built from HEAD, staged on the box in `/tmp`; **box still runs
+`318dfd60…`** because B was in a live game. Host-agent Escape belt covers it meanwhile.
