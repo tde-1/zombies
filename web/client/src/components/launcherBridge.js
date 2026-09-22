@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
 import { toLauncherPatch, fromLauncher, newer } from '../data/wawSettings'
+import { chipPhase, clampPct, fmtSize, bySizeDesc } from './launcherFormat'
+
+export { chipPhase, clampPct, fmtSize }
 
 // THE LAUNCHER'S OWN BAR IS GONE (B, 2026-09-22). The launcher window is frameless and the
 // site IS its chrome: this nav bar is the title bar (drag region), and the three window
@@ -68,20 +71,6 @@ export function useUpdateStatus() {
   return u
 }
 
-// What the chip shows for a status: null (nothing), 'available', 'downloading', 'ready' or
-// 'failed' (a download that broke; Retry). A failed launch-time CHECK draws nothing — there
-// is no update to offer, and the Settings box already says why.
-export function chipPhase(u) {
-  if (!u || u.later) return null
-  if (u.phase === 'ready' && u.canInstall !== false) return 'ready'
-  if (u.phase === 'downloading') return 'downloading'
-  if (u.phase === 'available' && u.available) return 'available'
-  if ((u.phase === 'failed' || u.phase === 'unreachable') && u.available) return 'failed'
-  return null
-}
-
-export const clampPct = (n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)))
-
 // One map's install state for a Download button. `supported` is false outside the
 // launcher (or on one too old for `mapState`), and the button then goes to /download.
 export function useMapInstall(key) {
@@ -138,7 +127,7 @@ export function useInstalledMaps() {
   const [list, setList] = useState(null)
   const read = useCallback(() => {
     if (!supported) return
-    enw.installedMaps().then((r) => setList((r && r.maps) || [])).catch(() => setList([]))
+    enw.installedMaps().then((r) => setList(bySizeDesc((r && r.maps) || []))).catch(() => setList([]))
   }, [supported]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!supported) return undefined
@@ -152,17 +141,6 @@ export function useInstalledMaps() {
     return out
   }
   return { supported, list, remove, refresh: read }
-}
-
-// GB with one decimal, MB under 1 GB (B: "how many gigabytes it is"). Binary units, which
-// is what Windows Explorer calls GB, so the number matches the folder's Properties.
-const GB = 1024 ** 3
-const MB = 1024 ** 2
-export function fmtSize(bytes) {
-  const n = Number(bytes) || 0
-  if (n >= GB) return `${(n / GB).toFixed(1)} GB`
-  if (n >= MB) return `${Math.max(1, Math.round(n / MB))} MB`
-  return `${Math.max(0, Math.round(n / 1024))} KB`
 }
 
 // One line for the menu, in the launcher's plain voice.

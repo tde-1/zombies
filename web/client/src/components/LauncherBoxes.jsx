@@ -6,9 +6,10 @@ import { mapHue, prettyTitle } from '../data/mapText'
 import { bridge, useUpdateStatus, useLauncherStatus, useInstalledMaps, fmtSize, clampPct } from './launcherBridge'
 import { DlBar } from './MapDownload'
 
-// /settings → ENW, inside the launcher only (launcher 0.2.11). Two boxes:
+// /settings → ENW, inside the launcher only (launcher 0.2.12). Two little sections, drawn
+// in web-settings-2's slot in components/settings/EnwSection.jsx:
 //
-//   Launcher   the version line and the update button, with the nav chip's phases:
+//   update     the version line and the update button, with the nav chip's phases:
 //              Check for updates → Update 0.2.11 [Update now] → Updating [bar] 37% →
 //              [Restart now]. The wording comes from the launcher (updatecheck.js).
 //
@@ -17,6 +18,9 @@ import { DlBar } from './MapDownload'
 //              uninstall/remove them. Sort by size. In a little box." Only maps ENW
 //              installed, under %LOCALAPPDATA%\ENWZombies (launcher library.installedList);
 //              the player's own World at War mods are never listed, so never removable.
+
+// ~~ChatPauseBox~~ — "Pause game while chatting (solo)" landed on main in EnwSection's own
+// "chat" section (web-settings-2), so it is not drawn twice.
 
 export function LauncherUpdateBox() {
   const enw = bridge()
