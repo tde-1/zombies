@@ -69,6 +69,7 @@ prompting to allow the game every time an agent makes a new dev copy. `-Remove` 
 | [`host.md`](host.md) | **host** | `infra/host-agent/` — the Node agent that runs game instances, referees them, signs replays, talks to the site. §10 is the latest session |
 | [`referee.md`](referee.md) | **referee** | `server/components/{referee,replay,chat,afk,pause,knobs}/`, `referee/` — rounds, game over, EE flags, replay sampling, chat |
 | [`foundation.md`](foundation.md) | **foundation** | `shared/core/`, root `CMakeLists.txt`, `tools/dev/`, `ZombiesDev\waw-base` and the per-agent copies — the proxy-DLL loader that waits for SteamStub, logging, the game-link client, component registration |
+| [`client.md`](client.md) | **client** | `client-dll/components/` — the player's game: the raw-input mouse fix for high polling rates (§1, a port of iw4x-client's `RawMouse`), and the plan for in-game settings persistence, borderless windowed and the chat overlay (§2) |
 | [`launcher.md`](launcher.md) | **launcher** | `launcher/` — the Electron client: find WaW, install the ENW client, install maps, launch |
 | [`web.md`](web.md) | **web** | `web/` — the site at `zombies.enw.gg`, a port of ENW Movement |
 | [`archive.md`](archive.md) | **archive** | `archive/` — the crawler, the catalogue and the link report |

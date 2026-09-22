@@ -74,6 +74,31 @@ namespace t4
         // com_dedicated -> blocks the dedicated server from ever ticking. Skip/stub in dedi.
         constexpr std::uintptr_t Sys_RenderInit_preloop     = 0x5FF4E0; // [V] WinMain call site 0x5FF799; calls 0x75A9A2 (D3D)
 
+        // ---- win32 input / mouse (client lane, 2026-09-22) -------------------------
+        // The whole block below is [V] from our own dump. T4 has NO DirectInput at all
+        // (no dinput8 import, no CLSID_DirectInput8 / GUID_SysMouse bytes anywhere in
+        // the image) -- the mouse is plain Win32: GetCursorPos + SetCursorPos
+        // recentering once per frame, buttons from window messages.
+        constexpr std::uintptr_t IN_Init                    = 0x5FA820; // [V] registers `in_mouse` then tail-jmps IN_StartupMouse
+        constexpr std::uintptr_t IN_StartupMouse            = 0x5FA7D0; // [V] prints "Mouse control not active." when in_mouse==0
+        constexpr std::uintptr_t IN_DeactivateMouse         = 0x5FA5B0; // [V] ShowCursor loop
+        constexpr std::uintptr_t IN_MouseEvent              = 0x5FA5F0; // [V] button bitmask differ -> Sys_QueEvent(K_MOUSE1+i = 200+i). ONE caller: the WndProc 0x606B60
+        constexpr std::uintptr_t IN_Frame                   = 0x5FA850; // [V] "ClickToContinue", focus check, calls IN_MouseMove
+        constexpr std::uintptr_t IN_MouseMove               = 0x5FA6D0; // [V] void(void); GetCursorPos -> delta -> ScreenToClient -> CL_MouseEvent -> recenter
+        constexpr std::uintptr_t IN_MouseMove_callsite      = 0x5FA8E4; // [V] the ONE `call IN_MouseMove`, inside IN_Frame
+        constexpr std::uintptr_t IN_RecenterMouse           = 0x5FA510; // [V] void(void); GetWindowRect -> SetCursorPos(centre); stores centre at 0x229A0C0/0x229A0BC
+        constexpr std::uintptr_t IN_ClampCursorToWindow     = 0x5FA660; // [V] esi = POINT*; clamps into the window rect via SetCursorPos
+        // CL_MouseEvent: returns 1 = "in-game, please recentre", 0 = "free cursor".
+        //   edx = client x, ecx = client y, [esp+4] = dx, [esp+8] = dy, CALLER cleans 8.
+        //   Register args are NOT expressible in a C prototype -- use a naked thunk.
+        constexpr std::uintptr_t CL_MouseEvent              = 0x63D9A0; // [V] sole caller IN_MouseMove; accumulates dx/dy into 0x307D650/0x307D658
+        constexpr std::uintptr_t WndProc_game               = 0x606B60; // [V] the game window's proc: mouse buttons -> IN_MouseEvent, also calls IN_RecenterMouse + DefWindowProcA
+        constexpr std::uintptr_t WndProc_other              = 0x605210; // [V] a second proc; only handles WM 5..0x14, everything else -> DefWindowProcA
+        constexpr std::uintptr_t Sys_CreateWindow           = 0x605500; // [C] RegisterClassA + CreateWindowExA + SetWindowLongA
+        constexpr std::uintptr_t Sys_QueEvent               = 0x5FEB30; // [V] 256-entry ring (mask 0xFF, stride 0x18); overflow prints "Sys_QueEvent: overflow"
+        constexpr std::uintptr_t Sys_GetEvent               = 0x5FEC60; // [V] drains the ring; when empty pumps PeekMessageA/GetMessageA/TranslateMessage/DispatchMessageA until the queue is empty
+        constexpr std::uintptr_t Com_EventLoop              = 0x5FEDE0; // [C] calls Sys_GetEvent until evType == 0
+
         // ---- dvars ----------------------------------------------------------------
         constexpr std::uintptr_t Dvar_FindVar               = 0x5EDE30; // [V] interlocked refcount + hash lookup
         constexpr std::uintptr_t Dvar_RegisterBool          = 0x5EEE20; // [H]
@@ -182,6 +207,17 @@ namespace t4
         constexpr std::uintptr_t fs_game            = 0x2122B00; // [H] dvar_s*
         constexpr std::uintptr_t msg_decompress_pool= 0x212B2F8; // [V] SV_ExecuteClientMessage decode dst pool (0x20000-window ring)
         constexpr std::uintptr_t cl_decompress_buf  = 0x4E337C0; // [V] CL_ParseServerMessage decode dst, exactly 0x20000 bytes
+
+        // ---- win32 input / mouse globals (client lane, all [V]) ---------------------
+        constexpr std::uintptr_t g_wv_hwnd          = 0x22C1BE4; // [V] the game HWND (compared with GetForegroundWindow in IN_Frame/IN_MouseMove)
+        constexpr std::uintptr_t g_wv_sysMsgTime    = 0x22C1BF8; // [V] written from MSG.time in the pump at 0x5FED22
+        constexpr std::uintptr_t in_mouse_dvar      = 0x229A0B8; // [V] dvar_s* for `in_mouse`
+        constexpr std::uintptr_t s_wmv_mouseActive  = 0x229A0D4; // [V] byte
+        constexpr std::uintptr_t s_wmv_mouseInited  = 0x229A0D5; // [V] byte, set by IN_StartupMouse
+        constexpr std::uintptr_t s_wmv_oldPos_x     = 0x229A0CC; // [V] last GetCursorPos x
+        constexpr std::uintptr_t s_wmv_oldPos_y     = 0x229A0D0; // [V] last GetCursorPos y
+        constexpr std::uintptr_t s_wmv_centre_x     = 0x229A0C0; // [V] window centre x, written by IN_RecenterMouse
+        constexpr std::uintptr_t s_wmv_centre_y     = 0x229A0BC; // [V] window centre y, written by IN_RecenterMouse
 
         // ---- script VM globals (referee) --------------------------------------------
         // Arrays indexed by scriptInstance (0=server, 1=client).

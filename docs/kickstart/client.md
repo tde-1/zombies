@@ -1,0 +1,234 @@
+# Client: the player's game (`client-dll/`)
+
+Owner: the **client** lane. Scope: `client-dll/components/`, plus new verified addresses in
+`shared/t4/addresses.hpp`. Everything reuses `shared/core/`; nothing here forks it.
+
+Opened 2026-09-22 with one shipped feature (the mouse polling-rate fix) and a plan for the rest of
+what B has asked for.
+
+---
+
+## 1. The high-polling-rate mouse fix (`components/mouse_polling.cpp`)
+
+### 1a. The hypothesis was wrong, and the real mechanism is worse
+
+The brief's working hypothesis was the Quake-3-family one: buffered DirectInput,
+`SetProperty(DIPROP_BUFFERSIZE, 16)`, `GetDeviceData` once per frame, `DI_BUFFEROVERFLOW` at
+1000 Hz. **T4 does not use DirectInput at all.** Checked four ways on our own dump
+(`ZombiesDev\dumps\codwaw-1.7-a.exe`):
+
+* the 18 imported DLLs (foundation.md §2) contain no `dinput8.dll` / `dinput.dll`;
+* `DirectInput8Create` does not appear as a string;
+* `CLSID_DirectInput8`, `IID_IDirectInput8A`, `GUID_SysMouse` and `GUID_SysKeyboard` do not appear
+  as **bytes** anywhere in the 78 MB image;
+* the three `"...DirectInput..."` strings in `.rdata` are rows of a generic HRESULT-to-text table
+  with no code path near the input module.
+
+There is no buffer size to raise. What T4 actually does, once per frame, in `IN_MouseMove`
+(`0x5FA6D0`, whose **only** caller is `IN_Frame` `0x5FA850` at `0x5FA8E4`):
+
+```
+005FA6DB  call [GetForegroundWindow]   ; bail unless we are the foreground window
+005FA6F2  call [GetCursorPos]          ; POINT at [esp+8]
+005FA717  sub esi, [0x229A0CC]         ; dx = pt.x - oldPos.x
+005FA72D  sub edi, [0x229A0D0]         ; dy = pt.y - oldPos.y
+005FA73B  call [ScreenToClient]
+005FA74B  call 0x63D9A0                ; CL_MouseEvent(edx=x, ecx=y, dx, dy) -> recentre?
+005FA764  call 0x5FA510                ; IN_RecenterMouse -> SetCursorPos(window centre)
+```
+
+The engine's idea of "how far the mouse moved" is **the difference between two OS cursor positions,
+in whole screen pixels, sampled at frame rate**. At 1000–8000 Hz that breaks twice over:
+
+1. every report goes through Windows' pointer ballistics and is then rounded to an integer pixel,
+   so a large share of reports move the pointer by zero pixels and are lost outright — motion
+   becomes quantised and erratic rather than smooth;
+2. the pointer is clamped to the desktop, so anything past a screen edge between two recentres is
+   discarded.
+
+For completeness, because the brief asked about the two alternative hypotheses:
+
+* **`in_mouse` is a plain bool** (registered at `0x5FA820`, dvar at `[0x229A0B8]`); there is **no**
+  raw-input path in stock T4.
+* **The message pump is drained completely every frame.** `Sys_GetEvent` (`0x5FEC60`) loops
+  `PeekMessageA` / `GetMessageA` / `TranslateMessage` / `DispatchMessageA` until the queue is
+  empty, and `Com_EventLoop` (`0x5FEDE0`) calls it until the event type is 0. The engine event ring
+  (`Sys_QueEvent` `0x5FEB30`) is 256 entries with an audible `Sys_QueEvent: overflow`. But mouse
+  **motion is never queued** — the game WndProc (`0x606B60`) only queues button transitions — so
+  "the pump is flooded" is a cost to measure, not a defect we can name. `mouse_polling` logs
+  WM_INPUT messages per frame so B's real test produces that number.
+
+### 1b. What we shipped: a port of iw4x-client's `RawMouse`
+
+`client-dll/components/mouse_polling.cpp` is **a port, not our design**. Source:
+[iw4x-client](https://github.com/iw4x/iw4x-client) `src/Components/Modules/RawMouse.cpp` (+ `.hpp`)
+at commit **`f55d287440f81f26bdbc7bb8edd30e88e77b3d89`** (2026-09-02), GPL-3.0-or-later.
+`client-dll/` is GPL-3.0 too, so this is a licence-compatible adaptation; the attribution header is
+at the top of the file and there is a row in the vault's reuse register (`18 - Reuse Register`, §1).
+
+Kept from upstream: the structure, the names (`rawMouseValue_t`, `ToggleRawInput`,
+`IN_RawMouseMove`, `OnRawInput`, `FirstRawInputUpdate`), the absolute-flag handling, the
+first-update delta reset that kills the alt-tab angle snap, and the `m_rawinput` semantics.
+
+What it does:
+
+* subclasses the game window's WndProc (hwnd at `[0x22C1BE4]`) and accumulates `WM_INPUT` relative
+  motion;
+* retargets the one `call IN_MouseMove` at `0x5FA8E4` to our replacement, which feeds the
+  accumulated raw counts straight to the engine's own `CL_MouseEvent` and then lets the engine's own
+  `IN_RecenterMouse` run;
+* leaves `IN_MouseMove`'s own bytes untouched, so it is still callable and is the runtime fallback.
+
+**Deliberate deviations from upstream**, each because T4 is not IW4:
+
+| # | Upstream | Here | Why |
+|---|---|---|---|
+| 1 | `RIDEV_INPUTSINK \| RIDEV_NOLEGACY`, buttons reimplemented from raw flags | `dwFlags = 0`, legacy messages **kept**, buttons untouched | On T4 the buttons come from the game WndProc `0x606B60` → `IN_MouseEvent` `0x5FA5F0` → `Sys_QueEvent`. Suppressing legacy would also take the OS cursor away from the menu path. We take **motion only**. So `ProcessMouseRawEvent` / `OnLegacyMouseEvent` / `mw_up` / `mw_down` are not ported |
+| 2 | `ClipCursor` to the client rect | not ported | A separate windowed-mode fix; see §2c |
+| 3 | `m_rawinput` dvar | `ENW_RAW_MOUSE` env var | Registering a dvar needs `Dvar_RegisterBool` (`0x5EEE20`), whose convention is name-in-EDI / default-in-AL / (flags, desc) on the stack. Readable, but rule 2 of `addresses.hpp` is *do not invent a prototype from an address*, and a wrong one crashes at startup. The name and semantics are kept so the dvar drops straight in later |
+| 4 | `r_autopriority`, `Key_ClearStates` on focus loss | not ported | Separate upstream features, not part of this fix |
+
+**Self-verifying, in the house style** (`server/components/dedicated/no_autosave.cpp`). Nothing is
+written until both checks pass, and a failure logs loudly and leaves the stock path alone:
+
+1. `0x5FA8E4` must be an `E8` whose target is `0x5FA6D0` (`IN_MouseMove`);
+2. the window we are about to subclass must currently have `0x606B60` as its WndProc, i.e. it is
+   the engine's own game window and nobody else has subclassed it.
+
+**How to turn it off.** `ENW_RAW_MOUSE=0` in the environment — the component logs that it is off and
+patches nothing. `ENW_RAW_MOUSE_VERBOSE=1` adds the enable/disable lines.
+
+### 1c. What B should see in the log, and how to test it
+
+Log: `C:\Users\b\ZombiesDev\logs\<copy>\enw_t4.log` (and the game's own
+`homes\<copy>\main\console.log`).
+
+Install lines, in order:
+
+```
+mouse_polling: IN_Frame's `call IN_MouseMove` (0x005FA8E4 -> 0x005FA6D0) now goes to our raw-input
+               mouse move. ...
+mouse_polling: RAW INPUT ON. hwnd=0x..., WndProc 0x00606B60 subclassed,
+               RegisterRawInputDevices(usage 1/2, dwFlags=0, legacy messages KEPT) ok. ...
+```
+
+Then, roughly every 15 s while the game ticks:
+
+```
+mouse_polling: WM_INPUT total=..., peak/frame=..., frames with motion=..., raw=on focus=yes
+```
+
+**The number that proves the mouse is being read at its real rate is `peak/frame`.** At 60 fps it
+should be about (report rate ÷ 60) while the mouse is moving: ~2 at 125 Hz, ~8 at 500 Hz, ~17 at
+1000 Hz, ~67 at 4000 Hz, ~133 at 8000 Hz. If `peak/frame` stays at 1–2 with a 1000 Hz mouse, raw
+input is not reaching us and something in §1b's guards or `RegisterRawInputDevices` went wrong —
+the log will say which.
+
+B's real test: play a round at 1000 Hz (or 4000/8000) with the component on, then relaunch with
+`ENW_RAW_MOUSE=0` and play the same round. The A/B is the point; the counters only prove the
+plumbing.
+
+**Still unproven, and say so.** Whether this removes the *feel* of the stutter can only be
+established by a person with a high-polling-rate mouse. Everything above is plumbing evidence.
+
+---
+
+## 2. Plan: the next client features
+
+Nothing in this section is written yet. Each item records what the exe told us, so the next session
+does not re-derive it.
+
+### 2a. The in-game settings menu must keep working
+
+Non-negotiable constraint on everything below: video, audio and controls changes made **in the
+game's own menus** must apply and persist. That rules out hard-patching dvars to constants or
+stripping the menu, and it is the main reason `mouse_polling` takes motion only and leaves the
+legacy message path (and therefore the menu cursor and buttons) exactly as it found it.
+
+What we know:
+
+* `writeconfig` is a real console command (string at `0x872E58`).
+* The profile config path is `%s/players/profiles/%s/config.cfg` (`0x883E64`) under `fs_homepath`,
+  plus a plain `config.cfg` (`0x871F0`… `0x8717F0`). The launcher already sets `fs_homepath`, so the
+  file lands somewhere we control.
+* `vid_restart` exists (`0x88B644`) — a resolution change is applied by the engine itself; we do not
+  have to implement one.
+
+### 2b. Round-tripping video settings into the launcher's per-account settings
+
+The launcher passes `r_fullscreen`, `r_mode`, `cg_fov`, `com_maxfps` on the command line
+(launcher.md §3). The missing half is the way back.
+
+Facts for whoever builds it:
+
+* **`r_mode` is a string, not an index** — the default in the image is literally `set r_mode
+  800x600` (`0x22BB545`), and there is also `r_customMode` (`0x8A5564`) and `r_displayRefresh`
+  (`0x89E6DC`). A launcher that writes an integer `r_mode` is writing the wrong type.
+* `r_fullscreen` exists (`0x89E710`), and the image also carries a literal `set r_fullscreen 0`
+  (`0x22BB531`).
+* The engine writes `config.cfg` under `fs_homepath` on exit (and on `writeconfig`).
+
+**The round trip**, and it is a doc-only proposal until someone builds it: the launcher launches
+with the account's saved values on the command line; the player changes them in-game; the game
+writes `config.cfg`; **after the game exits, the launcher parses `config.cfg` under that account's
+`fs_homepath` for `r_fullscreen` / `r_mode` / `r_customMode` / `r_displayRefresh` / `cg_fov` /
+`com_maxfps` and stores them back into the per-account settings.** Read-after-exit, not
+read-while-running — the file is only complete once the process is gone, and the DLL has no business
+in the launcher's settings store. That keeps the whole feature in `launcher/` with no client-DLL
+work at all, which is why it is not a component.
+
+### 2c. Borderless windowed
+
+**Vanilla T4 has no `r_noborder`.** The string does not exist anywhere in the image (checked), so
+there is nothing to set and the feature has to come from us.
+
+The shape of it, with the pieces the exe gives us:
+
+* `Sys_CreateWindow` is `0x605500` (`RegisterClassA` + `CreateWindowExA` + `SetWindowLongA`), and
+  `SetWindowLongA` (IAT `0x7EB348`) and `SetWindowPos` (IAT `0x7EB2C4`) are both imported, so the
+  window style is reachable without patching engine code: `r_fullscreen 0`, then strip
+  `WS_CAPTION | WS_THICKFRAME` from the style, `SetWindowPos` to (0,0) at the desktop size, with
+  `SWP_FRAMECHANGED`.
+* It must survive `vid_restart`, which recreates the window — so the component has to re-apply on
+  window creation rather than once at startup. `mouse_polling`'s lazy install from the frame tick
+  (and its "is this still the engine's own WndProc?" check) is the pattern to copy, and the two
+  components will need to agree about who owns the subclass.
+* Gate it the same way: an env var / launcher flag now, a dvar named `r_noborder` once the
+  `Dvar_RegisterBool` thunk in §1b deviation 3 is proven.
+
+### 2d. In-game chat overlay (note only — not designed)
+
+What the DLL would need, and nothing more than that is decided:
+
+* **a hook on the 2D draw path**, to draw a chat box over the game. Not located yet. Warning from
+  `addresses.hpp`: `0x648490` / `0x6F5F10` are a HUD/debug **coloured-text** pair and calling them
+  as a text renderer corrupts a ring buffer at `0x3DCB4C0` — they were withdrawn for exactly this.
+  Whatever is found must be identified by two independent signals before it is used.
+* **input capture**, so a chat key swallows keystrokes instead of passing them to the game. The
+  place for that is the event path already mapped here: the game WndProc `0x606B60`, `Sys_QueEvent`
+  `0x5FEB30` and `Sys_GetEvent` `0x5FEC60`. Note `mouse_polling` already subclasses that WndProc;
+  a second consumer must extend the one subclass, not add another.
+* the transport already exists — `clientchat_send` `0x655C80` / `hostchat_send` `0x65B630` and the
+  game link.
+
+---
+
+## 3. Addresses this lane added
+
+All added to `shared/t4/addresses.hpp` under "win32 input / mouse", all `[V]` from our own dump
+except the two marked `[C]`: `IN_Init` `0x5FA820`, `IN_StartupMouse` `0x5FA7D0`,
+`IN_DeactivateMouse` `0x5FA5B0`, `IN_MouseEvent` `0x5FA5F0`, `IN_Frame` `0x5FA850`, `IN_MouseMove`
+`0x5FA6D0`, `IN_MouseMove_callsite` `0x5FA8E4`, `IN_RecenterMouse` `0x5FA510`,
+`IN_ClampCursorToWindow` `0x5FA660`, `CL_MouseEvent` `0x63D9A0`, `WndProc_game` `0x606B60`,
+`WndProc_other` `0x605210`, `Sys_CreateWindow` `0x605500` `[C]`, `Sys_QueEvent` `0x5FEB30`,
+`Sys_GetEvent` `0x5FEC60`, `Com_EventLoop` `0x5FEDE0` `[C]`; globals `g_wv_hwnd` `0x22C1BE4`,
+`g_wv_sysMsgTime` `0x22C1BF8`, `in_mouse_dvar` `0x229A0B8`, `s_wmv_mouseActive` `0x229A0D4`,
+`s_wmv_mouseInited` `0x229A0D5`, `s_wmv_oldPos_x/y` `0x229A0CC`/`0x229A0D0`,
+`s_wmv_centre_x/y` `0x229A0C0`/`0x229A0BC`.
+
+How each was verified: the function bounds and call graph come from `tools/re/t4map.py` over the
+decrypted dump, and every one of them was read as an instruction — a call site, an operand, a
+branch or a stride — not inferred from a single string. `CL_MouseEvent`'s convention (edx = client
+x, ecx = client y, `[esp+4]` = dx, `[esp+8]` = dy, caller cleans 8) was read off the call at
+`0x5FA74B` and the `add esp, 8` at `0x5FA750`, and is used through a naked thunk rather than a
+guessed C prototype.
