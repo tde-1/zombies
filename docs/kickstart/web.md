@@ -1693,7 +1693,7 @@ block is Movement's CSS with its reasons (the old `.maphero` is struck through i
   Versions on the left two thirds; Live now, Friends who beat it and Comments on the right.
 * **Kept from web-cleanup** (merged first, rebased onto): the `‹ Maps` back button, Play as the
   rail's Play, *Not playable* with the reason on hover and Play disabled, *Approval required* as the
-  button's label, no dead "Download original" link and no "Play needs approval" line. The two long
+  button's label, updates-downloads' Download button beside Play Local, no dead "Download original" link and no "Play needs approval" line. The two long
   empty states are now *No records yet.* and *Round 20, the default.*; a catalogued map's Play reads
   *Not playable* with the reason on hover instead of a sentence under it.
 * **The two-up is keyed on the page's own width** (`.mapdash-wrap` is an inline-size container),
@@ -1710,7 +1710,7 @@ block is Movement's CSS with its reasons (the old `.maphero` is struck through i
 archived original and six links), `map-page-placeholder.png` (a catalogued map, generated card),
 `home-cards-art.png`, `maps-cards-art.png`, `maps-list-art.png`. The Cover | Loading screen switch
 was clicked in the home frame on Minecraft Village Remastered and showed its own loading screen out
-of `fortress.iwd`. `npm test` after the rebase: **118 + 41 + 15 + 19 + 12, 0 failed** (three new
+of `fortress.iwd`. `npm test` after the rebase: **121 + 41 + 15 + 19 + 12, 0 failed** (three new
 in-process checks: thumb/loadscreen derivation, the features block, the download size).
 
 ### Deploy (coordinator)
