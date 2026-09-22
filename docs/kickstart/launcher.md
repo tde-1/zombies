@@ -997,3 +997,123 @@ new one from the 0.2.0 installer.
   files are gitignored, so there is nothing to commit for it.
 * The launcher posts progress but never *reads* the party's other bars — the panel in the
   wrapped page is where a player sees them, which is the right place and is the web lane's.
+
+---
+
+## Three things B reported at 05:00, and what each one actually was (2026-09-22, overnight)
+
+B, in order: *"the maps won't download when I click download"*, *"when I'm in the game there's
+stuttery performance"*, and — on tonight's 0.2.0 build — the game comes up **windowed at native
+size, with a frame**. The stutter is the client lane's and lives in [`client.md`](client.md) §1e.
+The other two are here, and **neither was the feature being broken**. One was a predicate that
+disagreed with itself; the other was a file that was never copied.
+
+### 1. The download button that refused, every time
+
+The chain is wired end to end and always was:
+
+| link | where | verdict |
+|---|---|---|
+| the button | `src/renderer/shell.js:155` → `installSelected()` → `shell.js:189` | wired |
+| preload | `src/preload/preload.cjs:43`, channel `enw:installMap` | wired |
+| main | `src/main/main.js:538` `handle('installMap', …)` | wired |
+| install | `library.installFromSite()` | **threw before fetching a byte** |
+| the site | `GET /api/maps/:key/files` → **200**, `install_known:true`, sha256 per file | fine |
+| auth | the beta Basic password only; **no session needed to download** | fine |
+
+Measured against the live site, signed out: `/api/launcher/hello` → 200 with
+`"map_downloads":true`, `/api/maps/nazi_zombie_school/files` → 200 with 6 files and a
+`size_bytes` of 542,515,575, and a `Range: bytes=0-102399` on `mod.ff` → **206**. So there is
+nothing for the web lane to fix, and the Steam-only sign-in leg (`web.md` §9) is a genuinely
+separate bug — it is not this one.
+
+What threw:
+
+```
+ABANDONED SCHOOL is already in your own World at War mods folder and ENW did not put it
+there. Leaving it alone.                                        library.js:210
+```
+
+for **8 of the 10 maps that drew an Install button**. `isInstalled()` and `ownership()` did not
+agree about the same folder. `isInstalled()` wants the record file; `ownership()` called anything
+without a record `theirs` — and `%LOCALAPPDATA%\Activision\CoDWaW\mods` on this box holds:
+
+* **seven symlinks into our own dev archive** (`mw2rust`, `nazi_zombie_derberg`,
+  `nazi_zombie_fear_mc_2`, `nazi_zombie_orbit`, `nazi_zombie_school`, `sanatorium`,
+  `ugx_artemovsk`), made by ENW's earlier dev tooling on 2026-09-21;
+* **one empty directory** (`nazi_zombie_octogonal`, zero files).
+
+So the UI drew *Install (543 MB)*, enabled it, and the main process refused it. Every time. A
+guaranteed dead end, and the reason it shipped is that nothing covers `installFromSite` — the two
+suites that look like they would (*Party download progress*, *Following somebody else pressing
+Start*) both stub the install.
+
+**Fixed in `ownership()`**: a folder is `theirs` only when it is a real directory with real files
+in it. An empty folder is `absent`. A symlink that resolves inside `ZombiesDev\archive` is ours,
+not the player's — and `installFromSite` **unlinks it before installing**, because writing through
+it would put the download inside the archive that supplies the very SHA-256s this installer checks
+against. Unlinking a symlink deletes the link, never the target.
+
+**The guard that matters is untouched.** B's own `nazi_zombie_ali` is a real directory with 10
+real files and no record; it still reports `theirs` and the installer still refuses it.
+
+**Proven, not argued** — a map that could not be installed an hour ago:
+
+```
+ownership before: {"state":"absent","reason":"a symlink into ENW’s own dev archive",
+                   "link":"C:\Users\b\ZombiesDev\archive\mods\mw2rust"}
+INSTALLED: mw2rust  10 files, 308.4 MB, verified= true
+isInstalled now: true   ownership: ours
+```
+
+`verified: true` means every one of the ten files matched the SHA-256 the archive recorded —
+`installFromSite` throws rather than returns on a mismatch. The archive still has its own 10 files,
+so nothing was written through the link.
+
+### 2. "Windowed at native size" was an 0.1.x client in an 0.2.0 launcher
+
+The launcher was doing its half perfectly. `play-cli --dry-run` and the game's own recorded command
+line both carry `+set r_noborder 1 +set r_mode 2560x1440 +set vid_xpos 0 +set vid_ypos 0` and
+`ENW_BORDERLESS=1` is on the child environment. The DLL that reads them was not there.
+
+From B's own game log, `enw-34116.log`, 04:54:
+
+```
+enw_t4 build Sep 21 2026 16:18:51
+components registered: 28
+```
+
+and **not one `borderless:` line in the whole file**. Tonight's client registers 40 and prints one.
+The hashes say the rest:
+
+| | |
+|---|---|
+| `<ENW>\game\binkw32.dll` | `a60d53bb…`, 1,408,000 B, built Sep 21 16:18 — **28 components** |
+| `resources\client\enw_t4.dll` (0.2.0) | `24b3bf94…`, 1,472,000 B, built Sep 22 03:39 — 39 components |
+
+**`status().installed` is three `existsSync` calls.** That is the right test for *has setup ever
+run* and the wrong test for *is the installed client the one this launcher ships*. An update
+replaces the DLL beside the app and nothing ever copies it into the game folder, the UI said
+"installed", so nobody re-ran setup — and both of 0.2.0's client features simply were not present.
+Borderless and the raw-mouse fix were never broken; they were never loaded.
+
+`setup.ensureClientDll()` compares the two hashes and repairs it. One file copy, written beside and
+renamed (a truncated `binkw32.dll` means the exe does not start at all), read back afterwards.
+`binkw32_org.dll` — the player's real Bink library — is not touched, read or re-derived, so the
+repair cannot reach the stock install. It is deliberately **not** a full `install()`: pressing Play
+should not rebuild the folder. `status().clientDll.stale` now says so for the UI, and `startPlay()`
+repairs it before every launch, with a toast when it actually copied.
+
+86 tests pass (85 before). The new one asserts the proxy afterwards **is** the shipped hash read
+back off disk, that the stock Bink library is byte-identical afterwards, that a second call copies
+nothing, that no `.new` file is left behind, and that with nothing installed it refuses rather than
+half-creating a game folder.
+
+### 3. `play-cli --hold`
+
+`--seconds` was only ever an upper bound: `flow.run()` resolves the moment the map is playable and
+the old code called `stop()` there and then, so the game died about two seconds after `post_init`.
+The first stutter run of the night produced a log with **zero frames in it** for exactly that
+reason. `--hold` stays in the map until the window elapses, which is what makes the launch path
+measurable at all.
+

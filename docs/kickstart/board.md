@@ -3916,3 +3916,36 @@ answer. One finding underneath all of it.**
 - 05:40 coordinator: **the box's "differently-linked exe" is the German low-violence edition.** Account store
   country = Germany → depots 10091+10097 only; `download_depot 10090 10092` → missing license. Not an RE problem;
   needs a non-German account. `vps.md` §10 retracted in place. Tomorrow's games run on B's PC.
+- 05:20 client: **B's 0.2.0 install was running an 0.1.x client DLL, and that is the whole of "borderless
+  did not work".** `<ENW>\game\binkw32.dll` was `a60d53bb…` (Sep 21 16:18, **28 components**, no
+  `borderless:` line anywhere in `enw-34116.log`); 0.2.0 ships `24b3bf94…` with 39. An update replaces
+  the DLL beside the app and **nothing ever copies it into the game folder**, and `status().installed`
+  is three `existsSync` calls, so the UI said "installed" and nobody re-ran setup. `setup.ensureClientDll()`
+  now hash-compares and repairs on every Play. The launcher's half was always correct — `ENW_BORDERLESS=1`
+  and `+set r_noborder 1` are both on the real spawn.
+- 05:20 client: **borderless verified on B's screen** — `window rect 2560x1440 at (0,0), client 2560x1440,
+  WS_POPUP=1, WS_CAPTION=0`, plus a `CopyFromScreen` capture of the whole panel showing the map edge to
+  edge, no frame, no taskbar. `rcMonitor` (not `rcWork`) is now the authority and the 20-frame poll
+  re-applies on a wrong RECT as well as on returned style bits.
+- 05:20 client: **map downloads: the site is innocent.** `GET /api/maps/:key/files` → 200 with per-file
+  sha256, `Range` → 206, and no session is needed (beta password only). `library.ownership()` was calling
+  seven **ENW dev-tooling symlinks** and one **empty folder** in B's mods directory "the player's map", so
+  `installFromSite` threw for 8 of the 10 maps that drew an Install button. Fixed; `mw2rust` then
+  downloaded **308.4 MB / 10 files, every sha256 matched**. B's own `nazi_zombie_ali` still correctly refuses.
+- 05:20 client: **the stutter is mouse-bound, measured, and the usual suspects are excluded.** New
+  `frametime` component (`ENW_FRAMETIME=1`, off by default) logs p50/p95/p99/max + frames over 16.7/33.3/50 ms
+  per 10 s. With **no mouse input** the same scene on `nazi_zombie_prototype` holds **250.0 fps, p99 6.25 ms,
+  0.00 % of frames over 16.7 ms** for 16 consecutive windows — with `logfile 2` on, `r_vsync 0`, `com_maxfps 250`
+  and borderless. So **logfile 2, vsync/DWM and the fps cap are NOT the cause** on this box. With B's real
+  mouse moving (peak 57 WM_INPUT/frame) the same build ran **p99 20–27 ms and 3–4 % of frames over 16.7 ms**.
+- 05:20 client: **8 kHz synthetic input with `ENW_RAW_MOUSE=0` changes nothing** — 360,000 SendInput moves in
+  45 s onto the focused game window, and the frame time stayed flat 250 fps / p99 6.25 ms / 0.00 % over 16.7 ms.
+  So the **legacy WM_MOUSEMOVE flood alone is cheap**; the cost is on the raw-input side. Bisect of
+  `ENW_RAW_MOUSE=1` vs the new `ENW_RAW_MOUSE_NOLEGACY=1` (RIDEV_NOLEGACY + `GetRawInputBuffer` bulk read,
+  buttons synthesised back onto the engine's own WndProc) was still running at the time of writing — **do not
+  quote a cause for the raw-input arm until that table is in `client.md` §1e.**
+- 05:20 client: for the record, two questions the brief asked, answered off the client build's own log:
+  **`dedi_frame_pacing` is compiled into the player DLL but `is_supported()` is false for a non-dedicated
+  process** (`components: dedi_frame_pacing not supported here, skipped`), so it does **not** pace the client;
+  and **our proxy DLL is `binkw32.dll`, so there is no filename collision with DXVK's `d3d9.dll`** — DXVK
+  remains droppable alongside, untested.
