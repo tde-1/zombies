@@ -856,6 +856,8 @@ front). The down on `m_0afb449b` flashes at 118.3 s (`down-flash.png`).
 
 #### DLL (flagged for the coordinator: built, not deployed)
 
+**Deployed 2026-09-22 20:12 box time** as part of the main-HEAD build `86f12b12...` (`dedi.md` §18.5). Pitch is in every replay recorded from then on.
+
 `server/components/replay/replay.cpp`, built in this worktree (`tools\dev\build.ps1 -Name replaywaw`
 → `build\replaywaw\enw_t4.dll`, 1 611 264 B, compiles clean):
 

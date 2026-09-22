@@ -2304,6 +2304,21 @@ Hetzner bucket (`enw-zombies-files`, key `updates/<name>`) via a 302 from the si
   `useMultipleRangeRequest: false` to `setFeedURL` (`autoupdate.js`, `updatecheck.js`).
 
 
+## 2026-09-22 21:20 — 0.2.11 (coordinator): the overlay DLL, Steam-only sign-in, settings into the config
+
+Packaged from main by the coordinator, DLL `599fd632...` from `build/client-lane` (the chat overlay lane's
+build, `chat-overlay.md` §9), plus the identity lane's launcher change (ENW name re-read from the site
+before every launch; Steam-persona fallback removed) and the settings lane's `wawcfg.js` (site settings
+merged into the engine config every launch, read back after exit). Tests 128/0. Published to the feed.
+
+## 2026-09-22 23:55 — 0.2.13 (coordinator): chat overlay round 2
+
+DLL `42ac59da...` (`chat-overlay.md` §10): the menu cursor is drawn centred as the game draws it (the
+round-1 overlay drew it from the top-left, so at 2560x1440 the arrow tip sat 48 px from the click —
+that is why B could not hit the 54 px tab strip); caret, selection, Ctrl+A/C/X/V via the clipboard,
+history copy, wheel scroll, Tab/Shift+Tab, DM tabs, `/w` and `/r`. Tests 134/0 after the version
+assertion became a floor (`ce3f453`). Published to the feed and uploaded to the bucket.
+
 ## 2026-09-22, late evening — 0.2.12: the update chip, Download on its own, installed maps, the bar
 
 Branch `updates-downloads` (rebased on main after 0.2.11 was published from main; so this is

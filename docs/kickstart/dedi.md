@@ -2694,6 +2694,15 @@ reader of it on this path also requires `cl_paused`, which stays 0 on the dedi, 
   resume with its length and player count.
 * Off switch: `ENW_NO_PAUSE=1`. Dedicated only — a listen server keeps the engine's own SP pause.
 
+### 18.5 2026-09-22 20:12 box time — superseded by a main-HEAD build (coordinator)
+
+The box now runs `86f12b1274ae7341...` (1,622,016 bytes), built by the coordinator from a clean
+worktree at main `65addc6` (`C:/Users/b/ZombiesDev/wt-pause`, `build.ps1 -Name dedi`): the pause below
+**plus** the replay lane's `replay.cpp` (view pitch from `cmd_ang`, crouch/prone buttons fixed, kill
+counter past entity 255). Rollback copy of `f8a835bb...` at `/home/waw/binkw32.rollback-f8a835bb.dll`.
+Proof: fake-ID lease `m_1237dffc` on Nacht -> `map_loaded` 6 s after boot, recording started, cancelled,
+journal idle 20:14:51. The archive lane's 60+ map proofs that evening all ran on this build.
+
 ### 18.4 Proof
 
 ### 2026-09-22 19:58–19:59 box time — deployed and proven on the box

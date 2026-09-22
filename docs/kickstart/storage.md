@@ -174,3 +174,24 @@ and is not what gets uploaded, so a bucket URL there would be false.
 * Baseline to beat: the site's `/updates` answers a HEAD in ~120 ms, and its bytes are capped by
   B's 6.0 MB/s uplink (`vps.md`), shared by everyone downloading. The 26.5 GB of maps take
   ≈75 min to upload over that same uplink.
+
+### 2026-09-22 22:10–23:05 — the coordinator created the bucket, synced, and switched the site over
+
+B, in his own words in chat: *"I gave you the keys to the new ENW Zombies S3 bucket, so you need to
+create the new bucket. That's your job. Just make sure you're cost efficient."* So the coordinator ran
+it, not the agent:
+
+* `create-bucket.js enw-zombies` — first run: CreateBucket **created**, then PutBucketPolicy answered
+  `NoSuchBucket` (eventual consistency, seconds after creation). Second run: CreateBucket
+  `BucketAlreadyExists` (ours), so `--policy-only` was used: public-read policy set, anonymous GET of
+  `healthcheck.txt` -> 200. **One bucket**, `enw-zombies`, nbg1; the two-name plan above is dead.
+* `sync.js --only updates`: 32 files, 1.42 GB, 6.0 MB/s avg. `sync.js --only maps`: 725 files,
+  26.46 GB, 5.8 MB/s avg, done 23:05. Replay `.glb` geometry skipped (still B's call).
+* `infra/site.env` got `S3_BUCKET_FILES=enw-zombies` / `S3_BUCKET_MAPS=enw-zombies`. The keepalive
+  loop reads `site.env` once at its own start, so the detached loop was restarted (WMI) and then the
+  site — a plain site restart would NOT have picked the lines up.
+* `check.js --site https://zombies.enw.gg`: `HEAD /updates/ENW-Zombies-Launcher-Setup-0.2.12.exe`
+  -> **302** to the bucket; a 50 MB range read off the bucket **46.5–47.3 MB/s** (first byte ~160 ms)
+  against the 6.0 MB/s the site could give everyone combined. A map file
+  (`/api/maps/nazi_zombie_zhunterz/files/nazi_zombie_zhunterz.ff`) -> 302 to
+  `.../mods/nazi_zombie_zhunterz/nazi_zombie_zhunterz.ff`. 0.2.13's publish uploaded to the bucket too.
