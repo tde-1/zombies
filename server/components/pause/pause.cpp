@@ -337,8 +337,33 @@ private:
         }
     }
 
+    // An operator's trigger, for proving the freeze on the box where there is no dashboard and
+    // no real client: a file `enw_pause.trigger` next to CoDWaW.exe holds the game frozen for as
+    // long as it exists. Reported as reason `operator` and accounted by the host like the
+    // players' own pause (it is not our `host` hold), so it can never hide paused time.
+    bool operator_trigger() {
+        const uint32_t now = game_link::now_ms();
+        if (now - last_trigger_check_ms_ < 1000) return trigger_on_;
+        last_trigger_check_ms_ = now;
+        if (trigger_path_.empty()) {
+            char exe[MAX_PATH] = {};
+            const DWORD n = ::GetModuleFileNameA(nullptr, exe, MAX_PATH);
+            std::string dir(exe, n);
+            const size_t cut = dir.find_last_of("/\\");
+            trigger_path_ = (cut == std::string::npos ? std::string() : dir.substr(0, cut + 1)) +
+                            "enw_pause.trigger";
+        }
+        const bool on = ::GetFileAttributesA(trigger_path_.c_str()) != INVALID_FILE_ATTRIBUTES;
+        if (on != trigger_on_)
+            ENW_INFO("pause: operator trigger %s (%s)", on ? "PRESENT" : "removed",
+                     trigger_path_.c_str());
+        trigger_on_ = on;
+        return on;
+    }
+
     void evaluate() {
-        const reason want = pause_rule::decide(host_hold_, clients_, kSlots);
+        reason want = pause_rule::decide(host_hold_, clients_, kSlots);
+        if (want == reason::none && operator_trigger()) want = reason::operator_file;
         const bool freeze = want != reason::none;
         if (freeze == g_frozen) {
             if (freeze && want != reason_) {
@@ -400,6 +425,9 @@ private:
     uint32_t last_long_log_ms_ = 0;
     uint32_t last_held_ms_ = 0;
     unsigned pauses_ = 0;
+    uint32_t last_trigger_check_ms_ = 0;
+    bool trigger_on_ = false;
+    std::string trigger_path_;
 };
 
 }  // namespace

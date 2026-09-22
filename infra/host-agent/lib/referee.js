@@ -43,6 +43,7 @@ const PAUSE_LABEL = {
   solo_menu: 'pause menu',
   solo_chat: 'typing in chat',
   all_menu: 'everyone paused',
+  operator: 'operator trigger',
 }
 
 export class Referee extends EventEmitter {

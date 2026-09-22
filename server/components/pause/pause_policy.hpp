@@ -31,7 +31,7 @@ namespace enw::pause_rule {
 
 enum class ui_state { clear, paused, typing };
 
-enum class reason { none, host, solo_menu, solo_chat, all_menu };
+enum class reason { none, host, solo_menu, solo_chat, all_menu, operator_file };
 
 inline const char* to_string(ui_state s) {
     switch (s) {
@@ -47,6 +47,7 @@ inline const char* to_string(reason r) {
         case reason::solo_menu: return "solo_menu";
         case reason::solo_chat: return "solo_chat";
         case reason::all_menu: return "all_menu";
+        case reason::operator_file: return "operator";
         default: return "none";
     }
 }
