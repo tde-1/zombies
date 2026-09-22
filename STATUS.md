@@ -65,14 +65,27 @@ everything else server-side; rules, wording and the 754-term blocklist are drops
 names, so nobody sees the picker. Open: Q-id-1 (shared store vs mirrored rules); `jamie` is `Jamie`
 on Movement (`tools/align-enw-names.js`). Not deployed. `docs/kickstart/web.md` §13.
 
+## In-game chat overlay (2026-09-22, evening) — built, not shipped
+
+T opens World at War's own chat, drawn by the engine (its renderer, its fonts, its chat anchor
+`cg_hudChatPosition` 5,200), with Global / Party / DMs tabs, WaW's "Say:" line and the game's own
+cursor; Enter sends, Esc closes. The mouse leaves the game while it is open. It talks to the site
+directly (`/api/game-chat/*`, a 12 h chat pass the launcher hands over on the token pipe); party
+lines and DMs are a separate table from the global ring. It sets `enw_ui typing` / `paused` and
+`enw_pchat`, and a dedicated server was **measured** pausing and resuming on it (solo). Proven in
+the running game windowed (800x600, 1024x768, 1280x720, 2560x1440) and borderless, end to end
+with a private site. **Exclusive fullscreen not yet looked at**; needs a site deploy and a launcher
+release to reach anyone. The draw hook turned out to be the "withdrawn" 0x6F5F10, which is
+`R_AddCmdDrawText`. `docs/kickstart/chat-overlay.md` §9.
+
 ## Pause (2026-09-22, evening)
 
 The dedi now really pauses: Esc solo (and typing, with the "pause when using global chat"
 setting), co-op only when everyone is in the menu, typing never pauses co-op; a disconnect counts
 as unpaused; no ceiling, logged. Engine-side and total (`G_RunFrame` gated, clocks held, snapshots
 flowing), paused time excluded from in-game time and records untouched (`dedi.md` §18,
-`referee.md` §15). **The client half is one userinfo key** (`chat-overlay.md` §8) and is not built;
-until it is, nothing a player does can freeze a game. Box deploy/proof: see `dedi.md` §18.4. What a
+`referee.md` §15). **The client half is one userinfo key** (`chat-overlay.md` §8) — built with the chat overlay
+and measured against a local dedi (§9.5); it reaches players with the next client DLL. Box deploy/proof: see `dedi.md` §18.4. What a
 real client draws while frozen is unproven.
 
 ## Settings page: World at War's Options menus (2026-09-22, evening, branch `web-settings`)

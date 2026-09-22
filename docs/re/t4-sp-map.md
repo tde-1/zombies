@@ -313,6 +313,37 @@ bytes — they point into the right instructions but not at the operand). Use th
 | `clientchat` sender | 0x655C80 | [V] | `0clientchat %s` |
 | `hostchat` sender | 0x65B630 | [V] | `0hostchat %s %s` |
 
+### 2D drawing and the stock chat HUD — IDENTIFIED 2026-09-22 (client lane, `chat-overlay.md` §9)
+
+**The three retracted "chat" addresses are the chat HUD's DRAW path, and the withdrawn
+"SV_SendServerCommand" is the text renderer.** Each row below is backed by a string or a
+render-command constant *and* by drawing with it in the running game (pictures in
+`docs/kickstart/ui/chat-overlay-*.jpg`). The "real pair 0x5A9350 / 0x633FA0" note above is the
+server-command side and is untouched by this.
+
+| Function | Addr | Conf | Evidence |
+|---|---|---|---|
+| `R_AddCmdDrawText` | 0x6F5F10 | [V] | writes render command id **0xD** into the frontend buffer `[0x3DCB4C4]` (the "ring at 0x3DCB4C0"); args `text, maxChars, font, x, y, xScale, yScale, rotation, style`, **colour in ECX**, caller cleans. 11 callers. Previously bound as SV_SendServerCommand — that is why injecting through it from the server frame corrupted the buffer. |
+| text draw in virtual space (a `UI_DrawText` sibling) | 0x648490 | [C] | calls `ScrPlace_ApplyRect` 0x47A450 then `R_AddCmdDrawText` 0x6F5F10 — the "four floats" were the rect, not an RGBA. Callers 0x431C80, 0x439160, 0x439380 and Con_DrawSay 0x473F10. NOT `SV_GameSendServerCommand`. Not bound. |
+| `UI_DrawText` | 0x5B5FB0 | [V] | `(scrPlace, text, maxChars, font, x, y, scale, color*, style)` cdecl 9 args + **ECX horzAlign, EAX vertAlign**; `xScale = scale*48/font->pixelHeight` (`[0x8AF250]`=48.0, `Font_s::pixelHeight` +4); 55 callers. |
+| `ScrPlace_ApplyRect` | 0x47A450 | [V] | `[esp+4]` scrPlace, `[esp+8]` horz, `[esp+0xC]` vert; EDX &x, EDI &y, ECX &w, ESI &h. LEFT: `x*s[+0]+[+0x30]`; TOP: `y*s[+4]+[+0x34]`; BOTTOM: `+[+0x3C]`. |
+| `scrPlaceFullUnsafe` / `scrPlaceFull` / `scrPlaceView[]` | 0x9573A8 / 0x957360 / 0x957318 | [V] | ScreenPlacement, stride 0x48, set up in CL_InitRenderer 0x644BE0 via 0x47A1C0 |
+| `R_AddCmdDrawStretchPic` | 0x6F58E0 | [V] | cdecl `(x, y, w, h, s0, t0, s1, t1, color*, material)`; 18 callers |
+| `R_TextWidth` | 0x6E8DA0 | [V] | EAX text; stack `(maxChars, font)`; returns font pixels, skips `^N` |
+| `R_RegisterFont` / `Material_RegisterHandle` | 0x6E8D80 (ff) / 0x6E9C00 (ff) | [V] | the `useFastFile` ([0x1F552FC]) variants; the loose-file ones are 0x6E8CE0 / 0x6E9B80 |
+| `cls.whiteMaterial` / `consoleMaterial` / `consoleFont` | 0x4DA8F4C / 50 / 54 | [V] | CL_InitRenderer 0x644D38..0x644D8D |
+| `cls.vidConfig.displayWidth/Height` | 0x4DA90B8 / 0x4DA90BC | [V] | copied from 0x3BED828 (13 dwords) at 0x644C89 |
+| sharedUiInfo fonts | 0x20A10E8 big, 0x20A10EC small, 0x20A10F0 console, 0x20A10F4 bold, 0x20A10F8 normal, 0x20A10FC extrabig, 0x20A1100 objective; cursor 0x20A10D4 | [V] | registered by name at 0x5D10C0..0x5D11E4 |
+| `CG_DrawActiveFrame` | 0x4621E0 | [V] | `call CG_Draw2D` at **0x4628AB** with EAX = localClientNum (the overlay's seam). Was "SV_ExecuteClientCommand [C]" — withdrawn already, now identified. |
+| `CG_Draw2D` | 0x4388A0 | [V] | EAX = localClientNum; calls CG_DrawChat at 0x438A21 and Con_DrawSay at 0x438A7A. Was "ClientCommand" — RETRACTED, now identified. |
+| `CG_DrawChat` | 0x436900 | [V] | WaW MP's HUD chat, live in SP: `cg_hudChatPosition` dvar ptr 0x3466098 (default 5,200), `cg_chatHeight` 0x3466540 (5), `cg_chatTime` 0x3688B34 (12000); ring text 0x3467618 (stride 0x97), times 0x3467AD0, head 0x3467AF0 / tail 0x3467AF4; scale 1/3 (`[0x8AF5B0]`), 16-unit step, box rgb 0.25 alpha 0.6. |
+| `CG_AddToTeamChat` | 0x459730 | [C] | the only writer of CG_DrawChat's ring. Not bound. |
+| `Con_DrawSay` | 0x473F10 | [V] | draws `EXE_SAY`/`EXE_SAYTEAM` + the chat field (0x951B20, stride 0x1128) when keyCatchers (0x3058424) bit 0x20 is set; `cg_hudSayPosition` 0x339B75C (5,180; drawn at y+24). Was "G_Say" — RETRACTED, now identified. |
+| `CL_AddReliableCommand` | 0x640FE0 | [V] | cdecl `(const char*)`; reliableSequence 0x3010120, reliableAcknowledge 0x3010124, 128 x 512 at 0x3010128, `EXE_ERR_CLIENT_CMD_OVERFLOW` past 128. An unknown command sent through it makes the stock game print **"Unknown cmd <name>"** on the player's HUD. |
+| `dx.d3d9` / `dx.device` | 0x3BF3B04 / 0x3BF3B08 | [V] | Direct3DCreate9 wrapper result stored at 0x6D62C2; CreateDevice (vtable +0x40) at 0x6D605A writes the device. Patching `IDirect3DDevice9::Present` (slot 17) alone never fired; captures started once the implicit swap chain's `Present` (slot 3) was patched as well, so T4 presents through the swap chain. |
+| keyCatchers | 0x3058424 | [V] | 0x1 console, 0x10 UI/menu (tested first by CL_MouseEvent), 0x20 stock message field |
+| clc.state in a live map | 0x305842C | [V] | reads **10** in game on this build (7 while connecting) |
+
 ### Renderer / sound / OS gates (dedi: what to stub)
 | Function | Addr | Conf | Evidence |
 |---|---|---|---|

@@ -275,7 +275,7 @@ That is a `GetWindowLong` read-back, not a call that returned without error, and
 client rect** is the proof there is no frame left. Still unverified: alt-tab re-application and
 `vid_restart`, both of which are handled by the poll but were not exercised.
 
-### 2d. In-game chat overlay (note only — not designed)
+### 2d. In-game chat overlay — **built 2026-09-22, see §9 and `chat-overlay.md` §9**
 
 What the DLL would need, and nothing more than that is decided:
 
@@ -1204,3 +1204,32 @@ corpse clean-up, a Graphics-menu item, and the test allows exactly it.
    shows *W* and *I* for Forward. Console `/ai_corpseCount` → 32.
 4. In game set Subtitles **Yes**, quit. `/settings` → Game Options shows Subtitles *Yes* (the
    post-exit read-back → launcher → site sync).
+
+---
+
+## 9. 2026-09-22, evening — the in-game chat overlay (`components/chat_overlay.cpp`)
+
+Built and proven in the running game; the full write-up, the address table and every run are in
+**`chat-overlay.md` §9**. What this lane's code now contains:
+
+| File | What |
+|---|---|
+| `components/chat_overlay.cpp` | The overlay. Retargets the one `call CG_Draw2D` at `0x4628AB` (inside `CG_DrawActiveFrame` `0x4621E0`) to draw after the HUD with the engine's own `UI_DrawText` `0x5B5FB0` / `R_AddCmdDrawStretchPic` `0x6F58E0` / `R_TextWidth` `0x6E8DA0`, in the 640x480 virtual space of `scrPlaceView` `0x957318`, at WaW's own chat anchor (`cg_hudChatPosition`). WinHTTP to `/api/game-chat/*`; the pause keys `enw_ui`/`enw_pchat` through `setu`. Byte-checks all of it and turns itself off on a mismatch. Off: `ENW_CHAT_OVERLAY=0`. |
+| `components/input_gate.hpp` | How a second consumer gets the game window's messages **without a second subclass**: a filter `mouse_polling`'s one WndProc calls first, a *captured* state (no motion, no buttons to the engine, NOLEGACY off, no recentre), and `send_to_engine()`. |
+| `components/mouse_polling.cpp` | Implements the gate. With `ENW_RAW_MOUSE=0` it now installs the subclass and the `IN_MouseMove` retarget in **passthrough** mode (hand straight to the engine) so the overlay still works; `ENW_CHAT_OVERLAY=0` too and nothing is installed. |
+| `components/chat_link.hpp` + `auth_token.cpp` | The launcher's one-shot token pipe now also carries `chat: {base, bearer}` (and may carry it without an invite token, for Play Local). Dev fallback `ENW_CHAT_BASE`/`ENW_CHAT_BEARER`. |
+| `components/frame_capture.cpp` | Test instrument, off unless `ENW_FRAME_CAPTURE=1` or `ENW_CHAT_SELFTEST`: swaps the `Present` of `dx.device` `[0x3BF3B08]` and of its swap chain (vtable slots 17 and 3; the device's alone never fired — T4 presents through the swap chain) to save the back buffer as .bmp on request. Works off-screen and in exclusive mode, where `screenshotJPEG` refuses ("game window is partially off-screen"). |
+
+**Corrections to the address map** this lane found on the way (`docs/re/t4-sp-map.md` updated):
+`0x6F5F10` is `R_AddCmdDrawText` (render command 0xD), not a server command; `0x4388A0` is
+`CG_Draw2D`, `0x4621E0` is `CG_DrawActiveFrame`, `0x473F10` is `Con_DrawSay` (the stock "Say:"
+field), `0x436900` is `CG_DrawChat`. World at War's whole MP chat HUD is still in the SP exe.
+
+Harness rules learned tonight (both cost B a disturbed screen): a test window at the desktop's own
+size, or `ENW_BORDERLESS=1` with the default *cover the monitor*, ends up on B's screen and fights
+`launch.ps1`'s 700 ms park loop. Test below desktop size, set `ENW_BORDERLESS_COVER=0`, and never
+exclusive fullscreen while B is at the PC.
+
+No DLL version constant exists to bump; `stage-client.js`'s gate is the build's mtime against the
+sources, so a fresh build of `build/client-lane` (or whichever build the coordinator ships) is what
+makes it stageable.

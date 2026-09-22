@@ -1962,3 +1962,32 @@ saved value before the next launch writes it. The bundled community fixes stay s
 * The packaged launcher: this rides with the next launcher release (the files above), and needs the
   site deployed. Until both, the page saves to the account and a launch does not see it.
 * Mature *Reduced*: `cg_mature 0` only (client.md §8c).
+
+## 2026-09-22, evening — `/api/game-chat`: what the in-game chat overlay speaks (client lane, for the web agents)
+
+Added by the client lane for the in-game overlay (`chat-overlay.md` §9.4). **Not deployed.** Small
+and additive; nothing that existed changed behaviour.
+
+* **`lib/gameChat.js`** — the *chat pass* (HMAC `gc1.<payload>.<sig>` over `{steamid, expiry}`,
+  key derived from the session secret via `setSecret(secret)` in `index.js`, 12 h, refused for a
+  site-banned or deleted account), the **private ring** (`chat_private`: party lines and DMs,
+  created with `CREATE TABLE IF NOT EXISTS` in the module — a separate table from `chat_network`
+  on purpose, so no box drain, no `io.emit('chat')` and no public `GET /api/chat` can ever see a
+  DM), and the long-poll over both rings. Party lines go to the party's current members; DMs only
+  to friends or party members; 5 lines / 10 s per player.
+* **`routes/gamechat.js`**, mounted at `/api/game-chat` next to `/api/gs`, **Bearer pass only**
+  (a session cookie is not accepted): `GET /me`, `GET /feed?g=&p=&wait=`, `POST /send`.
+  Gate-exempt in `middleware/gate.js` (the game cannot type the password); every route 401s
+  without a pass.
+* **`POST /api/launcher/chat-token`** (session, `requireUser`) — the launcher mints the pass here at
+  every game launch. It stays behind the gate.
+* **`DEFAULT_SETTINGS.pause_on_chat: true`** in `lib/users.js` — B's "pause when using global chat".
+  `PUT /api/me/settings {pause_on_chat}` already works; **the /settings page has no toggle for it
+  yet** — a web-lane job (the ENW tab is the natural home).
+* **`chat-private`** is emitted to each recipient's own `user:<sid>` room, for when the site's dock
+  grows Party / DM tabs; nothing on the client listens yet.
+* Global lines from the game land in `chat_network` with `origin: 'game'` — the dock shows them and
+  every box drains them, like a web line.
+* Tests: `web/test/game-chat.js`, 19/0, added to `npm run check`; `run-all` 102/0, `local-run` 37/0,
+  `launcher-signin` 15/0 unchanged. Proven end to end against a private instance on 3399 with the
+  real game (`chat-overlay.md` §9.6).
