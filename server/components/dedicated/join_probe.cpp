@@ -311,6 +311,93 @@ void poll_vm(uint64_t frame) {
     }
 }
 
+// ---- the script variable free lists ---------------------------------------
+// join14 died on `exceeded maximum number of script variables` while every
+// category the engine prints in its own dump stayed flat (223 entities, 8 hud
+// elements, ~2,300 variables, unchanged across all 2,150 dumps). So the pool is
+// being consumed by something the dump does not attribute, and the only honest
+// way to find out is to count what is left.
+//
+// Both allocators fail the same way, and neither keeps a counter -- they keep a
+// circular free list whose head is a 16-bit index:
+//
+//     0068FCE9  imul  eax, eax, 0x160000      ; script instance
+//     0068FCEF  movzx esi, word [eax+0x3914714]   ; head of the OBJECT free list
+//     0068FCF6  test  si, si
+//     0068FCF9  jne   0x68FD2C                ; zero -> "exceeded maximum number
+//     0068FD03                                ;          of script variables"
+//
+//     0068F21D  movzx edi, word [edx+0x3974704]   ; head of the CHILD free list
+//     0068F224  test  edi, edi                    ; same error on zero
+//
+// Entries are 16 bytes and the next index is the first word of the entry
+// (`shl eax,4` then `add eax, base` then `movzx edi, word [eax]`), so the list
+// can simply be walked. It is walked once a second, bounded, off the frame tick.
+// That turns "it ran out eventually" into a rate and a start time, which is the
+// difference between knowing what consumed it and guessing.
+constexpr uintptr_t kVarObjBase  = 0x3914710;  // [V] 0x68FD3C
+constexpr uintptr_t kVarObjHead  = 0x3914714;  // [V] 0x68FCEF
+constexpr uintptr_t kVarChildBase = 0x3974700; // [V] 0x68F258
+constexpr uintptr_t kVarChildHead = 0x3974704; // [V] 0x68F21D
+constexpr uint32_t kWalkCap = 70000;           // the index is 16-bit; this cannot loop for ever
+
+uint64_t g_pool_last_log = 0;
+uint32_t g_pool_first_obj = 0, g_pool_first_child = 0;
+bool g_pool_have_first = false;
+
+// Follow the chain from `head` and count it. Returns kWalkCap if the list does
+// not terminate, which is itself worth seeing.
+uint32_t count_free(uintptr_t base, uintptr_t head_addr) {
+    uint16_t idx = 0;
+    if (!memory::read(enw::at(head_addr), &idx)) return 0;
+    const uint16_t first = idx;
+    uint32_t n = 0;
+    while (idx && n < kWalkCap) {
+        ++n;
+        uint16_t next = 0;
+        if (!memory::read(enw::at(base) + static_cast<uintptr_t>(idx) * 16, &next)) break;
+        if (next == first) break;    // circular
+        idx = next;
+    }
+    return n;
+}
+
+// OFF by default, and here is the honest reason. Run join15 walked both lists
+// once a second and the object list read 1 every single time while the child
+// list bounced between 1 and 4,548 with no trend -- because these are live,
+// doubly-linked, circular lists being rewritten by the VM at 20 Hz, and a
+// snapshot of one is a snapshot of a list mid-edit. The numbers are real and
+// they mean nothing. Kept because the addresses are right and a future attempt
+// should start from a walk taken INSIDE the allocator, not from the frame tick.
+//
+// ENW_DEDI_VARPOOL=1 turns it on.
+bool g_pool_enabled = false;
+
+void poll_var_pools(uint64_t frame) {
+    if (!g_pool_enabled) return;
+    if (frame - g_pool_last_log < 60) return;   // about once a second
+    g_pool_last_log = frame;
+
+    const uint32_t obj = count_free(kVarObjBase, kVarObjHead);
+    const uint32_t child = count_free(kVarChildBase, kVarChildHead);
+    if (!obj && !child) return;                  // not brought up yet
+
+    if (!g_pool_have_first) {
+        g_pool_have_first = true;
+        g_pool_first_obj = obj;
+        g_pool_first_child = child;
+        ENW_INFO("join_probe/vars: free lists at first read - objects %u, children %u. "
+                 "These are what run out when the VM says 'exceeded maximum number of script "
+                 "variables'.", obj, child);
+        return;
+    }
+
+    const int32_t d_obj = static_cast<int32_t>(obj) - static_cast<int32_t>(g_pool_first_obj);
+    const int32_t d_child = static_cast<int32_t>(child) - static_cast<int32_t>(g_pool_first_child);
+    ENW_INFO("join_probe/vars: free objects %u (%+d) children %u (%+d)",
+             obj, d_obj, child, d_child);
+}
+
 // ---- Com_DPrintf mirror ---------------------------------------------------
 // Every interesting line on the connect path is a Com_DPrintf, which the engine
 // throws away unless `developer` is 1 -- and we are not allowed to set that (it
@@ -399,11 +486,13 @@ public:
 
         const char* dprint = std::getenv("ENW_DEDI_DPRINT");
         if (!dprint || std::strcmp(dprint, "0") != 0) install_dprintf_mirror();
+        g_pool_enabled = std::getenv("ENW_DEDI_VARPOOL") != nullptr;
 
         enw::frame::subscribe("dedi_join_probe", [](uint64_t n) {
             if ((n & 3u) != 0) return;   // ~15 Hz at 61 Hz, far finer than any state change
             poll(n);
             poll_vm(n);
+            poll_var_pools(n);
         });
 
         ENW_INFO("dedi_join_probe: watching svs.clients[0..] at 0x%08X stride 0x%X, "

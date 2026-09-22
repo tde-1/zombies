@@ -41,11 +41,25 @@
 // ---------------------------------------------------------------------------
 // What we do about it, and what we are NOT claiming
 // ---------------------------------------------------------------------------
-// We report the save as done without writing anything. A dedicated server has
-// no profile to save into and nobody to load it back, so there is no file here
-// worth having -- and an autosave that cannot succeed is not a feature we are
-// suppressing, it is a single-player code path running in a place it was never
-// going to work.
+// We discard the request. A dedicated server has no profile to save into and
+// nobody to load it back, so there is no file here worth having -- and an
+// autosave that cannot succeed is not a feature we are suppressing, it is a
+// single-player code path running in a place it was never going to work.
+//
+// FIRST ATTEMPT, AND WHY IT WAS WRONG. The first version of this component
+// patched `G_WriteGame` to return AL = 1, so 0x512AC0 would take its success
+// branch and whatever waits on the save would be released. Run join15 shows
+// exactly what that buys:
+//
+//     dedi_no_autosave: skipped autosave #1 ... and reported it done
+//     Attempting to commit an invalid save buffer
+//     dvar set cl_network_warning 0        x390, while frame::count froze at 4496
+//
+// Reporting success sends the engine down the post-save path at 0x512B23 ->
+// 0x512A80 -> 0x563FC0, which commits a buffer nothing ever filled. Lying to an
+// engine about a thing it is about to use is not a fix; it just moves the crash
+// somewhere with a less helpful message. So: drop the request before any of it
+// runs, at the one call the frame-side drain makes per queued request.
 //
 // This is a deliberate behaviour change and it is dedicated-only. A player's own
 // client, and a local solo run, keep the stock autosave exactly as it is --
@@ -58,10 +72,12 @@
 //
 // ENW_DEDI_ALLOW_AUTOSAVE=1 puts the stock behaviour back, for comparison runs.
 //
-// HOW IT IS TAKEN: `G_WriteGame` 0x512850 has exactly ONE caller, so we retarget
-// that one `call` rel32 rather than detouring the function (hook.hpp's standing
-// advice, and the difference between rewriting five bytes we have read and
-// relocating a prologue we have not).
+// HOW IT IS TAKEN: the per-request handler 0x512AC0 has exactly ONE caller --
+// the drain at 0x636D57 -- so we retarget that one `call` rel32 rather than
+// detouring the function (hook.hpp's standing advice, and the difference between
+// rewriting five bytes we have read and relocating a prologue we have not). The
+// `add esp, 4` at 0x636D5E is checked before we write: that is the caller's own
+// cleanup and it is what makes a bare `ret` stub safe.
 //
 // Clean room: our own code, from our own dump and our own logs.
 
@@ -82,42 +98,42 @@ namespace {
 
 #ifdef ENW_HAVE_T4_ADDRESSES
 
-constexpr uintptr_t kGWriteGame     = 0x512850;  // [V] sole ref to "G_WriteGame '%s' '%s'\n"
-constexpr uintptr_t kGWriteGameCall = 0x512B14;  // [V] its only caller
-constexpr uintptr_t kNameOffset     = 0x40;      // [V] 0x51285C: `lea ebp, [edi + 0x40]` is the
-                                                 //     second `%s`; edi is the first.
+constexpr uintptr_t kSaveRequest     = 0x512AC0;  // [V] handles one queued autosave request
+constexpr uintptr_t kSaveRequestCall = 0x636D57;  // [V] its only caller, the frame-side drain
+// The caller's cleanup is NOT the instruction straight after the call -- it takes
+// the return value first:
+//     00636D57  e8 64 bd ed ff   call 0x512AC0
+//     00636D5C  8b e8            mov  ebp, eax     <- 2 bytes
+//     00636D5E  83 c4 04         add  esp, 4       <- the cleanup, at call + 7
+// Run join16 refused to patch because this was read as call + 5 and found
+// `8B E8 83`. The guard was right and the constant was wrong; both are kept.
+constexpr uintptr_t kCleanupOffset    = 7;
+constexpr uint8_t   kCallerCleanup[3] = {0x83, 0xC4, 0x04};  // add esp, 4 at 0x636D5E
 
 volatile long g_skipped = 0;
 
-// ECX held the checkpoint record when the engine reached the call; the two
-// strings G_WriteGame would have printed live at [ecx] and [ecx + 0x40].
-void __cdecl on_autosave_skipped(uint32_t record) {
+void __cdecl on_autosave_skipped() {
     const long n = ::InterlockedIncrement(&g_skipped);
-    if (n > 5) return;
-
-    const char* a = "?";
-    const char* b = "?";
-    if (record && memory::is_readable(reinterpret_cast<const void*>(record), kNameOffset + 1)) {
-        a = reinterpret_cast<const char*>(record);
-        b = reinterpret_cast<const char*>(record + kNameOffset);
-    }
-    ENW_INFO("dedi_no_autosave: skipped autosave #%ld '%s' '%s' and reported it done "
-             "(a dedicated server has no profile to save into; the stock path never "
-             "completes and the level script asks again every frame)", n, a, b);
+    if (n == 1)
+        ENW_INFO("dedi_no_autosave: dropped the first queued autosave. A dedicated server has no "
+                 "profile to save into; the stock path cannot complete and hangs the frame loop.");
+    else if (n == 200)
+        ENW_WARN("dedi_no_autosave: 200 autosave requests dropped. The level script is still "
+                 "asking every frame, which costs nothing now but means whatever it waits on is "
+                 "still not arriving - see dedi.md 7i.");
 }
 
-// Returns AL = 1 so 0x512AC0 takes its success branch. The caller cleans the one
-// pushed argument at 0x512B19, so we must NOT touch esp -- a plain `ret` is the
-// correct way not to call a function whose caller cleans up.
-__declspec(naked) void write_game_stub() {
+// Return 0 ("nothing was saved") without touching the request. The caller cleans
+// its one pushed argument at 0x636D5E, so a plain `ret` is the correct way not to
+// call this function; and `esi` still holds the queue record the caller advances
+// itself, so pushad/popad around the log keeps every register the engine owns.
+__declspec(naked) void save_request_stub() {
     __asm { pushfd }
     __asm { pushad }
-    __asm { push ecx }
     __asm { call on_autosave_skipped }
-    __asm { add  esp, 4 }
     __asm { popad }
     __asm { popfd }
-    __asm { mov  al, 1 }
+    __asm { xor  eax, eax }
     __asm { ret }
 }
 
@@ -138,23 +154,36 @@ public:
         // Verify the call site really is the one we read, before rewriting it.
         // Two labels in this project were wrong because one cross-reference was
         // taken as an identification, and this check costs one memory read.
-        const uintptr_t target = memory::call_target(enw::at(kGWriteGameCall));
-        if (target != enw::at(kGWriteGame)) {
+        const uintptr_t target = memory::call_target(enw::at(kSaveRequestCall));
+        if (target != enw::at(kSaveRequest)) {
             ENW_ERROR("dedi_no_autosave: NOT patching 0x%08X: it calls 0x%08X, expected "
-                      "G_WriteGame 0x%08X. The level-start autosave will run and is expected "
-                      "to hang the server.",
-                      static_cast<unsigned>(kGWriteGameCall), static_cast<unsigned>(target),
-                      static_cast<unsigned>(enw::at(kGWriteGame)));
+                      "0x%08X. The level-start autosave will run and is expected to hang "
+                      "the server.",
+                      static_cast<unsigned>(kSaveRequestCall), static_cast<unsigned>(target),
+                      static_cast<unsigned>(enw::at(kSaveRequest)));
             return;
         }
-        if (!memory::retarget_call(enw::at(kGWriteGameCall), &write_game_stub)) {
+        // The `add esp, 4` after the call is what makes a bare `ret` stub safe: we
+        // are not guessing a calling convention, we are reading the caller's own
+        // cleanup. local_client.cpp learned this the same way.
+        uint8_t after[3] = {};
+        if (!memory::read_raw(enw::at(kSaveRequestCall) + kCleanupOffset, after, sizeof after) ||
+            after[0] != kCallerCleanup[0] || after[1] != kCallerCleanup[1] ||
+            after[2] != kCallerCleanup[2]) {
+            ENW_ERROR("dedi_no_autosave: NOT patching 0x%08X: expected `add esp, 4` (83 C4 04) "
+                      "after the call, found %02X %02X %02X. A `ret` stub would unbalance the "
+                      "stack.", static_cast<unsigned>(kSaveRequestCall), after[0], after[1],
+                      after[2]);
+            return;
+        }
+        if (!memory::retarget_call(enw::at(kSaveRequestCall), &save_request_stub)) {
             ENW_ERROR("dedi_no_autosave: retarget_call on 0x%08X failed",
-                      static_cast<unsigned>(kGWriteGameCall));
+                      static_cast<unsigned>(kSaveRequestCall));
             return;
         }
-        ENW_INFO("dedi_no_autosave: G_WriteGame's only call site (0x%08X) now reports every "
-                 "autosave as done without writing one. Dedicated only.",
-                 static_cast<unsigned>(kGWriteGameCall));
+        ENW_INFO("dedi_no_autosave: the frame-side autosave drain (0x%08X) now discards every "
+                 "queued request instead of attempting it. Dedicated only.",
+                 static_cast<unsigned>(kSaveRequestCall));
     }
 
     void pre_destroy() override {

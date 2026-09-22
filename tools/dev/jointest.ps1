@@ -89,8 +89,14 @@ try {
     # Demonware session to get a handle from (proven in run join6). The raw sendto path
     # is one byte away -- shared/core/components/raw_sockets.cpp.
     $env:ENW_RAW_SOCKETS = '1'
+    # com_maxfps: frame_pacing.cpp nops the branch that made dedicated mode ignore
+    # this dvar, but the harness never passed one, so every join run so far measured
+    # a server free-running at ~237 Hz and burning a whole core (join13: 111.5 s of
+    # CPU in 120 s of wall clock). 60 is 3x sv_fps, the same figure dediprobe.ps1
+    # uses. Without it the CPU column of a join run means nothing.
     $serverArgs = @(
         '+set', 'dedicated', '1', '+set', 'zombiemode', '1', '+set', 'logfile', '2',
+        '+set', 'com_maxfps', '60',
         '+set', 's_volume', '0', '+set', 'snd_volume', '0',
         '+set', 'con_typewriterColorBase', '1.0 1.0 1.0',
         '+set', 'hud_drawhud', '1', '+set', 'ui_campaign', 'american',
