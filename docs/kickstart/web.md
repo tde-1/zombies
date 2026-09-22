@@ -1870,3 +1870,95 @@ checkout must have a client DLL to ship", a build artefact a fresh worktree does
   claimed on drops.ws; Movement's public name cannot be told from a persona.
 * **Needs a client build + restart to go live** (`npm run build`, the keepalive path). Not done here.
 * `jamie` → `Jamie` (13d) awaits a decision.
+
+## 2026-09-22, evening — `/settings`: World at War's Options menus, per SteamID, applied at launch
+
+B: *"Have the settings page allow you to make it look like the game's World at War settings menu,
+with all the exact same settings, and make sure they all map properly and work properly."*
+
+### What is there
+
+* **`/settings`** (`client/src/pages/Settings.jsx`). The account menu's **Settings** item goes here
+  now, in a browser and in the launcher (it used to go to `/id/<you>#settings`; the profile keeps
+  chat, privacy, zombie counter and pinned badges, and its FOV / Max FPS fields became a link here).
+  Laid out like the game: a column of menu names (*Options*: Graphics, Texture Settings, Sound,
+  Game Options; *Controls*: Look, Move, Combat, Interact; plus **ENW**), the selected menu's rows,
+  labels right-aligned in the game's uppercase, the game's `‹ value ›` list items, sliders, and key
+  rows with Key / Alternate that capture the next key, mouse button or wheel notch (Escape cancels,
+  Backspace clears — the game's two keys). Each row shows the dvar it writes; hover gives the source.
+  Rows the launcher's baseline already sets show an **ENW** tag until the player chooses.
+  Per-section **Reset to game defaults** (Controls: *Set default controls*; ENW: *Reset to ENW
+  defaults*).
+* **The catalogue** (`client/src/data/wawSettings.js`): every item out of the stock menus compiled
+  into the game's `ui.ff`, in the menu's own order, with the dvar, the values the menu's own table
+  writes, the game default and a source line. `client.md` §8 is the full dvar table and how it was
+  read; unmapped items are listed on the ENW tab and in §8c, not faked.
+* **Storage**: one `game` object in `users.settings_json` (`PUT /api/me/settings { game }`), shape
+  `{ mode, display, resolution, vsync, fov, maxFps, showFps, sensitivity, rawMouse, waw: {dvar: value
+  | null}, wawBinds: {command: [key, key]}, updatedAt }`. `lib/users.sanitizeGame` keeps it the right
+  shape and size (the launcher is the strict gate: `launcher/src/main/wawcfg.js` refuses any dvar or
+  value the menus do not offer). `fov` / `max_fps` at the top level follow it so nothing else on the
+  site becomes a second opinion.
+* **The launcher half** (all through the existing bridge — `enw.getSettings` / `enw.setSettings`,
+  no new IPC): the page pushes `toLauncherPatch(game)` on every save; `components/launcherBridge.js`
+  `GameSettingsSync` (mounted once in `App.jsx`) compares `updatedAt` against the launcher's
+  `gameUpdatedAt` on every signed-in load and whenever the launcher says its settings changed, and
+  the newer copy wins — the launcher's after a game where the player changed something in the
+  game's own menus (post-exit read-back), the site's after an edit in a browser.
+
+### How a value reaches the game (launcher files, listed for the merge)
+
+`launcher/src/main/wawcfg.js` (new): the whitelist; `launchDvars()` lays the account's values over
+the baseline **in place** (a player's `r_texFilterAnisoMin 8` replaces the bundled `16`, it does not
+appear twice); `applyAccountToConfig()` merges them into the `config.cfg` the engine reads on **every**
+launch (dvars case-insensitively, `reset <dvar>` for a game-default row, binds with the old key
+released as the menu does, `con_hidechannel` kept last) and snapshots what it wrote;
+`readBackAccount()` after exit returns exactly what differs from that snapshot. `settings.js`: new
+keys `waw`, `wawBinds`, `gameUpdatedAt`, `rawMouse`, validated, merged key by key. `launch.js`:
+`settingsArgs` uses `launchDvars` when anything is saved (byte-identical baseline otherwise — tested),
+the merge runs after the seed, `ENW_RAW_MOUSE=0` when raw mouse is off, the read-back is folded in.
+`package.json`: `npm test` also runs `test/waw-settings.js`.
+
+Why every launch and not seed-once: `config.cfg` is exec'd during `Com_Init` and the menu reads what
+it sets (launcher.md 0.2.3 §1 measured a config beating the command line), so a site change has to
+reach that file. It does not undo in-game changes, because the read-back turns each one into the
+saved value before the next launch writes it. The bundled community fixes stay seed-once.
+
+### Proof
+
+* `web npm test`: **93 / 33 / 14, 0 failed** (three new: stored per SteamID and returned in the
+  launcher's shape; the blob refuses junk including a `;quit` in a bind; every item has a source,
+  a section and a reset, and every dvar is in the launcher's whitelist).
+* `launcher npm test`: **125 passed** (`run-all.js`, unchanged) **+ 14 passed** (`waw-settings.js`):
+  values saved in the site's shape reach the `+set` list; a saved value replaces the bundled fix in
+  place; game default → off the line and `reset` in config; launcher keys (vsync, sensitivity, FOV,
+  Max FPS, Show FPS, windowed 1920x1080); Invert Mouse writes `ui_mousePitch` **and** `m_pitch`;
+  refusals; the timestamps; the per-launch merge into an engine-shaped config (unrelated lines
+  survive, old key released, ADS stays hold); the read-back claims exactly what changed.
+* **Dev port** (`:3437`, its own `ZM_DATA_DIR`, mock sign-in as a demo id): in the real page, Number
+  of Corpses → Large, Texture Mipmaps → Trilinear, Forward alternate → `I`, FOV → 95; `GET
+  /api/me/settings` returned `{"waw":{"ai_corpseCount":"20","r_texFilterMipMode":"Force Trilinear"},
+  "wawBinds":{"+forward":["W","I"]},"fov":95,…}`. That stored blob, through the launcher's real
+  `settings.set/get` and `settingsArgs`, gave `+set cg_fov 95 … +set ai_corpseCount 20 +set
+  r_texFilterMipMode Force Trilinear`, and merged into a **copy** of a real engine-written config
+  (`ZombiesDev\homes\d2`): `seta ai_corpseCount "20"`, `seta r_texFilterMipMode "Force Trilinear"`,
+  `seta cg_fov "95"`, `bind W "+forward"`, `bind I "+forward"`.
+* **Bridge** — a scratch Electron harness, *not* the launcher app: the launcher's real `preload.cjs`
+  on the dev site, the four IPC handlers the page uses wired to the real `settings.js` in a temp
+  `ENW_ROOT` with main.js's `{ ok, data }` wrapper. On load the page pushed the site's copy into the
+  launcher (`waw`, `wawBinds`, `fov 95`, `gameUpdatedAt` equal to the site's); clicking *Line of
+  Sight Occlusion* → No made the page say *Saved · the launcher applies it at your next launch*, the
+  launcher held `snd_losOcclusion "0"`, and the next launch line had `+set snd_losOcclusion 0`.
+* Screenshots: `docs/kickstart/ui/settings-{graphics,texture,sound,game,look,combat,enw,mobile}.png`
+  and `settings-in-launcher-harness.png` (window buttons in the nav = `html.in-launcher`).
+
+### Unproven, named
+
+* **Every row in the running game.** Nobody launched WaW for this (B was playing). `client.md` §8d
+  is the one-minute check. Specifically unproven: that `reset <dvar>` in `config.cfg` does what the
+  engine's own `dvar_defaults.cfg` implies; that a two-word value on the command line
+  (`Force Trilinear`, `wide 16:9`) survives the engine's own argv tokenising — `config.cfg` carries
+  it quoted either way.
+* The packaged launcher: this rides with the next launcher release (the files above), and needs the
+  site deployed. Until both, the page saves to the account and a launch does not see it.
+* Mature *Reduced*: `cg_mature 0` only (client.md §8c).

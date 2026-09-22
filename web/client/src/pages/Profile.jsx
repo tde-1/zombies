@@ -199,10 +199,10 @@ function Settings({ d, onSaved }) {
   return (
     <Section title="Your settings">
       <div className="card grid c3">
-        <label className="field"><span>FOV (65–120)</span>
-          <input type="number" min={65} max={120} defaultValue={s.fov} onBlur={(e) => put('/api/me/settings', { fov: Number(e.target.value) })} /></label>
-        <label className="field"><span>Max FPS (20–250)</span>
-          <input type="number" min={20} max={250} defaultValue={s.max_fps} onBlur={(e) => put('/api/me/settings', { max_fps: Number(e.target.value) })} /></label>
+        {/* FOV and Max FPS moved to /settings with every other game setting (2026-09-22). */}
+        <div className="field"><span>Game settings</span>
+          <Link className="btn small" to="/settings">Graphics, sound and controls →</Link>
+          <div className="hint">World at War's own options, saved to your account.</div></div>
         <label className="field"><span>Chat channel</span>
           <select defaultValue={s.chat_channel} onChange={(e) => put('/api/me/settings', { chat_channel: e.target.value })}>
             <option value="auto">Auto (solo Global, group Local)</option>

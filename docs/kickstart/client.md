@@ -1096,3 +1096,111 @@ Nothing in `mods/enw` resets them (the folder ships empty). The Treyarch refusal
 video/load overlap. The 30 s ceiling path runs only if the menu never shows a video and never idles.
 B's check: join a box game on 0.2.8 — no cinematic after the loadscreen; the DLL log shows
 `connect_local: gate OPEN` and `bink: REFUSED the load video`.
+
+---
+
+## 8. 2026-09-22, evening — World at War's Options menus on the site: the dvar table
+
+B: *"Have the settings page allow you to make it look like the game's World at War settings menu,
+with all the exact same settings, and make sure they all map properly and work properly."*
+The page is `web/client/src/pages/Settings.jsx` (`/settings`, and the account menu's **Settings**
+inside the launcher); `web.md` has the site half. This section is the dvar table and where each
+row came from, because "the exact same settings" is a claim about the game, not about us.
+
+### 8a. Where the list comes from — read out of the game, not remembered
+
+The stock PC menus are compiled into `zone/english/ui.ff`. Read-only, out of the copy in
+`ZombiesDev\waw-base` (nothing written back; the Steam install untouched): the file is a 12-byte
+`IWffu100` header and one zlib stream (41,475,998 bytes inflated). Each menu's items survive as data:
+the dvar name, the label's localize key, and — for a list item — the `multiDef_s` table (32 label
+pointers, 32 string pointers, 32 floats, count, strDef), so the **values** each label writes are
+read off the table rather than guessed. Sliders carry an `editFieldDef` (min, max, default).
+Menus read: `options_graphics`, `options_graphics_texture`, `options_sound`, `options_game`,
+`options_look`, `options_move`, `options_shoot`, `options_misc`, `options_control_defaults`,
+`options_graphics_defaults`.
+
+Also used, from `main/iw_00.iwd` and `localized_english_iw00.iwd`: `options_graphics_set.cfg`
+(every `ui_r_*` shadow dvar → its real `r_*`), `configure.cfg` (stock graphics values),
+`default_controls.cfg` (stock binds and mouse dvars — exactly what the menu's *Set Default Controls*
+execs, per `options_control_defaults`). Every dvar below was then found by name in the decrypted
+1.7 image (`ZombiesDev\dumps\codwaw-1.7-a.exe`), and so was the `reset` command and `setRecommended`.
+
+### 8b. The table
+
+*Carried* = where the launcher puts it. *Tested* = `launcher/test/waw-settings.js` shows the value
+saved by the page reaching the `+set` list and/or the merged `config.cfg`; the whitelist test there
+covers every row's values. *Dev port* = saved through the real page on `:3437` and read back out of a
+launch dry run; *bridge* = clicked on the page inside the launcher's real preload (web.md).
+**In game = UNPROVEN for every row** — nobody launched the game for this (B was playing; §8d is the
+one-minute check).
+
+| Menu | Item | dvar / command | Values the menu writes | Game default | Carried |
+|---|---|---|---|---|---|
+| Graphics | Video Mode | `r_mode` (via `ui_r_mode`) | `WxH` | 800x600 (image) | existing `resolution`; tested |
+| Graphics | Screen Refresh Rate | `r_displayRefresh` (via `ui_r_displayRefresh`) | `"N Hz"` | engine | `waw` |
+| Graphics | Aspect Ratio | `r_aspectRatio` | auto / standard / wide 16:10 / wide 16:9 | auto (configure.cfg) | `waw` |
+| Graphics | Anti-Aliasing | `r_aaSamples` (via `ui_r_aasamples`) | Off=1, 2x=2, 4x=4 | recommended → `reset` | `waw` |
+| Graphics | Brightness | `r_gamma` | 0.5–3 | 1 | `waw`; tested |
+| Graphics | Sync Every Frame | `r_vsync` (via `ui_r_vsync`) | 0/1 | 0 (configure.cfg) | existing `vsync`; tested |
+| Graphics | Optimize for Dual Video Cards | `r_multiGpu` | 0/1 | 0 (ENW baseline 1) | `waw` |
+| Graphics | Shadows | `sm_enable` | 0/1 | recommended → `reset` (ENW 1) | `waw`; tested (reset) |
+| Graphics | Specular Map | `r_specular` | 0/1 | recommended → `reset` | `waw` |
+| Graphics | Ocean Simulation | `r_gfxopt_water_simulation` | 0/1 | 1 | `waw` |
+| Graphics | Dynamic Foliage | `r_gfxopt_dynamic_foliage` | 0/1 | 1 | `waw` |
+| Graphics | Bullet Impacts | `fx_marks` | 0/1 | 1 | `waw` |
+| Graphics | Number of Corpses | `ai_corpseCount` | Tiny 3, Small 5, Medium 10, Large 20, Insane 32 | 5 | `waw`; tested, dev port |
+| Texture | Texture Mipmaps | `r_texFilterMipMode` | Unchanged / Force Bilinear / Force Trilinear | Unchanged | `waw`; tested, dev port |
+| Texture | Texture Anisotropy | `r_texFilterAnisoMin` | 1–16 | 1 (ENW 16) | `waw`; tested |
+| Texture | Texture Quality | `r_picmip_manual` | Automatic 0 / Manual 1 | 0 | `waw` |
+| Texture | Texture Resolution | `r_picmip` | Low 3, Normal 2, High 1, Extra 0 | recommended (ENW 0) | `waw` |
+| Texture | Normal Map Resolution | `r_picmip_bump` | as above | recommended (ENW 0) | `waw` |
+| Texture | Specular Map Resolution | `r_picmip_spec` | as above | recommended (ENW 0) | `waw` |
+| Sound | Master / Voice / Music / Effects / Cinematics Volume | `snd_menu_master`, `snd_menu_voice`, `snd_menu_music`, `snd_menu_sfx`, `snd_cinematicVolumeScale` | 0–1 | 1 each | `waw`; master tested |
+| Sound | Line of Sight Occlusion | `snd_losOcclusion` | No 0 / Yes 1 | 1 | `waw`; bridge |
+| Game | Mature Content | `cg_mature` (+ `cg_blood 1` on Unrestricted) | Unrestricted 1 / Reduced 0 | 1 | `waw`; tested |
+| Game | Enable Console | `monkeytoy` | Yes 0 / No 1 | recommended → `reset` | `waw` |
+| Game | Subtitles | `cg_subtitles` | 0/1 | 0 | `waw`; read-back tested |
+| Game | Draw HUD | `hud_enable` | 0/1 | 1 | `waw` |
+| Game | Enable Crosshair | `cg_drawCrosshair` | 0/1 | 1 | `waw` |
+| Look | Invert Mouse | `ui_mousePitch` + `m_pitch` ±0.022 | 0/1 | 0 / 0.022 | `waw`; tested |
+| Look | Free Look | `cl_freelook` | 0/1 | 1 | `waw` |
+| Look | Smooth Mouse | `m_filter` | 0/1 | 0 | `waw` |
+| Look | Mouse Sensitivity | `sensitivity` | 1–30 | 5 | existing `sensitivity`; tested |
+| Look / Move / Combat / Interact | 41 key rows | `bind <KEY> "<command>"`, two keys each | — | `default_controls.cfg` (ADS hold: ENW) | `wawBinds`; tested (rebind, release, read-back), dev port |
+| ENW | Display Mode | `r_fullscreen` + the DLL's borderless | borderless / fullscreen / windowed | borderless | existing `mode`; tested |
+| ENW | Monitor, Field of View, Max FPS, Show FPS | `r_monitor` + `vid_xpos/ypos`, `cg_fov`, `com_maxfps` (≤250), `cg_drawFPS` | — | primary, 80, 250, Off | existing keys; fov/maxFps/showFps tested, fov dev port |
+| ENW | Raw Mouse Input | env `ENW_RAW_MOUSE=0` when off | on/off | on | new `rawMouse`; source-contract test |
+| ENW | Depth of Field, Glow | `r_dof_enable`, `r_glow_allowed` | 0/1 | 1, recommended | `waw` — **not in WaW's menus**; archived engine dvars, labelled as ENW extras |
+
+"Recommended → `reset`": the graphics-defaults page runs `uiScript setRecommended`, which is
+hardware-dependent. For those rows *Reset to game defaults* writes the engine's own `reset <dvar>`
+(the game's `dvar_defaults.cfg` uses it) into `config.cfg` and takes the dvar off the command line,
+instead of inventing a number. That `reset` in `config.cfg` does what it should is **unproven**.
+`ai_corpseCount` is the one row matching the launcher's "gameplay dvar" pattern (`ai_`); it is
+corpse clean-up, a Graphics-menu item, and the test allows exactly it.
+
+### 8c. Not mapped, and why
+
+* **Speaker Configuration** (Stereo / 5.1 / 7.1) — driven through `ui_outputConfig` and engine
+  visibility expressions not decoded; forcing it is PCGW's way to break sound.
+* **Voice chat, Multiplayer, Co-op option pages** — Activision's online options; ENW does not use them.
+* **Chat keys** (`chatmodepublic`, `+talk`) and **`weapprev`** — bound in `default_controls.cfg`, not
+  items in any Options menu.
+* **Set Recommended / Apply** buttons — engine UI scripts; the launcher applies at the next launch.
+* **Mature: Reduced** writes `cg_mature 0` only. Unrestricted's script (`cg_mature 1; cg_blood 1`) is
+  in ui.ff; Reduced opens `mature_content_pc_disable_warning`, whose body is not, so `cg_blood` is
+  left alone rather than guessed.
+* **Fullscreen and FOV are not in WaW's PC menus at all** (no `cg_fov`, no `r_fullscreen` item in
+  ui.ff) — they are ENW knobs on the ENW tab. So `launcher.md`'s "80 is the top of the in-game
+  slider" (the launch-baseline table) is wrong: there is no in-game FOV slider. Left in place,
+  corrected here.
+
+### 8d. The one-minute proof B does (in game)
+
+1. On `/settings` (in the launcher: account menu → Settings): Graphics → Number of Corpses
+   **Insane**; Texture Settings → Texture Mipmaps **Trilinear**; Move → Forward alternate **I**.
+2. Press Play. `launcher.log` has `applied N account settings … to …\players\profiles\<p>\config.cfg`.
+3. In game: Options → Graphics reads *Insane*, Texture Settings reads *Trilinear*, Controls → Move
+   shows *W* and *I* for Forward. Console `/ai_corpseCount` → 32.
+4. In game set Subtitles **Yes**, quit. `/settings` → Game Options shows Subtitles *Yes* (the
+   post-exit read-back → launcher → site sync).

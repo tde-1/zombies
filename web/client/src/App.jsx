@@ -5,6 +5,7 @@ import { RailProvider } from './rail'
 import Nav from './components/Nav'
 import PartyRail from './components/PartyRail'
 import ChatDock from './components/ChatDock'
+import { GameSettingsSync } from './components/launcherBridge'
 import Home from './pages/Home'
 // NOT lazy: home renders `MapBody` out of this module, so it lands in the first chunk
 // whatever this line says, and a lazy route over a module that is already loaded only buys
@@ -31,6 +32,7 @@ const Creator = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Crea
 const Game = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Game })))
 const Archive = lazy(() => import('./pages/Archive'))
 const Download = lazy(() => import('./pages/Download'))
+const Settings = lazy(() => import('./pages/Settings'))
 // The 3D replay viewer. Split hard: this chunk carries three.js.
 const Replay = lazy(() => import('./pages/Replay'))
 const NotFound = lazy(() => import('./pages/Misc').then((m) => ({ default: m.NotFound })))
@@ -51,6 +53,8 @@ function Shell() {
   const bare = !!useMatch('/replay/:matchId')
   return (
     <>
+      {/* Keeps the launcher's copy of /settings and the account's in step (launcherBridge.js). */}
+      <GameSettingsSync />
       {/* THE RAIL IS BACK, ON THE LEFT, and it is Movement's (B, 2026-09-22 evening: "the
           leftmost stuck thing that has all online players, your current party, and your map
           in the bottom left with the Play button"). It sits ABOVE the router, Movement's
@@ -86,6 +90,7 @@ function Shell() {
               <Route path="/m/:key" element={<MapPage />} />
               <Route path="/archive" element={<Archive />} />
               <Route path="/download" element={<Download />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/records" element={<Records />} />
               <Route path="/badges" element={<Badges />} />
               <Route path="/badges/:slug" element={<BadgePage />} />

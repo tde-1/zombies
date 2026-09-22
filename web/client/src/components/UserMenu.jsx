@@ -109,10 +109,10 @@ export default function UserMenu() {
           {/* Directly under Profile, Movement's placement: the badges you wear live there,
               and this is the list of every one there is to get. */}
           <button className="um-item" role="menuitem" onClick={() => go('/badges')}>Badges</button>
-          {/* Your settings are a section of your own profile (pages/Profile.jsx) rather than
-              a page of their own — there are eight of them and they are all about how the
-              game runs for you. The hash is the anchor on that section. */}
-          <button className="um-item" role="menuitem" onClick={() => go(`/id/${who}#settings`)}>Settings</button>
+          {/* ~~Your settings are a section of your own profile~~ — retracted 2026-09-22: B
+              asked for World at War's own Options menus, every item, which is a page
+              (pages/Settings.jsx). The profile keeps privacy, chat and badges. */}
+          <button className="um-item" role="menuitem" onClick={() => go('/settings')}>Settings</button>
           {launcher && (
             <>
               <div className="um-sep" />

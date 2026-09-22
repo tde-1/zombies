@@ -12,7 +12,7 @@
     "start": "electron .",
     "detect": "node src/main/detect-cli.js",
     "setup": "node src/main/setup-cli.js",
-    "test": "node test/run-all.js",
+    "test": "node test/run-all.js && node test/waw-settings.js",
     "test:launch": "node test/launch-harness.js",
     "play": "node src/main/play-cli.js",
     "maps": "node src/main/maps-cli.js",
