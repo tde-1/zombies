@@ -498,6 +498,77 @@ t('a 60-second chunk boundary is honoured', () => {
   ok(verifyFile(f).ok)
 })
 
+
+// ---- identity: what a steamid is worth, and where that is enforced ---------------------
+// game-link-v0 `game_over`.`identity`, referee.md §13.2. The rule the site leans on is that
+// an account reaches a RESULT only when somebody checked the signature, and `summary()` is
+// the only place on the host side where that gate exists.
+function identityGame(r, { identity, reason = null, steamid = '76561190000000001', reportedRow = undefined }) {
+  r.onEvent({ t: 'map_loaded', ms: 0, map: 'nazi_zombie_prototype', mode: 'zombies', sv_maxclients: 4 })
+  r.onEvent({ t: 'player_connect', ms: 10, slot: 0, name: 'Subject', steamid, identity: 'claimed', token: 't', party_slot: 0 })
+  r.setIdentity(0, identity, reason)
+  r.onEvent({ t: 'player_spawn', ms: 20, slot: 0 })
+  r.onEvent({ t: 'round', ms: 20, n: 1 })
+  r.onEvent({ t: 'game_over', ms: 60_000, round: 1, reason: 'end_game', ...(reportedRow === undefined ? {} : { players: [reportedRow] }) })
+  return r.summary().players[0]
+}
+
+t('a VERIFIED player carries their steamid into the result', () => {
+  const p = identityGame(makeRef(), {
+    identity: 'verified', reason: 'ok',
+    reportedRow: { slot: 0, name: 'Subject', identity: 'verified', steamid: '76561190000000001', connected: true, score: 500, score_total: 500, downs: 0, revives: 0, alive: true },
+  })
+  eq(p.identity, 'verified')
+  eq(p.steamid, '76561190000000001')
+  eq(p.party_slot, 0)
+})
+
+t('a CLAIMED row posts through with no steamid', () => {
+  // A token was presented and parsed and nothing checked the signature. Attendance, not an
+  // account: the site records the name in summary_json and creates no game_players row.
+  const p = identityGame(makeRef(), {
+    identity: 'claimed', reason: 'token_check_disabled', steamid: '76561190000000002',
+    reportedRow: { slot: 0, name: 'Subject', identity: 'claimed', connected: true, score: 500, score_total: 500, downs: 0, revives: 0, alive: true },
+  })
+  eq(p.identity, 'claimed')
+  eq(p.steamid, null, 'an unchecked claim must never reach the result as an account')
+  eq(p.claimed_steamid, '76561190000000002', 'but what it claimed is still recorded')
+  eq(p.name, 'Subject', 'and they are still on the sheet')
+})
+
+t('a REFUSED row posts through with no steamid either, and says why', () => {
+  const p = identityGame(makeRef(), {
+    identity: 'refused', reason: 'bad_signature', steamid: '76561190000000009',
+    reportedRow: { slot: 0, name: 'Subject', identity: 'refused', identity_reason: 'bad_signature', connected: false, score: 0, score_total: 0, downs: 0, revives: 0, alive: false },
+  })
+  eq(p.identity, 'refused')
+  eq(p.steamid, null)
+  eq(p.identity_reason, 'bad_signature')
+})
+
+t('token_check_disabled is an admission, not a check, so it promotes nothing', () => {
+  // With no `players` on the game_over at all, the host falls back to its own fold — and
+  // the gate must still hold.
+  const p = identityGame(makeRef(), { identity: 'claimed', reason: 'token_check_disabled', steamid: '76561190000000003' })
+  eq(p.identity, 'claimed')
+  eq(p.steamid, null, 'an admission is not a check')
+})
+
+t('a player the GAME reports and we never saw is carried through with no account', () => {
+  const r = makeRef()
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'game_over', ms: 60_000, round: 1, reason: 'end_game', players: [
+    { slot: 0, name: 'P0', identity: 'verified', steamid: '76561198000000000', connected: true, score: 0, score_total: 0, downs: 0, revives: 0, alive: true },
+    { slot: 3, name: 'Ghost', identity: 'claimed', connected: false, score: 0, score_total: 0, downs: 0, revives: 0, alive: false },
+  ] })
+  const s = r.summary()
+  const ghost = s.players.find((x) => x.name === 'Ghost')
+  ok(ghost, 'the row is carried through rather than dropped')
+  eq(ghost.steamid, null)
+  eq(ghost.unseen_on_link, true)
+  ok(s.flags.includes('result_mismatch'), 'and the disagreement is flagged')
+})
+
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`)
 if (fail) { for (const [s, n, m] of results) if (s === 'FAIL') console.log(`  FAIL ${n}: ${m}`) }
 process.exit(fail ? 1 : 0)

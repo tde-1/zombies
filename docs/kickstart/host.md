@@ -22,9 +22,12 @@
 > (spooled if the site is down) -> and then `match_end` is answered with one of the two
 > dispositions the contract allows — `end` (map_restart, the instance goes **warm** and takes the
 > next lease) or terminate — never neither. The box reports **idle** again, which it had never
-> done. 26 checks, 0 failures against a fresh site; all four disposition paths driven to the end.
-> Still the simulator: `game.lock` was held all night, so this has not been run against a real
-> `CoDWaW.exe` (§12.9).
+> done. **36 checks, 0 failures** against a fresh site; all four disposition paths driven to the
+> end; and a **second lease taken by the warm instance**, with its own match id in its own signed
+> replay, on the same process. The referee's identity rows travel with the result: a `steamid`
+> reaches the site only when somebody checked the signature, and an unverified row posts as
+> attendance with no account (§12.10). Still the simulator: `game.lock` was held all night, so this
+> has not been run against a real `CoDWaW.exe` (§12.9).
 
 
 The **host agent** is the server software that runs on every game box. One process per box. It
@@ -1556,7 +1559,11 @@ Every other suite is unchanged and green: `test/run-all.js` **41 passed, 0 faile
 * **`--wine` is untested for this path.** The disposition logic sits entirely above
   `instances.js` and is launch-mode agnostic by construction; the only mode-specific code touched
   is the kill in 12.8, which is unexercised on the box. The vps lane has the box.
-* **A warm instance has never been handed a DIFFERENT party's lease.** `onAssignment` will do it
+* ~~**A warm instance has never been handed a DIFFERENT party's lease.**~~ **Half of this is now
+  proven — see §12.10.** A warm instance takes a genuinely new lease, is told its match id in a
+  second `end`, and writes a second signed replay naming it, on the same process. What is still
+  unproven is a different *party*, for the reason the original note gives:
+  `onAssignment` will do it
   (same map only — `end` is a `map_restart`, not a map change; warm instances on other maps are
   retired), and `rebind()` gives the game its real match identity before the replay opens. But the
   simulator receives its roster in its environment **at spawn**, so a warm sim instance cannot be
@@ -1564,3 +1571,94 @@ Every other suite is unchanged and green: `test/run-all.js` **41 passed, 0 faile
   process with the same roster, which is what a `map_restart` actually does to real clients.
 * **`--games-per-instance 5` is a guess.** Nothing has measured what a game process costs after its
   tenth map_restart. The 20-hour soak (§3h) is still owed and is now the thing that would settle it.
+
+### 12.10 Identity, and the second lease — the referee's two new rows (added later, same day)
+
+`bd3bd59` gave the protocol two rows that land on this lane, and §12 predates both.
+
+**1. `identity` travels; `steamid` does not, unless somebody checked it.** `player_connect` and
+`game_over` now carry `identity` — `none` / `claimed` / `verified` / `refused` — and a `steamid`
+appears on a `game_over` row **only when `identity` is `verified`** (`referee.md` §13.2). The host
+folds it, TokenGuard's answer sets it, and `summary()` is the only place the gate is enforced on the
+way out:
+
+| what TokenGuard answered | identity | posted `steamid` |
+|---|---|---|
+| `allow:true`, a real check | `verified` | **yes** |
+| `allow:true`, `token_check_disabled` | unchanged (`claimed`/`none`) | no |
+| `allow:false` | `refused` (+`identity_reason`) | no |
+
+`token_check_disabled` — what TokenGuard says when it holds no site key or is not enforcing — is an
+**admission, not a check**, and deliberately promotes nothing. The game's own row wins over ours
+where it sent one, because the game is what decided whether the token survived the checks only it
+can make (single use, bound to the lease, one account one slot — §13.4).
+
+A row short of `verified` still posts: the name, the score, `identity`, `identity_reason`, and
+`claimed_steamid` where there was one. The site then writes it into `summary_json` and creates **no
+`game_players` row**, so nothing is credited to an account nobody checked. That is the whole
+mechanism, and it needed no change on the site at all.
+
+**2. `end` carries the next match id.** The game reads its lease from `ENW_MATCH` **once, at process
+start**, and clears it on every reset — so a warm instance is serving a match its process has never
+heard of, and every invite token the site just minted would be `wrong_match`. So:
+
+* the reuse that *follows a game* sends `end` with **no** `match`. There is no next lease yet, and
+  the referee's own rule is that a stale id is worse than none — it refuses everybody.
+* `rebind()` sends a **second `end`**, carrying `match`, when a lease actually arrives. That costs
+  one more `map_restart` (no process start, no map load) and is what makes a warm instance usable.
+* a warm instance that will not take its new match id is torn down and a fresh one booted. A lease
+  served by a process that will refuse every token is worse than a cold start.
+
+`onAssignment`'s warm branch is therefore asynchronous now; it returns the game immediately and
+reports `ready` only once the game has acknowledged.
+
+**The simulator matches, with one honest fudge.** It emits `identity` on `player_connect` and
+`game_over`, updates it off `auth`, keeps a row for a refused player (with no account on it), takes
+its lease id from `ENW_MATCH`, clears it on reset, and **admits nobody while it has none** — which
+is what keeps a reused instance genuinely idle between leases instead of replaying the same party
+under a match id the site never issued. The fudge: `end` also carries **`sim_roster`**, the next
+party and their tokens. A real DLL ignores it (the protocol's "unknown fields are ignored by both
+sides" rule guarantees that) and needs nothing but `match`, because a real client brings its own
+token in its userinfo when it connects. The simulator *invents* its players, so it has to be handed
+them. It is marked as simulator-only at both ends.
+
+New sim flag `--gatecrash` seats one extra client at the start with a token that is not a token, so
+a box that is enforcing has something to refuse. It joins with the lobby, not late, because a late
+join flags the whole game no-records and this is a test of identity, not of the late-join rule.
+
+**Proof.** `test/run-all.js` is **46 passed, 0 failed** — five new checks covering a verified row
+carrying its steamid, a **claimed** row posting through with none, a refused row the same with its
+reason, `token_check_disabled` promoting nothing, and a player the game reports that we never saw
+being carried through flagged and account-less.
+
+`test/integration-site.js` against a fresh database is **36 checks, 0 failures**, and the two new
+steps are the interesting ones:
+
+```
+5a  the gatecrasher was refused (bad_signature_length) and its identity is "refused"
+    both invited players came through as identity=verified (2)
+5c  Start pressed again -> the site leased m_23aee3d1
+    inst-01 took it WARM — no process start, no map load
+    the box told the game its new match id in a second `end` before the map_restart
+    the second game played out on the same process and was refereed to the end
+    still 1 process start(s) for two games — the instance really was reused
+7   two signed replays from one process: m_57ba6583 and m_23aee3d1, each naming its own lease
+    every VERIFIED row carries its steamid into the signed, posted result
+    and the 1 unverified row(s) carry NO steamid — attendance, not an account
+    the site seated exactly the 2 verified players — the refused row earned nothing
+```
+
+read out of the **signed footer**, which is stronger than the API and is where it belongs:
+
+```json
+[{"n":"Leader","id":"verified","s":"76561190000000001"},
+ {"n":"Mate","id":"verified","s":"76561190000000002"},
+ {"n":"Gatecrasher","id":"refused","s":null}]
+```
+
+**§12.9's third bullet is retracted.** "A warm instance has never been handed a DIFFERENT party's
+lease" — it has now been handed a *different lease*, with its own match id, its own tokens and its
+own signed replay, on the same process, with no second boot. What is still unproven is a different
+**party** on a warm instance, which needs real clients connecting rather than a simulator that
+invents them; and `claimed` end to end, which a real box cannot produce because a real box always
+checks — it is covered as a unit in `run-all.js` and that is the honest place for it.

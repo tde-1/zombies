@@ -266,9 +266,19 @@ class Game extends EventEmitter {
     const r = this.host.tokenGuard.admit(ev, this.matchId)
     const p = this.referee.players.get(ev.slot)
     if (p) p.tokenOk = r.allow
+    // THE ANSWER IS ALSO THE IDENTITY. `token_check_disabled` is what TokenGuard says when
+    // it holds no site key or is not enforcing — it is an admission, not a check, so it
+    // leaves the claim where it was rather than promoting it to a verified account
+    // (game-link-v0 `auth`, referee.md §13.3).
+    const identity = !r.allow ? 'refused'
+      : r.reason === 'token_check_disabled' ? (ev.token ? 'claimed' : 'none')
+      : 'verified'
+    this.referee.setIdentity(ev.slot, identity, r.reason)
     this.sendToGame({ t: 'auth', slot: ev.slot, allow: r.allow, reason: r.reason })
-    this.recordHostEvent({ t: 'auth_decision', slot: ev.slot, steamid: ev.steamid || null, allow: r.allow, reason: r.reason })
-    this.log[r.allow ? 'info' : 'warn'](`auth slot ${ev.slot} ${ev.name || ''} ${ev.steamid || ''}: ${r.allow ? 'ALLOW' : 'DENY'} (${r.reason})`)
+    this.recordHostEvent({ t: 'auth_decision', slot: ev.slot, steamid: ev.steamid || null, allow: r.allow, reason: r.reason, identity })
+    this.log[r.allow ? 'info' : 'warn'](`auth slot ${ev.slot} ${ev.name || ''} ${ev.steamid || ''}: ${r.allow ? 'ALLOW' : 'DENY'} (${r.reason}) -> identity ${identity}`)
+    // A refused player is dropped from OUR fold; the game still reports a row for them at
+    // game over, and it arrives with no account on it and is carried through flagged.
     if (!r.allow) this.referee.players.delete(ev.slot)
   }
 
@@ -390,11 +400,27 @@ class Game extends EventEmitter {
    * silent reply, or a restart that never re-announces `map_loaded`, is the same answer
    * arrived at by timeout.
    */
-  requestRestart(reason = 'next lease') {
+  requestRestart(reason = 'next lease', { match = null, simRoster = null } = {}) {
     return new Promise((resolve) => {
       let settled = false
       let waitLoad = null
-      const cmd = this.referee.send({ t: 'end', reason })
+      // `match` IS THE POINT OF SENDING THIS TWICE. The game reads its lease id from
+      // ENW_MATCH once, at process start, and clears it on every reset — so a warm
+      // instance is serving a match the process has never heard of, and without being told
+      // it here, before the map_restart, it refuses every legitimate invite token with
+      // `wrong_match` (game-link-v0 `end`.`match`, referee.md §13.4). Omitting it is
+      // correct and deliberate on the reuse that FOLLOWS a game: there is no next lease
+      // yet, and a stale id is worse than none.
+      //
+      // `sim_roster` is a SIMULATOR-ONLY field, ignored by a real DLL under the protocol's
+      // "unknown `t`/fields are ignored by both sides" rule. The simulator invents its
+      // players, so it has to be handed the next party and their tokens; a real client
+      // brings its own in its userinfo when it connects.
+      const cmd = this.referee.send({
+        t: 'end', reason,
+        ...(match ? { match } : {}),
+        ...(simRoster ? { sim_roster: simRoster } : {}),
+      })
       const done = (ok, why) => {
         if (settled) return
         settled = true
@@ -422,8 +448,17 @@ class Game extends EventEmitter {
     })
   }
 
-  /** A warm instance has been leased: give it the real match identity before it records. */
-  rebind(asg, tokens) {
+  /**
+   * A warm instance has been leased. Two halves, and both are needed:
+   *
+   *   1. OUR side — the match identity, before anything records. The replay is deferred to
+   *      the first sign of a game precisely so this can happen first, and the file it
+   *      opens carries the leased match id in its header and signed footer.
+   *   2. THE GAME's side — a second `end`, carrying `match`. The process read its lease id
+   *      from ENW_MATCH once at start and cleared it on the last reset, so until it is
+   *      told this one every invite token the site just minted is `wrong_match`.
+   */
+  async rebind(asg, tokens, roster) {
     this.matchId = asg.match_id
     this.mode = asg.mode || this.mode
     this.vip = !!asg.vip
@@ -434,7 +469,13 @@ class Game extends EventEmitter {
     this.referee.vip = this.vip
     this.instance.matchId = asg.match_id
     this.instance.assignment = asg
-    this.log.info(`warm instance rebound to lease ${asg.match_id} (${this.mode})`)
+    this.log.info(`warm instance rebound to lease ${asg.match_id} (${this.mode}) — telling the game its new match id`)
+    const r = await this.requestRestart(`lease ${asg.match_id}`, {
+      match: asg.match_id,
+      simRoster: this.instance.kind === 'sim' ? roster : null,
+    })
+    if (r.ok) this.recordHostEvent({ t: 'instance_leased', match_id: asg.match_id, games_on_instance: this.instance.gamesPlayed || 0, why: r.why })
+    return r
   }
 
   // ---- replay --------------------------------------------------------------------
@@ -664,8 +705,8 @@ class HostAgent {
           lateJoinMs: a['sim-late-join-ms'] ? Number(a['sim-late-join-ms']) : null,
           games: a['sim-games'] ? Number(a['sim-games']) : null,
           endFails: !!a['sim-end-fails'],
-        noMatchEnd: !!a['sim-no-match-end'],
           noMatchEnd: !!a['sim-no-match-end'],
+          gatecrash: !!a['sim-gatecrash'],
           seed: Number(a.seed ?? 1337) + i,
         },
       })
@@ -751,6 +792,7 @@ class HostAgent {
       if (s.games) simArgs.push('--games', String(s.games))
       if (s.endFails) simArgs.push('--end-fails')
       if (s.noMatchEnd) simArgs.push('--no-match-end')
+      if (s.gatecrash) simArgs.push('--gatecrash')
     }
     const inst = this.instances.create({
       kind: opts.kind || 'sim',
@@ -850,6 +892,10 @@ class HostAgent {
     next.inheritedFrom = old.matchId
     this.byInstance.set(inst.id, next)
     next.attach(conn)
+    // NO `match` HERE. This reuse follows a finished game and precedes any lease, so the
+    // instance is told nothing to check tokens against — which is exactly right: it must
+    // admit nobody until the site gives it a match. `rebind()` sends the id when one
+    // arrives, in a second `end`.
     const r = await next.requestRestart('next lease')
     if (!r.ok) return { ok: false, why: r.why, game: next }
     next.recordHostEvent({
@@ -914,12 +960,19 @@ class HostAgent {
     // warm state, and a second match on the same process (host.md §12).
     const warm = this.takeWarm(asg.map)
     if (warm) {
-      warm.rebind(asg, tokens)
       for (const [id, g] of this.warm) if (g !== warm) this.retire(g, `a lease for ${asg.map} arrived and this instance is on ${g.referee.map}`)
       this.site?.status({ state: 'booting', match_id: asg.match_id, instance: warm.instance.id, nonce: asg.nonce, warm: true })
-      this.site?.status({ state: 'ready', match_id: asg.match_id, instance: warm.instance.id, port: warm.instance.port })
       warm.referee.once('live', () => this.site?.status({ state: 'live', match_id: asg.match_id, instance: warm.instance.id }))
       log.info(`lease ${asg.match_id} handed to WARM instance ${warm.instance.id} — no boot, no map load`)
+      // The rebind talks to the game and can fail, so it is awaited off to one side. A
+      // warm instance that will not take its new match id is no use to this lease: it is
+      // torn down and a fresh one is booted, because the alternative is a lease served by
+      // a process that will refuse every token the site just minted.
+      warm.rebind(asg, tokens, roster).then((r) => {
+        if (r.ok) return this.site?.status({ state: 'ready', match_id: asg.match_id, instance: warm.instance.id, port: warm.instance.port })
+        log.warn(`the warm instance would not take lease ${asg.match_id} (${r.why}) — tearing it down and booting a fresh one`)
+        return this.retire(warm, `would not take a new lease: ${r.why}`).then(() => this.onAssignment(asg))
+      }).catch((e) => log.error(`rebind failed: ${e.message}`))
       return warm
     }
 
@@ -942,6 +995,8 @@ class HostAgent {
         lateJoinMs: asg.sim?.late_join_ms ?? null,
         games: asg.sim?.games ?? (a['sim-games'] ? Number(a['sim-games']) : null),
         endFails: !!a['sim-end-fails'],
+        noMatchEnd: !!a['sim-no-match-end'],
+        gatecrash: !!a['sim-gatecrash'],
         seed: Number(asg.sim?.seed ?? 1337),
       },
     })

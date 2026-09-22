@@ -18,7 +18,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import { verifyFile } from '../lib/replay.js'
+import { verifyFile, readFooter } from '../lib/replay.js'
 import { mkdirp, parseArgs } from '../lib/util.js'
 
 const a = parseArgs(process.argv.slice(2))
@@ -90,7 +90,11 @@ function startHost() {
     // real dedicated server does since `no_save_reload.cpp` (dedi.md §12.3): it reports
     // the result, sends `match_end` and sits there idle. `--after-game end` is the
     // default and is stated anyway, because this run is the proof of it.
-    '--after-game', 'end', '--games-per-instance', '5',
+    '--after-game', 'end', '--games-per-instance', '5', '--sim-games', '3',
+    // One extra client joins the lobby with a token that is not a token, so a box that is
+    // ENFORCING has something to refuse. Their row still reaches the result — with no
+    // account on it, which is the whole of the identity rule (referee.md §13.2).
+    '--sim-gatecrash',
   ], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
   host.out = ''
   const tee = (d) => { host.out += d; if (a.verbose) process.stdout.write(`\x1b[90m[box]\x1b[0m ${d}`) }
@@ -162,13 +166,18 @@ try {
   const joined = await mate.call('/api/party/join', { method: 'POST', body: { party_id: partyId } })
   if (joined.ok || joined.party) ok('the second player joined the party'); else bad(`join: ${JSON.stringify(joined).slice(0, 160)}`)
 
-  await leader.call('/api/party/map', { method: 'POST', body: { map_key: a.map || 'nazi_zombie_factory' } })
-  await leader.call('/api/party/mode', { method: 'POST', body: { mode: 'verified' } })
-  await leader.call('/api/party/ready-check', { method: 'POST' })
-  await mate.call('/api/party/ready', { method: 'POST', body: { ready: true } })
-  await leader.call('/api/party/ready', { method: 'POST', body: { ready: true } })
-  const launched = await leader.call('/api/party/launch', { method: 'POST', body: { force: true } })
-  const matchId = launched.match_id || launched.assignment?.match_id || launched.party?.match_id
+  const pressStart = async () => {
+    await leader.call('/api/party/map', { method: 'POST', body: { map_key: a.map || 'nazi_zombie_factory' } })
+    await leader.call('/api/party/mode', { method: 'POST', body: { mode: 'verified' } })
+    await leader.call('/api/party/ready-check', { method: 'POST' })
+    await mate.call('/api/party/ready', { method: 'POST', body: { ready: true } })
+    await leader.call('/api/party/ready', { method: 'POST', body: { ready: true } })
+    const r = await leader.call('/api/party/launch', { method: 'POST', body: { force: true } })
+    return { id: r.match_id || r.assignment?.match_id || r.party?.match_id, raw: r }
+  }
+  const first = await pressStart()
+  const launched = first.raw
+  const matchId = first.id
   if (matchId) ok(`Start pressed -> the site leased ${matchId}`)
   else { bad(`launch: ${JSON.stringify(launched).slice(0, 300)}`); throw new Error('no lease') }
 
@@ -204,6 +213,17 @@ try {
   if (rep) info(`replay: ${rep[1]}`)
   if (ended && sum && rep) ok('the referee called the game and the box closed and signed the replay')
   else bad('the box did not finish the game (see the artifacts folder)')
+
+  step('5a. identity: an account reaches the result only when somebody checked it')
+  // The two invited players presented tokens the SITE signed and the BOX verified, so they
+  // are `verified` and carry steamids. The gatecrasher presented a token that is not one,
+  // was refused, and its row must reach the result with NO account on it.
+  const gate = /auth slot \d+ Gatecrasher \S*: DENY \(([^)]+)\) -> identity (\w+)/.exec(host.out)
+  if (gate) ok(`the gatecrasher was refused (${gate[1]}) and its identity is "${gate[2]}"`)
+  else bad('the gatecrasher was not refused — a box with a site key must not admit a token it cannot verify')
+  const verified = (host.out.match(/-> identity verified/g) || []).length
+  if (verified >= 2) ok(`both invited players came through as identity=verified (${verified})`)
+  else bad(`expected 2 verified identities, got ${verified}`)
 
   step('5b. game over: the result, then the instance is disposed of and the box is idle')
   // 1. the game's OWN result reached the referee (the enriched game_over of referee.md
@@ -251,6 +271,39 @@ try {
   if (idle) ok(`boxes.list() shows ${BOX} online=${idle.online} last_state=${idle.last_state} — free for the next lease`)
   else bad(`boxes.list() never showed ${BOX} idle again; a box that stays "live" after a game is leasable but looks busy for ever`)
 
+  step('5c. a SECOND lease goes to the warm instance, with its own match id')
+  // `end` carried no `match` on the reuse above — there was no next lease and a stale id
+  // refuses every token with `wrong_match`. The game reads its lease id from ENW_MATCH
+  // ONCE at process start, so this second lease has to be told to it in a second `end`
+  // before the map_restart (game-link-v0 `end`.`match`, referee.md §13.4).
+  const instBefore = (host.out.match(/start (sim|game) port/g) || []).length
+  const second = await pressStart()
+  const match2 = second.id
+  if (match2 && match2 !== matchId) ok(`Start pressed again -> the site leased ${match2}`)
+  else { bad(`second launch: ${JSON.stringify(second.raw).slice(0, 240)}`); throw new Error('no second lease') }
+
+  const handed = await waitFor('the warm instance to take the second lease',
+    () => new RegExp(`lease ${match2} handed to WARM instance (\\S+)`).exec(host.out), 60_000)
+  if (handed) ok(`${handed[1]} took it WARM — no process start, no map load`)
+  else bad('the second lease did not go to the warm instance')
+
+  if (new RegExp(`warm instance rebound to lease ${match2}`).test(host.out)) {
+    ok('the box told the game its new match id in a second `end` before the map_restart')
+  } else bad('the box never sent the new match id — every invite token the site just minted would be `wrong_match`')
+
+  const secondEnded = await waitFor('the second game to finish', () => (host.out.match(/SUMMARY /g) || []).length >= 2, 300_000)
+  if (secondEnded) ok('the second game played out on the same process and was refereed to the end')
+
+  const instAfter = (host.out.match(/start (sim|game) port/g) || []).length
+  if (instAfter === instBefore) ok(`still ${instAfter} process start(s) for two games — the instance really was reused`)
+  else bad(`the box started ${instAfter - instBefore} extra process(es); the warm instance was not reused`)
+
+  const g2 = await waitFor('the second game row', async () => {
+    const r = await leader.call(`/api/games/${match2}`)
+    return r && (r.game || r.id) ? r : null
+  }, 60_000)
+  if (g2) ok(`the site holds a second game row for ${match2}`); else bad(`no game row for ${match2}`)
+
   step('6. what the site now holds')
   const g = await waitFor('the game row', async () => {
     const r = await leader.call(`/api/games/${matchId}`)
@@ -283,8 +336,10 @@ try {
   const dir = path.join(RUN, 'replays')
   const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((x) => x.endsWith('.enwr')) : []
   if (!files.length) bad(`no replay in ${dir} — our box wrote nothing, so the game above was somebody else's`)
+  const byMatch = new Set()
   for (const f of files) {
     const full = path.join(dir, f)
+    byMatch.add(f.replace(/\.enwr$/, ''))
     const key = JSON.parse(fs.readFileSync(path.join(BOX_KEYS, `host-${BOX}.json`), 'utf8'))
     const plain = verifyFile(full)
     const pinnedCheck = verifyFile(full, { expectPub: key.pub })
@@ -293,6 +348,34 @@ try {
     const wrong = verifyFile(full, { expectPub: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' })
     if (!wrong.ok) ok('and it correctly FAILS against a key that is not the pin'); else bad('it verified against the wrong pinned key')
   }
+  // TWO replays, one per lease, from ONE game process — and the second one's signed
+  // container names the second match, which is the thing `end`.`match` exists to make true.
+  if (byMatch.has(matchId) && byMatch.has(match2)) {
+    ok(`two signed replays from one process: ${matchId} and ${match2}, each naming its own lease`)
+  } else bad(`expected a signed replay per lease; got [${[...byMatch].join(', ')}]`)
+
+  // THE IDENTITY ROWS, read out of the SIGNED FOOTER rather than the site's API — the
+  // footer is the summary the box posted, inside the evidence, covered by the signature.
+  // `/api/games/:id` does not hand `summary_json` back to a caller, and this is a better
+  // place to check it from in any case.
+  const rep1 = path.join(dir, `${matchId}.enwr`)
+  const footerSummary = fs.existsSync(rep1) ? (readFooter(rep1).footer || {}).summary : null
+  if (footerSummary && Array.isArray(footerSummary.players)) {
+    for (const pl of footerSummary.players) info(`identity ${String(pl.identity).padEnd(9)} ${String(pl.name).padEnd(12)} steamid=${pl.steamid || '-'} claimed=${pl.claimed_steamid || '-'}`)
+    const ver = footerSummary.players.filter((x) => x.identity === 'verified')
+    const unver = footerSummary.players.filter((x) => x.identity !== 'verified')
+    if (ver.length >= 2 && ver.every((x) => x.steamid)) ok('every VERIFIED row carries its steamid into the signed, posted result')
+    else bad(`expected 2 verified rows with steamids, got ${ver.length}`)
+    if (unver.length && unver.every((x) => !x.steamid)) ok(`and the ${unver.length} unverified row(s) carry NO steamid — attendance, not an account`)
+    else if (!unver.length) bad('the refused gatecrasher never reached the result at all; a refusal must still be recorded')
+    else bad('an unverified row carried a steamid into the result')
+  } else bad(`could not read the summary out of ${matchId}.enwr`)
+
+  // ...and the site agreed: no account, so no player row, so nothing credited.
+  const seated = await leader.call(`/api/games/${matchId}`)
+  const rows = seated.players || seated.game?.players || []
+  if (rows.length === 2) ok('the site seated exactly the 2 verified players — the refused row earned nothing')
+  else bad(`expected 2 seated players at the site, got ${rows.length}`)
 
   step('8. spool and retry, against their /api/gs/spool')
   const fake = {

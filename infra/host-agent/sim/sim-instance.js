@@ -20,6 +20,9 @@
 //                        unavailable" — the instance must be torn down, never reused)
 // --no-match-end         report the result and then say nothing about being idle, the way
 //                        every server did before match_end existed
+// --gatecrash            seat one EXTRA player at the start with no invite token, so a box
+//                        that is enforcing has something to refuse. Their row still reaches
+//                        the result — with no account on it, which is the whole rule
 // --stdout               no socket; print NDJSON (handy for eyeballing the stream)
 import net from 'node:net'
 import { ZombiesSim, TICK_MS } from './engine.js'
@@ -53,6 +56,9 @@ const sim = new ZombiesSim({
   maxRound: Number(a['max-round'] ?? process.env.ENW_SIM_MAX_ROUND ?? 15),
   endFails: !!a['end-fails'] || process.env.ENW_SIM_END_FAILS === '1',
   noMatchEnd: !!a['no-match-end'] || process.env.ENW_SIM_NO_MATCH_END === '1',
+  // The lease this process was started for. The real referee reads exactly this variable,
+  // once, at process start (game-link-v0 `end`.`match`).
+  matchId: process.env.ENW_MATCH || a.match || null,
   eeRound: a['ee-round'] ? Number(a['ee-round']) : null,
   buyableEndingRound: a['ending-round'] ? Number(a['ending-round']) : null,
 })
@@ -121,6 +127,11 @@ function run() {
   send({ t: 'map_loaded', ms: 0, map: sim.map, fs_game: sim.fsGame, mode: 'zombies', sv_maxclients: 4 })
 
   seatRoster()
+  // The gatecrasher joins with the lobby, not late: a late join flags the whole game
+  // no-records (vault 4.4) and this is a test of IDENTITY, not of the late-join rule.
+  if (a.gatecrash) {
+    sim.connectPlayer({ slot: nPlayers, name: 'Gatecrasher', steamid: '76561190000000009', token: 'not.a.real.token' })
+  }
 
   if (a['late-join-ms']) {
     const at = Number(a['late-join-ms'])
@@ -167,20 +178,34 @@ function run() {
   // `map_loaded`; on a real server the clients are still connected through a map_restart,
   // so the same roster comes back with it. After the last game they do not, and the
   // process sits there idle — which is the state the host has to notice and clean up.
-  sim.on('restart', ({ reason, roster: back }) => {
-    if (sim.games >= maxGames) {
-      console.error(`[sim ${instance}] map_restart (${reason}) — ${sim.games} game(s) played, nobody rejoins; staying idle`)
+  sim.on('restart', ({ reason, roster: back, matchId, simRoster }) => {
+    // A WARM SERVER HAS NO LEASE AND ADMITS NOBODY. The referee clears its match id on
+    // every reset, so until the host tells it the next one (`end`.`match`) every invite
+    // token is `wrong_match` — and there is nothing for anyone to be admitted TO. That is
+    // what keeps a reused instance idle between leases instead of immediately replaying
+    // the same party under a match id the site never issued.
+    if (!matchId) {
+      console.error(`[sim ${instance}] map_restart (${reason}) — no match id: WARM and idle, admitting nobody`)
       return
     }
-    console.error(`[sim ${instance}] map_restart (${reason}) — ${back.length} player(s) still connected, next match starting`)
-    setTimeout(() => seatRoster(back), 50)
+    if (sim.games >= maxGames) {
+      console.error(`[sim ${instance}] map_restart (${reason}) — ${sim.games} game(s) played, staying idle`)
+      return
+    }
+    // `simRoster` is the next party and its invite tokens, handed over in the `end`
+    // message. It is a SIMULATOR-ONLY affordance and the real DLL ignores it: a real
+    // client brings its own token in its userinfo when it connects, so the real server
+    // needs nothing but the match id to check it against.
+    const seat = simRoster && simRoster.length ? simRoster : back
+    console.error(`[sim ${instance}] map_restart (${reason}) — match ${matchId}, seating ${seat.length} player(s)${simRoster ? ' from the new lease' : ' still connected'}`)
+    setTimeout(() => seatRoster(seat), 50)
   })
 }
 
 /** Seat the lobby: the leased roster on a cold boot, whoever survived the map_restart after. */
 function seatRoster(back = null) {
   if (back) {
-    for (const r of back) sim.connectPlayer({ slot: r.slot, name: r.name, steamid: r.steamid, token: r.token ?? null })
+    for (const r of back) sim.connectPlayer({ slot: r.slot, name: r.name, steamid: r.steamid, token: r.token ?? null, party_slot: r.party_slot ?? r.slot })
     return
   }
   for (let i = 0; i < nPlayers; i++) {
@@ -191,6 +216,7 @@ function seatRoster(back = null) {
       steamid: r.steamid || undefined,
       afk: r.afk ?? (a['afk-slot'] != null && Number(a['afk-slot']) === i),
       token: r.token ?? tokens[i] ?? null,
+      party_slot: r.party_slot ?? i,
     })
   }
 }

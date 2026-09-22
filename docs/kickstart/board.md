@@ -4709,3 +4709,27 @@ the live site, instance warm again.**
   other 2,270 maps. `/maps` and home are still two map browsers — closer than they were, same rows,
   same card, same entry text, but still two. Global chat still has no page. Collections have no
   drag-reorder: `reorder()` exists server-side and nothing calls it.
+
+- 16:20 host: **the referee's two new rows are in on this side** (`bd3bd59`, `game-link-v0`).
+  (1) **`identity` travels and `steamid` does not, unless somebody checked it.** TokenGuard's answer
+  sets it — a real check is `verified`, `token_check_disabled` is an *admission, not a check* and
+  promotes nothing, a deny is `refused` — and `summary()` is the single gate on the way out. An
+  unverified row still posts (name, score, `identity`, `identity_reason`, `claimed_steamid`) and the
+  site writes it into `summary_json` and creates **no `game_players` row**, so nothing is credited
+  to an account nobody checked. No site change was needed.
+  (2) **`end` carries the next match id.** The reuse that follows a game sends **no** `match` —
+  there is no next lease and the referee's own rule is that a stale id refuses everybody — and
+  `rebind()` sends a second `end` with `match` when a lease actually arrives. A warm instance that
+  will not take its new match id is torn down and a fresh one booted. `host.md` 12.10.
+- 16:20 host: **a warm instance took a SECOND lease, and §12.9's third bullet is half retracted.**
+  `integration-site` on a fresh DB: **36 checks, 0 failures** — `inst-01 took it WARM — no process
+  start, no map load`, `still 1 process start(s) for two games`, and **two signed replays from one
+  process, each naming its own lease**. Identity read out of the signed footer:
+  `[Leader verified 7656…001] [Mate verified 7656…002] [Gatecrasher refused null]`, and the site
+  seated exactly the two. Still unproven: a different *party* on a warm instance (needs real
+  clients), and `claimed` end to end — a real box always checks, so it cannot produce one; it is a
+  unit check in `run-all.js` (now **46 passed, 0 failed**) and that is the honest place for it.
+- 16:20 host: one fudge, marked as such at both ends. `end` also carries **`sim_roster`** — the next
+  party and their tokens — because the **simulator invents its players** and has to be handed them.
+  A real DLL ignores it under the protocol's "unknown fields are ignored by both sides" rule and
+  needs nothing but `match`: a real client brings its own token in its userinfo when it connects.

@@ -106,6 +106,12 @@ export class ZombiesSim extends EventEmitter {
     this.gone = []                                 // players who left mid-match
     this.dead = false                              // the process is finished, not just the game
     this.endFails = !!opts.endFails                // model `reply.ok:false` on `end`
+    // THE LEASE THIS PROCESS IS SERVING. The referee reads it from ENW_MATCH once at
+    // process start and clears it on every reset, so a warm instance serving a match the
+    // process never heard of has to be TOLD, in the `end` message, before the map_restart
+    // (game-link-v0 `end`.`match`, referee.md §13.4). Null means "no lease": tokens bound
+    // to any match are `wrong_match`, which is the safe direction.
+    this.matchId = opts.matchId || null
     this.noMatchEnd = !!opts.noMatchEnd            // model a server that never says it is idle
     this.startedMs = 0
     this.loadedMs = 0
@@ -152,6 +158,13 @@ export class ZombiesSim extends EventEmitter {
       lastInputState: null,
       lastInputMs: -99999,
       authed: spec.token == null,                  // no token flow => already in
+      // WHAT THIS PLAYER'S ACCOUNT IS WORTH (game-link-v0 `player_connect`.`identity`,
+      // referee.md §13.2). `none` = no token at all; `claimed` = a token was presented and
+      // parsed and NOTHING has checked the signature; `verified` = the host answered
+      // `auth allow:true` after a real check; `refused` = the host said no.
+      identity: spec.identity || (spec.token != null ? 'claimed' : 'none'),
+      identityReason: null,
+      partySlot: spec.party_slot ?? null,
     }
     this.players.set(slot, p)
     return p
@@ -160,7 +173,15 @@ export class ZombiesSim extends EventEmitter {
   /** A client connecting: announce it and (if it presented a token) wait for `auth`. */
   connectPlayer(spec) {
     const p = this.addPlayer(spec)
-    this.emitEv({ t: 'player_connect', slot: p.slot, name: p.name, steamid: p.steamid, ...(p.token ? { token: p.token } : {}) })
+    this.emitEv({
+      t: 'player_connect', slot: p.slot, name: p.name,
+      // `steamid`/`xuid` carry the id the SITE put in the invite token. It is sent on
+      // `player_connect` even when only `claimed`, because the host needs it to decide;
+      // what it must NOT do is reach the RESULT unchecked, and that gate is in `endGame`.
+      steamid: p.steamid, xuid: p.steamid,
+      identity: p.identity, ...(p.partySlot != null ? { party_slot: p.partySlot } : {}),
+      ...(p.token ? { token: p.token } : {}),
+    })
     if (p.token != null) this.pendingAuth.set(p.slot, p)
     else this.spawnPlayer(p)
     return p
@@ -177,7 +198,11 @@ export class ZombiesSim extends EventEmitter {
   disconnectPlayer(slot, reason) {
     const p = this.players.get(slot); if (!p) return
     // Keep the row: "a player who left mid-match still gets a row" (referee.md 10.2).
-    if (p.authed) (this.gone || (this.gone = [])).push({ slot: p.slot, name: p.name, steamid: p.steamid, score: p.score, score_total: p.scoreTotal, downs: p.downs, revives: p.revives })
+    ;(this.gone || (this.gone = [])).push({
+      slot: p.slot, name: p.name, identity: p.identity, identity_reason: p.identityReason,
+      ...(p.identity === 'verified' ? { steamid: p.steamid } : {}),
+      score: p.score, score_total: p.scoreTotal, downs: p.downs, revives: p.revives,
+    })
     this.players.delete(slot)
     this.zombies = this.zombies.filter((z) => z.target !== slot)
     this.emitEv({ t: 'player_disconnect', slot, reason })
@@ -572,7 +597,14 @@ export class ZombiesSim extends EventEmitter {
     this.over = true
     this.endedMs = this.ms
     const players = [...this.players.values()].map((p) => ({
-      slot: p.slot, name: p.name, steamid: p.steamid, connected: true,
+      slot: p.slot, name: p.name, connected: true,
+      // **A `steamid` appears on a row here ONLY when `identity` is `verified`** — the one
+      // message a host may post a result from must not carry an account nobody checked
+      // (game-link-v0 `game_over`, referee.md §13.2). The name is attendance; the id is a
+      // claim on somebody's leaderboard.
+      identity: p.identity, identity_reason: p.identityReason,
+      ...(p.identity === 'verified' ? { steamid: p.steamid } : {}),
+      ...(p.partySlot != null ? { party_slot: p.partySlot } : {}),
       score: p.score, score_total: p.scoreTotal,
       downs: p.downs, revives: p.revives, alive: !!p.alive && !p.down,
     }))
@@ -616,7 +648,7 @@ export class ZombiesSim extends EventEmitter {
    * `endFails` models the one failure the contract names: `reply.ok:false` means the
    * command buffer was unavailable and the instance MUST NOT be reused.
    */
-  restart(reason = 'map_restart') {
+  restart(reason = 'map_restart', matchId = null) {
     if (this.endFails) return false
     const roster = [...this.players.values()].map((p) => ({ slot: p.slot, name: p.name, steamid: p.steamid, token: p.token }))
     this.players.clear()
@@ -638,9 +670,14 @@ export class ZombiesSim extends EventEmitter {
     this.phase = 'loading'
     this.startedMs = this.ms
     this.loadedMs = this.ms
+    // The referee CLEARS the lease id rather than keep the finished match's — a stale id
+    // refuses every legitimate token with `wrong_match`, which is the worse failure
+    // (referee.md §13.4). So does this.
+    this.matchId = matchId || null
     this.emitEv({ t: 'log', level: 'info', msg: 'map_restart (' + reason + ')' })
     this.emitEv({ t: 'map_loaded', map: this.map, fs_game: this.fsGame, mode: 'zombies', sv_maxclients: 4 })
-    this.emit('restart', { reason, roster })
+    this.emit('restart', { reason, roster, matchId: this.matchId, simRoster: this.pendingSimRoster || null })
+    this.pendingSimRoster = null
     return true
   }
 
@@ -658,8 +695,18 @@ export class ZombiesSim extends EventEmitter {
         const p = this.pendingAuth.get(cmd.slot)
         this.pendingAuth.delete(cmd.slot)
         if (!p) break
-        if (cmd.allow) this.spawnPlayer(p)
-        else { this.players.delete(cmd.slot); this.emitEv({ t: 'player_disconnect', slot: cmd.slot, reason: `auth: ${cmd.reason || 'denied'}` }) }
+        p.identityReason = cmd.reason || null
+        if (cmd.allow) {
+          // `token_check_disabled` is what TokenGuard answers when it holds no site key or
+          // is not enforcing. That is not a check and must not promote a claim to a
+          // verified account (game-link-v0 `auth`, referee.md §13.3).
+          if (cmd.reason !== 'token_check_disabled') p.identity = 'verified'
+          this.spawnPlayer(p)
+        } else {
+          p.identity = 'refused'
+          // A refused player still gets a row in the result — with no account on it.
+          this.disconnectPlayer(cmd.slot, `auth: ${cmd.reason || 'denied'}`)
+        }
         break
       }
       // `end` is BOTH "end this game now" and the answer to `match_end`. If the match had
@@ -667,9 +714,20 @@ export class ZombiesSim extends EventEmitter {
       // complete record instead of a hole), and then the map restarts. `reply.ok:false`
       // means the command buffer was unavailable and the host must tear the instance down.
       case 'end': {
-        if (!this.over) this.endGame(cmd.reason || 'host_end')
-        const restarted = this.restart(cmd.reason || 'host end')
-        this.reply(cmd, restarted, undefined, restarted ? undefined : 'command buffer unavailable')
+        const ok = !this.endFails
+        // Report the result first — but only if a match had actually STARTED. `end` is
+        // also how a warm instance is told its next lease id, and an instance that has
+        // never seen a round has no result to report; emitting one would post a game
+        // nobody played.
+        if (ok && !this.over && this.round > 0) this.endGame(cmd.reason || 'host_end')
+        this.reply(cmd, ok, undefined, ok ? undefined : 'command buffer unavailable')
+        // `sim_roster` is a SIMULATOR-ONLY field and a real DLL ignores it, which the
+        // protocol's "unknown fields are ignored by both sides" rule guarantees. It exists
+        // because the sim INVENTS its players and so has to be handed the next party's
+        // invite tokens; real clients bring their own when they connect, and the real DLL
+        // needs nothing but `match`.
+        this.pendingSimRoster = Array.isArray(cmd.sim_roster) ? cmd.sim_roster : null
+        if (ok) this.restart(cmd.reason || 'host end', cmd.match || null)
         break
       }
       case 'snapshot_state': this.reply(cmd, true, this.restorableState()); break

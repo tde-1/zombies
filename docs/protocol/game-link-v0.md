@@ -81,6 +81,24 @@ leave open:
   the last event, by this table. The host carries it in the result instead
   (`summary.match_end`, `summary.reported`).
 
+**`identity` and `end`.`match`, host side (implemented 2026-09-22, `host.md` §12.10).**
+
+- **`summary()` is the single gate.** A `steamid` leaves the host and reaches `/api/gs/result` only
+  when `identity` is `verified`. Anything less posts the row without one — name, score, `identity`,
+  `identity_reason`, `claimed_steamid` — and the site writes it into `summary_json` and creates no
+  `game_players` row, so nothing is credited to an account nobody checked. The game's own row wins
+  over the host's fold where it sent one, because the game made the checks only it can make.
+- **`auth {allow:true, reason:"token_check_disabled"}` promotes nothing.** It is an admission, not
+  a check: it is what `TokenGuard` answers when it holds no site key or is not enforcing.
+- **The reuse that follows a game sends `end` with NO `match`.** There is no next lease yet, and a
+  stale id refuses every token with `wrong_match`. The host sends a **second `end`, carrying
+  `match`**, when a lease actually arrives — one extra `map_restart`, no process start, no map
+  load. An instance that will not take its new match id is torn down and a fresh one booted.
+- **`sim_roster` on `end` is a SIMULATOR-ONLY field** and a real DLL must ignore it (the rule above:
+  unknown fields are ignored by both sides). It hands the fake game the next party and their
+  tokens, because the simulator invents its players; a real client brings its own token in its
+  userinfo when it connects, so the real server needs nothing but `match`.
+
 **Reconciling `game_over`'s numbers with the host's own fold.** Both are *lower bounds* on a
 monotonic counter, so the host takes the larger. `game < host` is expected and honest — the game's
 figures are polls of script variables that read 0 when those are unbound (`referee.md` §10.2), and

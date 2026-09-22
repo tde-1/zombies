@@ -214,6 +214,12 @@ export class Referee extends EventEmitter {
       roundsPlayed: 0,
       lastInputMs: nowMs, afkWarned: false, afkKicked: false,
       pos: null, ang: null, health: 100, weapon: null,
+      // WHAT THIS PLAYER'S ACCOUNT IS WORTH (game-link-v0 `player_connect`.`identity`,
+      // referee.md §13.2). `steamid` above is what the connect claimed; `identity` decides
+      // whether it is allowed to reach the RESULT, and that gate is in `summary()`.
+      identity: ev.identity || (ev.token ? 'claimed' : 'none'),
+      identityReason: ev.identity_reason || null,
+      partySlot: ev.party_slot ?? null,
       tokenOk: ev.token ? null : false, // resolved by the host's TokenGuard
     }
     this.players.set(slot, p)
@@ -226,6 +232,19 @@ export class Referee extends EventEmitter {
       this.tell(slot, 'You joined a game in progress: no records or badges from this one.')
     }
     this.emptySinceMs = null
+  }
+
+  /**
+   * The host's TokenGuard has answered. `verified` is the ONLY value that lets a steamid
+   * out of `summary()` and onto somebody's leaderboard, and `token_check_disabled` — what
+   * TokenGuard says when it holds no site key or is not enforcing — deliberately does not
+   * grant it: that is not a check (game-link-v0 `auth`, referee.md §13.3).
+   */
+  setIdentity(slot, identity, reason = null) {
+    const p = this.players.get(slot); if (!p) return
+    p.identity = identity
+    p.identityReason = reason
+    if (identity === 'refused') p.steamid = null
   }
 
   ev_player_spawn(ev) {
@@ -648,8 +667,24 @@ export class Referee extends EventEmitter {
       this.creditAlive(p, endMs)
       const r = reportedFor(p) || {}
       const who = p.name || `slot${p.slot}`
+      // IDENTITY GATES THE ACCOUNT, and this is the only place it is enforced on the way
+      // out. The game's own row wins if it sent one, because the game is what decided
+      // whether the token survived its own checks (single use, bound to the lease, one
+      // account one slot — referee.md §13.4); ours is the fallback for a row it did not
+      // send. Anything short of `verified` posts with NO steamid: the site then records
+      // attendance in `summary_json` and creates no `game_players` row, so nothing is
+      // credited to an account nobody checked.
+      const identity = r.identity || p.identity || 'none'
+      const verified = identity === 'verified'
+      const claimed = r.steamid ?? p.steamid ?? null
       return {
-        slot: p.slot, steamid: p.steamid, name: p.name,
+        slot: p.slot,
+        steamid: verified ? claimed : null,
+        claimed_steamid: verified ? null : claimed,
+        identity,
+        identity_reason: r.identity_reason ?? p.identityReason ?? null,
+        party_slot: r.party_slot ?? p.partySlot ?? null,
+        name: p.name,
         // `score` is the HIGHEST WALLET the player held, which is what the boards have
         // always meant by score and what the site reads. The game's `score` is the wallet
         // at game over and its `score_total` is cumulative points EARNED — three
@@ -686,7 +721,13 @@ export class Referee extends EventEmitter {
         if (seen) continue
         mismatches.push(`slot${r.slot}: in the game's result, never seen on the link`)
         players.push({
-          slot: r.slot ?? null, steamid: r.steamid ?? null, name: r.name ?? null,
+          slot: r.slot ?? null,
+          steamid: r.identity === 'verified' ? (r.steamid ?? null) : null,
+          claimed_steamid: r.identity === 'verified' ? null : (r.steamid ?? null),
+          identity: r.identity || 'none',
+          identity_reason: r.identity_reason ?? null,
+          party_slot: r.party_slot ?? null,
+          name: r.name ?? null,
           score: Number(r.score) || 0, score_total: Number(r.score_total) || 0, kills: 0,
           downs: Number(r.downs) || 0, revives: Number(r.revives) || 0, bleedouts: 0,
           reported: { ...r }, folded: null,
