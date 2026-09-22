@@ -1,107 +1,69 @@
-# Where things stand — 2026-09-22, 01:30
+# Where things stand — 2026-09-23, morning
 
-> **This file is the current state of the code.** The design and the decision history live in the
-> Obsidian vault at `C:\Users\b\Desktop\shared-notes\ENW COD Zombies` — start there at
-> `19 - Build Log (what actually exists)`, which is the same story written for someone who has not
-> seen this repo. A new agent working in here should read `docs/kickstart/README.md`, then
-> `docs/kickstart/next-session.md`.
+> **This file is the current state of the code.** Design and decision history: the Obsidian vault at
+> `C:\Users\b\Desktop\shared-notes\ENW COD Zombies` (`19 - Build Log`). A new agent reads
+> `docs/kickstart/README.md`, then `docs/kickstart/next-session.md`. **Every lane doc has a dated
+> section for the night of 2026-09-22/23** — read the newest section of the lane you are in.
+
+## B: do this first (the morning checklist)
+
+1. **Install the launcher 0.2.1** from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
+   the feed is live). Sign in with Steam. It repairs the game-folder DLL on every Play now — the
+   "windowed at native size" you saw was a stale 0.1.x DLL that no update ever copied in.
+2. **Play Local on Nacht once.** Expect: borderless 2560x1440 covering the taskbar, 250 FPS cap,
+   vsync off, no dialogs, in the map in ~3 s. Map downloads work (8 of 10 refused before: a
+   launcher bug, fixed).
+3. **The mouse test, three one-minute runs** (`docs/kickstart/client.md` §1e): default;
+   `ENW_RAW_MOUSE=0`; `ENW_RAW_MOUSE_NOLEGACY=1`. Stutter is proven to be mouse-bound (p99 6 ms
+   without mouse input, 20–27 ms with your mouse). Which side of the input path costs it, only a
+   real high-rate mouse can tell — an agent cannot inject input at that rate.
+4. **Party game with a friend.** Home is now Movement's map browser: party panel on the left
+   (download bars, ready, Start), map list under it, the selected map fills the rest. Leader
+   Start → lease → the **Hetzner box** (online, 2 instances) → everyone's launcher follows.
+   Verified mode is the default. **Approved:** you, jamie, zeroh, stew, jacob, air, toku.
+   Give them the gate password and `/download`.
+5. **Replay viewer**: any finished game's page → replay. Nacht renders with full world geometry.
 
 ## The headline
 
-**A real client now connects to the headless dedicated server and spawns into the game**, and the
-referee logs `ROUND 1`. That was the milestone the whole Stage C estimate hung on and it was
-written down yesterday as "2–4 days away". Reproduced in **seven** runs, `join12` to `join18` —
-every join run since it first worked has both lines in its server log.
+**The dedicated server survives a player now.** Three walls fell tonight, each proven with real
+client runs: a 128 KB temp-memory leak per client message (`temp_stack_guard.cpp`), then the real
+one — **an access violation once per frame in the water simulation**, whose buffers only the
+renderer allocates; every frame unwound out of `Com_Frame` while `getstatus` kept answering, which
+is why every earlier "proof" passed (`watersim_pool.cpp`, plus `no_save_reload.cpp` at game over).
+**join65/join66: 300 s each, five gates, through game over, 4–6 % of a core.** The proof harness
+now has a fifth gate (`com_frameTime` advancing) so a dead server can never pass again.
 
-```
-Going from CS_CONNECTED to CS_CLIENTLOADING for anna-jpg
-Going from CS_CLIENTLOADING to CS_ACTIVE for anna-jpg
-referee: ROUND 1 (all_players_connected)
-```
+## What exists now (all committed, nothing pushed)
 
-Under three seconds from connect to spawned. Nothing new had to be patched to get there — the five
-engine walls cleared yesterday were the whole of it, and `join11`'s "Server connection timed out"
-was the *client* giving up while the server was fine.
-
-**And the server does not survive it.** About ten seconds after the player spawns the frame loop
-stops: `frame::count` frozen, CPU pegged at a whole core. Pegged, not idle, so it is a spin rather
-than a wait. That is the one thing between here and a playable dedicated game.
-
-Those two pages named at the top: `README.md` has the hard rules and says which doc belongs to
-which lane; `next-session.md` has the one next task, the command that reproduces this state, which
-logs to read and the traps. `docs/kickstart/board.md` ends with what is open right now.
-
-## The two things to do next
-
-1. **Run `infra\firewall.ps1` once, elevated.** It stops Windows asking to allow the game every
-   time an agent makes a new dev copy. One UAC prompt, and `-Remove` undoes it.
-2. **Install `launcher\dist\ENW-Zombies-Launcher-Setup-0.1.0.exe` and press Install the ENW
-   client**, then `TESTME.md`: Play Local on Nacht der Untoten, past round 1,
-   `node launcher\tools\last-run.js`. Still the MVP's last unverified step, and it needs a human.
-
-## Fixed today
-
-| | |
+| Lane | Tonight |
 |---|---|
-| The site and the tunnel were **both down** | The watchdog had died with the previous session. Restarted; it is holding |
-| The **level-start autosave hangs a dedicated server** | No profile to save into, so the save never completes, so the level script asks again every frame. 195 attempts in join13 before the frame loop stopped. Now dropped at the drain, dedicated only |
-| `--game` **never passed `+set dedicated 1`** | Every "real game" the host agent had ever launched was a windowed single-player game wearing a server's name |
-| `+map` came **before** `+set net_port` | The port was set on a server already listening on 28960 |
-| The join harness never passed **`com_maxfps`** | So every join run measured a server free-running at ~237 Hz and "burning a core". It holds a flat 61 Hz now |
-| `--timescale` **under-ran by 2.5×** | `setInterval(6)` fires at 15.65 ms on Windows. An 8-round game took 116 s against an 80 s deadline |
-| `integration-site` only ever ran against a **hand-curated DB** | On a fresh site the second player is not approved and three more checks fell behind it. The site was right |
-
-## Proven today, with evidence
-
-- **A box goes online and the Play button lights up.** `boxes.list().some(b => b.online) === true`,
-  key pinned, `/api/launcher/hello` → `"play": true`. This needed no code change; it had simply
-  never been run against a site with a live box.
-- **A real headless game instance, started and stopped by the host agent**, answering `getstatus`
-  and `getchallenge` on the wire, lock released, only its own PID killed.
-- **First honest per-game cost: 0.050 of a core, 185 MiB, 13 threads**, with no players. Two
-  independent methods agree.
-- **The result path, end to end on a fresh database**: party → lease → boot → invite tokens (a
-  forged one refused) → referee → signed replay → result → game row, XP, home feed. 20 checks.
-- **Two headless servers run at once.** `dedi.md` §9.2 was wrong about UDP 3074 — the engine falls
-  back to 3075. The one-game-per-box limit is ours, not the engine's.
-
-## Corrections to things this repo said
-
-- **T4 has no `CS_PRIMED`.** Every note said `CS_CONNECTED → CS_PRIMED → CS_ACTIVE`; that is Quake 3
-  and CoD 4. T4's middle state is **`CS_CLIENTLOADING`**. The numbers are the same, only the name
-  was wrong — and a wrong name sends you looking for a function that does not exist.
-- **The server was never burning a whole core.** The pacing patch was in; nothing was passing a
-  frame cap.
-- **`ENW_PRIVATE_PROFILE` does not work** and is not needed. An empty private profile tree makes
-  the engine raise `Exceeded limit of 1 'snddriverglobals' assets` and then answer nothing.
-  Reproduced three times. Leave it off.
-- **My own first autosave fix was wrong.** It reported the save as done, which sent the engine to
-  commit a buffer nothing had filled (`Attempting to commit an invalid save buffer`). Lying to an
-  engine about a thing it is about to use only moves the failure somewhere with a worse message.
+| **web** | Home = Movement's map browser, party panel left, no right rail, map-tinted background; profiles from Movement; **all demo data wiped** (backup `web/data/backup-20260922-033847Z/`); Steam-only sign-in; 7 approvals; `POST /api/party/:id/progress`; `/download`; deployed, tunnel verified |
+| **launcher** | 0.2.1 live on the feed (`/updates/`): borderless-native baseline + 13 bundled config fixes, config seeding + read-back round trip, party download progress, follow-the-leader launch, DLL hash-repair on Play, map-install ownership fix |
+| **client-dll** | `mouse_polling` (iw4x raw input port), `borderless` (Borderless-Gaming technique), `frametime` (`ENW_FRAMETIME=1`), opt-in `ENW_RAW_MOUSE_NOLEGACY=1` |
+| **dedi** | `temp_stack_guard`, outer pacing loop (60 Hz, 1.4 %), `watersim_pool`, `no_save_reload`, `big_heap`, harness gate 5, `maptest.ps1`. Der Berg boots; a NULL-dvar read at 5.6 s is being fixed now |
+| **vps** | Box `zombies-dev` runs **B's English game copy** (SteamStub checks the app, not the depot; the account is German-region, low-violence only). Host agent as `enw-host-agent` systemd, `--wine`, **registered, online, max 2 instances** (3074/3075 is the ceiling). 0.30 core / 301 MB per instance. €7.19/mo, nothing else rented |
+| **archive** | 14 customs: latest versions confirmed, cover art, descriptions, authors, endings evidence, imported; next-20 list in `ZombiesDev\archive\reports\next20.json` |
+| **replay** | Movement's viewer ported (`/replay/:matchId`): timeline, cams, points/round/downs, round ticks; Nacht exported via OpenAssetTools + Husky, 37.8 MB GLB with world shell; first real signed replay `m_e455d4ba` from the box |
 
 ## Known and unfixed
 
-- **The frame loop stops ~10 s after a player spawns.** The one blocker. CPU pegged, so a spin.
-  `where_is_main.cpp` cannot see it — with the sampler on, the server *died* instead of freezing,
-  so the instrument changes the outcome. Next attempt: a dump from outside the process.
-- **A second failure mode, seen twice**: `exceeded maximum number of script variables`, raised
-  2,151 times, while every category the engine itself reports stays flat at ~2,300 variables and
-  223 entities. The allocator refuses where the accounting says there is room.
-- **No player has ever been in a host-agent game.** Every round count and replay body outside the
-  join tests is still the simulator.
-- **Only stock `nazi_zombie_prototype` is playable.** Three custom maps install, load and render,
-  and their server script dies with three different GSC errors. Still unresolved whether the maps
-  are broken or we load them wrong — so no map is marked `broken` on the site.
-- **Round detection past round 1 is unproven.** An unattended game never advances.
-- The **client install** is still unverified on B's real machine. Agents run inside an MSIX
-  container where `%LOCALAPPDATA%` writes are redirected, so nothing an agent "verified" there
-  counts. `npm run smoke` now detects the redirection.
+- **Custom maps on the dedicated server**: an agent is on it now. Der Berg (NULL dvar), Zombie
+  Desert + Project Viking (`fs_game is write protected` — ours), Leviathan (`napalmblob`), MW2 Rust
+  and Clinic (`undefined is not an array`). Stock maps work.
+- **Game over on a dedicated server does nothing yet** (same agent): result event, stop replay,
+  tell the host agent. Round 2 unproven without a player killing things.
+- **The Hetzner box runs the pre-fix DLL until the deploy lands** (in progress).
+- **Mouse stutter**: fix built, unproven; B's three runs decide.
+- **`wait_for_first_player()`** never fires on a dedicated server; `all_players_connected` does.
+- 2,270 archive maps have no cover; global chat has no page since the rail went; `/maps` is a
+  second browser; neither repo has a LICENSE file (decide before any public push).
 
-## Waiting on a decision
+## Traps learned tonight (already in the lane docs)
 
-- **One game per box, or several?** The engine allows several; the host agent allows one because
-  every instance shares a game copy, a homepath and the lock. Not on the MVP path — recommend
-  deferring.
-- **Solo on a dedicated server runs co-op rules** (revives, prices, health scaling). A solo run
-  hosted by us is therefore not comparable to a solo run on your own PC. That is a records
-  decision, not a bug.
+- The shared git index: agents must `git commit --only <paths>`; two commits tonight carry another
+  lane's diff (`5b3bd00`), content intact.
+- `getstatus` answering proves nothing about simulation. Gate 5 exists for this.
+- `SendInput` at 8 kHz is silently discarded on this box; only a real mouse tests the mouse path.
+- `kill -9` on the box leaves `__CoDWaW` and hangs the next launch; the Wine path clears it.
+- Steam's German-region accounts get depot 10097; `download_depot` of 10092 → missing license.
