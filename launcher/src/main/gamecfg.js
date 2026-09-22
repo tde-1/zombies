@@ -404,6 +404,50 @@ export function configPaths(homeDir = P.home, profile = PROFILE, localAppData = 
   }
 }
 
+// ------------------------------------------------ the profile IS the name --
+//
+// 0.2.10, B: "my name in game shows as ENW". It was the PROFILE. With a named profile
+// active, World at War sends the profile's name as the userinfo `name` and ignores the
+// `name` dvar: B's dedi connects (zombies-dev, 2026-09-22 18:20Z/18:26Z/18:28Z) all read
+// `player_connect slot 0 name='enw'` although his command line carried `+set name myu`,
+// `name_pin` had pinned `myu`, and the profile's own config.cfg said `seta name "myu"`.
+// The dedi counted 0 userinfo commands, so the client never sent `myu` at all. Same
+// shape as referee.md §14.4, where B's `anna-jpg` profile beat `+set name spoofer`.
+// Only the engine's `$$$` ("no profile") state honours the dvar (15:45 run: 'Unknown
+// Soldier', the dvar's stock value). So the active profile is named after the ENW
+// name: a first launch copies the current profile (binds, settings, mpdata) into
+// `profiles/<name>/`, and active.txt points at it. A second account on the same PC
+// gets its own profile the same way.
+const RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)$/i
+export function profileNameFor(name) {
+  const s = String(name || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim().replace(/[. ]+$/, '').slice(0, 31)
+  if (!s || RESERVED.test(s)) return null
+  return s
+}
+
+export function usePlayerProfile({ homeDir = P.home, name, localAppData = null } = {}) {
+  const profile = profileNameFor(name)
+  if (!profile) return { changed: false, profile: null, reason: 'no usable ENW name; the profile is left as it is' }
+  const engineProfiles = path.join(localAppData || path.join(homeDir, 'localappdata'), ...LOCALAPPDATA_SUFFIX, 'players', 'profiles')
+  const current = activeProfile(engineProfiles, null)
+  const dir = path.join(engineProfiles, profile)
+  const cfgFile = path.join(dir, 'config.cfg')
+  let copiedFrom = null
+  if (!fs.existsSync(cfgFile)) {
+    const from = [current, PROFILE, '$$$'].find((c) => c && c.toLowerCase() !== profile.toLowerCase() && fs.existsSync(path.join(engineProfiles, c, 'config.cfg')))
+    fs.mkdirSync(assertWritable(dir), { recursive: true })
+    if (from) { fs.cpSync(path.join(engineProfiles, from), dir, { recursive: true, force: false, errorOnExist: false }); copiedFrom = from }
+  }
+  // The dvar too, so the in-game menu agrees with the profile.
+  try {
+    const text = fs.readFileSync(cfgFile, 'utf8')
+    if (text.trim()) fs.writeFileSync(assertWritable(cfgFile), mergeConfigCfg(text, [['name', profile]], []))
+  } catch {}
+  const changed = current !== profile
+  fs.writeFileSync(assertWritable(path.join(engineProfiles, 'active.txt')), profile)
+  return { changed, profile, previous: current, copiedFrom, dir }
+}
+
 export function seedState(homeDir = P.home, profile = PROFILE) {
   try { return JSON.parse(fs.readFileSync(configPaths(homeDir, profile).stamp, 'utf8')) } catch { return null }
 }

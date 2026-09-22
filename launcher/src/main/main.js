@@ -263,6 +263,23 @@ function showSite(visible) {
   if (!state.siteView) return
   state.siteView.setVisible(visible)
   if (visible) layout()
+  shellStrip(!visible)
+}
+
+// THE SHELL'S STRIP MUST NOT EXIST WHILE THE SITE SHOWS (0.2.10, B: "I can't click on
+// any stuff on the nav bar"). On Windows the frameless window's WM_NCHITTEST answers
+// from the BrowserWindow's OWN webContents' drag regions first -- the shell -- even
+// where the site's WebContentsView covers it. The shell's `#chrome` strip is a 62 px
+// `-webkit-app-region: drag` bar under the site's nav, so every site control that did
+// not happen to sit over one of the strip's own no-drag buttons (Maps, Records, the
+// logo, Sign in, the account menu) answered HTCAPTION and the click became a window
+// drag. Measured with WM_NCHITTEST on a real window: Maps/Records/logo = 2 (caption),
+// the search box = 1 only because the strip's "Back" button is under it. Hiding the
+// strip (display:none, a layout change -- an app-region style change alone was NOT
+// re-sent) hands the hit test to the site's own regions. docs/kickstart/launcher.md.
+function shellStrip(on) {
+  const js = `document.documentElement.classList.toggle('site-shown', ${on ? 'false' : 'true'})`
+  try { state.win?.webContents.executeJavaScript(js).catch(() => {}) } catch {}
 }
 
 async function createWindow() {

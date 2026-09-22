@@ -96,6 +96,10 @@ code { font-family: var(--mono); font-size: 12px; color: var(--bone-dim); word-b
   -webkit-app-region: drag;
 }
 #chrome button { -webkit-app-region: no-drag; }
+/* While the site shows, the strip is GONE, not merely covered: its drag region would
+   otherwise win the window's hit test over the site's nav (0.2.10). main.js showSite()
+   toggles `html.site-shown`; display:none is what makes Chromium re-send the regions. */
+html.site-shown #chrome { display: none; }
 .lockup { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; margin-right: 10px; }
 .lockup .enw { font-weight: 800; font-size: 17px; letter-spacing: .08em; color: var(--text); }
 .lockup .zm { font-weight: 600; font-size: 7.5px; letter-spacing: .42em; color: var(--text); margin-top: 2px; }

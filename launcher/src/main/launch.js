@@ -20,7 +20,7 @@ import { P, ensureDirs, isInside, protectedRoots, dirOfModule, unpacked } from '
 import { MOD_NAME } from './setup.js'
 import * as lock from './gamelock.js'
 import { listDisplays, pickDisplay } from './display.js'
-import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, PROFILE } from './gamecfg.js'
+import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, usePlayerProfile, PROFILE } from './gamecfg.js'
 import * as settings from './settings.js'
 
 // PACKAGED TRAP: this is handed to powershell.exe, which is not us and cannot read
@@ -368,6 +368,17 @@ export class GameLaunch extends EventEmitter {
       // 800x600 muted on the command line, and seeding a config.cfg (or reading one
       // back) from a dev run would put 800x600 into the player's account.
       this.playerMode = (o.windowMode || (o.stealth ? 'offscreen' : 'player')) === 'player'
+      // The in-game name is the PROFILE's name, not the `name` dvar (0.2.10; gamecfg.js
+      // usePlayerProfile). Before the seed, so the seed and the read-back follow it.
+      if (this.playerMode) {
+        try {
+          const pr = usePlayerProfile({ homeDir, name: o.playerName || settings.session().name || '' })
+          if (pr.profile && pr.changed) this.note(`player profile: now '${pr.profile}' (was '${pr.previous ?? 'none'}'${pr.copiedFrom ? `, binds and settings copied from '${pr.copiedFrom}'` : ''}) -- World at War shows the profile's name in game`)
+          else if (!pr.profile) this.note(`player profile: ${pr.reason}`)
+        } catch (e) {
+          this.note(`player profile: could not switch to the ENW name (${e.message}); the game will show the current profile's name`)
+        }
+      }
       try {
         if (!this.playerMode) throw new Error('dev window mode: no baseline is seeded')
         const seed = seedHome({ homeDir, profile: o.profile || PROFILE, settings: o.settings || {}, display, force: !!o.reseed })

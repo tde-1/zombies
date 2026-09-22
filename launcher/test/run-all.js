@@ -1867,6 +1867,37 @@ await test('a deep link still routes while its window raise is deferred', () => 
 
 // ---------------------------------------------------------------------------
 
+await test('0.2.10: the active profile is named after the ENW name (World at War shows the profile name)', () => {
+  const home = path.join(paths.P.root, 'profile-home')
+  const profs = path.join(home, 'localappdata', 'Activision', 'CoDWaW', 'players', 'profiles')
+  fs.mkdirSync(path.join(profs, 'enw'), { recursive: true })
+  fs.writeFileSync(path.join(profs, 'enw', 'config.cfg'), 'unbindall\r\nbind W "+forward"\r\nseta name "Unknown Soldier"\r\nseta cg_fov "65"\r\n')
+  fs.writeFileSync(path.join(profs, 'enw', 'mpdata'), 'x')
+  fs.writeFileSync(path.join(profs, 'active.txt'), 'enw')
+  const r = gamecfg.usePlayerProfile({ homeDir: home, name: 'myu' })
+  assert.equal(r.profile, 'myu'); assert.equal(r.changed, true); assert.equal(r.copiedFrom, 'enw')
+  assert.equal(fs.readFileSync(path.join(profs, 'active.txt'), 'utf8'), 'myu')
+  const cfg = fs.readFileSync(path.join(profs, 'myu', 'config.cfg'), 'utf8')
+  assert.match(cfg, /bind W "\+forward"/, 'binds come along')
+  assert.match(cfg, /seta name "myu"/); assert.doesNotMatch(cfg, /Unknown Soldier/)
+  assert.ok(fs.existsSync(path.join(profs, 'myu', 'mpdata')))
+  const again = gamecfg.usePlayerProfile({ homeDir: home, name: 'myu' })
+  assert.equal(again.changed, false); assert.equal(again.copiedFrom, null)
+  assert.equal(gamecfg.usePlayerProfile({ homeDir: home, name: '' }).profile, null)
+  assert.equal(gamecfg.profileNameFor('ev\il";/..'), 'evil')
+  assert.equal(gamecfg.profileNameFor('CON'), null)
+  assert.equal(fs.readFileSync(path.join(profs, 'active.txt'), 'utf8'), 'myu')
+})
+
+await test('0.2.10: the shell strip is hidden while the site shows (its drag region won the nav hit test)', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  const css = String(fs.readFileSync(new URL('../src/renderer/shell.css', import.meta.url)))
+  const html = String(fs.readFileSync(new URL('../src/renderer/shell.html', import.meta.url)))
+  assert.match(main, /function showSite\(visible\)[\s\S]{0,200}shellStrip\(!visible\)/)
+  assert.match(css, /html\.site-shown #chrome \{ display: none; \}/)
+  assert.match(html, /<html lang="en" class="site-shown">/)
+})
+
 console.log(`\n${pass} passed, ${fail} failed`)
 try { fs.rmSync(TMP, { recursive: true, force: true }) } catch {}
 process.exit(fail ? 1 : 0)
