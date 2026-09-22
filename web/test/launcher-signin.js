@@ -26,7 +26,9 @@ const BASE = `http://127.0.0.1:${PORT}`
 const STEAM_PORT = 33994
 const STEAM_BASE = `http://127.0.0.1:${STEAM_PORT}`
 const STEAM_PUBLIC = `http://localhost:${STEAM_PORT}`
-const FLOW_TTL_MS = 300
+// Long enough that every happy-path check below finishes its own flow well inside it, short
+// enough that the one expiry check does not make the suite sleep. Both instances get it.
+const FLOW_TTL_MS = 1200
 const PASSWORD = 'test-beta-password'
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'zm-signin-'))
 const DATA2 = fs.mkdtempSync(path.join(os.tmpdir(), 'zm-signin-steam-'))
@@ -50,7 +52,8 @@ async function main () {
   child = spawn(process.execPath, ['server/index.js'], {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env, ZM_PORT: String(PORT), ZM_DATA_DIR: DATA, ZM_SITE_PASSWORD: PASSWORD,
-           ZM_AUTH: 'mock', ZM_PUBLIC_URL: BASE, STEAM_API_KEY: '' },
+           ZM_AUTH: 'mock', ZM_PUBLIC_URL: BASE, STEAM_API_KEY: '',
+           ZM_LAUNCHER_FLOW_TTL_MS: String(FLOW_TTL_MS) },
     stdio: 'ignore',
   })
   for (let i = 0; i < 60; i++) {
@@ -171,6 +174,32 @@ async function main () {
     assert.strictEqual(b.error, 'that sign-in code is not valid', 'the error distinguishes failures')
   })
 
+  await check('a launcher flow that ran out gets a page, not the closed-beta password box', async () => {
+    // LAUNCHER_FLOW_TTL_MS times a HUMAN doing a Steam Guard login; it used to be the
+    // 120-second machine TTL, and when it expired the browser was redirected to `/` —
+    // which is behind the beta password. Checked on the mock instance because that is the
+    // one where a flow can be finished without Steam; the code path is the same
+    // `finishLauncherFlow` on both.
+    const st = b64url(crypto.randomBytes(16))
+    const jar3 = []
+    const started = await get(`/auth/launcher/start?port=41236&state=${st}&challenge=${challenge}`)
+    assert.strictEqual(started.status, 302, 'start did not begin a flow')
+    for (const c of started.headers.getSetCookie()) jar3.push(c.split(';')[0])
+
+    await new Promise(r => setTimeout(r, FLOW_TTL_MS + 150))   // the human took too long
+
+    const done = await fetch(BASE + '/auth/mock', {
+      method: 'POST', redirect: 'manual',
+      headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded', cookie: jar3.join('; ') },
+      body: 'steam_id=76561198000000009',
+    })
+    const loc = done.headers.get('location') || ''
+    assert.ok(!loc.startsWith('http://127.0.0.1:41236/'), 'an expired flow still minted a code')
+    assert.notStrictEqual(loc, '/', 'still redirected to the gated site root')
+    const body = await done.text()
+    assert.ok(/too long/i.test(body), 'the page does not say the sign-in expired: ' + body.slice(0, 120))
+  })
+
   // ── the Steam leg, and the three ways it used to dump a player somewhere useless ──
   //
   // None of this needs Steam. What is under test is OUR side of the return: what the
@@ -208,26 +237,15 @@ async function main () {
     assert.ok(/Steam/.test(body), 'the page does not say what happened')
   })
 
-  await check('a launcher flow that ran out gets a page, not the closed-beta password box', async () => {
-    const st = b64url(crypto.randomBytes(16))
-    const jar3 = []
-    const started = await fetch(`${STEAM_PUBLIC}/auth/launcher/start?port=41236&state=${st}&challenge=${challenge}`,
-      { redirect: 'manual' })
-    assert.strictEqual(started.status, 302, 'start did not begin a flow')
-    for (const c of started.headers.getSetCookie()) jar3.push(c.split(';')[0])
-
-    await new Promise(r => setTimeout(r, FLOW_TTL_MS + 150))   // the human took too long
-
-    const done = await fetch(`${STEAM_PUBLIC}/auth/mock`, {
-      method: 'POST', redirect: 'manual',
-      headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded', cookie: jar3.join('; ') },
-      body: 'steam_id=76561198000000009',
-    })
-    const loc = done.headers.get('location') || ''
-    assert.ok(!loc.startsWith('http://127.0.0.1:41236/'), 'an expired flow still minted a code')
-    assert.notStrictEqual(loc, '/', 'still redirected to the gated site root')
-    const body = await done.text()
-    assert.ok(/too long/i.test(body), 'the page does not say the sign-in expired: ' + body.slice(0, 120))
+  // ── Steam sign-in ONLY (B, 2026-09-22) ────────────────────────────────────────
+  await check('the mock sign-in page does not exist on a site running Steam sign-in', async () => {
+    // It used to be registered alongside Steam for as long as ZM_SITE_PASSWORD was set —
+    // which made a shared password held by four people a way to sign in as anybody,
+    // the admin included. Both verbs, because a GET-only guard is not a guard.
+    for (const init of [{}, { method: 'POST', headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded' }, body: 'steam_id=76561198000000009' }]) {
+      const r = await fetch(`${STEAM_PUBLIC}/auth/mock`, { redirect: 'manual', headers: auth, ...init })
+      assert.strictEqual(r.status, 404, `/auth/mock answered ${r.status} on a Steam site`)
+    }
   })
 
   await check('a launcher that started on the wrong origin is moved to ZM_PUBLIC_URL', async () => {

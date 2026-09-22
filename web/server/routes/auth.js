@@ -244,20 +244,19 @@ function router() {
   })
 
   // ---- the mock provider -----------------------------------------------------------
-  // Kept registered alongside real Steam sign-in for as long as the closed-beta gate is
-  // up. The reason is narrow: turning Steam on removes the only other way in, and if the
-  // redirect round-trip fails for any reason — a realm mismatch, Steam being down, the
-  // tunnel changing hostname — everyone is locked out of their own site with no way to
-  // look at anything. During the beta the front door is one shared password held by four
-  // people, so the extra exposure is small and the insurance is worth it.
+  // ~~Kept registered alongside real Steam sign-in for as long as the closed-beta gate is
+  // up~~ — **retracted 2026-09-22, B: Steam sign-in only.** The fallback was insurance
+  // against Steam OpenID not working, and Steam OpenID works (§9): `/auth/steam` redirects
+  // correctly, the realm is right, and the three faults in the browser leg are fixed. What
+  // the fallback bought us was one less way to be locked out; what it cost is a page that
+  // lets anyone who has the shared password become **anyone**, including the admin —
+  // and four people now hold that password.
   //
-  // It must go when the site opens to the public. Mock sign-in lets anyone who can reach
-  // it become anyone.
-  const betaFallback = effectiveMode() !== 'mock' && !!process.env.ZM_SITE_PASSWORD
-  if (betaFallback) {
-    console.warn('[auth] mock sign-in stays available as a fallback while ZM_SITE_PASSWORD is set')
-  }
-  if (effectiveMode() === 'mock' || betaFallback) {
+  // So it is registered ONLY in mock mode, which needs `ZM_AUTH` unset or `ZM_PUBLIC_URL`
+  // absent. The live site is `ZM_AUTH=steam` with a public URL, so on zombies.enw.gg these
+  // two routes do not exist at all. `mockAllowed()` below is the second lock, for a dev
+  // box that has been left with `NODE_ENV=production` set.
+  if (effectiveMode() === 'mock') {
     r.get('/mock', (req, res) => {
       if (!localOnly(req)) return res.status(403).send('the mock sign-in is not available on this site')
       const list = devIdentities()
@@ -277,7 +276,7 @@ function router() {
       if (!isLoopback(req)) {
         // Worth shouting about: this is a real account being created or signed into
         // from off-box, with only the shared password in front of it.
-        console.warn(`[auth] MOCK SIGN-IN from ${req.ip} as ${sid} — allowed because the shared-password gate is on`)
+        console.warn(`[auth] MOCK SIGN-IN from ${req.ip} as ${sid} — allowed by ZM_ALLOW_MOCK`)
       }
       req.session.steam_id = u.steam_id
       db.prepare('UPDATE users SET last_seen=? WHERE steam_id=?').run(now(), sid)
@@ -417,13 +416,19 @@ function isLoopback (req) {
 // nobody is loopback any more and the mock was refused for everyone — with no Steam
 // key yet, that left the site with no way in at all.
 //
-// So: the shared-password gate IS the access control for the beta. If you got here you
-// already typed it, and a stranger cannot. When the gate is on, the mock is allowed and
-// every use of it is logged loudly. With the gate off we are back to the old rule —
-// loopback only, never in production — because then nothing is protecting it.
+// ~~So: the shared-password gate IS the access control for the beta~~ — **retracted
+// 2026-09-22, B: Steam sign-in only.** `ZM_SITE_PASSWORD` used to open this page to
+// anybody who had typed the beta password, which is how a shared password became a way to
+// sign in as the site owner. It does not any more. The rule is back to the narrow one:
+//
+//   never when NODE_ENV=production, and otherwise loopback only.
+//
+// `ZM_ALLOW_MOCK=1` is the one escape hatch and it exists for the test suites, which spawn
+// a real server and sign in over HTTP as several different players. It is never set in
+// production; `infra/site.env` does not carry it and neither does `infra/keepalive.ps1`.
 function mockAllowed (req) {
-  if (process.env.ZM_SITE_PASSWORD) return true
   if (process.env.NODE_ENV === 'production') return false
+  if (process.env.ZM_ALLOW_MOCK === '1') return true
   return isLoopback(req)
 }
 

@@ -52,6 +52,7 @@ const xp = require('../server/lib/xp')
 const boxes = require('../server/lib/boxes')
 const assignments = require('../server/lib/assignments')
 const parties = require('../server/lib/parties')
+const partyProgress = require('../server/lib/partyProgress')
 const bans = require('../server/lib/bans')
 const chat = require('../server/lib/chatNetwork')
 const live = require('../server/lib/live')
@@ -387,6 +388,78 @@ async function main() {
     eq(parties.MAX_PLAYERS, 4)
   })
 
+  // ── map download progress (docs/protocol/launcher-v0.md) ───────────────────
+  check('a member reports progress, and only for a party they are in', () => {
+    partyProgress._reset()
+    const id = parties.forPlayer('76561198000000001').id
+    const good = parties.reportProgress('76561198000000004', id,
+      { map: 'nazi_zombie_test', bytes: 50, total: 200, state: 'downloading' })
+    truthy(good.ok, 'a member may report')
+    eq(good.progress.pct, 25, 'the percentage is computed for the panel')
+    // A signed-in stranger naming somebody else's party id gets nothing. The session is
+    // the identity; the id in the URL is only which party.
+    eq(parties.reportProgress('76561198000000099', id, { state: 'installed' }).ok, false, 'a non-member is refused')
+    eq(parties.reportProgress('76561198000000004', id, { state: 'nearly' }).ok, false, 'an unknown state is refused')
+  })
+
+  check('the party payload carries each member’s progress, and the Start gate', () => {
+    partyProgress._reset()
+    const id = parties.forPlayer('76561198000000001').id
+    parties.reportProgress('76561198000000004', id, { map: 'nazi_zombie_test', bytes: 1, total: 4, state: 'downloading' })
+    const p = parties.forPlayer('76561198000000001')
+    const delta = p.members.find((m) => m.steam_id === '76561198000000004')
+    eq(delta.progress.state, 'downloading', 'the member carries their own bar')
+    eq(p.installs_ok, false, 'Start stands down while somebody is downloading')
+    eq(p.installs_pending.length, 1, 'and names who')
+    parties.reportProgress('76561198000000004', id, { map: 'nazi_zombie_test', state: 'installed' })
+    eq(parties.forPlayer('76561198000000001').installs_ok, true, 'installed clears it')
+  })
+
+  check('silence is not "still downloading" — a party with no launchers can still start', () => {
+    // The rule the whole feature turns on. Nobody in this party has ever posted, and the
+    // gate must be open: today no launcher posts at all, and a Start button that greys
+    // out until a build that does not exist reports in is worse than the bug it fixes.
+    partyProgress._reset()
+    eq(parties.forPlayer('76561198000000001').installs_ok, true)
+  })
+
+  check('a ready check waits for a download, and the leader can still override it', () => {
+    partyProgress._reset()
+    const id = parties.forPlayer('76561198000000001').id
+    parties.cancelReadyCheck('76561198000000001')
+    parties.reportProgress('76561198000000004', id, { map: 'nazi_zombie_test', bytes: 1, total: 4, state: 'downloading' })
+    const r = parties.startReadyCheck('76561198000000001')
+    eq(r.ok, false, 'refused while somebody downloads')
+    truthy(/downloading/.test(r.error), 'and says why: ' + r.error)
+    eq(r.waiting.length, 1, 'and who')
+    truthy(parties.startReadyCheck('76561198000000001', { force: true }).ok, 'THE LEADER DECIDES')
+  })
+
+  check('changing the map throws the old map’s progress away', () => {
+    partyProgress._reset()
+    const id = parties.forPlayer('76561198000000001').id
+    parties.reportProgress('76561198000000004', id, { map: 'nazi_zombie_test', state: 'installed' })
+    truthy(Object.keys(partyProgress.forParty(id)).length === 1, 'stored')
+    parties.setMap('76561198000000001', 'nazi_zombie_factory')
+    eq(Object.keys(partyProgress.forParty(id)).length, 0, 'four green bars for the wrong map would be a lie')
+    parties.setMap('76561198000000001', 'nazi_zombie_test')
+  })
+
+  check('progress is broadcast to every member of that party and to nobody else', () => {
+    partyProgress._reset()
+    const seen = []
+    partyProgress.setEmitter((ids, payload) => seen.push({ ids, payload }))
+    const id = parties.forPlayer('76561198000000001').id
+    parties.reportProgress('76561198000000004', id, { map: 'nazi_zombie_test', bytes: 2, total: 4, state: 'downloading' })
+    partyProgress.setEmitter(null)
+    eq(seen.length, 1, 'one broadcast')
+    eq(seen[0].ids.sort().join(','), ['76561198000000001', '76561198000000004'].sort().join(','), 'both members, nobody else')
+    eq(seen[0].payload.progress['76561198000000004'].pct, 50)
+  })
+
+  // ── the wipe script, and the backup it refuses to skip ──────────────────────
+  checkWipe()
+
   // ── Local is untracked, and the site enforces it rather than trusting the box ──
   check('a LOCAL game is stored, and earns nothing at all', () => {
     // Count the MAP badge's holders, not every badge in the table: ingest also runs the
@@ -623,6 +696,96 @@ async function main() {
   console.log(`\n${pass} passed, ${fail} failed`)
   try { fs.rmSync(TMP, { recursive: true, force: true }) } catch { /* windows file lock */ }
   process.exit(fail ? 1 : 0)
+}
+
+// ── tools/wipe-demo.js ────────────────────────────────────────────────────────
+// Driven against a database of its OWN, built by hand in a scratch directory: the wipe
+// deletes every row of play on the site, and pointing it at this suite's database would
+// take the fixtures out from under every check after it.
+//
+// The one behaviour worth a test more than any other is the BACKUP, and specifically that
+// the backup holds the rows the wipe then removes. A backup taken after the delete, or a
+// plain file copy that missed the write-ahead log, would both pass a "the file exists"
+// assertion and be worth nothing.
+function checkWipe() {
+  const Database = require('better-sqlite3')
+  const { wipe } = require('../tools/wipe-demo')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zm-wipe-'))
+
+  const d = new Database(path.join(dir, 'zombies.db'))
+  d.exec(`CREATE TABLE games (id INTEGER PRIMARY KEY, match_id TEXT, demo INTEGER);
+          CREATE TABLE game_players (id INTEGER PRIMARY KEY, game_id INTEGER);
+          CREATE TABLE records (id INTEGER PRIMARY KEY, steam_id TEXT);
+          CREATE TABLE comments (id INTEGER PRIMARY KEY, body TEXT);
+          CREATE TABLE playlists (id INTEGER PRIMARY KEY, name TEXT);
+          CREATE TABLE users (steam_id TEXT PRIMARY KEY, approved INTEGER, is_admin INTEGER, deleted INTEGER DEFAULT 0,
+                              level INTEGER, prestige INTEGER, xp_total INTEGER, active_ms INTEGER, pinned_badges TEXT);
+          CREATE TABLE maps (key TEXT PRIMARY KEY, plays INTEGER, beaten_by INTEGER, thumbs_up INTEGER, thumbs_down INTEGER);
+          CREATE TABLE badges (slug TEXT PRIMARY KEY);
+          CREATE TABLE activity_log (id INTEGER PRIMARY KEY, event TEXT);`)
+  // A "real" simulated game: demo = 0, exactly like the eight on the live database.
+  d.prepare("INSERT INTO games (match_id, demo) VALUES ('m_6a2e3d99', 0)").run()
+  d.prepare('INSERT INTO game_players (game_id) VALUES (1)').run()
+  d.prepare("INSERT INTO records (steam_id) VALUES ('76561198126330106')").run()
+  d.prepare("INSERT INTO comments (body) VALUES ('nice map')").run()
+  d.prepare("INSERT INTO playlists (name) VALUES ('The stock four')").run()
+  d.prepare("INSERT INTO users (steam_id, approved, is_admin, level, prestige, xp_total, active_ms, pinned_badges) VALUES ('76561198126330106', 1, 1, 6, 1, 41000, 9000, '[\"a\"]')").run()
+  d.prepare("INSERT INTO users (steam_id, approved, is_admin, level) VALUES ('76561190000000001', 1, 1, 3)").run()
+  d.prepare("INSERT INTO maps (key, plays, beaten_by, thumbs_up, thumbs_down) VALUES ('nazi_zombie_factory', 4, 2, 3, 1)").run()
+  d.prepare("INSERT INTO badges (slug) VALUES ('map-nazi_zombie_factory')").run()
+  d.prepare("INSERT INTO activity_log (event) VALUES ('box.key.pinned')").run()
+  d.close()
+
+  check('the wipe dry run touches nothing and still counts what would go', () => {
+    const r = wipe({ dataDir: dir, dryRun: true })
+    eq(r.backup, null, 'a dry run makes no backup')
+    eq(r.before.games, 1, 'it counted the game')
+    eq(fs.readdirSync(dir).filter((f) => f.startsWith('backup-')).length, 0, 'no backup directory appeared')
+    const c = new Database(path.join(dir, 'zombies.db'), { readonly: true })
+    eq(c.prepare('SELECT COUNT(*) c FROM games').get().c, 1, 'the game is still there')
+    c.close()
+  })
+
+  let backupDir = null
+  check('the wipe backs the database up BEFORE it deletes, and the backup holds the rows', () => {
+    const r = wipe({ dataDir: dir })
+    backupDir = r.backup
+    truthy(backupDir && fs.existsSync(backupDir), 'no backup directory')
+    const b = new Database(path.join(backupDir, 'zombies.db'), { readonly: true })
+    // This is the assertion the whole script hangs on. The backup is only a backup if it
+    // holds what the wipe removed.
+    eq(b.prepare('SELECT COUNT(*) c FROM games').get().c, 1, 'the backup lost the game')
+    eq(b.prepare('SELECT COUNT(*) c FROM records').get().c, 1, 'the backup lost the record')
+    eq(b.prepare('SELECT COUNT(*) c FROM users').get().c, 2, 'the backup lost the accounts')
+    b.close()
+  })
+
+  check('it wipes every record of play and keeps the catalogue, the users and the flags', () => {
+    const c = new Database(path.join(dir, 'zombies.db'), { readonly: true })
+    for (const t of ['games', 'game_players', 'records', 'comments', 'playlists']) {
+      eq(c.prepare(`SELECT COUNT(*) c FROM "${t}"`).get().c, 0, t + ' survived')
+    }
+    eq(c.prepare('SELECT COUNT(*) c FROM maps').get().c, 1, 'the map catalogue was kept')
+    eq(c.prepare('SELECT COUNT(*) c FROM badges').get().c, 1, 'the badge definitions were kept')
+    eq(c.prepare('SELECT COUNT(*) c FROM activity_log').get().c, 1, 'the audit trail was kept')
+    // Real account kept with its admin flag; the reserved-range demo account gone.
+    const u = c.prepare('SELECT * FROM users').all()
+    eq(u.length, 1, 'wrong number of accounts left')
+    eq(u[0].steam_id, '76561198126330106')
+    eq(u[0].is_admin, 1, 'the admin flag was kept')
+    // The denormalised half: counters on rows the deletes cannot reach. A map still
+    // claiming "beaten by 2" with no game in the database is worse than the demo data was.
+    eq(u[0].level, 1, 'the level survived the wipe')
+    eq(u[0].xp_total, 0, 'the XP total survived the wipe')
+    eq(u[0].pinned_badges, null, 'a pinned badge that no longer exists survived the wipe')
+    const m = c.prepare('SELECT * FROM maps').get()
+    eq(m.plays, 0, 'plays survived')
+    eq(m.beaten_by, 0, 'beaten_by survived')
+    eq(m.thumbs_up + m.thumbs_down, 0, 'the rating survived')
+    c.close()
+  })
+
+  try { fs.rmSync(dir, { recursive: true, force: true }) } catch { /* windows file lock */ }
 }
 
 main().catch((e) => { console.error(e); process.exit(1) })

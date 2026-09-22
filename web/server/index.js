@@ -26,6 +26,7 @@ const { attach } = require('./middleware/auth')
 const presence = require('./lib/presence')
 const chat = require('./lib/chatNetwork')
 const live = require('./lib/live')
+const partyProgress = require('./lib/partyProgress')
 const { SqliteStore } = require('./lib/sessionStore')
 const achievements = require('./lib/achievements')
 const mapRecords = require('./lib/mapRecords')
@@ -106,6 +107,14 @@ app.use('/updates', express.static(UPDATES_DIR, {
   index: false,
   setHeaders: res => res.setHeader('Cache-Control', 'no-cache'),
 }))
+
+// Map art, copied out of the archive by `npm run import:archive` (db/import-archive.js
+// says why it is a copy). Long cache: the file for a map key only ever changes when the
+// archive lane replaces that map's cover, and the URL is stable, so a stale week of a
+// screenshot costs nothing and a cache miss per card costs a request each.
+const MEDIA_DIR = path.join(__dirname, '..', 'public', 'media')
+app.use('/media', express.static(MEDIA_DIR, { index: false, maxAge: '7d' }))
+app.use('/media', (req, res) => res.status(404).type('text/plain').send('no such media'))
 
 // A miss under /updates is a 404, and must never fall through to the React app.
 // electron-updater asks for latest.yml before it does anything else; the catch-all
@@ -188,6 +197,14 @@ io.on('connection', (socket) => {
 chat.setEmitter((line) => io.emit('chat', line))
 // A live frame goes only to the room watching that game.
 live.setEmitter((matchId, frame) => io.to(`live:${matchId}`).emit('live', frame))
+
+// Party map-download progress goes to the members of that party and nobody else. There is
+// no `party:<id>` room to join, deliberately: every socket already sits in its own
+// `user:<steamid>` room from the moment it authenticates, so the fan-out is a list of
+// rooms rather than a membership that has to be kept in step with the party table.
+partyProgress.setEmitter((steamIds, payload) => {
+  for (const sid of steamIds) io.to(`user:${sid}`).emit('party-progress', payload)
+})
 
 achievements.startJobs()
 mapRecords.startJobs()

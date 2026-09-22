@@ -171,7 +171,12 @@ function router() {
   r.post('/party/mode', requireApproved, partyAction((req) => parties.setMode(req.me.steam_id, (req.body && req.body.mode) || 'verified')))
   r.post('/party/visibility', requireApproved, partyAction((req) => parties.setVisibility(req.me.steam_id, (req.body && req.body.visibility) || 'friends')))
   r.post('/party/settings', requireApproved, partyAction((req) => parties.setSettings(req.me.steam_id, (req.body && req.body.settings) || {})))
-  r.post('/party/ready-check', requireApproved, partyAction((req) => parties.startReadyCheck(req.me.steam_id)))
+  r.post('/party/ready-check', requireApproved, partyAction((req) => parties.startReadyCheck(req.me.steam_id, { force: !!(req.body && req.body.force) })))
+  // Every member's launcher posts its own map download here while the party forms
+  // (docs/protocol/launcher-v0.md). requireUser, not requireApproved: a member of a party
+  // is already somebody the leader let in, and refusing the download report of an
+  // unapproved friend would leave the panel showing a bar that never moves.
+  r.post('/party/:id/progress', requireUser, partyAction((req) => parties.reportProgress(req.me.steam_id, Number(req.params.id), req.body || {})))
   r.post('/party/ready', requireApproved, partyAction((req) => parties.setReady(req.me.steam_id, !!(req.body && req.body.ready))))
   r.post('/party/cancel', requireApproved, partyAction((req) => parties.cancelReadyCheck(req.me.steam_id)))
   r.post('/party/launch', requireApproved, partyAction((req) => parties.launch(req.me.steam_id, { force: !!(req.body && req.body.force) })))

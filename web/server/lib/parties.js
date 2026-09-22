@@ -22,6 +22,7 @@ const { shortCode, safeJson } = require('./util')
 const users = require('./users')
 const assignments = require('./assignments')
 const bans = require('./bans')
+const progress = require('./partyProgress')
 
 const MAX_PLAYERS = 4       // World at War has four client slots. This is the engine, not a policy.
 
@@ -37,6 +38,7 @@ function project(p, viewer = null) {
   if (!p) return null
   const members = db.prepare('SELECT * FROM party_members WHERE party_id=? ORDER BY joined_at').all(p.id)
   const map = p.map_key ? db.prepare('SELECT * FROM maps WHERE key=?').get(p.map_key) : null
+  const prog = progress.forParty(p.id)
   return {
     id: p.id,
     code: p.code,
@@ -49,9 +51,21 @@ function project(p, viewer = null) {
     settings: safeJson(p.settings_json, {}) || {},
     ready_since: p.ready_since || null,
     is_leader: viewer ? String(viewer) === String(p.leader) : false,
-    members: members.map((m) => ({ ...users.publicById(m.steam_id), ready: !!m.ready, joined_at: m.joined_at })),
+    members: members.map((m) => ({
+      ...users.publicById(m.steam_id),
+      ready: !!m.ready,
+      joined_at: m.joined_at,
+      // Where this member's copy of the staged map has got to, from their own launcher
+      // (lib/partyProgress.js). Null is "their launcher has not said", which the panel
+      // draws as nothing rather than as 0%.
+      progress: prog[String(m.steam_id)] || null,
+    })),
     full: members.length >= MAX_PLAYERS,
     all_ready: members.length > 0 && members.every((m) => m.ready),
+    // The two halves of the Start button, kept apart so the panel can say WHICH one is
+    // missing rather than just greying the control out.
+    installs_ok: progress.installsOk(p.id, members.map((m) => m.steam_id)),
+    installs_pending: progress.pending(p.id, members.map((m) => m.steam_id)),
   }
 }
 
@@ -96,7 +110,7 @@ function leave(steamId) {
   if (!p) return { ok: true }
   db.prepare('DELETE FROM party_members WHERE party_id=? AND steam_id=?').run(p.id, String(steamId))
   const left = db.prepare('SELECT * FROM party_members WHERE party_id=? ORDER BY joined_at').all(p.id)
-  if (!left.length) db.prepare('DELETE FROM parties WHERE id=?').run(p.id)
+  if (!left.length) { db.prepare('DELETE FROM parties WHERE id=?').run(p.id); progress.clear(p.id) }
   else if (String(p.leader) === String(steamId)) {
     // Leadership passes to whoever has been there longest rather than dissolving the lobby.
     db.prepare('UPDATE parties SET leader=?, updated_at=? WHERE id=?').run(left[0].steam_id, now(), p.id)
@@ -111,6 +125,9 @@ function setMap(steamId, mapKey) {
   if (!p.ok) return p
   db.prepare('UPDATE parties SET map_key=?, updated_at=? WHERE id=?').run(mapKey ? String(mapKey) : null, now(), p.party.id)
   clearReady(p.party.id)
+  // A different map means every member's download progress is about a file nobody is
+  // going to play. Keeping it would show four green bars for the wrong map.
+  progress.clear(p.party.id)
   return { ok: true, party: project(byId(p.party.id), steamId) }
 }
 
@@ -151,10 +168,25 @@ function mustLead(steamId) {
 const clearReady = (partyId) => db.prepare('UPDATE party_members SET ready=0 WHERE party_id=?').run(partyId)
 
 /** Step 1-2: the leader presses Start; everybody gets a Ready prompt. */
-function startReadyCheck(steamId) {
+function startReadyCheck(steamId, { force = false } = {}) {
   const p = mustLead(steamId)
   if (!p.ok) return p
   if (!p.party.map_key) return { ok: false, error: 'pick a map first' }
+  // Nobody has the map yet? Then a ready check is asking people to promise something they
+  // cannot keep. The refusal names who, so the panel says "waiting for X" rather than
+  // greying a button for no stated reason, and `force` is the leader's override — the same
+  // "THE LEADER DECIDES" this flow is built on.
+  if (!force) {
+    const ids = db.prepare('SELECT steam_id FROM party_members WHERE party_id=?').all(p.party.id).map((m) => m.steam_id)
+    const waiting = progress.pending(p.party.id, ids)
+    if (waiting.length) {
+      return {
+        ok: false,
+        error: waiting.some((w) => w.state === 'failed') ? 'somebody could not install the map' : 'somebody is still downloading the map',
+        waiting: waiting.map((w) => ({ ...users.publicById(w.steam_id), progress: w })),
+      }
+    }
+  }
   db.prepare("UPDATE parties SET state='ready-check', ready_since=?, updated_at=? WHERE id=?").run(now(), now(), p.party.id)
   // The leader is ready by pressing Start. Making them click twice is the kind of ceremony
   // B's tone note is about.
@@ -208,6 +240,7 @@ function launch(steamId, { force = false } = {}) {
   })
   if (!res.ok) return res
   db.prepare("UPDATE parties SET state='launching', match_id=?, updated_at=? WHERE id=?").run(res.match_id, now(), party.id)
+  progress.clear(party.id)
   return { ok: true, match_id: res.match_id, box: res.box, party: project(byId(party.id), steamId) }
 }
 
@@ -254,6 +287,26 @@ function connectFor(a) {
   return host ? `${host}:${inst.port}` : null
 }
 
+/**
+ * A member's launcher reporting its map download (`docs/protocol/launcher-v0.md`).
+ *
+ * The caller has to BE a member of the party it names — the session cookie is the identity,
+ * the party id in the URL is only which party, and a launcher cannot report on anybody
+ * else's behalf. It is also refused once the party has left `forming`/`ready-check`: after
+ * the lease there is nothing left for a download to be in time for.
+ */
+function reportProgress(steamId, partyId, body) {
+  const party = byId(partyId)
+  if (!party) return { ok: false, error: 'no such party' }
+  const member = db.prepare('SELECT 1 FROM party_members WHERE party_id=? AND steam_id=?').get(party.id, String(steamId))
+  if (!member) return { ok: false, error: 'you are not in that party' }
+  const out = progress.push(party.id, steamId, body || {})
+  if (!out.ok) return out
+  const ids = db.prepare('SELECT steam_id FROM party_members WHERE party_id=? ORDER BY joined_at').all(party.id).map((m) => m.steam_id)
+  if (out.stored) progress.broadcast(party.id, ids)
+  return { ok: true, stored: !!out.stored, progress: out.progress, installs_ok: progress.installsOk(party.id, ids) }
+}
+
 function invite(from, to) {
   const party = forPlayerRow(from)
   if (!party) return { ok: false, error: 'you are not in a party' }
@@ -286,6 +339,6 @@ function publicLobbies(mapKey = null) {
 module.exports = {
   MAX_PLAYERS, forPlayer, byId, byCode, project, create, ensure, join, leave,
   setMap, setMode, setVisibility, setSettings,
-  startReadyCheck, setReady, cancelReadyCheck, launch, launchInfo,
+  startReadyCheck, setReady, cancelReadyCheck, launch, launchInfo, reportProgress,
   invite, invitesFor, quickJoin, publicLobbies,
 }

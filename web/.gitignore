@@ -1,6 +1,13 @@
 # The SQLite database and its WAL. Seeded from the repo's own artefacts with `npm run seed`,
 # so it is always rebuildable and never belongs in git.
-data/
+#
+# ANCHORED, and it has to be: `data/` without the leading slash matches a directory called
+# `data` at ANY depth, which silently swallowed `client/src/data/` — a source directory —
+# the moment one was added. A file that git never offers to add is a file nobody notices is
+# missing until the build fails on somebody else's machine.
+/data/
+# The backups tools/wipe-demo.js writes beside it, for the same reason.
+/data/backup-*/
 # Dev key material. The site's invite-signing private key is generated on first boot; it is a
 # development key and must never be committed or reused in production.
 keys/
