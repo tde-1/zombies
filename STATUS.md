@@ -132,3 +132,12 @@ a join. Proven in local join runs gate1..3; B's machine unproven. `client.md` §
 MessageBox; the settings prompt gets **No = keep saved settings** (verified at `0x5FE250`/`0x59C7C0`,
 dedi.md §17). Dedi DLL `680ac0ae…` built from HEAD, staged on the box in `/tmp`; **box still runs
 `318dfd60…`** because B was in a live game. Host-agent Escape belt covers it meanwhile.
+
+## 2026-09-22: IP posture decided — nothing of Activision's served by us before public
+
+B's decision, written up in `docs/kickstart/ip-posture.md` (not legal advice): Activision assets
+reach a player only from their own WaW install, converted on their PC into
+`%LOCALAPPDATA%\ENWZombies`; we serve our code/UI and community custom maps. **Closed-testing
+carve-out**: the pre-baked Nacht `.glb` on `/mapdata` (currently public, gate-exempt) may stay
+until the phase gate; the "Before public" checklist is ip-posture §9 = vault 99 §8 = 07 Track L.
+Q-replay-2 resolved; Q-ip-1 (name) and Q-ip-2 (phase gate, legal contact) open for B.

@@ -667,3 +667,6 @@ six-minute lock hold (§4b's four commands, `+map nazi_zombie_factory`).
 | 7 | Referee stops on `intermission` (8.5) | referee lane | 15 min |
 | 8 | Der Riese OAT half now; Husky half on a lock hold (8.8) | `tools/maps` | 10 min + 6 min lock |
 | 9 | Zombie anim state, skinned zombies, weapon names | `re` + DLL + viewer | days |
+
+2026-09-22 IP posture: stock-map `.glb` on `/mapdata` is a closed-testing carve-out only; before public the scene comes from a local export on the player PC via loopback or the launcher.
+See [`ip-posture.md`](ip-posture.md) §4-§5 and §9 (Q-replay-2 resolved in `questions.md`).

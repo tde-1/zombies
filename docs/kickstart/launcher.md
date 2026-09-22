@@ -2135,3 +2135,6 @@ one computed from the file on disk; a `HEAD` on the installer answers `200` with
 proven in a dev-mode launcher (the *late* section above) and `+set name` by unit test and by reading
 the DLL; **that a player's ENW name shows over his head in a real game is still B's first run to
 confirm**, and so is 0.2.3's config round trip, which no published build has yet been observed doing.
+
+2026-09-22 IP posture: the launcher must never ship or download a game file; stock asset conversion (OAT, world-shell reader) runs locally into `%LOCALAPPDATA%\ENWZombies`.
+See [`ip-posture.md`](ip-posture.md) §6-§7 and §9 (installer extension guard, LICENSE files, ownership record).

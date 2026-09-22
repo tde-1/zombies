@@ -1598,3 +1598,9 @@ the database.
   them yet, so today a new account is nameless until an admin sets one or `seed-enw-names.js`
   runs. That is the next piece of web work.
 * `enw.refreshName()` has never been run against a real endpoint, because there is not one.
+
+## 2026-09-22 — IP posture pointer
+
+Read [`ip-posture.md`](ip-posture.md) before serving anything new: no Activision asset is served
+by the site before public (§4 table); `/mapdata` stock exports are a testing-only carve-out (§5);
+footer disclaimer and per-map "not made or supported by Activision" line are on the Before-public list (§9).

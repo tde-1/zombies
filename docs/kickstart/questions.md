@@ -509,3 +509,26 @@ to load" for a map sitting right there on disk.
 Three ways out, none of them taken: leave it exempt; put the gate back and accept the failure
 mode (the viewer now degrades to the grid, so it is no longer fatal); or sign short-lived URLs
 per session. **B decides.** `replay.md` §7a, `web/server/middleware/gate.js`.
+
+### Q-replay-2 — resolved (B, 2026-09-22) → [`ip-posture.md`](ip-posture.md) §0, §5
+
+**Decision**: anything Activision's (stock map geometry, textures, models, anims, sounds, icons,
+loadscreens) reaches a player only from **their own WaW install, converted on their PC**, cached
+under `%LOCALAPPDATA%\ENWZombies`, never uploaded, never served by us. We serve our code/UI and
+community custom maps. **Testing carve-out**: during closed testing the pre-baked Nacht `.glb` on
+`/mapdata` may stay. It is temporary; it goes before any public/open phase (vault 99 §8 "Before
+public"). Recommended now, B to confirm: put `/mapdata` back behind the gate with a signed
+short-lived URL, because an ungated public URL is not "closed" (ip-posture §5).
+
+## Q-ip-1 (2026-09-22) — the name
+
+Keep **ENW Zombies** at `zombies.enw.gg` (recommended), or switch to **ENW ZM** now? "Zombies" is
+generic; the risk is only CoD trade dress beside it. Rules either way: never "CoD"/"Call of Duty"
+in name, logo, domain, installer or window title; footer disclaimer. `ip-posture.md` §3.
+
+## Q-ip-2 (2026-09-22) — the phase gate
+
+What exactly ends "closed testing"? Proposed: the moment the site, the launcher download or a
+replay link is reachable by anyone outside the approved seven (i.e. the gate password is removed
+or shared publicly). Every "Before public" item (ip-posture §9) must be ticked first. Also: who
+receives legal mail (`legal@enw.gg`?) and may we register a US DMCA agent (small fee, rule 8)?
