@@ -49,6 +49,15 @@
 
 **0.2.4** (`0a4d431`): stock maps skip the download (`installed: stock`), a failed step says it stopped, leases release on failure/Cancel, mode defaults to Verified. **0.2.5** (`dc1c499`): **the mouse-click root cause is proven in the engine** - the WndProc sends WM_MOUSEMOVE and every button message to one handler that XORs wParam's MK_ mask against `s_wmv.oldButtonState` (0x229A0C8); the message id is never read. Measured: button messages carrying a wrong mask queue nothing, a plain move carrying MK_RBUTTON queues a full click. `IN_RecenterMouse`'s per-frame `SetCursorPos` synthesises exactly such stale-mask moves (0.2.2), and 0.2.3's synthesised buttons built the mask from `GetAsyncKeyState` (would have dropped clicks; caught before B ran it). Now raw input is the single source of button truth in both modes, every forwarded legacy message has its mask rewritten, NOLEGACY is motion-only, `ENW_INPUT_TRACE=1` counts raw transitions vs engine-queued events. T4 has no `Key_ClearStates` on focus loss (excluded). Launcher: the account settings block no longer shadows keys, read-back never persists engine defaults (B's `maxFps 60`/`fov 65` repaired to 250/80), ADS bind migrated to hold, `ENW_BORDERLESS` follows the effective mode, the launcher never raises its window mid-game. **B's two one-minute trace runs (125 Hz, 1000 Hz) give the numeric verdict** (`client.md` §6f). Research R16: lock `com_maxfps 250` for Verified; controller support ~3 days launcher, aim assist 1-2 weeks DLL (iw4x GPL runtime), glyphs likely cheap. In flight: ENW username locked in game (referee overwrites userinfo `name` from the token), left-column-only launcher shell.
 
+## Session wrap (2026-09-22, late): everything pushed; one agent still in flight
+
+Pushed through `8da3d0d`. **Identity lane** (ENW username locked in game; 0.2.6 with the shell) was
+still running when this was written - read the newest section of `referee.md` and `web.md`. Vault
+fully updated: `19 - Build Log` (the whole day), `00 - Status` (decision rows for FPS 250, controller,
+name lock, shell, mouse, `logfile` rule), `11`, `13` §4a-4, `99`, `07`, R15, R16.
+**B's to-do:** update to 0.2.5 → two one-minute trace runs (125 Hz, 1000 Hz) → play with friends;
+decide aim assist on Verified boards; confirm the 250 lock.
+
 ## The headline
 
 **The dedicated server survives a player now.** Three walls fell tonight, each proven with real

@@ -37,6 +37,23 @@ carries the same state in story form; `00 - Status` has every decision B has mad
   `--stage` view; retest in `archive.md`/`dedi.md`); Der Berg = engine `localVars` limit; Leviathan
   = `napalmblob`.
 
+## Late evening additions (read with the section above)
+
+- **Launcher on the feed: 0.2.5** (`dc1c499`); 0.2.4 fixed Play on stock maps; the left-column-only
+  shell (`8da3d0d`) is committed and ships in **0.2.6** with the identity lane's work.
+- **Clicks**: root cause proven (a T4 click is a mask difference; moves carry masks; `client.md`
+  §6f). B's two `ENW_INPUT_TRACE=1` runs are the verdict. Never build the mask from
+  `GetAsyncKeyState`; never re-centre the cursor with `SetCursorPos` while buttons are held.
+- **Settings**: the account block must never shadow undefined keys; the read-back must never
+  persist engine defaults; the engine's profile is whatever `players\active.txt` names.
+- **Custom maps**: `+set logfile 2` was the killer (`scripts.md`); the next wall is the client's
+  weapon-index check after a swallowed server-side script error (`scripts.md` §7). Proof runs
+  `scr11`–`scr13` paused for B; resume when the lock is free.
+- **Research**: R15 (Plutonium trawl), R16 (FPS 250 lock, controller plan, QoL list) in the vault.
+- **Identity lane in flight**: ENW username from Movement's SSO redeem / picker, server-side
+  userinfo `name` overwrite from the token, `+name` + `name_pin.cpp` on the client. Its dated
+  section in `referee.md` / `web.md` is the truth when you read this.
+
 ## What was running when this was written (2026-09-22 evening)
 
 Three agents, results in the newest dated section of their lane doc: the **real launcher path
