@@ -2696,4 +2696,19 @@ reader of it on this path also requires `cl_paused`, which stays 0 on the dedi, 
 
 ### 18.4 Proof
 
-PENDING_PROOF
+**Staged, not deployed** (the box was lent to a demo when this was written): clean build from
+`e6be04e` in a detached worktree (the main checkout carries the overlay lane's uncommitted client
+components, which a `-Name dedi` build picks up), `sha256 f8a835bb…6efb4c` (1,622,016 bytes), at
+`zombies-dev:/tmp/enw_t4_pause.dll`. The box's current `binkw32.dll` is `b36fe140…3174f`.
+
+**How to prove it on the box with no client and no dashboard** (`--dash off`): the operator
+trigger. A file `enw_pause.trigger` next to that instance's `CoDWaW.exe` freezes the game for as
+long as it exists (checked once a second; reason `operator`, accounted by the host like a players'
+pause, so it can never hide paused time). With a fake-ID lease up and `map_loaded`: `touch` it,
+expect `pause: operator trigger PRESENT`, `pause: PAUSED (operator…) at level.time T`, then every
+5 s `pause: FROZEN … level.time T, svs.time T, N G frame(s) held, sv_paused 1`; `rm` it, expect
+`pause: RESUMED after … level.time held at T` and `pause: first G frame after resume at level.time
+T+50 (… +50 ms: no catch-up)`.
+
+**Unproven**: a real client's `enw_ui` reaching the server (the client half is not built); what a
+remote client draws while frozen; two clients (not possible tonight — B was playing).
