@@ -61,7 +61,7 @@ export default function Records() {
                   <td><Link to={`/m/${r.map_key}`}>{r.map_title}</Link></td>
                   <td className="tiny">{r.label}</td>
                   <td className="tiny">{r.player_count === 1 ? 'Solo' : `${r.player_count}p`}</td>
-                  <td>{r.top.players.map((p) => <PlayerLink key={p.steam_id} user={p} avatar={false} />).reduce((a, b) => [a, ', ', b])}</td>
+                  <td>{r.top.players.map((p) => <PlayerLink key={p.steam_id} user={p} avatar="real" />).reduce((a, b) => [a, ', ', b])}</td>
                   <td className="num gold">{r.sort === 'time_asc' ? clock(r.top.value_ms) : `Round ${r.top.round}`}</td>
                   <td className="tiny">{r.top.profile_ok ? '' : <span className="hot" title={r.top.profile_note}>rules mismatch</span>}</td>
                   <td className="tiny num">{ago(r.top.at)}</td>

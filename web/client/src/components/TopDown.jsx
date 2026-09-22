@@ -84,7 +84,7 @@ export default function TopDown({ frame, trails = true, height = 420 }) {
           </span>
         ))}
         {frame && frame.state.zombies.length === 0 && (
-          <span className="tiny">No zombie positions in this frame — the box is not reporting them for this map.</span>
+          <span className="tiny">No zombie positions</span>
         )}
       </div>
     </div>

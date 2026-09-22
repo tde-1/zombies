@@ -15,6 +15,7 @@ const bans = require('../lib/bans')
 const discord = require('../lib/discord')
 const { requireUser, requireSignedIn } = require('../middleware/auth')
 const movementName = require('../lib/movementName')
+const steamAvatar = require('../lib/steamAvatar')
 
 function router() {
   const r = express.Router()
@@ -38,6 +39,8 @@ function router() {
     // Both ENW lookups are fire-and-forget AFTER the response is composed: a slow or absent
     // ENW must never delay the site's own boot call.
     setImmediate(() => { enw.refreshName(sid).catch(() => {}); enw.refreshVip(sid).catch(() => {}) })
+    // At most once a day per player, and only for the player asking (lib/steamAvatar.js).
+    steamAvatar.refreshSoon(sid)
     res.json({
       signed_in: true,
       auth: require('./auth').effectiveMode(),

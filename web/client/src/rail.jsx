@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { api } from './api'
 import { useSession } from './session'
 import { socket } from './socket'
@@ -19,10 +20,10 @@ import { usePlayGate } from './components/playGate'
 //                 (Play, or the first invite), carrying all three across.
 //   the roster    `/api/party/online` — who is about, worked out for THIS reader on the
 //                 server (lib/roster.js), including whether their lobby is joinable.
-//   the pool      the playable maps, once, for the card's art and the picker. Home reads
+//   the pool      the map list, once, for the card's art. Home reads
 //                 it from here rather than fetching the same list a second time.
 //
-// Every action that would put somebody into a GAME — Play, Ready, Go, Start anyway, Join a
+// Every action that would put somebody into a GAME — Play, Ready, Go, Join a
 // lobby, Accept an invite — goes through the play gate (components/playGate.js) exactly as
 // the old party panel's did: in a plain browser it goes to /download carrying the party or
 // the map, inside the launcher it carries on. Arranging a party (staging a map, the two
@@ -63,6 +64,14 @@ export function RailProvider({ children }) {
     clearTimeout(errTimer.current)
     if (msg) errTimer.current = setTimeout(() => setErr(null), 6000)
   }, [])
+
+  // THE RED LINE IS ONLY EVER AN ANSWER TO A CLICK (B, 2026-09-22 late: "get rid of that
+  // error message if it says that for no reason"). `say` is called from `run` and from
+  // stageMap, and both are only reached from a button. It used to outlive the page it was
+  // said on for six seconds, so a refusal from the map page sat under the card of the next
+  // page as if that page had caused it; it is cleared on every navigation now.
+  const loc = useLocation()
+  useEffect(() => { say(null) }, [loc.pathname, say])
 
   const setStage = useCallback((patch) => {
     setStageState((s) => {
@@ -181,9 +190,16 @@ export function RailProvider({ children }) {
   //
   // `mapKey` lets a map page's own Play say which map — Movement's map page "Spin up" is the
   // rail's launch with that page's map staged first, and so is ours.
-  const play = useCallback(async ({ force = false, mapKey: want = null } = {}) => {
+  //
+  // A map no box will run (`on_server: false`, lib/serverNotes.js) is never sent: its Play is
+  // disabled with the reason on hover, so the server's refusal is not the way anybody learns.
+  // And a party of one whose launch is refused goes back to Play rather than sitting in a
+  // ready check with nobody else in it.
+  const play = useCallback(async ({ mapKey: want = null } = {}) => {
     const key = want || mapKey
     if (!key) return
+    const m = poolByKey.get(key) || (party && party.map && party.map.key === key ? party.map : null)
+    if (m && m.on_server === false) return
     if (guard({ party: party && party.id, map: key, then: '/' })) return
     await run(async () => {
       if (!party) {
@@ -193,19 +209,24 @@ export function RailProvider({ children }) {
         if (!(party.is_leader && party.state === 'forming')) throw new Error('The leader picks the map')
         await api.post('/api/party/map', { map_key: key })
       }
-      const r = await api.post('/api/party/ready-check', force ? { force: true } : {})
-      if (r && r.party && r.party.all_ready) await api.post('/api/party/launch')
+      const r = await api.post('/api/party/ready-check', {})
+      if (r && r.party && r.party.all_ready) {
+        try { await api.post('/api/party/launch') } catch (e) {
+          if (r.party.members.length === 1) { try { await api.post('/api/party/cancel') } catch { /* keep the error that matters */ } }
+          throw e
+        }
+      }
     })
-  }, [mapKey, party, stage, setStage, guard, run])
+  }, [mapKey, poolByKey, party, stage, setStage, guard, run])
 
   const ready = useCallback(() => {
     if (guard({ party: party && party.id, map: mapKey, then: '/' })) return
     run(() => api.post('/api/party/ready', { ready: true }))
   }, [guard, party, mapKey, run])
 
-  const go = useCallback((force = false) => {
+  const go = useCallback(() => {
     if (guard({ party: party && party.id, map: mapKey, then: '/' })) return
-    run(() => api.post('/api/party/launch', force ? { force: true } : {}))
+    run(() => api.post('/api/party/launch', {}))
   }, [guard, party, mapKey, run])
 
   const cancel = useCallback(() => run(() => api.post('/api/party/cancel')), [run])

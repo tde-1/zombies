@@ -5,7 +5,8 @@ import { setAmbienceOverride } from '../ambience'
 import { api, ago, clock, num } from '../api'
 import { useSession } from '../session'
 import { useRail } from '../rail'
-import { Section, Empty, Loading, Stat, FinishChips, Health, Untracked, PlayerLink } from '../components/Bits'
+import { Section, Empty, Loading, Stat, FinishChips, Health, Untracked, PlayerLink, NotPlayable } from '../components/Bits'
+import BackButton from '../components/BackButton'
 import Comments from '../components/Comments'
 
 // The map page = Movement's storefront (13 §3): the big action at the top is Play / Join,
@@ -33,7 +34,7 @@ export default function MapPage() {
     if (R && R.signedIn && !R.party && key) R.stageMap(key)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, R && R.signedIn, R && !!R.party])
-  return <div className="page wide"><MapBody mapKey={key} /></div>
+  return <div className="page wide"><BackButton /><MapBody mapKey={key} /></div>
 }
 
 export function MapBody({ mapKey: key }) {
@@ -100,8 +101,10 @@ export function MapBody({ mapKey: key }) {
           </div>
           <div className="stack" style={{ alignItems: 'flex-end' }}>
             <div className="row">
-              <button className="btn primary big" onClick={play} disabled={!approved}>
-                {d.live.length ? 'Join' : 'Play'}
+              <NotPlayable map={m} />
+              <button className="btn primary big" onClick={play} disabled={!approved || m.on_server === false}
+                      title={m.on_server === false ? (m.server_note || undefined) : undefined}>
+                {!approved && signedIn ? 'Approval required' : d.live.length ? 'Join' : 'Play'}
               </button>
               {/* Play Local launches WaW straight into the map on the player's own PC, with
                   the console and cheats available, so nothing from it counts. The Untracked
@@ -117,12 +120,8 @@ export function MapBody({ mapKey: key }) {
                 </>
               )}
             </div>
-            <a className="tiny" href="#download" onClick={(e) => { e.preventDefault(); setErr('Downloads are not available yet.') }}>
-              Download original
-            </a>
           </div>
         </div>
-        {!approved && signedIn && <p className="tiny" style={{ marginTop: 10 }}>Play needs approval. Browsing does not.</p>}
         {err && <p className="tiny hot" style={{ marginTop: 10 }}>{err}</p>}
       </div>
 

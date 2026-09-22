@@ -138,7 +138,6 @@ export default function SearchBar() {
           {empty && (
             <div className="nav-search-empty">
               <div>Nothing matches “{term}”.</div>
-              <div className="nav-search-empty-sub">Maps come from the whole archive; players from everyone signed up.</div>
             </div>
           )}
 

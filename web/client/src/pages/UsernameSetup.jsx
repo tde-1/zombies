@@ -134,7 +134,7 @@ export default function UsernameSetup ({ me, onDone }) {
       <div className="card name-gate" style={{ textAlign: 'left', padding: 28 }}>
         <h2 style={{ textAlign: 'center', margin: 0 }}>Choose your name</h2>
         <p className="muted" style={{ textAlign: 'center', marginTop: 6 }}>
-          This is your ENW username. Use the one you have on ENW Movement and drops.ws.
+          Your ENW username, the same as on ENW Movement.
         </p>
 
         {suggest && suggest.name ? (

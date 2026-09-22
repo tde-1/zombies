@@ -69,6 +69,8 @@ function project(row, { me = null } = {}) {
     // Playable on our boxes, as its own field rather than something every card has to
     // re-derive from `health`. The map browser filters on it and the list row prints it.
     on_server: onServer(row),
+    // Why not, in a few words, for the tag's hover (lib/serverNotes.js). Null when it is.
+    server_note: require('./serverNotes').noteFor(row, onServer(row)),
     released_at: row.released_at || null,
     added_at: row.added_at || null,
     plays: row.plays || 0,

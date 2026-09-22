@@ -4,7 +4,7 @@ import { useSession } from '../session'
 import { Loading } from '../components/Bits'
 import { bridge } from '../components/launcherBridge'
 import {
-  SECTIONS, ALL, OMITTED, COMMON_MODES, sectionDefaults, shownValue, valueOf, withValue,
+  SECTIONS, ALL, COMMON_MODES, sectionDefaults, shownValue, valueOf, withValue,
   toLauncherPatch, fromLauncher, newer, keyName,
 } from '../data/wawSettings'
 
@@ -99,11 +99,9 @@ export default function Settings() {
       const body = { ...latest.current, updatedAt: Date.now() }
       try {
         await api.put('/api/me/settings', { game: body })
-        let where = 'Saved to your account'
+        let where = 'Saved'
         if (enw && enw.setSettings) {
-          try { await enw.setSettings(toLauncherPatch(body)); where = 'Saved · the launcher applies it at your next launch' } catch { where = 'Saved to your account (the launcher did not take it: restart it)' }
-        } else {
-          where = 'Saved to your account · applied the next time you launch from the ENW launcher'
+          try { await enw.setSettings(toLauncherPatch(body)) } catch { where = 'Saved · restart the launcher' }
         }
         setStatus(where)
         refresh()
@@ -164,7 +162,7 @@ export default function Settings() {
     return (
       <div className="page waw-page">
         <h1 className="waw-title">Options</h1>
-        <p className="muted">Sign in to keep your World at War settings on your account. They follow you to any PC you launch from.</p>
+        <p className="muted">Sign in to save your settings.</p>
       </div>
     )
   }
@@ -201,7 +199,6 @@ export default function Settings() {
         <section className="waw-panel" aria-label={sec.label}>
           <div className="waw-panel-head">
             <h2>{sec.label}</h2>
-            {sec.menu && <code className="waw-src" title="The stock menu this page is taken from">{sec.menu}</code>}
           </div>
           {isControls && <div className="waw-keys-head"><span /><span>Key</span><span>Alternate</span></div>}
           <div className="waw-rows">
@@ -214,18 +211,8 @@ export default function Settings() {
             <button type="button" className="btn small ghost" onClick={reset}>
               {sec.id === 'enw' ? 'Reset to ENW defaults' : isControls ? 'Set default controls' : 'Reset to game defaults'}
             </button>
-            <span className="tiny">
-              {sec.id === 'enw' ? 'ENW\'s own launch settings. Not in World at War\'s menus.'
-                : isControls ? 'Game defaults are default_controls.cfg, with aim down sights on hold (ENW).'
-                  : 'Changes apply at your next launch. Anything you change in the game\'s own menus comes back here after you quit.'}
-            </span>
+            <span className="tiny">Applies at next launch</span>
           </div>
-          {sec.id === 'enw' && (
-            <details className="waw-omitted">
-              <summary>In the game's menus, not mapped here</summary>
-              <ul>{OMITTED.map((o) => <li key={o.label}><b>{o.label}</b> — {o.why}</li>)}</ul>
-            </details>
-          )}
         </section>
       </div>
     </div>
@@ -236,12 +223,11 @@ function Row({ it, game, change, mode, modes, displays, capture, setCapture }) {
   const v = shownValue(game, it)
   const chosen = valueOf(game, it)
   const fromEnw = (chosen === undefined || chosen === '') && it.enw !== undefined
-  const title = `${it.dvar || it.command || it.to.slice(4)} — ${it.src}`
 
   if (it.kind === 'bind') {
     const keys = (chosen !== undefined ? chosen : it.def) || []
     return (
-      <div className="waw-row waw-bind" title={title}>
+      <div className="waw-row waw-bind">
         <span className="waw-label">{it.label}</span>
         {[0, 1].map((slot) => {
           const on = capture && capture.command === it.command && capture.slot === slot
@@ -302,13 +288,12 @@ function Row({ it, game, change, mode, modes, displays, capture, setCapture }) {
   }
 
   return (
-    <div className="waw-row" title={title}>
+    <div className="waw-row">
       <span className="waw-label">{it.label}</span>
       <span className="waw-control">{control}</span>
       <span className="waw-meta">
-        {fromEnw && <span className="tag" title="ENW's launch baseline sets this until you choose">ENW</span>}
-        {chosen === null && <span className="tag" title="The game picks this itself (reset to its registered default)">Game</span>}
-        {it.dvar && <code>{it.dvar}</code>}
+        {fromEnw && <span className="tag" title="ENW default">ENW</span>}
+        {chosen === null && <span className="tag" title="Game default">Game</span>}
       </span>
       {(it.note || it.needsManual) && <span className="waw-note">{it.needsManual ? 'Used when Texture Quality is Manual. ' : ''}{it.note || ''}</span>}
     </div>

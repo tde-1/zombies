@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { prettyTitle, bspOf, releasedOf, mapHue } from '../data/mapText'
-import { Health } from './Bits'
+import { Health, NotPlayable } from './Bits'
 
 // The list view's row, and it IS the map's page entry (B, 2026-09-22): one row per map,
 // carrying the same four things a card carries, in the same order, with the ART shown here
@@ -21,9 +21,12 @@ export default function MapListRow({ map, archive = false }) {
   const title = prettyTitle(map.title, map.key)
   const released = releasedOf(map)
   const p = map.progress
+  // Where the map page's back control returns to (components/BackButton.jsx).
+  const loc = useLocation()
   return (
     <Link
       to={`/m/${map.key}`}
+      state={{ back: loc.pathname + loc.search }}
       className="mlrow"
       data-key={map.key}
       style={{ '--h': String(mapHue(map.key)) }}
@@ -47,6 +50,7 @@ export default function MapListRow({ map, archive = false }) {
             a label printed on most of a list is furniture, and it is already a filter. */}
         {archive && <Health health={map.health} />}
         {p && p.beaten ? <span className="tag good">Beaten</span> : null}
+        <NotPlayable map={map} />
       </span>
       {/* The two numbers, and only the ones that exist. Built as a list and joined rather
           than concatenated with a separator in front of the second: a map with plays and no

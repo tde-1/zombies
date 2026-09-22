@@ -77,7 +77,7 @@ const env = {
   // The test-only sign-in (routes/auth.js) — the mock page it replaced is gone — and no
   // call out to movement.enw.gg from a test.
   ZM_TEST_LOGIN: '1',
-  ZM_MOVEMENT_URL: 'off',
+  ZM_MOVEMENT_URL: 'off', ZM_STEAM_AVATARS: 'off',
 }
 fs.mkdirSync(env.ZM_REPLAY_DIR, { recursive: true })
 

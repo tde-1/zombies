@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { hoverAmbience, endHoverAmbience } from '../ambience'
+import { NotPlayable } from './Bits'
 
 // The map pool as a scrolling list, under the party panel. Movement's map browser list,
 // at its pick density: a small art plate flush to the row's left edge, the map's name in
@@ -89,7 +90,8 @@ export default function MapListPanel({ maps, selected, onPick }) {
             </span>
             {/* One mark, and only when it is true: a map you have beaten. Anything more on a
                 40px row at this width is ellipsis. */}
-            {m.progress && m.progress.beaten ? <span className="tag good">✓</span> : <span />}
+            {m.on_server === false ? <NotPlayable map={m} />
+              : m.progress && m.progress.beaten ? <span className="tag good">✓</span> : <span />}
           </button>
         ))}
       </div>

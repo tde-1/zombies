@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ago, num } from '../api'
 
@@ -34,26 +35,39 @@ export function Lockup({ h = 22, word }) {
 }
 
 // ---- people -----------------------------------------------------------------------
-export function Avatar({ user, size = 'md' }) {
+// Movement's Avatar (`components/Avatar.jsx`): the Steam picture (lib/steamAvatar.js caches
+// it on the account), the initial when there is none or the URL fails. `initials={false}` is
+// Movement's records rule: the real picture or nothing, never a lettered circle in a column.
+export function Avatar({ user, size = 'md', initials = true }) {
+  const [failed, setFailed] = useState(false)
   const cls = `avatar ${size === 'lg' ? 'lg' : size === 'sm' ? 'sm' : ''}`
-  if (!user) return <span className={cls}>?</span>
+  if (!user) return initials ? <span className={cls}>?</span> : null
+  const real = user.avatar && !failed
+  if (!real && !initials) return null
   const initial = String(user.name || '?').trim().charAt(0).toUpperCase()
   return (
     <span className={cls} title={user.name}>
-      {user.avatar ? <img src={user.avatar} alt="" /> : initial}
+      {real ? <img src={user.avatar} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} /> : initial}
     </span>
   )
 }
 
+// `avatar`: true = picture or initial, 'real' = the picture only (records), false = none.
 export function PlayerLink({ user, avatar = true }) {
   if (!user) return <span className="faint">—</span>
   return (
     <Link to={`/id/${encodeURIComponent(user.name || user.steam_id)}`} className="who">
-      {avatar && <Avatar user={user} size="sm" />}
+      {avatar && <Avatar user={user} size="sm" initials={avatar !== 'real'} />}
       <span className="who-n">{user.name}</span>
       {user.vip && <span className="tag gold">VIP</span>}
     </Link>
   )
+}
+
+// Not playable on our servers. The reason is the server's (lib/serverNotes.js), on hover.
+export function NotPlayable({ map, flag = false }) {
+  if (!map || map.on_server !== false) return null
+  return <span className={flag ? 'map-flag np' : 'tag np'} title={map.server_note || 'Not playable on our servers'}>Not playable</span>
 }
 
 // ---- level and prestige --------------------------------------------------------------

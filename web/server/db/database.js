@@ -784,6 +784,10 @@ function migrate() {
   addColumn('users', 'discord_name', 'TEXT')
   addColumn('users', 'discord_linked_at', 'INTEGER')
 
+  // When the Steam picture in `avatar` was last read off the player's public profile
+  // (lib/steamAvatar.js). Once at sign-in, then at most once a day; never per page.
+  addColumn('users', 'avatar_checked', 'INTEGER')
+
   // A game the SITE did not referee on a box it controls.
   //
   // A Local game (13 §4) runs on the player's own PC with the console and cheats available,
