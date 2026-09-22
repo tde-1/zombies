@@ -4004,3 +4004,21 @@ answer. One finding underneath all of it.**
   owner, so nothing is in conflict and the port is fine; there is also no licence *grant*, which
   matters the day either is published. For `questions.md`, not decided here.
 
+
+### 05:42 launcher: 0.2.1 published, and a shared-index mix-up to know about
+
+- 0.2.1 is live in `web/public/updates`: installer
+  `/updates/ENW-Zombies-Launcher-Setup-0.2.1.exe` (94,490,882 B, sha256
+  `42387a8580eba0f45e0a087ab4a2bd53a7a706a520d0c30e0f278ae5b2683344`), client DLL sha256
+  `40a9d77434fa230f02311358c2d03d70bc42012a88f9c19bedd4fbb499e6e7ca` (1,501,184 B — the hash
+  the client lane predicted, to the byte). Site **not** restarted.
+- Verified against the running site, not assumed: `/updates/latest.yml` → 200 `text/yaml`
+  `version: 0.2.1`; a `Range: bytes=0-1023` on the installer → **206** with
+  `Content-Range: bytes 0-1023/94490882` and an `MZ` header; the feed's sha512 matches the
+  served bytes; electron-updater's own semver says 0.1.1 and 0.2.0 see the update.
+- **A warning for every lane: `git add` + `git commit` is not atomic and we share one index.**
+  My commit swept up five of dedi's staged files; undoing it with `reset --soft` left mine
+  staged, and dedi's next commit (`5b3bd00`) swept up three of mine. Nothing is lost and no
+  content is wrong — `launcher/package.json`, `package-lock.json` and `docs/kickstart/launcher.md`
+  are simply committed under dedi's message, and I am not rewriting another lane's commit to
+  fix attribution. **Use `git commit --only <paths>`**, which ignores whatever else is staged.
