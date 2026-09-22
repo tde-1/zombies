@@ -119,6 +119,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -287,17 +288,48 @@ HINTERNET g_session = nullptr;
 bool g_enabled = true;
 bool g_bound = false;
 bool g_open = false;
-bool g_focus = true;           // the input line has the keyboard
-int g_tab = CH_GLOBAL;
+
+// Tabs (round 2, B: "use tabs properly; a DM tab per conversation"). Global and
+// Party are fixed; every DM conversation is its own tab; "+" is the recipient
+// picker. Tab / Shift+Tab / Ctrl+Tab cycle them.
+enum tab_kind : int { T_GLOBAL = 0, T_PARTY = 1, T_DM = 2, T_NEW = 3 };
+struct tab_t { int kind; std::string sid, name; int unread = 0; };
+std::vector<tab_t> g_tabs = {{T_GLOBAL, "", "Global"}, {T_PARTY, "", "Party"}, {T_NEW, "", "+"}};
+int g_tab = 0;
+
+// The input line: a real text box. g_anchor == g_caret means no selection.
+constexpr size_t kMaxInput = 150;
 std::string g_input;
-size_t g_caret = 0;
-int g_scroll = 0;              // lines scrolled up from the bottom
+size_t g_caret = 0, g_anchor = 0;
+size_t g_in_scroll = 0;          // first visible character when the line is wider than the box
+bool g_focus_input = true;       // false: the history has the keyboard (Ctrl+A/C act on it)
+DWORD g_blink_t = 0;
+std::vector<std::string> g_sent_hist;   // Up / Down recall
+int g_hist_pos = -1;
+
+// History selection, (row, col) over the active tab's rows, oldest row = 0.
+struct hpos { int row = -1; int col = 0; };
+hpos g_hsel_a, g_hsel_b;
+int g_scroll = 0;                // rows scrolled up from the bottom
+
+// Mouse.
+enum drag_kind : int { D_NONE, D_INPUT, D_HIST };
+int g_drag = D_NONE;
+bool g_drag_moved = false;
+int g_down_x = 0, g_down_y = 0;
+DWORD g_last_click_t = 0;
+int g_last_click_x = -100, g_last_click_y = -100, g_click_count = 0;
+std::string g_pending_dm_sid, g_pending_dm_name;   // a name was pressed: opens on release
+bool g_ctrl_seen = false, g_shift_seen = false;    // modifiers as the message stream saw them
+std::string g_fake_clip;                            // selftest only: never touch B's clipboard
+long g_clicks = 0;
+
 std::deque<chat_line> g_lines;
-int g_unread[3] = {};
 me_info g_me;
-std::string g_dm_sid, g_dm_name;
+std::string g_last_dm_sid, g_last_dm_name;          // for /r
 int g_open_vk = 'T';
 bool g_eat_char = false;
+char g_eat_ctrl_char = 0;      // the letter of a Ctrl+letter just handled
 DWORD g_last_draw = 0;
 DWORD g_streak_start = 0;      // when CG last started drawing after a gap
 int g_mouse_x = -1, g_mouse_y = -1;  // client pixels, from WM_MOUSEMOVE
@@ -314,10 +346,14 @@ std::string g_base, g_bearer;
 // Last layout, in virtual units, for hit-testing clicks.
 struct rect { float x, y, w, h; bool hit(float px, float py) const {
     return px >= x && px < x + w && py >= y && py < y + h; } };
-rect g_tab_rect[3] = {};
+std::vector<rect> g_tab_rects;
 rect g_input_rect = {};
 rect g_hist_rect = {};
 rect g_close_rect = {};
+float g_input_text_x = 0.f;      // where the input text starts, virtual
+float g_input_room = 0.f;        // its visible width
+float g_hist_x = 0.f, g_hist_base = 0.f;   // history text x, and the baseline of the newest row
+int g_hist_rows_vis = 10;
 std::vector<std::pair<rect, contact>> g_contact_rects;
 bool g_net_ok_cached = false;
 float g_place_sx = 1, g_place_sy = 1, g_place_ox = 0, g_place_oy = 0;
@@ -363,9 +399,10 @@ std::string to_utf8(const std::string& latin1) {
     return out;
 }
 
-void add_local(int ch, const std::string& text, bool system = true) {
+void add_local(int ch, const std::string& text, bool system = true, const std::string& peer = "") {
     chat_line l;
     l.ch = ch; l.local = true; l.system = system; l.text = text; l.arrived = ::GetTickCount();
+    l.peer_sid = peer;
     g_lines.push_back(std::move(l));
     while (g_lines.size() > 400) g_lines.pop_front();
 }
@@ -711,69 +748,406 @@ void clip_for_overlay(bool on) {
     g_we_clipped = ::ClipCursor(&r) != FALSE;
 }
 
+// ------------------------------------------------------------------- tabs
+int find_tab_dm(const std::string& sid) {
+    for (size_t i = 0; i < g_tabs.size(); ++i)
+        if (g_tabs[i].kind == T_DM && g_tabs[i].sid == sid) return static_cast<int>(i);
+    return -1;
+}
+
+std::string name_for_sid(const std::string& sid) {
+    for (const auto& c : g_me.contacts) if (c.sid == sid) return c.name;
+    for (auto it = g_lines.rbegin(); it != g_lines.rend(); ++it) {
+        if (it->from_sid == sid && !it->from.empty()) return it->from;
+        if (it->peer_sid == sid && !it->peer_name.empty()) return it->peer_name;
+    }
+    return "player";
+}
+
+// A DM tab per conversation, kept just before the "+" picker.
+int ensure_dm_tab(const std::string& sid, const std::string& name) {
+    int i = find_tab_dm(sid);
+    if (i >= 0) {
+        if (!name.empty()) g_tabs[static_cast<size_t>(i)].name = name;
+        return i;
+    }
+    tab_t t{T_DM, sid, name.empty() ? name_for_sid(sid) : name};
+    g_tabs.insert(g_tabs.end() - 1, t);
+    const int at = static_cast<int>(g_tabs.size()) - 2;
+    if (g_tab >= at) ++g_tab;   // the picker moved right by one
+    return at;
+}
+
+void clear_hsel() { g_hsel_a = g_hsel_b = hpos{}; }
+
+void switch_tab(int i, const char* why) {
+    if (i < 0 || i >= static_cast<int>(g_tabs.size())) return;
+    g_tab = i;
+    g_tabs[static_cast<size_t>(i)].unread = 0;
+    g_scroll = 0;
+    clear_hsel();
+    g_focus_input = true;
+    ENW_INFO("chat_overlay: tab %d '%s' (%s)", i, g_tabs[static_cast<size_t>(i)].name.c_str(), why);
+}
+
+void close_dm_tab(int i) {
+    if (i < 0 || i >= static_cast<int>(g_tabs.size()) || g_tabs[static_cast<size_t>(i)].kind != T_DM) return;
+    g_tabs.erase(g_tabs.begin() + i);
+    if (g_tab >= i && g_tab > 0) --g_tab;
+    clear_hsel();
+}
+
+const tab_t& cur_tab() { return g_tabs[static_cast<size_t>(g_tab)]; }
+
+// A message line WE made (hints, errors) lands in the tab it is about.
+void add_local_here(const std::string& text) {
+    const tab_t& t = cur_tab();
+    const int ch = t.kind == T_GLOBAL ? CH_GLOBAL : t.kind == T_PARTY ? CH_PARTY : CH_DM;
+    add_local(ch, text, true, t.kind == T_DM ? t.sid : std::string());
+}
+
 void open_overlay(const char* why) {
     if (g_open) return;
     g_open = true;
-    g_focus = true;
+    g_focus_input = true;
     g_scroll = 0;
-    g_unread[g_tab] = 0;
+    g_tabs[static_cast<size_t>(g_tab)].unread = 0;
+    g_drag = D_NONE;
+    g_ctrl_seen = g_shift_seen = false;
     ++g_opens;
     release_engine_keys();
     input_gate::set_captured(true);
     clip_for_overlay(true);
     report_ui_state();
-    ENW_INFO("chat_overlay: OPEN (%s) tab=%d -- keyboard and mouse are the overlay's%s", why, g_tab,
-             g_we_clipped ? "; pointer kept on the game's monitor" : "");
+    // Everything a click's coordinates go through, once per open: client rect,
+    // back buffer, placement and DPI. This is the line that says whether the
+    // pointer and the drawing agree on this machine.
+    HWND h = input_gate::window();
+    RECT rc{};
+    if (h) ::GetClientRect(h, &rc);
+    UINT dpi = 0;
+    using dpi_fn = UINT(WINAPI*)(HWND);
+    if (auto f = reinterpret_cast<dpi_fn>(::GetProcAddress(::GetModuleHandleA("user32.dll"), "GetDpiForWindow")))
+        dpi = h ? f(h) : 0;
+    ENW_INFO("chat_overlay: OPEN (%s) tab=%d -- keyboard and mouse are the overlay's%s. client %ldx%ld, "
+             "back buffer %dx%d, placement %.3fx%.3f +(%.1f,%.1f), window DPI %u",
+             why, g_tab, g_we_clipped ? "; pointer kept on the game's monitor" : "", rc.right, rc.bottom,
+             rd<int>(kVidDisplayW), rd<int>(kVidDisplayH), g_place_sx, g_place_sy, g_place_ox,
+             g_place_oy, dpi);
 }
 
 void close_overlay(const char* why) {
     if (!g_open) return;
     g_open = false;
+    if (g_drag != D_NONE && ::GetCapture() == input_gate::window()) ::ReleaseCapture();
+    g_drag = D_NONE;
     clip_for_overlay(false);
     input_gate::set_captured(false);
     report_ui_state();
     ENW_INFO("chat_overlay: CLOSED (%s)", why);
 }
 
-void send_input() {
-    std::string text = g_input;
-    while (!text.empty() && text.back() == ' ') text.pop_back();
-    size_t s = 0;
-    while (s < text.size() && text[s] == ' ') ++s;
-    text = text.substr(s);
-    g_input.clear();
-    g_caret = 0;
-    if (text.empty()) return;
-    if (g_tab == CH_DM && g_dm_sid.empty()) {
-        add_local(CH_DM, "^3Pick someone to message first (click a name on the right).");
+// ----------------------------------------------------------- the input line
+bool has_sel() { return g_caret != g_anchor; }
+size_t sel_lo() { return (std::min)(g_caret, g_anchor); }
+size_t sel_hi() { return (std::max)(g_caret, g_anchor); }
+
+void set_input(const std::string& s) {
+    g_input = s.substr(0, kMaxInput);
+    g_caret = g_anchor = g_input.size();
+    g_in_scroll = 0;
+}
+
+void move_caret(size_t p, bool extend) {
+    g_caret = (std::min)(p, g_input.size());
+    if (!extend) g_anchor = g_caret;
+    g_blink_t = ::GetTickCount();
+}
+
+void del_sel() {
+    if (!has_sel()) return;
+    const size_t lo = sel_lo();
+    g_input.erase(lo, sel_hi() - lo);
+    g_caret = g_anchor = lo;
+}
+
+// Latin-1 text from typing or the clipboard: one line, no colour codes, capped.
+std::string clean_line(const std::string& in) {
+    std::string out;
+    bool space = false;
+    for (unsigned char c : in) {
+        if (c == '\r' || c == '\n' || c == '\t') c = ' ';
+        if (c < 0x20 || c == 0x7F || c == '^') continue;
+        if (c == ' ' && space) continue;   // collapse the runs a multi-line paste leaves
+        space = c == ' ';
+        out.push_back(static_cast<char>(c));
+    }
+    return out;
+}
+
+void insert_text(const std::string& raw) {
+    del_sel();
+    std::string s = clean_line(raw);
+    const size_t room = kMaxInput > g_input.size() ? kMaxInput - g_input.size() : 0;
+    if (s.size() > room) s.resize(room);
+    g_input.insert(g_caret, s);
+    move_caret(g_caret + s.size(), false);
+}
+
+bool is_word(unsigned char c) { return std::isalnum(c) || c == '_' || c == '\'' || c >= 0xC0; }
+
+size_t word_left(const std::string& s, size_t p) {
+    while (p > 0 && !is_word(static_cast<unsigned char>(s[p - 1]))) --p;
+    while (p > 0 && is_word(static_cast<unsigned char>(s[p - 1]))) --p;
+    return p;
+}
+size_t word_right(const std::string& s, size_t p) {
+    while (p < s.size() && !is_word(static_cast<unsigned char>(s[p]))) ++p;
+    while (p < s.size() && is_word(static_cast<unsigned char>(s[p]))) ++p;
+    return p;
+}
+// The word under p: [b, e).
+void word_at(const std::string& s, size_t p, size_t* b, size_t* e) {
+    if (s.empty()) { *b = *e = 0; return; }
+    if (p >= s.size()) p = s.size() - 1;
+    const bool w = is_word(static_cast<unsigned char>(s[p]));
+    size_t i = p, j = p;
+    while (i > 0 && is_word(static_cast<unsigned char>(s[i - 1])) == w) --i;
+    while (j < s.size() && is_word(static_cast<unsigned char>(s[j])) == w) ++j;
+    *b = i; *e = j;
+}
+
+// ------------------------------------------------------------- the clipboard
+// CF_UNICODETEXT through the game window, Latin-1 <-> UTF-16 (the engine font is
+// Latin-1). The selftest uses a private buffer instead: an agent run must never
+// overwrite the clipboard of the person sitting at this PC.
+void clip_set(const std::string& latin1) {
+    if (latin1.empty()) return;
+    if (g_selftest) {
+        g_fake_clip = latin1;
+        ENW_INFO("chat_overlay: copy (selftest buffer, %zu chars): \"%s\"", latin1.size(), latin1.c_str());
         return;
     }
-    if (g_tab == CH_PARTY && !g_me.party_id) {
-        add_local(CH_PARTY, "^3You are not in a party.");
-        return;
+    if (!::OpenClipboard(input_gate::window())) return;
+    ::EmptyClipboard();
+    const size_t n = latin1.size();
+    if (HGLOBAL g = ::GlobalAlloc(GMEM_MOVEABLE, (n + 1) * sizeof(wchar_t))) {
+        if (auto* w = static_cast<wchar_t*>(::GlobalLock(g))) {
+            for (size_t i = 0; i < n; ++i) w[i] = static_cast<unsigned char>(latin1[i]);
+            w[n] = 0;
+            ::GlobalUnlock(g);
+            if (!::SetClipboardData(CF_UNICODETEXT, g)) ::GlobalFree(g);
+        } else {
+            ::GlobalFree(g);
+        }
     }
+    ::CloseClipboard();
+    ENW_INFO("chat_overlay: copied %zu chars to the clipboard", n);
+}
+
+std::string clip_get() {
+    if (g_selftest) return g_fake_clip;
+    std::string out;
+    if (!::OpenClipboard(input_gate::window())) return out;
+    if (HANDLE h = ::GetClipboardData(CF_UNICODETEXT)) {
+        if (const auto* w = static_cast<const wchar_t*>(::GlobalLock(h))) {
+            for (size_t i = 0; w[i] && out.size() < 4096; ++i)
+                out.push_back(w[i] <= 0xFF ? static_cast<char>(w[i]) : '?');
+            ::GlobalUnlock(h);
+        }
+    } else if (HANDLE a = ::GetClipboardData(CF_TEXT)) {
+        if (const char* s = static_cast<const char*>(::GlobalLock(a))) {
+            out.assign(s, ::strnlen(s, 4096));
+            ::GlobalUnlock(a);
+        }
+    }
+    ::CloseClipboard();
+    return out;
+}
+
+// ------------------------------------------------------------------ sending
+std::string trim(const std::string& s) {
+    size_t b = 0, e = s.size();
+    while (b < e && s[b] == ' ') ++b;
+    while (e > b && s[e - 1] == ' ') --e;
+    return s.substr(b, e - b);
+}
+
+bool starts_ci(const std::string& s, const char* p) {
+    size_t i = 0;
+    for (; p[i]; ++i)
+        if (i >= s.size() || std::tolower(static_cast<unsigned char>(s[i])) != std::tolower(static_cast<unsigned char>(p[i])))
+            return false;
+    return true;
+}
+
+// Name -> steam id: friends and party first, then anyone seen in chat.
+bool resolve_name(const std::string& name, std::string* sid, std::string* shown) {
+    auto eq = [&](const std::string& a) {
+        if (a.size() != name.size()) return false;
+        for (size_t i = 0; i < a.size(); ++i)
+            if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(name[i]))) return false;
+        return true;
+    };
+    for (const auto& c : g_me.contacts) if (eq(c.name)) { *sid = c.sid; *shown = c.name; return true; }
+    for (auto it = g_lines.rbegin(); it != g_lines.rend(); ++it)
+        if (!it->from_sid.empty() && !it->mine && eq(it->from)) { *sid = it->from_sid; *shown = it->from; return true; }
+    return false;
+}
+
+void queue_line(int ch, const std::string& to_sid, const std::string& text) {
     if (g_bearer.empty()) {
-        add_local(g_tab, "^1Not sent: chat is offline (start the game from the ENW launcher).");
+        add_local_here("^1Not sent: chat is offline (start the game from the ENW launcher).");
         return;
     }
     {
         std::lock_guard<std::mutex> lk(g_mu);
-        g_outbox.push_back({g_tab, g_tab == CH_DM ? g_dm_sid : std::string(), text});
+        g_outbox.push_back({ch, to_sid, text});
     }
     g_out_cv.notify_one();
     ++g_sent;
     ENW_INFO("chat_overlay: queued a %s line (%zu chars)",
-             g_tab == CH_PARTY ? "party" : g_tab == CH_DM ? "DM" : "global", text.size());
+             ch == CH_PARTY ? "party" : ch == CH_DM ? "DM" : "global", text.size());
+}
+
+// Returns true when the overlay should close (WaW: Enter sends and closes).
+bool send_input() {
+    const std::string text = trim(g_input);
+    set_input("");
+    g_hist_pos = -1;
+    if (text.empty()) return true;
+    g_sent_hist.push_back(text);
+    if (g_sent_hist.size() > 30) g_sent_hist.erase(g_sent_hist.begin());
+
+    // /w name text, /msg, /tell, and /r text (reply to the last DM).
+    if (starts_ci(text, "/w ") || starts_ci(text, "/msg ") || starts_ci(text, "/tell ") ||
+        starts_ci(text, "/r ") || text == "/r") {
+        std::string sid, shown, body;
+        if (starts_ci(text, "/r")) {
+            body = trim(text.substr(2));
+            sid = g_last_dm_sid; shown = g_last_dm_name;
+            if (sid.empty()) { add_local_here("^3Nobody has messaged you yet."); return false; }
+        } else {
+            const std::string rest = trim(text.substr(text.find(' ') + 1));
+            const size_t sp = rest.find(' ');
+            const std::string who = sp == std::string::npos ? rest : rest.substr(0, sp);
+            body = sp == std::string::npos ? std::string() : trim(rest.substr(sp + 1));
+            if (!resolve_name(who, &sid, &shown)) {
+                add_local_here("^3No friend or party member called '" + who + "'.");
+                return false;
+            }
+        }
+        switch_tab(ensure_dm_tab(sid, shown), "/w");
+        if (body.empty()) return false;   // just opened the conversation
+        queue_line(CH_DM, sid, body);
+        return true;
+    }
+    const tab_t& t = cur_tab();
+    switch (t.kind) {
+    case T_GLOBAL: queue_line(CH_GLOBAL, "", text); return true;
+    case T_PARTY:
+        if (!g_me.party_id) { add_local_here("^3You are not in a party."); return false; }
+        queue_line(CH_PARTY, "", text);
+        return true;
+    case T_DM: queue_line(CH_DM, t.sid, text); return true;
+    default:
+        add_local_here("^3Pick someone first: click a name, or type /w name message.");
+        set_input(text);
+        return false;
+    }
 }
 
 // ------------------------------------------------------------------- input
-bool is_mouse_msg(UINT m) {
-    return (m >= WM_MOUSEFIRST && m <= WM_MOUSELAST);
+constexpr float kLH = 14.f;    // line step, virtual units
+constexpr float kAsc = 13.f;   // baseline to the top of the line box
+float text_w(const char* s);   // draw section
+
+bool is_mouse_msg(UINT m) { return m >= WM_MOUSEFIRST && m <= WM_MOUSELAST; }
+
+// One visual row of the active tab's history. `plain` is what is on screen,
+// `map[k]` the index in `raw` (with its colour codes) of plain char k, so widths
+// and hit tests work on exactly what the renderer draws.
+struct row_t {
+    std::string raw, plain;
+    std::vector<size_t> map;       // plain.size() + 1 entries
+    size_t line = 0;               // which message, for copy joins
+    int name_b = -1, name_e = -1;  // a clickable sender name, plain columns
+    std::string name_sid, name;
+};
+std::vector<row_t> g_rows;         // rebuilt by draw_panel every frame it draws
+
+float row_x(const row_t& r, int col) {
+    col = (std::max)(0, (std::min)(col, static_cast<int>(r.plain.size())));
+    return text_w(r.raw.substr(0, r.map[static_cast<size_t>(col)]).c_str());
+}
+
+int row_col_at(const row_t& r, float x) {
+    int best = 0;
+    float bd = 1e9f;
+    for (int k = 0; k <= static_cast<int>(r.plain.size()); ++k) {
+        const float d = std::fabs(row_x(r, k) - x);
+        if (d < bd) { bd = d; best = k; }
+    }
+    return best;
+}
+
+// History slot i (0 = newest visible row) for a virtual y; may be <0 or >=rows.
+int hist_slot_at(float vy) {
+    // row i spans [base_i - kAsc, base_i - kAsc + kLH), base_i = g_hist_base - kLH*i
+    return static_cast<int>(std::floor((g_hist_base - kAsc + kLH - vy) / kLH));
+}
+
+hpos hist_pos_at(float vx, float vy, int* slot_out = nullptr) {
+    hpos p;
+    const int n = static_cast<int>(g_rows.size());
+    if (!n) return p;
+    int slot = hist_slot_at(vy);
+    if (slot_out) *slot_out = slot;
+    slot = (std::max)(0, (std::min)(slot, g_hist_rows_vis - 1));
+    p.row = (std::max)(0, (std::min)(n - 1 - g_scroll - slot, n - 1));
+    p.col = row_col_at(g_rows[static_cast<size_t>(p.row)], vx - g_hist_x);
+    return p;
+}
+
+bool hpos_less(const hpos& a, const hpos& b) { return a.row < b.row || (a.row == b.row && a.col < b.col); }
+bool hsel_any() { return g_hsel_a.row >= 0 && (g_hsel_a.row != g_hsel_b.row || g_hsel_a.col != g_hsel_b.col); }
+
+std::string hsel_text() {
+    if (!hsel_any() || g_rows.empty()) return {};
+    hpos lo = g_hsel_a, hi = g_hsel_b;
+    if (hpos_less(hi, lo)) std::swap(lo, hi);
+    std::string out;
+    for (int r = lo.row; r <= hi.row && r < static_cast<int>(g_rows.size()); ++r) {
+        const row_t& row = g_rows[static_cast<size_t>(r)];
+        const int b = r == lo.row ? lo.col : 0;
+        const int e = r == hi.row ? hi.col : static_cast<int>(row.plain.size());
+        if (e > b) out += row.plain.substr(static_cast<size_t>(b), static_cast<size_t>(e - b));
+        if (r < hi.row) {
+            const bool same_msg = g_rows[static_cast<size_t>(r + 1)].line == row.line;
+            out += same_msg ? " " : "\r\n";
+        }
+    }
+    return out;
+}
+
+// The input line's column for a virtual x (the box scrolls horizontally).
+size_t input_col_at(float vx) {
+    const float x = vx - g_input_text_x;
+    size_t best = g_in_scroll;
+    float bd = 1e9f;
+    for (size_t k = g_in_scroll; k <= g_input.size(); ++k) {
+        const float w = text_w(g_input.substr(g_in_scroll, k - g_in_scroll).c_str());
+        if (w > g_input_room + 8.f) break;
+        const float d = std::fabs(w - x);
+        if (d < bd) { bd = d; best = k; }
+    }
+    return best;
 }
 
 void to_virtual(int cx, int cy, float* vx, float* vy) {
-    // Client pixels -> backbuffer pixels (they differ if the window was resized)
-    // -> the 640x480 virtual space through the same ScreenPlacement we draw with.
+    // Client pixels -> back-buffer pixels (they differ when the window is not the
+    // render size, or when Windows scales a DPI-unaware window) -> the 640x480
+    // virtual space through the same ScreenPlacement everything is drawn with.
     HWND h = input_gate::window();
     RECT rc{};
     float bx = static_cast<float>(cx), by = static_cast<float>(cy);
@@ -788,22 +1162,219 @@ void to_virtual(int cx, int cy, float* vx, float* vy) {
     *vy = g_place_sy > 0 ? (by - g_place_oy) / g_place_sy : by;
 }
 
-void on_click(int cx, int cy) {
+int tab_at(float x, float y) {
+    for (size_t i = 0; i < g_tab_rects.size(); ++i)
+        if (g_tab_rects[i].hit(x, y)) return static_cast<int>(i);
+    return -1;
+}
+
+void begin_drag(int kind) {
+    g_drag = kind;
+    g_drag_moved = false;
+    // Capture only when this window really is foreground (the real
+    // GetForegroundWindow -- focus_guard hooks only the engine's import). A
+    // background window must never touch the desktop's mouse.
+    HWND h = input_gate::window();
+    if (h && ::GetForegroundWindow() == h) ::SetCapture(h);
+}
+
+void on_press(int cx, int cy, bool shift) {
     float x, y;
     to_virtual(cx, cy, &x, &y);
-    if (g_close_rect.hit(x, y)) { close_overlay("clicked X"); return; }
-    for (int t = 0; t < 3; ++t)
-        if (g_tab_rect[t].hit(x, y)) {
-            g_tab = t; g_scroll = 0; g_unread[t] = 0; g_focus = true;
-            return;
-        }
+    const DWORD now = ::GetTickCount();
+    if (now - g_last_click_t <= ::GetDoubleClickTime() && std::abs(cx - g_last_click_x) <= 4 &&
+        std::abs(cy - g_last_click_y) <= 4)
+        ++g_click_count;
+    else
+        g_click_count = 1;
+    g_last_click_t = now; g_last_click_x = cx; g_last_click_y = cy;
+    g_down_x = cx; g_down_y = cy;
+    ++g_clicks;
+
+    std::string what;
+    const int t = tab_at(x, y);
+    if (g_close_rect.hit(x, y)) {
+        what = "close";
+    } else if (t >= 0) {
+        what = "tab " + std::to_string(t) + " '" + g_tabs[static_cast<size_t>(t)].name + "'";
+    } else {
+        for (const auto& cr : g_contact_rects)
+            if (cr.first.hit(x, y)) { what = "contact '" + cr.second.name + "'"; break; }
+        if (what.empty()) what = g_input_rect.hit(x, y) ? "input" : g_hist_rect.hit(x, y) ? "history" : "nothing";
+    }
+    RECT rc{};
+    if (HWND h = input_gate::window()) ::GetClientRect(h, &rc);
+    ENW_INFO("chat_overlay: click #%ld (x%d) at client (%d,%d) of %ldx%ld -> back buffer %dx%d -> "
+             "virtual (%.1f,%.1f) -> %s", g_clicks, g_click_count, cx, cy, rc.right, rc.bottom,
+             rd<int>(kVidDisplayW), rd<int>(kVidDisplayH), x, y, what.c_str());
+
+    if (what == "close") { close_overlay("clicked x"); return; }
+    if (t >= 0) { switch_tab(t, "click"); return; }
     for (const auto& cr : g_contact_rects)
-        if (cr.first.hit(x, y)) {
-            g_dm_sid = cr.second.sid; g_dm_name = cr.second.name; g_scroll = 0; g_focus = true;
-            return;
+        if (cr.first.hit(x, y)) { switch_tab(ensure_dm_tab(cr.second.sid, cr.second.name), "contact"); return; }
+
+    if (g_input_rect.hit(x, y)) {
+        g_focus_input = true;
+        clear_hsel();
+        const size_t col = input_col_at(x);
+        if (g_click_count == 2) {
+            size_t b, e;
+            word_at(g_input, col, &b, &e);
+            g_anchor = b; g_caret = e;
+        } else if (g_click_count >= 3) {
+            g_anchor = 0; g_caret = g_input.size();
+        } else {
+            move_caret(col, shift);
         }
-    if (g_input_rect.hit(x, y)) { g_focus = true; return; }
-    g_focus = false;  // clicked the history or elsewhere: T now toggles the overlay shut
+        begin_drag(D_INPUT);
+        return;
+    }
+    if (g_hist_rect.hit(x, y) && !g_rows.empty()) {
+        g_focus_input = false;
+        const hpos p = hist_pos_at(x, y);
+        const row_t& row = g_rows[static_cast<size_t>(p.row)];
+        if (g_click_count == 2) {
+            size_t b, e;
+            word_at(row.plain, static_cast<size_t>(p.col), &b, &e);
+            g_hsel_a = {p.row, static_cast<int>(b)};
+            g_hsel_b = {p.row, static_cast<int>(e)};
+        } else if (g_click_count >= 3) {
+            g_hsel_a = {p.row, 0};
+            g_hsel_b = {p.row, static_cast<int>(row.plain.size())};
+        } else {
+            if (shift && g_hsel_a.row >= 0) g_hsel_b = p;
+            else g_hsel_a = g_hsel_b = p;
+            g_pending_dm_sid.clear();
+            if (!shift && row.name_b >= 0 && p.col >= row.name_b && p.col <= row.name_e &&
+                row_x(row, row.name_b) <= x - g_hist_x && x - g_hist_x <= row_x(row, row.name_e)) {
+                g_pending_dm_sid = row.name_sid;
+                g_pending_dm_name = row.name;
+            }
+        }
+        begin_drag(D_HIST);
+        return;
+    }
+}
+
+void on_drag(int cx, int cy) {
+    if (std::abs(cx - g_down_x) > 3 || std::abs(cy - g_down_y) > 3) g_drag_moved = true;
+    float x, y;
+    to_virtual(cx, cy, &x, &y);
+    if (g_drag == D_INPUT) {
+        move_caret(input_col_at(x), true);
+    } else if (g_drag == D_HIST && !g_rows.empty()) {
+        int slot = 0;
+        const hpos p = hist_pos_at(x, y, &slot);
+        // Dragging past the top or bottom edge scrolls, one row per move.
+        const int maxs = (std::max)(0, static_cast<int>(g_rows.size()) - g_hist_rows_vis);
+        if (slot >= g_hist_rows_vis && g_scroll < maxs) ++g_scroll;
+        if (slot < 0 && g_scroll > 0) --g_scroll;
+        g_hsel_b = p;
+    }
+}
+
+void on_release() {
+    const bool was = g_drag != D_NONE;
+    if (was && ::GetCapture() == input_gate::window()) ::ReleaseCapture();
+    const int kind = g_drag;
+    g_drag = D_NONE;
+    if (kind == D_HIST && !g_drag_moved && !g_pending_dm_sid.empty() && g_click_count == 1) {
+        const std::string sid = g_pending_dm_sid, name = g_pending_dm_name;
+        g_pending_dm_sid.clear();
+        clear_hsel();
+        if (!sid.empty() && sid != g_me.sid) switch_tab(ensure_dm_tab(sid, name), "clicked a name");
+    }
+    g_pending_dm_sid.clear();
+}
+
+void cycle_tab(bool back) {
+    const int n = static_cast<int>(g_tabs.size());
+    switch_tab((g_tab + (back ? n - 1 : 1)) % n, back ? "Shift+Tab" : "Tab");
+}
+
+bool on_key(int vk) {
+    const bool ctrl = (::GetKeyState(VK_CONTROL) & 0x8000) != 0 || g_ctrl_seen;
+    const bool shift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0 || g_shift_seen;
+    switch (vk) {
+    case VK_CONTROL: g_ctrl_seen = true; return true;
+    case VK_SHIFT: g_shift_seen = true; return true;
+    case VK_ESCAPE: close_overlay("Esc"); return true;
+    case VK_RETURN:
+        if (trim(g_input).empty() || send_input()) close_overlay("Enter");
+        return true;
+    case VK_TAB: cycle_tab(shift); return true;
+    case VK_LEFT:
+        g_focus_input = true;
+        if (has_sel() && !shift) move_caret(sel_lo(), false);
+        else move_caret(ctrl ? word_left(g_input, g_caret) : (g_caret ? g_caret - 1 : 0), shift);
+        return true;
+    case VK_RIGHT:
+        g_focus_input = true;
+        if (has_sel() && !shift) move_caret(sel_hi(), false);
+        else move_caret(ctrl ? word_right(g_input, g_caret) : g_caret + 1, shift);
+        return true;
+    case VK_HOME: g_focus_input = true; move_caret(0, shift); return true;
+    case VK_END: g_focus_input = true; move_caret(g_input.size(), shift); return true;
+    case VK_BACK:
+        g_focus_input = true;
+        if (has_sel()) del_sel();
+        else if (g_caret > 0) {
+            const size_t b = ctrl ? word_left(g_input, g_caret) : g_caret - 1;
+            g_input.erase(b, g_caret - b);
+            move_caret(b, false);
+        }
+        return true;
+    case VK_DELETE:
+        g_focus_input = true;
+        if (has_sel()) del_sel();
+        else if (g_caret < g_input.size()) {
+            const size_t e = ctrl ? word_right(g_input, g_caret) : g_caret + 1;
+            g_input.erase(g_caret, e - g_caret);
+        }
+        return true;
+    case VK_UP:
+    case VK_DOWN: {
+        if (g_sent_hist.empty()) return true;
+        const int n = static_cast<int>(g_sent_hist.size());
+        if (vk == VK_UP) g_hist_pos = g_hist_pos < 0 ? n - 1 : (std::max)(0, g_hist_pos - 1);
+        else g_hist_pos = g_hist_pos < 0 ? -1 : (g_hist_pos + 1 < n ? g_hist_pos + 1 : -1);
+        set_input(g_hist_pos < 0 ? std::string() : g_sent_hist[static_cast<size_t>(g_hist_pos)]);
+        g_focus_input = true;
+        return true;
+    }
+    case VK_PRIOR: g_scroll += 8; return true;
+    case VK_NEXT: g_scroll = (std::max)(0, g_scroll - 8); return true;
+    default: break;
+    }
+    if (!ctrl) return true;
+    // A Ctrl+letter normally comes with a control-code WM_CHAR (0x01..0x1A), which
+    // is ignored anyway; if the modifier state reached TranslateMessage late, it is
+    // the plain letter -- eat that one too, so Ctrl+C never types a "c".
+    if (vk >= 'A' && vk <= 'Z') g_eat_ctrl_char = static_cast<char>(vk);
+    switch (vk) {
+    case 'A':
+        if (g_focus_input) { g_anchor = 0; g_caret = g_input.size(); }
+        else if (!g_rows.empty()) {
+            g_hsel_a = {0, 0};
+            g_hsel_b = {static_cast<int>(g_rows.size()) - 1, static_cast<int>(g_rows.back().plain.size())};
+        }
+        break;
+    case 'C':
+        if (!g_focus_input && hsel_any()) clip_set(hsel_text());
+        else if (has_sel()) clip_set(g_input.substr(sel_lo(), sel_hi() - sel_lo()));
+        break;
+    case 'X':
+        if (has_sel()) { clip_set(g_input.substr(sel_lo(), sel_hi() - sel_lo())); del_sel(); }
+        break;
+    case 'V':
+        g_focus_input = true;
+        clear_hsel();
+        insert_text(clip_get());
+        break;
+    default:
+        break;
+    }
+    return true;
 }
 
 // Every activation change the window sees, counted -- the evidence for "the overlay
@@ -841,22 +1412,46 @@ bool filter(HWND, UINT msg, WPARAM wp, LPARAM lp, LRESULT* result) {
     }
 
     // ---- open ----
-    if (is_mouse_msg(msg)) {
+    switch (msg) {
+    case WM_MOUSEMOVE:
         g_mouse_x = static_cast<short>(LOWORD(lp));
         g_mouse_y = static_cast<short>(HIWORD(lp));
         g_mouse_in = true;
-        if (msg == WM_MOUSEWHEEL) {
-            // wheel lParam is SCREEN coordinates
-            POINT p = {static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp))};
-            if (HWND h = input_gate::window()) ::ScreenToClient(h, &p);
-            g_mouse_x = p.x; g_mouse_y = p.y;
-            const int d = GET_WHEEL_DELTA_WPARAM(wp);
-            g_scroll = (std::max)(0, g_scroll + (d > 0 ? 3 : -3));
-        } else if (msg == WM_LBUTTONDOWN) {
-            on_click(g_mouse_x, g_mouse_y);
+        if (g_drag != D_NONE) {
+            if (wp & MK_LBUTTON) on_drag(g_mouse_x, g_mouse_y);
+            else on_release();   // the button came up where we could not see it
         }
         return true;
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONDBLCLK:
+        g_mouse_x = static_cast<short>(LOWORD(lp));
+        g_mouse_y = static_cast<short>(HIWORD(lp));
+        g_mouse_in = true;
+        on_press(g_mouse_x, g_mouse_y, (wp & MK_SHIFT) != 0 || g_shift_seen);
+        return true;
+    case WM_LBUTTONUP:
+        on_release();
+        return true;
+    case WM_RBUTTONDOWN:
+    case WM_MBUTTONDOWN: {
+        // Right or middle click on a DM tab closes that conversation's tab.
+        float x, y;
+        to_virtual(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)), &x, &y);
+        const int t = tab_at(x, y);
+        if (t >= 0 && g_tabs[static_cast<size_t>(t)].kind == T_DM) close_dm_tab(t);
+        return true;
     }
+    case WM_MOUSEWHEEL: {
+        const int d = GET_WHEEL_DELTA_WPARAM(wp);
+        const int maxs = (std::max)(0, static_cast<int>(g_rows.size()) - g_hist_rows_vis);
+        g_scroll = (std::max)(0, (std::min)(maxs, g_scroll + (d > 0 ? 3 : -3)));
+        return true;
+    }
+    default:
+        break;
+    }
+    if (is_mouse_msg(msg)) return true;   // every other button: the overlay's, not the game's
+
     switch (msg) {
     case WM_SETCURSOR:
         // Our cursor is the engine's (drawn in the frame); hide the OS one over
@@ -866,69 +1461,30 @@ bool filter(HWND, UINT msg, WPARAM wp, LPARAM lp, LRESULT* result) {
     case WM_MOUSELEAVE:
         g_mouse_in = false;
         return false;
-    case WM_KEYDOWN: {
-        const int vk = static_cast<int>(wp);
-        const bool ctrl = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
-        switch (vk) {
-        case VK_ESCAPE: close_overlay("Esc"); break;
-        case VK_RETURN:
-            if (!g_focus) { g_focus = true; break; }
-            send_input();
-            close_overlay("Enter");
-            break;
-        case VK_TAB:
-            g_tab = (g_tab + ((::GetKeyState(VK_SHIFT) & 0x8000) ? 2 : 1)) % 3;
-            g_scroll = 0; g_unread[g_tab] = 0;
-            break;
-        case VK_BACK:
-            if (g_caret > 0) { g_input.erase(g_caret - 1, 1); --g_caret; }
-            break;
-        case VK_DELETE:
-            if (g_caret < g_input.size()) g_input.erase(g_caret, 1);
-            break;
-        case VK_LEFT: if (g_caret > 0) --g_caret; break;
-        case VK_RIGHT: if (g_caret < g_input.size()) ++g_caret; break;
-        case VK_HOME: g_caret = 0; break;
-        case VK_END: g_caret = g_input.size(); break;
-        case VK_PRIOR: g_scroll += 8; break;
-        case VK_NEXT: g_scroll = (std::max)(0, g_scroll - 8); break;
-        case 'V':
-            if (ctrl && ::OpenClipboard(nullptr)) {
-                if (HANDLE h = ::GetClipboardData(CF_TEXT)) {
-                    if (const char* s = static_cast<const char*>(::GlobalLock(h))) {
-                        std::string paste = sanitise(s, 150);
-                        for (char& c : paste) if (c == '\t') c = ' ';
-                        const size_t room = 150 > g_input.size() ? 150 - g_input.size() : 0;
-                        paste.resize((std::min)(paste.size(), room));
-                        g_input.insert(g_caret, paste);
-                        g_caret += paste.size();
-                        ::GlobalUnlock(h);
-                    }
-                }
-                ::CloseClipboard();
-                g_eat_char = true;  // the WM_CHAR 0x16 that follows
-            }
-            break;
-        default:
-            break;
-        }
-        return true;
-    }
+    case WM_KEYDOWN:
+        return on_key(static_cast<int>(wp));
+    case WM_KEYUP:
+        if (wp == VK_CONTROL) g_ctrl_seen = false;
+        if (wp == VK_SHIFT) g_shift_seen = false;
+        return false;  // to the engine, deliberately (see the header)
     case WM_CHAR: {
         const unsigned char c = static_cast<unsigned char>(wp);
         if (g_eat_char) { g_eat_char = false; if (c < 0x20 || c == 't' || c == 'T') return true; }
-        if (c < 0x20 || c == 0x7F) return true;       // Enter, Esc, Tab, Backspace: handled on keydown
-        if (!g_focus) {
-            if (std::tolower(c) == std::tolower(g_open_vk)) close_overlay("T (toggle)");
-            else { g_focus = true; }
-            if (!g_open) return true;
-            if (!g_focus) return true;
+        if (g_eat_ctrl_char) {
+            const char e = g_eat_ctrl_char;
+            g_eat_ctrl_char = 0;
+            if (c < 0x20 || std::toupper(c) == static_cast<unsigned char>(e)) return true;
         }
-        if (g_input.size() < 150) { g_input.insert(g_caret, 1, static_cast<char>(c)); ++g_caret; }
+        if (c < 0x20 || c == 0x7F) return true;      // Ctrl+letters, Enter, Esc, Tab, Backspace
+        if (!g_focus_input && std::tolower(c) == std::tolower(g_open_vk)) {
+            close_overlay("T (toggle)");
+            return true;
+        }
+        g_focus_input = true;
+        clear_hsel();
+        insert_text(std::string(1, static_cast<char>(c)));
         return true;
     }
-    case WM_KEYUP:
-        return false;  // to the engine, deliberately (see the header)
     case WM_SYSKEYDOWN: case WM_SYSKEYUP: case WM_SYSCHAR:
         // Alt+Tab / Alt+F4 must still work; the engine must not act on Alt+Enter.
         *result = ::DefWindowProcA(input_gate::window(), msg, wp, lp);
@@ -936,8 +1492,14 @@ bool filter(HWND, UINT msg, WPARAM wp, LPARAM lp, LRESULT* result) {
     case WM_ACTIVATE:
         // Alt-tab while typing: give the pointer back to the desktop at once, and
         // take it again only if the player comes back to an open overlay.
-        if (LOWORD(wp) == WA_INACTIVE) { g_mouse_in = false; clip_for_overlay(false); }
-        else clip_for_overlay(true);
+        if (LOWORD(wp) == WA_INACTIVE) {
+            g_mouse_in = false;
+            g_ctrl_seen = g_shift_seen = false;
+            if (g_drag != D_NONE) on_release();
+            clip_for_overlay(false);
+        } else {
+            clip_for_overlay(true);
+        }
         return false;
     default:
         return false;
@@ -958,8 +1520,6 @@ void* g_font = nullptr;
 // 0.28 with a 14-unit step. The font is still chosen by WaW's own UI thresholds, so it
 // stays the crispest face for the real pixel size.
 float g_text_scale = 0.28f;
-constexpr float kLH = 14.f;    // line step, virtual units
-constexpr float kAsc = 13.f;   // baseline to the top of the line box
 float g_xscale = 1.0f;               // scale*48/pixelHeight, the per-font factor
 const void* g_scr = nullptr;
 placement g_pl{};
@@ -1038,10 +1598,13 @@ const std::vector<std::string>& wrap(chat_line& l, float width) {
     return l.wrapped;
 }
 
-bool visible_in_tab(const chat_line& l, int tab) {
-    if (l.ch != tab) return false;
-    if (tab == CH_DM && !g_dm_sid.empty() && !l.local) return l.peer_sid == g_dm_sid;
-    return true;
+bool visible_in_tab(const chat_line& l, const tab_t& t) {
+    switch (t.kind) {
+    case T_GLOBAL: return l.ch == CH_GLOBAL;
+    case T_PARTY: return l.ch == CH_PARTY;
+    case T_DM: return l.ch == CH_DM && l.peer_sid == t.sid;
+    default: return l.ch == CH_DM && l.peer_sid.empty();   // the picker's own hints
+    }
 }
 
 void drain_inbox() {
@@ -1060,9 +1623,9 @@ void drain_inbox() {
             ENW_INFO("chat_overlay: signed in to chat as '%s'; party %lld; %zu contact(s); pause "
                      "when chatting solo: %s", g_me.name.c_str(), g_me.party_id,
                      g_me.contacts.size(), g_me.pause_on_chat ? "on" : "off");
-        if (!g_dm_sid.empty()) {  // keep the DM target's name fresh
-            for (const auto& c : g_me.contacts) if (c.sid == g_dm_sid) g_dm_name = c.name;
-        }
+        for (auto& t : g_tabs)   // keep DM tab names fresh
+            if (t.kind == T_DM)
+                for (const auto& c : g_me.contacts) if (c.sid == t.sid) t.name = c.name;
     }
     for (auto& l : in) {
         if (!l.local) {
@@ -1071,8 +1634,12 @@ void drain_inbox() {
                 dup = !it->local && it->id == l.id && ((it->ch == CH_GLOBAL) == (l.ch == CH_GLOBAL));
             if (dup) continue;
         }
-        if (l.ch == CH_DM && !l.mine && g_dm_sid.empty()) { g_dm_sid = l.peer_sid; g_dm_name = l.peer_name; }
-        if (!(g_open && g_tab == l.ch)) ++g_unread[l.ch];
+        int tab = l.ch == CH_GLOBAL ? 0 : l.ch == CH_PARTY ? 1 : -1;
+        if (l.ch == CH_DM && !l.peer_sid.empty()) {
+            tab = ensure_dm_tab(l.peer_sid, l.peer_name);
+            if (!l.mine) { g_last_dm_sid = l.peer_sid; g_last_dm_name = l.peer_name; }
+        }
+        if (tab >= 0 && !(g_open && g_tab == tab) && !l.mine) ++g_tabs[static_cast<size_t>(tab)].unread;
         g_lines.push_back(std::move(l));
     }
     while (g_lines.size() > 400) g_lines.pop_front();
@@ -1115,33 +1682,92 @@ void draw_notify() {
     }
 }
 
+row_t make_row(const std::string& raw, size_t line) {
+    row_t r;
+    r.raw = raw;
+    r.line = line;
+    for (size_t i = 0; i < raw.size();) {
+        if (raw[i] == '^' && i + 1 < raw.size() && raw[i + 1] >= '0' && raw[i + 1] <= '9') { i += 2; continue; }
+        r.map.push_back(i);
+        r.plain.push_back(raw[i]);
+        ++i;
+    }
+    r.map.push_back(raw.size());
+    return r;
+}
+
+// Every row of the active tab, oldest first, wrapped to `width`.
+void build_rows(float width) {
+    g_rows.clear();
+    const tab_t& t = cur_tab();
+    size_t idx = 0;
+    for (auto& l : g_lines) {
+        ++idx;
+        if (!visible_in_tab(l, t)) continue;
+        const auto& w = wrap(l, width);
+        for (size_t k = 0; k < w.size(); ++k) {
+            row_t r = make_row(w[k], idx);
+            if (k == 0 && !l.system && !l.local && !l.mine && !l.from_sid.empty() && !l.from.empty()) {
+                const int tag = l.ch == CH_PARTY ? 8 /* "[Party] " */ : l.ch == CH_DM ? 5 /* "[DM] " */ : 0;
+                const int e = tag + static_cast<int>(l.from.size());
+                if (e <= static_cast<int>(r.plain.size()) && r.plain.compare(static_cast<size_t>(tag), l.from.size(), l.from) == 0) {
+                    r.name_b = tag; r.name_e = e;
+                    r.name_sid = l.from_sid; r.name = l.from;
+                }
+            }
+            g_rows.push_back(std::move(r));
+        }
+    }
+    if (g_hsel_a.row >= static_cast<int>(g_rows.size()) || g_hsel_b.row >= static_cast<int>(g_rows.size())) clear_hsel();
+}
+
+const float kSel[4] = {0.93f, 0.82f, 0.45f, 0.40f};      // selection: WaW's gold, tinted
+const float kGold[4] = {0.93f, 0.82f, 0.45f, 1};
+
 void draw_panel(int lc) {
     const uintptr_t pos = rd<uintptr_t>(kDvarHudChatPos);
     const float cx = pos ? rd<float>(pos + kDvarValue) : 5.f;
     const float cy = pos ? rd<float>(pos + kDvarValue + 4) : 200.f;
     const int rows = 10;
+    g_hist_rows_vis = rows;
     const float W = 340.f;
     const float x0 = cx - 3.f;
     const float top = cy - kLH * rows - 20.f;       // tab strip
     const float bottom = cy + 26.f;                  // below the input line
     const float bg[4] = {0, 0, 0, 0.62f};
     const float strip[4] = {0.18f, 0.18f, 0.18f, 0.85f};
-    const float hl[4] = {0.93f, 0.82f, 0.45f, 1};   // WaW's parchment gold
     box(x0, top, W, bottom - top, bg);
     box(x0, top, W, 18.f, strip);
 
-    // tabs
-    const char* names[3] = {"Global", "Party", "DMs"};
-    float tx = x0 + 6.f;
-    for (int t = 0; t < 3; ++t) {
-        char label[48];
-        if (g_unread[t] && t != g_tab) std::snprintf(label, sizeof label, "%s (%d)", names[t], g_unread[t]);
-        else std::snprintf(label, sizeof label, "%s", names[t]);
-        const float w = text_w(label) + 12.f;
-        g_tab_rect[t] = {tx - 4.f, top, w, 18.f};
-        if (t == g_tab) box(tx - 4.f, top + 16.f, w, 2.f, hl);
-        text(tx, top + 15.f, label, t == g_tab ? kWhite : kDim);
-        tx += w + 4.f;
+    // Where the pointer is, for hover.
+    float mx = -1e6f, my = -1e6f;
+    if (g_mouse_in && g_mouse_x >= 0) to_virtual(g_mouse_x, g_mouse_y, &mx, &my);
+
+    // ---- tabs: Global, Party, one per DM conversation, and "+"
+    g_tab_rects.assign(g_tabs.size(), rect{-1e6f, -1e6f, 0, 0});
+    float tx = x0 + 4.f;
+    const float tabs_end = x0 + W - 70.f;
+    for (size_t i = 0; i < g_tabs.size(); ++i) {
+        const tab_t& t = g_tabs[i];
+        std::string label = t.kind == T_DM ? t.name.substr(0, 12) : t.name;
+        if (t.unread && static_cast<int>(i) != g_tab) label += " (" + std::to_string(t.unread) + ")";
+        const float w = text_w(label.c_str()) + 10.f;
+        if (tx + w > tabs_end && static_cast<int>(i) != g_tab && t.kind != T_NEW) continue;  // no room: Tab still reaches it
+        const rect r{tx, top, w, 18.f};
+        g_tab_rects[i] = r;
+        const bool active = static_cast<int>(i) == g_tab;
+        const bool hover = r.hit(mx, my);
+        if (active) {
+            const float a[4] = {0.93f, 0.82f, 0.45f, 0.22f};
+            box(r.x, r.y, r.w, r.h, a);
+            box(r.x, r.y + 16.f, r.w, 2.f, kGold);
+        } else if (hover) {
+            const float hv[4] = {1, 1, 1, 0.10f};
+            box(r.x, r.y, r.w, r.h, hv);
+        }
+        const std::string col = active ? "^7" : t.kind == T_DM ? "^6" : t.kind == T_PARTY ? "^2" : "^7";
+        text(tx + 5.f, top + 14.f, (col + label).c_str(), active || hover ? kWhite : kDim);
+        tx += w + 2.f;
     }
     // status + close
     {
@@ -1152,95 +1778,131 @@ void draw_panel(int lc) {
         const std::string s = ok ? std::string("^2online") : std::string("^1offline");
         const float sw = text_w(s.c_str());
         g_close_rect = {x0 + W - 16.f, top, 16.f, 18.f};
-        text(x0 + W - 22.f - sw, top + 15.f, s.c_str(), kDim);
-        text(x0 + W - 12.f, top + 15.f, "x", kWhite);
+        if (g_close_rect.hit(mx, my)) { const float hv[4] = {1, 1, 1, 0.12f}; box(g_close_rect.x, g_close_rect.y, g_close_rect.w, g_close_rect.h, hv); }
+        text(x0 + W - 22.f - sw, top + 14.f, s.c_str(), kDim);
+        text(x0 + W - 12.f, top + 14.f, "x", kWhite);
     }
 
-    // DM contact column
-    float hist_w = W - 12.f;
+    const float hist_w = W - 12.f;
+    g_hist_x = cx;
+    g_hist_base = cy - 1.f;
+    g_hist_rect = {x0, top + 18.f, W, cy + 3.f - (top + 18.f)};
     g_contact_rects.clear();
-    if (g_tab == CH_DM) {
-        const float colw = 100.f;
-        hist_w -= colw + 6.f;
-        const float colx = x0 + W - colw - 4.f;
-        const float colbg[4] = {1, 1, 1, 0.06f};
-        box(colx, top + 20.f, colw, kLH * rows + 2.f, colbg);
-        float y = top + 36.f;
-        if (g_me.contacts.empty()) text(colx + 3.f, y, "^3No friends yet", kDim);
-        for (const auto& c : g_me.contacts) {
+
+    if (cur_tab().kind == T_NEW) {
+        // ---- the recipient picker: friends and party, then anyone seen in chat
+        std::vector<contact> list = g_me.contacts;
+        for (auto it = g_lines.rbegin(); it != g_lines.rend() && list.size() < 20; ++it) {
+            if (it->from_sid.empty() || it->mine || it->from_sid == g_me.sid) continue;
+            bool dup = false;
+            for (const auto& c : list) dup |= c.sid == it->from_sid;
+            if (!dup) list.push_back({it->from_sid, it->from, false});
+        }
+        text(cx, top + 32.f, "^3Message someone: click a name, or type /w name message", kDim);
+        float y = top + 48.f;
+        for (const auto& c : list) {
             if (y > cy) break;
-            const rect r{colx, y - kAsc, colw, kLH};
-            if (c.sid == g_dm_sid) { const float sel[4] = {0.93f, 0.82f, 0.45f, 0.25f}; box(r.x, r.y, r.w, r.h, sel); }
-            std::string n = (c.party ? "^2" : "^7") + c.name;
-            text(colx + 3.f, y, n.c_str(), kWhite);
+            const rect r{x0 + 2.f, y - kAsc, W - 4.f, kLH};
+            if (r.hit(mx, my)) { const float hv[4] = {1, 1, 1, 0.10f}; box(r.x, r.y, r.w, r.h, hv); }
+            text(cx, y, ((c.party ? "^2" : "^7") + c.name + (c.party ? " ^7(party)" : "")).c_str(), kWhite);
             g_contact_rects.push_back({r, c});
             y += kLH;
         }
+        if (list.empty()) text(cx, top + 48.f, "^3No friends or party members yet", kDim);
+        g_rows.clear();
+    } else {
+        // ---- history, bottom-anchored on the WaW chat line
+        build_rows(hist_w - 6.f);
+        const int n = static_cast<int>(g_rows.size());
+        const int maxs = (std::max)(0, n - rows);
+        if (g_scroll > maxs) g_scroll = maxs;
+        hpos lo = g_hsel_a, hi = g_hsel_b;
+        if (hpos_less(hi, lo)) std::swap(lo, hi);
+        const bool sel = hsel_any();
+        for (int i = 0; i < rows; ++i) {
+            const int ri = n - 1 - g_scroll - i;
+            if (ri < 0) break;
+            const row_t& r = g_rows[static_cast<size_t>(ri)];
+            const float base = g_hist_base - kLH * i;
+            if (my >= base - kAsc && my < base - kAsc + kLH && mx >= x0 && mx < x0 + W) {
+                const float hv[4] = {1, 1, 1, 0.05f};   // the row under the pointer
+                box(x0 + 1.f, base - kAsc, W - 2.f, kLH, hv);
+            }
+            if (sel && ri >= lo.row && ri <= hi.row) {
+                const int b = ri == lo.row ? lo.col : 0;
+                const int e = ri == hi.row ? hi.col : static_cast<int>(r.plain.size());
+                if (e > b) {
+                    const float xb = row_x(r, b), xe = row_x(r, e);
+                    box(cx + xb, base - kAsc, xe - xb + (ri < hi.row ? 3.f : 0.f), kLH, kSel);
+                }
+            }
+            if (r.name_b >= 0) {   // the sender's name is a link to a DM tab
+                const float nb = cx + row_x(r, r.name_b), ne = cx + row_x(r, r.name_e);
+                if (mx >= nb && mx <= ne && my >= base - kAsc && my < base - kAsc + kLH) {
+                    const float hv[4] = {1, 1, 1, 0.12f};
+                    box(nb - 1.f, base - kAsc, ne - nb + 2.f, kLH, hv);
+                    box(nb, base + 1.f, ne - nb, 1.f, kWhite);
+                }
+            }
+            text(cx, base, r.raw.c_str(), kWhite);
+        }
+        if (n == 0) {
+            const tab_t& t = cur_tab();
+            const char* hint = t.kind == T_PARTY ? (g_me.party_id ? "^3No party messages yet" : "^3You are not in a party")
+                             : t.kind == T_DM ? "^3No messages yet -- say hello" : "^3No messages yet";
+            text(cx, g_hist_base, hint, kDim);
+        }
+        if (!g_net_ok_cached && n < rows - 1) {
+            std::string st;
+            { std::lock_guard<std::mutex> lk(g_mu); st = g_net_status; }
+            text(cx, top + 32.f, ("^1" + st).c_str(), kDim);
+        }
+        if (g_scroll > 0) text(x0 + W - 14.f, top + 32.f, "^3^", kWhite);   // there is more below
     }
 
-    // history, bottom-anchored on the WaW chat line
-    g_hist_rect = {x0, top + 18.f, hist_w, cy - top - 18.f};
-    std::vector<const std::string*> vis;
-    for (auto it = g_lines.rbegin(); it != g_lines.rend() && static_cast<int>(vis.size()) < rows + g_scroll + 40; ++it) {
-        if (!visible_in_tab(*it, g_tab)) continue;
-        const auto& w = wrap(*it, hist_w - 6.f);
-        for (auto r = w.rbegin(); r != w.rend(); ++r) vis.push_back(&*r);
-    }
-    if (g_scroll > static_cast<int>(vis.size()) - rows) g_scroll = (std::max)(0, static_cast<int>(vis.size()) - rows);
-    for (int i = 0; i < rows; ++i) {
-        const size_t k = static_cast<size_t>(g_scroll + i);
-        if (k >= vis.size()) break;
-        text(cx, cy - 1.f - kLH * i, vis[k]->c_str(), kWhite);
-    }
-    if (!g_net_ok_cached && static_cast<int>(vis.size()) < rows - 1) {
-        std::string st;
-        { std::lock_guard<std::mutex> lk(g_mu); st = g_net_status; }
-        text(cx, top + 34.f, ("^1" + st).c_str(), kDim);
-    }
-    if (vis.empty()) {
-        const char* hint = g_tab == CH_PARTY ? (g_me.party_id ? "^3No party messages yet" : "^3You are not in a party")
-                         : g_tab == CH_DM ? (g_dm_sid.empty() ? "^3Pick a name on the right" : "^3No messages yet")
-                         : "^3No messages yet";
-        text(cx, cy - 1.f, hint, kDim);
-    }
-
-    // the input line: WaW's "Say:" box
+    // ---- the input line: WaW's "Say:" box, a real text box
     const float iy = cy + 20.f;
-    const float ibg[4] = {1, 1, 1, g_focus ? 0.10f : 0.04f};
+    const float ibg[4] = {1, 1, 1, g_focus_input ? 0.10f : 0.04f};
     g_input_rect = {x0 + 2.f, iy - 15.f, W - 4.f, 18.f};
     box(g_input_rect.x, g_input_rect.y, g_input_rect.w, g_input_rect.h, ibg);
-    std::string prefix = g_tab == CH_PARTY ? "^2Party: " : g_tab == CH_DM
-        ? (g_dm_name.empty() ? std::string("^6To: ") : "^6To " + g_dm_name + ": ") : std::string("^7Say: ");
+    const tab_t& t = cur_tab();
+    const std::string prefix = t.kind == T_PARTY ? "^2Party: " : t.kind == T_DM ? "^6To " + t.name + ": "
+                             : t.kind == T_NEW ? "^6To: " : "^7Say: ";
     text(cx, iy, prefix.c_str(), kWhite);
-    const float px = cx + text_w(prefix.c_str());
-    // show the tail if the line is wider than the box
-    std::string shown = g_input;
-    size_t caret = g_caret;
-    const float room = W - 12.f - (px - cx);
-    while (!shown.empty() && text_w(shown.c_str()) > room && caret > 0) { shown.erase(0, 1); --caret; }
-    // No colour codes typed into the input line may restyle it.
-    std::string safe;
-    for (char c : shown) { if (c == '^') safe += "^^7"; else safe.push_back(c); }
-    std::string before = shown.substr(0, caret);
-    std::string before_safe;
-    for (char c : before) { if (c == '^') before_safe += "^^7"; else before_safe.push_back(c); }
-    text(px, iy, ("^7" + safe).c_str(), kWhite);
-    if (g_focus && ((::GetTickCount() / 500) & 1) == 0) {
-        const float cxp = px + text_w(before_safe.c_str());
-        box(cxp, iy - 13.f, 1.5f, 14.f, kWhite);
+    g_input_text_x = cx + text_w(prefix.c_str());
+    g_input_room = (x0 + W - 6.f) - g_input_text_x;
+    // Keep the caret in view.
+    if (g_in_scroll > g_caret) g_in_scroll = g_caret;
+    while (g_in_scroll < g_caret && text_w(g_input.substr(g_in_scroll, g_caret - g_in_scroll).c_str()) > g_input_room) ++g_in_scroll;
+    while (g_in_scroll > 0 && text_w(g_input.substr(g_in_scroll - 1).c_str()) <= g_input_room) --g_in_scroll;
+    std::string shown = g_input.substr(g_in_scroll);
+    while (!shown.empty() && text_w(shown.c_str()) > g_input_room) shown.pop_back();
+    auto xin = [&](size_t col) {
+        col = (std::max)(g_in_scroll, (std::min)(col, g_in_scroll + shown.size()));
+        return g_input_text_x + text_w(g_input.substr(g_in_scroll, col - g_in_scroll).c_str());
+    };
+    if (has_sel()) {
+        const float xb = xin(sel_lo()), xe = xin(sel_hi());
+        if (xe > xb) box(xb, iy - kAsc, xe - xb, kLH, kSel);
     }
+    text(g_input_text_x, iy, ("^7" + shown).c_str(), kWhite);
+    if (g_focus_input && (((::GetTickCount() - g_blink_t) / 530) & 1) == 0)
+        box(xin(g_caret), iy - 12.f, 1.5f, 13.f, kWhite);
 
-    // WaW's own cursor, drawn by the engine so it exists in every window mode
+    // WaW's own cursor, drawn by the engine so it exists in every window mode --
+    // CENTRED on the pointer, exactly as the UI draws it (0x5B6970: x - 32*0.5,
+    // size 32 from [0x84BC9C]). The image's hot spot is its middle; drawing it
+    // from its top-left (round 1) put the visible tip 16 units -- 48 px at 1440p --
+    // below-right of where a click actually lands, which is why B could move the
+    // pointer but never hit a tab.
     if (g_mouse_in && g_mouse_x >= 0) {
-        float vx, vy;
-        to_virtual(g_mouse_x, g_mouse_y, &vx, &vy);
         void* cur = rd<void*>(kUiCursor);
         if (cur) {
             reinterpret_cast<stretch_pic_t>(kRStretchPic)(
-                vx * g_pl.sx + g_pl.ox, vy * g_pl.sy + g_pl.oy, 32.f * g_pl.sx, 32.f * g_pl.sy,
-                0, 0, 1, 1, kWhite, cur);
+                (mx - 16.f) * g_pl.sx + g_pl.ox, (my - 16.f) * g_pl.sy + g_pl.oy, 32.f * g_pl.sx,
+                32.f * g_pl.sy, 0, 0, 1, 1, kWhite, cur);
         } else {
-            box(vx, vy, 3.f, 3.f, kWhite);
+            box(mx - 1.f, my - 1.f, 3.f, 3.f, kWhite);
         }
     }
     (void)lc;
@@ -1248,45 +1910,57 @@ void draw_panel(int lc) {
 
 // ------------------------------------------------------------------ selftest
 // ENW_CHAT_SELFTEST=1: demo lines, then (ENW_CHAT_SELFTEST=2) a scripted session
-// posted into the game's own message queue -- the same path a real keypress
-// takes (the pump's TranslateMessage makes the WM_CHARs) -- with the engine's own
-// `screenshotJPEG` after each step. Nothing here moves the real cursor.
+// posted into the game's own message queue, with a back-buffer capture after the
+// steps that matter. Nothing here moves the real cursor, activates the window or
+// touches the Windows clipboard (a private buffer stands in for it).
 struct step { DWORD at; int kind; int a; int b; const char* s; };
-enum { S_DEMO, S_SHOT, S_KEY, S_TYPE, S_CLICK_TAB, S_CLICK_CONTACT, S_MOVE, S_DONE };
+enum { S_DEMO, S_SHOT, S_KEY, S_KEYMOD, S_TYPE, S_HOVER_TAB, S_CLICK_TAB, S_DBL_INPUT, S_DRAG_HIST,
+       S_CLICK_NAME, S_WHEEL, S_CLICK_CONTACT, S_LOG, S_DONE };
 const step kScript[] = {
     {3000, S_DEMO, 0, 0, nullptr},             // only when there is no site to talk to
     {6000, S_SHOT, 0, 0, "notify"},
     {8000, S_KEY, 'T', 0, nullptr},
-    {9000, S_MOVE, 0, 0, nullptr},
-    {10500, S_SHOT, 0, 0, "open"},
-    {11000, S_TYPE, 0, 0, "hello from inside the game"},
-    {13000, S_SHOT, 0, 0, "typed"},
-    {13500, S_CLICK_TAB, CH_PARTY, 0, nullptr},
-    {14500, S_SHOT, 0, 0, "party"},
-    {15000, S_CLICK_TAB, CH_DM, 0, nullptr},
-    {15500, S_CLICK_CONTACT, 0, 0, nullptr},
-    {16500, S_SHOT, 0, 0, "dm"},
-    {17000, S_CLICK_TAB, CH_GLOBAL, 0, nullptr},
-    {17500, S_KEY, VK_RETURN, 0, nullptr},     // send on Global, and close
-    {19000, S_SHOT, 0, 0, "sent"},
-    {20000, S_KEY, 'T', 0, nullptr},           // party line
-    {20500, S_KEY, VK_TAB, 0, nullptr},
-    {21000, S_TYPE, 0, 0, "party line from the game"},
-    {22500, S_KEY, VK_RETURN, 0, nullptr},
-    {23500, S_KEY, 'T', 0, nullptr},           // DM line
-    {24000, S_CLICK_TAB, CH_DM, 0, nullptr},
-    {24500, S_CLICK_CONTACT, 0, 0, nullptr},
-    {25000, S_TYPE, 0, 0, "dm from the game"},
-    {26500, S_KEY, VK_RETURN, 0, nullptr},
-    {27500, S_KEY, 'T', 0, nullptr},
-    {28000, S_CLICK_TAB, CH_DM, 0, nullptr},
-    {29500, S_SHOT, 0, 0, "dm-sent"},
-    {30000, S_KEY, VK_ESCAPE, 0, nullptr},
-    {32000, S_KEY, VK_ESCAPE, 0, nullptr},     // the game's own Esc menu: enw_ui paused
-    {34000, S_SHOT, 0, 0, "escmenu"},
-    {35000, S_KEY, VK_ESCAPE, 0, nullptr},
-    {37000, S_SHOT, 0, 0, "closed"},
-    {38000, S_DONE, 0, 0, nullptr},
+    {9000, S_HOVER_TAB, 1, 0, nullptr},        // the pointer over "Party": the tip must be on it
+    {9800, S_SHOT, 0, 0, "hover-party"},
+    {10000, S_CLICK_TAB, 1, 0, nullptr},
+    {10600, S_SHOT, 0, 0, "party"},
+    {11000, S_KEY, VK_TAB, 0, nullptr},        // Party -> next
+    {11400, S_KEYMOD, VK_TAB, VK_SHIFT, nullptr},   // and back
+    {11800, S_CLICK_TAB, 0, 0, nullptr},       // Global
+    {12200, S_TYPE, 0, 0, "hello selection world"},
+    {13000, S_KEYMOD, VK_LEFT, VK_SHIFT, "5"}, // select "world"
+    {13600, S_SHOT, 0, 0, "shift-select"},
+    {14000, S_KEYMOD, 'C', VK_CONTROL, nullptr},
+    {14300, S_KEY, VK_END, 0, nullptr},
+    {14500, S_KEYMOD, 'V', VK_CONTROL, nullptr},
+    {15000, S_LOG, 0, 0, "after paste"},
+    {15200, S_SHOT, 0, 0, "pasted"},
+    {15600, S_KEYMOD, 'A', VK_CONTROL, nullptr},
+    {15800, S_KEY, VK_BACK, 0, nullptr},
+    {16000, S_TYPE, 0, 0, "double click me"},
+    {16800, S_DBL_INPUT, 7, 0, nullptr},       // double-click inside "click"
+    {17300, S_LOG, 0, 0, "after double-click"},
+    {17400, S_SHOT, 0, 0, "dblclick-word"},
+    {17800, S_KEYMOD, 'A', VK_CONTROL, nullptr},
+    {18000, S_KEY, VK_BACK, 0, nullptr},
+    {18400, S_DRAG_HIST, 4, 1, nullptr},       // drag from visible row 4 to row 1
+    {19000, S_SHOT, 0, 0, "history-drag"},
+    {19300, S_KEYMOD, 'C', VK_CONTROL, nullptr},
+    {19800, S_WHEEL, 120, 0, nullptr},
+    {20300, S_SHOT, 0, 0, "wheel-up"},
+    {20600, S_WHEEL, -120, 0, nullptr},
+    {21000, S_CLICK_NAME, 0, 0, nullptr},      // a sender's name opens a DM tab
+    {21800, S_SHOT, 0, 0, "name-opens-dm"},
+    {22200, S_TYPE, 0, 0, "/w staminup hi from a whisper"},
+    {23200, S_KEY, VK_RETURN, 0, nullptr},
+    {25000, S_KEY, 'T', 0, nullptr},
+    {26000, S_SHOT, 0, 0, "dm-tab-after-w"},
+    {26400, S_CLICK_TAB, -1, 0, nullptr},      // the "+" picker
+    {27000, S_SHOT, 0, 0, "picker"},
+    {27400, S_CLICK_CONTACT, 0, 0, nullptr},
+    {28000, S_LOG, 0, 0, "after picking a contact"},
+    {28400, S_KEY, VK_ESCAPE, 0, nullptr},
+    {29000, S_DONE, 0, 0, nullptr},
 };
 size_t g_step = 0;
 int g_selftest_mode = 0;
@@ -1299,18 +1973,32 @@ void post_key(int vk) {
     ::PostMessageA(h, WM_KEYUP, vk, 1 | (sc << 16) | (1u << 30) | (1u << 31));
 }
 
-void click_virtual(float vx, float vy) {
+void post_down(int vk, bool down) {
     HWND h = input_gate::window();
     if (!h) return;
+    const UINT sc = ::MapVirtualKeyA(vk, MAPVK_VK_TO_VSC);
+    ::PostMessageA(h, down ? WM_KEYDOWN : WM_KEYUP, vk,
+                   1 | (sc << 16) | (down ? 0u : ((1u << 30) | (1u << 31))));
+}
+
+LPARAM client_lp(float vx, float vy) {
+    HWND h = input_gate::window();
     RECT rc{};
-    ::GetClientRect(h, &rc);
+    if (h) ::GetClientRect(h, &rc);
     const int dw = rd<int>(kVidDisplayW), dh = rd<int>(kVidDisplayH);
     float bx = vx * g_pl.sx + g_pl.ox, by = vy * g_pl.sy + g_pl.oy;
     if (dw > 0 && dh > 0 && rc.right > 0) { bx = bx * rc.right / dw; by = by * rc.bottom / dh; }
-    const LPARAM lp = MAKELPARAM(static_cast<int>(bx), static_cast<int>(by));
-    ::PostMessageA(h, WM_MOUSEMOVE, 0, lp);
-    ::PostMessageA(h, WM_LBUTTONDOWN, MK_LBUTTON, lp);
-    ::PostMessageA(h, WM_LBUTTONUP, 0, lp);
+    return MAKELPARAM(static_cast<int>(bx), static_cast<int>(by));
+}
+
+void post_mouse(UINT msg, WPARAM wp, float vx, float vy) {
+    if (HWND h = input_gate::window()) ::PostMessageA(h, msg, wp, client_lp(vx, vy));
+}
+
+void click_virtual(float vx, float vy) {
+    post_mouse(WM_MOUSEMOVE, 0, vx, vy);
+    post_mouse(WM_LBUTTONDOWN, MK_LBUTTON, vx, vy);
+    post_mouse(WM_LBUTTONUP, 0, vx, vy);
 }
 
 void inject_demo() {
@@ -1319,16 +2007,20 @@ void inject_demo() {
         chat_line l;
         l.ch = ch; l.local = false; l.id = -1 - static_cast<long long>(g_lines.size());
         l.system = sys; l.from = from; l.text = text; l.arrived = ::GetTickCount();
-        l.peer_sid = peer; l.peer_name = from; l.from_sid = peer;
+        l.peer_sid = peer; l.peer_name = from; l.from_sid = sys ? "" : (peer[0] ? peer : "76561198000000008");
         return l;
     };
-    g_lines.push_back(mk(CH_GLOBAL, "", "mule_kicker just went down on round 30 on Verruckt", true));
-    g_lines.push_back(mk(CH_GLOBAL, "deadshot", "anyone up for Der Riese after this?", false));
-    g_lines.push_back(mk(CH_GLOBAL, "quickrevive", "gl on 30, you have the ray gun at least", false));
-    g_lines.push_back(mk(CH_PARTY, "juggernog", "box is by the power switch", false));
-    g_lines.push_back(mk(CH_DM, "staminup", "ready when you are", false, "76561198000000009"));
+    std::vector<chat_line> demo;
+    demo.push_back(mk(CH_GLOBAL, "", "mule_kicker just went down on round 30 on Verruckt", true));
+    demo.push_back(mk(CH_GLOBAL, "deadshot", "anyone up for Der Riese after this?", false));
+    demo.push_back(mk(CH_GLOBAL, "quickrevive", "gl on 30, you have the ray gun at least", false));
+    demo.push_back(mk(CH_PARTY, "juggernog", "box is by the power switch", false));
+    demo.push_back(mk(CH_DM, "staminup", "ready when you are", false, "76561198000000009"));
     if (g_me.contacts.empty()) g_me.contacts.push_back({"76561198000000009", "staminup", false});
-    g_unread[CH_PARTY]++; g_unread[CH_DM]++;
+    {
+        std::lock_guard<std::mutex> lk(g_mu);
+        for (auto& l : demo) g_inbox.push_back(std::move(l));
+    }
     ENW_INFO("chat_overlay: selftest injected 5 demo lines");
 }
 
@@ -1339,46 +2031,102 @@ void selftest_tick() {
     if (t < s.at) return;
     ++g_step;
     const bool scripted = g_selftest_mode >= 2;
+    auto tab_idx = [](int a) { return a < 0 ? static_cast<int>(g_tabs.size()) - 1 : a; };
     switch (s.kind) {
     case S_DEMO: inject_demo(); break;
     case S_SHOT: {
         // Our own back-buffer capture (frame_capture.cpp) works off-screen and in
         // exclusive fullscreen; the engine's screenshotJPEG is only the fallback.
         if (!frame_capture::request(s.s)) cbuf_add_text("screenshotJPEG\n");
-        ENW_INFO("chat_overlay: selftest screenshot '%s' at +%lu ms (open=%d tab=%d input='%s')",
-                 s.s, t, g_open ? 1 : 0, g_tab, g_input.c_str());
+        ENW_INFO("chat_overlay: selftest screenshot '%s' at +%lu ms (open=%d tab=%d '%s' input='%s' "
+                 "caret=%zu sel=%zu..%zu)", s.s, t, g_open ? 1 : 0, g_tab, cur_tab().name.c_str(),
+                 g_input.c_str(), g_caret, sel_lo(), sel_hi());
         break;
     }
+    case S_LOG:
+        ENW_INFO("chat_overlay: selftest %s: tab=%d '%s' input='%s' caret=%zu selection='%s'", s.s,
+                 g_tab, cur_tab().name.c_str(), g_input.c_str(), g_caret,
+                 g_input.substr(sel_lo(), sel_hi() - sel_lo()).c_str());
+        break;
     case S_KEY: if (scripted) post_key(s.a); break;
-    case S_MOVE:
+    case S_KEYMOD:
         if (scripted) {
-            HWND h = input_gate::window();
-            if (h) { RECT rc{}; ::GetClientRect(h, &rc);
-                ::PostMessageA(h, WM_MOUSEMOVE, 0, MAKELPARAM(rc.right / 3, rc.bottom / 3)); }
+            const int n = s.s ? std::atoi(s.s) : 1;
+            post_down(s.b, true);
+            for (int i = 0; i < n; ++i) post_key(s.a);
+            post_down(s.b, false);
         }
         break;
     case S_TYPE:
-        // WM_CHAR, as the pump's TranslateMessage makes it. Posting WM_KEYDOWNs and
-        // relying on TranslateMessage works only while the window has had keyboard
-        // focus (the thread's key state is empty otherwise) -- a harness artefact,
-        // not a player one: real keys always arrive with focus.
+        // WM_CHAR, as the pump's TranslateMessage makes it (a window that has never
+        // had the keyboard gets no WM_CHAR from a posted WM_KEYDOWN).
+        if (scripted)
+            if (HWND h = input_gate::window())
+                for (const char* p = s.s; *p; ++p) ::PostMessageA(h, WM_CHAR, static_cast<unsigned char>(*p), 1);
+        break;
+    case S_HOVER_TAB:
         if (scripted) {
-            HWND h = input_gate::window();
-            for (const char* p = s.s; h && *p; ++p)
-                ::PostMessageA(h, WM_CHAR, static_cast<unsigned char>(*p), 1);
+            const rect& r = g_tab_rects[static_cast<size_t>(tab_idx(s.a))];
+            post_mouse(WM_MOUSEMOVE, 0, r.x + r.w / 2, r.y + r.h / 2);
         }
         break;
     case S_CLICK_TAB:
-        if (scripted) { const rect& r = g_tab_rect[s.a]; click_virtual(r.x + r.w / 2, r.y + r.h / 2); }
+        if (scripted) {
+            const int i = tab_idx(s.a);
+            if (i < static_cast<int>(g_tab_rects.size())) {
+                const rect& r = g_tab_rects[static_cast<size_t>(i)];
+                click_virtual(r.x + r.w / 2, r.y + r.h / 2);
+            }
+        }
+        break;
+    case S_DBL_INPUT:
+        if (scripted) {
+            const float x = g_input_text_x + text_w(g_input.substr(0, static_cast<size_t>(s.a)).c_str()) + 2.f;
+            const float y = g_input_rect.y + g_input_rect.h / 2;
+            click_virtual(x, y);
+            click_virtual(x, y);
+        }
+        break;
+    case S_DRAG_HIST:
+        if (scripted) {
+            const float y0 = g_hist_base - kLH * s.a - 6.f, y1 = g_hist_base - kLH * s.b - 6.f;
+            post_mouse(WM_MOUSEMOVE, 0, g_hist_x + 20.f, y0);
+            post_mouse(WM_LBUTTONDOWN, MK_LBUTTON, g_hist_x + 20.f, y0);
+            post_mouse(WM_MOUSEMOVE, MK_LBUTTON, g_hist_x + 80.f, (y0 + y1) / 2);
+            post_mouse(WM_MOUSEMOVE, MK_LBUTTON, g_hist_x + 150.f, y1);
+            post_mouse(WM_LBUTTONUP, 0, g_hist_x + 150.f, y1);
+        }
+        break;
+    case S_WHEEL:
+        if (scripted)
+            if (HWND h = input_gate::window()) ::PostMessageA(h, WM_MOUSEWHEEL, MAKEWPARAM(0, s.a), 0);
+        break;
+    case S_CLICK_NAME:
+        if (scripted) {
+            const int n = static_cast<int>(g_rows.size());
+            for (int i = 0; i < g_hist_rows_vis; ++i) {
+                const int ri = n - 1 - g_scroll - i;
+                if (ri < 0) break;
+                const row_t& r = g_rows[static_cast<size_t>(ri)];
+                if (r.name_b < 0) continue;
+                const float x = g_hist_x + (row_x(r, r.name_b) + row_x(r, r.name_e)) / 2;
+                ENW_INFO("chat_overlay: selftest clicks the name '%s' on visible row %d", r.name.c_str(), i);
+                click_virtual(x, g_hist_base - kLH * i - 6.f);
+                break;
+            }
+        }
         break;
     case S_CLICK_CONTACT:
         if (scripted && !g_contact_rects.empty()) {
-            const rect& r = g_contact_rects.front().first; click_virtual(r.x + r.w / 2, r.y + r.h / 2); }
+            const rect& r = g_contact_rects.front().first;
+            click_virtual(r.x + 20.f, r.y + r.h / 2);
+        }
         break;
     case S_DONE:
-        ENW_INFO("chat_overlay: selftest done: draws=%ld opens=%ld sent=%ld open=%d lines=%zu "
-                 "window activations seen: %ld on / %ld off",
-                 g_draws, g_opens, g_sent, g_open ? 1 : 0, g_lines.size(), g_act_on, g_act_off);
+        ENW_INFO("chat_overlay: selftest done: draws=%ld opens=%ld sent=%ld clicks=%ld open=%d "
+                 "tabs=%zu lines=%zu window activations seen: %ld on / %ld off",
+                 g_draws, g_opens, g_sent, g_clicks, g_open ? 1 : 0, g_tabs.size(), g_lines.size(),
+                 g_act_on, g_act_off);
         break;
     }
 }
