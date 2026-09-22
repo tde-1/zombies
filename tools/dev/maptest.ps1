@@ -62,6 +62,22 @@ param(
     # two lines to compare.
     [int]$HoldSeconds = 8,
 
+    # ---- the script-error arms (2026-09-23, dedi.md 16) -------------------------
+    # `logfile` is not a passive dvar: Com_SetScriptSettings 0x59C840 computes
+    # `scrVarPub.developer = (developer || logfile)`, and that flag is what makes
+    # Scr_ErrorInternal promote a GSC runtime error to terminal_error, which makes
+    # RuntimeError Com_Error(5) instead of reporting and carrying on. Every ENW
+    # launch line has always passed `+set logfile 2`, INCLUDING -NoEnw, so the
+    # "stock exe" control was never a retail launch.
+    #
+    #   -LogFile 0     launch with `logfile 0`, the community's default. No
+    #                  console.log is written (the enw log still is).
+    #   -NoScriptFix   ENW_NO_SCRIPT_ERROR_RETAIL=1: leave the engine's promotion
+    #                  store at 0x693D35 in place. The control arm for the fix.
+    [ValidateRange(0, 2)]
+    [int]$LogFile = 2,
+    [switch]$NoScriptFix,
+
     [string]$DevRoot = 'C:\Users\b\ZombiesDev'
 )
 
@@ -89,10 +105,15 @@ elseif (-not $NoDeploy) {
     & (Join-Path $PSScriptRoot 'deploy.ps1') $ServerName -From $ServerFrom | Out-Null
     Say "deployed build\$ServerFrom -> waw-$ServerName"
 }
-Say ("arms: samplers={0} mode={1} enw={2}" -f
+Say ("arms: samplers={0} mode={1} enw={2} logfile={3} scriptfix={4}" -f
      $(if ($NoSamplers) { 'off' } else { 'on' }),
      $(if ($Listen) { 'listen' } else { 'dedicated' }),
-     $(if ($NoEnw) { 'absent' } else { 'present' })) 'Cyan'
+     $(if ($NoEnw) { 'absent' } else { 'present' }),
+     $LogFile,
+     $(if ($NoScriptFix -or $NoEnw) { 'off' } else { 'on' })) 'Cyan'
+if ($LogFile -eq 0) {
+    Say 'logfile 0: the engine writes NO console.log this run -- read the enw log instead' 'Yellow'
+}
 
 $stock = @('nazi_zombie_prototype', 'nazi_zombie_asylum', 'nazi_zombie_sumpf', 'nazi_zombie_factory')
 $results = @()
@@ -137,9 +158,10 @@ foreach ($map in $Maps) {
         $env:ENW_RAW_SOCKETS = '1'
         $env:ENW_DEDI_BIG_HEAP = $(if ($BigHeap) { '1' } else { $null })
         $env:ENW_NO_SAMPLERS = $(if ($NoSamplers) { '1' } else { $null })
+        $env:ENW_NO_SCRIPT_ERROR_RETAIL = $(if ($NoScriptFix) { '1' } else { $null })
 
         $args = @(
-            '+set', 'dedicated', $(if ($Listen) { '0' } else { '1' }), '+set', 'zombiemode', '1', '+set', 'logfile', '2',
+            '+set', 'dedicated', $(if ($Listen) { '0' } else { '1' }), '+set', 'zombiemode', '1', '+set', 'logfile', "$LogFile",
             '+set', 'com_maxfps', '60',
             '+set', 's_volume', '0', '+set', 'snd_volume', '0',
             '+set', 'con_typewriterColorBase', '1.0 1.0 1.0',
