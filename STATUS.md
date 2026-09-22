@@ -119,6 +119,13 @@ it (log: last start 18:38, dead by 19:00). Fixed two ways:
 B's step: restart the launcher (or Check for updates -> 0.2.7); the site pill must read
 `site: 127.0.0.1:3200`, not `placeholder`.
 
+## 2026-09-22 19:35: launcher 0.2.8 — no cinematic over the game on a box join
+
+The "intro over the HUD" was the map's **load video** (`<map>_load.bik`, open 28 s, level live at
+3.3 s), not the startup intro, which never opens with our args. `connect_local` now waits for the
+menu (floor 2 s, ceiling 30 s + WARN) and refuses the load video and its `default.bik` fallback for
+a join. Proven in local join runs gate1..3; B's machine unproven. `client.md` §7.
+
 ## 2026-09-22 19:30: "Set Optimal Settings?" blocked a box instance — DLL fix built, not deployed
 
 `no_msgbox.cpp` (dedi only, `ENW_NO_MSGBOX_HOOK=1` off) logs and auto-answers every engine

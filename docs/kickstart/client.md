@@ -1046,3 +1046,53 @@ How to read it:
 If run 1 and run 2 are both `PERFECT` on every button, inputs are exact at 125 Hz and at his real
 rate and this is finished. If either shows `DROPPED`, send the log: the timestamps around the first
 divergence are the whole diagnosis.
+
+---
+
+## 7. 2026-09-22 19:30 — the "intro over the HUD" is the map's load video; the join now waits for a safe menu
+
+**What B reported** (run `enw-11524.log`, launcher 0.2.7, 2560x1440, `com_maxfps 250`): a cinematic
+drawn over the in-game HUD and round counter, and in one run `Hunk_AllocateTempMemory: failed on
+11059216 bytes`. `connect_local` fired blindly at frame 300 — 2.0 s after `post_init` in that run.
+
+**What it actually is — PROVEN in `jointest` runs gate1..gate3** (`ZombiesDev\logs\dedi\gate*.client.enw.log`,
+local dedi `d2` + client `c1`, off-screen, lock taken by the harness, our PIDs killed): the new
+BinkOpen/BinkClose watch logs every open.
+
+| | gate1 (gate on "no Bink open") | gate3 (shipped) |
+|---|---|---|
+| startup `Treyarch.bik` | **never opened** with our args | never opened |
+| menu background | a **fastfile (memory) Bink**, opened 0.9 s after `post_init`, open until the connect closes it | same; its first open = "menu is up" |
+| gate | never opened (the menu video) -> 30 s ceiling fired, logged WARN | opened at 2.0 s, `clc.state=2`, menu video seen |
+| `nazi_zombie_prototype_load.bik` | opened 35 ms after connect, **open 28 s**; level live after 3.3 s | refused; engine: `R_Cinematic_BinkOpen ... trying default` |
+| `default.bik` fallback | — | refused; engine: `'default' failed ... not playing movie` |
+| ROUND 1 | yes | yes, 3 s after connect; client ticking 45 s after |
+
+So the video over the HUD is the **map's load cinematic outliving the load** (`ui_autoContinue 1`
+drops the loadscreen while the Bink keeps playing), not the startup intro. gate2 proved refusing
+only `*_load.bik` is not enough: the engine falls back to `main\video\default.bik`, which then
+played 10 s, 7 s into the game.
+
+**The code** (`client-dll/components/connect_local.cpp`):
+- IAT wraps of `_BinkOpen@8` (slot `0x7EB42C`) and `_BinkClose@4` (`0x7EB418`); `binkw32.def` is
+  untouched (generated). Sole BinkOpen caller `0x6EB3B0`; flags `0x04104400` = from fastfile memory
+  (`0x6EB42E`), `0x01104400` = from a path (`0x6EB47E`). NULL is handled by the engine (above).
+- Gate, on the frame tick: menu up (first memory Bink, or 6 s) AND no **file** Bink open AND
+  `clc.state [0x305842C] != 1` (1 = CA_CINEMATIC, written at `0x46F296` by the `cinematic` player
+  `0x46F170`) for 750 ms, floor 2 s after `post_init`, ceiling 30 s with a WARN. Menu idle state
+  measured as `clc.state = 2`.
+- For an armed join only: refuse `*_load.bik`, and `default.bik` for 60 s after our connect
+  (`ENW_ALLOW_LOAD_VIDEO=1` restores both). Always: refuse a path containing `Treyarch`
+  (`ENW_ALLOW_INTRO=1`).
+
+**Why the intro "still plays" despite `com_introPlayed 1` — answered statically, and the runs agree:
+it does not.** Com_Init (`0x59CEB0`) queues `cinematic Treyarch\n` (`0x872584`) at `0x59D684` only if
+`com_startupIntroPlayed` (dvar ptr `0x1F96494`) is 0; the cinematic player skips `Treyarch` when
+`com_introPlayed` (`0x1F964A4`) is 1 and `fs_game` is set. The profile config also has both at 1.
+Nothing in `mods/enw` resets them (the folder ships empty). The Treyarch refusal is a belt only.
+
+**UNPROVEN**: B's own machine (2560x1440, 250 fps) on 0.2.8; the Hunk failure. `11059216 - 16 =
+2560*1440*3` — a screen-sized RGB buffer, not a Bink frame; inference only that it came from the
+video/load overlap. The 30 s ceiling path runs only if the menu never shows a video and never idles.
+B's check: join a box game on 0.2.8 — no cinematic after the loadscreen; the DLL log shows
+`connect_local: gate OPEN` and `bink: REFUSED the load video`.
