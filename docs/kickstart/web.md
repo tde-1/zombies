@@ -656,10 +656,10 @@ flipped in the middle of it says INVALID, chain broken from chunk 28 on.
 ### Stubbed, with the seam in one place
 | Thing | Where | What it does today | What it needs |
 |---|---|---|---|
-| **Steam OpenID** | `routes/auth.js` | a local-only mock sign-in page, refused entirely when `NODE_ENV=production` | `STEAM_API_KEY` + `ZM_PUBLIC_URL`, then `ZM_AUTH=steam`. The code path is written and uses `passport-steam` (an *optional* dependency, so a missing one does not stop the server) |
+| **Steam OpenID** | `routes/auth.js` | **on** (§9); the mock page is registered only in mock mode and refused outside loopback (§10e) | `STEAM_API_KEY` + `ZM_PUBLIC_URL`, then `ZM_AUTH=steam`. The code path is written and uses `passport-steam` (an *optional* dependency, so a missing one does not stop the server) |
 | **The ENW name (SSO)** | `lib/enw.js` `refreshName` | returns the cached value; falls back to the Steam persona | `ZM_ENW_BASE` + `ZM_ENW_TOKEN`, and the real path (`/internal/name?steamid=`) confirmed |
 | **VIP** | `lib/enw.js` `refreshVip` | reads the cached column; `ZM_VIP_FORCE` and the admin toggle set it locally | the same two env vars and the real path |
-| **Map art** | `maps.art` | null everywhere, so cards show the engine name instead of a broken image | the archive pipeline's media step (04); the column and the renderer are ready |
+| **Map art** | `maps.art` | ~~null everywhere~~ — **2026-09-22: 14 of 2,284 maps have a cover**, imported from the archive lane's media step and served at `/media/maps/` (§10c). The rest still show the engine name | the crawler finding covers for the other 2,270 |
 | **Replay bytes in production** | `lib/replays.js` `localPath()` | served from the local replay directory, which works because the dev box IS this machine | R2, and one function changes |
 | **The 3D replay viewer** | — | not started; the 2D live view is the prototype | Husky/C2M map export + three.js, a port of Movement's viewer, VIP-gated |
 | **Live frames from the box** | `tools/live-bridge.js` | a dev shim polls the box's dashboard and posts them | one line in the host agent's `reportStatus()`, or a 4 Hz timer |
@@ -814,3 +814,198 @@ The live site is the `node` process on port 3200 and it is still running the old
 `routes/auth.js`. Nothing here is live until it is restarted. `infra/keepalive.ps1` owns
 that process — **B or the coordinator does it, not this lane** (README hard rule 7).
 `web/data` was not written; the repro ran on 3399 with its own `ZM_DATA_DIR`.
+
+---
+
+## 10. The night home became the map browser (2026-09-22)
+
+B's list, before bed, for the morning: home is Movement's map page, the profile is Movement's
+profile, every piece of fake data goes, Steam sign-in only, seven accounts pre-approved, the
+launcher gets a download-progress API, and it is all deployed. This is what each of those is now.
+
+### 10a. Home
+
+`client/src/pages/Home.jsx` is two regions instead of three.
+
+* **Left column, 302px — Movement's rail measurement, not a new one.** The party panel
+  (`components/PartyPanel.jsx`) on top: every member with their avatar, their name, their
+  **map download**, and a ready dot; Verified/Custom and the visibility select; Start, Invite
+  and Leave. Under it the **map pool** (`components/MapListPanel.jsx`), a scroller with a
+  search box, drawn at Movement's pick density — a 44x26 art plate flush to the row's left
+  edge, the name in the body face, author and year under it, and the row *is* the control.
+* **Everything else is the selected map's own page.** Not a summary of it — `MapPage.jsx`
+  exports `MapBody`, and `/m/<map>` and home's right-hand region render the same component.
+  There is no second map page to keep in step, and the deep link YouTubers use still works
+  and still must never change.
+* **No right column.** `components/PartyRail.jsx` is deleted and `.shell` is `no-rail`.
+
+**What came off the page, and why none of it came back:** live games, friends online, map of
+the week, featured, and the records/badges feed. Every one was a list of rows, and after the
+wipe there is nothing true to put in any of them. Five empty panels read as a broken site;
+two thousand map rows read as an archive. When there are games worth listing they belong on
+the map's own page, where "Live now" and "Recent games" already are.
+
+**One thing went with the rail and needs a home: the global chat panel.** It is real —
+`lib/chatNetwork.js`, the ring the boxes drain — and it is not on any page now. That is on
+the open list below rather than quietly dropped.
+
+### 10b. The background is the map's art
+
+`client/src/ambience.js` plus the ambient block in `theme.css`, both **ported from Movement**
+(`movement-client/src/themes.js`, `theme.css`), which is the mechanism B named. The map's own
+artwork is projected huge, blurred at 64px and darkened behind the whole site on two
+double-buffered layers that crossfade; over it a hue pour takes the art's two dominant
+colours. Three tiers, most immediate winning: a **hover** in the list, the **open** map
+(which also steps the projection up), and the **base**.
+
+Two parts are copied rather than approximated because each is a measured answer to something
+that looked wrong on a screen:
+
+* **The grade.** Sampled colours are honest and raw. Saturation is compressed toward a
+  filmic middle and capped at 52, lightness is banded so a black map cannot drag the ground
+  to nothing, and hues in 58-92 degrees — the acid yellow-green — are rolled 40% toward
+  olive. On this site that last one is funny and exact: the colour it rolls toward is the
+  site's own ground.
+* **The tween is in OKLCH, on a rAF.** HSL's midpoints are lies; halfway from blue to orange
+  in HSL is a muddy grey-purple, and every map-to-map change used to drag the page through
+  one. The six `--amb-*` are `@property ... inherits: false` and are written on one element,
+  which on Movement was the difference between 10-11.7 ms and 0.01 ms a frame with a big map
+  list mounted.
+
+**Where the colour comes from is the one thing that changed.** Movement bakes its map colours
+offline into `mapColors.json`. This site samples them **in the browser** from `maps.art` with
+Movement's own extractor, copied verbatim (`client/src/data/sampleColors.js`) — because our
+art arrives whenever the archive crawler finds a cover, and a baked table would be stale by
+the next one. **A map with no art takes the WaW default pair** (olive 66 degrees, dried blood
+4 degrees) rather than a hue invented from its name, and so does a page with no map selected
+— the same pair through the same grade and tween, so picking a map reads as the map arriving
+rather than as the site changing.
+
+Proven on the live data: `/m/nazi_zombie_dt2` (City of Hell, a red cover) washes the whole
+page red; `/m/nazi_zombie_school` (concrete) washes it grey-green; with nothing selected the
+page is the WaW pair.
+
+### 10c. Map art, wired in (the archive lane's media step)
+
+`archive/manifests/*.json` now carry `archive.cover`, a path into the archive work directory.
+`db/import-archive.js` **copies** the one cover per map into `web/public/media/maps/<key>.<ext>`
+and writes `/media/maps/<key>.<ext>` into `maps.art`; `server/index.js` serves `/media` with a
+seven-day cache. Fourteen covers, 2.5 MB, gitignored — they are derived, and
+`npm run import:archive` puts them back.
+
+A copy rather than a static mount over `ZombiesDev`, for two reasons. The site has to be
+servable from a machine that is not B's PC, and a dev-box path mounted into the public web
+server is a dead image on every card the day it moves. And a directory the archive pipeline
+writes into is not one a public web server should read out of: a file lands there the moment
+it is fetched, before it has been scanned or even finished writing. The manifest's path is
+resolved against the work directory and then checked to still be inside it, and the extension
+is allow-listed — `../../../Windows/win.ini` and `.html` both go nowhere.
+
+### 10d. The wipe, and what "fake" turned out to mean
+
+`web/tools/wipe-demo.js` (`--dry-run` says what would go). Rule 7's "do not write to
+`web/data`" was lifted by B for this script on this night and nothing else.
+
+**It is not `games.demo = 1`.** All eight games on the live database carried `demo = 0`,
+because the seed did not write them — real host-agent *simulations* did, posting real results
+through the real ingest path. That is what made them worth having while the pull protocol was
+being proved, and it is exactly what made them indistinguishable from a Friday night's play.
+So the rule is by table, not by flag.
+
+```
+backup  web/data/backup-20260922-033847Z/zombies.db   (VACUUM INTO, so the WAL is in it)
+        161 rows + 4 demo accounts
+        games 8 - game_players 13 - records 21 - replays 8 - local_matches 4
+        badge_awards 19 - badge_holds 9 - xp_ledger 11 - map_progress 12
+        comments 4 - ratings 10 - favourites 2 - feed 24 - playlists 3 + 4 maps
+        parties 1 - party_members 1 - presence 3 - reports 1 - friendships 3
+kept    maps 2,284 - badges 23 - boards 138 - presets 6 - boxes 2 - activity_log 7
+        users (real only), admin and mod flags included
+```
+
+**The backup is the feature.** It goes through `VACUUM INTO` rather than a file copy so the
+write-ahead log is checkpointed into it — a plain copy of a WAL database can be missing the
+last few minutes of writes, which is the worst possible property for a backup taken
+immediately before a delete. The test that matters asserts the backup **holds the rows the
+wipe then removed**; a "the file exists" assertion would pass on a backup taken afterwards.
+
+**The half that is easy to miss, and was:** the denormalised counters. `maps.plays`,
+`beaten_by`, `thumbs_up/down` and every account's level, prestige, XP and pinned badges are
+cached sums the deletes cannot reach. Caught by opening the page after the first run and
+finding *"Beaten by 2 - 1 game - 50%"* on a map with no games anywhere in the database — which
+is worse than the demo data was, because it is a number with nothing underneath it. They are
+zeroed rather than recomputed, because there is nothing left to recompute from.
+
+Seeding demo content was **already** behind `--demo` / `ZM_SEED_DEMO=1` and never happens by
+default; `--demo` also refuses outright on a database holding a real game unless
+`--force-demo` is given. Nothing there needed changing.
+
+### 10e. Steam sign-in only
+
+`routes/auth.js`. The mock page is registered **only in mock mode** now (`ZM_AUTH` unset or no
+`ZM_PUBLIC_URL`), so on zombies.enw.gg those two routes do not exist; and `mockAllowed()` is
+back to *never in production, otherwise loopback only*, with `ZM_ALLOW_MOCK=1` as the one
+escape hatch, which exists for the test suites and is set nowhere else.
+
+**Retracted, in place:** the §5 line that kept the mock registered beside Steam "for as long
+as the closed-beta gate is up". The insurance it bought was one less way to be locked out.
+What it cost was that the shared beta password — held by four people — was a way to sign in as
+**anyone, including the admin**, and §9 has since shown Steam OpenID working. The launcher's
+browser leg is untouched and still covered: `test/launcher-signin.js` is 14 checks now, and
+one of the new ones asserts `/auth/mock` is a 404 on a Steam site, both verbs.
+
+### 10f. Party map-download progress
+
+`POST /api/party/:id/progress`, contract in `docs/protocol/launcher-v0.md` §2 — which the
+launcher lane had already written and which the site now matches. `lib/partyProgress.js`,
+and it is `lib/live.js`'s three decisions for `lib/live.js`'s reasons: **never SQLite** (a
+byte count that is wrong 900 ms later, on the file that serves every page, that nothing reads
+back), **the launcher pushes**, and **rate is our problem** — a post inside the 400 ms floor
+is accepted and dropped rather than refused. Broadcast on the socket to each member's own
+`user:<steamid>` room; there is no `party:<id>` room to keep in step with the party table.
+
+**The rule the whole thing turns on is that silence is not "still downloading".** Writing it
+the obvious way — Start enabled only when every member says `installed` — would grey the
+button out for every party on the site, because today most members are in a browser with no
+launcher to report from. So known-bad blocks and silence does not: Start stands down when
+somebody is `downloading` or `failed`, both of which are facts. `POST /party/ready-check`
+refuses for the same reason and names who, and `{force:true}` is the leader's way past it —
+the same override, and the same sentence, as launching with somebody unready.
+
+### 10g. Profiles
+
+Nothing to do. `pages/Profile.jsx` was already Movement's: the eight-stat career strip, the
+map shelf with its ticks and gold record state, the badge shelf and pinned row, recent games,
+records held, most played, favourites and comments. Checked against a wiped account and every
+number reads zero honestly rather than blank.
+
+### 10h. Approvals, and the tests
+
+`web/tools/approve.js` runs **the same two statements** `routes/admin.js` runs for
+`POST /api/admin/player/:who/approve` — set `approved=1`, write a `user.approve` line into
+`activity_log` — deliberately, because an approval that left no audit trail would be an
+approval nobody could later account for. Seven accounts, four of which had no row yet;
+`users.ensure()` makes one, which is safe because it holds nothing but the SteamID and the
+default settings until Steam sign-in fills in the persona.
+
+`npm test` (a new alias for `npm run check`) is **105 checks**: 64 in-process, 27 over HTTP,
+14 sign-in. New here: seven for the progress route (a non-member refused, an unknown state
+refused, the payload's per-member bars and Start gate, silence not blocking, the ready-check
+refusal and its override, the map change clearing it, and the broadcast reaching both members
+and nobody else) and three for the wipe (the dry run touching nothing, the backup holding
+what the wipe removed, and the keep/delete split including the counters).
+
+### 10i. Still open
+
+* **The global chat panel has no page.** It came off with the rail. `lib/chatNetwork.js` is
+  real and the boxes drain it; it needs somewhere to live — a drawer on home, or its own page.
+* **Map art for the other 2,270 maps.** Fourteen have covers. Every card and every row without
+  one falls back to the engine key, and the background falls back to the WaW default.
+* **`/maps` is now the second map browser.** Home is the one you play from and `/maps` is the
+  one with the four filters and the shareable URL. That is defensible, and it is also two
+  lists of maps on one site — worth a decision rather than a drift.
+* **Boards are seeded for the stock maps only**, so an archive map's page says "No boards yet"
+  where it should say which boards it would have.
+* **A second account holds admin.** `76561198396250036` (zeroh) was already `is_admin=1` on
+  the live database before tonight; `approve.js` did not grant it and has not removed it. If
+  that was not deliberate, it is one UPDATE.

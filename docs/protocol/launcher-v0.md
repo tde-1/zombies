@@ -166,6 +166,27 @@ is still pulling 600 MB used to start a game three of them could join.
 * Nothing is stored in SQLite and nothing is trusted: `bytes`/`total` are drawn and nothing
   else keys off them.
 
+Three site-side facts the launcher's half needs, written down 2026-09-22 when the web lane
+implemented it, because each one is a place the two sides could disagree silently:
+
+* **The reply is `{ok, stored, progress, installs_ok}`.** `stored:false` is the throttle
+  having dropped that post and is not an error. `installs_ok` is the leader's Start button:
+  it is the one value worth reading back, and it is false while anyone in the party is
+  `downloading` or `failed`.
+* **Silence is not "still downloading".** A member whose launcher has never posted does
+  **not** hold Start. The gate fires on what a launcher has actually said, never on what it
+  has not — because today most of the people in a party are in a browser with no launcher at
+  all, and a Start button that greys out until a build that does not exist reports in is a
+  worse failure than the one this feature fixes.
+* **The leader can always override.** `POST /api/party/ready-check {force: true}` starts the
+  ready check anyway, and the refusal without it names who it is waiting on
+  (`{ok:false, error, waiting:[{steam_id, name, progress}]}`). Same shape, and the same
+  "THE LEADER DECIDES" rule, as launching with somebody unready (13 §4b).
+* **The session cookie is the identity; the `:id` is only which party.** A caller who is not
+  a member of that party gets `{ok:false}` — a launcher cannot report on anybody else's
+  behalf. Progress is dropped outright when the leader changes the map (four green bars for
+  a map nobody is playing) and when the party launches.
+
 ### Following somebody else's Start
 
 Not an endpoint — a rule about an existing one, and the thing that makes a party game a

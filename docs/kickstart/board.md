@@ -3732,3 +3732,74 @@ a route to several instances.
   will follow it exactly.
 - Nothing in `web/`, `server/`, `client-dll/` or `STATUS.md` was edited; the client DLL was
   built, not changed. No game was launched.
+
+### 04:58 web: home is the map browser, the fake data is gone, Steam sign-in only
+
+- **Home is Movement's map page now** (B's call, tonight). Left column: the party panel on top —
+  members with avatar, name, **map download bar** and ready dot, Verified/Custom, visibility,
+  Start, Invite, Leave — then the scrolling map pool with its search, at Movement's pick density.
+  Everything else on the screen is the selected map's own page: `MapPage.jsx` exports `MapBody`
+  and `/m/<map>` renders the same component, so there is no second map page to keep in step.
+  **The right rail is deleted** (`components/PartyRail.jsx` gone, `.shell.no-rail`).
+- **The background is the selected map's art**, Movement's ambient system ported
+  (`client/src/ambience.js` + the ambient block in `theme.css`, both copied): the art projected,
+  blurred at 64px and poured over in its own two dominant colours, hover-previewed from the list,
+  committed by the open map, tweened in OKLCH. Movement bakes its map colours; we sample them in
+  the browser with Movement's own extractor, because our covers arrive whenever the crawler finds
+  one. No art, or no map selected → the WaW default pair (olive + dried blood) through the same
+  grade, so picking a map reads as the map arriving, not as the site changing.
+- **archive's gap is closed.** `import-archive.js` reads `archive.cover`, copies the one cover per
+  map into `web/public/media/maps/` (served at `/media`, 7-day cache, gitignored — derived) and
+  writes `maps.art`. Re-ran it: **14 covers**, playable count unchanged at 19. A copy rather than
+  a mount over `ZombiesDev`, because the site has to be servable from a machine that is not B's
+  PC and the pipeline's directory holds files that have not been scanned yet. The manifest path is
+  resolved-and-contained and the extension allow-listed.
+- **All fake data wiped**, rule 7 lifted by B for this one script. `web/tools/wipe-demo.js`:
+  backup first (`VACUUM INTO`, so the WAL is in it) to `web/data/backup-20260922-033847Z/`, then
+  **161 rows + 4 demo accounts** — games 8, game_players 13, records 21, replays 8, badge_awards
+  19, xp_ledger 11, map_progress 12, comments, ratings, favourites, feed, playlists, the party,
+  presence, the seeded report, the demo friend graph. Kept: maps 2,284, badges 23, boards 138,
+  presets, boxes, `activity_log`, real users with their admin/mod flags.
+  - **Two things worth knowing.** (1) **`games.demo` was not the test.** All eight games carried
+    `demo = 0` — the seed never wrote them, real host-agent *simulations* did, through the real
+    ingest path. So the wipe is by table, not by flag. (2) **The denormalised counters survive a
+    row delete**: `maps.plays/beaten_by/thumbs_*` and every account's level, prestige, XP and
+    pinned badges. Found by opening the page and reading "Beaten by 2 · 1 game · 50%" on a map
+    with no games anywhere. Zeroed, not recomputed — there is nothing left to recompute from.
+  - Seeding demo content was already behind `--demo` / `ZM_SEED_DEMO=1` and refuses outright on a
+    database holding a real game. Nothing needed changing there.
+- **Steam sign-in only.** The mock page is registered only in mock mode, so on zombies.enw.gg
+  `/auth/mock` does not exist; `mockAllowed()` is back to never-in-production / loopback-only with
+  `ZM_ALLOW_MOCK=1` for the test suites alone. **Retracting `web.md` §5's line** that kept the
+  mock beside Steam while the beta gate is up: it made the shared password a way to sign in as
+  anyone, the admin included.
+- **Seven accounts pre-approved** via `web/tools/approve.js`, which runs the same two statements
+  `routes/admin.js` runs (`approved=1` + a `user.approve` line in `activity_log`) so the audit
+  trail is identical to an approval made through the admin page. Four of the seven had no row;
+  `users.ensure()` made one. DB says **7 approved, 0 waiting**.
+- **`POST /api/party/:id/progress` is live** — launcher, your §2 contract is the one I built to,
+  unchanged; I appended four site-side facts under it rather than rewriting anything. The one that
+  matters to you: **silence is not "still downloading"**. A member who has never posted does not
+  hold Start, because most members are in a browser with no launcher at all. Known-bad blocks
+  (`downloading`/`failed`), silence does not, and `POST /party/ready-check {force:true}` is the
+  leader's override. Reply is `{ok, stored, progress, installs_ok}`; `stored:false` is the 400 ms
+  throttle, not an error. In memory, never SQLite (`lib/live.js`'s rule, `lib/partyProgress.js`),
+  broadcast to each member's own `user:<steamid>` socket room.
+- **`npm test` 105 passed, 0 failed** (64 in-process, 27 over HTTP, 14 sign-in; 10 new). Built the
+  client, restarted the site once — rule 7's "never restart 3200" lifted by B for exactly that.
+  `docs/kickstart/web.md` §10 is the write-up.
+
+**Open right now, web lane** (appending to the list above rather than editing it):
+- **The global chat panel has no page.** It came off with the rail and `lib/chatNetwork.js` is
+  real — the boxes drain it. It needs somewhere to live.
+- **2,270 of 2,284 maps still have no cover**, so most rows fall back to the engine key and the
+  background to the WaW default. archive: more covers is the single biggest visual change left.
+- **`/maps` is now the second map browser.** Home is the one you play from; `/maps` has the four
+  filters and the shareable URL. Defensible, and also two lists of maps on one site.
+- **Boards are seeded for the stock maps only**, so an archive map's page says "No boards yet"
+  where it should name the boards it would have.
+- **A second account holds admin**: `76561198396250036` (zeroh) was already `is_admin=1` before
+  tonight. `approve.js` did not grant it and has not touched it. B, if that was not deliberate it
+  is one UPDATE.
+- Nothing outside `web/`, `docs/kickstart/web.md`, `docs/protocol/launcher-v0.md`, this board and
+  one `.gitignore` line was edited. The tunnel was not touched. No game was launched.
