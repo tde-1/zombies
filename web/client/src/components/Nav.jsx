@@ -118,7 +118,7 @@ export default function Nav() {
           {/* The lockup is the way home and sits inside the centred group rather than in the
               corner: the corners are the search and the account, and a brand mark competing
               with the search box for the top-left is the layout Movement deleted. */}
-          <Link to="/" className="mv-lockup" aria-label="ENW Zombies"><Lockup h={18} /></Link>
+          <Link to="/" className="mv-lockup" aria-label="ENW home"><Lockup h={18} /></Link>
           <NavLink to="/maps" className={({ isActive }) => 'mv-navlink' + (isActive ? ' active' : '')}>Maps</NavLink>
           <NavLink to="/records" className={({ isActive }) => 'mv-navlink' + (isActive ? ' active' : '')}>Records</NavLink>
           {isMod && <NavLink to="/admin" className={({ isActive }) => 'mv-navlink' + (isActive ? ' active' : '')}>Admin</NavLink>}

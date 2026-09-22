@@ -125,13 +125,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .shell { display: grid; grid-template-columns: var(--rail-w) 1fr; min-height: 100%; }
 .shell.no-rail { grid-template-columns: 1fr; }
 .main { min-width: 0; padding-bottom: 40px; }
+/* Under the nav: the rail on the left, the routed page beside it (2026-09-22 evening). The
+   nav stays ONE bar across the whole window above both, because inside the launcher it is
+   the title bar, and a title bar that stopped at the rail's edge would be a window with a
+   hole in its drag region. Movement's rail runs the full height beside its nav; ours starts
+   under it, which is the one layout difference and this is why. */
+.shell-row { display: flex; align-items: flex-start; min-width: 0; }
+.shell-page { flex: 1; min-width: 0; }
 .page { max-width: 1100px; margin: 0 auto; padding: 20px 24px 0; }
 .page.wide { max-width: min(1600px, 94vw); }
 
 @media (max-width: 1080px) {
   .shell { grid-template-columns: 1fr; }
-  .prail { position: static !important; width: auto !important; height: auto !important; order: 2; border-right: 0 !important; border-top: 1px solid var(--line); }
-  .main { order: 1; }
+  .shell-row { flex-direction: column; align-items: stretch; }
+  .prail { position: static !important; width: auto !important; height: auto !important; }
+  .prail-body { overflow: visible !important; }
 }
 
 /* ── nav ────────────────────────────────────────────────────
@@ -788,27 +796,318 @@ html[data-amb] #amb-pour { opacity: 1; }
 /* the open map page: the whole projection steps up so page and map box are one atmosphere */
 html[data-amb-strong] #amb-pour { --amb-a: 58; }
 
-/* ── the party rail ────────────────────────────────────────────────────────── */
+/* ============================================================================
+   PARTY RAIL — the permanent left spine (components/PartyRail.jsx).
+   COPIED from Movement (`movement-client/src/theme.css`, the PARTY RAIL block, the .rgm-*
+   sheet and the server card), 2026-09-22 evening. Changes on the way over: `--panel2` is
+   our `--panel-2`; there is no `--glow` token here so the launch pill's glow is spelled out;
+   the rail starts under the nav rather than beside it (see .shell-row); and the zombies-only
+   pieces are marked where they are.
+   ============================================================================ */
 .prail {
-  position: sticky; top: 0; height: 100vh; width: var(--rail-w);
-  border-right: 1px solid var(--line);
+  /* The rail lifts the two grey tiers for ITSELF ONLY (Movement's reason: the rail is dense
+     and permanent and packs its labels at 10-11px, and at the site's --faint those read as
+     mush against the ground). */
+  --muted: #c9c9c9;
+  --faint: #9b9b9b;
+
+  position: sticky; top: var(--nav-h); height: calc(100vh - var(--nav-h));
+  flex: none; width: var(--rail-w); z-index: 20; overflow: hidden;
   display: flex; flex-direction: column;
+  background: transparent; border: none;
 }
-.prail .top { padding: 14px; }
-.prail .top .art {
-  aspect-ratio: 16 / 9; border-radius: var(--radius); background: var(--panel);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--faint); font-size: 12.5px; margin-bottom: 10px; text-align: center; padding: 10px;
+.prail-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 6px 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+.prail-body::-webkit-scrollbar { width: 9px; }
+.prail-body::-webkit-scrollbar-thumb { background: var(--panel-2); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+.prail-foot { flex: none; padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); }
+.prail .avatar { width: 34px; height: 34px; font-size: 14px; }
+
+/* the rail's card unit */
+.rblock {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--panel); border: none; border-radius: var(--radius); padding: 13px;
 }
-.prail .members { flex: 1; overflow: auto; padding: 4px 14px 10px; }
-.prail .member { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13.5px; }
-.prail .member .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: 0 0 auto; }
-.prail .member .dot.ready { background: var(--good); }
-.prail .chat { border-top: 1px solid var(--line); display: flex; flex-direction: column; max-height: 42%; }
-.prail .chat .lines { overflow: auto; padding: 8px 14px; font-size: 12.5px; }
-.prail .chat .line { margin-bottom: 4px; }
-.prail .chat .line b { color: var(--accent); font-weight: 600; }
-.prail .chat form { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.rlabel {
+  font-size: 13.5px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  color: var(--text);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+/* ours: the party's short code, which a friend can be told out loud */
+.rlabel-code { font-family: var(--mono); font-size: 10.5px; font-weight: 600; color: var(--faint); letter-spacing: .6px; }
+.join-note { font-size: 11.5px; color: var(--faint); line-height: 1.45; }
+.rail-signin { color: var(--muted); font-size: 13px; text-align: center; padding: 10px 12px; }
+
+/* who-can-join and Verified/Custom — the same full-width pill segment, grouped tight as one
+   "lobby options" unit just above the server card. `.locked` is the non-leader view. */
+.prail-visibility, .prail-chatscope { display: flex; flex-direction: column; }
+.prail-lobbyopts { display: flex; flex-direction: column; gap: 4px; }
+.vis-seg { display: flex; gap: 3px; width: 100%; padding: 3px; background: var(--panel); border: none; border-radius: var(--pill); }
+.vis-btn {
+  flex: 1 1 0; min-width: 0; background: transparent; border: none; border-radius: var(--pill);
+  color: var(--muted); font-family: inherit; font-size: 11.5px; font-weight: 600; letter-spacing: 0;
+  padding: 7px 2px; cursor: pointer; white-space: nowrap;
+  transition: color .16s ease, background .16s ease;
+}
+.vis-btn:hover { color: var(--text); background: rgba(255,255,255,.06); }
+.vis-btn.on { color: var(--accent-ink); background: var(--accent); font-weight: 700; }
+.vis-btn:disabled { cursor: default; }
+.vis-seg.locked .vis-btn { cursor: default; }
+.vis-seg.locked .vis-btn:hover { color: var(--muted); background: transparent; }
+.vis-seg.locked .vis-btn.on:hover { color: var(--accent-ink); background: var(--accent); }
+
+/* roster cards. THE EDGE: every person in the rail wears the same 2px mark down their left
+   side, stronger for the host. */
+.pcard {
+  display: flex; align-items: center; gap: 11px; border: none; border-radius: var(--radius-sm);
+  background: var(--panel-2); padding: 9px 11px;
+  box-shadow: inset 2px 0 0 rgba(var(--accent-rgb), .22);
+}
+.pcard.host { box-shadow: inset 2px 0 0 rgba(var(--accent-rgb), .62); }
+.pcard-link { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
+.pcard-link:hover .pname { color: var(--accent); }
+.pcard-img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+.fcard-av-wrap, .pcard-av { position: relative; display: inline-flex; flex: none; }
+.pdot { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bg); }
+.pdot.on { background: var(--good); }
+.pdot.off { background: var(--faint); }
+.pname { font-weight: 650; font-size: 15px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prole { font-size: 11px; color: var(--faint); text-transform: none; letter-spacing: 0; }
+.pcard-x { margin-left: auto; background: transparent; border: none; color: var(--faint); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 50%; }
+.pcard-x:hover { color: var(--bad); background: var(--panel-2); }
+.pcard-add {
+  display: flex; align-items: center; flex: none; align-self: flex-start;
+  height: 38px; padding: 0 11px;
+  background: var(--panel-2); border: none; border-radius: var(--radius-sm); color: var(--muted);
+  cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600;
+  overflow: hidden; white-space: nowrap;
+  transition: background .16s ease, color .16s ease;
+}
+.pcard-add:hover, .pcard-add:focus-visible { background: rgba(255,255,255,.10); color: var(--text); }
+.pcard-add .plus { flex: none; font-size: 15px; line-height: 1; }
+.pcard-add-word {
+  max-width: 0; opacity: 0; overflow: hidden;
+  transition: max-width .18s ease, opacity .14s ease, margin-left .18s ease;
+}
+.pcard-add:hover .pcard-add-word,
+.pcard-add:focus-visible .pcard-add-word { max-width: 70px; opacity: 1; margin-left: 7px; }
+.roster-more {
+  background: transparent; border: none; border-radius: var(--pill); color: var(--muted);
+  padding: 7px; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; width: 100%;
+}
+.roster-more:hover { color: var(--text); background: var(--panel-2); }
+
+/* the online block — one row height for both states; a player sitting in a lobby wears
+   that lobby's MAP behind the row */
+.fcard {
+  position: relative; display: flex; align-items: center; gap: 11px;
+  min-height: 54px;
+  border: none; border-radius: var(--radius-sm); background: var(--panel-2); padding: 9px 11px;
+  overflow: hidden;
+  box-shadow: inset 2px 0 0 rgba(var(--accent-rgb), .22);
+}
+.fcard-link { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; position: relative; z-index: 1; }
+.fcard-link:hover .pname { color: var(--accent); }
+.fcard-sub { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fcard-name { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.fcard-name .pname { flex: 0 1 auto; min-width: 0; }
+.fcard-vis { flex: 0 4 auto; min-width: 0; font-size: 11px; font-weight: 500; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fcard-act { position: relative; z-index: 1; flex: none; margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.fcard.has-map { background-size: cover; background-position: center 42%; }
+.fcard.has-map::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,.74) 0%, rgba(0,0,0,.52) 42%, rgba(0,0,0,.20) 78%, rgba(0,0,0,.08) 100%);
+  box-shadow: inset 2px 0 0 rgba(255,255,255,.34);
+}
+.fcard.has-map .pname { color: #fff; text-shadow: 0 1px 5px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.7); }
+.fcard.has-map .fcard-vis { color: rgba(255,255,255,.78); text-shadow: 0 1px 4px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.7); }
+.fcard.has-map .prole { color: rgba(255,255,255,.9); text-shadow: 0 1px 4px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.7); }
+.fcard-ico {
+  width: 32px; height: 32px; flex: none; display: grid; place-items: center;
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--text); font-family: inherit; font-size: 14px; line-height: 1; cursor: pointer;
+  padding: 0; transition: background .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.fcard-ico:hover { background: rgba(255,255,255,.14); box-shadow: 0 1px 6px rgba(0,0,0,.45); }
+.fcard-ico:active { transform: scale(.94); }
+.fcard-ico:disabled { opacity: .45; cursor: not-allowed; }
+.fcard.has-map .fcard-ico { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.9); }
+.fcard-btn {
+  background: rgba(255,255,255,.10); border: none; border-radius: var(--pill); color: var(--text);
+  padding: 6px 12px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+  line-height: 1.35; white-space: nowrap;
+  transition: background .16s ease, color .16s ease;
+}
+.fcard-btn:hover { background: rgba(255,255,255,.18); }
+.fcard-btn.accent { background: var(--accent); color: var(--accent-ink); }
+.fcard-btn:disabled { opacity: .45; cursor: not-allowed; }
+.fcard-tag { font-family: var(--mono); font-size: 9.5px; letter-spacing: .8px; text-transform: uppercase; font-weight: 700; color: var(--faint); white-space: nowrap; }
+.fcard.has-map .fcard-tag { color: rgba(255,255,255,.62); }
+.friends-empty { font-size: 12px; color: var(--faint); line-height: 1.45; }
+
+/* invite autocomplete */
+.invite { border: none; border-radius: var(--radius-sm); background: var(--panel-2); overflow: hidden; }
+.invite-head { padding: 9px; display: flex; align-items: center; gap: 6px; }
+.invite-head input { flex: 1; min-width: 0; background: var(--panel); }
+.invite-close { flex: none; background: transparent; border: none; color: var(--faint); font-size: 18px; line-height: 1; cursor: pointer; padding: 3px 6px; border-radius: 50%; }
+.invite-close:hover { color: var(--text); background: rgba(255,255,255,.10); }
+.invite-list { max-height: 220px; overflow-y: auto; }
+.sug { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-top: 1px solid var(--line); cursor: pointer; }
+.sug:first-child { border-top: none; }
+.sug:hover, .sug:focus-visible { background: rgba(255,255,255,.06); }
+.prail .avatar.sug-av { width: 26px; height: 26px; font-size: 11px; }
+.sug-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sug-st { font-size: 10.5px; color: var(--faint); }
+.sug-st.on { color: var(--good); }
+.sug-empty { padding: 14px; text-align: center; color: var(--muted); font-size: 12.5px; }
+
+/* invites waiting on you */
+.invite-card { border: none; border-radius: var(--radius-sm); background: var(--accent-soft); padding: 11px; }
+.invite-card + .invite-card { margin-top: 8px; }
+.invite-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.invite-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+.invite-acts .btn { width: 100%; padding: 7px 0; }
+
+/* ---- the footer's persistent server card ---------------------------------- */
+.prail-live { display: flex; flex-direction: column; }
+.prail-live-card {
+  --h: 40;
+  position: relative; min-height: 152px; overflow: hidden;
+  border: none; border-radius: var(--radius);
+  background: linear-gradient(180deg, hsl(var(--h) 32% 46% / .1), var(--panel) 60%);
+  box-shadow: var(--shadow-1);
+}
+.map-banner, .map-banner-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* ours: a map with no cover shows its engine stem, the cards' own fallback, not a photograph */
+.map-banner-ph {
+  display: flex; align-items: flex-start; justify-content: flex-end; padding: 12px 14px;
+  background: linear-gradient(160deg, hsl(var(--h) 22% 26%), hsl(var(--h) 16% 15%) 60%, var(--panel));
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,.4);
+}
+.prail-live-empty { position: absolute; inset: 0; background: radial-gradient(100% 140% at 80% 10%, var(--accent-soft), transparent 62%), var(--bg-grad); }
+.prail-live-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(var(--scrim-rgb),0) 26%, rgba(var(--scrim-rgb),.62) 62%, rgba(var(--scrim-rgb),.93) 100%); }
+.prail-live-card.is-empty .prail-live-veil { background: none; }
+.prail-live-open {
+  position: absolute; inset: 0; z-index: 1; cursor: pointer;
+  background: none; border: none; padding: 0; font: inherit;
+  transition: background .14s ease;
+}
+.prail-live-open:hover { background: rgba(255,255,255,.07); }
+.prail-live-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.prail-live-copy {
+  position: relative; z-index: 2; display: flex; min-height: 152px;
+  flex-direction: column; justify-content: flex-end; padding: 12px;
+  pointer-events: none;
+}
+.prail-live-copy button, .prail-live-copy a { pointer-events: auto; }
+.prail-live-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 30px; color: #fff; font-size: 14.5px; font-weight: 700; letter-spacing: -0.2px; }
+.prail-live-card.is-empty .prail-live-name { color: var(--text); }
+.prail-live-mode { min-height: 14px; margin-top: 2px; color: rgba(255,255,255,.74); font-size: 11.5px; font-weight: 500; }
+.prail-live-card.is-empty .prail-live-mode { color: var(--muted); }
+/* ours: the card says it is the way to change the map — the same scrim chip as Movement's
+   game bar's "Change", top-left so the × keeps the top-right corner. Shown on hover. */
+.prail-live-change {
+  position: absolute; top: 9px; left: 9px; pointer-events: none;
+  font-size: 11px; font-weight: 650; color: #fff; padding: 4px 9px;
+  border-radius: var(--pill); background: rgba(var(--scrim-rgb), .55);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
+  opacity: 0; transition: opacity .14s ease;
+}
+.prail-live-card:hover .prail-live-change, .prail-live-card.is-empty .prail-live-change { opacity: 1; }
+.prail-live-connect { display: flex; align-items: stretch; gap: 6px; margin-top: 10px; }
+.prail-live-address {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  height: 30px; padding: 0 9px;
+  border: 0; border-radius: 5px; background: rgba(var(--scrim-rgb), .8);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+  color: #fff; cursor: pointer;
+  font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 10.5px;
+  text-align: left; transition: box-shadow .16s ease;
+}
+.prail-live-address:hover { box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); }
+.prail-live-address-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prail-live-address .server-icon { width: 13px; height: 13px; opacity: .8; }
+.prail-live-booting { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: rgba(255,255,255,.85); font-size: 11.5px; }
+.prail-live-end {
+  position: absolute; top: 8px; right: 8px; display: grid; width: 28px; height: 28px;
+  place-items: center; border: 0; border-radius: 50%; background: rgba(var(--scrim-rgb),.5);
+  color: rgba(255,255,255,.8); font-family: inherit; font-size: 19px; font-weight: 300;
+  line-height: 1; cursor: pointer; transition: color .16s ease, background .16s ease;
+}
+.prail-live-end:hover:not(:disabled) { color: var(--bad); background: rgba(var(--bad-rgb),.22); }
+.prail-live-end:disabled { opacity: .55; cursor: wait; }
+.prail-server-launch {
+  display: block; width: 100%; margin-top: 10px; border: none; border-radius: var(--pill);
+  background: var(--accent); color: var(--accent-ink); padding: 10px 12px;
+  font-family: inherit; font-size: 13.5px; font-weight: 700; letter-spacing: 0; text-align: center;
+  text-transform: none; cursor: pointer; box-shadow: 0 6px 22px rgba(var(--accent-rgb), .22);
+  transition: transform .14s ease, box-shadow .16s ease;
+}
+.prail-server-launch:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 26px rgba(var(--accent-rgb), .3); color: var(--accent-ink); }
+.prail-server-launch:disabled { background: var(--panel-2); color: var(--muted); box-shadow: none; cursor: not-allowed; }
+a.prail-server-launch { margin-top: 0; }
+/* ours: the party flow's second choices (Start anyway, Cancel) — quiet text buttons under
+   the one filled pill, so the card still has exactly one primary action */
+.prail-sub-row { display: flex; gap: 6px; }
+.prail-sub-btn {
+  flex: 1; margin-top: 6px; background: rgba(var(--scrim-rgb), .55); border: none; border-radius: var(--pill);
+  color: rgba(255,255,255,.86); padding: 6px 10px; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.prail-sub-btn:hover:not(:disabled) { color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); }
+.prail-sub-btn:disabled { opacity: .5; cursor: not-allowed; }
+.prail-err { font-size: 12px; color: var(--bad); line-height: 1.4; padding: 0 4px; }
+
+/* copy feedback lives ON the button: the clipboard mark and a tick share one grid cell */
+.copy-glyph { display: inline-grid; flex: none; line-height: 0; }
+.copy-glyph .server-icon { grid-area: 1 / 1; transition: opacity .18s ease, transform .18s ease; }
+.copy-glyph .server-icon + .server-icon { opacity: 0; transform: scale(.6); }
+.copy-glyph.is-copied .server-icon:first-child { opacity: 0; transform: scale(.6); }
+.copy-glyph.is-copied .server-icon + .server-icon { opacity: 1; transform: none; color: var(--good); }
+
+/* ── the map picker: Movement's game + mode SHEET, holding maps ─────────────── */
+.rgm-scrim {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px;
+  background: linear-gradient(180deg, rgba(var(--scrim-rgb), .50) 0%, rgba(var(--scrim-rgb), .82) 46%, rgba(var(--scrim-rgb), .94) 100%);
+}
+.rgm-sheet {
+  width: min(720px, 100%); max-height: calc(100vh - 48px); overflow-y: auto;
+  border: none; border-radius: 18px; box-shadow: var(--shadow-2);
+  padding: 20px 20px 16px; outline: none;
+  background: var(--bg);
+}
+.rgm-sheet.has-hue { background: linear-gradient(180deg, hsl(var(--h) 26% 16%) 0%, hsl(var(--h) 14% 13%) 46%, var(--bg) 88%); }
+.rgm-head { display: flex; align-items: baseline; gap: 10px; }
+.rgm-head h3 { font-family: var(--display); font-size: 18px; font-weight: 700; margin: 0; letter-spacing: -.3px; }
+.rgm-x { margin-left: auto; background: transparent; border: none; color: var(--faint); font-size: 18px; cursor: pointer; padding: 2px 6px; }
+.rgm-x:hover { color: var(--text); }
+.rgm-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rgm-card {
+  position: relative; display: block; height: 92px; padding: 0 12px; overflow: hidden;
+  border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; text-align: left;
+  background: var(--panel-2) center 45% / cover no-repeat;
+}
+.rgm-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(var(--scrim-rgb), .18) 0%, rgba(var(--scrim-rgb), .50) 52%, rgba(var(--scrim-rgb), .88) 100%); }
+.rgm-card > span { position: relative; z-index: 1; }
+.rgm-card-name { display: block; margin-top: 34px; font-family: var(--display); font-size: 16px; font-weight: 750; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgm-card-note { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: rgba(255,255,255,.84); text-shadow: 0 1px 3px rgba(0,0,0,.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgm-card > .rgm-cur { position: absolute; z-index: 2; top: 8px; left: 8px; font-size: 10.5px; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: var(--pill); padding: 2px 8px; }
+.rgm-card.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.rgm-card:hover::after { background: linear-gradient(180deg, rgba(var(--scrim-rgb), .08) 0%, rgba(var(--scrim-rgb), .42) 52%, rgba(var(--scrim-rgb), .84) 100%); }
+/* ours: the picker's search, its count, a stem for a map with no cover, and the foot */
+.mpk-count { font-size: 12px; color: var(--faint); font-family: var(--num); }
+.mpk-search { margin: 14px 0 12px; }
+.mpk-search input { width: 100%; }
+.mpk-card:not(.has-art) { background: linear-gradient(160deg, hsl(var(--h) 22% 26%), hsl(var(--h) 16% 15%) 60%, var(--panel)); }
+.rgm-card > .mpk-stem { position: absolute; top: 9px; right: 10px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,.42); }
+.mpk-none { color: var(--muted); font-size: 13px; text-align: center; margin: 18px 0; }
+.mpk-foot { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; margin-top: 14px; font-size: 12.5px; color: var(--faint); }
+.mpk-foot a { color: var(--muted); }
+.mpk-foot a:hover { color: var(--text); }
+@media (max-width: 640px) {
+  .rgm-scrim { padding: 12px; }
+  .rgm-cards { grid-template-columns: 1fr 1fr; }
+}
 
 /* ── avatars, badges, the shelf ─────────────────────────────────────────────── */
 .avatar {
@@ -926,11 +1225,11 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
    row on this page and a map row on /maps are the same object. */
 .home {
   display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr); gap: 18px;
-  align-items: start; max-width: min(1600px, 94vw); margin: 0 auto; padding: 18px 24px 40px;
+  align-items: start; max-width: 1600px; margin: 0 auto; padding: 6px 24px 40px 6px;
 }
 /* The column is sticky and scrolls INSIDE itself: the map page on the right is long (boards,
-   comments, recent games) and a party panel that scrolled away with it would put Start off
-   screen exactly while a ready check was running. */
+   comments, recent games) and a pool that scrolled away with it would take the list you are
+   picking from off screen. */
 .home-left {
   position: sticky; top: calc(var(--nav-h) + 8px);
   display: flex; flex-direction: column; gap: 12px;
@@ -938,26 +1237,8 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
 }
 .home-right { min-width: 0; }
 
-/* ── the party panel ───────────────────────────────────────────────────────── */
+/* ── the signed-out card on home (the party panel that shared this class is now the rail) ── */
 .ppanel { background: var(--panel); border-radius: var(--radius); padding: 12px; flex: 0 0 auto; }
-.ppanel > .spread { margin-bottom: 8px; }
-.ppanel .pcode { font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .6px; }
-.pmember { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 5px 0; }
-.pmember + .pmember { border-top: 1px solid var(--line); }
-.pmember .who { min-width: 0; }
-.pmember .who b { display: block; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pmember .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
-.pmember .dot.ready { background: var(--good); }
-
-/* One member's map download. A bar only exists while there is something to say about it:
-   a member whose launcher has never reported gets no bar at all rather than an empty one,
-   because an empty bar is a claim that the download has not started. */
-.dlbar { height: 3px; border-radius: var(--pill); background: rgba(var(--text-rgb), .1); overflow: hidden; margin-top: 3px; }
-.dlbar > i { display: block; height: 100%; background: var(--accent); border-radius: var(--pill); transition: width .3s ease; }
-.dlbar.failed > i { background: var(--hot); }
-.dlstate { font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--faint); }
-.dlstate.failed { color: var(--hot); }
-.dlstate.installed { color: var(--good); }
 
 /* ── the map list ──────────────────────────────────────────────────────────── */
 .mlist { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; background: var(--panel); border-radius: var(--radius); overflow: hidden; }

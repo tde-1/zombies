@@ -1,0 +1,228 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { api } from './api'
+import { useSession } from './session'
+import { socket } from './socket'
+import { usePlayGate } from './components/playGate'
+
+// THE RAIL'S STATE — Movement's `party.jsx`, with zombies' nouns.
+//
+// One provider above the router, because the rail it feeds sits above the router too (B,
+// 2026-09-22: "the leftmost stuck thing"), and so does every page that stages a map into it.
+// It holds four things:
+//
+//   the party     `/api/party`, polled. A party is a ROW here (lib/parties.js) rather than
+//                 Movement's client-side squad, so the server is the truth the moment one
+//                 exists and the rail only ever draws what the server said.
+//   the stage     what you have picked BEFORE a party exists: map, Verified/Custom and who
+//                 may join. Movement keeps this in localStorage and so do we — it is one
+//                 viewer's intention, and a party is made from it the moment it is needed
+//                 (Play, or the first invite), carrying all three across.
+//   the roster    `/api/party/online` — who is about, worked out for THIS reader on the
+//                 server (lib/roster.js), including whether their lobby is joinable.
+//   the pool      the playable maps, once, for the card's art and the picker. Home reads
+//                 it from here rather than fetching the same list a second time.
+//
+// Every action that would put somebody into a GAME — Play, Ready, Go, Start anyway, Join a
+// lobby, Accept an invite — goes through the play gate (components/playGate.js) exactly as
+// the old party panel's did: in a plain browser it goes to /download carrying the party or
+// the map, inside the launcher it carries on. Arranging a party (staging a map, the two
+// toggles, inviting, leaving) is not gated, because none of it needs the game.
+
+const Ctx = createContext(null)
+const STAGE_KEY = 'zm.rail.stage'
+const MODES = ['verified', 'custom']
+const VISIBILITY = ['private', 'friends', 'public']
+
+function readStage() {
+  try {
+    const s = JSON.parse(window.localStorage.getItem(STAGE_KEY) || 'null') || {}
+    return {
+      map_key: typeof s.map_key === 'string' ? s.map_key : null,
+      mode: MODES.includes(s.mode) ? s.mode : 'verified',
+      visibility: VISIBILITY.includes(s.visibility) ? s.visibility : 'friends',
+    }
+  } catch { return { map_key: null, mode: 'verified', visibility: 'friends' } }
+}
+
+export function RailProvider({ children }) {
+  const { me, signedIn, approved, refresh } = useSession()
+  const { guard } = usePlayGate()
+  const [party, setParty] = useState(null)
+  const [launch, setLaunch] = useState(null)
+  const [invites, setInvites] = useState([])
+  const [online, setOnline] = useState({ scope: 'online', players: [] })
+  const [stage, setStageState] = useState(readStage)
+  const [pool, setPool] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+  const [live, setLive] = useState(null)     // download progress pushed over the socket
+  const errTimer = useRef(null)
+
+  const say = useCallback((msg) => {
+    setErr(msg || null)
+    clearTimeout(errTimer.current)
+    if (msg) errTimer.current = setTimeout(() => setErr(null), 6000)
+  }, [])
+
+  const setStage = useCallback((patch) => {
+    setStageState((s) => {
+      const next = { ...s, ...patch }
+      try { window.localStorage.setItem(STAGE_KEY, JSON.stringify(next)) } catch { /* this tab only */ }
+      return next
+    })
+  }, [])
+
+  // ── loads ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    api.get('/api/maps?sort=popular').then((j) => setPool(j.maps || [])).catch(() => setPool([]))
+  }, [signedIn])
+
+  const loadParty = useCallback(async () => {
+    if (!signedIn) { setParty(null); setLaunch(null); setInvites([]); return null }
+    try {
+      const j = await api.get('/api/party')
+      setParty(j.party); setLaunch(j.launch); setInvites(j.invites || [])
+      return j.party
+    } catch { return null }
+  }, [signedIn])
+
+  const loadOnline = useCallback(async () => {
+    if (!signedIn) { setOnline({ scope: 'online', players: [] }); return }
+    try { setOnline(await api.get('/api/party/online')) } catch { /* keep the last list */ }
+  }, [signedIn])
+
+  useEffect(() => { loadParty(); loadOnline() }, [loadParty, loadOnline])
+  useEffect(() => {
+    if (!signedIn) return undefined
+    // Poll rather than push, the old panel's reasoning: the party changes when somebody else
+    // clicks Ready, and a three-second poll of one small row is cheaper to get right than a
+    // per-party room. The online list moves slower and is polled slower.
+    const a = setInterval(loadParty, 3000)
+    const b = setInterval(loadOnline, 10000)
+    return () => { clearInterval(a); clearInterval(b) }
+  }, [signedIn, loadParty, loadOnline])
+
+  useEffect(() => {
+    if (!party) { setLive(null); return undefined }
+    const on = (msg) => { if (msg && msg.party_id === party.id) setLive(msg.progress || {}) }
+    socket.on('party-progress', on)
+    return () => socket.off('party-progress', on)
+  }, [party && party.id])
+
+  const poolByKey = useMemo(() => {
+    const m = new Map()
+    for (const x of pool || []) m.set(x.key, x)
+    return m
+  }, [pool])
+
+  // ── what the card shows ─────────────────────────────────────────────────
+  // With a party, the party's values; without one, the stage. `canEdit` is who may move
+  // them: the leader of a party still forming, or anybody with no party at all.
+  const editable = !party || (party.is_leader && party.state === 'forming')
+  const mapKey = party ? (party.map && party.map.key) : stage.map_key
+  const map = party
+    ? (party.map ? { ...(poolByKey.get(party.map.key) || {}), ...party.map } : null)
+    : (stage.map_key ? poolByKey.get(stage.map_key) || null : null)
+  const mode = party ? party.mode : stage.mode
+  const visibility = party ? party.visibility : stage.visibility
+
+  // ── actions ─────────────────────────────────────────────────────────────
+  const run = useCallback(async (fn) => {
+    setBusy(true); say(null)
+    try { const out = await fn(); await loadParty(); return out }
+    catch (e) { say(e.message); return null }
+    finally { setBusy(false) }
+  }, [loadParty, say])
+
+  const stageMap = useCallback(async (key) => {
+    if (!key) return
+    if (!party) { setStage({ map_key: key }); return }
+    if (!editable) { say(party.is_leader ? 'Cancel the ready check to change the map' : 'The leader picks the map'); return }
+    if (party.map && party.map.key === key) return
+    await run(() => api.post('/api/party/map', { map_key: key }))
+  }, [party, editable, setStage, run, say])
+
+  const setMode = useCallback((v) => {
+    if (!party) { setStage({ mode: v }); return }
+    if (!party.is_leader) return
+    run(() => api.post('/api/party/mode', { mode: v }))
+  }, [party, setStage, run])
+
+  const setVisibility = useCallback((v) => {
+    if (!party) { setStage({ visibility: v }); return }
+    if (!party.is_leader) return
+    run(() => api.post('/api/party/visibility', { visibility: v }))
+  }, [party, setStage, run])
+
+  const invite = useCallback(async (target) => {
+    const body = { ...target, stage: { map_key: stage.map_key, mode: stage.mode, visibility: stage.visibility } }
+    const out = await run(() => api.post('/api/party/invite', body))
+    if (out) loadOnline()
+    return out
+  }, [stage, run, loadOnline])
+
+  const cancelInvite = useCallback((id) => run(() => api.post(`/api/party/invites/${id}/cancel`)), [run])
+  const kick = useCallback((sid) => run(() => api.post('/api/party/kick', { steam_id: sid })), [run])
+  const leave = useCallback(() => run(async () => { await api.post('/api/party/leave'); refresh() }), [run, refresh])
+
+  const decline = useCallback((id) => run(() => api.post(`/api/party/invites/${id}/decline`)), [run])
+  // Accepting an invite and joining somebody's lobby are both "going to play with them", so
+  // both take the gate — B's own list says accepting an invite is one of the gated actions.
+  const joinParty = useCallback((partyId) => {
+    if (guard({ party: partyId, then: '/' })) return null
+    return run(async () => { await api.post('/api/party/join', { party_id: partyId }); loadOnline() })
+  }, [guard, run, loadOnline])
+
+  // PLAY. The one primary action on the card, and the flow underneath is the party's
+  // (13 §4b), unchanged: a ready check, then the launch. What the rail adds is that you do
+  // not have to make a party first — Play makes one from the stage — and that a party of one
+  // does not stop at a ready check nobody else is in: its leader is ready by pressing Play,
+  // so it goes straight on to the launch.
+  //
+  // `mapKey` lets a map page's own Play say which map — Movement's map page "Spin up" is the
+  // rail's launch with that page's map staged first, and so is ours.
+  const play = useCallback(async ({ force = false, mapKey: want = null } = {}) => {
+    const key = want || mapKey
+    if (!key) return
+    if (guard({ party: party && party.id, map: key, then: '/' })) return
+    await run(async () => {
+      if (!party) {
+        await api.post('/api/party/create', { mode: stage.mode, visibility: stage.visibility, mapKey: key })
+        setStage({ map_key: key })
+      } else if (!party.map || party.map.key !== key) {
+        if (!(party.is_leader && party.state === 'forming')) throw new Error('The leader picks the map')
+        await api.post('/api/party/map', { map_key: key })
+      }
+      const r = await api.post('/api/party/ready-check', force ? { force: true } : {})
+      if (r && r.party && r.party.all_ready) await api.post('/api/party/launch')
+    })
+  }, [mapKey, party, stage, setStage, guard, run])
+
+  const ready = useCallback(() => {
+    if (guard({ party: party && party.id, map: mapKey, then: '/' })) return
+    run(() => api.post('/api/party/ready', { ready: true }))
+  }, [guard, party, mapKey, run])
+
+  const go = useCallback((force = false) => {
+    if (guard({ party: party && party.id, map: mapKey, then: '/' })) return
+    run(() => api.post('/api/party/launch', force ? { force: true } : {}))
+  }, [guard, party, mapKey, run])
+
+  const cancel = useCallback(() => run(() => api.post('/api/party/cancel')), [run])
+
+  const value = useMemo(() => ({
+    me, signedIn, approved,
+    party, launch, invites, online, pool, poolByKey, live,
+    stage, map, mapKey, mode, visibility, editable,
+    busy, err, say,
+    stageMap, setMode, setVisibility, invite, cancelInvite, kick, leave,
+    decline, joinParty, play, ready, go, cancel,
+    refreshParty: loadParty, refreshOnline: loadOnline,
+  }), [me, signedIn, approved, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
+    mode, visibility, editable, busy, err, say, stageMap, setMode, setVisibility, invite, cancelInvite, kick,
+    leave, decline, joinParty, play, ready, go, cancel, loadParty, loadOnline])
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+}
+
+export const useRail = () => useContext(Ctx)

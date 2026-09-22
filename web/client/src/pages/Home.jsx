@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, num } from '../api'
 import { useSession } from '../session'
+import { useRail } from '../rail'
 import { Loading, Lockup } from '../components/Bits'
-import PartyPanel from '../components/PartyPanel'
 import MapListPanel from '../components/MapListPanel'
 import MapRows from '../components/MapRows'
 import { MapBody } from './MapPage'
@@ -11,12 +11,12 @@ import { setBaseAmbience } from '../ambience'
 
 // HOME IS THE MAP BROWSER (B, 2026-09-22).
 //
-// Movement's map browser, with zombies' nouns and B's one structural change. Left column:
-// the party on top, then the scrolling map pool with its search. Everything else on the
-// screen is the selected map's own page — the same component /m/<map> renders, so opening a
-// map from the list and following a link to it land on the same page. There is no right
-// column: the party rail that used to stand there is gone, and it took the last reason to
-// look at three regions at once with it.
+// Movement's map browser, with zombies' nouns. Left of it, on every page, is the party rail
+// (components/PartyRail.jsx, B 2026-09-22 evening) — online players, your party, and the
+// server card with Play. On home the next column is the scrolling map pool with its search,
+// and picking from it stages the map on that card. Everything else is the selected map's own
+// page — the same component /m/<map> renders. ~~Left column: the party on top~~ — the party
+// panel moved into the rail. There is still no right column.
 //
 // What this page REPLACED, and why none of it came back: live games, friends online, map of
 // the week, featured, and a records/badges feed. Every one of those was a list of rows that
@@ -31,47 +31,28 @@ import { setBaseAmbience } from '../ambience'
 // so picking a map reads as the map arriving rather than as the site changing.
 
 export default function Home() {
-  const { signedIn, authMode } = useSession()
-  const [maps, setMaps] = useState(null)
+  const R = useRail()
+  const { authMode } = useSession()
+  const maps = R.pool
   const [rows, setRows] = useState(null)
-  const [party, setParty] = useState(null)
-  const [launch, setLaunch] = useState(null)
-  // What the page is showing. It follows the party's staged map when there is one, because
-  // picking a map is a party action rather than a page action — but it is not the same
-  // thing: somebody who is not the leader can still read about a map without moving
-  // everybody else's lobby.
-  const [sel, setSel] = useState(null)
+  // What the page is showing. It follows the card's map — the party's, or what you staged —
+  // when the page opens and whenever that map CHANGES (the picker, or the leader moving
+  // the lobby), because two people in one party reading about two different maps while one
+  // Play button decides is the thing to avoid. It is not the same thing as the card: a
+  // member who is not the leader can still read about another map without moving anybody.
+  const [sel, setSel] = useState(R.mapKey || null)
+  const lastCard = useRef(R.mapKey || null)
+  useEffect(() => {
+    if (R.mapKey && R.mapKey !== lastCard.current) setSel(R.mapKey)
+    lastCard.current = R.mapKey || null
+  }, [R.mapKey])
 
   useEffect(() => {
-    api.get('/api/maps?sort=popular').then((j) => setMaps(j.maps || [])).catch(() => setMaps([]))
     // The home ROWS — New maps, Vanilla, High production — off `collections`, which an admin
     // owns (B, 2026-09-22). They fill the right-hand region when no map is open, which is
     // the region that used to say "Pick a map" and nothing else.
     api.get('/api/maps/home').then((j) => setRows(j.rows || [])).catch(() => setRows([]))
-  }, [signedIn])
-
-  const loadParty = useCallback(async () => {
-    if (!signedIn) { setParty(null); setLaunch(null); return }
-    try {
-      const j = await api.get('/api/party')
-      setParty(j.party)
-      setLaunch(j.launch)
-      // Follow the lobby: somebody else's pick has to move this page, or two people in one
-      // party are reading about two different maps while one Start button decides.
-      if (j.party && j.party.map) setSel((cur) => (cur == null ? j.party.map.key : cur))
-    } catch { /* signed out mid-poll */ }
-  }, [signedIn])
-
-  useEffect(() => { loadParty() }, [loadParty])
-  useEffect(() => {
-    if (!signedIn) return undefined
-    // Poll rather than push: the party changes when somebody else clicks Ready, and a
-    // three-second poll of one small row is cheaper to get right than a per-party room.
-    // The one thing that genuinely needs to move between polls — a download bar — has the
-    // socket (`party-progress`), which PartyPanel listens to.
-    const t = setInterval(loadParty, 3000)
-    return () => clearInterval(t)
-  }, [signedIn, loadParty])
+  }, [R.signedIn])
 
   const selected = useMemo(() => (maps || []).find((m) => m.key === sel) || null, [maps, sel])
 
@@ -85,11 +66,11 @@ export default function Home() {
 
   const pick = async (m) => {
     setSel(m.key)
-    // Staging it for the party is the leader's move and only the leader's; for anybody else
-    // this is reading, and the request would be refused anyway.
-    if (party && party.is_leader) {
-      try { await api.post('/api/party/map', { map_key: m.key }); loadParty() } catch { /* the panel shows the refusal */ }
-    }
+    // Opening a map STAGES it on the rail's card — Movement's flow, where the map you open is
+    // the map you would launch. Only where that moves nobody else: with no party it is your
+    // own stage, and a leader of a party still forming is the one who picks anyway. A member,
+    // or a leader mid ready check, is reading, and the card stays where the party put it.
+    if (R.signedIn && R.editable) R.stageMap(m.key)
   }
 
   if (!maps) return <div className="page"><Loading /></div>
@@ -97,9 +78,7 @@ export default function Home() {
   return (
     <div className="home">
       <div className="home-left">
-        {signedIn
-          ? <PartyPanel party={party} launch={launch} onChange={loadParty} selected={sel} />
-          : <SignIn authMode={authMode} count={maps.length} />}
+        {!R.signedIn && <SignIn authMode={authMode} count={maps.length} />}
         <MapListPanel maps={maps} selected={sel} onPick={pick} />
       </div>
 

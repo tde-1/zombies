@@ -1604,3 +1604,149 @@ the database.
 Read [`ip-posture.md`](ip-posture.md) before serving anything new: no Activision asset is served
 by the site before public (§4 table); `/mapdata` stock exports are a testing-only carve-out (§5);
 footer disclaimer and per-map "not made or supported by Activision" line are on the Before-public list (§9).
+
+## 2026-09-22 (evening) — Movement's left rail, and the plain ENW logo
+
+Branch `web-dock`. B: *the map on the left with its image, Movement's server card in the bottom
+left; click it to pick a different map and the map changes; the online list, your party, the
+Play button, Verified/Custom and Private/Friends/Public toggles just like Movement; invite by ENW
+username and from the online list; copy more from Movement and make the flow the same. And get
+rid of "Zombies" from the logo: just the ENW logo.*
+
+**§10a's "no rail" is superseded.** The objection then was a third region on the right. This is
+Movement's left spine, on every page, above the router. The nav still runs across the whole
+window over it, because inside the launcher the nav is the title bar (`html.in-launcher`); the
+nav component was not touched.
+
+### What is ported, file by file
+
+| Ours | From Movement | What changed on the way over |
+|---|---|---|
+| `client/src/components/PartyRail.jsx` | `components/PartyRail.jsx` | Roster, InviteBox, Invites, FriendsBlock → OnlineBlock, the lobby-options pair, Footer → ServerCard. Same class names and layers. |
+| `client/src/components/MapPicker.jsx` | `components/GameModePicker.jsx` (the sheet) | Same scrim, sheet, hue wash, head, card grid and "current" pill. It holds **maps** instead of modes, adds a search box, and draws the first 60 matches. |
+| `client/src/rail.jsx` | `party.jsx` | Polls `/api/party` (3 s) and `/api/party/online` (10 s). Holds the **stage** (map, mode, visibility) in localStorage until a party exists. Holds the pool once; home reads it from here. |
+| `client/src/components/Icons.jsx` | `ServerIcons.jsx` | + `CopyIcon`, `CheckIcon`, `CopyGlyph` for the connect field |
+| `client/src/theme.css` rail block | `theme.css` PARTY RAIL, `.rgm-*`, server card, `.copy-glyph` | `--panel2` → `--panel-2`. No `--glow` token here, so the value is written out. The rail starts under the nav. |
+| `server/lib/roster.js` | the server half of `FriendsBlock` + `friendSearch` | New. See below. |
+
+`components/PartyPanel.jsx` is **deleted**. Everything it did (members, download state, ready,
+Start / Start anyway / Go / Cancel, invite, leave) is now in the roster and the server card.
+Home keeps its map-pool column and the map page. Picking from the pool stages that map on the
+card.
+
+### What differs from Movement, and why
+
+* **No game + mode bar at the top.** Movement's first card picks the game (CS:GO or CS:Source)
+  and the mode (surf, bhop, KZ). Zombies has one game. Its only mode is Verified / Custom, and
+  that is a lobby option, so it sits where Movement's Global/Local chat segment sits: directly
+  above Private/Friends/Public, over the card.
+* **The server card opens the map picker, not the map page.** On Movement, clicking the card
+  opens that map's page, and opening another map stages that one. B asked for the card itself to
+  change the map. "Open the current map's page" is in the picker's foot. A party member who is
+  not the leader gets the map page, because only the leader can change the map.
+* **Private / Friends / Public**, in B's words and B's order. Movement's labels for the same
+  three values are Friends / Invite-only / Public. The API values are unchanged.
+* **Play is the party flow** (`lib/parties.js`, 13 §4b), through the play gate exactly as
+  before. Movement's "Spin up" boots a server and then shows you an address to copy. Here:
+  * With no party, Play makes one from the stage.
+  * A party of one skips the ready check (the leader is ready by pressing Play) and goes
+    straight to the launch.
+  * A bigger party gets the ready check. Members see **Ready**. The leader sees **Waiting for N**,
+    then **Go**, with **Start anyway** and **Cancel** under it.
+  * Once launched, the card shows the connect string with a copy mark, as a fallback. The
+    launcher is what actually connects you.
+* **The map page's Play is the rail's Play** with that page's map staged first, which is what
+  Movement's map page "Spin up" is. There is one way to start a game, and the card shows where it
+  has got to. `POST /api/maps/:key/play` stays for the launcher; the page no longer calls it.
+* **Opening a map stages it** (Movement's flow), but only where that moves nobody else: your own
+  stage when you have no party, or the leader picking from home's pool while the party is still
+  forming. Reading a map page never resets a lobby.
+* **Online rows join a lobby rather than copy a server address.** A Zombies lobby is a party
+  that has not launched. A row sitting in one wears the lobby's map art. Its action depends on
+  the lobby: **Accept** if you are invited, **Join** if you may join, `IN PARTY` / `INVITED` /
+  `IN GAME` tags otherwise, or **+** to invite. Accept and Join go through the play gate, because
+  B's own list names accepting an invite as a play action.
+* **No collapsed mini rail.** Below 1080px the rail stacks above the page.
+* **No toasts.** The site has no toast system. A refusal is a red line under the card, cleared
+  after 6 s.
+
+### Server changes
+
+* `lib/parties.js`:
+  * **An invite now opens a friends-only lobby** to the person invited. Before, it opened only a
+    private one. That meant accepting an invite from somebody you are not friends with (the whole
+    point of inviting by ENW name) was refused by the lobby that sent it.
+  * `invite(from, to, stage)` validates the target (exists, not you, not already in, not full)
+    and dedupes pending invites.
+  * **An invite from somebody with no party creates the party**, carrying the rail's stage. This
+    replaces Movement's "invited people join when you spin up".
+  * `create()` validates mode, visibility and map rather than trusting the body.
+  * New: `declineInvite`, `cancelInvite`, `kick`. `project()` carries `invited[]`, drawn as the
+    roster's "invited" rows with a × to take the invite back. `invitesFor()` carries the map's
+    title and art for the invite card.
+* `lib/roster.js`: the online block, worked out on the server **for the reader**, which is
+  Movement's rule. An approved account sees everybody online, and the block says **Online**.
+  Anybody else sees only their friends, and it says **Friends**. Each row carries `lobby`
+  (`joinable`, `invited`, `invite_id`, visibility, map art), `game` (a box-reported match), or
+  `held` (already in or invited to your party). `search()` is the invite box: two characters
+  minimum, eight rows, friends and online players first.
+* Routes (`routes/site.js`):
+  * `POST /api/party/invite` now takes `{steam_id}` **or `{username}`** (resolved through
+    `users.resolve`, ENW name or persona), plus `stage`.
+  * New: `POST /api/party/invites/:id/decline`, `POST /api/party/invites/:id/cancel`,
+    `POST /api/party/kick`, `GET /api/party/online` (empty list signed out),
+    `GET /api/party/invite-search?q=`.
+
+### The logo
+
+`Lockup` (`components/Bits.jsx`) is the ENW mark alone. The ZOMBIES foot is gone, so the nav,
+the signed-out home card and `/download` all draw the plain ENW logo. The favicon was already the
+mark. The launcher's own fallback screens (`launcher/src/renderer/shell.html`,
+`placeholder.html`) drew `ENW` over `ZOMBIES` in text; the `ZOMBIES` span is removed from both.
+That ships with the next launcher build. The product name in `<title>` and in prose is still
+ENW Zombies. B asked about the logo, not the name.
+
+### Tests and proof
+
+`npm test` is **142/0**: 95 in-process, 33 over HTTP, 14 sign-in. That is six new in-process
+checks:
+* an invite with no party makes one, carrying the stage
+* staged junk is not written
+* an invite opens a friends-only lobby to the invitee and to nobody else
+* decline, take-back and kick, each with its permission
+* the online block's two scopes, `joinable` / `invited` / `held`, and the invite search
+
+**The proof (`ui/rail-*.png`).** Headless Edge over CDP, 1440×900, against a private instance on
+**3450** holding a `VACUUM INTO` copy of the live database. `web/data` and 3200 were not touched.
+There were three fake accounts (`76561198000000101..103`: ghoulbait, perkaholic, raygunner), each
+signed in through the dev mock with its own cookie jar and a socket held open, which is what
+makes them "online". In order:
+1. `rail-home`: the rail, the online list with raygunner's public lobby wearing its map.
+2. `rail-map-picker`: the card clicked.
+3. `rail-map-picked`: Leviathan picked, and the card, pool and page follow.
+4. `rail-invite-by-name`: the invite box.
+5. `rail-invited`: Custom picked, then "perkaholic" typed and Enter. This made the party and
+   the invite.
+6. `rail-invitee`: perkaholic's own session, with the Invites card and Accept on ghoulbait's row.
+7. `rail-joined-member`: accepted. Party of 2, member view, "ghoulbait starts the game".
+8. `rail-ready-check-leader` / `-member`: Play pressed.
+9. `rail-go-no-box`: Go refused with "no game box is online".
+10. `rail-signed-out`.
+
+Everything that goes into a game ran with the launcher's real header (`X-ENW-Launcher`).
+Without it, the same Go press lands on `/download?map=nazi_zombie_leviathan&party=23&then=/`,
+which was checked.
+
+### Unproven
+
+* **A real launch from the rail.** No box polled the dev instance, so Go stops at "no game box is
+  online", the same place the old panel stopped. The launch call is unchanged from the old panel's.
+* **The member's Ready was pressed over HTTP** (curl with the member's cookie) rather than by
+  clicking. The member's Ready button is in `rail-ready-check-member.png`.
+* **Join on an online row** is covered by the in-process test (`joinable`) and not clicked in a
+  browser.
+* **Inside the real launcher window**: the rail under a frameless title bar, and the play gate
+  standing down through `window.enw`.
+* **Phone widths**: only the stacking rule exists; nobody has looked at it.
+* **Merge note:** branch `web-identity` removes `/auth/mock`. The rail's signed-out link already
+  follows `session.auth`, so it needs no change after that merge.

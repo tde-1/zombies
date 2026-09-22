@@ -20,25 +20,15 @@ export function Mark({ h = 22 }) {
   )
 }
 
-export function Lockup({ h = 22, word = true }) {
-  const markW = (h * VB[2]) / VB[3]
-  const size = h * 0.21
-  // Width-matching by letter-spacing, the F3 rule. "ZOMBIES" is seven characters, so the
-  // tracking is (markWidth - naturalWidth) / 6 — approximated here from the cap width
-  // because the browser cannot be measured during render, and trimmed on the right so the
-  // trailing space does not push the lockup off-centre.
-  const natural = size * 0.72 * 7
-  const ls = word ? (markW - natural) / 6 : 0
+// THE PLAIN ENW LOGO (B, 2026-09-22 evening: "get rid of Zombies from the ENW Zombies logo
+// and just have the ENW logo"). ~~Option A, the F3 lockup with ZOMBIES as a width-matched
+// foot~~ — the foot is gone; every lockup on the site is now the ENW mark alone, which is
+// what Movement's nav draws. `word` is accepted and ignored so no caller has to change.
+// eslint-disable-next-line no-unused-vars
+export function Lockup({ h = 22, word }) {
   return (
-    <span className="lockup" title="ENW Zombies">
-      <span style={{ display: 'inline-block' }}>
-        <Mark h={h} />
-        {word && (
-          <span className="word" style={{ fontSize: size, letterSpacing: `${ls}px`, marginRight: -ls, marginTop: h * 0.14 }}>
-            ZOMBIES
-          </span>
-        )}
-      </span>
+    <span className="lockup" title="ENW">
+      <Mark h={h} />
     </span>
   )
 }

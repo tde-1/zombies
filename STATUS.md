@@ -25,6 +25,25 @@
 5. **Custom maps with friends**: today that is Minecraft Village Remastered plus the stock four on the box. The rest is the list under *Known and unfixed*.
 6. **Replay viewer**: any finished game's page → replay. Nacht renders with full world geometry.
 
+## 2026-09-22 (evening): Movement's left rail on the site; the logo is just ENW (branch `web-dock`, not merged)
+
+Movement's party rail is on the left of every page. It has four parts:
+* **Your party**, with invite by ENW name.
+* **Invites** waiting on you.
+* **Online**: everyone signed in, for an approved account. Each row has invite, join or accept.
+* **The server card** at the bottom, showing the map's art, with Verified/Custom and
+  Private/Friends/Public above it and the one Play button on it.
+
+Clicking the card opens Movement's picker sheet with maps in it, and picking one changes the map.
+Play runs the same party flow as before, through the play gate. `PartyPanel.jsx` is deleted.
+Server: invites work by name, an invite now opens a friends-only lobby, and there is decline,
+take-back and kick, plus `lib/roster.js` for the online list. The ZOMBIES word is gone from the
+lockup (site, and the launcher's fallback screens).
+
+`npm test` is 142/0. Proven with three fake sessions on a private copy (`docs/kickstart/ui/rail-*.png`).
+**Unproven:** a real launch from the rail (no box on the dev instance), and the rail inside the
+real launcher window. Details: `docs/kickstart/web.md`, "2026-09-22 (evening)".
+
 ## Replay viewer parity pass (2026-09-22, late)
 
 B's eight complaints about `m_0afb449b` have a spec (`docs/kickstart/replay.md` §8) and
