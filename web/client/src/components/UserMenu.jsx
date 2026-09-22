@@ -37,6 +37,7 @@ export default function UserMenu() {
   const enw = bridge()
   const launcher = describeLauncher(useLauncherStatus())
   const [signingIn, setSigningIn] = useState(false)
+  const [avFailed, setAvFailed] = useState(false)
   useEffect(() => (enw && enw.onSession ? enw.onSession(() => refresh()) : undefined), [enw, refresh])
   const openScreen = (name) => { setOpen(false); try { enw.openScreen(name) } catch { /* older launcher */ } }
 
@@ -92,8 +93,8 @@ export default function UserMenu() {
     <div className="um" ref={ref}>
       <button className="um-chip" onClick={() => setOpen((o) => !o)}
               aria-haspopup="menu" aria-expanded={open} aria-label="Account menu">
-        {me.avatar
-          ? <img className="um-av" src={me.avatar} alt="" />
+        {me.avatar && !avFailed
+          ? <img className="um-av" src={me.avatar} alt="" onError={() => setAvFailed(true)} />
           : <span className="um-av um-initials">{initials(me.name)}</span>}
         <span className="um-name">{me.name}</span>
         <Level standing={standing} />

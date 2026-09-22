@@ -103,19 +103,15 @@ export default function Download() {
         <Lockup h={46} />
         <h1 style={{ margin: '16px 0 6px' }}>{heading}</h1>
         <p className="sub" style={{ margin: '0 0 20px' }}>
-          Windows. You need World at War already installed.
-          {what ? ' Games run in the launcher — a browser tab cannot start the game.' : ''}
+          Windows · needs World at War
         </p>
 
         {/* Already have it? Then the installer is the wrong offer, and it is second. */}
         {(mapKey || partyId) && (
           <div style={{ marginBottom: 18 }}>
-            <button className="btn primary big" onClick={openInLauncher}>Open in the ENW Zombies launcher</button>
+            <button className="btn primary big" onClick={openInLauncher}>Open in launcher</button>
             <p className="tiny" style={{ margin: '8px 0 0' }}>
-              {tried === 'timeout'
-                ? 'Nothing opened — you probably do not have it yet. Install it below.'
-                : tried ? 'Handing over to the launcher…'
-                  : 'If it is installed, this brings it forward on this map.'}
+              {tried === 'timeout' ? 'Nothing opened? Install it below.' : tried ? 'Opening…' : null}
             </p>
           </div>
         )}
@@ -133,27 +129,23 @@ export default function Download() {
           // Said plainly rather than shown as a dead button. The feed being unreachable is
           // the same thing that stops everybody's launcher updating, so it is worth naming.
           <p className="sub" style={{ margin: 0 }}>
-            No build is published right now. <a href="/updates/">Check the feed</a>, or ask B.
+            No build yet. <a href="/updates/">Check the feed</a>
           </p>
         ) : (
-          <p className="sub" style={{ margin: 0 }}>Looking for the latest build…</p>
+          <p className="sub" style={{ margin: 0 }}>Loading…</p>
         )}
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
         <ol className="steps">
           <li>
-            <b>Run the installer.</b> Windows SmartScreen will warn you — it is unsigned.
-            More info, then Run anyway.
+            <b>Run the installer.</b> SmartScreen: More info, then Run anyway.
           </li>
           <li>
-            <b>Sign in with Steam.</b> The launcher opens your browser, Steam sends you back,
-            and you are signed in on the site too.
+            <b>Sign in with Steam.</b>
           </li>
           <li>
-            <b>It finds World at War and installs the ENW client.</b> Your Steam copy is never
-            written to — the launcher makes its own copy and patches that. Then pick a map and
-            press Play; it downloads the map and launches the game for you.
+            <b>Pick a map and press Play.</b> Your Steam install is never changed.
           </li>
         </ol>
       </div>
@@ -165,8 +157,7 @@ export default function Download() {
       )}
 
       <p className="tiny" style={{ textAlign: 'center', marginTop: 10 }}>
-        This is a closed beta. Things will break, and your account has to be approved before
-        you can play — browsing does not need it.
+        Closed beta. Playing needs approval.
       </p>
     </div>
   )

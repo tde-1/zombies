@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useRail } from '../rail'
 import { useSession } from '../session'
 import { prettyTitle, mapHue } from '../data/mapText'
-import { CopyGlyph } from './Icons'
-import MapPicker from './MapPicker'
+import { NotPlayable } from './Bits'
 
 // ── The party rail ─────────────────────────────────────────────────────────
 //
@@ -19,14 +18,15 @@ import MapPicker from './MapPicker'
 //     surf / bhop / KZ picker (GameModePicker.jsx). Zombies is one game, and its only "mode"
 //     is Verified / Custom, which is a lobby option and sits where Movement's Global/Local
 //     chat segment sits, directly over the server card. So the rail opens on the party.
-//   * THE SERVER CARD OPENS THE MAP PICKER, not the map page. On Movement the card is the
-//     map you will launch and clicking it opens that map's page, where picking another map
-//     stages it; B asked for the card itself to be the way to change the map. The picker is
-//     Movement's own sheet (the GameModePicker's scrim, sheet, head and card grid) holding
-//     maps instead of modes. The map's page is one click from the picker.
+//   * THE SERVER CARD OPENS THE MAP'S PAGE, Movement's flow exactly (B, 2026-09-22 late:
+//     "when you click the map on the bottom left it should take you to the map page, and
+//     there should be a back button that takes you back to the map list"). Picking a map
+//     from home's list or /maps stages it on the card. ~~The card opened a map picker sheet
+//     (MapPicker.jsx)~~ — deleted, with its CSS, the "Change map" chip and the picker's foot.
 //   * PLAY is the party flow (lib/parties.js): a ready check, then the launch, through the
-//     play gate. Movement's "Spin up" boots a server you then copy an address to; here the
-//     launcher connects you, so the card only shows the address as a fallback.
+//     play gate. The launcher connects you, so the card carries no connect address
+//     (~~Movement's copy field~~, removed 2026-09-22 late) and no "Start anyway": the leader
+//     removes a member who is holding the party up with the × on their row.
 //   * THE ONLINE ROWS JOIN A LOBBY rather than copying a server address: a Zombies lobby is
 //     a party that has not launched yet, so "join" is joining the party.
 //   * No collapsed mini rail. Below 1080px the rail stacks above the page instead.
@@ -96,7 +96,7 @@ function Roster({ R }) {
         })),
         ...(p.invited || []).map((u) => ({
           id: 'inv-' + u.invite_id, user: u, role: 'invited',
-          onRemove: () => R.cancelInvite(u.invite_id), removeLabel: 'Take the invite back',
+          onRemove: () => R.cancelInvite(u.invite_id), removeLabel: 'Cancel invite',
         })),
       ]
     : [{ id: 'me', user: R.me, host: true, role: 'host' }]
@@ -122,8 +122,8 @@ function Roster({ R }) {
 // A member's second line. The download wins while there is one, because it is the thing
 // that decides whether Play can go; then the ready state during a ready check; then the role.
 function roleOf(m, p, prog) {
-  if (prog && prog.state === 'failed') return prog.error || 'map install failed'
-  if (prog && prog.state === 'downloading') return prog.pct == null ? 'downloading the map' : `downloading ${prog.pct}%`
+  if (prog && prog.state === 'failed') return 'download failed'
+  if (prog && prog.state === 'downloading') return prog.pct == null ? 'downloading' : `downloading ${prog.pct}%`
   if (p.state === 'ready-check') return m.ready ? 'ready' : 'not ready'
   if (prog && prog.state === 'installed') return m.steam_id === p.leader ? 'host · has the map' : 'has the map'
   return m.steam_id === p.leader ? 'host' : 'in party'
@@ -141,8 +141,8 @@ function PlayerCard({ user, role, host, onRemove, removeLabel }) {
         <div style={{ minWidth: 0 }}><div className="pname">{name}</div><div className="prole">{role}</div></div>
       </Link>
       {onRemove && (
-        <button className="pcard-x" title={removeLabel || 'Remove from the party'}
-                aria-label={removeLabel || `Remove ${name} from the party`} onClick={onRemove}>×</button>
+        <button className="pcard-x" title={removeLabel || "Kick"}
+                aria-label={removeLabel || `Kick ${name}`} onClick={onRemove}>×</button>
       )}
     </div>
   )
@@ -203,7 +203,7 @@ function InviteBox({ R }) {
         <button className="invite-close" title="Close search" aria-label="Close search" onClick={close}>×</button>
       </div>
       <div className="invite-list">
-        {results == null && <div className="sug-empty">Type an ENW name. Enter invites it as typed.</div>}
+        {results == null && <div className="sug-empty">Type an ENW name</div>}
         {results != null && list.length === 0 && <div className="sug-empty">No players found.</div>}
         {list.map((u) => (
           <div className="sug" key={u.steam_id} role="button" tabIndex={0}
@@ -330,7 +330,7 @@ function ModeSeg({ R }) {
       <div className={'vis-seg' + (can ? '' : ' locked')}>
         {[['verified', 'Verified'], ['custom', 'Custom']].map(([k, label]) => (
           <button key={k} className={'vis-btn' + (R.mode === k ? ' on' : '')} disabled={!can || R.busy}
-                  title={can ? (k === 'verified' ? 'Stock settings, records and XP count' : 'Your own settings, nothing counts') : 'Only the leader can change this'}
+                  title={can ? (k === 'verified' ? 'Records and XP count' : 'Nothing counts') : 'Leader only'}
                   onClick={() => can && R.mode !== k && R.setMode(k)}>{label}</button>
         ))}
       </div>
@@ -352,7 +352,7 @@ function Visibility({ R }) {
       <div className={'vis-seg' + (can ? '' : ' locked')}>
         {VIS.map((v) => (
           <button key={v.key} className={'vis-btn' + (R.visibility === v.key ? ' on' : '')} disabled={!can || R.busy}
-                  title={can ? undefined : 'Only the leader can change this'}
+                  title={can ? undefined : 'Leader only'}
                   onClick={() => can && R.visibility !== v.key && R.setVisibility(v.key)}>{v.label}</button>
         ))}
       </div>
@@ -363,13 +363,12 @@ function Visibility({ R }) {
 // ── the persistent server card ────────────────────────────────────────────
 // Movement's Footer, to the letter in its layers: the map's art, the veil, a full-card
 // click target UNDER a pointer-transparent copy layer, then the name, the mode line and the
-// one primary action. The click target opens the map picker (see the header).
+// one primary action. The click target opens the map's page (Movement's openMap), and
+// carries where you were so the page's back control returns there.
 function ServerCard({ R }) {
   const nav = useNavigate()
-  const [picking, setPicking] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const loc = useLocation()
 
-  // Steam on the real site; the dev page only where the server says it is running the mock.
   if (!R.signedIn) {
     return (
       <a className="prail-server-launch as-link" href="/auth/steam">
@@ -388,69 +387,58 @@ function ServerCard({ R }) {
   const modeLabel = `${MODE_WORD[R.mode] || 'Verified'} · ${VIS.find((v) => v.key === R.visibility)?.label || 'Friends'}`
   const readyN = p ? p.members.filter((m) => m.ready).length : 0
   const statusLabel = state === 'ready-check'
-    ? `Ready check · ${readyN} of ${p.members.length} ready`
-    : state === 'launching' ? 'Reserving a server'
+    ? `${readyN} of ${p.members.length} ready`
+    : state === 'launching' ? 'Starting'
       : state === 'in-game' ? `In game · ${MODE_WORD[R.mode] || 'Verified'}`
         : modeLabel
   const meRow = p && R.me ? p.members.find((m) => m.steam_id === R.me.steam_id) : null
+  const playable = !map || map.on_server !== false
 
-  const openPicker = () => {
-    if (R.editable) { setPicking(true); return }
-    if (map) nav(`/m/${map.key}`)
-  }
+  // Already looking at it? Then the card is just a picture (Movement's mapAlreadyOpen rule:
+  // a second click would only push a duplicate history entry).
+  const here = loc.pathname
+  const target = map ? `/m/${map.key}` : '/maps'
+  const canOpen = here !== target
+  const openMap = () => { if (canOpen) nav(target, { state: { back: here + loc.search } }) }
 
-  const copy = async (text) => {
-    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400) } catch { /* no clipboard */ }
-  }
-
-  // The primary action, by state. Every refusal says why in the label rather than greying a
+  // The primary action, by state. A refusal says why in the label rather than greying a
   // button that says "Play" — Movement's rule (approval first, because it is the outer gate).
   let primary = null
   if (!map) {
-    primary = <button className="prail-server-launch" onClick={() => setPicking(true)} disabled={!R.editable}>Pick a map</button>
+    primary = null
   } else if (!R.approved) {
     primary = <button className="prail-server-launch" disabled>Approval required</button>
+  } else if (!playable && (state === 'forming' || state === 'ready-check')) {
+    primary = <button className="prail-server-launch" disabled title={map.server_note || undefined}>Not playable</button>
   } else if (state === 'forming') {
     if (p && !p.is_leader) {
-      primary = <button className="prail-server-launch" disabled>{owner} starts the game</button>
+      primary = <button className="prail-server-launch" disabled>Waiting for {owner}</button>
     } else {
       const waiting = p ? (p.installs_pending || []) : []
       primary = (
-        <>
-          <button className="prail-server-launch" disabled={R.busy || waiting.length > 0} onClick={() => R.play()}>
-            {R.busy ? 'Starting…' : waiting.length > 0 ? 'Waiting for the map' : 'Play'}
-          </button>
-          {waiting.length > 0 && (
-            <button className="prail-sub-btn" disabled={R.busy} title="They will have to finish the download before they can join"
-                    onClick={() => R.play({ force: true })}>Start anyway</button>
-          )}
-        </>
+        <button className="prail-server-launch" disabled={R.busy || waiting.length > 0} onClick={() => R.play()}>
+          {R.busy ? 'Starting…' : waiting.length > 0 ? 'Waiting for downloads' : 'Play'}
+        </button>
       )
     }
   } else if (state === 'ready-check') {
     if (p.is_leader) {
       primary = (
         <>
-          <button className="prail-server-launch" disabled={R.busy || !p.all_ready} onClick={() => R.go(false)}>
+          <button className="prail-server-launch" disabled={R.busy || !p.all_ready} onClick={() => R.go()}>
             {p.all_ready ? 'Go' : `Waiting for ${p.members.length - readyN}`}
           </button>
-          <div className="prail-sub-row">
-            {!p.all_ready && (
-              <button className="prail-sub-btn" disabled={R.busy} title="Late joiners earn nothing from this game"
-                      onClick={() => R.go(true)}>Start anyway</button>
-            )}
-            <button className="prail-sub-btn" disabled={R.busy} onClick={R.cancel}>Cancel</button>
-          </div>
+          <button className="prail-sub-btn" disabled={R.busy} onClick={R.cancel}>Cancel</button>
         </>
       )
     } else if (meRow && !meRow.ready) {
       primary = <button className="prail-server-launch" disabled={R.busy} onClick={R.ready}>Ready</button>
     } else {
-      primary = <button className="prail-server-launch" disabled>Ready · waiting for {owner}</button>
+      primary = <button className="prail-server-launch" disabled>Waiting for {owner}</button>
     }
   }
 
-  const connect = R.launch && R.launch.connect
+  const booting = (state === 'launching' || state === 'in-game') && !(R.launch && R.launch.connect)
   return (
     <div className="prail-live">
       <div className={'prail-live-card' + (map ? ' has-map' : ' is-empty')}
@@ -461,37 +449,25 @@ function ServerCard({ R }) {
             ? <div className="map-banner-ph"><span>{String(map.key).replace(/^nazi_zombie_/, '')}</span></div>
             : <div className="prail-live-empty" aria-hidden="true" />}
         <div className="prail-live-veil" />
-        {(R.editable || map) && (
-          <button type="button" className="prail-live-open" onClick={openPicker}
-                  title={R.editable ? 'Change the map' : `Open ${title}`}
-                  aria-label={R.editable ? 'Change the map' : `Open the map page for ${title}`} />
+        {canOpen && (
+          <button type="button" className="prail-live-open" onClick={openMap}
+                  title={map ? serverName : 'Maps'}
+                  aria-label={map ? `Open the map page for ${title}` : 'Open the map list'} />
         )}
         <div className="prail-live-copy">
+          {map && !playable && <span className="prail-live-np"><NotPlayable map={map} /></span>}
           {p && (
-            <button className="prail-live-end" disabled={R.busy} title="Leave the party" aria-label="Leave the party"
+            <button className="prail-live-end" disabled={R.busy} title="Leave party" aria-label="Leave party"
                     onClick={() => { if (window.confirm('Leave this party?')) R.leave() }}>×</button>
           )}
-          {R.editable && <span className="prail-live-change">Change map</span>}
-          <div className="prail-live-name" title={serverName}>{map ? serverName : 'No map picked'}</div>
+          <div className="prail-live-name" title={serverName}>{map ? serverName : 'Pick a map'}</div>
           <div className="prail-live-mode">{statusLabel}</div>
-
-          {(state === 'launching' || state === 'in-game') && (
-            connect ? (
-              <div className="prail-live-connect">
-                <button className="prail-live-address" title={copied ? 'Copied' : 'Copy the connect address'}
-                        onClick={() => copy(`connect ${connect}`)}>
-                  <span className="prail-live-address-text">{connect}</span>
-                  <CopyGlyph copied={copied} />
-                </button>
-              </div>
-            ) : (
-              <div className="prail-live-booting"><span className="spinner" /> {state === 'launching' ? 'Reserving a server…' : 'Connecting…'}</div>
-            )
+          {booting && (
+            <div className="prail-live-booting"><span className="spinner" /> {state === 'launching' ? 'Starting…' : 'Connecting…'}</div>
           )}
           {primary}
         </div>
       </div>
-      {picking && <MapPicker R={R} onClose={() => setPicking(false)} />}
     </div>
   )
 }

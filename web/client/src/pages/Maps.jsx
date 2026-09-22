@@ -181,12 +181,10 @@ export default function Maps() {
               real map a real person can run at home, it is just not one we will referee. */}
           <button className={'rdk-chip txt' + (sp.get('server') === '1' ? ' on' : '')}
                   aria-pressed={sp.get('server') === '1'}
-                  title="Maps our servers will host and referee"
-                  onClick={() => set('server', sp.get('server') === '1' ? '' : '1')}>Our servers</button>
+                  onClick={() => set('server', sp.get('server') === '1' ? '' : '1')}>Playable</button>
 
           <button className={'rdk-chip txt' + (sp.get('records') === '1' ? ' on' : '')}
                   aria-pressed={sp.get('records') === '1'}
-                  title="Maps with a record or a saved replay"
                   onClick={() => set('records', sp.get('records') === '1' ? '' : '1')}>Has records</button>
 
           {/* Author, year and the long tail of tags are SELECTS and not chips, for the reason
@@ -229,7 +227,6 @@ export default function Maps() {
 
           <button className={'rdk-chip txt' + (archive ? ' on' : '')}
                   aria-pressed={archive}
-                  title="Also show maps that are broken on our servers"
                   onClick={() => set('archive', archive ? '' : '1')}>Include broken</button>
 
           {/* One button rather than a chip per tick: every filter on this bar states itself
@@ -241,7 +238,7 @@ export default function Maps() {
           </span>
         </div>
 
-        {list.maps.length === 0 ? <div className="listing"><Empty>No map matches these filters.</Empty></div>
+        {list.maps.length === 0 ? <div className="listing"><Empty>No maps match.</Empty></div>
           : view === 'cards' ? (
             <div className="map-grid" onMouseOver={over} onMouseLeave={endHoverAmbience}>
               {list.maps.map((m) => <MapCard key={m.key} map={m} />)}

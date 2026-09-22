@@ -23,6 +23,8 @@ const users = require('./users')
 const assignments = require('./assignments')
 const bans = require('./bans')
 const progress = require('./partyProgress')
+const maps = require('./maps')
+const serverNotes = require('./serverNotes')
 
 const MAX_PLAYERS = 4       // World at War has four client slots. This is the engine, not a policy.
 
@@ -44,7 +46,11 @@ function project(p, viewer = null) {
     code: p.code,
     leader: p.leader,
     mode: p.mode,
-    map: map ? { key: map.key, title: map.title, art: map.art, main_finish: map.main_finish, round_n: map.round_n } : null,
+    map: map ? {
+      key: map.key, title: map.title, art: map.art, main_finish: map.main_finish, round_n: map.round_n,
+      // The card's Play stands down for a map no box will run, and says why on hover.
+      on_server: maps.onServer(map), server_note: serverNotes.noteFor(map, maps.onServer(map)),
+    } : null,
     visibility: p.visibility,
     state: p.state,
     match_id: p.match_id || null,

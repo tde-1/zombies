@@ -69,7 +69,7 @@ export function ChatLine({ e }) {
 }
 
 export default function ChatDock() {
-  const { signedIn, me } = useSession()
+  const { signedIn } = useSession()
   // `#chat` on any URL opens the dock. It is the closest thing to the PAGE that
   // `web.md` §10i has been asking for and a better answer than one: a link somebody
   // pastes lands them on a real page of the site with the conversation open beside it,
@@ -177,7 +177,7 @@ export default function ChatDock() {
                     box must never have. `stopPropagation` is the other half: a line you
                     just sent must not also page the map list behind the panel. */}
                 <input type="text" value={text} maxLength={MAX} disabled={busy}
-                       placeholder="Say something to every server"
+                       placeholder="Message every game"
                        onChange={(e) => setText(e.target.value)}
                        onKeyDown={(e) => {
                          e.stopPropagation()
@@ -185,10 +185,9 @@ export default function ChatDock() {
                        }} />
                 <span className="csc-say-count tnum">{MAX - text.length}</span>
                 <button className="btn btn-sm btn-accent" type="submit" disabled={busy || !text.trim()}>Send</button>
-                <span className="csc-say-hint">goes to every ENW Zombies game as {me?.name || 'you'}</span>
               </form>
             ) : (
-              <div className="csc-say-hint">Sign in to talk. Everyone can read.</div>
+              <div className="csc-say-hint">Sign in to chat.</div>
             )}
           </div>
         </div>

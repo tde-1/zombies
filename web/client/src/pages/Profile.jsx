@@ -202,10 +202,10 @@ function Settings({ d, onSaved }) {
         {/* FOV and Max FPS moved to /settings with every other game setting (2026-09-22). */}
         <div className="field"><span>Game settings</span>
           <Link className="btn small" to="/settings">Graphics, sound and controls →</Link>
-          <div className="hint">World at War's own options, saved to your account.</div></div>
+</div>
         <label className="field"><span>Chat channel</span>
           <select defaultValue={s.chat_channel} onChange={(e) => put('/api/me/settings', { chat_channel: e.target.value })}>
-            <option value="auto">Auto (solo Global, group Local)</option>
+            <option value="auto">Auto</option>
             <option value="local">Local</option>
             <option value="global">Global</option>
           </select></label>
@@ -214,8 +214,8 @@ function Settings({ d, onSaved }) {
             <option value="public">Public</option>
             <option value="private">Hidden</option>
           </select>
-          <div className="hint">Records and badges stay public.</div></label>
-        <label className="field"><span>Who can comment on your profile</span>
+</label>
+        <label className="field"><span>Profile comments</span>
           <select defaultValue={session.user.profile_comments} onChange={(e) => put('/api/me/privacy', { profile_comments: e.target.value })}>
             <option value="everyone">Everyone</option>
             <option value="friends">Friends</option>
@@ -226,7 +226,7 @@ function Settings({ d, onSaved }) {
             <option value="true">On</option>
             <option value="false">Off</option>
           </select>
-          <div className="hint">Forced off in record games.</div></label>
+</label>
       </div>
       {err && <p className="tiny hot">{err}</p>}
       {d.badges.length > 0 && <PinPicker badges={d.badges} pinned={d.pinned} />}

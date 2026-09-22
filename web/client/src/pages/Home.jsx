@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, num } from '../api'
 import { useSession } from '../session'
@@ -7,6 +7,7 @@ import { Loading, Lockup } from '../components/Bits'
 import MapListPanel from '../components/MapListPanel'
 import MapRows from '../components/MapRows'
 import { MapBody } from './MapPage'
+import BackButton from '../components/BackButton'
 import { setBaseAmbience } from '../ambience'
 
 // HOME IS THE MAP BROWSER (B, 2026-09-22).
@@ -34,17 +35,10 @@ export default function Home() {
   const R = useRail()
   const maps = R.pool
   const [rows, setRows] = useState(null)
-  // What the page is showing. It follows the card's map — the party's, or what you staged —
-  // when the page opens and whenever that map CHANGES (the picker, or the leader moving
-  // the lobby), because two people in one party reading about two different maps while one
-  // Play button decides is the thing to avoid. It is not the same thing as the card: a
-  // member who is not the leader can still read about another map without moving anybody.
-  const [sel, setSel] = useState(R.mapKey || null)
-  const lastCard = useRef(R.mapKey || null)
-  useEffect(() => {
-    if (R.mapKey && R.mapKey !== lastCard.current) setSel(R.mapKey)
-    lastCard.current = R.mapKey || null
-  }, [R.mapKey])
+  // ~~It followed the card's map~~ (2026-09-22 late): the card opens that map's own page now
+  // (Movement's flow), so home no longer mirrors it. Home opens on the rows; picking from the
+  // list opens a map here, and its back control returns to the rows.
+  const [sel, setSel] = useState(null)
 
   useEffect(() => {
     // The home ROWS — New maps, Vanilla, High production — off `collections`, which an admin
@@ -83,7 +77,7 @@ export default function Home() {
 
       <div className="home-right">
         {sel
-          ? <MapBody mapKey={sel} />
+          ? <><BackButton onClick={() => setSel(null)} /><MapBody mapKey={sel} /></>
           : <Nothing count={maps.length} rows={rows} />}
       </div>
     </div>
@@ -98,11 +92,11 @@ function SignIn({ count }) {
     <section className="ppanel">
       <Lockup h={40} />
       <p className="sub" style={{ margin: '10px 0 12px' }}>
-        Every World at War custom zombies map, archived and playable. Refereed on our servers.
+        World at War custom zombies.
       </p>
       <a className="btn primary" style={{ width: '100%' }} href="/auth/steam">Sign in with Steam</a>
       <p className="tiny" style={{ margin: '10px 0 0' }}>
-        {num(count)} maps. Browsing needs no account. <Link to="/download">Get the launcher</Link> to play.
+        {num(count)} maps · <Link to="/download">Get the launcher</Link>
       </p>
     </section>
   )
@@ -134,7 +128,6 @@ function Nothing({ count, rows }) {
   return (
     <div className="card" style={{ padding: '46px 22px', textAlign: 'center' }}>
       <h2 style={{ marginBottom: 6 }}>Pick a map</h2>
-      <p className="sub" style={{ margin: 0 }}>{num(count)} of them, and the archive holds the rest.</p>
       <div className="row" style={{ justifyContent: 'center', marginTop: 14 }}>
         <Link className="btn ghost small" to="/archive">The archive</Link>
         <Link className="btn ghost small" to="/records">Records</Link>

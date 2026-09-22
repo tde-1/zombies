@@ -444,6 +444,8 @@ label.field > span { display: block; font-size: 12.5px; color: var(--muted); mar
 .tag.hot { color: var(--hot); }
 .tag.gold { color: var(--gold); }
 .tag.good { color: var(--good); }
+/* Not playable on our servers (lib/serverNotes.js says why, on hover) */
+.tag.np { color: var(--bad); background: rgba(var(--bad-rgb), .12); cursor: help; }
 
 /* ── tables (the "server browser" grammar) ─────────────────────────────────── */
 table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -535,6 +537,7 @@ table.data td.num, table.data th.num { text-align: right; font-family: var(--num
   background: rgba(var(--scrim-rgb), .68); color: var(--text);
 }
 .map-flag.done { color: var(--good); }
+.map-flag.np { left: auto; right: 8px; top: 8px; bottom: auto; color: var(--bad); cursor: help; }
 /* The caption, in B's order: name, the bsp name, then who made it and when. No finish
    words — those are filters on the bar (pages/Maps.jsx, data/mapText.js). */
 .map-cap { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 12px; min-width: 0; }
@@ -1006,30 +1009,6 @@ html[data-amb-strong] #amb-pour { --amb-a: 58; }
 .prail-live-card.is-empty .prail-live-name { color: var(--text); }
 .prail-live-mode { min-height: 14px; margin-top: 2px; color: rgba(255,255,255,.74); font-size: 11.5px; font-weight: 500; }
 .prail-live-card.is-empty .prail-live-mode { color: var(--muted); }
-/* ours: the card says it is the way to change the map — the same scrim chip as Movement's
-   game bar's "Change", top-left so the × keeps the top-right corner. Shown on hover. */
-.prail-live-change {
-  position: absolute; top: 9px; left: 9px; pointer-events: none;
-  font-size: 11px; font-weight: 650; color: #fff; padding: 4px 9px;
-  border-radius: var(--pill); background: rgba(var(--scrim-rgb), .55);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
-  opacity: 0; transition: opacity .14s ease;
-}
-.prail-live-card:hover .prail-live-change, .prail-live-card.is-empty .prail-live-change { opacity: 1; }
-.prail-live-connect { display: flex; align-items: stretch; gap: 6px; margin-top: 10px; }
-.prail-live-address {
-  flex: 1; min-width: 0;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  height: 30px; padding: 0 9px;
-  border: 0; border-radius: 5px; background: rgba(var(--scrim-rgb), .8);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
-  color: #fff; cursor: pointer;
-  font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 10.5px;
-  text-align: left; transition: box-shadow .16s ease;
-}
-.prail-live-address:hover { box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); }
-.prail-live-address-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.prail-live-address .server-icon { width: 13px; height: 13px; opacity: .8; }
 .prail-live-booting { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: rgba(255,255,255,.85); font-size: 11.5px; }
 .prail-live-end {
   position: absolute; top: 8px; right: 8px; display: grid; width: 28px; height: 28px;
@@ -1049,7 +1028,7 @@ html[data-amb-strong] #amb-pour { --amb-a: 58; }
 .prail-server-launch:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 26px rgba(var(--accent-rgb), .3); color: var(--accent-ink); }
 .prail-server-launch:disabled { background: var(--panel-2); color: var(--muted); box-shadow: none; cursor: not-allowed; }
 a.prail-server-launch { margin-top: 0; }
-/* ours: the party flow's second choices (Start anyway, Cancel) — quiet text buttons under
+/* ours: the ready check's second choice (Cancel) — a quiet text button under
    the one filled pill, so the card still has exactly one primary action */
 .prail-sub-row { display: flex; gap: 6px; }
 .prail-sub-btn {
@@ -1060,57 +1039,21 @@ a.prail-server-launch { margin-top: 0; }
 .prail-sub-btn:hover:not(:disabled) { color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); }
 .prail-sub-btn:disabled { opacity: .5; cursor: not-allowed; }
 .prail-err { font-size: 12px; color: var(--bad); line-height: 1.4; padding: 0 4px; }
+/* the Not playable mark on the card, top-left (the × keeps the top-right) */
+.prail-live-np { position: absolute; top: 9px; left: 9px; z-index: 2; pointer-events: auto; }
 
-/* copy feedback lives ON the button: the clipboard mark and a tick share one grid cell */
-.copy-glyph { display: inline-grid; flex: none; line-height: 0; }
-.copy-glyph .server-icon { grid-area: 1 / 1; transition: opacity .18s ease, transform .18s ease; }
-.copy-glyph .server-icon + .server-icon { opacity: 0; transform: scale(.6); }
-.copy-glyph.is-copied .server-icon:first-child { opacity: 0; transform: scale(.6); }
-.copy-glyph.is-copied .server-icon + .server-icon { opacity: 1; transform: none; color: var(--good); }
-
-/* ── the map picker: Movement's game + mode SHEET, holding maps ─────────────── */
-.rgm-scrim {
-  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px;
-  background: linear-gradient(180deg, rgba(var(--scrim-rgb), .50) 0%, rgba(var(--scrim-rgb), .82) 46%, rgba(var(--scrim-rgb), .94) 100%);
+/* ── the way back to the map list: Movement's .hub-back (components/ModeBack.jsx) ── */
+.hub-back {
+  flex: none; display: inline-flex; align-items: center; gap: 8px;
+  border: none; background: transparent; color: var(--muted);
+  padding: 4px 8px 4px 0; font-family: inherit; font-size: 13.5px; font-weight: 600;
+  letter-spacing: 0; text-transform: none; cursor: pointer;
+  transition: color .14s ease;
 }
-.rgm-sheet {
-  width: min(720px, 100%); max-height: calc(100vh - 48px); overflow-y: auto;
-  border: none; border-radius: 18px; box-shadow: var(--shadow-2);
-  padding: 20px 20px 16px; outline: none;
-  background: var(--bg);
-}
-.rgm-sheet.has-hue { background: linear-gradient(180deg, hsl(var(--h) 26% 16%) 0%, hsl(var(--h) 14% 13%) 46%, var(--bg) 88%); }
-.rgm-head { display: flex; align-items: baseline; gap: 10px; }
-.rgm-head h3 { font-family: var(--display); font-size: 18px; font-weight: 700; margin: 0; letter-spacing: -.3px; }
-.rgm-x { margin-left: auto; background: transparent; border: none; color: var(--faint); font-size: 18px; cursor: pointer; padding: 2px 6px; }
-.rgm-x:hover { color: var(--text); }
-.rgm-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.rgm-card {
-  position: relative; display: block; height: 92px; padding: 0 12px; overflow: hidden;
-  border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; text-align: left;
-  background: var(--panel-2) center 45% / cover no-repeat;
-}
-.rgm-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(var(--scrim-rgb), .18) 0%, rgba(var(--scrim-rgb), .50) 52%, rgba(var(--scrim-rgb), .88) 100%); }
-.rgm-card > span { position: relative; z-index: 1; }
-.rgm-card-name { display: block; margin-top: 34px; font-family: var(--display); font-size: 16px; font-weight: 750; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rgm-card-note { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: rgba(255,255,255,.84); text-shadow: 0 1px 3px rgba(0,0,0,.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rgm-card > .rgm-cur { position: absolute; z-index: 2; top: 8px; left: 8px; font-size: 10.5px; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: var(--pill); padding: 2px 8px; }
-.rgm-card.on { box-shadow: inset 0 0 0 2px var(--accent); }
-.rgm-card:hover::after { background: linear-gradient(180deg, rgba(var(--scrim-rgb), .08) 0%, rgba(var(--scrim-rgb), .42) 52%, rgba(var(--scrim-rgb), .84) 100%); }
-/* ours: the picker's search, its count, a stem for a map with no cover, and the foot */
-.mpk-count { font-size: 12px; color: var(--faint); font-family: var(--num); }
-.mpk-search { margin: 14px 0 12px; }
-.mpk-search input { width: 100%; }
-.mpk-card:not(.has-art) { background: linear-gradient(160deg, hsl(var(--h) 22% 26%), hsl(var(--h) 16% 15%) 60%, var(--panel)); }
-.rgm-card > .mpk-stem { position: absolute; top: 9px; right: 10px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,.42); }
-.mpk-none { color: var(--muted); font-size: 13px; text-align: center; margin: 18px 0; }
-.mpk-foot { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; margin-top: 14px; font-size: 12.5px; color: var(--faint); }
-.mpk-foot a { color: var(--muted); }
-.mpk-foot a:hover { color: var(--text); }
-@media (max-width: 640px) {
-  .rgm-scrim { padding: 12px; }
-  .rgm-cards { grid-template-columns: 1fr 1fr; }
-}
+.hub-back:hover { color: var(--text); }
+.hub-back .server-icon { width: 15px; height: 15px; flex: none; }
+.hub-back-k { font-family: var(--display); font-size: 15px; font-weight: 700; color: inherit; }
+.hub-top-back { margin-bottom: 10px; }
 
 /* ── avatars, badges, the shelf ─────────────────────────────────────────────── */
 .avatar {
@@ -1446,7 +1389,7 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
 .waw-panel { background: var(--waw-ground); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px 18px 16px; min-width: 0; }
 .waw-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--waw-hi-line); padding-bottom: 8px; margin-bottom: 6px; }
 .waw-panel-head h2 { margin: 0; font-family: var(--display); font-size: 18px; letter-spacing: .16em; text-transform: uppercase; color: var(--waw-hi); }
-.waw-src, .waw-meta code { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.waw-meta code { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .waw-rows { display: flex; flex-direction: column; }
 .waw-row {
   display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 1.25fr) minmax(0, .8fr);
@@ -1478,9 +1421,6 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
 .waw-key:hover { border-color: var(--waw-hi-line); }
 .waw-key.capturing { border-color: var(--waw-hi); color: var(--waw-hi); background: var(--waw-hi-soft); }
 .waw-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
-.waw-omitted { margin-top: 12px; font-size: 12.5px; color: var(--muted); }
-.waw-omitted summary { cursor: pointer; color: var(--text); }
-.waw-omitted li { margin: 6px 0; }
 @media (max-width: 760px) {
   .waw-shell { grid-template-columns: 1fr; }
   .waw-menu { position: static; display: flex; flex-wrap: wrap; padding: 6px; gap: 2px; }

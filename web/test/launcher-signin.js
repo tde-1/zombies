@@ -54,7 +54,7 @@ async function main () {
   child = spawn(process.execPath, ['server/index.js'], {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env, ZM_PORT: String(PORT), ZM_DATA_DIR: DATA, ZM_SITE_PASSWORD: PASSWORD,
-           ZM_TEST_LOGIN: '1', ZM_MOVEMENT_URL: 'off', ZM_PUBLIC_URL: BASE, STEAM_API_KEY: '',
+           ZM_TEST_LOGIN: '1', ZM_MOVEMENT_URL: 'off', ZM_STEAM_AVATARS: 'off', ZM_PUBLIC_URL: BASE, STEAM_API_KEY: '',
            ZM_LAUNCHER_FLOW_TTL_MS: String(FLOW_TTL_MS) },
     stdio: 'ignore',
   })
@@ -214,7 +214,7 @@ async function main () {
   steamChild = spawn(process.execPath, ['server/index.js'], {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env, ZM_PORT: String(STEAM_PORT), ZM_DATA_DIR: DATA2, ZM_SITE_PASSWORD: PASSWORD,
-           ZM_PUBLIC_URL: STEAM_PUBLIC, STEAM_API_KEY: '', ZM_MOVEMENT_URL: 'off',
+           ZM_PUBLIC_URL: STEAM_PUBLIC, STEAM_API_KEY: '', ZM_MOVEMENT_URL: 'off', ZM_STEAM_AVATARS: 'off',
            ZM_LAUNCHER_FLOW_TTL_MS: String(FLOW_TTL_MS) },
     stdio: 'ignore',
   })
@@ -269,7 +269,7 @@ async function main () {
     const out = await new Promise((resolve) => {
       const c = spawn(process.execPath, ['server/index.js'], {
         cwd: path.join(__dirname, '..'),
-        env: { ...process.env, ZM_PORT: '33995', ZM_DATA_DIR: DATA3, NODE_ENV: 'production', ZM_TEST_LOGIN: '1', ZM_MOVEMENT_URL: 'off' },
+        env: { ...process.env, ZM_PORT: '33995', ZM_DATA_DIR: DATA3, NODE_ENV: 'production', ZM_TEST_LOGIN: '1', ZM_MOVEMENT_URL: 'off', ZM_STEAM_AVATARS: 'off' },
         stdio: ['ignore', 'ignore', 'pipe'],
       })
       let err = ''

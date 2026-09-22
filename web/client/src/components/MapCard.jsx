@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { prettyTitle, bspOf, releasedOf, mapHue } from '../data/mapText'
 import { hoverAmbience, endHoverAmbience } from '../ambience'
+import { NotPlayable } from './Bits'
 
 // One map, as a card. Movement's `components/MapCard.jsx`, copied — the frame, the 2/1 art
 // plate, the `--h` wash and the caption row — with zombies' nouns in the caption.
@@ -21,6 +22,8 @@ import { hoverAmbience, endHoverAmbience } from '../ambience'
 // sitting in a grey hole.
 
 export default function MapCard({ map, big = false, flag = null }) {
+  // Where the map page's back control returns to (components/BackButton.jsx).
+  const loc = useLocation()
   if (!map) return null
   const title = prettyTitle(map.title, map.key)
   const released = releasedOf(map)
@@ -28,6 +31,7 @@ export default function MapCard({ map, big = false, flag = null }) {
   return (
     <Link
       to={`/m/${map.key}`}
+      state={{ back: loc.pathname + loc.search }}
       className="map-card"
       style={{ '--h': String(mapHue(map.key)) }}
       title={title}
@@ -44,6 +48,7 @@ export default function MapCard({ map, big = false, flag = null }) {
         {flag && <span className={'map-flag' + (flag === 'New' ? ' new' : '')}>{flag}</span>}
         {/* The one mark that earns its place on the picture, and only when it is true. */}
         {p && p.beaten ? <span className="map-flag done">Beaten</span> : null}
+        <NotPlayable map={map} flag />
       </span>
       <span className="map-cap">
         <span className="map-name">{title}</span>

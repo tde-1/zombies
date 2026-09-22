@@ -35,6 +35,7 @@ const express = require('express')
 const crypto = require('node:crypto')
 const users = require('../lib/users')
 const enw = require('../lib/enw')
+const steamAvatar = require('../lib/steamAvatar')
 const { db, now } = require('../db/database')
 
 // ── Signing in from the LAUNCHER ──────────────────────────────────────────────────
@@ -370,6 +371,8 @@ function router() {
         req.session.steam_id = u.steam_id
         // Both ENW lookups happen AFTER the redirect is on its way.
         setImmediate(() => { enw.refreshName(u.steam_id).catch(() => {}); enw.refreshVip(u.steam_id).catch(() => {}) })
+        // The Steam picture, read off the public profile with no key (lib/steamAvatar.js).
+        steamAvatar.refreshSoon(u.steam_id, { force: true })
 
         if (finishLauncherFlow(req, res)) return
         res.redirect(String(req.session.next || '/'))

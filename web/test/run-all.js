@@ -19,6 +19,7 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'zm-test-'))
 process.env.ZM_DATA_DIR = TMP
 process.env.ZM_KEY_DIR = path.join(TMP, 'keys')
 process.env.ZM_DB_PATH = path.join(TMP, 'test.db')
+process.env.ZM_STEAM_AVATARS = 'off'
 
 let pass = 0
 let fail = 0
@@ -498,6 +499,69 @@ async function main() {
     eq(roster.search(E, 'f').length, 0, 'one character is not a search')
     for (const sid of [E, F, G, H]) presence.disconnected(sid, 'sock-' + sid)
     parties.leave(E)
+  })
+
+  // ── Not playable, and why (B, 2026-09-22 late) ─────────────────────────────
+  check('a map no box will run is marked, with the reason, on the list and on the party', () => {
+    const add = (key, health) => db.prepare(`INSERT OR IGNORE INTO maps (key, slug, title, source, health, main_finish, round_n, added_at)
+                                              VALUES (?,?,?,'custom',?,'round',20,?)`).run(key, key, key, health, now())
+    add('nazi_zombie_derberg', 'playable')
+    add('nazi_zombie_unrun', 'playable')
+    add('nazi_zombie_localonly', 'custom-only')
+    const one = (k) => maps.project(db.prepare('SELECT * FROM maps WHERE key=?').get(k))
+    eq(one('nazi_zombie_test').on_server, true, 'the proven fixture map is playable')
+    eq(one('nazi_zombie_test').server_note, null, 'and carries no reason')
+    eq(one('nazi_zombie_derberg').on_server, false, 'Der Berg is not')
+    truthy(/engine limit/.test(one('nazi_zombie_derberg').server_note), 'and says why: ' + one('nazi_zombie_derberg').server_note)
+    eq(one('nazi_zombie_unrun').server_note, 'Not tested on our servers yet')
+    eq(one('nazi_zombie_localonly').server_note, 'Play Local only')
+    const G = '76561198000000007'
+    users.ensure(G, { username: 'golf' }); db.prepare('UPDATE users SET approved=1 WHERE steam_id=?').run(G)
+    const pty = parties.create(G, { mapKey: 'nazi_zombie_derberg' })
+    eq(pty.map.on_server, false, 'the party card knows too')
+    truthy(pty.map.server_note, 'with the reason for its hover')
+    parties.leave(G)
+  })
+
+  // ── Steam pictures, no API key (lib/steamAvatar.js) ─────────────────────────
+  check('the Steam picture comes out of the public profile XML, and only from Steam’s own hosts', () => {
+    const steamAvatar = require('../server/lib/steamAvatar')
+    const xml = '<profile><avatarMedium><![CDATA[https://avatars.steamstatic.com/abc_medium.jpg]]></avatarMedium>' +
+      '<avatarFull><![CDATA[https://avatars.fastly.steamstatic.com/abc_full.jpg]]></avatarFull></profile>'
+    eq(steamAvatar.parse(xml), 'https://avatars.fastly.steamstatic.com/abc_full.jpg', 'the full size wins')
+    eq(steamAvatar.parse('<avatarMedium><![CDATA[https://avatars.steamstatic.com/m.jpg]]></avatarMedium>'), 'https://avatars.steamstatic.com/m.jpg', 'medium when there is no full')
+    eq(steamAvatar.parse('<avatarFull><![CDATA[https://evil.example/x.jpg]]></avatarFull>'), null, 'not somebody else’s host')
+    eq(steamAvatar.parse('<avatarFull><![CDATA[http://avatars.steamstatic.com/x.jpg]]></avatarFull>'), null, 'not plain http')
+    eq(steamAvatar.parse('<html>Steam is down</html>'), null, 'nothing out of an error page')
+  })
+
+  await checkAsync('the picture is read at sign-in and then at most once a day, never per render', async () => {
+    const steamAvatar = require('../server/lib/steamAvatar')
+    const H = '76561198000000008'
+    users.ensure(H, { username: 'hotel' })
+    const was = { fetch: global.fetch, env: process.env.ZM_STEAM_AVATARS }
+    let calls = 0
+    global.fetch = async (url) => {
+      calls++
+      if (!String(url).startsWith(`https://steamcommunity.com/profiles/${H}?xml=1`)) throw new Error('wrong url ' + url)
+      return { ok: true, text: async () => '<avatarFull><![CDATA[https://avatars.steamstatic.com/h_full.jpg]]></avatarFull>' }
+    }
+    process.env.ZM_STEAM_AVATARS = 'on'
+    try {
+      eq(await steamAvatar.refresh(H, { force: true }), 'https://avatars.steamstatic.com/h_full.jpg', 'sign-in reads it')
+      eq(users.pub(users.byId(H)).avatar, 'https://avatars.steamstatic.com/h_full.jpg', 'and every row that shows hotel has it')
+      await steamAvatar.refresh(H)
+      eq(calls, 1, 'a second read inside the day does not go to Steam')
+      db.prepare('UPDATE users SET avatar_checked=? WHERE steam_id=?').run(now() - steamAvatar.DAY_MS - 1, H)
+      await steamAvatar.refresh(H)
+      eq(calls, 2, 'a day later it does')
+      process.env.ZM_STEAM_AVATARS = 'off'
+      await steamAvatar.refresh(H, { force: true })
+      eq(calls, 2, 'ZM_STEAM_AVATARS=off keeps the suites offline')
+    } finally {
+      global.fetch = was.fetch
+      if (was.env == null) delete process.env.ZM_STEAM_AVATARS; else process.env.ZM_STEAM_AVATARS = was.env
+    }
   })
 
   // ── map download progress (docs/protocol/launcher-v0.md) ───────────────────
