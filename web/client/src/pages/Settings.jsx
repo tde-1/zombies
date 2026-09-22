@@ -4,52 +4,42 @@ import { useSession } from '../session'
 import { Loading } from '../components/Bits'
 import { bridge } from '../components/launcherBridge'
 import {
-  SECTIONS, ALL, OMITTED, COMMON_MODES, sectionDefaults, shownValue, valueOf, withValue,
+  ALL, COMMON_MODES, defaultsFor, shownValue, valueOf, withValue,
   toLauncherPatch, fromLauncher, newer, keyName,
 } from '../data/wawSettings'
+import { TABS, GROUPS, OLD_HASH, groupItems, groupsOf, labelOf } from '../data/settingsLayout'
+import SettingRow from '../components/settings/SettingRow'
+import EnwSection from '../components/settings/EnwSection'
+import TabIcon from '../components/settings/TabIcon'
 
-// /settings - World at War's Options menus, on the site (B, 2026-09-22: "make it look like
-// the game's World at War settings menu, with all the exact same settings").
+// /settings - every World at War Options-menu setting, plus ENW's launch knobs, per SteamID.
 //
-// Every row is an item out of the stock menus compiled into the game's ui.ff, in the menu's
-// own order, writing the dvar or bind that menu writes (data/wawSettings.js has the source
-// per row). Saved per SteamID on the site (`settings.game`), and - inside the launcher -
-// handed to the launcher through the preload bridge, which puts it on the command line and
-// into the config.cfg the engine reads at the next launch (launcher/src/main/wawcfg.js).
+// 2026-09-22 (late): B, "Clean up the settings menu. It should be like my project Gaff's
+// settings menu, split off into little sections and really simplified." So the page is
+// Gaff's settings screen (WatchGame/app/src/components/SettingsScreen.jsx and the `ss-*`
+// rules in WatchGame/app/src/styles.css): a rail with a search box and a few icon tabs
+// (Display, Graphics, Audio, Controls, Game, ENW), and in each tab small lowercase section
+// headings with one short row per setting - checkbox, segmented buttons, select or slider -
+// and a one-line hint only where the value does not explain itself.
 //
-// Layout follows the game: a column of menu names on the left (Options: Graphics, Texture
-// Settings, Sound, Game Options; Controls: Look, Move, Combat, Interact), the selected
-// menu's rows on the right, label right-aligned and value left-aligned, and the game's
-// "< value >" cycling on a list item.
+// What each row WRITES is unchanged: data/wawSettings.js (dvar, values, defaults and the
+// source of every row; client.md §8). data/settingsLayout.js only places rows into tabs and
+// groups. Saved per SteamID on the site (`settings.game`) and - inside the launcher - handed
+// to the launcher through the preload bridge, which puts it on the command line and into the
+// config.cfg the engine reads at the next launch (launcher/src/main/wawcfg.js).
 
-const GROUPS = [
-  { label: 'Options', ids: ['graphics', 'texture', 'sound', 'game'] },
-  { label: 'Controls', ids: ['look', 'move', 'combat', 'interact'] },
-  { label: 'ENW', ids: ['enw'] },
-]
-
-const fmt = (it, v) => {
-  if (v === null || v === undefined) return 'Game default'
-  if (it.kind === 'toggle') {
-    const on = it.to === 'waw' ? String(v) === '1' : !!v
-    return on ? 'Yes' : 'No'
-  }
-  if (it.options) {
-    const o = it.options.find((x) => String(x.value) === String(v))
-    return o ? o.label : String(v)
-  }
-  if (it.kind === 'slider') return it.max <= 1 ? `${Math.round(Number(v) * 100)}%` : String(v)
-  return String(v)
+const tabFromHash = () => {
+  const h = (typeof location !== 'undefined' ? location.hash : '').slice(1)
+  if (TABS.some((t) => t.id === h)) return h
+  return OLD_HASH[h] || 'display'
 }
 
 export default function Settings() {
   const { signedIn, session, loading, refresh } = useSession()
   const enw = bridge()
   const [game, setGame] = useState(null)
-  const [section, setSection] = useState(() => {
-    const h = (location.hash || '').slice(1)
-    return SECTIONS.some((s) => s.id === h) ? h : 'graphics'
-  })
+  const [tab, setTab] = useState(tabFromHash)
+  const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [displays, setDisplays] = useState([])
   const [capture, setCapture] = useState(null) // { command, slot }
@@ -84,38 +74,37 @@ export default function Settings() {
     return () => { live = false }
   }, [loading, signedIn]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { try { history.replaceState(null, '', `#${section}`) } catch { /* no history */ } }, [section])
+  useEffect(() => { try { history.replaceState(null, '', `#${tab}`) } catch { /* no history */ } }, [tab])
   useEffect(() => {
-    const onHash = () => { const h = (location.hash || '').slice(1); if (SECTIONS.some((s) => s.id === h)) setSection(h) }
+    const onHash = () => setTab(tabFromHash())
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
   const save = useCallback((g) => {
     latest.current = g
-    setStatus('Saving…')
+    setStatus('saving…')
     clearTimeout(timer.current)
     timer.current = setTimeout(async () => {
       const body = { ...latest.current, updatedAt: Date.now() }
       try {
         await api.put('/api/me/settings', { game: body })
-        let where = 'Saved to your account'
+        let where = 'saved'
         if (enw && enw.setSettings) {
-          try { await enw.setSettings(toLauncherPatch(body)); where = 'Saved · the launcher applies it at your next launch' } catch { where = 'Saved to your account (the launcher did not take it: restart it)' }
-        } else {
-          where = 'Saved to your account · applied the next time you launch from the ENW launcher'
+          try { await enw.setSettings(toLauncherPatch(body)); where = 'saved · applies at your next launch' } catch { where = 'saved to your account · restart the launcher to pick it up' }
         }
         setStatus(where)
         refresh()
       } catch (e) {
-        setStatus(`Not saved: ${e.message}`)
+        setStatus(`not saved: ${e.message}`)
       }
     }, 350)
   }, [enw, refresh])
 
   const change = (it, v) => setGame((g) => { const n = withValue(g, it, v); save(n); return n })
-  const reset = () => setGame((g) => {
-    const d = sectionDefaults(section)
+  // Reset one little group to its defaults: the game's own, and ENW's for ENW's own knobs.
+  const reset = (group) => setGame((g) => {
+    const d = defaultsFor(groupItems(group))
     const { waw, wawBinds, ...keys } = d
     const n = { ...g, ...keys, waw: { ...(g.waw || {}), ...waw }, wawBinds: { ...(g.wawBinds || {}), ...wawBinds } }
     save(n)
@@ -153,164 +142,102 @@ export default function Settings() {
     }
   }, [capture, game]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const items = useMemo(() => ALL.filter((i) => i.section === section), [section])
   const modes = useMemo(() => {
     const own = displays.map((d) => `${d.width}x${d.height}`)
     return [...new Set([...own, ...COMMON_MODES])]
   }, [displays])
 
+  // Search, as Gaff's: every row whose label, dvar or group matches, with a crumb.
+  const q = query.trim().toLowerCase()
+  const hits = useMemo(() => {
+    if (!q) return []
+    const out = []
+    for (const g of GROUPS) {
+      for (const it of groupItems(g)) {
+        const hay = `${labelOf(it)} ${it.label} ${it.dvar || ''} ${it.command || ''} ${g.label} ${g.tab}`.toLowerCase()
+        if (hay.includes(q)) out.push({ g, it })
+      }
+    }
+    return out
+  }, [q])
+
   if (loading) return <div className="page"><Loading /></div>
   if (!signedIn) {
     return (
-      <div className="page waw-page">
-        <h1 className="waw-title">Options</h1>
-        <p className="muted">Sign in to keep your World at War settings on your account. They follow you to any PC you launch from.</p>
+      <div className="page set-page">
+        <div className="set-screen set-screen-empty">
+          <div className="set-head"><h1>settings</h1></div>
+          <p className="set-hint set-hint-block">Sign in to keep your World at War settings on your account. They follow you to any PC you launch from.</p>
+        </div>
       </div>
     )
   }
   if (!game) return <div className="page"><Loading /></div>
 
-  const sec = SECTIONS.find((s) => s.id === section) || SECTIONS[0]
-  const isControls = ['look', 'move', 'combat', 'interact'].includes(sec.id)
-  const mode = game.mode || 'borderless'
+  const ctx = {
+    mode: game.mode || 'borderless',
+    modes,
+    displays,
+    capture,
+    setCapture,
+    picmipManual: shownValue(game, ALL.find((i) => i.id === 'r_picmip_manual')),
+  }
+  const tabLabel = (id) => (TABS.find((t) => t.id === id) || {}).label || id
+  const pick = (id) => { setCapture(null); setQuery(''); setTab(id) }
 
   return (
-    <div className="page wide waw-page">
-      <div className="waw-head">
-        <h1 className="waw-title">{isControls ? 'Controls' : sec.id === 'enw' ? 'ENW' : 'Options'}</h1>
-        <span className="waw-status" aria-live="polite">{status}</span>
-      </div>
-      <div className="waw-shell">
-        <nav className="waw-menu" aria-label="Settings menus">
-          {GROUPS.map((g) => (
-            <div key={g.label} className="waw-group">
-              <div className="waw-group-label">{g.label}</div>
-              {g.ids.map((id) => {
-                const s = SECTIONS.find((x) => x.id === id)
-                return (
-                  <button key={id} type="button" className={`waw-menu-item ${section === id ? 'on' : ''}`}
-                          aria-current={section === id ? 'page' : undefined} onClick={() => { setCapture(null); setSection(id) }}>
-                    {s.label}
-                  </button>
-                )
-              })}
+    <div className="page set-page">
+      <div className="set-screen">
+        <div className="set-head">
+          <h1>settings</h1>
+          <span className="set-status" aria-live="polite">{status}</span>
+        </div>
+        <div className="set-body">
+          <nav className="set-nav" aria-label="Settings">
+            <label className="set-search">
+              <TabIcon name="search" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search settings" aria-label="search settings" />
+              {query && <button type="button" className="set-search-clear" onClick={() => setQuery('')} aria-label="clear search">×</button>}
+            </label>
+            <div className="set-tabs">
+              {TABS.map((t) => (
+                <button key={t.id} type="button" className={`set-tab ${!q && tab === t.id ? 'on' : ''}`}
+                        aria-current={!q && tab === t.id ? 'page' : undefined} onClick={() => pick(t.id)}>
+                  <TabIcon name={t.icon} />
+                  <span>{t.label}</span>
+                </button>
+              ))}
             </div>
-          ))}
-        </nav>
+          </nav>
 
-        <section className="waw-panel" aria-label={sec.label}>
-          <div className="waw-panel-head">
-            <h2>{sec.label}</h2>
-            {sec.menu && <code className="waw-src" title="The stock menu this page is taken from">{sec.menu}</code>}
+          <div className="set-content">
+            {q ? (
+              hits.length === 0
+                ? <div className="set-empty">no settings match “{query}”</div>
+                : hits.map(({ g, it }) => (
+                  <div key={it.id} className="set-result">
+                    <button type="button" className="set-crumb" onClick={() => pick(g.tab)}>{tabLabel(g.tab)} › {g.label}</button>
+                    <SettingRow it={it} game={game} change={change} ctx={ctx} />
+                  </div>
+                ))
+            ) : tab === 'enw' ? (
+              <EnwSection onStatus={setStatus} />
+            ) : (
+              groupsOf(tab).map((g) => (
+                <div key={g.id} className={`set-group ${g.keys ? 'set-keys' : ''}`}>
+                  <div className="set-section">
+                    <span>{g.label}</span>
+                    <button type="button" className="set-reset" onClick={() => { setCapture(null); reset(g) }}
+                            title={g.keys ? 'Back to the game\'s default keys (aim down sights stays on hold)' : 'Back to the game\'s defaults'}>reset</button>
+                  </div>
+                  {g.keys && g.id === 'move' && <div className="set-hint">click a box, then press a key or mouse button. esc cancels, backspace clears.</div>}
+                  {groupItems(g).map((it) => <SettingRow key={it.id} it={it} game={game} change={change} ctx={ctx} />)}
+                </div>
+              ))
+            )}
           </div>
-          {isControls && <div className="waw-keys-head"><span /><span>Key</span><span>Alternate</span></div>}
-          <div className="waw-rows">
-            {items.map((it) => (
-              <Row key={it.id} it={it} game={game} change={change} mode={mode} modes={modes}
-                   displays={displays} capture={capture} setCapture={setCapture} />
-            ))}
-          </div>
-          <div className="waw-foot">
-            <button type="button" className="btn small ghost" onClick={reset}>
-              {sec.id === 'enw' ? 'Reset to ENW defaults' : isControls ? 'Set default controls' : 'Reset to game defaults'}
-            </button>
-            <span className="tiny">
-              {sec.id === 'enw' ? 'ENW\'s own launch settings. Not in World at War\'s menus.'
-                : isControls ? 'Game defaults are default_controls.cfg, with aim down sights on hold (ENW).'
-                  : 'Changes apply at your next launch. Anything you change in the game\'s own menus comes back here after you quit.'}
-            </span>
-          </div>
-          {sec.id === 'enw' && (
-            <details className="waw-omitted">
-              <summary>In the game's menus, not mapped here</summary>
-              <ul>{OMITTED.map((o) => <li key={o.label}><b>{o.label}</b> — {o.why}</li>)}</ul>
-            </details>
-          )}
-        </section>
+        </div>
       </div>
-    </div>
-  )
-}
-
-function Row({ it, game, change, mode, modes, displays, capture, setCapture }) {
-  const v = shownValue(game, it)
-  const chosen = valueOf(game, it)
-  const fromEnw = (chosen === undefined || chosen === '') && it.enw !== undefined
-  const title = `${it.dvar || it.command || it.to.slice(4)} — ${it.src}`
-
-  if (it.kind === 'bind') {
-    const keys = (chosen !== undefined ? chosen : it.def) || []
-    return (
-      <div className="waw-row waw-bind" title={title}>
-        <span className="waw-label">{it.label}</span>
-        {[0, 1].map((slot) => {
-          const on = capture && capture.command === it.command && capture.slot === slot
-          return (
-            <button key={slot} type="button" className={`waw-key ${on ? 'capturing' : ''} ${keys[slot] ? '' : 'empty'}`}
-                    onClick={(e) => { e.stopPropagation(); setCapture(on ? null : { command: it.command, slot }) }}
-                    aria-label={`${it.label}, ${slot ? 'alternate' : 'key'}: ${keys[slot] || 'unbound'}`}>
-              {on ? 'Press a key…' : (keys[slot] || '—')}
-            </button>
-          )
-        })}
-      </div>
-    )
-  }
-
-  let control
-  if (it.kind === 'slider') {
-    const n = Number(v)
-    control = (
-      <div className="waw-slider">
-        <input type="range" min={it.min} max={it.max} step={it.step} value={Number.isFinite(n) ? n : it.min}
-               aria-label={it.label}
-               onChange={(e) => change(it, it.to === 'waw' ? String(e.target.value) : Number(e.target.value))} />
-        <span className="waw-val">{fmt(it, v)}</span>
-      </div>
-    )
-  } else if (it.kind === 'mode') {
-    const locked = mode === 'borderless'
-    control = (
-      <select className="waw-select" value={locked ? '' : (v || '')} disabled={locked} aria-label={it.label}
-              onChange={(e) => change(it, e.target.value)}>
-        <option value="">{locked ? 'Native (borderless)' : 'Native size of the monitor'}</option>
-        {modes.map((m) => <option key={m} value={m}>{m}</option>)}
-      </select>
-    )
-  } else if (it.kind === 'monitor') {
-    control = (
-      <select className="waw-select" value={String(v || 'primary')} aria-label={it.label} onChange={(e) => change(it, e.target.value)}>
-        <option value="primary">Main display</option>
-        {displays.map((d) => <option key={d.id} value={String(d.id)}>{`${d.label} — ${d.width}x${d.height}${d.primary ? ' (main)' : ''}`}</option>)}
-      </select>
-    )
-  } else {
-    // The game's "< value >" list: toggle or options, cycled with the arrows or a click.
-    const opts = it.kind === 'toggle'
-      ? (it.to === 'waw' ? [{ label: 'Yes', value: '1' }, { label: 'No', value: '0' }] : [{ label: 'Yes', value: true }, { label: 'No', value: false }])
-      : it.options
-    const idx = Math.max(0, opts.findIndex((o) => String(o.value) === String(v)))
-    const known = opts.some((o) => String(o.value) === String(v))
-    const step = (d) => change(it, opts[(idx + d + opts.length) % opts.length].value)
-    control = (
-      <div className="waw-cycle" role="group" aria-label={it.label}>
-        <button type="button" className="waw-arrow" onClick={() => step(-1)} aria-label={`Previous ${it.label}`}>‹</button>
-        <button type="button" className="waw-cycle-val" onClick={() => step(1)}>{known ? opts[idx].label : fmt(it, v)}</button>
-        <button type="button" className="waw-arrow" onClick={() => step(1)} aria-label={`Next ${it.label}`}>›</button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="waw-row" title={title}>
-      <span className="waw-label">{it.label}</span>
-      <span className="waw-control">{control}</span>
-      <span className="waw-meta">
-        {fromEnw && <span className="tag" title="ENW's launch baseline sets this until you choose">ENW</span>}
-        {chosen === null && <span className="tag" title="The game picks this itself (reset to its registered default)">Game</span>}
-        {it.dvar && <code>{it.dvar}</code>}
-      </span>
-      {(it.note || it.needsManual) && <span className="waw-note">{it.needsManual ? 'Used when Texture Quality is Manual. ' : ''}{it.note || ''}</span>}
     </div>
   )
 }
