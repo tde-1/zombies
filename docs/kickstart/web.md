@@ -2438,3 +2438,30 @@ codes on every row, ENW tags and the per-menu footers are gone; the dvar and sou
 * `pause_on_chat` reaching the game: the row saves it; the overlay reading it is the overlay lane's
   proof (`/api/game-chat/me`).
 * Not deployed, not merged.
+
+## 2026-09-22, late evening — downloads 302 to the Hetzner buckets (`lib/bucket.js`)
+
+B: download speed through the site (his PC + the Cloudflare tunnel, capped by his 6 MB/s
+uplink) is unacceptable. Two public Hetzner Object Storage buckets now hold copies of the big
+files; the full design, cost and commands are **[`storage.md`](storage.md)**.
+
+* **`web/server/lib/bucket.js`** — the redirect decision. Off unless `S3_BUCKET_FILES` /
+  `S3_BUCKET_MAPS` are in the environment (`infra\site.env`; `S3_ENDPOINT` defaults to
+  `https://nbg1.your-objectstorage.com`). An anonymous `HEAD` on the public URL (1.5 s timeout),
+  cached 5 minutes; the bucket copy is used only if it exists **and** has the local file's size.
+  Anything else serves locally exactly as before. The site never holds the S3 keys.
+* **`/updates/<installer>` and `.blockmap`** → 302 (middleware before `express.static`, after the
+  gate — `/updates` is still gate-exempt). **`latest.yml` is always served locally.**
+* **`/api/maps/<bsp>/files/<file>`** → 302 (still behind the gate; `x-enw-sha256` rides on the
+  302). **`/mapdata/*.glb`** → 302; `.meta.json` stays local.
+* **`/api/maps/<bsp>/files`** gains `mirror_url` per file (computed; `map_files` is provenance,
+  not what is uploaded — storage.md §5). `mapfiles.served()` is what `tools/s3/sync.js` mirrors.
+* **Tests**: `web/test/bucket.js` (in `npm test`): not configured → local; configured + exists →
+  302 for installer and blockmap; latest.yml local; wrong size → local; HEAD error → local; the
+  5-minute cache; and a real cross-origin follow proving `Range` survives and `Authorization` /
+  `Cookie` do not.
+* **To turn it on** (coordinator): add to `infra\site.env`
+  `S3_BUCKET_FILES=enw-zombies-files`, `S3_BUCKET_MAPS=enw-zombies-maps` and restart the site the
+  usual way (keepalive). `npm install` in `web` first: `@aws-sdk/client-s3` and
+  `@aws-sdk/lib-storage` are new dependencies (only the tools use them; the site does not load
+  them).

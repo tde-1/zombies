@@ -2282,3 +2282,23 @@ restart needed or done (the feed is static). No web change in this release.
 **B gets it:** leave the launcher open (or reopen it) — it checks the feed on start and the
 account menu shows **Restart to update** once it has downloaded; click it. Or quit it from the
 tray and run `ENW-Zombies-Launcher-Setup-0.2.10.exe`.
+
+## 2026-09-22, late evening — `publish-update.js` also uploads to the files bucket
+
+Design: [`storage.md`](storage.md). The installer and blockmap now reach players from a public
+Hetzner bucket (`enw-zombies-files`, key `updates/<name>`) via a 302 from the site's `/updates`.
+
+* **`npm run pack` is still one command.** After the local copy and its hash check,
+  `tools/publish-update.js` uploads the installer, the blockmap and then `latest.yml` (last, so the
+  bucket feed never names a missing installer) when `infra\s3.env` has keys, and prints the public
+  URLs. No keys → it says so and carries on. `--no-bucket` skips it. A failed upload exits
+  non-zero with `node tools/s3/sync.js --only updates` as the retry.
+* **The launcher follows the 302 without a change.** Full downloads and the blockmap go through
+  builder-util-runtime's `doApiRequest`, which follows any 3xx and strips `Authorization` /
+  `Cookie` on a cross-origin hop (`httpExecutor.js:169-176, 286-300`; Electron path
+  `electronHttpExecutor.js:64-75`). Map installs (`siteapi.js fetchRaw`, `redirect: 'follow'`)
+  behave the same way — proven in `web/test/bucket.js`.
+* **Caveat, not fixed:** the generic provider uses multi-range requests for differential updates
+  (`providerFactory.js:53`). If the bucket does not answer multi-range, electron-updater falls back
+  to a full download (`NsisUpdater.js:170`) — from the bucket. A future release can pass
+  `useMultipleRangeRequest: false` to `setFeedURL` (`autoupdate.js`, `updatecheck.js`).
