@@ -45,7 +45,7 @@ assume nothing is listening, which it has to do anyway (§3).
 |---|---|---|
 | A 2D draw hook, to put a box on the screen | `client-dll/components/chat_overlay.cpp`, new | **not located** — the one real unknown |
 | Input capture while typing | the existing WndProc subclass in `mouse_polling.cpp` | mapped, extend it |
-| Solo pause | `server/components/pause/pause.cpp` | **built and working** |
+| Solo pause | `server/components/pause/pause.cpp` | **server side built 2026-09-22** (§4); the client sets one userinfo key (§8) |
 | The channel | `game_link` `say` / `chat`, to the site's ring | **built and live tonight** |
 
 Three of the four exist. The estimate is almost entirely the first one.
@@ -118,24 +118,30 @@ The behaviour:
 
 ---
 
-## 4. Solo pause — already built
+## 4. Solo pause — built on the server side 2026-09-22; the client half is §8
 
-`server/components/pause/pause.cpp` does this today and its header comment is the list of traps it
-was built around: never `timescale 0` (it stalls every GSC `wait` and the client says "Connection
-Interrupted"); freeze in the engine, not from script, because map scripts re-enable player
-controls and lose the race; make frozen players invulnerable; push the bleedout, powerup, box and
-round-timer deadlines forward by the paused duration; suppress `round_spawn_failsafe()` for the
-window, because a frozen zombie looks exactly like a stuck one.
+**Correction (2026-09-22 evening, referee/dedi lane).** Until tonight `pause.cpp` was a stub: it
+set a flag and wrote a script variable that `t4_bind` cannot write. "Built and working" was the
+plan, not the code. It is now real on the dedicated server (`dedi.md` §18, `referee.md` §15):
 
-The overlay uses it through the link it already speaks: `pause` on open, `resume` on close.
+* the freeze is engine-side and total — the one `call G_RunFrame` inside the server frame
+  (0x635D54) is gated, and while frozen `svs.time` is held and snapshots keep flowing. AI, the
+  script VM (every `wait`: bleedout, powerups, box, `round_spawn_failsafe`), physics — all stop,
+  so nothing has to be pushed forward and nothing expires on resume. `timescale` is never touched;
+* **the server decides, from what each client reports** (§8). The overlay does not send `pause` /
+  `resume` on the game link — the game link is server↔host only, the client never speaks it.
+  The overlay sets one userinfo key and the server applies B's rule:
+  * **solo**: paused while the Esc menu is open, and while typing if the player's *"pause when
+    using global chat"* setting is on;
+  * **co-op**: paused only when **every** connected player is in the Esc menu. **Typing never
+    pauses a co-op game, however many people type.** (This is the griefing point the old §4 made,
+    and it is now enforced by the server rather than trusted to the client.)
+  * a disconnect counts as unpaused; no ceiling on a co-op pause (B), every pause is logged.
 
-**And only when solo.** Pausing a co-op game because one person is typing is a griefing tool with
-a key bound to it. The referee knows the player count; the overlay asks and does not decide. The
-honest consequence is that in co-op you type while the game runs, which is what every other game
-does.
-
-One thing this does not solve and the pause component already says so: **spawning can only be
-delayed, not cancelled**, so a zombie already queued to rise will rise on resume.
+One thing this still does not solve, and the overlay should know it: **nobody has yet seen what a
+remote client draws while the server is frozen.** The world stops; the stock "Connection
+Interrupted" banner may flicker. The server says `pause_state` on the game link, so the site and
+the launcher can draw PAUSED — the overlay draws its own PAUSED from §8's rule.
 
 ---
 
@@ -199,3 +205,48 @@ itself and does not depend on `say`.
 different in game the way it does on the site; whether the key is swallowed on the way in or on
 the way out of the event queue; whether the overlay is on for Verified games at all, which is a
 referee question and not a client one — a chat box is an input path into a recorded run.
+
+---
+
+## 8. Client → server: the pause contract *(defined 2026-09-22 by the referee/dedi lane; server side built)*
+
+No contract existed in this file when the server side was written, so this is it. Change it here,
+in `server/components/pause/pause_policy.hpp`, and in `docs/protocol/game-link-v0.md` together.
+
+**The channel is userinfo — no new client command, no new server hook.** A client DLL registers two
+string dvars with the USERINFO flag (`0x2`, `docs/re/t4-sp-map.md` → `Dvar_RegisterVariant`, type 7)
+and sets them through the engine's own dvar setter, so the dvar is marked modified and the engine
+sends its normal `userinfo "…"` reliable command. The server's `SV_UpdateUserinfo_f` (0x6307E0) stores
+it in `svs.clients[i].userinfo`, and `pause.cpp` reads that at 20 Hz. `userinfo` is an engine client
+command (a ucmd), so it is not subject to the game's chat flood protection.
+
+| key | values | meaning |
+|---|---|---|
+| `enw_ui` | `paused` | the Esc / pause menu is open |
+| | `typing` | the chat overlay is open and has the keyboard |
+| | `clear` (or empty, or absent) | neither |
+| `enw_pchat` | `1` (default when absent) / `0` | the player's setting *"pause when using global chat"*. Only ever consulted when the player is alone. |
+
+Values are exact and lower case; anything else reads as `clear`. Menu wins over typing: if both are
+open, send `paused`. Send `clear` the moment the menu or the box closes — the server resumes on it.
+
+**The server's rule** (`pause_policy.hpp`, unit-tested in `server/tests/pause_policy_test.cpp`):
+
+* nobody connected → running (a disconnect counts as unpaused);
+* one client → paused on `paused`, or on `typing` with `enw_pchat 1`;
+* two or more → paused only if **every** connected client is `paused`; `typing` never counts;
+* the host may hold the game paused on its own (crash grace, everyone-AFK, operator); the players
+  cannot release that hold.
+
+**What the client should draw.** The server tells the host (`pause_state`), not the clients — there
+is no proven server→client text path yet (`say` injection is off by default, §5). So the overlay
+decides "PAUSED" itself from the same rule: it knows its own state, and in co-op it cannot know the
+others', so in co-op it should say *"waiting for everyone to pause"* rather than PAUSED until the
+world visibly stops. When a server→client channel is proven, the server should push `pause_state`
+to clients and this paragraph goes.
+
+**What is NOT proven** (2026-09-22): a real client changing `enw_ui` mid-game and the server seeing
+it. The engine re-sending userinfo on a USERINFO dvar change is Q3-lineage behaviour
+(`CL_CheckUserinfo`) and `name_pin` depends on the same thing, but `referee.md` §14.4 records that
+nobody has yet *measured* a mid-game userinfo command arriving. The first client build that sets
+`enw_ui` is also that measurement: the server logs `pause: slot N ui=paused pchat=1`.

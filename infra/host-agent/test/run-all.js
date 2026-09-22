@@ -617,6 +617,95 @@ t('player_down carries what a sentence needs and no account', () => {
 })
 
 
+
+console.log('\n== the players\' pause (pause_state / ui, referee.md §15, 2026-09-22) ==')
+
+t('a solo Esc pause from the game is accounted, and nothing is sent back to the game', () => {
+  const r = makeRef()
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'round', ms: 5 * MIN, n: 4 })
+  r.onEvent({ t: 'ui', ms: 5 * MIN, slot: 0, ui: 'paused', pchat: true })
+  r.onEvent({ t: 'pause_state', ms: 5 * MIN, paused: true, reason: 'solo_menu', players: 1 })
+  eq(r.phase, 'paused')
+  eq(r.pauseSource, 'game')
+  eq(r.pauseReason, 'pause menu')
+  ok(!r.cmds.some((c) => c.t === 'pause'), 'a `pause` back would become a host hold the player could never release')
+  ok(!r.cmds.some((c) => c.t === 'say'), 'and the solo player is not told what he just did')
+  eq(r.state().players[0].ui, 'paused')
+  r.pauses.at(-1).at -= 3 * MIN
+  r.onEvent({ t: 'pause_state', ms: 8 * MIN, paused: false, reason: 'none', players: 1, held_ms: 180000 })
+  eq(r.phase, 'live')
+  ok(!r.cmds.some((c) => c.t === 'resume'))
+  ok(r.pausedMs >= 3 * MIN, `pausedMs ${r.pausedMs}`)
+  r.onEvent({ t: 'game_over', ms: 20 * MIN, round: 9, reason: 'end_game' })
+  const s = r.summary()
+  ok(s.duration_ms <= s.duration_rta_ms - 3 * MIN, 'the players\' pause is excluded from in-game time like any other')
+  eq(s.records_eligible, true, 'pausing does not cost a Verified run its records')
+})
+
+t('the game echoing our own hold (reason host) changes nothing', () => {
+  const r = makeRef()
+  bootGame(r)
+  r.pause('operator')
+  const n = r.pauses.length
+  r.onEvent({ t: 'pause_state', ms: 1000, paused: true, reason: 'host', players: 1 })
+  eq(r.pauses.length, n, 'no second pause')
+  r.onEvent({ t: 'pause_state', ms: 2000, paused: false, reason: 'none', players: 1 })
+  eq(r.phase, 'paused', 'the game cannot release a host pause by reporting')
+  r.resume('operator')
+  eq(r.phase, 'live')
+})
+
+t('host hold released while the players still want a pause: one clean hand-over', () => {
+  const r = makeRef()
+  bootGame(r)
+  r.pause('operator')
+  r.resume('operator')
+  // The DLL is still frozen because its solo player sits in the menu: it re-reports.
+  r.onEvent({ t: 'pause_state', ms: 3000, paused: true, reason: 'solo_menu', players: 1 })
+  eq(r.phase, 'paused')
+  eq(r.pauseSource, 'game')
+})
+
+t('a freeze during the load is shown, not accounted (no in-game time to exclude yet)', () => {
+  const r = makeRef()
+  r.onEvent({ t: 'hello', ms: 0, instance: 'test', role: 'server', pid: 1 })
+  r.onEvent({ t: 'map_loaded', ms: 0, map: 'nazi_zombie_prototype', mode: 'zombies', sv_maxclients: 4 })
+  r.onEvent({ t: 'pause_state', ms: 100, paused: true, reason: 'solo_menu', players: 1 })
+  eq(r.phase, 'loading')
+  eq(r.pauses.length, 0)
+  ok(r.state().game_pause, 'but the dashboard/site can still say PAUSED')
+})
+
+t('the players\' pause gives way to the crash pause when the last one leaves', () => {
+  const r = makeRef({ config: { crashGraceMs: 10 * MIN } })
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'round', ms: 2 * MIN, n: 3 })
+  r.onEvent({ t: 'pause_state', ms: 2 * MIN, paused: true, reason: 'solo_menu', players: 1 })
+  eq(r.pauseSource, 'game')
+  r.onEvent({ t: 'player_disconnect', ms: 3 * MIN, slot: 0, reason: 'connection lost' })
+  eq(r.phase, 'paused')
+  eq(r.pauseSource, 'host', 'now OUR hold, so the grace window and the resume countdown apply')
+  ok(r.flags.has('crash_pause'))
+  ok(r.cmds.some((c) => c.t === 'pause'), 'and the game is told to hold')
+  eq(r.pauses.length, 2, 'two accounted windows, back to back')
+  // The DLL's own report that its players' pause ended must not undo our hold.
+  r.onEvent({ t: 'pause_state', ms: 3 * MIN, paused: false, reason: 'none', players: 0 })
+  eq(r.phase, 'paused')
+})
+
+t('a long pause does not come back as an AFK warning', () => {
+  const r = makeRef()
+  bootGame(r, { players: 2 })
+  r.onEvent({ t: 'round', ms: 1 * MIN, n: 2 })
+  r.onEvent({ t: 'pause_state', ms: 1 * MIN, paused: true, reason: 'all_menu', players: 2 })
+  eq(r.pauseReason, 'everyone paused')
+  r.pauses.at(-1).at -= 30 * MIN          // thirty real minutes in the menu, no ceiling
+  r.onEvent({ t: 'pause_state', ms: 31 * MIN, paused: false, reason: 'none', players: 2 })
+  eq(r.phase, 'live')
+  r.tickAfk(31 * MIN)
+  ok(!r.players.get(0).afkWarned && !r.players.get(1).afkWarned, 'nobody is AFK-warned for having paused')
+})
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`)
 if (fail) { for (const [s, n, m] of results) if (s === 'FAIL') console.log(`  FAIL ${n}: ${m}`) }
 process.exit(fail ? 1 : 0)

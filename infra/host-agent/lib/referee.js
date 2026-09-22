@@ -38,6 +38,13 @@ export const DEFAULTS = {
 
 let SEQ = 0
 
+// The DLL's pause reasons (pause_policy.hpp), in the words the dashboard and summary use.
+const PAUSE_LABEL = {
+  solo_menu: 'pause menu',
+  solo_chat: 'typing in chat',
+  all_menu: 'everyone paused',
+}
+
 export class Referee extends EventEmitter {
   constructor({ instanceId, matchId, mode = 'verified', manifest = null, config = {}, vip = false, log }) {
     super()
@@ -65,6 +72,8 @@ export class Referee extends EventEmitter {
     this.pauses = []                  // { fromMs, toMs, reason }
     this.pausedMs = 0
     this.pauseReason = null
+    this.pauseSource = null           // 'host' (we sent `pause`) | 'game' (its players did)
+    this.gamePause = null             // the game's last `pause_state`, while paused
     this.events = 0
     this.chatLines = 0
     this.perf = null
@@ -458,21 +467,31 @@ export class Referee extends EventEmitter {
     this.finish = this.eval.best()
   }
 
-  pause(reason = 'manual') {
+  /**
+   * `fromGame`: the GAME froze itself because its players asked (Esc menu / typing, the rule
+   * in server/components/pause/pause_policy.hpp, reported as `pause_state`). The referee only
+   * accounts it -- sending `pause` back would turn the players' pause into a host hold that
+   * their unpausing could never release. Every pause, whoever asked, is excluded from in-game
+   * time the same way (referee.md §15).
+   */
+  pause(reason = 'manual', { fromGame = false } = {}) {
     if (this.phase === 'paused' || this.phase === 'over') return false
     this.pausePhaseBefore = this.phase
     this.phase = 'paused'
     this.pauseReason = reason
-    this.pauses.push({ fromMs: this.now(), toMs: null, reason, at: Date.now() })
+    this.pauseSource = fromGame ? 'game' : 'host'
+    this.pauses.push({ fromMs: this.now(), toMs: null, reason, source: this.pauseSource, at: Date.now() })
     this.flags.add('paused')
-    this.send({ t: 'pause' })
-    this.say(`Game paused (${reason}).`)
-    this.log.info(`paused: ${reason}`)
+    if (!fromGame) {
+      this.send({ t: 'pause' })
+      this.say(`Game paused (${reason}).`)
+    }
+    this.log.info(`paused: ${reason}${fromGame ? ' (the players)' : ''}`)
     this.emit('paused', reason)
     return true
   }
 
-  resume(reason = 'manual') {
+  resume(reason = 'manual', { fromGame = false } = {}) {
     if (this.phase !== 'paused') return false
     const cur = this.pauses.at(-1)
     if (cur && cur.toMs == null) {
@@ -481,17 +500,55 @@ export class Referee extends EventEmitter {
       cur.wallMs = Date.now() - cur.at
       this.pausedMs += cur.wallMs
       this.lastEventWall = Date.now()
+      // Nobody gives input from a pause menu. Without this a twelve-minute pause resumes
+      // straight into an AFK warning (and a sixteen-minute one into a kick).
+      for (const p of this.players.values()) if (p.lastInputMs != null) p.lastInputMs += cur.wallMs
+      if (this.allAfkSinceMs != null) this.allAfkSinceMs += cur.wallMs
     }
+    const src = this.pauseSource
     this.phase = this.pausePhaseBefore || 'live'
     this.pauseReason = null
-    this.send({ t: 'resume' })
-    this.say(`Resuming (${reason}).`)
-    this.log.info(`resumed: ${reason}`)
+    this.pauseSource = null
+    if (!fromGame) {
+      this.send({ t: 'resume' })
+      this.say(`Resuming (${reason}).`)
+    }
+    // No ceiling on a pause (B, 2026-09-22) -- so every one is logged with its length.
+    this.log.info(`resumed: ${reason} (${src || 'host'} pause, ${Math.round((cur?.wallMs || 0) / 1000)} s, ${[...this.players.values()].filter((p) => p.connected).length} connected)`)
     this.emit('resumed', reason)
     return true
   }
 
+  /**
+   * The game's own pause state (game-link-v0 `pause_state`). `reason` is the DLL's:
+   * host | solo_menu | solo_chat | all_menu | none. A `host` state is our own hold echoed
+   * back, already accounted by pause()/resume(), so it changes nothing here.
+   */
+  ev_pause_state(ev) {
+    this.gamePause = ev.paused ? { reason: ev.reason || 'unknown', players: ev.players ?? null } : null
+    if (ev.reason === 'host') return
+    const label = PAUSE_LABEL[ev.reason] || String(ev.reason || 'paused')
+    if (ev.paused) {
+      // Only a LIVE game has in-game time to exclude; a freeze during the load is shown
+      // (gamePause) but not accounted.
+      if (this.phase === 'live') this.pause(label, { fromGame: true })
+      else if (this.phase === 'paused' && this.pauseSource === 'game') this.pauseReason = label
+    } else if (this.phase === 'paused' && this.pauseSource === 'game') {
+      this.resume('the players unpaused', { fromGame: true })
+    }
+  }
+
+  /** One client's pause-menu / chat state (game-link-v0 `ui`). Shown, never ruled on here. */
+  ev_ui(ev) {
+    const p = this.players.get(ev.slot); if (!p) return
+    p.ui = ev.ui || 'clear'
+    p.pauseOnChat = ev.pchat !== false
+  }
+
   maybePauseForCrash(p) {
+    // The players' own pause (e.g. the last one left from the Esc menu) gives way to the
+    // crash pause: close its accounting, then hold the game ourselves for the grace window.
+    if (this.phase === 'paused' && this.pauseSource === 'game') this.resume('a player left', { fromGame: true })
     if (this.phase !== 'live') return
     if (this.mode === 'verified' && this.recordProfile) return // record games: pause allowed, no restore
     const connected = [...this.players.values()].filter((x) => x.connected)
@@ -797,7 +854,8 @@ export class Referee extends EventEmitter {
       elapsed_ms: this.elapsed(), rta_ms: this.elapsedRta(),
       cap_ms: Number.isFinite(this.capMs()) ? this.capMs() : null,
       cap_left_ms: Number.isFinite(this.capMs()) && this.startedMs != null ? this.capMs() - (this.now() - this.startedMs) : null,
-      paused: this.phase === 'paused', pause_reason: this.pauseReason,
+      paused: this.phase === 'paused', pause_reason: this.pauseReason, pause_source: this.pauseSource || null,
+      game_pause: this.gamePause || null,
       finish: this.finish ? { kind: this.finish.kind, label: this.finish.label } : null,
       signals: [...this.signals],
       flags: [...this.flags], perf: this.perf,
@@ -806,6 +864,7 @@ export class Referee extends EventEmitter {
         alive: p.alive, down: p.down, connected: p.connected, late: p.late,
         downs: p.downs, revives: p.revives, weapon: p.weapon, pos: p.pos, ang: p.ang,
         idle_ms: Math.max(0, this.now() - (p.lastInputMs ?? this.now())), afk_warned: p.afkWarned,
+        ui: p.ui || 'clear',
       })),
       zombies: this.zombies,
     }

@@ -1748,3 +1748,62 @@ enforced name, and it is the one the site credits from.
 it has), `-ServerFrom` and `-ClientFrom` on the proof script (it could only ever deploy
 `build\dedi`, which meant a lane building into its own directory — dev-box rule 11 — had no way
 to take its build through the five gates).
+
+## 15. 2026-09-22, evening — the players' pause, and why it does not touch a Verified run's time
+
+The engine half is `dedi.md` §18: the dedicated server now really freezes (the one
+`call G_RunFrame` is gated; `svs.time` and `level.time` are held together, so resume is seamless).
+This section is the rule and the accounting.
+
+### 15.1 The rule lives in the DLL, the accounting in the host
+
+`server/components/pause/pause_policy.hpp` (pure, no engine; `server/tests/pause_policy_test.cpp`,
+25 checks) decides from each client's userinfo `enw_ui` / `enw_pchat` (contract: `chat-overlay.md`
+§8):
+
+| connected | paused when | never |
+|---|---|---|
+| 0 | — (a disconnect counts as unpaused) | |
+| 1 | `enw_ui paused` (Esc menu), or `typing` with `enw_pchat 1` | |
+| 2–4 | **every** one is `paused` | `typing`, however many type |
+
+The host's own `pause` (crash grace, everyone-AFK, operator) is a hold OR-ed on top; the players
+cannot release it. The DLL reports `pause_state {paused, reason: host|solo_menu|solo_chat|all_menu|
+none, players, held_ms?}` on every transition and `ui {slot, ui, pchat}` per client change.
+
+Why the DLL and not the host: no round trip between the key and the freeze, and it works the same
+whatever the link is doing. The host still sees everything and still owns *time*.
+
+### 15.2 Paused time stays out of in-game time — for every pause, whoever asked
+
+`infra/host-agent/lib/referee.js`:
+
+* `ev_pause_state` with a non-`host` reason, in a **live** game → `pause(label, {fromGame:true})`:
+  the pause window is recorded exactly like a host pause (`pauses[]`, `pausedMs` on resume, flag
+  `paused`), but **nothing is sent back** — a `pause` echo would become a host hold that the
+  player's unpausing could never release — and the solo player is not `say`-told what he just did.
+* `paused:false` ends it through `resume(…, {fromGame:true})`; `pausedMs += wall time paused`.
+  `elapsed()` (the boards' in-game time, `duration_ms`) excludes it; `elapsedRta()` includes it, as
+  before. `records_eligible` does not look at `paused`: pausing costs a Verified run nothing.
+* a `host` reason is our own hold echoed back and changes nothing; a game `paused:false` cannot end
+  a host pause.
+* a freeze before go-live (the load) is shown (`state().game_pause`) and not accounted — there is no
+  in-game time yet to exclude.
+* the last player leaving from a solo Esc pause: `maybePauseForCrash` closes the players' window and
+  opens the crash hold, so the grace window and the resume countdown still apply.
+* **AFK**: `resume()` now moves every player's `lastInputMs` (and `allAfkSinceMs`) forward by the
+  pause's wall time. Before this, any pause over ten minutes resumed straight into an AFK warning
+  and one over fifteen into a kick. This applies to host pauses too.
+* no ceiling (B): `resume` logs `resumed: <why> (<game|host> pause, N s, M connected)` every time.
+
+Six new checks in `infra/host-agent/test/run-all.js` (56 total, green): solo Esc accounted with no
+echo and records intact; host echo ignored; host-hold → players hand-over; load-time freeze shown
+not accounted; players' pause → crash hold; a 30-minute co-op pause does not AFK-warn.
+
+### 15.3 Not done / not proven
+
+* A real client sending `enw_ui` — the client DLL half is the overlay lane's (`chat-overlay.md` §8).
+  Until it ships, the only way to pause a dedi is the host's `pause`.
+* Replay: the sampler keeps running while frozen (identical frames, wall `ms`), so a replay includes
+  the paused stretch as a still. Harmless; trimming it is a replay-lane choice.
+* Two real clients (the co-op rule end to end) — not possible tonight; B was playing.

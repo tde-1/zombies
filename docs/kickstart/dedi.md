@@ -2624,3 +2624,76 @@ the host agent's timing decided whether anyone noticed. `no_msgbox` answered it 
 `map_loaded` came 6 s after link each time. The host agent's Escape belt stays as a second layer.
 Oddity: the journal's `linked (… Sep 20 2026 00:58:12)` build string is stale while the DLL log
 says Sep 22 — the hello's `dll_build` is not the build macro the log uses; cosmetic, unfixed.
+
+## 18. 2026-09-22, 20:00 — pause: the dedicated server freezes the world, solo on Esc/typing, co-op when everyone is in the menu
+
+B's spec: solo on a Verified game, Esc (and, with a setting, typing in chat) really pauses; in
+co-op typing never pauses and the game pauses when everyone has paused; show it; resume when the
+condition clears; a disconnect counts as unpaused; no ceiling on a co-op pause, but log it.
+Before tonight `server/components/pause/pause.cpp` froze nothing — it set a flag and wrote a
+`level.zombie_vars` entry through `t4_bind`, whose script-variable writers all return `false`.
+
+### 18.1 The engine's own pause cannot serve a remote client — read from the dump
+
+`sv_paused` (ptr `0x1F9645C`) and `cl_paused` (`0x1F552C4`) are registered in `Com_InitDvars`
+(0x59CBDA / 0x59CBF6). `0x635BB0` is Q3's `SV_CheckPaused`: if `cl_paused` is 0 it returns 0;
+otherwise it walks `svs.clients` (`0x2547090`, stride `0x58D30`, count from `sv_maxclients`
+`[0x23D5C30]`) and **any client with state ≥ 2 whose netchan type (+0x24) is not 2 (loopback)
+unpauses it**. Its caller `0x6366C0`, when paused, calls `0x6360E0`, which runs no server frame at
+all (one forced frame only when `[0x2FCDA04]` is set) — so no snapshots, and a remote client would
+hit `cl_timeout`. It is a listen-server feature. Not used.
+
+### 18.2 What we do: gate the one `call G_RunFrame`, hold `svs.time`, keep snapshots flowing
+
+```
+SV_Frame 0x636610      residual += msec; while >= frameMsec: svs.time += frameMsec (0x63664E)
+  call 0x635CC0        SV_RunGameFrame (t4_bind's MinHook is at its entry; untouched)
+    0x635D54  call 0x503AB0   G_RunFrame(eax = svs.time): level.time [0x18F6DC8] = eax; void, `ret`
+  call 0x639BD0        SV_SendClientMessages: skip client if svs.time < nextSnapshotTime - 10
+                       (nextSnapshotTime = client_s+0x1161C, set at 0x639693 = svs.time + rateMsec)
+```
+
+`pause.cpp` retargets the call at **0x635D54** (checked to call `0x503AB0` before patching) to a
+naked stub. Not frozen: it records the time and jumps to `G_RunFrame` with `eax` intact. Frozen: it
+does not run `G_RunFrame`, writes `svs.time` back to the frozen `level.time`, and pulls every active
+client's `nextSnapshotTime` down to it. Consequences, each read from the dump:
+
+* **everything in the world stops**: AI, the script VM (every `wait` — bleedout, powerups, the box,
+  `round_spawn_failsafe`), physics, entity think. Nothing needs its deadline pushed forward, which
+  was the whole of vault 11 §6's problem with a script pause;
+* **level.time == svs.time throughout**, so the first frame after resume is frozen + frameMsec —
+  no catch-up burst, nothing expires because a pause happened. (Offsetting `level.time` from
+  `svs.time` instead was rejected: `ClientThink_real` clamps a usercmd to `level.time + 200`
+  (0x4E8784) and `0x630BF0` validates it against `svs.time`, so the two clocks must agree or every
+  input after the first pause is mangled);
+* a player can move at most 200 ms before the same clamp holds him; nothing runs that can hurt him,
+  so no invulnerability hack;
+* snapshots go out every frame with the same serverTime, so no client times out. Q3-lineage
+  clients accept equal serverTimes (`<` checks only, KisakCOD `cl_cgame_mp.cpp` /
+  `cg_snapshot_mp.cpp`), reset their clock to the snapshot about every 500 ms, and may show the
+  stock "Connection Interrupted" banner — **what a real T4 client draws is unproven**.
+
+`sv_paused` is set to 1 while frozen as a **marker** (readable with `get sv_paused`); every engine
+reader of it on this path also requires `cl_paused`, which stays 0 on the dedi, so it is inert.
+
+### 18.3 Who asks, and the rule
+
+* **Players**, through userinfo keys `enw_ui` (`paused|typing|clear`) and `enw_pchat` (`1|0`),
+  polled from `svs.clients[i].userinfo` at 20 Hz for every slot in state 4 (CS_ACTIVE). The contract
+  is `chat-overlay.md` §8. The rule is `server/components/pause/pause_policy.hpp`: none connected →
+  run; solo → pause on `paused`, or `typing` with `enw_pchat 1`; two or more → pause only if every
+  one is `paused`; typing never pauses co-op. 25 checks in `server/tests/pause_policy_test.cpp`.
+* **The host**, with `pause`/`resume` — a hold OR-ed on top that only the host releases (crash
+  grace, everyone-AFK, operator).
+* On the link: `ui {slot, ui, pchat}` per change and `pause_state {paused, reason, players,
+  held_ms?}` per transition (`game-link-v0.md`). That is the visible PAUSED state: the host puts it
+  in `state()` (`paused`, `pause_reason`, `pause_source`, `game_pause`, per-player `ui`) for the
+  dashboard and the site; referee.md §15 has the accounting.
+* No ceiling on a co-op pause. The DLL logs `pause: FROZEN …` every 5 s, a `WARN` every 5 min while
+  a 2+ player pause lasts, and `pause: RESUMED after N ms` with the frames held; the host logs every
+  resume with its length and player count.
+* Off switch: `ENW_NO_PAUSE=1`. Dedicated only — a listen server keeps the engine's own SP pause.
+
+### 18.4 Proof
+
+PENDING_PROOF
