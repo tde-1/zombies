@@ -215,7 +215,7 @@ read-while-running — the file is only complete once the process is gone, and t
 in the launcher's settings store. That keeps the whole feature in `launcher/` with no client-DLL
 work at all, which is why it is not a component.
 
-### 2c. Borderless windowed — the default, and it needs the DLL
+### 2c. Borderless windowed — **done** (`components/borderless.cpp`)
 
 **B's decision (2026-09-22):** the game launches **by default in perfect borderless windowed at the
 main display's native resolution**. The launcher's Display settings offer monitor, mode (Borderless
@@ -226,35 +226,54 @@ The community recipe is Plutonium's documented one for T4 —
 `r_fullscreen 0; r_noborder 1; vid_xpos 0; vid_ypos 0; vid_restart`
 (<https://plutonium.pw/docs/client/t4/perfect-borderless-window/>).
 
-**Checked in the exe, and the answer is no.** `r_noborder` is **not** a vanilla dvar: the byte
-string `r_noborder` (and the substring `noborder`, case-insensitive) appears **zero times** in the
-78 MB dump. `r_noborder` is something **Plutonium's own client adds**, so Plutonium's recipe cannot
-be followed with command-line dvars alone on a stock exe. The three dvars around it *do* exist and
-are vanilla: `r_fullscreen` (`0x89E710`), `vid_xpos` (`0x89E720`), `vid_ypos` (`0x89E72C`), plus
-`r_monitor` (`0x8A5448`) for the monitor picker and `r_displayRefresh` (`0x89E6DC`).
+**`r_noborder` is not a vanilla dvar.** The byte string `r_noborder` — and the substring
+`noborder`, case-insensitive — appears **zero times** in the 78 MB dump. It is something
+Plutonium's own client adds, so their recipe cannot be followed with command-line dvars alone on a
+stock exe. The three dvars around it *are* vanilla: `r_fullscreen` (`0x89E710`), `vid_xpos`
+(`0x89E720`), `vid_ypos` (`0x89E72C`), plus `r_monitor` (`0x8A5448`) for the monitor picker and
+`r_displayRefresh` (`0x89E6DC`).
 
-So the split is:
+So the DLL does the `r_noborder 1` half. `borderless.cpp` clears
+`WS_CAPTION | WS_THICKFRAME | WS_BORDER | WS_DLGFRAME`, sets `WS_POPUP`, clears
+`WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_DLGMODALFRAME` and `SetWindowPos`es to the requested
+rect with `SWP_FRAMECHANGED`, on the `"CoD-WaW"` window (`[0x22C1BE4]`).
 
-* **launcher**: passes `r_fullscreen 0`, `r_mode <native WxH>`, `vid_xpos 0`, `vid_ypos 0` and
-  `r_monitor <index>` on the command line, exactly as it already passes `r_fullscreen` / `r_mode`
-  (launcher.md §3), and stores the mode/monitor/resolution per account.
-* **the DLL**: must **strip `WS_CAPTION | WS_THICKFRAME` from the game window itself** and
-  `SetWindowPos` it to (0,0) at the chosen monitor's size with `SWP_FRAMECHANGED`. That is the
-  `r_noborder 1` half, and there is no dvar for it on a stock exe.
+Three design points worth keeping:
 
-The pieces are all reachable without patching engine code: `SetWindowLongA` (IAT `0x7EB348`) and
-`SetWindowPos` (IAT `0x7EB2C4`) are both imported, the game window class is `"CoD-WaW"` registered
-at `0x5FF450`, its proc is `0x606BE0` and its hwnd is at `[0x22C1BE4]`.
+* **No second WndProc subclass.** `mouse_polling` already owns the subclass on that window and its
+  guard refuses to install if the proc is no longer `0x606BE0`, so a second subclass would make one
+  of the two refuse depending on load order. `borderless` instead re-checks the style from the
+  shared frame tick every 20 frames — one `GetWindowLongA` — which is also the only thing that
+  covers **alt-tab putting the frame back** and **`vid_restart` recreating the window** (it detects
+  a new HWND and re-applies).
+* **Geometry comes from the command line, not the dvar system.** `r_mode` (a *string* on T4,
+  `"1280x720"`, not an index), `vid_xpos`, `vid_ypos`, `r_fullscreen`, `r_noborder`. `dvar_s` is
+  deliberately opaque to us and reading a value means committing to a struct layout for bool vs
+  string — the kind of guess this project has paid for. The command line is free and exact. Missing
+  or unparseable `r_mode` falls back to the whole monitor rect via `MonitorFromWindow` +
+  `GetMonitorInfo`, which is B's default anyway. **Last `+set` wins**, as the engine does — run 1
+  read the first and picked up `launch.ps1`'s own `800x600` instead of the caller's.
+* **Windowed only.** Skipped when the command line asks for `r_fullscreen != 0`: exclusive
+  fullscreen has no frame to remove and reshaping it fights the renderer.
 
-Two constraints for whoever writes it:
+Switches: `ENW_BORDERLESS=1` to enable, `ENW_BORDERLESS=0` to force off, or `+set r_noborder 1` on
+the command line — we match that *text*, we do not read the dvar, because there is none to read.
+Name it `r_noborder` for real once the `Dvar_RegisterBool` thunk in §1b deviation 3 is proven, so a
+player following Plutonium's docs finds the dvar they expect.
 
-* **It must survive `vid_restart`**, which recreates the window — so re-apply on window creation
-  rather than once at startup. `mouse_polling`'s lazy install from the frame tick, and its "is this
-  still the engine's own WndProc?" check, are the pattern to copy; the two components must agree
-  about who owns the subclass rather than each installing one.
-* Name the toggle `r_noborder` when the `Dvar_RegisterBool` thunk in §1b deviation 3 is proven, so
-  a player following Plutonium's documentation finds the dvar they expect. Until then it is an env
-  var / launcher flag like `ENW_RAW_MOUSE`.
+**Verified**, `waw-c2`, `+set r_fullscreen 0 +set r_mode 1280x720 +set vid_xpos 0 +set vid_ypos 0
++map nazi_zombie_prototype`, 45 s on the map:
+
+```
+borderless: target 1280x720 at (0,0) from the command line (r_mode, vid_xpos, vid_ypos)
+borderless: style 0x14C80000 -> 0x94080000, exstyle 0x00000100 -> 0x00000000.
+            WS_CAPTION=0 WS_THICKFRAME=0 WS_BORDER=0 WS_POPUP=1.
+            window rect 1280x720 at (0,0), client 1280x720. BORDERLESS.
+```
+
+That is a `GetWindowLong` read-back, not a call that returned without error, and **window rect ==
+client rect** is the proof there is no frame left. Still unverified: alt-tab re-application and
+`vid_restart`, both of which are handled by the poll but were not exercised.
 
 ### 2d. In-game chat overlay (note only — not designed)
 
