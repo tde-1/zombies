@@ -87,18 +87,31 @@
 // ===========================================================================
 // DEVIATIONS FROM UPSTREAM (deliberate, each with a reason)
 // ===========================================================================
-// 1. NO RIDEV_NOLEGACY. iw4x registers RIDEV_INPUTSINK|RIDEV_NOLEGACY and
-//    reimplements every mouse button from the raw button flags. On T4 the
-//    buttons come from the game WndProc (0x606BE0 -> 0x606B60 -> IN_MouseEvent ->
-//    Sys_QueEvent 0x5FEB30), and suppressing legacy messages would take the OS cursor
-//    away from the menu path as well. We register with dwFlags = 0 and take
-//    only MOTION from raw input, so buttons, the wheel and the menu cursor
-//    keep working exactly as they do today. That also means we do NOT port
-//    upstream's ProcessMouseRawEvent / OnLegacyMouseEvent / mw_up / mw_down.
-//    If B's test shows the residual message flood still matters, NOLEGACY plus
-//    the button port is the next step and it is a bigger change.
-// 2. No ClipCursor. Upstream clips the cursor to the client rect; that is a
-//    separate windowed-mode fix and is tracked in docs/kickstart/client.md.
+// 1. RETRACTED 2026-09-22, and left here rather than deleted because the wrong
+//    answer shipped and B played it. This used to read "NO RIDEV_NOLEGACY ...
+//    we register with dwFlags = 0 and take only MOTION from raw input", on the
+//    grounds that suppressing legacy messages would take the OS cursor away
+//    from the menu. That reasoning is sound and the conclusion was still wrong:
+//    keeping legacy messages means every device report is dispatched TWICE
+//    (a WM_MOUSEMOVE and a WM_INPUT) through a pump that drains the queue
+//    completely every frame, and the whole mechanism iw4x's own fix
+//    (iw4x/iw4x-client PR #166, "Fix of fps drop when using a high polling
+//    rate mouse") rests on is RIDEV_NOLEGACY. B played 0.2.2 with that
+//    deviation in and the stutter was still there.
+//    NOW: RIDEV_NOLEGACY is registered WHILE THE GAME OWNS THE MOUSE and
+//    dropped the instant the menu, the console or another window takes it --
+//    CL_MouseEvent's own return value is the engine's answer to that question
+//    and we read it every frame. Buttons go back to the engine's own WndProc as
+//    the legacy messages it expects, via CallWindowProcA. Off switch:
+//    ENW_RAW_MOUSE_NOLEGACY=0.
+// 2. ClipCursor, and the recentre is skipped. Upstream clips to the client
+//    rect; Quake3e's IN_CaptureMouse does the same and its raw path never
+//    recentres. We now do both, because T4's per-frame IN_RecenterMouse is a
+//    SetCursorPos and SetCursorPos SYNTHESISES a WM_MOUSEMOVE into the queue
+//    the pump is draining -- a feedback loop that only exists because the stock
+//    deltas are differences between cursor positions. With raw deltas there is
+//    nothing to recentre for. Both revert with the mouse the moment the game
+//    stops owning it.
 // 3. Env var, not a dvar. `m_rawinput` would need Dvar_RegisterBool (0x5EEE20),
 //    whose convention is name-in-EDI / default-in-AL / (flags, desc) on the
 //    stack -- readable, but this project's rule 2 is not to invent a prototype
@@ -267,14 +280,81 @@ __declspec(naked) int __cdecl cl_mouse_event(int /*x*/, int /*y*/, int /*dx*/, i
 //      prototype. Button transitions are a handful a second, so nothing about
 //      the flood comes back with them.
 //
-// OFF BY DEFAULT. ENW_RAW_MOUSE_NOLEGACY=1 turns it on; ENW_RAW_MOUSE=0 is still
-// the full revert to the stock path.
-bool g_nolegacy_wanted = false;  // ENW_RAW_MOUSE_NOLEGACY
+// ON BY DEFAULT since 2026-09-22 (launcher 0.2.3). `ENW_RAW_MOUSE_NOLEGACY=0`
+// goes back to the 0.2.2 behaviour (legacy messages kept); `ENW_RAW_MOUSE=0` is
+// still the full revert to the stock GetCursorPos path. The default moved
+// because this is the configuration iw4x-client actually ships and demonstrated
+// — see §1f of client.md and iw4x PR #166, "Fix of fps drop when using a high
+// polling rate mouse", whose whole mechanism is RIDEV_NOLEGACY.
+bool g_nolegacy_wanted = true;   // ENW_RAW_MOUSE_NOLEGACY
 bool g_nolegacy_now = false;     // what is actually registered right now
 bool g_engine_recentring = false;
 long g_nolegacy_flips = 0;
 long g_buffered_reads = 0;
 long g_buffered_reports = 0;
+
+// GetRawInputBuffer can fail outright in a process that has been injected into
+// by something else — Special K makes it return (UINT)-1 with
+// ERROR_PROC_NOT_FOUND (SpecialKO/SpecialK#354). If that happens we must NOT
+// sit there with a dead mouse: fall back to reading each WM_INPUT on its own.
+bool g_bulk_read = true;
+long g_bulk_failures = 0;
+
+// The third leg of the flood, and the one the port had kept: T4 calls
+// IN_RecenterMouse (SetCursorPos to the window centre) once per frame whenever
+// the game owns the mouse. SetCursorPos SYNTHESISES A WM_MOUSEMOVE, which goes
+// into the same queue Sys_GetEvent drains completely every frame. With
+// RIDEV_NOLEGACY there is no legacy motion to recentre for — the deltas come
+// from the device — so we do what Quake3e's IN_CaptureMouse does instead: clip
+// the cursor to the client rect once, and stop recentring. One less SetCursorPos
+// and one less synthesised message per frame.
+bool g_cursor_clipped = false;
+long g_recentres_skipped = 0;
+
+void clip_cursor_to_client(bool on) {
+    if (on == g_cursor_clipped) return;
+    if (on) {
+        if (!g_hwnd || !::IsWindow(g_hwnd)) return;
+        RECT c = {};
+        if (!::GetClientRect(g_hwnd, &c)) return;
+        POINT tl = {c.left, c.top};
+        POINT br = {c.right, c.bottom};
+        ::ClientToScreen(g_hwnd, &tl);
+        ::ClientToScreen(g_hwnd, &br);
+        const RECT screen = {tl.x, tl.y, br.x, br.y};
+        if (!::ClipCursor(&screen)) return;
+    } else {
+        ::ClipCursor(nullptr);
+    }
+    g_cursor_clipped = on;
+}
+
+// Measured device report rate, the instrument CoD2x exposes as `m_rinput_hz`.
+// An average frame rate cannot see a stutter and neither can a total: what tells
+// us whether a 1000/4000/8000 Hz mouse is really reaching the game is reports
+// per second while it is moving.
+double g_rate_hz = 0.0;
+double g_rate_hz_peak = 0.0;
+long g_rate_last_total = 0;
+int64_t g_rate_last_qpc = 0;
+
+void update_rate_hz() {
+    LARGE_INTEGER now{}, freq{};
+    if (!::QueryPerformanceCounter(&now) || !::QueryPerformanceFrequency(&freq) ||
+        freq.QuadPart == 0)
+        return;
+    const long total = g_events_total;
+    if (g_rate_last_qpc) {
+        const double secs =
+            static_cast<double>(now.QuadPart - g_rate_last_qpc) / static_cast<double>(freq.QuadPart);
+        if (secs > 0.0) {
+            g_rate_hz = static_cast<double>(total - g_rate_last_total) / secs;
+            if (g_rate_hz > g_rate_hz_peak) g_rate_hz_peak = g_rate_hz;
+        }
+    }
+    g_rate_last_qpc = now.QuadPart;
+    g_rate_last_total = total;
+}
 
 bool register_raw(bool enable, bool nolegacy) {
     RAWINPUTDEVICE rid[1] = {};
@@ -373,7 +453,7 @@ void synth_buttons(USHORT flags, SHORT wheel) {
 // Read every pending raw report in ONE call instead of one WM_INPUT dispatch
 // each. Returns how many reports it consumed.
 long drain_raw_buffer() {
-    if (!g_in_raw_input) return 0;
+    if (!g_in_raw_input || !g_bulk_read) return 0;
     // 512 reports is ~4 frames' worth at 8 kHz / 250 fps; the loop runs again if
     // there is more.
     static BYTE buf[512 * (sizeof(RAWINPUT) + 16)];
@@ -382,7 +462,23 @@ long drain_raw_buffer() {
         UINT size = sizeof buf;
         const UINT n = ::GetRawInputBuffer(reinterpret_cast<PRAWINPUT>(buf), &size,
                                            sizeof(RAWINPUTHEADER));
-        if (n == 0 || n == static_cast<UINT>(-1)) break;
+        if (n == static_cast<UINT>(-1)) {
+            // Not "no reports": the call itself failed. Known cause: another
+            // injected module (Special K, SpecialKO/SpecialK#354) leaves
+            // GetRawInputBuffer returning -1 / ERROR_PROC_NOT_FOUND. Silently
+            // treating that as "no input" is a dead mouse, so give up on the
+            // bulk read for the rest of the session and let the per-message
+            // GetRawInputData path in OnRawInput carry everything.
+            if (++g_bulk_failures == 1)
+                ENW_WARN("mouse_polling: GetRawInputBuffer failed (GetLastError=%lu). Falling "
+                         "back to one GetRawInputData per WM_INPUT for the rest of this "
+                         "session. RIDEV_NOLEGACY stays on -- the legacy WM_MOUSEMOVE half of "
+                         "the flood is still gone -- but the per-message read is back.",
+                         ::GetLastError());
+            g_bulk_read = false;
+            break;
+        }
+        if (n == 0) break;
 
         PRAWINPUT ri = reinterpret_cast<PRAWINPUT>(buf);
         for (UINT i = 0; i < n; ++i) {
@@ -393,7 +489,10 @@ long drain_raw_buffer() {
                 const bool absolute = (m.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
                 g_raw_x.Update(m.lLastX, absolute);
                 g_raw_y.Update(m.lLastY, absolute);
-                if (m.usButtonFlags)
+                // Only while NOLEGACY is actually registered. In the menu the
+                // legacy messages are back and the engine is already getting
+                // the clicks; synthesising here as well would double them.
+                if (m.usButtonFlags && g_nolegacy_now)
                     synth_buttons(m.usButtonFlags, static_cast<SHORT>(m.usButtonData));
                 ::InterlockedIncrement(&g_events_total);
                 ::InterlockedIncrement(&g_events_this_frame);
@@ -415,10 +514,20 @@ long drain_raw_buffer() {
 
 void OnRawInput(LPARAM lparam) {
     if (!g_in_raw_input) return;
-    // In bulk mode the once-per-frame GetRawInputBuffer owns the reading. Taking
-    // the same report here as well would double every delta.
-    if (g_nolegacy_wanted) return;
 
+    // CORRECTION 2026-09-22, and it is a bug fix, not a tidy-up. This used to
+    // be `if (g_nolegacy_wanted) return;` on the reasoning that the once-a-frame
+    // GetRawInputBuffer owned the reading and taking the same report here would
+    // double the delta. IT WOULD NOT, AND THE EARLY RETURN LOST INPUT:
+    // GetMessage REMOVES the raw event it is delivering from the buffered queue
+    // before it returns, so GetRawInputBuffer never sees the report that
+    // produced this WM_INPUT -- only the ones that arrived after it. MSDN's
+    // GetRawInputBuffer page says so, and the documented pattern is exactly the
+    // one used here now: read the CURRENT event with GetRawInputData, then drain
+    // whatever else has piled up with GetRawInputBuffer (in_mousemove, once a
+    // frame). The dispatched message is counted once and the queued ones once.
+    // This path also carries everything when the bulk read is unavailable
+    // (g_bulk_read == false).
     RAWINPUT raw = {};
     UINT size = sizeof raw;
     const UINT got = ::GetRawInputData(reinterpret_cast<HRAWINPUT>(lparam), RID_INPUT, &raw,
@@ -447,6 +556,15 @@ void OnRawInput(LPARAM lparam) {
     const bool absolute = (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
     g_raw_x.Update(raw.data.mouse.lLastX, absolute);
     g_raw_y.Update(raw.data.mouse.lLastY, absolute);
+
+    // With RIDEV_NOLEGACY there is no WM_LBUTTONDOWN either, so this event's
+    // button transitions have to go back onto the engine's own path -- the same
+    // thing drain_raw_buffer() does for the reports it consumes. Only while
+    // NOLEGACY is actually registered: with legacy messages on, the engine is
+    // already getting them and synthesising would double every click.
+    if (g_nolegacy_now && raw.data.mouse.usButtonFlags)
+        synth_buttons(raw.data.mouse.usButtonFlags,
+                      static_cast<SHORT>(raw.data.mouse.usButtonData));
 
     // Upstream's alt-tab fix: the first update after (re)acquiring the device
     // carries everything that happened while we were not looking, and applying
@@ -486,6 +604,12 @@ LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     case WM_KILLFOCUS:
         g_in_focus = false;
         g_first_raw_update = true;
+        // Alt-tab. A clipped cursor that survives losing focus traps the mouse
+        // on the game's monitor, and NOLEGACY that survives it stops the OS
+        // cursor moving for the whole desktop. Both go, now, on the message --
+        // not on the next frame, because there may not be one.
+        clip_cursor_to_client(false);
+        set_nolegacy(false);
         break;
     default:
         break;
@@ -505,10 +629,14 @@ void __cdecl in_mousemove() {
     // turn the player.
     if (::GetForegroundWindow() != game_hwnd()) return;
 
-    // Bulk read, once per frame, instead of one WM_INPUT dispatch per report.
-    // Only when NOLEGACY is armed: with legacy messages on, the per-message
-    // WM_INPUT path in our WndProc is already draining them and doing both
-    // would double-count the deltas.
+    // Drain whatever queued up behind the WM_INPUT messages the pump already
+    // dispatched. One call for the lot instead of one GetRawInputData each --
+    // and GetRawInputData takes a lock per call, which is the documented reason
+    // a high polling rate costs frame time (libsdl-org/SDL#8756; Valorant
+    // shipped a "Raw Input Buffer" option for exactly this and later defaulted
+    // it on). Only when NOLEGACY is armed: with legacy messages on, every report
+    // is being dispatched as a message anyway, so there is nothing left to
+    // drain and the WndProc path has already counted it.
     if (g_nolegacy_wanted) drain_raw_buffer();
 
     const int dx = g_raw_x.GetDelta();
@@ -527,9 +655,24 @@ void __cdecl in_mousemove() {
 
     const int recentre = cl_mouse_event(p.x, p.y, dx, dy);
     if (recentre && (dx || dy)) {
-        in_recenter_mouse()();
-        *enw::ptr<int>(t4::var::s_wmv_oldPos_x) = *enw::ptr<int>(t4::var::s_wmv_centre_x);
-        *enw::ptr<int>(t4::var::s_wmv_oldPos_y) = *enw::ptr<int>(t4::var::s_wmv_centre_y);
+        // THE THIRD LEG OF THE FLOOD. IN_RecenterMouse is SetCursorPos to the
+        // window centre, and SetCursorPos synthesises a WM_MOUSEMOVE into the
+        // very queue Sys_GetEvent drains completely every frame (the feedback
+        // loop is a documented Win32 hazard, not a theory). The only reason the
+        // engine recentres is that its deltas are differences between two
+        // cursor positions and the pointer would otherwise walk off the screen.
+        // With NOLEGACY registered the deltas come from the device and the OS
+        // cursor is not moving at all, so recentring buys nothing and costs a
+        // SetCursorPos plus a message per frame. Quake3e does the same thing:
+        // IN_CaptureMouse clips once and the raw path never recentres.
+        if (g_nolegacy_now) {
+            clip_cursor_to_client(true);
+            ++g_recentres_skipped;
+        } else {
+            in_recenter_mouse()();
+            *enw::ptr<int>(t4::var::s_wmv_oldPos_x) = *enw::ptr<int>(t4::var::s_wmv_centre_x);
+            *enw::ptr<int>(t4::var::s_wmv_oldPos_y) = *enw::ptr<int>(t4::var::s_wmv_centre_y);
+        }
     }
 
     // CL_MouseEvent's return is the engine's own answer to "does the GAME own
@@ -539,6 +682,9 @@ void __cdecl in_mousemove() {
     // fresh every frame, so it cannot go stale the way a cached menu flag can.
     g_engine_recentring = recentre != 0;
     set_nolegacy(g_engine_recentring);
+    // The clip belongs to gameplay, exactly like NOLEGACY. The menu, the
+    // console and an unfocused window all get the cursor back.
+    if (!g_nolegacy_now) clip_cursor_to_client(false);
 }
 
 // ------------------------------------------------------------------ component
@@ -591,10 +737,14 @@ bool install_window_hook() {
 
     g_in_focus = (::GetForegroundWindow() == g_hwnd);
     ENW_INFO("mouse_polling: RAW INPUT ON. hwnd=0x%p, WndProc 0x%08X subclassed, "
-             "RegisterRawInputDevices(usage 1/2, dwFlags=0, legacy messages KEPT) ok. "
-             "Mouse motion now comes from WM_INPUT counts, not from GetCursorPos pixels. "
-             "Off switch: ENW_RAW_MOUSE=0.",
-             g_hwnd, static_cast<unsigned>(expected));
+             "RegisterRawInputDevices(usage 1/2, dwFlags=0) ok. Mouse motion now comes from "
+             "WM_INPUT counts, not from GetCursorPos pixels. Legacy messages are KEPT at this "
+             "moment and %s -- watch for the `legacy mouse messages OFF` line a frame or two "
+             "from here, which is NOLEGACY arming as soon as CL_MouseEvent says the game owns "
+             "the mouse. Off switch: ENW_RAW_MOUSE=0.",
+             g_hwnd, static_cast<unsigned>(expected),
+             g_nolegacy_wanted ? "will be dropped in gameplay (NOLEGACY is the default)"
+                               : "will stay on (ENW_RAW_MOUSE_NOLEGACY=0)");
     return true;
 }
 
@@ -612,14 +762,25 @@ public:
             return;
         }
         g_verbose = env_on("ENW_RAW_MOUSE_VERBOSE");
-        g_nolegacy_wanted = env_on("ENW_RAW_MOUSE_NOLEGACY");
+        // DEFAULT ON since 0.2.3. `ENW_RAW_MOUSE_NOLEGACY=0` is the one-word
+        // A/B back to 0.2.2's behaviour.
+        g_nolegacy_wanted = !env_off("ENW_RAW_MOUSE_NOLEGACY");
         if (g_nolegacy_wanted)
-            ENW_INFO("mouse_polling: NOLEGACY mode armed (ENW_RAW_MOUSE_NOLEGACY=1). While the "
-                     "game owns the mouse, Windows will not generate a WM_MOUSEMOVE per device "
-                     "report, reports are read in bulk with GetRawInputBuffer once a frame, and "
-                     "buttons are handed back to the engine's own WndProc as legacy messages. "
-                     "The legacy path comes straight back the moment the menu or console takes "
-                     "the mouse, so the cursor still works. ENW_RAW_MOUSE=0 is the full revert.");
+            ENW_INFO("mouse_polling: NOLEGACY mode armed (the default; ENW_RAW_MOUSE_NOLEGACY=0 "
+                     "reverts to 0.2.2). While the game owns the mouse: Windows generates no "
+                     "WM_MOUSEMOVE per device report, the queued reports are read in bulk with "
+                     "GetRawInputBuffer once a frame (the dispatched one is still read with "
+                     "GetRawInputData, because GetMessage has already taken it out of the "
+                     "buffered queue), IN_RecenterMouse is SKIPPED in favour of a ClipCursor to "
+                     "the client rect, and buttons are handed back to the engine's own WndProc "
+                     "as legacy messages. All three come straight back the moment the menu, the "
+                     "console or another window takes the mouse. ENW_RAW_MOUSE=0 is the full "
+                     "revert to the stock GetCursorPos path.");
+        else
+            ENW_INFO("mouse_polling: NOLEGACY OFF (ENW_RAW_MOUSE_NOLEGACY=0). Legacy mouse "
+                     "messages are kept, every device report is dispatched as a WM_MOUSEMOVE as "
+                     "well as a WM_INPUT, and IN_RecenterMouse runs every frame. This is what "
+                     "0.2.2 did.");
 
         // Self-verifying check #1: is 0x5FA8E4 really `call IN_MouseMove`?
         const uintptr_t site = enw::at(t4::fn::IN_MouseMove_callsite);
@@ -691,6 +852,12 @@ public:
             // 1000 Hz on a 60 fps client it should sit around 16.
             if (n - g_last_report_frame >= 900) {
                 g_last_report_frame = n;
+                update_rate_hz();
+                ENW_INFO("mouse_polling: measured device rate %.0f Hz now, %.0f Hz peak this "
+                         "session (125/500/1000/4000/8000 is what the mouse is set to). This is "
+                         "CoD2x's `m_rinput_hz` in a log line: it is the number that says "
+                         "whether the reports are reaching the game at all.",
+                         g_rate_hz, g_rate_hz_peak);
                 ENW_INFO("mouse_polling: WM_INPUT total=%ld, peak/frame=%ld, frames with "
                          "motion=%ld, raw=%s focus=%s | legacy WM_MOUSEMOVE total=%ld "
                          "peak/frame=%ld | ALL messages through our proc total=%ld "
@@ -700,13 +867,16 @@ public:
                          g_wm_mousemove_total, g_wm_mousemove_peak, g_msgs_total, g_msgs_peak);
                 if (g_nolegacy_wanted)
                     ENW_INFO("mouse_polling: NOLEGACY is %s right now (%ld flips); "
-                             "GetRawInputBuffer: %ld call(s) for %ld report(s) = %.1f "
-                             "reports per call",
-                             g_nolegacy_now ? "ON" : "off", g_nolegacy_flips, g_buffered_reads,
-                             g_buffered_reports,
+                             "GetRawInputBuffer: %s, %ld call(s) for %ld report(s) = %.1f "
+                             "reports per call; IN_RecenterMouse skipped %ld time(s) "
+                             "(ClipCursor %s instead)",
+                             g_nolegacy_now ? "ON" : "off", g_nolegacy_flips,
+                             g_bulk_read ? "in use" : "FAILED, per-message fallback",
+                             g_buffered_reads, g_buffered_reports,
                              g_buffered_reads ? static_cast<double>(g_buffered_reports) /
                                                     static_cast<double>(g_buffered_reads)
-                                              : 0.0);
+                                              : 0.0,
+                             g_recentres_skipped, g_cursor_clipped ? "on" : "off");
             }
         });
     }
@@ -715,6 +885,7 @@ public:
         // Put the legacy messages back BEFORE unregistering, so a game that is
         // shutting down never leaves the desktop without a moving cursor.
         set_nolegacy(false);
+        clip_cursor_to_client(false);
         if (g_in_raw_input) ToggleRawInput(false);
         if (g_hwnd && g_prev_wndproc && ::IsWindow(g_hwnd))
             ::SetWindowLongPtrA(g_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(g_prev_wndproc));

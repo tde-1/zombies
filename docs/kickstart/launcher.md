@@ -1667,3 +1667,148 @@ Start by itself. Nobody types an IP.
 **If the boot screen sticks on *Reserving server*:** the box has no free slot. The ghost-lease
 reaper frees it within 90 s by itself now, and pressing Start again retires whatever the box was
 still holding; `node web/tools/lease-cli.js --match <id> --cancel` is the manual version.
+
+---
+
+## 2026-09-22, evening — 0.2.3: the config the engine actually reads, ADS on hold, and a staleness gate
+
+B played 0.2.2 and reported the mouse stutter, toggle ADS and "borderless is not working — windowed
+with a border". Two of the three had the same two causes, and neither was in the component B was
+blaming. `client.md` §5 is the client side; this is the launcher's.
+
+### 1. The seed was going to a directory the engine has never opened
+
+`%s/players/profiles/%s/config.cfg` (the string at `0x883E64`) is resolved against the engine's
+**local app data** folder — not against `fs_homepath`. Since `enw_localappdata.cpp` landed, that
+folder is `<ENW>\home\localappdata`, so the file the game reads and rewrites is
+
+```
+<ENW>\home\localappdata\Activision\CoDWaW\players\profiles\<active>\config.cfg
+```
+
+and `gamecfg.js` was seeding `<ENW>\home\players\profiles\enw\config.cfg`. **`<ENW>\home\players`
+did not exist on this box** after a night of play — `find` says so — and `active.txt` in the tree
+the engine *does* use named `$$$`, its own default profile, because our `active.txt` was written
+where it could not see it.
+
+The consequence is not subtle, and it is measured, not argued. That profile still held:
+
+```
+seta r_mode "800x600"
+seta r_displayRefresh "60 Hz"
+seta vid_xpos "40"
+seta vid_ypos "40"
+bind MOUSE2 "+toggleads_throw"
+seta cg_drawFPS "Off"
+```
+
+after a session launched with `+set r_mode 2560x1440 +set vid_xpos 0 +set vid_ypos 0`. **`config.cfg`
+is exec'd during `Com_Init`, after the command line's early `+set`s, so it wins.** A borderless
+window at `(40,40)` at 800x600 is what that config asks for, and "windowed with a border" is what B
+saw. It also means the read-back half of the round trip had been reading a file the game never wrote.
+
+**Fixed.** `configPaths()` now returns `engineCfg` / `engineProfileDir` / `engineActiveTxt` first,
+derived from `<homeDir>\localappdata\Activision\CoDWaW`, and `activeProfile()` **reads `active.txt`
+rather than imposing `enw`** — the engine creates `$$$` by itself and renaming it out from under a
+player loses their binds. `readConfig()` prefers `engineCfg`. The `fs_homepath` tree is still
+written, because a dev run with `ENW_LOCALAPPDATA` unset really does use it.
+
+**The seed MERGES; it does not replace.** The engine's own `config.cfg` is ~500 lines — `unbindall`,
+every key binding, several hundred `seta`s it expects to find, and a trailing `con_hidechannel`
+command. Dropping our 30-line baseline on top of that would wipe the player's binds. `mergeConfigCfg()`
+substitutes each baseline line where it already exists, appends the ones that are missing under a
+marked comment, keeps `con_hidechannel` last, and passes everything else through untouched. There is
+a test that asserts an unrelated bind and an unrelated dvar both survive.
+
+`BASELINE_VERSION` is **3**, so this reaches everyone who already has a config once, and then the
+player owns it again — the existing rule, unchanged.
+
+### 2. Aim down sights defaults to HOLD
+
+There is **no ADS dvar in T4** — `ads_toggle`, `cl_ads`, `cg_ads`, `ads_button` are all zero
+occurrences in the decrypted image. Hold vs toggle is **which command `MOUSE2` is bound to**, and
+both pairs are in the image: `+speed_throw` (hold) and `+toggleads_throw` (toggle). Stock WaW binds
+the toggle one, which is what B's profile held.
+
+So there is a new `BASELINE_BINDS` list beside `COMMUNITY_FIXES`, with the same shape (name, why,
+source) and the same policy — written once per baseline version, then the player owns it:
+
+```
+bind MOUSE2 "+speed_throw"
+```
+
+This is exactly what the game's own Controls menu writes for *Aim Down Sight: Hold*, so the round
+trip needs nothing new: a player who switches to Toggle in game has the engine rewrite that line and
+`applyReadBack` already parses binds.
+
+### 3. Three baseline corrections the engine's own config.cfg exposed
+
+Reading the file the game actually writes is the first time we have seen its types.
+
+* **`cg_drawFPS` is a string enum, not a bool.** The engine writes `seta cg_drawFPS "Off"`. We were
+  pushing `1`, which is not one of its values. Now `Simple` / `Off`, and the read-back treats `Off`
+  as off.
+* **`r_displayRefresh` is a string with a unit** — `"60 Hz"` — and it was sitting at 60 on a 240 Hz
+  panel. It now follows the chosen display, in the engine's own format, and is omitted entirely when
+  the display reports no refresh rate rather than inventing one.
+* **`r_autopriority 1` added.** It is a real vanilla T4 dvar (it is in that config.cfg at its stock
+  0), and iw4x-client ships the same feature in the same component as its raw-mouse fix: a higher
+  priority class while the window has focus, so a background process cannot take the frame the input
+  arrived on. Costs nothing when nothing else is busy.
+
+Deliberately **not** changed, and the reasons matter: `com_maxfps` stays **250** — in the Q3 lineage
+only divisors of 1000 behave (125 / 250 / 333 / 500) and 250 is already one; `m_filter 0` and
+`cl_mouseAccel 0` were already right; `r_vsync 0` is measured innocent (`client.md` §1e); and
+**nothing toggles vsync or resolution at runtime** — the R15 trawl reports T4 crashing on that in
+the in-game video menu, so both stay in the seeded config and on the command line.
+
+`+set logfile 2` on line 160 of `launch.js` **stays**. Note what it costs, because it is not free:
+`logfile` puts the script VM into developer mode and makes a GSC runtime error fatal — that is the
+custom-map breakage the scripts lane found. `shared/core/components/script_error_retail.cpp`
+(`4986d70`) removes the kill and keeps the diagnostics, and it is in 0.2.3's DLL.
+
+### 4. The staleness gate, which is the real bug behind two of B's three reports
+
+`tools/stage-client.js` had `PREFER = ['launcher', 'referee', 'foundation']` and took
+`build/launcher` **unconditionally, regardless of age**. So 0.2.2 shipped a client DLL built before
+`borderless.cpp` even existed, while a newer one sat in `build/c2`. B played it, reported that
+borderless did not work and that the mouse fix had not helped, and **both were true** — neither
+component was in the binary he ran (`client.md` §5a has the three independent readings).
+
+A preference list may pick *which* build. It may not pick an *old* one. `stage-client` now compares
+the chosen DLL's mtime against the newest `.cpp` / `.hpp` under `client-dll/components`,
+`server/components`, `shared/core` and `shared/t4`, and **refuses to stage a client older than the
+source**, naming both files and the gap in hours. `--allow-stale` overrides it and you should have a
+reason. The same file already refuses to build with no DLL at all, for the same class of reason.
+
+Related, in the DLL and worth knowing here: **the build banner used to lie.** `__DATE__`/`__TIME__`
+are the compile time of `dllmain.cpp`'s translation unit, so an incremental build leaves them alone
+— three different DLLs all announced `build Sep 21 2026 16:18:51`. The banner now also prints the
+DLL file's own last-write time and size, which cannot go stale. When a player reports a component
+misbehaving, that line is the first thing to read.
+
+### 5. 0.2.3
+
+```
+ENW-Zombies-Launcher-Setup-0.2.3.exe   94.5 MB
+  sha256 35be221b12821d998e83f855d4693477d5312872e1248e1034ac0e03481628a6
+client enw_t4.dll  1,577,472 B, 47 components
+  sha256 8a7b7b30f5f8e97c644b3bcffa7b77328f1d3210eb55b2ea0bc9817744e843bc
+```
+
+`npm test` **107 passed, 0 failed** (five new: the engine config path, the ADS hold bind, the merge
+preserving binds and unknown dvars, the `cg_drawFPS` enum, the `r_displayRefresh` format).
+`npm run smoke` 9 of 10 — the one failure is the agent shell's own sandbox notice (writes under
+`%LOCALAPPDATA%` from this process are redirected into a package cache; reads pass through), plus a
+warning that B's launcher is running and holding the single-instance lock. Neither is a regression.
+Published to `web/public/updates`; `latest.yml` reads `version: 0.2.3`.
+
+**The DLL half is proven in the running game** — `client.md` §5f has the 17:38 run on `waw-c2`:
+47 components, borderless read back as `window rect == client rect` at 2560x1440, and 1,051
+`WM_INPUT` against 50 legacy `WM_MOUSEMOVE`. **The launcher half is not.** The config-path fix, the
+ADS bind and the merge are proven by unit test and by reading the file the engine actually wrote;
+that the new seed reaches the engine is **unproven until B's next Play**, because that run used the
+dev harness's own `fs_homepath`, not the launcher's. The first Play on 0.2.3 should leave
+`<ENW>\home\localappdata\Activision\CoDWaW\players\profiles\$$$\config.cfg` holding
+`seta r_mode "2560x1440"`, `seta vid_xpos "0"` and `bind MOUSE2 "+speed_throw"` — that file is the
+check.

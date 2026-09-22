@@ -24,6 +24,9 @@
 #include "scheduler.hpp"
 #include "steamstub.hpp"
 
+#include <cstdio>
+#include <string>
+
 namespace enw {
 namespace {
 
@@ -36,9 +39,31 @@ std::string module_path(HMODULE m) {
     return buf;
 }
 
+// `__DATE__`/`__TIME__` are the compile time of THIS translation unit, and on an
+// incremental build an unchanged dllmain.cpp keeps the old ones. 2026-09-22 cost
+// an hour to exactly that: three different DLLs all announced "build Sep 21 2026
+// 16:18:51", so the banner could not tell which binary a player had run, and a
+// stale-client bug was diagnosed as a component that failed to register. The
+// file's own timestamp and size cannot go stale, so they go on the same line.
+std::string file_stamp(const std::string& path) {
+    WIN32_FILE_ATTRIBUTE_DATA a{};
+    if (!::GetFileAttributesExA(path.c_str(), GetFileExInfoStandard, &a)) return "unreadable";
+    SYSTEMTIME st{};
+    FILETIME lt{};
+    ::FileTimeToLocalFileTime(&a.ftLastWriteTime, &lt);
+    ::FileTimeToSystemTime(&lt, &st);
+    char buf[96]{};
+    std::snprintf(buf, sizeof buf, "%04u-%02u-%02u %02u:%02u:%02u, %lu bytes", st.wYear,
+                  st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond,
+                  static_cast<unsigned long>(a.nFileSizeLow));
+    return buf;
+}
+
 void log_banner() {
-    ENW_INFO("enw_t4 build %s %s", __DATE__, __TIME__);
-    ENW_INFO("  dll : %s", module_path(g_self).c_str());
+    const std::string self = module_path(g_self);
+    ENW_INFO("enw_t4 build %s %s (translation unit; the FILE is %s)", __DATE__, __TIME__,
+             file_stamp(self).c_str());
+    ENW_INFO("  dll : %s", self.c_str());
     ENW_INFO("  exe : %s", module_path(nullptr).c_str());
     ENW_INFO("  pid : %lu", static_cast<unsigned long>(::GetCurrentProcessId()));
     ENW_INFO("  cmd : %s", ::GetCommandLineA());

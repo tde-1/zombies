@@ -559,3 +559,228 @@ Believing a redirect that did not take is how a player's own save gets overwritt
 See `launcher.md`, the 2026-09-23 section, for the run: a Play Local on a custom map with the
 player's whole `Activision\CoDWaW` tree hashed before and after.
 
+
+---
+
+## 5. The 2026-09-22 evening pass: B played 0.2.2 and reported three things
+
+B, after a real session on launcher 0.2.2: *"micro stutters and the frame rate visibly goes down
+when the mouse is moving at a high polling rate; turning the mouse down to 125 Hz fixed it"*,
+*"default ADS should be hold, not toggle"*, and *"borderless is not working — I'm in windowed mode
+with a border"*.
+
+### 5a. Start here, because it changes how you read everything below
+
+**The DLL B played did not contain the components he was reporting on.** The launcher's bundled
+client (`launcher/resources/client/enw_t4.dll`) was `24b3bf94…`, staged 2026-09-22 03:43, and a
+`loadtest` of it registers **39 components**; the repo's build at the time registered **46**, and
+the one 0.2.3 ships registers **47**. `frametime`, `enw_localappdata` and the whole
+`ENW_RAW_MOUSE_NOLEGACY` path are absent from `24b3bf94…` — checked by byte-string search of the
+binary, not by inference. A launcher-spawned run that evening (`enw-30340.log`, 16:58) announces
+`components registered: 28` and contains **not one `mouse_polling:` or `borderless:` line**, despite
+`ENW_BORDERLESS=1` and `+set r_noborder 1` on its own command line, which the same log quotes.
+
+The cause is `launcher/tools/stage-client.js`: its `PREFER = ['launcher', 'referee', 'foundation']`
+picked `build/launcher` **unconditionally, regardless of age**, so a DLL built before
+`borderless.cpp` existed was staged over a newer one sitting in `build/c2`. That is now a hard gate
+— see 5e.
+
+**Two traps that made this take an hour, both now fixed in place:**
+
+1. **The build banner lied.** `__DATE__` / `__TIME__` are the compile time of `dllmain.cpp`'s
+   translation unit, and an incremental build leaves an unchanged TU alone. *Three different DLLs*
+   all announced `build Sep 21 2026 16:18:51`, so the banner could not identify the binary a player
+   had run. `log_banner()` now also prints the **file's own last-write time and size**, which cannot
+   go stale.
+2. **A read of `%LOCALAPPDATA%` from an agent shell is not a write to it.** `npm run smoke` says so
+   out loud: this process's writes under `%LOCALAPPDATA%` are redirected into a per-app package
+   cache, so an install done from here is invisible to the launcher B starts. Reads pass through.
+   Everything quoted in this section is a read.
+
+### 5b. The mouse: what the community has actually proven, and what we took from it
+
+Researched across CoD4x, iw4x, Plutonium, cod2x, T4M, Special K, Quake3e / ioquake3, RInput and the
+Win32 documentation. The short version: **there is no WaW patch to port.** T4M
+(<https://github.com/iAmThatMichael/T4M>) raises asset limits and does not touch input, the message
+loop or timer resolution; Plutonium's `raw_input 1` exists for T4 but is documented as an
+*acceleration* fix and their 2026 threads still tell people to drop to 125 Hz
+(<https://forum.plutonium.pw/topic/40851/mouse-acceleration-solved>); CoD4x's thread
+(<https://cod4x.ovh/t/possible-fix-for-fps-drops-when-moving-mouse/4105>) is anecdote with no diff.
+The WaW community's only circulating fix is "lower your polling rate"
+(<https://steamcommunity.com/app/10090/discussions/0/1837937637880549012/>).
+
+**The one piece of proven prior art is iw4x-client PR #166, "Fix of fps drop when using a high
+polling rate mouse"** (<https://github.com/iw4x/iw4x-client/pull/166>), whose entire mechanism is
+`RIDEV_NOLEGACY` — *"disabling legacy WindowProc messages ... bottleneck of window messages when
+using high polling rate mouse (8k)"*. It is demonstrated by a working toggle (`m_rawinput 0` brings
+the drop back), not by numbers. **Quake3e** does the same and is the cleanest reference
+(<https://github.com/ec-/Quake3e/blob/master/code/win32/win_input.c>): `RIDEV_NOLEGACY`, commented
+*"skips all WM_\*BUTTON\* and WM_MOUSEMOVE stuff"*, and — the part we had missed — **its raw path
+never recentres**; `IN_CaptureMouse` does one `ClipCursor` instead. **CoD2x**
+(<https://github.com/callofduty2x/CoD2x>) exposes the whole thing as `m_rinput` with an
+`m_rinput_hz` measured-rate readout.
+
+Two Win32 facts underneath: **`GetRawInputData` takes a lock per call**
+(<https://github.com/libsdl-org/SDL/issues/8756> — Valorant shipped a "Raw Input Buffer" option for
+exactly this and later defaulted it on), and **`SetCursorPos` synthesises a `WM_MOUSEMOVE`** into the
+queue you are draining.
+
+So T4's stock path floods the pump **three** ways at once, and 0.2.2 had only stopped counting one
+of them:
+
+| | per device report | our 0.2.2 default | 0.2.3 |
+|---|---|---|---|
+| legacy `WM_MOUSEMOVE`, dispatched one at a time by `Sys_GetEvent` | 1 | **kept** | **gone** (`RIDEV_NOLEGACY`) |
+| `WM_INPUT` + a locked `GetRawInputData` each | 1 | one read each | one **`GetRawInputBuffer`** for the queued ones |
+| `IN_RecenterMouse` → `SetCursorPos` → another `WM_MOUSEMOVE` | once a frame | **still running** | **skipped**, `ClipCursor` instead |
+
+### 5c. What changed in `mouse_polling.cpp`, and the deviation that is retracted
+
+`ENW_RAW_MOUSE_NOLEGACY` is **on by default**. Deviation 1 in §1b — "NO `RIDEV_NOLEGACY`" — is
+retracted in the file rather than deleted: its reasoning (suppressing legacy would take the OS
+cursor away from the menu path) was sound and its conclusion was still wrong, and B played the wrong
+conclusion. NOLEGACY is registered **only while the game owns the mouse**, which is what
+`CL_MouseEvent`'s own return value says, read fresh every frame; the menu, the console, `WM_KILLFOCUS`
+and shutdown all put it straight back. Buttons go to the engine's own WndProc as the legacy messages
+it expects, through `CallWindowProcA`.
+
+Four more, each because the research named a specific failure:
+
+* **The recentre is skipped and the cursor is clipped instead** while NOLEGACY is on (Quake3e's
+  structure). This is the third leg of the flood and it was ours to remove: the only reason the
+  engine recentres is that its deltas are differences between two cursor positions, and with raw
+  deltas there is nothing to recentre for.
+* **A real bug in the never-tested NOLEGACY path is fixed.** It used to `return` from `OnRawInput`
+  on the grounds that the once-a-frame buffer read owned everything. It does not: **`GetMessage`
+  removes the raw event it is delivering from the buffered queue before it returns**, so
+  `GetRawInputBuffer` never sees the report that produced this `WM_INPUT` — only later ones. Every
+  dispatched report was being dropped. MSDN's documented pattern (`GetRawInputData` for the current
+  event, then `GetRawInputBuffer` for the rest) is what runs now, and the button transitions on the
+  dispatched event are synthesised too.
+* **`GetRawInputBuffer` returning `-1` no longer means a dead mouse.** Special K leaves it failing
+  with `ERROR_PROC_NOT_FOUND` (<https://github.com/SpecialKO/SpecialK/issues/354>); we log once and
+  fall back to per-message reads for the rest of the session, keeping NOLEGACY.
+* **A measured device rate in the log**, CoD2x's `m_rinput_hz` as a line: `mouse_polling: measured
+  device rate 4500 Hz now, 8000 Hz peak this session`. It is the number that says whether the reports
+  are reaching the game at all.
+
+Separately, and it is **additive, not the same fix**: the research is clear that Windows timer
+resolution and a clean `com_maxfps` are their own stutter source in the Q3 lineage (only divisors of
+1000 behave — 125 / 250 / 333 / 500). `com_maxfps` is already 250 and the DLL already calls
+`timeBeginPeriod(1)`. Nothing was changed there and nothing should be credited to it.
+
+### 5d. Aim down sights: it is a bind, not a dvar
+
+**There is no ADS hold/toggle dvar in T4.** `ads_toggle`, `cl_ads`, `cg_ads`, `ads_button` and
+`ToggleADS` are all **zero occurrences** in the decrypted 1.7 image. What the game's own Controls
+menu writes when you pick Hold or Toggle is **which command `MOUSE2` is bound to** — both pairs are
+in the image, at `0x44D40D` and `0x489A91`:
+
+```
++speed_throw      / -speed_throw        HOLD
++toggleads_throw  / -toggleads_throw    TOGGLE   <- what B's profile held
+```
+
+So the default is set where the game will find it, in the seeded config, as
+`bind MOUSE2 "+speed_throw"`, and the round trip is free: a player who picks Toggle in the menu has
+the game rewrite that line, and `applyReadBack` reads binds already. Nothing was patched in the DLL
+for this — a bind is the stock mechanism, it survives a `writeconfig`, and it is what the menu
+itself would have written.
+
+### 5e. Borderless: the component is right; it was not in the binary
+
+`r_noborder` is **confirmed absent** from the exe. `r_noborder`, and the substring `noborder`
+case-insensitively, are **zero occurrences** in the 78 MB dump — re-checked this session against the
+dump itself rather than against the note, because the R15 trawl claimed otherwise. The trawl is
+**wrong on that one dvar**; the other four in Plutonium's recipe (`r_fullscreen`, `vid_xpos`,
+`vid_ypos`, plus `r_monitor`) are real, and so, it turns out, is `r_autopriority` — it is in the
+config.cfg the engine writes on this box, which is how iw4x's own feature name showed up in a 2008
+game.
+
+`borderless.cpp` therefore stays as the Borderless-Gaming-style style strip, and it demonstrably
+works — `enw-7372.log`, 15:48 on 2026-09-22, our own harness:
+
+```
+borderless: target 2560x1440 at (0,0) from the command line (r_mode, vid_xpos, vid_ypos)
+borderless: style 0x14C80000 -> 0x94080000, exstyle 0x00000100 -> 0x00000000.
+            WS_CAPTION=0 WS_THICKFRAME=0 WS_BORDER=0 WS_POPUP=1.
+            window rect 2560x1440 at (0,0), client 2560x1440. BORDERLESS.
+```
+
+That is a `GetWindowLong` read-back, and `window rect == client rect` is the proof there is no frame
+left. What B ran did not have the component in it at all (5a) — **and even if it had, the engine
+profile it read still said `seta vid_xpos "40"` and `seta r_mode "800x600"`**, because the launcher
+was seeding a path the engine never opens. `config.cfg` is exec'd during `Com_Init`, after the
+command line's `+set`s, so it wins. That is `launcher.md`'s 2026-09-22 section and it is fixed.
+
+`vid_restart` is **not** used: the R15 trawl reports a known deadlock on it, and the style strip
+re-applies from the shared frame tick anyway — it detects a new HWND and re-applies, which is what
+covers both `vid_restart` and alt-tab. Those two re-applications remain **unproven**; the poll
+handles them and nothing has exercised it.
+
+### 5f. What is PROVEN, and the three runs that decide the rest
+
+**Proven.**
+
+* The stutter tracks mouse input volume on B's own hardware, scene and dvars held constant (§1e's
+  table: p99 6.75 ms and 0.00 % of frames over 16.7 ms with the counters frozen; p99 23–27 ms and
+  ~4 % with the mouse moving). The usual suspects are excluded by the same run.
+* The DLL B played was missing the components he was reporting on — three independent readings:
+  component counts from `loadtest` (39 vs 47), byte-string search of the binaries, and a launcher
+  run whose log contains no line from either component (5a).
+* `r_noborder` does not exist in the image (5e). ADS is a bind, and B's profile held the toggle one
+  (5d). The launcher's config seed was going to a directory the engine has never opened — the
+  directory did not exist on this box after a night of play (launcher.md).
+* 0.2.3's DLL builds, loads and registers **47** components with no faults (`loadtest`), and the
+  launcher's 107 tests pass.
+
+**Proven in the running game, 2026-09-22 17:38, `waw-c2`, 55 s on `nazi_zombie_prototype`,
+windowed, 0.2.3's DLL** (`ZombiesDev\logs\c2\enw-23460.log`). The lock came free at 17:45 and this
+run took and released it. The mechanism does what it claims, and every line below is a read-back or
+a counter, not a call that returned without error:
+
+```
+enw_t4 build Sep 22 2026 17:34:15 (translation unit; the FILE is 2026-09-22 17:38:08, 1577472 bytes)
+  components registered: 47
+borderless: style 0x14C80000 -> 0x94080000, exstyle 0x00000100 -> 0x00000000.
+            WS_CAPTION=0 WS_THICKFRAME=0 WS_BORDER=0 WS_POPUP=1.
+            window rect 2560x1440 at (0,0), client 2560x1440. BORDERLESS.
+mouse_polling: legacy mouse messages OFF -- the game owns the mouse now.   (flip 1)
+mouse_polling: WM_INPUT total=1051 ... | legacy WM_MOUSEMOVE total=50
+mouse_polling: NOLEGACY is ON (3 flips); GetRawInputBuffer: in use, 198 call(s) for 211 report(s);
+               IN_RecenterMouse skipped 802 time(s) (ClipCursor on instead)
+frametime: window 2 -- 2489 frames, 248.8 fps avg | p50 4.25  p95 5.75  p99 7.25  max 13.08 ms
+           | over 16.7ms: 0 (0.00%)
+```
+
+Read the second and third `mouse_polling` lines together, because that pair is the whole point:
+**1,051 `WM_INPUT` against 50 legacy `WM_MOUSEMOVE`.** The legacy half of the flood is gone while the
+game owns the mouse, and it comes straight back when it does not — `legacy WM_MOUSEMOVE` jumps 50 →
+186 → 197 in the two windows after flip 4 hands the mouse to the menu, and `ClipCursor` follows it
+`off`. Four flips in 55 s, driven by `CL_MouseEvent`'s own return value, with the menu cursor alive
+throughout. `IN_RecenterMouse skipped 1,101` times: the `SetCursorPos` feedback leg is gone too.
+`GetRawInputBuffer: in use` — no Special K fallback on this box. And the borderless line is a
+`GetWindowLong` read-back with **window rect == client rect** covering the whole 2560x1440 monitor,
+from 0.2.3's own binary.
+
+**Still not proven, and it is the only thing that matters to B.** Whether this removes the *feel* of
+the stutter at his real polling rate. Nobody had a hand on the mouse in that run — the measured
+device rate peaked at 118 Hz, which is ambient cursor drift, so `reports per call` sat at 1.1 and the
+buffered read was never under load. `SendInput` at 8 kHz is discarded on this machine (§1e, retracted
+there in full). Also unexercised: alt-tab re-application and `vid_restart`.
+
+**B's three runs.** Same map, one minute each, moving the mouse the whole time at his real polling
+rate. Read the `frametime: window` and `mouse_polling:` lines out of
+`%LOCALAPPDATA%\ENWZombies\logs\enw-<pid>.log`.
+
+| run | environment | what it decides |
+|---|---|---|
+| 1 | `ENW_FRAMETIME=1` | **0.2.3's default**: NOLEGACY, no recentre, buffered reads |
+| 2 | `ENW_FRAMETIME=1 ENW_RAW_MOUSE_NOLEGACY=0` | exactly what 0.2.2 did — the A/B for the whole change |
+| 3 | `ENW_FRAMETIME=1 ENW_RAW_MOUSE=0` | the stock engine path, as the floor |
+
+Run 1 should show `legacy WM_MOUSEMOVE total` near zero while in the game, `IN_RecenterMouse skipped`
+climbing, `reports per call` well above 1, and a `measured device rate` matching his mouse — those
+four together are the plumbing proof. The verdict is whether run 1 beats run 2 on **p99** and on
+**over 16.7ms**. If it does not, the default reverts and the next suspect is `Sys_GetEvent`'s
+drain-until-empty loop itself, which no community project has touched.

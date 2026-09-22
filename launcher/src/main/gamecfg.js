@@ -39,7 +39,7 @@ import { pickDisplay, resolutionOf, validResolution } from './display.js'
 
 // Bump this when the baseline below changes: the seed is rewritten on the next
 // launch, so a fix we add later reaches players who already have a config.cfg.
-export const BASELINE_VERSION = 2
+export const BASELINE_VERSION = 3
 
 // The profile the engine uses when `players/profiles/active.txt` names one. We seed
 // this name; the engine creates and uses it because active.txt points at it.
@@ -136,6 +136,33 @@ export const COMMUNITY_FIXES = [
     why: 'The engine maximum, and already the value on this box. Pinned so a fresh profile does not start at a lower one.',
     source: 'https://plutonium.pw/docs/client/t4/',
   },
+  {
+    dvar: 'r_autopriority', value: '1', name: 'Raise the game\'s process priority while it has focus',
+    why: 'A real vanilla T4 dvar — it is in the config.cfg the engine itself writes on this box, at its stock 0. iw4x-client ships the same feature in the same component as its raw-mouse fix: the game goes to a higher priority class while focused so a background process cannot take the frame the input arrived on. Costs nothing when nothing else is busy.',
+    source: 'https://github.com/iw4x/iw4x-client/blob/develop/src/Components/Modules/RawMouse.cpp',
+  },
+]
+
+// The binds ENW seeds. Same rules as the dvars: written once per baseline
+// version, then the player owns them — changing the key in the in-game Controls
+// menu rewrites config.cfg and `applyReadBack` picks the new bind up.
+//
+// `+speed_throw` vs `+toggleads_throw` IS the aim-down-sights Hold/Toggle
+// setting on T4. There is no `cl_ads_toggle`-style dvar: `ads_toggle`,
+// `cl_ads`, `cg_ads` and `ads_button` are all ZERO occurrences in the
+// decrypted 1.7 image, and what the game's own Controls menu writes when you
+// pick Hold or Toggle is which of these two commands MOUSE2 is bound to. Both
+// command pairs are in the image (`+speed_throw`/`-speed_throw` at 0x44D40D
+// and 0x489A91, `+toggleads_throw`/`-toggleads_throw` beside them).
+//
+// B's own profile on this box was `bind MOUSE2 "+toggleads_throw"` — the stock
+// default, and the toggle he is complaining about.
+export const BASELINE_BINDS = [
+  {
+    key: 'MOUSE2', command: '+speed_throw', name: 'Aim down sights: HOLD',
+    why: 'Stock WaW binds MOUSE2 to +toggleads_throw, i.e. press once to enter ADS and again to leave. B wants hold. This is exactly what the in-game Controls menu writes for "Aim Down Sight: Hold", so the player can change it back in game and the read-back keeps their choice.',
+    source: 'the decrypted 1.7 image: +speed_throw / +toggleads_throw are the two ADS commands and there is no ADS dvar',
+  },
 ]
 
 // Fixes that are real and are NOT ours: they need the DLL or an exe edit, so they are
@@ -185,6 +212,14 @@ export function baselineDvars(settings = {}, display = null) {
   push('r_mode', resolution)
   push('r_aspectRatio', 'auto')
 
+  // `r_displayRefresh` is a STRING with a unit, not a number: the config the
+  // engine writes on this box reads `seta r_displayRefresh "60 Hz"` — on a
+  // 240 Hz panel. Left at 60 it caps a fullscreen game to 60 and gives DWM the
+  // wrong idea about a borderless one. Written in the engine's own format.
+  if (display && Number.isFinite(Number(display.refresh)) && Number(display.refresh) > 0) {
+    push('r_displayRefresh', `${Math.round(Number(display.refresh))} Hz`)
+  }
+
   if (mode === 'borderless') {
     // Plutonium's recipe (https://plutonium.pw/docs/client/t4/perfect-borderless-window/).
     // `r_noborder` is NOT a vanilla dvar — the DLL does the window style — but an
@@ -214,7 +249,9 @@ export function baselineDvars(settings = {}, display = null) {
   // The account's own, last, so they win.
   push('snd_volume', settings.volume)
   push('sensitivity', settings.sensitivity)
-  if (settings.showFps) push('cg_drawFPS', '1')
+  // `cg_drawFPS` is a string ENUM on T4, not a bool: the engine's own config
+  // writes `seta cg_drawFPS "Off"`. `1` is not one of its values.
+  push('cg_drawFPS', settings.showFps ? 'Simple' : 'Off')
 
   return out
 }
@@ -249,16 +286,112 @@ export function renderConfigCfg(pairs, { version = BASELINE_VERSION } = {}) {
     '',
   ]
   for (const [d, v] of pairs) lines.push(`seta ${d} "${String(v).replace(/"/g, '')}"`)
+  for (const b of BASELINE_BINDS) lines.push(`bind ${b.key} "${b.command}"`)
   lines.push('')
   return lines.join('\r\n')
+}
+
+// Fold the baseline into a config the GAME wrote, instead of replacing it.
+//
+// The engine's own config.cfg is ~500 lines: `unbindall`, every bind, every
+// seta it knows about, and a trailing `con_hidechannel ...` line. Overwriting
+// that with our 30-line seed would throw away the player's key bindings and
+// everything the engine expects to find — so each baseline line is substituted
+// in place where it already exists, and appended only when it does not.
+// Anything we have no opinion about is passed through untouched.
+export function mergeConfigCfg(existing = '', pairs = [], binds = BASELINE_BINDS) {
+  const want = new Map(pairs.map(([d, v]) => [d, String(v).replace(/"/g, '')]))
+  const wantBind = new Map(binds.map((b) => [b.key.toUpperCase(), b.command]))
+  const seen = new Set()
+  const seenBind = new Set()
+  const out = []
+  let tail = []
+
+  for (const raw of String(existing).split(/\r?\n/)) {
+    const line = raw.replace(/\s+$/, '')
+    const m = line.match(/^(\s*)(?:seta|setu|set|sets)\s+(\S+)\s+/)
+    if (m && want.has(m[2])) {
+      if (!seen.has(m[2])) { out.push(`${m[1]}seta ${m[2]} "${want.get(m[2])}"`); seen.add(m[2]) }
+      continue
+    }
+    const b = line.match(/^(\s*)bind\s+(\S+)\s+/)
+    if (b && wantBind.has(b[2].toUpperCase())) {
+      const k = b[2].toUpperCase()
+      if (!seenBind.has(k)) { out.push(`${b[1]}bind ${b[2]} "${wantBind.get(k)}"`); seenBind.add(k) }
+      continue
+    }
+    out.push(line)
+  }
+
+  // `con_hidechannel ...` is the last line the engine writes and it is a
+  // command, not a setting; anything we append has to go before it or the
+  // engine's own rewrite moves it anyway. Peel it off, append, put it back.
+  while (out.length && (out[out.length - 1] === '' || /^con_(hide|show)channel\b/.test(out[out.length - 1]))) {
+    tail.unshift(out.pop())
+  }
+
+  const added = []
+  for (const [d, v] of want) if (!seen.has(d)) added.push(`seta ${d} "${v}"`)
+  for (const [k, cmd] of wantBind) if (!seenBind.has(k)) added.push(`bind ${k} "${cmd}"`)
+  if (added.length) {
+    out.push('// --- ENW Zombies baseline (the launcher added these; change them in game and they stay changed)')
+    out.push(...added)
+  }
+
+  return [...out, ...tail].join('\r\n').replace(/\r\n*$/, '') + '\r\n'
 }
 
 // Where the engine keeps the profile config. `%s/players/profiles/%s/config.cfg`
 // (string at 0x883E64, client.md §2a) resolved against fs_homepath, plus the plain
 // `config.cfg` beside it. We write both: which one a given boot reads depends on
 // whether a profile is active, and a stale one is worse than a duplicate.
-export function configPaths(homeDir = P.home, profile = PROFILE) {
+// CORRECTION 2026-09-22, and it is why none of this reached the game.
+//
+// `%s/players/profiles/%s/config.cfg` (0x883E64) is resolved against the
+// engine's LOCAL APP DATA folder, not against `fs_homepath` — and since
+// `enw_localappdata.cpp` landed, that folder is
+// `<ENW>\home\localappdata\Activision\CoDWaW`. So the launcher was seeding
+// `<ENW>\home\players\profiles\enw\config.cfg`, a path the engine has never
+// opened; `<ENW>\home\players` did not even exist on this box after a night of
+// play. The file the engine really reads and rewrites is
+// `<ENW>\home\localappdata\Activision\CoDWaW\players\profiles\<active>\config.cfg`,
+// and `active.txt` beside it said `$$$` — the engine's own default profile,
+// because our `active.txt` was written somewhere it could not see.
+//
+// Consequence, measured: that profile still held `seta r_mode "800x600"`,
+// `seta r_displayRefresh "60 Hz"`, `seta vid_xpos "40"` and
+// `bind MOUSE2 "+toggleads_throw"` after a session launched with
+// `+set r_mode 2560x1440 +set vid_xpos 0`. `config.cfg` is exec'd during
+// Com_Init, AFTER the command line's early `+set`s, so it wins.
+//
+// The old `fs_homepath` locations are kept and still written: they cost
+// nothing, and a build without the LocalAppData redirect (a dev run with
+// ENW_LOCALAPPDATA unset) does use them.
+const LOCALAPPDATA_SUFFIX = ['Activision', 'CoDWaW']
+
+// Whatever `active.txt` names is the profile the engine is actually using. We
+// read it rather than impose one: the engine creates `$$$` by itself and
+// renaming it out from under a player loses their binds.
+export function activeProfile(dir, fallback = PROFILE) {
+  try {
+    const name = fs.readFileSync(path.join(dir, 'active.txt'), 'utf8').trim()
+    if (name && !/[\\/]/.test(name)) return name
+  } catch {}
+  return fallback
+}
+
+export function configPaths(homeDir = P.home, profile = PROFILE, localAppData = null) {
+  localAppData = localAppData || path.join(homeDir, 'localappdata')
+  const engineRoot = path.join(localAppData, ...LOCALAPPDATA_SUFFIX)
+  const engineProfiles = path.join(engineRoot, 'players', 'profiles')
+  const engineProfile = activeProfile(engineProfiles, profile)
   return {
+    // What the ENGINE reads and writes. First in every list below.
+    engineProfile,
+    engineProfileDir: path.join(engineProfiles, engineProfile),
+    engineCfg: path.join(engineProfiles, engineProfile, 'config.cfg'),
+    engineActiveTxt: path.join(engineProfiles, 'active.txt'),
+    // The fs_homepath tree, kept for a run with no LocalAppData redirect.
     profileDir: path.join(homeDir, 'players', 'profiles', profile),
     profileCfg: path.join(homeDir, 'players', 'profiles', profile, 'config.cfg'),
     activeTxt: path.join(homeDir, 'players', 'profiles', 'active.txt'),
@@ -280,10 +413,10 @@ export function seedState(homeDir = P.home, profile = PROFILE) {
 //
 // The last line is rule 4 of the round trip: never override an in-game change with a
 // stale saved value. Once the player has a config, the game owns it and we only read.
-export function seedHome({ homeDir = P.home, profile = PROFILE, settings = {}, display = null, force = false } = {}) {
-  const p = configPaths(homeDir, profile)
+export function seedHome({ homeDir = P.home, profile = PROFILE, settings = {}, display = null, localAppData = null, force = false } = {}) {
+  const p = configPaths(homeDir, profile, localAppData)
   const prev = seedState(homeDir, profile)
-  const exists = fs.existsSync(p.profileCfg)
+  const exists = fs.existsSync(p.engineCfg) || fs.existsSync(p.profileCfg)
   const reason = !exists ? 'first launch: no config.cfg yet'
     : force ? 'forced'
       : (prev?.version !== BASELINE_VERSION) ? `the ENW baseline changed (${prev?.version ?? 'none'} -> ${BASELINE_VERSION})`
@@ -291,16 +424,39 @@ export function seedHome({ homeDir = P.home, profile = PROFILE, settings = {}, d
   if (!reason) return { written: false, reason: 'the player already has a config at this baseline version', paths: p }
 
   const pairs = baselineDvars(settings, display)
-  const text = renderConfigCfg(pairs)
+  const fresh = renderConfigCfg(pairs)
+  const wrote = []
+
+  // 1. The file the ENGINE actually reads. MERGED, never replaced: it holds the
+  //    player's binds and several hundred setas the engine expects to find.
+  try {
+    fs.mkdirSync(assertWritable(p.engineProfileDir), { recursive: true })
+    let text = fresh
+    try {
+      const existing = fs.readFileSync(p.engineCfg, 'utf8')
+      if (existing.trim()) text = mergeConfigCfg(existing, pairs)
+    } catch {}
+    fs.writeFileSync(assertWritable(p.engineCfg), text)
+    wrote.push(p.engineCfg)
+    // Only claim the active profile when the engine has not already picked one.
+    if (!fs.existsSync(p.engineActiveTxt)) {
+      fs.writeFileSync(assertWritable(p.engineActiveTxt), p.engineProfile)
+    }
+  } catch (e) {
+    // Not fatal: a dev run with no LocalAppData redirect has no such tree.
+    wrote.push(`(engine profile not written: ${e.message})`)
+  }
+
+  // 2. The fs_homepath tree, for a run without the redirect.
   fs.mkdirSync(assertWritable(p.profileDir), { recursive: true })
   fs.mkdirSync(assertWritable(path.join(homeDir, 'main')), { recursive: true })
-  fs.writeFileSync(assertWritable(p.profileCfg), text)
-  fs.writeFileSync(assertWritable(p.plainCfg), text)
-  // active.txt names the profile the engine loads. Without it the engine invents one
-  // and never reads the file we just wrote.
+  fs.writeFileSync(assertWritable(p.profileCfg), fresh)
+  fs.writeFileSync(assertWritable(p.plainCfg), fresh)
   fs.writeFileSync(assertWritable(p.activeTxt), profile)
-  fs.writeFileSync(assertWritable(p.stamp), JSON.stringify({ version: BASELINE_VERSION, at: new Date().toISOString(), reason, dvars: Object.fromEntries(pairs) }, null, 2))
-  return { written: true, reason, paths: p, dvars: pairs }
+  wrote.push(p.profileCfg, p.plainCfg)
+
+  fs.writeFileSync(assertWritable(p.stamp), JSON.stringify({ version: BASELINE_VERSION, at: new Date().toISOString(), reason, wrote, dvars: Object.fromEntries(pairs), binds: Object.fromEntries(BASELINE_BINDS.map((b) => [b.key, b.command])) }, null, 2))
+  return { written: true, reason, paths: p, dvars: pairs, wrote }
 }
 
 // ------------------------------------------------------------- the round trip --
@@ -325,10 +481,12 @@ export function parseConfigCfg(text = '') {
 
 // Read the config the game left behind. Newest of the two, because which one the
 // engine wrote depends on whether the profile was active.
-export function readConfig({ homeDir = P.home, profile = PROFILE } = {}) {
-  const p = configPaths(homeDir, profile)
+export function readConfig({ homeDir = P.home, profile = PROFILE, localAppData = null } = {}) {
+  const p = configPaths(homeDir, profile, localAppData)
   let best = null
-  for (const f of [p.profileCfg, p.plainCfg]) {
+  // `engineCfg` first: with the LocalAppData redirect on, it is the only one
+  // the game ever writes.
+  for (const f of [p.engineCfg, p.profileCfg, p.plainCfg]) {
     try {
       const st = fs.statSync(f)
       if (!best || st.mtimeMs > best.mtimeMs) best = { file: f, mtimeMs: st.mtimeMs }
@@ -378,7 +536,7 @@ export function settingsFromConfig({ dvars, binds } = {}) {
   if (Number.isFinite(vol)) patch.volume = vol
 
   const fpsHud = g('cg_drawFPS')
-  if (fpsHud !== undefined) patch.showFps = fpsHud !== '0'
+  if (fpsHud !== undefined) patch.showFps = fpsHud !== '0' && fpsHud.toLowerCase() !== 'off'
 
   const mon = Number(g('r_monitor'))
   if (Number.isInteger(mon) && mon >= 0) patch.display = String(mon)
