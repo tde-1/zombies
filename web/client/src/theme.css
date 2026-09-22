@@ -329,6 +329,111 @@ table.data td.num, table.data th.num { text-align: right; font-family: var(--num
 .maprow .name b { font-weight: 600; }
 .maprow .name span { color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+
+/* ── the ambience: the selected map's art, poured behind the whole site ────────
+   COPIED FROM ENW MOVEMENT (`movement-client/src/theme.css`), verbatim. The JS half is
+   `src/ambience.js`, which says what changed on the way over and what did not. Copying
+   rather than approximating is the point: every number in here — the 64px blur, the -8%
+   bleed the drift has to stay inside, the 0.85/0.34/0.5/0.38 alpha ladder — is a measured
+   value, and the `inherits: false` contract below is a frame budget, not a preference. */
+/* ── Map bleed: the chosen map's colour seeps into the ground from the corners ──
+   --amb-c ("H S% L%") + html[data-amb] are set by ambience.js's paintAmbience(): the open map, else the
+   map under the pointer, else the map the page is about. Fades in/out. */
+/* Registered as numbers so the bleed MORPHS between maps instead of snapping — hovering a
+   row previews its colour, opening a map page commits it. Video-game menu behaviour.
+
+   `inherits: false` is a PERFORMANCE contract, and the map grid is why. An inherited custom
+   property changed on <html> invalidates the computed style of the whole document, so the rAF
+   tween below — which rewrites six of these EVERY FRAME for 450ms — was re-resolving all ~4800
+   nodes of a 672-card pool on each one. Measured on the live surf grid: 10-11.7ms per frame
+   with the grid mounted, 0.005ms with it detached. That is the whole frame budget, spent on a
+   colour nothing in the grid reads.
+
+   Nothing inherits these: #amb-pour is the only element that consumes them, and ambience.js
+   writes them straight onto it. Not inheriting means a write invalidates exactly that one
+   element — the same measurement drops to 0.01ms, and the tween costs the same whether the
+   pool holds 12 maps or 900. Keep it that way: if a new surface needs the ambient colour, give
+   it its own rule on #amb-pour (or read the tween's output some other way) rather than
+   flipping this back to `inherits: true`. */
+@property --amb-h { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --amb-s { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --amb-l { syntax: '<number>'; inherits: false; initial-value: 30; }
+@property --amb-a { syntax: '<number>'; inherits: false; initial-value: 46; }
+/* The map's SECOND real colour (sampled, then graded alongside the first). The crown and the
+   low echo below wear it — they used to wear the primary at a made-up hue offset, which gave
+   every map on the site the same three-note chord. */
+@property --amb2-h { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --amb2-s { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --amb2-l { syntax: '<number>'; inherits: false; initial-value: 30; }
+/* ── The projection: the map's own artwork, huge and blurred, behind the whole site ──
+   Two double-buffered layers crossfade between maps (themes.js owns the element). The art
+   carries the organic colour complexity; the hue pour below unifies it into the ground. */
+#amb-backdrop {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 0; transition: opacity .7s ease;
+}
+html[data-amb] #amb-backdrop { opacity: 1; }
+#amb-backdrop .amb-art {
+  position: absolute; inset: -8%; opacity: 0; transition: opacity .8s ease;
+  background-size: cover; background-position: center 30%;
+  filter: blur(64px) saturate(1.25) brightness(.5) contrast(1.05);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.75) 45%, transparent 82%);
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.75) 45%, transparent 82%);
+  /* A projected image that never moves reads as a printed backdrop. 60s out, 60s back: at any
+     glance it is still, over a minute the room breathes. Both buffered layers share it — the
+     64px blur hides any phase seam between them. */
+  animation: amb-drift 60s ease-in-out infinite alternate;
+}
+/* The -8% bleed is the budget this has to stay inside. At the far end the layer is
+   1.16 x 1.06 = 1.2296 of the viewport, centred, so it overhangs 11.5% a side; the drift
+   spends 1.8% of that horizontally and 1.2% vertically, leaving ~9.6% margin at the tightest
+   edge. No edge can enter frame at either extreme. */
+@keyframes amb-drift {
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.06) translate(1.5%, -1%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #amb-backdrop .amb-art { animation: none; }
+}
+/* vignette + floor: the light falls off toward the edges and the text keeps its footing */
+#amb-backdrop::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 12%, transparent 40%, rgba(0,0,0,.42) 100%),
+    linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.48) 92%);
+}
+
+/* The hue pour, OVER the projection: the map's OWN two colours — the primary pours from the
+   top, the map's second colour crowns it and echoes in the low corner. One flat hue reads as
+   an LED strip; the real pair reads as light with a source. */
+/* A real element, not .shell::before, and that is forced by the `inherits: false` above: a
+   non-inherited custom property set on .shell would never reach .shell's pseudo-element, which
+   would read the initial values and paint a flat grey wash for every map. So the pour owns a
+   node it can carry its own variables on. ambience.js inserts it directly after #amb-backdrop,
+   which reproduces the old paint order exactly — both are fixed at z-index -1 in the root
+   stacking context, so tree order decides, and the pour still lands over the projection and
+   its vignette and under everything in .shell. */
+#amb-pour {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 0;
+  /* Colour motion is NOT here: themes.js tweens --amb-* / --amb2-* in OKLCH on a rAF, because
+     CSS can only interpolate them as raw numbers and HSL's midpoints are muddy (blue to orange
+     via grey-purple). The opacity fade and --amb-a stay CSS's. */
+  transition: opacity .7s ease, --amb-a .45s ease;
+  background:
+    linear-gradient(180deg,
+      hsl(calc(var(--amb-h) * 1deg) calc(var(--amb-s) * 1%) calc(var(--amb-l) * 1%) / calc(var(--amb-a) * 0.85%)) 0%,
+      hsl(calc(var(--amb-h) * 1deg) calc(var(--amb-s) * 1%) calc(var(--amb-l) * 1%) / calc(var(--amb-a) * 0.34%)) 40%,
+      transparent 80%),
+    radial-gradient(120% 70% at 50% 0%,
+      hsl(calc(var(--amb2-h) * 1deg) calc(var(--amb2-s) * 1%) calc(var(--amb2-l) * 1%) / calc(var(--amb-a) * 0.5%)), transparent 68%),
+    radial-gradient(85% 60% at 96% 100%,
+      hsl(calc(var(--amb2-h) * 1deg) calc(var(--amb2-s) * 1%) calc(var(--amb2-l) * 0.8%) / calc(var(--amb-a) * 0.38%)), transparent 65%);
+}
+html[data-amb] #amb-pour { opacity: 1; }
+/* the open map page: the whole projection steps up so page and map box are one atmosphere */
+html[data-amb-strong] #amb-pour { --amb-a: 58; }
+
 /* ── the party rail ────────────────────────────────────────────────────────── */
 .prail {
   position: sticky; top: 0; height: 100vh; width: var(--rail-w);
@@ -454,3 +559,98 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 pre.block { background: var(--panel-deep); border: none; border-radius: var(--radius-sm); padding: 10px 12px; overflow: auto; font-size: 12px; }
 .warn { box-shadow: inset 2px 0 0 var(--hot); }
 hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+
+/* ── home: the party, the pool, and the map ────────────────────────────────────
+   B, 2026-09-22: home IS Movement's map browser. A left column carrying the party panel
+   over the scrolling map list, and the whole rest of the screen is the selected map's own
+   page. No right column — the old party rail is gone, and with it the third region that
+   made every page choose between two places to look.
+
+   The measurements are Movement's, not new ones: `--rail-w` (302px) is the rail width the
+   records deck and the map browser both already use, and the column gap, the row height and
+   the type sizes below are the ones .maprow and .listing were already drawn at, so a map
+   row on this page and a map row on /maps are the same object. */
+.home {
+  display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr); gap: 18px;
+  align-items: start; max-width: min(1600px, 94vw); margin: 0 auto; padding: 18px 24px 40px;
+}
+/* The column is sticky and scrolls INSIDE itself: the map page on the right is long (boards,
+   comments, recent games) and a party panel that scrolled away with it would put Start off
+   screen exactly while a ready check was running. */
+.home-left {
+  position: sticky; top: calc(var(--nav-h) + 8px);
+  display: flex; flex-direction: column; gap: 12px;
+  max-height: calc(100vh - var(--nav-h) - 26px); min-height: 0;
+}
+.home-right { min-width: 0; }
+
+/* ── the party panel ───────────────────────────────────────────────────────── */
+.ppanel { background: var(--panel); border-radius: var(--radius); padding: 12px; flex: 0 0 auto; }
+.ppanel > .spread { margin-bottom: 8px; }
+.ppanel .pcode { font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .6px; }
+.pmember { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 5px 0; }
+.pmember + .pmember { border-top: 1px solid var(--line); }
+.pmember .who { min-width: 0; }
+.pmember .who b { display: block; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pmember .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.pmember .dot.ready { background: var(--good); }
+
+/* One member's map download. A bar only exists while there is something to say about it:
+   a member whose launcher has never reported gets no bar at all rather than an empty one,
+   because an empty bar is a claim that the download has not started. */
+.dlbar { height: 3px; border-radius: var(--pill); background: rgba(var(--text-rgb), .1); overflow: hidden; margin-top: 3px; }
+.dlbar > i { display: block; height: 100%; background: var(--accent); border-radius: var(--pill); transition: width .3s ease; }
+.dlbar.failed > i { background: var(--hot); }
+.dlstate { font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--faint); }
+.dlstate.failed { color: var(--hot); }
+.dlstate.installed { color: var(--good); }
+
+/* ── the map list ──────────────────────────────────────────────────────────── */
+.mlist { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; background: var(--panel); border-radius: var(--radius); overflow: hidden; }
+.mlist .msearch { padding: 8px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+.mlist .msearch input { background: rgba(var(--text-rgb), .06); font-size: 12.5px; padding: 7px 13px; }
+.mlist .mscroll { overflow-y: auto; overscroll-behavior: contain; flex: 1 1 auto; }
+/* Two thousand rows in one scroller. `content-visibility` skips the layout and paint of
+   what is off screen, which is what makes that a list rather than a stress test —
+   Movement's 900-map pool carries the same two lines for the same reason. */
+.mrow {
+  content-visibility: auto; contain-intrinsic-size: auto 40px;
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 9px; align-items: center;
+  width: 100%; text-align: left; padding: 5px 8px; background: none; border: 0; cursor: pointer;
+  color: inherit; font: inherit; transition: background .14s ease;
+}
+.mrow:hover { background: rgba(var(--text-rgb), .05); }
+.mrow.on { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.mrow .plate {
+  width: 44px; height: 26px; border-radius: 5px; overflow: hidden; flex: 0 0 auto;
+  background: rgba(var(--text-rgb), .06);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 8px; letter-spacing: .6px; color: var(--faint); text-transform: uppercase;
+}
+.mrow .plate img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mrow .name { min-width: 0; }
+.mrow .name b { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .name span { display: block; font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mlist-foot { padding: 7px 10px; border-top: 1px solid var(--line); flex: 0 0 auto; }
+
+/* ── the map, opened ──────────────────────────────────────────────────────── */
+/* The hero is the map's own art at the top of its page. It is the ONE place the full-size
+   cover is shown rather than the blurred projection, so a map with no art shows its key in
+   the same mono the cards use rather than a grey box pretending to be a photograph. */
+.maphero {
+  position: relative; border-radius: var(--radius); overflow: hidden;
+  aspect-ratio: 21 / 7; max-height: 280px; margin-bottom: 14px;
+  background: rgba(var(--text-rgb), .04);
+  display: flex; align-items: flex-end;
+}
+.maphero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.maphero .scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,.05) 62%); }
+.maphero .on-top { position: relative; padding: 16px 18px; width: 100%; }
+.maphero .none { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--faint); }
+
+@media (max-width: 1080px) {
+  .home { grid-template-columns: 1fr; }
+  .home-left { position: static; max-height: none; }
+  .mlist .mscroll { max-height: 46vh; }
+}

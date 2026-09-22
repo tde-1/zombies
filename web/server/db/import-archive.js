@@ -46,6 +46,26 @@ const REFEREE_MANIFESTS = path.join(REPO, 'referee', 'manifests')
 const WORK = process.env.ZM_ARCHIVE_WORK || path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'archive')
 const CATALOGUE = process.env.ZM_ARCHIVE_CATALOGUE || path.join(WORK, 'reports', 'catalogue.json')
 
+// Map art (the archive lane's media step, 2026-09-22). A manifest's `archive.cover` is a
+// path RELATIVE TO THE ARCHIVE WORK DIRECTORY — `media/<bsp>/<file>` — which is on a dev
+// box, outside the repo, and not reachable by a browser. So the importer COPIES the one
+// cover per map into `web/public/media/maps/`, where `server/index.js` serves it at
+// `/media/maps/<file>`, and `maps.art` holds that URL.
+//
+// A copy rather than a second static root over `ZombiesDev`, for two reasons. The site has
+// to be servable from a machine that is not this one — the day it moves off B's PC, a
+// static mount of a dev-box path is a dead image on every card. And a directory the
+// archive pipeline writes into is not a directory the public web server should be reading
+// out of: a file lands there the moment it is fetched, before it has been AV-scanned or
+// even finished writing.
+//
+// The copies are content-addressed by nothing and named by the map, so a re-import
+// overwrites in place and the URL never changes. They are gitignored: they are derived
+// from the archive and `npm run import:archive` puts them back.
+const MEDIA_OUT = process.env.ZM_MEDIA_DIR || path.join(__dirname, '..', '..', 'public', 'media', 'maps')
+const MEDIA_URL = '/media/maps'
+const COVER_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
+
 const MAX_DESC = 4000
 const MAX_CATALOGUE_DESC = 1200
 
@@ -60,7 +80,7 @@ const refereeOwned = new Set(
     .filter(Boolean),
 )
 
-const stats = { maps: 0, updated: 0, versions: 0, files: 0, sources: 0, tags: 0, catalogued: 0, skipped: 0 }
+const stats = { maps: 0, updated: 0, versions: 0, files: 0, sources: 0, tags: 0, covers: 0, catalogued: 0, skipped: 0 }
 
 function tagId(slug, label, kind, sort) {
   db.prepare('INSERT OR IGNORE INTO tags (slug, label, kind, sort_order) VALUES (?,?,?,?)')
@@ -153,6 +173,11 @@ function importPipelineMaps() {
     const map = db.prepare('SELECT * FROM maps WHERE key=?').get(m.map)
     applyTags(map.id, a.catalogue_tags)
 
+    // The cover, if the media step got one. Written after the map row exists so a failed
+    // copy leaves a map with no art rather than a map with a broken one.
+    const art = importCover(m.map, a.cover)
+    if (art) { db.prepare('UPDATE maps SET art=? WHERE id=?').run(art, map.id); stats.covers++ }
+
     // The version, and the ORIGINAL as a file row. 99 §4.8: originals are sacred — the
     // exact file, its sha256, where it came from and when. That is this row, and nothing
     // in the site may rewrite its hash.
@@ -191,6 +216,42 @@ function importPipelineMaps() {
       if (r.changes) stats.sources++
     }
   }
+}
+
+/**
+ * Copy one map's cover out of the archive work directory and into the site's media
+ * directory. Returns the URL to store in `maps.art`, or null.
+ *
+ * Nothing here trusts the manifest's path. It is resolved against the work directory and
+ * then checked to still be inside it, because a `cover` of `../../../Windows/win.ini`
+ * would otherwise be copied into a directory this server publishes. The extension is
+ * allow-listed for the same reason: the file is going somewhere a browser will fetch it
+ * from, and `.html` there is a script on our own origin.
+ */
+function importCover(mapKey, cover) {
+  if (!cover) return null
+  const src = path.resolve(WORK, String(cover))
+  const root = path.resolve(WORK) + path.sep
+  if (!src.startsWith(root)) { console.warn(`  cover for ${mapKey} points outside the archive: ${cover}`); return null }
+  const ext = path.extname(src).toLowerCase()
+  if (!COVER_EXT.has(ext)) { console.warn(`  cover for ${mapKey} is not an image: ${cover}`); return null }
+  if (!fs.existsSync(src)) { console.warn(`  cover for ${mapKey} is missing: ${src}`); return null }
+  const name = `${mapKey}${ext}`
+  const dest = path.join(MEDIA_OUT, name)
+  if (DRY) return `${MEDIA_URL}/${name}`
+  try {
+    fs.mkdirSync(MEDIA_OUT, { recursive: true })
+    // Only when it changed: a re-import of fourteen maps should not rewrite fourteen files
+    // and bump every mtime the browser caches against.
+    const s1 = fs.statSync(src)
+    let same = false
+    try { const s2 = fs.statSync(dest); same = s2.size === s1.size && s2.mtimeMs >= s1.mtimeMs } catch { /* not copied yet */ }
+    if (!same) fs.copyFileSync(src, dest)
+  } catch (e) {
+    console.warn(`  cover for ${mapKey} could not be copied: ${e.message}`)
+    return null
+  }
+  return `${MEDIA_URL}/${name}`
 }
 
 function versionOf(m) {
@@ -288,7 +349,7 @@ if (args.has('--catalogue')) importCatalogue()
 const c = (t, w) => db.prepare(`SELECT COUNT(*) c FROM ${t}${w ? ' WHERE ' + w : ''}`).get().c
 console.log(DRY ? '(dry run, nothing written)' : 'imported:',
   `+${stats.maps} maps, ${stats.updated} updated, ${stats.catalogued} catalogued, ` +
-  `${stats.files} originals, ${stats.sources} sources, ${stats.tags} tags, ${stats.skipped} left to the referee agent`)
+  `${stats.files} originals, ${stats.covers} covers, ${stats.sources} sources, ${stats.tags} tags, ${stats.skipped} left to the referee agent`)
 if (!DRY) {
   console.log(`  playable now: ${c('maps', "hidden=0 AND health IN ('verified','playable','custom-only')")}` +
     ` · catalogued: ${c('maps', "health='catalogued'")} · links on file: ${c('archive_sources')}`)

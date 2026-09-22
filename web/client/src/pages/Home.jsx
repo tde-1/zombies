@@ -1,135 +1,141 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, ago, num } from '../api'
+import { api, num } from '../api'
 import { useSession } from '../session'
-import { Section, Empty, Loading, PlayerLink, Hex, Lockup } from '../components/Bits'
-import MapCard from '../components/MapCard'
+import { Loading, Lockup } from '../components/Bits'
+import PartyPanel from '../components/PartyPanel'
+import MapListPanel from '../components/MapListPanel'
+import { MapBody } from './MapPage'
+import { setBaseAmbience } from '../ambience'
 
-// Home, top to bottom in the order 13 §3 gives:
-//   live games + friends online · map of the week + featured · latest records + badges
+// HOME IS THE MAP BROWSER (B, 2026-09-22).
+//
+// Movement's map browser, with zombies' nouns and B's one structural change. Left column:
+// the party on top, then the scrolling map pool with its search. Everything else on the
+// screen is the selected map's own page — the same component /m/<map> renders, so opening a
+// map from the list and following a link to it land on the same page. There is no right
+// column: the party rail that used to stand there is gone, and it took the last reason to
+// look at three regions at once with it.
+//
+// What this page REPLACED, and why none of it came back: live games, friends online, map of
+// the week, featured, and a records/badges feed. Every one of those was a list of rows that
+// the site can now only fill honestly with real play — and on the morning of the beta there
+// is none, because the demo data was wiped (`tools/wipe-demo.js`). Five empty panels is a
+// site that looks broken; the map pool is two thousand true rows. When there are games
+// worth listing they belong on the map's own page, where they already are ("Live now",
+// "Recent games"), next to the map they were played on.
+//
+// The background is the selected map's art (`ambience.js`). With nothing selected it is the
+// WaW default pair — olive and dried blood — poured through the identical grade and tween,
+// so picking a map reads as the map arriving rather than as the site changing.
 
 export default function Home() {
-  const [d, setD] = useState(null)
-  const { signedIn } = useSession()
+  const { signedIn, authMode } = useSession()
+  const [maps, setMaps] = useState(null)
+  const [party, setParty] = useState(null)
+  const [launch, setLaunch] = useState(null)
+  // What the page is showing. It follows the party's staged map when there is one, because
+  // picking a map is a party action rather than a page action — but it is not the same
+  // thing: somebody who is not the leader can still read about a map without moving
+  // everybody else's lobby.
+  const [sel, setSel] = useState(null)
 
   useEffect(() => {
-    const load = () => api.get('/api/home').then(setD).catch(() => {})
-    load()
-    const t = setInterval(load, 15_000)
-    return () => clearInterval(t)
-  }, [])
+    api.get('/api/maps?sort=popular').then((j) => setMaps(j.maps || [])).catch(() => setMaps([]))
+  }, [signedIn])
 
-  if (!d) return <div className="page"><Loading /></div>
+  const loadParty = useCallback(async () => {
+    if (!signedIn) { setParty(null); setLaunch(null); return }
+    try {
+      const j = await api.get('/api/party')
+      setParty(j.party)
+      setLaunch(j.launch)
+      // Follow the lobby: somebody else's pick has to move this page, or two people in one
+      // party are reading about two different maps while one Start button decides.
+      if (j.party && j.party.map) setSel((cur) => (cur == null ? j.party.map.key : cur))
+    } catch { /* signed out mid-poll */ }
+  }, [signedIn])
+
+  useEffect(() => { loadParty() }, [loadParty])
+  useEffect(() => {
+    if (!signedIn) return undefined
+    // Poll rather than push: the party changes when somebody else clicks Ready, and a
+    // three-second poll of one small row is cheaper to get right than a per-party room.
+    // The one thing that genuinely needs to move between polls — a download bar — has the
+    // socket (`party-progress`), which PartyPanel listens to.
+    const t = setInterval(loadParty, 3000)
+    return () => clearInterval(t)
+  }, [signedIn, loadParty])
+
+  const selected = useMemo(() => (maps || []).find((m) => m.key === sel) || null, [maps, sel])
+
+  // The BASE tier of the ambience: what the page is about when nothing is hovered and no map
+  // page has taken the override. Null is the WaW default, which is the whole point of having
+  // a default at all.
+  useEffect(() => {
+    setBaseAmbience(selected ? { key: selected.key, art: selected.art } : null)
+    return () => setBaseAmbience(null)
+  }, [selected && selected.key, selected && selected.art])
+
+  const pick = async (m) => {
+    setSel(m.key)
+    // Staging it for the party is the leader's move and only the leader's; for anybody else
+    // this is reading, and the request would be refused anyway.
+    if (party && party.is_leader) {
+      try { await api.post('/api/party/map', { map_key: m.key }); loadParty() } catch { /* the panel shows the refusal */ }
+    }
+  }
+
+  if (!maps) return <div className="page"><Loading /></div>
 
   return (
-    <div className="page">
-      {!signedIn && (
-        <section className="card" style={{ marginBottom: 18, display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Lockup h={54} />
-          <div style={{ flex: 1, minWidth: 260 }}>
-            <h1 style={{ marginBottom: 6 }}>Every World at War custom zombies map, archived and playable.</h1>
-            <p className="sub" style={{ margin: '0 0 12px' }}>{num(d.map_count)} maps. Refereed on our servers.</p>
-            <div className="row">
-              <a className="btn primary" href="/auth/mock">Sign in</a>
-              <Link className="btn" to="/maps">Browse the maps</Link>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <div className="grid c2" style={{ alignItems: 'start' }}>
-        <Section title="Live games" right={<Link className="tiny" to="/live">Watch</Link>}>
-          {d.live.length === 0 ? <Empty>Nothing running.</Empty> : (
-            <div className="listing">
-              {d.live.map((g) => {
-                // A game that is sending live frames can be watched; one that has only been
-                // leased cannot yet, and saying "Watch" for it would be a lie.
-                const watch = (d.watchable || []).find((w) => w.match_id === g.match_id)
-                return (
-                  <div className="maprow" key={g.match_id}>
-                    <div className="name">
-                      {/* Movement's joinability rule: a stranger's private lobby serialises
-                          with no map and no connect, so there is nothing here to render. */}
-                      <b>{(watch && watch.map_title) || g.map_title || 'Private lobby'}</b>
-                      <span>{g.mode}{watch ? ` · round ${watch.round}` : g.state === 'live' ? ' · live' : ''}</span>
-                    </div>
-                    <span className="tag">{g.player_count}/4</span>
-                    <span className="tiny num">{ago(g.started_at)}</span>
-                    <span className="row" style={{ gap: 5 }}>
-                      {watch && <Link className="btn small ghost" to={`/live/${g.match_id}`}>Watch</Link>}
-                      {g.joinable && g.map ? <Link className="btn small" to={`/m/${g.map}`}>Join</Link> : !watch && <span className="tiny">{g.visibility}</span>}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Section>
-
-        <Section title="Friends online" right={<span className="tiny num">{d.online.online} online</span>}>
-          {!signedIn ? <Empty>Sign in to see your friends.</Empty>
-            : d.friends.length === 0 ? <Empty>Nobody online.</Empty> : (
-              <div className="listing">
-                {d.friends.map((f) => (
-                  <div className="maprow" key={f.steam_id}>
-                    <div className="name"><PlayerLink user={f} /></div>
-                    <span />
-                    <span className="tiny">
-                      {f.where.state === 'in-game' ? `playing ${f.where.map_title || ''}` : f.where.state === 'in-party' ? 'in a party' : 'online'}
-                    </span>
-                    <span />
-                  </div>
-                ))}
-              </div>
-            )}
-        </Section>
+    <div className="home">
+      <div className="home-left">
+        {signedIn
+          ? <PartyPanel party={party} launch={launch} onChange={loadParty} selected={sel} />
+          : <SignIn authMode={authMode} count={maps.length} />}
+        <MapListPanel maps={maps} selected={sel} onPick={pick} />
       </div>
 
-      {d.week && (
-        <Section title="Map of the week">
-          <div className="grid c2" style={{ alignItems: 'start' }}>
-            <MapCard map={d.week.map} big />
-            <div className="listing">
-              {d.week.runs.length === 0 ? <Empty>No runs this week.</Empty> : (
-                <table className="data">
-                  <thead><tr><th className="num">#</th><th>Player</th><th className="num">Round</th><th>Finish</th></tr></thead>
-                  <tbody>
-                    {d.week.runs.slice(0, 8).map((r, i) => (
-                      <tr key={i}>
-                        <td className={`rank num ${i === 0 ? 'r1' : ''}`}>{i + 1}</td>
-                        <td><PlayerLink user={r.player} avatar={false} /></td>
-                        <td className="num">{r.rounds}</td>
-                        <td className="tiny">{r.finish === 'easter_egg' ? 'Easter egg' : r.finish === 'buyable_ending' ? 'Buyable ending' : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        </Section>
-      )}
+      <div className="home-right">
+        {sel
+          ? <MapBody mapKey={sel} />
+          : <Nothing count={maps.length} />}
+      </div>
+    </div>
+  )
+}
 
-      <Section title="Featured" right={<Link className="btn small ghost" to="/maps">All {num(d.map_count)} maps</Link>}>
-        <div className="grid c4">{d.featured.map((m) => <MapCard key={m.key} map={m} />)}</div>
-      </Section>
+// Signed out, in the party's place. It says the one true thing about the site and offers the
+// one button that does anything. Steam sign-in is the only way in (B, 2026-09-22): the dev
+// sign-in page does not exist on a site running Steam, so this never offers it.
+function SignIn({ authMode, count }) {
+  return (
+    <section className="ppanel">
+      <Lockup h={40} />
+      <p className="sub" style={{ margin: '10px 0 12px' }}>
+        Every World at War custom zombies map, archived and playable. Refereed on our servers.
+      </p>
+      <a className="btn primary" style={{ width: '100%' }} href={authMode === 'steam' ? '/auth/steam' : '/auth/mock'}>
+        {authMode === 'steam' ? 'Sign in with Steam' : 'Sign in (dev)'}
+      </a>
+      <p className="tiny" style={{ margin: '10px 0 0' }}>{num(count)} maps. Browsing needs no account.</p>
+    </section>
+  )
+}
 
-      <Section title="Latest">
-        {d.feed.length === 0 ? <Empty>Nothing yet.</Empty> : (
-          <div className="listing">
-            {d.feed.map((f) => (
-              <div className="feedline" key={f.id}>
-                {f.badge ? <Hex badge={f.badge} size={22} /> : null}
-                <span>
-                  {f.player ? <PlayerLink user={f.player} avatar={false} /> : null}{' '}
-                  {f.kind === 'record' ? <span className="gold">{f.text}</span> : <span className="sub">{f.text}</span>}
-                </span>
-                <span className="when">{ago(f.at)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
+// No map open. Deliberately almost nothing: the list beside it is the invitation, and a
+// panel of suggestions here would be the featured row this page just removed, wearing a
+// different hat.
+function Nothing({ count }) {
+  return (
+    <div className="card" style={{ padding: '46px 22px', textAlign: 'center' }}>
+      <h2 style={{ marginBottom: 6 }}>Pick a map</h2>
+      <p className="sub" style={{ margin: 0 }}>{num(count)} of them, and the archive holds the rest.</p>
+      <div className="row" style={{ justifyContent: 'center', marginTop: 14 }}>
+        <Link className="btn ghost small" to="/archive">The archive</Link>
+        <Link className="btn ghost small" to="/records">Records</Link>
+      </div>
     </div>
   )
 }

@@ -2,13 +2,15 @@ import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { SessionProvider } from './session'
 import Nav from './components/Nav'
-import PartyRail from './components/PartyRail'
 import Home from './pages/Home'
+// NOT lazy: home renders `MapBody` out of this module, so it lands in the first chunk
+// whatever this line says, and a lazy route over a module that is already loaded only buys
+// a Suspense boundary nobody ever sees.
+import MapPage from './pages/MapPage'
 
 // Everything past the front door is split out, Movement's rule: a visitor who opens the home
 // page should not download the admin console with it.
 const Maps = lazy(() => import('./pages/Maps'))
-const MapPage = lazy(() => import('./pages/MapPage'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Records = lazy(() => import('./pages/Records'))
 const Badges = lazy(() => import('./pages/Badges'))
@@ -27,11 +29,14 @@ const NotFound = lazy(() => import('./pages/Misc').then((m) => ({ default: m.Not
 export default function App() {
   return (
     <SessionProvider>
-      <div className="shell">
-        {/* The rail sits ABOVE the router (Movement's party.jsx): it survives navigation,
-            so the map you picked and the ready check you are in do not reset when you click
-            into somebody's profile. It is on the left, where Movement's is. */}
-        <PartyRail />
+      {/* ~~The rail sits ABOVE the router (Movement's party.jsx): it survives navigation~~
+          — **retracted 2026-09-22, B: no right column at all.** The party is a panel at the
+          top of home's left column now (`components/PartyPanel.jsx`), beside the map pool it
+          is for. What the rail bought was a party that survived navigation; what it cost was
+          a third region on every page, including the ones — a profile, the archive, a badge
+          directory — where a lobby has nothing to do with what you are reading. The party
+          itself survives everything, because it is a row in the database and always was. */}
+      <div className="shell no-rail">
         <div className="main">
           <Nav />
           <Suspense fallback={<div className="page"><div className="loading"><span className="spinner" /></div></div>}>

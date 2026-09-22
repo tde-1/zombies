@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { setAmbienceOverride } from '../ambience'
 import { api, ago, clock, num } from '../api'
 import { useSession } from '../session'
 import { Section, Empty, Loading, Stat, FinishChips, Health, Untracked, PlayerLink } from '../components/Bits'
@@ -14,8 +15,17 @@ import Comments from '../components/Comments'
 // page's own words would let the page and the box disagree, which is the one disagreement
 // that must never happen.
 
+// The page at /m/<map> — the deep link YouTubers put in a description (13 §2d), which must
+// never change — is this body inside the standard page frame. **Home renders the same body
+// in its right-hand region** (2026-09-22): B's home IS the map browser, so the map you pick
+// out of the list opens in place rather than navigating, and it has to be the same page
+// when it does. One component, two frames; there is no second map page to keep in step.
 export default function MapPage() {
   const { key } = useParams()
+  return <div className="page wide"><MapBody mapKey={key} /></div>
+}
+
+export function MapBody({ mapKey: key }) {
   const { signedIn, approved, refresh } = useSession()
   const [d, setD] = useState(null)
   const [err, setErr] = useState(null)
@@ -28,8 +38,17 @@ export default function MapPage() {
 
   useEffect(() => { setD(null); load() }, [load])
 
-  if (err) return <div className="page"><h1>{err}</h1><Link className="btn" to="/maps">Back to the maps</Link></div>
-  if (!d) return <div className="page"><Loading /></div>
+  // This map COMMITS the site's atmosphere: the projection steps up and nothing on the page
+  // but another map can move it. Cleared on the way out so the page that follows is not lit
+  // by a map nobody is looking at any more.
+  useEffect(() => {
+    if (!d || !d.map) return undefined
+    setAmbienceOverride({ key: d.map.key, art: d.map.art })
+    return () => setAmbienceOverride(null)
+  }, [d && d.map && d.map.key, d && d.map && d.map.art])
+
+  if (err) return <><h1>{err}</h1><Link className="btn" to="/maps">Back to the maps</Link></>
+  if (!d) return <Loading />
 
   const m = d.map
   const play = async () => {
@@ -39,13 +58,23 @@ export default function MapPage() {
   const fav = async () => { await api.post(`/api/maps/${m.key}/favourite`, { on: !m.favourite }); load() }
 
   return (
-    <div className="page wide">
+    <>
+      {/* The map's own art, full size, at the top of its page — the one place the cover is
+          shown rather than projected and blurred behind everything. A map with no art yet
+          (2,270 of 2,284) says so in the same mono the cards use, because a grey box the
+          shape of a photograph reads as a photograph that failed to load. */}
+      <div className="maphero">
+        {m.art ? <><img src={m.art} alt="" /><span className="scrim" /></> : <span className="none">no art yet</span>}
+        <div className="on-top">
+          <div className="mono tiny">{m.key}</div>
+          <h1 style={{ margin: 0 }}>{m.title}</h1>
+        </div>
+      </div>
+
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="spread" style={{ alignItems: 'flex-start' }}>
           <div>
-            <div className="mono tiny">{m.key}</div>
-            <h1>{m.title}</h1>
-            <div className="row wrap" style={{ gap: 7, marginTop: 8 }}>
+            <div className="row wrap" style={{ gap: 7 }}>
               <FinishChips map={m} />
               <Health health={m.health} />
               {m.author && <Link className="chip" to={`/creator/${encodeURIComponent(m.author)}`}>{m.author}</Link>}
@@ -221,7 +250,7 @@ export default function MapPage() {
           </Section>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

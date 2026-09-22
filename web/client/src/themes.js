@@ -122,3 +122,9 @@ export function applyTheme(name) {
 export function savedTheme() {
   try { return THEMES[localStorage.getItem(KEY)] ? localStorage.getItem(KEY) : DEFAULT_THEME } catch { return DEFAULT_THEME }
 }
+
+// The ambient system — the selected map's art poured behind the whole site — is
+// `ambience.js`. On Movement it is the back half of this file; here it is next door,
+// because this file is already the three-palette switcher and Movement's is not. Re-exported
+// so an import from either spelling works.
+export { setBaseAmbience, setAmbienceOverride, hoverAmbience, endHoverAmbience, gradeAmbient, WAW_DEFAULT } from './ambience'

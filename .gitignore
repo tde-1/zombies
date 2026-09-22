@@ -54,3 +54,7 @@ web/public/updates/*.blockmap
 
 # Hetzner Cloud API token for the Zombies dev box (B supplies it; never commit)
 infra/hcloud.env
+
+# Map art copied out of the archive by web/server/db/import-archive.js. Derived;
+# `npm run import:archive` puts it back.
+web/public/media/
