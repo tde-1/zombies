@@ -393,6 +393,11 @@ def main():
     ap.add_argument("--write-db", action="store_true")
     ap.add_argument("--only", action="append", help="just these keys (repeatable)")
     ap.add_argument("--force", action="store_true", help="re-encode even when unchanged")
+    # docs/kickstart/ip-posture.md §4: a stock loading screen is Activision's image. It may be
+    # served during closed testing; "before public: no stock loadscreen on any served page".
+    # This flag is that switch — the stock four fall through to the generated card.
+    ap.add_argument("--no-stock", action="store_true", default=os.environ.get("ZM_NO_STOCK_ART") == "1",
+                    help="never use WaW's own loading screens (ip-posture.md §4, before public)")
     args = ap.parse_args()
 
     dbp = db_path(args.db)
@@ -424,7 +429,7 @@ def main():
         # cover went onto Verrückt. Treyarch's four have Treyarch's own loading screens.
         s = None if (r.get("source") == "stock" or key in STOCK) else site_source(key)
         own = iwd_source(key)
-        game = own or stock_source(key, main_dir)
+        game = own or (None if args.no_stock else stock_source(key, main_dir))
         game_kind = "iwd" if own else ("stock" if game else None)
         if s:
             raw, origin = s
