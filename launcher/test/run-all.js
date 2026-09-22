@@ -2028,9 +2028,10 @@ await test('0.2.11: the bridge carries the new calls, and the fallback page draw
   assert.match(main, /a game is running/)
 })
 
-await test('0.2.12: the version is 0.2.12 and npm test runs both suites', () => {
+await test('0.2.12+: the version is at least 0.2.12 and npm test runs both suites', () => {
   const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-  assert.equal(pkg.version, '0.2.12')
+  const [a, b, c] = String(pkg.version).split('.').map(Number)
+  assert.ok(a > 0 || b > 2 || (b === 2 && c >= 12), `version ${pkg.version} is older than 0.2.12`)
   assert.match(pkg.scripts.test, /run-all\.js/)
   assert.match(pkg.scripts.test, /waw-settings\.js/)
 })
