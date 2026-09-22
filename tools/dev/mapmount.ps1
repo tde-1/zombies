@@ -54,9 +54,42 @@ function Mount-EnwMap {
 
     $targets = @()
     foreach ($h in $Homes) { $targets += (Join-Path $DevRoot "homes\$h\mods\$Bsp") }
-    # THE ONE THE MAP-EXISTS CHECK READS. Hard-coded to the dvar's own default rather
-    # than to $env:LOCALAPPDATA so it cannot drift from what the engine computed.
-    $localAppData = Join-Path $env:LOCALAPPDATA 'Activision\CoDWaW\mods'
+
+    # ---------------------------------------------------------------------------
+    # WHERE fs_localAppData POINTS, AND WHY THERE IS A SWITCH (2026-09-23)
+    # ---------------------------------------------------------------------------
+    # B: "our client must never touch the user's own World at War data." The
+    # shipping launcher no longer does -- `client-dll/components/enw_localappdata.cpp`
+    # patches the engine's SHGetFolderPathA import so LocalAppData resolves to
+    # `<ENW home>\localappdata`, and the launcher installs maps there.
+    #
+    # THIS HARNESS IS NOT SWITCHED OVER BY DEFAULT, and the reason is a fact, not
+    # caution: the redirect lives in a client-dll component, and the DLLs sitting in
+    # the dev copies (`build\dedi`, `build\vps`) were built before that component
+    # existed. Point the mount at a folder the running DLL does not redirect to and
+    # EVERY custom-map run fails with `Can't find map` -- while another lane is in
+    # the middle of a join-test session. So:
+    #
+    #   ENW_USE_PRIVATE_LOCALAPPDATA=1   mount into <home>\localappdata\Activision\
+    #                                    CoDWaW\mods, which is what the redirected
+    #                                    engine opens. Requires a DLL built from
+    #                                    2026-09-23 or later in the copy you launch.
+    #   unset (default)                  today's behaviour: the box's own
+    #                                    %LOCALAPPDATA%\Activision\CoDWaW\mods.
+    #
+    # Flip it once the dedi/referee copies are rebuilt; the junctions are the only
+    # thing that has to change, and `launch.ps1` already exports ENW_LOCALAPPDATA
+    # under the same switch.
+    if ($env:ENW_USE_PRIVATE_LOCALAPPDATA -eq '1') {
+        $home0 = if ($Homes.Count) { $Homes[0] } else { 'shared' }
+        $localAppData = Join-Path $DevRoot "homes\$home0\localappdata\Activision\CoDWaW\mods"
+        & $Log "fs_localAppData is REDIRECTED to $localAppData (ENW_USE_PRIVATE_LOCALAPPDATA=1); the DLL in this copy must carry enw_localappdata or the map-exists check will fail" 'Cyan'
+    }
+    else {
+        # Hard-coded to the dvar's own default rather than to $env:LOCALAPPDATA so it
+        # cannot drift from what the engine computed.
+        $localAppData = Join-Path $env:LOCALAPPDATA 'Activision\CoDWaW\mods'
+    }
     $targets += (Join-Path $localAppData $Bsp)
 
     foreach ($dst in $targets) {

@@ -64,24 +64,35 @@ export const P = {
   game: path.join(ENW_ROOT, 'game'),
   // fs_homepath for our instance: profile/config/console.log land here, not in theirs.
   home: path.join(ENW_ROOT, 'home'),
-  // Downloaded maps. This is the ONE path we write that is not ours, and it is not a
-  // choice — it is the only place World at War loads a custom map from.
+  // What the GAME sees as %LOCALAPPDATA%, because the client DLL makes it so.
   //
-  // dedi measured all three candidates:
+  // RETRACTION IN PLACE (2026-09-23). Until today `maps` was
+  // `%LOCALAPPDATA%\Activision\CoDWaW\mods` — the PLAYER'S folder — and the comment
+  // here said that was "not a choice". The measurement behind it is still correct:
+  //
   //     <fs_homepath>\mods\<bsp>                      fails silently
   //     <game copy>\mods\<bsp>                        fails silently
-  //     %LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>   works
+  //     <LocalAppData>\Activision\CoDWaW\mods\<bsp>   works
   //
   // and "fails silently" is the dangerous part: the `.iwd`s mount, the printed search
   // path looks right, and the install looks complete — but `mod.ff` is a ZONE, not a
   // filesystem asset, so putting its directory on the search path never loads it.
-  // `Loading fastfile 'mod'` simply never happens and `+map` never runs.
+  // `Loading fastfile 'mod'` never happens and `+map` never runs. What was wrong was
+  // the conclusion that <LocalAppData> had to be the PLAYER'S LocalAppData.
   //
-  // Because this folder is the PLAYER'S (B's own `nazi_zombie_ali` lives in it), the
-  // rules in library.js are stricter than anywhere else we write: never overwrite a
-  // map we did not install, record every file we add, and remove exactly those on
-  // uninstall — never the directory wholesale.
-  maps: path.join(LOCAL, 'Activision', 'CoDWaW', 'mods'),
+  // It does not. `client-dll/components/enw_localappdata.cpp` patches the engine's
+  // `SHGetFolderPathA` import and hands back `P.localAppData`, so the engine builds
+  // `players`, `mods`, `__CoDWaW` and its own map-exists check under OUR folder. B,
+  // 2026-09-23: "our client must never touch the user's own World at War data."
+  // Steam-launched vanilla WaW now sees nothing of ours — which is also why its Mods
+  // menu was listing ENW's maps, and why the launcher kept refusing to install one
+  // with "already in your own World at War mods folder".
+  localAppData: path.join(ENW_ROOT, 'home', 'localappdata'),
+  maps: path.join(ENW_ROOT, 'home', 'localappdata', 'Activision', 'CoDWaW', 'mods'),
+  // The player's own folder. Named ONLY so we can point at it and prove we did not
+  // write to it; nothing in this app may write here, and assertWritable() says so
+  // by name as well as by the ENW_ROOT rule.
+  userGameData: path.join(LOCAL, 'Activision', 'CoDWaW'),
   logs: path.join(ENW_ROOT, 'logs'),
   state: path.join(ENW_ROOT, 'state'),
   crashes: path.join(ENW_ROOT, 'crashes'),
@@ -91,10 +102,13 @@ export const P = {
   session: path.join(ENW_ROOT, 'state', 'session.json'),
   detection: path.join(ENW_ROOT, 'state', 'detection.json'),
   setupManifest: path.join(ENW_ROOT, 'state', 'setup-manifest.json'),
+  // What we changed in our copy's CoDWaW.exe header, and what it was before, so
+  // "repair" can put it back byte for byte. See setup.js, ensureLargeAddressAware().
+  exePatch: path.join(ENW_ROOT, 'state', 'exe-patch.json'),
 }
 
 export function ensureDirs() {
-  for (const d of [P.root, P.home, path.join(P.home, 'main'), P.maps, P.logs, P.state, P.crashes, P.updates]) {
+  for (const d of [P.root, P.home, path.join(P.home, 'main'), P.localAppData, P.maps, P.logs, P.state, P.crashes, P.updates]) {
     fs.mkdirSync(d, { recursive: true })
   }
 }
@@ -136,14 +150,18 @@ export function assertWritable(target) {
       )
     }
   }
-  // Second belt: everything we create must be under ENW_ROOT — with one deliberate
-  // exception, the map library. World at War only loads custom maps from the player's
-  // own `%LOCALAPPDATA%\Activision\CoDWaW\mods` (see P.maps), so installing a map
-  // means writing there. It is allowed by name, one level deep, and library.js adds
-  // the rules that make it safe: never overwrite a map we did not install, and remove
-  // only the files we recorded.
-  if (!isInside(abs, ENW_ROOT) && !isInside(abs, P.maps)) {
-    throw new Error(`Refusing to write outside the ENW folder: ${abs} (ENW root is ${ENW_ROOT}, map library is ${P.maps})`)
+  // Second belt: everything we create must be under ENW_ROOT. FULL STOP, as of
+  // 2026-09-23 — there used to be a carve-out here for the map library, because maps
+  // had to go into the player's own `%LOCALAPPDATA%\Activision\CoDWaW\mods`. The
+  // DLL's LocalAppData redirect removed the reason for it, so the exception is gone
+  // and `P.maps` is now inside ENW_ROOT like everything else. One rule, no exceptions.
+  if (!isInside(abs, ENW_ROOT)) {
+    throw new Error(`Refusing to write outside the ENW folder: ${abs} (ENW root is ${ENW_ROOT})`)
+  }
+  // And the player's own game data is named explicitly, so this cannot be
+  // re-introduced by someone repointing P.maps.
+  if (isInside(abs, P.userGameData)) {
+    throw new Error(`Refusing to write to ${abs}: that is the player's own World at War data. ENW keeps everything under ${ENW_ROOT}.`)
   }
   return abs
 }

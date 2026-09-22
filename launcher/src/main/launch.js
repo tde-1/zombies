@@ -80,7 +80,10 @@ export function serveToken(token, { timeoutMs = 120000 } = {}) {
 // when the pid inside is dead — never out from under a live game.
 export function clearStartupBlockers({ homeDir = P.home, gameDir = P.game } = {}) {
   const notes = []
-  const marker = path.join(process.env.LOCALAPPDATA || '', 'Activision', 'CoDWaW', '__CoDWaW')
+  // OUR marker, in OUR LocalAppData — the DLL redirect means the game writes it
+  // there. The player's own `__CoDWaW` is never read and never deleted: deleting it
+  // would be touching their data, and the pid inside it is not ours to judge.
+  const marker = path.join(P.localAppData, 'Activision', 'CoDWaW', '__CoDWaW')
   if (fs.existsSync(marker)) {
     let pid = -1
     try { const b = fs.readFileSync(marker); if (b.length === 4) pid = b.readInt32LE(0) } catch {}
@@ -91,7 +94,7 @@ export function clearStartupBlockers({ homeDir = P.home, gameDir = P.game } = {}
     }
     try { fs.unlinkSync(marker); notes.push(`cleared a leftover crash marker (dead process ${pid}) that would have shown "Run In Safe Mode?"`) } catch {}
   }
-  for (const root of [homeDir, gameDir, path.join(process.env.LOCALAPPDATA || '', 'Activision', 'CoDWaW')]) {
+  for (const root of [homeDir, gameDir, path.join(P.localAppData, 'Activision', 'CoDWaW')]) {
     for (const rel of ['main/safemode.cfg', 'players/safemode.cfg', 'safemode.cfg']) {
       const p = path.join(root, ...rel.split('/'))
       try { if (fs.existsSync(p)) { fs.unlinkSync(p); notes.push(`removed ${p}`) } } catch {}
@@ -298,6 +301,12 @@ export class GameLaunch extends EventEmitter {
         ENW_INSTANCE: o.instance || 'launcher',
         ENW_ROLE: o.role || 'client',
         ENW_LOGDIR: P.logs,
+        // The LocalAppData redirect (client-dll/components/enw_localappdata.cpp).
+        // Without this the engine puts profiles, config.cfg, saves, the mods list
+        // and its own map-exists check in the PLAYER'S
+        // %LOCALAPPDATA%\Activision\CoDWaW. With it all of that is ours, and
+        // vanilla World at War sees nothing we did.
+        ENW_LOCALAPPDATA: P.localAppData,
         // The map, so the DLL can say `map_loaded` without reading a dvar. It also
         // takes it off our command line, and this is the belt to that braces.
         ...(o.map ? { ENW_MAP: o.map } : {}),

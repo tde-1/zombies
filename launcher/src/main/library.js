@@ -205,10 +205,12 @@ export async function installFromSite(bsp, { api, onProgress = () => {}, signal 
   const title = man.title || bsp
   const dest = assertWritable(installDir(bsp))
 
+  // NOTE (2026-09-23): the "already in your own World at War mods folder" refusal
+  // that used to be here is GONE, along with the folder that made it possible. Maps
+  // install into ENW's own tree now, so there is no player-owned map to collide with
+  // and nothing for a player to be refused over. `ownership()` is kept for ENW's own
+  // records and for dev-box symlink residue.
   const own = ownership(bsp)
-  if (own.state === 'theirs') {
-    throw new Error(`${title} is already in your own World at War mods folder and ENW did not put it there. Leaving it alone.`)
-  }
   // A dev-box symlink into our own archive is `absent` (see `ownership`), but it
   // must be REMOVED before we install, not written through: every byte would land
   // inside `ZombiesDev\archive\mods\<bsp>`, which is the hash source of truth this
@@ -315,8 +317,10 @@ export async function installFromSite(bsp, { api, onProgress = () => {}, signal 
 
 // ------------------------------------------------------------------- install --
 
-// The library and the engine's view are the same folder — and it is the PLAYER'S
-// folder (`%LOCALAPPDATA%\Activision\CoDWaW\mods`), not ours.
+// The library and the engine's view are the same folder — and as of 2026-09-23 it is
+// OURS: `<ENW>\home\localappdata\Activision\CoDWaW\mods`, which is what the game
+// resolves LocalAppData to once the DLL's `enw_localappdata` hook is in (paths.js,
+// P.maps). Nothing here writes into the player's own folder any more.
 export const installDir = (bsp) => path.join(P.maps, bsp)
 export const modLink = (bsp) => installDir(bsp)
 

@@ -492,3 +492,70 @@ What the switch does:
 
 `ENW_RAW_MOUSE=0` remains the full revert. **Untested against a real high-rate mouse**, for the
 reason above; it compiles, loads and arms, and that is all that is claimed.
+
+---
+
+## 4. The LocalAppData redirect: the game stops sharing a folder with the player's own (2026-09-23)
+
+B, this morning: **"our client must never touch the user's own World at War data."** Steam-launched
+vanilla WaW must see nothing of ours, and everything we add â€” maps, config, saves, our DLL â€” lives
+under `%LOCALAPPDATA%\ENWZombies\` only.
+
+`client-dll/components/enw_localappdata.cpp`.
+
+### What was actually shared, and why `fs_homepath` was never enough
+
+`+set fs_homepath <dir>` moves `main/` and `console.log`. It does not move any of this
+(foundation.md Â§7, and the engine dump in `tools/dev/mapmount.ps1`):
+
+| what | where it lived |
+|---|---|
+| the profile, `config.cfg`, binds | `%LOCALAPPDATA%\Activision\CoDWaW\players\profiles\â€¦` |
+| **the custom-map folder** | `%LOCALAPPDATA%\Activision\CoDWaW\mods\<bsp>\` |
+| the safe-mode / single-instance marker | `%LOCALAPPDATA%\Activision\CoDWaW\__CoDWaW` |
+| **the map-exists check** | `<fs_localAppData>\<fs_game>\<bsp>.ff`, opened with `CreateFileA` at 0x48FC10, and the *only* thing that decides `Can't find map` â€” the FS search path is not consulted |
+
+That last row is why the launcher installed maps into the player's folder at all, and the last two
+rows together are why **vanilla World at War's Mods menu was listing ENW's maps** and why B kept
+seeing *"already in your own World at War mods folder"* when he pressed Install (launcher.md,
+2026-09-22 Â§1 â€” that message and the predicate behind it are both gone now).
+
+### The hook
+
+`CoDWaW.exe` imports `SHGetFolderPathA` from SHELL32 and appends the literal `\Activision\CoDWaW`
+to what it returns (the string is at 0x47EC90). The component replaces that one IAT entry and hands
+back `ENW_LOCALAPPDATA` for `CSIDL_LOCAL_APPDATA` and `CSIDL_APPDATA`; the engine then builds
+`players`, `mods`, `__CoDWaW` and its own map-exists path off our folder by itself.
+
+Three things about the shape, all of which are the reason it is an IAT patch and not a detour:
+
+* the IAT is in `.rdata`, which **SteamStub does not encrypt**, and the loader fills it before the
+  PE entry point runs â€” so this installs at `post_load`, before the game's code is decrypted and
+  before any engine code executes. It has to be: the profile path is resolved during very early init.
+* one pointer write, reversible, no prologue to relocate;
+* **setting the `LOCALAPPDATA` environment variable does nothing.** The dedi lane measured that:
+  the engine uses `SHGetFolderPathA`, which reads the shell's own state, not the environment.
+
+`ENW_LOCALAPPDATA` is what the launcher sets (`launch.js`); `ENW_INSTANCE_APPDATA` is accepted too
+because the dev scripts already set that one. With neither set the component stays off and says so,
+so a stock dev launch is unchanged.
+
+### Hook ownership
+
+`shared/core/components/instance_paths.cpp` patches **the same import** for per-instance profiles.
+It is opt-in (`ENW_PRIVATE_PROFILE=1`) and this component **stands down when it is on**, with a log
+line, rather than letting two owners race for one IAT slot and letting the loser find out from a log
+line (kickstart rule 9).
+
+### Self-verifying, because a redirect that silently did not happen is the dangerous outcome
+
+`post_init` prints how many times the engine actually came through the hook and **warns loudly at
+zero**, naming the consequence â€” profiles, mods and the map-exists check still resolving to the
+player's folder â€” and saying that any "we did not touch their data" claim from that run is unproven.
+Believing a redirect that did not take is how a player's own save gets overwritten.
+
+### Evidence
+
+See `launcher.md`, the 2026-09-23 section, for the run: a Play Local on a custom map with the
+player's whole `Activision\CoDWaW` tree hashed before and after.
+
