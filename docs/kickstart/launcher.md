@@ -2203,3 +2203,82 @@ in the running app; the menu's Launcher settings / Install / Restart-to-update r
 launcher sign-in from the site's button. All are B's first look after updating to 0.2.9.
 Note: an accidental dev `electron .` during this session hit B's running launcher's single-instance
 lock and forwarded an empty argv (it may have raised his window once).
+
+
+## 2026-09-22, evening — 0.2.10: nav clicks land, and the in-game name is the ENW name
+
+### Nav bar: the shell's strip won the hit test
+
+B on 0.2.9: *"I can't click on any stuff on the nav bar"*. **Root cause:** the shell page (the
+BrowserWindow's own webContents, under the site's `WebContentsView`) keeps its `#chrome` strip —
+62 px, `-webkit-app-region: drag`, no-drag only on its own Back button and three window buttons.
+On Windows the frameless window's `WM_NCHITTEST` answers from **that** page's drag regions even
+where the site covers it, so every site control that did not happen to sit over one of the strip's
+buttons answered `HTCAPTION` and the click became a window drag. That is why the search box
+(over the strip's Back button) and the window buttons (over the strip's buttons) worked and
+Maps/Records/Admin/logo/Discord/account did not. **Fix** (`main.js` `showSite()` → `shellStrip()`,
+`shell.css`, `shell.html`): `html.site-shown #chrome { display:none }` while the site shows; a
+shell screen brings it back. Changing only `-webkit-app-region` on the strip was **not** re-sent by
+Chromium; `display:none` (a layout change) is.
+
+**Measured, not argued.** A dev launcher (the real `main.js`, frameless, own `userData`, own
+`ENW_ROOT`, protocol registration stubbed) against a scratch site on :3397, probed by sending
+`WM_NCHITTEST` to the real HWND (1 = client, 2 = caption):
+
+| x (nav y=30) | search 130 | gap 400 | logo 612 | Maps 684 | Records 766 | Admin 853 | gap 1000 | Discord 1161 | account 1277 | Min 1370 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| strip present (0.2.9) | 1 | 2 | **2** | **2** | **2** | **2** | 2 | **2** | **2** | 1 |
+| strip hidden (0.2.10) | 1 | 2 | 1 | 1 | 1 | 1 | 2 | 1 | 1 | 1 |
+
+The "strip present" row was taken after the page reloaded from the dist rebuilt at 20:19 with the coordinator's web fix (`2ff595c`, `.mv-drag` underlay)
+already in the served dist, so **that fix alone does not unblock B**; it is harmless with this one
+and the 0.2.10 row was re-measured with it. Gaps stay `HTCAPTION`, which is what Windows needs
+for drag, double-click-maximise and Aero snap. Settings screen: strip back, Back = 1, gap = 2;
+Back to the site: Maps = 1 again. Clicks through Chromium's input pipeline (CDP
+`Input.dispatchMouseEvent`) in the same window: Maps → `/maps`, Records → `/records`, Admin →
+`/admin`, logo → `/`, search focused, account chip opened the menu. Window image:
+`ui/2026-09-22-launcher-0.2.10-nav-account-menu.png`, `ui/2026-09-22-launcher-0.2.10-settings-strip.png`.
+
+**Not done:** real-mouse clicks and a real drag/double-click. The computer-use click was
+interrupted by the user at the desk, and was not retried. `WM_NCHITTEST` is the OS's own routing
+decision for a real click, so this is the next-best evidence; the drag/double-click feel is B's
+first look.
+
+### In-game name: the profile, not the dvar
+
+**Root cause:** with a named profile active, World at War sends the **profile's name** as the
+userinfo `name` and ignores the `name` dvar. B's three dedi joins (zombies-dev, 18:20Z–18:28Z,
+`waw-inst-01/03`) all read `player_connect slot 0 name='enw' steamid=76561198126330106` although
+his client's command line carried `+set name myu`, `name_pin` logged `pinned name to 'myu'`, and
+the `enw` profile's own `config.cfg` says `seta name "myu"`; the dedi counted **0** userinfo
+commands, so `myu` was never sent. The profile the launcher seeds is called `enw` (`gamecfg.PROFILE`).
+Same shape as referee.md §14.4 (`anna-jpg` beat `+set name spoofer`). Only the engine's `$$$`
+("no profile") honoured the dvar — the old `Unknown Soldier`. Ruled out: the site (`users.pub`
+and `/api/me` answer `name: "myu"`; B's row has `enw_name = myu`); the packaged 0.2.9 (it has
+`+set name` and a `name_pin` DLL, and both ran); the referee's name lock (no token `n` reached the
+dedi — `tokens will not be lease-checked` — so it never renamed anyone).
+
+**Fix:** `gamecfg.usePlayerProfile()`, called by `launch.js` before the seed on every player-mode
+launch: the active profile becomes `profiles/<ENW name>` (sanitised to a folder-safe name; `CON`
+etc. refused), copied from the current profile on first use so binds, settings and `mpdata` come
+along, with `seta name` set to match, and `active.txt` pointed at it. The seed, ADS migration and
+read-back all follow `active.txt`, so they follow it too. A second account on the same PC gets its
+own profile. No name → the profile is left alone. `npm test` **127/0** (two new).
+
+**Unproven:** `myu` over B's head in a real game — nobody ran the game for this (B at his PC).
+The first Play on 0.2.10 logs `player profile: now 'myu' (was 'enw', binds and settings copied
+from 'enw')` in `launcher.log`, and the dedi's `player_connect` line should read `name='myu'`.
+
+### Publish
+
+0.2.10 = `5103c13`. DLL **unchanged**: `build\launcher\enw_t4.dll` sha256 `510109dc…` (the 0.2.8/0.2.9
+client), staged with `--allow-stale` because `client-dll/components/mouse_polling.cpp` was edited
+by another lane at 19:23Z, after that build; nothing in that edit ships. `npm run smoke` 9/10 (the
+agent-shell sandbox notice) plus the benign "already running" warning (B's launcher is open).
+`ENW-Zombies-Launcher-Setup-0.2.10.exe` 94,563,206 B, sha512 `N/6+t5rT…n/jYig==`;
+`https://zombies.enw.gg/updates/latest.yml` answers `200 text/yaml`, `version: 0.2.10`. No site
+restart needed or done (the feed is static). No web change in this release.
+
+**B gets it:** leave the launcher open (or reopen it) — it checks the feed on start and the
+account menu shows **Restart to update** once it has downloaded; click it. Or quit it from the
+tray and run `ENW-Zombies-Launcher-Setup-0.2.10.exe`.

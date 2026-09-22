@@ -130,6 +130,15 @@ it (log: last start 18:38, dead by 19:00). Fixed two ways:
 B's step: restart the launcher (or Check for updates -> 0.2.7); the site pill must read
 `site: 127.0.0.1:3200`, not `placeholder`.
 
+## 2026-09-22 20:25: launcher 0.2.10 — nav clicks land; in-game name is the ENW name
+
+On the feed (`latest.yml` 0.2.10, live tunnel 200 text/yaml), commit `5103c13`. Nav: the shell's hidden
+`#chrome` strip was a drag region under the site and won `WM_NCHITTEST`; it is now `display:none`
+while the site shows (the web-side underlay `2ff595c` alone does not fix it). Name: WaW sends the
+active **profile's** name, not the `name` dvar — the launcher now names the profile after the ENW
+name. DLL unchanged (0.2.8's). Unproven: a real mouse click in the packaged window, and `myu` over
+B's head in a real game — B's first run. Detail: `docs/kickstart/launcher.md`.
+
 ## 2026-09-22 19:50: launcher 0.2.9 — no launcher bar; the site's nav is the title bar
 
 Frameless window; the green top bar and theme are gone. Min/max/close live at the right of the
