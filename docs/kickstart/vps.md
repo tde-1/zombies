@@ -220,9 +220,14 @@ it gets tight, delete the prefix's Steam download cache before asking for a bigg
 
 Kept explicit so nobody assumes otherwise:
 
-- **No Steam login, no Steam account touched, no game installed.** That is B's, deliberately.
-- **WaW has never run on this box.** Whether the dedicated exe works under Wine is the whole
-  question and it is still open. Everything above is only the rig.
+- ~~**No Steam login, no Steam account touched, no game installed.** That is B's, deliberately.~~
+  **Superseded 2026-09-22 03:00 (§9):** B logged the client in on a throwaway account and WaW is
+  now installed. No password, Guard code or token has ever been on this box or in this repo, and
+  that part has not changed.
+- ~~**WaW has never run on this box.**~~ **Superseded (§10): it has.** It boots, decrypts under
+  SteamStub, loads a zombies map, and then shuts itself down without answering on the wire.
+  Whether the dedicated exe *works* under Wine is therefore still open, and §10 says precisely
+  what is in the way.
 - **Nothing here is connected to the rest of the project.** No host agent, no client DLL, no
   referee. The box does not know ENW Zombies exists.
 
@@ -254,3 +259,215 @@ and stays that way:
 ```bash
 set -a; . infra/hcloud.env; set +a     # never echo it, never paste it into a prompt
 ```
+
+---
+
+## 9. WaW is installed on the box (2026-09-22 03:00)
+
+**Observation.** The account the client is logged in as **owns app 10090** and the game installs
+headlessly with no tricks.
+
+| | |
+|---|---|
+| Ownership | the client's own Install dialog opened for "Call of Duty: World at War, 9.38 GB". Steam opens the *store page* for an app you do not own, so the dialog is the proof. `appmanifest_10090.acf` then wrote `"LastOwner" "76561198028405776"` |
+| Download | **6,660,922,368 bytes**, `BytesDownloaded == BytesToDownload` |
+| On disk | **8,350,249,680 bytes**, `StateFlags 4`, `buildid 252004` |
+| Time | **150 s** from pressing Install to `StateFlags 4` (~44 MB/s from `cache*-iev-giga.steamcontent.com`) |
+| Free afterwards | 21 GB of 38 GB |
+
+`infra/vps/04-install-waw.sh` does it and is idempotent (`StateFlags 4` -> exit 0, touch nothing).
+
+**Nothing was bought, and no password, Guard code or token was handled, logged or written down.**
+
+### The two install traps
+
+1. **`steam://install/10090` only opens the dialog.** It does not queue anything. The Install
+   button has to be pressed, and in this CEF build `xdotool click` merely hovers: it needs
+   `mousemove; sleep 0.4; mousedown 1; sleep 0.15; mouseup 1`. At 1280x800 the button is at
+   **(575, 583)**.
+2. **The download came in GERMAN, and German WaW has no `nazi_zombie_prototype`.** Base depot
+   10091 is shared, but the localised depot the box got is **10097 (German)** where B's PC has
+   **10092 (English)**. The German build ships `zone/German/` only, with `nazi_zombie_asylum` and
+   `nazi_zombie_sumpf` and **no `nazi_zombie_prototype` and no `nazi_zombie_factory`** - the
+   censored German release. `+map nazi_zombie_prototype` therefore fails with
+   `Error: Can't find map "nazi_zombie_prototype". A mod is required for custom maps`, which reads
+   like a mod problem and is not one. The `UserConfig` block in the manifest says
+   `"language" "english"` and is **not** what Steam used; it followed the account's own language.
+   Fixing it means setting the app's language in the client's game Properties and re-downloading
+   depot 10092 (4.19 GB), which is **not done** - it was not the blocker (§10) and it changes a
+   setting on B's throwaway account, so it is left for B.
+
+The Steam client's red banner **"Steam no longer supports running on 32-bit Windows"** is cosmetic
+so far: in the win32 prefix the client logged in, browsed the library, queued and completed a 6.7 GB
+download. **No reason to move to a win64 prefix was found.**
+
+## 10. The headless server under Wine: it boots, and it will not answer
+
+**Verdict: no.** Our dedicated build runs on the box, loads a zombies map, and then shuts itself
+down. `tools/dev/oob.py` from B's PC against the public address is the gate and it **fails**:
+
+```
+> python tools\dev\oob.py 28960 --host 2.28.235.236 --allow-remote --timeout 3.0
+getstatus      NO REPLY
+getinfo        NO REPLY
+getchallenge   NO REPLY
+OOB EXIT CODE = 1
+```
+
+### What *did* work, and it is most of the rig
+
+* **SteamStub decrypts under Wine.** This was the open question and the answer is yes:
+  `steamstub: decrypted after 869 ms (252 polls); 0x401000 = 55 8B EC 83 E4 F8 ...`, with the Steam
+  client running and `SteamAppId`/`SteamGameId` in the environment, in the **win32** prefix. There
+  is no `STILL ENCRYPTED` anywhere in any run.
+* The proxy DLL loads (`binkw32.dll`), all 36 components register, and the IAT-based ones
+  (focus guard, DNS filter, destination lockdown, `no_winconsole`, the non-blocking message pump)
+  arm normally - they do not depend on engine addresses.
+* The engine boots, opens **`0.0.0.0:28960`** (confirmed with `ss -ulnp`; it also takes 3074),
+  reaches `------ Server Initialization ------`, `Server: nazi_zombie_asylum`,
+  `dvar set sv_running 1`, loads the map fastfiles and runs the zombiemode GSC
+  (`dvar set g_spawnai 1`).
+* Idle cost, measured on the cx23 after it fell back to the menu: **RSS 362 MB, 10 threads, 6.31 s
+  of CPU in 563 s of wall clock (1.1 % of one core)**. No frame rate: see below.
+
+### Why it will not answer: our address map is not portable between Steam copies
+
+**This is the finding of the session, and it is bigger than this box.**
+
+Every engine patch we have is a hardcoded VA verified against **B's** `CoDWaW.exe`. On the box every
+single one of them refused to apply:
+
+```
+game: Com_Printf   @ 0059A2C0 *** SUSPECT ***  bytes: 09 80 7F 01 00 74 03 83 C7 02 ...
+frame: 005FF7BD is not a call instruction (44 35 88 00 ...) - no per-frame tick
+raw_sockets: NOT patching 0x00600109. Expected `je +0x34` (74 34), found C0 C3
+hooks: SV_Frame: 00635CC0 does not look like code. Refusing to hook.
+hooks: MSG_ReadBitsCompress: 006751D0 does not look like code. Refusing to hook.
+huffman: THE SERVER IS UNPROTECTED against CVE-2018-10718-class overflow
+direct_connect: 00642E77 is 16 8D 4C 24 14, expected E8 64 92 F3 FF
+```
+
+The two executables are the **same game** and the **same Steam build** - `buildid 252004`,
+`Build 1263 JADAMS2 350073 CL(Thu Oct 29 15:43:55 2009)`, both 5,902,336 bytes - and they are
+**different binaries**: sha256 `732900D1...` (B) vs `53c48cce...` (box), differing on 5,135,285 of
+5,902,336 bytes on disk.
+
+That much was expected - SteamStub encrypts with a per-copy key. The part that matters is that the
+**decrypted** images differ too. `/proc/<pid>/mem` of the live Wine process was dumped (the PE is
+mapped at 0x400000 like any other process, so no Windows tooling is needed) and compared with
+`ZombiesDev\dumps\codwaw-1.7-a.exe`:
+
+* `.text[0]` is byte-identical on both, so the decryption is real and complete;
+* but only **10.9 %** of `.text` matches at the same offset, and **0 of 1001** 4 KB pages match;
+* the first 64 bytes are the *same instructions* with **different absolute data pointers**
+  (`mov ...,0x008AF1D8` on the box where B has `0x008AF218`);
+* matching each function by its prologue gives a small, **piecewise-constant** shift:
+
+| function | B's VA | delta on the box |
+|---|---|---|
+| `SV_ConnectionlessPacket` | 0x634E90 | **-0x2D0** |
+| `SV_Frame` | 0x635CC0 | **-0x2D0** |
+| `CL_ConnectLocal` | 0x641730 | **-0x2D0** |
+| `MSG_ReadBitsCompress` | 0x6751D0 | **-0x300** |
+| `VM_Notify` | 0x698670 | **-0x300** |
+
+So: **Steam hands each account a differently-linked executable of the identical build.** Same code,
+relocated by a few hundred bytes in bands. A hardcoded address map is therefore a property of *one
+copy of the game*, not of "WaW 1.7", and **`docs/re/t4-sp-map.md` is B's-exe-specific**.
+
+*Inference, not observation*: this is what Steam's Custom Executable Generation does. Nothing was
+done to confirm the mechanism by name - the measurement above is the evidence, and it is enough to
+act on.
+
+**The consequence for the product**: any box that is not B's needs its addresses found by
+**signature scanning** rather than read from a table. The deltas are small and the prologues are
+intact, which is exactly the easy case for a scanner. That is a `re` / `foundation` job and it is
+the single thing standing between this box and a working game host.
+
+### And the exact way it dies, which is a patch we already have
+
+With no patches applied the engine behaves as it did before any of them existed:
+
+```
+SetSavedDvar can only be called on dvars with the SAVED flag set
+ERROR: script runtime error
+----- Server Shutdown -----
+      dvar set sv_running 0
+```
+
+That is `dedi.md` §4 site 2 / p07 - the zombiemode GSC calls `SetSavedDvar` on
+`con_typewriterColorBase` / `hud_drawhud` / `ui_campaign`, and our DLL's job is to put `DVAR_SAVED`
+on them. Address-based, so it did not run. The server shuts down, the engine re-enters client init,
+calls `Direct3DCreate9` and sits in the menu - which is why `ss` shows **43,200 bytes stuck in the
+socket's Recv-Q**: the probes arrive and nothing drains them.
+
+`local_client.cpp`, `frame_pacing.cpp`, `raw_sockets.cpp` and `error_trap.cpp` are all in the same
+boat, so there is no frame rate to report: `frame_dispatch: no per-frame tick`.
+
+### The launch line that got that far
+
+```bash
+cd /home/waw/pfx/drive_c/zdev/waw-vps1
+WINEPREFIX=/home/waw/pfx DISPLAY=:99 WINEDEBUG=-all \
+SteamAppId=10090 SteamGameId=10090 \
+ENW_DEDI_SUPPRESS_MAPSUMMARY=1 ENW_RAW_SOCKETS=1 ENW_ROLE=server ENW_INSTANCE=vps1 \
+wine CoDWaW.exe \
+  +set fs_homepath 'C:\zdev\homes\vps1' \
+  +set logfile 2 +set r_fullscreen 0 +set r_mode 800x600 \
+  +set vid_xpos -4000 +set vid_ypos -4000 \
+  +set s_volume 0 +set snd_volume 0 +set snd_menu_master 0 \
+  +set com_introPlayed 1 +set com_startupIntroPlayed 1 \
+  +set sys_configureGHz 1 +set ui_autoContinue 1 +set cl_allowDownload 0 \
+  +set developer 0 +set con_minicon 1 \
+  +set dedicated 1 +set zombiemode 1 +set com_maxfps 60 \
+  +set con_typewriterColorBase '1.0 1.0 1.0' +set hud_drawhud 1 +set ui_campaign american \
+  +set sv_maxclients 4 +set net_port 28960 \
+  +map nazi_zombie_asylum
+```
+
+`infra/vps/05-run-dedi.sh` is that, plus the dev copy and the readiness probe. It is idempotent and
+takes `NAME`, `MAP`, `PORT`, `MAXFPS`, `SECONDS_TO_RUN`, `REBUILD` and `DLL` from the environment.
+
+**The dev copy honours rule 1**: top-level *files* are real copies (so `binkw32.dll` can be
+replaced - `rm` then copy, never a write in place), top-level *directories* are symlinks into the
+Steam install. That is the Linux spelling of `new-copy.ps1`'s `mklink /J`. Nothing is ever written
+into `steamapps/common/Call of Duty World at War`.
+
+## 11. Three traps this box cost us, none of them Wine's fault
+
+1. **A headless box has no player profile, and the engine will not load a map without one.** The
+   first three runs read like a dedicated-mode failure - `Getting Direct3D 9 interface...`,
+   `Direct3D 9 failed to initialize`, and a modal **"Error during initialization: Unhandled
+   exception caught"**. The actual line, 130 lines earlier and easy to miss, is:
+
+   ```
+   Can't load a map without a player profile selected.
+   ```
+
+   `+map` is refused, the engine falls through to **client** init, and *that* is what wants D3D.
+   The fix is two files in the prefix, and `05-run-dedi.sh` writes them:
+   `.../AppData/Local/Activision/CoDWaW/players/profiles/active.txt` holding the profile name, and
+   `.../players/profiles/<name>/config.cfg`. B's PC has never shown this because B's profile
+   (`anna-jpg`) has existed since long before any of this.
+
+2. **i386 Mesa was missing, so Wine had no D3D9 at all.** `libgl1-mesa-dri` was installed for
+   `amd64` only; the game is 32-bit. `apt install libgl1-mesa-dri:i386 libglx-mesa0:i386
+   libgl1:i386` gives `llvmpipe` on `:99` and D3D9 then initialises for real (*"DirectX returned a
+   frame buffer that is 24-bit color with 8-bit alpha"*). A **dedicated** server does not need it -
+   but without it the diagnostic above is a hard failure instead of a log line, so install it.
+
+3. **`pgrep -f` matches the `bash -c` wrapper as well as the game.** Every CPU/RSS number in the
+   first two runs was the 2 MB shell, not the 362 MB server. Use `pgrep -x CoDWaW.exe` for
+   sampling, and `pgrep -f zdev` (our own path, which is in argv as `C:\zdev\homes\<name>`) for
+   killing our own PIDs and nothing else.
+
+## 12. What this lane still has NOT done
+
+- **The server has never answered on the wire from this box.** §10.
+- **The host agent is not on the box**, the box is not registered with the site, and it cannot be
+  the game host for a session with friends. That plan was conditional on §10 succeeding.
+- **Instances-per-box is unmeasured.** One instance does not stay up, so counting several is not
+  yet a question that can be asked.
+- **The German depot is still installed.** §9.
+- Steam offline mode, and whether SteamStub tolerates several simultaneous decryptions, are both
+  still untested.

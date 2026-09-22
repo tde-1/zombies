@@ -3861,3 +3861,55 @@ a route to several instances.
   `parties.create()`'s default argument and the `parties.mode` column default. Stock settings,
   tracked. Nothing to flip.
 - `npm test` 105 passed, 0 failed.
+
+**vps, 2026-09-22 04:10 — WaW is on the Hetzner box, the server boots under Wine, and it does not
+answer. One finding underneath all of it.**
+
+- 03:00 vps: **WaW installs on `zombies-dev`.** The throwaway account owns app 10090 (the client's
+  own Install dialog opened; Steam shows the store page for an app you do not own), 6.66 GB
+  downloaded, 8.35 GB on disk, `StateFlags 4`, **150 s** start to finish. 21 GB free afterwards.
+  Nothing was bought. `infra/vps/04-install-waw.sh`, idempotent. `vps.md` §9.
+- 03:05 vps: **SteamStub decrypts under Wine.** `steamstub: decrypted after 869 ms (252 polls)`,
+  win32 prefix, Steam client running, `SteamAppId`/`SteamGameId` set. That was the open question in
+  `foundation.md` §8 and the answer is yes. No `STILL ENCRYPTED` in any run.
+- 03:50 vps: **the headless server boots and then shuts itself down.** `Server Initialization`,
+  `Server: nazi_zombie_asylum`, `sv_running 1`, `g_spawnai 1`, `0.0.0.0:28960` bound — then
+  `SetSavedDvar can only be called on dvars with the SAVED flag set` -> `script runtime error` ->
+  `Server Shutdown`. `oob.py getstatus` from B's PC against `2.28.235.236:28960` **exits 1, NO
+  REPLY**, with 43,200 bytes stuck in the socket's Recv-Q because nothing is draining it.
+- 03:55 vps: **THE FINDING — our address map is a property of ONE COPY of the game, not of WaW
+  1.7.** B's exe and the box's are the same `buildid 252004`, the same `Build 1263 JADAMS2 350073`,
+  the same 5,902,336 bytes, and different binaries (sha256 `732900D1…` vs `53c48cce…`). Expected,
+  for SteamStub. What is **not** expected: the *decrypted* images differ too. Dumped
+  `/proc/<pid>/mem` of the live Wine process and compared with `ZombiesDev\dumps\codwaw-1.7-a.exe`:
+  `.text[0]` identical, but only **10.9 %** of `.text` matches at the same offset and **0 of 1001**
+  4 KB pages match. Same instructions, different absolute data pointers, and each function shifted
+  by a small piecewise-constant delta — `SV_Frame` / `SV_ConnectionlessPacket` / `CL_ConnectLocal`
+  **−0x2D0**, `MSG_ReadBitsCompress` / `VM_Notify` **−0x300**. Steam hands each account a
+  differently-linked executable of the identical build. So **every hardcoded VA in
+  `docs/re/t4-sp-map.md` is B's-exe-specific**, and on the box every patch we have refused to apply
+  (`no per-frame tick`, `raw_sockets: NOT patching`, `SV_Frame … refusing to hook`, `huffman:
+  UNPROTECTED`). *Mechanism inferred (Steam CEG), not confirmed by name; the measurement is the
+  evidence.* `vps.md` §10.
+- 04:00 vps: **for `re` / `foundation`: signature scanning, not a table.** The deltas are small and
+  the prologues are intact, which is the easy case. This is the one thing between the box and a
+  working game host, and it is worth doing anyway — it is what makes the product installable on a
+  machine that is not B's.
+- 04:05 vps: **three traps, all ours, none of them Wine's.** (1) A fresh box has no player profile
+  and the engine refuses `+map` with `Can't load a map without a player profile selected.`, then
+  falls through to CLIENT init, `Direct3DCreate9` and a modal "Error during initialization" — which
+  is what the failure *looks* like and is 130 lines later than the cause. Two files in the prefix
+  fix it. (2) `libgl1-mesa-dri` was amd64-only; the game is 32-bit, so Wine had no D3D9 at all.
+  (3) `pgrep -f` matches the `bash -c` wrapper, so the first two runs' CPU/RSS numbers were a 2 MB
+  shell, not a 362 MB server.
+- 04:05 vps: **the box's Steam pulled the GERMAN depot (10097; B has 10092/English), and German WaW
+  has no `nazi_zombie_prototype`.** `+map nazi_zombie_prototype` fails with `Can't find map … A mod
+  is required for custom maps`, which reads like a mod problem and is not one. Proved the boot on
+  `nazi_zombie_asylum` instead. Not fixed: it is not the blocker, and the language lives in B's
+  throwaway account's game properties.
+- 04:10 vps: **the box cannot host tomorrow's games.** The scope extension (host agent on the box,
+  register with the live site, measure instances-per-box) was explicitly conditional on the server
+  answering. It does not answer, so none of it was started — no host agent was installed, the site
+  was not touched, and instances-per-box stays unmeasured because one instance does not stay up.
+  Idle cost of the one instance, for the record: **RSS 362 MB, 10 threads, 6.31 s of CPU in 563 s
+  (1.1 % of one core)**; no frame rate, because `frame_dispatch` reports `no per-frame tick`.
