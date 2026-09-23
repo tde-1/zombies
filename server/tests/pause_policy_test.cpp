@@ -127,6 +127,20 @@ int main() {
         check(decide(true, a, 4) == reason::host, "the UI cannot release a host hold");
     }
 
+    // --- the write guards (2026-09-23) ---------------------------------------------------
+    check(plausible_svs_time(25750, 25700), "svs.time one frame past frozen: write");
+    check(plausible_svs_time(25700, 25700), "svs.time already frozen: write (no-op)");
+    check(!plausible_svs_time(25699, 25700), "svs.time behind frozen: refuse");
+    check(!plausible_svs_time(0x021C1DF0, 25700), "a pointer is not a time");
+    check(!plausible_svs_time(25750, 0), "no frozen time yet: refuse");
+    check(plausible_next_snapshot(25750, 25700), "nextSnapshotTime a frame ahead: pull down");
+    check(plausible_next_snapshot(26700, 25700), "inactive-client +1000: pull down");
+    check(!plausible_next_snapshot(25699, 25700), "already due: leave it");
+    check(!plausible_next_snapshot(0x5FAD, 25700), "a string id near a time is still out of range");
+    check(!plausible_next_snapshot(-1, 25700), "-1 (unpure client) left alone");
+    check(client_slots(4, 4) == 4 && client_slots(1, 4) == 1 && client_slots(18, 4) == 4, "slots clamp to sv_maxclients and the array");
+    check(client_slots(0, 4) == 0 && client_slots(-3, 4) == 0, "no maxclients: touch nothing");
+
     std::printf("pause_policy_test: %d passed, %d failed%c", g_pass, g_fail, 10);
     return g_fail ? 1 : 0;
 }

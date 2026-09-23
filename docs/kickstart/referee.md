@@ -1807,3 +1807,52 @@ not accounted; players' pause → crash hold; a 30-minute co-op pause does not A
 * Replay: the sampler keeps running while frozen (identical frames, wall `ms`), so a replay includes
   the paused stretch as a still. Harmless; trimming it is a replay-lane choice.
 * Two real clients (the co-op rule end to end) — not possible tonight; B was playing.
+
+### 15.4 2026-09-23 01:10 — the box crash after a pause: what writes the slot, and the guards
+
+**The report.** B's solo Nacht (`m_506fba68`, inst-02, `enw-3040.log`): a 24,499 ms `solo_chat`
+pause at 00:01:57, then `RESUMED` at 00:02:21 with a clean `+50 ms` first frame. The game played on
+for 30 s (usercmds, button masks, 50 Hz). Then at 00:02:51 `dedi_reflection_dvars: [0x03BFD478]
+CHANGED from 021C1DF0 to 00005FAD`, and from 00:02:56 the frame body was dead (`Com_Frame-body 0.0
+Hz`), which is §12.1's mechanism. The suspicion was that the resume path writes the pause length
+(0x5FAD = 24,493) into engine memory.
+
+**What the code writes, all of it.** No code in this repo writes a pause length into engine memory.
+The DLL writes engine memory in three places, all only while frozen: `svs.time` (0x2547084), each
+active client's `nextSnapshotTime` (`svs.clients[i]+0x1161C`, i < 4), and `sv_paused`'s current
+value (0 or 1). `held_ms` goes only onto the game link. The AFK shift in `resume()` (§15.2) is
+`infra/host-agent/lib/referee.js`, a separate Node process on the box, and it cannot touch the
+game's memory.
+
+**What does write that slot is already on record.** `dedi.md` §13.2 caught it with a data
+breakpoint: `mov [ebx], esi` at 0x697B97 in 0x697B60, the script VM's child-variable enumeration.
+It pushes each child's **name id** into `scrVmPub.localVars` with no bound check, and an overrun
+lands on `[0x3BFD478]` first. `00005FAD` is a script string or name id, not a time. The earlier
+failing game supports this. `enw-1024.log` (inst-01, 23:44, also Nacht, **13 pauses**, not zero)
+wrote **`00001DE3`**, and no pause length or sum in that game matches it. Its last resume was
+54 s before the write; in `enw-3040` the gap was 30 s. So 0x5FAD ≈ 24,499 is a coincidence.
+
+**What is NOT known.** The questions still open:
+- Whether the pause *causes* the VM overflow or it is Nacht's own. Two other paused games on the box
+  (`enw-2876` fear_mc_2, `enw-2948` Nacht, one pause each) did not fail.
+- What the script was enumerating.
+- Whether `localVars` creeps across a freeze. While G is frozen, notifies raised outside
+  `G_RunFrame` (ClientThink, client commands) still run script threads, so a creep would be the
+  mechanism to look for.
+
+**Changes (DLL):**
+- **Write guards** (`pause_policy.hpp`, 12 new checks, 37 total):
+  - The gate writes `svs.time` only if the value there is `frozen .. frozen+1000`. Anything else
+    releases the freeze with `pause: GUARD …` and holds it released until every asker lets go.
+  - It pulls a `nextSnapshotTime` down only if the value is `frozen+1 .. frozen+5000`.
+  - It touches only `sv_maxclients` slots, clamped to 4.
+  - A pointer, a string id or a wild count can never be overwritten.
+- **A `localVars` probe.** It is read-only and costs one dword read, on these lines:
+  - `PAUSED`, every `FROZEN` line, and `RESUMED` (current value and the value at pause start);
+  - then `pause: after resume +N s: localVars …` every 5 s for a minute.
+
+  The next repro therefore shows directly whether the pause moves the VM scratch pointer.
+
+**Next repro, for whoever deploys this:** also set `ENW_DEDI_WATCH_PROBE_SLOT=1` on the instance
+(dedi.md §13.2). It logs the EIP and registers of whatever store hits `[0x3BFD478]`, so the next
+failure names its writer instead of leaving it to inference.

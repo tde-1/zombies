@@ -89,6 +89,8 @@ constexpr size_t kClientState = 0x0;             // client_s.state: 4 = CS_ACTIV
 constexpr size_t kNextSnapshotTime = 0x1161C;    // client_s.nextSnapshotTime (0x639693, 0x639C2D)
 constexpr int kCsActive = 4;
 constexpr int kMaxClients = 4;
+constexpr uintptr_t kSvMaxclientsDvar = 0x23D5C30; // dvar_s* sv_maxclients (SV_CheckPaused 0x635BBC)
+constexpr uintptr_t kScrVmLocalVars = 0x3BD4700;   // gScrVmPub[0] first dword: localVars (dedi.md §13.2)
 
 uintptr_t svs_time_addr() { return at(t4::var::svs) + t4::svs_off::time; }
 uintptr_t client_addr(int i) {
@@ -108,6 +110,9 @@ uint64_t g_skipped = 0;          // G frames not run in the current pause
 uint64_t g_skipped_total = 0;
 int g_first_after_resume = -1;   // level.time of the first frame after a resume, for the log
 uintptr_t g_grunframe = 0;       // live address of G_RunFrame, for the stub's jump
+int g_slots = 0;                 // sv_maxclients clamped to 4, read once when a pause starts
+uint64_t g_refused_writes = 0;   // guard refusals this pause (a value that was not a time)
+bool g_guard_tripped = false;    // svs.time was not what we expected: stop freezing
 
 void set_sv_paused_marker(int v) {
 #ifdef ENW_HAVE_T4_ADDRESSES
@@ -129,6 +134,17 @@ int read_sv_paused_marker() {
     return v;
 #else
     return -1;
+#endif
+}
+
+// scrVmPub.localVars, the scratch pointer 0x697B60 pushes into with no bound (dedi.md §13.2).
+// Only READ, and only logged: if it creeps across a pause, the next repro shows it.
+uintptr_t read_local_vars() {
+#ifdef ENW_HAVE_T4_ADDRESSES
+    uintptr_t v = 0;
+    return memory::read(at(kScrVmLocalVars), &v) ? v : 0;
+#else
+    return 0;
 #endif
 }
 
@@ -157,13 +173,32 @@ bool __cdecl enw_pause_gate(int svs_time) {
         }
         g_frozen_applied = true;
         g_frozen_time = held;
+        int maxc = 0;
+        uintptr_t dv = 0;
+        if (memory::read(at(kSvMaxclientsDvar), &dv) && dv) memory::read(dv + kDvarCurrent, &maxc);
+        g_slots = pause_rule::client_slots(maxc, kMaxClients);
     }
-    *reinterpret_cast<volatile int*>(svs_time_addr()) = g_frozen_time;
-    for (int i = 0; i < kMaxClients; ++i) {
+    // GUARDS (referee.md §15.4): write only where the value already there is a time near the
+    // frozen one. If svs.time is not, something else moved it -- stop freezing rather than fight.
+    auto* svs_time_p = reinterpret_cast<volatile int*>(svs_time_addr());
+    if (!pause_rule::plausible_svs_time(*svs_time_p, g_frozen_time)) {
+        ++g_refused_writes;
+        g_guard_tripped = true;
+        g_last_level_time = *svs_time_p;
+        return true;
+    }
+    *svs_time_p = g_frozen_time;
+    for (int i = 0; i < g_slots; ++i) {
         const uintptr_t c = client_addr(i);
         if (*reinterpret_cast<volatile int*>(c + kClientState) != kCsActive) continue;
         auto* next = reinterpret_cast<volatile int*>(c + kNextSnapshotTime);
-        if (*next > g_frozen_time) *next = g_frozen_time;
+        const int prior = *next;
+        if (prior <= g_frozen_time) continue;
+        if (!pause_rule::plausible_next_snapshot(prior, g_frozen_time)) {
+            ++g_refused_writes;
+            continue;
+        }
+        *next = g_frozen_time;
     }
     ++g_skipped;
     ++g_skipped_total;
@@ -274,6 +309,23 @@ private:
             poll_clients();
             evaluate();
         }
+        if (g_guard_tripped && g_frozen) {
+            // svs.time was not a time near the frozen one: something else owns that frame.
+            // Give the world back rather than write into it (referee.md §15.4).
+            ENW_ERROR("pause: GUARD - svs.time was not frozen+frameMsec; refusing to write, "
+                      "releasing the freeze (%llu refused write(s))",
+                      static_cast<unsigned long long>(g_refused_writes));
+            host_hold_ = false;
+            force_release_ = true;
+            evaluate();
+        }
+        if (after_resume_logs_ > 0 && now - last_after_log_ms_ >= kFrozenLogMs) {
+            last_after_log_ms_ = now;
+            --after_resume_logs_;
+            ENW_INFO("pause: after resume +%u s: localVars %08X (at pause %08X)",
+                     (now - resumed_at_ms_) / 1000, static_cast<unsigned>(read_local_vars()),
+                     static_cast<unsigned>(local_vars_at_pause_));
+        }
         if (g_first_after_resume >= 0) {
             ENW_INFO("pause: first G frame after resume at level.time %d (held at %d, so +%d ms: "
                      "no catch-up)", g_first_after_resume, g_frozen_time,
@@ -288,9 +340,11 @@ private:
             memory::read(svs_time_addr(), &st);
 #endif
             ENW_INFO("pause: FROZEN %u s (%s, %d player(s)): level.time %d, svs.time %d, "
-                     "%llu G frame(s) held, sv_paused %d",
+                     "%llu G frame(s) held, sv_paused %d, localVars %08X, refused writes %llu",
                      (now - frozen_at_ms_) / 1000, pause_rule::to_string(reason_), connected_,
-                     lt, st, static_cast<unsigned long long>(g_skipped), read_sv_paused_marker());
+                     lt, st, static_cast<unsigned long long>(g_skipped), read_sv_paused_marker(),
+                     static_cast<unsigned>(read_local_vars()),
+                     static_cast<unsigned long long>(g_refused_writes));
             if (connected_ > 1 && now - frozen_at_ms_ >= kLongPauseMs &&
                 now - last_long_log_ms_ >= kLongPauseMs) {
                 last_long_log_ms_ = now;
@@ -364,6 +418,11 @@ private:
     void evaluate() {
         reason want = pause_rule::decide(host_hold_, clients_, kSlots);
         if (want == reason::none && operator_trigger()) want = reason::operator_file;
+        if (force_release_) {
+            // A tripped guard holds the world released until every asker has let go.
+            if (want == reason::none) force_release_ = false, g_guard_tripped = false;
+            want = reason::none;
+        }
         const bool freeze = want != reason::none;
         if (freeze == g_frozen) {
             if (freeze && want != reason_) {
@@ -382,6 +441,9 @@ private:
             last_frozen_log_ms_ = now;
             last_long_log_ms_ = now;
             g_skipped = 0;
+            g_refused_writes = 0;
+            local_vars_at_pause_ = read_local_vars();
+            after_resume_logs_ = 0;
             ++pauses_;
             set_sv_paused_marker(1);
             ENW_INFO("pause: PAUSED (%s, %d player(s)) at level.time %d", pause_rule::to_string(want),
@@ -391,8 +453,15 @@ private:
             const uint32_t held = now - frozen_at_ms_;
             set_sv_paused_marker(0);
             ENW_INFO("pause: RESUMED after %u ms (was %s, %d player(s) now): %llu G frame(s) held, "
-                     "level.time held at %d", held, pause_rule::to_string(reason_), connected_,
-                     static_cast<unsigned long long>(g_skipped), g_frozen_time);
+                     "level.time held at %d, localVars %08X (at pause %08X), refused writes %llu",
+                     held, pause_rule::to_string(reason_), connected_,
+                     static_cast<unsigned long long>(g_skipped), g_frozen_time,
+                     static_cast<unsigned>(read_local_vars()),
+                     static_cast<unsigned>(local_vars_at_pause_),
+                     static_cast<unsigned long long>(g_refused_writes));
+            resumed_at_ms_ = now;
+            last_after_log_ms_ = now;
+            after_resume_logs_ = 12;   // a minute of localVars after every resume
             last_held_ms_ = held;
             reason_ = reason::none;
         }
@@ -426,6 +495,11 @@ private:
     uint32_t last_held_ms_ = 0;
     unsigned pauses_ = 0;
     uint32_t last_trigger_check_ms_ = 0;
+    bool force_release_ = false;
+    uintptr_t local_vars_at_pause_ = 0;
+    uint32_t resumed_at_ms_ = 0;
+    uint32_t last_after_log_ms_ = 0;
+    int after_resume_logs_ = 0;
     bool trigger_on_ = false;
     std::string trigger_path_;
 };

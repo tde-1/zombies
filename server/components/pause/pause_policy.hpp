@@ -117,4 +117,26 @@ inline reason decide(bool host_hold, const client_report* clients, int n) {
     return ui_wants(clients, n);
 }
 
+
+// ---------------------------------------------------------------- write guards --
+// The freeze writes engine memory in exactly two places each frozen frame: svs.time, and each
+// active client's nextSnapshotTime. Both are only ever written when the value already there is a
+// plausible TIME near the frozen one -- a pointer, a string id or a wild count fails this, so a
+// wrong address can never be scribbled on (2026-09-23, referee.md §15.4).
+//
+// svs.time: SV_Frame adds frameMsec (1000/sv_fps, at most 1000) before we see it.
+inline bool plausible_svs_time(int prior, int frozen) {
+    return frozen > 0 && prior >= frozen && prior - frozen <= 1000;
+}
+// nextSnapshotTime: svs.time + rateMsec (+ 50 * delay), or svs.time - 1, or svs.time + 1000 for a
+// client that is not active -- all within a few seconds of the frozen time. Only ever pulled DOWN.
+inline bool plausible_next_snapshot(int prior, int frozen) {
+    return frozen > 0 && prior > frozen && prior - frozen <= 5000;
+}
+// How many client slots the gate may touch: sv_maxclients, clamped to the array (4 on T4).
+inline int client_slots(int sv_maxclients, int array_len) {
+    if (sv_maxclients < 1) return 0;
+    return sv_maxclients < array_len ? sv_maxclients : array_len;
+}
+
 }  // namespace enw::pause_rule
