@@ -179,8 +179,15 @@ export function accountConfigLines(settings = {}, display = null) {
   for (const [c, keys] of Object.entries(settings.wawBinds || {})) {
     if (BIND_CANON.has(String(c).toLowerCase()) && Array.isArray(keys)) binds[BIND_CANON.get(String(c).toLowerCase())] = keys
   }
+  // Raw input is an environment switch for the DLL, not an engine dvar, so the config
+  // carries it as ENW's own archived dvar: the in-game Settings tab (esc-menu.md §9) shows
+  // this value and writes a change back into the same line for the read-back below.
+  pairs.push([RAW_MOUSE_DVAR, settings.rawMouse === false ? '0' : '1'])
   return { pairs, resets, binds }
 }
+
+// ENW's own archived dvar for the DLL's raw-input switch (not a WaW menu item).
+export const RAW_MOUSE_DVAR = 'enw_rawmouse'
 
 // Fold the account into a config.cfg the game wrote. Case-insensitive on dvar names
 // (the engine writes `ai_corpseCount`; the menu says `ai_corpsecount`); everything we
@@ -284,7 +291,15 @@ const KEY_DVAR = { fov: 'cg_fov', maxFps: 'com_maxfps', vsync: 'r_vsync', sensit
 // After the game exits: everything the player changed in the game's own menus, relative
 // to what this launch wrote, as a settings patch. Only differences count - an untouched
 // value is not a change, and a dvar we did not record is not ours to claim.
-export function readBackAccount({ homeDir = P.home, profile = PROFILE, localAppData = null } = {}) {
+//
+// `commit` (2026-09-23, the in-game Settings tab): once the launcher has taken the patch,
+// the snapshot is moved forward to what the config says now. Then a LATER read-back of the
+// same file finds nothing, and one that finds something is a change the launcher never
+// saw - the game wrote it (write-through: the engine saves config.cfg on the frame after
+// an archived dvar changes) and the launcher died or was closed before the game exited.
+// launch.js runs that catch-up before it merges the account into the config again, so an
+// in-game change is never overwritten by the stale account value.
+export function readBackAccount({ homeDir = P.home, profile = PROFILE, localAppData = null, commit = false } = {}) {
   let stamp
   try { stamp = JSON.parse(fs.readFileSync(accountStamp(homeDir, profile), 'utf8')) } catch { return { changed: {}, reason: 'no launch snapshot' } }
   const p = configPaths(homeDir, profile, localAppData)
@@ -319,6 +334,14 @@ export function readBackAccount({ homeDir = P.home, profile = PROFILE, localAppD
     else if (key === 'resolution') { const r = validResolution(after); if (r) changed.resolution = r }
   }
 
+  {
+    const before = (stamp.dvars || {})[RAW_MOUSE_DVAR]
+    const after = now.dvars[RAW_MOUSE_DVAR]
+    if (after === '0' || after === '1') {
+      if (before !== undefined && before !== null && String(before) !== after) changed.rawMouse = after === '1'
+    }
+  }
+
   const binds = {}
   for (const cmd of BIND_COMMANDS) {
     const a = ((stamp.binds || {})[cmd] || []).slice().sort().join(',')
@@ -326,5 +349,19 @@ export function readBackAccount({ homeDir = P.home, profile = PROFILE, localAppD
     if (a !== b) binds[cmd] = (now.binds[cmd] || []).slice(0, 2)
   }
   if (Object.keys(binds).length) changed.wawBinds = binds
+  if (commit && Object.keys(changed).length) {
+    try { fs.writeFileSync(assertWritable(accountStamp(homeDir, profile)), JSON.stringify({ ...stamp, at: new Date().toISOString(), committedAt: new Date().toISOString(), file, ...now }, null, 2)) } catch {}
+  }
   return { changed, file, reason: Object.keys(changed).length ? 'the player changed settings in game' : 'nothing changed in game' }
+}
+
+// Fold a read-back patch into a settings object (the shape settings.get() returns), the way
+// settings.set() would: `waw` and `wawBinds` merge key by key, everything else replaces.
+export function foldReadBack(settings = {}, patch = {}) {
+  const out = { ...settings }
+  for (const [k, v] of Object.entries(patch || {})) {
+    if ((k === 'waw' || k === 'wawBinds') && v && typeof v === 'object') out[k] = { ...(settings[k] || {}), ...v }
+    else out[k] = v
+  }
+  return out
 }
