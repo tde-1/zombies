@@ -3191,3 +3191,13 @@ agent not restarted** (no host-agent change since §22.6, and lane 15's agent ga
 lease `m_2c3cf1b8` (fake …0003, Nacht) booted after the swap → `map_loaded` in 6 s → `ready` → cancelled.
 The `linked` build string still reads 11:44:06 (the date TU is not rebuilt incrementally); `sha256sum`
 is the check. Same binary as launcher 0.2.23.
+
+### 22.8 Box DLL `10ba8544` (2026-09-23 12:44 UK, integrator)
+
+**`10ba8544df4272fc65cb8028af7cf9ca47b45a009c840addc0bd930104f3a5ff`** (2,387,968 B), clean detached
+worktree `C:\Users\b\ZombiesDev\wt-coord2` at main **`ad2ea6b`** (lane 17 WOW64 raw-input fix on top of
+§22.7; `mouse_tests` all passed, `settings_model_test` 55/0, `lockdown_test` 73/0). Installed into all
+9 copies (temp name + `mv`, `chown waw:waw`) beside lane 15's live agent game; replaced `06a2e1bd`,
+rollback `/home/waw/binkw32.rollback-06a2e1bd.dll`. Host agent not restarted (no host change). Proof:
+agent lease `m_e7918082` (fake …0003, Nacht) → `map_loaded` in 7 s → `ready` → cancelled. Same binary
+as launcher 0.2.24.

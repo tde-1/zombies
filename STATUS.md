@@ -12,8 +12,8 @@ The session ran from 2026-09-22 19:00 to here; the one-page version, with every 
 
 | | State | Pointer |
 |---|---|---|
-| **Launcher on the feed** | **0.2.23** (2026-09-23 12:36 UK), client DLL **`06a2e1bd`** (main `f8bc2d9`, same binary as the box). Tonight: 0.2.7 → 0.2.23 | `launcher.md` release table |
-| **Box DLL** | **`06a2e1bd`** in all 9 copies (2026-09-23 12:35 UK; clean worktree `wt-coord2` at main `f8bc2d9`: lane 1 Discord hook guard + lane 12 lockdown). Rollback `binkw32.rollback-499b70c1.dll`. Boot proven: agent lease `m_2c3cf1b8`, `map_loaded`. Chain: `b36fe140` → `f8a835bb` → `86f12b12` → `6fccc0e0` → `79d4317d` → `c0986e5e` → `f920bb39` (unrecorded, reverted) → `03b04bc3` → `6b1ccfc5` → `683a475c` → `134a9d0f` → `499b70c1` → `06a2e1bd` | `dedi.md` §22.6 |
+| **Launcher on the feed** | **0.2.24** (2026-09-23 12:45 UK), client DLL **`10ba8544`** (main `ad2ea6b`, same binary as the box). Tonight: 0.2.7 → 0.2.24 | `launcher.md` release table |
+| **Box DLL** | **`10ba8544`** in all 9 copies (2026-09-23 12:44 UK; clean worktree `wt-coord2` at main `ad2ea6b`: lane 17 mouse fix on top of lanes 1 + 12). Rollback `binkw32.rollback-06a2e1bd.dll`. Boot proven: agent lease `m_e7918082`, `map_loaded`. Chain: `b36fe140` → `f8a835bb` → `86f12b12` → `6fccc0e0` → `79d4317d` → `c0986e5e` → `f920bb39` (unrecorded, reverted) → `03b04bc3` → `6b1ccfc5` → `683a475c` → `134a9d0f` → `499b70c1` → `06a2e1bd` → `10ba8544` | `dedi.md` §22.6–22.8 |
 | **Box host agent** | Several leases: 3 slots, 1 reserved for agents; v2 pull; `ready` at `map_loaded`; copies/lobby ports by slot; `restart.js`. `run-host.sh`: `ENW_NO_PAUSE=1`, `ENW_DEDI_WATCH_PROBE_SLOT=1` | `host.md` §13, `dedi.md` §18.6, §19, §21.3 |
 | **Site** | Live on B's PC; keepalive loop detached + Startup shortcut. **Proven by accident:** the PC crashed ~03:16, the loop was back 03:19:53, site + tunnel up 03:20:36. Everything merged through `b85ee4f` is live (bundle built 03:07). Live DB: 26 EE guides, 6 Movement banners, 0 playlists | `infra\keepalive.log`, `web.md` |
 | **Storage** | One bucket `enw-zombies` (installers + maps, 302 from the site); replay `.glb` not uploaded | `storage.md` §6 |
