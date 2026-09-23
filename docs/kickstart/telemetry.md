@@ -107,11 +107,89 @@ The same body and answers; auth is the box's `x-match-secret` like every `/api/g
 
 ## 4. Scrubbing
 
-(filled in below by the lane)
+`shared/telemetry/scrub.cjs`, three byte-identical copies (`shared/`, the launcher's
+`src/main/telemetry/`, the host agent's `lib/telemetry/`). `node tools/telemetry/sync-shared.js`
+copies the canonical one over the others; the web, launcher and host suites each fail when a
+copy differs (`--check` does the same by hand). The same goes for `tar.cjs` and `bundle.cjs`.
+
+**Scrubbed three times:** by the sender (every text file, and the manifest, before the tar is
+written), by the site at ingest with its own secrets (and if that finds anything, the bundle is
+rebuilt from the scrubbed text and the original deleted, `manifest.server_rescrubbed`), and
+the excerpts and the AI brief are built from the scrubbed text only.
+
+| rule | what goes |
+|---|---|
+| `literal` | exact values the caller passes: the box secret, the beta password, the site's own session secret, S3 keys, the ENW token, the Steam API key (anything ≥ 6 characters) |
+| `cvar` | `set/seta/setu enw_token|enw_auth|enw_chat_pass|… "<value>"` |
+| `json`, `kv` | `"name": "value"` and `name=value` / `name: value` where the name is a secret name or has one as a `_`/`-`/`.`-joined part (`S3_SECRET_KEY`, `x-match-secret`, `password`, `token`, `cookie`, `shared_secret`, `identity_secret` …). Booleans, small numbers and `map_key`/`key_id`/`token_ok`/`sha256` are left alone so the rules can still read them |
+| `auth_header`, `bearer` | `Authorization: Basic …`, `Bearer …` |
+| `cookie` | `zm.sid=`, `zm_gate=` |
+| `pipe` | `\\.\pipe\enw-launch-<hex>` |
+| `deeplink` | `enw-zombies://join/<token>` and friends |
+| `chat_pass`, `signed_token` | `gc1.<body>.<sig>` and the invite token `b64u(body).b64u(sig)` |
+
+**Never bundled at all** (`isForbiddenFile`): `enw_auth.cfg`, `*.maFile`, `*.env` (`s3.env`,
+`site.env`, `enw-host.env`), `session-secret`, `*.pem`, `*.key`, `id_rsa*`, browser cookie stores.
+
+**What is NOT scrubbed, on purpose:** binary files. A crash dump is process memory; it may
+hold a live invite token (5-minute life) or chat pass. B's call (2026-09-23): the testers are
+trusted friends and the dump is the single most useful thing a crash leaves, so it goes up.
+Steam IDs, persona names, map names, IPs of our own box and the player's Windows user name in
+paths are not secrets and are kept — they are what makes a log diagnosable.
 
 ## 5. Flag rules
 
-(filled in below by the lane)
+`web/server/lib/telemetry/rules.js` (the table), `flags.js` (the runner and the excerpts).
+Deterministic, at ingest, over the manifest and the text files (their last 32 MB each, 128 MB
+per bundle). No model and no network: B reviews with AI himself, from the brief. Severity is
+the worst flag's; no flags is P4.
+
+| flag | P | fires on | source of the string |
+|---|---|---|---|
+| `crash` | 1 | a non-empty `*.dmp` that is not `hang-*`; `overlay_guard: UNHANDLED EXCEPTION`; `Unhandled exception caught`; `=== Sys_Error TRAPPED ===`; host `instance exited unexpectedly`; Windows event 1000; `session.exit == 'crash'`; reason `game_crash` | overlay_guard.cpp, error_trap.cpp, host.js |
+| `hang` | 1 | `hang-*.dmp` (an empty one is called out: MiniDumpWriteDump failed); `hang_watchdog: the MAIN THREAD`; event 1002; `session.exit == 'hang'` | hang_watchdog.cpp |
+| `oom_kill` | 1 | box: `Out of memory: Killed process`, `oom-kill` in the kernel journal | journalctl -k |
+| `site_crash` | 1 | the site's own uncaught exception | siteLog.js |
+| `com_error` | 2 | `=== Com_Error TRAPPED ===`, detail lists the `EXE_…` codes in its argument dump | error_trap (DLL log) |
+| `script_error` | 2 | `script runtime error`, `script compile error` | console log |
+| `disconnect` | 2 | `PLATFORM_DISCONNECTED_FROM_SERVER`, `EXE_ERR_SERVER_TIMEOUT`, `EXE_PLAYERKICKED`, `Connection timed out` … | DLL / console |
+| `join_failed` | 2 | `join_retry: GIVING UP`, `join_retry: the server refused`, the quoted `"EXE_ERR_CANNOTJOININPROGRESS"` (not the harmless "would have been refused" warning) | join_retry.cpp |
+| `auth_deny` | 2 | `DENY`, `wrong_match`, `bad_signature`, token expired/refused | host.js auth lines |
+| `lease_refused` | 2 | `lease … refused/failed`, `no free instance slot`, a refused Play on the site | host.js, siteLog.js |
+| `host_pull_failed` | 2 | `could not prepare`, `prepare failed`, `sha256 mismatch`, reason `pull_failed` | host.js, mapcache.js |
+| `host_error` | 2 | host `error`-level lines, `KEY MISMATCH`, `instance failed:` | util.js makeLog |
+| `launcher_error` | 2 | launcher bundle with reason `launcher_error` / `uncaught` | launcher main.js |
+| `exit_abnormal` | 2 | non-zero exit code with no crash/hang seen | launcher |
+| `site_5xx` | 2 | a 5xx answer or a `console.error` on the site | siteLog.js |
+| `asset_missing` | 3 | `Could not load <type> "…"` / `unable to find secondary alias` / `Could not find zone` for an asset **not** on the map's known-chronic list | console log |
+| `record_refused` | 3 | `verified env:`, `no-records`, `is outside the Verified rule`, `profile_ok=false` | referee.js, fps_guard.cpp |
+| `fps_low` | 3 | a `frametime:` window of ≥ 120 frames under 55 fps avg or > 5 % of frames over 33 ms | frametime.cpp |
+| `low_address_space` | 3 | overlay_guard's largest free block under 64 MB (or `session.largest_free_block_mb`) | overlay_guard.cpp |
+| `launcher_update_failed` | 3 | update/feed/download errors in launcher.log | autoupdate.js |
+| `box_resources` | 3 | manifest `host.disk_free_gb < 2` or `mem_free_mb < 300`, reason `box_warning` | host agent |
+| `manual_report` | 3 | the player pressed **Send logs now** — ask them what happened | launcher |
+| `result_spooled` | 3 | `result post failed` | host.js |
+| `asset_missing_known` | 4 | asset errors that ARE on the chronic list | — |
+| `discord_refused` | 4 | overlay_guard refused DiscordHook.dll | overlay_guard.cpp |
+
+**The known-chronic list** is `web/server/data/chronic-assets.json`, built by
+`node tools/telemetry/build-chronic.js` from the archive's boot logs
+(`ZombiesDev\archive\mods\<map>\console.log`, `archive\logs\box-console\**\*.console.log`):
+24 maps, 151 engine-wide keys (`"*"`, seen in half the maps), 4,098 per-map keys on
+2026-09-23. Keys are `<type>:<name>` (`xanim:ai_zombie_walk_v1`). Re-run it after a boot
+sweep; the site reads it at the first bundle after a restart.
+
+**Excerpts.** For every flag the lines that fired plus a window around them (3 before / 8 after;
+30 / 40 for crash, hang, oom, site and launcher crashes), windows merged, the newest kept,
+**300 lines per flag, 1,500 per incident**, each line cut at 400 characters. A crash with no
+line to anchor on gets the last 120 lines of the game's own log. They are stored on the row
+(`hits`), so the sheet and the brief never open the bundle.
+
+**Adding a rule.** One object in `RULES` (`id`, `label`, `severity`, `description`, and either
+`line` + `files` or a `test(ctx)`); a case in `web/test/telemetry.js` using a real line copied
+from a real log; a row in the table above. Name the source file of the string in a comment, so
+a reworded log line can be found. Rules run at ingest only: an old incident keeps the flags it
+was given (re-flagging old bundles is a tool nobody has written yet).
 
 ## 6. The launcher side
 
