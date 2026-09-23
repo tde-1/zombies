@@ -1,0 +1,203 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_port",
+  "title": "CAMPGROUND",
+  "source": "custom",
+  "author": "FinalKill9175",
+  "released": "2016-04-25",
+  "fs_game": "mods/nazi_zombie_port",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zombiecampground.iwd": "c27b6a0a2f188487bd195ad64f0bf5d22fb25f0856a5581e2fa294f45e12ac51"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        75000,
+        80000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 80000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 116,
+    "script_count": 116,
+    "entities": 1031,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      75000,
+      80000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "debris"
+      ],
+      [
+        5000,
+        "pf1242_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf734_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1258_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c27b6a0a2f188487bd195ad64f0bf5d22fb25f0856a5581e2fa294f45e12ac51",
+    "map_specific_triggers": [
+      "attach_player",
+      "call_helicopter",
+      "harrybo21_perk_trigger",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "radio_music_trigs"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "ZombieCampground.exe",
+    "original_sha256": "cef3f457591d10290d1c4c10a47ed1a3a99e944d01b012eb10e03802da121082",
+    "original_size": 384595111,
+    "source_url": "http://www.mediafire.com/file/1yz0dzzo3s3wwxs/ZombieCampground.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:38:35Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Hello everyone, I am releasing yet another map to the community. It is called Zombie Campground, and it is one of my best looking maps yet. I started making it in March, and I closed the private beta in April. ZOMBIE CAMPGROUND List of features: -Four original perks, along with Staminup, Electric Cherry, and Widows Wine -Ported weapons from COD4, MW2, MW3, BO1, BO2 which where ported by me -Custom Introduction (Helicopter Ride) -Challenging 75,000 point ending (survive five minutes with no round gaps) -Randomized Characters -Ported viewhands from Origins. -Every pap\u2019ed weapon has an attachment or two -Fixed knifing/zombies cannot suck you in A few notes before you download: -The name of the mod is ZombieCampground -People playing in solo might have to launch the map a couple of times to get it to work I put in some time into making spec/envmaps, so turn on specular maps for it to look great THIS MAP REQUIRES T4M Changelog: v1.2 (4/26/2016): -Fixed some issues with exceeding the bone limit when pack-a-punching a few weapons v1.1 (4/25/2016): -Fixed a lighting glitch when you teleport to packapunch. v1.0 (4/24/2016): -Initial Release Credits: -Harry Bo21 for the perk system and origins hud -Bamskatter for the solo quick revive script -M.A.K.E.C.E.N.T.S for help on making the dual-clip reload script -elfenliedtopfan5 for his original weapon porting tutorials -Various people in the UGX community for helping me out and making tutorials. -My beta testers (lame_link, angelbuddy, Ato",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.2.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "zombiecampground.iwd:images/custom_zombies_menu3_campground.iwi",
+        "zombiecampground.iwd:images/custom_zombies_menu_campground.iwi",
+        "zombiecampground.iwd:images/default_load_screen.iwi",
+        "zombiecampground.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/campground/cover.jpeg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/zombie-campground-1-768x432.jpeg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 63.5,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.2.iwd",
+        "entries": 443,
+        "scripts": 0,
+        "bytes": 82979129
+      },
+      {
+        "file": "zombiecampground.iwd",
+        "entries": 810,
+        "scripts": 41,
+        "bytes": 181375302
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_port_patch.ff",
+      "zombiecampground.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

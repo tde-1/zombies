@@ -1,0 +1,193 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_puns",
+  "title": "PUNS",
+  "source": "custom",
+  "author": "Sounder1995",
+  "released": "August 18, 2016, 09:33:02 pm",
+  "fs_game": "mods/nazi_zombie_puns",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_puns.iwd": "feca01d150d53b4cd547b058cc68575cd1a5a33581acea38076381c924da7ad9"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "endgame_poi"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3500
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, endgame_poi name an ending and are this map's own; script hardcodes cost 3500",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 123,
+    "script_count": 123,
+    "entities": 1942,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "endgame_poi"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf2182_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf2186_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2178_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2161_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "pf2174_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "feca01d150d53b4cd547b058cc68575cd1a5a33581acea38076381c924da7ad9",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_puns.exe",
+    "original_sha256": "25473d26fb3d6c8d2e8aeeafb2d42cb9020a933b0c8134fbb4aeb832ee000fa2",
+    "original_size": 369979567,
+    "source_url": "http://www.mediafire.com/file/nyfar6gj9ln2wnt/nazi_zombie_puns.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:29:13Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_puns"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "nazi_zombie_puns.iwd:images/loadscreen_nazi_zombie_puns.iwi",
+        "nazi_zombie_puns.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_puns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_puns"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/puns/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/puns-10-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.0,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.3.iwd",
+        "entries": 474,
+        "scripts": 0,
+        "bytes": 99456265
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_puns_patch.ff",
+      "nazi_zombie_puns.iwd:animscripts/death.gsc",
+      "nazi_zombie_puns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

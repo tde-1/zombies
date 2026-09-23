@@ -6,6 +6,7 @@
 //   node tools/s3/sync.js                      everything
 //   node tools/s3/sync.js --only updates       just web/public/updates -> files bucket
 //   node tools/s3/sync.js --only maps          just the map files -> maps bucket
+//   node tools/s3/sync.js --only maps --map-list archive/tranche2.txt   only these maps
 //   node tools/s3/sync.js --with-replay-geometry   ALSO the replay .glb/.meta.json (mapdata/).
 //                                              Off by default: they are game-derived and B has
 //                                              not cleared them for a public bucket.
@@ -26,6 +27,20 @@ const argv = process.argv.slice(2)
 const dryRun = argv.includes('--dry-run') || argv.includes('-n')
 const withGlb = argv.includes('--with-replay-geometry')
 const only = (() => { const i = argv.indexOf('--only'); return i >= 0 ? argv[i + 1] : null })()
+// --map <bsp> (repeatable) / --map-list <file> (one bsp per line, `#` comments): only these
+// maps' mods/<bsp>/ prefixes. A tranche uploads its own maps and nothing else (archive.md s12).
+const pickMaps = (() => {
+  const want = new Set()
+  argv.forEach((a, i) => { if (a === '--map' && argv[i + 1]) want.add(argv[i + 1]) })
+  const li = argv.indexOf('--map-list')
+  if (li >= 0) {
+    for (const ln of require('fs').readFileSync(argv[li + 1], 'utf8').split(/\r?\n/)) {
+      const b = ln.split('#')[0].trim().split(/\s+/)[0]
+      if (b) want.add(b)
+    }
+  }
+  return want.size ? want : null
+})()
 
 async function main () {
   const cfg = s3.loadConfig()
@@ -48,7 +63,17 @@ async function main () {
     } else {
       console.log('  replay geometry (mapdata/*.glb) skipped: not cleared for public; --with-replay-geometry')
     }
-    const mf = await s3.sync(cfg, cfg.maps, s3.mapEntries(), { dryRun, prefix: 'mods/' })
+    let entries = s3.mapEntries()
+    if (pickMaps) {
+      entries = entries.filter((e) => pickMaps.has(e.key.split('/')[1]))
+      const found = new Set(entries.map((e) => e.key.split('/')[1]))
+      const absent = [...pickMaps].filter((b) => !found.has(b))
+      console.log(`  --map filter: ${found.size} of ${pickMaps.size} maps have servable files` +
+        (absent.length ? ` (none for: ${absent.join(', ')})` : ''))
+    }
+    const mf = await s3.sync(cfg, cfg.maps, entries, { dryRun, prefix: 'mods/' })
+    console.log(`  maps: ${dryRun ? 'would upload' : 'uploaded'} ${(mf.uploadBytes / 1e9).toFixed(2)} GB, ` +
+      `${dryRun ? mf.upload : mf.done} file(s)${mf.failed ? `, ${mf.failed} failed` : ''}`)
     failed += mf.failed
   }
   console.log(failed ? `  ${failed} upload(s) FAILED - run it again; it resumes where it stopped` : '  done')

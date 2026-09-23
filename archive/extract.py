@@ -175,6 +175,14 @@ def guess_names(folder, files):
     return mod_folder, mod_folder.lower()
 
 
+# --hardlink (tranche 2, 2026-09-23): mods/<bsp>/ as hard links into extract/<norm>/ instead
+# of copies. Same volume, same bytes, one allocation: the popular 64 cost 25 GB of extract/ AND
+# 25 GB of mods/ on a drive at 98%. Nothing ever edits either tree in place (an exclusion is
+# a staged view, install_map.py --stage), so sharing the inode is safe. Falls back to a copy.
+HARDLINK = False
+OWNERS = {}   # mods/<slug> -> the norm whose release it came from (extract.json)
+
+
 def normalise_into_mods(src, mapname, dry=False):
     dest = os.path.join(MODS, mapname)
     if not dry:
@@ -187,7 +195,15 @@ def normalise_into_mods(src, mapname, dry=False):
         out = os.path.join(dest, rel)
         if not dry:
             os.makedirs(os.path.dirname(out), exist_ok=True)
-            shutil.copy2(path, out)
+            if HARDLINK:
+                if os.path.exists(out):
+                    os.remove(out)
+                try:
+                    os.link(path, out)
+                except OSError:
+                    shutil.copy2(path, out)
+            else:
+                shutil.copy2(path, out)
         copied.append({"path": "mods/%s/%s" % (mapname, rel.replace("\\", "/")),
                        "size": os.path.getsize(path),
                        "sha256": sha256_of(path)})
@@ -266,6 +282,17 @@ def process(norm, original, report):
         # name, so we take the predictable one -- which is also how B's existing
         # `mods/nazi_zombie_ali` is laid out.
         slug = re.sub(r"[^a-z0-9_]+", "_", bsp.lower()).strip("_") or "unknown"
+        # Two releases, one bsp (tranche 2, 2026-09-23: remakes reuse names -- a second
+        # "killhouse" would have been extracted OVER the first one's mods/ folder, which the
+        # site serves and the bucket mirrors). Refuse; the map needs a human to pick a key.
+        owner = OWNERS.get(slug)
+        if owner and owner != norm:
+            out["errors"].append("bsp collision: mods/%s already belongs to %s; not extracted over it"
+                                 % (slug, owner))
+            continue
+        if not owner and os.path.isdir(os.path.join(MODS, slug)):
+            out["errors"].append("bsp collision: mods/%s exists and no extract.json entry owns it" % slug)
+            continue
         dest, copied = normalise_into_mods(folder, slug)
         out["mods"].append({"map": slug, "installer_folder": modname, "bsp": bsp,
                             "from": os.path.relpath(folder, exdir).replace("\\", "/"),
@@ -281,7 +308,17 @@ def process(norm, original, report):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--norm", action="append", default=[], help="only these (normalised) maps")
+    ap.add_argument("--hardlink", action="store_true",
+                    help="mods/<bsp>/ as hard links into extract/ (halves the disk cost)")
     a = ap.parse_args()
+    global HARDLINK
+    HARDLINK = a.hardlink
+    try:
+        for e in json.load(open(os.path.join(WORK, "reports", "extract.json"), encoding="utf-8")):
+            for m in e.get("mods") or []:
+                OWNERS.setdefault(m["map"], e["norm"])
+    except Exception:
+        pass
     os.makedirs(os.path.join(WORK, "reports"), exist_ok=True)
     report = []
     names = a.norm or sorted(os.listdir(ORIGINALS)) if os.path.isdir(ORIGINALS) else []

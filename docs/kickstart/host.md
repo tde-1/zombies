@@ -1776,3 +1776,218 @@ This is host code, so the box agent needs a restart to pick it up, on your word 
 13. It works with the current box DLL: the old DLL sends no `stats`, so nothing changes except
 that `game_over` now reaches the replay. The counters only appear once the §16 box DLL is
 deployed (referee.md §16, dedi.md).
+## 14. Session 2026-09-23 — map cache: the box pulls a leased map from the bucket
+
+B's decision, relayed by the coordinator: the bucket is the source of truth for map files. The box
+downloads maps when it needs them, automatically, with nothing done by hand. The code is
+`lib/mapcache.js` and `host.js prepareLease()`. The site half is two `/api/gs` routes plus the
+`preparing` plumbing.
+
+### 14.1 What it does
+
+* **Before boot.** When a lease arrives, the agent looks up the mod dir for the lease
+  (`fs_game mods/<x>`, falling back to the bsp). It asks the site for the map's file list
+  (`GET /api/gs/map-files/<bsp>`: path, size, sha256) and compares the list with
+  `/home/waw/waw-en/mods/<x>/`.
+  * If the dir is missing, the whole map is pulled.
+  * If a file is missing or has the wrong size or sha, only the bad files are re-pulled. The good
+    files are hardlinked into the new copy, so they are not downloaded again.
+  * If the copy is good, the game boots straight away.
+  * Stock maps are skipped: no request is made and nothing is pulled.
+* **Downloads.** Files come from `<ENW_MAP_BUCKET_URL>/mods/<bsp>/<path>` with an anonymous GET.
+  Each file goes into `/home/waw/waw-en/.enw-mapcache/staging/`, which is on the same filesystem
+  as mods/. Size and sha256 are checked as the bytes arrive, and each file is fsynced.
+* **Nothing half-pulled is ever visible.** A verified directory goes into mods/ with a single
+  rename. A repair is swapped in with two renames under a journal
+  (`staging/<x>.swap.json`). On start, `recover()` finishes an interrupted swap and deletes
+  everything else in staging. There is no partial resume: a pull that crashed starts again from
+  zero on the next lease.
+* **Pulls are never retried.** Each file is fetched once per pull. If a pull fails, the lease
+  fails: the box posts `state: failed` and the site cancels a lease that is still `leased`. A
+  stalled download is aborted after 30 s with no bytes (`ENW_MAP_STALL_S`). Two leases for the same
+  map share one pull.
+* **`preparing`.** While a map is checked or pulled, the lease holds an instance slot. The agent
+  posts `{ state: 'preparing', match_id, preparing: { phase, bytes_done, bytes_total, percent,
+  files_done, files_total } }` at most every 2 s. `phase` is one of
+  listing, verifying, downloading or installing. Every heartbeat lists the lease in `instances[]`
+  as `{ id: null, match_id, state: 'preparing', port: null, preparing }`. `ready` is still sent
+  only at `map_loaded`.
+* **Budget and eviction.** Usage is the sum of every map dir in mods/ plus the bytes that pulls in
+  flight will add. A lease's pull evicts least-recently-used maps first, until both of these hold
+  after the pull:
+  * `usage + need <= max(budget, usage)`
+  * `free - need >= ENW_MODS_MIN_FREE_GB`
+
+  A pull therefore never grows a library that is already over budget. It evicts roughly its own
+  size and nothing more. The first pull on today's 20 GB library costs one or two old maps, not
+  the 5 GB above budget.
+  * If only the budget half cannot be met, the pull goes ahead over budget with a warning.
+  * If the disk half cannot be met, the lease fails.
+* **What is never evicted:**
+  * the stock four (evict() also refuses them by name);
+  * any map a live, warm, booting or preparing game is on;
+  * any map a live lease names;
+  * a map that is being pulled.
+
+  A stale install under a live game is booted as it is and not replaced. The next lease repairs it.
+* **Trim.** One maintenance tick runs every 60 s. The first tick is 60 s after start, by which
+  point the lease poll has answered. If mods/ is over budget and nothing is booting or pulling,
+  the tick evicts **one** dir and logs `evicted <x> (size, last used): trim ...`.
+  * Order: unpopular maps first, oldest last-use first. Popular maps come after every unpopular one,
+    least popular first.
+  * A map dir the cache has no record of takes its dir mtime as its last use.
+  * **Trim waits until the site has answered `GET /api/gs/popular-maps` at least once.** Without
+    that answer, trim would be an LRU of rsync mtimes and could remove the maps people play.
+  * Expect about 5 GB to go over the first 10-20 minutes after deploy.
+* **Prefetch.** When no trim was needed, the tick fetches the site's top maps. These are real leases
+  over the last 30 days, not agent leases, and not stock maps. The tick takes up to
+  `ENW_MAP_PREFETCH_TOP` of them that fit in 67 % of the budget, and pulls **one** missing map
+  throttled to `ENW_MAP_PREFETCH_MBPS`.
+  * A prefetch runs only if the map fits inside the budget and the disk reserve **without evicting
+    anything**, so prefetch and trim cannot undo each other.
+  * A prefetch that failed is not tried again for 6 h.
+  * If a lease arrives for a map that is being prefetched, the lease joins that pull and lifts the
+    throttle.
+* **State.** Stored in `/home/waw/waw-en/.enw-mapcache/state.json`: last use per map, a verified
+  manifest (size, mtime and sha per file, so the next lease does not hash again), and recent
+  failures. The first lease for each map that was already on the box hashes its files once.
+* **Stats.** Every heartbeat carries
+  `map_cache: { maps, used_bytes, free_bytes, budget_bytes, pulling }`, refreshed once a minute.
+
+### 14.2 Config (`/root/enw-host.env`; every key optional)
+
+| key | default | meaning |
+|---|---|---|
+| `ENW_MAP_CACHE` | on with `--wine` and a site, off otherwise | `off` disables all of it; leases then boot whatever is on disk, as before |
+| `ENW_MODS_DIR` | realpath of `<wine-game-dir inst-01>/mods` = `/home/waw/waw-en/mods` | the one shared mods dir |
+| `ENW_MAP_BUCKET_URL` | `https://enw-zombies.nbg1.your-objectstorage.com` | public bucket; no keys on the box |
+| `ENW_MODS_BUDGET_GB` | 15 | mods/ size target |
+| `ENW_MODS_MIN_FREE_GB` | 1 | disk that must stay free after any pull |
+| `ENW_MAP_PREFETCH_TOP` | 20 | 0 turns prefetch off |
+| `ENW_MAP_PREFETCH_SHARE` | 0.67 | share of the budget that popular maps may hold |
+| `ENW_MAP_PREFETCH_MBPS` | 10 | prefetch throttle in MB/s (lease pulls are never throttled) |
+| `ENW_MAP_TRIM` | on | `off` means there is no trim; pull-time eviction still happens |
+| `ENW_MAP_STALL_S` | 30 | abort a download after this long with no bytes |
+
+### 14.3 Timing and the ready gates
+
+These figures assume the ~47 MB/s the box gets from nbg1. That rate is the coordinator's figure;
+it was not measured here.
+
+| Map | Pull time |
+|---|---|
+| a typical 600 MB map | ~13 s |
+| `nazi_zombie_fear_mc_2` (4.2 GB, the largest on the box) | ~90 s |
+
+Each first lease also hashes the maps that were already on the box, once, at disk speed.
+
+The gates a lease has to get through, in order:
+
+1. **The site's ghost reaper** (`web/server/lib/boxes.js`, 90 s) ends a lease that the box does not
+   list. The `preparing` entry in `instances[]` keeps a downloading lease alive for as long as the
+   pull takes. This is the host-side extension of the ready gate. `web/test/box-maps.js` proves it.
+2. **The launcher's `serverTimeoutMs`** (`launcher/src/main/bootflow.js`, 120 s from Play until
+   the site says ready) is client code and was **not** changed. At 47 MB/s any map up to ~4 GB
+   (pull, then boot at about 10 s) fits inside it. A slower bucket, or the largest maps, can
+   outlast it. When that happens the launcher shows "did not become ready in time", but the lease
+   and the pull carry on. Pressing Play again supersedes the player's own lease, and the new lease
+   joins the pull already running, so the second attempt finds the map ready or nearly ready. A
+   launcher release that reads `match.preparing` would fix this properly.
+3. **Invite tokens** live 5 minutes from the lease. A pull plus boot longer than that would have its
+   joins refused. With the numbers above this cannot happen.
+4. **The client's 60 s `join_retry`** starts after `ready`, and `ready` is sent at `map_loaded`,
+   so the pull time never counts against it.
+
+### 14.4 Site side (deploy **before or with** the agent)
+
+The site half is additive, and it is tested in `web/test/box-maps.js` (8/8):
+
+* `GET /api/gs/map-files/:bsp`: returns `mapfiles.forMap()`. It has to live under `/api/gs`
+  because the closed-beta gate answers a box on `/api/maps/<bsp>/files` with the password page.
+  I checked this against zombies.enw.gg.
+* `GET /api/gs/popular-maps`: `assignments.popular()`, read-only.
+* `assignments.ack(box, 'failed', id, error)` cancels a lease only while it is still `leased`.
+  It cannot end a ready or live game. It frees the party and logs `assignment.box_failed`.
+* `parties.launchInfo().preparing` and `GET /api/launcher/play` → `match.preparing` carry
+  `{ phase, bytes_done, bytes_total, percent }` for "Preparing map...". The phase the launcher
+  follows is unchanged (still `reserving`), so today's launcher is not affected.
+
+**Without the site half, the agent is safe:**
+
+* a map already on disk boots unverified (logged);
+* a map that is not on disk fails its lease, as it would have at boot anyway;
+* there is no trim, because there is no popularity list;
+* there is no prefetch.
+
+### 14.5 Deploy (coordinator)
+
+1. **Site:** deploy `web/server/routes/gameserver.js`, `web/server/lib/assignments.js`,
+   `web/server/lib/parties.js` and `web/server/routes/launcher.js`. Restart the site only on B's
+   word while he is playing (hard rule 15), using the keepalive recipe.
+2. **Box files:**
+   ```
+   scp infra/host-agent/host.js zombies-dev:/home/waw/enw/infra/host-agent/host.js
+   scp infra/host-agent/lib/mapcache.js infra/host-agent/lib/siteclient.js zombies-dev:/home/waw/enw/infra/host-agent/lib/
+   ssh zombies-dev chown waw:waw /home/waw/enw/infra/host-agent/host.js /home/waw/enw/infra/host-agent/lib/mapcache.js /home/waw/enw/infra/host-agent/lib/siteclient.js
+   ```
+3. **Env:** append to `/root/enw-host.env` and keep it root 0600. Adding these lines is optional,
+   because they are the defaults, but they make the configuration explicit:
+   ```
+   ENW_MAP_CACHE=on
+   ENW_MODS_BUDGET_GB=15
+   ENW_MODS_MIN_FREE_GB=1
+   ENW_MAP_BUCKET_URL=https://enw-zombies.nbg1.your-objectstorage.com
+   ```
+4. **Restart:** `systemctl restart enw-host-agent`, and only when no verified player is in a live
+   instance (hard rule 13: journal idle is not enough on its own).
+5. **Verify:**
+   * `journalctl -u enw-host-agent -n 50 | grep 'map cache'` shows `map cache ON: /home/waw/waw-en/mods, 59 map dir(s), ~20 GB used of a 15.0 GB budget, 1.2 GB free ...`.
+   * Within about 2 minutes, lines like `evicted <x> ...: trim` appear, one a minute until usage is
+     at or under 15 GB. `df -h /` should gain about 5 GB.
+   * `cat /home/waw/waw-en/.enw-mapcache/state.json` exists.
+   * Once trim has evicted a map that is still on the site's server list, prove a real pull. Take
+     an agent lease of it with `web/tools/lease-cli.js` and fake ID `76561198000000001` (hard rule
+     14). Expect `pulled <x>: N file(s), M MB in T s` and then `booted`. While it pulls, the site's
+     `last_status_json` shows the `preparing` entry.
+   * Rollback: set `ENW_MAP_CACHE=off` and restart, or put back the three previous files. A map
+     that was evicted comes back on its next lease.
+
+### 14.6 Tests
+
+* `node test/mapcache.js`: 22/22 against a fake bucket on loopback. Covered:
+  * pull ok;
+  * sha mismatch rejected, with nothing left in mods/ or staging;
+  * 404;
+  * concurrent leases give one pull;
+  * progress reaches 100 %;
+  * oldest-first eviction;
+  * live and leased maps kept;
+  * stock kept;
+  * an over-budget library is not halved;
+  * disk reserve;
+  * stale-file repair, where only the bad files are fetched and the good file keeps its inode;
+  * a live map is never repaired mid-game;
+  * the site is unreachable;
+  * crash recovery;
+  * trim order and gating;
+  * prefetch never evicts, has a cooldown, and a lease lifts its throttle.
+* `node test/mapcache-host.js`: a real agent with sims, a stand-in site and a slow fake bucket.
+  The lease is `preparing` and listed in the heartbeat with no port while it downloads. It shows
+  progress mid-download, boots only after the install, and a sha-mismatch lease is `failed` and
+  never booted. PASS.
+* `npm test` (run-all 68/68, plus mapcache), `test/multi-lease.js`, `test/restart.js` and
+  `test/demo-network.js` all pass unchanged. `web npm run check` passes all suites, box-maps
+  included. `local-run.js` failed once on "THE RESTART ... with its round" and then passed on two
+  reruns. Nothing it touches was changed, so it is flaky.
+
+### 14.7 Unproven
+
+* **Not run on the box.** No real pull, and no Wine instance has loaded a map pulled while another
+  instance was running.
+* The 47 MB/s figure comes from the coordinator. The one-time hash time for the 59 maps already on
+  the box was not measured.
+* The launcher does not yet show `match.preparing`, and its 120 s timeout is unchanged (§14.3).
+* A trim deletes files with `rm` while games run. The files are unrelated to those games, but the
+  I/O effect on a live Wine server has not been measured.
+* The map list comes from the site's archive report on B's PC. A map whose files the report lacks
+  cannot be pulled; its lease fails and says so.

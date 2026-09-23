@@ -27,6 +27,7 @@
 //   node server/db/import-archive.js                 the pipeline maps only
 //   node server/db/import-archive.js --catalogue     also the 2,276-map index
 //   node server/db/import-archive.js --dry           say what would change, change nothing
+//   node server/db/import-archive.js --maps-list ../archive/tranche2.txt   only those maps
 //   node server/db/import-archive.js --guides        the Easter egg / power / song guides only
 //                                                    (reports/map_guides.json, lib/guides.js)
 //
@@ -38,6 +39,19 @@ const path = require('path')
 
 const args = new Set(process.argv.slice(2))
 const DRY = args.has('--dry')
+// --maps-list <file>: only the manifests whose `map` is listed (one bsp per line, `#`
+// comments). A tranche's import touches its own rows and nothing else (archive.md s12).
+const ONLY = (() => {
+  const argv = process.argv.slice(2)
+  const i = argv.indexOf('--maps-list')
+  if (i < 0) return null
+  const s = new Set()
+  for (const ln of fs.readFileSync(argv[i + 1], 'utf8').split(/\r?\n/)) {
+    const b = ln.split('#')[0].trim().split(/\s+/)[0]
+    if (b) s.add(b)
+  }
+  return s
+})()
 
 const { db, now } = require('./database')
 const { slugify } = require('../lib/util')
@@ -118,6 +132,7 @@ function importPipelineMaps() {
   for (const f of fs.readdirSync(ARCHIVE_MANIFESTS).filter((x) => x.endsWith('.json'))) {
     const m = readJson(path.join(ARCHIVE_MANIFESTS, f))
     if (!m || !m.map) continue
+    if (ONLY && !ONLY.has(m.map)) continue
     if (refereeOwned.has(m.map)) { stats.skipped++; continue }
 
     const a = m.archive || {}
@@ -148,9 +163,10 @@ function importPipelineMaps() {
 
     db.prepare(`INSERT INTO maps (key, slug, title, author, year, source, health, hidden, main_finish, round_n,
                   has_ee, has_buyable, description, release_post, released_at, added_at)
-                VALUES (@key,@slug,@title,@author,@year,'custom',@health,0,@main_finish,@round_n,
+                VALUES (@key,@slug,@title,@author,@year,'custom',@health,@hidden,@main_finish,@round_n,
                   @has_ee,@has_buyable,@description,@release_post,@released_at,@added_at)
                 ON CONFLICT(key) DO UPDATE SET
+                  hidden=CASE WHEN @hidden_set=1 THEN excluded.hidden ELSE maps.hidden END,
                   title=excluded.title, author=COALESCE(excluded.author, maps.author),
                   year=COALESCE(excluded.year, maps.year), health=excluded.health,
                   main_finish=excluded.main_finish, round_n=excluded.round_n,
@@ -165,6 +181,12 @@ function importPipelineMaps() {
         author: m.author || null,
         year,
         health,
+        // `site_hidden` (archive.md s12, tranche 2): phase 1 imports a staged map BEFORE its box
+        // proof so `lease-cli --proof` has a row and an fs_game to boot; `true` keeps it off
+        // every list until `popular.py --apply` writes the result and sets it `false`. A
+        // manifest without the key leaves `maps.hidden` alone (an admin may have set it).
+        hidden: m.site_hidden === true ? 1 : 0,
+        hidden_set: typeof m.site_hidden === 'boolean' ? 1 : 0,
         main_finish: (m.badge && m.badge.main_finish) || 'round',
         round_n: (m.badge && m.badge.round_n) || 20,
         has_ee: hasEe,
@@ -282,7 +304,17 @@ function uniqueSlug(title, key) {
   const base = slugify(title)
   const taken = db.prepare('SELECT key FROM maps WHERE slug=?').get(base)
   if (!taken || taken.key === key) return base
-  return `${base}-${slugify(key).slice(-8)}`
+  // The one fallback could itself be taken (tranche 2, 2026-09-23: "Perk A Cola Inc" met a
+  // catalogue row AND that row's own suffixed slug, and the whole import died on UNIQUE).
+  // A map that already has a row keeps its slug; otherwise try the key suffix, then numbers.
+  const own = db.prepare('SELECT slug FROM maps WHERE key=?').get(key)
+  if (own && own.slug) return own.slug
+  for (let i = 0; i < 50; i++) {
+    const s = i === 0 ? `${base}-${slugify(key).slice(-8)}` : `${base}-${slugify(key).slice(-8)}-${i + 1}`
+    const t = db.prepare('SELECT key FROM maps WHERE slug=?').get(s)
+    if (!t || t.key === key) return s
+  }
+  return `${base}-${slugify(key)}`
 }
 
 // ---- 2. the crawl index ----------------------------------------------------------------

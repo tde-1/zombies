@@ -1,0 +1,206 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_bpwait",
+  "title": "BP WAITING",
+  "source": "custom",
+  "author": "BuIlDaLiBlE",
+  "released": "2014-11-30",
+  "fs_game": "mods/nazi_zombie_bpwait",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "0eabee08df896f9661eefeb061d917600f6fb486d5e45c130d8448b61fbf9486"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "gen_ground_pieces"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "gen_ground_pieces look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 1098,
+    "ee_candidates": [
+      "gen_ground_pieces"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "give_ammo",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto19"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "vultureaid_debris"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto7"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto18"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0eabee08df896f9661eefeb061d917600f6fb486d5e45c130d8448b61fbf9486",
+    "map_specific_triggers": [
+      "generator_trigger",
+      "give_ammo",
+      "lose_pointz",
+      "music",
+      "outta_map",
+      "radius_dmg_trigs",
+      "secret_place",
+      "secret_pointz",
+      "wunderfizz_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_bpwait_stable.exe",
+    "original_sha256": "6dea4fd99c7730fe5ee488b5807ecfae012247e155d8e7276310b83af5112bea",
+    "original_size": 101013658,
+    "source_url": "https://www.mediafire.com/file/et563yda30q3mye/nazi_zombie_bpwait_stable.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:40:08Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Heya everyone, this is me and today I\u2019ll release my map for public. Lol. Bp Waiting is a small-sized map that I made in waiting for UGX Mod 1.1. When it will be released? So, this is it. No story or somethin\u2019, just a map made for fun. Anyway, there\u2019s a list of Features available on this map: -> Bam\u2019s Add-ons: BO1, Vulture Aid, Electric Cherry perks; Origins Generators; Der Wunderfizz -> Buyable ending (100k) -> Random perk bottle Power-Up -> Secret places -> Ammo Box (in a secret place) -> Zombie counter -> Custom Power-Up announcer voice and custom Mystery Box song -> Deathbarriers in some places where you shouldn\u2019t be, lel -> One short song -> Fixed juggernog health and Wunderwaffe that can\u2019t decrease your health -> No dogs Known Bugs: -> Zombies standing still sometimes in front of right window near Speed Cola if window is repaired -> Zombies attacking you while downed (Bam\u2019s Add-ons issue) -> Third weapon remains after losing Mule Kick (Bam\u2019s Add-ons issue) -> Der Wunderfizz sometimes can\u2019t be used (Bam\u2019s Add-ons issue, I think) -> There can be a problem activating generators (Bam\u2019s Add-ons issue) -> Deathbarrier in coop kills only one person if there\u2019s more than one in it -> Deathbarrier can\u2019t kill you with the PHD Flopper That\u2019s pretty much it. The only credit for making this map (except wonderful Bam\u2019s Add-ons and Random perk bottle from zombiemodding.com ) goes to me. Made by Bp \u00a9 (BuIlDaLiBlE production)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_bpwait",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_bpwait.iwd:images/loadscreen_nazi_zombie_bpwait.iwi",
+        "nazi_zombie_bpwait.iwd:images/menu_map_nazi_zombie_bpwait.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_bpwait"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/bpwaiting/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/bp-waiting-4-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.9,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273611
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 9,
+        "scripts": 1,
+        "bytes": 953350
+      },
+      {
+        "file": "origins_generators.iwd",
+        "entries": 25,
+        "scripts": 1,
+        "bytes": 7455244
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 12,
+        "scripts": 1,
+        "bytes": 580109
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019378
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_bpwait.ff",
+      "nazi_zombie_bpwait_patch.ff"
+    ]
+  },
+  "site_hidden": true
+}

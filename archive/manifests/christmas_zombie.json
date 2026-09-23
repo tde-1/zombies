@@ -1,0 +1,215 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "christmas_zombie",
+  "title": "THE LAST CHRISTMAS",
+  "source": "custom",
+  "author": "shippuden1592",
+  "released": "2015-01-17",
+  "fs_game": "mods/christmas_zombie",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@christmas_zombie.iwd": "75465aa0a665081be565ef763254d7af36e1ae685f5970d3fc1d95f05e832a9a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 122,
+    "script_count": 122,
+    "entities": 2395,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "75465aa0a665081be565ef763254d7af36e1ae685f5970d3fc1d95f05e832a9a",
+    "map_specific_triggers": [
+      "blunder_trigg",
+      "gas_can",
+      "gas_cantrue",
+      "gift1_pick_trig",
+      "gift1_trig",
+      "gift2_pick_trig",
+      "gift2_trig",
+      "gift3_pick_trig",
+      "gift3_trig",
+      "gift4_pick_trig",
+      "gift4_trig",
+      "gift5_pick_trig",
+      "gift5_trig",
+      "oil",
+      "oiltrue",
+      "panel_1",
+      "panel_2",
+      "panel_3",
+      "teddy1",
+      "teddy2",
+      "teddy3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "The_Last_Christmas_-_v1.2.exe",
+    "original_sha256": "a67df6f6683024c3425aaadef552fa5a760963985a8d70a125c414f673ebf25b",
+    "original_size": 271717298,
+    "source_url": "https://www.mediafire.com/file/lfabmwf8zx8ypis/The_Last_Christmas_-_v1.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:24:40Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "christmas_map"
+    ],
+    "catalogue_description": "Hello such people and slightly behind this christmas but anyway here are the map and I hope to enjoy any errors or constructive advice let it in the comments. Caracteristicas *BO Perks y electric cherry *Weapons MW,BO1,BO2 (4 Wonder weapons) *Custom Sky *Custom Zombies (BO1 y BO2) *Build Power Switch *Boss *End Game *Custom Main Menu thanks for DidUknowiPwn Credits : *Tito *deper *Gogeta22344 *pedrehitor74 *Espi_thekiller *javipotter *Tom_BMX *treminaor *JR-Imagine *bamskater33 *ZOMB1E-KLLR *ConvictioNDR *zombie madness *elfenliedtopfan5 *rollonmath42 *jjbradman *DidUknowiPwn *Zer0w *reaaL *Slash *UGX-Community",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_christmas_zombie",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_cobos",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "christmas_zombie.iwd:images/christmas_menu.iwi",
+        "christmas_zombie.iwd:images/loadscreen_christmas_zombie.iwi",
+        "christmas_zombie.iwd:images/loadscreen_nazi_zombie_cobos.iwi",
+        "christmas_zombie.iwd:images/menu_map_christmas_zombie.iwi",
+        "christmas_zombie.iwd:images/me_cargocontainer_decal_logo01_col.iwi",
+        "christmas_zombie.iwd:images/me_cargocontainer_decal_logo02_col.iwi",
+        "christmas_zombie.iwd:images/me_cargocontainer_decal_logo03_col.iwi",
+        "christmas_zombie.iwd:images/nzr_menu2.iwi",
+        "christmas_zombie.iwd:images/specialty_fastreload_zombies.iwi",
+        "christmas_zombie.iwd:images/weapon_red_cross_background.iwi",
+        "christmas_zombie.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "christmas_zombie.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "christmas_zombie.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "christmas_zombie.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_christmas_zombie"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/thelastchristmas/cover.png",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/12/last-christmas-768x432.png"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 105.4,
+    "addon_iwds": [
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "christmas_zombie_patch.ff",
+      "mod.ff",
+      "christmas_zombie.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

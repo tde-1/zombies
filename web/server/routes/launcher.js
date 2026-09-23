@@ -179,6 +179,8 @@ function router() {
         // The round, from the live frame the box already pushes (lib/live.js, in memory):
         // the launcher's Discord presence shows it. Null when no fresh frame.
         round: (() => { const f = live.get(launch.match_id); return f && f.state && f.state.round > 0 ? f.state.round : null })(),
+        // Non-null while the box pulls the map before booting it ("Preparing map...").
+        preparing: launch.preparing || null,
       } : null,
       settings: users.settings(sid),
       vip: enw.isVip(sid),

@@ -1,0 +1,203 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_v2beta",
+  "title": "ASYLUM",
+  "source": "custom",
+  "author": "smasher248",
+  "released": null,
+  "fs_game": "mods/nazi_zombie_v2beta",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_v2beta.iwd": "b9c8bd9381837b1b3cd5ae1a683c54703eedc0b02d4a8499adbc4f23c2afdcbb"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 3026,
+    "ee_candidates": [
+      "part"
+    ],
+    "ending_words": [
+      "end_game",
+      "endgame",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        40000,
+        "zombie_door",
+        "auto702"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto700"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto613"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto613"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto612"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 40000,
+      "targetname": "zombie_door",
+      "target": "auto702",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b9c8bd9381837b1b3cd5ae1a683c54703eedc0b02d4a8499adbc4f23c2afdcbb",
+    "map_specific_triggers": [
+      "door_lock_trig",
+      "elevator_antijump",
+      "elevator_antistuck",
+      "elevator_movelocation",
+      "endgame",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "huey_part1",
+      "huey_part2",
+      "huey_part3",
+      "hurt_home",
+      "laser_control",
+      "laser_hurt",
+      "mud",
+      "not_mud",
+      "player_can_hear",
+      "purchase",
+      "radio1_trigger",
+      "radio2_trigger",
+      "select",
+      "use_lander_2"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Asylum_v2.exe",
+    "original_sha256": "b42f4fb06113f83e540d9888179ab097b988b724878c61ea1fbaa8c8aadc4262",
+    "original_size": 252693767,
+    "source_url": "http://www.mediafire.com/file/z1wk8e8clgifuyl/Asylum_v2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:24:58Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "archive_file"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_v2beta.iwd:images/marley_griffin_moving_logo_dmg_col.iwi",
+        "nazi_zombie_v2beta.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_v2beta.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/asylum/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2021/12/asylum-v2-3-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 156.6,
+    "addon_iwds": [
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_v2beta.ff",
+      "nazi_zombie_v2beta_patch.ff",
+      "nazi_zombie_v2beta.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

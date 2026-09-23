@@ -1,0 +1,204 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_depot",
+  "title": "BUS DEPOT 1945",
+  "source": "custom",
+  "author": "gabriex555",
+  "released": "May 05, 2014, 06:37:22 pm",
+  "fs_game": "mods/nazi_zombie_depot",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        75000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger name an ending and are this map's own; script hardcodes cost 75000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 142,
+    "script_count": 142,
+    "entities": 693,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris_5"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris_5"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris_5"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris_3"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris_3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8",
+    "map_specific_triggers": [
+      "bear1_trig",
+      "bear2_trig",
+      "bear3_trig",
+      "end_trigger",
+      "radius_dmg_trigs",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Bus_Depot_1945_V1.1.exe",
+    "original_sha256": "4f2f0be710c375523b2f8984e3daab19b46c782405db387fa65edeca379d2305",
+    "original_size": 284873900,
+    "source_url": "https://www.mediafire.com/file/0rexnre7ficit7e/Bus_Depot_1945_V1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:35:28Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "nazi_zombie_depot.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_depot.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/busdepot1945/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2020/12/bus-depot-1945-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.5,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476627
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      },
+      {
+        "file": "viewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_nazi_zombie_depot.ff",
+      "mod.ff",
+      "nazi_zombie_depot_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

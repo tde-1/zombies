@@ -392,6 +392,7 @@ def main():
     ap.add_argument("--out", default=os.environ.get("ZM_MEDIA_DIR") and os.path.join(os.environ["ZM_MEDIA_DIR"], "maps") or DEFAULT_OUT)
     ap.add_argument("--write-db", action="store_true")
     ap.add_argument("--only", action="append", help="just these keys (repeatable)")
+    ap.add_argument("--only-list", help="file: one key per line (# comments), e.g. archive/tranche2.txt")
     ap.add_argument("--force", action="store_true", help="re-encode even when unchanged")
     # docs/kickstart/ip-posture.md §4: a stock loading screen is Activision's image. It may be
     # served during closed testing; "before public: no stock loadscreen on any served page".
@@ -399,6 +400,9 @@ def main():
     ap.add_argument("--no-stock", action="store_true", default=os.environ.get("ZM_NO_STOCK_ART") == "1",
                     help="never use WaW's own loading screens (ip-posture.md §4, before public)")
     args = ap.parse_args()
+    if args.only_list:
+        keys = [ln.split("#")[0].split()[0] for ln in open(args.only_list, encoding="utf-8") if ln.split("#")[0].split()]
+        args.only = (args.only or []) + keys
 
     dbp = db_path(args.db)
     con = sqlite3.connect(dbp) if args.write_db else sqlite3.connect("file:%s?mode=ro" % dbp.replace("\\", "/"), uri=True)

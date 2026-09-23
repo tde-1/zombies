@@ -325,7 +325,24 @@ function launchInfo(steamId) {
     // The connect string is filled in by the box's status report; until the box says ready
     // there is nothing to connect to and the launcher shows "Reserving server".
     connect: a.state === 'ready' || a.state === 'live' ? connectFor(a) : null,
+    // The box is pulling (or checking) this game's map before it boots it: "Preparing
+    // map..." with bytes, or null. From the box's own status (infra/host-agent/host.js).
+    preparing: a.state === 'leased' ? preparingFor(a) : null,
   }
+}
+
+/** { phase, bytes_done, bytes_total, percent } while the box prepares this lease's map. */
+function preparingFor(a) {
+  const box = db.prepare('SELECT last_status_json FROM boxes WHERE id=?').get(a.box_id) || {}
+  const st = safeJson(box.last_status_json, null)
+  if (!st) return null
+  // The newest word first: a per-game `preparing` post (every ~2 s) beats the heartbeat's
+  // instance list (every 10 s), which the per-game post carries over unchanged.
+  const inst = Array.isArray(st.instances) ? st.instances.find((i) => i && i.match_id === a.match_id && i.preparing) : null
+  const p = (st.state === 'preparing' && st.match_id === a.match_id ? st.preparing : null) || (inst && inst.preparing)
+  if (!p || typeof p !== 'object') return null
+  const n = (x) => (Number.isFinite(Number(x)) ? Math.max(0, Number(x)) : 0)
+  return { phase: String(p.phase || 'downloading').slice(0, 20), bytes_done: n(p.bytes_done), bytes_total: n(p.bytes_total), percent: Math.min(100, n(p.percent)) }
 }
 
 // The string the player's game dials. Two halves, from two different places on purpose:

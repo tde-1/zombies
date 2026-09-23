@@ -15,7 +15,7 @@
     "build": "npm --prefix client install && npm --prefix client run build",
     "client": "npm --prefix client run dev",
     "test": "npm run check",
-    "check": "node test/run-all.js && node test/local-run.js && node test/launcher-signin.js && node test/game-chat.js && node test/bucket.js && node test/map-align.js && node test/guides.js && node test/admin.js && node test/chat-dedupe.js && node test/invites.js",
+    "check": "node test/run-all.js && node test/local-run.js && node test/launcher-signin.js && node test/game-chat.js && node test/bucket.js && node test/map-align.js && node test/guides.js && node test/admin.js && node test/chat-dedupe.js && node test/invites.js && node test/box-maps.js",
     "check:admin": "node test/admin.js",
     "seed:playlists": "node tools/seed-playlists.js",
     "check:guides": "node test/guides.js",

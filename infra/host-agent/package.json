@@ -13,7 +13,8 @@
     "site": "node mock-site/site.js",
     "verify": "node tools/verify.js",
     "measure": "node tools/measure-replay.js",
-    "test": "node test/run-all.js"
+    "test": "node test/run-all.js && node test/mapcache.js",
+    "test:mapcache-host": "node test/mapcache-host.js"
   },
   "dependencies": {},
   "devDependencies": {}

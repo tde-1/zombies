@@ -1,0 +1,199 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ahkanto",
+  "title": "POKEMON KANTO CARNAGE - NIGHTTIME",
+  "source": "custom",
+  "author": "josemassacre",
+  "released": "November 08, 2016, 02:57:20 pm",
+  "fs_game": "mods/ahkanto",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ahkanto.iwd": "02d06d4a3395220e0ef62cf927302d32e82d8b3e66dba97fd75f440572863118"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "win"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        15100
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, win name an ending and are this map's own; script hardcodes cost 15100",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 128,
+    "script_count": 128,
+    "entities": 2749,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "win"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      15100
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4200,
+        "zombie_vending",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_vending",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_vending",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_vending",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_vending",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "02d06d4a3395220e0ef62cf927302d32e82d8b3e66dba97fd75f440572863118",
+    "map_specific_triggers": [
+      "bfend",
+      "chest_excluder",
+      "dtime",
+      "dtime1",
+      "dtime2",
+      "fuck",
+      "leavep",
+      "leaveptrig",
+      "leavev",
+      "leavevtrig",
+      "maxitrig",
+      "mew",
+      "musetrig",
+      "oaktrig",
+      "p_trigger",
+      "painting_trigger",
+      "paytrig",
+      "poke",
+      "ptrig",
+      "ptrig1",
+      "ptrig2",
+      "ptrig3",
+      "ptrig4",
+      "ptrig5",
+      "ptrig6",
+      "ptrig7",
+      "rockettrig",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "support_spawn_button",
+      "walltrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Pokemon_Kanto_Carnage_V1.31.exe",
+    "original_sha256": "0b1d4b83ee24ae1bd801827da5b0ecf4bbade1f565e1c47d45252df54d1c4dc9",
+    "original_size": 273793042,
+    "source_url": "http://www.mediafire.com/file/3nl4lxhgqzt2vw4/Pokemon_Kanto_Carnage_V1.31.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:23:24Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "ahkanto.iwd:images/custom_zombies_menu.iwi",
+        "ahkanto.iwd:images/custom_zombies_menu2.iwi",
+        "ahkanto.iwd:images/custom_zombies_menu3.iwi",
+        "ahkanto.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "ahkanto.iwd:images/menu_mp_weapons_an94.iwi",
+        "ahkanto.iwd:images/menu_mp_weapons_hk416.iwi",
+        "ahkanto.iwd:images/menu_mp_weapons_sa58.iwi",
+        "ahkanto.iwd:images/menu_mp_weapons_saritch.iwi",
+        "ahkanto.iwd:images/menu_zm_weapons_mc96.iwi",
+        "ahkanto.iwd:images/menu_zm_weapons_mg08.iwi",
+        "ahkanto.iwd:images/menu_zm_weapons_mp40.iwi",
+        "ahkanto.iwd:images/menu_zm_weapons_rnma.iwi",
+        "ahkanto.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.5,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "ahkanto.ff",
+      "ahkanto_patch.ff",
+      "mod.ff",
+      "ahkanto.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

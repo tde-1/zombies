@@ -1,0 +1,196 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "island",
+  "title": "INSEL DER TOTEN",
+  "source": "custom",
+  "author": "Pure_Maps",
+  "released": "2016-06-04",
+  "fs_game": "mods/island",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@insel_der_toten.iwd": "1e47d0354d122790d78c09f2ceeea9d8c14c99b906f42c31c830bcc9ba56d246"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 2585,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      30000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf2981_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        3000,
+        "pf1974_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1570_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "1e47d0354d122790d78c09f2ceeea9d8c14c99b906f42c31c830bcc9ba56d246",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Insel_der_Toten_V1.0_.exe",
+    "original_sha256": "266203d83c8a2198b864b4e8b55f66a0034060a45e058123d98342965667b9ce",
+    "original_size": 345137659,
+    "source_url": "http://www.mediafire.com/file/1y88p9u866901uh/Insel_der_Toten_%5BV1.0%5D.exe",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:28:22Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Description This is a map created by Pure \u2013 This is my first map! This map is based on an island in the Caribbean Features: \u2014NO T4M REQUIRED\u2014 No window barriers all risers Buyable Ending PaP Custom Zombie Eye Colour Custom Power Up Effect Fov Slider HarryBo21\u2019s Perks Zombies Counter Black ops 2 weapons Graphics Enhancement Advanced Warfare Blood Splatter Instant Nuke Custom Wonder Weapon Island Style Map Weapons: An94 Executioner Lsat M8A1 Mp7 Peacekeeper SVU-AS Swat-556 Uzi S12 SMR Svu XPR RNMA Vector Mk48 M27 m1911 Msmc Raygun M1927 Blundergat And More.. (Custom Wonder Weapon) Perks: Quick Revive Juggernog Speed Cola Double Tap 2.0 PhD Flopper Stamin-Up 2.0 Deadshot Daiquiri Electric Cherry Vulture Aid Elixir Widow\u2019s Wine \u2014\u2014\u2014\u2014 Wonderfizz Credits Ping998 \u2013 Testing, Models, Help, Ideas Dville88 \u2013 Prefabs FreeCodCinematics \u2013 prefabs Pashan \u2013 Prefabs JBird632 \u2013 Blood Splatter Koan \u2013 FOV Slider sal24r \u2013 BO2 Round Chalk DidUknowiPwn \u2013 Font HarryBo21 \u2013 Perks And PaP Natesmithzombies \u2013 BO2 Weapons KDXDARK \u2013 Insta Nuke Thanks for taking the time to view my map, This is my first map so its not amazing, if you have any problems or suggestions for the next version, PM me or leave a comment! To open the pack-a-punch you need to find all three teddy bears and shoot them",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/inseldertoten/cover.png",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/insel-der-toten-2.png"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 109.6,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.3.iwd",
+        "entries": 474,
+        "scripts": 0,
+        "bytes": 99456265
+      },
+      {
+        "file": "insel_der_toten.iwd",
+        "entries": 133,
+        "scripts": 31,
+        "bytes": 4224695
+      },
+      {
+        "file": "nsz_bo2_weapons_v1.3.2.iwd",
+        "entries": 330,
+        "scripts": 12,
+        "bytes": 87125413
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "island.ff",
+      "island_patch.ff",
+      "mapname_patch.ff",
+      "mod.ff",
+      "nsz_bo2_weapons_v1.3.2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

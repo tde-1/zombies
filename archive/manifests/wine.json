@@ -1,0 +1,229 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "wine",
+  "title": "BLACKOUT PROJECT (WINE)",
+  "source": "custom",
+  "author": "jjbradman",
+  "released": "2014-06-25",
+  "fs_game": "mods/wine",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@wine.iwd": "2289873b821cabbf1fcfe4cf58158b50f09f5ba1301438ca35e97ea78a81be9f",
+    "maps/blst/_zombiemode.gsc@wine.iwd": "74320ad2cffc09a0b2d3e8fef4c26c49ca7bcd74c4609ec29c87b60db5d5edf0",
+    "maps/copias/_zombiemode.gsc@wine.iwd": "a73201fab95d150b7c09838359cc8cb2d877c63a8874c0c3f564949a7747e95b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 152,
+    "script_count": 152,
+    "entities": 2507,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1000,
+        "zombie_door",
+        "auto496"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto496"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto495"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto495"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto481"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_laststand.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "2289873b821cabbf1fcfe4cf58158b50f09f5ba1301438ca35e97ea78a81be9f",
+    "map_specific_triggers": [
+      "bench1_trig",
+      "car_run_trig",
+      "dig_site",
+      "eating",
+      "elevator_antijump",
+      "elevator_antistuck",
+      "elevator_movelocation",
+      "fail_trig",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "gas_1_trig",
+      "gas_gen_1_trig",
+      "heli_trig",
+      "keys_trig",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "multiple",
+      "multiple_zone10",
+      "multiple_zone2",
+      "multiple_zone7",
+      "multiple_zone8",
+      "multiple_zone9",
+      "multiples123",
+      "obj_button1",
+      "obj_button2",
+      "perk_gen",
+      "pila1_trig",
+      "poner",
+      "sacar",
+      "saw_trigger",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "storage_trig",
+      "storage_trig1",
+      "storage_trig2",
+      "storage_trig3",
+      "trig_pap"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "wine.exe",
+    "original_sha256": "2300ee7e1c925aed2b86ea0c1c313751f5b3f9ca8faec556ee92fbac1a0f4004",
+    "original_size": 238723068,
+    "source_url": "https://www.mediafire.com/file/05tafxam2c2dklh/wine.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:36:06Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "ok you probably know wine was blabla it died then no one knew wtf. bugs. spam. yolo. hehe. but finally here it is xD the map has some flaws, but it is totally playable in my opinion, so enjoy !!! features: -bo quick revive -vulture aid -kino.style teleporter -electric cherry -cod ghosts viewhands -black ops1 perks -black ops2 perk shaders for stock perks -double tap 2.0 -panzer soldat(by bluntstuffy ) \u2013 added custom weapons \u2013 zappers \u2013 weapon storage \u2013 pavelow(chopper gunner) -origins \u201csoul chest\u201d -origins \u201cdig sites\u201d -bank(not like tranzit) -zipline -typewritter intro -kino_box_lights -origins style headshots \u2013 car ride \u2013 elevators \u2013 five teleporters \u2013 free usable turrets -random spawn weapons \u2013 animated gifs -very large map -you can acces all the buildings credits: -pashan -jzob \u2013 Fatboy Pro(weapons ) \u2013 Jr-imagine(bo perks) -blunstuffy(panzer, weapon storage, countless help) -tom_bmx -dualVII -DarkWhiss",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_oldtown"
+      ],
+      "iwd_images": [
+        "wine.iwd:images/specialty_fastreload_zombies.iwi",
+        "wine.iwd:images/weapon_shotgun_speedloader_col.iwi",
+        "wine.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "wine.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "wine.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "wine.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/blackoutproject/cover.jpeg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/blackout-project.jpeg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_laststand.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 137.5,
+    "addon_iwds": [
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 11736
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "wine.iwd:animscripts/death.gsc",
+      "wine.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

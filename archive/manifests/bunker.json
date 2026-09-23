@@ -1,0 +1,177 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "bunker",
+  "title": "BUNKER",
+  "source": "custom",
+  "author": "elichvatal",
+  "released": "April 07, 2015, 08:07:51 pm",
+  "fs_game": "mods/bunker",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@rollon_gun_mod.iwd": "5026dc9576bacc2940d25fb12f1071038a068aa71cbf05d22dad763677489dfe"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "weapon_upgrade",
+          "zombie_cost": 10000
+        }
+      },
+      "candidates": [],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "one purchase trigger at 10000 points, next highest is 2000 - almost certainly the ending",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 57,
+    "script_count": 57,
+    "entities": 933,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "weapon_upgrade",
+        "raygun"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "yo"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "braas"
+      ],
+      [
+        1500,
+        "weapon_upgrade",
+        "pf503_auto38"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf505_auto2"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 10000,
+      "targetname": "weapon_upgrade",
+      "target": "raygun",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5026dc9576bacc2940d25fb12f1071038a068aa71cbf05d22dad763677489dfe",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Bunker.exe",
+    "original_sha256": "3108efd301b6392c434379a61b3056d06a6ed2b5fb2d7da47b550d6fb4e36bb1",
+    "original_size": 143754837,
+    "source_url": "https://www.mediafire.com/file/ac263we26a37tpe/Bunker.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:35:12Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_Bunker",
+        "loadscreen_bunker"
+      ],
+      "iwd_images": [
+        "Bunker.iwd:images/custom_zombies_menu.iwi",
+        "Bunker.iwd:images/custom_zombies_menu2.iwi",
+        "Bunker.iwd:images/custom_zombies_menu3.iwi",
+        "Bunker.iwd:images/loadscreen_Bunker.iwi",
+        "Bunker.iwd:images/menu_map_custom_zombies_menu.iwi"
+      ],
+      "loadscreen": "loadscreen_bunker"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/bunker/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2020/07/nazi-zombie-bunker-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 79.5,
+    "addon_iwds": [
+      {
+        "file": "nuketown_zombies.iwd",
+        "entries": 48,
+        "scripts": 17,
+        "bytes": 10343048
+      },
+      {
+        "file": "rollon_gun_mod.iwd",
+        "entries": 173,
+        "scripts": 9,
+        "bytes": 44969780
+      }
+    ],
+    "flags": [
+      "no_patch_ff",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "bunker.ff",
+      "Bunker.iwd:maps/_loadout.gsc",
+      "rollon_gun_mod.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}
