@@ -3084,3 +3084,83 @@ replaced was not `c0986e5e`**: the box had `f920bb39…` (2,001,920 B, installed
 `build\dedi` of 02:34 UK, which contains that `net_probe` code). Rollback copy:
 `/home/waw/binkw32.rollback-f920bb39.dll`. `ENW_NO_PAUSE=1` and `ENW_DEDI_WATCH_PROBE_SLOT=1` still
 exported in `run-host.sh`. Whoever owns `net_probe`: rebuild from main ≥ `81086d4`, or this fix goes.
+
+## 22. 2026-09-23 ~02:35–03:15 UK — "extremely laggy on the Minecraft map": `sv_maxRate` was 7000, and no local test could ever see it (`net/net_probe.cpp`)
+
+**Cause.** Stock `sv_maxRate` is **7000 bytes/s**, and the server paces every internet client to it. A
+fear_mc_2 snapshot is ~600–1,100 bytes, so B got **10 snapshots a second, dropping to 3/s** once
+snapshots passed the 1,164-byte fragment size, instead of 20. At `sv_maxRate 25000` the same map on the
+box sends **20.0/s, 0 rate-delayed, 0 fragments**.
+
+### 22.1 The mechanism (read from the decrypted 1.7 image)
+
+| addr | what |
+|---|---|
+| `0x632B10` (site `0x633040`) | SV_Init registers `sv_maxRate`: default `0x1B58` = **7000**, domain 0..**25000**, dvar ptr `[0x2FCD9C4]` |
+| `0x630650` | SV_UserinfoChanged: `client+0x323E8` = userinfo `rate` clamped 1000..90000 (5000 if absent; **99999 if Sys_IsLANAddress**); `client+0x323EC` = 1000/`snaps` (1..30; 50 ms if absent) |
+| `0x6392D0` | SV_RateMsec: size clamped to `0x48C` (1164); `(size+64)*1000/min(rate, sv_maxRate)` |
+| `0x6393F0` | SV_SendMessageToClient: after Netchan_Transmit `0x678450`: loopback or **Sys_IsLANAddress `0x600280` → nextSnapshotTime = svs.time−1 (no throttle)**; else `msec = max(RateMsec, snapshotMsec)`, `rateDelayed` = `client+0x10`, `nextSnapshotTime` = `client+0x1161C` |
+| `0x639BD0` | SV_SendClientMessages: clients `0x2547090` stride `0x58D30`, `svs.time` `0x2547084`, pending fragments `client+0x50` paced the same way |
+| `0x5EF390` | Dvar_SetInt by dvar: value in ECX, `[esp+4]` dvar, `[esp+8]` source (caller cleans) |
+| client `0x6465BF` / `0x646636` / `0x645E43` | client `rate` 1000..25000 default 25000; `snaps` 1..30 default 20; `cl_maxpackets` 15..100 default 30 |
+
+At 7000 B/s a 20 Hz snapshot can be at most 7000/20 − 64 = **286 bytes**. At 25000 the formula cannot
+exceed (1164+64)·1000/25000 = **49.1 ms**, so a 20 Hz client is never rate-delayed; 25000 is also the
+most either dvar allows. **Every local harness run ever made connects over 127.0.0.1, which is LAN, which
+skips the rate code entirely** — that is why everything "played fine" here.
+
+### 22.2 What changed
+
+- `server/components/net/net_probe.cpp` (new, commit `fd29f8f`): at the first frame, raises `sv_maxRate`
+  7000 → 25000 through the engine's setter (`ENW_SV_MAXRATE=<n>`, `0` = stock). Logs `net_probe:` every
+  5 s per client: userinfo rate, effective rate, snapshotMsec, messages sent, how many `rateDelayed`, the
+  delay chosen; and per destination (IAT hook WSOCK32 #20 `sendto`) packets, bytes, avg/max size,
+  fragments (seq bit 31), OOB, time inside `sendto`. `ENW_NET_PROBE=0` silences it.
+  **`ENW_NET_FORCE_WAN=1` (test only)** turns the two `call Sys_IsLANAddress` in the send path
+  (`0x6395CE`, `0x639C7A`) into `xor eax,eax`, so a 127.0.0.1 client is paced like an internet one.
+- `client-dll/components/net_probe_client.cpp` (new, same commit): IAT hook WSOCK32 #17 `recvfrom`;
+  `net_probe_client:` every 5 s — packets/s, bytes, fragments, arrival gap avg/max/sd, gaps >100/>250 ms.
+- **Box DLL `6b1ccfc5606391c17f8656086342b81f26d36fa3da921daa267ef808eb2a5ddd`**, built from a clean
+  worktree (`ZombiesDev\wt-netprobe`) at main **`fd29f8f`** (contains the join fix `81086d4`), installed
+  atomically (copy + `mv`) in all 9 `waw-*/binkw32.dll` while idle, 01:59 box time; rollback
+  `/home/waw/binkw32.rollback-03b04bc3.dll`. `ENW_NO_PAUSE=1` and `ENW_DEDI_WATCH_PROBE_SLOT=1` untouched,
+  host agent not restarted. (`f920bb39`, deployed 01:40, was the same code built from `wt-pause` with the
+  files untracked; superseded by `03b04bc3` and then by this.)
+
+### 22.3 Measured (fear_mc_2 unless said; steady 5 s windows, player spawned, round 1)
+
+| run | path | sv_maxRate / eff. rate | snapshots/s | rate-delayed | avg / max bytes | frags | client arrival gap avg / max / sd |
+|---|---|---|---|---|---|---|---|
+| `net_fear_7000` | local, FORCE_WAN | 7000 / 7000 | **10.0** | 50 of 50 | 640 / 700 | 0 | 100 / 145 / 15 ms |
+| `net_fear_25000b` | local, FORCE_WAN | 25000 / 25000 | **20.0** | 0 | 415 / 660 | 0 | 50 / 95–112 / 11–18 ms |
+| `net_nacht` (control) | local, FORCE_WAN | 25000 | 20.0 | 0 | 38–125 / 60–237 | 0 | — |
+| `box_fear_rate7000` | **B's PC → box over the internet**, client `rate 7000` = the stock cap | 25000 / **7000** | 10.0 → **3.0** | all | 600 → **1,080 / 1,174** | **30 of 30** | 100 → 290 ms |
+| `box_fear_rate25000` | **B's PC → box over the internet**, client `rate 25000` | 25000 / 25000 | **20.0** | 0–1 | 600–636 / 680–775 | 0 | **50 / 130–159 / 37–43 ms** |
+
+Nacht's snapshots are 40–125 bytes, fear_mc_2's 400–1,100: five to ten times bigger, which is why the
+stock cap only bit on the big custom map. In the box 7000 run snapshots grew past 1,164 bytes ~40 s in;
+every message then went out as two fragments, each paced separately, and the rate fell to 3/s (delay
+310–325 ms) — B's "unplayable". `sendto` under Wine costs 5–20 ms per 5 s window, max ~2.4 ms a call:
+not a factor. The box "before" was taken with the client's own `rate 7000` because the fixed DLL was
+already deployed; the server clamps min(rate, sv_maxRate), so it is the same pacing as the stock server.
+The 25000 box run got ~80 s of data before B's PC crashed at ~03:16 (cause unknown; nothing here points
+at this run, unproven either way). Local runs: new copies `waw-nd`/`waw-nc`, invisible, private profiles.
+First local 25000 attempt paused itself (`pause: PAUSED solo_menu`) and is discarded; `25000b` ran with
+`ENW_NO_PAUSE=1`. The "nacht" run was meant to be 7000 but read 25000 — `sv_maxRate` is archived and the
+previous run's 25000 persisted in the copy's config; with ENW_SV_MAXRATE=0 the DLL leaves whatever the
+config says.
+
+### 22.4 What the launcher should pass (launcher lane — listed, not done, not published)
+
+`rate 25000`, `snaps 30`, `cl_maxpackets 100` in the gamecfg baseline (`COMMUNITY_FIXES`). The server fix
+covers everybody whose `rate` is already 25000 (the stock default, and B's config). A player whose
+config.cfg has a lower `rate` (WaW's connection-speed menu writes one) is still capped at his own value,
+because the server takes min(client rate, sv_maxRate). `snaps` above 20 costs nothing (the server frame
+is 20 Hz); `cl_maxpackets 100` lifts the client→server usercmd rate from 30/s.
+
+### 22.5 Not proven
+
+A real launcher Play on the fixed box (B's session ended); more than one player (four at up to 25 KB/s
+each is ~100 KB/s up per game — not measured); `sv_fps 30` (not tried: 20 Hz at 0 delay removes what B
+described); socket buffers / `SO_SNDBUF` (nothing in the numbers points there); client delta failures
+(not counted).

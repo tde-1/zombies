@@ -1488,3 +1488,12 @@ forward, so it asked every 1.0 s; fixed before the `final-*` runs.
 **Not proven:** a real launcher Play on the box against this build (the box half was proven with a
 scripted connect, dedi.md §21.4); B's machine; the line at 2560x1440 (drawn on scrPlaceFull, so it is
 stretched the way the engine's own connect text is).
+
+
+## 2026-09-23 03:15 — `net_probe_client.cpp`: snapshot arrival, from the player's own log
+
+`recvfrom` IAT hook (WSOCK32 #17); every 5 s `net_probe_client:` from the busiest source: packets/s,
+bytes, fragments, arrival gap avg/max/sd, gaps >100/>250 ms. `ENW_NET_PROBE=0` off. The lag B had on
+fear_mc_2 was the server's stock `sv_maxRate 7000` (dedi.md §22): 10 → 3 snapshots/s over the internet,
+20/s after. **Launcher lane: baseline `rate 25000`, `snaps 30`, `cl_maxpackets 100`** (dedi.md §22.4) —
+a player with a low `rate` in config.cfg is otherwise still capped by his own setting.
