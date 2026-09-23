@@ -475,7 +475,7 @@ function RecordsHeld({ rows }) {
                 <span className="pm-main">
                   <span className="pm-name">{prettyTitle(r.map_title, r.map_key)}</span>
                   <span className="pm-sub pm-bits">
-                    <span>{r.label}</span>
+                    <span>{r.label}{r.game_mode_label ? ` · ${r.game_mode_label}` : ''}</span>
                     <span>{r.player_count === 1 ? 'solo' : `${r.player_count}p`}</span>
                     {r.at && <span>{ago(r.at)}</span>}
                   </span>
