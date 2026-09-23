@@ -306,6 +306,15 @@ export class Instance extends EventEmitter {
   }
 
   start() {
+    // A REMOVED INSTANCE NEVER STARTS (host.md §15). The manager has forgotten it — its port
+    // and slot may already be someone else's — so a process started now is an orphan: the
+    // 2026-09-23 12:13 incident was exactly this, a queued boot whose lease had been retired
+    // starting 50 s later and saying `hello` to a host that no longer knew it.
+    if (this.removed || this.mgr.stopping) {
+      this.log.warn(`not starting ${this.id}: ${this.removed ? 'it was removed (its lease ended) before its turn to boot' : 'the host is shutting down'}`)
+      this.state = 'exited'
+      return false
+    }
     if (this.kind === 'game' && this.mgr.wine) {
       // Wine mode: no launch.ps1, no game.lock, no Windows game copy to look for. The
       // one-game-per-box rule is a consequence of SHARING a game copy and a homepath, so
@@ -471,7 +480,9 @@ export class Instance extends EventEmitter {
     this.exitCode = code
     this.exitSignal = sig
     this.exitedAt = Date.now()
-    const wanted = this.state === 'exiting'
+    // A removed instance's exit is never a crash to restart or a failure to report: the
+    // host already forgot it (the 12:15 "inst-61 ... out of restarts" line was this).
+    const wanted = this.state === 'exiting' || !!this.removed
     this.state = 'exited'
     this.log.info(`exit code=${code} signal=${sig || '-'}${wanted ? '' : ' (unexpected)'}`)
     this.logStream.write(`=== ${new Date().toISOString()} exit ${code} ${sig || ''}\n`)
@@ -485,7 +496,7 @@ export class Instance extends EventEmitter {
       this.restarts++
       const delay = Math.min(30_000, 1000 * 2 ** (this.restarts - 1))
       this.log.warn(`restarting in ${delay}ms (${this.restarts}/${this.maxRestarts})`)
-      setTimeout(() => { if (!this.mgr.stopping) this.start() }, delay).unref?.()
+      setTimeout(() => { if (!this.mgr.stopping && !this.removed) this.start() }, delay).unref?.()
     } else if (!wanted && code !== 0) {
       this.state = 'failed'
       this.failReason = `exited ${code} and is out of restarts`
@@ -509,7 +520,11 @@ export class Instance extends EventEmitter {
     // is not ours to kill. dev-box.md rule 4 is about not killing other agents' game
     // processes; the same reasoning covers a player's own game on their own PC.
     if (this.foreign) { this.log.info(`not stopping ${this.id}: we did not start it (${reason})`); this.state = 'exited'; this.exitedAt = Date.now(); return Promise.resolve() }
-    if (!this.child || this.state === 'exited') return Promise.resolve()
+    if (!this.child || this.state === 'exited') {
+      // Never started (a queued boot): nothing to kill, and it must not start later.
+      if (!this.child && this.state === 'new') { this.state = 'exited'; this.exitedAt = Date.now() }
+      return Promise.resolve()
+    }
     this.state = 'exiting'
     this.log.info(`stopping: ${reason}`)
     // A real game was never our child, so there is no SIGTERM to send and no 'exit' to
@@ -604,6 +619,7 @@ export class InstanceManager extends EventEmitter {
     this.sampleMs = sampleMs
     this.log = log || makeLog('instances')
     this.instances = new Map()
+    this.removedRecently = new Map()   // id -> Instance, the last 32 removed (orphan hellos)
     this.ownedPids = new Set()
     this.usedPorts = new Set()
     this.stopping = false
@@ -649,9 +665,16 @@ export class InstanceManager extends EventEmitter {
     const inst = this.instances.get(id)
     if (!inst) return false
     inst.maxRestarts = 0
+    // Marked BEFORE the stop: a start() queued anywhere (the boot queue, a restart timer)
+    // must find it gone even while the stop is still in flight.
+    inst.removed = true
     await inst.stop(reason)
     this.usedPorts.delete(inst.port)
     this.instances.delete(id)
+    // Kept, briefly, so a `hello` from a process that escaped anyway can be matched to the
+    // child we spawned and killed by OUR pid (host.js onOrphanHello). Never reused.
+    this.removedRecently.set(id, inst)
+    if (this.removedRecently.size > 32) this.removedRecently.delete(this.removedRecently.keys().next().value)
     try { inst.logStream.end() } catch { /* ignore */ }
     this.emit('instance_removed', inst)
     return true

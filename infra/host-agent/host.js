@@ -33,6 +33,8 @@ import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
 import { onRestartRequest, handOver } from './lib/restart.js'   // a player's Restart game (esc-menu.md §3)
 import { MapCache, configFromEnv as mapCacheConfig, modNameOf } from './lib/mapcache.js'   // pull a leased map before boot
+import { BootQueue } from './lib/bootqueue.js'   // one boot at a time, players first (host.md §15)
+import { readMeminfo, ramPlan, MB } from './lib/memguard.js'   // the RAM guard (host.md §15)
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -42,8 +44,8 @@ const LIMITED = new Set(['wunderwaffe', 'wunderwaffe_dg2', 'm2_flamethrower', 'f
 const REPO = path.resolve(__dirname, '..', '..')
 // The longest one game's boot may hold the next one back (see boot()). A map loads in
 // 5-10 s on the box; a boot that has not loaded in 90 s is not going to.
-const BOOT_GATE_MS = 90_000
 const a = parseArgs(process.argv.slice(2))
+const BOOT_GATE_MS = Number(a['boot-gate-ms'] ?? 90_000)
 if (a.debug) setLogLevel('debug')
 const log = makeLog('host')
 
@@ -140,6 +142,17 @@ const cfg = {
   endReplyMs: Number(a['end-reply-ms'] ?? 10_000),
   mapReloadMs: Number(a['map-reload-ms'] ?? 60_000),
   warmIdleMs: Number(a['warm-idle-ms'] ?? 10 * 60_000),
+  // ---- THE RAM GUARD (lib/memguard.js, host.md §15) -------------------------------------
+  // Read MemAvailable before each boot. Below the floor an agent's boot waits (up to
+  // --ram-wait-ms, then its lease is failed) and a player's evicts warm, then agent,
+  // instances. 0 turns the guard off. No /proc/meminfo (Windows) = off.
+  ramFloorBytes: Number(a['ram-floor-mb'] ?? process.env.ENW_RAM_FLOOR_MB ?? 700) * MB,
+  ramWaitMs: Number(a['ram-wait-ms'] ?? 5 * 60_000),
+  ramSettleMs: Number(a['ram-settle-ms'] ?? 3_000),
+  meminfoFile: a['meminfo-file'] || '/proc/meminfo',
+  // TEST ONLY: put simulated games through the boot queue too (they load instantly
+  // otherwise, and the queue is only for real games). test/boot-queue.js.
+  gateSims: !!a['gate-sims'],
   referee: {
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
     ...(a['cap-warn-ms'] ? { capWarnMs: String(a['cap-warn-ms']).split(',').map(Number) } : {}),
@@ -679,6 +692,32 @@ class HostAgent {
       basePort: cfg.basePort, lobbyBase: cfg.lobbyBase, maxInstances: cfg.maxInstances, launchScript: cfg.launchScript,
       lockOwner: cfg.gameCopy, gameCopy: cfg.gameCopy, wine: cfg.wine, dryRun: cfg.dryRun, log: log.child('inst'),
     })
+    // Real games boot one at a time, a player's first (lib/bootqueue.js, host.md §15).
+    this.bootQueue = new BootQueue({ gateMs: BOOT_GATE_MS, admit: (e) => this.admitBoot(e), log: log.child('boot') })
+    this.bootQueue.on('dropped', (e, why) => {
+      const g = e.game
+      if (g && !g.finished && !g.cancelled && g.assignment) {
+        this.site?.status({ state: 'failed', match_id: g.matchId, map: g.assignment.map, error: `the server could not start the game: ${why}` })
+        this.retire(g, `boot dropped: ${why}`)
+      }
+    })
+    // Tell the site when a queued lease's process starts, and refresh `ahead` for the rest.
+    this.bootQueue.on('started', (e) => {
+      const g = e.game
+      if (g?.assignment) this.site?.status({ state: 'booting', match_id: g.matchId, instance: g.instance.id, nonce: g.assignment.nonce })
+      for (const q of this.bootQueue.queue) if (q.game) this.postQueued(q.game)
+    })
+    // Things that must never happen and did: an orphaned game process, a boot for a lease
+    // that had gone. The last 20, in state() and a count in every heartbeat.
+    this.incidents = []
+  }
+
+  incident(kind, detail) {
+    const row = { at: new Date().toISOString(), kind, ...detail }
+    this.incidents.push(row)
+    if (this.incidents.length > 20) this.incidents.shift()
+    log.error(`INCIDENT ${kind}: ${JSON.stringify(detail)}`)
+    this.dash?.push('incident', row)
   }
 
   /**
@@ -762,7 +801,7 @@ class HostAgent {
         fetchPopular: () => this.site.popularMaps(),
         inUse: () => this.mapsInUse(),
         leased: () => (this.latestLeases || []).map((x) => modNameOf(x)).filter(Boolean),
-        busy: () => (this.bootsPending || 0) > 0 || this.preparing.size > 0,
+        busy: () => this.bootQueue.size > 0 || this.preparing.size > 0,
       }).init()
       const i = this.mapCache.info()
       const gb = (n) => (n / 2 ** 30).toFixed(1)
@@ -798,6 +837,7 @@ class HostAgent {
     this.instances.linkPort = this.link.port
     this.link.on('hello', (conn, msg) => {
       let g = this.byInstance.get(conn.instance)
+      if (!g && this.onOrphanHello(conn, msg)) return
       if (!g) g = this.acceptLocal(conn, msg)
       if (!g) return
       log.info(`instance ${conn.instance} linked (pid ${msg.pid}, ${msg.dll_build})`)
@@ -880,6 +920,32 @@ class HostAgent {
         },
       })
     }
+  }
+
+  /**
+   * A `hello` from an instance id WE created but no longer run a game for. Before
+   * 2026-09-23 this was logged as "unknown instance ... ignoring" and the process was left
+   * up: at 12:13 two fear_mc_2 servers nobody tracked held ~900 MB between them and the box
+   * reached 4 MB available (host.md §15). It is our own child, so it is killed — by the pid
+   * WE spawned (the pid in `hello` is the game's own, a Wine pid on the box, and is never
+   * used unless it is in `ownedPids`) — and logged as an incident. Returns true if handled.
+   */
+  onOrphanHello(conn, msg) {
+    const id = conn.instance
+    const inst = this.instances.get(id) || this.instances.removedRecently.get(id)
+    if (!inst || inst.foreign || inst.kind === 'local') return false
+    const pid = inst.pid
+    this.incident('orphan_hello', { instance: id, match_id: inst.matchId || null, pid, game_pid: msg.pid ?? null, removed: !!inst.removed })
+    try { conn.destroy('orphan: this host runs no game on that instance') } catch { /* gone */ }
+    if (this.instances.ownedPids.has(pid) || (inst.child && inst.state !== 'exited')) {
+      log.error(`killing orphaned instance ${id} (our pid ${pid}): it said hello but no game here is running on it`)
+      inst.maxRestarts = 0
+      inst.removed = true
+      inst.stop('orphan: said hello after its lease ended', { graceMs: 2000 }).catch?.(() => {})
+    } else {
+      log.error(`orphaned instance ${id} said hello and its process is not one we still hold a pid for - left alone (rule 4: kill only our own pids)`)
+    }
+    return true
   }
 
   localEnabled() { return !!cfg.local }
@@ -987,30 +1053,101 @@ class HostAgent {
       }
     })
     inst.on('failed', (why) => { game.log.error(`instance failed: ${why}`); if (!game.finished) game.referee.finishGame('instance_failed') })
-    // ONE REAL GAME BOOTS AT A TIME. vps.md §15: `--boot 4` in one tick got one instance to
-    // a loaded map; started one after another, each waited on, they came up. So a game
-    // whose predecessor is still loading waits for that one's `map_loaded` (or its end, or
-    // BOOT_GATE_MS) before its process starts. Sims are not gated: they load nothing.
+    // ONE REAL GAME BOOTS AT A TIME, A PLAYER'S FIRST (lib/bootqueue.js, host.md §15).
+    // vps.md §15: `--boot 4` in one tick got one instance to a loaded map; started one after
+    // another, each waited on, they came up. So a game's process starts only when the one
+    // booting before it has loaded its map (or ended, or held the gate BOOT_GATE_MS from
+    // its own start). Sims are not gated: they load nothing (--gate-sims, tests only).
+    //
+    // `go` refuses a game that is no longer wanted. The 12:13 orphans were queued boots
+    // whose leases had been retired while they waited: the old chain started them anyway.
     const go = () => {
-      if (game.finished) return false
+      if (game.finished || game.cancelled || inst.removed || this.byInstance.get(inst.id) !== game) {
+        log.warn(`not booting ${inst.id} (match ${game.matchId}): its lease ended while it waited to boot`)
+        return false
+      }
       const ok = inst.start()
       if (ok) log.info(`booted ${inst.id} match=${game.matchId} kind=${inst.kind} map=${opts.map || '-'}`)
       return ok
     }
-    if (inst.kind !== 'game') { go(); return game }
-    const settled = new Promise((resolve) => {
-      const t = setTimeout(resolve, BOOT_GATE_MS); t.unref?.()
-      game.once('map_loaded', resolve)
-      game.once('finished', resolve)
-      inst.once('failed', resolve)
-      inst.once('exit', resolve)
-    })
-    if (this.bootsPending > 0) log.info(`${inst.id} waits for the game booting before it to load its map (one game boots at a time)`)
-    this.bootsPending = (this.bootsPending || 0) + 1
-    this.bootGate = (this.bootGate || Promise.resolve())
-      .then(() => (go() ? settled : null))
-      .finally(() => { this.bootsPending-- })
+    if (inst.kind !== 'game' && !cfg.gateSims) { go(); return game }
+    const real = !!opts.assignment && opts.assignment.agent !== true
+    const settle = (why) => () => this.bootQueue.settle(inst.id, why)
+    game.once('map_loaded', settle('map_loaded'))
+    game.once('finished', settle('finished'))
+    inst.once('failed', settle('failed'))
+    inst.once('exit', settle('exit'))
+    const busy = this.bootQueue.size > 0
+    const ahead = this.bootQueue.add({ id: inst.id, real, game, label: `${inst.id} ${game.matchId}`, start: go })
+    if (busy) log.info(`${inst.id} (${real ? 'a PLAYER\'s' : 'an agent\'s'} lease ${game.matchId}) queued to boot, ${ahead} ahead of it (one game boots at a time${real ? ', players first' : ''})`)
+    // REAL PLAYERS GO FIRST, and a player never waits on an agent's boot. If an agent's game
+    // is the one booting now, it is retired to make room — the host-side half of the site's
+    // eviction rule (assignments.js rule 4), which only covers leases the box has not started.
+    const act = this.bootQueue.active
+    if (real && act && !act.real && act.game?.assignment?.agent === true) {
+      const victim = act.game
+      log.warn(`a player's lease (${game.matchId}) is waiting on an AGENT's boot (${victim.instance.id}, ${victim.matchId}) - retiring the agent's game so the player's boots now`)
+      this.preempting = this.yieldAgent(victim, `a player's lease ${game.matchId} needs the boot slot`)
+    }
     return game
+  }
+
+  /**
+   * An agent's game gives way to a player's. Retired here, and the site is told with
+   * `state: 'yielded'`, which ends an AGENT lease in any live state (assignments.ack), so
+   * the site's slot count and the lease-cli's view agree with what the box is running.
+   */
+  async yieldAgent(game, why) {
+    this.site?.status({ state: 'yielded', match_id: game.matchId, map: game.assignment?.map, error: why })
+    await this.retire(game, `yields to a player: ${why}`)
+  }
+
+  /**
+   * Asked by the boot queue just before a boot starts: the RAM guard (lib/memguard.js).
+   * `{ go }`, `{ wait }` (the queue asks again in 5 s) or `{ drop }` (the lease is failed).
+   */
+  async admitBoot(e) {
+    // A player's boot waits for the agent game it displaced to be GONE, so that game's
+    // memory is back before the figure below is read.
+    if (e.real && this.preempting) { await this.preempting.catch(() => {}); this.preempting = null }
+    const game = e.game
+    if (!game || game.finished || game.cancelled || game.instance.removed) return { go: true }   // go() refuses it and says why
+    const mem = readMeminfo(cfg.meminfoFile)
+    this.lastMem = mem ? { ...mem, at: Date.now() } : null
+    const inst = game.instance
+    const others = this.instances.list()
+      .filter((i) => i !== inst && !i.foreign && !i.removed && (i.state === 'starting' || i.state === 'running'))
+      .map((i) => {
+        const g = this.byInstance.get(i.id)
+        return {
+          id: i.id, game: g, rssBytes: i.usage().rss_bytes || 0, startedAt: i.startedAt,
+          loaded: !!(g?.mapEv || this.warm.has(i.id)), warm: this.warm.has(i.id) && !g?.assignment,
+          agent: g?.assignment?.agent === true, real: !!g?.assignment && g.assignment.agent !== true,
+        }
+      })
+    const plan = ramPlan({ availBytes: mem?.availableBytes ?? null, floorBytes: cfg.ramFloorBytes, real: e.real, instances: others })
+    if (plan.action === 'go') {
+      if (plan.effective != null && plan.effective < cfg.ramFloorBytes) log.warn(`RAM guard: ${plan.why}`)
+      else if (plan.effective != null) log.info(`RAM guard: ${inst.id} may boot - ${plan.why}`)
+      return { go: true }
+    }
+    if (plan.action === 'wait') {
+      const since = e.waitingSince || Date.now()
+      if (Date.now() - since > cfg.ramWaitMs) return { drop: `not enough memory on the box for ${Math.round(cfg.ramWaitMs / 1000)} s (${plan.why})` }
+      if (!e.ramLogged || Date.now() - e.ramLogged > 30_000) { e.ramLogged = Date.now(); log.warn(`RAM guard: ${inst.id} (${game.matchId}) waits - ${plan.why}`) }
+      e.waitWhy = plan.why
+      this.postQueued(game)
+      return { wait: plan.why }
+    }
+    // evict
+    log.warn(`RAM guard: ${inst.id} (${e.real ? 'a player\'s' : 'an agent\'s'} lease ${game.matchId}): ${plan.why}`)
+    await Promise.all(plan.victims.map((v) => {
+      if (!v.game) return null
+      const why = `RAM guard: ${inst.id} needs its memory`
+      return v.warm ? this.retire(v.game, why) : this.yieldAgent(v.game, why)
+    }))
+    await new Promise((r) => setTimeout(r, cfg.ramSettleMs))
+    return this.admitBoot(e)
   }
 
   // ---- game over: the two dispositions ---------------------------------------------
@@ -1029,6 +1166,13 @@ class HostAgent {
     // Re-entry guard AND the contract: a game being retired has had its disposition made
     // for it, so nothing downstream may pick another one.
     game.disposed = game.disposed || Promise.resolve({ action: 'terminate', why })
+    // A GAME STILL WAITING TO BOOT NEVER BOOTS (host.md §15). Out of the queue first, and
+    // synchronously, so no `await` below can let its turn come round in between.
+    const where = this.bootQueue.cancel(id, why)
+    if (where === 'queued' || game.instance.state === 'new') {
+      game.cancelled = true
+      clearInterval(game.tickTimer)
+    }
     // AN OPEN REPLAY MUST NOT GO WITH THE PROCESS. A replay with no signed footer is not
     // a replay, it is a prefix of one (the same reasoning as `onLinkClosed`). A warm
     // instance normally has no writer at all — it defers until a match actually starts —
@@ -1285,7 +1429,15 @@ class HostAgent {
         seed: Number(asg.sim?.seed ?? 1337),
       },
     })
-    this.site?.status({ state: 'booting', match_id: asg.match_id, instance: game.instance.id, nonce: asg.nonce })
+    // QUEUED IS SAID OUT LOUD (host.md §15). A lease waiting behind another game's boot
+    // used to be reported `booting` at once and then nothing for up to 90 s, and a player
+    // looking at "Reserving server" with no movement pressed Cancel at 34 s, twice
+    // (launcher.log 12:12:43, 12:13:27). Now it is `preparing` with phase `queued` — the
+    // same field a map pull uses, which the site already hands the launcher as
+    // `match.preparing` — until its process starts, and `booting` then.
+    const pos = this.bootQueue.position(game.instance.id)
+    if (pos > 0) this.postQueued(game)
+    else this.site?.status({ state: 'booting', match_id: asg.match_id, instance: game.instance.id, nonce: asg.nonce })
     game.referee.once('live', () => this.site?.status({ state: 'live', match_id: asg.match_id, instance: game.instance.id }))
     // READY MEANS THE MAP IS LOADED, not "the link is up" (coordinator, 2026-09-23 02:30).
     // The launcher launches the client the moment it sees `ready`, and since 0.2.17 the
@@ -1298,6 +1450,24 @@ class HostAgent {
       this.site?.status({ state: 'ready', match_id: asg.match_id, instance: game.instance.id, port: game.instance.port })
     }
     game.once('map_loaded', sendReady)
+  }
+
+  /** `preparing` + phase `queued` for a lease whose boot is waiting its turn. */
+  queuedInfo(game) {
+    const e = this.bootQueue.queue.find((x) => x.id === game.instance.id)
+    const pos = this.bootQueue.position(game.instance.id)
+    return {
+      phase: 'queued', map: game.assignment?.map || null,
+      // How many boots go before this one: the one booting now plus those queued ahead.
+      ahead: pos > 0 ? (this.bootQueue.active ? 1 : 0) + (pos - 1) : 0,
+      reason: e?.waitWhy ? 'memory' : 'boot',
+      since: e?.queuedAt ? new Date(e.queuedAt).toISOString() : null,
+    }
+  }
+
+  postQueued(game) {
+    if (!game.assignment) return
+    this.site?.status({ state: 'preparing', match_id: game.matchId, map: game.assignment.map, nonce: game.assignment.nonce, instance: game.instance.id, preparing: this.queuedInfo(game) })
   }
 
   mapCacheSummary() {
