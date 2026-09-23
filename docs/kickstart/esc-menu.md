@@ -247,3 +247,126 @@ build before the 4:3 layout fix and the restart-detection fix; neither changes a
 * Exclusive fullscreen: not looked at (as for the overlay, `chat-overlay.md` §9.8).
 * The second run's replay (`m_escmenu2.r2.enwr`) was not closed: the harness killed the host with
   the game. The first run's is signed and verifies.
+
+---
+
+## 9. 2026-09-23 ~04:00–06:00 — the Settings tab (branch `worktree-agent-ab4af766591d2bb5c`, not merged)
+
+B: *the Esc menu needs a SETTINGS tab that carries every setting the ENW Movement client offers,
+plus World at War's own video/audio/control settings, all through our menu, and it must sync
+perfectly.*
+
+### 9.1 What it is
+
+A fourth button, **Settings**, under Resume. It swaps the right side of the menu (friends and the
+chat panel) for a settings panel drawn with the menu's own engine calls and the stock WaW font
+(`stock_font::pick`, chat-overlay.md §12). **The tabs, groups, names and values are the site's
+`/settings`**: Display, Graphics, Audio, Controls, Game. Toggles click, lists have `<` `>`, sliders
+click/drag, a bind row captures the next key or mouse button (Esc cancels, Delete or right-click
+clears; with two keys already both are released, as WaW's Controls menu does). Changes apply at
+once; the foot of the panel says what happened, or the hint / reason for the row under the pointer.
+Esc goes back to the friends view; Esc again resumes.
+
+| File | What |
+|---|---|
+| `web/client/src/data/wawSettings.js` | **`INGAME`**: per catalogue item, `apply` (`live`, `vid_restart`, `next_launch`, `site`, `false` = never in game, with why) and `verified` (still shown in a Verified game). The one place policy lives. |
+| `tools/settings/gen-ingame-schema.mjs` → `shared/settings/ingame-settings.json` | The catalogue + `settingsLayout.js` + `INGAME`, joined. CMake embeds it into the DLL as bytes. **The DLL has no list of its own.** |
+| `client-dll/components/settings_model.hpp` | Pure model: load, forbidden dvars, visibility, the console text a change becomes, sliders/lists/binds. |
+| `client-dll/components/settings_tab.cpp` + `.hpp` | The panel, the engine reads/writes, the write-through check, Apply. |
+| `client-dll/components/pause_menu.cpp` | The button and the view; lines marked `[settings]`. The menu is not auto-closed while the tab's `vid_restart` runs. Selftests `ENW_ESC_MENU_SELFTEST=5` (drive it) / `=6` (read after relaunch). |
+| `mouse_polling.cpp`, `stock_font.cpp`, `frame_capture.cpp` | Survive `vid_restart` (§9.4). |
+| `launcher/src/main/wawcfg.js`, `launch.js` | Raw input in the config round trip; the read-back commits its snapshot; a catch-up read-back before each launch's merge (§9.3). |
+| `tools/dev/settings-proof.ps1`, `settings-roundtrip.mjs` | The proof harness (§9.5). |
+
+### 9.2 The list, and the dvar behind each row
+
+81 items (every catalogue item that `/settings` places, minus two). Engine reads use the engine's
+own `Dvar_ValueToString` (`0x5ECAB0`, ECX = dvar, the 16-byte value by value; the console's dvar
+hint calls it for current `+0x10`, latched `+0x20` and reset `+0x30`; byte-checked).
+
+| Tab / group | Rows (dvar) | apply | Verified |
+|---|---|---|---|
+| Display / screen | display mode (`r_fullscreen` + the DLL's borderless, read-only), monitor (`r_monitor`, read-only), resolution (`r_mode`, read-only when borderless), refresh rate (`r_displayRefresh`), aspect ratio (`r_aspectRatio`) | site / vid_restart | resolution, refresh, aspect hidden |
+| Display / picture | field of view (`cg_fov` 65–120), brightness (`r_gamma` 0.5–3), max fps (`com_maxfps` 60/85/125/250), vsync (`r_vsync`), show fps (`cg_drawFPS` Off/Simple) | live; vsync vid_restart | max fps and vsync hidden (records rule: com_maxfps unchanged mid-game) |
+| Graphics / quality | anti-aliasing (`r_aaSamples`), shadows (`sm_enable`), specular (`r_specular`), glow (`r_glow_allowed`), depth of field (`r_dof_enable`), dual video cards (`r_multiGpu`) | live; AA, multiGpu vid_restart | all hidden |
+| Graphics / world | bullet impacts (`fx_marks`), dynamic foliage, ocean simulation (`r_gfxopt_*`) | live | hidden |
+| Graphics / textures | anisotropy (`r_texFilterAnisoMin`), mipmaps (`r_texFilterMipMode`), texture quality (`r_picmip_manual`), texture/normal/specular detail (`r_picmip`, `_bump`, `_spec`) | aniso, mipmaps live; the rest vid_restart | aniso, mipmaps shown |
+| Audio / volume | master, music, effects, voice, cinematics (`snd_menu_master`, `snd_menu_music`, `snd_menu_sfx`, `snd_menu_voice`, `snd_cinematicVolumeScale`, 0–1). **Not `snd_volume`: this exe has no such dvar** (client.md §10b) | live | shown |
+| Audio / sound | line of sight occlusion (`snd_losOcclusion`) | live | hidden (hearing through walls) |
+| Controls / mouse | sensitivity (`sensitivity` 1–30), invert (`ui_mousePitch` + `m_pitch` ±0.022, as the menu's uiScript), smooth mouse (`m_filter`), free look (`cl_freelook`), raw input (`enw_rawmouse`, ENW's own archived dvar) | live; raw input next launch | shown |
+| Controls / move, combat, interact, look | the 41 key rows of WaW's Controls menus (`bind KEY "cmd"`), incl. aim down sights hold (`+speed_throw`) | live | shown |
+| Game | mature content (`cg_mature`, + `cg_blood 1` on Unrestricted), subtitles (`cg_subtitles`), hud (`hud_enable`), crosshair (`cg_drawCrosshair`) | live | shown |
+
+**Not in game, on purpose:** `monkeytoy` (mod-owned: a map's anti-cheat quits on it,
+mod-compat.md §3) and `ai_corpseCount` (an `ai_` dvar: the server runs the AI in a box game).
+`settings::forbidden_dvar` also refuses `con_external`, `sv_cheats`, `developer*`, `cg_fovscale`,
+`timescale`, `name`, our userinfo keys and every `ai_ g_ sv_ player_ bg_ perk_ scr_` dvar, whatever
+a schema says (a forged schema item is dropped at load; unit-tested). A dvar the running map sets
+itself (its `.enw-installed.json` `modDvars.owned`, launcher `modcompat.js`) is shown read-only,
+"set by this map".
+
+**Verified game** = the invite token is present (`auth::token()`), or `ENW_SETTINGS_RESTRICTED=1`.
+Only `verified: true` rows are drawn at all (sensitivity, invert, volumes, FOV ≤ 120, brightness,
+show fps, crosshair, hud, subtitles, mature, anisotropy/mipmaps, raw input, every bind); nothing that
+restarts the renderer, not `com_maxfps`.
+
+**What Movement's settings page has, and why none of it is a row here.** Its list
+(`CSGO-Matchmaker/movement-client/src/pages/Settings.jsx`, stored per mode in
+`server/lib/playerSettings.js`, applied by the game-server plugin): HUD presets per mode, hide
+players, sounds, hints, PB alerts, menu on reload, viewmodel FOV (1–120), weapon armed/hidden, name
+colour (VIP), distbug/jump analysis, Steam-bot notifications, profile privacy. Every one is a CS:GO
+movement-server plugin feature with no World at War equivalent; the nearest, viewmodel FOV, would be
+`cg_fovscale`, which the records rules multiply into the FOV cap, so it is refused. **Movement has
+no key binds and no mouse settings.** What was reused from it is the *shape*: settings stored as
+key/value per account, changed in game, written back so the site shows the in-game value.
+**ADS sensitivity multiplier: does not exist in this exe** (no `ads`/`zoom` sensitivity dvar in the
+1.7 image; WaW scales ADS by FOV). It would be code in `mouse_polling`, not a setting; not built.
+
+### 9.3 The sync path (the existing round trip, extended — no new channel)
+
+1. **Apply** = the engine's own console text through `Cbuf_AddText`: `seta <dvar> "<v>"` (plus the
+   menu script's companion dvars), `bind KEY "cmd"` / `unbind KEY`. Values are one quoted token; `;`,
+   quotes and control characters are stripped (unit-tested).
+2. **Write-through, by the engine.** `Com_Frame` (`0x59DCF0`) calls `Com_WriteConfiguration`
+   (`0x59D8F0`) at the top of every frame; when `dvar_modifiedFlags` (`0x21ACF30`) has the archive bit
+   it rewrites `players\profiles\<profile>\config.cfg` (the profile string at `[0x1F55284]`, the one
+   `players\active.txt` names) under the redirected LocalAppData — our private profile, never B's
+   `Activision\CoDWaW`. `seta` archives. A bind changes no dvar, so the tab raises the archive bit
+   two frames after the bind has executed. The tab re-reads the file after every change and logs
+   `WRITE-THROUGH: ... N ms after the change`. So a change is on disk within a frame or two: nothing
+   is lost to a crash, to Exit game, or to a game over (none of them needs a save step).
+3. **The launcher** reads the file after the game exits — crash, kill or quit — with the existing
+   `readBackAccount` (client.md §8) and saves the difference to the account, which `/settings`
+   shows. Extended: **raw input** travels as `seta enw_rawmouse` (the account block writes it, the
+   read-back returns `rawMouse`); the read-back **commits** its snapshot, so the same file is never
+   claimed twice; and **before each launch's merge** a catch-up read-back runs, so a change the game
+   saved while the launcher was closed or dead is kept and saved, not overwritten by the older
+   account value.
+
+### 9.4 vid_restart
+
+Rows marked vid_restart are set as WaW's Graphics menu sets them (the engine latches them; the row
+shows the latched value with a gold `*`), and an **Apply (restart video)** button appears. It runs
+`vid_restart`, as WaW's Apply does. The engine refuses it under a listen server
+(`CL_Vid_Restart_f` `0x6420F0`, "Listen server cannot video restart.", sv_running `[0x1F552DC]`), so
+in Play Local those rows say "applies next launch" and there is no Apply. A restart destroys the
+window and the D3D device, which broke three things that are fixed here:
+
+* **the input gate** — mouse_polling installed its subclass (and raw input, `hwndTarget`) once, on
+  the first window; after a restart the chat overlay and the Esc menu would have had no input at
+  all. It now re-installs on the new window.
+* **the stock font** — its atlas texture belonged to the old device, and its glyph pointers to
+  zones the restart reloads. It now forgets everything when the device or window changes (and from
+  the moment Apply is pressed) and finds the font again; the engine's fonts are used in between.
+* **frame_capture** cached the device for the swap chain's Present; it now asks the swap chain.
+
+The menu is **not** closed during the restart (pause_menu's 1 s no-draw rule waits for it), so the
+game stays paused and the menu, on the Settings tab, is back with the picture.
+
+### 9.5 Proof
+
+(filled in from the run below)
+
+### 9.6 Not proven
+
+(filled in below)

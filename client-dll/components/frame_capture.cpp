@@ -175,8 +175,16 @@ HRESULT __stdcall sc_present_hook(IDirect3DSwapChain9* sc, const RECT* a, const 
         std::lock_guard<std::mutex> lk(g_mu);
         name.swap(g_pending);
     }
-    if (!name.empty() && g_dev) capture_seh(g_dev, name.c_str());
-    if (g_dev) run_job_seh(g_dev);
+    // The swap chain's OWN device, not the one cached at install: `vid_restart` destroys
+    // the device and makes a new one (esc-menu.md §9). The vtable slots are per class in
+    // d3d9.dll, so this hook survives the restart; a cached device pointer would not.
+    IDirect3DDevice9* dev = nullptr;
+    if (FAILED(sc->GetDevice(&dev))) dev = nullptr;
+    if (dev) {
+        if (!name.empty()) capture_seh(dev, name.c_str());
+        run_job_seh(dev);
+        dev->Release();
+    }
     return g_real_sc_present(sc, a, b, c, e, f);
 }
 

@@ -27,7 +27,7 @@ import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migra
 // rules (docs/kickstart/verified-rules.md). The launcher already never writes more than
 // FPS_CAP, so a player only meets the lock by typing a higher value in the console.
 export function fpsCapEnv() { return String(FPS_CAP) }
-import { launchDvars, applyAccountToConfig, readBackAccount } from './wawcfg.js'
+import { launchDvars, applyAccountToConfig, readBackAccount, foldReadBack } from './wawcfg.js'
 import * as settings from './settings.js'
 import { modOwnedDvars, dropModOwned } from './modcompat.js'
 
@@ -411,6 +411,21 @@ export class GameLaunch extends EventEmitter {
         // The account's settings from the site's Settings page (WaW's Options menus),
         // merged into the config.cfg the engine reads on EVERY launch, so the in-game
         // menu shows them too. wawcfg.js says why this is not seed-once.
+        // Catch-up first (esc-menu.md §9): a change the game wrote to config.cfg that no
+        // read-back ever took (the launcher was closed or died while the game ran) would
+        // otherwise be overwritten by the account's older value right here. It is folded
+        // into this launch's settings and handed to the account with this run's read-back.
+        try {
+          const missed = readBackAccount({ homeDir, profile: o.profile || PROFILE, commit: true })
+          if (Object.keys(missed.changed).length) {
+            o.settings = foldReadBack(o.settings || {}, missed.changed)
+            this.opts.settings = o.settings
+            this.pendingReadBack = missed.changed
+            this.note(`settings the game saved that the launcher never read back (${Object.keys(missed.changed).join(', ')}): kept, and saved to the account with this run's read-back`)
+          }
+        } catch (e) {
+          this.note(`settings catch-up failed (${e.message}); carrying on`)
+        }
         const acct = applyAccountToConfig({ homeDir, profile: o.profile || PROFILE, settings: o.settings || {}, display })
         if (acct.wrote.length) this.note(`applied ${acct.pairs.length} account setting${acct.pairs.length === 1 ? '' : 's'}${acct.resets.length ? `, ${acct.resets.length} game default${acct.resets.length === 1 ? '' : 's'}` : ''} and ${Object.keys(acct.binds).length} bind${Object.keys(acct.binds).length === 1 ? '' : 's'} to ${acct.wrote[0]}`)
       } catch (e) {
@@ -748,8 +763,9 @@ export class GameLaunch extends EventEmitter {
       // to what this launch wrote. It wins over the older read-back for the same key,
       // because it compares against this launch rather than against the first seed.
       try {
-        const acct = readBackAccount({ homeDir: this.opts.homeDir || P.home, profile: this.opts.profile || PROFILE })
-        if (Object.keys(acct.changed).length) r.changed = { ...(r.changed || {}), ...acct.changed }
+        const acct = readBackAccount({ homeDir: this.opts.homeDir || P.home, profile: this.opts.profile || PROFILE, commit: true })
+        if (this.pendingReadBack) r.changed = foldReadBack(this.pendingReadBack, r.changed || {})
+        if (Object.keys(acct.changed).length) r.changed = foldReadBack(r.changed || {}, acct.changed)
       } catch (e) {
         this.note(`could not read the account settings back (${e.message})`)
       }
