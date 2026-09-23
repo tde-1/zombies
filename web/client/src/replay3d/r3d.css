@@ -274,3 +274,38 @@ body:has(.r3d) .chatdock { display: none; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .r3d-waw-sb td.r3d-waw-sb-wpn.pap { color: #c9a6ff; }
 .r3d-waw-sb th:nth-child(2) { text-align: left; }
+
+/* ---- Lane R4 (replay.md §13): spectator switching in a co-op replay ----------------------
+   The panel says who is followed and how (or "Free cam"); each row carries its number key; the
+   followed row gets an eye and a slot-coloured edge; a downed player is tagged. All of it is
+   scoped to .coop, so a solo replay's panel is exactly as it was. */
+.r3d-zm-score.coop .r3d-zm-row { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.r3d-zm-score.coop .r3d-zm-row.down { opacity: .72; }
+.r3d-zm-score.coop .r3d-zm-row.watching { background: var(--panel-2); box-shadow: inset 2px 0 0 var(--text); }
+.r3d-zm-score.coop .r3d-zm-row:focus-visible { outline: 1px solid rgba(255, 255, 255, .5); outline-offset: 1px; }
+.r3d-spec-head { display: flex; flex-direction: column; gap: 1px; padding: 0 2px 8px; margin-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); font-size: 12px; line-height: 1.3; }
+.r3d-spec-head b { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r3d-spec-head span { color: var(--muted, rgba(255, 255, 255, .6)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r3d-spec-head .r3d-spec-lab { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.r3d-spec-key { flex: none; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 4px; background: rgba(255, 255, 255, .08); color: var(--muted, rgba(255, 255, 255, .6));
+  font: 600 10px/16px var(--mono, ui-monospace, Consolas, monospace); text-align: center; }
+.r3d-zm-row.watching .r3d-spec-key { background: var(--text); color: #000; }
+.r3d-spec-tag { flex: none; padding: 1px 5px; border-radius: 4px; background: rgba(200, 40, 30, .85); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.r3d-spec-eye { flex: none; width: 14px; height: 14px; opacity: .9; }
+
+/* The followed player is down: a marker at the top of the view, and the offer of the next
+   player who is up. The camera itself stays on him. */
+.r3d-spec-down { position: absolute; left: 50%; top: calc(12px + var(--r3d-h) + 14px); transform: translateX(-50%); z-index: 4;
+  display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 10px; border-radius: var(--radius, 10px);
+  background: rgba(20, 4, 4, .82); border: 1px solid rgba(220, 50, 40, .6); box-shadow: var(--r3d-shadow); font-size: 13px; white-space: nowrap; max-width: calc(100% - 24px); }
+.r3d-spec-down-tag { padding: 2px 7px; border-radius: 4px; background: #c8281e; color: #fff; font-weight: 800; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.r3d-spec-down-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.r3d-spec-down-next { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; border: none; border-radius: var(--pill, 999px);
+  background: var(--panel-2); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; touch-action: manipulation; }
+.r3d-spec-down-next:hover { background: rgba(255, 255, 255, .14); }
+.r3d-spec-down-next kbd { font: 600 10px/1 var(--mono, ui-monospace, Consolas, monospace); padding: 2px 4px; border-radius: 3px; background: rgba(255, 255, 255, .12); }
+/* Touch: rows tall enough to tap. */
+@media (pointer: coarse) {
+  .r3d-zm-score.coop .r3d-zm-row { min-height: 36px; }
+  .r3d-spec-down-next kbd { display: none; }
+}
