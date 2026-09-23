@@ -208,6 +208,21 @@ async function main () {
     for (const f of ['crash', 'host_pull_failed', 'lease_refused', 'host_error', 'oom_kill', 'box_resources', 'result_spooled']) truthy(r.flags.includes(f), `flag ${f} in ${r.flags}`)
     eq(r.severity, 1)
   })
+  await check('flags: the box agent\'s real file names (host-instance / engine-console / journal-unit) and its ISO ring lines', () => {
+    // Names and line format from infra/host-agent/lib/telemetry.js + util.js ringFormat.
+    const r = evaluate({ manifest: { kind: 'host', reason: 'instance_end' }, files: [], texts: new Map([
+      ['host-instance.log', '2026-09-23T12:24:50.978Z error host/inst-07 instance failed: exited 3 times\n2026-09-23T12:24:51.000Z warn  host result post failed (fetch failed)'],
+      ['engine-console.log', '******* script runtime error *******\nundefined is not an array'],
+      ['host-box-context.log', '2026-09-23T12:24:50.978Z warn  host/inst-08 instance exited unexpectedly'],
+    ]) })
+    for (const f of ['host_error', 'result_spooled', 'script_error']) truthy(r.flags.includes(f), `flag ${f} in ${r.flags}`)
+    truthy(!r.flags.includes('crash'), 'another instance\'s crash line in host-box-context.log does not flag this one')
+    const j = evaluate({ manifest: { kind: 'journal', reason: 'daily_journal' }, files: [], texts: new Map([
+      ['journal-unit.log', '2026-09-22T10:00:00+0000 zombies-dev node[812]: 10:00:00.000 error host KEY MISMATCH'],
+      ['journal-kernel.log', '2026-09-22T10:00:00+0000 zombies-dev kernel: Out of memory: Killed process 1234 (wine)'],
+    ]) })
+    truthy(j.flags.includes('host_error') && j.flags.includes('oom_kill'), `journal flags ${j.flags}`)
+  })
   await check('flags: launcher — error, update failure, manual send; journal-only rules do not fire on a client', () => {
     const r = evaluate({ manifest: { kind: 'launcher', reason: 'uncaught', notes: 'TypeError: x is undefined' }, files: [], texts: new Map([['launcher.log', '2026-09-23T11:00:00Z update check failed: error code: 502\n2026-09-23T11:00:01Z uncaught TypeError: x is undefined']]) })
     truthy(r.flags.includes('launcher_error')); truthy(r.flags.includes('launcher_update_failed')); eq(r.severity, 2)

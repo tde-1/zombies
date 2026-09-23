@@ -22,10 +22,17 @@
 //   detail (matches, ctx) => string — a one-line explanation for the summary
 
 const DLL_LOG = /(^|\/)enw-\d+\.log$/i
-const CONSOLE_LOG = /(^|\/)(console-\d+\.log|console\.log|games_mp.*\.log)$/i
-const GAME_LOGS = /(^|\/)(enw-\d+\.log|console-\d+\.log|console\.log|games_mp.*\.log)$/i
+// The box's names too (infra/host-agent/lib/telemetry.js, host.js instanceLogFiles):
+// engine-console.log / engine-games_mp.log (the instance's fs_homepath copies),
+// host-games_mp.log (the host's mirror), instance-stdout.log (the Wine process's output).
+const CONSOLE_LOG = /(^|\/)(console-\d+\.log|(engine-)?console\.log|(host-|engine-)?games_mp.*\.log|instance-stdout\.log)$/i
+const GAME_LOGS = /(^|\/)(enw-\d+\.log|console-\d+\.log|(engine-)?console\.log|(host-|engine-)?games_mp.*\.log|instance-stdout\.log)$/i
 const LAUNCHER_LOG = /(^|\/)(launcher\.log|.*-std(out|err)\.log)$/i
-const HOST_LOG = /(^|\/)(host\.log|host-lines\.log|host-agent\.log|journal.*\.log|journal.*\.txt)$/i
+// host-instance.log (this instance's own agent lines), host-lease.log (a failed pull's),
+// host-recent.log (a box warning's), journal-unit*.log / journal-kernel.log (the daily
+// journal). NOT host-box-context.log: it holds every instance's lines, so an error in it
+// belongs to some other game and must not flag this one.
+const HOST_LOG = /(^|\/)(host\.log|host-lines\.log|host-agent\.log|host-(instance|lease|recent)\.log|journal.*\.log|journal.*\.txt)$/i
 const KERNEL_LOG = /(^|\/)(kernel.*\.(log|txt))$/i
 
 const num = (s) => { const n = Number(s); return Number.isFinite(n) ? n : null }
@@ -133,7 +140,7 @@ const RULES = [
   {
     id: 'host_error', label: 'Host errors', severity: 2, kinds: ['host', 'journal'],
     description: 'error-level lines from the host agent (instance failed, finish failed, KEY MISMATCH, could not retire …).',
-    line: /\d\d:\d\d:\d\d\.\d{3} error\b|KEY MISMATCH|instance failed:/i, files: HOST_LOG,
+    line: /\d\d:\d\d:\d\d\.\d{3}Z? error\b|KEY MISMATCH|instance failed:/i, files: HOST_LOG,
   },
   {
     id: 'launcher_error', label: 'Launcher error', severity: 2, kinds: ['launcher'],
