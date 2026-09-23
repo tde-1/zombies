@@ -46,6 +46,7 @@ const { SqliteStore } = require('./lib/sessionStore')
 const achievements = require('./lib/achievements')
 const mapRecords = require('./lib/mapRecords')
 const users = require('./lib/users')
+const friendSync = require('./lib/friendSync')
 const { enwMarkSvg, PAGE_CSS } = require('./lib/enwMark')
 
 const PORT = Number(process.env.PORT || process.env.ZM_PORT || 3200)
@@ -224,9 +225,15 @@ io.engine.use(sessionMw)
 io.on('connection', (socket) => {
   const sid = socket.request.session && socket.request.session.steam_id
   if (sid) {
-    presence.connected(sid, socket.id)
+    // `client` (web/client/src/socket.js): 'launcher' inside the launcher, else 'site'.
+    const client = socket.handshake && socket.handshake.auth && socket.handshake.auth.client
+    presence.connected(sid, socket.id, client === 'launcher' ? 'launcher' : 'site')
     socket.join(`user:${sid}`)
     io.emit('presence', presence.stats())
+    onlineNudge()
+    // A first sign-in pulls that player's friends from the rest of ENW at once (15 s floor).
+    const run = friendSync.maybeSync('sign-in', sid)
+    if (run) run.catch(() => {})
   }
   socket.on('heartbeat', () => { if (sid) presence.heartbeat(sid) })
 
@@ -257,7 +264,40 @@ io.on('connection', (socket) => {
     if (!sid) return
     presence.disconnected(sid, socket.id)
     io.emit('presence', presence.stats())
+    onlineNudge()
   })
+})
+
+// THE ONLINE LIST IS PUSHED, NOT POLLED (lane SOC, 2026-09-23). Every row is worked out per
+// reader (lib/roster.js), so the push is a nudge, `online_changed`, and each rail refetches
+// its own `/api/party/online`. Two triggers: a socket arriving or leaving (at once, 150 ms
+// coalesced), and a once-a-second comparison of presence.signature(), which catches the rest
+// (a party formed, a box saying who is in which game, a round ticking over) without every
+// one of those having to remember to announce itself. A few small queries a second.
+let lastSig = ''
+let nudgeTimer = null
+function onlineNudge() {
+  if (nudgeTimer) return
+  nudgeTimer = setTimeout(() => {
+    nudgeTimer = null
+    try { lastSig = presence.signature() } catch { /* next tick */ }
+    io.emit('online_changed')
+  }, 150)
+}
+setInterval(() => {
+  let sig
+  try { sig = presence.signature() } catch { return }
+  if (sig !== lastSig) { lastSig = sig; io.emit('online_changed') }
+}, 1000).unref()
+
+// Friends from the rest of ENW (lib/friendSync.js): read-only, off unless configured. A sync
+// that changed somebody's friends tells every socket, because the rail's friends-first order
+// and the Friends heading move with it.
+friendSync.setOnChange(() => io.emit('friends_changed'))
+friendSync.start()
+// Friend requests made here (routes/players.js) reach the other person's rail at once.
+users.setFriendEmitter((steamIds, event, payload) => {
+  for (const x of steamIds) io.to(`user:${x}`).emit(event, payload)
 })
 
 // The chat ring pushes to the browsers; the boxes drain it over the long poll.

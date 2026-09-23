@@ -972,6 +972,10 @@ html[data-amb-strong] #amb-pour { --amb-a: 58; }
 .pdot { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bg); }
 .pdot.on { background: var(--good); }
 .pdot.off { background: var(--faint); }
+/* SOC (2026-09-23): where they are, at a glance. Green online, gold in a party, red in a game
+   (the Esc menu's pips use the same three). */
+.pdot.on.in-party { background: var(--gold); }
+.pdot.on.in-game { background: var(--bad); }
 .pname { font-weight: 650; font-size: 15px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prole { font-size: 11px; color: var(--faint); text-transform: none; letter-spacing: 0; }
 .pcard-x { margin-left: auto; background: transparent; border: none; color: var(--faint); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 50%; }
@@ -1012,6 +1016,8 @@ html[data-amb-strong] #amb-pour { --amb-a: 58; }
 .fcard-sub { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .fcard-name { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
 .fcard-name .pname { flex: 0 1 auto; min-width: 0; }
+.fcard-friend { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; line-height: 14px; }
+.fcard.has-map .fcard-friend { color: rgba(255,255,255,.85); border-color: rgba(255,255,255,.3); }
 .fcard-vis { flex: 0 4 auto; min-width: 0; font-size: 11px; font-weight: 500; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fcard-act { position: relative; z-index: 1; flex: none; margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .fcard.has-map { background-size: cover; background-position: center 42%; }
@@ -1649,6 +1655,20 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
 /* WHERE THE LINE GOES, under the input. It leaves this site for every live game, and a
    box that does not say so is a box people are careful in for the wrong reason. */
 .csc-say-hint { flex-basis: 100%; color: var(--faint); font-size: 11px; }
+
+/* Party lines and DMs (SOC, 2026-09-23): the same grammar, a warmer tag, and the name is a
+   button that answers them. The chip row says where the next line goes. */
+.csc-line.is-party .csc-tag { color: var(--gold); }
+.csc-line.is-dm .csc-tag { color: #8fb6e0; }
+.csc-pick { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.csc-pick:hover { text-decoration: underline; }
+.csc-to { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.csc-to-chip {
+  background: #0b0d10; border: 1px solid #1c2026; color: #8b939d; border-radius: 999px;
+  padding: 2px 9px; font: inherit; font-size: 11px; cursor: pointer;
+}
+.csc-to-chip.on { color: #dfe3e8; border-color: #3a434f; background: #151a20; }
+.csc-to-err { color: var(--bad); font-size: 11px; }
 
 /* ---- the Discord invite, top right ----
    Movement's block, verbatim in measurement and colour (`movement-client/src/theme.css`,

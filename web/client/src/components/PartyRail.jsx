@@ -48,6 +48,7 @@ export default function PartyRail() {
           <Roster R={R} />
         )}
         {R.signedIn && R.invites.length > 0 && <Invites R={R} />}
+        {R.signedIn && (R.requests || []).length > 0 && <FriendRequests R={R} />}
         {R.signedIn && <OnlineBlock R={R} />}
       </div>
 
@@ -141,7 +142,7 @@ function PlayerCard({ user, role, host, onRemove, removeLabel }) {
       <Link to={profilePath(user)} className="pcard-link" title={`View ${name}'s profile`}>
         <span className="pcard-av">
           <Avatar user={user} />
-          <span className="pdot on" />
+          <span className={'pdot on' + (game ? ' in-game' : lobby ? ' in-party' : '')} />
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="pname">{name}</div>
@@ -279,21 +280,73 @@ function Invites({ R }) {
 // Movement's FriendsBlock. The heading comes off the server's scope, never a guess: an
 // approved account sees everybody online and it says Online; anybody else sees their friends
 // and it says Friends (lib/roster.js has the reason).
+//
+// Since SOC (2026-09-23) it is TWO lists in one block, friends first (B: "friends first, then
+// everyone else"). Friends are this site's own plus the ones carried over read-only from ENW
+// Movement (server lib/friendSync.js). The list is pushed: the server nudges within ~1 s of
+// anybody's line moving and the rail refetches (rail.jsx).
 function OnlineBlock({ R }) {
   const rows = R.online.players || []
   const everyone = R.online.scope === 'online'
+  const friends = rows.filter((f) => f.friend)
+  const others = rows.filter((f) => !f.friend)
+  if (!everyone) {
+    return (
+      <div className="rblock">
+        <div className="rlabel"><span>Friends · {rows.length}</span></div>
+        {rows.length === 0 && <div className="friends-empty">No friends online.</div>}
+        {rows.map((f) => <FriendRow key={f.steam_id} R={R} f={f} />)}
+      </div>
+    )
+  }
+  return (
+    <>
+      {friends.length > 0 && (
+        <div className="rblock">
+          <div className="rlabel"><span>Friends online · {friends.length}</span></div>
+          {friends.map((f) => <FriendRow key={f.steam_id} R={R} f={f} />)}
+        </div>
+      )}
+      <div className="rblock">
+        <div className="rlabel"><span>{friends.length ? 'Everyone else' : 'Online'} · {others.length}</span></div>
+        {others.length === 0 && (
+          <div className="friends-empty">Nobody else online.</div>
+        )}
+        {others.map((f) => <FriendRow key={f.steam_id} R={R} f={f} />)}
+      </div>
+    </>
+  )
+}
+
+// ── friend requests waiting on me ─────────────────────────────────────────
+// Movement's requests block, above the friends. Accept / Decline are the profile's own
+// route; the other side's rail hears it at once (friend_request_accepted / friend_removed).
+function FriendRequests({ R }) {
   return (
     <div className="rblock">
-      <div className="rlabel"><span>{everyone ? 'Online' : 'Friends'} · {rows.length}</span></div>
-      {rows.length === 0 && (
-        <div className="friends-empty">{everyone ? 'Nobody else online.' : 'No friends online.'}</div>
-      )}
-      {rows.map((f) => <FriendRow key={f.steam_id} R={R} f={f} />)}
+      <div className="rlabel">Friend requests · {R.requests.length}</div>
+      {R.requests.map((q) => (
+        <div className="invite-card" key={q.from.steam_id}>
+          <div className="invite-who">
+            <Avatar user={q.from} extra="sug-av" />
+            <div style={{ minWidth: 0 }}>
+              <div className="pname">{nameOf(q.from)}</div>
+              <div className="prole">wants to be friends</div>
+            </div>
+          </div>
+          <div className="invite-acts">
+            <button className="btn small accent" disabled={R.busy} onClick={() => R.answerFriend(q.from.steam_id, true)}>Accept</button>
+            <button className="btn small" disabled={R.busy} onClick={() => R.answerFriend(q.from.steam_id, false)}>Decline</button>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
 
 const VIS_WORD = { friends: 'Friends only', public: 'Public', private: 'Invite only' }
+const SOURCE_WORD = { zombies: 'ENW Zombies', movement: 'ENW Movement' }
+const friendTitle = (f) => `Friends on ${(f.friend_sources || []).map((x) => SOURCE_WORD[x] || x).join(' and ') || 'ENW'}`
 const MODE_WORD = { verified: 'Verified', custom: 'Custom' }
 
 function FriendRow({ R, f }) {
@@ -302,11 +355,13 @@ function FriendRow({ R, f }) {
   const at = lobby || game
   const art = at && at.art
   const mapName = at && at.map_key ? prettyTitle(at.map_title, at.map_key) : null
+  // The server words the line (lib/roster.js statusOf): Online / In launcher / In game on
+  // <map>, round N / In party on <map>. The rail only swaps in the pretty map title.
   const sub = game
-    ? `in game · ${mapName || 'a map'}`
+    ? `In game on ${mapName || 'a map'}${game.round ? `, round ${game.round}` : ''}`
     : lobby
-      ? `${MODE_WORD[lobby.mode] || 'Verified'} · ${mapName || 'picking a map'}`
-      : 'online'
+      ? `In party · ${MODE_WORD[lobby.mode] || 'Verified'} · ${mapName || 'picking a map'}`
+      : (f.status && f.status.text) || 'Online'
   const vis = lobby ? VIS_WORD[lobby.visibility] || null : null
   const name = nameOf(f)
 
@@ -336,11 +391,12 @@ function FriendRow({ R, f }) {
       <Link to={profilePath(f)} className="fcard-link" title={`View ${name}'s profile`}>
         <span className="fcard-av-wrap">
           <Avatar user={f} extra="fcard-av" />
-          <span className="pdot on" />
+          <span className={'pdot on' + (game ? ' in-game' : lobby ? ' in-party' : '')} />
         </span>
         <div style={{ minWidth: 0 }}>
           <div className="fcard-name">
             <span className="pname">{name}</span>
+            {f.friend ? <span className="fcard-friend" title={friendTitle(f)}>friend</span> : null}
             {vis ? <span className="fcard-vis">· {vis}</span> : null}
           </div>
           <div className="prole fcard-sub">{sub}</div>

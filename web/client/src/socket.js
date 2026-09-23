@@ -8,7 +8,10 @@ import { io } from 'socket.io-client'
 // party changes. Everything else is a normal fetch — a websocket that becomes the API is a
 // websocket that has to reimplement caching, retries and status codes.
 
-export const socket = io({ path: '/socket.io', autoConnect: true, transports: ['websocket', 'polling'] })
+// `auth.client` tells the server this socket is the launcher (the preload's `window.enw`
+// exists before any page script runs), so somebody else's rail can say "In launcher".
+const CLIENT = typeof window !== 'undefined' && window.enw ? 'launcher' : 'site'
+export const socket = io({ path: '/socket.io', autoConnect: true, transports: ['websocket', 'polling'], auth: { client: CLIENT } })
 
 export function onChat(fn) {
   socket.on('chat', fn)
