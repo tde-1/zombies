@@ -12,7 +12,9 @@ since then exports go to staging and only this script moves them, and only when:
   * the sidecar says `world_shell: true` (a props + sky export is never promoted over anything),
   * `align.ok` -- tools/maps/align_check.cjs on the float twin (spawns on the shell, window goals
     at walls, script_model anchors on their map_ents origins, nothing past +-65536 u), and
-  * `align_served.ok` -- the same check on the SERVED meshopt bytes, when export_all recorded it.
+  * `align_served.ok` -- the same check on the SERVED meshopt bytes, when export_all recorded it,
+  * and, with --render <results.jsonl>, a render check in the real viewer that passed (the
+    §10.1 harness: scratch site, headless Edge; one JSON line per map with `render_ok`).
 
 Each file is copied beside its target under a temp name and os.replace()d into place (atomic
 on NTFS), then compared byte for byte with staging. Whatever it replaces is first copied to
@@ -33,6 +35,9 @@ LIVE = DEV / "maps"
 BACKUP = LIVE / "_work"
 
 
+RENDER = {}
+
+
 def verdict(bsp: str):
     """(ok, reason, meta) for a staged export."""
     d = STAGING / bsp
@@ -48,6 +53,8 @@ def verdict(bsp: str):
     srv = meta.get("align_served")
     if srv is not None and not srv.get("ok"):
         return False, "align (served bytes): " + "; ".join(srv.get("problems") or ["failed"]), meta
+    if RENDER and not RENDER.get(bsp):
+        return False, "render check missing or failed", meta
     return True, "ok", meta
 
 
@@ -90,8 +97,18 @@ def main():
     ap.add_argument("maps", nargs="?", default="", help="comma-separated bsp names")
     ap.add_argument("--passing", action="store_true", help="every staged map whose checks pass")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--render", default=None, help="render results (.jsonl, render_ok per map); required to pass")
     a = ap.parse_args()
+    if a.render:
+        for line in Path(a.render).read_text("utf8").splitlines():
+            try:
+                j = json.loads(line)
+            except ValueError:
+                continue
+            RENDER[j.get("bsp")] = bool(j.get("render_ok"))
     names = [m.strip() for m in a.maps.split(",") if m.strip()]
+    if a.maps == "rendered":   # every map the --render file passed
+        names = [k for k, v in RENDER.items() if v]
     if a.passing:
         names += sorted(p.name for p in STAGING.iterdir() if p.is_dir() and not p.name.startswith("_"))
     names = list(dict.fromkeys(names))

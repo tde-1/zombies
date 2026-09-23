@@ -226,6 +226,10 @@ lock is never taken.
 
 ### Why there is no world shell, and it is not for want of trying
 
+> **Superseded 2026-09-23 by §15.** We now build OAT with our own T4 GfxWorld dumper, and the
+> shell comes out of the fastfile offline, with no game and no Husky. The rest of this section
+> is kept as the record of why that dumper had to be written.
+
 `Unlinker --list` on the Nacht fastfile reports the zone's contents in full:
 
 ```
@@ -1600,3 +1604,388 @@ The full web `npm test` passes after merging main: every suite reports 0 failed,
 * **Not done**: the zombie blood burst on a hit (R2 has the `blood_*` sprites; not asked), the ground
   loop `powerup_loop` while a drop lies there, and the insta-kill/double-points loops while active.
 * **The live site** gets all this on merge plus a restart, on B's word (rule 15).
+
+---
+
+## 15. 2026-09-23 evening, lane GEO: the world shell now comes out of the fastfile with no game launch
+
+B asked to "strengthen the geometry porting": every map should get its real world geometry (shell,
+props, textures), compressed, at the right scale and position. Before tonight, **4 maps were live
+with a shell** (the stock four). Lane 10's four customs had been moved to `maps\_hold`. Every other
+custom map had props and sky only, because Husky's game launch had died on the Steam dialog
+"Application load error 5:0000065434" (§10.2).
+
+### 15.1 How the shell is extracted now
+
+The game is not launched, Husky is not used, and game.lock is not needed. §4 found that
+OpenAssetTools' T4 loader already reads `GfxWorld` from a map fastfile but had no writer for it.
+**We wrote the writer:** `tools/maps/oat-t4-world/GfxWorldDumperT4.{h,cpp}` (GPL-3.0, a derivative
+of OAT, about 250 lines). It is built into a private OAT v0.33.0 Unlinker by
+`tools/maps/oat-t4-world/build-oat.ps1` (MSBuild x64, `/m:3 /nodeReuse:false`), which installs it
+as `ZombiesDev\tools\oat-geo\Unlinker.exe`. It is compiled into that one private build, never
+linked into anything we ship, and nothing of OAT is vendored.
+
+```
+Unlinker.exe --include-assets gfxworld -o <work>\world\?zone? <map>.ff
+  -> world\<bsp>.bin   vertexCount x (x y z  nx ny nz  u v) float32, then indexCount x uint16
+  -> world\<bsp>.json  surfaces (material, firstVertex, baseIndex, triCount, owning brush model),
+                       materials (colour-map image), static models (model, origin, 3x3 axis, scale),
+                       brush models (bounds, surface range), sky surfaces, bounds
+```
+
+**Proof it reads the same world Husky read out of the running game (Nacht):** 91 002 vertices,
+203 895 indices, 3 741 surfaces and 1 506 static models. All four numbers are identical to §4b. The
+bounds are −6464..5824 × −5797..5787 × −188..1472, which is exactly the live §8.12 export. Its 12
+window goals sit **57.3 / 61.3 u** from a wall, the same as the §8.12 check. Units are engine
+inches with Z up. The 2.54 Husky scale does not apply. It takes **about 1 s per map**, reads only
+the fastfile, and never touches the Steam install.
+
+`export_map.py --world auto` (the default) calls it through `unlink_world()`. `export_all.py`'s
+step 3 is now this, and Husky runs only with `--husky`. The Husky launch was not repaired, because
+nothing needs it now.
+
+What the dumper's model table let us do properly:
+
+* **Brush models are placed, not guessed.** Husky piled every `script_brushmodel` on the engine
+  origin, and §8.11 cut the pile out by geometry. GfxWorld's own `models[]` says which surfaces
+  belong to which `*N`. Each one is now placed at its entity's origin and angles, as the engine does,
+  **except** the ones a game opens or tears down: whatever a `zombie_door` or `zombie_debris` trigger
+  targets, and the window boards an `exterior_goal` targets. Drawn closed, those would show players
+  walking through doors they had bought. On Nacht 8 brush models are placed and 87 entities are left
+  open. `cube` is built from nothing but brush models (3 391 of 3 407 surfaces) and now has its whole
+  level.
+* **Static-model placements come with the exact matrix** (`smodelDrawInsts`), where Husky's `.map`
+  carried Euler angles.
+* **Sky-box surfaces are skipped** (material `sky*`). The map's `__sky` dome is the sky, and the
+  sky brushes drawn as geometry would wall it off.
+
+### 15.2 The four staged failures, and (d)
+
+| Map | Was | Cause | Fix | Now |
+|---|---|---|---|---|
+| `nazi_zombie_fear_mc_2` | optimise failed (`world_bounds_err` 9.4 u) | Husky's shell carried far-flung pieces, so a 16-bit POSITION grid step exceeded 1 u | the offline shell has none of them: 16-bit positions, bounds error < 1 u | ok, 5.38 MB |
+| `bridge_zombie` | `MemoryError` | `count_unsupported_props`' XY grid put terrain sheets into tens of millions of cells, and `merge_world` built Python float lists | numpy world merge; triangles covering more than 16×16 cells go on one shared list | ok, 13.5 MB. Its spawns stand on the deck of the `vehicle_usa_ship_lst` **prop** and its window walls are the ship's hull, so align now tests prop triangles as well |
+| `water` | `could not convert string to float: '.77 .713 .713'` | worldspawn `sunlight` holds a colour | scalar keys take the first number | ok, 19.99 MB (256 px q60, at the 20 MB budget) |
+| `nazi_zombie_pd` | "a node 200 490 u out" | **the `__sky` dome**, which rides the camera. §10's scene-bounds check did not exempt it | mapAlign exempts `__sky`; props whose origin is past ±65 536 are dropped and counted (`props_past_world_limit`) anyway | ok, 16.7 MB |
+| (d) `mapAlign.js` | no meshopt or int16 reader; `map-align.js` crashed on the 7 MB Nacht | — | `load()` decodes `EXT_meshopt_compression`. It uses the `meshoptimizer` package, else the `r3dnode` prefix, else three's own decoder in `web/client`. Normalized int8/int16/uint8/uint16 are read, node matrices applied, and `nodeBox`/`nodeTriangles` added. A synthetic int16 test sits in `map-align.js`. With no decoder on the machine, a meshopt file is "skipped" rather than a crash | `map-align.js` passes 14/14 against the live Husky Nacht and the staged 6.9 MB meshopt Nacht |
+
+### 15.3 The checks (tools/maps/align_check.cjs on the float twin AND on the served meshopt bytes)
+
+This is §10.1's align, with changes that each come from a measured map:
+
+* **Anchors on served bytes:** quantize() folds a dequantization into each prop node's matrix, so a
+  node's translation is no longer the model origin. On served bytes an anchor must lie inside its
+  node's world box, or within max(16 u, the model's own size) of it. Der Riese's teleporter door
+  is hinged 39 u off its panel. The float twin keeps the exact ≤ 1 u check.
+* **Path nodes:** at most 60 `node_pathnode`s are sampled per map, and ≥ 75 % must stand 0–48 u
+  over the shell or a prop. Spawns are script_structs and can float: `dcv2`'s float 85–130 u up
+  while 58 of 59 of its path nodes stand on the shell. So a floating spawn alone no longer fails a
+  map.
+* **Floors and walls may be props:** see `bridge_zombie` above (`propBelow`, `viaProps`).
+* **Spans:** coordinates are culled to ±65 536 at export, so a span may reach 131 072. `chickn`,
+  `derberg`, `water` and `cargo` have terrain that wide. A node is "far" only if its box centre is
+  past 131 072, which still catches a pd-style misplacement and allows a backdrop such as projectx's
+  jeepride terrain.
+* **Anchors = placed script_models only.** A cage light skipped as tiny was being "found" at another
+  instance of the same model 400–700 u away.
+* **Render:** the §10.1 harness (main's server at 19:51 on scratch port 3471, `ZM_MAPS_DIR` =
+  `maps-staging`, a copy of §10's DB, gate off, `ZM_REPLAY_PULL=off`, headless Edge/SwiftShader).
+  Each map opens `m_6d80aa20` with its track re-pointed at the map (Nacht, Verrückt and Der Riese
+  use their own replays). A map passes if `__world` is in the scene, there are meshes, there is no
+  "No world model" note, no page exception, and an eye-level shot from the spawn has pixel
+  stdev > 4, so it is not a blank frame. Shots are in the scratchpad `render\shots\` and are not
+  committed. Several were looked at: Nacht, `cube` (the whole metal level), and `bridge_zombie`
+  (the ship, the suspension bridge, the planes).
+
+### 15.4 Memory and locks
+
+Every export, render and build held `ZombiesDev\locks\heavy.lock` (`tools/maps/heavylock.py`:
+pid + purpose, commit < 85 % of the limit and > 5 GB free, stale pid taken over, re-entrant for
+`heavylock.py run` children). One export ran at a time, and the lock was released between maps so
+lane MAPS's downloads and the RV lane could interleave. game.lock was **never taken**. The batch
+spent most of its wall clock waiting at the gate: commit reached 97–99 % while B ran s&box. The
+eight idle MSBuild nodes from the first builds were killed by pid, and the build script now passes
+`/nodeReuse:false`.
+
+### 15.5 Result
+
+**236 fastfiles exported** (the 64 hosted: 5 proven + 59 box-proven; then every other map in
+`archive\mods`, including lane MAPS's additions up to batch D: leviathan, ccube, ccube_u,
+backlot_zm, derweizenfelder, descent, death_forest, …). **236 have a world shell** (was 8 staged, 4
+live). **235 pass align on both the float twin and the served bytes, and all 235 passed the
+render check. 235 are promoted and live**, among them the stock four, which replace their Husky and
+§10 exports. The backups are in `maps\_work\<bsp>.pre-geo-20260923-*`, and the live Nacht is now
+the 6.9 MB meshopt file (`map-align.js` 14/14 against it). Of the live DB's 96 unhidden, non-catalogue
+maps, **95 now have promoted geometry**; the missing one is `nazi_zombie_ali`, which has no fastfile
+here.
+
+**Sizes (served meshopt + quantized + WebP):** median **6.92 MB**, max **21.18 MB** (`nuketown`,
+already at 256 px q60), 1 880.6 MB for all 236. The 64 hosted maps: median 7.52 MB, max 21.18 MB.
+196 maps ship 512 px textures and 11 drop to 256 px to stay near the 20 MB budget. Each export took
+2–40 s of work. Wall clock was about 1 h 40 min for the full pass, most of it waiting at the memory
+gate.
+
+**IP (for the coordinator):** `/mapdata` is gate-exempt (§10.4), so every promoted **custom** map's
+geometry and textures are public at `zombies.enw.gg/mapdata/<bsp>/<bsp>.glb`. The coordinator
+accepted this for now. **231 custom maps are now public that way** (all promoted maps except the stock four). Lane 10's four customs had been moved to
+`maps\_hold` by someone at about 14:00 with no written reason. They are promoted again here from
+the new exports, as the brief says; `_hold` is left untouched.
+
+**Not done / not proven:**
+* `nazi_zombie_mc_maze` is not promoted. Its 10 window goals sit 174–182 u from any shell wall,
+  while its spawns (5/5) and path nodes (58/58) stand on the shell. The window walls are probably
+  brush models left open as boards. Unresolved.
+* `nazi_zombie_ali` is in the live DB (hidden=0) but has no fastfile on this PC, so there is
+  nothing to export.
+* No lightmaps. The dumper has `lmapCoord` and GfxWorld's lightmaps, but writes neither.
+* Doors, debris and window boards are never drawn, because the viewer does not animate them.
+* Every picture is SwiftShader. A real GPU and B's eye are the proof.
+* Husky's launch (the 5:0000065434 error) was not repaired. With the offline route it is only a
+  fallback.
+
+Files: `tools/maps/oat-t4-world/`, `tools/maps/{export_map.py,export_all.py,align_check.cjs,
+heavylock.py,promote.py}`, `web/server/lib/mapAlign.js`, `web/test/map-align.js`. State and tables:
+`ZombiesDev\maps\_work\export_all\{state.json,results.md}`.
+
+### 15.6 Per map (236; "set" = hosted: SERVER_PROVEN + box-proven, or archive)
+
+shell = GfxWorld from the fastfile; props = drawn placements; MB = the served file; align = `align_check.cjs` on the float twin and on the served bytes (spawns on a floor or prop, window goals median/max u from a wall, script_model anchors on their origin); every map with a pass also passed the render check.
+
+| map | shell | props | textures | MB | align (float twin + served) | notes | promoted | set |
+|---|---|---|---|---|---|---|---|---|
+| nazi_zombie_prototype | yes | 1351 | 148 | 6.88 | pass: spawns 5/5, win 57.3/61.3, anchors 54/54 | ok | **yes** | hosted |
+| nazi_zombie_asylum | yes | 2021 | 230 | 10.33 | pass: spawns 9/9, win 48.1/61.5, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_sumpf | yes | 5408 | 203 | 13.09 | pass: spawns 5/5, win 51.7/56.3, anchors 63/63 | ok | **yes** | hosted |
+| nazi_zombie_factory | yes | 1053 | 199 | 12.16 | pass: spawns 5/5, win 52.3/304, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_fear_mc_2 | yes | 119 | 189 | 5.38 | pass: spawns 4/5, win 50/52.3, anchors 64/64 | ok | **yes** | hosted |
+| aliendefense | yes | 16 | 49 | 1.55 | pass: spawns 5/5, anchors 14/14 | ok | **yes** | hosted |
+| bank_job | yes | 68 | 84 | 2.53 | pass: spawns 5/5, win 45/45, anchors 25/25 | ok | **yes** | hosted |
+| battlestar_galactica | yes | 529 | 93 | 2.68 | pass: spawns 5/5, anchors 40/40 | ok | **yes** | hosted |
+| bcast | yes | 197 | 129 | 2.78 | pass: spawns 5/5, win 60/60, anchors 64/64 | ok | **yes** | hosted |
+| bridge_zombie | yes | 1062 | 399 | 13.50 | pass: spawns 4/5, win 46.3/56.7, anchors 52/52 | ok | **yes** | hosted |
+| chal_dual_wield | yes | 74 | 44 | 1.31 | pass: spawns 5/5, anchors 11/11 | ok | **yes** | hosted |
+| chal_harambe | yes | 122 | 68 | 2.47 | pass: spawns 5/5, anchors 16/16 | ok | **yes** | hosted |
+| cryogenic | yes | 705 | 370 | 16.76 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | hosted |
+| cube | yes | 398 | 29 | 1.48 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | hosted |
+| dead_palace | yes | 1192 | 363 | 15.68 | pass: spawns 5/5, anchors 32/32 | ok | **yes** | hosted |
+| escape_asylum | yes | 271 | 237 | 7.00 | pass: spawns 5/5, win 49.7/52.5, anchors 53/53 | ok | **yes** | hosted |
+| futurama | yes | 253 | 101 | 1.58 | pass: spawns 5/5, win 48/52, anchors 14/14 | ok | **yes** | hosted |
+| hghrise | yes | 1295 | 171 | 6.38 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | hosted |
+| jigsaw | yes | 987 | 282 | 12.01 | pass: spawns 5/5, win 50/50, anchors 56/56 | ok | **yes** | hosted |
+| killhouse | yes | 182 | 122 | 4.02 | pass: spawns 5/5, anchors 57/57 | ok | **yes** | hosted |
+| kingdom_hearts | yes | 132 | 335 | 5.17 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | hosted |
+| mr_freeze | yes | 725 | 352 | 15.08 | pass: spawns 5/5, win 54/114.9, anchors 35/35 | ok | **yes** | hosted |
+| nacht_reimagined | yes | 1089 | 297 | 13.66 | pass: spawns 5/5, win 54.2/59.2, anchors 64/64 | ok | **yes** | hosted |
+| navidad_p_zombie | yes | 493 | 218 | 6.71 | pass: spawns 5/5, win 54.9/54.9, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_arena | yes | 104 | 51 | 1.62 | pass: spawns 1/1, win 50.5/50.5, anchors 5/5 | ok | **yes** | hosted |
+| nazi_zombie_arkham | yes | 310 | 230 | 9.60 | pass: spawns 5/5, win 52.5/101.4, anchors 41/41 | ok | **yes** | hosted |
+| nazi_zombie_beachtown | yes | 554 | 150 | 5.95 | pass: spawns 4/5, win 53.5/64.7, anchors 51/51 | ok | **yes** | hosted |
+| nazi_zombie_bloodsport | yes | 127 | 97 | 3.40 | pass: spawns 5/5, win 53.8/53.8, anchors 40/40 | ok | **yes** | hosted |
+| nazi_zombie_bored | yes | 229 | 131 | 3.72 | pass: spawns 4/4, anchors 12/12 | ok | **yes** | hosted |
+| nazi_zombie_cargo | yes | 2394 | 449 | 13.89 | pass: spawns 4/4, win 54/54, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_crazyplace | yes | 812 | 159 | 5.74 | pass: spawns 5/5, win 46/58.4, anchors 25/25 | ok | **yes** | hosted |
+| nazi_zombie_dcv2 | yes | 2022 | 249 | 8.82 | pass: spawns 0/4, win 57.8/60.9, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_denial2 | yes | 756 | 284 | 10.67 | pass: spawns 5/5, win 42/51, anchors 32/32 | ok | **yes** | hosted |
+| nazi_zombie_dome_snow | yes | 1772 | 190 | 7.35 | pass: spawns 5/5, win 46.5/53.2, anchors 30/30 | ok | **yes** | hosted |
+| nazi_zombie_enclosed | yes | 88 | 87 | 3.13 | pass: spawns 5/5, anchors 40/40 | ok | **yes** | hosted |
+| nazi_zombie_fivenights | yes | 221 | 129 | 4.00 | pass: spawns 5/5, win 62.1/62.1, anchors 11/11 | ok | **yes** | hosted |
+| nazi_zombie_forest | yes | 1523 | 273 | 10.62 | pass: spawns 4/4, win 50/60, anchors 45/45 | ok | **yes** | hosted |
+| nazi_zombie_hanoizom | yes | 4083 | 411 | 15.83 | pass: spawns 5/5, win 54.6/57.1, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_hotelv2 | yes | 292 | 166 | 5.72 | pass: spawns 5/5, win 56.8/56.8, anchors 39/39 | ok | **yes** | hosted |
+| nazi_zombie_ils | yes | 1423 | 446 | 16.21 | pass: spawns 5/5, win 46/62, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_johndoe | yes | 1782 | 240 | 8.91 | pass: spawns 5/5, win 29.6/72.9, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_legion | yes | 2186 | 393 | 12.81 | pass: spawns 5/5, win 86/656, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_library | yes | 985 | 236 | 7.60 | pass: spawns 5/5, win 49.4/57.8, anchors 54/54 | ok | **yes** | hosted |
+| nazi_zombie_lorkeep | yes | 820 | 245 | 8.52 | pass: spawns 5/5, win 52.5/58.5, anchors 61/61 | ok | **yes** | hosted |
+| nazi_zombie_malibu | yes | 5823 | 656 | 18.27 | pass: spawns 6/7, win 52/52, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_mine | yes | 74 | 152 | 3.95 | pass: spawns 5/5, anchors 52/52 | ok | **yes** | hosted |
+| nazi_zombie_path | yes | 22 | 31 | 1.06 | pass: spawns 5/5, win 48/48, anchors 13/13 | ok | **yes** | hosted |
+| nazi_zombie_pd | yes | 1069 | 435 | 16.66 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_poke | yes | 4450 | 226 | 8.23 | pass: spawns 5/5, anchors 62/62 | ok | **yes** | hosted |
+| nazi_zombie_prison | yes | 2730 | 354 | 12.93 | pass: spawns 5/5, win 51.4/58, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_rats | yes | 177 | 141 | 5.25 | pass: spawns 5/5, win 54.8/59.1, anchors 61/61 | ok | **yes** | hosted |
+| nazi_zombie_relax | yes | 296 | 167 | 5.83 | pass: spawns 5/5, win 59.5/59.5, anchors 24/24 | ok | **yes** | hosted |
+| nazi_zombie_snowglobe | yes | 2242 | 258 | 10.73 | pass: spawns 5/5, win 53.9/174.6, anchors 64/64 | ok | **yes** | hosted |
+| nazi_zombie_tank | yes | 982 | 206 | 7.45 | pass: spawns 5/5, win 50/63.4, anchors 56/56 | ok | **yes** | hosted |
+| nazi_zombie_temple | yes | 3224 | 214 | 9.92 | pass: spawns 5/5, win 51.5/51.5, anchors 48/48 | ok | **yes** | hosted |
+| nazi_zombie_zhunterz | yes | 944 | 435 | 16.78 | pass: spawns 5/5, win 52/102.4, anchors 51/51 | ok | **yes** | hosted |
+| nightclub | yes | 629 | 263 | 9.21 | pass: spawns 5/5, win 38/65.7, anchors 64/64 | ok | **yes** | hosted |
+| nuketown | yes | 3872 | 460 | 21.18 | pass: spawns 9/9, win 52.2/64.5, anchors 64/64 | ok | **yes** | hosted |
+| thirty_seven | yes | 3639 | 328 | 11.18 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | hosted |
+| ugxm_garage | yes | 2292 | 212 | 6.27 | pass: spawns 5/5, win 58.6/58.6, anchors 34/34 | ok | **yes** | hosted |
+| ut_box_map | yes | 43 | 40 | 1.20 | pass: spawns 5/5, anchors 11/11 | ok | **yes** | hosted |
+| zm_hospital | yes | 861 | 162 | 5.32 | pass: spawns 5/5, win 55.3/60.9, anchors 64/64 | ok | **yes** | hosted |
+| zm_nuked | yes | 1326 | 368 | 15.82 | pass: spawns 5/5, anchors 60/60 | ok | **yes** | hosted |
+| zombie_town | yes | 4096 | 499 | 17.54 | pass: spawns 5/5, win 50.5/67.3, anchors 64/64 | ok | **yes** | hosted |
+| a_room | yes | 725 | 206 | 6.97 | pass: spawns 5/5, win 54/59.3, anchors 26/26 | ok | **yes** | archive |
+| ahkanto | yes | 4631 | 142 | 4.24 | pass: spawns 4/5, anchors 64/64 | ok | **yes** | archive |
+| annihilation | yes | 90 | 134 | 5.19 | pass: spawns 5/5, win 54.4/54.4, anchors 25/25 | ok | **yes** | archive |
+| backlot_zm | yes | 4562 | 310 | 14.48 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | archive |
+| backrooms | yes | 23 | 56 | 1.50 | pass: spawns 5/5, anchors 21/21 | ok | **yes** | archive |
+| batman | yes | 1772 | 518 | 17.89 | pass: spawns 0/5, win 53.2/109.5, anchors 64/64 | ok | **yes** | archive |
+| bolera | yes | 42 | 34 | 0.87 | pass: spawns 1/1, anchors 18/18 | ok | **yes** | archive |
+| boxmap | yes | 15 | 32 | 0.83 | pass: spawns 1/1, win 48/60, anchors 14/14 | ok | **yes** | archive |
+| bunbury | yes | 797 | 115 | 4.78 | pass: spawns 5/5, win 49/61.6, anchors 36/36 | ok | **yes** | archive |
+| bunker | yes | 1226 | 132 | 5.03 | pass: spawns 5/5, win 54.3/68, anchors 14/14 | ok | **yes** | archive |
+| castle | yes | 354 | 149 | 5.04 | pass: spawns 5/5, win 46.7/46.7, anchors 40/40 | ok | **yes** | archive |
+| chal_motogp | yes | 102 | 90 | 3.53 | pass: spawns 5/5, anchors 17/17 | ok | **yes** | archive |
+| chal_pistols | yes | 953 | 87 | 3.12 | pass: spawns 5/5, anchors 20/20 | ok | **yes** | archive |
+| chickn | yes | 305 | 138 | 4.60 | pass: spawns 5/5, win 42/42, anchors 38/38 | ok | **yes** | archive |
+| christmas_zombie | yes | 1151 | 298 | 10.69 | pass: spawns 5/5, anchors 44/44 | ok | **yes** | archive |
+| corridor_challenge | yes | 22 | 33 | 0.95 | pass: spawns 3/5, win 54.4/59.6, anchors 21/21 | ok | **yes** | archive |
+| cxca | yes | 354 | 173 | 4.99 | pass: spawns 5/5, win 61.9/62, anchors 43/43 | ok | **yes** | archive |
+| deadfactory | yes | 220 | 53 | 1.95 | pass: spawns 1/1, win 52/62.1, anchors 33/33 | ok | **yes** | archive |
+| derweizenfelder | yes | 196 | 43 | 1.27 | pass: spawns 5/5, win 52/52, anchors 15/15 | ok | **yes** | archive |
+| dpp | yes | 921 | 505 | 17.39 | pass: spawns 4/5, win 49/61.3, anchors 51/51 | ok | **yes** | archive |
+| fight | yes | 189 | 94 | 3.20 | pass: spawns 5/5, win 52/52, anchors 64/64 | ok | **yes** | archive |
+| four_way_defense | yes | 116 | 56 | 1.73 | pass: spawns 5/5, anchors 9/9 | ok | **yes** | archive |
+| green_run_farm_bo1 | yes | 613 | 155 | 7.08 | pass: spawns 5/5, win 56.5/56.6, anchors 32/32 | ok | **yes** | archive |
+| hellokitty_remastered | yes | 58 | 68 | 2.18 | pass: spawns 5/5, anchors 31/31 | ok | **yes** | archive |
+| island | yes | 415 | 221 | 7.88 | pass: spawns 5/5, anchors 45/45 | ok | **yes** | archive |
+| its_alive | yes | 0 | 69 | 2.68 | pass: spawns 5/5, anchors 0/0 | ok | **yes** | archive |
+| kinodertoten | yes | 797 | 175 | 6.85 | pass: spawns 5/5, win 46/63.2, anchors 45/45 | ok | **yes** | archive |
+| kri | yes | 358 | 179 | 6.10 | pass: spawns 5/5, win 65.1/65.1, anchors 20/20 | ok | **yes** | archive |
+| labrats2 | yes | 16 | 32 | 1.00 | pass: spawns 5/5, anchors 15/15 | ok | **yes** | archive |
+| lewl | yes | 769 | 243 | 9.53 | pass: spawns 5/5, win 59.8/60.4, anchors 64/64 | ok | **yes** | archive |
+| matrix | yes | 304 | 43 | 1.25 | pass: spawns 1/4, anchors 30/30 | ok | **yes** | archive |
+| mw2rust | yes | 1194 | 72 | 3.67 | pass: spawns 5/5, anchors 15/15 | ok | **yes** | archive |
+| nacht_der_toten | yes | 966 | 87 | 3.01 | pass: spawns 5/5, win 50.5/54.5, anchors 33/33 | ok | **yes** | archive |
+| nazi_zombie_123 | yes | 2256 | 158 | 9.05 | pass: spawns 3/5, win 52/106.6, anchors 57/57 | ok | **yes** | archive |
+| nazi_zombie_aevildead | yes | 1808 | 120 | 4.07 | pass: spawns 10/10, win 56/60.1, anchors 23/23 | ok | **yes** | archive |
+| nazi_zombie_andromeda | yes | 3863 | 345 | 13.95 | pass: spawns 5/5, win 51.3/52, anchors 40/40 | ok | **yes** | archive |
+| nazi_zombie_backup | yes | 26 | 48 | 1.65 | pass: spawns 5/5, win 50/50, anchors 18/18 | ok | **yes** | archive |
+| nazi_zombie_beta4 | yes | 115 | 128 | 3.98 | pass: spawns 5/5, win 36/51, anchors 50/50 | ok | **yes** | archive |
+| nazi_zombie_bioevil | yes | 898 | 170 | 5.16 | pass: spawns 5/5, win 50/52, anchors 52/52 | ok | **yes** | archive |
+| nazi_zombie_blut | yes | 1434 | 331 | 11.95 | pass: spawns 5/5, win 46.1/156.7, anchors 40/40 | ok | **yes** | archive |
+| nazi_zombie_bpwait | yes | 63 | 57 | 1.64 | pass: spawns 4/4, win 48/61.1, anchors 43/43 | ok | **yes** | archive |
+| nazi_zombie_ccube | yes | 31 | 50 | 1.45 | pass: spawns 4/4, win 52/56, anchors 18/18 | ok | **yes** | archive |
+| nazi_zombie_ccube_u | yes | 139 | 194 | 6.78 | pass: spawns 3/5, anchors 60/60 | ok | **yes** | archive |
+| nazi_zombie_complexx | yes | 759 | 240 | 9.38 | pass: spawns 5/5, win 56.8/63.1, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_crystallake | yes | 1852 | 366 | 13.83 | pass: spawns 5/5, anchors 30/30 | ok | **yes** | archive |
+| nazi_zombie_death_forest | yes | 1747 | 462 | 13.57 | pass: spawns 4/5, win 43.9/52.3, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_death_row | yes | 603 | 166 | 5.33 | pass: spawns 5/5, anchors 48/48 | ok | **yes** | archive |
+| nazi_zombie_decapit2 | yes | 165 | 72 | 2.25 | pass: spawns 5/5, win 54.4/54.4, anchors 26/26 | ok | **yes** | archive |
+| nazi_zombie_decapit3 | yes | 198 | 116 | 3.60 | pass: spawns 5/5, anchors 44/44 | ok | **yes** | archive |
+| nazi_zombie_decay | yes | 640 | 61 | 2.66 | pass: spawns 5/5, anchors 30/30 | ok | **yes** | archive |
+| nazi_zombie_depot | yes | 502 | 261 | 11.34 | pass: spawns 5/5, win 50/58.3, anchors 39/39 | ok | **yes** | archive |
+| nazi_zombie_derberg | yes | 5508 | 464 | 15.66 | pass: spawns 4/4, win 55.5/69.7, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_descent | yes | 96 | 100 | 3.34 | pass: spawns 5/5, anchors 30/30 | ok | **yes** | archive |
+| nazi_zombie_devas | yes | 2759 | 233 | 9.16 | pass: spawns 5/5, anchors 22/22 | ok | **yes** | archive |
+| nazi_zombie_die_festung | yes | 1418 | 445 | 14.85 | pass: spawns 5/5, win 57.3/64.4, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_displace | yes | 803 | 183 | 6.80 | pass: spawns 4/4, win 45.3/52, anchors 52/52 | ok | **yes** | archive |
+| nazi_zombie_downfall | yes | 1316 | 234 | 10.08 | pass: spawns 5/5, win 56.4/64, anchors 17/17 | ok | **yes** | archive |
+| nazi_zombie_dt2 | yes | 3781 | 461 | 14.40 | pass: spawns 5/5, win 60.5/61.1, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_dust2 | yes | 807 | 226 | 8.85 | pass: spawns 5/5, win 52/64.4, anchors 57/57 | ok | **yes** | archive |
+| nazi_zombie_estate_v2 | yes | 818 | 148 | 4.42 | pass: spawns 4/5, win 52/52.1, anchors 42/42 | ok | **yes** | archive |
+| nazi_zombie_evacuation | yes | 2004 | 430 | 18.42 | pass: spawns 5/5, win 55.6/61.2, anchors 63/63 | ok | **yes** | archive |
+| nazi_zombie_evil_dead | yes | 146 | 104 | 3.86 | pass: spawns 5/5, anchors 13/13 | ok | **yes** | archive |
+| nazi_zombie_far_away2v3 | yes | 587 | 111 | 3.49 | pass: spawns 4/4, win 65.2/115.2, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_fc2 | yes | 812 | 121 | 3.80 | pass: spawns 5/5, win 44.6/47.3, anchors 25/25 | ok | **yes** | archive |
+| nazi_zombie_feto | yes | 1913 | 321 | 12.50 | pass: spawns 0/5, win 46/50, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_gameplay | yes | 90 | 103 | 3.58 | pass: spawns 5/5, win 47.7/50.9, anchors 35/35 | ok | **yes** | archive |
+| nazi_zombie_grave | yes | 621 | 156 | 5.50 | pass: spawns 5/5, win 35/35, anchors 24/24 | ok | **yes** | archive |
+| nazi_zombie_halloweencube | yes | 49 | 58 | 1.61 | pass: spawns 5/5, win 53.8/64.2, anchors 28/28 | ok | **yes** | archive |
+| nazi_zombie_herren | yes | 5281 | 464 | 17.29 | pass: spawns 5/5, win 52/64.8, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_hex_tower | yes | 62 | 48 | 1.72 | pass: spawns 5/5, win 44.9/48.7, anchors 16/16 | ok | **yes** | archive |
+| nazi_zombie_hijacked | yes | 224 | 136 | 4.85 | pass: spawns 5/5, win 44/158.2, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_hobo_vil | yes | 3127 | 263 | 14.03 | pass: spawns 1/4, win 50.9/65.2, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_hoh | yes | 1323 | 296 | 9.89 | pass: spawns 5/5, win 22.3/22.3, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_hold_out | yes | 914 | 106 | 5.00 | pass: spawns 5/5, anchors 29/29 | ok | **yes** | archive |
+| nazi_zombie_house69 | yes | 1774 | 293 | 9.85 | pass: spawns 6/6, win 50/51, anchors 47/47 | ok | **yes** | archive |
+| nazi_zombie_illuminati_island | yes | 749 | 216 | 7.80 | pass: spawns 5/5, win 49/51, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_in | yes | 1853 | 482 | 17.49 | pass: spawns 5/5, win 46.9/51.5, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_inf | yes | 2484 | 187 | 6.76 | pass: spawns 5/5, win 45/56, anchors 44/44 | ok | **yes** | archive |
+| nazi_zombie_inferno | yes | 2852 | 318 | 17.88 | pass: spawns 5/5, win 51/53, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_insomniac | yes | 264 | 109 | 3.26 | pass: spawns 5/5, win 54.7/60.7, anchors 45/45 | ok | **yes** | archive |
+| nazi_zombie_iplay2 | yes | 4593 | 449 | 17.01 | pass: spawns 5/5, win 48/50, anchors 61/61 | ok | **yes** | archive |
+| nazi_zombie_jourknee | yes | 1746 | 394 | 14.83 | pass: spawns 4/5, anchors 31/31 | ok | **yes** | archive |
+| nazi_zombie_kneedeep | yes | 2526 | 429 | 19.09 | pass: spawns 5/5, win 50/63.4, anchors 54/54 | ok | **yes** | archive |
+| nazi_zombie_laboratory | yes | 1340 | 276 | 9.72 | pass: spawns 5/5, win 50/50, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_lamanai | yes | 1372 | 287 | 10.39 | pass: spawns 5/5, win 59.5/60, anchors 39/39 | ok | **yes** | archive |
+| nazi_zombie_laponia | yes | 504 | 106 | 3.71 | pass: spawns 5/5, win 62/62, anchors 45/45 | ok | **yes** | archive |
+| nazi_zombie_leviathan | yes | 7159 | 465 | 16.99 | pass: spawns 5/5, win 52/57.9, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_lsd2 | yes | 39 | 68 | 1.88 | pass: spawns 5/5, win 54.4/54.4, anchors 3/3 | ok | **yes** | archive |
+| nazi_zombie_lwn | yes | 171 | 146 | 4.82 | pass: spawns 5/5, win 52/52, anchors 15/15 | ok | **yes** | archive |
+| nazi_zombie_mc_maze | yes | 108 | 94 | 3.09 | FAIL: spawns 5/5, win 174/182, anchors 30/30 | align: window goals median 174 u from a wall; align: served: window goals median 174 u from a wall | no | archive |
+| nazi_zombie_mcdonalds | yes | 313 | 115 | 3.94 | pass: spawns 5/5, anchors 31/31 | ok | **yes** | archive |
+| nazi_zombie_monopoly | yes | 188 | 43 | 1.22 | pass: spawns 5/5, anchors 32/32 | ok | **yes** | archive |
+| nazi_zombie_nachtfeuer | yes | 244 | 107 | 3.95 | pass: spawns 5/5, win 58.1/60, anchors 11/11 | ok | **yes** | archive |
+| nazi_zombie_navideath | yes | 1760 | 453 | 17.84 | pass: spawns 5/5, win 57/57, anchors 62/62 | ok | **yes** | archive |
+| nazi_zombie_northco | yes | 1026 | 299 | 9.27 | pass: spawns 4/4, win 47/47, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_ntc | yes | 4537 | 312 | 12.54 | pass: spawns 5/5, anchors 35/35 | ok | **yes** | archive |
+| nazi_zombie_nuke | yes | 1309 | 193 | 7.28 | pass: spawns 5/5, win 54.4/54.4, anchors 27/27 | ok | **yes** | archive |
+| nazi_zombie_octogonal | yes | 20 | 22 | 0.91 | pass: spawns 4/5, anchors 16/16 | ok | **yes** | archive |
+| nazi_zombie_office | yes | 623 | 70 | 2.26 | pass: spawns 5/5, win 46.5/49.4, anchors 16/16 | ok | **yes** | archive |
+| nazi_zombie_one | yes | 150 | 105 | 3.75 | pass: spawns 5/5, win 42/42, anchors 32/32 | ok | **yes** | archive |
+| nazi_zombie_orbit | yes | 2945 | 320 | 12.78 | pass: spawns 17/17, win 25/25, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_overlook | yes | 342 | 172 | 5.05 | pass: spawns 5/5, win 44/44, anchors 16/16 | ok | **yes** | archive |
+| nazi_zombie_pandemic | yes | 1295 | 145 | 5.91 | pass: spawns 0/4, win 54.1/54.1, anchors 32/32 | ok | **yes** | archive |
+| nazi_zombie_perk | yes | 340 | 158 | 5.62 | pass: spawns 5/5, win 42.5/42.5, anchors 63/63 | ok | **yes** | archive |
+| nazi_zombie_pogreb | yes | 1094 | 242 | 10.00 | pass: spawns 5/5, win 52.5/62.8, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_port | yes | 3273 | 86 | 4.09 | pass: spawns 5/5, anchors 33/33 | ok | **yes** | archive |
+| nazi_zombie_ppg | yes | 23 | 45 | 1.23 | pass: spawns 5/5, anchors 19/19 | ok | **yes** | archive |
+| nazi_zombie_projectx | yes | 2003 | 526 | 17.70 | pass: spawns 5/5, win 46/46.3, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_puns | yes | 293 | 230 | 7.26 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_rc | yes | 1936 | 299 | 10.25 | pass: spawns 1/5, win 57.5/57.8, anchors 32/32 | ok | **yes** | archive |
+| nazi_zombie_reich | yes | 1035 | 279 | 11.38 | pass: spawns 5/5, win 52/58.2, anchors 18/18 | ok | **yes** | archive |
+| nazi_zombie_room | yes | 159 | 60 | 1.83 | pass: spawns 1/1, win 58.1/58.2, anchors 21/21 | ok | **yes** | archive |
+| nazi_zombie_rooms | yes | 173 | 84 | 2.79 | pass: spawns 5/5, win 50/63.6, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_school | yes | 3728 | 356 | 14.46 | pass: spawns 5/5, win 55/270.1, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_shore | yes | 651 | 212 | 8.11 | pass: spawns 4/4, win 49/53.6, anchors 23/23 | ok | **yes** | archive |
+| nazi_zombie_shrinkv2 | yes | 17 | 45 | 1.39 | pass: spawns 5/5, win 59.4/59.4, anchors 7/7 | ok | **yes** | archive |
+| nazi_zombie_slow_v1_2 | yes | 265 | 148 | 5.76 | pass: spawns 5/5, win 60/61.7, anchors 39/39 | ok | **yes** | archive |
+| nazi_zombie_spruktbyl | yes | 4300 | 453 | 18.14 | pass: spawns 4/5, win 48.9/200.8, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_strangeland | yes | 431 | 213 | 7.80 | pass: spawns 5/5, win 48/57.4, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_swamp_115 | yes | 418 | 249 | 9.53 | pass: spawns 5/5, anchors 35/35 | ok | **yes** | archive |
+| nazi_zombie_ten | yes | 416 | 64 | 2.48 | pass: spawns 5/5, anchors 20/20 | ok | **yes** | archive |
+| nazi_zombie_test | yes | 2448 | 380 | 12.29 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_test1 | yes | 370 | 71 | 2.56 | pass: spawns 5/5, win 65.2/68.6, anchors 26/26 | ok | **yes** | archive |
+| nazi_zombie_theshack | yes | 1298 | 334 | 11.48 | pass: spawns 5/5, win 56.2/72.7, anchors 55/55 | ok | **yes** | archive |
+| nazi_zombie_titanv3 | yes | 788 | 233 | 9.34 | pass: spawns 4/4, win 47/137.1, anchors 35/35 | ok | **yes** | archive |
+| nazi_zombie_tluh | yes | 2823 | 392 | 13.47 | pass: spawns 5/5, win 52/60, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_town | yes | 1967 | 319 | 12.74 | pass: spawns 5/5, win 59/78.9, anchors 31/31 | ok | **yes** | archive |
+| nazi_zombie_train | yes | 724 | 312 | 12.21 | pass: spawns 5/5, win 50.5/158.3, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_tranzit | yes | 1862 | 345 | 13.94 | pass: spawns 5/5, win 49/53.7, anchors 57/57 | ok | **yes** | archive |
+| nazi_zombie_ubahn | yes | 2942 | 280 | 13.56 | pass: spawns 5/5, win 43.9/51.5, anchors 63/63 | ok | **yes** | archive |
+| nazi_zombie_v2beta | yes | 2095 | 553 | 18.59 | pass: spawns 0/4, win 61/63.2, anchors 49/49 | ok | **yes** | archive |
+| nazi_zombie_wahnsinn | yes | 1314 | 271 | 9.24 | pass: spawns 5/5, win 62.8/62.8, anchors 64/64 | ok | **yes** | archive |
+| nazi_zombie_wunder | yes | 959 | 305 | 11.14 | pass: spawns 5/5, win 57.2/59.6, anchors 41/41 | ok | **yes** | archive |
+| nazi_zombie_yaw | yes | 23 | 35 | 1.31 | pass: spawns 5/5, win 59.4/59.4, anchors 20/20 | ok | **yes** | archive |
+| nazi_zombie_zhotel | yes | 331 | 164 | 4.58 | pass: spawns 5/5, win 41.8/52.5, anchors 30/30 | ok | **yes** | archive |
+| necro_forest | yes | 1234 | 67 | 2.48 | pass: spawns 5/5, win 53.9/53.9, anchors 24/24 | ok | **yes** | archive |
+| neon_fighter | yes | 61 | 99 | 3.35 | pass: spawns 5/5, win 44/58, anchors 33/33 | ok | **yes** | archive |
+| no_way_out | yes | 509 | 301 | 10.02 | pass: spawns 5/5, win 56/61, anchors 43/43 | ok | **yes** | archive |
+| number2 | yes | 421 | 283 | 10.02 | pass: spawns 5/5, win 48/54, anchors 54/54 | ok | **yes** | archive |
+| ogre | yes | 1261 | 222 | 9.25 | pass: spawns 5/5, win 6.9/10.6, anchors 23/23 | ok | **yes** | archive |
+| pietercity | yes | 203 | 43 | 1.41 | pass: spawns 1/4, anchors 19/19 | ok | **yes** | archive |
+| ppolp_zombie_unlimited | yes | 403 | 101 | 3.94 | pass: spawns 1/1, win 54/66.8, anchors 28/28 | ok | **yes** | archive |
+| ray_chirstmas_map | yes | 2737 | 182 | 8.89 | pass: spawns 5/5, win 51.6/51.6, anchors 28/28 | ok | **yes** | archive |
+| russian_base | yes | 987 | 296 | 9.92 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | archive |
+| salaj_dust2 | yes | 1721 | 245 | 9.26 | pass: spawns 5/5, win 51.3/51.7, anchors 64/64 | ok | **yes** | archive |
+| salaj_malefics_spawn | yes | 403 | 103 | 3.62 | pass: spawns 5/5, win 51.5/60.7, anchors 12/12 | ok | **yes** | archive |
+| sammycustomsbox | yes | 34 | 59 | 1.90 | pass: spawns 5/5, win 50/50, anchors 19/19 | ok | **yes** | archive |
+| sanatorium | yes | 9489 | 441 | 16.86 | pass: spawns 4/4, win 60/80, anchors 64/64 | ok | **yes** | archive |
+| shinomori | yes | 3342 | 274 | 13.76 | pass: spawns 5/5, win 56.5/62.2, anchors 46/46 | ok | **yes** | archive |
+| sniper_challange | yes | 10 | 28 | 0.91 | pass: spawns 5/5, win 60/60, anchors 10/10 | ok | **yes** | archive |
+| stranded | yes | 880 | 382 | 15.41 | pass: spawns 5/5, win 53.2/59.7, anchors 64/64 | ok | **yes** | archive |
+| the_defender | yes | 131 | 108 | 2.84 | pass: spawns 4/4, anchors 18/18 | ok | **yes** | archive |
+| trailer_park_christmas | yes | 1008 | 234 | 8.21 | pass: spawns 4/5, anchors 64/64 | ok | **yes** | archive |
+| ugx_artemovsk | yes | 4505 | 330 | 14.08 | pass: spawns 5/5, win 62.9/62.9, anchors 64/64 | ok | **yes** | archive |
+| ugx_bridge | yes | 2755 | 213 | 10.75 | pass: spawns 1/5, anchors 48/48 | ok | **yes** | archive |
+| ugx_the_cobos | yes | 637 | 347 | 12.82 | pass: spawns 5/5, win 52/52, anchors 64/64 | ok | **yes** | archive |
+| ugxm_b_115 | yes | 2098 | 101 | 3.74 | pass: spawns 5/5, win 52.5/64.8, anchors 42/42 | ok | **yes** | archive |
+| ugxm_lostwoods | yes | 138 | 106 | 3.97 | pass: spawns 5/5, win 34/34, anchors 36/36 | ok | **yes** | archive |
+| ugxm_pax | yes | 5933 | 478 | 19.02 | pass: spawns 5/5, win 52/60, anchors 64/64 | ok | **yes** | archive |
+| utopia | yes | 208 | 58 | 2.04 | pass: spawns 5/5, win 54/54, anchors 18/18 | ok | **yes** | archive |
+| wake_up | yes | 28 | 35 | 0.94 | pass: spawns 5/5, win 42/55.5, anchors 10/10 | ok | **yes** | archive |
+| water | yes | 6055 | 617 | 19.99 | pass: spawns 0/5, win 52.5/59.2, anchors 64/64 | ok | **yes** | archive |
+| wfms_zombies | yes | 27 | 37 | 1.27 | pass: spawns 5/5, win 50/50, anchors 24/24 | ok | **yes** | archive |
+| wine | yes | 1754 | 482 | 18.88 | pass: spawns 5/5, win 51.8/57.3, anchors 64/64 | ok | **yes** | archive |
+| xmas_refinery | yes | 622 | 90 | 3.45 | pass: spawns 5/5, anchors 48/48 | ok | **yes** | archive |
+| yaw_sls | yes | 3765 | 369 | 13.86 | pass: spawns 5/5, win 48.1/49, anchors 55/55 | ok | **yes** | archive |
+| yote_topia | yes | 758 | 214 | 10.22 | pass: spawns 5/5, anchors 57/57 | ok | **yes** | archive |
+| zmobie_mapoftehyear | yes | 91 | 123 | 4.12 | pass: spawns 11/11, win 50/50, anchors 64/64 | ok | **yes** | archive |
+| zombie_maze | yes | 101 | 143 | 5.03 | pass: spawns 5/5, win 42/42, anchors 38/38 | ok | **yes** | archive |
+| zombie_rise | yes | 1227 | 238 | 8.59 | pass: spawns 5/5, win 55.5/58.9, anchors 48/48 | ok | **yes** | archive |
+| zombie_seelow_v3 | yes | 7861 | 299 | 14.53 | pass: spawns 5/5, anchors 64/64 | ok | **yes** | archive |
+| zombie_xmasnight | yes | 394 | 219 | 8.49 | pass: spawns 5/5, win 49.9/50, anchors 32/32 | ok | **yes** | archive |
