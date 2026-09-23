@@ -186,5 +186,25 @@
       "sammycustomsbox.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 161,
+    "fatal": 4,
+    "visible": 4,
+    "visible_owner": {
+      "release": 4
+    },
+    "visible_names": [
+      "item:zombie_perk_bottle_deadshot",
+      "item:zombie_perk_bottle_mulekick",
+      "item:zombie_perk_bottle_phd",
+      "item:zombie_perk_bottle_staminup"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

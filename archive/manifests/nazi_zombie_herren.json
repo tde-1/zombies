@@ -189,5 +189,23 @@
       "nazi_zombie_herren.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 189,
+    "fatal": 19,
+    "visible": 2,
+    "visible_owner": {
+      "release": 2
+    },
+    "visible_names": [
+      "xmodel:char_ger_honorgd_bodyz1_1",
+      "xmodel:char_ger_honorgd_bodyz2_1"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

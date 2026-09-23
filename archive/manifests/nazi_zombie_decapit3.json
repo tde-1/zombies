@@ -229,5 +229,41 @@
       "decapitator3.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 262,
+    "fatal": 61,
+    "visible": 59,
+    "visible_owner": {
+      "release": 59
+    },
+    "visible_names": [
+      "item:m1garand_gl_zombie",
+      "item:m1garand_gl_zombie_upgraded",
+      "item:m2_flamethrower_zombie",
+      "item:m2_flamethrower_zombie_upgraded",
+      "item:molotov",
+      "item:panzerschrek_zombie",
+      "item:panzerschrek_zombie_upgraded",
+      "item:ptrs41_zombie",
+      "item:ptrs41_zombie_upgraded",
+      "item:tesla_gun",
+      "item:tesla_gun_upgraded",
+      "item:zombie_30cal",
+      "item:zombie_30cal_upgraded",
+      "item:zombie_bar",
+      "item:zombie_bar_upgraded",
+      "item:zombie_doublebarrel",
+      "item:zombie_doublebarrel_upgraded",
+      "item:zombie_fg42",
+      "item:zombie_fg42_upgraded",
+      "item:zombie_gewehr43"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

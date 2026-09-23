@@ -240,5 +240,29 @@
     ],
     "unproven": "no client joined: server-side load under Wine only"
   },
-  "dedi_status": "box_map_loaded"
+  "dedi_status": "box_map_loaded",
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "minor",
+    "map_loaded_runs": 1,
+    "misses": 188,
+    "fatal": 11,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [
+      "char_usa_marine_head1_1",
+      "char_usa_marine_head2_2",
+      "char_usa_marine_head3_3",
+      "char_usa_marine_head4_4",
+      "char_usa_marine_player_body1_1",
+      "char_usa_marine_player_body2_1",
+      "char_usa_raider_gear2",
+      "char_usa_raider_gear3",
+      "char_usa_raider_helm1",
+      "char_usa_raider_helm2"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

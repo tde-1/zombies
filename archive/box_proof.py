@@ -37,7 +37,8 @@ REPO = os.path.dirname(HERE)
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 HOST = "zombies-dev"
 FAKE = "76561198000000001"   # the popular-64 run; lane 2 uses it now, so --player overrides
-FAKES = {"76561198000000001", "76561198000000002", "76561198000000003"}
+FAKES = {"76561198000000001", "76561198000000002", "76561198000000003",
+         "76561198000000004"}   # ...0004: the asset-audit lane (archive.md "asset audit")
 # --player: tranche 2 leases as ...0002 (the agent-reserved slot) so it never collides with
 # lane 2's ...0001. --lease-repo: the checkout whose lease-cli (and web/data DB) the LIVE site
 # runs -- a worktree has no web/data, and its web/server may hold unmerged changes.
@@ -149,8 +150,11 @@ def cancel(match):
     return (r.stdout + r.stderr).strip()
 
 
-def enw_evidence(inst, pid, bsp):
-    log = "%s/waw-%s/enw-%s.log" % (ZDEV, inst, pid)
+def enw_evidence(inst, pid, bsp, copy=None):
+    # Since the host went slot-based (dedi.md s19) instance inst-50 runs in the slot's game
+    # copy (`wine: .../zdev/waw-inst-01 -> fs_homepath ...`), not in waw-inst-50: the old path
+    # read nothing and reported "com_frameTime advanced only 0 ms" for a healthy run.
+    log = "%s/enw-%s.log" % (copy or "%s/waw-%s" % (ZDEV, inst), pid)
     txt = ssh("grep -a -E 'com_frameTime=|Com_Error TRAPPED|Sys_Error|liveness' %s | tail -40; "
               "echo ===CONSOLE; grep -a -n -i -E 'script runtime error|error:|exceeded|need [0-9]+ more bytes|"
               "could not|unknown item' %s/%s/console.log | tail -12" % (log, MODS, bsp))
@@ -161,6 +165,66 @@ def enw_evidence(inst, pid, bsp):
             "frametime_advance_ms": (ft[-1] - ft[0]) if len(ft) > 1 else 0,
             "com_error": errs[:2], "sys_error": "Sys_Error" in enw,
             "console_errors": [c.strip()[:220] for c in con.strip().splitlines()][:12]}
+
+
+STOCK = {"nazi_zombie_prototype", "nazi_zombie_asylum", "nazi_zombie_sumpf", "nazi_zombie_factory"}
+SAVE_CONSOLE = [None]   # --save-console DIR: keep this run's slice of the map's console.log
+
+
+def console_paths(bsp):
+    """The console.log(s) this map's server writes on the box. A custom map: the one shared
+    `waw-en/mods/<bsp>/console.log` (all instances append). A stock map runs without fs_game,
+    so each slot's `homes/*/main/console.log`."""
+    if bsp in STOCK:
+        return ["%s/homes/*/main/console.log" % ZDEV]
+    return ["%s/%s/console.log" % (MODS, bsp)]
+
+
+def console_sizes(bsp):
+    out = ssh("for f in %s; do [ -f \"$f\" ] && echo \"$(stat -c %%s \"$f\") $f\"; done; true"
+              % " ".join(console_paths(bsp)))
+    sizes = {}
+    for ln in out.splitlines():
+        sz, _, p = ln.partition(" ")
+        if sz.isdigit():
+            sizes[p] = int(sz)
+    return sizes
+
+
+def save_console(bsp, match, since):
+    """Copy the processes our run wrote (every `logfile opened on <t>` segment with t at or
+    after the lease, box time) to SAVE_CONSOLE/<bsp>.<match>.console.log. The box's map
+    cache evicts a map directory -- console.log included -- whenever it needs the space, so
+    this is the only durable copy. (Not a byte offset: a stock slot's main/console.log is
+    rewritten, not appended, by a new process.) Read-only on the box. asset_audit.py reads
+    these."""
+    if not SAVE_CONSOLE[0]:
+        return None
+    import datetime
+    os.makedirs(SAVE_CONSOLE[0], exist_ok=True)
+    t0 = datetime.datetime.strptime(since, "%Y-%m-%d %H:%M:%S") - datetime.timedelta(seconds=5)
+    saved = []
+    for p in console_sizes(bsp):
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST, "cat '%s'" % p], capture_output=True, timeout=120)
+        keep = []
+        for seg in re.split(rb"(?=Build \d+ [^\n]*\n\s*logfile opened on )", r.stdout):
+            m = re.search(rb"logfile opened on \w{3} (\w{3}\s+\d+ \d\d:\d\d:\d\d \d{4})", seg[:400])
+            if not m:
+                continue
+            try:
+                t = datetime.datetime.strptime(re.sub(rb"\s+", b" ", m.group(1)).decode(), "%b %d %H:%M:%S %Y")
+            except ValueError:
+                continue
+            if t >= t0:
+                keep.append(seg)
+        if not keep:
+            continue
+        tag = "" if bsp not in STOCK else "." + p.split("/homes/")[-1].split("/")[0]
+        dst = os.path.join(SAVE_CONSOLE[0], "%s.%s%s.console.log" % (bsp, match, tag))
+        with open(dst, "wb") as fh:
+            fh.write(b"".join(keep))
+        saved.append(dst)
+    return saved
 
 
 def prove(bsp, hold, wait_busy, load_wait=150):
@@ -184,7 +248,7 @@ def prove(bsp, hold, wait_busy, load_wait=150):
         p.kill()
         res.update(result="fail", reason="lease refused: " + " | ".join(out)[-300:])
         return res
-    inst = pid = None
+    inst = pid = copy = None
     loaded_at = None
     exited = None
     preempted = None
@@ -220,6 +284,9 @@ def prove(bsp, hold, wait_busy, load_wait=150):
                 m = re.search(r"instance %s linked \(pid (\d+)" % inst, j)
                 if m:
                     pid = m.group(1)
+                m = re.search(r"host/inst/%s\s+wine: (\S+) -> fs_homepath" % inst, j)
+                if m:
+                    copy = m.group(1)
                 if re.search(r"%s\s+map_loaded %s\b" % (inst, re.escape(bsp)), j):
                     loaded_at = loaded_at or time.time()
                 m = re.search(r"host/inst/%s exit code=(\S+) signal=(\S+)" % inst, j)
@@ -231,7 +298,7 @@ def prove(bsp, hold, wait_busy, load_wait=150):
         res["instance"], res["pid"] = inst, pid
         res["map_loaded"] = bool(loaded_at)
         if inst and pid:
-            res.update(enw_evidence(inst, pid, bsp))
+            res.update(enw_evidence(inst, pid, bsp, copy))
         res["exited"] = exited
         res["preempted_by"] = preempted
         if preempted:
@@ -249,6 +316,10 @@ def prove(bsp, hold, wait_busy, load_wait=150):
             res.update(result="pass", reason="map_loaded; com_frameTime +%d ms over the hold"
                        % res["frametime_advance_ms"])
     finally:
+        try:
+            res["console_saved"] = save_console(bsp, match, since)
+        except Exception as exc:   # a lost log copy must never leave a lease running
+            res["console_saved_error"] = str(exc)[:200]
         res["cancel"] = cancel(match)[-200:]
         p.kill()
         t1 = time.time()
@@ -274,7 +345,11 @@ def main():
                     help="box_stage.py --from-bucket before each lease, --remove after (rotating: the box disk is full)")
     ap.add_argument("--map-list", help="file, one bsp per line (# comments)")
     ap.add_argument("--skip-done", action="store_true", help="skip maps already pass/fail in the report")
+    ap.add_argument("--save-console", metavar="DIR",
+                    help="keep each run's slice of the map's box console.log in DIR (asset_audit.py reads "
+                         "ZombiesDev/archive/logs/box-console/proof-*/)")
     a = ap.parse_args()
+    SAVE_CONSOLE[0] = a.save_console
     if a.player not in FAKES:
         raise SystemExit("--player must be one of the fake IDs %s" % sorted(FAKES))
     PLAYER[0], LEASE_REPO[0] = a.player, a.lease_repo

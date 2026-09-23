@@ -177,6 +177,54 @@ print(json.dumps(out))
 '''
 BUCKET_BASE = "https://enw-zombies.nbg1.your-objectstorage.com/mods"
 
+# --add-missing (asset audit, 2026-09-23): the box fetches from the bucket ONLY the served files
+# its install lacks (absent or wrong size), each into a temp name renamed into place, and never
+# removes or rewrites a file it already has. Safe beside a live game of the same map: a running
+# server has its zones and IWDs open, and nothing it holds changes. Used when the serve list
+# grows (loose sound/**.wav|mp3 were dropped until 2026-09-23) and a full re-pull would rmtree
+# a directory in use.
+REMOTE_ADD = r'''
+import base64, hashlib, json, os, shutil, subprocess, sys, urllib.request, urllib.parse
+spec = json.loads(base64.b64decode(sys.argv[1]))
+bsp, MODS = spec["bsp"], spec["mods"]
+final = os.path.join(MODS, bsp)
+out = {"bsp": bsp, "via": "bucket-add-missing"}
+def sha(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as fh:
+        for c in iter(lambda: fh.read(1 << 20), b""):
+            h.update(c)
+    return h.hexdigest()
+try:
+    if not os.path.isdir(final):
+        raise RuntimeError("not installed on the box (the map cache evicted it or it was never staged): "
+                           "nothing to add to; the next full stage brings every served file")
+    want = [f for f in spec["files"] if not (os.path.exists(os.path.join(final, f["rel"])) and
+            os.path.getsize(os.path.join(final, f["rel"])) == f["size"])]
+    need_mb = sum(f["size"] for f in want) / 2**20
+    st = os.statvfs(MODS)
+    if st.f_bavail * st.f_frsize / 2**20 - need_mb < spec["min_free_mb"]:
+        raise RuntimeError("box disk too full for %.0f MB" % need_mb)
+    added = []
+    for f in want:
+        dst = os.path.join(final, f["rel"])
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        tmp = dst + ".enwpart"
+        url = spec["base"] + "/" + urllib.parse.quote(spec["key_bsp"] + "/" + f["rel"])
+        with urllib.request.urlopen(url, timeout=120) as r, open(tmp, "wb") as fh:
+            shutil.copyfileobj(r, fh, 1 << 20)
+        if os.path.getsize(tmp) != f["size"] or sha(tmp) != f["sha256"]:
+            os.remove(tmp)
+            raise RuntimeError("bucket copy of %s does not match the archive" % f["rel"])
+        os.replace(tmp, dst)
+        added.append(f["rel"])
+    subprocess.run(["chown", "-R", "waw:waw", final])
+    out.update(status="ok", added=len(added), bytes=int(need_mb * 2**20), sample=added[:5])
+except Exception as e:
+    out.update(status="fail", error=str(e)[:300])
+print(json.dumps(out))
+'''
+
 
 def spec_for(bsp):
     ex = json.load(open(os.path.join(WORK, "reports", "extract.json"), encoding="utf-8"))
@@ -206,6 +254,8 @@ def main():
     ap.add_argument("--rsync", action="store_true")
     ap.add_argument("--from-bucket", action="store_true",
                     help="the box pulls mods/<bsp>/ from the public bucket (sync.js first)")
+    ap.add_argument("--add-missing", action="store_true",
+                    help="like --from-bucket, but only ADD the served files the box install lacks")
     ap.add_argument("--min-free-mb", type=int, default=400,
                     help="--from-bucket refuses a pull that would leave less than this free")
     a = ap.parse_args()
@@ -234,14 +284,14 @@ def main():
         return
     spec.pop("local_dir")
     remote = REMOTE
-    if a.from_bucket:
+    if a.from_bucket or a.add_missing:
         # Only what the site serves (mapfiles.js ALLOWED) is in the bucket; the rest of the
         # extract (readmes, installer junk) is not map data and the box does not need it.
         allowed = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik",
-                   ".menu", ".str", ""}
+                   ".menu", ".str", ".wav", ".mp3", ""}
         spec["files"] = [f for f in spec["files"] if os.path.splitext(f["rel"])[1].lower() in allowed]
         spec.update(base=BUCKET_BASE, min_free_mb=a.min_free_mb)
-        remote = REMOTE_BUCKET
+        remote = REMOTE_ADD if a.add_missing else REMOTE_BUCKET
     arg = base64.b64encode(json.dumps(spec).encode()).decode()
     # The spec rides inside the script on stdin, not on argv: a map with many files makes a
     # base64 arg past ~8 KB and the Windows ssh command line cut it (futurama, arena: JSONDecodeError).

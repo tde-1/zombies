@@ -205,5 +205,25 @@
       "nazi_zombie_projectx.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 196,
+    "fatal": 4,
+    "visible": 4,
+    "visible_owner": {
+      "release": 4
+    },
+    "visible_names": [
+      "item:zombie_kar98k",
+      "item:zombie_kar98k_upgraded",
+      "weapon:weapons/sp/zombie_kar98k",
+      "weapon:weapons/sp/zombie_kar98k_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

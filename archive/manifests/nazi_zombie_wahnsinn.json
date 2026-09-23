@@ -217,5 +217,27 @@
       "nazi_zombie_wahnsinn.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 169,
+    "fatal": 6,
+    "visible": 6,
+    "visible_owner": {
+      "release": 6
+    },
+    "visible_names": [
+      "item:molotov",
+      "item:tesla_gun",
+      "item:tesla_gun_upgraded",
+      "item:zombie_cymbal_monkey",
+      "weapon:weapons/sp/tesla_gun",
+      "weapon:weapons/sp/tesla_gun_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

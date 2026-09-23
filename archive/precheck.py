@@ -20,7 +20,12 @@ material name in the map's zones and every image in its IWDs whose name looks li
 menu / load / preview background. Written into the manifest as `archive.art` (names
 only -- nothing is converted or copied).
 
-    python archive/precheck.py --map nuketown [--map ...] [--write-manifest]
+    python archive/precheck.py --map nuketown [--map ...] [--write-manifest] [--gate]
+
+--gate (archive.md 13) also runs archive/asset_gate.py on the maps and exits 1 if any has a
+blocking asset verdict (a zombie model, box/wall weapon or script the release lacks, or a file
+we do not deliver). A map never booted is `unproven` and passes here; the box proof with
+--save-console and popular.py --apply are where its log is judged.
 """
 import argparse
 import glob
@@ -110,6 +115,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--map", action="append", default=[])
     ap.add_argument("--write-manifest", action="store_true")
+    ap.add_argument("--gate", action="store_true", help="refuse (exit 1) a map the asset gate blocks")
     a = ap.parse_args()
     path = os.path.join(WORK, "reports", "precheck.json")
     rep = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
@@ -127,8 +133,20 @@ def main():
                                                "has_load_ff", "has_patch_ff", "napalmblob")}
             with open(mf, "w", encoding="utf-8") as fh:
                 json.dump(m, fh, indent=2)
+    blocked = []
+    if a.gate and a.map:
+        sys.path.insert(0, HERE)
+        import asset_gate
+        for bsp, (ok, v, why) in asset_gate.gate_many(a.map, allow_unproven=True,
+                                                      write_manifest=a.write_manifest).items():
+            rep.setdefault(bsp, {})["asset_gate"] = {"ok": ok, "verdict": v, "why": why}
+            print("%-26s asset gate: %s %s -- %s" % (bsp, "PASS" if ok else "BLOCK", v, why))
+            if not ok:
+                blocked.append(bsp)
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(rep, fh, indent=1)
+    if blocked:
+        sys.exit("asset gate refused: %s (archive.md 13)" % ", ".join(blocked))
 
 
 if __name__ == "__main__":

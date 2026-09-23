@@ -233,5 +233,48 @@
       "ugxm_guns.iwd:maps/ugx_pap_handle.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "fix",
+    "map_loaded_runs": 1,
+    "misses": 254,
+    "fatal": 14,
+    "visible": 14,
+    "visible_owner": {
+      "ours": 14
+    },
+    "visible_names": [
+      "xmodel:bo2_c_zom_zombie1_body01",
+      "xmodel:bo2_c_zom_zombie1_body02",
+      "xmodel:bo2_c_zom_zombie2_body01",
+      "xmodel:bo2_c_zom_zombie2_body02",
+      "xmodel:bo2_c_zom_zombie2_body03",
+      "xmodel:bo2_c_zom_zombie3_body01",
+      "xmodel:bo2_c_zom_zombie3_body02",
+      "xmodel:bo2_c_zom_zombie3_body03",
+      "xmodel:bo2_c_zom_zombie3_body04",
+      "xmodel:bo2_c_zom_zombie3_body05",
+      "xmodel:bo2_c_zom_zombie_head_a",
+      "xmodel:bo2_c_zom_zombie_head_k",
+      "xmodel:bo2_c_zom_zombie_head_l",
+      "xmodel:bo2_c_zom_zombie_head_n"
+    ],
+    "client_check": [],
+    "static": {
+      "load_zone_only": [
+        "xmodel:bo2_c_zom_zombie1_body01",
+        "xmodel:bo2_c_zom_zombie1_body01_g_larmoff",
+        "xmodel:bo2_c_zom_zombie1_body01_g_legsoff",
+        "xmodel:bo2_c_zom_zombie1_body01_g_llegoff",
+        "xmodel:bo2_c_zom_zombie1_body01_g_lowclean",
+        "xmodel:bo2_c_zom_zombie1_body01_g_rarmoff",
+        "xmodel:bo2_c_zom_zombie1_body01_g_rlegoff",
+        "xmodel:bo2_c_zom_zombie1_body01_g_upclean",
+        "xmodel:bo2_c_zom_zombie1_body02",
+        "xmodel:bo2_c_zom_zombie1_body02_g_larmoff"
+      ]
+    },
+    "tool": "archive/asset_audit.py"
+  }
 }

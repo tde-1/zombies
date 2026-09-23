@@ -185,8 +185,9 @@ function importPipelineMaps() {
         // proof so `lease-cli --proof` has a row and an fs_game to boot; `true` keeps it off
         // every list until `popular.py --apply` writes the result and sets it `false`. A
         // manifest without the key leaves `maps.hidden` alone (an admin may have set it).
-        hidden: m.site_hidden === true ? 1 : 0,
-        hidden_set: typeof m.site_hidden === 'boolean' ? 1 : 0,
+        // The asset gate (lib/assetgate.js, archive.md 13) overrides both: a blocking
+        // `asset_audit.verdict` is hidden, whatever site_hidden says.
+        ...require('../lib/assetgate').hiddenFor(m),
         main_finish: (m.badge && m.badge.main_finish) || 'round',
         round_n: (m.badge && m.badge.round_n) || 20,
         has_ee: hasEe,

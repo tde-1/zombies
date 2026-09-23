@@ -206,5 +206,47 @@
   "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile.  DEDI 2026-09-22 (run map05, after the mount fix): the map now LOADS and spawns a server (`------ Server Initialization ------ / Server: nazi_zombie_test`), then dies with a GSC runtime error and the server shuts down. `undefined is not an array, string, or vector` at `common_scripts/utility.gsc:463 while( !level.flag[ msg ] )`, from `maps/_zombiemode_ai_mech.gsc:38 flag_wait(\"all_players_connected\")`, threaded at the map's own `maps/_zombiemode.gsc:40`, from `nazi_zombie_test.gsc:119`. `level.flag` is created by `maps/_load.gsc:97`'s `flag_init(\"all_players_connected\")`, so a map-provided script is flag_waiting before `_load::main()` has run. NOT ours: we mount no overlay (fs_game is the map's own mod, the referee is C++ and ships nothing inside it), the console shows `Loading fastfile 'mod'` and the map fastfile loading, and Der Berg answers getstatus with the same mount. Why the same script survives on a listen server is NOT established. dedi.md 13.3, referee.md 10. RETRACTION: the earlier note blamed `fs_game is write protected` and a homepath config.cfg. Both wrong -- see nazi_zombie_test1's note and dedi.md 13.3. The map now loads. DEDI/REFEREE 2026-09-22 (runs mapA/mapB/mapC, join80-join83): THE 'broken' VERDICT IS CONFIRMED AND THE BLAME IS CORRECTED. The previous session left open whether our dedicated server, a referee GSC overlay or the replay sampler was the shared cause. It is none of them, and that was settled by running the maps with ours REMOVED rather than by reading code. dedi.md 14, referee.md 11. Run mapA booted this map on a STOCK CoDWaW.exe -- binkw32 proxy reverted, ZERO ENW code in the process -- as a LISTEN server, and it produced the byte-identical script runtime error. The cause is the map's own script order: main() starts a flag-dependent thread BEFORE it calls maps\\_zombiemode::main(), which is what calls maps\\_load::main(), which is where flag_init(\"all_players_connected\") lives. A GSC `thread` begins executing immediately and flag_wait's first act is to index level.flag, so it faults before anything can have created the array. WHY THE COMMUNITY PLAYS IT ANYWAY IS NOT ESTABLISHED, and is written down as unestablished; the likeliest answer is that the archived download is a repack. Nothing in this lane can fix it. status stays \"broken\". From nazi_zombie_test.iwd: its own maps/_zombiemode.gsc line 40 threads maps\\_zombiemode_ai_mech::mech_init(), whose line 38 is flag_wait(\"all_players_connected\"); its own maps/_load.gsc carries the flag_init at line 99 and is not reached by line 40.  ARCHIVE 2026-09-23: NO ADD-ON EXISTS TO BLAME. The release is six files and matches the NSIS installer's file table exactly; there is no third-party iwd in the mod folder at all. The fatal maps/_zombiemode_ai_mech.gsc is inside the map's OWN nazi_zombie_test.iwd, which also carries the author's own maps/_load.gsc and maps/_utility.gsc overrides -- 73 raw scripts, the author's source tree. There is nothing to exclude. Re-measured as shipped in run addon7: the same script runtime error. status stays \"broken\". dedi.md 15.",
   "dedi_status": "broken",
   "status": "broken",
-  "dedi_verdict_source": "dedi.md 14; runs mapA (stock exe, listen server) and mapB (ENW_NO_SAMPLERS=1)"
+  "dedi_verdict_source": "dedi.md 14; runs mapA (stock exe, listen server) and mapB (ENW_NO_SAMPLERS=1)",
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 4,
+    "misses": 272,
+    "fatal": 13,
+    "visible": 11,
+    "visible_owner": {
+      "release": 11
+    },
+    "visible_names": [
+      "item:sog_knife_w_bowie",
+      "item:zombie_evo",
+      "item:zombie_evo_upgraded",
+      "item:zombie_ksg",
+      "item:zombie_ksg_upgraded",
+      "item:zombie_m32",
+      "item:zombie_m32_upgraded",
+      "item:zombie_pdw",
+      "item:zombie_pdw_upgraded",
+      "weapon:weapons/sp/sog_knife_w_bowie",
+      "xanim:ai_zombie_sprint_w_object_5"
+    ],
+    "client_check": [],
+    "static": {
+      "unresolved_refs": [
+        "xanim:viewmodel_c4_detonator_check",
+        "xanim:viewmodel_c4_detonator_fire",
+        "xanim:viewmodel_c4_pullout_quick",
+        "xanim:viewmodel_c4_sprint_in",
+        "xanim:viewmodel_c4_sprint_loop",
+        "xanim:viewmodel_kar98_fire_ads",
+        "xanim:viewmodel_kar98scoped_ads_down",
+        "xanim:viewmodel_kar98scoped_ads_up",
+        "xanim:viewmodel_kar98scoped_fire",
+        "xanim:viewmodel_kar98scoped_first_raise"
+      ]
+    },
+    "tool": "archive/asset_audit.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "asset audit 2026-09-23: the release itself lacks what a player meets (item:sog_knife_w_bowie, item:zombie_evo, item:zombie_evo_upgraded, item:zombie_ksg, item:zombie_ksg_upgraded, item:zombie_m32); a retail listen server with the same files misses the same (archive.md 13)"
 }

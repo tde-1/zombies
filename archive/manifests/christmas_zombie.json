@@ -211,5 +211,29 @@
       "christmas_zombie.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 194,
+    "fatal": 8,
+    "visible": 8,
+    "visible_owner": {
+      "release": 8
+    },
+    "visible_names": [
+      "item:mine_bouncing_betty",
+      "item:zombie_colt",
+      "item:zombie_colt_upgraded",
+      "item:zombie_thompson",
+      "item:zombie_thompson_upgraded",
+      "weapon:weapons/sp/mine_bouncing_betty",
+      "weapon:weapons/sp/zombie_thompson",
+      "weapon:weapons/sp/zombie_thompson_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

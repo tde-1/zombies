@@ -31,9 +31,17 @@ fs.mkdirSync(path.join(ARCH, 'reports'), { recursive: true })
 fs.mkdirSync(DEST, { recursive: true })
 fs.writeFileSync(path.join(DEST, 'mod.ff'), Buffer.alloc(1000, 1))
 fs.writeFileSync(path.join(DEST, 'custom_pop.iwd'), Buffer.alloc(500, 2))
+// 2026-09-23 asset audit: `..` inside a NAME is a file (Neon Fighter's `HarryBos Mysterybox Pack
+// V1..0.0.iwd`), a `..` SEGMENT is traversal; loose `sound/**.wav` is served.
+fs.writeFileSync(path.join(DEST, 'Pack V1..0.0.iwd'), Buffer.alloc(300, 3))
+fs.mkdirSync(path.join(DEST, 'sound'), { recursive: true })
+fs.writeFileSync(path.join(DEST, 'sound', 'box.wav'), Buffer.alloc(200, 4))
+fs.writeFileSync(path.join(ARCH, 'mods', 'evil.ff'), Buffer.alloc(100, 5))
 fs.writeFileSync(path.join(ARCH, 'reports', 'extract.json'), JSON.stringify([{ mods: [{
   bsp: 'custom_pop', dest: DEST,
-  files: [{ path: 'mods/custom_pop/mod.ff', sha256: 'a'.repeat(64) }, { path: 'mods/custom_pop/custom_pop.iwd', sha256: 'b'.repeat(64) }],
+  files: [{ path: 'mods/custom_pop/mod.ff', sha256: 'a'.repeat(64) }, { path: 'mods/custom_pop/custom_pop.iwd', sha256: 'b'.repeat(64) },
+    { path: 'mods/custom_pop/Pack V1..0.0.iwd', sha256: 'c'.repeat(64) }, { path: 'mods/custom_pop/sound/box.wav', sha256: 'd'.repeat(64) },
+    { path: 'mods/custom_pop/../evil.ff', sha256: 'e'.repeat(64) }],
 }] }]))
 
 const express = require('express')
@@ -88,7 +96,7 @@ async function main () {
   await check('popular(): real leases only, stock left out, most played first, with fs_game and size', () => {
     const p = assignments.popular({ days: 30 })
     eq(p.map((x) => x.map), ['custom_pop', 'custom_rare'])
-    eq(p[0].plays, 3); eq(p[0].fs_game, 'mods/custom_pop'); eq(p[0].size_bytes, 1500)
+    eq(p[0].plays, 3); eq(p[0].fs_game, 'mods/custom_pop'); eq(p[0].size_bytes, 2000)  // 1000 + 500 + the two 2026-09-23 fixture files (300 + 200)
     eq(p[1].plays, 1, 'the 60-day-old lease is outside the window'); eq(p[1].size_bytes, 0, 'no files -> 0')
   })
 
@@ -116,9 +124,18 @@ async function main () {
   await check('GET /api/gs/map-files/:bsp: the file list with size and sha256, box secret required', async () => {
     const r = await get('/map-files/custom_pop')
     eq(r.status, 200)
-    eq(r.body.files.map((f) => [f.path, f.size, f.sha256.slice(0, 1)]).sort(), [['custom_pop.iwd', 500, 'b'], ['mod.ff', 1000, 'a']])
+    eq(r.body.files.map((f) => [f.path, f.size, f.sha256.slice(0, 1)]).sort(), [['Pack V1..0.0.iwd', 300, 'c'], ['custom_pop.iwd', 500, 'b'], ['mod.ff', 1000, 'a'], ['sound/box.wav', 200, 'd']])
     eq((await get('/map-files/nazi_zombie_asylum')).body.stock, true)
     eq((await get('/map-files/custom_pop', 'wrong')).status, 401)
+  })
+
+  await check('asset gate: a blocking asset_audit verdict is hidden on import, whatever site_hidden says', async () => {
+    const g = require('../server/lib/assetgate')
+    eq(g.hiddenFor({ site_hidden: false, asset_audit: { verdict: 'hide' } }), { hidden: 1, hidden_set: 1 })
+    eq(g.hiddenFor({ asset_audit: { verdict: 'fix' } }), { hidden: 1, hidden_set: 1 })
+    eq(g.hiddenFor({ site_hidden: false, asset_audit: { verdict: 'minor' } }), { hidden: 0, hidden_set: 1 })
+    eq(g.hiddenFor({ asset_audit: { verdict: 'unproven' } }), { hidden: 0, hidden_set: 0 })
+    eq(g.hiddenFor({ site_hidden: true }), { hidden: 1, hidden_set: 1 })
   })
 
   await check('GET /api/gs/popular-maps', async () => {

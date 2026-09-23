@@ -200,5 +200,41 @@
       "nazi_zombie_spruktbyl.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 293,
+    "fatal": 109,
+    "visible": 109,
+    "visible_owner": {
+      "release": 109
+    },
+    "visible_names": [
+      "item:aug_mp",
+      "item:aug_mp_upgraded",
+      "item:l86_mp",
+      "item:m1garand_gl_zombie",
+      "item:m1garand_gl_zombie_upgraded",
+      "item:m2_flamethrower_zombie",
+      "item:m2_flamethrower_zombie_upgraded",
+      "item:m4_mp",
+      "item:m4_mp_upgraded",
+      "item:molotov",
+      "item:panzerschrek_zombie",
+      "item:panzerschrek_zombie_upgraded",
+      "item:pm9_mp",
+      "item:ptrs41_zombie",
+      "item:ptrs41_zombie_upgraded",
+      "item:ray_gun",
+      "item:ray_gun_upgraded",
+      "item:scar_mp",
+      "item:scar_mp_upgraded",
+      "item:spas_mp"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

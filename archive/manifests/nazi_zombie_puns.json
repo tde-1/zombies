@@ -189,5 +189,23 @@
       "nazi_zombie_puns.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 210,
+    "fatal": 39,
+    "visible": 2,
+    "visible_owner": {
+      "release": 2
+    },
+    "visible_names": [
+      "xanim:ai_zombie_window_attack_arm_l_out",
+      "xanim:ai_zombie_window_attack_arm_r_out"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }
