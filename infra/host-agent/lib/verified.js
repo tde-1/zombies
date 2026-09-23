@@ -32,6 +32,10 @@ export const SERVER_RULES = Object.freeze({
   bg_fallDamageMaxHeight: '350',
   arcademode: '0',
   zombiemode: '1',
+  // Not an engine dvar: the referee reports whether the game process ran with dev knobs
+  // (ENW_DEV_KNOBS=1: host `exec`, the soak's test god mode, dedi.md §23). A DLL older
+  // than 2026-09-23 does not report it, which judges as absent, like any unreported dvar.
+  enw_dev_knobs: '0',
 })
 
 // Reported for the record's proof, never judged: they describe the server, not the run.

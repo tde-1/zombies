@@ -20,7 +20,7 @@ import { EventEmitter } from 'node:events'
 import { execFile } from 'node:child_process'
 import { makeLog, parseArgs, setLogLevel, mkdirp, id as makeId, fmtBytes, fmtDur, sha256hex } from './lib/util.js'
 import { GameLinkServer } from './lib/gamelink.js'
-import { InstanceManager } from './lib/instances.js'
+import { InstanceManager, devKnobsFor } from './lib/instances.js'
 import { Referee } from './lib/referee.js'
 import { ManifestStore } from './lib/manifests.js'
 import { ReplayWriter } from './lib/replay.js'
@@ -407,6 +407,9 @@ class Game extends EventEmitter {
     if (me.server_alive === false) return { action: 'terminate', why: 'match_end said server_alive:false' }
     if (bad.length) return { action: 'terminate', why: `the game did not end cleanly (${bad.join(', ')})` }
     if (!this.conn) return { action: 'terminate', why: 'the link is gone' }
+    // Its environment was fixed at spawn: a process launched with dev knobs (dedi.md §23)
+    // keeps them for life, so it must never be handed to the next lease warm.
+    if (devKnobsFor(this.instance.assignment).ENW_DEV_KNOBS === '1') return { action: 'terminate', why: 'a dev-knob instance is never reused for another lease' }
     if (cfg.afterGame === 'terminate') return { action: 'terminate', why: '--after-game terminate' }
     if (played >= cfg.gamesPerInstance) return { action: 'terminate', why: `${played} game(s) on this instance, the limit is ${cfg.gamesPerInstance}` }
     return { action: 'reuse', why: `game ${played} of ${cfg.gamesPerInstance} on this instance` }

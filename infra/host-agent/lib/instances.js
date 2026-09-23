@@ -38,6 +38,50 @@ export function readLock(file = LOCK_FILE) {
   } catch { return null }
 }
 
+/**
+ * A Custom lease's own dvars, as the ones that may go on a command line and the ones that
+ * may not (with why). Each becomes `+set <k> <v>` and the argv is later split on spaces,
+ * so before 2026-09-23 a value like `1 +exec x` or a key like `a +quit` was an arbitrary
+ * command-line injection by any party leader (the site stores Custom settings verbatim,
+ * parties.setSettings). Names and values are one token each now, and the dvars the host
+ * itself owns — the ones that decide whether the server is headless, where it writes, who
+ * can join, how hard it runs, and developer mode (README rule 5) — are never the lease's.
+ */
+const LEASE_DVAR_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/
+const LEASE_DVAR_VALUE = /^[A-Za-z0-9_.:\-]{1,64}$/
+const HOST_OWNED_DVARS = new Set([
+  'dedicated', 'developer', 'developer_script', 'logfile', 'net_port', 'net_ip', 'sv_maxclients',
+  'com_maxfps', 'fs_game', 'fs_homepath', 'fs_basepath', 'fs_localappdata', 'fs_cdpath',
+  'fs_basegame', 'zombiemode', 'sv_maxrate', 'rcon_password', 'sv_punkbuster', 'r_fullscreen',
+].map((s) => s.toLowerCase()))
+export function safeLeaseDvars(entries) {
+  const ok = []
+  const refused = []
+  for (const [k, v] of entries) {
+    const key = String(k)
+    const val = String(v)
+    if (!LEASE_DVAR_NAME.test(key)) refused.push(`${JSON.stringify(key).slice(0, 40)}: not a dvar name`)
+    else if (HOST_OWNED_DVARS.has(key.toLowerCase())) refused.push(`${key}: the host sets it`)
+    else if (!LEASE_DVAR_VALUE.test(val)) refused.push(`${key}: value is not one plain token`)
+    else ok.push([key, val])
+  }
+  return { ok, refused }
+}
+
+/**
+ * The dev-knob environment for one lease (dedi.md §23). ON only for an AGENT lease (the
+ * site sets `agent` from lease-cli; a player's Play never has it) in CUSTOM mode that asks
+ * for it in `settings.dev`. Everything else gets the switches explicitly EMPTY, which the
+ * DLL reads as off (it tests for "1"), so nothing inherited from the agent's own
+ * environment reaches a game. The DLL's referee then reports `enw_dev_knobs` and the
+ * Verified judge fails any run that had them.
+ */
+export function devKnobsFor(a) {
+  const dev = a && a.agent === true && a.mode === 'custom' && a.settings && a.settings.dev
+  const god = !!(dev && dev.god === true)
+  return { ENW_DEV_KNOBS: god ? '1' : '', ENW_DEV_GOD: god ? '1' : '' }
+}
+
 function pidAlive(pid) {
   const n = Number(pid)
   if (!Number.isInteger(n) || n <= 0) return false
@@ -141,7 +185,9 @@ export class Instance extends EventEmitter {
     if (a.mode === 'verified' && leaseDvars.length) {
       this.log?.warn?.(`verified lease: refused ${leaseDvars.length} lease dvar(s) (${leaseDvars.map(([k]) => k).join(', ')}); a Verified game runs stock settings`)
     } else {
-      for (const [k, v] of leaseDvars) out.push(`+set ${k} ${v}`)
+      const { ok, refused } = safeLeaseDvars(leaseDvars)
+      if (refused.length) this.log?.warn?.(`custom lease: refused ${refused.length} lease dvar(s): ${refused.join('; ')}`)
+      for (const [k, v] of ok) out.push(`+set ${k} ${v}`)
     }
     for (const extra of this.args) out.push(extra)
     if (a.map) out.push(`+map ${a.map}`)
@@ -168,6 +214,11 @@ export class Instance extends EventEmitter {
       // makes each instance's port its own, so two booting together never race for one.
       // The box firewall opens 3074-3079. An older DLL ignores it.
       ENW_LOBBY_PORT: String(this.lobbyPort()),
+      // Dev knobs (host `exec`, the soak's test god mode: dedi.md §23) are set HERE or
+      // nowhere: empty unless devKnobsFor() says this lease is an agent's Custom dev lease,
+      // so an ENW_DEV_KNOBS exported into the agent's own environment can never leak into
+      // a player's game through `...process.env`.
+      ...devKnobsFor(this.assignment),
     }
   }
 

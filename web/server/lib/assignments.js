@@ -167,7 +167,11 @@ function lease(o) {
   const vip = enw.anyVip(players.map((p) => p.steamid))
 
   const matchId = o.matchId || newMatchId()
-  const settings = mode === 'custom' ? (o.settings || {}) : {}
+  const settings = mode === 'custom' ? { ...(o.settings || {}) } : {}
+  // `dev` (test god mode and friends, dedi.md §23) is an agent's and nobody else's: a
+  // party leader can store any Custom settings (parties.setSettings), so it is dropped
+  // here for every lease that is not an agent's. The host also requires `agent` + custom.
+  if (!agent) delete settings.dev
 
   // The manifest travels WITH the lease. The box reads `referee/manifests/` from its own
   // disk today, which works because the repo is the same one; a real cloud box has no repo,
@@ -272,6 +276,8 @@ function shapeOf(a) {
     whitelist: (safeJson(a.players_json, []) || []).map((p) => p.steamid),
     vip: !!a.vip,
     kind: a.kind,
+    // An agent's lease (lease-cli). The host needs it to allow `settings.dev` (dedi.md §23).
+    agent: !!a.agent,
     tokens: safeJson(a.tokens_json, {}),
     manifest: manifestFor(a),
     map_version: a.map_version_id ? (db.prepare('SELECT version FROM map_versions WHERE id=?').get(a.map_version_id) || {}).version : null,
