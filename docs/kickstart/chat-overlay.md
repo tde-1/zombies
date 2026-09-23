@@ -10,6 +10,7 @@
 > a real text box, selectable history, a tab per DM conversation, `/w` and `/r`.
 > **§11 (round 3):** Esc works on a box and pauses it; the client clock holds while the server is frozen.
 > **§12 (round 4):** the overlay and the Esc menu always draw with WaW's stock font, whatever a mod loads.
+> **§14 (lane 12):** the window starts with the backlog (`history=1`, never on the HUD); the site's `notice` lines ("Your record has been uploaded.").
 
 B's ask, in his words in substance: *later an in-game overlay where T opens chat, pauses the game
 if solo, and lets you type, replacing the game's own chat.*
@@ -887,3 +888,36 @@ released it), released 11:51:59. Logs `ZombiesDev\logs\dedi\ovg5.*`, `ZombiesDev
   Discord. The previous draft wanted 64 MB for this reason; the coordinator set 50 MB. Watch B's
   `enw-<pid>.log` per-minute lines after an ALLOWED.
 * **A real Discord attach**, allowed or refused (as 13.5), and Discord's behaviour after a refusal.
+
+## 14. 2026-09-23 ~12:00–12:30 — the window's backlog (`history=1`) and the site's notices (lane 12)
+
+Handed over by lane 8 (`web.md` "chat dedupe"): since the site stopped replaying the ring on a
+first poll (the join duplicates), a fresh game's chat window started **empty**. The site already
+answered `&history=1` with the backlog, each line `backfill: true`; the DLL never asked.
+
+**Changed in `chat_overlay.cpp`** (every line marked `[history]` or `[notice]`, ~12 lines, localised
+so lane 1's `overlay_guard` lines merge untouched):
+
+* The first poll (`g=0&p=0`) adds `&history=1`. Later polls, and a re-poll after a 401, keep their
+  cursors and never ask again.
+* A `backfill` line is filed in the window (its tab) but dated long ago, so the HUD
+  (`cg_chatTime`) never shows it as news, and it adds no unread count.
+* A live line's HUD clock now starts when the HUD can draw it (`drain_inbox`, which runs inside
+  CG_Draw2D), not when the poll thread received it: a line that lands while no map is drawn (a
+  load) shows when the map appears.
+* Private channel **`notice`** (new, the site's words to this player; `esc-menu.md` §10.3) is filed
+  under Global as a system line (yellow), and posted to `notice_board.hpp` so the lockdown's end
+  screen can repeat it.
+* The poll thread logs `N backlog line(s) (history=1) into the window, none on the HUD` and each
+  live system line (`system line: Your record has been uploaded.`).
+
+**Site** (`web/server/lib/gameChat.js`): `notify(steamid, text)` writes a `notice` row to
+`chat_private` addressed to one player; `privateFor` includes `notice` rows `to_sid = me`; they
+project as `kind: 'system'`, `from: 'ENW'`. Nothing reads them but that player's feed (not the
+global ring, not the web dock). `web/test/record-notice.js` 7/0.
+
+**Proof** (`esc-menu.md` §10.4, runs `l12a`–`l12c`, local dedi + client, private site on 3399):
+`3/4/5 backlog line(s) (history=1) into the window, none on the HUD` on each first poll (the seeded
+lines plus earlier runs' notices); the record notice live on the HUD over the game-over scoreboard
+(`ui/lockdown-record-uploaded-hud-800x600.jpg`). **Not proven:** the backlog as B sees it in the
+window (no capture of the open panel was taken), and on the live site.

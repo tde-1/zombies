@@ -58,6 +58,7 @@
 #include "logger.hpp"
 #include "memory.hpp"
 
+#include "console_model.hpp"   // [console] the ENW console sets settings through this tab's path
 #include "input_gate.hpp"
 #include "settings_model.hpp"
 #include "settings_tab.hpp"
@@ -860,6 +861,104 @@ void log_values(const char* why) {
 void set_restricted_override(int v) {
     g_restricted_override = v;
     refresh_context();
+}
+
+// ------------------------------------------------------------ [console] public
+// The ENW console's settings (restricted_console.cpp). Nothing here reaches the engine but
+// apply_value above: the console has no other way to write.
+namespace {
+
+const settings::item* console_item(const std::string& name, std::string* reply) {
+    if (!g_ok) { *reply = "Settings are not available in this build."; return nullptr; }
+    const settings::item* it = ::enw::console::resolve(g_s, name);
+    if (!it) { *reply = ::enw::console::refusal_for(name); return nullptr; }
+    refresh_context();
+    std::string why;
+    const auto vis = settings::visibility(*it, g_ctx, &why);
+    if (vis == settings::shown::hidden) { *reply = it->dvar + " is locked in a Verified game."; return nullptr; }
+    return it;
+}
+
+std::string shown_value(const settings::item& it) {
+    bool pend = false;
+    const std::string cur = current_of(it, &pend);
+    std::string o = settings::display_value(it, cur);
+    if (it.k == settings::kind::select || it.k == settings::kind::toggle) {
+        if (o != cur && !cur.empty()) o += " (" + cur + ")";
+    }
+    if (pend) o += ", after Apply";
+    return o;
+}
+
+std::string after_note(const settings::item& it) {
+    if (it.a == settings::apply::vid_restart)
+        return g_ctx.listen_server ? " Applies next launch." : " Esc > Settings > Apply to restart the video.";
+    if (it.a == settings::apply::next_launch) return " Applies next launch.";
+    return {};
+}
+
+}  // namespace
+
+std::string console_get(const std::string& name) {
+    std::string reply;
+    const auto* it = console_item(name, &reply);
+    if (!it) return reply;
+    return it->dvar + " is " + shown_value(*it) + "  (" + it->label + ", " + ::enw::console::range_text(*it) + ")";
+}
+
+std::string console_set(const std::string& name, const std::string& value) {
+    std::string reply;
+    const auto* it = console_item(name, &reply);
+    if (!it) {
+        ENW_INFO("console: REFUSED %s '%s': %s", name.c_str(), value.c_str(), reply.c_str());
+        return reply;
+    }
+    std::string why;
+    if (settings::visibility(*it, g_ctx, &why) != settings::shown::editable) {
+        ENW_INFO("console: REFUSED %s '%s': %s", it->dvar.c_str(), value.c_str(), why.c_str());
+        return it->dvar + ": " + why + ".";
+    }
+    std::string norm, err;
+    if (!::enw::console::validate(*it, value, &norm, &err)) {
+        ENW_INFO("console: REFUSED %s '%s': %s", it->dvar.c_str(), value.c_str(), err.c_str());
+        return err;
+    }
+    if (!apply_value(*it, norm, "console")) return it->dvar + " could not be set.";
+    return it->dvar + " set to " + settings::display_value(*it, norm) + "." + after_note(*it);
+}
+
+std::string console_reset(const std::string& name) {
+    std::string reply;
+    const auto* it = console_item(name, &reply);
+    if (!it) return reply;
+    const std::string def = it->enw_def.empty() ? it->def : it->enw_def;
+    if (def.empty()) return it->dvar + " has no default.";
+    return console_set(it->dvar, def);
+}
+
+std::vector<std::string> console_list(const std::string& prefix) {
+    std::vector<std::string> out;
+    if (!g_ok) return out;
+    refresh_context();
+    const std::string p = settings::lower(prefix);
+    for (const auto& it : g_s.items) {
+        if (it.k == settings::kind::bind || it.k == settings::kind::info || it.dvar.empty()) continue;
+        if (settings::visibility(it, g_ctx, nullptr) != settings::shown::editable) continue;
+        if (!p.empty() && settings::lower(it.dvar).rfind(p, 0) != 0 && settings::lower(it.id).rfind(p, 0) != 0) continue;
+        out.push_back(it.dvar + " " + shown_value(it) + "  (" + it.label + ", " + ::enw::console::range_text(it) + ")");
+    }
+    return out;
+}
+
+std::vector<std::string> console_names() {
+    std::vector<std::string> out;
+    if (!g_ok) return out;
+    for (const auto& it : g_s.items) {
+        if (it.k == settings::kind::bind || it.k == settings::kind::info || it.dvar.empty()) continue;
+        if (settings::visibility(it, g_ctx, nullptr) != settings::shown::editable) continue;
+        out.push_back(it.dvar);
+    }
+    return out;
 }
 
 }  // namespace enw::client::settings_tab

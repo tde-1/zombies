@@ -327,11 +327,37 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
     try { closeAssignment(assignment, game) } catch (e) { out.errors.push('assignment: ' + e.message) }
   }
 
+  // The in-game line B asked for (2026-09-23): "Your record has been uploaded", said to each
+  // verified player of a box game the moment the site has stored it — this call is the
+  // host's POST, so the line and the host's confirmation are the same event. Only the box
+  // path (`requireVerifiedIdentity`), only seated (verified) players, only on first
+  // arrival (a retry returned above). It travels on the overlay's own long-poll
+  // (gameChat.notify, a private `notice` line); a game that has already closed simply
+  // never shows it. esc-menu.md §10.3.
+  if (requireVerifiedIdentity && !untrusted) {
+    try { out.notified = noticeSeated(game, seated) } catch (e) { out.errors.push('notice: ' + e.message) }
+  }
+
   if (out.errors.length) {
     db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('result.partial', ?, ?, ?)")
       .run(game.box || null, JSON.stringify({ match_id: game.match_id, errors: out.errors }), now())
   }
   return out
+}
+
+// The line each seated player gets. A record-eligible Verified game: the record is up. Anything
+// else (Custom mode, a late join, a refused Verified run): the game is saved, and says it is
+// not a record, rather than letting the player believe it is.
+const RECORD_UPLOADED = 'Your record has been uploaded.'
+const GAME_SAVED = 'Your game has been saved. Not record-eligible.'
+function noticeLine(game, p) {
+  return game.records_eligible && game.mode === 'verified' && !p.late ? RECORD_UPLOADED : GAME_SAVED
+}
+function noticeSeated(game, seated) {
+  const gameChat = require('./gameChat')   // lazy: gameChat pulls in the chat ring and parties
+  let n = 0
+  for (const p of seated) if (gameChat.notify(p.steam_id, noticeLine(game, p))) n++
+  return n
 }
 
 function storeReplay(game, body) {
@@ -548,4 +574,4 @@ function careerFor(steamId) {
   }
 }
 
-module.exports = { ingest, project, byId, byMatch, recent, careerFor, recountBeaten }
+module.exports = { ingest, project, byId, byMatch, recent, careerFor, recountBeaten, RECORD_UPLOADED, GAME_SAVED }

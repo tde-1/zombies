@@ -111,6 +111,7 @@
 
 #include "chat_link.hpp"
 #include "input_gate.hpp"
+#include "notice_board.hpp"   // [notice] the site's notices, for the lockdown's end screen
 #include "pause_menu.hpp"   // the Esc menu (pause_menu.cpp): hook points marked [esc-menu]
 
 #include <windows.h>
@@ -248,6 +249,7 @@ struct chat_line {
     bool system = false;
     bool mine = false;
     bool local = false;        // a line we made up (errors, status); never from the site
+    bool backfill = false;     // [history] the site's backlog (history=1): the window's, never the HUD's
     std::string from;          // display name, sanitised
     std::string from_sid;
     std::string peer_sid;      // DM: the other person
@@ -479,7 +481,7 @@ chat_line line_from_json(const json::value& v, bool priv, const std::string& my_
     chat_line l;
     l.id = v.int_or("id", 0);
     const std::string ch = v.str_or("channel", "global");
-    l.ch = !priv ? CH_GLOBAL : (ch == "party" ? CH_PARTY : CH_DM);
+    l.ch = !priv ? CH_GLOBAL : (ch == "party" ? CH_PARTY : ch == "notice" ? CH_GLOBAL : CH_DM);   // [notice] the site to me: Global
     l.system = v.str_or("kind") == "system";
     l.from = sanitise(v.str_or("from", "player"), 32);
     l.from_sid = v.str_or("steamid");
@@ -490,6 +492,8 @@ chat_line line_from_json(const json::value& v, bool priv, const std::string& my_
         else { l.peer_sid = l.from_sid; l.peer_name = l.from; }
     }
     l.arrived = ::GetTickCount();
+    // [history] Backlog lines are dated long ago, so the HUD (cg_chatTime) never shows them as news.
+    if (v.bool_or("backfill", false)) { l.backfill = true; l.arrived -= 0x40000000u; }
     return l;
 }
 
@@ -555,7 +559,8 @@ void poll_loop(url_parts u) {
             }
         }
         const std::string q = "/api/game-chat/feed?g=" + std::to_string(gcur) +
-                              "&p=" + std::to_string(pcur) + "&wait=20";
+                              "&p=" + std::to_string(pcur) + "&wait=20" +
+                              (gcur == 0 && pcur == 0 ? "&history=1" : "");   // [history] the window starts with the backlog
         std::string body;
         const int st = http(u, L"GET", q, "", &body, 30000);
         if (g_stop) break;
@@ -574,10 +579,16 @@ void poll_loop(url_parts u) {
         if (const json::value* a = v.find("global"); a && a->type == json::kind::array)
             for (const auto& x : a->items) got.push_back(line_from_json(x, false, my_sid));
         if (const json::value* a = v.find("private"); a && a->type == json::kind::array)
-            for (const auto& x : a->items) got.push_back(line_from_json(x, true, my_sid));
+            for (const auto& x : a->items) {
+                got.push_back(line_from_json(x, true, my_sid));
+                if (x.str_or("channel") == "notice" && !got.back().backfill) notice_board::post(got.back().text);   // [notice]
+            }
         gcur = (std::max)(gcur, static_cast<long long>(v.int_or("g", gcur)));
         pcur = (std::max)(pcur, static_cast<long long>(v.int_or("p", pcur)));
         if (!got.empty()) {
+            size_t bf = 0;   // [history] / [notice] what arrived, for the log
+            for (const auto& l : got) { if (l.backfill) ++bf; else if (l.system) ENW_INFO("chat_overlay: system line: %s", l.text.c_str()); }
+            if (bf) ENW_INFO("chat_overlay: %zu backlog line(s) (history=1) into the window, none on the HUD", bf);
             std::lock_guard<std::mutex> lk(g_mu);
             for (auto& l : got) g_inbox.push_back(std::move(l));
         }
@@ -1817,6 +1828,7 @@ void drain_inbox() {
                 for (const auto& c : g_me.contacts) if (c.sid == t.sid) t.name = c.name;
     }
     for (auto& l : in) {
+        if (!l.backfill) l.arrived = ::GetTickCount();   // [notice] the HUD's clock starts when the HUD can show it (not during an intermission)
         if (!l.local) {
             bool dup = false;
             for (auto it = g_lines.rbegin(); it != g_lines.rend() && !dup; ++it)
@@ -1828,7 +1840,7 @@ void drain_inbox() {
             tab = ensure_dm_tab(l.peer_sid, l.peer_name);
             if (!l.mine) { g_last_dm_sid = l.peer_sid; g_last_dm_name = l.peer_name; }
         }
-        if (tab >= 0 && !(g_open && g_tab == tab) && !l.mine) ++g_tabs[static_cast<size_t>(tab)].unread;
+        if (tab >= 0 && !(g_open && g_tab == tab) && !l.mine && !l.backfill) ++g_tabs[static_cast<size_t>(tab)].unread;   // [history]
         g_lines.push_back(std::move(l));
     }
     while (g_lines.size() > 400) g_lines.pop_front();

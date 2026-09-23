@@ -370,3 +370,148 @@ game stays paused and the menu, on the Settings tab, is back with the picture.
 ### 9.6 Not proven
 
 (filled in below)
+
+> **§9.5 note from lane 12 (2026-09-23 12:25):** the Settings tab's **FOV row could not change FOV
+> in a box game** — measured, not inferred: `seta cg_fov "100"` answered *"cg_fov is cheat
+> protected."* in the client console (`l12a.client.console.log`), because cg_fov carries DVAR_CHEAT
+> (flags `0x81`) and a server's `sv_cheats` is 0. Fixed for the tab and the console alike in §10.2.
+
+---
+
+## 10. 2026-09-23 ~11:55–12:30 — lockdown: no stock main menu, no stock console, the ENW console, "Your record has been uploaded" (lane 12, branch `worktree-agent-a3c4fdfc2d163a895`)
+
+B (04:00): *players must never reach World at War's stock main menu or the stock console; our own
+restricted console (sensitivity, FOV, harmless dvars only); a chat line "your record has been
+uploaded"*; plus lane 8's hand-over: the in-game chat window starts empty until the DLL asks the
+feed with `history=1` (that one is `chat-overlay.md` §14).
+
+| File | What |
+|---|---|
+| `client-dll/components/menu_lockdown.cpp` + `.hpp`, `menu_lockdown_model.hpp` | §10.1. The end screen over the main menu, the silent-server rule, the quit |
+| `client-dll/components/restricted_console.cpp` + `.hpp`, `console_model.hpp` | §10.2. The two locks on the stock console, the ENW console, the cg_fov unlock + cap |
+| `settings_tab.cpp/.hpp` (`[console]`) | `console_get/set/reset/list/names`: the console writes only through the tab's own `apply_value` |
+| `pause_menu.cpp` (`[console]`, 8 lines) | calls the lockdown's input swallow and the console first in its filter and draw, and hands the console its drawing calls |
+| `join_retry.cpp` (`[lockdown]`) | binds its SCR_DrawScreenField seam in **every** client process now (was: launcher joins only) and calls `menu_lockdown::draw_over()` last |
+| `net_probe_client.cpp` (`[lockdown]`) | exports the time of the last in-band datagram |
+| `notice_board.hpp`, `chat_overlay.cpp` (`[notice]`/`[history]`, ~12 lines) | §10.3 and `chat-overlay.md` §14 |
+| `web/server/lib/gameChat.js` (`notify`, channel `notice`), `lib/results.js` (`noticeSeated`) | §10.3, the site half |
+| `tools/tests/lockdown_test.cpp` (**73/0**), `web/test/record-notice.js` (**7/0**, in `npm run check`) | tests |
+| `tools/dev/lockdown-proof.ps1`, `authhost.mjs --result`, `web/test/game-menu.js` `/dev/result` | the local proof harness |
+
+### 10.1 The main menu is never shown
+
+The boot already skips it (`client.md` §10). This is the other end of a session. When a game that
+had connected (clc.state ≥ 4 seen) falls back to clc.state 2/0 — the menu — **our cover is drawn
+from its first frame**: a full-screen black pic after `SCR_DrawScreenField` (the call that draws the
+main menu, the console and the connect screen; `join_retry.cpp` owns that call site and calls
+`draw_over()` last, so the cover is on top of everything the engine drew). After 1.5 s at the menu
+(a map change passes through the same state for a frame or two and must not end a game) it says why
+(`com_errorMessage` made readable: *"The server closed the game."*, *"Lost the connection to the
+server."*, *"The game has ended."*, …), repeats the site's newest notice (§10.3), counts *"Back to the
+launcher in 4"* down and sends `quit`. The launcher is our menu; its follow gate does not boot the
+player back in, and a live game stays resumable from the server card (§5). While the screen is up
+the menu under it gets no keys and no clicks (`swallow_input`, first in `pause_menu::filter`).
+Covers every way to the menu: a kick or error drop, the Esc menu's Exit, Play Local's stock pause
+menu *Quit*, a join that never got in.
+
+**The silent server — measured, and the reason there are two triggers.** `l12b`: the server killed
+after a game over (what the box does when it retires an instance: no disconnect is sent) left the
+client **at clc.state 10 on the black game-over scoreboard for 60 s with `cl_timeout 10`** — this
+engine never timed it out. So a map with no in-band datagram from the server for **20 s**
+(`net_probe_client`'s recvfrom tap) is a session that has ended too: *"Lost the connection to the
+server."*, same countdown, quit. The pause contract keeps snapshots flowing while frozen, and a map
+change leaves state 10, so neither trips it.
+
+Armed only where the ENW launcher (or the harness) started the game: `ENW_LOCALAPPDATA` set.
+Switches: `ENW_MAIN_MENU=1` (stock behaviour), `ENW_LOCKDOWN_SILENCE_S` (0 = off), `ENW_LOCKDOWN_SHOW_MS`.
+
+### 10.2 The stock console never opens; the ENW console does
+
+**Two locks.** (1) The console key is the key under Esc **by scan code 0x29**, whatever the layout
+(on B's UK keyboard it is `` ` ``/¬, not VK_OEM_3): its WM_KEYDOWN/KEYUP/CHAR are consumed first in
+`pause_menu::filter`, before the engine's WndProc. (2) Any other way in (Backspace+Home, a
+`toggleconsole` bind in a hand-edited config, an engine error) ends in keyCatchers bit 0x1 —
+`Con_ToggleConsole` is `keyCatchers ^= 1` and the console is drawn only while it is set (IW3,
+KisakCOD `cl_console.cpp`) — so a frame subscriber clears bit 0x1 the frame it is set, and logs it.
+`ENW_STOCK_CONSOLE=1` turns both off (developers only). Note: SP's own `monkeytoy 1` also keeps the
+stock console shut; the locks matter for every player whose config says `monkeytoy 0`.
+
+**The ENW console** takes the same key, in a map, when no menu or chat is open: one input line, the
+last lines of output, WaW's stock font. A line is a setting of the in-game catalogue — the Settings
+tab's list, by dvar or catalogue id (`sensitivity 4`, `cg_fov 90`, `fov`, `set`/`seta`,
+`list [prefix]`, `reset <x>`, `help`, `clear`, Tab completion, Up/Down history, Ctrl+V). A set runs
+`settings_tab::console_set`: the same visibility (Verified game → only `verified` items; mod-owned →
+read-only; `settings::forbidden_dvar` → *"sv_cheats is locked."*), the value checked against the
+catalogue (slider range, list values, toggles take on/off), then the tab's own `seta` +
+write-through. `;`, a second value, and anything that is not a setting are refused; **nothing typed
+is ever handed to the engine as a command** (`quit`, `exec`, `bind`, `connect`, `map` … all *"not
+available here"*). Binds and video stay in Esc > Settings.
+
+**cg_fov was cheat-protected — found by the first run.** `l12a`: `seta cg_fov "100"` → *"cg_fov is
+cheat protected."* (flags `0x81`: archive + DVAR_CHEAT; IW3's `Dvar_SetVariant` refuses an external
+set of a cheat dvar while sv_cheats is 0). So neither this console nor the Settings tab's FOV row
+could change FOV in a box game. Fixed: `restricted_console.cpp` clears **cg_fov's** 0x80 (never
+cg_fovScale's) from its frame tick (again if the engine re-registers it), and because a
+hand-edited bind could now set it too, **anything above 120 is set back to 120** (the records cap,
+`verified-rules.md` §2.2; T4M and Plutonium unlock cg_fov the same way). A mid-game FOV is still
+not reported to the host (`verified-rules.md` §8.5).
+
+### 10.3 "Your record has been uploaded."
+
+How the pieces learn it (`referee.md` §16, `host.md` §14): the dedicated DLL sends `game_over`, the
+host finishes the run and POSTs the result to `/api/gs/result`, and the site's `results.ingest`
+stores it — the POST's answer *is* the host's confirmation. The client DLL never hears the host
+link, and the host's `say` into a game is not delivered to clients (`chat.cpp`'s injection is off,
+`chat-overlay.md` §5). So the line goes the one way the game already listens: **the site, at ingest,
+puts a private `notice` line in `chat_private` for each seated (verified) player of a box result**
+(`gameChat.notify`; first arrival only — a retry is a repeat). Record-eligible Verified game:
+*"Your record has been uploaded."*; anything else (Custom, late join, refused Verified run): *"Your
+game has been saved. Not record-eligible."* The overlay's long-poll carries it (`kind: system`,
+drawn yellow on the HUD and in the Global tab) and posts it to `notice_board`, so the end screen
+repeats it if the server goes away before the player reads it. Local runs (not the box path) say
+nothing in game; the launcher's own toast covers them.
+
+### 10.4 Proof — local dedicated server + client, invisible, private LocalAppData, under the lock
+
+Harness: `tools\dev\lockdown-proof.ps1` = `jointest.ps1` (`d2` server + `c1` client, off-screen,
+`ENW_TEST_NO_ACTIVATE=1`, `ENW_BORDERLESS_COVER=0`, private LocalAppData) with an invite token for
+the fake id `76561198000000201` (`authhost.mjs mint`), the link to `authhost.mjs serve --result`, and
+the chat pass of a private site (`node web/test/game-menu.js --serve 3399`: temp DB; `web/data` and
+3200 untouched). **What is simulated:** `authhost --result` builds the host's summary from the game's
+own `game_over` rows and POSTs it to the private site's `/dev/result`, which runs the real
+`results.ingest(..., {requireVerifiedIdentity:true})` — the host agent's `finish()` and the box auth
+of `/api/gs/result` are not exercised. Everything else is the real DLL, engine, site code and feed.
+Logs `ZombiesDev\logs\dedi\l12{a,b,c}.*`. DLL for l12c `89caa50c` (build `lane12`).
+
+| run (lock held) | what it showed |
+|---|---|
+| `l12a` 12:08:34–12:11:57 | first poll `3 backlog line(s) (history=1) into the window, none on the HUD`; console OPEN on the key under Esc (*"World at War's console never saw the key"*); `sv_cheats 1` / `developer 1` → *locked*; `fov 130` → *takes 65 to 120*; `quit` → *not available here*; `cg_fov 90; sv_cheats 1` → *One setting at a time.*; `com_maxfps 125` → *locked in a Verified game*; **`cg_fov 100` → "cg_fov is cheat protected." (the finding above)**; the idle player dies, `game_over` → `RESULT ... HTTP 200 {"ok":true,"notified":1} (37 ms after game_over)` → client `system line: Your record has been uploaded.` over the long-poll; a timed `disconnect` at +175 s → `clc.state 10 -> 2` → covered from the first frame → *"The game has ended."* → `quit` 5.5 s after the fall, **295 covered frames, the client process ended on its own**. Two harness faults, both fixed: the selftest posted a WM_CHAR as well as the key (a stray `'` typed into the first line, so `sensitivity 7` failed), and with SP's own `monkeytoy 1` the engine-direct console key opened nothing, so the catcher was not exercised |
+| `l12b` 12:17:41–12:21:15 | cg_fov unlocked (`flags 0x81 ... DVAR_CHEAT cleared`) → `sensitivity 7` and `cg_fov 100` both set, `engine: cg_fov is '100'`, **WRITE-THROUGH 203 ms** each; with `+set monkeytoy 0` the console key sent **straight to the engine's WndProc** opened the stock console and **`World at War's console was opened (keyCatchers 0x1) -- closed it the same frame`**; `set cg_fov 150` into the command buffer → `cg_fov was 150.0, above the records cap of 120 -- set back to 120`. The record line again. Server ended at +140 s (our PID) → **the client sat at clc.state 10 for 60 s and never timed out** → the silent-server rule |
+| `l12c` 12:23:01–12:25:49 | everything in l12b again, plus: the HUD line on the game-over scoreboard (`ui/lockdown-record-uploaded-hud-800x600.jpg`); server ended at +130 s → `the server has sent nothing for 20000 ms while in the map` → end screen *"Lost the connection to the server." / "Your record has been uploaded." / "Back to the launcher in 3"* → `quit` → **the client ended on its own; jointest found both gone and released the lock** |
+
+![the ENW console](ui/lockdown-console-open-800x600.jpg)
+![the end screen after the server went away](ui/lockdown-end-screen-lost-800x600.jpg)
+
+Also in `ui/`: `lockdown-end-screen-ended-800x600.jpg` (l12a), `lockdown-cover-800x600.jpg`.
+In l12a the HUD capture 1.2 s after the line arrived did not show it; the overlay now starts a
+line's HUD clock when the HUD can draw it (`chat-overlay.md` §14) and l12c shows it.
+
+Tests: `lockdown_test` **73/0**, `settings_model_test` 55/0 unchanged, web `npm run check` all
+twelve suites 0 failed (`record-notice` 7/0 new).
+
+### 10.5 Not proven
+
+* **On the box, through the real host agent and site.** The result POST was a dev stand-in (§10.4).
+  The first real Verified game after this ships is the proof: the player's log should show
+  `system line: Your record has been uploaded.` and, when the instance is retired, the end screen.
+* **B's hand and B's keyboard**: the console key on a real UK keyboard (scan code 0x29 is the
+  design; only posted messages were used), typing, paste; 2560x1440 borderless.
+* **A real kick / Com_Error drop** (its `com_errorMessage` on the screen): only the empty-message
+  paths (`disconnect`, silence) were run; `describe()` is unit-tested on the known keys.
+* **Play Local's stock pause-menu Quit** → cover → quit: the same code path (clc.state 2 after a
+  session) but not run.
+* **The Esc menu's Exit** now meets the lockdown on its way out (disconnect → quit 400 ms later,
+  before the 1.5 s debounce): read, not run.
+* **Exclusive fullscreen**: not looked at.
+* A server that is alive but silent for 20 s in a map (a stall that would recover) is now ended by
+  us; no such stall has been seen, but it is a behaviour change.

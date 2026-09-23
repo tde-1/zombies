@@ -21,7 +21,7 @@
 // transcript so a run can be read afterwards.
 //
 //   node tools/dev/authhost.mjs mint   --keydir <d> --match m_x --steamid 7656... [--forge]
-//   node tools/dev/authhost.mjs serve  --keydir <d> --match m_x --port 38795 --out <f> [--restart]
+//   node tools/dev/authhost.mjs serve  --keydir <d> --match m_x --port 38795 --out <f> [--restart] [--result <url>]
 //
 // --restart (esc-menu lane): answer a player's `restart_request` the way the real host does
 // (infra/host-agent/lib/restart.js): verified or alone -> `end {reason:'player_restart',
@@ -163,6 +163,27 @@ const guard = new TokenGuard(hostKeys.publicFromRaw(siteKeys.site().pub),
                              { singleUse: true, requireToken: true })
 
 const restartMode = flag('restart')
+// --result <url> (lockdown lane, esc-menu.md §10.3): on the game's `game_over`, POST a result
+// the way the host does after a game (host.js finish -> siteclient POST /api/gs/result) to a
+// PRIVATE dev site's `/dev/result` (web/test/game-menu.js --serve), which runs the site's real
+// `results.ingest(..., {requireVerifiedIdentity:true})`. What is simulated: the host's summary
+// is only the game's own game_over rows with this harness's verified identities; the box
+// auth of /api/gs/result is skipped. What is not: the ingest, the notice, the feed, the DLL.
+const resultUrl = opt('result', null)
+function postResult(m) {
+  const players = (Array.isArray(m.players) ? m.players : []).map((p) => ({
+    ...p, identity: verified.get(Number(p.slot)) === String(p.steamid || '') ? 'verified' : (p.identity || 'none'),
+  }))
+  const body = JSON.stringify({ box: 'authhost-dev', instance: 'dev', summary: {
+    match_id: matchId, mode: 'verified', map: m.map || 'nazi_zombie_prototype', rounds: Number(m.round) || 0,
+    records_eligible: true, flags: [], duration_ms: Number(m.duration_ms) || 0, finish: null,
+    end_reason: m.reason || null, players,
+  } })
+  const t0 = Date.now()
+  fetch(resultUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body })
+    .then(async (r) => say(`RESULT posted to ${resultUrl} -> HTTP ${r.status} ${await r.text()} (${Date.now() - t0} ms after game_over)`))
+    .catch((e) => say(`RESULT post failed: ${e.message}`))
+}
 let carry = new Set()             // steamids verified before a restart, re-admitted once after it
 const verified = new Map()        // slot -> steamid, ALLOWed with reason ok
 const say = (s) => { const l = `[authhost] ${s}`; console.log(l); out.write(l + '\n') }
@@ -194,6 +215,7 @@ net.createServer((sock) => {
       }
       if (m.t === 'game_over') {
         say('GAME OVER: ' + JSON.stringify(m.players))
+        if (resultUrl) postResult(m)
       }
       if (m.t === 'match_end') say('match_end (this harness never reuses an instance)')
       if (m.t === 'restart_request') {

@@ -7,6 +7,7 @@
 #include <windows.h>
 
 #include <string>
+#include <vector>
 
 namespace enw::client::settings_tab {
 
@@ -55,5 +56,16 @@ bool control_point(const std::string& id, int part, float frac, float* vx, float
 std::string value_of(const std::string& id);
 void log_values(const char* why);
 void set_restricted_override(int v);   // -1 real, 0 off, 1 on (selftest only)
+
+// [console] The ENW console (restricted_console.cpp, esc-menu.md §10) sets settings through
+// exactly the tab's path: the same catalogue, the same visibility rules (Verified, mod-owned,
+// forbidden), the same `seta` + write-through. Each returns the one line the player reads.
+std::string console_get(const std::string& name);
+std::string console_set(const std::string& name, const std::string& value);
+std::string console_reset(const std::string& name);
+// "cg_fov 90 (field of view, 65 to 120)" per setting the console accepts now, filtered by a
+// name prefix; and the bare names, for Tab completion.
+std::vector<std::string> console_list(const std::string& prefix);
+std::vector<std::string> console_names();
 
 }  // namespace enw::client::settings_tab
