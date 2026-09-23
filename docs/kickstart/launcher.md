@@ -2557,6 +2557,7 @@ release commit names it. The detail of each change is in the lane doc named.
 | 0.2.18 | `58e4842` 02:15 | `1b103258` | Overlay and Esc menu always in the stock WaW font (from the player's own files, hash-checked) | `chat-overlay.md` §12 |
 | 0.2.19 | `f0eff31` 02:45 | `f11dc67c` | Hang watchdog (stack + minidump after 8 s silent in a map); stock-font search on a worker thread, material span 8192 | `chat-overlay.md` §12.4 |
 | **0.2.20** | `071d4d8` 03:03 | **`03b04bc3`** | Join retry: a "not ready yet" refusal waits (*Waiting for the server...*, every 2 s for 60 s) instead of a fatal error. Same binary as the box's join-fix build (main `81086d4`) | `client.md` §11, `dedi.md` §21 |
+| **0.2.21** | 04:45 (merge of `worktree-agent-a1dcc71d5e1022724`) | `03b04bc3` (unchanged) | Play checks Steam first and starts it silently if closed (*Starting Steam...* / *Waiting for Steam sign-in*, 60 s / 150 s, one-line failure + Retry); a stuck `CoDWaW.exe` (SteamStub never decrypted, no window) is ended and Play continues, a live one is refused with *End game* only for our own process; volume writes `snd_menu_master` (bug 15). 165/0 | this file, section *2026-09-23 — Play starts Steam* |
 
 **On the feed at handoff: 0.2.20** (`https://zombies.enw.gg/updates/latest.yml`, installer 302 to
 `enw-zombies.nbg1.your-objectstorage.com/updates/…`, checked 03:27 UK).
