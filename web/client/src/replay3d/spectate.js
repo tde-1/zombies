@@ -27,7 +27,43 @@ export function initSpectate(track) {
 // (1/2/3 = first person / third person / free cam).
 export const isCoop = (players) => Array.isArray(players) && players.length > 1
 
-const aliveOf = (p) => !!(p && p.alive)
+// "Up" is `up` when the viewer has worked it out (the snapshot's alive AND no open `down` event,
+// see downSpans), else the snapshot's `alive`.
+const aliveOf = (p) => !!(p && (p.up !== undefined ? p.up : p.alive))
+
+// Down windows per player from the feed events: a `down` opens one, a `revive` of him or his next
+// `player_spawn` closes it; a `bleedout` leaves it open (he is out until he spawns again). This
+// is on top of the snapshot's `alive`, because whether the DLL reports a player in last stand as
+// not alive is unproven (replay.md §9.6: the track does not say downed vs dead).
+// Returns Map slot -> [[fromMs, toMs|Infinity], ...].
+export function downSpans(events) {
+  const out = new Map()
+  const open = new Map()
+  for (const e of Array.isArray(events) ? events : []) {
+    if (e == null || !Number.isFinite(e.slot) || !Number.isFinite(e.ms)) continue
+    if (e.t === 'down') {
+      if (!open.has(e.slot)) open.set(e.slot, e.ms)
+    } else if (e.t === 'revive' || e.t === 'player_spawn') {
+      if (open.has(e.slot)) {
+        if (!out.has(e.slot)) out.set(e.slot, [])
+        out.get(e.slot).push([open.get(e.slot), e.ms])
+        open.delete(e.slot)
+      }
+    }
+  }
+  for (const [slot, from] of open) {
+    if (!out.has(slot)) out.set(slot, [])
+    out.get(slot).push([from, Infinity])
+  }
+  return out
+}
+
+export function isDownAt(spans, slot, ms) {
+  const s = spans && spans.get(slot)
+  if (!s) return false
+  for (const [a, b] of s) if (ms >= a && ms < b) return true
+  return false
+}
 
 // The next player after `focus` in `dir` (+1 / -1), wrapping, in panel order. Alive players
 // first: a downed one is skipped while anybody else is up. With nobody else up, the next one

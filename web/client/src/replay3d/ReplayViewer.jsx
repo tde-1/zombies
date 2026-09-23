@@ -40,7 +40,7 @@ import {
 import { createGear, loadAssets } from './gear.js'
 import { ReplaySound } from './sound.js'
 // Lane R4 (replay.md §13): who the camera follows in a co-op replay -- a pure reducer.
-import { initSpectate, spectate, keyAction, isCoop, downPrompt, followLabel } from './spectate.js'
+import { initSpectate, spectate, keyAction, isCoop, downPrompt, followLabel, downSpans, isDownAt } from './spectate.js'
 import {
   CG_FOV, VIEW_HEIGHT, HULL, HUD, BTN, stanceOf, WEAPONS, DEFAULT_WEAPON, weaponRow,
   simulateSpread, reticleGeom, cookAt, roundGlyphs, trackClock,
@@ -151,6 +151,9 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const coop = isCoop(track && track.players)
   // The players at the playhead (name, alive), in panel order, for the key handler's cycling.
   const listRef = useRef([])
+  // Down windows from the feed (down .. revive / spawn): a player is "up" only if the snapshot
+  // says alive AND no down is open, since last stand's `alive` is unproven (spectate.js).
+  const downSp = useMemo(() => downSpans(track && track.events), [track])
   const specRef = useRef(spec)
   useEffect(() => { specRef.current = spec }, [spec])
   const [playing, setPlaying] = useState(false)
@@ -733,6 +736,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         health: p.health[i], score: p.score[i], alive: p.alive[i] === 1,
         stance, height: BODY[stance].height,
       }
+      rec.up = rec.alive && !isDownAt(downSp, p.slot, t0 + timeRef.current * 1000)
       list.push(rec)
       if (rec.slot === focusRef.current) focusP = rec
     }
@@ -812,7 +816,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     // Zombies left: computed by the track from the round's stock total (lib/wawRules.js).
     const zl = track.zombies_left ? track.zombies_left[i] : null
     return { fire, xh, zs, i, list, alive: zs.length - zDying, left: zl == null ? null : zl, round: roundAt[i] || 0 }
-  }, [track, clk, t0, roundAt, weaponNameAt, spread, zombieYaw, walked, zombieDeathMs])
+  }, [track, clk, t0, roundAt, weaponNameAt, spread, zombieYaw, walked, zombieDeathMs, downSp])
 
   // ---- lane R3: weapons in hands, flashes, the viewmodel's weapon, power-ups, name tags ----
   // A pure function of replay time (fx.js), so a scrubbed or paused frame is what a played one

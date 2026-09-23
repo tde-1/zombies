@@ -142,6 +142,21 @@ async function main() {
     same(Object.keys(s).sort(), ['focus', 'mode', 'view'])
   })
 
+  await check('down windows from the feed: down..revive, down..spawn, down with a bleedout stays open; `up` wins over `alive`', () => {
+    const sp = S.downSpans([
+      { t: 'down', ms: 1000, slot: 2 }, { t: 'revive', ms: 4000, slot: 2, by: 0 },
+      { t: 'down', ms: 5000, slot: 1 }, { t: 'bleedout', ms: 9000, slot: 1 }, { t: 'player_spawn', ms: 12000, slot: 1 },
+      { t: 'down', ms: 7000, slot: 3 }, { t: 'bleedout', ms: 9000, slot: 3 },
+      { t: 'revive', ms: 100, slot: 0 }, { t: 'kill', ms: 50 },
+    ])
+    eq(S.isDownAt(sp, 2, 999), false); eq(S.isDownAt(sp, 2, 1000), true); eq(S.isDownAt(sp, 2, 3999), true); eq(S.isDownAt(sp, 2, 4000), false)
+    eq(S.isDownAt(sp, 1, 11000), true, 'bled out: still out'); eq(S.isDownAt(sp, 1, 12000), false, 'spawned again')
+    eq(S.isDownAt(sp, 3, 1e9), true, 'down to the end'); eq(S.isDownAt(sp, 0, 200), false)
+    // a player whose snapshot says alive but whose `down` is open is not "up"
+    const ps = [{ slot: 0, name: 'A', alive: true, up: true }, { slot: 1, name: 'B', alive: true, up: false }]
+    same(S.downPrompt(ps, 1, 'follow'), { slot: 1, name: 'B', next: { slot: 0, name: 'A' } })
+  })
+
   await check('the co-op fixture: 4 players through the real track builder, slot 2 down then up, slot 3 down to the end', () => {
     const track = buildTrack('x.enwr', { readHeader: () => ({ header: { match_id: 'm_f0f0f0f2', map: 'nazi_zombie_prototype' } }), readEvents: () => coopEvents() }, 20)
     eq(track.players.length, 4)
@@ -156,6 +171,9 @@ async function main() {
     same(S.downPrompt(list(8000), 2, 'follow'), { slot: 2, name: 'Fixture Three', next: { slot: 3, name: 'Fixture Four' } })
     eq(S.downPrompt(list(13000), 2, 'follow'), null, 'revived at 12 s')
     same(S.downPrompt(list(17000), 3, 'eyes').next, { slot: 0, name: 'Fixture One' })
+    // the feed's own down / revive / bleedout events give the same windows
+    const sp = S.downSpans(track.events)
+    eq(S.isDownAt(sp, 2, 8000), true); eq(S.isDownAt(sp, 2, 13000), false); eq(S.isDownAt(sp, 3, 20000), true); eq(S.isDownAt(sp, 0, 8000), false)
   })
 
   for (const [s, n] of out) console.log(`${s} ${n}`)
