@@ -2565,3 +2565,70 @@ release commit names it. The detail of each change is in the lane doc named.
 the `rate 25000` / `snaps 30` / `cl_maxpackets 100` baseline that §22.4 asks this lane for. Also still
 wrong: the launcher's volume setting writes `snd_volume`, which is not a dvar in this exe (the real one
 is `snd_menu_master`; `client.md` §10).
+
+## 2026-09-23 — Play starts Steam; volume is `snd_menu_master` (bug 15)
+
+Commit `774a2fb` (not in a release yet; the coordinator publishes).
+
+### What Play with Steam closed used to do
+
+`CoDWaW.exe` is SteamStub-wrapped (`docs/re/steam-drm.md`). The launcher spawned it anyway.
+Measured on this PC (board.md 2026-09-21 19:12, dedi's join test with Steam down): the process
+stays alive, `.text` stays encrypted, the DLL logs `steamstub: STILL ENCRYPTED after 60000 ms ...
+Is the Steam client running` and disables every hook. No window. The boot screen then said
+*World at War is running*, sat on *waiting for the game to connect* (90 s, then "the site has not
+seen you join yet", for ever), and every later Play was refused with *World at War is still
+running* because the invisible stuck process was. The launcher-path version of this was not
+re-run tonight (Steam on this PC is B's and stays up); the chain is read from the code plus that log.
+
+### The flow now (`src/main/steam.js`, `BootFlow.steamGate`)
+
+Runs first in `BootFlow.run()`, for Play, follow and Play Local, before the site is asked for a box.
+
+| State | Tell | Boot screen (step "Steam", spinner) | Timeout |
+|---|---|---|---|
+| ready | a `steam.exe` is running, `ActiveProcess\pid` is that process, `ActiveUser` ≠ 0 | nothing drawn | — |
+| starting | no `steam.exe` → spawn `steam.exe -silent` (path from `SteamExe`, then `SteamPath`, then Program Files; `steam://open/main` if the spawn throws) | *Starting Steam...* | 60 s for `steam.exe` to appear |
+| signin | `steam.exe` up, `ActiveUser` 0 (or the key still names a dead session's pid) | *Waiting for Steam sign-in* | 150 s |
+| settling | just signed in | *Steam is ready* | 6 s, then the launch continues (a game started the instant the client appears exits silently; vps.md) |
+
+Failures, each one line, one red step, a **Retry** button (`retryPlay` → the same `startPlay`
+options again) and *Back to the site*; no other step is drawn, nothing was leased, and no lease is
+released (a follower's lease is the party's):
+
+* *Steam isn't installed.* — no `steam.exe` anywhere. Immediate.
+* *Steam didn't start.* — no `steam.exe` after 60 s, or the ensure threw (never a stack).
+* *Not signed in to Steam.* — still `ActiveUser` 0 after 150 s.
+
+Cancel during the wait stops it. `ENW_SKIP_STEAM_CHECK=1` turns the gate off. Registry reads are
+`reg.exe query`, read-only; the launcher never writes Steam's keys and never signs anyone in or out.
+
+**Second Play.** `startPlay` refuses when a game this launcher started is alive (as before) **or
+any `CoDWaW.exe` is running** (tasklist): toast *World at War is already running.*, the IPC call
+rejects with the same line, nothing else happens. The follow path records the match before
+calling, so a refused follow is not retried every poll.
+
+### Volume (bug 15)
+
+`settings.volume` went out as `+set snd_volume`. In the decrypted 1.7 image `snd_volume` is only a
+string in a data table (`0x8819CC`, referenced from `0x8E4DC0`) and is never registered, so the
+setting did nothing (`client.md` §10b). Now `snd_menu_master` (`VOLUME_DVAR` in `gamecfg.js`;
+read back from it; `modcompat.js` managed set), and it is in `wawcfg.js`'s per-launch config.cfg
+set, because a `+set` alone loses to the config the engine execs after it. The site's own
+Master Volume (`waw.snd_menu_master`) still replaces it in place. The six sound dvars the site
+writes (`snd_menu_master/voice/music/sfx`, `snd_cinematicVolumeScale`, `snd_losOcclusion`) are all
+loaded as `mov edi,<name>` in the sound init (`0x6B4963`..`0x6B4EC1`), i.e. registered; a test
+re-checks that against the dump when it is on the machine. The dev harness's
+`+set snd_volume 0` (launch.js offscreen/small) is harmless and left; it also sets `snd_menu_master 0`.
+
+### Tests and what is not proven
+
+`node test/run-all.js`: 153 passed, 1 failed (the pre-existing *repairs the client DLL* test: the
+worktree has no staged client DLL). `waw-settings.js` 14/0, `modcompat.js` 6/0. New: 14 Steam
+tests (fake clock: every state, both timeouts, cancel, throw, stale registry after a crash, the
+boot flow never asking the site when Steam fails) and 2 volume tests. Live, read-only: `readState()`
+on this PC → `running, signedIn, pid 9252`, `ensureSteam()` returned in 73 ms with nothing drawn.
+
+**Unproven:** the starting/sign-in path against a real closed Steam (not tested: B's account); that
+`-silent` still shows the login window when there is no saved login; the Retry and spinner in the
+real UI (no screenshot, no game launched); the volume reaching the game's sound (no game run).
