@@ -12,7 +12,7 @@ import { BootQueue } from '../lib/bootqueue.js'
 import { ramPlan, parseMeminfo, MB } from '../lib/memguard.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
-import { InstanceManager, devKnobsFor, safeLeaseDvars } from '../lib/instances.js'
+import { InstanceManager, devKnobsFor, safeLeaseDvars, countPlusCommands, ENGINE_PLUS_LIMIT, LAUNCH_PS1_PLUS } from '../lib/instances.js'
 import { gameModeDvars, gameModeId } from '../lib/gamemode.js'
 import { leaseList, planLeases } from '../lib/leases.js'
 import { SERVER_RULES, RULESET, effectiveFps } from '../lib/verified.js'
@@ -1052,6 +1052,36 @@ t('game mode: the result carries the mode, eligible only when the server proved 
   const plain = makeRef(); stockServer(plain); bootGame(plain); plain.onEvent({ t: 'game_over', ms: 10 * MIN, round: 3, reason: 'end_game' })
   const ps = plain.summary()
   eq(ps.game_mode, null); eq(ps.game_mode_applied, null); eq(ps.records_eligible, true)
+})
+t('the engine keeps 31 + commands: the box line fits with +map last, and a line that would lose +map is refused, not booted', () => {
+  eq(countPlusCommands(['+set a 1', 'x', '+map y']), 2)
+  eq(countPlusCommands(['CoDWaW.exe', '+set', 'a', '1']), 1)
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'plus31'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet,
+    wine: { gameDir: '/home/waw/pfx/drive_c/zdev/waw-{slot}', homeWin: 'C:\\zdev\\homes\\{slot}' } })
+  // The box's real line: Custom, a UGX mode, fs_game, a couple of lease dvars.
+  const g = m.create({ kind: 'game', assignment: { map: 'battlestar_galactica', fs_game: 'mods/battlestar_galactica', mode: 'custom', game_mode: UGX_GG,
+    settings: { dvars: { player_sustainAmmo: '1', timescale: '1' } } } })
+  const { argv } = g.spawnArgs()
+  const n = countPlusCommands(argv)
+  ok(n <= ENGINE_PLUS_LIMIT, `${n} + commands: ${argv.join(' ')}`)
+  eq(argv.slice(-2), ['+map', 'battlestar_galactica'])
+  // Too many lease dvars: the host refuses the lease with the reason instead of a server with no map.
+  const many = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`g_enw_x${i}`, '1']))
+  const big = m.create({ kind: 'game', assignment: { map: 'battlestar_galactica', mode: 'custom', settings: { dvars: many } } })
+  let threw = null
+  try { big.spawnArgs() } catch (e) { threw = e }
+  ok(threw && /31/.test(threw.message) && /\+map/.test(threw.message), String(threw && threw.message))
+  let failed = null
+  big.on('failed', (why) => { failed = why })
+  eq(big.start(), false)
+  eq(big.state, 'failed'); ok(failed && /lease refused/.test(failed), String(failed))
+  // The Windows (launch.ps1) path counts that script's own prefix too.
+  const w = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'plus31w'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  const wb = w.create({ kind: 'game', assignment: { map: 'battlestar_galactica', mode: 'custom', settings: { dvars: many } } })
+  let wthrew = null
+  try { wb.gameArgs(LAUNCH_PS1_PLUS) } catch (e) { wthrew = e }
+  ok(wthrew, 'launch.ps1 prefix + 12 lease dvars is over the limit')
 })
 
 // ---- game copies by SLOT, not by id (dedi.md §19, 2026-09-23) --------------------------
