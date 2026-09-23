@@ -2122,8 +2122,8 @@ read). Check on the first run: `(N of them Documents …)` > 0 and no new file u
 ### 14.6 State, and what is not proven
 
 * Branch `worktree-agent-ae9502ddee2a48065`. DLL `build\ce\enw_t4.dll` sha256
-  `0e85ca48241d03b5f616765417fc815b212c22a60fadcb46fc7a8610f054fd42` (guard + Documents redirect,
-  built 00:13 from the committed source; ce2–ce4 ran the guard-only `9ca96ebf…`, same guard code). Client-only: the box DLL does not need it
+  `0657d9f2fa9063bc09242f211a6724c63f7d9612eb19a602c6c7c135531bc216` (guard + Documents redirect,
+  built 00:14 at merge head a3456d7; ce2–ce4 ran the guard-only `9ca96ebf…`, same guard code). Client-only: the box DLL does not need it
   (`is_supported() == !dedicated`). Deploy = the next launcher publish by the recipe.
 * C++ tests: `lockdown_test` 196/0; `settings_model_test` 64/1 — the one failure (`two excluded:
   ai_corpseCount … Discord switches`) is main's (SOC's settings change), not this branch.

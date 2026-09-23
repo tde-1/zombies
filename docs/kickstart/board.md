@@ -4896,4 +4896,4 @@ configured by environment was not enforcing tokens at all.**
 ## What is open right now (2026-09-23 03:30, handoff)
 
 See `next-session.md` → "Open bugs and unproven things" (17 lines) and "Decisions only B can make" (8).
-- 00:15 CE: B's Cheese Cube 'crash at game end' = F12 screenshotJPEG at 2560x1440 overflowing the 10 MB temp hunk (ERR_DROP, every map). Fix screenshot_guard.cpp; repro ce2 + pass ce4 (Nacht). Client DLL 0e85ca48, branch worktree-agent-ae9502ddee2a48065. Not run: Cheese Cube, Documents redirect. Test shots left in C:\Users\b\Documents\Activision (delete refused). client.md §14.
+- 00:15 CE: B's Cheese Cube 'crash at game end' = F12 screenshotJPEG at 2560x1440 overflowing the 10 MB temp hunk (ERR_DROP, every map). Fix screenshot_guard.cpp; repro ce2 + pass ce4 (Nacht). Client DLL 0657d9f2, branch worktree-agent-ae9502ddee2a48065. Not run: Cheese Cube, Documents redirect. Test shots left in C:\Users\b\Documents\Activision (delete refused). client.md §14.

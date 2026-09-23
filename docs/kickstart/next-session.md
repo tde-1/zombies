@@ -19,7 +19,7 @@ the vault Build Log (`19 - Build Log`, "16:30 UK — new coordinator session" ro
 stock `screenshotJPEG` at 2560×1440 needs an 11 MB temp-hunk block from a 10 MB hunk → ERR_DROP → lockdown quit. Every map, any
 moment, any display >3.4 MP. Fixed by `screenshot_guard.cpp` (JPEG buffer from the heap); reproduced guard-off (ce2) and proven
 guard-on on Nacht through game over → end screen → clean quit (ce4). Branch `worktree-agent-ae9502ddee2a48065`, client DLL
-`0e85ca48`, next launcher publish. **Open:** Cheese Cube run + the Documents redirect run (refused by the agent's permission
+`0657d9f2`, next launcher publish. **Open:** Cheese Cube run + the Documents redirect run (refused by the agent's permission
 guard), and **delete `C:\Users\b\Documents\Activision`** (three test JPEGs this lane's runs created; the engine writes shots there).
 
 # Next session — earlier (2026-09-23 03:30 handoff)
