@@ -909,3 +909,212 @@ Sample (steps abridged here; the site quotes them with author and link):
   territory and nothing in the archive covers it.
 - Next, as B said: read the steps out of the map's own GSC (`referee/scan_map.py`'s flags are the
   start); those rows would come in as `origin='script'`.
+
+
+## 13. 2026-09-23 (afternoon) — asset audit: every model, every map, every gun (lane A1)
+
+B, 13:10 UK: *"Make sure invisible or broken zombies can't happen on any other map. Every model,
+every map, every gun, everything should load flawlessly."* fear_mc_2's invisible/garbled zombies are
+lane Z1's (`mod-compat.md` §10, next-session bug 18); this section is the rest of the catalogue.
+
+### 13.1 What was measured
+
+`archive/asset_audit.py` reads **every server console log we hold** — the box's per-map
+`waw-en/mods/<bsp>/console.log` and `zdev/homes/*/main/console.log` (pulled read-only at 12:59 and
+13:28 UK into `ZombiesDev\archive\logs\box-console\`), `box_proof.py --save-console` slices,
+`ZombiesDev\logs\dedi\*.console.log` and the harness's shared `archive\mods\<bsp>\console.log` —
+cuts them into processes (`logfile opened on`), attributes each to the map zone it loaded, and
+collects every `Could not load xmodel|xanim|material|fx|weapon|rawfile|...`, `unknown item`,
+`image ... is missing` and `Waited ... for missing asset`. 157 hosted maps (every DB map with an
+fs_game, plus the stock four); 81 have at least one logged load.
+
+Per miss it answers **where** the asset is — OpenAssetTools' Unlinker `--list` over every zone we
+ship, every zone of the original download, and the stock zombies zones (cached in
+`ZombiesDev\archive\cache\asset-lists`): `shipped_zone`, `shipped_iwd`, `load_zone_only` (only in
+`<bsp>_load.ff`, which a real dedicated server never loads — measured on every box log),
+`shipped_unloaded_zone` (in a zone nothing loads: number2 ships its dogs in `loacalized_number2.ff`),
+`unshipped` (in a file of the download we do not deliver — the importer's fault), `stock_zone`
+(only in Nacht/Verrückt/Shi No Numa/Der Riese's own zone), `missingasset_csv`, `absent` — and
+**what a player meets**:
+
+* **fatal role**: a character model or AI/dog xanim, a weapon (model, viewmodel xanim, weapon file,
+  `unknown item`), a script, a HUD material — and not also missing on a stock map in our own logs
+  (the chronic baseline: 299 names).
+* **visible** (a player meets it): a zombie body/head model (not a gib/limb-spawn variant), a core
+  zombie/dog locomotion or attack anim (dogs only if a loaded zone defines a dog model), a box/wall/
+  loadout weapon the map's `_zombiemode*.gsc` precaches (`unknown item`), a script not in a shipped
+  IWD. **Minor**: one ADS/idle anim, gib variants, a HUD icon, the perk-drink/bowie "weapons"
+  (`zombie_knuckle_crack`, `zombie_bowie_flourish`: missing on maps that play fine).
+* **client check** (neither: only a picture decides): player-side models — the shared `_loadout.gsc`
+  precaches whole campaign sets (`mptype\player_usa_marine::precache()` beside
+  `nazi_zombie_heroes` in johndoe) and a per-map `set_player_specific_viewmodel` overrides the
+  default viewhands (school) — plus `fraggrenade`/`zombie_melee`.
+* **owner**: `ours` (unshipped, load_zone_only), `patchable` (shipped under a name nothing loads),
+  `release` (everything else: a retail listen server with the same files misses the same).
+
+Verdict per map: `clean`, `minor`, `fix` (a visible miss we cause), `patch`, `hide` (a visible miss
+that is the release's own), `unproven` (no log of the map loading). Full per-map table and every
+fatal row: `ZombiesDev\archive\reports\asset-audit.md` / `.json`; each manifest carries its
+verdict as `asset_audit`.
+
+### 13.2 The answer
+
+**Nothing we do makes a model fail on any map with a log**, with two exceptions, both fixed or
+routed:
+
+1. **Two serve-filter drops, fixed** (`web/server/lib/mapfiles.js`): loose `sound/**.wav|.mp3`
+   were not in `ALLOWED` — 203 files on six maps (four_way_defense 93, nazi_zombie_house69 62,
+   no_way_out 37, nazi_zombie_perk 5, neon_fighter 5, bunker 1: music-box songs, weapon fire, an
+   Easter-egg song) never reached a client or the box; and `rel.includes('..')` dropped Neon
+   Fighter's **`HarryBos Mysterybox Pack V1..0.0.iwd`** (6.3 MB, its box weapons) as "path
+   traversal" — now a `..` *segment* is refused and a `..` inside a name is a file. All 204 are in
+   the bucket (`sync.js --only maps --map <bsp>`, 13:33 UK); the box has the sounds for four maps
+   (`box_stage.py --add-missing`, new: fetches only what the install lacks, never removes, safe
+   beside a live game). The Mysterybox IWD goes on the box **only after the site serves it**
+   (merge + site restart on B's word), or box and client hold different IWD sets. The launcher's
+   `ALLOWED_EXT` gets `.wav/.mp3` too; until a launcher publish, 0.2.24 skips them with a note
+   (non-fatal) — the IWD needs no launcher change.
+2. **The dedicated server never loads `<bsp>_load.ff`** (a listen server does). ray_chirstmas_map
+   (hidden already) keeps all 14 of its BO2 zombie bodies/heads only there — on our box its zombies
+   lack their models, on retail they do not. That is the **dedi lane's** (load the map's `_load`
+   zone on the dedicated server); on four live maps the load-zone-only asset is server-side only
+   (`viewhands_custom`, rain fx).
+
+Everything else visible is **the release as its author shipped it**. No importer drop was found
+behind any fatal miss: of every file in 153 originals, only `zombie_rise`'s
+`rise\zombie_rise_load.bik` (an installer extra outside the mod folder, a load video) is
+engine-readable and not shipped.
+
+### 13.3 The table
+
+Counts over the 157 hosted maps (site state after the hides below):
+
+| site state | clean | minor | fix | patch | hide | unproven | total |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| live | 17 | 10 | 0 | 0 | 1 | 50 | 78 |
+| hidden | 21 | 9 | 1 | 0 | 28 | 20 | 79 |
+
+Every map whose verdict is not `clean`/`unproven` (live first):
+
+| map | site now | runs loaded | misses | fatal | visible | owner | what a player meets | verdict |
+|---|---|---:|---:|---:|---:|---|---|---|
+| `nazi_zombie_fear_mc_2` | custom-only | 14 | 370 | 20 | 4 | release 4 | bo1_c_viet_zombie_female_head, bo1_c_viet_zombie_napalm_head, bo1_c_viet_zombie_nva1_body, bo1_c_viet_zombie_vc_grunt_head | hide |
+| `battlestar_galactica` | playable | 2 | 335 | 1 | 0 | - | (minor) viewmodel_M40a3_ADS_fire | minor |
+| `bridge_zombie` | playable | 5 | 311 | 2 | 0 | - | (minor) hud_icon_kar98k, viewmodel_claymore_empty_idle | minor |
+| `mw2rust` | playable | 8 | 405 | 2 | 0 | - | (minor) weapons/sp/zombie_bowie_flourish, weapons/sp/zombie_knuckle_crack | minor |
+| `nacht_reimagined` | playable | 1 | 155 | 1 | 0 | - | (client check) aw_hazmat_viewhands | minor |
+| `nazi_zombie_arkham` | playable | 1 | 180 | 1 | 0 | - | (client check) char_rus_guard_bodyr_m_g_upclean | minor |
+| `nazi_zombie_johndoe` | custom-only | 1 | 188 | 11 | 0 | - | (client check) char_usa_marine_head1_1, char_usa_marine_head2_2, char_usa_marine_head3_3, char_usa_marine_head4_4 +6 | minor |
+| `nazi_zombie_orbit` | playable | 2 | 194 | 1 | 0 | - | (minor) ai_zombie_quad_idle | minor |
+| `nazi_zombie_school` | custom-only | 1 | 243 | 5 | 0 | - | (client check) viewhands_player_sas_woodland, viewhands_sas_woodland | minor |
+| `ugx_artemovsk` | custom-only | 2 | 198 | 5 | 0 | - | (minor) c_zom_zombie8_body01_g_behead, c_zom_zombie_g_larmspawn, c_zom_zombie_g_llegspawn | minor |
+| `zm_nuked` | custom-only | 2 | 364 | 6 | 0 | - | (client check) fraggrenade, zombie_melee | minor |
+| `christmas_zombie` | playable hidden | 1 | 194 | 8 | 8 | release 8 | mine_bouncing_betty, zombie_colt, zombie_colt_upgraded, zombie_thompson +4 | hide |
+| `island` | playable hidden | 1 | 158 | 1 | 1 | release 1 | jukebox_button_press | hide |
+| `kri` | playable hidden | 1 | 179 | 9 | 9 | release 9 | m2_flamethrower_zombie_upgraded, panzerschrek_zombie, panzerschrek_zombie_upgraded, zombie_kar98k +5 | hide |
+| `labrats2` | playable hidden | 1 | 304 | 46 | 46 | release 46 | m1garand_gl_zombie, m1garand_gl_zombie_upgraded, m2_flamethrower_zombie, m2_flamethrower_zombie_upgraded +36 | hide |
+| `lewl` | playable hidden | 1 | 206 | 5 | 4 | ours 2, release 2 | crossbow_exp, crossbow_exp_upgraded, bo2_c_zom_dlc0_zom_sol_body1, bo2_c_zom_dlc0_zom_solciv_body1 | hide |
+| `matrix` | playable hidden | 1 | 191 | 2 | 2 | release 2 | zombie_colt, zombie_colt_upgraded | hide |
+| `nazi_zombie_decapit3` | custom-only hidden | 1 | 262 | 61 | 59 | release 59 | m1garand_gl_zombie, m1garand_gl_zombie_upgraded, m2_flamethrower_zombie, m2_flamethrower_zombie_upgraded +36 | hide |
+| `nazi_zombie_dome_snow` | playable hidden | 1 | 158 | 5 | 3 | release 3 | aug, aug, zombie_cymbal_monkey | hide |
+| `nazi_zombie_herren` | custom-only hidden | 1 | 189 | 19 | 2 | release 2 | char_ger_honorgd_bodyz1_1, char_ger_honorgd_bodyz2_1 | hide |
+| `nazi_zombie_laboratory` | custom-only hidden | 1 | 198 | 6 | 6 | release 6 | m7_launcher_zombie, m7_launcher_zombie_upgraded, panzerschrek_zombie, panzerschrek_zombie_upgraded +2 | hide |
+| `nazi_zombie_northco` | custom-only hidden | 1 | 213 | 45 | 28 | release 28 | zombie_bo_olympia_upgraded, zombie_perk_bottle_vulture, zombie_perk_bottle_vulture, zombie_dog_attack_look_down +24 | hide |
+| `nazi_zombie_overlook` | playable hidden | 1 | 224 | 46 | 24 | release 24 | zombie_dog_attack_look_down, zombie_dog_attack_look_left, zombie_dog_attack_look_right, zombie_dog_attack_look_up +20 | hide |
+| `nazi_zombie_pogreb` | custom-only hidden | 1 | 172 | 1 | 1 | release 1 | ptrs41_zombie_upgraded | hide |
+| `nazi_zombie_projectx` | custom-only hidden | 1 | 196 | 4 | 4 | release 4 | zombie_kar98k, zombie_kar98k_upgraded, zombie_kar98k, zombie_kar98k_upgraded | hide |
+| `nazi_zombie_puns` | playable hidden | 1 | 210 | 39 | 2 | release 2 | ai_zombie_window_attack_arm_l_out, ai_zombie_window_attack_arm_r_out | hide |
+| `nazi_zombie_rc` | custom-only hidden | 1 | 282 | 69 | 6 | release 6 | g36c, g36c_upgraded, inter, inter_upgraded +2 | hide |
+| `nazi_zombie_rooms` | playable hidden | 1 | 179 | 1 | 1 | release 1 | tesla_gun_upgraded | hide |
+| `nazi_zombie_snowglobe` | custom-only hidden | 1 | 280 | 47 | 4 | release 4 | ballistic_knife_sickel, ballistic_knife_sickel_upgraded, ballistic_knife_sickel, ballistic_knife_sickel_upgraded | hide |
+| `nazi_zombie_spruktbyl` | playable hidden | 1 | 293 | 109 | 109 | release 109 | aug_mp, aug_mp_upgraded, l86_mp, m1garand_gl_zombie +36 | hide |
+| `nazi_zombie_test` | custom-only hidden | 4 | 272 | 13 | 11 | release 11 | sog_knife_w_bowie, zombie_evo, zombie_evo_upgraded, zombie_ksg +7 | hide |
+| `nazi_zombie_test1` | playable hidden | 6 | 307 | 10 | 5 | release 5 | molotov, tesla_gun, tesla_gun_upgraded, tesla_gun +1 | hide |
+| `nazi_zombie_wahnsinn` | custom-only hidden | 1 | 169 | 6 | 6 | release 6 | molotov, tesla_gun, tesla_gun_upgraded, zombie_cymbal_monkey +2 | hide |
+| `necro_forest` | playable hidden | 1 | 159 | 4 | 4 | release 4 | m2_flamethrower_zombie, m2_flamethrower_zombie_upgraded, m2_flamethrower_zombie_upgraded, mine_bouncing_betty | hide |
+| `no_way_out` | custom-only hidden | 1 | 179 | 3 | 3 | release 3 | m60e4_mp, t6_wpn_zmb_perk_bottle_cherry_view, t6_wpn_zmb_perk_bottle_cherry_view | hide |
+| `number2` | playable hidden | 1 | 228 | 50 | 28 | patchable 24, release 4 | mk48, mk48_upgraded, mk48, mk48_upgraded +24 | hide |
+| `sammycustomsbox` | playable hidden | 1 | 161 | 4 | 4 | release 4 | zombie_perk_bottle_deadshot, zombie_perk_bottle_mulekick, zombie_perk_bottle_phd, zombie_perk_bottle_staminup | hide |
+| `sanatorium` | playable hidden | 6 | 237 | 21 | 4 | release 4 | enforcer, enforcer_upgraded, enforcer, enforcer_upgraded | hide |
+| `zombie_seelow_v3` | playable hidden | 1 | 225 | 53 | 52 | release 52 | m1garand_gl_zombie, m1garand_gl_zombie_upgraded, molotov, panzerschrek_zombie +36 | hide |
+| `ray_chirstmas_map` | playable hidden | 1 | 254 | 14 | 14 | ours 14 | bo2_c_zom_zombie1_body01, bo2_c_zom_zombie1_body02, bo2_c_zom_zombie2_body01, bo2_c_zom_zombie2_body02 +10 | fix |
+| `a_room` | playable hidden | 1 | 174 | 1 | 0 | - | (minor) char_ger_zombieeye | minor |
+| `ahkanto` | playable hidden | 1 | 179 | 1 | 0 | - | (minor) weapons/sp/zombie_bowie_flourish | minor |
+| `chal_pistols` | playable hidden | 1 | 120 | 5 | 0 | - | (minor) c_zom_zombie8_body01_g_behead, c_zom_zombie_g_larmspawn, c_zom_zombie_g_llegspawn | minor |
+| `chickn` | playable hidden | 1 | 191 | 1 | 0 | - | (minor) weapons/sp/zombie_knuckle_crack | minor |
+| `corridor_challenge` | playable hidden | 1 | 120 | 5 | 0 | - | (minor) c_zom_zombie8_body01_g_behead, c_zom_zombie_g_larmspawn, c_zom_zombie_g_llegspawn | minor |
+| `nacht_der_toten` | playable hidden | 1 | 155 | 1 | 0 | - | (client check) fraggrenade | minor |
+| `nazi_zombie_fc2` | playable hidden | 1 | 154 | 1 | 0 | - | (client check) fraggrenade | minor |
+| `salaj_dust2` | playable hidden | 1 | 120 | 5 | 0 | - | (minor) c_zom_zombie8_body01_g_behead, c_zom_zombie_g_larmspawn, c_zom_zombie_g_llegspawn | minor |
+| `zombie_maze` | custom-only hidden | 1 | 160 | 1 | 0 | - | (minor) weapons/sp/zombie_bowie_flourish | minor |
+
+The 50 live `unproven` maps (no log of them loading anywhere we hold; most were box-proven before
+`--save-console` existed and the map cache has since evicted their logs) are in the re-proof queue.
+
+### 13.4 Hidden today (live DB, 13:37 UK, backup `web/data/backup-20260923T123752Z-pre-hide`)
+
+`maps.hidden = 1`, and `site_hidden: true` + `site_hidden_reason` in the manifest:
+
+| map | why (all the release's own) |
+|---|---|
+| `nazi_zombie_dome_snow` (Zombie Dome) | box weapon `aug` and the Monkey Bomb weapon file `zombie_cymbal_monkey`: nowhere in the download |
+| `nazi_zombie_snowglobe` (Snow Globe) | box weapon `ballistic_knife_sickel`: absent; also 40 Russian player-set models absent |
+| `nazi_zombie_test` (Project Viking) | box weapons evo/ksg/m32/pdw exist only as loose `weapons/sp/*` in its IWD, which the engine does not read for a precache (labrats2: 46 of 46 the same); `sog_knife_w_bowie` absent |
+| `nazi_zombie_test1` (Zombie Desert) | `tesla_gun` and `molotov` precached for the box, defined only in Der Riese's zone |
+| `sanatorium` (Clinic of Evil) | box weapon `enforcer`: absent |
+
+**Not hidden, though its verdict is `hide`: `nazi_zombie_fear_mc_2`.** Its release lacks
+`bo1_c_viet_zombie_nva1_body` and three zombie heads (one is in its own `missingasset.csv`); B was
+playing it on the box while this ran, and lane Z1 owns the map. Z1/B decide.
+
+### 13.5 The gate
+
+* `archive/asset_gate.py --map <bsp>` — fresh audit, exit 0 pass (`clean`/`minor`), 1 blocked
+  (`hide`/`fix`/`patch`), 2 `unproven`; `--from-manifest` reads the recorded verdict.
+* `archive/precheck.py --gate` refuses (exit 1) a blocked map; a never-booted map is `unproven`
+  and passes there.
+* `archive/popular.py --apply` (the step that un-hides a tranche after its box proof) keeps a
+  blocked map hidden with `site_hidden_reason` (unproven passes: the refusal is for a miss).
+* `web/server/lib/assetgate.js`: `import-archive.js` forces `hidden` for a manifest whose
+  `asset_audit.verdict` blocks, whatever `site_hidden` says (test in `web/test/box-maps.js`).
+
+Un-hiding a blocked map means fixing it and re-running the audit, not editing a flag.
+
+### 13.6 Client screenshot recipe (for lane 13; written, not run)
+
+What the server log cannot say: whether a player *wears* a player-set model, and every client-only
+miss (materials, images). For each map on the client-check list — `nacht_reimagined`
+(`aw_hazmat_viewhands`), `nazi_zombie_school` (`viewhands_sas_woodland`), `nazi_zombie_johndoe`
+(`char_usa_marine_*`), `zm_nuked` (`fraggrenade`, `zombie_melee`), and the static flags
+`nazi_zombie_hotelv2` / `nazi_zombie_octogonal` / `nuketown` (a weapon in the map's zone points at an
+xmodel no loaded zone defines) — one local dedi + client run, off-screen, under `game.lock`, never
+while B is playing on this PC (hard rules 3, 11, 12):
+
+```
+$env:ENW_TEST_NO_ACTIVATE='1'; $env:ENW_BORDERLESS_COVER='0'
+$env:ENW_FRAME_CAPTURE='1'; $env:ENW_FRAME_CAPTURE_DIR='C:\Users\b\ZombiesDev\logs\dedi\a1-<bsp>'
+$env:ENW_FRAME_CAPTURE_AT='12,20,30,45'
+$env:ENW_FRAME_CAPTURE_CMDS='8:closemenu briefing|18:weapnext|28:weapnext|40:+melee|41:-melee|43:+frag|44:-frag'
+powershell -ExecutionPolicy Bypass -File tools\dev\jointest.ps1 -Tag a1-<bsp> -Map <bsp> -ClientFrom dedi-client
+```
+
+Read: first-person hands present at 12 s and on both weapons (20, 30 s); knife and grenade at
+40–45 s (zm_nuked); for johndoe a **second** client is needed to see a teammate's body. Then run
+`python archive/asset_audit.py` again: the run's `archive\mods\<bsp>\console.log` is shared by
+server and client, so the client-only `material`/`image` misses join the table. A hands-less or
+knife-less frame makes that map's verdict `hide` by hand (`--write-manifest --hide <bsp>` after
+editing the rule, or hide it in the DB with the reason in the manifest, as §13.4).
+
+### 13.7 Unproven
+
+* The 50 live maps with no log (queue: `ZombiesDev\archive\reports\reproof-queue.txt`, which is
+  also a `box_proof.py --map-list`; leases were off, the coordinator runs it).
+* The visible/minor split is a reading of names and scripts, not a picture: the client-check list
+  above, and whether a missing zombie **head** variant is ever seen (it is precached; which spawns
+  use it is the map's random pick).
+* "Weapon files in an IWD are not read for a precache" is measured on our dedicated server
+  (labrats2 46/46, nazi_zombie_test, matrix, rooms); a retail listen server was not run.
+* Loose `.wav` are FS reads at play time and never produce a `Could not load` line, so no log shows
+  the six maps' sounds fixed; a client listening is the proof.
+* number2's misspelled `loacalized_number2.ff` (its dogs) could be staged under the loaded name
+  (`install.add`, §9.6); the map is hidden for its absent `mk48` anyway.
