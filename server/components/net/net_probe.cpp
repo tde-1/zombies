@@ -29,8 +29,11 @@
 // 127.0.0.1, which Sys_IsLANAddress calls LAN, which skips the rate code entirely -- the
 // harness could never have seen this.
 //
-// At rate 25000 the formula cannot exceed 50 ms ((1164 + 64) * 1000 / 25000 = 49.1 ms), so a
-// 20 Hz client is never throttled at all. 25000 is also the most the engine allows: it is
+// At rate 25000 SV_RateMsec cannot exceed 50 ms ((1164 + 64) * 1000 / 25000 = 49.1 ms) -- but
+// that is only the one-packet path. A snapshot bigger than a packet is fragmented, flushed at
+// once and paced on its WHOLE size by 0x639360 (no clamp), so above ~1,186 bytes a message
+// cannot go at 20 Hz on any stock setting (dedi.md §24.2; net_rate.hpp has the arithmetic).
+// 25000 is also the most the engine allows: it is
 // sv_maxRate's domain maximum and the client `rate` dvar's (0x6465BF: 1000..25000, default
 // 25000). So this component raises sv_maxRate to 25000 at the first frame, through the
 // engine's own int setter (0x5EF390: value in ECX, dvar and source on the stack).
@@ -47,6 +50,10 @@
 // SWITCHES
 //   ENW_SV_MAXRATE=<n>     sv_maxRate to apply (default 25000); 0 = leave the stock 7000.
 //   ENW_NET_PROBE=0        no logging, no sendto hook (the sv_maxRate raise still applies).
+//   ENW_NET_RATE_SCALE=<n> pace every client as if its rate were n times higher (default 4,
+//                          1 = stock, max 8): the `imul eax,eax,1000` in SV_RateMsec 0x6392D0
+//                          and in the whole-message pacer 0x639360 becomes 1000/n. At 4 a
+//                          4,936-byte snapshot still goes at 20 Hz (stock: 1,186). §24.2.
 //   ENW_NET_FORCE_WAN=1    TEST ONLY: the two Sys_IsLANAddress calls in the send path
 //                          report "not LAN", so a 127.0.0.1 harness client is paced exactly
 //                          like an internet one. Never set on the box.
@@ -58,6 +65,7 @@
 #include "frame.hpp"
 #include "logger.hpp"
 #include "memory.hpp"
+#include "net_rate.hpp"
 
 #include <windows.h>
 
@@ -203,6 +211,7 @@ void dvar_set_int(uintptr_t dvar, int value) {
 }
 
 int g_target_maxrate = kMaxRateCeiling;
+int g_rate_scale = 1;                              // what is actually patched in (1 = stock)
 bool g_maxrate_done = false;
 bool g_probe = true;
 
@@ -276,9 +285,9 @@ void report(double secs) {
             const int eff = (maxrate > 0 && maxrate < rate) ? (maxrate < 1000 ? 1000 : maxrate) : rate;
             const uint32_t timed = w.sends - w.lan;
             std::snprintf(b, sizeof b,
-                          " | cl%d st=%d adr=%d rate=%d eff=%d snapMsec=%d msgs=%u (%.1f/s) "
+                          " | cl%d st=%d adr=%d rate=%d eff=%d x%d snapMsec=%d msgs=%u (%.1f/s) "
                           "delayed=%u delay avg=%.0f max=%u ms lan=%u fragpend=%u",
-                          i, state, rd<int>(cl + kClAdrType), rate, eff,
+                          i, state, rd<int>(cl + kClAdrType), rate, eff, g_rate_scale,
                           rd<int>(cl + kClSnapshotMsec), w.sends, w.sends / secs, w.delayed,
                           timed ? static_cast<double>(w.delay_sum) / timed : 0.0, w.delay_max,
                           w.lan, w.frag_pending);
@@ -318,6 +327,41 @@ void report(double secs) {
              secs, maxrate, line.c_str(), wire.c_str(), calls, errs, ticks * us, maxt * us);
 }
 
+// ENW_NET_RATE_SCALE: both `imul eax, eax, 0x3E8` operands, byte-checked, or neither.
+void apply_rate_scale(int scale) {
+    scale = net_rate::clamp_scale(scale);
+    if (scale == 1) {
+        ENW_INFO("net_probe: rate scale 1 (stock pacing; ENW_NET_RATE_SCALE=1)");
+        return;
+    }
+    for (uintptr_t va : net_rate::kImulSites) {
+        uint8_t got[6]{};
+        if (!memory::read_raw(enw::at(va), got, 6) ||
+            std::memcmp(got, net_rate::kImulStock, 6) != 0) {
+            ENW_ERROR("net_probe: rate scale NOT applied -- 0x%08X is not `imul eax,eax,0x3E8` "
+                      "(%s); pacing left stock",
+                      static_cast<unsigned>(va), memory::hex_dump(enw::at(va), 6).c_str());
+            return;
+        }
+    }
+    const uint32_t imm = net_rate::imul_for_scale(scale);
+    for (uintptr_t va : net_rate::kImulSites) {
+        if (!memory::write_raw(enw::at(va) + net_rate::kImmOffset, &imm, 4)) {
+            ENW_ERROR("net_probe: rate scale: write at 0x%08X failed (an earlier site may be "
+                      "patched)", static_cast<unsigned>(va));
+            return;
+        }
+    }
+    g_rate_scale = scale;
+    ENW_INFO("net_probe: rate scale x%d -- SV_RateMsec 0x6392D0 and the fragmented-message pacer "
+             "0x639360 now multiply by %u, not 1000: every client is paced as if its rate were %d "
+             "times higher, so a snapshot of up to %d bytes goes at 20 Hz at rate 25000 (stock %d; "
+             "fear_mc_2's ~2,100-byte snapshots went at 10 Hz, dedi.md §24.2). "
+             "ENW_NET_RATE_SCALE=1 is stock.",
+             scale, imm, scale, net_rate::max_bytes_at_20hz(25000, scale),
+             net_rate::max_bytes_at_20hz(25000, 1));
+}
+
 void force_wan() {
     for (int i = 0; i < 2; ++i) {
         const uintptr_t site = enw::at(kLanCallSites[i]);
@@ -349,6 +393,8 @@ public:
             if (g_target_maxrate > kMaxRateCeiling) g_target_maxrate = kMaxRateCeiling;
         }
         g_probe = env("ENW_NET_PROBE") != "0";
+        const std::string rs = env("ENW_NET_RATE_SCALE");
+        apply_rate_scale(rs.empty() ? net_rate::kDefaultScale : std::atoi(rs.c_str()));
         if (env("ENW_NET_FORCE_WAN") == "1") force_wan();
 
         if (g_probe &&
