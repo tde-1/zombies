@@ -143,6 +143,7 @@ constexpr uintptr_t kSvsTime = 0x2547084;           // svs.time (SV_ClientThink 
 constexpr uintptr_t kClientThink = 0x630BF0;        // SV_ClientThink(eax = client_s*, [esp+4] = usercmd*)
 constexpr uintptr_t kClDeltaMessage = 0xC;          // SV_BotUserMove 0x636047: = outgoingSequence - 1
 constexpr uintptr_t kClOutgoingSeq = 0x14;
+constexpr uintptr_t kClMessageAck = 0x110FC;        // snapshotacknowledged 0x527499 reads it
 constexpr uintptr_t kPsOrigin = 0x20;               // gclient_s.ps (T4SP asserts)
 constexpr uintptr_t kPsDeltaAngles = 0x7C;
 constexpr uintptr_t kPsWeapon = 0x104;              // SV_BotUserMove 0x635E3D reads it for cmd.weapon
@@ -552,10 +553,24 @@ void think_bots() {
                     const uint32_t b = kButtonAttack;
                     std::memcpy(cmd + 0x4, &b, 4);
                 }
+            } else {
+                // Nothing to shoot: look at the floor. A spawner a player can see does not
+                // spawn (the non-forced DoSpawn path), and a bot staring down a corridor at a
+                // spawn closet would starve a small map of zombies (dedi.md §27.6).
+                const int16_t p = angle_short(80.f - delta[0]);
+                int32_t a0 = static_cast<uint16_t>(p);
+                std::memcpy(cmd + 0x8, &a0, 4);
             }
         }
         int32_t seq = 0;
-        if (peek(cl + kClOutgoingSeq, &seq)) poke(cl + kClDeltaMessage, seq - 1);
+        if (peek(cl + kClOutgoingSeq, &seq)) {
+            poke(cl + kClDeltaMessage, seq - 1);
+            // A bot sends no packets, so it never acknowledges a snapshot. `snapshotacknowledged`
+            // 0x5273B0 compares getsnapshotindexarray's outgoingSequence+1 with this field
+            // (0x527499), and wait_network_frame() in DLC3/UGX map scripts waits on it: say
+            // every snapshot is acknowledged, as a client on a perfect link would.
+            poke(cl + kClMessageAck, seq);
+        }
         call_client_think(cl, cmd);
     }
 }
@@ -617,6 +632,30 @@ void minute_line() {
              static_cast<unsigned>(pmc.WorkingSetSize >> 20), g.m.max_inuse, g.m.max_alive,
              g.m.max_axis, g.m.kills, static_cast<unsigned long long>(g.kills_total),
              g.faulted ? " | FAULTED (bots off)" : "");
+    // Where each bot is and what it stands on: a bot outside every zone volume stops a zoned
+    // map's spawners (dedi.md §27.5), so this is the first thing to read when rounds stall.
+    for (int s = 0; s < kMaxClients; ++s) {
+        if (!is_bot_slot(s)) continue;
+        const uintptr_t e = gent_at(s);
+        uintptr_t gc = 0;
+        float o[3] = {}, mins[3] = {}, maxs[3] = {};
+        int32_t hp = 0, ground = -1, pmtype = -1, conn = -1;
+        uint8_t linked = 0;
+        peek(e + kGentOrigin, &o);
+        peek(e + 0x118 + 0x14, &mins);   // r.mins, r.maxs: what IsTouching 0x51BA70 adds to origin
+        peek(e + 0x118 + 0x20, &maxs);
+        peek(e + 0x118, &linked);
+        peek(e + kGentHealth, &hp);
+        if (peek(e + kGentClient, &gc) && gc) {
+            peek(gc + 0x88, &ground);     // ps.groundEntityNum
+            peek(gc + 0x4, &pmtype);      // ps.pm_type
+            peek(gc + 0x20E0, &conn);     // sess.connected (getplayers 0x516E46 wants 2)
+        }
+        ENW_INFO("dev_bots: slot %d at (%.0f %.0f %.0f) mins (%.0f %.0f %.0f) maxs (%.0f %.0f %.0f) "
+                 "linked %u ground %d pm_type %d connected %d health %d",
+                 s, o[0], o[1], o[2], mins[0], mins[1], mins[2], maxs[0], maxs[1], maxs[2], linked,
+                 ground, pmtype, conn, hp);
+    }
     g.m = minute_stats{};
     g.minute_start = now;
     g.m.wall_first = now;
