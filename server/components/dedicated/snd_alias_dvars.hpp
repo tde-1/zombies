@@ -63,6 +63,7 @@ constexpr reader kReaders[] = {
     {0x51C0E9, 0x3BE65DC, "stopSounds (0x51C020)"},
     {0x5227A0, 0x3BE65DC, "musicPlay (0x522710)"},
     {0x5233F8, 0x3BE65DC, "ambientPlay (0x523320)"},
+    {0x5E5C20, 0x3BE65DC, "sound alias lookup 0x5E59B0 (found by lane L1)"},
     {0x66C29F, 0x3BE65DC, "playLoopSound, the other table (0x66C230)"},
     {0x5C5289, 0x3BE65D8, "0x5C5180 (12 callers)"},
     {0x63B56D, 0x3BE65D8, "alias index helper 0x63B560 (G_* callers)"},
@@ -70,6 +71,31 @@ constexpr reader kReaders[] = {
     {0x64ECCD, 0x3BE65D8, "0x64EC90"},
 };
 constexpr size_t kReaderCount = sizeof kReaders / sizeof kReaders[0];
+
+// The faulting instruction of each reader above (the `cmp byte [reg+0x10]` right after the
+// load), as the freeze watchdog logs it: `escape fault #1 ... eip=<this> reading 00000010`.
+// B's three 14:00-14:27 UTC freezes (lorkeep, ils, ut_box_map) were 0x51BC60 = playSound;
+// the fear_mc_2 ones 0x4F057E. Mirrored in web/server/lib/telemetry/rules.js KNOWN_FAULTS.
+constexpr uint32_t kReaderFaultEips[] = {
+    0x4F057E, 0x51BC60, 0x51BE67, 0x51C0EF, 0x5227A5, 0x5233FE, 0x5E5C26, 0x66C2A5,
+    0x5C528F, 0x63B572, 0x64EC32, 0x64ECD2,
+};
+
+// A name for an escape-fault eip we have identified (crash review, lane L1), for the freeze
+// watchdog's log line. nullptr when unknown.
+inline const char* known_fault_name(uint32_t eip) {
+    for (uint32_t f : kReaderFaultEips)
+        if (eip == f)
+            return "a NULL sound dvar (snd_errorOnMissing / snd_reportSndAliasErrors) on a "
+                   "dedicated server: a sound builtin got an alias the map lacks (dedi.md §25; "
+                   "fixed by dedi_snd_alias_dvars -- if this DLL logged `registered`, it is NEW)";
+    if (eip == 0x5FFE23)
+        return "packet receive read [0x3BFD478] after localVars overran it: a CONSEQUENCE of an "
+               "earlier escaped frame, look for fault #1 (dedi.md §23)";
+    if (eip == 0x6F3E6A)
+        return "water simulation read a NULL buffer (dedi.md §12; fixed by dedi_watersim_pool)";
+    return nullptr;
+}
 
 // The engine's test at every reader, modelled: `if (!alias && dvar->current.enabled)`.
 // A NULL dvar is only touched when the alias is missing -- which is why a server can run for

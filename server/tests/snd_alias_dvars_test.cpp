@@ -71,6 +71,13 @@ static void test_table() {
     check(reader_load_len(eax_load, 0x3BE65DC) == 5, "A1 load");
     check(reader_load_len(ecx_load, 0x3BE65DC) == 6, "8B 0D load");
     check(reader_load_len(other, 0x3BE65DC) == 0, "a load of the other slot is not this slot's");
+    check(known_fault_name(0x4F057E) != nullptr, "0x4F057E (fear_mc_2) is named");
+    check(known_fault_name(0x51BC60) != nullptr, "0x51BC60 (lorkeep / ils / ut_box_map) is named");
+    check(known_fault_name(0x5FFE23) && std::strstr(known_fault_name(0x5FFE23), "CONSEQUENCE"),
+          "0x5FFE23 is a consequence");
+    check(known_fault_name(0x4F0579) == nullptr, "a load is not a fault site");
+    check(known_fault_name(0) == nullptr, "unknown -> nullptr");
+    check(sizeof kReaderFaultEips / sizeof kReaderFaultEips[0] == kReaderCount, "one fault eip per reader");
 }
 
 // ---- part 2: the image -------------------------------------------------------------------
@@ -148,6 +155,9 @@ static void test_image(const image& img) {
         const bool cmp_al = c[0] == 0x38 && (c[1] & 0xF8) == 0x40 && c[2] == 0x10;
         std::snprintf(what, sizeof what, "image: 0x%X then tests current.enabled at +0x10", unsigned(r.load));
         check(cmp_imm || cmp_al, what);
+        std::snprintf(what, sizeof what, "image: 0x%X's fault eip 0x%X is a known fault",
+                      unsigned(r.load), unsigned(r.load + len));
+        check(known_fault_name(static_cast<uint32_t>(r.load + len)) != nullptr, what);
     }
     // Com_FindSoundAlias's prologue (what the component calls for its probe).
     const uint8_t fsa[] = {0x53, 0x8B, 0x5C, 0x24, 0x08};

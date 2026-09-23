@@ -340,11 +340,12 @@ function assets (ctx, wantNew) {
   return { count: pick.length, lines: pick.map(([, h]) => h), detail: `${pick.length} distinct: ${names.slice(0, 8).join(', ')}${names.length > 8 ? ', …' : ''}` }
 }
 
-// Escape-fault eips we have identified (mirror of server/components/dedicated/snd_dvar.hpp
-// fault_name; docs/kickstart/crash-review-2026-09-23.md). eip -> what it is.
-const SND = 'snd_errorOnMissing NULL on a dedicated server: a sound builtin got an alias the map lacks (dedi.md §24, fixed by dedi_snd_dvar)'
+// Escape-fault eips we have identified (mirror of server/components/dedicated/snd_alias_dvars.hpp
+// known_fault_name; crash review lane L1, dedi.md §25-§26). eip -> what it is.
+const SND = 'snd_errorOnMissing NULL on a dedicated server: a sound builtin got an alias the map lacks (dedi.md §25, fixed by dedi_snd_alias_dvars)'
 const KNOWN_FAULTS = {
   '004F057E': SND, '0051BC60': SND, '0051BE67': SND, '0051C0EF': SND, '005227A5': SND, '005233FE': SND, '005E5C26': SND, '0066C2A5': SND,
+  '005C528F': SND, '0063B572': SND, '0064EC32': SND, '0064ECD2': SND,
   '005FFE23': 'packet receive read [0x3BFD478] after localVars overran it: a consequence of an earlier escaped frame (dedi.md §23)',
   '006F3E6A': 'water simulation read a NULL buffer (dedi.md §12, fixed by dedi_watersim_pool)',
 }
