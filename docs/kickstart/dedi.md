@@ -3907,3 +3907,39 @@ spawn 100/100, standing on the world at -87.6, 0 mismatches.
    the next thing to read is the DLC3-template zone/spawn scripts (`dlc3_code.gsc`, the zone manager's
    player test) against what a test client lacks. Until it is fixed, bot soaks on custom maps test an
    idle-but-live server, not rounds.
+
+### 27.6 Why custom maps spawned nothing for a bot: the engine's `snapacknowledged` is per packet
+
+Two host closes first (both fixed on the host, live since 20:46 UTC as `9e9e86a`): the referee's
+**empty close** (2 min, `a2c330d`) and RS's **never-joined idle close** (5 min, `46748e1`, it ended the
+Nacht soak `m_bd4f87b4` at round 6) both counted a bot game as empty, because the DLL never reports a
+test client as a player. `soakBotConfig()` (agent Custom dev lease with `dev.bots` only) exempts it
+from both.
+
+Then the spawns. `/proc/<pid>/mem` on the live ut_box_map game (`botpos.py`, read-only) showed the bot
+standing on the world (`ground 1022`) inside the zone volume, and the console showed the zone manager
+running its "zone is active" branch every second, so zones were not it. The map scripts (decompressed
+from the archive's `mod.ff`) and the stock `common.ff` (copied out of B's install, read-only) say:
+
+```
+round_spawning():  while( count < max ) { wait_network_frame(); ... ai = spawn_zombie( spawn_point ); ... wait_network_frame(); }
+wait_network_frame():  snapshot_ids = getsnapshotindexarray(); acked = undefined;
+                       while (!isdefined(acked)) { level waittill("snapacknowledged"); acked = snapshotacknowledged(snapshot_ids); }
+```
+
+`snapacknowledged` is raised **only** in SV_PacketEvent at 0x635760, once per client packet:
+Scr_AddConstString 0x69A8D0 (`scr_const.snapacknowledged`, the word at 0x1F33E2A) →
+Scr_ExecThread 0x699560 (`CodeCallback_LevelNotify`, the handle at 0x190B5C0, written at 0x514858) →
+Scr_FreeThread 0x690040. `snapshotacknowledged` 0x5273B0 then compares each active client's
+`client_s+0x110FC` (messageAcknowledge, written only from a packet at 0x635699) with
+getsnapshotindexarray's `outgoingSequence + 1`. A bot sends no packets, so every DLC3/UGX spawn loop
+waited for ever after its first zombie. Stock Nacht's loop never calls wait_network_frame, which is
+why only Nacht ran rounds.
+
+**Fix** (`bots.cpp`, three commits, box DLL **`59577dbe`**): each server frame, for each bot,
+`messageAcknowledge = outgoingSequence` (`533cdae`); once per server frame while a bot exists, the same
+three engine calls as 0x635760, guarded by the script active/shutdown flags that `game_mode.cpp` uses,
+with the site byte-checked before the component arms (`52b2169`). `533cdae` also makes an idle bot look
+at the floor (the non-forced DoSpawn does not spawn in a player's view; harmless, kept) and adds a
+per-bot position line to the minute log. **Proof**: ut_box_map `s-utbox` on `59577dbe`, rounds
+1 → 4 in the first four minutes, kills 6 → 14 a minute (on `70b28f5b`, one zombie in 30 minutes).
