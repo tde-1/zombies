@@ -199,7 +199,7 @@ async function askForPassword({ site, retry = false }) {
       minimizable: false,
       maximizable: false,
       title: 'ENW Zombies',
-      backgroundColor: '#101010',
+      backgroundColor: '#080808',
       autoHideMenuBar: true,
       webPreferences: { contextIsolation: false, nodeIntegration: false, sandbox: false },
     })
@@ -340,7 +340,7 @@ async function createWindow() {
     minHeight: MIN_HEIGHT,
     show: false,
     frame: false,
-    backgroundColor: '#101010',
+    backgroundColor: '#080808',
     autoHideMenuBar: true,
     title: 'ENW Zombies',
     webPreferences: {
@@ -1491,14 +1491,18 @@ async function supportsLoopbackSignIn() {
   } catch { return false }
 }
 
+// The site's palette (web/client/src/theme.css, black since 2026-09-23) and the ENW mark
+// (Movement's assets/enw-mark.svg, corrected box), so the browser tab reads as the site.
+const ENW_MARK_SVG = '<svg role="img" aria-label="ENW" viewBox="2.05 0 319.75 156" width="57" height="28" style="display:block;margin:0 auto 1.4rem;filter:brightness(.92)"><path fill="#fff" d="M2.05 0 70 0 70 30 2.05 30ZM20.05 66 70 66 70 93.9 20.05 93.9ZM2.05 128 70 128 70 156 2.05 156ZM76.22 2.51 168 88.64 168 0 198 0 198 154.04 102.04 66.5 102.04 156 76.22 156ZM204 148.74 228.82 80.79 259.32 151.48 321.8 0 287.99 0 259.48 73.33 231.19 1.3 204 65.78Z"/></svg>'
+
 function signInPage(title, body) {
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + title + '</title>' +
-    '<style>html,body{height:100%;margin:0}' +
-    'body{background:#12130e;color:#e8e4d9;font:16px/1.5 "Segoe UI",system-ui,sans-serif;' +
+    '<style>html,body{height:100%;margin:0}html{color-scheme:dark;background:#080808}' +
+    'body{background:#080808 linear-gradient(178deg,#0e0e0e 0%,#080808 45%,#040404 100%);color:#e7e7e7;font:16px/1.5 "Segoe UI",system-ui,sans-serif;' +
     'display:flex;align-items:center;justify-content:center;text-align:center}' +
-    '.c{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .6rem;color:#f3efe3}' +
-    'p{margin:.4rem 0;color:#a9a496}.m{color:#b0342c}</style></head>' +
-    '<body><div class="c"><h1>' + title + '</h1>' + body + '</div></body></html>'
+    '.c{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .6rem;color:#e7e7e7}' +
+    'p{margin:.4rem 0;color:#9b9b9b}.m{color:#e1675a}</style></head>' +
+    '<body><div class="c">' + ENW_MARK_SVG + '<h1>' + title + '</h1>' + body + '</div></body></html>'
 }
 
 // How long the player has to finish in their browser.

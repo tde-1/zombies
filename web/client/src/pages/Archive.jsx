@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, ago, num } from '../api'
 import { Section, Empty, Loading, Stat, Health } from '../components/Bits'
+import EnwWord from '../components/Enw'
 
 // The Archive page (99 §4.8, 13 §3): every original, including maps marked "not playable
 // on ENW". It is a LIST, not a wall of cards — two thousand cards is a scrolling exercise,
@@ -77,7 +78,7 @@ export default function Archive() {
       )}
 
       {meta && meta.broken.length > 0 && (
-        <Section title="Not playable on ENW">
+        <Section title={<>Not playable on <EnwWord /></>}>
           <div className="listing">
             {meta.broken.map((m) => (
               <Link className="maprow" key={m.key} to={`/m/${m.key}`}>

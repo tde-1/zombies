@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ago, dur, num } from '../api'
-import { Section, Empty, Loading, Untracked, PlayerLink } from '../components/Bits'
+import { Section, Empty, Loading, Untracked, PlayerLink, Lockup } from '../components/Bits'
 import MapCard from '../components/MapCard'
 
 // The smaller pages: a creator's page, one game's full breakdown, and the 404.
@@ -133,6 +133,7 @@ function Replay({ matchId }) {
 export function NotFound() {
   return (
     <div className="page">
+      <Link to="/" aria-label="ENW home" style={{ display: 'inline-block', margin: '8px 0 18px' }}><Lockup h={30} /></Link>
       <h1>That page doesn&rsquo;t exist</h1>
       <Link className="btn" to="/" style={{ marginTop: 16 }}>Back to the home page</Link>
     </div>

@@ -5,6 +5,7 @@ import { useRail } from '../rail'
 import { useSession } from '../session'
 import { prettyTitle, mapHue } from '../data/mapText'
 import { NotPlayable } from './Bits'
+import EnwWord from './Enw'
 import { DlBar, CardDownload } from './MapDownload'
 
 // ── The party rail ─────────────────────────────────────────────────────────
@@ -210,7 +211,7 @@ function InviteBox({ R }) {
         <button className="invite-close" title="Close search" aria-label="Close search" onClick={close}>×</button>
       </div>
       <div className="invite-list">
-        {results == null && <div className="sug-empty">Type an ENW name</div>}
+        {results == null && <div className="sug-empty">Type an <EnwWord /> name</div>}
         {results != null && list.length === 0 && <div className="sug-empty">No players found.</div>}
         {list.map((u) => (
           <div className="sug" key={u.steam_id} role="button" tabIndex={0}

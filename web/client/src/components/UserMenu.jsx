@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, SIGN_IN } from '../api'
 import { useSession } from '../session'
 import { Level } from './Bits'
+import EnwWord from './Enw'
 import { bridge, useLauncherStatus, describeLauncher } from './launcherBridge'
 
 // Top-right account chip: avatar + name, click for a dropdown → Profile / Badges / Settings /
@@ -118,11 +119,11 @@ export default function UserMenu() {
             <>
               <div className="um-sep" />
               <div className="um-launcher">
-                <div className={launcher.installed ? '' : 'warn'}>{launcher.client}</div>
+                <div className={launcher.installed ? '' : 'warn'}><EnwWord /> client {launcher.installed ? 'installed' : 'not installed'}</div>
                 <div>Launcher <b>{launcher.version || '?'}</b>{launcher.update ? ` · ${launcher.update}` : ''}</div>
               </div>
               {!launcher.installed && (
-                <button className="um-item" role="menuitem" onClick={() => openScreen('firstRun')}>Install the ENW client</button>
+                <button className="um-item" role="menuitem" onClick={() => openScreen('firstRun')}>Install the <EnwWord /> client</button>
               )}
               {launcher.updateReady && (
                 <button className="um-item" role="menuitem" onClick={() => { setOpen(false); enw.restartAndUpdate().catch(() => {}) }}>Restart to update</button>
