@@ -597,6 +597,8 @@ void note_connect() {
     ENW_INFO("boot: CL_ConnectLocal returned at +%llu ms since process start", since_start());
 }
 
+void lift_cover(const char* why) { cover_lift(why); }
+
 }  // namespace enw::client::boot_direct
 
 ENW_REGISTER_COMPONENT(enw::client::boot_direct::boot_direct_component)

@@ -50,6 +50,17 @@ param(
     # How long to watch after the client is up.
     [int]$WatchSeconds = 120,
 
+    # THE EARLY CLIENT (dedi.md §21, client.md §11). >= 0: do NOT wait for the server to
+    # answer on the wire; launch the client this many ms after the server process starts,
+    # so it connects while the server is still booting / loading the map -- the race B
+    # hit on the box. -1 (default) keeps the readiness gate.
+    [int]$ClientEarlyMs = -1,
+    # THE CLIENT FIRST. > 0: the client is launched first and the server this many ms
+    # later, so the client's connect goes out before the server process even exists and
+    # its resends arrive while the map is loading. The harness takes game.lock itself
+    # (both halves are companions of it) and releases it at the end.
+    [int]$ServerLagMs = 0,
+
     # ---- identity (referee.md 13) -------------------------------------------
     # THE THING THAT MAKES A JOIN RUN COUNT. Without a token the client's userinfo
     # carries no account at all -- a real T4 client sends name/protocol/challenge/
@@ -184,15 +195,62 @@ try {
     if ($MatchId -or $LinkHost) {
         Say "server identity: match=$(if ($MatchId) { $MatchId } else { '(none)' }) link=$(if ($LinkHost) { $LinkHost } else { 'off' })" 'Cyan'
     }
-    $serverPid = & (Join-Path $PSScriptRoot 'launch.ps1') $ServerName -Role server -HomePath own `
-        -GameArgs $serverArgs -Why "dedi $Tag join test (server + client)" @serverExtra | Select-Object -Last 1
-    if (-not $serverPid) { throw 'launch.ps1 did not return a server PID' }
-    Say "server PID $serverPid" 'Green'
+    $serverJob = $null
+    $ownLock = $null
+    if ($ServerLagMs -gt 0) {
+        # Same interlock as launch.ps1: nothing running, lock taken atomically.
+        if (Get-Process -Name 'CoDWaW', 'CoDWaWmp' -ErrorAction SilentlyContinue) { throw 'CoDWaW is already running' }
+        $ownLock = "jointest $Tag $PID $(Get-Date -Format o) dedi $Tag join test (client first, server +${ServerLagMs} ms)"
+        $fs = [IO.File]::Open($lockFile, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+        $b = [Text.Encoding]::ASCII.GetBytes($ownLock); $fs.Write($b, 0, $b.Length); $fs.Close()
+        Say "took game.lock for the experiment: $ownLock" 'Cyan'
+        $before = @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue | ForEach-Object Id)
+        $serverJob = Start-Job -ScriptBlock {
+            param($launch, $name, $gameArgs, $why, $extra, $lag)
+            Start-Sleep -Milliseconds $lag
+            & $launch $name -Role server -HomePath own -Companion -GameArgs $gameArgs -Why $why @extra
+        } -ArgumentList (Join-Path $PSScriptRoot 'launch.ps1'), $ServerName, $serverArgs, "dedi $Tag (server, lagged)", $serverExtra, $ServerLagMs
+        Say "server launch queued ${ServerLagMs} ms from now ($(Get-Date -Format 'HH:mm:ss.fff')); client launching first" 'Yellow'
+    }
+    elseif ($ClientEarlyMs -ge 0) {
+        # launch.ps1 blocks ~10 s sweeping dialogs and windows before it returns the PID,
+        # which is longer than a Nacht load. Run it off to one side and time the client
+        # from the moment the server PROCESS exists.
+        $before = @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue | ForEach-Object Id)
+        $serverJob = Start-Job -ScriptBlock {
+            param($launch, $name, $gameArgs, $why, $extra)
+            & $launch $name -Role server -HomePath own -GameArgs $gameArgs -Why $why @extra
+        } -ArgumentList (Join-Path $PSScriptRoot 'launch.ps1'), $ServerName, $serverArgs, "dedi $Tag join test (server + client, early client)", $serverExtra
+        $until = (Get-Date).AddSeconds(30)
+        $sp = $null
+        while (-not $sp -and (Get-Date) -lt $until) {
+            Start-Sleep -Milliseconds 50
+            $sp = Get-Process -Name CoDWaW -ErrorAction SilentlyContinue |
+                  Where-Object { $before -notcontains $_.Id -and $_.Path -like "*waw-$ServerName*" } |
+                  Select-Object -First 1
+        }
+        if (-not $sp) { throw 'the server process never appeared' }
+        $serverPid = $sp.Id
+        Say "server PID $serverPid (process seen at $(Get-Date -Format 'HH:mm:ss.fff'))" 'Green'
+    }
+    else {
+        $serverPid = & (Join-Path $PSScriptRoot 'launch.ps1') $ServerName -Role server -HomePath own `
+            -GameArgs $serverArgs -Why "dedi $Tag join test (server + client)" @serverExtra | Select-Object -Last 1
+        if (-not $serverPid) { throw 'launch.ps1 did not return a server PID' }
+        Say "server PID $serverPid" 'Green'
+    }
 
     # ------------------------------------------------- wait for the wire, not a log --
     $ready = $false
     $probe = Join-Path $PSScriptRoot 'oob.py'
     $deadline = (Get-Date).AddSeconds($ReadySeconds)
+    if ($ServerLagMs -gt 0) { $deadline = Get-Date; $ready = $true }
+    elseif ($ClientEarlyMs -ge 0) {
+        Start-Sleep -Milliseconds $ClientEarlyMs
+        Say "EARLY CLIENT: launching the client ${ClientEarlyMs} ms after the server process appeared ($(Get-Date -Format 'HH:mm:ss.fff')), without waiting for the wire" 'Yellow'
+        $deadline = Get-Date   # skip the readiness loop
+        $ready = $true
+    }
     while ((Get-Date) -lt $deadline) {
         Start-Sleep -Seconds 2
         if (-not (Get-Process -Id $serverPid -ErrorAction SilentlyContinue)) {
@@ -254,6 +312,18 @@ try {
         -Companion -GameArgs $clientArgs -EnwHost "127.0.0.1:$Port" @clientExtra | Select-Object -Last 1
     if (-not $clientPid) { throw 'launch.ps1 did not return a client PID' }
     Say "client PID $clientPid (ENW_CLIENT_CONNECT=$Map)" 'Green'
+    if ($ServerLagMs -gt 0) {
+        $until = (Get-Date).AddSeconds(40)
+        while (-not $serverPid -and (Get-Date) -lt $until) {
+            Start-Sleep -Milliseconds 100
+            $sp = Get-Process -Name CoDWaW -ErrorAction SilentlyContinue |
+                  Where-Object { $before -notcontains $_.Id -and $_.Path -like "*waw-$ServerName*" } |
+                  Select-Object -First 1
+            if ($sp) { $serverPid = $sp.Id }
+        }
+        if (-not $serverPid) { throw 'the lagged server process never appeared' }
+        Say "server PID $serverPid (lagged launch, seen at $(Get-Date -Format 'HH:mm:ss.fff'))" 'Green'
+    }
 
     # ------------------------------------------------------------------ watch --
     $t0 = Get-Date
@@ -269,6 +339,13 @@ try {
     }
 }
 finally {
+    if ($serverJob) {
+        # The job's launch.ps1 rewrites game.lock with the server PID once its sweep ends;
+        # wait for it so the release below recognises the lock as ours.
+        Wait-Job $serverJob -Timeout 30 | Out-Null
+        Receive-Job $serverJob -ErrorAction SilentlyContinue | Select-Object -Last 3 | ForEach-Object { Say "  [server launch] $_" }
+        Remove-Job $serverJob -Force -ErrorAction SilentlyContinue
+    }
     foreach ($p in @($clientPid, $serverPid)) {
         if ($p -and (Get-Process -Id $p -ErrorAction SilentlyContinue)) {
             Say "killing our PID $p"
@@ -278,7 +355,7 @@ finally {
     Start-Sleep -Milliseconds 1200
     if (Test-Path -LiteralPath $lockFile) {
         $lock = Get-Content -LiteralPath $lockFile -Raw
-        if ($serverPid -and $lock -match "\b$serverPid\b") {
+        if (($serverPid -and $lock -match "\b$serverPid\b") -or ($ownLock -and $lock.Trim() -eq $ownLock)) {
             Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
             Say 'released game.lock'
         }

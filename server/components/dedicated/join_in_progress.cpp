@@ -38,13 +38,49 @@
 // It is re-asserted on the frame tick because the other three readers of this
 // dvar (0x654260, 0x654530, 0x65A5A0) are party/lobby code that may well write it
 // too, and a value that silently reverts halfway through a session would be a
-// miserable bug to chase. The check is one byte compare every 64 frames, and the
+// miserable bug to chase. The check is one byte compare every frame (2026-09-23), and the
 // component logs the first time it has to put it back.
 //
 // ONLY ON A DEDICATED SERVER. On a listen/solo game the stock rule is the right
 // one, and we do not touch it.
 //
 // ENW_DEDI_NO_JIP=1 leaves it alone.
+//
+//
+// ---------------------------------------------------------------------------
+// 2026-09-23: THE GATE MUST NEVER DEPEND ON TIMING (dedi.md §21)
+// ---------------------------------------------------------------------------
+// B, bridge_zombie on the box: "it said maps cannot be joined mid-game when I
+// tried to join at the very start." inst-01's log: map_loaded 01:19:07.020, B's
+// SV_DirectConnect 07.086, and this component's "set 0 -> 1 on frame 16" at
+// 07.227. The poll below only looked every 16th frame, so a client that was
+// already waiting when the map finished loading was refused in the first frames
+// and (stock client) gave up for good.
+//
+// The registration is NOT invisible after all -- t4map missed the store. It is
+// in the party dvar block 0x654530 (called from Com_Init via 0x5FB560):
+//
+//     00654D3C  32 C0            xor al, al            ; default value = false
+//     00654D3E  BF 44 E0 88 00   mov edi, "party_joinInProgressAllowed"
+//     00654D43  E8 D8 A0 F9 FF   call Dvar_RegisterBool 0x5EEE20
+//     00654D48  A3 74 A7 39 03   mov [0x339A774], eax
+//
+// So now, three layers, all before a single packet can arrive:
+//   1. the default: `xor al,al` -> `mov al,1` (B0 01), byte-checked. The dvar
+//      exists with value 1 from the instant it is registered in Com_Init.
+//   2. the branches: SV_DirectConnect's two reads of the dvar are made
+//      unconditional (unless ENW_JOIN_GATE_STOCK=1):
+//        0062E9BB  8B 0D 74 A7 39 03 / 80 79 10 00 / 74 6A   reconnect scan
+//                  -> EB 0A (jmp 0x62E9C7: "is this a reconnect from the same
+//                     address?" is always asked, as it is when the dvar is 1)
+//        0062EBC4  A1 74 A7 39 03 / 80 78 10 00 / 0F 84 2E 05 00 00   THE gate
+//                  -> EB 0D (jmp 0x62EBD3, the password check)
+//      Both skip the pointer load too, so a connect before the dvar exists
+//      cannot dereference NULL. ECX / EAX are dead at both targets (the next
+//      instructions overwrite them: `lea ecx,[esp+0x20]` at 0x62EA0F after the
+//      movq block, and `call 0x5F6DF0` returns into EAX at 0x62EBDF).
+//   3. the poll, every frame now instead of every 16th, as the backstop for
+//      party code (0x654260, 0x65A5A0) writing it back.
 //
 // Clean room: our own code, from our own dump and our own logs.
 
@@ -55,6 +91,7 @@
 #include "dedicated.hpp"
 
 #include <cstdlib>
+#include <cstring>
 
 namespace enw::dedi {
 namespace {
@@ -66,6 +103,47 @@ constexpr uintptr_t kDvarNameOffset  = 0x00;
 
 uintptr_t g_dvar = 0;
 volatile long g_restored = 0;
+unsigned long g_test_closed_ms = 0;
+
+struct byte_patch {
+    uintptr_t at;
+    const char* what;
+    uint8_t expect[16];
+    size_t expect_len;
+    uint8_t patch[4];
+    size_t patch_len;
+};
+
+const byte_patch kDefaultOn = {
+    0x654D3C, "party_joinInProgressAllowed registers with default 1 (xor al,al -> mov al,1)",
+    {0x32, 0xC0, 0xBF, 0x44, 0xE0, 0x88, 0x00, 0xE8, 0xD8, 0xA0, 0xF9, 0xFF, 0xA3, 0x74, 0xA7, 0x39},
+    16, {0xB0, 0x01}, 2};
+
+const byte_patch kGatePatches[] = {
+    {0x62E9BB, "SV_DirectConnect reconnect scan reads the dvar -> always scans",
+     {0x8B, 0x0D, 0x74, 0xA7, 0x39, 0x03, 0x80, 0x79, 0x10, 0x00, 0x74, 0x6A}, 12,
+     {0xEB, 0x0A}, 2},
+    {0x62EBC4, "SV_DirectConnect co-op gate -> always open",
+     {0xA1, 0x74, 0xA7, 0x39, 0x03, 0x80, 0x78, 0x10, 0x00, 0x0F, 0x84, 0x2E, 0x05, 0x00, 0x00}, 15,
+     {0xEB, 0x0D}, 2},
+};
+
+bool apply(const byte_patch& p) {
+    uint8_t got[16] = {};
+    const uintptr_t at = enw::at(p.at);
+    if (!memory::read_raw(at, got, p.expect_len) || std::memcmp(got, p.expect, p.expect_len) != 0) {
+        ENW_ERROR("dedi_join_in_progress: NOT patching 0x%08X (%s): bytes are %s",
+                  static_cast<unsigned>(p.at), p.what, memory::hex_dump(at, p.expect_len).c_str());
+        return false;
+    }
+    if (!memory::write_raw(at, p.patch, p.patch_len)) {
+        ENW_ERROR("dedi_join_in_progress: could not write 0x%08X (%s)", static_cast<unsigned>(p.at),
+                  p.what);
+        return false;
+    }
+    ENW_INFO("dedi_join_in_progress: patched 0x%08X: %s", static_cast<unsigned>(p.at), p.what);
+    return true;
+}
 
 bool set_allowed(uintptr_t dvar) {
     return memory::write<uint8_t>(dvar + kDvarValueOffset, 1);
@@ -85,18 +163,75 @@ public:
             return;
         }
 
+        // TEST ONLY: ENW_JOIN_GATE_TEST_CLOSED_MS=<n> reproduces the pre-2026-09-23 race on
+        // purpose -- no patches, and the dvar is HELD at 0 until n ms after the first frame
+        // tick -- so the client's retry (client-dll/components/join_retry.cpp) can be proven
+        // against a server that says EXE_ERR_CANNOTJOININPROGRESS first and then lets it in.
+        if (const char* t = std::getenv("ENW_JOIN_GATE_TEST_CLOSED_MS"); t && *t) {
+            g_test_closed_ms = std::strtoul(t, nullptr, 10);
+            ENW_WARN("dedi_join_in_progress: TEST MODE (ENW_JOIN_GATE_TEST_CLOSED_MS=%lu): the gate "
+                     "is held CLOSED for %lu ms after the first frame, then opened",
+                     g_test_closed_ms, g_test_closed_ms);
+            enw::frame::subscribe("dedi_join_in_progress", [](uint64_t n) {
+                static ULONGLONG t0 = 0;
+                static bool opened = false;
+                if (!t0) t0 = ::GetTickCount64();
+                uintptr_t dvar = 0;
+                if (!memory::read(enw::at(kJoinInProgressDvarPtr), &dvar) || !dvar) return;
+                const bool open = ::GetTickCount64() - t0 >= g_test_closed_ms;
+                memory::write<uint8_t>(dvar + kDvarValueOffset, open ? 1 : 0);
+                if (open && !opened) {
+                    opened = true;
+                    ENW_INFO("dedi_join_in_progress: TEST MODE: gate opened on frame %llu",
+                             static_cast<unsigned long long>(n));
+                }
+            });
+            return;
+        }
+
+        // join9 found the pointer NULL at post_init; since components moved later
+        // (early1, 2026-09-23) it is already registered here. Either way: patch the
+        // registration default (covers a later registration) AND set the value now
+        // if it exists (covers an earlier one). Nothing waits for a frame.
+        uintptr_t early = 0;
+        memory::read(enw::at(kJoinInProgressDvarPtr), &early);
+        const bool default_on = apply(kDefaultOn);
+        if (early) {
+            set_allowed(early);
+            ENW_INFO("dedi_join_in_progress: the dvar is already registered at post_init (%08X) "
+                     "on this build -- set to 1 directly, before any frame", static_cast<unsigned>(early));
+        }
+        const char* stock = std::getenv("ENW_JOIN_GATE_STOCK");
+        int gates = 0;
+        if (stock && *stock == '1') {
+            ENW_WARN("dedi_join_in_progress: ENW_JOIN_GATE_STOCK=1 - SV_DirectConnect still reads "
+                     "the dvar (0x62E9BB, 0x62EBC4); only the registration default and the poll "
+                     "keep the gate open.");
+        } else {
+            for (const auto& p : kGatePatches) gates += apply(p) ? 1 : 0;
+        }
+        ENW_INFO("dedi_join_in_progress: join gate is timing-independent: default-on %s, %d/2 "
+                 "SV_DirectConnect branches unconditional%s, poll every frame",
+                 default_on ? "yes" : "NO", gates,
+                 stock && *stock == '1' ? " (ENW_JOIN_GATE_STOCK=1)" : "");
+
         // THE POINTER IS NULL AT post_init. Run join9 proved it: this dvar is not
         // registered during Com_Init, it appears later (the party/lobby side owns
         // it). So poll on the frame tick instead of reading once and giving up --
         // which is exactly the mistake that made join9 a wasted run.
         enw::frame::subscribe("dedi_join_in_progress", [](uint64_t n) {
-            if ((n & 15u) != 0) return;
-
             uintptr_t dvar = 0;
             if (!memory::read(enw::at(kJoinInProgressDvarPtr), &dvar) || !dvar) return;
 
             uint8_t v = 0;
             if (!memory::read(dvar + kDvarValueOffset, &v)) return;
+            static bool seen = false;
+            if (!seen) {
+                seen = true;
+                ENW_INFO("dedi_join_in_progress: first frame tick with the dvar registered: frame "
+                         "%llu, value %u (%s)", static_cast<unsigned long long>(n), v,
+                         v ? "open from registration" : "CLOSED - the default patch did not take");
+            }
             if (v) return;                       // already allowed, nothing to do
 
             if (!set_allowed(dvar)) return;

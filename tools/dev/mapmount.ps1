@@ -101,16 +101,23 @@ function Mount-EnwMap {
     # without the switch put a mods\mw2rust junction into B's real %LOCALAPPDATA%\Activision\CoDWaW
     # (removed). ENW_USE_PRIVATE_LOCALAPPDATA=0 is the opt-OUT for a deliberately stock run.
     if ($env:ENW_USE_PRIVATE_LOCALAPPDATA -ne '0') {
-        $home0 = if ($Homes.Count) { $Homes[0] } else { 'shared' }
-        $localAppData = Join-Path $DevRoot "homes\$home0\localappdata\Activision\CoDWaW\mods"
-        & $Log "fs_localAppData is REDIRECTED to $localAppData (ENW_USE_PRIVATE_LOCALAPPDATA=1); the DLL in this copy must carry enw_localappdata or the map-exists check will fail" 'Cyan'
+        # EVERY home, not just the first (2026-09-23, join-retry lane): a server+client run
+        # mounts two homes, and a client whose own private LocalAppData lacks the junction
+        # dies loading the map ("Could not find zone", then a Database exception) -- run
+        # early6 read as a map fault until this was found.
+        $mountHomes = if ($Homes.Count) { $Homes } else { @('shared') }
+        foreach ($h in $mountHomes) {
+            $localAppData = Join-Path $DevRoot "homes\$h\localappdata\Activision\CoDWaW\mods"
+            & $Log "fs_localAppData is REDIRECTED to $localAppData (ENW_USE_PRIVATE_LOCALAPPDATA=1); the DLL in this copy must carry enw_localappdata or the map-exists check will fail" 'Cyan'
+            $targets += (Join-Path $localAppData $Bsp)
+        }
     }
     else {
         # Hard-coded to the dvar's own default rather than to $env:LOCALAPPDATA so it
         # cannot drift from what the engine computed.
         $localAppData = Join-Path $env:LOCALAPPDATA 'Activision\CoDWaW\mods'
+        $targets += (Join-Path $localAppData $Bsp)
     }
-    $targets += (Join-Path $localAppData $Bsp)
 
     foreach ($dst in $targets) {
         if (Test-Path -LiteralPath $dst) {

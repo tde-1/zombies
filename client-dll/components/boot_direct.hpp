@@ -20,4 +20,8 @@ bool fire_now(uint64_t frame, unsigned long long ms_since_post_init, int clc_sta
 // connect_local calls this right after CL_ConnectLocal returns.
 void note_connect();
 
+// join_retry.cpp: the player is about to be told "Waiting for the server...", so the
+// black boot cover must not hide it. No-op when the cover is not up.
+void lift_cover(const char* why);
+
 }  // namespace enw::client::boot_direct
