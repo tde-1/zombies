@@ -40,7 +40,7 @@ int main() {
     check(err.empty(), "no item of the real schema is dropped", err);
     check(s.tabs.size() == 5, "five tabs, the site's (display graphics audio controls game)", std::to_string(s.tabs.size()));
     check(s.items.size() >= 70, "every catalogue item that is placed and allowed is here", std::to_string(s.items.size()));
-    check(s.excluded == 2, "two excluded: ai_corpseCount (gameplay) and monkeytoy (mod-owned)", std::to_string(s.excluded));
+    check(s.excluded == 3, "three excluded: ai_corpseCount (gameplay), monkeytoy (mod-owned), discordPresence (launcher's)", std::to_string(s.excluded));
     bool none_forbidden = true;
     for (const auto& it : s.items) if (!it.dvar.empty() && forbidden_dvar(it.dvar)) none_forbidden = false;
     check(none_forbidden, "no item writes a forbidden dvar");
