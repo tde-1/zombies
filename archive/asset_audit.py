@@ -522,6 +522,12 @@ def role(kind, name, ctx=None):
 # gib/limb-spawn variant, a HUD icon, the wonder-weapon reaction set) is MINOR: logged, shown in
 # the table, never a reason to hide. Decided 2026-09-23 against the rows the logs actually hold.
 RX_GIB = re.compile(r"(_g_|behead|spawn|_off|gib|upclean|lowclean|_torso_|zombieeye)", re.I)
+# Player-side character models: the shared `_loadout.gsc` precaches whole campaign sets
+# (`mptype\player_usa_marine::precache()` beside `nazi_zombie_heroes` in johndoe) and per-map
+# overrides (`set_player_specific_viewmodel` in school) usually replace the default, so a miss
+# here is only a defect if a player actually wears it -- a client screenshot decides, not a log.
+RX_PLAYER_SET = re.compile(r"(viewhands|viewarms|_player_|player_body|^char_usa_|^char_rus_|^char_jap_(?!.*zomb)|"
+                           r"^ugxm_char_)", re.I)
 RX_CORE_AI_ANIM = re.compile(r"^ai_zombie_(walk|run|sprint|attack|traverse|jump|climb|window|barricade|"
                              r"crawl(?!_quad)|idle(?!_quad)|death(?!_icestaff)|spawn|dog_)|^zombie_dog_(run|attack|idle|trot)",
                              re.I)
@@ -541,7 +547,7 @@ def visible(r):
     if not r["fatal"]:
         return False
     if rl == "character" and k == "xmodel":
-        return not RX_GIB.search(n)
+        return not RX_GIB.search(n) and not RX_PLAYER_SET.search(n)
     if rl == "character":           # xanim / waited
         return bool(RX_CORE_AI_ANIM.search(n))
     if rl == "weapon":
@@ -553,8 +559,15 @@ def visible(r):
             return True
         return False                # one viewmodel anim
     if rl == "script":
-        return True
+        # a raw GSC inside a shipped IWD does load (archive.md 9.4): the rawfile line is noise
+        return r.get("where") != "shipped_iwd"
     return False                    # hud
+
+
+def client_check(r):
+    """A fatal-role miss only a client screenshot can settle (lane 13 recipe, archive.md 13)."""
+    return bool(r["fatal"] and r["kind"] == "xmodel" and r["role"] == "character"
+                and RX_PLAYER_SET.search(r["name"]))
 
 
 def owner(where):
@@ -653,6 +666,7 @@ def audit(maps=None, trace=True):
             "visible": len(vis),
             "visible_owner": dict(collections.Counter(r.get("owner") for r in vis)),
             "visible_names": ["%s:%s" % (r["kind"], r["name"]) for r in vis][:40],
+            "client_check": [r["name"] for r in fatal if client_check(r)][:40],
             "rows": rows,
         }
         report["maps"][bsp]["verdict"] = verdict(report["maps"][bsp])
