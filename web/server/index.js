@@ -21,6 +21,10 @@ const session = require('express-session')
 const { Server: IO } = require('socket.io')
 
 const { db } = require('./db/database')
+// The site's own log file and incidents (lib/telemetry/siteLog.js, docs/kickstart/telemetry.md
+// §9): installed first, so every console line from here on is also on disk.
+const siteLog = require('./lib/telemetry/siteLog')
+siteLog.install()
 const authRoutes = require('./routes/auth')
 const { attach } = require('./middleware/auth')
 const presence = require('./lib/presence')
@@ -69,6 +73,8 @@ const sessionMw = session({
 // The closed-beta front door. Off unless ZM_SITE_PASSWORD is set; exempts /api/gs
 // (game boxes carry their own secret and cannot type a password) and /healthz.
 app.use(require('./middleware/gate').gate())
+// 5xx answers and refused Plays become site incidents (a finish listener; nothing else).
+app.use(siteLog.middleware())
 app.use(sessionMw)
 app.use(express.json({ limit: '256kb' }))
 app.use(attach)
@@ -90,6 +96,8 @@ app.use('/api/maps', require('./routes/maps').router())
 app.use('/api/players', require('./routes/players').router())
 app.use('/api/launcher', require('./routes/launcher').router())
 app.use('/api/admin', require('./routes/admin').router())
+// A launcher's log bundle (routes/telemetry.js); the box's is POST /api/gs/telemetry.
+app.use('/api/telemetry', require('./routes/telemetry').router())
 // The 3D replay viewer's decoded track (routes/replay.js). Separate from the
 // /api/replays/* pointer and grade endpoints in routes/site.js, which it does not touch.
 app.use('/api/replay', require('./routes/replay').router())
@@ -191,6 +199,9 @@ p{color:#9b9b9b}a{color:#e7e7e7}</style>
   })
 }
 
+// Last in the chain: an error thrown by any route is logged, recorded and answered as JSON.
+app.use(siteLog.errorHandler())
+
 // ---- server + sockets ---------------------------------------------------------------
 const server = http.createServer(app)
 const io = new IO(server, { path: '/socket.io', cors: { origin: false } })
@@ -263,6 +274,9 @@ partyProgress.setEmitter((steamIds, payload) => {
 
 achievements.startJobs()
 mapRecords.startJobs()
+// Telemetry: retry bundles the bucket has not got yet; the nightly digest and site log.
+require('./lib/telemetry/store').start()
+require('./lib/telemetry/jobs').start()
 
 server.listen(PORT, HOST, () => {
   const b = require('./lib/boxes').list()

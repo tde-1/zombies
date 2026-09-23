@@ -9,8 +9,11 @@
 //                                              false / undefined  -> skip the bytes
 //                                              { max: n }         -> buffer at most the LAST n
 //                                                                    bytes (a log's tail matters)
+//                                              { sink: { write(buf), end() } }
+//                                                                 -> stream the bytes to it
 //                                            and is then called again as
 //                                              onEntry({ name, size, data, truncated })
+//                                            (not for a sink: its end() is the "done")
 //
 // Names are ustar (<=100, or prefix/name with a 155-byte prefix). Longer names are cut
 // from the left, keeping the file name, because every name here is one we chose.
@@ -133,7 +136,8 @@ async function readTarGz (input, onEntry) {
         if (cur.left > 0) {
           if (!buf.length) return
           const take = Math.min(cur.left, buf.length)
-          if (cur.want) {
+          if (cur.sink) cur.sink.write(Buffer.from(buf.subarray(0, take)))
+          else if (cur.want) {
             cur.parts.push(buf.subarray(0, take))
             cur.kept += take
             // Keep only the LAST `max` bytes.
@@ -149,7 +153,8 @@ async function readTarGz (input, onEntry) {
           cur.padLeft -= take
           if (cur.padLeft > 0) return
         }
-        if (cur.want) {
+        if (cur.sink) cur.sink.end()
+        else if (cur.want) {
           let data = Buffer.concat(cur.parts)
           const truncated = data.length > cur.want || cur.kept < cur.size
           if (data.length > cur.want) data = data.subarray(data.length - cur.want)
@@ -171,13 +176,14 @@ async function readTarGz (input, onEntry) {
       const type = String.fromCharCode(h[156] || 48)
       const regular = type === '0' || type === '\0'
       let want = 0
+      let sink = null
       if (regular) {
         seen.push({ name, size })
         const r = onEntry({ name, size })
-        if (r && r.max) want = Math.max(0, r.max)
+        if (r && r.sink) sink = r.sink
+        else if (r && r.max) want = Math.max(0, r.max)
       }
-      cur = { name, size, left: size, want, parts: [], kept: 0, padLeft: size % BLOCK ? BLOCK - (size % BLOCK) : 0 }
-      if (!want) cur.want = 0
+      cur = { name, size, left: size, want, sink, parts: [], kept: 0, padLeft: size % BLOCK ? BLOCK - (size % BLOCK) : 0 }
     }
   }
 

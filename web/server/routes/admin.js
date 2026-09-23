@@ -73,6 +73,8 @@ function router() {
         live_leases: db.prepare("SELECT COUNT(*) c FROM assignments WHERE state IN ('leased','ready','live')").get().c,
         boxes_online: list.filter((b) => b.online).length,
         boxes: list.length,
+        // Unreviewed P1/P2 issues in the last 30 days (lib/telemetry/incidents.js).
+        ...(() => { try { const u = require('../lib/telemetry/incidents').unreviewed(); return { incidents_p1: u.p1, incidents_p2: u.p2 } } catch { return { incidents_p1: 0, incidents_p2: 0 } } })(),
       },
       boxes: list,
       presence: presence.stats(),
@@ -660,6 +662,47 @@ function router() {
     if (!out.ok) return res.status(400).json(out)
     audit(req, 'collection.delete', { id: Number(req.params.id) })
     res.json(out)
+  })
+
+  // ---- Issues: log bundles and their flags (docs/kickstart/telemetry.md) ------------
+  const incidents = require('../lib/telemetry/incidents')
+  r.get('/incidents', requireMod, (req, res) => res.json(incidents.list(req.query || {})))
+  r.get('/incidents/rules', requireMod, (req, res) => res.json({ rules: incidents.rules() }))
+  r.get('/incidents/:id', requireMod, (req, res) => {
+    const it = incidents.detail(req.params.id)
+    if (!it) return res.status(404).json({ error: 'no such incident' })
+    res.json({ incident: it })
+  })
+  r.get('/incidents/:id/brief', requireMod, (req, res) => {
+    const text = incidents.brief(req.params.id)
+    if (text == null) return res.status(404).type('text/plain').send('no such incident')
+    res.type('text/plain; charset=utf-8').send(text)
+  })
+  r.get('/incidents/:id/bundle', requireMod, (req, res) => {
+    const row = incidents.byRowId(req.params.id)
+    if (!row) return res.status(404).json({ error: 'no such incident' })
+    const fs = require('node:fs')
+    if (row.local_path && fs.existsSync(row.local_path)) {
+      res.setHeader('content-disposition', `attachment; filename="incident-${row.id}-${row.kind}.tar.gz"`)
+      return res.type('application/gzip').sendFile(row.local_path)
+    }
+    if (row.upload_state === 'uploaded' && row.bucket_key) return res.redirect(302, require('../lib/telemetry/store').publicUrl(row.bucket_key))
+    res.status(404).json({ error: row.upload_state === 'none' ? 'this incident has no bundle (the site recorded it itself)' : 'the bundle is neither on this disk nor in the bucket' })
+  })
+  r.post('/incidents/:id/review', requireMod, (req, res) => {
+    const b = body(req)
+    const out = incidents.review(req.params.id, { reviewed: b.reviewed === undefined ? undefined : !!b.reviewed, bug: b.bug, note: b.note }, req.me.steam_id)
+    if (!out) return res.status(404).json({ error: 'no such incident' })
+    audit(req, 'incident.review', { id: out.id, reviewed: out.reviewed, bug: out.bug || null, flags: out.flags })
+    res.json({ ok: true, incident: out })
+  })
+  r.post('/incidents/digest', requireAdmin, async (req, res) => {
+    try {
+      const date = /^\d{4}-\d\d-\d\d$/.test(String(body(req).date || '')) ? body(req).date : new Date().toISOString().slice(0, 10)
+      const out = await require('../lib/telemetry/jobs').uploadDigest(date)
+      audit(req, 'incident.digest', { date, key: out.key, count: out.count })
+      res.json(out)
+    } catch (e) { res.status(502).json({ error: `the digest did not upload: ${e.message}` }) }
   })
 
   // ---- Sweeps -----------------------------------------------------------------------
