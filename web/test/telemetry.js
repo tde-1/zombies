@@ -530,11 +530,15 @@ async function main () {
     eq(row.box, 'box-t'); truthy(row.bucket_key.startsWith('logs/host/') && row.bucket_key.includes('/box-t/'), row.bucket_key)
   })
 
-  server.close()
+  // Close the sockets the launcher's fetch (undici) kept alive before exiting: a
+  // process.exit with them still open trips a libuv assertion on Windows (exit 127).
+  server.closeAllConnections?.()
+  await new Promise((resolve) => server.close(resolve))
   for (const [s, n] of out) console.log(`${s} ${n}`)
   console.log(`\ntelemetry: ${pass} passed, ${fail} failed`)
   try { fs.rmSync(TMP, { recursive: true, force: true }) } catch {}
-  process.exit(fail ? 1 : 0)
+  process.exitCode = fail ? 1 : 0
+  setTimeout(() => process.exit(process.exitCode), 5000).unref()
 }
 
 main().catch((e) => { console.error(e); process.exit(1) })
