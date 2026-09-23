@@ -753,3 +753,157 @@ Nothing here was run: B was playing and this lane took no lock. From a clean che
 * **B's keyboard** for Tab / Up / Down in the console (posted keys only in every selftest so far).
 * `quit` in **Play Local** calls the site's quit route without a match id; by §5 the site then acts
   on the player's current lease, and a Play Local player normally has none. Not run.
+
+---
+
+## 12. 2026-09-23 ~16:40–18:30 — restart: at once from the console, after a death, and the × closes the server (lane RS, branch `worktree-agent-a2f1f1baabf136fc8`, not shipped)
+
+B, afternoon: *(1) typing `restart` in the console must not ask to confirm; (2) on bridge_zombie
+the server did not restart before the game ended — it must be immediate; (3) a restart must
+reconnect you as if it were a brand-new game, gracefully (relaunching the game is fine if
+needed); (4) the X bottom left must close the server, not leave the party — leaving goes in the
+party menu.*
+
+### 12.1 What went wrong on bridge_zombie (lease `m_abe60828`, `inst-44`, 14:09–14:10 UTC)
+
+Box: `journalctl -u enw-host-agent`, `logs/host/inst-44.games_mp.log`, `waw-inst-01/enw-3060.log`.
+B's PC: `%LOCALAPPDATA%\ENWZombies\logs\enw-19268.log` (UK time = UTC+1; his clock reads ~0.6 s
+ahead of the box).
+
+| UTC | where | what |
+|---|---|---|
+| 14:10:19.4 | host | game live (verified) |
+| 14:10:43 (0:34) | game | `down` — the solo player's last stand |
+| 14:10:44.004 (0:35) | DLL | `GAME OVER at round 1 (end_game notify)` one second after the down (why so fast is lane G2's) |
+| 14:10:44.127 → .272 | host | `match_end` → replay closed → `disposition: TERMINATE — --after-game terminate` → SIGTERM. **The server was gone 268 ms after game over**; the site set the box idle at .524 |
+| 14:10:42.8 (15:10:43.370 UK) | client | ENW console opened |
+| ~14:10:45.0 (15:10:45.617) | client | `restart` → *"restart again to confirm"* |
+| ~14:10:47.1 (15:10:47.765) | client | `restart` → `setu enw_req restart.1` |
+| — | box | **no `restart_request` anywhere** — the DLL log ends at 14:10:44, the journal has none |
+| 15:11:03.467 UK | client | 20 s of silence → *"Lost the connection to the server."* → quit 15:11:07 |
+
+Three things were wrong, and the third would have beaten a live server too:
+
+1. **The confirm** cost 2.1 s.
+2. **A run that ends on its own took its server with it** 268 ms later (`--after-game terminate`,
+   host.md §16). A restart during or after the end_game sequence could never work, whatever the
+   client did — and in solo the end_game sequence starts a second after the down.
+3. **The console's first restart is never sent at all.** `setu` creates a new dvar and only then
+   adds the userinfo flag, so the change that creates it does not mark userinfo modified and the
+   client never re-sends it (Quake 3's `Cvar_Set_f` had the same order before ioq3 fixed it).
+   Measured locally in `rs4`: `restart.1` never reached the server; `restart.2`, a change of the
+   now-existing dvar, was at the server 136 ms later. The Esc menu's Restart (§3, §7) only ever
+   worked because closing the menu changes `enw_ui` in the same frame, which re-sends the whole
+   userinfo. B's bridge restart was a console `restart.1`.
+
+### 12.2 The new flow
+
+The restart stays **in the same process on the same lease** (§3: `end` → `game_over` →
+`match_end` → `map_restart` → a successor run `<lease>.r<n>`), not a fresh server and not a
+game relaunch. Measured below: **keypress → controllable in the new run ≈ 2.9 s**, of which ~2.3 s
+is the client re-entering the map. A fresh server would be the box's ~10 s boot (bridge 14:09:59 →
+14:10:08.9 map_loaded) plus a site lease, the launcher's follow and a game relaunch (~8 s on B's
+PC), ~20 s at best, with more that can fail; the in-process path keeps one run per replay and
+result, and has been proven since §7.
+
+| Piece | Change |
+|---|---|
+| `restricted_console.cpp` | `restart` acts on the first Enter (no confirm). A second `restart` within 5 s of one that went out is absorbed ("restarting"). The Esc menu's button keeps its two clicks. `ENW_CONSOLE_RESTART_FILE` is the proof hook (the harness drops a file, the DLL opens the console and types `restart`, N times for spam) |
+| `pause_menu.cpp` | **`setu enw_req 0` at the first frame** (fix 3 above: the dvar exists, with its flag, before the connect; the server's baseline is `0`). The restart is watched: `RESTART: the map left N ms after the request`, `back in the map N ms after the request`, `^1Restart refused` on the HUD when nothing happens in 8 s, a capture of the new run when frame capture is armed. The HUD says `Restarting...` meanwhile |
+| `restart_request.cpp` (dedi) | one request per **3 s** (was 15 s, which dropped a real second restart 10 s in), none while one is pending (≤ 5 s) |
+| `lib/restart.js` + `host.js` | **The restart grace.** A run that ends on its own (a solo down, any end_game) with its server alive, its link up and a player still in it holds its instance and its result POST for **`--restart-grace-ms` (default 10 000; `ENW_RESTART_GRACE_MS`; 0 = the old immediate teardown)**. Its replay is signed at once as before; only the POST waits, because the site closes the lease on it. A `restart_request` inside the grace → `restartAfterEnd`: the same who-may rule (verified, or alone), the link goes to `<lease>.r<n>` (absorbing until its `map_loaded`), `end` goes out on the new run (the DLL's game is already over, so `do_end` just restarts the map), and the finished run is posted with **`lease_continues: true`**. The finished run is a real game over, not `abandoned`. The grace ends early when the link closes or the instance is retired (the lease cancelled, a shutdown). A request before the successor's map is back is ignored (spam). New log line: `restart: slot N spawned in run X N ms after the restart was accepted` |
+| `web/server/lib/results.js` | a result with `lease_continues` **from the box that holds the lease** does not close the lease (as `player_restart` already did) |
+
+**Who may restart, in a party:** unchanged from §3 — a verified player, or anybody alone.
+Everybody connected goes through the same `map_restart` (the players never leave the server) and
+is re-admitted to the new run by the carry (§3 step 5). An unverified player in co-op is refused
+(`restart_refused`), and now sees `Restart refused` after 8 s.
+
+### 12.3 Edge cases
+
+| Case | What happens | Evidence |
+|---|---|---|
+| Console `restart`, live game | at once, no confirm | rs4 #2; rs6 |
+| **Restart while downed** (solo last stand, before the end_game) | the live path: `end` → `game_over player_restart` → new run | rs4 #3: requested 0.3 s after the `down` line |
+| **During / after the end_game sequence** | the restart grace: `restartAfterEnd`, `lease_continues` | rs4 #4: game over 17:49:59.022, `restart` at .413, `ACCEPTED ... after the run ended`, new run, spawn 2.9 s after the keypress |
+| A restart that arrives the moment the game ends on its own | whichever wins: accepted live (the successor takes the link at `match_end`, the result posts `lease_continues`) or after the end (grace) | unit tests |
+| Paused / Esc menu open | the Esc menu's Restart closes the menu (`enw_ui clear`) in the same frame as the request; the console cannot open over the menu | §7 escmenu1/2 (pause on) |
+| **Restart spam** (`restart` ×3, 400 ms apart) | the console absorbs repeats for 5 s, the DLL ignores anything within 3 s or while pending, the host ignores a run whose map is not back | rs4 #2: one restart, one new run |
+| A second restart later in the new run | allowed (the old 15 s block is gone) | rs4 #3 was 70 s after #2 |
+| Co-op | who-may per §3; everyone is carried through the same map_restart | unit tests (`test/restart.js` 17/0), not run with two clients |
+| Nobody restarts within the grace | the result posts 10 s after the game over (so the site's *Your record has been uploaded.* line arrives ~10 s later than before), then the ordinary disposition | rs2, rs4 end |
+| The server is gone (a restart typed after the grace) | the client says `Restart refused` after 8 s; the lockdown's end screen follows as before | — |
+
+### 12.4 The × on the server card (web)
+
+B: *"The X button in the bottom left should close the server, not leave the party."*
+
+* **`POST /api/party/end`** (`lib/seats.js` `end`, session auth): **the party's host only** (a solo
+  party's one member is its host). The party's lease is cancelled (the box retires the instance;
+  the host signs the run and, if it was in its grace, posts it at once), every seat is marked
+  quit so nobody is offered Resume into it, and the party goes back to **forming with its map,
+  mode and members** as they were. A stale `match_id` changes nothing.
+* **The ×** (`PartyRail.jsx` `ServerCard`): title and label *Close server*, confirm *"Close the
+  server? The game ends for the party."*, shown only to the host while there is a game
+  (`launching`, `in-game`, or a resumable one). Nothing else on the card changed.
+* **Leave** moved to the party block's header, beside *Copy link*, for a party of two or more
+  (confirm *"Leave this party?"*, the old `/api/party/leave`).
+* Render check on a scratch site (port 3398, temp DB, `ZM_TEST_LOGIN`, invented accounts alpha +
+  beta, a live lease): the header reads *Party · 2 · Copy link · Leave*, the card shows × with
+  title *Close server*; clicking it → confirm text as above → the party is `forming`, 2 members,
+  map kept, the card back to *Play*, the × gone. `/api/party/quit` (the Esc menu's Exit) is
+  unchanged.
+
+### 12.5 Proof (local, invisible, private LocalAppData, under game.lock)
+
+`tools\dev\restart-proof.ps1`: `jointest.ps1` (`nd` server + `nc` client, `ENW_TEST_NO_ACTIVATE=1`,
+parked at -4000,-4000, `ENW_BORDERLESS_COVER=0`, the private LocalAppData) against the **real host
+agent** (`host.js --local --restart-grace-ms 10000`, its own replay/log/key dirs under
+`ZombiesDev\logs\rs\<tag>\`). The script fires each restart from the host's own log: `live`
+8 s after *game live*, `spam` (`restart` ×3) 8 s after the map is back, `down` at the
+`;down;` line of the games_mp mirror, `end` after a natural game over (inside the grace). Local
+mode means identity `none`/solo (no site key), the rule's "alone" branch.
+
+| Run | Map | Result |
+|---|---|---|
+| rs1 | Nacht on `host2`/`c2` | harness: `host2`'s fresh private LocalAppData made the dedi boot die in `Exceeded limit of 1 'snddriverglobals'` (the second `code_post_gfx` load, dedi.md §11.4 class) before a player joined. Moved to `nd`/`nc`, which P1 used |
+| rs2 | Nacht | harness: the script could not read the host's log (share mode). It did show the grace on its own: a natural game over → `restart grace: 10000 ms ...` → `nobody restarted within 10000 ms` → disposition |
+| **rs4** | Nacht, DLL before the `enw_req` fix | **#1 `restart.1`: never reached the server (finding 3).** #2 (spam ×3): `restart.2` at 17:47:04.096 → server 04.232 → host `ACCEPTED` 04.366 → map left +453 ms → **back in the map +2750 ms** → **spawned in `m_rs4.r2` at +2878 ms from the keypress**; the other two `restart`s absorbed. #3 (**while downed**): +3098 ms to spawn in `r3`. #4 (**after the game ended**, 0.39 s after `stop_intermission` game over): `ACCEPTED ... after the run ended` → `restart grace: a player restarted - the lease goes on` → **+2902 ms** to spawn in `r4`. Capture after each: round 1, 500 points, M1911, no menu, no blur. The last natural end: grace, then the result |
+| rs6 | Nacht, fixed DLL | *(see §12.8 addendum)* |
+| rs7 | bridge_zombie, fixed DLL | *(see §12.8 addendum)* |
+
+![Nacht, 6 s into run r2 after a console restart](ui/restart-new-run-nacht-800x600.jpg)
+
+### 12.6 Tests
+
+`infra/host-agent/test/restart.js` **17/0** (+5: after-the-end accepted / co-op refusal / no grace
+/ spam / no link; the map-not-back guard in two existing cases); host `test/run-all.js` **108/0**;
+web `npm test` every suite 0 failed (`run-all` **151/0**, +3: the × solo, the × in a party of two,
+`lease_continues` from the lease's box vs another box); launcher `test/run-all.js` **171/0** (with a
+staged client DLL; 170/1 without one, the worktree has no `build/launcher`); `lockdown_test`
+**196/0**, `settings_model_test` **65/0**.
+
+### 12.7 What ships where, and in what order
+
+* **Site** (`results.js`, `seats.js`, `routes/site.js`, the client bundle): merge + a site restart
+  on B's word. **Before the host agent**: a host that posts `lease_continues` to an old site gets
+  its lease closed under the restarted run, and the box would then retire it.
+* **Host agent** (`host.js`, `lib/restart.js`): deploy after the site; `--restart-grace-ms 0`
+  switches the grace off.
+* **Box DLL** (`restart_request.cpp`, 3 s debounce): optional; the old 15 s debounce only blocks a
+  second restart within 15 s. Rule 17 build from a clean main commit.
+* **Launcher** (client DLL: the console, `enw_req` priming, the watch): a launcher release. Until
+  then the console's first restart in each game is still lost (use it twice, or the Esc menu).
+
+### 12.8 Not proven
+
+* **On the box, through the site**: the grace and `lease_continues` were run against the real host
+  agent in local mode (no site). The site half is unit-tested (`run-all`), not run with a box.
+* **Two players**: co-op who-may and the carry are unit tests only (as in §8).
+* **B's hand and keyboard**, and the Esc menu's Restart with this build (unchanged code path).
+* **The × with a real box**: the lease cancel → box retire path is the site's existing `cancel`;
+  the in-game player then meets the lockdown's silent-server end screen after 20 s (§10.1), which
+  is not a restart and not changed here.
+* **Faster than ~2.9 s**: `map_restart` sends every client through the connect handshake (~2.3 s
+  of the total). `fast_restart` might keep them loaded, but it is untested on this engine and
+  lives in the referee's `do_end`; not tried.
