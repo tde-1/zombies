@@ -72,6 +72,13 @@ export function parse(raw) {
     if (!arg || !/^\d{1,12}$/.test(arg)) return { kind: 'home', why: 'an invite link with no invite id', url }
     return { kind: 'invite', invite: Number(arg), url }
   }
+  // [SS] the screenshot toast's Open image / Open folder (screenshots.js). No path in the link:
+  // the launcher opens the newest shot it knows, so a crafted link can open nothing else.
+  if (head === 'screenshot') {
+    const a = String(arg || '').toLowerCase()
+    if (a === 'open' || a === 'folder') return { kind: 'screenshot', action: a, url }
+    return { kind: 'home', why: 'a screenshot link with no action', url }
+  }
   if (head === 'open') return { kind: 'home', why: 'opened from a notification', url }
   if (!head) return { kind: 'home', why: 'no route in the link', url }
   return { kind: 'home', why: `unknown route "${head}"`, url }

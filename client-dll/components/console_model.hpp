@@ -118,6 +118,7 @@ inline const std::vector<setting_alias>& aliases() {
         // enw
         {"discordPresence", "discord", {"richpresence", "presence"}},
         {"discordOverlay", "discordoverlay", {"overlay"}},
+        {"screenshotFormat", "shotformat", {"screenshotformat"}},   // [SS] jpg | png
     };
     return k;
 }
@@ -321,6 +322,9 @@ inline bool validate(const settings::item& it, const std::string& value, std::st
 inline std::string refusal_for(std::string_view name) {
     std::string n(name);
     if (settings::forbidden_dvar(name)) return n + ": locked";
+    // [SS] the engine's screenshot commands are not ours to run from here (screenshot.cpp redirects them anyway).
+    const std::string l = settings::lower(name);
+    if (l == "screenshot" || l == "screenshotjpeg" || l == "enw_screenshot") return n + ": press F12 (bind <key> screenshot)";
     return n + ": unknown -- help";
 }
 
@@ -370,6 +374,7 @@ inline const std::vector<std::pair<const char*, const char*>>& action_aliases() 
         {"jump", "+gostand"}, {"grenade", "+frag"}, {"special", "+smoke"}, {"switch", "weapnext"}, {"nextweapon", "weapnext"},
         {"crouch", "+movedown"}, {"back", "+back"}, {"left", "+moveleft"}, {"right", "+moveright"}, {"scoreboard", "+scores"},
         {"inventory", "+actionslot 3"}, {"equipment", "+actionslot 4"}, {"satchel", "+actionslot 2"},
+        {"screenshot", "enw_screenshot"},   // [SS] ENW's own; WaW's screenshotJPEG is never an action
     };
     return k;
 }

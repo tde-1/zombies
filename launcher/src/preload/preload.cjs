@@ -82,6 +82,13 @@ contextBridge.exposeInMainWorld('enw', {
   setConfig: (patch) => call('setConfig', patch),
   openExternal: (url) => call('openExternal', url),
   openFolder: (which) => call('openFolder', which),
+  // Lane SS: ENW's F12 screenshots (<Pictures>\ENW Zombies). `screenshots()` is { dir, recent:
+  // [{ name, size, at }] }, newest first; open / show take a bare file name from that list and
+  // nothing else. `onScreenshot` fires when a new one appears. openFolder('screenshots') opens it.
+  screenshots: () => call('screenshots'),
+  openScreenshot: (name) => call('openScreenshot', name),
+  showScreenshot: (name) => call('showScreenshot', name),
+  onScreenshot: (fn) => on('screenshot', fn),
 
   // Updates, the player-driven lane. `checkForUpdates()` resolves with the first state
   // it reaches; everything after that (Downloading 37%, Ready to install, a failure)

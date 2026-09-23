@@ -43,6 +43,7 @@ export const GROUPS = [
   // Drawn on the ENW tab under EnwSection (pages/Settings.jsx).
   { tab: 'enw', id: 'discord', label: 'discord', items: ['discordPresence', 'discordOverlay'] },
   { tab: 'enw', id: 'notifications', label: 'notifications', items: ['notifySound'] },
+  { tab: 'enw', id: 'screenshots', label: 'screenshots', items: ['screenshotFormat'] },
 ]
 
 // Shorter, Gaff-style row labels. Anything not here uses the game's own label, lowercased.
@@ -87,6 +88,7 @@ export const LABELS = {
   discordPresence: 'rich presence',
   discordOverlay: 'discord overlay',
   notifySound: 'notification sound',
+  screenshotFormat: 'format',
   cg_mature: 'mature content',
   cg_subtitles: 'subtitles',
   hud_enable: 'hud',
@@ -103,6 +105,7 @@ export const HINTS = {
   rawMouse: 'fixes high polling rate mice',
   discordOverlay: 'auto turns it off when a map is short of memory',
   notifySound: 'invites, DMs and party chat while the launcher is not in front',
+  screenshotFormat: 'F12. jpeg: about 2 MB at 1440p. png: lossless, about 4x larger',
 }
 
 // Shorter words for the segmented buttons, keyed by item id then stored value.
@@ -112,6 +115,7 @@ export const OPTION_WORDS = {
   r_picmip_manual: { 0: 'auto', 1: 'manual' },
   maxFps: { 250: '250' },
   discordOverlay: { auto: 'auto', allow: 'on', refuse: 'off' },
+  screenshotFormat: { jpg: 'jpeg', png: 'png' },
 }
 
 export const labelOf = (it) => LABELS[it.id] || String(it.label).toLowerCase()

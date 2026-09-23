@@ -83,9 +83,15 @@ export const BIND_COMMANDS = [
   'toggleprone', '+movedown', '+prone', '+stance', '+strafe',
   '+attack', '+speed_throw', '+toggleads_throw', '+melee', 'weapnext', '+reload', '+sprint',
   '+breath_sprint', '+holdbreath', '+frag', '+smoke', '+actionslot 3', '+actionslot 4', '+actionslot 2',
-  '+activate', '+actionslot 1', 'screenshotjpeg', '+scores', 'acceptInvitation', 'savegame_lastcommit',
+  '+activate', '+actionslot 1', 'enw_screenshot', '+scores', 'acceptInvitation', 'savegame_lastcommit',
 ]
-const BIND_CANON = new Map(BIND_COMMANDS.map((c) => [c.toLowerCase(), c]))
+// [SS] 2026-09-24: the screenshot row is ENW's own command (client DLL screenshot.cpp, client.md 15). WaW's
+// `screenshotJPEG` / `screenshot` drop the game on a display over ~3.4 MP (client.md 14) and write into the
+// player's Documents, so we never bind them: an account that saved keys for the old row keeps them (read
+// as enw_screenshot), and every `bind <key> "screenshotJPEG"` in the engine's config becomes ours.
+export const SCREENSHOT_CMD = 'enw_screenshot'
+export const STOCK_SCREENSHOT_CMDS = ['screenshotjpeg', 'screenshot']
+const BIND_CANON = new Map([...BIND_COMMANDS.map((c) => [c.toLowerCase(), c]), ...STOCK_SCREENSHOT_CMDS.map((c) => [c, SCREENSHOT_CMD])])
 
 // A key name as the engine writes it in a bind line. ESCAPE and the console keys are the
 // game's own and are never rebindable from here.
@@ -190,6 +196,8 @@ export function accountConfigLines(settings = {}, display = null) {
   // write them, the read-back below saves them, the launcher acts on them next launch.
   pairs.push([DISCORD_DVARS.presence, settings.discordPresence === false ? '0' : '1'])
   pairs.push([DISCORD_DVARS.overlay, DISCORD_OVERLAY_VALUES.includes(settings.discordOverlay) ? settings.discordOverlay : 'auto'])
+  // [SS] the screenshot format rides the same way; the DLL reads it at each shot, so an in-game change is live.
+  pairs.push([SHOT_FORMAT_DVAR, settings.screenshotFormat === 'png' ? 'png' : 'jpg'])
   return { pairs, resets, binds }
 }
 
@@ -198,6 +206,8 @@ export const RAW_MOUSE_DVAR = 'enw_rawmouse'
 // ...and for the launcher's Discord rich presence and the DLL's Discord-hook gate.
 export const DISCORD_DVARS = { presence: 'enw_discord', overlay: 'enw_discordhook' }
 const DISCORD_OVERLAY_VALUES = ['auto', 'allow', 'refuse']
+// ...and for the screenshot key's file type (client DLL screenshot.cpp).
+export const SHOT_FORMAT_DVAR = 'enw_shotformat'
 
 // Fold the account into a config.cfg the game wrote. Case-insensitive on dvar names
 // (the engine writes `ai_corpseCount`; the menu says `ai_corpsecount`); everything we
@@ -225,7 +235,10 @@ export function mergeAccountIntoConfig(existing = '', { pairs = [], resets = [],
     const b = line.match(/^(\s*)bind\s+(\S+)\s+"?([^"]*)"?\s*$/i)
     if (b) {
       const key = b[2].toUpperCase()
-      const cmd = b[3].trim()
+      let cmd = b[3].trim()
+      // [SS] WaW's screenshot commands become ENW's, on whatever key the player had them.
+      const rewritten = STOCK_SCREENSHOT_CMDS.includes(cmd.toLowerCase())
+      if (rewritten) cmd = SCREENSHOT_CMD
       if (keyTo.has(key)) {
         if (!seenKey.has(key)) { out.push(`${b[1]}bind ${key} "${keyTo.get(key)}"`); seenKey.add(key) }
         continue
@@ -233,6 +246,7 @@ export function mergeAccountIntoConfig(existing = '', { pairs = [], resets = [],
       // Another key still bound to a command we now own: that binding is gone, as it is
       // when you rebind in the game's own menu.
       if (ownedCmds.has(cmd.toLowerCase())) continue
+      if (rewritten) { if (!seenKey.has(key)) { out.push(`${b[1]}bind ${key} "${cmd}"`); seenKey.add(key) } continue }
     }
     out.push(line)
   }
@@ -360,6 +374,12 @@ export function readBackAccount({ homeDir = P.home, profile = PROFILE, localAppD
     const before = (stamp.dvars || {})[DISCORD_DVARS.overlay]
     const after = now.dvars[DISCORD_DVARS.overlay]
     if (DISCORD_OVERLAY_VALUES.includes(after) && before !== undefined && before !== null && String(before) !== after) changed.discordOverlay = after
+  }
+
+  {
+    const before = (stamp.dvars || {})[SHOT_FORMAT_DVAR]
+    const after = now.dvars[SHOT_FORMAT_DVAR]
+    if ((after === 'jpg' || after === 'png') && before !== undefined && before !== null && String(before) !== after) changed.screenshotFormat = after
   }
 
   const binds = {}

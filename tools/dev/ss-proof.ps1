@@ -1,70 +1,64 @@
 <#
-  ce-proof.ps1 -- lane CE (client.md §14): F12 at the end of a game, on a 2560x1440-sized
-  screenshot, end to end, locally.
+  ss-proof.ps1 -- lane SS (client.md Â§15): ENW's own screenshot, end to end, locally, at a REAL
+  2560x1440 back buffer.
 
-  B, 2026-09-23 23:06 UK, Cheese Cube on 0.2.35: he died, the game ended, and 5 s later the client
-  dropped with `Hunk_AllocateTempMemory: failed on 11059216 bytes` (the stock F12 bind,
-  screenshotJPEG, at 2560x1440). This script plays that game over and presses F12 in it.
+  The same game as ce-proof.ps1 (a local dedicated server + the REAL host agent `--local` with the
+  10 s restart grace + an invisible client under game.lock; the idle player dies, the game ends),
+  but the client runs with r_mode 2560x1440 windowed, parked off-screen by launch.ps1
+  (ENW_TEST_NO_ACTIVATE=1, -4000,-4000, ENW_BORDERLESS_COVER=0, the private LocalAppData,
+  com_maxfps 30), so the back buffer the screenshot grabs is B's size. No synthetic frame.
 
-  A local dedicated server + the REAL host agent (host.js --local, the 10 s restart grace) + an
-  invisible client (ENW_TEST_NO_ACTIVATE=1, parked at -4000,-4000 by launch.ps1,
-  ENW_BORDERLESS_COVER=0, the private LocalAppData, 640x480 at com_maxfps 30), under game.lock
-  (jointest.ps1 takes and releases it). The idle player is killed by the zombies; the game ends.
-  The client DLL's harness switches (screenshot_guard.cpp):
-    ENW_SCREENSHOT_TEST=2560x1440  screenshotJPEG writes a synthetic frame of B's size (an
-                                   off-screen window cannot grab its back buffer at all)
-    ENW_SCREENSHOT_KEY_FILE        this script drops the file; the DLL posts F12 to its window
-  F12 is pressed twice: 8 s after the game is live, and 3 s after the game over (inside the
-  host's restart grace -- B's was at +5 s). When the host logs its disposition (the box
-  terminates the instance there), this script ends OUR server PID (waw-<ServerName>), as the box
-  does, so the client meets the silent-server rule and the end screen, then quits on its own.
+  F12 is posted to the game window (screenshot_guard.cpp's ENW_SCREENSHOT_KEY_FILE):
+    * 8 s after the game is live, and again 200 ms later (the second must be refused: 500 ms limit);
+    * 3 s after the game over, inside the host's restart grace (B's F12 was at +5 s).
+  -BindOurs puts `+bind F12 enw_screenshot` on the command line (our command, as the launcher's
+  config binds it); -BindStock puts WaW's `+bind F12 screenshotJPEG` there, which must reach OUR
+  screenshot through the redirect. (A +bind is archived into the copy's profile, so always pass one.) Shots go to ENW_SCREENSHOT_DIR = <out>\pictures -- never B's
+  Pictures. -Png sets ENW_SCREENSHOT_FORMAT=png.
 
-  -GuardOff runs the same with ENW_SCREENSHOT_GUARD=0: the reproduction of B's drop (use it with
-  -NoLiveShot, or the mid-game F12 drops the client before the game over).
+  After the run: every file in <out>\pictures (size, dimensions read from the file), and any file
+  under C:\Users\b\Documents written since the run started (there must be none).
 
-  WHERE THE SHOTS GO: the engine writes <Documents>\Activision\CoDWaW\screenshots\ -- B's own
-  Documents unless enw_localappdata redirects CSIDL_PERSONAL (client.md §14.5). After a run, check
-  that nothing new appeared under C:\Users\b\Documents\Activision.
-
-  Logs: ZombiesDev\logs\ce\<Tag>\ and the jointest pair ZombiesDev\logs\dedi\<Tag>.{server,client}.enw.log.
-
-  powershell -ExecutionPolicy Bypass -File tools\dev\ce-proof.ps1 -Tag ce1 -GuardOff
-  powershell -ExecutionPolicy Bypass -File tools\dev\ce-proof.ps1 -Tag ce2
-  powershell -ExecutionPolicy Bypass -File tools\dev\ce-proof.ps1 -Tag ce3 -Map nazi_zombie_ccube
+  powershell -ExecutionPolicy Bypass -File tools\dev\ss-proof.ps1 -Tag ss1 -BindOurs
+  powershell -ExecutionPolicy Bypass -File tools\dev\ss-proof.ps1 -Tag ss2 -Map nazi_zombie_ccube
 #>
 param(
-    [string]$Tag = 'ce1',
+    [string]$Tag = 'ss1',
     [string]$Map = 'nazi_zombie_prototype',
-    [string]$From = 'ce',
-    [string]$ServerName = 'cls',   # lane CL's copies: a FRESH copy's first dedi boot dies in
-    [string]$ClientName = 'clc',   # 'snddriverglobals' (ce1, and RS's rs1 on host2)
+    [string]$From = 'ss',
+    [string]$ServerName = 'cls',
+    [string]$ClientName = 'clc',
     [int]$LinkPort = 38971,
     [int]$DashPort = 8971,
     [int]$GraceMs = 10000,
     [int]$Watch = 420,
-    [string]$ShotSize = '2560x1440',
-    [switch]$GuardOff,
-    [switch]$NoLiveShot
+    [string]$Mode = '2560x1440',
+    [int]$MaxFps = 30,
+    [switch]$BindOurs,
+    [switch]$BindStock,
+    [switch]$Png
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $dev = 'C:\Users\b\ZombiesDev'
 $lock = "$dev\locks\game.lock"
-$out = "$dev\logs\ce\$Tag"
-New-Item -ItemType Directory -Force -Path $out, "$out\replays", "$out\keys", "$out\spool", "$out\host" | Out-Null
+$out = "$dev\logs\ss\$Tag"
+$pics = "$out\pictures"
+New-Item -ItemType Directory -Force -Path $out, "$out\replays", "$out\keys", "$out\spool", "$out\host", $pics | Out-Null
 $keyFile = "$out\f12.trigger"
 Remove-Item -LiteralPath $keyFile -ErrorAction SilentlyContinue
 $match = "m_$Tag"
 $notes = "$out\driver.log"
+$started = Get-Date
 function Note($m) { $l = "[{0:HH:mm:ss.fff}] {1}" -f (Get-Date), $m; Write-Host $l; try { Add-Content -LiteralPath $notes -Value $l -Encoding utf8 } catch {} }
 
 $hostOut = "$out\host.out.log"
-$hostArgs = @("$repo\infra\host-agent\host.js", '--local', '--box', 'celocal', '--link-port', "$LinkPort",
+$hostArgs = @("$repo\infra\host-agent\host.js", '--local', '--box', 'sslocal', '--link-port', "$LinkPort",
     '--dash-port', "$DashPort", '--restart-grace-ms', "$GraceMs", '--replay-dir', "$out\replays",
     '--log-dir', "$out\host", '--key-dir', "$out\keys", '--spool-dir', "$out\spool")
 $hostProc = Start-Process -FilePath node -ArgumentList $hostArgs -RedirectStandardOutput $hostOut `
     -RedirectStandardError "$out\host.err.log" -WindowStyle Hidden -PassThru
-Note "host agent PID $($hostProc.Id) (--local, grace $GraceMs ms, link $LinkPort, dash $DashPort); map $Map; guard $(if ($GuardOff) { 'OFF' } else { 'on' })"
+Note "host agent PID $($hostProc.Id); map $Map; r_mode $Mode; bind $(if ($BindOurs) { 'F12 enw_screenshot (command line)' } elseif ($BindStock) { 'F12 screenshotJPEG (command line: the stock bind, must reach OURS)' } else { 'whatever the profile holds' }); format $(if ($Png) { 'png' } else { 'jpg' })"
 try {
     $ok = $false
     for ($i = 0; $i -lt 40 -and -not $ok; $i++) {
@@ -76,10 +70,9 @@ try {
         } catch {}
     }
     if (-not $ok) { throw 'the host agent never answered /api/local/expect' }
-    Note "registered instance $ServerName as $match ($Map)"
 
     $job = Start-Job -ScriptBlock {
-        param($repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $keyFile, $lock, $DashPort, $ShotSize, $GuardOff)
+        param($repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $keyFile, $lock, $DashPort, $Mode, $MaxFps, $BindOurs, $Png, $pics, $BindStock)
         $deadline = (Get-Date).AddMinutes(60)
         while ((Get-Date) -lt $deadline) {
             $busy = (Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count -gt 0
@@ -90,23 +83,25 @@ try {
             -Body (@{ instance = $ServerName; match_id = $match; map = $Map } | ConvertTo-Json)
         $env:ENW_TEST_NO_ACTIVATE = '1'
         $env:ENW_BORDERLESS_COVER = '0'
-        $env:ENW_FRAME_CAPTURE = '1'
-        $env:ENW_SCREENSHOT_TEST = $ShotSize
+        $env:ENW_SCREENSHOT_DIR = $pics
         $env:ENW_SCREENSHOT_KEY_FILE = $keyFile
-        $env:ENW_SCREENSHOT_GUARD = $(if ($GuardOff) { '0' } else { $null })
-        # [SS] since lane SS the engine's screenshotJPEG takes ENW's own screenshot (screenshot.cpp);
-        # this proof is about the ENGINE's writer (the guard, the Documents redirect), so keep it.
-        $env:ENW_SCREENSHOT_STOCK = '1'
-        $env:ENW_SCREENSHOT_DIR = "$(Split-Path -Parent $keyFile)\pictures"
+        $env:ENW_SCREENSHOT_FORMAT = $(if ($Png) { 'png' } else { $null })
+        $env:ENW_SCREENSHOT_TEST = $null
+        $env:ENW_SCREENSHOT_STOCK = $null
+        $env:ENW_SCREENSHOT_GUARD = $null
+        $env:ENW_FRAME_CAPTURE = $null
         $env:ENW_CONSOLE_RESTART_FILE = $null
         $env:ENW_CONSOLE_SELFTEST = $null
         $env:ENW_ESC_MENU_SELFTEST = $null
         $env:ENW_CHAT_SELFTEST = $null
         $env:ENW_USE_PRIVATE_LOCALAPPDATA = $null   # launch.ps1's default: the private LocalAppData
+        $extra = @('+set', 'com_maxfps', "$MaxFps", '+set', 'r_fullscreen', '0', '+set', 'r_mode', $Mode)
+        if ($BindOurs) { $extra += @('+bind', 'F12', 'enw_screenshot') }
+        if ($BindStock) { $extra += @('+bind', 'F12', 'screenshotJPEG') }
         & "$repo\tools\dev\jointest.ps1" -Tag $Tag -ServerFrom $From -ClientFrom $From -ServerName $ServerName `
             -ClientName $ClientName -WatchSeconds $Watch -MatchId $match -LinkHost "127.0.0.1:$LinkPort" -Map $Map `
-            -ClientExtraArgs @('+set', 'com_maxfps', '30', '+set', 'r_mode', '640x480', '+bind', 'F12', 'screenshotJPEG') *>&1
-    } -ArgumentList $repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $keyFile, $lock, $DashPort, $ShotSize, $GuardOff.IsPresent
+            -ClientExtraArgs $extra *>&1
+    } -ArgumentList $repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $keyFile, $lock, $DashPort, $Mode, $MaxFps, $BindOurs.IsPresent, $Png.IsPresent, $pics, $BindStock.IsPresent
 
     $count = {
         param($file, $pat)
@@ -119,23 +114,23 @@ try {
         } catch { return 0 }
         ([regex]::Matches($t, $pat)).Count
     }
-    $liveAt = $null; $liveShot = $NoLiveShot.IsPresent
+    $liveAt = $null; $liveShot = $false; $spamShot = $false
     $overAt = $null; $endShot = $false
     $killed = $false
     $exe = "$dev\waw-$ServerName\CoDWaW.exe"
     while ($job.State -eq 'Running') {
-        Start-Sleep -Milliseconds 100
+        Start-Sleep -Milliseconds 50
         if (-not $liveShot) {
             if (-not $liveAt -and (& $count $hostOut 'game live:') -ge 1) { $liveAt = (Get-Date).AddSeconds(8); Note 'game live; F12 in 8 s' }
             if ($liveAt -and (Get-Date) -ge $liveAt) { Set-Content -LiteralPath $keyFile -Value '1' -Encoding ascii; $liveShot = $true; Note 'F12 (mid-game) FIRED' }
+        } elseif (-not $spamShot -and (Get-Date) -ge $liveAt.AddMilliseconds(250) -and -not (Test-Path -LiteralPath $keyFile)) {
+            Set-Content -LiteralPath $keyFile -Value '1' -Encoding ascii; $spamShot = $true; Note 'F12 again right after (must be refused: 500 ms)'
         }
         if (-not $endShot) {
             if (-not $overAt -and (& $count $hostOut 'restart grace: \d+ ms for') -ge 1) { $overAt = (Get-Date).AddSeconds(3); Note 'game over (restart grace open); F12 in 3 s' }
             if ($overAt -and (Get-Date) -ge $overAt) { Set-Content -LiteralPath $keyFile -Value '1' -Encoding ascii; $endShot = $true; Note 'F12 (after the game over) FIRED' }
         }
         if (-not $killed -and (& $count $hostOut 'disposition: ') -ge 1) {
-            # The box terminates the instance here (--after-game terminate); a --local host never
-            # kills a process it did not start, so we end OUR server (waw-$ServerName) ourselves.
             $sp = @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe })
             foreach ($p in $sp) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; Note "disposition: ended our server PID $($p.Id) ($exe), as the box does" }
             $killed = $true
@@ -151,10 +146,23 @@ try {
     Remove-Item -LiteralPath $keyFile -ErrorAction SilentlyContinue
 }
 Note 'host lines:'
-Select-String -LiteralPath $hostOut -Pattern 'game over|game live|SUMMARY|grace|disposition' | ForEach-Object { Note ("  " + $_.Line) }
+Select-String -LiteralPath $hostOut -Pattern 'game over|game live|grace|disposition' | ForEach-Object { Note ("  " + $_.Line) }
 $cl = "$dev\logs\dedi\$Tag.client.enw.log"
 if (Test-Path -LiteralPath $cl) {
     Note 'client lines:'
-    Select-String -LiteralPath $cl -Pattern 'screenshot_guard|Com_Error|Hunk_|lockdown:|clc.state|end screen|quit' |
+    Select-String -LiteralPath $cl -Pattern 'screenshot|Com_Error|Hunk_|enw_localappdata|lockdown:|clc.state|end screen|quit' |
         ForEach-Object { Note ("  " + $_.Line) }
 }
+Note 'pictures:'
+Add-Type -AssemblyName System.Drawing
+Get-ChildItem -LiteralPath $pics -File | ForEach-Object {
+    $dim = '?'
+    try { $img = [System.Drawing.Image]::FromFile($_.FullName); $dim = "$($img.Width)x$($img.Height)"; $img.Dispose() } catch {}
+    $head = [IO.File]::ReadAllBytes($_.FullName) | Select-Object -First 64
+    $exif = ([Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($_.FullName), 0, [Math]::Min(4096, $_.Length))) -match 'Exif'
+    Note ("  {0}  {1:N2} MB  {2}  exif={3}" -f $_.Name, ($_.Length / 1MB), $dim, $exif)
+}
+Note 'Documents written since the run started (must be none):'
+$docs = @(Get-ChildItem -LiteralPath 'C:\Users\b\Documents' -Recurse -Force -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -ge $started -or $_.CreationTime -ge $started })
+if ($docs.Count) { $docs | ForEach-Object { Note ("  NEW: " + $_.FullName) } } else { Note '  none' }

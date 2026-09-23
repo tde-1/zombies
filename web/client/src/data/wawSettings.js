@@ -194,7 +194,9 @@ export const BINDS = [
   B('combat', 'Satchel Charge', '+actionslot 2', ['7'], 'options_shoot @MENU_SATCHEL_CHARGE'),
   B('interact', 'Use', '+activate', ['F'], 'options_misc @MENU_USE'),
   B('interact', 'Map', '+actionslot 1', ['X'], 'options_misc @MENU_MAP'),
-  B('interact', 'Screenshot', 'screenshotjpeg', ['F12'], 'options_misc @MENU_SCREENSHOT'),
+  // [SS] 2026-09-24: ENW's own screenshot (client DLL screenshot.cpp, client.md 15). WaW's screenshotJPEG
+  // drops the game above ~3.4 MP and writes into Documents; the launcher rebinds its key to this.
+  B('interact', 'Screenshot', 'enw_screenshot', ['F12'], 'options_misc @MENU_SCREENSHOT (was screenshotJPEG; ENW screenshot.cpp now)'),
   B('interact', 'Show Objectives / Scores', '+scores', ['TAB'], 'options_misc @MENU_SHOW_OBJECTIVES_SCORES'),
   B('interact', 'Accept Invite', 'acceptInvitation', ['F10'], 'options_misc @MENU_ACCEPT_INVITE'),
   B('interact', 'Quick Save', 'savegame_lastcommit', ['F5'], 'options_misc @MENU_QUICK_SAVE'),
@@ -226,6 +228,11 @@ export const ENW_ITEMS = [
   // window is not in front (launcher attention.js). The flash and the toast stay either way.
   { id: 'notifySound', section: 'enw', label: 'Notification sound', kind: 'toggle', to: 'key:notifySound', def: true,
     src: 'launcher: attention.js. Off = the taskbar still flashes and invites still toast, silently. Not a game setting.' },
+  // [SS] 2026-09-24: the screenshot key's file type (client DLL screenshot.cpp reads enw_shotformat at each
+  // shot, so an in-game change applies at once). JPEG q95 4:4:4 by default; PNG is lossless and ~4x larger.
+  { id: 'screenshotFormat', section: 'enw', label: 'Screenshot Format', kind: 'select', to: 'key:screenshotFormat', def: 'jpg',
+    options: [{ label: 'JPEG', value: 'jpg' }, { label: 'PNG', value: 'png' }],
+    src: 'client DLL screenshot.cpp (client.md 15): enw_shotformat jpg|png, written into config.cfg by the launcher (wawcfg.js). Files go to Pictures\\ENW Zombies. Not in WaW\'s menus.' },
   { id: 'r_dof_enable', section: 'enw', label: 'Depth of Field', kind: 'toggle', to: 'waw', dvar: 'r_dof_enable', def: '1',
     src: 'engine dvar, archived in the config.cfg the game writes (seta r_dof_enable "1" on every profile here). Not in WaW\'s menus.' },
   { id: 'r_glow_allowed', section: 'enw', label: 'Glow', kind: 'toggle', to: 'waw', dvar: 'r_glow_allowed', def: null,
@@ -317,6 +324,7 @@ export const INGAME = {
   // read-back saves them to the account; the launcher and the DLL act on them next launch.
   discordPresence: { apply: 'next_launch', verified: true, dvar: 'enw_discord' },
   discordOverlay: { apply: 'next_launch', verified: true, dvar: 'enw_discordhook' },
+  screenshotFormat: { apply: 'live', verified: true, dvar: 'enw_shotformat' },
   notifySound: { apply: false, why: 'the launcher\'s chime, not the game\'s: in a game the overlay shows invites and chat and the launcher stays quiet' },
   r_dof_enable: { apply: 'live', verified: true },
   r_glow_allowed: { apply: 'live', verified: true },
@@ -415,7 +423,7 @@ export function withValue(game, it, value) {
 // The object the launcher's `settings.set()` takes (window.enw.setSettings). Every
 // catalogue dvar is sent explicitly: a value, `null` (game default: `reset <dvar>`), or
 // '' (no opinion: the launcher stops writing it).
-export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'discordOverlay', 'notifySound']
+export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'discordOverlay', 'notifySound', 'screenshotFormat']
 export function toLauncherPatch(game) {
   const g = game || {}
   const out = {}

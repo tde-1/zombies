@@ -444,12 +444,15 @@ async function renderSettings() {
   field('Discord rich presence', check('discordPresence'))
   field('Notification sound', check('notifySound'), 'Invites, DMs and party chat while the launcher is not in front.')
   field('Remove unplayed maps', check('autoRemoveUnplayedMaps'))
+  field('Screenshot format', sel('screenshotFormat', [['jpg', 'JPEG (recommended)'], ['png', 'PNG (lossless, about 4x larger)']]),
+    'F12 in game. Files go to Pictures\\ENW Zombies.')
   const scope = el('div', 'muted', s._scope ? `Saved to: ${s._scope}` : '')
   b.append(scope)
 
   const p = $('pathsBody')
   p.replaceChildren()
   renderStorage()
+  renderShots()
   const st = S.status
   const row = (k, v) => { const d = el('div', 'kv'); d.append(el('span', 'k', k)); d.append(el('span', 'v mono', v || '—')); p.append(d) }
   row('ENW folder', st?.enwRoot)
@@ -578,6 +581,29 @@ function paintUpdate() {
   n.now.classList.toggle('hidden', !(u.available && !u.canInstall && u.phase !== 'downloading'))
 }
 
+// Lane SS: ENW's F12 screenshots, newest first, each with Open image / Show in folder.
+async function renderShots() {
+  const box = $('shotsBody')
+  if (!box) return
+  box.replaceChildren()
+  let r
+  try { r = await window.enw.screenshots() } catch { return }
+  if (!r.recent.length) box.append(el('div', 'muted', 'F12 in game. Saved to your Pictures folder.'))
+  for (const s of r.recent) {
+    const d = el('div', 'kv')
+    d.append(el('span', 'k', s.name.replace(/^ENW Zombies /, '').replace(/\.(jpg|png)$/i, '')))
+    const acts = el('span', 'v')
+    const open = el('button', 'ghost', 'Open image')
+    open.onclick = () => window.enw.openScreenshot(s.name).catch((e) => toast(e.message, 'error'))
+    const show = el('button', 'ghost', 'Show in folder')
+    show.onclick = () => window.enw.showScreenshot(s.name).catch((e) => toast(e.message, 'error'))
+    acts.append(open, show)
+    d.append(acts)
+    box.append(d)
+  }
+  box.append(el('div', 'muted mono', r.dir))
+}
+
 async function renderStorage() {
   const box = $('storageBody')
   box.replaceChildren()
@@ -643,6 +669,7 @@ function wire() {
   $('bootClose').onclick = () => { window.enw.closeBoot(); hideAll() }
   $('settingsClose').onclick = hideAll
   $('detailClose').onclick = hideAll
+  $('openShots').onclick = () => window.enw.openFolder('screenshots')
   $('openRoot').onclick = () => window.enw.openFolder('root')
   $('openLogs').onclick = () => window.enw.openFolder('logs')
   $('btnUninstall').onclick = async () => {
@@ -672,6 +699,8 @@ function wire() {
     if (p.file) toast(`${p.bsp}: ${p.file}`)
   })
   window.enw.onToast((t) => toast(t.text, t.kind, t.action))
+  // Lane SS: a new F12 shot refreshes the Settings list when it is on screen.
+  if (window.enw.onScreenshot) window.enw.onScreenshot(() => { if ($('settings').classList.contains('on')) renderShots() })
   // SOC (2026-09-23): the notification chime, when main.js's attention.js says so.
   if (window.enw.onChime) window.enw.onChime(() => chime())
   window.enw.onSession(() => refresh())

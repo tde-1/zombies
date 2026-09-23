@@ -209,6 +209,15 @@ int main() {
         check(act("ads") == "+speed_throw" && act("jump") == "+gostand" && act("melee") == "+melee" && act("sprint") == "+sprint", "ads, jump, melee, sprint");
         check(act("+actionslot 3") == "+actionslot 3" && act("inventory") == "+actionslot 3", "a two-word action");
         check(act("quit") == "-" && act("exec autoexec") == "-" && act("say hi") == "-", "an action is only a Controls action");
+        // [SS] the screenshot action is ENW's; WaW's screenshotJPEG cannot be bound or typed here.
+        check(act("screenshot") == "enw_screenshot" && act("enw_screenshot") == "enw_screenshot", "screenshot -> enw_screenshot");
+        check(act("screenshotjpeg") == "-" && act("screenshotJPEG") == "-" && act("+screenshotjpeg") == "-", "screenshotJPEG is not an action: bind f12 screenshotJPEG is refused");
+        {
+            const auto c = console::parse("screenshotJPEG");
+            check(c.v == console::verb::get && !console::resolve(s, c.name) && console::refusal_for(c.name) == "screenshotJPEG: press F12 (bind <key> screenshot)",
+                  "typing screenshotJPEG runs nothing: it is not a setting, and the line says why", console::refusal_for(c.name));
+            check(!console::resolve(s, "screenshot") || console::resolve(s, "screenshot")->k != settings::kind::bind, "`screenshot` typed alone is never the engine command");
+        }
         std::vector<std::pair<std::string, std::string>> table = {{"F", "+activate"}, {"G", "+activate"}, {"R", "+reload"}};
         check(settings::command_of(table, "G") == "+activate" && settings::command_of(table, "Q").empty(), "command_of");
         const auto u = settings::unbind_commands(&table, "G");

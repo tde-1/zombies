@@ -23,6 +23,8 @@ struct draw_api {
 // Once, from pause_menu's post_init: loads the embedded schema and logs what it holds.
 void init(const draw_api& api);
 bool available();
+// [SS] Any dvar's current value as text, empty when it does not exist (main thread).
+std::string dvar_text(const char* name);
 
 // The tab was opened (or the menu opened on it): re-read the binds, the context.
 void on_show();

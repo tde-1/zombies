@@ -57,11 +57,14 @@ export const DEFAULT_SETTINGS = {
   // The chime for an invite, a DM or a party line while the window is not in front
   // (attention.js). Off keeps the flash and the toast, silently. Site: /settings, ENW tab.
   notifySound: true,
+  // [SS] ENW's screenshot key (client DLL screenshot.cpp): 'jpg' (q95 4:4:4) or 'png' (lossless). Travels as the
+  // archived dvar enw_shotformat (wawcfg.js) and ENW_SCREENSHOT_FORMAT. Site: /settings, ENW tab.
+  screenshotFormat: 'jpg',
 }
 
 // The keys the site's /settings page also holds (web wawSettings.js LAUNCHER_KEYS), so a
 // change to any of them moves gameUpdatedAt and the newer copy wins.
-export const GAME_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'discordOverlay', 'notifySound', 'waw', 'wawBinds']
+export const GAME_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'discordOverlay', 'notifySound', 'screenshotFormat', 'waw', 'wawBinds']
 
 function read(file, fallback) {
   try { return { ...fallback, ...JSON.parse(fs.readFileSync(file, 'utf8')) } } catch { return { ...fallback } }
@@ -158,6 +161,7 @@ export function validate(patch = {}) {
   if ('rawMouse' in out) out.rawMouse = out.rawMouse !== false
   if ('discordPresence' in out) out.discordPresence = out.discordPresence !== false
   if ('notifySound' in out) out.notifySound = out.notifySound !== false
+  if ('screenshotFormat' in out && !['jpg', 'png'].includes(out.screenshotFormat)) { notes.push(`screenshotFormat "${out.screenshotFormat}" is not jpg/png; kept the saved one`); delete out.screenshotFormat }
   if ('discordOverlay' in out && !DISCORD_OVERLAY.includes(out.discordOverlay)) { notes.push(`discordOverlay "${out.discordOverlay}" is not one of ${DISCORD_OVERLAY.join('/')}; kept the saved one`); delete out.discordOverlay }
   if ('sensitivity' in out && out.sensitivity !== null) {
     const n = Number(out.sensitivity)

@@ -159,6 +159,14 @@ target_compile_definitions(lockdown_test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _C
 target_compile_options(lockdown_test PRIVATE /W4 /permissive- /utf-8 /EHsc)
 set_target_properties(lockdown_test PROPERTIES FOLDER tools)
 
+# Lane SS (client.md 15): ENW's screenshot -- the file name, the format setting, the key-spam
+# limit (client-dll/components/screenshot_name.hpp). Pure code.
+add_executable(screenshot_test "${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/screenshot_test.cpp")
+target_include_directories(screenshot_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/client-dll/components")
+target_compile_definitions(screenshot_test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
+target_compile_options(screenshot_test PRIVATE /W4 /permissive- /utf-8 /EHsc)
+set_target_properties(screenshot_test PROPERTIES FOLDER tools)
+
 # --------------------------------------------------------------- loadtest --
 # A 32-bit host that just LoadLibrary()s the DLL, so we can smoke-test DllMain
 # without taking the game lock. Built by default; it costs nothing.

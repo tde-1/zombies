@@ -553,6 +553,12 @@ void init(const draw_api& api) {
 
 bool available() { return g_ok; }
 
+// [SS] Any dvar's current value as the engine prints it (screenshot.cpp: `mapname`, `enw_shotformat`).
+std::string dvar_text(const char* name) {
+    const dval v = read_dvar(name ? name : "");
+    return v.found ? v.cur : std::string();
+}
+
 void on_show() {
     if (!g_ok) return;
     refresh_context();

@@ -40,8 +40,20 @@ int main() {
     check(err.empty(), "no item of the real schema is dropped", err);
     check(s.tabs.size() == 6, "six tabs, the site's (display graphics audio controls game enw)", std::to_string(s.tabs.size()));
     check(s.items.size() >= 70, "every catalogue item that is placed and allowed is here", std::to_string(s.items.size()));
-    check(s.excluded == 2, "two excluded: ai_corpseCount (gameplay), monkeytoy (mod-owned); the Discord switches are in game now (next launch)", std::to_string(s.excluded));
-    check(s.items.size() == 83, "83 items: every placed, allowed catalogue item (C1: + the two Discord switches)", std::to_string(s.items.size()));
+    // [SS] 3 since SOC (2026-09-23) added notifySound, the launcher's chime, with apply:false -- this line said 2 and failed on main.
+    check(s.excluded == 3, "three excluded: ai_corpseCount (gameplay), monkeytoy (mod-owned), notifySound (the launcher's chime); the Discord switches are in game now (next launch)", std::to_string(s.excluded));
+    check(s.items.size() == 84, "84 items: every placed, allowed catalogue item (C1: + the two Discord switches; SS: + screenshot format)", std::to_string(s.items.size()));
+    check(!s.find("notifySound"), "notifySound is not in game (the launcher's chime)");
+    {
+        // [SS] the screenshot key is ENW's command, rebindable like any control; WaW's screenshotjpeg is gone from the catalogue.
+        const item* shot = s.find("bind:enw_screenshot");
+        check(shot && shot->k == kind::bind && shot->command == "enw_screenshot" && shot->def_keys == std::vector<std::string>{"F12"} && shot->verified,
+              "Screenshot: bind:enw_screenshot, default F12, changeable in a Verified game");
+        check(!s.find("bind:screenshotjpeg"), "no bind row for WaW's screenshotJPEG");
+        const item* sf = s.find("screenshotFormat");
+        check(sf && sf->dvar == "enw_shotformat" && sf->a == apply::live && sf->values == std::vector<std::string>{"jpg", "png"} && sf->def == "jpg",
+              "screenshot format: enw_shotformat jpg|png, live (the DLL reads it at each shot), default jpg");
+    }
     bool none_forbidden = true;
     for (const auto& it : s.items) if (!it.dvar.empty() && forbidden_dvar(it.dvar)) none_forbidden = false;
     check(none_forbidden, "no item writes a forbidden dvar");

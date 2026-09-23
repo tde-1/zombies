@@ -45,7 +45,8 @@ import { LocalRun } from './localrun.js'
 import { Presence, presenceFor } from './discord.js'
 import { Telemetry, defaultDirs as telemetryDirs } from './telemetry/index.js'
 import { readSession } from './telemetry/collect.js'
-import { makeAttention, dotBitmap, toastXml } from './attention.js'
+import { makeAttention, dotBitmap, toastXml, inFront } from './attention.js'
+import * as shots from './screenshots.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -612,7 +613,9 @@ export function parseDeepLink(raw) {
 function handleDeepLink(raw) {
   const link = parseDeepLink(raw)
   if (!link) { log('deeplink', 'ignored (not one of ours):', String(raw)); return }
-  log('deeplink', 'received', String(raw), '->', link.kind, link.map || link.party || link.why || '')
+  log('deeplink', 'received', String(raw), '->', link.kind, link.map || link.party || link.why || link.action || '')
+  // [SS] the screenshot toast's buttons open a file or a folder; they never raise the launcher.
+  if (link.kind === 'screenshot') { openShot(link.action); return }
   if (!state.win) {
     // The COLD START case: Windows launched us *with* the URL, so this runs before
     // there is anything to send it to. The RAW string is held, not the parsed link, so
@@ -705,6 +708,64 @@ function setupAttention() {
     },
     log: (m) => log('attention', m),
   })
+}
+
+// ------------------------------------------------------------ screenshots --
+// Lane SS (screenshots.js has the rules): the launcher watches <Pictures>\ENW Zombies, where the
+// client DLL writes the F12 shots, and tells the player the way SOC's attention rules allow.
+function shotsDir() {
+  if (!state.shotsDir) {
+    let pictures = ''
+    try { pictures = app.getPath('pictures') } catch {}
+    state.shotsDir = shots.screenshotsDir({ pictures })
+  }
+  return state.shotsDir
+}
+
+function shotToast(count, name) {
+  try {
+    if (!Notification.isSupported()) return
+    const n = new Notification(process.platform === 'win32'
+      ? { toastXml: shots.shotToastXml({ count, name }), silent: true }
+      : { title: count > 1 ? `${count} screenshots saved` : 'Screenshot saved', body: name, silent: true })
+    n.on('click', () => openShot('folder'))
+    n.show()
+    state.lastShotToast = n   // held, or it can be collected before Windows is done with it
+  } catch (e) { log('screenshots', `no toast: ${e.message}`) }
+}
+
+// 'open': the newest shot in its default viewer; 'folder': the folder. Never a path from outside.
+function openShot(action) {
+  const dir = shotsDir()
+  const newest = shots.listShots(dir, 1)[0]
+  if (action === 'open' && newest) { shell.openPath(newest.path); return true }
+  try { fs.mkdirSync(dir, { recursive: true }) } catch {}
+  shell.openPath(dir)
+  return true
+}
+
+function setupScreenshots() {
+  const dir = shotsDir()
+  // The game gets the SAME folder (launch.js passes process.env on), so the DLL writes where we watch.
+  process.env.ENW_SCREENSHOT_DIR = dir
+  state.shotsInGame = []
+  state.shotWatch = shots.watchShots(dir, (s) => {
+    const f = shots.feedbackFor({ gameRunning: !!state.flow, inFront: inFront(state.win) })
+    log('screenshots', `new: ${s.name} (${Math.round(s.size / 1024)} KB) -> ${f}`)
+    push('screenshot', { name: s.name, size: s.size, at: s.at })
+    if (f === 'count') state.shotsInGame.push(s)
+    else if (f === 'toast') shotToast(1, s.name)
+  }, { log: (m) => log('screenshots', m) })
+  log('screenshots', `watching ${dir}`)
+}
+
+// A game ended: one toast for the shots taken in it (in game the launcher stayed quiet).
+function flushGameShots() {
+  const taken = state.shotsInGame || []
+  state.shotsInGame = []
+  if (!taken.length) return
+  log('screenshots', `${taken.length} taken in that game; toast`)
+  shotToast(taken.length, taken[taken.length - 1].name)
 }
 
 // Navigate the wrapped site view to one of its own paths. Never leaves the site's
@@ -1437,6 +1498,7 @@ function wireIpc() {
       log('play', `the game ended (${p.phase}: ${p.detail || 'no detail'})${flow.snapshot().matchId ? `; ${flow.snapshot().matchId} will not be relaunched unless the player presses Play or Resume` : ''}`)
       state.flow = null
       state.gameStartedAt = null
+      flushGameShots()
       refreshPresence()
       state.gate.unblock('game')
       state.tray?.rebuild()
@@ -1448,6 +1510,7 @@ function wireIpc() {
       if (state.flow !== flow) return
       state.flow = null
       state.gameStartedAt = null
+      flushGameShots()
       refreshPresence()
       state.gate.unblock('game')
       state.tray?.rebuild()
@@ -1588,8 +1651,23 @@ function wireIpc() {
   })
   handle('openExternal', (url) => { shell.openExternal(url); return true })
   handle('openFolder', (which) => {
+    if (which === 'screenshots') return openShot('folder')
     const map = { root: P.root, game: P.game, logs: P.logs, maps: P.maps, crashes: P.crashes }
     shell.openPath(map[which] || P.root)
+    return true
+  })
+  // [SS] Settings -> Screenshots: the newest shots; Open image / Show in folder by bare file name.
+  handle('screenshots', () => ({ dir: shotsDir(), recent: shots.listShots(shotsDir(), 8).map(({ name, size, at }) => ({ name, size, at })) }))
+  handle('openScreenshot', (name) => {
+    const p = shots.resolveShot(shotsDir(), name)
+    if (!p) throw new Error('That screenshot is not there any more.')
+    shell.openPath(p)
+    return true
+  })
+  handle('showScreenshot', (name) => {
+    const p = shots.resolveShot(shotsDir(), name)
+    if (!p) throw new Error('That screenshot is not there any more.')
+    shell.showItemInFolder(p)
     return true
   })
   handle('installViaSteam', () => { shell.openExternal(`steam://install/${detect.APPID}`); return true })
@@ -2074,6 +2152,7 @@ if (!single) {
     await createWindow()
     createTray()
     setupAttention()
+    try { setupScreenshots() } catch (e) { log('screenshots', `not watching: ${e.message}`) }
 
     // Discord Rich Presence. After the window, never in the launch path; connecting is
     // asynchronous and Discord not running is a silent, backed-off retry (discord.js).

@@ -2765,6 +2765,126 @@ await test('attention: wired -- site view unthrottled, IPC + preload + chime + s
   assert.equal(settings.validate({ notifySound: 'yes' }).patch.notifySound, true)
 })
 
+// ------------------------------------------------------------ screenshots --
+group('Screenshots: ENW\'s F12, not WaW\'s (lane SS)')
+const shotsMod = await import('../src/main/screenshots.js')
+const wawcfgSS = await import('../src/main/wawcfg.js')
+
+await test('screenshots: the engine\'s screenshotJPEG bind becomes enw_screenshot on its own key', () => {
+  const cfgText = 'unbindall\r\nbind F12 "screenshotJPEG"\r\nbind F "+activate"\r\nbind PRINT screenshot\r\ncon_hidechannel *\r\n'
+  const out = wawcfgSS.mergeAccountIntoConfig(cfgText, { pairs: [], resets: [], binds: {} })
+  assert.match(out, /^bind F12 "enw_screenshot"$/m)
+  assert.match(out, /^bind PRINT "enw_screenshot"$/m)
+  assert.doesNotMatch(out, /screenshotJPEG/i)
+  assert.match(out, /^bind F "\+activate"$/m, 'other binds untouched')
+})
+
+await test('screenshots: an account that moved the screenshot key owns it; the stock F12 line goes', () => {
+  const cfgText = 'bind F12 "screenshotJPEG"\r\nbind F11 "+scores"\r\n'
+  const lines = wawcfgSS.accountConfigLines({ wawBinds: { enw_screenshot: ['F11'] } })
+  const out = wawcfgSS.mergeAccountIntoConfig(cfgText, lines)
+  assert.match(out, /^bind F11 "enw_screenshot"$/m)
+  assert.doesNotMatch(out, /^bind F12 /m)
+})
+
+await test('screenshots: an old account row for screenshotjpeg is read as enw_screenshot; the format rides as enw_shotformat', () => {
+  const v = wawcfgSS.validateBinds({ screenshotjpeg: ['F12'] })
+  assert.deepEqual(v.binds, { enw_screenshot: ['F12'] })
+  assert.ok(wawcfgSS.BIND_COMMANDS.includes('enw_screenshot') && !wawcfgSS.BIND_COMMANDS.includes('screenshotjpeg'))
+  const pairs = wawcfgSS.accountConfigLines({ screenshotFormat: 'png' }).pairs
+  assert.deepEqual(pairs.find(([d]) => d === 'enw_shotformat'), ['enw_shotformat', 'png'])
+  assert.deepEqual(wawcfgSS.accountConfigLines({}).pairs.find(([d]) => d === 'enw_shotformat'), ['enw_shotformat', 'jpg'])
+  assert.equal(settings.DEFAULT_SETTINGS.screenshotFormat, 'jpg')
+  assert.ok(settings.GAME_KEYS.includes('screenshotFormat'))
+  assert.equal(settings.validate({ screenshotFormat: 'png' }).patch.screenshotFormat, 'png')
+  assert.equal(settings.validate({ screenshotFormat: 'bmp' }).patch.screenshotFormat, undefined)
+})
+
+await test('screenshots: the in-game format change is read back', () => {
+  const home = path.join(process.env.ENW_ROOT, 'sshome'); const lad = path.join(process.env.ENW_ROOT, 'sslad')
+  const p = gamecfg.configPaths(home, gamecfg.PROFILE, lad)
+  fs.mkdirSync(path.dirname(p.engineCfg), { recursive: true })
+  fs.writeFileSync(p.engineCfg, 'bind F12 "screenshotJPEG"\r\n')
+  wawcfgSS.applyAccountToConfig({ homeDir: home, localAppData: lad, settings: { screenshotFormat: 'jpg' } })
+  assert.match(fs.readFileSync(p.engineCfg, 'utf8'), /bind F12 "enw_screenshot"/)
+  fs.writeFileSync(p.engineCfg, fs.readFileSync(p.engineCfg, 'utf8').replace('seta enw_shotformat "jpg"', 'seta enw_shotformat "png"'))
+  const rb = wawcfgSS.readBackAccount({ homeDir: home, localAppData: lad })
+  assert.equal(rb.changed.screenshotFormat, 'png')
+  assert.equal(rb.changed.wawBinds, undefined, 'the rewritten bind is not a player change')
+})
+
+await test('screenshots: names, the folder, and nothing outside it', () => {
+  assert.ok(shotsMod.isShot('ENW Zombies Nacht der Untoten 2026-09-24 00-37-00.jpg'))
+  assert.ok(shotsMod.isShot('ENW Zombies Cheese Cube 2026-09-24 00-37-00 (2).png'))
+  assert.ok(!shotsMod.isShot('ENW Zombies x 2026-09-24 00-37-00.jpg.part'))
+  assert.ok(!shotsMod.isShot('shot0000.jpg'))
+  assert.equal(shotsMod.screenshotsDir({ env: {}, pictures: 'C:\\Users\\p\\Pictures' }), path.join('C:\\Users\\p\\Pictures', 'ENW Zombies'))
+  const dir = path.join(TMP, 'shots')
+  assert.equal(shotsMod.screenshotsDir({ env: { ENW_SCREENSHOT_DIR: dir } }), path.resolve(dir))
+  fs.mkdirSync(dir, { recursive: true })
+  const a = 'ENW Zombies Der Riese 2026-09-24 00-00-01.jpg'; const b = 'ENW Zombies Der Riese 2026-09-24 00-00-02.jpg'
+  fs.writeFileSync(path.join(dir, a), 'x'); fs.writeFileSync(path.join(dir, b), 'yy'); fs.writeFileSync(path.join(dir, 'notes.txt'), 'z')
+  const t = Date.now() / 1000
+  fs.utimesSync(path.join(dir, a), t - 10, t - 10)
+  const l = shotsMod.listShots(dir)
+  assert.deepEqual(l.map((s) => s.name), [b, a], 'newest first, only shots')
+  assert.equal(shotsMod.resolveShot(dir, a), path.join(dir, a))
+  assert.equal(shotsMod.resolveShot(dir, `..\\${a}`), null)
+  assert.equal(shotsMod.resolveShot(dir, 'notes.txt'), null)
+  assert.equal(shotsMod.resolveShot(dir, 'ENW Zombies x 2026-09-24 00-00-09.jpg'), null, 'not there')
+})
+
+await test('screenshots: feedback follows the attention rules; the toast has Open image / Open folder, escaped', () => {
+  assert.equal(shotsMod.feedbackFor({ gameRunning: true, inFront: false }), 'count')
+  assert.equal(shotsMod.feedbackFor({ gameRunning: false, inFront: true }), 'panel')
+  assert.equal(shotsMod.feedbackFor({ gameRunning: false, inFront: false }), 'toast')
+  const x = shotsMod.shotToastXml({ count: 2, name: 'ENW Zombies <A&B> 2026-09-24 00-00-01.jpg' })
+  assert.match(x, /2 screenshots saved/)
+  assert.match(x, /arguments="enw-zombies:\/\/screenshot\/open"/)
+  assert.match(x, /arguments="enw-zombies:\/\/screenshot\/folder"/)
+  assert.match(x, /&lt;A&amp;B&gt;/)
+  assert.match(shotsMod.shotToastXml({}), /Screenshot saved/)
+  assert.deepEqual({ ...deeplink.parse('enw-zombies://screenshot/open'), url: undefined }, { kind: 'screenshot', action: 'open', url: undefined })
+  assert.equal(deeplink.parse('enw-zombies://screenshot/folder').action, 'folder')
+  assert.equal(deeplink.parse('enw-zombies://screenshot/C:\\Windows').kind, 'home')
+})
+
+await test('screenshots: the watcher reports a new shot once, and never a .part', async () => {
+  const dir = path.join(TMP, 'watch')
+  const got = []
+  const w = shotsMod.watchShots(dir, (s) => got.push(s.name), { debounceMs: 30 })
+  const n = 'ENW Zombies Verruckt 2026-09-24 00-00-03.jpg'
+  fs.writeFileSync(path.join(dir, `${n}.part`), 'x')
+  await new Promise((r) => setTimeout(r, 150))
+  assert.deepEqual(got, [], 'a .part is not a shot')
+  fs.renameSync(path.join(dir, `${n}.part`), path.join(dir, n))
+  await new Promise((r) => setTimeout(r, 300))
+  w.scan()
+  w.close()
+  assert.deepEqual(got, [n])
+})
+
+await test('screenshots: wired -- IPC, preload, the Settings button, the folder handed to the game', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  assert.match(main, /handle\('screenshots'/)
+  assert.match(main, /handle\('openScreenshot'/)
+  assert.match(main, /handle\('showScreenshot'/)
+  assert.match(main, /shell\.showItemInFolder\(p\)/)
+  assert.match(main, /process\.env\.ENW_SCREENSHOT_DIR = dir/)
+  assert.match(main, /if \(which === 'screenshots'\) return openShot\('folder'\)/)
+  assert.match(main, /link\.kind === 'screenshot'/)
+  const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
+  assert.match(pre, /openScreenshot: \(name\) => call\('openScreenshot', name\)/)
+  assert.match(pre, /onScreenshot: \(fn\) => on\('screenshot', fn\)/)
+  const html = String(fs.readFileSync(new URL('../src/renderer/shell.html', import.meta.url)))
+  assert.match(html, /id="openShots">Open screenshots folder</)
+  const shell = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
+  assert.match(shell, /'Open image'/)
+  const launchSrc = String(fs.readFileSync(new URL('../src/main/launch.js', import.meta.url)))
+  assert.match(launchSrc, /ENW_SCREENSHOT_FORMAT:/)
+  assert.match(launchSrc, /ENW_MAP_TITLE:/)
+})
+
 console.log(`\n${pass} passed, ${fail} failed`)
 try { fs.rmSync(TMP, { recursive: true, force: true }) } catch {}
 process.exit(fail ? 1 : 0)

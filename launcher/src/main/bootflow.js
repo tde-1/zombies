@@ -215,6 +215,8 @@ export class BootFlow extends EventEmitter {
       map: o.map,
       token,
       settings: o.settings,
+      // [SS] the map's title for the screenshot's file name (ENW_MAP_TITLE); the bsp when unknown.
+      mapTitle: this.mapTitle || o.mapTitle || null,
       stealth: !!o.stealth,
       windowMode: o.windowMode || null,
       instance: matchId,
@@ -443,6 +445,8 @@ export class BootFlow extends EventEmitter {
       token: p.match.token,
       fsGame: p.match.fs_game || p.map?.fs_game || undefined,
       settings: o.settings,
+      // [SS] the map's title for the screenshot's file name (ENW_MAP_TITLE); the bsp when unknown.
+      mapTitle: this.mapTitle || o.mapTitle || null,
       stealth: !!o.stealth,
       windowMode: o.windowMode || null,
       instance: p.match.match_id,
@@ -500,6 +504,8 @@ export class BootFlow extends EventEmitter {
       fsGame: o.fsGame,
       installDir: o.installDir,
       settings: o.settings,
+      // [SS] the map's title for the screenshot's file name (ENW_MAP_TITLE); the bsp when unknown.
+      mapTitle: this.mapTitle || o.mapTitle || null,
       stealth: !!o.stealth,
       windowMode: o.windowMode || null,
       // The site's match id, so the site, the box and the replay name one game.

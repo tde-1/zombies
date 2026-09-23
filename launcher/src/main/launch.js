@@ -499,6 +499,11 @@ export class GameLaunch extends EventEmitter {
         // The map, so the DLL can say `map_loaded` without reading a dvar. It also
         // takes it off our command line, and this is the belt to that braces.
         ...(o.map ? { ENW_MAP: o.map } : {}),
+        // [SS] ENW's screenshot key (client DLL screenshot.cpp, client.md 15): the map's title for the file
+        // name, and JPEG or PNG. The folder, ENW_SCREENSHOT_DIR, is already in process.env (main.js
+        // setupScreenshots sets it to the folder the launcher watches), so the two never disagree.
+        ...(o.mapTitle ? { ENW_MAP_TITLE: String(o.mapTitle).replace(/[\r\n]/g, ' ').slice(0, 80) } : {}),
+        ENW_SCREENSHOT_FORMAT: o.settings && o.settings.screenshotFormat === 'png' ? 'png' : 'jpg',
         // The IW4MAdmin-shaped event mirror into the game's own console.log. It is
         // the only channel that works when the socket does not, and it is what turns
         // "the launcher says nothing happened" into a file with the round numbers in

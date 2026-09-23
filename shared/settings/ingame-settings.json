@@ -168,7 +168,7 @@
    "items": [
     "bind:+activate",
     "bind:+actionslot 1",
-    "bind:screenshotjpeg",
+    "bind:enw_screenshot",
     "bind:+scores",
     "bind:acceptInvitation",
     "bind:savegame_lastcommit"
@@ -207,6 +207,14 @@
    "items": [
     "discordPresence",
     "discordOverlay"
+   ]
+  },
+  {
+   "tab": "enw",
+   "id": "screenshots",
+   "label": "screenshots",
+   "items": [
+    "screenshotFormat"
    ]
   }
  ],
@@ -1157,12 +1165,12 @@
    ]
   },
   {
-   "id": "bind:screenshotjpeg",
+   "id": "bind:enw_screenshot",
    "label": "screenshot",
    "kind": "bind",
    "apply": "live",
    "verified": true,
-   "command": "screenshotjpeg",
+   "command": "enw_screenshot",
    "def": [
     "F12"
    ]
@@ -1328,6 +1336,25 @@
     "off"
    ],
    "hint": "auto turns it off when a map is short of memory"
+  },
+  {
+   "id": "screenshotFormat",
+   "label": "format",
+   "kind": "select",
+   "apply": "live",
+   "verified": true,
+   "dvar": "enw_shotformat",
+   "to": "key:screenshotFormat",
+   "def": "jpg",
+   "values": [
+    "jpg",
+    "png"
+   ],
+   "labels": [
+    "jpeg",
+    "png"
+   ],
+   "hint": "F12. jpeg: about 2 MB at 1440p. png: lossless, about 4x larger"
   },
   {
    "id": "r_dof_enable",
