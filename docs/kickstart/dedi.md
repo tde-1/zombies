@@ -3490,3 +3490,86 @@ not the §25 path.
 | run | map | DLL | start (UTC) | length | ended by | RSS start→end | notes |
 |---|---|---|---|---|---|---|---|
 | b24 (B's game, not a soak) | fear_mc_2 | 04a3ad6d | 13:42:04 | 1 m 18 s | `server_freeze` (watchdog) | — | fault 0x4F057E, §25.1 |
+
+## 26. 2026-09-23 evening — lane INT: the S1 fix deployed, two more NULL dvars registered, rate scale x4
+
+### 26.1 Why: B's three freezes 14:00–14:27 UTC were the §25 bug through `playSound`
+
+B's `nazi_zombie_lorkeep` (inst-47), `nazi_zombie_ils` (inst-49) and `ut_box_map` (inst-50) all ended
+`server_freeze` on box DLL `04a3ad6d`. Their DLL logs (`waw-inst-01/enw-2728.log`, `enw-3944.log`,
+`enw-4532.log`) each say `escape fault #1 code=C0000005 eip=0051BC60 reading 00000010 | callers: 0051BDAD …`.
+0x51BC5A is `mov ecx,[0x3BE65DC]` in `playSound` (0x51BBF0) — S1's reader table already listed it — so this
+is §25's NULL `snd_errorOnMissing`, reached from `playSound` instead of `playLocalSound`. S1's fix registers
+the dvar itself, so the slot is non-NULL for **every** reader; it was on main (`a4b0db2`) but never deployed.
+
+### 26.2 More client-only dvars that server code reads (static scan + runtime proof)
+
+A static scan of all 1,957 `Dvar_Register*` call sites (Bool 0x5EEE20, Int 0x5EEEA0, Float 0x5EEF10,
+Variant 0x5EED90, Vec3/4, Enum 0x5EF150), 175 registrars, walked from WinMain skipping what a dedicated
+server does not take (CL_Init 0x647710, Com_Init's `dedicated==0` block 0x59D5B5–0x59D662, CL_InitRenderer,
+SND_Init, CG_Init, UI init), against unguarded `mov reg,[slot]; … [reg+0x10]` readers reachable from
+G_RunFrame or the script builtin tables (scripts in the session scratchpad, not the repo). Beyond the two
+sound slots:
+
+| slot | dvar | reader | path | registrar that never runs |
+|---|---|---|---|---|
+| `0x3BFDEBC` | `r_watersim_debug` | 0x4E58AE in 0x4E5810 (bullet impact), when the hit surface type is 0x14 (water, inferred) | G_RunFrame → … → 0x4E5810 | 0x6F0D90 ← R_Init ← CL_InitRenderer |
+| `0x16A2060` | `fx_enable` | first instruction of 0x4AD6B0, 0x4AD700, 0x4B2E20 (all unguarded) | G_RunFrame → 0x62A360 → … → 0x570950; physics 0x6A5350 | FX 0x4A4D10 ← CG_Init |
+
+**Runtime proof** (box, `fd3039d2`, every lease): `registered r_watersim_debug … ([0x03BFDEBC] was NULL …)`
+and `registered fx_enable … ([0x016A2060] was NULL …)` — both slots really are NULL on the dedicated server.
+Both are now registered by the same mechanism (`snd_alias_dvars.{hpp,cpp}`, the table gained per-slot
+flags/value: `r_watersim_debug` flags 0x4408 default 0; `fx_enable` flags 0x80, **registered at 0** although
+a client has 1 — every reader then returns early, right for a server with no FX system). Lower-ranked, not
+registered: `ui_mapname` / `ui_gametype` (party code behind three party-state fields; `ui_gametype` also
+faults if someone `+set`s it on the dedi command line — nothing does), SND readers inside the sound engine
+(unreachable), `snd_touchStreamFilesOnLoad` (only with `useFastFile 0`). The scan also found one
+`snd_errorOnMissing` reader S1 had missed (0x5E5C20, L1 had it) — already covered, now in the table.
+**Correction to a premise:** "render-skip" does not mean `r_*` dvars are missing; R_RegisterDvars
+(0x707A20, 279 dvars) runs on the dedi through 0x644F40 → 0x6D5740.
+
+The freeze watchdog now names a known fault eip (`fault #1 at 0051BC60 is KNOWN: …`), L1's `fault_name`
+moved onto S1's table as `known_fault_name` (one fault eip per reader, 16), and the telemetry rules
+(`KNOWN_FAULTS`, L1's `955ae8a`: `server_freeze` P1, `frame_escape`, `asset_limit`, `map_oom`) mirror it.
+L1's `snd_dvar_stub.cpp` and F1's `snd_missing_guard.cpp` (two more fixes of the same bug) were dropped.
+
+### 26.3 F1's rate scale x4 (the nazi_zombie_ils lag)
+
+`net_rate.hpp` / `net_probe.cpp` (F1 `16e4a3b`; its `dedi.md` §24 was never written — B's PC rebooted at
+15:30 — so the header comment of `net_rate.hpp` is the record): a snapshot bigger than one packet is
+fragmented, flushed at once and paced by 0x639360 on its whole size with no clamp, so above ~1,186 bytes
+no message goes at 20 Hz on any stock setting (fear_mc_2's ~2,100-byte snapshots went at 10 Hz). The fix
+changes the `imul eax,eax,1000` imm32 in SV_RateMsec (0x639323) and 0x639360 (0x6393A6) to 1000/scale,
+byte-checked (verified against the dump: `69 C0 E8 03 00 00` at both). `ENW_NET_RATE_SCALE` default 4
+(1 = stock, max 8), dedicated only: up to 4,936 bytes at 20 Hz at rate 25000, 100 KB/s per client at most.
+Reviewed: no instruction length change, applied in `post_unpack` before any server thread, per-client
+bound kept. `net_rate_test` 26/0. Box log: `net_probe: rate scale x4 -- … multiply by 250, not 1000`.
+**Unproven with a player**: whether ils's lag and dropped inputs are gone needs B's next internet game.
+
+### 26.4 Deployed
+
+| | |
+|---|---|
+| **DLL `fd3039d2419e596555021ca986686d6881730b06fde0835b60f66cc7fe2c82f2`** (2,608,640 B) | built clean in `C:\Users\b\ZombiesDev\wt-int` (detached, `git status` empty) at `fa1784f`; DLL source identical to main `645649c`. All 9 copies at 16:00 UTC. Copy `ZombiesDev\logs\dedi\int\enw_t4-fd3039d2.dll`. Launcher 0.2.28 ships the same binary |
+| before it: `cc05262410aa19b2…` | 15:51 UTC, same tree at `e1d29f3` (S1 fix + F1 + L1 names, without 26.2's two dvars). Rollback `/home/waw/binkw32.rollback-cc052624.dll` |
+| rollback to the pre-INT DLL | `/home/waw/binkw32.rollback-04a3ad6d.dll` |
+
+Proofs — agent leases on fake `76561198000000003`, one at a time, each cancelled after; nobody joins, so no
+rank-up or player sound ran (the self-test line runs a real engine reader on a missing alias instead):
+
+| map | lease | DLL | `registered` lines | `map_loaded` (UTC) | survived | escape faults |
+|---|---|---|---|---|---|---|
+| ut_box_map | `m_ab6ca3c6` | cc052624 | snd ×2, self-test `returned 0 with no exception` | 15:52:10 | 286 s | 0 |
+| nazi_zombie_ils | `m_78b1f4d0` | cc052624 | snd ×2, self-test ok | 15:57:30 | 186 s | 0 |
+| nazi_zombie_lorkeep | `m_52735961` | **fd3039d2** | snd ×2 + r_watersim_debug + fx_enable, self-test ok | 16:01:22 | 193 s | 0 |
+| nazi_zombie_ils | `m_312c3a38` | **fd3039d2** | all four, self-test ok | 16:05:14 | 196 s | 0 |
+
+Every lease also logged `mp_level_up=MISSING mp_challenge_complete=MISSING mp_player_join=present`: the
+alias that killed B's games is missing on these maps too, and is now silent.
+
+### 26.5 Still unproven
+
+- A real player's game past its first rank-up / first missing-alias sound on the new DLL (B's next game).
+- A bullet into water on the dedi (Shi No Numa-style map, a player shooting) — the reader is inferred to
+  be water from the surface-type test; the registration itself is proven.
+- ils lag with a real internet client (26.3).
