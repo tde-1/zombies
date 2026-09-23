@@ -599,6 +599,65 @@ t('a player the GAME reports and we never saw is carried through with no account
   ok(s.flags.includes('result_mismatch'), 'and the disagreement is flagged')
 })
 
+console.log('\n== stats: the game\'s own scoreboard counters (referee.md §16, bug 7) ==')
+
+// The exact sequence the §16 DLL sends for one real player: a baseline `stats` at connect,
+// `points` on every score change, `down` + `player_down` then `stats` on a down, `revive`
+// then `stats` on a revive, and `stats` on every kill. Every real result said 0 before
+// this, because nothing on the link carried a kill and `points` carries no `why`.
+function statsGame(r) {
+  bootGame(r, { players: 2 })
+  r.onEvent({ t: 'stats', ms: 1000, slot: 0, score: 500, kills: 0, headshots: 0, downs: 0, revives: 0, assists: 0 })
+  r.onEvent({ t: 'points', ms: 1000, slot: 0, score: 500 })
+  for (let k = 1; k <= 6; k++) {
+    r.onEvent({ t: 'points', ms: 2000 + k, slot: 0, score: 500 + k * 60, delta: 60 })
+    r.onEvent({ t: 'stats', ms: 2000 + k, slot: 0, score: 500 + k * 60, kills: k, headshots: k > 4 ? k - 4 : 0, downs: 0, revives: 0, assists: 0 })
+  }
+  r.onEvent({ t: 'down', ms: 3000, slot: 1 })
+  r.onEvent({ t: 'player_down', ms: 3000, slot: 1, name: 'P1', round: 1, downs: 1 })
+  r.onEvent({ t: 'stats', ms: 3000, slot: 1, score: 500, kills: 0, headshots: 0, downs: 1, revives: 0, assists: 0 })
+  r.onEvent({ t: 'revive', ms: 4000, slot: 1, by: 0 })
+  r.onEvent({ t: 'stats', ms: 4000, slot: 0, score: 860, kills: 6, headshots: 2, downs: 0, revives: 1, assists: 0 })
+}
+
+t('stats folds kills and headshots, and a down/revive edge plus its absolute value count once', () => {
+  const r = makeRef()
+  statsGame(r)
+  const p0 = r.players.get(0), p1 = r.players.get(1)
+  eq(p0.kills, 6, 'kills'); eq(p0.headshots, 2, 'headshots'); eq(p0.revives, 1, 'revives: the edge then the absolute value')
+  eq(p1.downs, 1, 'downs: the edge then the absolute value')
+  eq(p0.maxScore, 860, 'score from points'); eq(p0.pointsEarned, 360, 'points earned from the deltas')
+})
+
+t('the summary carries the reconciled counters in BOTH the row and its stats block', () => {
+  const r = makeRef()
+  statsGame(r)
+  // The game's own result says one more kill than the link folded (it landed in the frame
+  // of game over): the reconciled value is the game's, in the row AND in `stats`, which is
+  // the block web/server/lib/results.js reads first.
+  r.onEvent({ t: 'game_over', ms: 5000, round: 1, reason: 'end_game', kills_total: 7, players: [
+    { slot: 0, name: 'P0', steamid: '76561198000000000', identity: 'verified', score: 860, downs: 0, revives: 1, kills: 7, headshots: 2, assists: 0, alive: true },
+    { slot: 1, name: 'P1', steamid: '76561198000000001', identity: 'verified', score: 500, downs: 1, revives: 0, kills: 0, headshots: 0, assists: 0, alive: false },
+  ] })
+  const s = r.summary()
+  const p0 = s.players.find((x) => x.slot === 0)
+  eq(p0.kills, 7, 'row kills'); eq(p0.stats.kills, 7, 'stats kills')
+  eq(p0.headshots, 2); eq(p0.stats.headshots, 2)
+  eq(p0.revives, 1); eq(p0.stats.revives, 1)
+  eq(p0.score, 860)
+  const p1 = s.players.find((x) => x.slot === 1)
+  eq(p1.downs, 1); eq(p1.stats.downs, 1)
+  eq(s.reported.kills_total, 7)
+  ok(s.flags.includes('result_mismatch'), 'game > ours on kills is still flagged, as for every counter')
+})
+
+t('a game_over from a DLL without native stats leaves kills_total null, not 0', () => {
+  const r = makeRef()
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'game_over', ms: 5000, round: 1, reason: 'end_game', players: [{ slot: 0, name: 'P0', revives: 0, alive: true }] })
+  eq(r.summary().reported.kills_total, null)
+})
+
 console.log('\n== player_down (the system-line event, game-link-v0 2026-09-23) ==')
 
 t('player_down does NOT double-count a down: `down` is the counter, it is the sentence', () => {

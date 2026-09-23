@@ -267,9 +267,14 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
     }
     const s = (p.stats && typeof p.stats === 'object' && !Array.isArray(p.stats)) ? p.stats : {}
     const stat = (...vs) => { for (const v of vs) if (v != null) return int(v, 0, { min: 0, max: 1e12 }); return 0 }
+    // The combat counters are monotonic, and a host before 2026-09-23 put its raw fold in
+    // `stats` and the value reconciled with the game's own result at the top level — so
+    // "stats first" threw the reconciled one away (bug 7). The larger of the two is right
+    // for a counter from either kind of host.
+    const most = (...vs) => Math.max(0, ...vs.filter((v) => v != null).map((v) => int(v, 0, { min: 0, max: 1e12 })))
     insP.run(game.id, sid, p.slot == null ? null : int(p.slot, 0, { min: 0, max: 63 }), str(p.name, 64),
-      stat(p.score), stat(s.kills, p.kills), stat(s.headshots), stat(s.downs, p.downs),
-      stat(s.revives, p.revives), stat(s.deaths, p.bleedouts),
+      stat(p.score), most(s.kills, p.kills), most(s.headshots, p.headshots), most(s.downs, p.downs),
+      most(s.revives, p.revives), stat(s.deaths, p.bleedouts),
       stat(s.points_earned), stat(s.points_spent), stat(s.time_alive_ms),
       stat(s.rounds_played, p.rounds_played), int(p.joined_round, 1, { min: 0, max: MAX_ROUND }),
       p.late ? 1 : 0, p.afk_kicked ? 1 : 0)

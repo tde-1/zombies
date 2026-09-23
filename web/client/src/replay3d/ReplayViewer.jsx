@@ -826,6 +826,21 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     const kills = track.events.filter((e) => e.t === 'kill' && e.ms <= tMs)
     return hud.players.map((p) => {
       const tp = track.players.find((x) => x.slot === p.slot)
+      // §16 (bug 7): the game's own counters, when the file has them — the same numbers
+      // the in-game Tab scoreboard shows, kills attributed per player even with company.
+      if (tp && Array.isArray(tp.counters) && tp.counters.length) {
+        let c = null
+        for (const row of tp.counters) { if (row[0] <= tMs) c = row; else break }
+        return {
+          slot: p.slot,
+          name: p.name,
+          points: tp.has_score === false ? '—' : p.score,
+          kills: c ? c[1] : 0,
+          downs: c ? c[2] : 0,
+          revives: c ? c[3] : 0,
+          _pts: tp.has_score === false ? -1 : p.score,
+        }
+      }
       const own = kills.filter((e) => e.slot === p.slot).length
       const unattributed = kills.filter((e) => e.slot === undefined).length
       return {
@@ -836,7 +851,9 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         // guessed at: attributed ones count, and none at all reads "—".
         kills: solo ? own + unattributed : (own || (unattributed ? '—' : 0)),
         downs: downs.filter((d) => d.slot === p.slot && d.ms <= tMs).length,
-        revives: track.events.filter((e) => e.t === 'revive' && e.slot === p.slot && e.ms <= tMs).length,
+        // WaW's Revives column is revives GIVEN: `revive.by` is the reviver (`slot` is the
+        // one who got up). Older sims sent only `slot`, so that stays the fallback.
+        revives: track.events.filter((e) => e.t === 'revive' && (e.by !== undefined ? e.by === p.slot : e.slot === p.slot) && e.ms <= tMs).length,
         _pts: tp && tp.has_score === false ? -1 : p.score,
       }
     }).sort((a, b) => b._pts - a._pts || a.slot - b.slot)

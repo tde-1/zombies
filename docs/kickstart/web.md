@@ -3228,3 +3228,48 @@ was held by another agent's process. The screenshots come from a private site on
 * The Watch-to-viewer path on a map with no `.glb` export. The viewer handles it (replay.md §7e).
 
 **Needs a client build and a site restart.** No live data was written.
+
+## 2026-09-23, ~04:00–05:00 UK — bug 7: kills / downs / revives / score reach `game_players` (commit `872152b`)
+
+**What the live DB said** (a read-only copy of `web/data/zombies.db`, never the file itself):
+every real game has all-zero `game_players` rows — score, kills, headshots, downs, revives and
+points_earned are 0 on all 17 rows (11 of B's, verified). B's `m_8a0a8e75` `summary_json.reported`
+row has no score, downs or kills field at all.
+
+**The cause is upstream** (referee.md §16): the DLL could not read the counters. The site had one
+bug of its own on the path: `results.js` wrote `stats.<x>` in preference to `<x>`. A pre-fix host
+put its raw fold in `stats` and the value reconciled with the game's own result at the top level,
+so the reconciled value was thrown away.
+
+**Changes:**
+- `server/lib/results.js`: `game_players.kills/headshots/downs/revives` =
+  **max(`stats.x`, `x`)**. Both are lower bounds on a monotonic counter, so the larger is right
+  from either kind of host.
+- `server/routes/replay.js` `buildTrack`: each player now carries a **`counters`** timeline
+  `[[ms, kills, downs, revives, headshots], …]`, built from `stats` events and the snap fields a
+  §16 DLL sends, with one entry per change. It is `null` for older files. `revive.by` is kept in
+  the feed.
+- `client/src/replay3d/ReplayViewer.jsx` Tab scoreboard:
+  - uses `counters` when present, so kills are attributed per player even with company;
+  - otherwise the old rules. The **Revives** column counts `revive.by` (revives given, like
+    WaW's), falling back to `slot` for old sims.
+  - Points already switch on by themselves, because `has_score` becomes true once a snap carries
+    `score`.
+- `server/lib/profile.js`: comment only. The "show a column once any real game has a non-zero
+  value" rule turns Kills/Downs/Revives on by itself after the first real game on a §16 box.
+- Tests (`test/run-all.js`, +2):
+  - `game_players` takes the larger of `stats.x` and `x`;
+  - the track's counters are one entry per change, keep the reviver, and are null for a
+    pre-§16 file.
+  
+  **`npm test`: 145 / 41 / 15 / 19 / 12 / 10 / 12 passed, 0 failed** (no 33991 flake this time).
+
+**End to end on real data** (`ZombiesDev\bug7\e2e.mjs`, scratch `ZM_DATA_DIR`): the real local-dedi
+link transcript `bug7b` went through the real host `Referee` and then `results.ingest`. It gave
+`game_players` `score 500, downs 2, points_earned 30`, and `profile.overallFor` returned
+`recorded.downs true, downs 2`. Kills were **synthetic** (`--synthetic-kills 3`, clearly an
+injected `stats` event) and gave `kills 3` with `recorded.kills true`.
+
+**Needs:** a client build (`npm run build`) and a site restart for the viewer and route. The
+writer change only matters once a host posts counters. Existing zero rows are not rewritten: the
+games had no data to recover.

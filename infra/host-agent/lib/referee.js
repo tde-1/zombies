@@ -352,6 +352,25 @@ export class Referee extends EventEmitter {
     if (ev.why === 'headshot') p.headshots++
   }
 
+  /**
+   * STATS — the game's own scoreboard counters, absolute, whenever one moves (referee.md
+   * §16, 2026-09-23). The real DLL has no kill event that names a player and its `points`
+   * carry no `why`, so this is the ONLY source of kills and headshots from a real game;
+   * before it, every real result said 0. Counters are monotonic within a connection, so
+   * each is folded as a high-water mark: a `down`/`revive` edge folded a moment earlier
+   * and the absolute value that follows it agree instead of double counting.
+   */
+  ev_stats(ev) {
+    const p = this.players.get(ev.slot); if (!p) return
+    const hw = (k, v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) p[k] = Math.max(p[k] || 0, n) }
+    hw('kills', ev.kills)
+    hw('headshots', ev.headshots)
+    hw('downs', ev.downs)
+    hw('revives', ev.revives)
+    hw('assists', ev.assists)
+    p.sawStats = true
+  }
+
   ev_chat(ev) { this.chatLines++; this.touch(ev.slot, ev.ms) }
 
   ev_input(ev) {
@@ -460,6 +479,9 @@ export class Referee extends EventEmitter {
       duration_ms: Number.isFinite(ev.duration_ms) ? Number(ev.duration_ms) : null,
       points_total: Number.isFinite(ev.points_total) ? Number(ev.points_total) : null,
       downs_total: Number.isFinite(ev.downs_total) ? Number(ev.downs_total) : null,
+      // Only from a DLL whose native scoreboard fields verified (referee.md §16); absent,
+      // not 0, from one that could not read them.
+      kills_total: Number.isFinite(ev.kills_total) ? Number(ev.kills_total) : null,
       players_alive: Number.isFinite(ev.players_alive) ? Number(ev.players_alive) : null,
       players: Array.isArray(ev.players) ? ev.players.filter((x) => x && typeof x === 'object') : [],
       dvars: ev.dvars && typeof ev.dvars === 'object' ? ev.dvars : null,
@@ -807,6 +829,14 @@ export class Referee extends EventEmitter {
       const identity = r.identity || p.identity || 'none'
       const verified = identity === 'verified'
       const claimed = r.steamid ?? p.steamid ?? null
+      // ONE reconciled value per counter, used for BOTH the top-level field and the
+      // `stats` block. The site reads `stats.<x>` first (web results.js), and `stats` used
+      // to carry the raw fold — so a count the game reported and the link never folded
+      // was reconciled here and then thrown away on the way into game_players.
+      const kills = reconcile('kills', p.kills, Number(r.kills), who)
+      const headshots = reconcile('headshots', p.headshots, Number(r.headshots), who)
+      const downs = reconcile('downs', p.downs, Number(r.downs), who)
+      const revives = reconcile('revives', p.revives, Number(r.revives), who)
       return {
         slot: p.slot,
         steamid: verified ? claimed : null,
@@ -822,21 +852,22 @@ export class Referee extends EventEmitter {
         // did) flags a mismatch on every game that ever bought a door.
         score: reconcile('score', p.maxScore, Number(r.score), who),
         score_total: reconcile('score_total', p.pointsEarned, Number(r.score_total), who),
-        kills: p.kills,
-        downs: reconcile('downs', p.downs, Number(r.downs), who),
-        revives: reconcile('revives', p.revives, Number(r.revives), who),
+        kills,
+        headshots,
+        downs,
+        revives,
         bleedouts: p.bleedouts,
         // What the GAME said about this player, kept verbatim beside what we folded. The
         // site reads the fields above; this is here so a dispute can be settled from the
         // replay without re-deriving anything.
         reported: r.slot == null && r.steamid == null ? null : { ...r },
-        folded: { score: p.maxScore, score_total: p.pointsEarned, downs: p.downs, revives: p.revives },
+        folded: { score: p.maxScore, score_total: p.pointsEarned, kills: p.kills, headshots: p.headshots, downs: p.downs, revives: p.revives },
         rounds_played: p.roundsPlayed, joined_round: p.joinedRound, late: p.late,
         reconnects: p.reconnects, afk_kicked: p.afkKicked, connected_at_end: p.connected,
         // IW4MAdmin ZombieClientStat-shaped block (MIT, feature/zombie-stats).
         stats: {
-          kills: p.kills, deaths: p.bleedouts, headshots: p.headshots,
-          downs: p.downs, revives: p.revives,
+          kills, deaths: p.bleedouts, headshots,
+          downs, revives,
           points_earned: p.pointsEarned, points_spent: p.pointsSpent,
           highest_points: p.maxScore, time_alive_ms: p.timeAliveMs, rounds_played: p.roundsPlayed,
         },
@@ -858,13 +889,14 @@ export class Referee extends EventEmitter {
           identity_reason: r.identity_reason ?? null,
           party_slot: r.party_slot ?? null,
           name: r.name ?? null,
-          score: Number(r.score) || 0, score_total: Number(r.score_total) || 0, kills: 0,
+          score: Number(r.score) || 0, score_total: Number(r.score_total) || 0, kills: Number(r.kills) || 0,
+          headshots: Number(r.headshots) || 0,
           downs: Number(r.downs) || 0, revives: Number(r.revives) || 0, bleedouts: 0,
           reported: { ...r }, folded: null,
           rounds_played: 0, joined_round: null, late: false, reconnects: 0,
           afk_kicked: false, connected_at_end: r.connected !== false,
           unseen_on_link: true,
-          stats: { kills: 0, deaths: 0, headshots: 0, downs: Number(r.downs) || 0, revives: Number(r.revives) || 0,
+          stats: { kills: Number(r.kills) || 0, deaths: 0, headshots: Number(r.headshots) || 0, downs: Number(r.downs) || 0, revives: Number(r.revives) || 0,
                    points_earned: 0, points_spent: 0, highest_points: Number(r.score_total ?? r.score) || 0,
                    time_alive_ms: 0, rounds_played: 0 },
         })
