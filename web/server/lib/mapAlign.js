@@ -392,14 +392,15 @@ async function check(glbFile, meta, firstTick) {
   }
   // Nothing may be PLACED past the engine's +-65536 (nazi_zombie_pd shipped a prop 200 490 u
   // out, which frames the camera on a void). A backdrop centred inside that merely overhangs
-  // it (zm_nuked's desert mountain, projectx's jeepride terrain) is scenery and is allowed.
+  // it (zm_nuked's desert mountain; projectx's jeepride terrain, centred 78 000 u out) is
+  // scenery and is allowed: the limit on a box CENTRE is twice the world's, 131072.
   // The sky rides the camera and is exempt.
   out.farNodes = []
   glb.j.nodes.forEach((n, i) => {
     if (n.mesh === undefined || n.name === '__sky') return
     const b = nodeBox(glb, i)
     const c = [0, 1, 2].map((k) => (b.lo[k] + b.hi[k]) / 2)
-    if ([...b.lo, ...b.hi].some((v) => !Number.isFinite(v)) || c.some((v) => Math.abs(v) > 65536)) out.farNodes.push({ name: n.name, lo: b.lo.map(Math.round), hi: b.hi.map(Math.round) })
+    if ([...b.lo, ...b.hi].some((v) => !Number.isFinite(v)) || c.some((v) => Math.abs(v) > 131072)) out.farNodes.push({ name: n.name, lo: b.lo.map(Math.round), hi: b.hi.map(Math.round) })
   })
   if (firstTick) {
     let best = Infinity, which = null
