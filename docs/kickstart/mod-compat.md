@@ -12,6 +12,9 @@
 
 ## 1. The stretched Reapers Colt — what was proved, and what was not
 
+> **2026-09-23 13:35: cause found — `r_multiGpu 1` (the launcher's old baseline) breaking skinned
+> models on a single GPU. §10.4.** The rest of this section is the record of how it was ruled in.
+
 **Not reproduced.** The same map, the same bytes, the same server script path, B's own renderer
 settings and resolution, on this PC, with a local dedicated server + client (the d2+c1 recipe,
 `jointest.ps1`, off-screen, `ENW_TEST_NO_ACTIVATE=1`), draws the Reapers Colt correctly every time:
@@ -231,7 +234,7 @@ their next Play.
 * **Mod-owned dvars from scripts inside `.iwd`s** are not scanned (zip). No archived map is known to
   need it; a mod that does would keep the old read-back behaviour for those dvars.
 
-## 10. Invisible zombies on fear_mc_2 (B, 2026-09-23 12:49–12:51 UK) — narrowed, not proven
+## 10. Invisible zombies on fear_mc_2 (B, 2026-09-23 12:49–12:51 UK) — cause found: `r_multiGpu` (§10.4)
 
 **What B saw** (`tmp/shot-invisible.png`, launcher 0.2.24, DLL `10ba8544` both sides, match
 `m_e0690140`, client pid 5840): from the start, zombies are drawn **only as their sun shadows**
@@ -363,3 +366,50 @@ reproduce before anything else means anything** — the harness never reproduced
 V0/V0o draw zombies correctly, the difference is B's environment (Discord actually attaching,
 address space, the internet path to the box), and D1 plus a real launcher game with Settings →
 ENW → Discord overlay **Off** are the tests; the C-variants are then moot.
+
+### 10.4 Cause found: `r_multiGpu` (B, 2026-09-23 13:35 UK)
+
+**B's confirmation:** in his own game, Settings → Graphics → **dual video cards (`r_multiGpu`) OFF**
+fixed the invisible/garbled zombies on fear_mc_2 **and removed most of the mouse-movement stutter**.
+That is variant R1 of §10.3, answered by B's toggle instead of the harness. **Decision: `r_multiGpu`
+is 0 for everyone.** It stays a player toggle (someone with two GPUs may try it).
+
+**The mechanism, in one paragraph (reasoned, not measured in the exe).** "Optimize for Dual Video
+Cards" tells the renderer to expect alternate-frame rendering (AFR): two GPUs each drawing every
+other frame. For that the renderer keeps per-frame copies of its dynamic data — above all the
+**skinned vertex data** the CPU writes each frame for animated models (zombies, the viewmodel) —
+and stops re-synchronising those buffers between frames, because on AFR the next frame belongs to
+the other card. On a **single GPU** there is no other card: one GPU reads a skinned-vertex buffer
+the CPU is already filling for a later frame (or one that was never filled for this one). The lit
+pass then draws bone-skinned triangles from the wrong or stale vertices — **stretched spikes**
+(garbled zombies, B's "huge screen-covering triangles" on the Reapers Colt in §1) or degenerate
+zero-area triangles (**invisible** zombies whose shadow-map pass, drawn from a different buffer,
+is still right, §10). The extra queued frame is also input latency, which is the stutter.
+Rigid geometry is unaffected, which is why only animated models broke. Why the harness
+(`mcjoinB3`, `r_multiGpu 1`, this PC's GPU) drew the Colt correctly is not known: the race depends
+on GPU, driver and frame timing.
+
+**What was wrong in our own copy:** PCGamingWiki's "stuttering on modern systems" fix says turn it
+on; the launcher pinned `1` in `COMMUNITY_FIXES` since `afc6276` (09-22 04:13), the site catalogue
+had `enw: '1'`, and the Settings hint said "on in ENW: fixes stutter on modern PCs". All three
+reversed (branch `worktree-agent-a6b384b50fbe028f4`, lane G1):
+
+* `launcher/src/main/gamecfg.js`: baseline `r_multiGpu 0`; `migrateMultiGpu()` rewrites a
+  `seta r_multiGpu "1"` in the engine's active profile config and the fs_homepath copies to `"0"`
+  **once** per home (marker `multigpu-off-2026-09-23` in `.enw-migrations.json`), moves the account
+  snapshot with it so the read-back does not call it an in-game change, and logs
+  `repair: r_multiGpu 1 -> 0 (old default)`. A player who turns it on afterwards keeps it.
+* `launcher/src/main/settings.js`: settings migration of the same name turns a saved
+  `waw.r_multiGpu '1'` into `'0'` once per account; a site copy stamped **before** that repair
+  cannot bring `1` back (`guardRepaired`); a later choice (launcher, read-back, or a site edit
+  stamped after the repair) is kept.
+* `web/server/lib/settingsRepairs.js`: at server start, once per database (`site_migrations`),
+  every stored `r_multiGpu '1'` → `'0'`, after a `VACUUM INTO` backup to `web/data/backup-<ISO>/`.
+  Runs on the site's next restart (B's word). `game.updatedAt` is not moved.
+* `web/client/src/data/wawSettings.js` `enw: '0'`; `settingsLayout.js` hint "off: on a single GPU
+  it breaks skinned models and stutters"; `shared/settings/ingame-settings.json` regenerated
+  (the DLL embeds it: the in-game hint changes with the next client DLL build).
+
+**Closes** `next-session.md` bugs 1 (stretched Colt) and 18 (invisible/garbled zombies). The
+§10.3 A/B no longer needs to run for this. Unproven: a fear_mc_2 game by B on a launcher that
+carries the repair (the toggle itself is proven).
