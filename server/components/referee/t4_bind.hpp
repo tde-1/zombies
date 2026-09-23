@@ -28,10 +28,16 @@ struct binding_report {
     bool chat_capture = false;  // G_Say hook (what a player types)
     bool dvars = false;         // Dvar_FindVar / set
     bool frame_hook = false;    // a per-server-frame callback
+    // The co-op scoreboard counters are NATIVE gclient_s fields, not script variables
+    // (referee.md §16): `player.score`, `.kills`, `.downs`, `.revives`, `.headshots`,
+    // `.assists` all resolve through the client field table at 0x83C568 to plain ints
+    // at gclient + 0x20BC..0x20D0. True only when bind() has re-read that table and
+    // the two code sites that prove the offsets out of THIS process's image.
+    bool client_fields = false;
 
     bool any() const {
         return notify_hook || script_vars || entities || clients || server_cmd || dvars ||
-               frame_hook || chat_capture;
+               frame_hook || chat_capture || client_fields;
     }
     std::string describe() const;
 };
@@ -97,6 +103,28 @@ bool set_player_int(int slot, const char* field, int value);
 
 // Whether level.flag[<name>] is currently true. nullopt = cannot tell.
 std::optional<bool> level_flag(const char* name);
+
+// ------------------------------------------------ native client fields --
+//
+// The six counters the game's own Tab scoreboard shows, read straight out of the
+// player's gclient_s (referee.md §16). They are what the scripts write when they do
+// `self.score += n` (_zombiemode_score.gsc), `attacker.kills++` / `.headshots++`
+// (_gameskill.gsc auto_adjust_enemy_died, threaded on every spawned AI by
+// _spawner.gsc), `self.downs++` (_laststand.gsc) and `reviver.revives++`
+// (_laststand.gsc revive_success) -- the engine resolves those names to native
+// fields, so no script-variable access is needed to read them.
+//
+// `player_int(slot, "score"|"kills"|"assists"|"downs"|"revives"|"headshots")` answers
+// from here too; every other field name is still a script variable and still nullopt.
+struct client_stats {
+    int score = 0;
+    int kills = 0;
+    int assists = 0;
+    int downs = 0;
+    int revives = 0;
+    int headshots = 0;
+};
+std::optional<client_stats> player_stats(int slot);
 
 // ----------------------------------------------------------------- clients --
 

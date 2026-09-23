@@ -261,10 +261,18 @@ class Game extends EventEmitter {
   }
 
   onGameMessage(m) {
+    // `game_over` IS RECORDED BEFORE THE REFEREE SEES IT. The referee answers it by calling
+    // the game (`finishGame` -> 'over' -> `finish()`), and `finish()` sets `finished`
+    // synchronously, before its first await — so recording afterwards dropped it as a
+    // "late event". Every real game's replay on the box (checked 2026-09-23: 52 signed
+    // files, 0 with a game_over) ended without the one event the contract says is the last,
+    // and the game's own per-player result was in the summary but not in the evidence.
+    const recordFirst = m && m.t === 'game_over'
+    if (recordFirst) this.record(m)
     // 1. the referee decides what it means
     this.referee.onEvent(m)
     // 2. it goes into the replay, unmodified
-    this.record(m)
+    if (!recordFirst) this.record(m)
     // 3. the side effects that are the HOST's job, not the referee's
     // A warm instance re-announces `map_loaded` after `end`, and the next game's first
     // connect must read as a START rather than as a join of the game that just finished.
