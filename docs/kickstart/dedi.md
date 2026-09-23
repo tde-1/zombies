@@ -3573,3 +3573,88 @@ alias that killed B's games is missing on these maps too, and is now silent.
 - A bullet into water on the dedi (Shi No Numa-style map, a player shooting) — the reader is inferred to
   be water from the surface-type test; the registration itself is proven.
 - ils lag with a real internet client (26.3).
+
+## 27. 2026-09-23 evening — lane G2: the "one-hit downs" are a phantom water surface at z=0 on the dedicated server (`water_sim_off.cpp`), plus a solo-parity self-check (`solo_parity.cpp`)
+
+B, 14:00–14:27 UTC on box DLL `04a3ad6d`: Nuketown down the instant he spawned (game over in 1 s),
+nacht_reimagined "not touching the floor, missing inputs, floating", bridge_zombie / battlestar down
+on "one hit". Build: branch `worktree-agent-aac675948eb19e877` (main `27026f6` merged).
+
+### 27.1 What the evidence says, per map
+
+| map | B's replay / server log | cause |
+|---|---|---|
+| zm_nuked `m_89bf26b9` | spawn 72994 ms; `damage by:null hp 75` (+84 ms), `hp 39` (+125), down (+175), `hp 3` | **drowning**: the player spawned ~390 units under a water surface that exists only on the server |
+| nacht_reimagined `m_892d6c70` | player z p50 **-50**, zombies at the same x/y **35 units lower** (floor -87.6), all game | **swimming** at that surface (never on the ground) |
+| bridge_zombie `m_abe60828` | hit to 39 at 37.1 s, regen to 100 at 39.6 s, hit to 40 at 42.6 s, down 43.3 s | **stock**: two zombie hits (60 each) inside the 2.4 s regen delay |
+| battlestar `m_da684190` | hit to 40 at 66.9 s, down 68.4 s | **stock**, as bridge |
+
+A zombie hit is 60 on every map (AI melee 150 × `player_meleeDamageMultiplier` 0.4, which
+`_zombiemode`'s turret code confirms: `60 / player_damageMultiplier`), health 100, regen to full
+2.4 s after the last hit (`playerHealth_RegularRegenDelay` at frac 0.75), and in solo WaW the lethal
+hit is `PlayerLastStand` + `end_game` with no revive. So *one hit takes you to 40 and a second one
+inside 2.4 s ends a solo game* — on the box and in a solo listen game alike (27.4). The downs B felt
+as "one hit" on bridge/battlestar were two hits 0.7 s / 1.5 s apart. (Aside: bridge's first zombie
+had 1,500 health in round 1 while the rest had 150 — the map's own, not investigated.)
+
+### 27.2 The mechanism (read from the decrypted image)
+
+`0x6F3F70` answers "how high is the water here" for pmove (via 0x46DA70), script `getwaterheight`,
+missiles and physics. With `r_gfxopt_water_simulation` on (its dvar pointer is `[0x42B721C]`,
+registered by R_RegisterDvars at 0x70BB50 — which runs on the dedi), it samples the renderer's
+256×256 water-sim window (`0x6F2330` bounds, `0x6F3E00` waves) and adds the window's int16 base
+height grid `[0x4DD8BD0]`. The renderer scrolls that window round the viewer and fills it from the
+map's static grid (0x6F23C0). A dedicated server never runs that: `watersim_pool.cpp` (§11) makes the
+engine allocate the buffers so the server stops faulting — and they stay **zero**, so every point in
+the window reads "water surface at z = 0". With the switch off, 0x6F3F70 goes to **0x6F45B0**: the
+map's static grid, `-32768` (0x8AF860) where there is no water. Maps with floors above 0 (stock
+Nacht ≈ 0, bridge 170, battlestar 16, fear_mc_2 2304) never noticed.
+
+### 27.3 The fix: `server/components/dedicated/water_sim_off.cpp`
+
+Dedicated only: checks the gate bytes at 0x6F3F77 (`A1 1C 72 2B 04 80 78 10 00 57 74 65`) and that
+`[0x42B721C]` is `Dvar_FindVar("r_gfxopt_water_simulation")`, sets current and latched to 0 at
+post_init, and holds it every second. `ENW_DEDI_WATER_SIM=1` is the control arm. Clients are not
+touched (their renderer owns and fills the sim). Every map, not a per-map list.
+
+### 27.4 Proof (local dedi `waw-g2d` + invisible client `waw-g2c`, fake 76561198000000002; solo = listen)
+
+| run | map | build | spawn | on the ground | hits |
+|---|---|---|---|---|---|
+| g2r1/g2r3 | nacht_reimagined | no fix | **95/100** | **never** (z -46…-54, vel z ±3, 100 % "nothing") | — |
+| **g2r4** | nacht_reimagined | **fix** | 100/100 | **yes**: falls to **-87.6**, 100 % world | 60 → 40, second hit 0.41 s later = down → game over |
+| g2l2/**g2l3** | nacht_reimagined | solo listen | 100/100 | yes, **-87.6** | 60 → 40, second hit = down |
+| g2n3 | zm_nuked | no fix | 95/100, then -16, -4 (drowning, attacker none) | no | — |
+| **g2n4** | zm_nuked | **fix** | **100/100, no damage** | **no** — see 27.6 | killed at +45 s by something scripted (100 → 0, no laststand) |
+| **g2b1** | bridge_zombie | fix | 100/100 | yes (180.6) | 60 → 40, second hit 0.56 s later = down |
+| **g2p3** | nazi_zombie_prototype (control) | fix | 100/100 | yes (1.1) | 61 → 39, second hit 1.5 s later = down |
+
+Every fixed run: `r_gfxopt_water_simulation 0`, `g_gameskill 1`, `player_damageMultiplier 0.3226`
+(= solo 100/310), `player_meleeDamageMultiplier 0.400`. Logs `ZombiesDev\logs\dedi\g2*.server.enw.log`,
+link transcripts `ZombiesDev\logs\g2\<tag>\link.ndjson`.
+
+### 27.5 The self-check: `solo_parity.cpp` + `solo_parity_rules.hpp` (every map, every game)
+
+Per player, every server frame, read only: spawn health, every health drop with its last attacker,
+what the player stands on (`ps.groundEntityNum`), time off the ground. A spawn below full health, a
+live PM_NORMAL player off the ground for 5 s, and at +5 s `g_gameskill`, `g_player_maxhealth`,
+`player_damageMultiplier` (vs 100 / (310 × co-op scalar)), `player_meleeDamageMultiplier` and, on a
+dedi, `r_gfxopt_water_simulation` are checked; a difference is `solo_parity: MISMATCH slot N: …` in the
+DLL log and a warn `log` on the link. Telemetry rule **`solo_parity`** (P2) flags it. g2r3 (fix
+deliberately not applied) raised all three: `spawned HURT 95 of 100`, `FLOATING`, `water_simulation 1`.
+Unit test `server/tests/solo_parity_test.cpp` 27/0 (rules + the six addresses against the dump);
+`ENW_NO_SOLO_PARITY=1` turns it off.
+
+### 27.6 Open
+
+- **zm_nuked is still not playable locally with the fix**: the player spawns at the first
+  `initial_spawn_points` struct (-6315 160 -388), drops 5 units and stays "on nothing" with vel z
+  -87 (stuck), then dies at +45 s without a down. The map's own `coop_player_spawn_placement` dies on
+  `"players_" + undefined` (`_zombiemode.gsc:2917`) on the dedi, so who puts the player on that struct
+  is unknown; a solo listen reference could not be made (`Hunk_AllocateTempMemoryHigh: failed on
+  1435238401 bytes` in a local listen game). The self-check flags it (`FLOATING`).
+- **nazi_zombie_ils** lag (B: running/shooting slow, dropped inputs): B's replay has the player at z
+  ≈ -5 with parts of the floor at -47 — consistent with the same phantom water, **not run** with the fix.
+- The listen reference ran with `r_gfxopt_water_simulation 0` (its profile's value), so a client
+  *with* the sim on vs the fixed server is not measured; the sim only adds waves on real water.
+- Not on the box (lane INT deploys). The fix and the self-check need a box game on a below-zero map.
