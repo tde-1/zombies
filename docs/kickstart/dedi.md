@@ -3573,3 +3573,124 @@ alias that killed B's games is missing on these maps too, and is now silent.
 - A bullet into water on the dedi (Shi No Numa-style map, a player shooting) — the reader is inferred to
   be water from the surface-type test; the registration itself is proven.
 - ils lag with a real internet client (26.3).
+
+## 27. 2026-09-23 evening — lane S2: soak bots with no client anywhere, and why an idle nazi_zombie_ils server used 0.82 of a core
+
+### 27.1 Bots without B's PC: `server/components/dedicated/bots.cpp`
+
+T4 SP still has IW3's test-client machinery (`client_s.bIsTestClient` +0x52BFC read by
+SV_SendClientGameState 0x62F5A7 and SV_AddServerCommand 0x633D35, `sv_botsPressAttackBtn`,
+SV_BotUserMove 0x635DF0, the per-server-frame bot loop 0x636070 over every client whose
+`netchan.remoteAddress.type` is NA_BOT (0)), but nothing in the image ever sets `bIsTestClient`:
+SV_AddTestClient and `addtestclient` are compiled out (no `bot%d`, no connect template). Plutonium's
+`addtestclient` (what `t4sp_bot_warfare` uses) is theirs, not the exe's. So `bots.cpp` rebuilds
+SV_AddTestClient from the engine's own functions, IW3's shape:
+
+| step | engine function | why it works for a bot |
+|---|---|---|
+| `connect "\…\protocol\62\challenge\0\qport\<n>\name\enwbot<n>"` | SV_Cmd_TokenizeString 0x594D50 (ecx) | DirectConnect reads `SV_Cmd_Argv(1)` |
+| NA_BOT address, unique port | SV_DirectConnect 0x62E3A0 (netadr by value, 0x18 B) | type 0 skips the challenge (0x62E5D0) and the Demonware ticket (0x62ED37); NET_SendPacket drops type 0 (0x679185); ClientConnect 0x67BF40 runs the connect callback |
+| | SV_Cmd_EndTokenizedString 0x594D80 | |
+| `bIsTestClient = 1` | — | SV_SendClientGameState then writes the zeroed stats + 0x7F marker instead of `EXE_NEEDSTATS` |
+| gamestate | SV_SendClientGameState 0x62F500 (cdecl) | CS_CONNECTED → CS_CLIENTLOADING |
+| enter world | SV_ClientEnterWorld 0x62FC30 (eax = client, [esp+4] = usercmd) | CS_ACTIVE; tail-jumps ClientBegin 0x67C160 |
+| `client_s+4 = 10` | — | the top nibble of every client packet (SV_PacketEvent 0x6356D9) is its load state; `getnumconnectedplayers` 0x52E9E0 counts state 4 **and** this == 10, and `_load.gsc` waits for that count. Without it the bot is in the world and nobody ever spawns (run t1) |
+
+**The brain.** SV_RunFrame's `call 0x636070` at 0x636482 (nothing else hooks it) is retargeted to our
+function, so everything below runs **inside** the server frame, where the engine thinks for bots and
+where a bot's bullets reach G_Damage anyway: never from a frame subscriber, where a Com_Error longjmp
+would land in a dead frame. Each server frame each bot gets a usercmd (svs.time, its current weapon,
+view angles to the nearest living axis actor corrected by `ps.delta_angles`, attack on alternate frames
+within 1,500 units), `deltaMessage = outgoingSequence - 1`, and SV_ClientThink 0x630BF0. It stands where
+the scripts spawned it. The engine's own random walker (`ENW_DEV_BOT_RANDOM=1`) wanders out of the
+active zones on a zoned map: on nazi_zombie_ils one zombie spawned and round 1 never ended (run
+ab-ils-fast).
+
+**The kills.** A living axis actor with takedamage, older than `ENW_DEV_BOT_KILL_AGE_MS` (8,000,
+jittered 0.5–1.5× per zombie, so they reach the bots and hit them), is killed by G_Damage 0x4F5D70 with
+the bot as inflictor and attacker, MOD_PISTOL_BULLET, weapon -1 (the bot's own, 0x4F5DBB), hitLoc head:
+the call GScr `dodamage` makes (0x51CBD9). At most `ENW_DEV_BOT_KILLS_PER_S` (3) a second. So the
+zombie's damage/death scripts, kill points, rank XP (§25's `mp_level_up` path), powerups and the round
+counter run as for a player. `enw_dev_god.off` (soak.cpp's end-of-soak switch) also stops the kills,
+or the zombies never reach the bots and the game never ends (run t2 kept going to round 13).
+
+**The gate.** `ENW_DEV_KNOBS=1` or nothing is installed. Count: `ENW_DEV_BOTS=N` (1–4) or
+`enw_dev_bots.txt` next to CoDWaW.exe (re-read every 5 s, so a run can go from 1 to 4 bots). Host:
+`settings.dev.bots` on an agent's Custom lease → `ENW_DEV_BOTS`, and `sv_maxclients` ≥ bots
+(`devKnobsFor`/`devBotsFor`, run-all 109/0). `lease-cli --dev-bots N`. The referee treats a test client
+as absent (`client_view.bot`, `active=false`; `last_usercmd` none): no roster row, no auth, no kick, no
+AFK input. `dev_bots:` once a minute: server-frame gap (between SV_RunFrame calls) p50/p99/max, Com_Frame
+gap, level.time against the wall, main-thread CPU %, working set, entities in use, actors alive (max),
+kills.
+
+**Runner.** `tools/dev/botrun.sh` runs one game in the box's TEST copy `waw-tinst-01` (never
+`waw-inst-*`) with a given DLL, outside the host agent, samples every 60 s into a CSV, and ends through
+`enw_dev_god.off`. A guard polls the host journal every 2 s and kills **our** game at the first
+`assignment changed: leased` or `RAM guard` line, or when MemAvailable < 250 MB; it refuses to start
+under 850 MB (every production slot idle) or within 15 min of a verified non-fake admission.
+`tools/dev/botqueue.sh` runs a list, retrying refused starts every 2 min.
+
+### 27.2 The nazi_zombie_ils lag: the server ran its frame at ~24 Hz, and 94% of its CPU was our own guarded reads
+
+**B's ILS game** (14:23 UTC, inst-49, `enw-3944.log`, DLL 04a3ad6d, one internet client, rate 25000):
+the rate probe says `Com_Frame-body` **23.5–24.2 Hz** for the whole game against a 60 Hz target (13–15 Hz
+while he loaded in), and `net_probe` sends him **~24 messages/s** of 150–230 bytes, no fragments after the
+gamestate. A client's usercmds are read once per Com_Frame, so at 24 Hz every input waits up to ~42 ms
+before the server even sees it, and snapshots leave at 24 Hz instead of the 30 he asked for. The empty
+servers the host booted today show the same thing by map (median `Com_Frame-body` over each log, nobody
+connected): ILS **20.6 / 31.8 / 33.1 Hz**, zombie_town 22.2, lorkeep 27.8, fear_mc_2 32.5 (B in it),
+nuketown 37.2, … up to 55–57 for the light maps. None reached 60.
+
+**Where the time goes** (`perf record -t <main tid> -F 499`, 15 s, an idle production ILS server,
+16:05 UTC): the main thread used **0.82 of a core**; **1.2%** of the samples were CoDWaW.exe's own code.
+40% were one loop in Wine's `ntdll.so` (+0x5BDC0: a dword scan xor'ing a replicated byte — Wine's
+per-page protection-byte scan, `get_vprot_range_size`), 27% the 32-bit syscall gate in the vdso and
+27% the kernel (the two `rt_sigprocmask` of Wine's virtual-memory lock). That is **VirtualQuery**:
+`memory::is_readable` calls it before every `memory::read`, and `t4_bind`'s `peek` does the same, so
+every dword the referee, the replay sampler, AFK and the probes read each frame cost a scan of the
+region it lives in — and CoDWaW.exe's `.data` is one 72.9 MB region (~17,800 page bytes). A map with
+more entities is read more, so ILS paid most. On Windows VirtualQuery is cheap, which is why no local
+run ever showed it.
+
+**The fix** (`shared/core/memory.cpp`, generic, every map): a range wholly inside the game image is
+readable without asking, once a walk of the whole image (every 5 s, ~20 regions) has shown every page
+committed and readable; a failed walk turns the fast path off until one passes. Outside the image,
+unchanged. `ENW_MEMORY_SLOW_READS=1` is the control. `bots.cpp` writes its `client_s` fields with plain
+stores for the same reason (`memory::write` VirtualProtects twice per call).
+
+| same box, same map, DLL | who | main thread | Com_Frame-body |
+|---|---|---|---|
+| production fd3039d2, ILS, 16:05 | nobody | **0.82 core** | ~33 Hz |
+| production fd3039d2, zm_nuked, 16:51 | nobody (B's lease, not joined) | 0.46 core | 53.3 Hz |
+| S2 `0c2777bd` (fast path), ILS, 16:32–16:36 | 1 bot | **0.22 core** (main-thread 21–25%) | **61.0 Hz** |
+| S2 `add998a5` (fast path), Nacht, 16:18–16:26 | 1 bot, rounds 1→9 | 0.21 core | 61.0 Hz |
+
+### 27.3 Runs (box, `waw-tinst-01`, outside the host agent; updated as runs end)
+
+| run | map | DLL | start (UTC) | length | rounds | ended by | notes |
+|---|---|---|---|---|---|---|---|
+| t1 | Nacht | fa494e0e | 16:11 | 5 m | — | killed by us | bot seated (state 4, gentity 0176C6F0) but never spawned: load state not 10 (27.1) |
+| t2 | Nacht | add998a5 | 16:17 | 12 m | 1 → 13 | time up; god off, but kills went on (fixed) | 0 escapes; main thread 20%, Com_Frame 61 Hz, sv-frame gap p50 49 / p99 65 ms, level.time 1.000 of wall; RSS 308 MB flat; child vars 13.1k → 15.1k |
+| ab-ils-fast | ILS | 0c2777bd | 16:31 | 5 m | 1 | the guard (an agent lease) | random-walk bot: 1 zombie then no spawns (zoned map) → the stand-and-aim brain; 0.22 core, 61 Hz, one 2.5 s hitch in minute 2 |
+
+**Blocked from 16:36 UTC:** B's own verified zm_nuked lease `m_5a28dcbe` (state `ready`, nobody joined)
+holds ~460 MB, so MemAvailable sits at ~510 MB and every start is refused (floor 850). The queue
+(`/home/waw/zdev-test/s2/q2.txt`: ILS A/B fast vs `ENW_MEMORY_SLOW_READS=1`, ILS/ut_box_map/lorkeep 45 min,
+Nacht and Der Riese 120 min, DLL `9c0ef76e`) keeps retrying every 2 min and starts by itself;
+results append to `/home/waw/zdev-test/s2/queue.log`. Stop it with `pkill -f botqueue.sh` (the guard
+still ends a running game on the next lease).
+
+### 27.4 Capacity so far (fast-path DLL; low rounds only — round 20+ is what the queue measures)
+
+| | main thread | RSS |
+|---|---|---|
+| Nacht, 1 bot, rounds 1–13 | 0.21 core | 308 MB |
+| ILS, 1 bot, round 1 | 0.22 core | 386 MB |
+| zm_nuked, idle, **production** DLL | 0.46 core | 459 MB |
+| ILS, idle, **production** DLL | 0.82 core | 385 MB |
+| Steam client + CEF (always) | ~0.1 core | ~2.3 GB |
+
+On the production DLL two ILS-class games already take 1.6 of the 2 vCPUs before anyone plays; with
+the fast path they take ~0.45. **RAM, not CPU, is the limit at low rounds**: MemAvailable is ~880 MB
+with no game, a game is 300–460 MB, so the third slot only fits a small map (the RAM guard's 700 MB
+floor already stops it). Whether 20+ rounds with 4 players changes the CPU picture is open.
