@@ -661,7 +661,7 @@ def build_fx(name: str, f: dict, out_dir: Path) -> dict:
         img = tex_of(mj, "colorMap")
         blend = blend_of(mj)
     else:
-        img = f["image"]
+        img, blend = f["image"], "texture"   # a bare image (the camo swatch), no material to read
     ip = image_path(zone, img)
     if ip is None:
         sys.exit(f"fx {name}: image {img} not in the dumps")
