@@ -13,6 +13,7 @@ import { ramPlan, parseMeminfo, MB } from '../lib/memguard.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
 import { InstanceManager, devKnobsFor, safeLeaseDvars } from '../lib/instances.js'
+import { gameModeDvars, gameModeId } from '../lib/gamemode.js'
 import { leaseList, planLeases } from '../lib/leases.js'
 import { SERVER_RULES, RULESET, effectiveFps } from '../lib/verified.js'
 import { contactSummary } from '../tools/replay-contact.js'
@@ -38,7 +39,7 @@ function makeRef(opts = {}) {
   const r = new Referee({
     instanceId: 'test', matchId: 'm_test', mode: opts.mode || 'verified',
     manifest: opts.manifest || defaultManifest('nazi_zombie_prototype'),
-    config: opts.config || {}, vip: opts.vip || false,
+    config: opts.config || {}, vip: opts.vip || false, gameMode: opts.gameMode || null,
     log: { info() {}, warn() {}, debug() {}, error(e) { console.error(e) } },
   })
   r.on('command', (c) => cmds.push(c))
@@ -990,6 +991,69 @@ t('dev knobs only for an AGENT lease in CUSTOM mode that asks, and explicitly em
   const g = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'verified', settings: {} } })
   eq(g.gameEnv().ENW_DEV_KNOBS, '', 'a player game overrides anything inherited from the agent\'s env')
 })
+// ---- the map's own game mode (game-modes.md, lane UGX, 2026-09-23) ----------------------
+const UGX_GG = { id: 'gungame', label: 'Gun Game', mechanism: 'ugx_vote_1', hide: ['ugxm_vote_host', 'ugxm_vote_players'],
+  answer_menu: 'ugxm_vote_host', responses: ['gg', 'start'], done: 'ugxm_voting_complete' }
+t('game mode: a UGX pick becomes the four host-owned dvars, in Verified and Custom alike', () => {
+  eq(gameModeDvars(UGX_GG).dvars, [['enw_game_mode', 'gungame'], ['enw_menu_hide', 'ugxm_vote_host,ugxm_vote_players'],
+    ['enw_menu_answer', 'ugxm_vote_host:gg,start'], ['enw_menu_done', 'ugxm_voting_complete']])
+  eq(gameModeDvars(null), { dvars: [] })
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'gmode'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  for (const mode of ['verified', 'custom']) {
+    const g = m.create({ kind: 'game', assignment: { map: 'battlestar_galactica', mode, game_mode: UGX_GG, settings: {} } })
+    const args = g.gameArgs()
+    ok(args.includes('+set enw_menu_answer ugxm_vote_host:gg,start'), `${mode}: ${args.join(' ')}`)
+    ok(args.indexOf('+set enw_game_mode gungame') < args.indexOf('+map battlestar_galactica'), 'before +map')
+  }
+})
+t('game mode: a party can never set the mode dvars, and a bad catalogue entry passes nothing', () => {
+  const { ok: pass, refused } = safeLeaseDvars([['enw_menu_answer', 'x:y'], ['ENW_MENU_HIDE', 'x'], ['enw_game_mode', 'gungame'], ['enw_menu_done', 'x']])
+  eq(pass, []); eq(refused.length, 4)
+  for (const bad of [
+    { ...UGX_GG, id: 'gun game' },
+    { ...UGX_GG, responses: ['gg;quit', 'start'] },
+    { ...UGX_GG, responses: ['gg', '+set developer 1'] },
+    { ...UGX_GG, answer_menu: 'not_hidden' },
+    { ...UGX_GG, hide: [] },
+    { ...UGX_GG, hide: Array.from({ length: 9 }, (_, i) => `m${i}`) },
+    { ...UGX_GG, done: 'a b' },
+    'gungame',
+  ]) {
+    const r = gameModeDvars(bad)
+    eq(r.dvars, [], JSON.stringify(bad)); ok(r.error, 'says why')
+  }
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'gmode2'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  const g = m.create({ kind: 'game', assignment: { map: 'battlestar_galactica', mode: 'custom', game_mode: { ...UGX_GG, responses: ['gg', 'start +quit'] },
+    settings: { dvars: { enw_menu_answer: 'ugxm_vote_host:ss,start' } } } })
+  ok(!g.gameArgs().some((a) => /enw_/.test(a)), g.gameArgs().join(' '))
+  eq(gameModeId({ game_mode: UGX_GG }), 'gungame'); eq(gameModeId({}), null); eq(gameModeId({ game_mode: { id: 'a;b' } }), null)
+})
+t('game mode: the result carries the mode, eligible only when the server proved it took', () => {
+  const played = (events) => {
+    const r = makeRef({ gameMode: 'gungame' })
+    stockServer(r)
+    bootGame(r, { players: 1, map: 'battlestar_galactica' })
+    for (const e of events) r.onEvent({ t: 'game_mode', ms: 1000, mode: 'gungame', ...e })
+    r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 9, reason: 'end_game' })
+    return r.summary()
+  }
+  const good = played([{ state: 'hidden', menu: 'ugxm_vote_host', ent: 0 }, { state: 'answered', menu: 'ugxm_vote_host', response: 'gg', ent: 0 },
+    { state: 'answered', menu: 'ugxm_vote_host', response: 'start', ent: 0 }, { state: 'done', note: 'ugxm_voting_complete' }])
+  eq(good.game_mode, 'gungame'); eq(good.game_mode_applied, true); eq(good.records_eligible, true)
+  eq(good.game_mode_seen.answered, ['gg', 'start'])
+  const none = played([])   // an old DLL: nothing answered, the map's menu was shown
+  eq(none.game_mode_applied, false); eq(none.records_eligible, false); ok(none.flags.includes('game_mode_unconfirmed'))
+  const timeout = played([{ state: 'answered', response: 'gg' }, { state: 'timeout', note: 'ugxm_voting_complete' }, { state: 'done' }])
+  eq(timeout.game_mode_applied, false)
+  const other = played([{ state: 'done', mode: 'sharpshooter' }])
+  eq(other.game_mode_applied, false)
+  const plain = makeRef(); stockServer(plain); bootGame(plain); plain.onEvent({ t: 'game_over', ms: 10 * MIN, round: 3, reason: 'end_game' })
+  const ps = plain.summary()
+  eq(ps.game_mode, null); eq(ps.game_mode_applied, null); eq(ps.records_eligible, true)
+})
+
 // ---- game copies by SLOT, not by id (dedi.md §19, 2026-09-23) --------------------------
 // MEASURED on the box 2026-09-22 23:27-23:32: ids grow for the agent's whole life, the copy
 // was `waw-{id}`, and after four boots every lease failed with `no game copy at

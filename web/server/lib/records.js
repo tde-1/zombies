@@ -78,13 +78,30 @@ const PROFILES = {
   },
 }
 
-function ensureBoard({ mapKey, versionId, category, playerCount, profile = 'ENW-Verified' }) {
-  const sort = TIME_CATEGORIES.has(category) ? 'time_asc' : 'round_desc'
-  db.prepare(`INSERT OR IGNORE INTO boards (map_key, map_version_id, category, label, player_count, profile, sort, created_at)
-              VALUES (?,?,?,?,?,?,?,?)`)
-    .run(String(mapKey), versionId || null, category, CATEGORY_LABEL[category] || category, playerCount, profile, sort, now())
+// ---- game modes (docs/kickstart/game-modes.md) ---------------------------------------
+// A map's own game mode (UGX's Classic / Gun Game / Sharpshooter ...) is a FIFTH thing that
+// decides the board: a Gun Game round 12 and a Classic round 12 are not the same feat. The
+// boards table's UNIQUE key is inline and cannot be altered without rebuilding a live table,
+// so a mode's board carries the mode in its category key -- `round@gungame` -- and, for
+// filtering, in its own `game_mode` column. A map without modes (and every board from before
+// modes) has `game_mode` '' and a bare category, exactly as before.
+const MODE_SEP = '@'
+const baseCategory = (c) => String(c || '').split(MODE_SEP)[0]
+const categoryKey = (c, gameMode) => (gameMode ? `${c}${MODE_SEP}${gameMode}` : c)
+const labelOf = (c) => CATEGORY_LABEL[baseCategory(c)] || baseCategory(c)
+const modeLabel = (mapKey, gm) => (gm ? require('./gameModes').label(mapKey, gm) : null)
+
+function ensureBoard({ mapKey, versionId, category, playerCount, profile = 'ENW-Verified', gameMode = '' }) {
+  const base = baseCategory(category)
+  const gm = gameMode || ''
+  const key = categoryKey(base, gm)
+  const sort = TIME_CATEGORIES.has(base) ? 'time_asc' : 'round_desc'
+  const label = gm ? `${labelOf(base)} · ${modeLabel(mapKey, gm)}` : labelOf(base)
+  db.prepare(`INSERT OR IGNORE INTO boards (map_key, map_version_id, category, label, player_count, profile, sort, created_at, game_mode)
+              VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(String(mapKey), versionId || null, key, label, playerCount, profile, sort, now(), gm)
   return db.prepare(`SELECT * FROM boards WHERE map_key=? AND map_version_id IS ? AND category=? AND player_count=? AND profile=?`)
-    .get(String(mapKey), versionId || null, category, playerCount, profile)
+    .get(String(mapKey), versionId || null, key, playerCount, profile)
 }
 
 function rowsFor(boardId, limit = 50) {
@@ -121,14 +138,22 @@ function rowsFor(boardId, limit = 50) {
 }
 
 // Every board for a map, grouped for the map page: category, then player count.
-function forMap(mapKey, { versionId = null, profile = 'ENW-Verified', limit = 10 } = {}) {
+// `gameMode`: undefined = every mode's boards (each group says its mode); a string = that
+// mode's only ('' = the boards of a map without modes, or from before modes).
+function forMap(mapKey, { versionId = null, profile = 'ENW-Verified', limit = 10, gameMode } = {}) {
   const where = ['map_key=?', 'profile=?']
   const args = [String(mapKey), profile]
   if (versionId) { where.push('map_version_id=?'); args.push(versionId) }
+  if (gameMode !== undefined && gameMode !== null) { where.push("COALESCE(game_mode,'')=?"); args.push(String(gameMode)) }
   const boards = db.prepare(`SELECT * FROM boards WHERE ${where.join(' AND ')} ORDER BY category, player_count`).all(...args)
   const groups = new Map()
   for (const b of boards) {
-    if (!groups.has(b.category)) groups.set(b.category, { category: b.category, label: CATEGORY_LABEL[b.category] || b.category, sort: b.sort, counts: [] })
+    if (!groups.has(b.category)) {
+      groups.set(b.category, {
+        category: b.category, base: baseCategory(b.category), label: labelOf(b.category), sort: b.sort,
+        game_mode: b.game_mode || null, game_mode_label: modeLabel(mapKey, b.game_mode), counts: [],
+      })
+    }
     groups.get(b.category).counts.push({
       player_count: b.player_count,
       board_id: b.id,
@@ -187,7 +212,8 @@ function submitFromGame(game, summary) {
       // on somebody else's behalf — and would put the same run on three boards that all
       // say the same thing.
       if (profile !== 'ENW-Verified' && !['round', 'ee_speedrun', 'buyable_speedrun'].includes(c.category)) continue
-      const board = ensureBoard({ mapKey: game.map_key, versionId: game.map_version_id, category: c.category, playerCount: pc, profile })
+      const board = ensureBoard({ mapKey: game.map_key, versionId: game.map_version_id, category: c.category, playerCount: pc, profile,
+        gameMode: game.game_mode || '' })
       if (!board || board.frozen) continue
       const rec = insertRun(board, {
         steamId: primary, roster: ids, gameId: game.id, matchId: game.match_id,
@@ -219,10 +245,12 @@ function insertRun(board, r) {
 }
 
 // The record hub: the top row of every board, newest first, across every map.
-function hub({ category = null, playerCount = null, profile = 'ENW-Verified', limit = 60 } = {}) {
+function hub({ category = null, playerCount = null, profile = 'ENW-Verified', limit = 60, gameMode = null } = {}) {
   const where = ['b.profile=?']
   const args = [profile]
-  if (category) { where.push('b.category=?'); args.push(category) }
+  // `category` is the base category (every mode's board of it); `gameMode` narrows to one mode.
+  if (category) { where.push(`(b.category=? OR b.category LIKE ?)`); args.push(category, `${category}${MODE_SEP}%`) }
+  if (gameMode) { where.push('b.game_mode=?'); args.push(String(gameMode)) }
   if (playerCount) { where.push('b.player_count=?'); args.push(Number(playerCount)) }
   const boards = db.prepare(`SELECT b.*, m.title FROM boards b JOIN maps m ON m.key=b.map_key
                               WHERE ${where.join(' AND ')} ORDER BY b.map_key, b.category, b.player_count`).all(...args)
@@ -232,7 +260,8 @@ function hub({ category = null, playerCount = null, profile = 'ENW-Verified', li
     if (!rows.length) continue
     out.push({
       board_id: b.id, map_key: b.map_key, map_title: b.title, category: b.category,
-      label: CATEGORY_LABEL[b.category] || b.category, player_count: b.player_count,
+      label: labelOf(b.category), base: baseCategory(b.category), player_count: b.player_count,
+      game_mode: b.game_mode || null, game_mode_label: modeLabel(b.map_key, b.game_mode),
       profile: b.profile, sort: b.sort, top: rows[0],
     })
   }
@@ -247,7 +276,7 @@ function hub({ category = null, playerCount = null, profile = 'ENW-Verified', li
 // is a visible control.
 function heldBy(steamId) {
   const sid = String(steamId)
-  const rows = db.prepare(`SELECT r.*, b.map_key, b.category, b.player_count, b.profile, b.sort, m.title
+  const rows = db.prepare(`SELECT r.*, b.map_key, b.category, b.player_count, b.profile, b.sort, b.game_mode, m.title
                              FROM records r JOIN boards b ON b.id=r.board_id JOIN maps m ON m.key=b.map_key
                             WHERE r.current=1 AND r.verified=1 AND r.roster LIKE ?
                             ORDER BY CASE b.profile WHEN 'ENW-Verified' THEN 0 ELSE 1 END`).all(`%"${sid}"%`)
@@ -260,7 +289,8 @@ function heldBy(steamId) {
     if (top && top.id === r.id) {
       seen.add(key)
       held.push({
-        map_key: r.map_key, map_title: r.title, category: r.category, label: CATEGORY_LABEL[r.category] || r.category,
+        map_key: r.map_key, map_title: r.title, category: r.category, label: labelOf(r.category), base: baseCategory(r.category),
+        game_mode: r.game_mode || null, game_mode_label: modeLabel(r.map_key, r.game_mode),
         player_count: r.player_count, profile: r.profile, round: r.round, value_ms: r.value_ms, at: r.created_at,
         match_id: top.match_id, replay: top.replay,
       })
@@ -274,5 +304,5 @@ const profiles = () => Object.entries(PROFILES).map(([key, p]) => ({ key, label:
 
 module.exports = {
   CATEGORY_LABEL, TIME_CATEGORIES, PROFILES,
-  ensureBoard, rowsFor, forMap, submitFromGame, hub, heldBy, categories, profiles,
+  ensureBoard, rowsFor, forMap, submitFromGame, hub, heldBy, categories, profiles, baseCategory, categoryKey,
 }

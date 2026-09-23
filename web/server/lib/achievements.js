@@ -35,11 +35,17 @@ function context() {
   // Highest round reached per player in a Verified, records-eligible game. Custom games are
   // excluded: 05 says round milestones are earned in Verified games, and a Custom lobby can
   // start at round 100.
+  // Only a map's DEFAULT game mode counts (game-modes.md): a Gun Game round is not the map's
+  // own round, so it earns no round milestone.
+  const gameModes = require('./gameModes')
   const bestRound = new Map()
-  for (const r of db.prepare(`SELECT gp.steam_id, MAX(g.rounds) AS best
+  for (const r of db.prepare(`SELECT gp.steam_id, g.map_key, g.game_mode, MAX(g.rounds) AS best
                                 FROM game_players gp JOIN games g ON g.id=gp.game_id
                                WHERE g.mode='verified' AND gp.late=0
-                               GROUP BY gp.steam_id`).all()) bestRound.set(r.steam_id, r.best || 0)
+                               GROUP BY gp.steam_id, g.map_key, g.game_mode`).all()) {
+    if (r.game_mode && r.game_mode !== gameModes.resolve(r.map_key, null)) continue
+    bestRound.set(r.steam_id, Math.max(bestRound.get(r.steam_id) || 0, r.best || 0))
+  }
 
   // Maps beaten = map badges held. One badge per map, so the count is the holding count.
   const mapsBeaten = new Map()

@@ -20,6 +20,7 @@
 //     may have their own CoDWaW.exe running.
 //   * A 'game' instance acquires ZombiesDev\locks\game.lock before launch and releases it
 //     on stop. A lock older than 15 min whose PID is dead is stale and may be taken.
+import { GAME_MODE_DVARS, gameModeDvars } from './gamemode.js'
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
@@ -53,6 +54,8 @@ const HOST_OWNED_DVARS = new Set([
   'dedicated', 'developer', 'developer_script', 'logfile', 'net_port', 'net_ip', 'sv_maxclients',
   'com_maxfps', 'fs_game', 'fs_homepath', 'fs_basepath', 'fs_localappdata', 'fs_cdpath',
   'fs_basegame', 'zombiemode', 'sv_maxrate', 'rcon_password', 'sv_punkbuster', 'r_fullscreen',
+  // The map's game mode (game-modes.md): set from the lease's `game_mode`, never from a party.
+  ...GAME_MODE_DVARS,
 ].map((s) => s.toLowerCase()))
 export function safeLeaseDvars(entries) {
   const ok = []
@@ -178,6 +181,12 @@ export class Instance extends EventEmitter {
       `+set sv_maxclients ${Math.max(1, Math.min(8, Number(a.slots?.length || a.max_players || 4)))}`,
       `+set net_port ${this.port}`,
     )
+    // The map's own game mode (game-modes.md), host-owned, in Verified and Custom alike: the
+    // mode is the map's content, not a setting. Invalid -> none of it, and the map's own
+    // menu shows (the safe failure); the referee then marks the mode unconfirmed.
+    const gm = gameModeDvars(a.game_mode)
+    if (gm.error) this.log?.warn?.(`game mode refused (${gm.error}); the map's own menu will show`)
+    for (const [k, v] of gm.dvars) out.push(`+set ${k} ${v}`)
     // A lease's own dvars are for Custom games. A Verified game runs the stock server and
     // nothing else (verified-rules.md §4): a lease that asks for dvars in Verified gets
     // none of them, and the log says which were dropped.
