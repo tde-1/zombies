@@ -198,6 +198,8 @@ def ugx_entry(scripts):
     # Does the zombiemode the game will run actually call the vote? (it must, or nothing shows)
     zm = scripts.get("maps/_zombiemode.gsc")
     calls = bool(zm and "start_ugx_mod" in strip_comments(zm[0]))
+    if not calls:
+        return None   # the vote is never opened: offering modes would be offering nothing
     modes = []
     for mid, label, resp, keys, note in UGX_MODES:
         if resp not in handled:

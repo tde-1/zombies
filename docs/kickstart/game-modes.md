@@ -1,0 +1,166 @@
+# game modes — a map's own pre-game choice, picked on the site (lane UGX, 2026-09-23)
+
+Lanes touched: a new server component (`server/components/game_mode/`), the host agent
+(`infra/host-agent/lib/gamemode.js` + four call sites), the site (`web/server/lib/gameModes.js`,
+parties / assignments / results / records, the rail and the map page), the archive
+(`archive/scan_modes.py`) and one harness (`tools/dev/gamemode-proof.ps1`, `jointest.ps1
+-ServerExtraArgs`). Owner of this doc: whoever next touches game modes.
+
+**B's ask (2026-09-23, after his Battlestar Galactica game `m_da684190`, 14:14 UTC, inst-46):** the
+map asked him to pick a game mode (Gun Game, Sharpshooter, Classic ...) in a menu when it started.
+Pick it in the launcher instead, never show that menu in the game, and keep scores per mode — for
+every map like this.
+
+## 1. The mechanism (Battlestar Galactica = UGX Mod 1.0.x)
+
+Read from the map's own files (`ugx_mod.iwd`, `mod.ff`; extracted with `tools/re/ff_extract.py`):
+
+* `maps/_zombiemode.gsc` (the one in `ugx_mod.iwd`) calls `maps\ugxm_init::start_ugx_mod()`
+  right after `flag_wait("all_players_connected")`.
+* `start_ugx_mod()` → `handle_vote()`: freezes every player, opens **`ugxm_vote_host`** on
+  `players[0]` and **`ugxm_vote_players`** on everyone else, and then
+  **`players[0] waittill("voting_complete")`** — the whole game waits on the first player.
+* `handle_vote_watcher(menu)` loops on `self waittill("menuresponse", responsemenu, response)`:
+  `cl` Classic, `gg` Gun Game, `ar` Arcade Mode, `ss` Sharpshooter, `bh` Bounty Hunter, plus
+  `timed` / `obj` / `t15`..`t60` toggles, and **`start`** notifies `voting_complete`.
+* The menu (in `mod.ff`) is plain `scriptMenuResponse "gg"` etc.; which buttons show is the
+  `ugxm_allow_<mode>` client dvars, set from the map's own `maps/ugxm_user_settings.gsc`
+  (`set_gamemode("gungame", true)`). Battlestar's settings allow **all five** (B remembered three).
+* Only the host's vote counts (`level.ugxm_players_voting = 1` unless somebody picks `start_all`).
+  `start_ugx_mod()` ends with **`level notify("ugxm_voting_complete")`**, after the mode's own
+  init ran — the proof that the pick took.
+
+There is **no dvar** to pre-set: the choice exists only as a `menuresponse` notify from the host
+player. So the server has to *be* that click.
+
+**UGX Mod 1.1** (ugxm_garage, ugxm_lostwoods, ugxm_pax, salaj_dust2, the chal_* maps,
+ugx_artemovsk, corridor_challenge) reworked it: non-hosts get `ugxm_save_settings_client` (never
+closed by the script), the script waits on `level waittill("voting_complete")`, modes add `kh`
+King of the Hill and `cm` Chaos Mode, and "start" is **any response starting `ugx_`** (the menu
+packs the host's own client preferences into it, e.g. `ugx_Hold_On_On_No`; the script reads only
+the prefix). We send `ugx_start`.
+
+## 2. How it works now
+
+```
+site (party leader picks)          host agent                       dedicated server (DLL)
+parties.game_mode ──lease──► game_mode spec ──► +set enw_game_mode gungame
+  (only a mode the map        (re-checked:          +set enw_menu_hide ugxm_vote_host,ugxm_vote_players
+   offers; default =           plain tokens,        +set enw_menu_answer ugxm_vote_host:gg,start
+   the map's own)              host-owned dvars)    +set enw_menu_done ugxm_voting_complete
+                                                       │
+                     openMenu("ugxm_vote_*") ──► NOT SENT to any client (no 't' command)
+                     +600 ms: menuresponse(ugxm_vote_host, "gg") as players[0]
+                     +600 ms: menuresponse(ugxm_vote_host, "start")
+                     level notify ugxm_voting_complete ──► game_mode {state:"done"} on the link
+                                                       │
+results: games.game_mode = the LEASE's; eligible only if game_mode_applied === true
+records: board per mode (category `round@gungame`, boards.game_mode)
+```
+
+* **DLL** (`server/components/game_mode/game_mode.cpp`, pure parser `menu_answer.hpp`, test
+  `server/tests/menu_answer_test.cpp` 21/0). Two engine touches, both byte-checked before arming:
+  a MinHook detour on **`PlayerCmd_OpenMenu` 0x4EF840** (method table `0x83C1CC`) that reads the
+  menu name from VM stack slot 0 without calling anything and, for a hidden menu, returns without
+  sending `"%c %i" 't'` — so no client ever opens it; and the engine's own `menuresponse` sequence
+  copied from `ClientDisconnect` 0x67C5E8: `Scr_AddString` 0x69A7E0 ×2, `Scr_NotifyNum`
+  0x698CC0 with `scr_const.menuresponse` (the word at `0x1F33D92`), guarded like the engine
+  (`[0x3882B88]` set, `[0x3882B7C]` clear), from the frame tick. Responses go 600 ms apart
+  (UGX re-arms its waittill one server frame after each); if `enw_menu_done` has not fired 4 s
+  after the last one the sequence is resent (idempotent), three rounds at most. Dormant unless all
+  three dvars parse; a half-valid config is refused whole (the map's own menu then shows — the
+  safe failure). `is_supported()` = dedicated only.
+* **Host** (`lib/gamemode.js`): `gameModeDvars(asg.game_mode)` → the four dvars, every piece
+  `[A-Za-z0-9_]{1,63}`, ≤ 8 items, answered menu must be hidden, else **none**. The four names are
+  in `HOST_OWNED_DVARS`, so a party's Custom `settings.dvars` can never set them. They go on
+  Verified and Custom games alike (the mode is the map's content, not a setting). A lease with a
+  mode always boots fresh and its instance is never reused warm (`disposition()`), because the
+  dvars are on that process's command line. The referee tracks the DLL's `game_mode` events and the
+  summary carries `game_mode`, `game_mode_applied`, `game_mode_seen`; not applied → flag
+  `game_mode_unconfirmed`, `records_eligible:false`. Replay header carries `game_mode`; the
+  games_mp.log gets `ENWZombie;game_mode;<state>;<mode>;<menu>;<response>`.
+* **Site**: catalogue `web/server/data/map-modes.json` (generated, §3) read by
+  `lib/gameModes.js` (`forMap`, `resolve`, `label`, `leaseSpec`). `parties.game_mode` (NULL =
+  the map's default), `POST /api/party/game-mode` (leader, forming, only a mode the map offers),
+  `create` keeps a staged pick, a map change resets it. `assignments.game_mode` + the full spec
+  in the box payload (rebuilt from the catalogue by id, in the nonce). `games.game_mode` is the
+  **lease's** mode; the site independently refuses records unless `game_mode_applied === true`
+  and the box's `game_mode` matches. `/api/launcher/play` takes `game_mode` too;
+  `lease-cli.js --game-mode <id>`.
+* **Records**: a board is now map + version + category + players + profile **+ mode**. The inline
+  UNIQUE key cannot change without rebuilding a live table, so a mode's board carries the mode in
+  its category key (`round@gungame`, label "Highest round · Gun Game") and in `boards.game_mode`.
+  `forMap(key, {gameMode})`, `/api/records?game_mode=`, hub/profile rows carry `game_mode_label`.
+  The **map page records tab** gets mode tabs first (map's own order, default first), then the
+  existing category chips and player counts. **Best round** (career strip, profile headline) and
+  **round milestones** count only a map's default mode — a Gun Game round is not the map's round.
+  The map's record badge still goes to the top row of every ENW-Verified board on the map, every
+  mode included.
+* **UI**: the rail's lobby options get a mode picker (a select under Verified/Custom) whenever
+  the staged/party map has ≥ 2 modes; it is the launcher's too (the launcher embeds the site).
+
+**DB migration** (in `migrate()`, additive only, safe on the live DB while it serves):
+`parties.game_mode TEXT`, `assignments.game_mode TEXT`, `games.game_mode TEXT`,
+`boards.game_mode TEXT NOT NULL DEFAULT ''`. No table rebuilt, no backfill; every existing row
+reads as "no mode", i.e. exactly what it was.
+
+## 3. Every map in the archive (`archive/scan_modes.py`, 152 maps, 2026-09-23)
+
+The scanner reads every script the game would run (`.gsc` in `.iwd`s win over fastfile rawfiles,
+later `.iwd` names win — Battlestar's `mod.ff` has an old `_zombiemode.gsc` without the vote and B
+was shown the vote, which is the proof of that order), looks for `openMenu` + `waittill
+("menuresponse")`, and catalogues only mechanisms read by hand. **25 maps** have a UGX mode vote;
+49 have some other `menuresponse` script, all read and classified, none a pre-game mode vote.
+
+| Mechanism | Maps | Modes offered (from each map's own `ugxm_user_settings.gsc`) |
+|---|---|---|
+| `ugx_vote_1` (UGX 1.0.x): hide `ugxm_vote_host` + `ugxm_vote_players`, answer `<mode>`, `start` | battlestar_galactica, dead_palace, futurama, lewl, mr_freeze, nazi_zombie_beachtown, nazi_zombie_depot, nazi_zombie_fivenights, nazi_zombie_forest, nazi_zombie_illuminati_island, nazi_zombie_northco, nazi_zombie_overlook, nazi_zombie_snowglobe, number2, ray_chirstmas_map, thirty_seven (16) | Classic `cl`, Gun Game `gg`, Arcade Mode `ar`, Sharpshooter `ss`, Bounty Hunter `bh` |
+| `ugx_vote_11` (UGX 1.1): hide `ugxm_vote_host` + `ugxm_save_settings_client`, answer `<mode>`, `ugx_start` | chal_dual_wield, chal_harambe, chal_pistols, corridor_challenge, salaj_dust2, ugx_artemovsk, ugxm_garage, ugxm_lostwoods, ugxm_pax (9) | the five above + King of the Hill `kh`, Chaos Mode `cm` |
+
+Every one is confirmed to call `start_ugx_mod()` from the `_zombiemode.gsc` the game runs. All
+defaults are Classic. Timed gameplay, objectives, mutators and game speed stay at the map's own
+defaults (Sharpshooter and Bounty Hunter are 15-minute games by UGX's default).
+
+The other hits, and why none is answered:
+
+| What | Maps | Verdict |
+|---|---|---|
+| jukebox / music player / bank / door keypad / perk & armour shops / UGX elemental skill tree | many (a_room, cryogenic, dpp, island, kingdom_hearts, nazi_zombie_{arkham, crystallake, decapit3, denial2, dt2, legion, library, malibu, mine, ntc, pd, projectx, rooms, zhunterz}, sammycustomsbox, escape_asylum, the UGX 1.1 maps …) | in game, player-driven |
+| `ugxm_customize_char` / `ugxm_character.gsc` | the UGX maps | only in UGX's separate customize-room map |
+| UGX 1.1 King of the Hill team picker `ugxm_vote_teams` | UGX 1.1 maps | in-mode, closes itself after 15 s |
+| class pick at spawn (`weapon_loadout.gsc`; `choose_class`) | nazi_zombie_tluh; ray_chirstmas_map | **per player**, each player's own choice: left in game |
+| mode as a **front-end dvar** (`zomb_gamemode` 0–7; `gamemode` 1 = gun game) | nazi_zombie_fear_mc_2; nazi_zombie_orbit | never an in-game menu; a dedicated server runs the default (0). **Not implemented** — would need a `dvar` mechanism that sets the map's own dvar, which crosses the "a mod's own dvars are never ours to set" trap: B's call |
+| `mc_loadscreenorbit` on `players[0]`, waits for **any** response | nazi_zombie_orbit | a blocking "press to start" screen, not a mode vote. **Not implemented**; the same component could hide/answer it with a one-mode entry if B wants |
+
+Re-run: `python archive/scan_modes.py --table` (writes `web/server/data/map-modes.json`, prints
+this table). Script text is parsed in memory and never written out.
+
+## 4. Proofs
+
+*(filled in below as the runs land — see §4.1)*
+
+## 5. Deploy (nothing of this is deployed; coordinator's call)
+
+Order matters: each layer tolerates the one before it being old, not the one after.
+
+1. **Box DLL** (rule 17: clean detached worktree at the merge commit, `tools\dev\build.ps1 -Name
+   dedi`, sha into `dedi.md`, rollback copy, 9 copies, journal idle AND no verified player). An old
+   DLL ignores the dvars, the menu shows, and the referee marks the game `game_mode_unconfirmed`.
+2. **Host agent** (`infra/host-agent`, restart when idle). An old agent ignores `game_mode`
+   (no dvars, menu shows) and reports no `game_mode_applied` → the site refuses the record.
+3. **Site** (restart on B's word; the migration runs itself at start; build the client:
+   `web/client` `vite build`). Until the site is deployed nothing sends `game_mode` at all and
+   everything is as before.
+4. **Launcher**: nothing to publish — the picker lives in the site the launcher embeds. The
+   launcher's native corner Play plays the party's mode (default Classic).
+
+Prove on the box after 1+2: `node web/tools/lease-cli.js --map battlestar_galactica --player
+76561198000000001 --game-mode gungame` (agent lease, fake id), then `ENWZombie;game_mode;done`
+in `/home/waw/zdev-host/logs/host/inst-NN.games_mp.log`.
+
+## 6. Unproven
+
+See §4.1 for what the local runs showed. Not run at all: a UGX 1.1 map in game (the mechanism is
+read from its script and menu strings only), two or more real players (the answer goes to
+`players[0]`, whoever connected first), King of the Hill / Chaos Mode, the site UI in a browser
+(built with `vite build`, exercised by `web/test/game-modes.js` at the API only), and the box.
