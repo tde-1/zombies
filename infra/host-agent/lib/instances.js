@@ -134,7 +134,15 @@ export class Instance extends EventEmitter {
       `+set sv_maxclients ${Math.max(1, Math.min(8, Number(a.slots?.length || a.max_players || 4)))}`,
       `+set net_port ${this.port}`,
     )
-    for (const [k, v] of Object.entries(a.settings?.dvars || {})) out.push(`+set ${k} ${v}`)
+    // A lease's own dvars are for Custom games. A Verified game runs the stock server and
+    // nothing else (verified-rules.md §4): a lease that asks for dvars in Verified gets
+    // none of them, and the log says which were dropped.
+    const leaseDvars = Object.entries(a.settings?.dvars || {})
+    if (a.mode === 'verified' && leaseDvars.length) {
+      this.log?.warn?.(`verified lease: refused ${leaseDvars.length} lease dvar(s) (${leaseDvars.map(([k]) => k).join(', ')}); a Verified game runs stock settings`)
+    } else {
+      for (const [k, v] of leaseDvars) out.push(`+set ${k} ${v}`)
+    }
     for (const extra of this.args) out.push(extra)
     if (a.map) out.push(`+map ${a.map}`)
     return out

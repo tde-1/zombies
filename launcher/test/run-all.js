@@ -1762,6 +1762,14 @@ await test('ENW_BORDERLESS is 1 for an account with no mode and a local borderle
   settings.signOut()
 })
 
+await test('the FPS lock the DLL enforces mid-game is the same cap the launcher writes (250)', () => {
+  // verified-rules.md: every board caps WaW at 250. fps_guard.cpp reads ENW_FPS_CAP.
+  assert.equal(launch.fpsCapEnv(), '250')
+  assert.equal(gamecfg.clampFps(333), '250', 'the launch value never exceeds the lock')
+  assert.equal(gamecfg.clampFps(0), '250', 'uncapped is never written')
+  assert.equal(gamecfg.clampFps(125), '125')
+})
+
 await test('the read-back never persists a value the engine defaulted to', () => {
   // B's account ended up holding maxFps 60 and fov 65 -- the engine's 2008 stock
   // defaults, saved there because until 0.2.3 we read back a profile the seed had

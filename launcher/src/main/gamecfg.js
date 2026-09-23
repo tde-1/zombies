@@ -265,10 +265,14 @@ export function baselineDvars(settings = {}, display = null) {
   return out
 }
 
+// The FPS cap every records board we checked agrees on (docs/kickstart/verified-rules.md §2),
+// and the value the DLL's fps_guard holds the game to mid-game (ENW_FPS_CAP, launch.js).
+export const FPS_CAP = 250
+
 export function clampFps(v) {
   const n = Number(v)
-  if (!Number.isFinite(n) || n <= 0) return '250' // spec §4.5 cap
-  return String(Math.min(250, Math.max(30, Math.round(n))))
+  if (!Number.isFinite(n) || n <= 0) return String(FPS_CAP) // spec §4.5 cap
+  return String(Math.min(FPS_CAP, Math.max(30, Math.round(n))))
 }
 
 export function clampFov(v) {

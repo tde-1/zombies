@@ -11,6 +11,7 @@
 //   * 24 h cap, warnings at 30/10/1 min, clean end — vault 99 §4.4 (uncapped if a VIP is in the lobby)
 //   * AFK warn at 10 min, kick at 15; everyone AFK => pause then close — vault 99 §4.4
 //   * pause / resume, crash grace, "Resumed" tag — vault 10 §5
+//   * the Verified environment (server dvars, client FPS cap) — verified-rules.md, verified.js
 //
 // CLOCK. Everything is measured on the GAME clock (`ms` on each event), not wall time, so
 // a paused or stalled server does not burn a player's AFK budget and a fast-forwarded
@@ -18,6 +19,7 @@
 // speed from the last event, so a game that goes silent still hits its cap.
 import { EventEmitter } from 'node:events'
 import { ManifestEvaluator, defaultManifest } from './manifests.js'
+import { EnvLog, judge } from './verified.js'
 
 const MIN = 60_000
 const HOUR = 60 * MIN
@@ -37,6 +39,15 @@ export const DEFAULTS = {
   crashGraceMs: 10 * MIN,
   resumeCountdownMs: 10_000, // told to the players before the freeze lifts
   lateJoinGraceMs: 30_000,   // joining within this of go-live is not "late"
+  // The Verified environment (lib/verified.js, verified-rules.md). Both OFF until the
+  // 2026-09-23 DLL (server dvars) and a client with fps_guard are what everyone runs; a
+  // missing report is then "unknown" on the result rather than a refusal. A value that WAS
+  // reported and breaks the rule always refuses the record.
+  verifiedRequireFpsReport: false,
+  verifiedRequireServerEnv: false,
+  // b2 allows FPS changes inside 20–250; the default refuses any change after go-live (the
+  // strictest reading, clean on every board). A decision for the coordinator/B.
+  verifiedAllowFpsChange: false,
 }
 
 let SEQ = 0
@@ -92,6 +103,8 @@ export class Referee extends EventEmitter {
     this.emptySinceMs = null
     this.recentCommands = []   // last 200, for diagnostics only
     this.dvars = {}
+    this.env = new EnvLog()           // every server dvar value and client FPS report, in order
+    this.envTold = new Set()          // violations already said in game (once each)
     this.levelVars = {}
     // Crash recovery: SteamID -> the state the game handed back when they dropped.
     // Keyed to the person, not the slot, and dropped when the grace window expires.
@@ -367,7 +380,59 @@ export class Referee extends EventEmitter {
 
   // Not in game-link v0 as shipped; added so `{"dvar":...}` manifest conditions and the
   // vault's "dvar log" in the replay have a source. See docs/protocol/game-link-v0.md.
-  ev_dvar(ev) { this.dvars[ev.name] = ev.value }
+  ev_dvar(ev) {
+    this.dvars[ev.name] = ev.value
+    this.env.dvar(ev.name, ev.value, ev.ms)
+    this.tellEnv()
+  }
+
+  // The client's FPS cap, as it reported it in userinfo `enw_fps` (client-dll fps_guard.cpp,
+  // relayed by the server's referee). Keyed to the account when we know it, so a reconnect
+  // into another slot keeps one history.
+  ev_client_dvar(ev) {
+    if (ev.name !== 'com_maxfps') return
+    const p = this.players.get(ev.slot)
+    this.env.clientFps(this.fpsKey(p, ev.slot), {
+      name: p?.name ?? null, slot: ev.slot, value: ev.value, ms: ev.ms ?? null,
+      live: this.startedMs != null,
+    })
+    this.tellEnv()
+  }
+
+  fpsKey(p, slot = p?.slot) {
+    if (p?.steamid && this.env.fps.has(p.steamid)) return p.steamid
+    if (this.env.fps.has(`slot${slot}`)) return `slot${slot}`
+    return p?.steamid || `slot${slot}`
+  }
+
+  verifiedEnv() {
+    const keys = []
+    const names = {}
+    for (const p of this.players.values()) {
+      const k = this.fpsKey(p)
+      keys.push(k)
+      names[k] = p.name || k
+    }
+    return judge(this.env, {
+      players: keys, names,
+      requireFpsReport: !!this.cfg.verifiedRequireFpsReport,
+      requireServerEnv: !!this.cfg.verifiedRequireServerEnv,
+      allowFpsChange: !!this.cfg.verifiedAllowFpsChange,
+    })
+  }
+
+  // A Verified game that has just stopped being record-eligible says so, once per reason,
+  // in plain words. Not before go-live: the load is when settings settle.
+  tellEnv() {
+    if (this.mode !== 'verified' || this.startedMs == null) return
+    for (const v of this.verifiedEnv().violations) {
+      if (this.envTold.has(v)) continue
+      this.envTold.add(v)
+      this.flags.add('env_violation')
+      this.say(`Not record-eligible any more: ${v}.`)
+      this.log.warn(`verified env: ${v}`)
+    }
+  }
 
   // Also an addition to v0: the DLL polls an allow-list of `level.<name>` script
   // variables and reports changes. Needed for `{"level_var":...}` manifest conditions —
@@ -397,8 +462,10 @@ export class Referee extends EventEmitter {
       downs_total: Number.isFinite(ev.downs_total) ? Number(ev.downs_total) : null,
       players_alive: Number.isFinite(ev.players_alive) ? Number(ev.players_alive) : null,
       players: Array.isArray(ev.players) ? ev.players.filter((x) => x && typeof x === 'object') : [],
+      dvars: ev.dvars && typeof ev.dvars === 'object' ? ev.dvars : null,
       at: new Date().toISOString(),
     }
+    this.env.seedFromGameOver(ev.dvars)
     this.finishGame(this.endReason)
   }
 
@@ -808,7 +875,13 @@ export class Referee extends EventEmitter {
       this.flags.add('result_mismatch')
       this.log.warn(`the game counted ${mismatches.length} thing(s) we never saw on the link: ${mismatches.slice(0, 6).join('; ')}`)
     }
-    const eligible = this.mode !== 'local' && !this.flags.has('late_join') && !this.flags.has('all_afk')
+    // The Verified environment: a reported setting outside the rules refuses the record
+    // (lib/verified.js). What it enforced and what it saw go on the result either way, so a
+    // record carries its own proof.
+    const verifiedEnv = this.verifiedEnv()
+    if (this.mode === 'verified' && !verifiedEnv.ok) this.flags.add('env_violation')
+    const eligible = this.mode !== 'local' && !this.flags.has('late_join') && !this.flags.has('all_afk') &&
+      !(this.mode === 'verified' && !verifiedEnv.ok)
     return {
       match_id: this.matchId,
       instance: this.instanceId,
@@ -842,6 +915,7 @@ export class Referee extends EventEmitter {
       end_reason: this.endReason,
       flags: [...this.flags],
       records_eligible: eligible,
+      verified_env: verifiedEnv,
       xp_multiplier: this.mode === 'verified' ? 1 : this.mode === 'custom' ? 0.25 : 0,
       zombies_alive_max: this.zombiesAliveMax,
       chat_lines: this.chatLines,
