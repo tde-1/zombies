@@ -30,6 +30,7 @@ import {
   WebGLRenderer,
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
@@ -729,14 +730,20 @@ export function createScene(canvas, opts) {
 
   // Load the map glb. Resolves { ok, error }. Never throws.
   //
-  // No meshopt decoder: the converter writes plain float attributes, and
-  // meshopt_decoder.module.js instantiates WASM at import — which the site's script-src (no
-  // 'wasm-unsafe-eval') refuses, so registering it was an unhandled rejection in prod.
+  // THE MESHOPT DECODER — where this parts from Movement. Movement registers none: its site's
+  // script-src lacks 'wasm-unsafe-eval' and three's decoder instantiates WebAssembly. This site
+  // sends no Content-Security-Policy, and tools/maps/export_all.py serves every WaW map as
+  // EXT_meshopt_compression (a shell-heavy map is half the bytes: Shi No Numa 20.8 -> 10.6 MB).
+  // The decoder is a self-contained module inside three (the WASM is inlined), so nothing
+  // else is fetched. A file without the extension loads exactly as before. IF A CSP IS EVER
+  // ADDED, script-src needs 'wasm-unsafe-eval' or every exported map falls to the grid (§7e).
+  // KHR_mesh_quantization and EXT_texture_webp need nothing registered.
   // `src` is either a URL or the glb bytes already in hand (ReplayViewer fetches them itself so
   // it can show real progress and fall back from the bucket to the proxy). parse() takes the
   // buffer with an empty base path: a glb embeds its textures, so nothing is resolved relative.
   async function loadMap(src) {
     const loader = new GLTFLoader()
+    loader.setMeshoptDecoder(MeshoptDecoder)
     try {
       const gltf = await new Promise((resolve, reject) => (
         src instanceof ArrayBuffer

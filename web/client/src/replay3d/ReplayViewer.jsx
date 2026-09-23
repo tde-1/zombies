@@ -448,6 +448,14 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
             })
             anchors.push(`${a.model} @ ${a.origin.map(Math.round).join(',')}: node ${Number.isFinite(best) ? best.toFixed(2) + ' u off' : 'missing'}`)
           }
+          // A meshopt-served export (export_all.py) quantizes each mesh and folds the undo into
+          // its node, so a node's position is no longer the prop's origin and the numbers above
+          // read "off" by the dequantization offset. The real check ran on the float file at
+          // export time and is in the sidecar; show that instead of a misleading number.
+          if (String(meta.encoding || '').includes('meshopt') && meta.align) {
+            anchors.length = 0
+            anchors.push(`meshopt file: node positions include the dequantize offset; export-time align ${meta.align.ok ? 'OK' : 'FAILED'}: ${meta.align.anchors_checked} anchors, spawns on floor ${meta.align.spawns_on_floor}${meta.align.windows ? `, window goals median ${meta.align.windows.median} u` : ''}`)
+          }
           const p0 = track.players[0]
           let first = null
           if (p0) {
