@@ -27,6 +27,12 @@
 //   POST /api/gs/spool                   a batch of results a box held while we were down
 //                                        (the coordinator's Q-host-2 answer: spool and
 //                                        retry). Same body as /result, in an array.
+//   GET  /api/gs/map-files/:bsp          a map's files with size and sha256 - the public
+//                                        /api/maps/<bsp>/files answer, here because the
+//                                        closed-beta gate lets a box reach /api/gs only.
+//                                        The box's map cache pulls them from the bucket.
+//   GET  /api/gs/popular-maps            the most-played maps lately (read-only), for the
+//                                        box's idle-time prefetch.
 //
 // The site ALSO reads `pub`/`key_id` out of the status and result bodies, because the host
 // agent already has them in hand and sending them costs it one line. Until it does, a box
@@ -46,6 +52,7 @@ const presence = require('../lib/presence')
 const live = require('../lib/live')
 const siteKeys = require('../lib/siteKeys')
 const seats = require('../lib/seats')
+const mapfiles = require('../lib/mapfiles')
 const { db, now } = require('../db/database')
 
 function router() {
@@ -70,6 +77,14 @@ function router() {
     const v = Number(req.query.v || 1) || 1
     assignments.notePoll(req.box, v)
     res.json(assignments.forBox(req.box, { v }))
+  })
+
+  // ---- the box's map cache (infra/host-agent/lib/mapcache.js) ------------------------
+  r.get('/map-files/:bsp', (req, res) => {
+    res.json(mapfiles.forMap(String(req.params.bsp)))
+  })
+  r.get('/popular-maps', (req, res) => {
+    res.json({ ok: true, days: Number(req.query.days) || 30, maps: assignments.popular({ days: req.query.days, limit: req.query.limit }) })
   })
 
   // ---- keys ------------------------------------------------------------------------
@@ -116,7 +131,7 @@ function router() {
     // to make, and the earliest possible moment we can know it.
     let key = null
     if (body.pub || body.key_id) key = boxes.offerKey(req.box, body.pub || null, body.key_id || null)
-    if (body.state && body.match_id) assignments.ack(req.box, body.state, body.match_id)
+    if (body.state && body.match_id) assignments.ack(req.box, body.state, body.match_id, body.error || null)
 
     // Presence: the box roster beats the lobby seat (11 §9). Everything the box says is in
     // a game is in a game, whatever the site's parties table thinks.

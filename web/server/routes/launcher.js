@@ -172,6 +172,8 @@ function router() {
         token: launch.token,
         connect: launch.connect,
         state: launch.state,
+        // Non-null while the box pulls the map before booting it ("Preparing map...").
+        preparing: launch.preparing || null,
       } : null,
       settings: users.settings(sid),
       vip: enw.isVip(sid),
