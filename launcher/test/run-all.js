@@ -2036,6 +2036,69 @@ await test('0.2.12+: the version is at least 0.2.12 and npm test runs both suite
   assert.match(pkg.scripts.test, /waw-settings\.js/)
 })
 
+group('Party follow: at most once per match (2026-09-23, the relaunch loop)')
+
+const followgate = await import('../src/main/followgate.js')
+const pollInGame = (id, state = 'in-game') => ({ state, map: { key: 'nazi_zombie_sumpf' }, party: { id: 7, is_leader: false }, match: { match_id: id, state: 'ready', connect: '1.2.3.4:28961' } })
+
+await test('followgate: the poll after the game exits does NOT relaunch the same match (B\'s loop)', () => {
+  const alive = new Set()
+  const g = followgate.makeFollowGate({ isAlive: (pid) => alive.has(pid) })
+  // Poll 1: somebody pressed Start -> follow.
+  let d = g.decide(pollInGame('m_506fba68'), { flowRunning: false })
+  assert.equal(d.follow, true, d.reason)
+  g.noteLaunch(d.matchId, 'followed')
+  const pids = new Set([4242]); alive.add(4242); g.watchPids(pids)
+  // While the flow runs: no.
+  assert.equal(g.decide(pollInGame('m_506fba68'), { flowRunning: true }).follow, false)
+  // The flow gave up but the game is still up (a failed step clears state.flow): no.
+  d = g.decide(pollInGame('m_506fba68'), { flowRunning: false })
+  assert.equal(d.follow, false); assert.match(d.reason, /still running \(process 4242\)/)
+  // A new match while our game is alive: still no.
+  assert.equal(g.decide(pollInGame('m_other'), { flowRunning: false }).follow, false)
+  // Steam restarted the game under a new pid (the nanny adopts it into the same Set).
+  pids.add(5151); alive.add(5151); alive.delete(4242)
+  assert.match(g.decide(pollInGame('m_506fba68')).reason, /process 5151/)
+  // The game exits. The site still says in-game with the same match for minutes: never again.
+  alive.delete(5151); g.noteEnded('m_506fba68')
+  for (let i = 0; i < 60; i++) {
+    d = g.decide(pollInGame('m_506fba68'), { flowRunning: false })
+    assert.equal(d.follow, false, `poll ${i} relaunched`)
+  }
+  assert.match(d.reason, /already launched m_506fba68 \(followed, .*ended at .*only Play or Resume/)
+  // The same decision has the same key, so main.js logs it once, not once per poll.
+  assert.equal(g.decide(pollInGame('m_506fba68')).key, d.key)
+})
+
+await test('followgate: a NEW match is followed; Resume lifts the ledger for one match; no id, no launch', () => {
+  const g = followgate.makeFollowGate({ isAlive: () => false })
+  g.noteLaunch('m_a', 'Play'); g.noteEnded('m_a')
+  assert.equal(g.decide(pollInGame('m_a')).follow, false)
+  assert.equal(g.decide(pollInGame('m_b')).follow, true, 'the leader pressed Start again: new match id')
+  assert.equal(g.allow('m_a'), true)
+  assert.equal(g.decide(pollInGame('m_a')).follow, true, 'Resume sends the player back into m_a')
+  const noId = pollInGame(null); delete noId.match.match_id
+  assert.equal(g.decide(noId).follow, false)
+  assert.equal(g.decide({ ...pollInGame('m_c'), state: 'idle' }).follow, false)
+  assert.equal(g.decide({ ...pollInGame('m_c'), map: null }).follow, false)
+  assert.equal(g.decide({ signedOut: true }).follow, false)
+  for (const st of followgate.FOLLOW_STATES) assert.equal(g.decide(pollInGame('m_' + st, st)).follow, true, st)
+})
+
+await test('followgate: main.js follows through the gate, records every launch, refuses a launch beside a live game', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  assert.doesNotMatch(main, /if \(state\.flow \|\| !FOLLOW_STATES\.includes\(p\.state\)\) return/, 'the old level trigger is back')
+  assert.match(main, /const d = followGate\.decide\(p, \{ flowRunning: !!state\.flow \}\)/)
+  assert.match(main, /followGate\.noteLaunch\(d\.matchId, 'followed'\)[\s\S]{0,400}startPlay\(\{ map: bsp[^\n]*follow: true/)
+  assert.match(main, /flow\.on\('update', noteMatch\)/)
+  assert.match(main, /flow\.on\('launched', \(\) => followGate\.watchPids\(flow\.launch\?\.pids\)\)/)
+  assert.match(main, /async function startPlay\(opts = \{\}\) \{[\s\S]{0,400}followGate\.gameAlive\(\)/)
+  assert.match(main, /followGate\.noteEnded\(/)
+  const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
+  assert.match(pre, /resumeMatch: \(matchId\) => call\('resumeMatch', matchId\)/)
+  assert.match(main, /handle\('resumeMatch'/)
+})
+
 console.log(`\n${pass} passed, ${fail} failed`)
 try { fs.rmSync(TMP, { recursive: true, force: true }) } catch {}
 process.exit(fail ? 1 : 0)

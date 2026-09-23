@@ -9,6 +9,8 @@
 
 * **2026-09-23 00:45 UK — the box runs three game servers at once (`dedi.md` §19).** The "3074 + one fallback" limit was wrong. The engine probes 100 lobby ports, and the new dedi DLL `6fccc0e0…` (`lobby_port.cpp`) logs every bind and takes `ENW_LOBBY_PORT` (3074+slot). Three servers were proven up together, all answering, ~304 MB and ~0.33 core each, ~300 MB RAM left. Four needs Steam without its browser or a bigger box. **Fixed an outage:** after four boots the host agent failed every lease, B's Play included (23:27–23:32 box time, "no game copy at waw-inst-05"). Copies now go by slot. **Still one game per box at the site**: a second Play supersedes the first, and that is the web lane's to change.
 
+* **2026-09-23 01:45 UK — launcher: the relaunch loop is fixed (branch `launcher-after-game`, not merged, not published).** The party watcher re-launched the same match on every poll after the game exited (B: "keeps booting you back into the game"). A match is now followed at most once, never beside a live game of ours; only Play or the site's Resume (`enw.resumeMatch`, needs a site button) goes back in. `launcher.md`, same date.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
