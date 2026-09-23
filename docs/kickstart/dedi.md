@@ -3839,3 +3839,20 @@ On the production DLL two ILS-class games already take 1.6 of the 2 vCPUs before
 the fast path they take ~0.45. **RAM, not CPU, is the limit at low rounds**: MemAvailable is ~880 MB
 with no game, a game is 300–460 MB, so the third slot only fits a small map (the RAM guard's 700 MB
 floor already stops it). Whether 20+ rounds with 4 players changes the CPU picture is open.
+
+### 27.5 First host-lease runs on box DLL `736236c8` (REL: S2 + G2), 18:48–18:58 UTC
+
+| run | map | lease | ended by | rounds | zombies seen | notes |
+|---|---|---|---|---|---|---|
+| h-ils-1 | ILS | `m_3028baf8` (inst-08, …0003, 1 bot) | **host `game over: empty` at 2 m 00 s** | 1 | 1 (killed), then none | 61 Hz, main thread 20–24%, 0 escapes |
+| h-utbox-1 | ut_box_map | `m_6cab59af` | same, 2 m 00 s | 1 | **0** | 61 Hz, main thread 17–21%, 0 escapes |
+
+1. **The host closes a bot game as empty after two minutes**: the DLL's referee hides test clients
+   from the roster (27.1), so `lib/referee.js` `tickGrace` sees nobody and calls `finishGame('empty')`.
+   Fix (host, commit `3b5ffd8`): `soakBotConfig()` in `lib/instances.js` pushes `emptyCloseMs` to 24 h
+   for an agent Custom dev lease with `dev.bots` only; run-all 113/0. **Needs a host deploy** before any
+   soak through the host can run longer than 2 minutes.
+2. **Custom maps spawn no zombies (or one) for a bot**, while stock Nacht spawns normally (t2). Open;
+   the next thing to read is the DLC3-template zone/spawn scripts (`dlc3_code.gsc`, the zone manager's
+   player test) against what a test client lacks. Until it is fixed, bot soaks on custom maps test an
+   idle-but-live server, not rounds.
