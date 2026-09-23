@@ -515,6 +515,56 @@ def role(kind, name, ctx=None):
     return "cosmetic", False, kind
 
 
+# ---- what a player sees, and whose it is --------------------------------------------------
+# A fatal-role miss is VISIBLE when a player of the map will meet it as an invisible, headless
+# or default-model zombie/teammate, missing first-person hands, or a gun/grenade/knife that the
+# box, a wall or the loadout cannot give. Everything else in the fatal roles (one ADS anim, a
+# gib/limb-spawn variant, a HUD icon, the wonder-weapon reaction set) is MINOR: logged, shown in
+# the table, never a reason to hide. Decided 2026-09-23 against the rows the logs actually hold.
+RX_GIB = re.compile(r"(_g_|behead|spawn|_off|gib|upclean|lowclean|_torso_|zombieeye)", re.I)
+RX_CORE_AI_ANIM = re.compile(r"^ai_zombie_(walk|run|sprint|attack|traverse|jump|climb|window|barricade|"
+                             r"crawl(?!_quad)|idle(?!_quad)|death(?!_icestaff)|spawn|dog_)|^zombie_dog_(run|attack|idle|trot)",
+                             re.I)
+# Weapon files the community script set asks for on maps that play fine: the perk-drink knuckle
+# crack and the bowie flourish are first-person "animations as weapons" (6 and 4 maps).
+HELPER_WEAPONS = {"zombie_knuckle_crack", "zombie_bowie_flourish",
+                  "weapons/sp/zombie_knuckle_crack", "weapons/sp/zombie_bowie_flourish"}
+# Where a miss can be changed by us (the file exists and we do not deliver it to the process
+# that needs it) vs. is the release as its author built it (a retail listen server with the
+# same files misses it too).
+OURS = {"unshipped", "load_zone_only"}
+PATCHABLE = {"shipped_unloaded_zone"}   # the release ships it under a name nothing loads
+
+
+def visible(r):
+    k, n, rl = r["kind"], r["name"].lower(), r["role"]
+    if not r["fatal"]:
+        return False
+    if rl == "character" and k == "xmodel":
+        return not RX_GIB.search(n)
+    if rl == "character":           # xanim / waited
+        return bool(RX_CORE_AI_ANIM.search(n))
+    if rl == "weapon":
+        if n in HELPER_WEAPONS:
+            return False
+        if k in ("item", "weapon"):
+            return True
+        if k == "xmodel":           # a weapon in the map's own zone points at it: an invisible gun
+            return True
+        return False                # one viewmodel anim
+    if rl == "script":
+        return True
+    return False                    # hud
+
+
+def owner(where):
+    if where in OURS:
+        return "ours"
+    if where in PATCHABLE:
+        return "patchable"
+    return "release"
+
+
 # ---- the audit -------------------------------------------------------------------------------
 def extract_entries():
     ex = json.load(open(os.path.join(REPORTS, "extract.json"), encoding="utf-8"))
@@ -582,8 +632,12 @@ def audit(maps=None, trace=True):
                 r["zone_ref"] = ctx["zone_ref"]
                 r["where"], r["where_detail"] = locate(kind, name, ix, index)
             r["fatal"] = bool(cand and not r["chronic"] and h["source"] != "stock")
+            r["visible"] = visible(r)
+            if r["fatal"]:
+                r["owner"] = owner(r.get("where"))
             rows.append(r)
         fatal = [r for r in rows if r["fatal"]]
+        vis = [r for r in fatal if r["visible"]]
         report["maps"][bsp] = {
             "key": h["key"], "title": h["title"], "source": h["source"], "health": h["health"],
             "hidden": h["hidden"], "processes": p["processes"], "map_loaded_runs": p["loaded"],
@@ -596,18 +650,32 @@ def audit(maps=None, trace=True):
             "fatal_by_role": dict(collections.Counter(r["role"] for r in fatal)),
             "fatal_where": dict(collections.Counter(r.get("where") for r in fatal)),
             "fixable": sorted({r["where_detail"] for r in fatal if r.get("where") == "unshipped"}),
+            "visible": len(vis),
+            "visible_owner": dict(collections.Counter(r.get("owner") for r in vis)),
+            "visible_names": ["%s:%s" % (r["kind"], r["name"]) for r in vis][:40],
             "rows": rows,
         }
+        report["maps"][bsp]["verdict"] = verdict(report["maps"][bsp])
     return report
 
 
 def verdict(m):
-    if not m["processes"]:
-        return "no log"
-    if m["fixable"]:
-        return "fixable"
+    """clean | minor (fatal-role misses a player never meets) | fix (a visible miss we cause:
+    a file we do not deliver) | patch (the release ships it under a name nothing loads) |
+    hide (a visible miss that is the release's own) | unproven (no console log: boot it)."""
+    if m["source"] == "stock":
+        return "clean"
+    if not m["map_loaded_runs"]:
+        return "unproven"
+    own = m.get("visible_owner") or {}
+    if own.get("release"):
+        return "hide"
+    if own.get("patchable"):
+        return "patch"
+    if own.get("ours"):
+        return "fix"
     if m["fatal"]:
-        return "fatal"
+        return "minor"
     return "clean"
 
 
@@ -617,16 +685,16 @@ def write_md(rep, path):
          "(model, viewmodel, xanim, weapon file, unknown item), a script, or a HUD material, that is NOT "
          "also missing on a stock map. `where`: shipped_zone / unshipped (fixable) / stock_zone (only in "
          "a stock map's zone) / absent (nowhere in the release).", "",
-         "| map | site | runs (loaded) | logs | misses | fatal | by role | where | verdict |",
-         "|---|---|---:|---|---:|---:|---|---|---|"]
+         "| map | site | runs (loaded) | logs | misses | fatal | visible | by role | where | verdict |",
+         "|---|---|---:|---|---:|---:|---:|---|---|---|"]
     for bsp, m in sorted(rep["maps"].items(), key=lambda kv: (-kv[1]["fatal"], kv[0])):
         site = "%s%s" % (m["health"], " (hidden)" if m["hidden"] else "")
-        L.append("| `%s` | %s | %d (%d) | %s | %d | %d | %s | %s | %s |" % (
+        L.append("| `%s` | %s | %d (%d) | %s | %d | %d | %d | %s | %s | %s |" % (
             bsp, site, m["processes"], m["map_loaded_runs"], "+".join(m["log_origins"]) or "-",
-            m["misses"], m["fatal"],
+            m["misses"], m["fatal"], m["visible"],
             ", ".join("%s %d" % kv for kv in sorted(m["fatal_by_role"].items())) or "-",
             ", ".join("%s %d" % kv for kv in sorted(m["fatal_where"].items(), key=lambda x: str(x))) or "-",
-            verdict(m)))
+            m["verdict"]))
     L += ["", "## Fatal misses, per map", ""]
     for bsp, m in sorted(rep["maps"].items()):
         f = [r for r in m["rows"] if r["fatal"]]
@@ -635,8 +703,8 @@ def write_md(rep, path):
         L.append("### `%s` — %s" % (bsp, m["title"]))
         L.append("")
         for r in f[:60]:
-            L.append("- %s `%s` (%s) x%d — %s%s; on %d maps" % (
-                r["kind"], r["name"], r["role"], r["count"], r.get("where", "?"),
+            L.append("- %s%s `%s` (%s) x%d — %s%s; on %d maps" % (
+                "**VISIBLE** " if r["visible"] else "", r["kind"], r["name"], r["role"], r["count"], r.get("where", "?"),
                 (" `%s`" % r["where_detail"]) if r.get("where_detail") else "", r["maps_missing_it"]))
         if len(f) > 60:
             L.append("- ... %d more in the JSON" % (len(f) - 60))
@@ -659,10 +727,10 @@ def main():
         with open(a.out, "w", encoding="utf-8") as fh:
             json.dump(rep, fh, indent=1)
         write_md(rep, os.path.splitext(a.out)[0] + ".md")
-    for bsp, m in sorted(rep["maps"].items(), key=lambda kv: (-kv[1]["fatal"], kv[0])):
-        print("%-30s runs=%3d loaded=%3d misses=%4d fatal=%3d %-40s %s" % (
-            bsp, m["processes"], m["map_loaded_runs"], m["misses"], m["fatal"],
-            json.dumps(m["fatal_where"]), verdict(m)))
+    for bsp, m in sorted(rep["maps"].items(), key=lambda kv: (kv[1]["verdict"], kv[0])):
+        print("%-30s %-6s runs=%3d loaded=%3d misses=%4d fatal=%3d visible=%3d %-34s %s" % (
+            bsp, "hidden" if m["hidden"] else "LIVE", m["processes"], m["map_loaded_runs"], m["misses"],
+            m["fatal"], m["visible"], json.dumps(m["visible_owner"]), m["verdict"]))
 
 
 if __name__ == "__main__":
