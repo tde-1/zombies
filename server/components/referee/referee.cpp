@@ -21,6 +21,7 @@
 #include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/json.hpp"
 #include "../../../shared/core/logger.hpp"
+#include "../replay/replay_events_model.hpp"
 #include "logprint_mirror.hpp"
 #include "name_lock.hpp"
 #include "t4_bind.hpp"
@@ -1012,6 +1013,13 @@ private:
         if (!fs_game.empty()) w.str("fs_game", fs_game);
         w.str("mode", "zombies");
         w.integer("sv_maxclients", referee::max_clients());
+        // What the replay sampler in THIS build records, so the host can stamp it into the
+        // .enwr header and a viewer can tell an old file from a new one (lane R1,
+        // docs/protocol/replay-events-v1.md): the gameplay-event schema version (absent = 0,
+        // snaps and the v0 events only) and the snap rates.
+        w.integer("replay_events", replay_ev::kVersion);
+        w.integer("snap_hz", 20);
+        w.integer("zombie_hz", 20);
         game_link::get().send(w);
         ENW_INFO("referee: map_loaded map=%s fs_game=%s (from our own command line)",
                  map.empty() ? "unknown" : map.c_str(), fs_game.empty() ? "-" : fs_game.c_str());

@@ -1,11 +1,17 @@
-// Replay sampling: players at 20 Hz, zombies at 10 Hz, straight onto the game link.
+// Replay sampling: players AND zombies at 20 Hz, straight onto the game link, plus the
+// replay-events-v1 gameplay events (weapon, fire, hit, damage, pap, powerup).
 //
 // The server runs at sv_fps 20 (confirmed in dedi's dvar dump), so "20 Hz" is
-// exactly one sample per server frame and "10 Hz" is every other frame. No extra
-// thread, no interpolation, no timer drift.
+// exactly one sample per server frame. No extra thread, no interpolation, no timer drift.
 //
-// The wire shape is `snap` from docs/protocol/game-link-v0.md. Either list may be
-// omitted, so an odd frame sends players only.
+// 2026-09-23 (lane R1, B's ask "the replay rate looks too low"): zombies and grenades were
+// every OTHER frame (10 Hz); they are every frame now. Measured on the box's real games
+// before the change: players 20.0 Hz, zombies ~8 Hz average (10 Hz while any are up),
+// 1.25-2.17 MB per game-hour, mean 1.55. The size after is in replay-events-v1.md section 4.
+//
+// The wire shape is `snap` from docs/protocol/game-link-v0.md; the new events are
+// docs/protocol/replay-events-v1.md. The event logic is pure and unit-tested
+// (replay_events_model.hpp, server/tests/replay_events_test.cpp); this file only reads.
 //
 // SIZE. This is the number the host agent needs for "bytes per game-hour", so the
 // encoder is written to be measurable rather than clever:
@@ -23,6 +29,7 @@
 #include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/logger.hpp"
 #include "../referee/t4_bind.hpp"
+#include "replay_events_model.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -45,6 +52,7 @@ bool samplers_disabled() {
 constexpr int kMaxPlayers = 4;
 constexpr size_t kMaxZombies = 64;
 constexpr size_t kMaxNades = 16;
+constexpr size_t kMaxPowerups = 16;
 constexpr int kNadeIds = 1024;   // level.zombie_vars max_ai is 24 stock; headroom for customs
 constexpr size_t kEntIds = 1024; // MAX_GENTITIES
 
@@ -118,7 +126,8 @@ public:
         }
         referee::bind();
         referee::on_frame([this](uint32_t ms) { on_frame(ms); });
-        ENW_INFO("replay: sampler armed (players 20 Hz, zombies 10 Hz)");
+        ENW_INFO("replay: sampler armed (players 20 Hz, zombies 20 Hz, replay-events v%d: %s)",
+                 replay_ev::kVersion, referee::combat_bound().describe().c_str());
     }
 
     void pre_destroy() override {
@@ -126,6 +135,7 @@ public:
                  static_cast<unsigned long long>(snaps_),
                  static_cast<unsigned long long>(bytes_),
                  static_cast<unsigned long long>(kills_));
+        log_event_counts();
     }
 
 private:
@@ -147,7 +157,18 @@ private:
             }
             return;
         }
+        if (stopped_said_ || !started_) {
+            // A new match (or the first): the event tracker and the per-match name caches
+            // start again, so nothing from the last game is carried into this replay.
+            if (started_) log_event_counts();
+            events_.reset();
+            referee::combat_new_match();
+            for (auto& pp : players_) pp = player_prev{};
+            started_ = true;
+        }
         stopped_said_ = false;
+        replay_ev::frame_in fin;
+        fin.ms = ms;
 
         json::array players;
         const int n = referee::max_clients();
@@ -168,11 +189,45 @@ private:
             if (!prev.valid || e->health != prev.health) p.integer("health", e->health);
             if (!prev.valid || e->alive != prev.alive) p.boolean("alive", e->alive);
 
+            replay_ev::player_in& pin = fin.players[slot];
+            pin.present = true;
+            pin.alive = e->alive;
+            pin.health = e->health;
+            std::memcpy(pin.pos, e->origin, sizeof pin.pos);
+            if (const auto combat = referee::player_combat_state(slot)) {
+                pin.weapon = combat->weapon;
+                pin.weapon_raw = combat->weapon_raw;
+                pin.have_ammo = combat->have_ammo;
+                pin.clip = combat->clip;
+                pin.ammo = combat->ammo;
+                pin.have_events = combat->have_events;
+                pin.event_seq = combat->event_seq;
+                std::memcpy(pin.events, combat->events, sizeof pin.events);
+                pin.last_attacker = combat->last_attacker;
+                // The gun and its ammo on every snap (replay-events-v1 section 3), delta-coded
+                // like everything else. `weapon` is the engine's own name now; the usercmd
+                // index below stays the fallback ("#37") when the weapon table is not bound.
+                if (!combat->weapon_raw.empty()) {
+                    if (!prev.valid || combat->weapon_raw != prev.weapon_raw) p.str("weapon", combat->weapon_raw);
+                    prev.weapon_raw = combat->weapon_raw;
+                }
+                if (combat->have_ammo) {
+                    if (!prev.valid || !prev.have_ammo || combat->clip != prev.clip) p.integer("clip", combat->clip);
+                    if (!prev.valid || !prev.have_ammo || combat->ammo != prev.ammo) p.integer("ammo", combat->ammo);
+                    prev.clip = combat->clip;
+                    prev.ammo = combat->ammo;
+                    prev.have_ammo = true;
+                }
+            }
+
             // The game's own scoreboard counters (referee.md 16), each omitted when
             // unchanged like everything else here. `kills` is what lets the viewer's Tab
             // scoreboard credit kills per player with company; the `kill` events below
             // are entity deaths and name nobody.
             if (auto st = referee::player_stats(slot)) {
+                pin.have_stats = true;
+                pin.kills = st->kills;
+                pin.headshots = st->headshots;
                 if (!prev.valid || !prev.have_stats || st->score != prev.score) p.integer("score", st->score);
                 if (!prev.valid || !prev.have_stats || st->kills != prev.kills) p.integer("kills", st->kills);
                 if (!prev.valid || !prev.have_stats || st->downs != prev.downs) p.integer("downs", st->downs);
@@ -202,7 +257,7 @@ private:
                 }
                 prev.cmd_pitch = cmd->view_pitch;
                 prev.cmd_yaw = cmd->view_yaw;
-                if (!prev.valid || cmd->weapon != prev.weapon) {
+                if (prev.weapon_raw.empty() && (!prev.valid || cmd->weapon != prev.weapon)) {
                     p.str("weapon", weapon_name(cmd->weapon));
                 }
                 prev.weapon = cmd->weapon;
@@ -222,7 +277,9 @@ private:
 
         json::array zombies;
         json::array nades;
-        const bool zombie_frame = (frame_ % 2) == 0;
+        // Every frame since lane R1 (was `(frame_ % 2) == 0`, 10 Hz). The name is kept so
+        // the blocks below read as they did.
+        const bool zombie_frame = true;
         size_t alive_zombies = 0;
         if (zombie_frame) {
             referee::ent_view buf[kMaxZombies];
@@ -250,6 +307,15 @@ private:
                 const int id = buf[i].entnum;
                 if (id >= 0 && static_cast<size_t>(id) < sizeof(seen)) seen[id] = true;
                 if (buf[i].alive) ++alive_zombies;
+                {
+                    const auto dmg = referee::ent_damage(id);
+                    replay_ev::zombie_in zi;
+                    zi.id = id;
+                    zi.health = buf[i].health;
+                    zi.last_attacker = dmg.last_attacker;
+                    zi.hit = replay_ev::part_from_hitloc(dmg.hitloc);
+                    fin.zombies.push_back(zi);
+                }
                 json::writer z;
                 z.integer("id", id);
                 z.raw("pos", fmt_vec3_10th(buf[i].origin));
@@ -271,6 +337,21 @@ private:
                 ++kills_this_round_;
             }
             std::memcpy(was_live_, seen, sizeof(seen));
+
+            // What can still be read about the zombies that just left the live list: the
+            // last attacker G_Damage recorded and the actor's lethal hit location (Actor_Die
+            // writes it). The tracker falls back on the native kills/headshots counters when
+            // the actor is already gone.
+            for (int id : events_.live_ids()) {
+                if (id >= 0 && static_cast<size_t>(id) < sizeof(seen) && seen[id]) continue;
+                const auto dmg = referee::ent_damage(id);
+                replay_ev::zombie_in zi;
+                zi.id = id;
+                zi.health = dmg.health;
+                zi.last_attacker = dmg.last_attacker;
+                zi.hit = replay_ev::part_from_hitloc(dmg.hitloc);
+                fin.gone.push_back(zi);
+            }
 
             // ---------------------------------------------------- grenades --
             // replay.md 8.6. `grenade` is CoD's G_FireGrenade classname through CoD4;
@@ -300,10 +381,34 @@ private:
             }
             std::memcpy(nade_live_, nseen, sizeof(nseen));
 
-            referee::classname_census([](const char* cls, int entnum) {
-                ENW_INFO("replay: classname census: first \"%s\" (ent %d)", cls, entnum);
-            });
+            // The census walks all 1024 entities with a readability check each, so once a
+            // second is plenty for "log a classname the first time it exists".
+            if (frame_ % 20 == 0) {
+                referee::classname_census([](const char* cls, int entnum) {
+                    ENW_INFO("replay: classname census: first \"%s\" (ent %d)", cls, entnum);
+                });
+            }
         }
+
+        // ------------------------------------------------------------ power-ups --
+        if (referee::combat_bound().models) {
+            referee::model_ent_view mv[kMaxPowerups];
+            const size_t nm = referee::model_ents(
+                [](const char* m) { return replay_ev::powerup_kind(m) != nullptr; }, mv, kMaxPowerups);
+            fin.powerups_valid = true;
+            for (size_t i = 0; i < nm; ++i) {
+                replay_ev::powerup_in pu;
+                pu.id = mv[i].entnum;
+                pu.kind = replay_ev::powerup_kind(mv[i].model);
+                std::memcpy(pu.pos, mv[i].origin, sizeof pu.pos);
+                fin.powerups.push_back(std::move(pu));
+            }
+        }
+
+        // ------------------------------------------------------- gameplay events --
+        ev_lines_.clear();
+        events_.step(fin, ev_lines_);
+        for (auto& l : ev_lines_) game_link::get().send_line(std::move(l));
 
         if (players.count() == 0 && zombies.count() == 0) return;
 
@@ -355,8 +460,24 @@ private:
         }
     }
 
+    void log_event_counts() {
+        const auto& c = events_.stats();
+        ENW_INFO("replay: events weapon %llu fire %llu (capped %llu) hit %llu (kills %llu, "
+                 "unattributed deaths %llu) damage %llu pap %llu powerup %llu",
+                 static_cast<unsigned long long>(c.weapon), static_cast<unsigned long long>(c.fire),
+                 static_cast<unsigned long long>(c.fire_capped), static_cast<unsigned long long>(c.hit),
+                 static_cast<unsigned long long>(c.kill_hit),
+                 static_cast<unsigned long long>(c.kill_unattributed),
+                 static_cast<unsigned long long>(c.damage), static_cast<unsigned long long>(c.pap),
+                 static_cast<unsigned long long>(c.powerup));
+    }
+
     struct player_prev {
         bool valid = false;
+        std::string weapon_raw;
+        bool have_ammo = false;
+        int clip = 0;
+        int ammo = 0;
         int health = 0;
         bool alive = false;
         int score = 0;
@@ -372,6 +493,9 @@ private:
     };
 
     player_prev players_[kMaxPlayers];
+    replay_ev::tracker events_;
+    std::vector<std::string> ev_lines_;
+    bool started_ = false;
     bool was_live_[kEntIds] = {};
     bool nade_live_[kNadeIds] = {};
     float nade_pos_[kNadeIds][3] = {};
