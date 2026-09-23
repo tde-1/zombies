@@ -18,8 +18,9 @@ void note_discord_refused(long count);
 // menu_lockdown: the engine error text (com_errorMessage) the session ended on.
 void note_error(const char* text);
 
-// hang_watchdog, after its dump: exit 'hang'. `dump_path` null when the dump failed.
-void write_hang(const char* dump_path);
+// hang_watchdog, after its dump: exit 'hang'. `dump_path` null when the dump failed;
+// `where` is its one-line verdict (what the main thread waits for), null when unknown.
+void write_hang(const char* dump_path, const char* where = nullptr);
 
 // overlay_guard's unhandled-exception filter, BEFORE anything else: exit 'crash'. No
 // heap, no CRT formatting, no locks; one CreateFileA/WriteFile/CloseHandle. Once.
