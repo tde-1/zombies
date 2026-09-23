@@ -1254,3 +1254,20 @@ windows are created `WS_EX_NOACTIVATE`, its startup `ShowWindow(SW_SHOW)` become
 `SetFocus`). With it a test game never takes the foreground from the person at the PC (0 of 129
 samples foreground, both round-2 runs). Never set by the launcher.
 
+
+
+## 2026-09-23 01:45 — custom maps: the stretched Reapers Colt, and a frame-capture timer (`mod-compat.md`)
+
+B saw Minecraft Village's first-person Reapers Colt drawn as stretched polygons on a box join. **Not
+reproduced** on a local dedi + client with byte-identical files, B's resolution and every renderer
+dvar his config differs in, and the chat overlay open (`mod-compat.md` §1, pictures in `ui/`). Mod
+files, add-on IWDs, fastfile order and settings are ruled out; the box server and B's own session
+are not. **B's client has written no `console.log` since 2026-09-22 18:07** despite `+set logfile 2`
+— the next report has no engine-side evidence until that is found.
+
+New, test-only: `components/frame_capture_timer.cpp`. `ENW_FRAME_CAPTURE_AT="10,25,45"` asks
+`frame_capture.cpp` for a back buffer that many seconds after `clc.state` first reaches 10;
+`ENW_FRAME_CAPTURE_CMDS="7:closemenu briefing|30:+attack|31:-attack"` runs console commands on the
+same clock through `Cbuf_AddText` 0x594200. Both need `ENW_FRAME_CAPTURE=1`. No hooks; a frame
+subscriber. The stock `briefing` menu otherwise stays open on an off-screen client and the pause
+lane freezes the world as `solo_menu`.

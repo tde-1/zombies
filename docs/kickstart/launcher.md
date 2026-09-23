@@ -2413,3 +2413,25 @@ since main's `54f7a95` — up to the files bucket when `infra/s3.env` has keys),
 `version: 0.2.12`. The site half needs `web/client` rebuilt and the site restarted; deploy the
 site first or together — a 0.2.11 launcher on the new site gets no chip (it lacks `updateNow`) and
 a Download that still works through `installMap`.
+
+
+## 2026-09-23 01:45 — mod compatibility: the files are the server's, and the mod's dvars are the mod's (`mod-compat.md`)
+
+Two launcher changes, both small and both in `src/main/modcompat.js` (tests: `test/modcompat.js`,
+6/6; `npm test` now runs it):
+
+1. **Pre-launch check.** `ensureMapInstalled` no longer answers "already installed" on the record
+   alone: `matchServer()` compares the folder with the site's file list (size, SHA-256; size+mtime
+   cached after the first proof), removes a stray `.ff`/`.iwd` the server does not load, and
+   re-downloads only the files that differ through `installFromSite(bsp, { only })`. Offline or no
+   site: skipped.
+2. **Mod-owned dvars.** Minecraft Village's anti-cheat sets `monkeytoy 1`; the read-back saved it as
+   B's choice and every launch since carries `+set monkeytoy 1` (console off on every map). The
+   read-back now drops changes to any dvar the map just played sets itself — found by scanning its
+   fastfiles and loose scripts once, cached as `modDvars` in `.enw-installed.json`. For this map:
+   `cg_fov monkeytoy cg_mature cg_blood`. B's saved `waw.monkeytoy` is not auto-repaired.
+
+Also: `library.js ALLOWED_EXT` (and the site's `mapfiles.js ALLOWED`) take `.iwi .csc .bik .menu
+.str` and extension-less weapon files — Futurama's 145 loose images/scripts, Arena's 65 and Five
+Nights' loose weapon files and three load videos were on the box and never reached a player
+(`mod-compat.md` §5).

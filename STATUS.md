@@ -9,6 +9,8 @@
 
 * **2026-09-23 00:45 UK — the box runs three game servers at once (`dedi.md` §19).** The "3074 + one fallback" limit was wrong. The engine probes 100 lobby ports, and the new dedi DLL `6fccc0e0…` (`lobby_port.cpp`) logs every bind and takes `ENW_LOBBY_PORT` (3074+slot). Three servers were proven up together, all answering, ~304 MB and ~0.33 core each, ~300 MB RAM left. Four needs Steam without its browser or a bigger box. **Fixed an outage:** after four boots the host agent failed every lease, B's Play included (23:27–23:32 box time, "no game copy at waw-inst-05"). Copies now go by slot. **Still one game per box at the site**: a second Play supersedes the first, and that is the web lane's to change.
 
+* **2026-09-23 01:45 UK — mod compatibility (`docs/kickstart/mod-compat.md`).** B's stretched Reapers Colt on Minecraft Village is **not reproduced** locally with byte-identical files and B's settings; mod files, add-on IWDs, fastfile order and dvars are ruled out, the box server is not (no leases tonight), and B's client has written no `console.log` since 09-22 18:07. Fixed: the settings read-back no longer saves dvars a map sets itself (this map's anti-cheat put `monkeytoy 1` in B's account — his console is off on every map until he changes it back); a pre-launch check re-downloads files that differ from the server's; the site and launcher now ship loose `.iwi/.csc/.bik`/weapon files (Futurama, Arena, Five Nights, 3 load videos). All 57 box maps: no byte differences; box Futurama is missing 4 archive files. Branch `mod-compat`.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
