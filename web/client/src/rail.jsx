@@ -4,6 +4,7 @@ import { api } from './api'
 import { useSession } from './session'
 import { socket } from './socket'
 import { usePlayGate } from './components/playGate'
+import InviteToasts from './components/InviteToasts'
 
 // THE RAIL'S STATE — Movement's `party.jsx`, with zombies' nouns.
 //
@@ -114,6 +115,17 @@ export function RailProvider({ children }) {
     return () => { clearInterval(a); clearInterval(b) }
   }, [signedIn, loadParty, loadOnline])
 
+  // PUSH on top of the poll: Movement's party.jsx listens for these three and refreshes at
+  // once, so an invite, an accept or a decline shows in the rail without waiting for the
+  // next tick. The toasts (components/InviteToasts.jsx) listen to the same events.
+  useEffect(() => {
+    if (!signedIn) return undefined
+    const on = () => { loadParty(); loadOnline() }
+    const evs = ['party_updated', 'invite_received', 'invite_withdrawn']
+    for (const e of evs) socket.on(e, on)
+    return () => { for (const e of evs) socket.off(e, on) }
+  }, [signedIn, loadParty, loadOnline])
+
   useEffect(() => {
     if (!party) { setLive(null); return undefined }
     const on = (msg) => { if (msg && msg.party_id === party.id) setLive(msg.progress || {}) }
@@ -187,6 +199,22 @@ export function RailProvider({ children }) {
   const joinParty = useCallback((partyId) => {
     if (guard({ party: partyId, then: '/' })) return null
     return run(async () => { await api.post('/api/party/join', { party_id: partyId }); loadOnline() })
+  }, [guard, run, loadOnline])
+  // Movement's accept: by the INVITE, so an expired or withdrawn one says so by name.
+  const acceptInvite = useCallback((inviteId, partyId) => {
+    if (guard({ party: partyId, then: '/' })) return null
+    return run(async () => { await api.post(`/api/party/invites/${inviteId}/accept`); loadOnline(); return true })
+  }, [guard, run, loadOnline])
+  // The invite link (lib/parties.js link): made from the stage if there is no party yet.
+  const shareLink = useCallback(async () => {
+    const body = { stage: { map_key: stage.map_key, mode: stage.mode, visibility: stage.visibility } }
+    const out = await run(() => api.post('/api/party/link', body))
+    return out && out.code ? `${window.location.origin}${out.path}` : null
+  }, [stage, run])
+  const joinByLink = useCallback((code) => {
+    // In a browser: /download, whose "Open in launcher" is enw-zombies://party/<code>.
+    if (guard({ party: code, then: `/party/${code}` })) return null
+    return run(async () => { await api.post(`/api/party/link/${encodeURIComponent(code)}/join`); loadOnline(); return true })
   }, [guard, run, loadOnline])
 
   // PLAY. The one primary action on the card, and the flow underneath is the party's
@@ -265,13 +293,16 @@ export function RailProvider({ children }) {
     stage, map, mapKey, mode, visibility, editable,
     busy, err, say,
     stageMap, setMode, setVisibility, invite, cancelInvite, kick, leave,
-    decline, joinParty, play, ready, go, cancel, resumable, resume,
+    decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
     refreshParty: loadParty, refreshOnline: loadOnline,
   }), [me, signedIn, approved, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
     mode, visibility, editable, busy, err, say, stageMap, setMode, setVisibility, invite, cancelInvite, kick,
-    leave, decline, joinParty, play, ready, go, cancel, resumable, resume, endGame, loadParty, loadOnline])
+    leave, decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
+    endGame, loadParty, loadOnline])
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+  // The invite toasts and the /party/<code> card sit here, above the router with the rail's
+  // state, so they show on every page including the replay viewer (which hides the rail).
+  return <Ctx.Provider value={value}>{children}<InviteToasts R={value} /></Ctx.Provider>
 }
 
 export const useRail = () => useContext(Ctx)

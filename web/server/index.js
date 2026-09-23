@@ -252,6 +252,11 @@ live.setEmitter((matchId, frame) => io.to(`live:${matchId}`).emit('live', frame)
 // no `party:<id>` room to join, deliberately: every socket already sits in its own
 // `user:<steamid>` room from the moment it authenticates, so the fan-out is a list of
 // rooms rather than a membership that has to be kept in step with the party table.
+// Invites and party notices (lib/parties.js, Movement's emitUser): invite_received,
+// invite_withdrawn, party_updated — each to its people's own rooms.
+require('./lib/parties').setEmitter((steamIds, event, payload) => {
+  for (const sid of steamIds) io.to(`user:${sid}`).emit(event, payload)
+})
 partyProgress.setEmitter((steamIds, payload) => {
   for (const sid of steamIds) io.to(`user:${sid}`).emit('party-progress', payload)
 })

@@ -3094,3 +3094,137 @@ the names dialog).
 The real box (Boxes saw a simulated heartbeat only); retire/restart against zombies-dev; a moderator's
 view (admin screens only); phone widths; the launcher window. Needs a client build and a site restart;
 the seed is the coordinator's to run.
+
+## 2026-09-23, early — profile/records/invites/chat dedupe
+
+Four jobs, each compared against Movement (`C:\Users\b\Desktop\CSGO-Matchmaker`; the invites are on
+**`origin/main`**. The local `main` there is 1,500 commits behind and does not have them).
+
+### Chat: the duplicate lines on joining a game (root cause first)
+
+B saw lines repeated in global chat when he joined a game. **The ring has no duplicate rows.** A
+`VACUUM INTO` copy of the live DB shows every message once. The duplicates happened on the display
+side, and three separate things caused them:
+
+1. **The overlay's first poll replayed the ring.** `/api/game-chat/feed?g=0` answered with
+   `chat.tail(20)`, and `chat_overlay.cpp` stamps each line with the moment it arrived
+   (`line_from_json`, `l.arrived = GetTickCount()`). So on joining a game, the HUD showed the last
+   five ring lines as if they had just been said. When B joined at 02:41, those five included two
+   copies of `76561198000000001 started a game on nazi_zombie_fear_mc_2` from earlier games, with his
+   own identical line under them. **Fix:** a first poll now returns the cursor and no lines. That is
+   the box drain's rule (`routes/gameserver.js`, since=0). The cursor is taken *before* the wait, so a
+   fresh client that waits gets exactly what was said after it asked. A client can still ask for the
+   backlog with `&history=1`; every backlog line then carries `backfill: true`. The current DLL never
+   asks, so its open window starts empty too. Showing history in the window but not on the HUD
+   needs a DLL change (client lane).
+2. **One game produced several system lines.** The live ring has `B's game … ended on round 1`,
+   then `somebody's game on Nacht ended`, then `somebody's game on Unknown map ended`, all for one
+   instance. The host resets its starter on the post-game `map_loaded`, and the teardown sends
+   `game_over` again with nobody to name. A post-game restart also re-announced the same player's
+   start. **Fix (`lib/chatSystem.js`):** started, joined and ended are said **once per match**, and
+   an end with nobody to name is not said at all. The 20 s key now includes the match. Before, it did
+   not, so two different games by the same player on the same map merged into one line.
+3. **The web dock's merge.** The dock already deduped by id. But its fill *reset* the list, which
+   dropped a live line that arrived before the backlog did, and a socket reconnect never caught up.
+   **Fix:** `client/src/chatLines.js` is one merge, keyed and ordered by ring id and capped. The
+   backlog, the socket, and a reconnect catch-up (`GET /api/chat?since=<newest id held>`, new) all go
+   through it.
+
+`test/chat-dedupe.js` reproduced all three first: **11 of 13 failed before the fix, 12/12 pass
+after** (one check was merged). It is in `npm test`. One existing `run-all` check now uses a second
+player for `joined`, because the player who started a match no longer also "joins" it.
+
+### Records: Watch beside the row
+
+Movement's `replay3d/WatchButton.jsx` is ported as `components/WatchButton.jsx` (`btn btn-sm
+r3d-watch`; the CSS comes from Movement's theme.css and lives in `components/watch.css`). **It links
+straight to `/replay/<match>`**, and the viewer route is unchanged (replay.md §7a). Movement's
+button opens a modal and pushes `/watch/…`. Ours is already a route, so the button is a link, and
+the browser's own right-click gives "copy link". The old flow went through the game page's "Watch in
+3D". The button renders nothing when there is no replay. It appears in four places:
+
+* `/records`
+* the map page's boards (`MapPage.jsx`: one import and one `<td>`)
+* the profile's Records, as Movement's `.rec-cell`, with the button beside the link rather than
+  inside it
+* the profile's best round
+
+On the server, `records.rowsFor`, `hub` and `heldBy` now carry `match_id` and `replay`, which comes
+from an `EXISTS` check on `replays`.
+
+### Profile: Movement's, trimmed
+
+* **Order:** Movement's head (banner and identity bar), then the rail, then **Most played /
+  Recently played** (Movement's titles), then **Records**, then Overall, then the wall.
+* **A stat with no value is hidden, not dashed.** This applies to the identity bar strip and to
+  Overall. Kills, downs and revives stay hidden while the server sends null.
+* **Removed as verbose, empty or duplicated:**
+  * Overall's Time played, Records held and Member since (the bar and rail already show them)
+  * the rail's Total time played
+  * "No badges yet"
+  * the empty tagline
+  * the `—` durations
+  * long empty-state and settings copy. Settings is now "Privacy", with "Played maps" and
+    "Comments".
+
+### Invites: Movement's party invites, on the zombies party row
+
+Zombies already had invite by name or SteamID, decline, cancel and the rail card. What was missing,
+and is now added (`lib/parties.js`, `routes/site.js`):
+
+| | Movement | here |
+|---|---|---|
+| accept | `POST /api/party/invites/:id/accept` | same; used, expired and withdrawn invites are each refused by name |
+| push | `invite_received`, `invite_withdrawn`, `party_updated{notice}` via `emitUser` | same names, to `user:<sid>` rooms (`parties.setEmitter`, `index.js`) |
+| notices | declined, left, closed, withdrawn, removed, kicked | same, plus joined |
+| party emptied | pending invitees told it closed | same |
+| expiry | none | **30 min**, because an invite here also opens a friends-only or private lobby; re-inviting restarts the clock |
+| link | none in movement-client (GOnext has custom-lobby join codes) | **invite link** `/party/<CODE>`: 8 characters from Movement's `codes.js` alphabet, in its own `link_code` column (not the public party code), leader can reset it, 20 lookups/min per account |
+
+**Routes:**
+
+* `POST /api/party/link` — any member; with no party yet, one is made from the stage
+* `POST /api/party/link/reset` — leader only
+* `GET /api/party/link/:code` — preview
+* `POST /api/party/link/:code/join` — approved accounts only; full parties refuse
+
+**Client:**
+
+* **`components/InviteToasts.jsx`**, rendered by the rail provider on every page:
+  * the invite toast shows who invited you, the map, size/4, time left, and Accept / Decline
+  * notice lines
+  * a Join card for `/party/<CODE>`, and for `/party/<id>` when an invite to that party is waiting.
+    The launcher's `enw-zombies://party/<x>` opens exactly these paths, so **no launcher change was
+    needed**.
+* **The rail:** refreshes on the three events, accepts by invite id, and "Copy link" replaces the
+  party code, which nothing could use.
+* **Accept and link-Join go through the play gate.** In a browser they lead to `/download`, whose
+  "Open in launcher" is `enw-zombies://party/<CODE>`.
+
+`test/invites.js`: 15 checks over HTTP through the real router, in `npm test`.
+
+### Tests and proof
+
+`npm test` passes: run-all 144, local-run 41, sign-in 15, game-chat 19, bucket 12, map-align 10,
+guides 12, chat-dedupe 12, invites 15. local-run was run with `ZM_TEST_PORT=34771`, because 33991
+was held by another agent's process. The screenshots come from a private site on **3473** running a
+`VACUUM INTO` copy of the live DB (jamie visiting, stew inviting). They are in
+`C:\Users\b\Desktop\Zombies\tmp\profile-records-invites\`:
+
+* `profile-myu-visitor.png`
+* `records.png`
+* `map-board-watch.png`
+* `invite-toast.png`
+* `invite-withdrawn-note.png`
+* `invite-link-card.png`
+
+### Unproven
+
+* **The in-game half of the chat fix has not been seen in a game.** The server change removes the
+  HUD replay whatever the DLL does, but nobody has joined a game since.
+* Two browsers exchanging an invite through Steam sign-in. The proof used test sign-in on the copy.
+* After a signed-out visitor signs in from the link card, they land on home, because `/auth/steam`
+  has no return path.
+* The Watch-to-viewer path on a map with no `.glb` export. The viewer handles it (replay.md §7e).
+
+**Needs a client build and a site restart.** No live data was written.

@@ -43,7 +43,11 @@ const DEDUPE_MS = 20_000
 // No one match may produce more than this many system lines a minute, whatever it sends.
 const PER_MATCH_PER_MIN = 20
 
+// Start, join and end are said once per match; the memory of that outlives any game.
+const ONCE_MS = 12 * 3600_000
+
 const recent = new Map()   // key -> at
+const once = new Map()     // match-scoped key -> at
 const rate = new Map()     // match_id -> [at, ...]
 
 const KINDS = new Set(['started', 'joined', 'down', 'ended'])
@@ -120,8 +124,25 @@ function record(origin, ev = {}) {
   const text = sentence(kind, who, where, round)
   if (!text) return null
 
+  // A game's end with nobody to name is the teardown's second game_over after the post-game
+  // reload reset the host's starter (live ring, 2026-09-22: "B's game … ended on round 1",
+  // then "somebody's game on Nacht ended", then "somebody's game on Unknown map ended"). The
+  // real end line was already said.
+  if (kind === 'ended' && !String(ev.name || '').trim() && !(ev.identity === 'verified' && ev.steamid)) return null
+
   const at = Date.now()
-  const key = `${kind}|${ev.map || ''}|${who}|${kind === 'down' || kind === 'ended' ? round : ''}`
+  const game = ev.match_id ? `m:${ev.match_id}` : `i:${ev.instance || ''}`
+  // ONCE PER MATCH: a start, a join and an end are facts about a match, not about a moment.
+  // The post-game restart reconnects everybody and the teardown re-sends game_over; neither
+  // is a second start or a second end. Keyed on the match, so two games on the same map by
+  // the same player are still two lines (the old key had no match in it and merged them).
+  if (ev.match_id && kind !== 'down') {
+    const onceKey = `${game}|${kind === 'ended' ? 'ended' : `in|${who}`}`
+    if (once.has(onceKey)) return null
+    once.set(onceKey, at)
+    if (once.size > 2000) for (const [k, t] of once) if (at - t > ONCE_MS) once.delete(k)
+  }
+  const key = `${game}|${kind}|${ev.map || ''}|${who}|${kind === 'down' || kind === 'ended' ? round : ''}`
   const last = recent.get(key)
   if (last && at - last < DEDUPE_MS) return null
   recent.set(key, at)
@@ -141,6 +162,6 @@ function record(origin, ev = {}) {
 }
 
 /** Test seam: the process-lifetime dedupe and rate state. */
-function _reset() { recent.clear(); rate.clear() }
+function _reset() { recent.clear(); once.clear(); rate.clear() }
 
 module.exports = { record, handleFor, mapLabel, sentence, _reset, DEDUPE_MS, PER_MATCH_PER_MIN }

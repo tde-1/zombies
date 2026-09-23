@@ -113,7 +113,7 @@ function rowsFor(boardId, limit = 50) {
     at: r.created_at,
     match_id: r.match_id || r.game_match || null,
     game_id: r.game_id || null,
-    replay: !!r.has_replay,
+    replay: !!r.has_replay && !!(r.match_id || r.game_match),
     kills: r.team_kills == null ? null : r.team_kills,
     downs: r.team_downs == null ? null : r.team_downs,
     players: (safeJson(r.roster, []) || [String(r.steam_id)]).map((sid) => users.publicById(sid)).filter(Boolean),
@@ -262,6 +262,7 @@ function heldBy(steamId) {
       held.push({
         map_key: r.map_key, map_title: r.title, category: r.category, label: CATEGORY_LABEL[r.category] || r.category,
         player_count: r.player_count, profile: r.profile, round: r.round, value_ms: r.value_ms, at: r.created_at,
+        match_id: top.match_id, replay: top.replay,
       })
     }
   }
