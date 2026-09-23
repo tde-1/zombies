@@ -90,13 +90,17 @@ function overallFor(steamId, { user = null } = {}) {
   // THE BEST ROUND answers to the same rule as the career strip always has
   // (lib/results.js careerFor / eligibleForStats): a Verified game the site refereed, not
   // self-reported, and not joined late. A Local run's round is the player's own word.
-  const best = db.prepare(`SELECT g.id, g.match_id, g.map_key, g.rounds, g.ended_at, m.title,
+  // And only in a map's DEFAULT game mode (game-modes.md): a Gun Game or Sharpshooter round is
+  // not a round of the map's own game, so it never becomes the headline number.
+  const gameModes = require('./gameModes')
+  const best = db.prepare(`SELECT g.id, g.match_id, g.map_key, g.rounds, g.ended_at, g.game_mode, m.title,
                                   (SELECT 1 FROM replays r WHERE r.game_id=g.id) has_replay
                              FROM game_players gp JOIN games g ON g.id=gp.game_id
                              LEFT JOIN maps m ON m.key=g.map_key
                             WHERE gp.steam_id=? AND ${REAL} AND g.mode='verified' AND COALESCE(g.self_reported,0)=0
                               AND gp.late=0 AND COALESCE(g.rounds,0) > 0
-                            ORDER BY g.rounds DESC, g.ended_at ASC LIMIT 1`).get(sid)
+                            ORDER BY g.rounds DESC, g.ended_at ASC LIMIT 200`).all(sid)
+    .find((r) => !r.game_mode || r.game_mode === gameModes.resolve(r.map_key, null)) || null
   const held = require('./records').heldBy(sid).length
   const rec = recordedStats()
   const out = {

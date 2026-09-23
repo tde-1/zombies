@@ -203,6 +203,12 @@ function router() {
       const set = parties.setMode(sid, String(b.mode))
       if (!set.ok) return res.status(400).json(set)
     }
+    // The map's own game mode (game-modes.md). Absent = whatever the party has (the map's
+    // default unless the leader picked one on the site).
+    if (b.game_mode) {
+      const set = parties.setGameMode(sid, String(b.game_mode))
+      if (!set.ok) return res.status(400).json(set)
+    }
     const party = parties.forPlayer(sid)
     if (!party || !party.map) return res.status(400).json({ error: 'pick a map first' })
     if (!party.is_leader) return res.status(403).json({ error: 'only the leader can start the game' })

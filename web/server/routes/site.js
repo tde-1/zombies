@@ -83,6 +83,8 @@ function router() {
         category: req.query.category || null,
         playerCount: req.query.players ? Number(req.query.players) : null,
         profile: req.query.profile || 'ENW-Verified',
+        // A map's own game mode (game-modes.md): e.g. `gungame`. Absent = every mode.
+        gameMode: req.query.game_mode ? String(req.query.game_mode).slice(0, 64) : null,
       }),
       categories: records.categories(),
       profiles: records.profiles(),
@@ -210,11 +212,18 @@ function router() {
     res.status(out && out.ok === false ? 400 : 200).json(out)
   }
 
-  r.post('/party/create', requireApproved, partyAction((req) => ({ ok: true, party: parties.create(req.me.steam_id, req.body || {}) })))
+  r.post('/party/create', requireApproved, partyAction((req) => {
+    const b = req.body || {}
+    // `game_mode` is what the rail had staged before a party existed; create() keeps it only
+    // if the staged map offers it.
+    return { ok: true, party: parties.create(req.me.steam_id, { ...b, gameMode: b.game_mode ?? b.gameMode ?? null }) }
+  }))
   r.post('/party/join', requireApproved, partyAction((req) => parties.join(req.me.steam_id, Number((req.body && req.body.party_id) || 0))))
   r.post('/party/leave', requireUser, partyAction((req) => parties.leave(req.me.steam_id)))
   r.post('/party/map', requireApproved, partyAction((req) => parties.setMap(req.me.steam_id, (req.body && req.body.map_key) || null)))
   r.post('/party/mode', requireApproved, partyAction((req) => parties.setMode(req.me.steam_id, (req.body && req.body.mode) || 'verified')))
+  // The map's own game mode (game-modes.md): leader only, only a mode the map offers.
+  r.post('/party/game-mode', requireApproved, partyAction((req) => parties.setGameMode(req.me.steam_id, (req.body && req.body.game_mode) || '')))
   r.post('/party/visibility', requireApproved, partyAction((req) => parties.setVisibility(req.me.steam_id, (req.body && req.body.visibility) || 'friends')))
   r.post('/party/settings', requireApproved, partyAction((req) => parties.setSettings(req.me.steam_id, (req.body && req.body.settings) || {})))
   r.post('/party/ready-check', requireApproved, partyAction((req) => parties.startReadyCheck(req.me.steam_id, { force: !!(req.body && req.body.force) })))

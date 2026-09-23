@@ -184,6 +184,14 @@ export function RailProvider({ children }) {
     : (stage.map_key ? poolByKey.get(stage.map_key) || null : null)
   const mode = party ? party.mode : stage.mode
   const visibility = party ? party.visibility : stage.visibility
+  // The map's own game modes (docs/kickstart/game-modes.md): UGX's Classic / Gun Game / ...
+  // null for a map without them. The pick is the party's, or the stage's until a party exists;
+  // a pick the map does not offer shows as the map's default, as the server would play it.
+  const gameModes = (map && map.modes) || null
+  const gameMode = gameModes
+    ? (party ? party.game_mode
+      : (gameModes.modes.some((m) => m.id === stage.game_mode) ? stage.game_mode : gameModes.default))
+    : null
 
   // ── actions ─────────────────────────────────────────────────────────────
   const run = useCallback(async (fn) => {
@@ -195,7 +203,7 @@ export function RailProvider({ children }) {
 
   const stageMap = useCallback(async (key) => {
     if (!key) return
-    if (!party) { setStage({ map_key: key }); return }
+    if (!party) { setStage({ map_key: key, game_mode: null }); return }
     if (!editable) {
       say(!party.is_leader ? 'The leader picks the map'
         : (party.state === 'ready-check' ? 'Cancel the ready check to change the map' : 'End the game to change the map'))
@@ -209,6 +217,12 @@ export function RailProvider({ children }) {
     if (!party) { setStage({ mode: v }); return }
     if (!party.is_leader) return
     run(() => api.post('/api/party/mode', { mode: v }))
+  }, [party, setStage, run])
+
+  const setGameMode = useCallback((v) => {
+    if (!party) { setStage({ game_mode: v }); return }
+    if (!party.is_leader) return
+    run(() => api.post('/api/party/game-mode', { game_mode: v }))
   }, [party, setStage, run])
 
   const setVisibility = useCallback((v) => {
@@ -273,7 +287,9 @@ export function RailProvider({ children }) {
     if (guard({ party: party && party.id, map: key, then: '/' })) return
     await run(async () => {
       if (!party) {
-        await api.post('/api/party/create', { mode: stage.mode, visibility: stage.visibility, mapKey: key })
+        // The staged game mode only means something for the map it was picked on.
+        const gm = key === stage.map_key ? stage.game_mode : null
+        await api.post('/api/party/create', { mode: stage.mode, visibility: stage.visibility, mapKey: key, game_mode: gm })
         setStage({ map_key: key })
       } else if (!party.map || party.map.key !== key) {
         if (!party.is_leader) throw new Error('The leader picks the map')
@@ -331,13 +347,13 @@ export function RailProvider({ children }) {
   const value = useMemo(() => ({
     me, signedIn, approved, endGame, requests, answerFriend,
     party, launch, invites, online, pool, poolByKey, live,
-    stage, map, mapKey, mode, visibility, editable,
+    stage, map, mapKey, mode, visibility, editable, gameMode, gameModes,
     busy, err, say,
-    stageMap, setMode, setVisibility, invite, cancelInvite, kick, leave,
+    stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick, leave,
     decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
     refreshParty: loadParty, refreshOnline: loadOnline,
   }), [me, signedIn, approved, requests, answerFriend, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
-    mode, visibility, editable, busy, err, say, stageMap, setMode, setVisibility, invite, cancelInvite, kick,
+    mode, visibility, editable, gameMode, gameModes, busy, err, say, stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick,
     leave, decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
     endGame, loadParty, loadOnline])
 

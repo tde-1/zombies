@@ -992,6 +992,18 @@ function migrate() {
     if (n) console.log(`[db] marked ${n} seeded demo game${n === 1 ? '' : 's'}`)
   }
 
+  // ── Game modes (docs/kickstart/game-modes.md, lane UGX, 2026-09-23) ─────────────────
+  // A map's own pre-game choice (UGX Mod's Classic / Gun Game / Sharpshooter vote), picked
+  // by the party leader, carried on the lease, answered by the server, and kept on the game
+  // and its boards. NULL / '' everywhere means "this map has no modes" (or a game from
+  // before modes existed). Additive only: four nullable columns, no table rebuilt, safe on
+  // the live DB while it serves. Boards keep their inline UNIQUE key; a mode's board carries
+  // the mode in `category` as `round@gungame` (lib/records.js) and here in `game_mode`.
+  addColumn('parties', 'game_mode', 'TEXT')
+  addColumn('assignments', 'game_mode', 'TEXT')
+  addColumn('games', 'game_mode', 'TEXT')
+  addColumn('boards', 'game_mode', "TEXT NOT NULL DEFAULT ''")
+
   // ── Telemetry (docs/kickstart/telemetry.md, 2026-09-23) ─────────────────────────────
   // One row per log bundle a launcher or a box sent, and per thing the site itself saw go
   // wrong. `public_id` is the random 128-bit id in the bundle's bucket key — the bucket is

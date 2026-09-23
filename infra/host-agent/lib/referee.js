@@ -63,11 +63,15 @@ const PAUSE_LABEL = {
 }
 
 export class Referee extends EventEmitter {
-  constructor({ instanceId, matchId, mode = 'verified', manifest = null, config = {}, vip = false, log }) {
+  constructor({ instanceId, matchId, mode = 'verified', manifest = null, config = {}, vip = false, gameMode = null, log }) {
     super()
     this.instanceId = instanceId
     this.matchId = matchId
     this.mode = mode                  // 'local' | 'custom' | 'verified'
+    // The map's own game mode the lease asked for (game-modes.md), e.g. 'gungame', or null
+    // for a map without one. `gameModeSeen` is what the DLL said it did about it.
+    this.gameMode = gameMode
+    this.gameModeSeen = { hidden: 0, answered: [], done: false, problem: null }
     this.manifest = manifest || defaultManifest(null)
     this.eval = new ManifestEvaluator(this.manifest)
     this.cfg = { ...DEFAULTS, ...config }
@@ -172,6 +176,27 @@ export class Referee extends EventEmitter {
     this.role = ev.role
     this.hashes = { exe_sha256: ev.exe_sha256, dll_build: ev.dll_build }
     if (this.phase === 'boot') this.phase = 'loading'
+  }
+
+  /**
+   * The DLL answering the map's own mode menu (server/components/game_mode). `done` is the
+   * map's own "vote over" notify, the only proof the mode took; `refused` / `lost` /
+   * `timeout` mean the map's menu may have been shown and somebody picked by hand.
+   */
+  ev_game_mode(ev) {
+    const g = this.gameModeSeen
+    if (ev.state === 'hidden') g.hidden++
+    else if (ev.state === 'answered') g.answered.push(String(ev.response || ''))
+    else if (ev.state === 'done') g.done = true
+    else if (['refused', 'lost', 'timeout'].includes(ev.state)) g.problem = `${ev.state}${ev.note ? `: ${ev.note}` : ''}`
+    if (ev.mode && this.gameMode && ev.mode !== this.gameMode) g.problem = `the server ran '${ev.mode}', the lease asked for '${this.gameMode}'`
+  }
+
+  /** Did the requested mode demonstrably take? null when the lease asked for none. */
+  gameModeApplied() {
+    if (!this.gameMode) return null
+    const g = this.gameModeSeen
+    return g.done && !g.problem
   }
 
   ev_map_loaded(ev) {
@@ -920,14 +945,24 @@ export class Referee extends EventEmitter {
     // record carries its own proof.
     const verifiedEnv = this.verifiedEnv()
     if (this.mode === 'verified' && !verifiedEnv.ok) this.flags.add('env_violation')
+    // A mode that did not demonstrably take means the map's menu may have been shown and
+    // somebody chose by hand: the run is real, but nobody can say which board it belongs on.
+    const modeApplied = this.gameModeApplied()
+    if (modeApplied === false) {
+      this.flags.add('game_mode_unconfirmed')
+      this.log.warn(`game mode '${this.gameMode}' not confirmed by the server (${this.gameModeSeen.problem || 'no done notify'}); not record-eligible`)
+    }
     const eligible = this.mode !== 'local' && !this.flags.has('late_join') && !this.flags.has('all_afk') &&
-      !(this.mode === 'verified' && !verifiedEnv.ok)
+      !(this.mode === 'verified' && !verifiedEnv.ok) && modeApplied !== false
     return {
       match_id: this.matchId,
       instance: this.instanceId,
       mode: this.mode,
       map: this.map,
       fs_game: this.fsGame,
+      game_mode: this.gameMode,
+      game_mode_applied: modeApplied,
+      game_mode_seen: this.gameMode ? { ...this.gameModeSeen, answered: [...this.gameModeSeen.answered] } : null,
       map_name: this.manifest.title || null,
       manifest: this.manifest.map || null,
       manifest_confidence: this.manifest.confidence || null,
