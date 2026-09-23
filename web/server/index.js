@@ -79,6 +79,8 @@ app.use('/api/gs', require('./routes/gameserver').router())
 // The in-game chat overlay (routes/gamechat.js): its own auth, the chat pass the launcher
 // hands the game. Gate-exempt like /api/gs; refuses everything without a pass.
 require('./lib/gameChat').setSecret(secret)
+// The in-game Esc menu (routes/gamemenu.js): friends online, invites, Accept. Same pass.
+app.use('/api/game-chat/menu', require('./routes/gamemenu').router())
 app.use('/api/game-chat', require('./routes/gamechat').router())
 
 app.use('/auth', authRoutes.router())
