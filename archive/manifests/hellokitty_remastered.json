@@ -202,5 +202,47 @@
       "nsz_bo2_weapons_v1.3.2.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T23:50:54",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 156,
+    "fatal": 6,
+    "visible": 3,
+    "visible_owner": {
+      "release": 3
+    },
+    "visible_names": [
+      "item:mine_bouncing_betty",
+      "weapon:weapons/sp/mine_bouncing_betty",
+      "weapon:weapons/sp/mustang_sally"
+    ],
+    "client_check": [
+      "zombie_melee"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95099 ms over the hold",
+    "first_error": "unknown item 'mine_bouncing_betty': (file 'maps/_zombiemode_weapons.gsc', line 41)",
+    "match": "m_2bd8a15c",
+    "at": "2026-09-23T23:45:55",
+    "instance": "inst-19",
+    "com_frameTime_advance_ms": 95099,
+    "com_error": [],
+    "console_errors": [
+      "4176:******* script runtime error *******",
+      "4177:unknown item 'mine_bouncing_betty': (file 'maps/_zombiemode_weapons.gsc', line 41)",
+      "4180:Error: called from:",
+      "4184:Error: called from:",
+      "4188:Error: called from:",
+      "4192:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:mine_bouncing_betty, weapon:weapons/sp/mine_bouncing_betty, weapon:weapons/sp/mustang_sally",
+  "dedi_status": "box_map_loaded"
 }

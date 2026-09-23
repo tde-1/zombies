@@ -1212,3 +1212,144 @@ change.
 
 `cat:cheesecubeunlimitedcubeofcircles` (UGX thread, 401k views, no links) is the same map as
 Unlimited; `cat:cheesecubev1byzk` is the same file as Cheese Cube (archive.org copy, identical size).
+
+### 14.5 Results (box DLL `fd3039d2`, then `1b482aa2` from ~22:00 UK; 17:40–23:50 UK)
+
+46 maps run: **42 PASS**, 0 FAIL, 4 skipped (never booted / pre-empted: retries). Of the 42:
+**17 maps new to the site** (tranche 3), **5 hidden maps unhidden**, **5 visible maps now
+box-proven** (Leviathan, MW2 Rust, Der Berg, DT2, Hijacked: they were listed, not on our
+servers), and **15 box-pass but the asset gate keeps them hidden** (14.6). Everything visible
+was unhidden in the live DB as it passed (backups `web/data/backup-20260923T172134Z-pre-maps-lane`,
+`…T220810Z-pre-maps-twins`, `…T222252Z-pre-maps-twin-review`); "New" needs this branch's
+`boxProven.json` + a site restart. **Cheese Cube has a real client proof as well:** B played it
+on the box at 23:01 UK (`m_90af19a0`, verified, identity verified, round 5 in 5 m 02 s, no flags).
+
+| map | before | box now | asset gate | site now |
+|---|---|---|---|---|
+| `nazi_zombie_leviathan` | custom-only | **PASS** | minor | custom-only |
+| `nazi_zombie_ccube` | new (tranche 3) | **PASS** | clean | playable |
+| `nazi_zombie_ccube_u` | new (tranche 3) | **PASS** | clean | custom-only |
+| `mw2rust` | playable | **PASS** | minor | playable |
+| `nazi_zombie_derberg` | playable | **PASS** | clean | playable |
+| `backlot_zm` | new (tranche 3) | **PASS** | hide | custom-only hidden |
+| `derweizenfelder` | new (tranche 3) | **PASS** | clean | playable |
+| `nazi_zombie_descent` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `nazi_zombie_die_festung` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `nazi_zombie_death_forest` | new (tranche 3) | **PASS** | hide | custom-only hidden |
+| `nazi_zombie_halloweencube` | new (tranche 3) | **PASS** | clean | playable |
+| `nazi_zombie_hoh` | new (tranche 3) | **PASS** | clean | custom-only |
+| `nazi_zombie_in` | new (tranche 3) | **PASS** | clean | playable |
+| `nazi_zombie_kneedeep` | new (tranche 3) | **PASS** | clean | playable |
+| `nazi_zombie_navideath` | new (tranche 3) | **PASS** | hide | custom-only hidden |
+| `nazi_zombie_grave` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `xmas_refinery` | new (tranche 3) | **PASS** | clean | custom-only |
+| `nazi_zombie_reich` | new (tranche 3) | **PASS** | clean | playable |
+| `nazi_zombie_123` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `nazi_zombie_swamp_115` | new (tranche 3) | **PASS** | clean | custom-only |
+| `nazi_zombie_room` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `ugx_the_cobos` | new (tranche 3) | **PASS** | clean | playable |
+| `trailer_park_christmas` | new (tranche 3) | **PASS** | patch | playable hidden |
+| `ugx_bridge` | new (tranche 3) | **PASS** | minor | playable |
+| `wfms_zombies` | new (tranche 3) | **PASS** | clean | playable |
+| `kri` | playable hidden | **PASS** | minor | playable |
+| `nazi_zombie_laboratory` | custom-only hidden | **SKIPPED** | hide | custom-only hidden |
+| `nazi_zombie_pogreb` | custom-only hidden | **PASS** | minor | custom-only |
+| `lewl` | playable hidden | **PASS** | minor | playable |
+| `ahkanto` | playable hidden | **PASS** | minor | playable |
+| `chickn` | playable hidden | **PASS** | minor | playable |
+| `zombie_maze` | custom-only hidden | **SKIPPED** | minor | custom-only hidden |
+| `nazi_zombie_dt2` | custom-only | **PASS** | clean | custom-only |
+| `nazi_zombie_hijacked` | playable | **PASS** | clean | playable |
+| `nazi_zombie_school` | custom-only | **SKIPPED** | minor | custom-only |
+| `nazi_zombie_devas` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `nazi_zombie_andromeda` | new (tranche 3) | **PASS** | hide | custom-only hidden |
+| `annihilation` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `nazi_zombie_evil_dead` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `nazi_zombie_tranzit` | new (tranche 3) | **SKIPPED** | - | playable hidden |
+| `nazi_zombie_death_row` | new (tranche 3) | **PASS** | clean | playable |
+| `nazi_zombie_estate_v2` | new (tranche 3) | **PASS** | minor | playable |
+| `nazi_zombie_gameplay` | new (tranche 3) | **PASS** | clean | playable |
+| `nazi_zombie_far_away2v3` | new (tranche 3) | **PASS** | hide | playable hidden |
+| `nazi_zombie_feto` | new (tranche 3) | **PASS** | clean | playable |
+| `hellokitty_remastered` | new (tranche 3) | **PASS** | hide | playable hidden |
+
+DT2's gate cell is the old verdict on purpose: its 185 s run logs `unknown item 'm4a1_zm'` (a box
+weapon the release lacks) and a fresh audit says `hide`; it was visible before this lane, so it
+stays visible with `asset_audit_pending` in its manifest for the coordinator / B (as fear_mc_2).
+
+### 14.6 Box-pass, kept hidden by the asset gate (what the release lacks)
+
+`raw-only` = the weapon file ships in the map's IWD but no zone defines the weapon, so the
+0x41D538 check refuses it (14.1) — the follow-up DLL patch (skip that check when a real raw file
+was read) fixes it; `absent` = nowhere in the download; `anim` = AI anims no shipped zone holds.
+
+| map | raw-only (DLL patch fixes) | absent (release lacks) | anim |
+|---|---|---|---|
+| `nazi_zombie_andromeda` | mine_bouncing_betty, molotov, zombie_cymbal_monkey | — | — |
+| `nazi_zombie_evil_dead` | zombie_gewehr43/kar98k/m1carbine (+upgraded) | — | — |
+| `nazi_zombie_far_away2v3` | 4 perk bottles | — | — |
+| `nazi_zombie_death_forest` | m2_flamethrower_zombie, ptrs41_zombie (+upgraded) | thundergun_upgraded | — |
+| `nazi_zombie_123` | mg42_bipod | molotov, nambu_mp, thompson_bigammo_mp | — |
+| `nazi_zombie_grave` | 3 perk bottles | 9 custom perk bottles | — |
+| `nazi_zombie_navideath` | 4 perk bottles | ak47, beretta_mp, halo_magnum, T850 … (14) | — |
+| `backlot_zm` | — | mk2_frag | — |
+| `nazi_zombie_room` | — | zombie_perk_bottle_phd | — |
+| `nazi_zombie_die_festung` | — | mine_bouncing_betty + 6 perk bottles | — |
+| `hellokitty_remastered` | — | mine_bouncing_betty, mustang_sally | — |
+| `annihilation` | — | ithacha_mp | 18 hellhound anims |
+| `nazi_zombie_descent` | — | — | ai_zombie_window_attack_arm_l/r_out |
+| `nazi_zombie_devas` | — | — | 20 hellhound anims |
+| `trailer_park_christmas` | — | — | 20 hellhound anims (`patch`: shipped in a zone nothing loads) |
+
+Three would be whole with the raw-weapon patch alone (andromeda, evil_dead, far_away2v3). Perk
+bottles are a policy question: the perk still works, only the drinking animation shows the
+placeholder; A1 counts them as visible, like a gun. `zombie_knuckle_crack` is already minor.
+
+### 14.7 Catalogue twins (`web/server/lib/catalogueTwins.js`, B's rule)
+
+B saw "Cheese Cube Unlimited: not playable" in the launcher: the catalogue stub beside the real
+map. **B's rule: maps in a series are distinct maps** (Cheese Cube / Cheese Cube Unlimited /
+Cheese Cube Unlimited: Cube of Circles are three; Pokemon Kanto Carnage and its Nighttime
+edition are two). `import-archive.js` now runs `catalogueTwins.plan()` after every import: a
+stub is hidden only on an **exact normalised title** (lowercase a-z0-9) matching exactly one
+**visible** real map with no author/year conflict, and it records `maps.superseded_by` (new
+column); the stub's old slug shows the real map (`detail().redirected_from`, MapPage replaces
+the URL) and the real map lists it under **Earlier versions** (`detail().earlier_versions`).
+Every looser signal (same release post, a link with the same bytes, the catalogue entry the
+release was fetched from, a subtitle, an edition word, a conflict) goes to
+`reports/catalogue-twins-review.json`, never hidden. Test: `web/test/catalogue-twins.js` (10).
+
+My first version also hid by bytes / subtitle; the coordinator reverted the two wrong ones
+(`cat:cheesecubeunlimitedcubeofcircles`, `cat:pokemonkantocarnage`). Review of the other 85
+linked rows: 68 are exact titles; **17 are not exact but are the same map** (the release was
+fetched from that very catalogue entry): `cat:cargo`→CARGO, `cat:celerium`→ZOMBIE CELERIUM
+(TEMPLE), `cat:cheesecubev1byzk`→Cheese Cube (the same 78,983,876 B file), `cat:christmaswiththejoker`,
+`cat:dualwieldchallenge`, `cat:futurama`→FUTURAMA 1.1, `cat:insanatorium`, `cat:kneedeep`,
+`cat:minecraft`, `cat:navidadp`→CHRISTMAS IN PRISON, `cat:octogonalascension`, `cat:pogreb`,
+`cat:pokemonkantocarnagenighttime`→…NIGHTTIME (v1.31), `cat:prisonmission`→V1.1, `cat:rats`,
+`cat:utbox`, `cat:wfmiddleschool`. They are identical or an iterative update, so they stay
+linked; none is a distinct map, and none was unhidden. The coordinator's earlier title sweep also
+hid 113 stubs whose real map is itself still hidden (e.g. `cat:blut`, `cat:dome`,
+`cat:clinicofevil`): those maps are on no list until the real one passes the gate.
+
+### 14.8 Resume (next session)
+
+```
+# new maps first (62: batches C+D rest, all in the bucket and the DB, hidden), then re-proofs (34)
+python archive/box_proof.py --map-list archive/resume-new-maps.txt --player 76561198000000005 ^
+  --lease-repo C:\Users\b\Desktop\Zombies --hold 185 --load-wait 300 --wait-busy 14400 ^
+  --save-console C:\Users\b\ZombiesDev\archive\logs\box-console\proof-maps-<date>
+python archive/box_proof.py --map-list archive/resume-reproof-t2.txt ... --hold 125
+# publish: append each proven key to archive/applied-maps-lane.txt, then
+python archive/popular.py --apply --only archive/applied-maps-lane.txt
+# back up web/data first; from the checkout the site runs:
+set ZM_ARCHIVE_MANIFESTS=<checkout>\archive\manifests
+node web/server/db/import-archive.js --maps-list archive/applied-maps-lane.txt
+```
+
+Never publish a `fail` that has no `instance` (the host never booted it: RAM guard; `popular.py`
+now treats it as skipped). Never let an apply hide a map that was visible before this lane (DT2's
+`asset_audit_pending`). Run one queue at a time on the 4 GB box; S2's soaks alternate with it.
+Tranche-3 originals are on `C:` (`ZombiesDev\archive\originals`); `E:\ZombiesArchive\` was
+cleared for bulk downloads but not used. One download failed: `thebunker` (MediaFire answered
+with a captcha interstitial, which we do not solve).

@@ -16,6 +16,15 @@
    "match": "m_431b241e",
    "com_frameTime_advance_ms": 35080
   },
+  "annihilation": {
+   "result": "pass",
+   "at": "2026-09-23T23:14:30",
+   "match": "m_625a54e0",
+   "com_frameTime_advance_ms": 95129,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 186126518
+  },
   "backlot_zm": {
    "result": "pass",
    "at": "2026-09-23T19:41:00",
@@ -123,6 +132,15 @@
    "match": "m_c617f43c",
    "com_frameTime_advance_ms": 35081
   },
+  "hellokitty_remastered": {
+   "result": "pass",
+   "at": "2026-09-23T23:45:55",
+   "match": "m_2bd8a15c",
+   "com_frameTime_advance_ms": 95099,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 330764801
+  },
   "hghrise": {
    "result": "pass",
    "at": "2026-09-22T22:29:37",
@@ -201,6 +219,15 @@
    "in_bucket": true,
    "bucket_bytes": 122353418
   },
+  "nazi_zombie_andromeda": {
+   "result": "pass",
+   "at": "2026-09-23T23:10:50",
+   "match": "m_5b67f352",
+   "com_frameTime_advance_ms": 95139,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 362963196
+  },
   "nazi_zombie_arena": {
    "result": "pass",
    "at": "2026-09-23T00:24:28",
@@ -276,6 +303,15 @@
    "in_bucket": true,
    "bucket_bytes": 452922525
   },
+  "nazi_zombie_death_row": {
+   "result": "pass",
+   "at": "2026-09-23T23:25:15",
+   "match": "m_76ef56b9",
+   "com_frameTime_advance_ms": 95160,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 111842436
+  },
   "nazi_zombie_denial2": {
    "result": "pass",
    "at": "2026-09-22T23:24:55",
@@ -299,6 +335,15 @@
    "watchdog_clean": true,
    "in_bucket": true,
    "bucket_bytes": 335233585
+  },
+  "nazi_zombie_devas": {
+   "result": "pass",
+   "at": "2026-09-23T22:45:29",
+   "match": "m_274b1f63",
+   "com_frameTime_advance_ms": 95166,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 217193288
   },
   "nazi_zombie_die_festung": {
    "result": "pass",
@@ -330,6 +375,42 @@
    "match": "m_e2eaf614",
    "com_frameTime_advance_ms": 30066
   },
+  "nazi_zombie_estate_v2": {
+   "result": "pass",
+   "at": "2026-09-23T23:31:06",
+   "match": "m_06412eb5",
+   "com_frameTime_advance_ms": 95123,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 117524601
+  },
+  "nazi_zombie_evil_dead": {
+   "result": "pass",
+   "at": "2026-09-23T23:18:04",
+   "match": "m_cdc45c0d",
+   "com_frameTime_advance_ms": 95134,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 423336495
+  },
+  "nazi_zombie_far_away2v3": {
+   "result": "pass",
+   "at": "2026-09-23T23:38:28",
+   "match": "m_17f7962c",
+   "com_frameTime_advance_ms": 95111,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 140785995
+  },
+  "nazi_zombie_feto": {
+   "result": "pass",
+   "at": "2026-09-23T23:42:21",
+   "match": "m_11400606",
+   "com_frameTime_advance_ms": 95149,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 229087832
+  },
   "nazi_zombie_fivenights": {
    "result": "pass",
    "at": "2026-09-22T22:15:21",
@@ -341,6 +422,15 @@
    "at": "2026-09-22T23:51:35",
    "match": "m_3ade5fbc",
    "com_frameTime_advance_ms": 35076
+  },
+  "nazi_zombie_gameplay": {
+   "result": "pass",
+   "at": "2026-09-23T23:34:47",
+   "match": "m_6157a12c",
+   "com_frameTime_advance_ms": 95111,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 226710562
   },
   "nazi_zombie_grave": {
    "result": "pass",

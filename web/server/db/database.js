@@ -786,6 +786,9 @@ function migrate() {
   // generated card). The map page credits it, and a generated card must never pass for a
   // screenshot. The script adds the same column itself if it runs before a server has.
   addColumn('maps', 'art_source', 'TEXT')
+  // A catalogue stub that a real, visible map now stands for (lib/catalogueTwins.js): the stub
+  // is hidden and its slug resolves to this key (lib/maps.js detail()).
+  addColumn('maps', 'superseded_by', 'TEXT')
   // A download link's size as the link checker measured it, so the map page can say how
   // big the map is before anybody clicks. Written by db/import-archive.js --catalogue.
   addColumn('archive_sources', 'size_bytes', 'INTEGER')

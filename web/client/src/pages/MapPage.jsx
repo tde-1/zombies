@@ -100,6 +100,14 @@ export function MapBody({ mapKey: key }) {
 
   useEffect(() => { setD(null); setShot('art'); load() }, [load])
 
+  // A catalogue stub's old URL (lib/catalogueTwins.js): the server answered with the real map;
+  // put the real map's URL in the address bar so a share or a refresh lands on it directly.
+  useEffect(() => {
+    const m = d && d.map
+    if (!m || !m.redirected_from) return
+    try { window.history.replaceState(window.history.state, '', `/m/${encodeURIComponent(m.slug || m.key)}`) } catch { /* no history */ }
+  }, [d])
+
   // This map COMMITS the site's atmosphere: the projection steps up and nothing on the page
   // but another map can move it. Cleared on the way out so the page that follows is not lit
   // by a map nobody is looking at any more.
@@ -290,6 +298,12 @@ export function MapBody({ mapKey: key }) {
               {/* The finish scanner's own line ("Scanner verdict: …") is not the map's readme;
                   on 2026-09-23 it was the whole of every readme on the site. */}
               {readmeOf(m.readme) && <pre className="block" style={{ whiteSpace: 'pre-wrap' }}>{readmeOf(m.readme)}</pre>}
+              {/* Rows this map superseded (lib/catalogueTwins.js), kept as their own records. */}
+              {m.earlier_versions && m.earlier_versions.length > 0 && (
+                <p className="tiny" style={{ marginTop: 8, marginBottom: 0 }}>
+                  Earlier versions: {m.earlier_versions.map((v) => `${v.title}${v.year ? ` (${v.year})` : ''}`).join(' · ')}
+                </p>
+              )}
             </div>
           </Section>
 

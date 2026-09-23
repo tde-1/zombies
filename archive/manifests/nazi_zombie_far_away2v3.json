@@ -168,5 +168,46 @@
       "nazi_zombie_far_away2v3.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T23:50:54",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 178,
+    "fatal": 4,
+    "visible": 4,
+    "visible_owner": {
+      "release": 4
+    },
+    "visible_names": [
+      "item:zombie_perk_bottle_deadshot",
+      "item:zombie_perk_bottle_mulekick",
+      "item:zombie_perk_bottle_phd",
+      "item:zombie_perk_bottle_staminup"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95111 ms over the hold",
+    "first_error": null,
+    "match": "m_17f7962c",
+    "at": "2026-09-23T23:38:28",
+    "instance": "inst-17",
+    "com_frameTime_advance_ms": 95111,
+    "com_error": [],
+    "console_errors": [
+      "4834:Error: started from:",
+      "4838:Error: ************************************",
+      "4840:******* script runtime error *******",
+      "4844:Error: called from:",
+      "4848:Error: called from:",
+      "4852:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:zombie_perk_bottle_deadshot, item:zombie_perk_bottle_mulekick, item:zombie_perk_bottle_phd, item:zombie_perk_bottle_staminup",
+  "dedi_status": "box_map_loaded"
 }

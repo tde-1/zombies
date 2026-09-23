@@ -212,5 +212,45 @@
       "nazi_zombie_andromeda.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T23:50:54",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 184,
+    "fatal": 3,
+    "visible": 3,
+    "visible_owner": {
+      "release": 3
+    },
+    "visible_names": [
+      "item:mine_bouncing_betty",
+      "item:molotov",
+      "item:zombie_cymbal_monkey"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95139 ms over the hold",
+    "first_error": null,
+    "match": "m_5b67f352",
+    "at": "2026-09-23T23:10:50",
+    "instance": "inst-09",
+    "com_frameTime_advance_ms": 95139,
+    "com_error": [],
+    "console_errors": [
+      "8514:Error: started from:",
+      "8518:Error: ************************************",
+      "8520:******* script runtime error *******",
+      "8524:Error: called from:",
+      "8528:Error: called from:",
+      "8532:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:mine_bouncing_betty, item:molotov, item:zombie_cymbal_monkey",
+  "dedi_status": "box_map_loaded"
 }

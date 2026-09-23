@@ -165,5 +165,38 @@
       "nazi_zombie_death_row_patch.ff"
     ]
   },
-  "site_hidden": true
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T23:50:54",
+    "verdict": "clean",
+    "map_loaded_runs": 2,
+    "misses": 232,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95160 ms over the hold",
+    "first_error": null,
+    "match": "m_76ef56b9",
+    "at": "2026-09-23T23:25:15",
+    "instance": "inst-14",
+    "com_frameTime_advance_ms": 95160,
+    "com_error": [],
+    "console_errors": [
+      "4412:******* script runtime error *******",
+      "4416:Error: called from:",
+      "4420:Error: called from:",
+      "4424:Error: called from:",
+      "4428:Error: started from:",
+      "4432:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }
