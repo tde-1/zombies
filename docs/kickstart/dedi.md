@@ -3668,3 +3668,27 @@ one hit 60 → 40, second hit = down, 0 mismatches. It is a box DLL (server comp
 rule 17 from a clean worktree at the merge commit, rollback = the current box DLL `fd3039d2`. The
 first box game on a below-zero map should show `dedi_water_sim_off: post_init: r_gfxopt_water_simulation 1 -> 0`
 (or nothing, once an instance's config has archived the 0) and `solo_parity: slot 0 SPAWNED … on world`.
+
+### 28.8 Follow-up (19:15–19:30 UK): Nuketown was the client hanging; ILS was never in water
+
+**zm_nuked "stuck, scripted death at +45 s" (28.6) was the test CLIENT freezing, not the map.**
+`g2n4.client.enw.log`: `hang_watchdog: the MAIN THREAD … has not ticked for 8000 ms`, stack in
+`0x70E370` — the render-lock wait of lane CL's GPU occlusion-query hang (`client.md` §13, sun flare).
+With no usercmds the server never moved the player (frozen at vel z -87, "on nothing"), and the
+"death" at +45 s was the server dropping a client that had sent nothing for ~40 s. CL's
+`gpu_query_guard.cpp` (main, launcher **0.2.29**) fixes it: run **g2n5** (client DLL from main
+`07d924a`) — `gpu_query_guard: TRIPPED` on the client, the player spawns 100/100, stands on the world
+at -398.3, one zombie hit 61 → 39, the second 1.7 s later is the down → game over. 0 mismatches.
+Nothing map-side needed. `solo_parity` now tells the two apart: a player off the ground whose
+`lastUsercmd.serverTime` has not moved is `MISMATCH … CLIENT FROZEN`, not `FLOATING`.
+(The failed local solo listen of Nuketown is a separate thing: `Hunk_AllocateTempMemoryHigh` on a
+1,435,238,401-byte file read in the listen-only script/clientscript load path, 0x689980 → 0x68AED0.)
+
+**nazi_zombie_ils, g2i1 (fix on):** spawn (1588 -835 7) 100/100, drops to **-4.9 on the world** and
+stays there — so B's z ≈ -5 is ILS's floor, not water; hit 60 → 40, second hit = down; server
+58.4 Hz, `perf` p50 17.1 ms. 0 mismatches. The slowness B felt is not reproducible here (local,
+loopback); lane S2 attributes the box's ILS lag to Wine `VirtualQuery` CPU (their fix, not deployed).
+
+DLL at this commit (`build\g2final`, 2,677,760 bytes) sha256
+**`92b015691925b463f6eef74a7d712cffc54b3fa94e40023462907f2ecfbab403`** — it adds only the CLIENT
+FROZEN wording to `solo_parity`; the water fix is unchanged from `e7efde2c`.
