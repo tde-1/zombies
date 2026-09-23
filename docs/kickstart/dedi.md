@@ -3620,6 +3620,17 @@ G2's startup-order race (§28.9), not S2.
 * RS restart through the host path: unproven (needs a client sending `enw_req restart.<n>`).
 * RS idle auto-close, Nacht `m_07a483ce` left idle from 19:13 UTC: PROVEN: `19:18:02 host/inst-01 IDLE CLOSE: nobody joined within 300 s of the server being ready -- ending lease m_07a483ce (no_players)`; the game process was gone after.
 
+### 26.8 Addendum (lane REL, 19:34 UTC): S2 bot fixes on the box
+
+DLL **`70b28f5b`** (`70b28f5b025bd1edded67db142caa58ece0b121670568d8fa01f796f31e23e5f`), clean `ZombiesDev\wt-rel9`
+at local main `d8b580c` (= `1b482aa2`'s source + soc-loopfix (web only) + S2 `533cdae`: bots acknowledge every
+snapshot, look at the floor with no target, per-bot position line). Reviewed: every change is in
+`think_bots`/`minute_line`, reached only after `post_init` arms the component under `ENW_DEV_KNOBS=1`, so a
+player game runs the same code as `1b482aa2`; no launcher release. Deployed to the 7 production copies by
+temp + `mv` with no real player live (S2's Nacht soak `m_bd4f87b4`, fake …0003, kept running on its loaded
+image; `waw-tinst-*` untouched). Rollback `/home/waw/binkw32.rollback-1b482aa2.dll`. first new game on it pending at 19:34 UTC (the next lease, MAPS zombie_maze, was waiting on the RAM guard).
+Commit `d8b580c` is on local branches only (agent pushes blocked); main needs it pushed.
+
 ## 28. 2026-09-23 evening — lane G2: the "one-hit downs" are a phantom water surface at z=0 on the dedicated server (`water_sim_off.cpp`), plus a solo-parity self-check (`solo_parity.cpp`)
 
 B, 14:00–14:27 UTC on box DLL `04a3ad6d`: Nuketown down the instant he spawned (game over in 1 s),
