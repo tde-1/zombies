@@ -301,6 +301,19 @@ async function main() {
     eq((await call('POST', '/api/admin/leases/m_nope/retire', { as: ADMIN, body: {} })).status, 404, 'no such lease')
   })
 
+  await check('boxes: a live game the site has no seat data on is guarded too (everybody leased, marked unknown); presence counts', async () => {
+    const assignments = require('../server/lib/assignments')
+    const l = await call('POST', '/api/admin/lease', { as: ADMIN, body: { box: 'box-t', map: 'nazi_zombie_test', players: [{ steamid: MOD }, { steamid: FRIEND }], agent: false } })
+    eq(l.status, 200, 'lease')
+    assignments.ack(box, 'live', l.body.match_id)
+    const r = await call('POST', `/api/admin/leases/${l.body.match_id}/retire`, { as: ADMIN, body: {} })
+    eq(r.status, 409, 'refused while unknown'); eq(r.body.unknown, true, 'says unknown'); eq(r.body.players.length, 2, 'everybody leased')
+    require('../server/lib/presence').markInGame(FRIEND, { matchId: l.body.match_id, mapKey: 'nazi_zombie_test', box: 'box-t' })
+    const p = await call('POST', `/api/admin/leases/${l.body.match_id}/retire`, { as: ADMIN, body: {} })
+    eq(p.status, 409, 'refused'); eq(p.body.unknown, false, 'known from presence'); eq(p.body.players.map((x) => x.steam_id).join(','), FRIEND, 'just the one in it')
+    eq((await call('POST', `/api/admin/leases/${l.body.match_id}/retire`, { as: ADMIN, body: { confirm: FRIEND } })).status, 200, 'confirmed')
+  })
+
   // ---- 6. the log ----------------------------------------------------------------------
   await check('log: a write that logs nothing itself is caught as admin.action', async () => {
     const before = db.prepare("SELECT COUNT(*) c FROM activity_log WHERE event='admin.action'").get().c

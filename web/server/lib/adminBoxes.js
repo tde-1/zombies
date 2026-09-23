@@ -15,8 +15,9 @@
 // fresh lease for the same players, which supersedes their old one (assignments rule 1).
 //
 // THE GUARD. Neither goes through while somebody is in the game unless the request names
-// exactly who: `confirm` must be the sorted SteamIDs of the players the referee reports
-// connected. The panel shows those names in the dialog and sends them back. A stale dialog
+// exactly who: `confirm` must be the sorted SteamIDs of the players occupants() finds (seats,
+// presence, or, for a live game the site has no seat data on, everybody leased into it).
+// The panel shows those names in the dialog and sends them back. A stale dialog
 // (somebody joined since) gets the 409 again with the new list.
 
 const { db, now } = require('../db/database')
@@ -25,6 +26,7 @@ const boxes = require('./boxes')
 const assignments = require('./assignments')
 const seats = require('./seats')
 const users = require('./users')
+const presence = require('./presence')
 
 const LIVE = "('leased','ready','live')"
 
@@ -49,9 +51,23 @@ function playersOf(row) {
   })
 }
 
-/** Who a retire/restart would throw out: players the referee says are connected now. */
+/**
+ * Who a retire/restart would throw out.
+ *
+ *   * a player the referee's live frames say is connected (lib/seats.js), or
+ *   * a player the presence table has in THIS match within the last 90 s (the box roster;
+ *     it is in the database, so it survives a site restart), or
+ *   * when the lease is `live` and the site has heard nothing about its seats since it
+ *     started (seats are in memory): every leased player who has not quit, marked
+ *     `unknown`. Not knowing is not the same as nobody being there.
+ */
 function occupants(row) {
-  return playersOf(row).filter((p) => p.seat === 'connected')
+  const players = playersOf(row)
+  const recent = new Set(db.prepare('SELECT steam_id FROM presence WHERE match_id=? AND seen_at > ?')
+    .all(row.match_id, now() - presence.IN_GAME_MS).map((r) => String(r.steam_id)))
+  const sure = players.filter((p) => p.seat === 'connected' || recent.has(p.steam_id))
+  if (sure.length || row.state !== 'live' || seats.known(row.match_id)) return sure
+  return players.filter((p) => p.seat !== 'quit').map((p) => ({ ...p, unknown: true }))
 }
 
 const confirmKey = (list) => list.map((p) => p.steam_id).sort().join(',')
@@ -70,6 +86,7 @@ function leaseView(row, status) {
     ready_at: row.ready_at,
     players,
     in_game: players.filter((p) => p.seat === 'connected').length,
+    seats_known: seats.known(row.match_id),
     instance: inst ? { id: inst.id, port: inst.port, state: inst.state, phase: inst.phase, map_loaded: !!inst.map_loaded, uptime_ms: inst.uptime_ms, usage: inst.usage || null, restarts: inst.restarts || 0 } : null,
   }
 }
@@ -112,7 +129,7 @@ function guarded(matchId, confirm) {
   if (!['leased', 'ready', 'live'].includes(row.state)) return { status: 400, body: { error: `that lease is already ${row.state}` } }
   const who = occupants(row)
   if (who.length && String(confirm || '') !== confirmKey(who)) {
-    return { status: 409, body: { error: 'players are in this game', needs_confirm: true, players: who, confirm: confirmKey(who) } }
+    return { status: 409, body: { error: 'players are in this game', needs_confirm: true, players: who, unknown: who.some((p) => p.unknown), confirm: confirmKey(who) } }
   }
   return { row, who }
 }

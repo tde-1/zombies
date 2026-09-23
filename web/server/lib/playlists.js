@@ -102,8 +102,8 @@ function all() {
       state: p.state, live_from: p.live_from || null, sort_order: p.sort_order || 0, reward_badge: p.reward_badge || 0,
       updated_at: p.updated_at, created_by: p.created_by || null,
       maps: p.kind === 'creator'
-        ? mapsOf(p).map((m) => ({ key: m.key, title: m.title, health: m.health, hidden: !!m.hidden, missing: false }))
-        : keys.map((k) => { const m = known.get(k); return { key: k, title: m ? m.title : k, health: m ? m.health : null, hidden: m ? !!m.hidden : false, missing: !m } }),
+        ? mapsOf(p).map((m) => ({ key: m.key, title: m.title, health: m.health, hidden: !!m.hidden, missing: false, server: maps.serverLevel(m) }))
+        : keys.map((k) => { const m = known.get(k); return { key: k, title: m ? m.title : k, health: m ? m.health : null, hidden: m ? !!m.hidden : false, missing: !m, server: m ? maps.serverLevel(m) : null } }),
     }
   })
 }
