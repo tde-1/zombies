@@ -1,0 +1,185 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_gameplay",
+  "title": "FANATIC",
+  "source": "custom",
+  "author": "Dust",
+  "released": "February 10, 2014, 04:40:19 pm",
+  "fs_game": "mods/nazi_zombie_gameplay",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_gameplay.iwd": "dd57ae5a778c6b438ba4044ff5faafb08d684dc16b60b427dc9a4618e3e41f9f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 45000
+        }
+      },
+      "candidates": [
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 978,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        45000,
+        "zombie_door",
+        "door11"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "door9"
+      ],
+      [
+        2500,
+        "secret_trigger2",
+        "?"
+      ],
+      [
+        2500,
+        "secret_trigger",
+        "?"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door7"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 45000,
+      "targetname": "zombie_door",
+      "target": "door11",
+      "next_highest": 5000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "dd57ae5a778c6b438ba4044ff5faafb08d684dc16b60b427dc9a4618e3e41f9f",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "end_trig",
+      "end_trigger",
+      "jukebox",
+      "laser_control",
+      "laser_hurt",
+      "last_zone_trig",
+      "secret_trigger",
+      "secret_trigger2"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "fanatic.exe",
+    "original_sha256": "398c0fd6290183f2972f96c41dab24c5569ff266c5d02b851e90ffc80204c53f",
+    "original_size": 225516840,
+    "source_url": "https://www.mediafire.com/file/i6qfa80mzqoy72t/fanatic.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:17:44Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "nazi_zombie_gameplay.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_gameplay.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/fanatic/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/fanatic-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 86.5,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_gameplay.ff",
+      "nazi_zombie_gameplay_patch.ff",
+      "nazi_zombie_gameplay.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

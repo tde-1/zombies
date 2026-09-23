@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "salaj_malefics_spawn",
+  "title": "SALAJ MALEFICS SPAWN",
+  "source": "custom",
+  "author": "gustoman",
+  "released": "2017-09-09",
+  "fs_game": "mods/salaj_malefics_spawn",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "02e3f171a3a832112358e572a168807af544f03bc8671b0d71cf4f3bd38010fe"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000,
+        6000,
+        15000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 162,
+    "script_count": 162,
+    "entities": 251,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000,
+      15000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "02e3f171a3a832112358e572a168807af544f03bc8671b0d71cf4f3bd38010fe",
+    "map_specific_triggers": [
+      "hatchet_trig",
+      "ugx_wallweapon"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Salaj_Malefics_Spawn_v1.01.exe",
+    "original_sha256": "027385fcfbe66279efcf2539642a916efeebfa3692db70b7fd93d5c71015bbce",
+    "original_size": 379156242,
+    "source_url": "http://www.mediafire.com/file/sxgd15q16fhwpxg/Salaj_Malefics_Spawn_v1.01.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:17:20Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge",
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "SALAJ_MALEFIC\u2019S_SPAWN Challenging map with dust2 layout but in the street style. Most of you played my map already called SALAJ_DUST2, so this new map is in one open area on the T spawn. Do you think you can escape? HOW TO INSTALL When you download the map it may happen that windows defender will block this application. Just ignore that or if it says something like this \u201cclick here for more options\u201d just click on that and there will be more options for allow installation, so you can pass it and install it without any problem. COOP / Multiplayer If you want to play COOP with 3 or 4 friends it may happen that one of you got stuck on screen. If you are stuck just type to console \u201cpause\u201d and it should works. BETTER TEXTURES AND MODELS EXPERIENCE Before you lunch the mod just go to the settings/options and then graphic. Make sure that Specular Map is turned OFF \u201cNO\u201d. INFORMATION ABOUT MAP UGX v1.1 ( game modes: calssic, gungame, arcademod, king of the hill, sharpshooter, bounty hunter, chaos mode ) Challenge ( one area, no jugg, no revive ) 4 Perks The Hell\u2019s Retriever Pack a Punch Elemental Machine Weapons ( MW, BO1, BO2, BO3 ) CS:GO Ranking System Plant the Bomb C4 ( buyable ending ) Some Custom Models ( cod ghost models ) Xbox 360 Controller Support UPDATE v1.01 Fixed window glitch. Fixed windows frame on the buildings. Changed lamp models. New board of the ranks. Changed price for The Hell\u2019s Retriever CREDITS Creator: GU$TOMAN Map Tester: Patcher THANKS TO UGX Team \u2013 Thank you",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_camp.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_temp_background.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_template.iwi",
+        "ugxm_guns.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugxm_guns.iwd:images/ugx_logo_menu.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_arrow.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_overlay.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/salajmaleficsspawn/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2017/09/salaj-malefics-spawn-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 50.6,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 218,
+        "scripts": 71,
+        "bytes": 29301121
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 1137,
+        "scripts": 2,
+        "bytes": 183248876
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "salaj_malefics_spawn_patch.ff",
+      "ugx_mod.iwd:animscripts/death.gsc"
+    ]
+  },
+  "site_hidden": true
+}
