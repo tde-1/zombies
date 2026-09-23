@@ -538,6 +538,10 @@ HELPER_WEAPONS = {"zombie_knuckle_crack", "zombie_bowie_flourish",
 # Where a miss can be changed by us (the file exists and we do not deliver it to the process
 # that needs it) vs. is the release as its author built it (a retail listen server with the
 # same files misses it too).
+# Infrastructure items the shared `_zombiemode*.gsc` precaches whether or not the map's players
+# ever hold them (the American grenade beside the map's own stielhandgranate, the knife-lunge
+# weapon of some script sets): zm_nuked misses both. A client check, not a hide reason.
+UNCERTAIN_ITEMS = {"fraggrenade", "zombie_melee"}
 OURS = {"unshipped", "load_zone_only"}
 PATCHABLE = {"shipped_unloaded_zone"}   # the release ships it under a name nothing loads
 
@@ -551,7 +555,7 @@ def visible(r):
     if rl == "character":           # xanim / waited
         return bool(RX_CORE_AI_ANIM.search(n))
     if rl == "weapon":
-        if n in HELPER_WEAPONS:
+        if n in HELPER_WEAPONS or n in UNCERTAIN_ITEMS:
             return False
         if k in ("item", "weapon"):
             return True
@@ -566,8 +570,9 @@ def visible(r):
 
 def client_check(r):
     """A fatal-role miss only a client screenshot can settle (lane 13 recipe, archive.md 13)."""
-    return bool(r["fatal"] and r["kind"] == "xmodel" and r["role"] == "character"
-                and RX_PLAYER_SET.search(r["name"]))
+    return bool(r["fatal"] and ((r["kind"] == "xmodel" and r["role"] == "character"
+                                 and RX_PLAYER_SET.search(r["name"]))
+                                or r["name"].lower() in UNCERTAIN_ITEMS))
 
 
 def owner(where):
