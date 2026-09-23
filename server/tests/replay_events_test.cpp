@@ -409,7 +409,20 @@ static void test_reconnect() {
     check(count(out, "\"state\":\"done\"") == 1, "a new match forgets");
 }
 
+// Lane RV: ps.fWeaponPosFrac as the snap's `ads` (tenths), replay_events 2.
+static void test_ads() {
+    check(kVersion == 2, "replay_events is 2 once the ads field is written");
+    check(ads_tenths(0.0f) == 0, "hip is 0");
+    check(ads_tenths(1.0f) == 10, "fully aimed is 10");
+    check(ads_tenths(0.44f) == 4 && ads_tenths(0.45f) == 5 && ads_tenths(0.96f) == 10, "rounds to the nearest tenth");
+    check(ads_tenths(-0.005f) == 0 && ads_tenths(1.004f) == 10, "float noise at the ends clamps");
+    float nan = 0.0f; nan = nan / nan;
+    check(ads_tenths(nan) == -1, "NaN is not written");
+    check(ads_tenths(3.5f) == -1 && ads_tenths(-2.0f) == -1, "a value that is not a fraction is not written");
+}
+
 int main() {
+    test_ads();
     test_labels();
     test_json();
     test_weapon_and_pap();

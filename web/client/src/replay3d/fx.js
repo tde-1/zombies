@@ -153,6 +153,20 @@ export function weaponClass(name, table, raw) {
   return 'rifle'
 }
 
+// Lane RV (replay.md §14), B 2026-09-23: "guns that you don't have stored -- use the fake gun in
+// their place". What a held weapon with NO model in the pack is drawn as: not-guns (empty hands,
+// a bottle, a grenade, a knife) keep their own stand-in; every GUN is the one placeholder, the
+// procedural rifle, `unknown` so it is logged once and the pack can grow. Without a pack at all
+// (`assets` null, `?assets=off`) the §12 class placeholders stay: then nothing is "missing".
+export const NOT_GUNS = new Set(['none', 'bottle', 'grenade', 'melee'])
+export function placeholderFor(assets, name, raw, table) {
+  const cls = weaponClass(name, table, raw)
+  if (!assets || NOT_GUNS.has(cls)) return { cls, unknown: false }
+  if (assetWeapon(assets, name, raw)) return { cls, unknown: false }
+  const nm = String(raw || name || '')
+  return { cls: 'rifle', unknown: !!nm && !/^#/.test(nm) }
+}
+
 // Display names. The asset manifest's `displayName` is used when it is there; this table is
 // the fallback for the stock zombies weapons (the names the game's own HUD/wall-buys use), and
 // anything else is its file name made readable. Pack-a-Punch names are WaW's own.
@@ -359,6 +373,44 @@ export function buildFx(track, assets = null) {
   return fx
 }
 
+/**
+ * Lane RV (§14): sound cues for a replay that has no recorded ones. Every file before
+ * replay-events-v1 (and a v1 file whose weapon reads did not bind) has no `fire`/`damage` events,
+ * so §12 left it silent -- which is what B heard. What those files DO have is the attack button
+ * (`presses.fire`) and the health drops (`track.hits`): a shot per press, expanded by the weapon's
+ * fire type as §8.7's kick already does ([K] waw.js shotTimes), and a swipe per health drop. A
+ * player who has recorded cues of a kind gets no inferred ones of that kind.
+ *
+ * @param fx       buildFx()'s index (mutated: cues added, re-sorted)
+ * @param track    the decoded track
+ * @param shotsOf  (player) -> [ms]   the inferred shot times
+ * @param nameAt   (player, ms) -> weapon name at that time, or null
+ * @returns the number of cues added
+ */
+export function addInferredCues(fx, track, shotsOf, nameAt) {
+  if (!fx || !track) return 0
+  let n = 0
+  for (const p of track.players || []) {
+    if (!fx.fires.has(p.slot)) {
+      for (const ms of shotsOf(p) || []) {
+        fx.cues.push({ ms, kind: 'fire', pid: p.slot, name: nameAt(p, ms), pap: null, inferred: true })
+        n++
+      }
+    }
+  }
+  for (const h of track.hits || []) {
+    if (h.slot === undefined || fx.damage.has(h.slot)) continue
+    fx.cues.push({ ms: h.ms, kind: 'damage', pid: h.slot, inferred: true })
+    n++
+  }
+  if (n) {
+    fx.cues.sort((a, b) => a.ms - b.ms)
+    fx.cueMs = fx.cues.map((c) => c.ms)
+  }
+  fx.inferredCues = n
+  return n
+}
+
 // ------------------------------------------------------------------- queries --
 
 /**
@@ -553,6 +605,18 @@ export class CueScheduler {
  *   powerup_pickup -> powerups[kind].sounds.pickup, .announce (2D), .sting (2D, max ammo)
  *   powerup_end    -> powerups[kind].sounds.end (insta-kill / double points running out)
  */
+// Lane RV (§14): the fire sound of a gun the pack does not have -- the stock gun of its class
+// (its name's class, else a rifle, as the fake gun is drawn). Not-guns and the flamethrower are
+// silent. Before this, a custom map's gun (`m9`, `zombie_ppsh_ext`...) fired in silence.
+const STANDIN_SOUND = { pistol: 'colt', smg: 'thompson', rifle: 'm1carbine', mg: 'mp40', spread: 'shotgun', launcher: 'panzerschrek', raygun: 'ray_gun', wonder: 'tesla_gun' }
+export function standInWeapon(assets, name, raw) {
+  const W = assets && assets.weapons
+  if (!W) return null
+  const cls = weaponClass(name, null, raw)
+  if (NOT_GUNS.has(cls) || cls === 'flame') return null
+  return W[STANDIN_SOUND[cls]] || W.m1carbine || W.colt || null
+}
+
 export function soundsFor(cue, assets, pap, firstPerson) {
   if (!assets) return null
   const S = (assets.sounds && assets.sounds.general) || assets.sounds || {}
@@ -560,7 +624,7 @@ export function soundsFor(cue, assets, pap, firstPerson) {
   switch (cue.kind) {
     case 'fire': {
       const aw = assetWeapon(assets, cue.name, cue.raw)
-      const w = aw && aw.entry
+      const w = (aw && aw.entry) || standInWeapon(assets, cue.name, cue.raw)
       if (!w) return null
       const ws = w.sounds || {}
       const ps = (w.pap && w.pap.sounds) || {}

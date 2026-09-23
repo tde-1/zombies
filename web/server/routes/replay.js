@@ -46,6 +46,7 @@ class SlotState {
     this.stance = 'stand'
     this.seen = false
     this.va = null
+    this.ads = null   // replay.md §14: ps.fWeaponPosFrac 0..1, from replay_events 2 on; null = never recorded
   }
 
   apply(p) {
@@ -57,6 +58,7 @@ class SlotState {
     if (p.alive !== undefined) this.alive = p.alive
     if (p.weapon !== undefined) this.weapon = String(p.weapon)
     if (p.stance !== undefined) this.stance = p.stance
+    if (p.ads !== undefined && Number.isFinite(Number(p.ads))) this.ads = Math.max(0, Math.min(1, Number(p.ads)))
     if (p.cmd_ang !== undefined) this.cmd = p.cmd_ang
     // VIEW PITCH from the usercmd (replay.md §8.11). The usercmd angle is the view BEFORE
     // ps.delta_angles, which the DLL cannot read. The engine sets delta when it sets the
@@ -255,11 +257,11 @@ function buildTrack(file, replayLib, hz = 10) {
       // A slot that appears late still needs a full-length column, so it is back-filled
       // with the tick count so far. Otherwise tick N of slot 1 is tick N-k of slot 0 and
       // every player after the first is out of sync with the scrubber.
-      const c = { pos: [], ang: [], health: [], score: [], alive: [], fire: [], btn: [], wpn: [], pitch: [] }
+      const c = { pos: [], ang: [], health: [], score: [], alive: [], fire: [], btn: [], wpn: [], pitch: [], ads: [] }
       for (let i = 0; i < ticks; i++) {
         c.pos.push(0, 0, 0); c.ang.push(0, 0)
         c.health.push(0); c.score.push(0); c.alive.push(0); c.fire.push(0)
-        c.btn.push(0); c.wpn.push(0); c.pitch.push(null)
+        c.btn.push(0); c.wpn.push(0); c.pitch.push(null); c.ads.push(null)
       }
       cols.set(slot, c)
     }
@@ -341,6 +343,8 @@ function buildTrack(file, replayLib, hz = 10) {
       c.btn.push(btnCur.get(slot) || 0)
       c.wpn.push(wIndex(s.weapon))
       c.pitch.push(s.va ? r1(s.va[0]) : null)
+      // §14: the aim-down-sights fraction in tenths (0..10), or null where the DLL never sent it.
+      c.ads.push(s.ads === null ? null : Math.round(s.ads * 10))
     }
     zAlive.push(zAliveCur)
     kRound.push(kRoundCur)
@@ -409,6 +413,9 @@ function buildTrack(file, replayLib, hz = 10) {
       // which the engine keeps at 0 (§8.11). `pitch` is filled from the DLL's view angles
       // (`va`, 2026-09-22 late build) when the file has them; otherwise it is null.
       pitch: c.pitch.some((v) => v !== null) ? c.pitch : null,
+      // §14: ps.fWeaponPosFrac per tick in tenths (replay_events >= 2), else null -- then the
+      // viewer eases the ADS button (`presses.ads`) with the weapon's own transition times.
+      ads: c.ads.some((v) => v !== null) ? c.ads : null,
       presses: presses.get(slot) || { fire: [], frag: [], ads: [] },
       // §8.12: whether `score` was ever recorded for this player. The real DLL does not
       // record it yet (player_int("score") is unbound), and a column of zeros must not be

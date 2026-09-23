@@ -25,8 +25,9 @@ import {
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { toThree } from './scene.js'
-import { weaponClass, assetWeapon } from './fx.js'
+import { weaponClass, assetWeapon, placeholderFor, NOT_GUNS } from './fx.js'
 import { WEAPONS } from './waw.js'
+import { createFpHands } from './fphands.js'
 
 export const MAPDATA = '/mapdata'
 export const ASSETS_URL = `${MAPDATA}/_assets.json`
@@ -173,6 +174,11 @@ function placeOddParts(T) {
 
 // Classes that make no flash when they "fire".
 const NO_FLASH = new Set(['grenade', 'melee', 'none', 'bottle'])
+// Every GUN the pack does not have is drawn as THE placeholder -- the procedural rifle ("the fake
+// gun"), rifle-sized -- with the real weapon's name on the tag (fx.js placeholderFor; lane RV,
+// replay.md §14; B 2026-09-23 17:30). Not-guns (NOT_GUNS) keep their own stand-in.
+// Each unknown name is logged once per page, so the pack can grow (tools/models/assets-manifest.yml).
+const UNKNOWN_LOGGED = new Set()
 
 // ---------------------------------------------------------------- power-up stand-ins --
 
@@ -304,6 +310,10 @@ export function createGear(api, actors, assetsIn) {
   // Memoised per (name, raw, pap) so the per-frame call allocates nothing; an entry made while its
   // glb was still loading is recomputed once the load settles, and all of it on setAssets().
   const visCache = new Map()
+  const unknown = new Set()
+  // No weapon known at all (the column says none, or an index nobody bound) on a live player:
+  // still the fake rifle, so no one is drawn empty-handed.
+  const FAKE = { key: 'proc:rifle:', cls: 'rifle', glbScene: null, camo: false, muzzleTag: null, sprite: null, aspect: 1, unknown: true }
   function visualFor(name, pap, raw) {
     const ck = `${name}|${raw}|${pap ? 1 : 0}`
     const hit = visCache.get(ck)
@@ -326,6 +336,19 @@ export function createGear(api, actors, assetsIn) {
         v = { key: `glb:${u}`, cls, glbScene: e.scene, camo: false, muzzleTag: mz.tag || 'tag_flash', sprite: mz.spriteUrl || mz.sprite, aspect: fxAspect(mz.sprite), grip }
       } else if (e && e.state === 'loading') pending = e
       if (!v) v = { key: `proc:${cls}:${pap && !(w.pap && w.pap.sameWorldModelAsBase) ? 'pap' : ''}`, cls, glbScene: null, camo: !!pap && !(w.pap && w.pap.sameWorldModelAsBase), muzzleTag: null, sprite: mz.spriteUrl || mz.sprite, aspect: fxAspect(mz.sprite) }
+    }
+    if (!v && assets && !NOT_GUNS.has(cls)) {
+      // A gun the pack does not have: the fake rifle, never an empty hand.
+      const ph = placeholderFor(assets, name, raw, WEAPONS)
+      const nm = String(raw || name || '')
+      if (ph.unknown) {
+        unknown.add(nm)
+        if (!UNKNOWN_LOGGED.has(nm)) {
+          UNKNOWN_LOGGED.add(nm)
+          try { console.info(`[replay] weapon not in the asset pack, drawn as the placeholder rifle: ${nm}`) } catch { /* no console */ }
+        }
+      }
+      v = { key: `proc:rifle:${pap ? 'pap' : ''}`, cls: 'rifle', glbScene: null, camo: !!pap, muzzleTag: null, sprite: null, aspect: 1, unknown: ph.unknown }
     }
     if (!v) v = { key: `proc:${cls}:${pap ? 'pap' : ''}`, cls, glbScene: null, camo: !!pap && cls !== 'none' && cls !== 'bottle', muzzleTag: null, sprite: null, aspect: 1 }
     visCache.set(ck, { v, pending })
@@ -402,9 +425,9 @@ export function createGear(api, actors, assetsIn) {
     for (let i = 0; i < list.length; i++) {
       const p = list[i]
       const st = state(p.slot)
-      if (!st || !st.name || !p.alive || (eyes && p.slot === focus)) continue
+      if (!p.alive || (eyes && p.slot === focus)) continue
       const s = slotGear(p.slot)
-      setGun(s, visualFor(st.name, st.pap, st.raw))
+      setGun(s, st && st.name ? visualFor(st.name, st.pap, st.raw) : FAKE)
       s.holder.visible = true
       const h = actors && actors.handOf ? actors.handOf(p.slot) : null
       const yaw = (p.yaw || 0) * Math.PI / 180
@@ -462,8 +485,21 @@ export function createGear(api, actors, assetsIn) {
   const VM_REST = { x: 6.5, y: -6.5, z: -10 }
   vm.position.set(VM_REST.x, VM_REST.y, VM_REST.z)
   const vmState = { key: '', gun: null, muzzle: null, cls: 'rifle', kick: 0, phase: 0 }
+  // Lane RV (§14): the real first person -- the game's arms holding the gun's own viewmodel,
+  // posed by its idle / ADS animation. Until it (and this gun) are loaded, and for a gun the pack
+  // does not have, the placeholder above is drawn instead.
+  const fp = createFpHands(MAPDATA)
+  fp.onChange = () => { if (api.onGearLoaded) api.onGearLoaded() }
+  fp.setAssets(assets)
+  const fpRoot = new Group()
+  fpRoot.add(fp.root)
+  vm.add(fpRoot)
+  let fpOn = false
+  let flashHome = null
   function setViewmodelWeapon(name, pap, raw) {
-    const v = visualFor(name || 'm1garand', !!pap, name ? raw : null)
+    const aw = name ? assetWeapon(assets, name, raw) : null
+    fp.setWeapon(aw && aw.entry, !!pap || !!(aw && aw.pap))
+    const v = name ? visualFor(name, !!pap, raw) : FAKE
     if (vmState.key === v.key) return
     if (vmState.gun) vmInner.remove(vmState.gun)
     const b = buildVisual(v)
@@ -475,17 +511,17 @@ export function createGear(api, actors, assetsIn) {
     const back = { none: 0, bottle: 4, rifle: -10, mg: -12, spread: -9, launcher: -8, wonder: -6, flame: -6, smg: -4, pistol: 2, raygun: 2, grenade: 4, melee: 4 }[v.cls] || -6
     vmState.gun.position.set(back, 0, 0)
     vmInner.add(vmState.gun)
-    ;(vmState.muzzle || vmState.gun).add(vmFlash)
+    if (!fpOn) { (vmState.muzzle || vmState.gun).add(vmFlash); flashHome = vmState.muzzle || vmState.gun }
     vmFlash.material.map = v.sprite ? spriteTex(v.sprite) : defaultFlashSprite
     vmState.aspect = v.aspect || 1
   }
-  setViewmodelWeapon('m1garand', false)
+  setViewmodelWeapon(null, false)
   /**
    * @param fireAge ms since the focused player's last recorded shot (Infinity: none yet), or
    *   null when the file has no fire events for them -- then `held` (the attack button is down)
    *   kicks it the old way (§8.7).
    */
-  function updateViewmodel(fireAge, fireMs, held, dt) {
+  function updateViewmodel(fireAge, fireMs, held, dt, adsFrac) {
     const recorded = fireAge !== null && fireAge !== undefined
     if (recorded) {
       vmState.kick = fireAge < 90 ? 1 - fireAge / 90 : 0
@@ -494,8 +530,21 @@ export function createGear(api, actors, assetsIn) {
       vmState.kick = Math.max(0, vmState.kick - dt * 12)
     }
     const k = vmState.kick
-    vm.position.set(VM_REST.x, VM_REST.y + k * 0.4, VM_REST.z + k * 2.2)
-    vm.rotation.x = k * 0.12
+    // The real arms sit at the eye (tag_view) and move by their own pose; the placeholder keeps
+    // its §8.7 rest point. Aiming steadies the kick, as the game's ADS recoil does.
+    const a = Math.max(0, Math.min(1, adsFrac || 0))
+    fpOn = fp.update(a)
+    vmInner.visible = !fpOn
+    const kk = k * (1 - 0.6 * a)
+    if (fpOn) {
+      vm.position.set(0, kk * 0.25, kk * 1.4)
+      vm.rotation.x = kk * 0.05
+    } else {
+      vm.position.set(VM_REST.x, VM_REST.y + k * 0.4, VM_REST.z + k * 2.2)
+      vm.rotation.x = k * 0.12
+    }
+    const home = fpOn ? (fp.muzzle || fp.root) : (vmState.muzzle || vmState.gun)
+    if (home && home !== flashHome) { home.add(vmFlash); flashHome = home }
     const on = recorded ? fireAge < 60 : k > 0.6
     vmFlash.visible = on && !NO_FLASH.has(vmState.cls)
     if (vmFlash.visible) {
@@ -553,6 +602,7 @@ export function createGear(api, actors, assetsIn) {
 
   function dispose() {
     api.scene.remove(root)
+    fp.dispose()
     for (const x of owned) { try { x.dispose() } catch { /* already gone */ } }
     for (const e of glbs.values()) {
       if (!e.scene) continue
@@ -567,6 +617,7 @@ export function createGear(api, actors, assetsIn) {
   function setAssets(a) {
     assets = a || null
     visCache.clear()
+    fp.setAssets(assets)
     setGrip()
     const glowFx = assets && assets.fx && assets.fx.powerup_glow
     if (glowFx && glowFx.url) {
@@ -594,10 +645,13 @@ export function createGear(api, actors, assetsIn) {
   return {
     root, update, setPowerups, dispose, setAssets, preload,
     viewmodel: vm, setViewmodelWeapon, updateViewmodel,
+    // The real first person's numbers for the camera: whether it is drawn, and the gun's ADS FOV.
+    fpState: () => ({ on: fpOn, zoomFov: fp.fp ? fp.fp.adsZoomFov : null, inMs: fp.fp ? fp.fp.adsInMs : null, outMs: fp.fp ? fp.fp.adsOutMs : null }),
+    fpInfoFor: (name, pap, raw) => { const aw = name ? assetWeapon(assets, name, raw) : null; const e = aw && aw.entry; const v = e && (pap || aw.pap) && e.pap ? e.pap : e; return (v && v.fp) || (e && e.fp) || null },
     // ?r3ddebug (window.__r3d.fx()): what is drawn right now, for the render check (replay.md §12).
     info: () => ({
       slots: [...slots.entries()].map(([k, s]) => ({ slot: k, key: s.key, shown: s.holder.visible, flash: s.flash.visible })),
-      vm: vmState.key, vmFlash: vmFlash.visible,
+      vm: vmState.key, vmFlash: vmFlash.visible, fp: fp.info(), fpOn, unknown: [...unknown],
       pickups: pups.filter((p) => p.holder.visible).map((p) => p.key),
       glbs: [...glbs.entries()].map(([u, e]) => [u, e.state]),
     }),

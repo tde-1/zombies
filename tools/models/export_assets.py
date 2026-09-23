@@ -55,7 +55,9 @@ except ImportError:
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import export_models  # noqa: E402  (the skinned writer, for the first-person arms)
 from export_models import Gltf, q2m  # noqa: E402  (the glTF reader the player models use)
+from xanim import read_xanim, pose as xanim_pose  # noqa: E402  (compiled xanim v17 reader)
 
 DEV = Path(os.environ.get("ZOMBIES_DEV", r"C:\Users\b\ZombiesDev"))
 
@@ -84,7 +86,8 @@ JPEG_QUALITY = 82
 GLB_BUDGET = 450 * 1024  # bytes per world/power-up .glb; the build fails over it
 VIEW_BUDGET = 700 * 1024 # bytes per viewmodel .glb (the tesla gun's is 13.8 k triangles)
 ALPHA_TEX = 256          # px cap for a colour map whose alpha is used (it stays PNG)
-PACK_BUDGET = 15 * 1024 * 1024
+PACK_BUDGET = 20 * 1024 * 1024   # 15 until 2026-09-23 (RV): every stock gun + PaP + the arms is ~16
+DEFAULT_GRIP_POINT = [-10.5, -2.0, 0]   # a gun the manifest gives no measured grip (§3: origin ~10 u ahead)
 OGG_QUALITY = "3"        # libvorbis -q:a (~80-110 kbit/s stereo, ~50 mono); a sound may override
 
 LOG_LINES: list = []
@@ -236,6 +239,134 @@ def unlink(zone: str, assets: str, force: bool) -> Path:
 
 def dump(zone: str) -> Path:
     return WORK / "dump" / zone
+
+
+def zone_list(zone: str) -> list:
+    """`Unlinker --list` of a zone (every asset, in zone order), cached next to the dump. The
+    order is what ties a sound alias to its loaded sound (assets-pipeline.md §4)."""
+    ff = WAW / "zone" / "english" / f"{zone}.ff"
+    out = WORK / "lists" / f"{zone}.txt"
+    stamp = out.with_suffix(".stamp")
+    want = f"{ff.stat().st_size}|{int(ff.stat().st_mtime)}"
+    if not (out.is_file() and stamp.is_file() and stamp.read_text() == want):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        r = subprocess.run([str(OAT), "--list", "--search-path", f"{WAW / 'main'};{WAW / 'zone' / 'english'}", str(ff)],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            sys.exit(f"Unlinker --list {zone} failed ({r.returncode}): {r.stderr[-800:]}")
+        out.write_text(r.stdout, encoding="utf8")
+        stamp.write_text(want)
+    return [l.strip() for l in out.read_text(encoding="utf8").splitlines()]
+
+
+def loaded_sound_path(file: str):
+    """The dumped loaded sound for a zone-list file name, in any zone dumped with loadedsound."""
+    for z in sorted(p.name for p in (WORK / "dump").iterdir() if p.is_dir()):
+        base = dump(z) / "sound" / file
+        for p in (base, base.with_suffix(".xwma"), base.with_suffix(".wav")):
+            if p.is_file():
+                return z, p
+    return None, None
+
+
+def resolve_alias(alias: str, zones: list):
+    """Sound alias -> (zone, file) by zone order: the loadedsound lines right before
+    `sound, <alias>`. An alias with none right before it reuses a file loaded earlier in the zone,
+    which the list cannot name -- then None, and the caller uses a stand-in (logged)."""
+    if not alias:
+        return None
+    key = f"sound, {alias.lower()}"
+    for zone in zones:
+        lines = zone_list(zone)
+        low = [l.lower() for l in lines]
+        for i, l in enumerate(low):
+            if l != key:
+                continue
+            files, j = [], i - 1
+            while j >= 0 and low[j].startswith("loadedsound, "):
+                files.insert(0, lines[j][len("loadedsound, "):])
+                j -= 1
+            for f in files:
+                z, p = loaded_sound_path(f)
+                if p is not None:
+                    return z, f
+    return None
+
+
+# The first-person arms and the weapon's own viewmodel animation (replay.md §14). Stock zombies
+# dresses every player's view in viewmodel_usa_marine_arms (_loadout.gsc, every nazi_zombie_*
+# branch); the gun's viewmodel hangs on the arms' tag_weapon by its root bone j_gun, and the
+# weapon file's idleAnim / adsUpAnim pose both. Bone values are LOCAL, engine frame.
+FP_KEEP = ("j_gun",)
+
+
+def fp_pose_of(zone: str, anim: str, frame: str, arms_bones: set):
+    if not anim:
+        return None
+    # The weapon's own zone first, then every other dump (the Colt's anims live in `common`,
+    # the zone every map loads for the starting pistol).
+    p = None
+    for z in [zone] + sorted(x.name for x in (WORK / "dump").iterdir() if x.is_dir() and x.name != zone):
+        d = dump(z) / "xanim"
+        if not d.is_dir():
+            continue
+        cand = [x for x in sorted(d.iterdir()) if x.name.lower() == anim.lower()]
+        if cand:
+            p = cand[0]
+            break
+    if p is None:
+        return None
+    a = read_xanim(p)
+
+    def bones_at(fr):
+        ps = xanim_pose(a, fr)
+        out = {}
+        for bone in sorted(ps):
+            if bone not in arms_bones and bone not in FP_KEEP:
+                continue
+            v = ps[bone]
+            if v["q"] is None and v["t"] is None:
+                continue
+            out[bone] = [None if v["q"] is None else [round(x, 5) + 0.0 for x in v["q"]],
+                         None if v["t"] is None else [round(x, 4) + 0.0 for x in v["t"]]]
+        return out
+    if frame == "all":
+        # The ADS anim is SCRUBBED by the aim fraction in the engine: frame 0 is the hip pose
+        # (it is also adsDownAnim's last frame), the last frame the sights. Every frame is kept.
+        return {"anim": p.name, "frames": a["frames"], "seq": [bones_at(f) for f in range(a["frames"] + 1)]}
+    return {"anim": p.name, "frames": a["frames"], "bones": bones_at(0 if frame == "first" else a["frames"])}
+
+
+def fp_info(zone: str, wf: dict, arms_bones: set, poses: dict) -> dict:
+    """Per weapon variant: which poses to use (keys into fp_poses.json), the stand offsets and the
+    ADS numbers from the weapon file."""
+    f = lambda k, d=0.0: float(wf.get(k) or d)  # noqa: E731
+    info = {"standMove": [f("standMoveF"), f("standMoveR"), f("standMoveU")],
+            "adsZoomFov": f("adsZoomFov", 0) or None,
+            "adsInMs": int(round(f("adsTransInTime") * 1000)), "adsOutMs": int(round(f("adsTransOutTime") * 1000)),
+            "idle": None, "ads": None}
+    for slot, anim, frame in (("idle", wf.get("idleAnim"), "first"), ("ads", wf.get("adsUpAnim"), "all")):
+        if not anim:
+            continue
+        key = f"{anim.lower()}@{frame}"
+        if key not in poses:
+            pz = fp_pose_of(zone, anim, frame, arms_bones)
+            if pz is None:
+                log(f"  note: anim {anim} not in the {zone} dump")
+                continue
+            poses[key] = pz
+        info[slot] = key
+    return info
+
+
+def build_viewhands(name: str, spec: dict, out_path: Path) -> dict:
+    """The arms, skinned (the player models' writer), bind pose; the viewer poses the bones."""
+    export_models.WORK = WORK          # read the arms from THIS pipeline's dump
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    body, bjoints, bnames, groups, _ = export_models.build_model(name, spec["zone"], "viewhands", [spec["xmodel"]], 0)
+    r = export_models.write_glb(out_path, name, "viewhands", [spec["xmodel"]], body, bjoints, groups)
+    wrote(out_path)
+    return dict(r, xmodel=spec["xmodel"], bones=sorted(bnames), root=bnames[0])
 
 
 # ---------------------------------------------------------------------------
@@ -719,6 +850,39 @@ def main():
         old = json.loads(manifest_path.read_text(encoding="utf8"))
     problems = []
 
+    # --- weapons the manifest lists by weapon file only: world/view models, flash and fire
+    # sounds come from the weapon file, the sounds' files from zone order (resolve_alias). A
+    # sound the zone lists cannot name gets a same-class stand-in, said so in the log and in
+    # _assets.json (`soundStandIn`).
+    sound_zones = [z for z, t in m["zones"].items() if "loadedsound" in t]
+    stand_in = m.get("sound_stand_ins") or {}
+    for wname, w in m["weapons"].items():
+        for variant, spec in (("base", w), ("pap", w.get("pap"))):
+            if not spec:
+                continue
+            wf = read_weapon(w["zone"], spec["weapon"])
+            spec.setdefault("world", wf.get("worldModel"))
+            spec.setdefault("view", wf.get("gunModel"))
+            spec.setdefault("flash", wf.get("worldFlashEffect") or "")
+            spec.setdefault("muzzle", w.get("muzzle") or "muzzle_rifle")
+            for key, field in (("fire", "fireSound"), ("fire_plr", "fireSoundPlayer")):
+                if spec.get(key):
+                    continue
+                alias = wf.get(field) or ""
+                if variant == "pap" and "ubershot" in alias.lower():
+                    spec[key] = "uber_fire_plr" if key == "fire_plr" else "uber_fire"
+                    continue
+                skey = f"{wname}{'_pap' if variant == 'pap' else ''}_{key}"
+                hit = resolve_alias(alias, [w["zone"]] + [z for z in sound_zones if z != w["zone"]])
+                if hit:
+                    m["sounds"][skey] = {"zone": hit[0], "file": hit[1], "alias": alias}
+                    spec[key] = skey
+                else:
+                    si = (stand_in.get(w.get("cls") or "") or stand_in.get("default") or {}).get(key)
+                    spec[key] = si
+                    spec.setdefault("soundStandIn", {})[key] = si
+                    log(f"  note {wname}/{variant}: {field} {alias!r} has no loaded sound in zone order; stand-in {si}")
+
     # --- sounds first: the weapons and power-ups point at them
     sounds = old.get("sounds", {}) if only and "sounds" not in only else {}
     if not only or "sounds" in only:
@@ -750,9 +914,17 @@ def main():
 
     # --- weapons
     weapons = old.get("weapons", {}) if only and "weapons" not in only else {}
+    viewhands = old.get("viewhands", {}) if only and "weapons" not in only else {}
+    fp_poses = {}
     if not only or "weapons" in only:
         wd = OUT / "_weapons"
         names = strings()
+        arms_bones = set()
+        for hname, h in (m.get("viewhands") or {}).items():
+            r = build_viewhands(f"viewhands_{hname}", h, wd / f"viewhands_{hname}.glb")
+            viewhands[hname] = {"glb": f"_weapons/viewhands_{hname}.glb", "model": r, "maps": h.get("maps", "all")}
+            arms_bones |= set(r["bones"])
+            log(f"hands  viewhands_{hname:13s} {r['bytes'] / 1024:6.1f} KB {r['triangles']:5d} tris {r['joints']} joints  {h['xmodel']}")
         for wname, w in m["weapons"].items():
             zone = w["zone"]
             entry = {}
@@ -792,6 +964,10 @@ def main():
                 check("tag_flash" in world_tags, f"{wname}/{variant}: world model has no tag_flash", problems)
                 check(spec["muzzle"] in m["fx"], f"{wname}/{variant}: muzzle sprite {spec['muzzle']} not in fx", problems)
                 info["sounds"] = {"fire": snd(spec.get("fire")), "fire_plr": snd(spec.get("fire_plr"))}
+                if spec.get("soundStandIn"):
+                    info["soundStandIn"] = spec["soundStandIn"]
+                if arms_bones:
+                    info["fp"] = fp_info(zone, wf, arms_bones, fp_poses)
                 if variant == "base":
                     entry.update(info)
                 else:
@@ -805,7 +981,20 @@ def main():
             if entry.get("pap"):
                 entry["sounds"]["fire_pap"] = entry["pap"]["sounds"]["fire"]
                 entry["sounds"]["fire_pap_plr"] = entry["pap"]["sounds"]["fire_plr"]
+            if w.get("aliases"):
+                entry["aliases"] = list(w["aliases"])
+            if not w.get("grip"):
+                entry["attach"]["gripLocal"] = grip_local(grip, DEFAULT_GRIP_POINT)
+                if entry["attach"]["gripLocal"]:
+                    entry["attach"]["gripLocal"]["gripPointSource"] = "default (the origin sits ~10 u ahead of the grip, §3); not measured"
             weapons[wname] = entry
+        if fp_poses:
+            (wd / "fp_poses.json").write_text(json.dumps({"frame": "engine, bone-local: [quat xyzw | null, trans xyz | null]",
+                                                          "poses": fp_poses}, separators=(",", ":"), sort_keys=True),
+                                              encoding="utf8")
+            wrote(wd / "fp_poses.json")
+            log(f"fp     {len(fp_poses)} viewmodel poses -> _weapons/fp_poses.json "
+                f"{(wd / 'fp_poses.json').stat().st_size / 1024:.1f} KB")
 
     # --- power-ups
     powerups = old.get("powerups", {}) if only and "powerups" not in only else {}
@@ -837,9 +1026,15 @@ def main():
         "attach": dict(m["attach"], grip={k: v for k, v in grip.items() if k != "palm"} if grip else None),
         "weapons": weapons,
         # The replay's `weapon` field / event is the engine name (replay-events-v1.md): look it up here.
-        "weaponByEngineName": {**{w["weapon"]: {"weapon": k, "pap": False} for k, w in m["weapons"].items()},
+        # `aliases` are the same gun's names on the older maps (Nacht's `thompson`, Verrückt's
+        # `bar_bipod`): drawn with Der Riese's model.
+        "weaponByEngineName": {**{a: {"weapon": k, "pap": False} for k, w in m["weapons"].items() for a in (w.get("aliases") or [])},
+                               **{w["weapon"]: {"weapon": k, "pap": False} for k, w in m["weapons"].items()},
                                **{w["pap"]["weapon"]: {"weapon": k, "pap": True}
                                   for k, w in m["weapons"].items() if w.get("pap")}},
+        "viewhands": viewhands,
+        "viewhandsDefault": (m.get("viewhands_default") or (sorted(viewhands)[0] if viewhands else None)),
+        "fpPoses": "_weapons/fp_poses.json" if (fp_poses or (only and "weapons" not in only and old.get("fpPoses"))) else None,
         "powerups": powerups,
         "fx": fx,
         "fxJson": "_fx/fx.json",
@@ -865,7 +1060,8 @@ def main():
     for d in ("_weapons", "_powerups", "_fx", "_sounds"):
         for f in sorted((OUT / d).glob("*")):
             total += f.stat().st_size
-            if f.suffix == ".glb" and f.stat().st_size > (VIEW_BUDGET if f.stem.endswith("_view") else GLB_BUDGET):
+            big = f.stem.endswith("_view") or f.stem.startswith("viewhands_")
+            if f.suffix == ".glb" and f.stat().st_size > (VIEW_BUDGET if big else GLB_BUDGET):
                 over.append(f"{d}/{f.name} {f.stat().st_size // 1024} KB")
     log(f"pack total {total / 1024 / 1024:.2f} MB (budget {PACK_BUDGET // 1024 // 1024} MB); wrote {manifest_path}")
     log(f"done in {time.time() - t0:.1f}s")
