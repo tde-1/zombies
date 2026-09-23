@@ -169,5 +169,62 @@
       "annihilation.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T23:50:54",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 197,
+    "fatal": 43,
+    "visible": 26,
+    "visible_owner": {
+      "release": 26
+    },
+    "visible_names": [
+      "item:ithacha_mp",
+      "weapon:weapons/sp/ithacha_mp",
+      "xanim:zombie_dog_attack_look_down",
+      "xanim:zombie_dog_attack_look_left",
+      "xanim:zombie_dog_attack_look_right",
+      "xanim:zombie_dog_attack_look_up",
+      "xanim:zombie_dog_attack_player_miss_turnl",
+      "xanim:zombie_dog_attack_player_miss_turnr",
+      "xanim:zombie_dog_attackidle",
+      "xanim:zombie_dog_attackidle_bark",
+      "xanim:zombie_dog_attackidle_growl",
+      "xanim:zombie_dog_idle",
+      "xanim:zombie_dog_run",
+      "xanim:zombie_dog_run_attack",
+      "xanim:zombie_dog_run_attack_low",
+      "xanim:zombie_dog_run_attack_miss",
+      "xanim:zombie_dog_run_jump_40",
+      "xanim:zombie_dog_run_jump_window_40",
+      "xanim:zombie_dog_run_lean_l",
+      "xanim:zombie_dog_run_lean_r"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95129 ms over the hold",
+    "first_error": null,
+    "match": "m_625a54e0",
+    "at": "2026-09-23T23:14:30",
+    "instance": "inst-10",
+    "com_frameTime_advance_ms": 95129,
+    "com_error": [],
+    "console_errors": [
+      "8045:Error: started from:",
+      "8049:Error: ************************************",
+      "8051:******* script runtime error *******",
+      "8055:Error: called from:",
+      "8059:Error: called from:",
+      "8063:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:ithacha_mp, weapon:weapons/sp/ithacha_mp, xanim:zombie_dog_attack_look_down, xanim:zombie_dog_attack_look_left, xanim:zombie_dog_attack_look_right, xanim:zombie_dog_attack_look_up",
+  "dedi_status": "box_map_loaded"
 }

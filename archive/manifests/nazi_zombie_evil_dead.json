@@ -177,5 +177,50 @@
       "evil_dead.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T23:50:54",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 226,
+    "fatal": 8,
+    "visible": 8,
+    "visible_owner": {
+      "release": 8
+    },
+    "visible_names": [
+      "item:zombie_gewehr43",
+      "item:zombie_gewehr43_upgraded",
+      "item:zombie_kar98k",
+      "item:zombie_kar98k_upgraded",
+      "item:zombie_m1carbine",
+      "item:zombie_m1carbine_upgraded",
+      "item:zombie_m1garand",
+      "item:zombie_m1garand_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95134 ms over the hold",
+    "first_error": "Could not load xmodel \"viewmodel_zombie_m1garand_rifle_up\".",
+    "match": "m_cdc45c0d",
+    "at": "2026-09-23T23:18:04",
+    "instance": "inst-11",
+    "com_frameTime_advance_ms": 95134,
+    "com_error": [],
+    "console_errors": [
+      "4362:Error: started from:",
+      "4366:Error: ************************************",
+      "4367:Error: Could not load xmodel \"viewmodel_zombie_m1garand_rifle_up\".",
+      "4368:Error: Could not load xmodel \"weapon_zombie_m1garand_rifle_up\".",
+      "4370:******* script runtime error *******",
+      "4371:unknown item 'zombie_m1garand_upgraded': (file 'maps/_zombiemode_weapons.gsc', line 41)"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:zombie_gewehr43, item:zombie_gewehr43_upgraded, item:zombie_kar98k, item:zombie_kar98k_upgraded, item:zombie_m1carbine, item:zombie_m1carbine_upgraded",
+  "dedi_status": "box_map_loaded"
 }

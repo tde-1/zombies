@@ -30,3 +30,13 @@ ahkanto
 chickn
 nazi_zombie_die_festung
 nazi_zombie_hijacked
+annihilation
+nazi_zombie_andromeda
+nazi_zombie_devas
+nazi_zombie_evil_dead
+hellokitty_remastered
+nazi_zombie_death_row
+nazi_zombie_estate_v2
+nazi_zombie_far_away2v3
+nazi_zombie_feto
+nazi_zombie_gameplay

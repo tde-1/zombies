@@ -188,5 +188,62 @@
       "ugxm_guns.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T23:50:54",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 225,
+    "fatal": 46,
+    "visible": 24,
+    "visible_owner": {
+      "release": 24
+    },
+    "visible_names": [
+      "xanim:zombie_dog_attack_look_down",
+      "xanim:zombie_dog_attack_look_left",
+      "xanim:zombie_dog_attack_look_right",
+      "xanim:zombie_dog_attack_look_up",
+      "xanim:zombie_dog_attack_player_miss_turnl",
+      "xanim:zombie_dog_attack_player_miss_turnr",
+      "xanim:zombie_dog_attackidle",
+      "xanim:zombie_dog_attackidle_bark",
+      "xanim:zombie_dog_attackidle_growl",
+      "xanim:zombie_dog_idle",
+      "xanim:zombie_dog_run",
+      "xanim:zombie_dog_run_attack",
+      "xanim:zombie_dog_run_attack_low",
+      "xanim:zombie_dog_run_attack_miss",
+      "xanim:zombie_dog_run_jump_40",
+      "xanim:zombie_dog_run_jump_window_40",
+      "xanim:zombie_dog_run_lean_l",
+      "xanim:zombie_dog_run_lean_r",
+      "xanim:zombie_dog_run_stop",
+      "xanim:zombie_dog_run_turn_180_left"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95166 ms over the hold",
+    "first_error": "Could not load rawfile \"shock/zombie_death.shock\".",
+    "match": "m_274b1f63",
+    "at": "2026-09-23T22:45:29",
+    "instance": "inst-08",
+    "com_frameTime_advance_ms": 95166,
+    "com_error": [],
+    "console_errors": [
+      "3404:Error: started from:",
+      "3408:Error: ************************************",
+      "3410:******* script runtime error *******",
+      "3414:Error: called from:",
+      "3418:Error: called from:",
+      "3422:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: xanim:zombie_dog_attack_look_down, xanim:zombie_dog_attack_look_left, xanim:zombie_dog_attack_look_right, xanim:zombie_dog_attack_look_up, xanim:zombie_dog_attack_player_miss_turnl, xanim:zombie_dog_attack_player_miss_turnr",
+  "dedi_status": "box_map_loaded"
 }
