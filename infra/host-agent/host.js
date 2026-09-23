@@ -24,7 +24,7 @@ import { InstanceManager, devKnobsFor } from './lib/instances.js'
 import { Referee } from './lib/referee.js'
 import { ManifestStore } from './lib/manifests.js'
 import { ReplayWriter } from './lib/replay.js'
-import { TokenGuard } from './lib/tokens.js'
+import { TokenGuard, checkBinding } from './lib/tokens.js'
 import * as keys from './lib/keys.js'
 import { SiteClient } from './lib/siteclient.js'
 import { leaseList, planLeases } from './lib/leases.js'
@@ -33,6 +33,8 @@ import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
 import { onRestartRequest, handOver } from './lib/restart.js'   // a player's Restart game (esc-menu.md §3)
 import { MapCache, configFromEnv as mapCacheConfig, modNameOf } from './lib/mapcache.js'   // pull a leased map before boot
+import { BootQueue } from './lib/bootqueue.js'   // one boot at a time, players first (host.md §16)
+import { readMeminfo, ramPlan, MB } from './lib/memguard.js'   // the RAM guard (host.md §16)
 import { Telemetry, configFromEnv as telemetryConfig, hashFileCached } from './lib/telemetry.js'   // every instance end is a log bundle (host.md §15)
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -43,8 +45,8 @@ const LIMITED = new Set(['wunderwaffe', 'wunderwaffe_dg2', 'm2_flamethrower', 'f
 const REPO = path.resolve(__dirname, '..', '..')
 // The longest one game's boot may hold the next one back (see boot()). A map loads in
 // 5-10 s on the box; a boot that has not loaded in 90 s is not going to.
-const BOOT_GATE_MS = 90_000
 const a = parseArgs(process.argv.slice(2))
+const BOOT_GATE_MS = Number(a['boot-gate-ms'] ?? 90_000)
 if (a.debug) setLogLevel('debug')
 const log = makeLog('host')
 
@@ -127,8 +129,15 @@ const cfg = {
   // game-link-v0 — says the host MUST then pick one of two dispositions and must not
   // leave it in neither: reuse (`end` -> map_restart -> a new `map_loaded`) or terminate.
   //
-  //   --after-game end|terminate   default `end`: keep the instance warm for the next
-  //                                lease. A warm instance skips a whole map load.
+  //   --after-game end|terminate   default `terminate` since 2026-09-23 (host.md §16.4):
+  //                                `end` keeps the instance warm for the next lease and
+  //                                skips a whole map load, but on the box at 12:19 a warm
+  //                                handoff cost B a minute and ended his lease. It stays
+  //                                opt-in until it has been proven in the sim AND on the
+  //                                box with two consecutive agent games.
+  //   --warm-rebind-ms             a warm instance handed a lease must accept it and
+  //                                re-announce map_loaded within this (5 s), or it is torn
+  //                                down at once and the lease boots fresh.
   //   --games-per-instance N       terminate after the Nth game on one process, whatever
   //                                --after-game says. A process that has run all night is
   //                                the one with the leak nobody has found yet.
@@ -136,11 +145,23 @@ const cfg = {
   //                                before the instance is torn down instead.
   //   --warm-idle-ms               a warm instance nobody leased is not free — it holds a
   //                                UDP port and a map's worth of RSS. Retire it.
-  afterGame: (a['after-game'] || 'end') === 'terminate' ? 'terminate' : 'end',
+  afterGame: (a['after-game'] || process.env.ENW_AFTER_GAME || 'terminate') === 'end' ? 'end' : 'terminate',
+  warmRebindMs: Number(a['warm-rebind-ms'] ?? 5_000),
   gamesPerInstance: Number(a['games-per-instance'] ?? 5),
   endReplyMs: Number(a['end-reply-ms'] ?? 10_000),
   mapReloadMs: Number(a['map-reload-ms'] ?? 60_000),
   warmIdleMs: Number(a['warm-idle-ms'] ?? 10 * 60_000),
+  // ---- THE RAM GUARD (lib/memguard.js, host.md §16) -------------------------------------
+  // Read MemAvailable before each boot. Below the floor an agent's boot waits (up to
+  // --ram-wait-ms, then its lease is failed) and a player's evicts warm, then agent,
+  // instances. 0 turns the guard off. No /proc/meminfo (Windows) = off.
+  ramFloorBytes: Number(a['ram-floor-mb'] ?? process.env.ENW_RAM_FLOOR_MB ?? 700) * MB,
+  ramWaitMs: Number(a['ram-wait-ms'] ?? 5 * 60_000),
+  ramSettleMs: Number(a['ram-settle-ms'] ?? 3_000),
+  meminfoFile: a['meminfo-file'] || '/proc/meminfo',
+  // TEST ONLY: put simulated games through the boot queue too (they load instantly
+  // otherwise, and the queue is only for real games). test/boot-queue.js.
+  gateSims: !!a['gate-sims'],
   referee: {
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
     ...(a['cap-warn-ms'] ? { capWarnMs: String(a['cap-warn-ms']).split(',').map(Number) } : {}),
@@ -155,6 +176,25 @@ const cfg = {
 
 cfg.mapCache = mapCacheConfig(process.env, { wine: cfg.wine, site: cfg.site })
 if (cfg.dryRun) cfg.mapCache.enabled = false
+
+/**
+ * Who may come back into the next session on this process without a token for it:
+ * SteamID -> { matches }, every player the host VERIFIED in `old` and who was still
+ * connected when it ended, plus whoever `old` itself had carried (host.md §16.4).
+ */
+function returningFrom(old) {
+  const out = new Map()
+  for (const [sid, v] of old.returning || []) out.set(sid, { matches: [...v.matches] })
+  const match = old.leaseId || old.matchId
+  for (const p of old.referee?.players?.values() || []) {
+    if (p.identity !== 'verified' || !p.steamid || p.connected === false) continue
+    const sid = String(p.steamid)
+    const e = out.get(sid) || { matches: [] }
+    if (!e.matches.includes(match)) e.matches.push(match)
+    out.set(sid, e)
+  }
+  return out
+}
 
 // ---- TELEMETRY (lib/telemetry.js, host.md §15) ------------------------------------------
 // On whenever there is a site; `ENW_TELEMETRY=off` (in /root/enw-host.env) or
@@ -285,6 +325,21 @@ class Game extends EventEmitter {
   }
 
   onGameMessage(m) {
+    // THE TAIL OF THE PREVIOUS SESSION IS NOT THIS GAME'S (host.md §16.4). Between the `end`
+    // this game sent and the map coming back, the process may still report what it was
+    // doing before: at 12:19:30 the DLL answered a warm handoff's `end` with a `game_over`
+    // and a `match_end` for the returning player's unleased session, the new lease's
+    // referee took them as ITS game ending, posted a round-0 result that ended B's lease at
+    // the site, and chained three more reuses in 1.5 s. So until `map_loaded`, only the
+    // reply (the handshake needs it) and the map itself get through.
+    if (this.absorbing) {
+      if (m.t === 'map_loaded') this.absorbing = false
+      else if (m.t !== 'reply' && m.t !== 'log') {
+        this.absorbed = (this.absorbed || 0) + 1
+        if (m.t === 'game_over' || m.t === 'match_end') this.log.info(`${m.t} from the session before this one (${m.reason || 'no reason'}) — not this game's, dropped`)
+        return
+      }
+    }
     // `game_over` IS RECORDED BEFORE THE REFEREE SEES IT. The referee answers it by calling
     // the game (`finishGame` -> 'over' -> `finish()`), and `finish()` sets `finished`
     // synchronously, before its first await — so recording afterwards dropped it as a
@@ -322,7 +377,8 @@ class Game extends EventEmitter {
   authPlayer(ev) {
     // A restarted run of a lease checks tokens against the LEASE and re-admits the players it
     // verified before the restart (lib/restart.js); every other game is exactly as before.
-    const r = (this.restartAdmit && this.restartAdmit(ev)) || this.host.tokenGuard.admit(ev, this.leaseId || this.matchId)
+    let r = (this.restartAdmit && this.restartAdmit(ev)) || this.host.tokenGuard.admit(ev, this.leaseId || this.matchId)
+    if (!r.allow) r = this.admitReturning(ev) || r
     const p = this.referee.players.get(ev.slot)
     if (p) p.tokenOk = r.allow
     // THE ANSWER IS ALSO THE IDENTITY. `token_check_disabled` is what TokenGuard says when
@@ -339,6 +395,30 @@ class Game extends EventEmitter {
     // A refused player is dropped from OUR fold; the game still reports a row for them at
     // game over, and it arrives with no account on it and is carried through flagged.
     if (!r.allow) this.referee.players.delete(ev.slot)
+  }
+
+  /**
+   * A player this instance VERIFIED in an earlier match, still connected through the
+   * map_restart that ended it, coming back with the token they joined that match with
+   * (host.md §16.4; box journal 12:17:02 and 12:21:36, "DENY (wrong_match)" for B a second
+   * after his game ended). Admitted, as verified, when all of these hold:
+   *   - the SteamID is one the host itself verified on this process (`returning`);
+   *   - the token is the site's, for that SteamID, for one of those matches (checkBinding:
+   *     expiry and single use do not apply to a connection that never went away);
+   *   - this game is warm and unleased, or its lease names that SteamID. A warm instance
+   *     handed to SOMEBODY ELSE's lease still refuses them: their game is over.
+   */
+  admitReturning(ev) {
+    const sid = String(ev.steamid || ev.xuid || '')
+    const back = this.returning?.get(sid)
+    if (!sid || !back || !ev.token) return null
+    if (this.assignment && !(this.assignment.players || []).some((p) => String(p.steamid) === sid)) return null
+    const pk = this.host.tokenGuard?.publicKey
+    if (!pk) return null
+    const r = checkBinding(pk, ev.token, { matchIds: back.matches, steamid: sid })
+    if (!r.ok) return null
+    this.log.info(`${sid} was verified in ${back.matches.join(', ')} on this instance and is still connected - admitted as a returning player`)
+    return { allow: true, reason: 'returning', payload: r.payload }
   }
 
   /**
@@ -468,10 +548,14 @@ class Game extends EventEmitter {
    * silent reply, or a restart that never re-announces `map_loaded`, is the same answer
    * arrived at by timeout.
    */
-  requestRestart(reason = 'next lease', { match = null, simRoster = null } = {}) {
+  requestRestart(reason = 'next lease', { match = null, simRoster = null, deadlineMs = 0 } = {}) {
     return new Promise((resolve) => {
       let settled = false
       let waitLoad = null
+      // ONE deadline for both halves (a warm handoff, --warm-rebind-ms): a player is
+      // waiting on this, and a fresh boot is ready in ~12 s (12:20:19 -> 12:20:30).
+      const deadline = deadlineMs > 0 ? setTimeout(() => done(false, `no map_loaded within ${deadlineMs} ms of \`end\``), deadlineMs) : null
+      deadline?.unref?.()
       // `match` IS THE POINT OF SENDING THIS TWICE. The game reads its lease id from
       // ENW_MATCH once, at process start, and clears it on every reset — so a warm
       // instance is serving a match the process has never heard of, and without being told
@@ -492,7 +576,7 @@ class Game extends EventEmitter {
       const done = (ok, why) => {
         if (settled) return
         settled = true
-        clearTimeout(waitReply); clearTimeout(waitLoad)
+        clearTimeout(waitReply); clearTimeout(waitLoad); clearTimeout(deadline)
         this.referee.off('reply', onReply)
         this.off('map_loaded', onLoaded)
         resolve({ ok, why })
@@ -516,35 +600,8 @@ class Game extends EventEmitter {
     })
   }
 
-  /**
-   * A warm instance has been leased. Two halves, and both are needed:
-   *
-   *   1. OUR side — the match identity, before anything records. The replay is deferred to
-   *      the first sign of a game precisely so this can happen first, and the file it
-   *      opens carries the leased match id in its header and signed footer.
-   *   2. THE GAME's side — a second `end`, carrying `match`. The process read its lease id
-   *      from ENW_MATCH once at start and cleared it on the last reset, so until it is
-   *      told this one every invite token the site just minted is `wrong_match`.
-   */
-  async rebind(asg, tokens, roster) {
-    this.matchId = asg.match_id
-    this.mode = asg.mode || this.mode
-    this.vip = !!asg.vip
-    this.assignment = asg
-    this.tokens = tokens || {}
-    this.referee.matchId = asg.match_id
-    this.referee.mode = this.mode
-    this.referee.vip = this.vip
-    this.instance.matchId = asg.match_id
-    this.instance.assignment = asg
-    this.log.info(`warm instance rebound to lease ${asg.match_id} (${this.mode}) — telling the game its new match id`)
-    const r = await this.requestRestart(`lease ${asg.match_id}`, {
-      match: asg.match_id,
-      simRoster: this.instance.kind === 'sim' ? roster : null,
-    })
-    if (r.ok) this.recordHostEvent({ t: 'instance_leased', match_id: asg.match_id, games_on_instance: this.instance.gamesPlayed || 0, why: r.why })
-    return r
-  }
+  // (A warm instance taking a lease is HostAgent.handWarm: a NEW Game for the lease takes
+  // the socket, rather than the warm one being renamed in place. host.md §16.4.)
 
   // ---- replay --------------------------------------------------------------------
   openReplay(mapEv) {
@@ -658,7 +715,12 @@ class Game extends EventEmitter {
     this.log.info(this.summaryLine)
     this.host.games.set(this.matchId, { summary, replay })
     this.host.dash?.push('summary', { instance: this.instance.id, summary, replay })
-    await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay })
+    // NOT EVERY CLOSED REPLAY IS A RESULT. A warm instance's unleased session (a returning
+    // player idling on the restarted map) and a lease whose warm handoff failed before the
+    // map came back were never a game the site leased; a result for the second ENDS the
+    // lease at the site (12:19:30, m_de1d40e6), which is the opposite of re-queueing it.
+    if (this.noResult) this.log.info(`no result posted for ${this.matchId}: ${this.noResult}`)
+    else await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay })
       .catch((e) => this.log.warn(`result post failed (${e.message}) — held in the spool, not lost`))
     this.emit('finished', summary)
     // The instance is NOT reaped here any more. `dispose()` decides what becomes of it,
@@ -671,7 +733,7 @@ class Game extends EventEmitter {
       // sends them back to back, but a busy link reorders nothing and delays plenty) must
       // not have its warm instance destroyed because the result POST was quick.
       this.disposeTimer = setTimeout(() => {
-        if (this.matchEndSeen) return
+        if (this.matchEndSeen || this.disposed) return   // handed over (a warm session) or already decided
         this.log.warn('no match_end after game over — the game may or may not still be alive, so the instance is torn down rather than assumed idle')
         this.dispose()
       }, 3000)
@@ -706,6 +768,32 @@ class HostAgent {
       basePort: cfg.basePort, lobbyBase: cfg.lobbyBase, maxInstances: cfg.maxInstances, launchScript: cfg.launchScript,
       lockOwner: cfg.gameCopy, gameCopy: cfg.gameCopy, wine: cfg.wine, dryRun: cfg.dryRun, log: log.child('inst'),
     })
+    // Real games boot one at a time, a player's first (lib/bootqueue.js, host.md §16).
+    this.bootQueue = new BootQueue({ gateMs: BOOT_GATE_MS, admit: (e) => this.admitBoot(e), log: log.child('boot') })
+    this.bootQueue.on('dropped', (e, why) => {
+      const g = e.game
+      if (g && !g.finished && !g.cancelled && g.assignment) {
+        this.site?.status({ state: 'failed', match_id: g.matchId, map: g.assignment.map, error: `the server could not start the game: ${why}` })
+        this.retire(g, `boot dropped: ${why}`)
+      }
+    })
+    // Tell the site when a queued lease's process starts, and refresh `ahead` for the rest.
+    this.bootQueue.on('started', (e) => {
+      const g = e.game
+      if (g?.assignment) this.site?.status({ state: 'booting', match_id: g.matchId, instance: g.instance.id, nonce: g.assignment.nonce })
+      for (const q of this.bootQueue.queue) if (q.game) this.postQueued(q.game)
+    })
+    // Things that must never happen and did: an orphaned game process, a boot for a lease
+    // that had gone. The last 20, in state() and a count in every heartbeat.
+    this.incidents = []
+  }
+
+  incident(kind, detail) {
+    const row = { at: new Date().toISOString(), kind, ...detail }
+    this.incidents.push(row)
+    if (this.incidents.length > 20) this.incidents.shift()
+    log.error(`INCIDENT ${kind}: ${JSON.stringify(detail)}`)
+    this.dash?.push('incident', row)
   }
 
   /**
@@ -789,7 +877,7 @@ class HostAgent {
         fetchPopular: () => this.site.popularMaps(),
         inUse: () => this.mapsInUse(),
         leased: () => (this.latestLeases || []).map((x) => modNameOf(x)).filter(Boolean),
-        busy: () => (this.bootsPending || 0) > 0 || this.preparing.size > 0,
+        busy: () => this.bootQueue.size > 0 || this.preparing.size > 0,
       }).init()
       const i = this.mapCache.info()
       const gb = (n) => (n / 2 ** 30).toFixed(1)
@@ -825,6 +913,7 @@ class HostAgent {
     this.instances.linkPort = this.link.port
     this.link.on('hello', (conn, msg) => {
       let g = this.byInstance.get(conn.instance)
+      if (!g && this.onOrphanHello(conn, msg)) return
       if (!g) g = this.acceptLocal(conn, msg)
       if (!g) return
       log.info(`instance ${conn.instance} linked (pid ${msg.pid}, ${msg.dll_build})`)
@@ -919,6 +1008,32 @@ class HostAgent {
     }
   }
 
+  /**
+   * A `hello` from an instance id WE created but no longer run a game for. Before
+   * 2026-09-23 this was logged as "unknown instance ... ignoring" and the process was left
+   * up: at 12:13 two fear_mc_2 servers nobody tracked held ~900 MB between them and the box
+   * reached 4 MB available (host.md §16). It is our own child, so it is killed — by the pid
+   * WE spawned (the pid in `hello` is the game's own, a Wine pid on the box, and is never
+   * used unless it is in `ownedPids`) — and logged as an incident. Returns true if handled.
+   */
+  onOrphanHello(conn, msg) {
+    const id = conn.instance
+    const inst = this.instances.get(id) || this.instances.removedRecently.get(id)
+    if (!inst || inst.foreign || inst.kind === 'local') return false
+    const pid = inst.pid
+    this.incident('orphan_hello', { instance: id, match_id: inst.matchId || null, pid, game_pid: msg.pid ?? null, removed: !!inst.removed })
+    try { conn.destroy('orphan: this host runs no game on that instance') } catch { /* gone */ }
+    if (this.instances.ownedPids.has(pid) || (inst.child && inst.state !== 'exited')) {
+      log.error(`killing orphaned instance ${id} (our pid ${pid}): it said hello but no game here is running on it`)
+      inst.maxRestarts = 0
+      inst.removed = true
+      inst.stop('orphan: said hello after its lease ended', { graceMs: 2000 }).catch?.(() => {})
+    } else {
+      log.error(`orphaned instance ${id} said hello and its process is not one we still hold a pid for - left alone (rule 4: kill only our own pids)`)
+    }
+    return true
+  }
+
   localEnabled() { return !!cfg.local }
   /**
    * The gate on adoption, and it is deliberately blunt: **a box that can serve leases is
@@ -947,7 +1062,14 @@ class HostAgent {
   acceptLocal(conn, msg) {
     const id = conn.instance
     const expected = this.expected.get(id)
-    if (!cfg.local && !expected) { log.warn(`hello from unknown instance ${id} — ignoring (local mode is off; --local to accept expected instances)`); return null }
+    if (!cfg.local && !expected) {
+      // Not one of ours (onOrphanHello has already matched every id this host created, and
+      // killed it). So it is not ours to kill either (rule 4): refuse its link, and say so
+      // as an incident rather than a warning nobody reads (host.md §16.1).
+      this.incident('unknown_hello', { instance: id, game_pid: msg.pid ?? null, dll_build: msg.dll_build || null })
+      try { conn.destroy('unknown instance: this host did not start it') } catch { /* gone */ }
+      return null
+    }
     // Expired registrations are not registrations.
     if (expected && Date.now() - expected.at > 10 * 60_000) { this.expected.delete(id); log.warn(`the registration for ${id} expired; treating it as unexpected`); return this.acceptLocal(conn, msg) }
     const leased = this.leaseHeld()
@@ -999,6 +1121,13 @@ class HostAgent {
       if (s.endFails) simArgs.push('--end-fails')
       if (s.noMatchEnd) simArgs.push('--no-match-end')
       if (s.gatecrash) simArgs.push('--gatecrash')
+      // The box's real-game behaviours the boot queue and the warm handoff have to survive
+      // (host.md §16, test/boot-queue.js): a slow map load, one that never loads, and the
+      // DLL's warm-instance behaviour.
+      if (s.loadMs) simArgs.push('--load-ms', String(s.loadMs))
+      if (s.neverLoads) simArgs.push('--never-loads')
+      if (s.realWarm) simArgs.push('--real-warm')
+      if (s.stallRebind) simArgs.push('--stall-rebind', String(s.stallRebind))
     }
     const inst = this.instances.create({
       kind: opts.kind || 'sim',
@@ -1016,38 +1145,118 @@ class HostAgent {
       refereeConfig: opts.assignment?.settings?.referee || null,
     })
     this.byInstance.set(inst.id, game)
+    // The game ON the instance now, which after a reuse or a warm handoff is a successor of
+    // `game`, not `game` itself (a crash of a warm-handed lease used to go unnoticed).
+    const current = () => { const g = this.byInstance.get(inst.id); return g && g.instance === inst ? g : game }
     inst.on('exit', ({ wanted }) => {
-      if (!wanted && !game.finished) {
-        game.referee.flags.add('server_crash')
-        game.log.warn('instance exited unexpectedly — saving the game up to the crash')
-        game.referee.finishGame('server_crash')
+      const g = current()
+      if (!wanted && !g.finished) {
+        g.referee.flags.add('server_crash')
+        g.log.warn('instance exited unexpectedly — saving the game up to the crash')
+        g.referee.finishGame('server_crash')
       }
     })
-    inst.on('failed', (why) => { game.log.error(`instance failed: ${why}`); if (!game.finished) game.referee.finishGame('instance_failed') })
-    // ONE REAL GAME BOOTS AT A TIME. vps.md §15: `--boot 4` in one tick got one instance to
-    // a loaded map; started one after another, each waited on, they came up. So a game
-    // whose predecessor is still loading waits for that one's `map_loaded` (or its end, or
-    // BOOT_GATE_MS) before its process starts. Sims are not gated: they load nothing.
+    inst.on('failed', (why) => { const g = current(); g.log.error(`instance failed: ${why}`); if (!g.finished) g.referee.finishGame('instance_failed') })
+    // ONE REAL GAME BOOTS AT A TIME, A PLAYER'S FIRST (lib/bootqueue.js, host.md §16).
+    // vps.md §15: `--boot 4` in one tick got one instance to a loaded map; started one after
+    // another, each waited on, they came up. So a game's process starts only when the one
+    // booting before it has loaded its map (or ended, or held the gate BOOT_GATE_MS from
+    // its own start). Sims are not gated: they load nothing (--gate-sims, tests only).
+    //
+    // `go` refuses a game that is no longer wanted. The 12:13 orphans were queued boots
+    // whose leases had been retired while they waited: the old chain started them anyway.
     const go = () => {
-      if (game.finished) return false
+      if (game.finished || game.cancelled || inst.removed || this.byInstance.get(inst.id) !== game) {
+        log.warn(`not booting ${inst.id} (match ${game.matchId}): its lease ended while it waited to boot`)
+        return false
+      }
       const ok = inst.start()
       if (ok) log.info(`booted ${inst.id} match=${game.matchId} kind=${inst.kind} map=${opts.map || '-'}`)
       return ok
     }
-    if (inst.kind !== 'game') { go(); return game }
-    const settled = new Promise((resolve) => {
-      const t = setTimeout(resolve, BOOT_GATE_MS); t.unref?.()
-      game.once('map_loaded', resolve)
-      game.once('finished', resolve)
-      inst.once('failed', resolve)
-      inst.once('exit', resolve)
-    })
-    if (this.bootsPending > 0) log.info(`${inst.id} waits for the game booting before it to load its map (one game boots at a time)`)
-    this.bootsPending = (this.bootsPending || 0) + 1
-    this.bootGate = (this.bootGate || Promise.resolve())
-      .then(() => (go() ? settled : null))
-      .finally(() => { this.bootsPending-- })
+    if (inst.kind !== 'game' && !cfg.gateSims) { go(); return game }
+    const real = !!opts.assignment && opts.assignment.agent !== true
+    const settle = (why) => () => this.bootQueue.settle(inst.id, why)
+    game.once('map_loaded', settle('map_loaded'))
+    game.once('finished', settle('finished'))
+    inst.once('failed', settle('failed'))
+    inst.once('exit', settle('exit'))
+    const busy = this.bootQueue.size > 0
+    const ahead = this.bootQueue.add({ id: inst.id, real, game, label: `${inst.id} ${game.matchId}`, start: go })
+    game.gated = true
+    game.queuedAhead = ahead
+    if (busy) log.info(`${inst.id} (${real ? 'a PLAYER\'s' : 'an agent\'s'} lease ${game.matchId}) queued to boot, ${ahead} ahead of it (one game boots at a time${real ? ', players first' : ''})`)
+    // REAL PLAYERS GO FIRST, and a player never waits on an agent's boot. If an agent's game
+    // is the one booting now, it is retired to make room — the host-side half of the site's
+    // eviction rule (assignments.js rule 4), which only covers leases the box has not started.
+    const act = this.bootQueue.active
+    if (real && act && !act.real && act.game?.assignment?.agent === true) {
+      const victim = act.game
+      log.warn(`a player's lease (${game.matchId}) is waiting on an AGENT's boot (${victim.instance.id}, ${victim.matchId}) - retiring the agent's game so the player's boots now`)
+      this.preempting = this.yieldAgent(victim, `a player's lease ${game.matchId} needs the boot slot`)
+    }
     return game
+  }
+
+  /**
+   * An agent's game gives way to a player's. Retired here, and the site is told with
+   * `state: 'yielded'`, which ends an AGENT lease in any live state (assignments.ack), so
+   * the site's slot count and the lease-cli's view agree with what the box is running.
+   */
+  async yieldAgent(game, why) {
+    this.site?.status({ state: 'yielded', match_id: game.matchId, map: game.assignment?.map, error: why })
+    await this.retire(game, `yields to a player: ${why}`)
+  }
+
+  /**
+   * Asked by the boot queue just before a boot starts: the RAM guard (lib/memguard.js).
+   * `{ go }`, `{ wait }` (the queue asks again in 5 s) or `{ drop }` (the lease is failed).
+   */
+  async admitBoot(e) {
+    // A player's boot waits for the agent game it displaced to be GONE, so that game's
+    // memory is back before the figure below is read.
+    if (e.real && this.preempting) { await this.preempting.catch(() => {}); this.preempting = null }
+    const game = e.game
+    if (!game || game.finished || game.cancelled || game.instance.removed) return { go: true }   // go() refuses it and says why
+    const mem = readMeminfo(cfg.meminfoFile)
+    this.lastMem = mem ? { ...mem, at: Date.now() } : null
+    const inst = game.instance
+    const others = this.instances.list()
+      .filter((i) => i !== inst && !i.foreign && !i.removed && (i.state === 'starting' || i.state === 'running'))
+      .map((i) => {
+        const g = this.byInstance.get(i.id)
+        return {
+          id: i.id, game: g, rssBytes: i.usage().rss_bytes || 0, startedAt: i.startedAt,
+          loaded: !!(g?.mapEv || this.warm.has(i.id)), warm: this.warm.has(i.id) && !g?.assignment,
+          agent: g?.assignment?.agent === true, real: !!g?.assignment && g.assignment.agent !== true,
+        }
+      })
+    const plan = ramPlan({ availBytes: mem?.availableBytes ?? null, floorBytes: cfg.ramFloorBytes, real: e.real, instances: others })
+    if (plan.action === 'go') {
+      if (plan.effective != null && plan.effective < cfg.ramFloorBytes) log.warn(`RAM guard: ${plan.why}`)
+      else if (plan.effective != null) log.info(`RAM guard: ${inst.id} may boot - ${plan.why}`)
+      return { go: true }
+    }
+    if (plan.action === 'wait') {
+      const since = e.waitingSince || Date.now()
+      if (Date.now() - since > cfg.ramWaitMs) return { drop: `not enough memory on the box for ${Math.round(cfg.ramWaitMs / 1000)} s (${plan.why})` }
+      if (!e.ramLogged || Date.now() - e.ramLogged > 30_000) { e.ramLogged = Date.now(); log.warn(`RAM guard: ${inst.id} (${game.matchId}) waits - ${plan.why}`) }
+      e.waitWhy = plan.why
+      this.postQueued(game)
+      return { wait: plan.why }
+    }
+    // evict: warm instances (nobody's), then - for a player only - the oldest agent games.
+    log.warn(`RAM guard: ${inst.id} (${e.real ? 'a player\'s' : 'an agent\'s'} lease ${game.matchId}): ${plan.why}`)
+    const why = `RAM guard: ${inst.id} (${game.matchId}) needs its memory`
+    const gone = plan.victims.filter((v) => v.game && !v.game.finished)
+    for (const v of gone) this.incident('ram_evict', { instance: v.id, match_id: v.game.matchId, warm: !!v.warm, for_instance: inst.id, for_match: game.matchId, real: !!e.real, available_mb: Math.round((mem?.availableBytes || 0) / MB) })
+    await Promise.all(gone.map((v) => (v.warm ? this.retire(v.game, why) : this.yieldAgent(v.game, why))))
+    // Nothing could actually be retired (a victim with no game on it): do not spin. A player
+    // boots; an agent waits for the queue's next look.
+    e.evictions = (e.evictions || 0) + 1
+    if (!gone.length || e.evictions > 3) return e.real ? { go: true } : { wait: plan.why }
+    await new Promise((r) => setTimeout(r, cfg.ramSettleMs))
+    return this.admitBoot(e)
   }
 
   // ---- game over: the two dispositions ---------------------------------------------
@@ -1066,6 +1275,13 @@ class HostAgent {
     // Re-entry guard AND the contract: a game being retired has had its disposition made
     // for it, so nothing downstream may pick another one.
     game.disposed = game.disposed || Promise.resolve({ action: 'terminate', why })
+    // A GAME STILL WAITING TO BOOT NEVER BOOTS (host.md §16). Out of the queue first, and
+    // synchronously, so no `await` below can let its turn come round in between.
+    const where = this.bootQueue.cancel(id, why)
+    if (where === 'queued' || game.instance.state === 'new') {
+      game.cancelled = true
+      clearInterval(game.tickTimer)
+    }
     // AN OPEN REPLAY MUST NOT GO WITH THE PROCESS. A replay with no signed footer is not
     // a replay, it is a prefix of one (the same reasoning as `onLinkClosed`). A warm
     // instance normally has no writer at all — it defers until a match actually starts —
@@ -1084,7 +1300,8 @@ class HostAgent {
     // After the process is gone (its logs are final) and before the 2 s the lease path
     // waits for Wine to hand the ports back, so the tails are copied before the next game
     // in this slot truncates console.log. Not awaited: a retire never waits on telemetry.
-    this.telemetryEnd(game, { why })
+    // A boot cancelled while queued never ran: no process, no logs, nothing to bundle.
+    if (!game.cancelled) this.telemetryEnd(game, { why })
     this.reportStatus()
     return true
   }
@@ -1240,6 +1457,11 @@ class HostAgent {
     next.referee.role = old.referee.role
     next.referee.phase = 'loading'
     next.inheritedFrom = old.matchId
+    // An unleased session is nobody's game: if a returning player plays in it, its replay
+    // is kept on the box but no result goes to the site (there is no lease to attach it to).
+    next.noResult = 'a warm instance\'s unleased session'
+    next.returning = returningFrom(old)
+    next.absorbing = true
     this.byInstance.set(inst.id, next)
     next.attach(conn)
     // NO `match` HERE. This reuse follows a finished game and precedes any lease, so the
@@ -1285,6 +1507,83 @@ class HostAgent {
       return g
     }
     return null
+  }
+
+  /**
+   * A WARM INSTANCE TAKES A LEASE (host.md §16.4). Rewritten 2026-09-23 after B's lease
+   * m_de1d40e6 (12:19:29) was handed to warm inst-64 and he waited over a minute for a
+   * game that a fresh boot then had ready in 12 s. What went wrong, in order:
+   *
+   *   1. The warm Game was RENAMED to the lease in place, so everything its unleased session
+   *      said next was taken as the lease's. The `end` carrying the match id made the DLL
+   *      report that session's `game_over` + `match_end` (B's client had come back into it),
+   *      and the renamed referee ended the lease's game with them: a round-0 result posted
+   *      for m_de1d40e6 (which ended the lease at the site), a disposition, and three more
+   *      reuses chained in 1.5 s up to the five-game limit.
+   *   2. The handoff waited for `map_loaded` on the Game that had just been disposed of, so
+   *      it could only ever time out - 60 s later.
+   *
+   * Now: a NEW Game for the lease takes the socket (the way `reuse()` hands over), absorbs
+   * everything but the reply until the map comes back, and has --warm-rebind-ms (5 s) for
+   * the whole handshake. The warm session's replay, if a returning player opened one, is
+   * signed on the box and posts nothing. On failure the lease's Game posts nothing either,
+   * the instance is torn down at once, and the lease goes back through `applyLeases` as a
+   * fresh boot (never warm again).
+   */
+  handWarm(warm, asg, tokens, roster) {
+    const inst = warm.instance
+    const conn = warm.detach()
+    const lease = new Game(this, inst, {
+      matchId: asg.match_id, mode: asg.mode || warm.mode, vip: asg.vip, assignment: asg, tokens,
+      refereeConfig: asg.settings?.referee || null,
+    })
+    lease.referee.hashes = { ...warm.referee.hashes }
+    lease.referee.pid = warm.referee.pid
+    lease.referee.role = warm.referee.role
+    lease.referee.phase = 'loading'
+    lease.inheritedFrom = warm.matchId
+    lease.returning = returningFrom(warm)
+    lease.absorbing = true
+    inst.matchId = asg.match_id
+    inst.assignment = asg
+    this.byInstance.set(inst.id, lease)
+    if (conn) lease.attach(conn)
+    // The warm session is over. If a returning player got as far as opening a replay in it,
+    // that replay is signed here; it was nobody's lease, so nothing is posted.
+    warm.noResult = warm.noResult || 'a warm instance\'s unleased session'
+    // Its disposition is made: the process is the lease's now. Without this, the finish
+    // below (no match_end on a detached link) would tear the instance down 3 s later.
+    warm.disposed = warm.disposed || Promise.resolve({ action: 'handed_over', why: `lease ${asg.match_id}` })
+    if (warm.writer && !warm.finished) { warm.referee.flags.add('handed_to_lease'); warm.referee.finishGame(`handed to lease ${asg.match_id}`) }
+    else clearInterval(warm.tickTimer)
+    this.site?.status({ state: 'booting', match_id: asg.match_id, instance: inst.id, nonce: asg.nonce, warm: true })
+    lease.referee.once('live', () => this.site?.status({ state: 'live', match_id: asg.match_id, instance: inst.id }))
+    log.info(`lease ${asg.match_id} handed to WARM instance ${inst.id} — no boot, no map load`)
+    lease.log.info(`warm instance rebound to lease ${asg.match_id} (${lease.mode}) — telling the game its new match id (${cfg.warmRebindMs} ms to take it)`)
+    const started = Date.now()
+    const fail = async (why) => {
+      log.warn(`the warm instance would not take lease ${asg.match_id} (${why}) — tearing it down now and booting a fresh one`)
+      this.incident('warm_handoff_failed', { instance: inst.id, match_id: asg.match_id, why })
+      lease.noResult = `the warm handoff failed (${why}); the lease boots fresh`
+      ;(this.coldOnly ||= new Set()).add(asg.match_id)
+      await this.retire(lease, `would not take lease ${asg.match_id}: ${why}`)
+      this.startedMatches.delete(asg.match_id)
+      this.applyLeases()
+    }
+    if (!conn) { fail('the link is gone'); return lease }
+    lease.requestRestart(`lease ${asg.match_id}`, {
+      match: asg.match_id,
+      simRoster: inst.kind === 'sim' ? roster : null,
+      deadlineMs: cfg.warmRebindMs,
+    }).then((r) => {
+      lease.absorbing = false
+      if (!r.ok) return fail(r.why)
+      if (lease.finished || this.byInstance.get(inst.id) !== lease) return null
+      lease.log.info(`took lease ${asg.match_id} in ${Date.now() - started} ms${lease.absorbed ? ` (${lease.absorbed} event(s) from the session before dropped)` : ''}`)
+      lease.recordHostEvent({ t: 'instance_leased', match_id: asg.match_id, games_on_instance: inst.gamesPlayed || 0, from_match: warm.matchId, why: r.why })
+      return this.site?.status({ state: 'ready', match_id: asg.match_id, instance: inst.id, port: inst.port })
+    }).catch((e) => fail(`rebind threw: ${e.message}`))
+    return lease
   }
 
   // ---- the pull protocol ---------------------------------------------------------
@@ -1408,22 +1707,10 @@ class HostAgent {
     // roster in its environment at spawn, so a warm sim instance cannot be handed a
     // DIFFERENT party. What is proven tonight is the half below it — the handshake, the
     // warm state, and a second match on the same process (host.md §12).
-    const warm = this.takeWarm(asg.map)
+    const warm = this.coldOnly?.has(asg.match_id) ? null : this.takeWarm(asg.map)
     if (warm) {
       for (const [id, g] of this.warm) if (g !== warm) this.retire(g, `a lease for ${asg.map} arrived and this instance is on ${g.referee.map}`)
-      this.site?.status({ state: 'booting', match_id: asg.match_id, instance: warm.instance.id, nonce: asg.nonce, warm: true })
-      warm.referee.once('live', () => this.site?.status({ state: 'live', match_id: asg.match_id, instance: warm.instance.id }))
-      log.info(`lease ${asg.match_id} handed to WARM instance ${warm.instance.id} — no boot, no map load`)
-      // The rebind talks to the game and can fail, so it is awaited off to one side. A
-      // warm instance that will not take its new match id is no use to this lease: it is
-      // torn down and a fresh one is booted, because the alternative is a lease served by
-      // a process that will refuse every token the site just minted.
-      warm.rebind(asg, tokens, roster).then((r) => {
-        if (r.ok) return this.site?.status({ state: 'ready', match_id: asg.match_id, instance: warm.instance.id, port: warm.instance.port })
-        log.warn(`the warm instance would not take lease ${asg.match_id} (${r.why}) — tearing it down and booting a fresh one`)
-        return this.retire(warm, `would not take a new lease: ${r.why}`).then(() => { this.startedMatches.delete(asg.match_id); this.applyLeases() })
-      }).catch((e) => log.error(`rebind failed: ${e.message}`))
-      return warm
+      return this.handWarm(warm, asg, tokens, roster)
     }
 
     const game = this.boot({
@@ -1448,9 +1735,21 @@ class HostAgent {
         noMatchEnd: !!a['sim-no-match-end'],
         gatecrash: !!a['sim-gatecrash'],
         seed: Number(asg.sim?.seed ?? 1337),
+        loadMs: asg.sim?.load_ms ?? (a['sim-load-ms'] ? Number(a['sim-load-ms']) : null),
+        neverLoads: !!asg.sim?.never_loads,
+        realWarm: !!(asg.sim?.real_warm ?? a['sim-real-warm']),
+        stallRebind: asg.sim?.stall_rebind ?? null,
       },
     })
-    this.site?.status({ state: 'booting', match_id: asg.match_id, instance: game.instance.id, nonce: asg.nonce })
+    // QUEUED IS SAID OUT LOUD (host.md §16). A lease waiting behind another game's boot
+    // used to be reported `booting` at once and then nothing for up to 90 s, and a player
+    // looking at "Reserving server" with no movement pressed Cancel at 34 s, twice
+    // (launcher.log 12:12:43, 12:13:27). Now it is `preparing` with phase `queued` — the
+    // same field a map pull uses, which the site already hands the launcher as
+    // `match.preparing` — until its process starts, and `booting` then.
+    // (A gated boot with nothing ahead says `booting` from the queue's 'started' event.)
+    if (!game.gated) this.site?.status({ state: 'booting', match_id: asg.match_id, instance: game.instance.id, nonce: asg.nonce })
+    else if (game.queuedAhead > 0 && this.bootQueue.position(game.instance.id) > 0) this.postQueued(game)
     game.referee.once('live', () => this.site?.status({ state: 'live', match_id: asg.match_id, instance: game.instance.id }))
     // READY MEANS THE MAP IS LOADED, not "the link is up" (coordinator, 2026-09-23 02:30).
     // The launcher launches the client the moment it sees `ready`, and since 0.2.17 the
@@ -1465,6 +1764,24 @@ class HostAgent {
     game.once('map_loaded', sendReady)
   }
 
+  /** `preparing` + phase `queued` for a lease whose boot is waiting its turn. */
+  queuedInfo(game) {
+    const e = this.bootQueue.queue.find((x) => x.id === game.instance.id)
+    const pos = this.bootQueue.position(game.instance.id)
+    return {
+      phase: 'queued', map: game.assignment?.map || null,
+      // How many boots go before this one: the one booting now plus those queued ahead.
+      ahead: pos > 0 ? (this.bootQueue.active ? 1 : 0) + (pos - 1) : 0,
+      reason: e?.waitWhy ? 'memory' : 'boot',
+      since: e?.queuedAt ? new Date(e.queuedAt).toISOString() : null,
+    }
+  }
+
+  postQueued(game) {
+    if (!game.assignment) return
+    this.site?.status({ state: 'preparing', match_id: game.matchId, map: game.assignment.map, nonce: game.assignment.nonce, instance: game.instance.id, preparing: this.queuedInfo(game) })
+  }
+
   mapCacheSummary() {
     // The disk walk is cheap but not free: once a minute is plenty for a heartbeat field.
     if (!this.mcInfo || Date.now() - this.mcInfo.at > 60_000) {
@@ -1472,6 +1789,14 @@ class HostAgent {
       this.mcInfo = { at: Date.now(), v: { maps: i.maps, used_bytes: i.used_bytes, free_bytes: i.free_bytes, budget_bytes: i.budget_bytes } }
     }
     return { ...this.mcInfo.v, pulling: [...this.mapCache.jobs.keys()] }
+  }
+
+  /** `{ available_bytes, total_bytes, floor_bytes, at }` from /proc/meminfo, or null (Windows). */
+  memStatus() {
+    const m = readMeminfo(cfg.meminfoFile)
+    if (!m) return null
+    this.lastMem = { ...m, at: Date.now() }
+    return { available_bytes: m.availableBytes, total_bytes: m.totalBytes, floor_bytes: cfg.ramFloorBytes, at: new Date().toISOString() }
   }
 
   async reportStatus() {
@@ -1489,7 +1814,10 @@ class HostAgent {
       instances: [
         ...this.instances.list().map((i) => {
           const g = this.byInstance.get(i.id)
-          return { ...i.info(), phase: g?.referee?.phase || null, map: g?.referee?.map || null, map_loaded: !!g?.referee?.map, warm: this.warm.has(i.id), leased: !!g?.assignment }
+          // A boot waiting its turn is `preparing` with phase `queued`, the same field a map
+          // pull uses, so the site's launcher view (`match.preparing`) reads it either way.
+          const queued = g && this.bootQueue.position(i.id) > 0 ? this.queuedInfo(g) : null
+          return { ...i.info(), phase: queued ? 'queued' : g?.referee?.phase || null, map: g?.referee?.map || null, map_loaded: !!g?.referee?.map, warm: this.warm.has(i.id), leased: !!g?.assignment, ...(queued ? { preparing: queued } : {}) }
         }),
         // A lease whose map is being pulled has no process yet, but it IS running here:
         // without this entry the site's reaper ends it 90 s after it was issued.
@@ -1500,6 +1828,11 @@ class HostAgent {
       ],
       ...(this.mapCache ? { map_cache: this.mapCacheSummary() } : {}),
       host: hostInfo(),
+      // The RAM guard's figure (host.md §16.3): what the admin Boxes page shows.
+      mem: this.memStatus(),
+      boot_queue: { booting: this.bootQueue.active?.id || null, queued: this.bootQueue.queue.map((e) => e.id) },
+      incidents: this.incidents.length,
+      last_incident: this.incidents.at(-1) || null,
       local_mode: cfg.local ? (cfg.adoptLocal ? 'adopt' : 'expect') : false,
       // Offer our replay-signing PUBLIC key on every heartbeat. The site pins it on first
       // sight and answers { key_pinned, pinned_key_id }; a box whose key stopped matching
@@ -1629,6 +1962,9 @@ class HostAgent {
       token_checks: { required: cfg.requireToken, ...this.tokenGuard.stats },
       local: { enabled: cfg.local, mode: cfg.adoptLocal ? 'adopt-any' : 'expected-only', lease_held: this.leaseHeld(), expected: [...this.expected.keys()] },
       after_game: { disposition: cfg.afterGame, games_per_instance: cfg.gamesPerInstance, warm: [...this.warm.keys()] },
+      mem: this.memStatus(),
+      boot_queue: { booting: this.bootQueue.active?.id || null, queued: this.bootQueue.queue.map((e) => ({ id: e.id, real: e.real, wait: e.waitWhy || null })) },
+      incidents: this.incidents,
       instances: this.instances.list().map((i) => {
         const g = this.byInstance.get(i.id)
         return { ...i.info(), game: g && !g.finished ? g.referee.state() : null, finished: !!g?.finished, replay: g?.replayFile || null, self_reported: !!g?.selfReported, warm: this.warm.has(i.id), games_played: i.gamesPlayed || 0 }
@@ -1643,6 +1979,7 @@ class HostAgent {
     clearInterval(this.reaper); clearInterval(this.statusTimer); clearInterval(this.mapCacheTimer)
     for (const g of this.warm.values()) clearTimeout(g.warmTimer)
     this.warm.clear()
+    this.bootQueue.clear()   // nothing queued starts while we stop
     this.site?.stop()
     for (const g of this.byInstance.values()) if (!g.finished) { try { g.referee.finishGame('host_shutdown') } catch { /* ignore */ } }
     await this.instances.stopAll('host shutdown')

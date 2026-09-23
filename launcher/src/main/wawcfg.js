@@ -185,11 +185,19 @@ export function accountConfigLines(settings = {}, display = null) {
   // carries it as ENW's own archived dvar: the in-game Settings tab (esc-menu.md §9) shows
   // this value and writes a change back into the same line for the read-back below.
   pairs.push([RAW_MOUSE_DVAR, settings.rawMouse === false ? '0' : '1'])
+  // The two Discord switches ride the same way (esc-menu.md §11.3, B 2026-09-23: every
+  // launcher setting changeable in game): the in-game Settings tab and the ENW console
+  // write them, the read-back below saves them, the launcher acts on them next launch.
+  pairs.push([DISCORD_DVARS.presence, settings.discordPresence === false ? '0' : '1'])
+  pairs.push([DISCORD_DVARS.overlay, DISCORD_OVERLAY_VALUES.includes(settings.discordOverlay) ? settings.discordOverlay : 'auto'])
   return { pairs, resets, binds }
 }
 
 // ENW's own archived dvar for the DLL's raw-input switch (not a WaW menu item).
 export const RAW_MOUSE_DVAR = 'enw_rawmouse'
+// ...and for the launcher's Discord rich presence and the DLL's Discord-hook gate.
+export const DISCORD_DVARS = { presence: 'enw_discord', overlay: 'enw_discordhook' }
+const DISCORD_OVERLAY_VALUES = ['auto', 'allow', 'refuse']
 
 // Fold the account into a config.cfg the game wrote. Case-insensitive on dvar names
 // (the engine writes `ai_corpseCount`; the menu says `ai_corpsecount`); everything we
@@ -342,6 +350,16 @@ export function readBackAccount({ homeDir = P.home, profile = PROFILE, localAppD
     if (after === '0' || after === '1') {
       if (before !== undefined && before !== null && String(before) !== after) changed.rawMouse = after === '1'
     }
+  }
+  {
+    const before = (stamp.dvars || {})[DISCORD_DVARS.presence]
+    const after = now.dvars[DISCORD_DVARS.presence]
+    if ((after === '0' || after === '1') && before !== undefined && before !== null && String(before) !== after) changed.discordPresence = after === '1'
+  }
+  {
+    const before = (stamp.dvars || {})[DISCORD_DVARS.overlay]
+    const after = now.dvars[DISCORD_DVARS.overlay]
+    if (DISCORD_OVERLAY_VALUES.includes(after) && before !== undefined && before !== null && String(before) !== after) changed.discordOverlay = after
   }
 
   const binds = {}
