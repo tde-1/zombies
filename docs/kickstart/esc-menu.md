@@ -726,9 +726,24 @@ Nothing here was run: B was playing and this lane took no lock. From a clean che
 
 ### 11.7 Not proven
 
-* **Everything in game.** No game was launched for this lane (B was playing). The console, the
+* ~~**Everything in game.** No game was launched for this lane (B was playing). The console, the
   aliases, Tab, the Verified settings, Apply in a Verified game and the start-menu close are unit
-  tested and compiled into the DLL, not run. §11.6 is the recipe.
+  tested and compiled into the DLL, not run. §11.6 is the recipe.~~ **→ Run by lane P1,
+  2026-09-23 14:02–14:17, on the shipped 0.2.25 DLL `974c2e8d`** (`next-session.md` "Local proofs
+  2026-09-23 afternoon"; logs `ZombiesDev\logs\dedi\p1c1{a,b,d,q}.*`):
+  * step 1 (fear_mc_2) **passed on the criterion.** The map's 0x10 at the first frame is logged as
+    `the map's, not a pause -- enw_ui stays clear; closing it at 1.5 s`, with 0 `enw_ui paused`
+    and 0 `PAUSED (solo_menu)`. **The close was not exercised:** in every harness run (with or
+    without `keep`, on fear_mc_2 and on Nacht) the 0x10 was gone by +1 s on its own, so no
+    `CLOSING the map's start menu` line appeared. The close is still unproven. B's next box game on
+    fear_mc_2 answers it;
+  * step 2 (Nacht) **passed**: no close, no pause;
+  * step 3 (`-ConsoleSelftest 2`) **passed**: every expected reply, WRITE-THROUGH for sm_enable
+    and the bind, then `'/quit' -> quitting` → `EXIT game` → `POST /api/party/quit -> 200` →
+    `disconnect sent` → `quit`, and the client ended on its own. Side finding: the local Nacht
+    dedi then parked in the `snddriverglobals` Sys_Error (`dedi.md` §11.4 class) after the last
+    player's quit;
+  * step 4 (Apply in Verified through the Esc menu) was **not run**.
 * **That the closed start menu is only decoration on every map.** fear_mc_2's is closed with the
   same Esc B used, and the game played on after it in his logs; a map whose start menu the player
   must answer (a character pick) would now be dismissed for him. `ENW_MAP_START_MENU=keep` is the

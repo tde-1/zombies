@@ -17,6 +17,35 @@ dated section for tonight; read the newest one in your lane before you touch any
 | **Maps** | 78 listed; 5 five-gate proven with a real client (stock four + fear_mc_2); **59 more "New"** (boot on the box, no client has joined them); 5 of the popular 64 broken and hidden. *(Updated 2026-09-23 13:37 UK, lane A1 asset audit: **5 more hidden** in the live DB — dome_snow, snowglobe, nazi_zombie_test, nazi_zombie_test1, sanatorium — the release lacks a box weapon; fear_mc_2 has verdict `hide` but stays up for Z1/B; 50 live maps have no console log at all → `ZombiesDev\archive\reports\reproof-queue.txt`)* | `dedi.md` §20, `archive.md` §10, **§13** |
 | **Cloud bill** | The box €7.19/month + the bucket's base fee (~€5 net). Nothing else | README rule 8 |
 
+## Local proofs 2026-09-23 afternoon (lane P1, 14:02–14:31 UK)
+
+The queued in-game proofs for C1, 17b and lane 12. Every run was on the **shipped 0.2.25 client DLL
+`974c2e8d…`** (sha256 `974c2e8d226576568b5be66bae01c148e1bc9de1cab23f2ca90af3a2a0875bfc`), taken out
+of `launcher\dist\ENW-Zombies-Launcher-Setup-0.2.25.exe`, because `wt-coord2\build\dedi` was rebuilt
+to `1fda51c5` (the D1 merge) at 14:08:56 in the middle of the session. Run p1c1c picked that one up
+and is discarded. The feed has since moved to 0.2.27 (`04a3ad6d`); these verdicts are for
+`974c2e8d`. Harness: `jointest.ps1` / `lockdown-proof.ps1` from d32ca88, with `nd` as the server and
+`nc` as the client. Everything was invisible (`ENW_TEST_NO_ACTIVATE=1`, parked at -4000,-4000,
+`ENW_BORDERLESS_COVER=0`) and used the private LocalAppData. Each run took game.lock and released
+it. A private site ran on 3399 and authhost on 38795, both ours, both stopped afterwards. Logs are
+in `ZombiesDev\logs\dedi\p1*.*`, captures in `ZombiesDev\logs\p1\<tag>\`, and the driver in
+`ZombiesDev\logs\p1\`.
+
+| # | Proof | Run | Verdict |
+|---|---|---|---|
+| 1a | C1 start-paused, fear_mc_2 (`esc-menu.md` §11.6 step 1) | `p1c1a` 14:02–14:03 | **Pass on the criterion; the close path was not exercised.** `pause_menu: the map started under an engine menu (keyCatchers 0x10, 0 ms into the map) … enw_ui stays clear; closing it at 1.5 s`. There are 0 `enw_ui paused` lines and 0 `PAUSED`/`solo_menu` lines on the server. `cap_3s` shows the map playing with no blur. **No `CLOSING the map's start menu` line:** in every harness run the 0x10 was gone by +1 s on its own (`cap_1s … keyCatchers 0x0`), so B's case, where the menu stays up until his Esc, did not reproduce locally |
+| 1b | same, `ENW_MAP_START_MENU=keep` | `p1c1b` 14:07–14:08 | Same result. The menu had gone by +1 s even with `keep`, and nothing paused |
+| 1c | stock Nacht (step 2) | `p1c1d` 14:13–14:14 | **Pass.** Nacht also starts with 0x10 at the first frame, and it is classified the same way. No close, no pause, nothing on the server |
+| 1d | console, Verified, `-ConsoleSelftest 2` (step 3) | `p1c1q` 14:14–14:17 | **Pass.** `shadows off`, `fps: locked in a Verified game`, `fov: 65-120`, `sv_cheats: locked`, `aa 4x -- apply`, `use F, MOUSE4`, `list sh -> 4 row(s)`, and WRITE-THROUGH for sm_enable, cg_fov, r_aaSamples and the bind. Then `'/quit' -> quitting` → `EXIT game` → `POST /api/party/quit -> 200` (the stub saw `match_id m_p1c1q`, `reason esc_menu_exit`) → `disconnect sent` → `quit`. **The client ended on its own** (`quit` 0.4 s after `/quit`; the process was gone at jointest's next 5 s poll). **Finding:** the local Nacht dedi then ran ShutdownGame and re-entered the front end → `Com_Error "Exceeded limit of 1 'snddriverglobals' assets"` → Sys_Error. It parked at 0 Hz, burning ~1 core, until the harness killed it (the `dedi.md` §11.4 restart class, this time triggered by a clean player quit) |
+| 2 | 17b compensations, fear_mc_2, 1 kHz synthetic, `PUMP_DRAIN=1` vs `=0` | `p1m17d1` 14:24–14:26, `p1m17d0` 14:26–14:28 | **Partial, not a controlled A/B.** B was using his mouse, and `rawprobe inject` aborted in both arms (after 285 and 16,332 moves). The INPUTSINK game saw B's real mouse. **Proven:** the `compensations --` line runs in game every ~3.6 s. The drain works: DRAIN=1 logged `pump drains 1885 carrying 163 reports` and `wheel raw 31`, while DRAIN=0 logged `pump drains 0`. Every fault counter was 0 in both arms (impossible, bad blocks, disagreements, transient, hard failures, repairs, foreign, absolute). `clip re-applied`, `edge recentres` and `menu recentres` were all 0, which is not meaningful here: the harness window is never focused, so it never clips. **Frame p99 was 6.25 ms at ~249 fps in every steady 10 s window in both arms.** DRAIN=0 had two windows at 6.50/6.75 ms and 8 frames over 16.7 ms; DRAIN=1 had none after the load window. That is weak evidence that the drain costs nothing |
+| 3 | V0 `r_multiGpu 0` vs `1` picture | — | **Skipped** (coordinator: wrap up) |
+| 4 | Lane-12 record line + end screen (l12c pattern) | `p1l4` 14:28–14:31 | **Pass.** `3 backlog line(s) (history=1)`. game_over → authhost `RESULT … HTTP 200 {"ok":true,"notified":1} (30 ms after game_over)` → client `system line: Your record has been uploaded.` (14:30:45.860). Our server was ended at +130 s → `the server has sent nothing for 20000 ms` → end screen *Lost the connection to the server. / Your record has been uploaded. / Back to the launcher in 3* (`p1\p1l4\enwshot-143131-lockdown-screen.png`) → `quit`, 1001 covered frames. **The client ended on its own** and jointest released the lock. (The HUD captures at +92…113 s show the ENW console still open from selftest 1, so the HUD line's evidence is the log line) |
+
+Still not proven after P1: the start-menu **close** (it needs a menu that stays up; B's next box game
+on fear_mc_2 answers it with `CLOSING the map's start menu (try 1`), 17b under a controlled 1 kHz
+synthetic (it needs the desktop idle for ~2 min), 17b's clip/recentre counters (they need a focused
+window, i.e. B's own session), and chat-overlay §13.6's chat line and ALLOWED decision (not run).
+
 ## What shipped tonight (2026-09-22 19:00 → 2026-09-23 03:30), one row per thing
 
 | UK time | What | Where it is written |
@@ -110,6 +139,9 @@ Deploy steps: `host.md` §16.5. Proving warm reuse on the box before it goes bac
     only max fps is locked there; Discord switches in game (needs a launcher release for the
     read-back). Unit tests only (`lockdown_test` 196/0, `settings_model_test` 65/0); **the in-game
     proof recipe is `esc-menu.md` §11.6** and needs the lock with B away. `esc-menu.md` §11.
+    **→ P1 ran it 2026-09-23 14:02–14:17 on `974c2e8d`** ("Local proofs 2026-09-23 afternoon"
+    above): no paused start and the console `/quit` both pass; the close itself was not exercised,
+    because the harness's menu is gone by +1 s.
 19. **Host boot queue, RAM guard, warm handoff (lane H1)**: proven in the sim only (`test/boot-queue.js`), not on the box. Warm reuse (`--after-game end`) stays off until two consecutive agent games pass on the box. The 700 MB floor is a guess from the 12:13 incident. `host.md` §16.6–16.7.
 20. **Dedicated-server freeze (B's fear_mc_2, 2026-09-23 12:33 UTC, round 4)**: one frame escaped through an access violation (the engine's abortframe swallows it), which left the script VM half-executed; ~5 s later `Scr_AddLocalVars` (0x697B60) pushed 33,075 names into the 2,048-slot `localVars` stack, overwrote `[0x3BFD478]`, and every frame after faulted at 0x5FFE23. Not our hooks, not pause, not the §16 NOP. **Which AV escaped first is unknown** - the new `freeze_watchdog.cpp` logs it next time (fault eip + callers + VM state per escaped frame). The watchdog also ends a frozen match through the host (`game_over` reason/flag `server_freeze`, `match_end server_alive:false`); proven locally, **not on the box** (needs the box DLL and a host-agent restart for the flag). Branch `worktree-agent-a05beaee45682f85d`. `dedi.md` §23.
 

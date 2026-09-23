@@ -889,6 +889,10 @@ released it), released 11:51:59. Logs `ZombiesDev\logs\dedi\ovg5.*`, `ZombiesDev
   `enw-<pid>.log` per-minute lines after an ALLOWED.
 * **A real Discord attach**, allowed or refused (as 13.5), and Discord's behaviour after a refusal.
 
+*Lane P1 (2026-09-23 afternoon, `974c2e8d`, `next-session.md` "Local proofs 2026-09-23
+afternoon") ran no overlay-guard probe, so every bullet above is **still unproven**. What P1 did
+prove in this doc's area is §14's record notice on the 0.2.25 DLL (run `p1l4`, below).*
+
 ## 14. 2026-09-23 ~12:00–12:30 — the window's backlog (`history=1`) and the site's notices (lane 12)
 
 Handed over by lane 8 (`web.md` "chat dedupe"): since the site stopped replaying the ring on a
@@ -921,3 +925,8 @@ global ring, not the web dock). `web/test/record-notice.js` 7/0.
 lines plus earlier runs' notices); the record notice live on the HUD over the game-over scoreboard
 (`ui/lockdown-record-uploaded-hud-800x600.jpg`). **Not proven:** the backlog as B sees it in the
 window (no capture of the open panel was taken), and on the live site.
+**Re-proven on the shipped 0.2.25 DLL `974c2e8d`** by lane P1, run `p1l4` (2026-09-23 14:28–14:31):
+`3 backlog line(s) (history=1)`, `RESULT … HTTP 200 {"ok":true,"notified":1}` → `system line: Your
+record has been uploaded.`, then the end screen repeating it after the server went silent
+(`ZombiesDev\logs\p1\p1l4\enwshot-143131-lockdown-screen.png`). The backlog in the open window and
+on the live site remain unproven.
