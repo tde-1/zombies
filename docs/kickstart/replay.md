@@ -1582,9 +1582,11 @@ The full web `npm test` passes after merging main: every suite reports 0 failed,
 
 ### 12.6 What is NOT proven
 
-* **No real v1 recording exists yet**, and R1's DLL is not deployed (§11). Everything was driven by
-  my fixture, written to v1's shapes. B's first box game after the R1 deploy is the proof: guns,
-  shots, hits, a swipe, a PaP on Der Riese, and a power-up.
+* **No v1 recording with a player in it exists yet.** R1's DLL has been on the box since 14:13 UK
+  (`04a3ad6d`, `dedi.md` §22.10). Its only proof so far is an agent lease, `m_7ce70442`, which has the
+  `replay_events:1` header and no player, so no events. Everything here was driven by my fixture,
+  written to v1's shapes. B's next box game is the proof: guns, shots, hits, a swipe, a PaP on Der
+  Riese, and a power-up. Open it in the viewer on a build with this branch merged.
 * **First shots after Play can be silent** while the samples decode (Ogg, ~100 ms locally). The audio
   context may only be created by the gesture. Decoding earlier through an `OfflineAudioContext` would
   fix this and has not been done.
