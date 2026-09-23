@@ -1,0 +1,265 @@
+# ENW Zombies -- the replay viewer's game assets (weapons, power-ups, effects, sounds).
+#
+# Every source asset tools/models/export_assets.py takes out of the game, by zone (a stock
+# fastfile under <game>/zone/english, unlinked by OpenAssetTools) or by .iwd (a zip under
+# <game>/main). Nothing here is game data: these are NAMES. The data stays in the player's own
+# game copy; the script rebuilds everything from it (docs/kickstart/assets-pipeline.md).
+#
+# The format is a small YAML subset (block maps, `{a: b}` flow maps, `[a, b]` lists, `#`
+# comments) so the script needs no YAML library; PyYAML is used when it is installed.
+#
+# Where a name came from is noted. "zone order" means the sound alias -> file mapping was read
+# from `Unlinker --list` (an alias is listed right after the loaded sounds it pulls in): OAT
+# v0.33 does not dump T4 sound alias lists, so an alias with several variants or secondary
+# layers is represented by the one file named here.
+
+# Which asset types to unlink from which zone (Unlinker --include-assets). Cheap: ~15 s total.
+zones:
+  nazi_zombie_factory: xmodel,material,image,weapon,loadedsound,rawfile
+  localized_nazi_zombie_factory: loadedsound
+  common: material,image,loadedsound,localize
+  common_mp: loadedsound
+  patch: localize
+
+# The one attach rule for every weapon (engine CG_AddPlayerWeapon: the weapon model's root
+# bone `tag_weapon` is placed on the player's `tag_weapon_right`). The exported player .glb
+# bones are in engine bone orientation under a Y-up root; the weapon .glb is already Y-up,
+# so a weapon parented to the bone takes this local rotation (+90 deg about X) to undo it.
+attach:
+  playerBone: tag_weapon_right
+  weaponTag: tag_weapon
+  localQuaternion: [0.70710678, 0, 0, 0.70710678]
+
+# Weapons. `weapon` is the weapon file (dump/<zone>/weapons/<name>); the script cross-checks
+# worldModel / gunModel / flash effect against it and fails if they disagree, and takes the
+# display name from the weapon's displayName string (common.str / patch.str).
+weapons:
+  colt:
+    zone: nazi_zombie_factory
+    weapon: zombie_colt
+    world: weapon_zombie_colt45_pistol
+    view: viewmodel_zombie_colt45_pistol
+    flash: weapon/muzzleflashes/pistolflash
+    muzzle: muzzle_pistol
+    fire: colt_fire
+    fire_plr: colt_fire_plr
+    pap:
+      weapon: zombie_colt_upgraded
+      world: weapon_zombie_colt45_pistol_up
+      view: viewmodel_zombie_colt45_pistol_up
+      flash: ""
+      muzzle: muzzle_pistol
+      fire: colt_pap_fire
+      fire_plr: colt_pap_fire
+  m1carbine:
+    zone: nazi_zombie_factory
+    weapon: zombie_m1carbine
+    world: weapon_zombie_m1carbine_rifle
+    view: viewmodel_zombie_m1carbine_rifle
+    flash: weapon/muzzleflashes/fx_m1carbine
+    muzzle: muzzle_rifle
+    fire: m1carbine_fire
+    fire_plr: m1carbine_fire_plr
+    pap:
+      weapon: zombie_m1carbine_upgraded
+      world: weapon_zombie_m1carbine_rifle_up
+      view: viewmodel_zombie_m1carbine_rifle_up
+      flash: weapon/muzzleflashes/standardflashworld_ug
+      muzzle: muzzle_rifle
+      fire: uber_fire
+      fire_plr: uber_fire_plr
+  thompson:
+    zone: nazi_zombie_factory
+    weapon: zombie_thompson
+    world: weapon_zombie_thompson_smg
+    view: viewmodel_zombie_thompson_smg
+    flash: weapon/muzzleflashes/standardflashworld
+    muzzle: muzzle_rifle
+    fire: thompson_fire
+    fire_plr: thompson_fire_plr
+    pap:
+      weapon: zombie_thompson_upgraded
+      world: weapon_zombie_thompson_smg_up
+      view: viewmodel_zombie_thompson_smg_up
+      flash: weapon/muzzleflashes/standardflashworld_ug
+      muzzle: muzzle_rifle
+      fire: uber_fire
+      fire_plr: uber_fire_plr
+  mp40:
+    zone: nazi_zombie_factory
+    weapon: zombie_mp40
+    world: weapon_zombie_mp40_smg
+    view: viewmodel_zombie_mp40_smg
+    flash: weapon/muzzleflashes/standardflashworld
+    muzzle: muzzle_rifle
+    fire: mp40_fire
+    fire_plr: mp40_fire_plr
+    pap:
+      weapon: zombie_mp40_upgraded
+      world: weapon_zombie_mp40_smg_up
+      view: viewmodel_zombie_mp40_smg_up
+      flash: weapon/muzzleflashes/standardflashworld_ug
+      muzzle: muzzle_rifle
+      fire: uber_fire
+      fire_plr: uber_fire_plr
+  ray_gun:
+    zone: nazi_zombie_factory
+    weapon: ray_gun
+    world: weapon_usa_ray_gun
+    view: viewmodel_usa_ray_gun
+    flash: weapon/muzzleflashes/fx_raygun_world
+    muzzle: muzzle_raygun
+    fire: ray_gun_fire
+    fire_plr: ray_gun_fire_plr
+    pap:
+      weapon: ray_gun_upgraded
+      world: weapon_usa_ray_gun          # the SAME world model: only the viewmodel is gold
+      view: viewmodel_zombie_raygun_up
+      flash: weapon/muzzleflashes/fx_raygun_ug_world
+      muzzle: muzzle_raygun
+      fire: uber_fire
+      fire_plr: uber_fire_plr
+  tesla_gun:
+    zone: nazi_zombie_factory
+    weapon: tesla_gun
+    world: weapon_usa_tesla
+    view: viewmodel_usa_tesla_gun
+    flash: weapon/muzzleflashes/fx_tesla_world
+    muzzle: muzzle_tesla
+    fire: tesla_fire
+    fire_plr: tesla_fire_plr
+    pap:
+      weapon: tesla_gun_upgraded
+      world: weapon_usa_tesla            # the SAME world model: only the viewmodel differs
+      view: viewmodel_zombie_tesla_up
+      flash: weapon/muzzleflashes/fx_tesla_ug_world
+      muzzle: muzzle_tesla
+      fire: uber_fire
+      fire_plr: uber_fire_plr
+
+# Power-ups: maps/_zombiemode_powerups.gsc add_zombie_powerup(name, model, ...), Der Riese.
+# Durations are the script's: insta kill / double points 30 s; a drop sits 15 s, then blinks
+# 40 times (15 x 0.5 s, 10 x 0.25 s, 15 x 0.1 s) and is deleted at 26.5 s. The glow is the fx
+# misc/fx_zombie_powerup_on, whose sprite is gfx_fxt_muz_vert_gen (zone order).
+powerups:
+  max_ammo:
+    script: full_ammo
+    zone: nazi_zombie_factory
+    xmodel: zombie_ammocan
+    pickup: powerup_grab
+    announce: ann_max_ammo
+    sting: max_ammo_sting
+  insta_kill:
+    script: insta_kill
+    zone: nazi_zombie_factory
+    xmodel: zombie_skull
+    pickup: powerup_grab
+    announce: ann_insta_kill
+    loop: insta_kill_loop
+    end: insta_kill_end
+    durationMs: 30000
+  double_points:
+    script: double_points
+    zone: nazi_zombie_factory
+    xmodel: zombie_x2_icon
+    pickup: powerup_grab
+    announce: ann_double_points
+    loop: double_points_loop
+    end: double_points_end
+    durationMs: 30000
+  nuke:
+    script: nuke
+    zone: nazi_zombie_factory
+    xmodel: zombie_bomb
+    pickup: powerup_grab
+    announce: ann_nuke
+    sting: nuke_flash
+    each_zombie: nuke_zombie
+  carpenter:
+    script: carpenter
+    zone: nazi_zombie_factory
+    xmodel: zombie_carpenter
+    pickup: powerup_grab
+    announce: ann_carpenter
+    loop: carpenter_loop
+    end: carpenter_end
+
+powerup_common:
+  spawn: powerup_spawn
+  idle_loop: powerup_loop
+  glow: powerup_glow
+  groundLifeMs: 26500
+  blinkFromMs: 15000
+
+# Effects: one image each, re-encoded to PNG. `material` is read back for its blend mode.
+fx:
+  muzzle_rifle:     {zone: common, material: gfx_fxt_muz_vert_gen, max: 128, use: "muzzle flash sprite, rifles/SMGs (standardflashworld family; zone order)"}
+  muzzle_pistol:    {zone: common, material: gfx_fxt_gas_flash, max: 128, use: "muzzle flash sprite, pistols (pistolflash family; zone order)"}
+  muzzle_heavy:     {zone: common, material: gfx_fxt_fire_flame_clump, max: 128, use: "muzzle flame clump (heavy flash; zone order)"}
+  muzzle_raygun:    {zone: nazi_zombie_factory, material: gfx_fxt_fx_raygun_ring, max: 128, use: "ray gun ring (fx_raygun_world / projectile trail)"}
+  muzzle_tesla:     {zone: nazi_zombie_factory, material: gfx_fxt_env_electric_arc1_add, max: 256, use: "tesla arc sprite (fx_tesla_world / bolt)"}
+  powerup_glow:     {zone: common, material: gfx_fxt_muz_vert_gen, max: 128, tint: "#5cff5c", use: "power-up glow (fx_zombie_powerup_on); the fx tints it green, tint is by eye"}
+  blood_burst:      {zone: common, material: gfx_fxt_bio_bloodburst, max: 128, use: "blood splat on a zombie hit (fx_zombie_bloodsplat)"}
+  blood_burst_b:    {zone: common, material: gfx_fxt_bio_bloodburst_b, max: 128, use: "blood splat, second sheet (fx_zombie_bloodsplat)"}
+  blood_drops:      {zone: common, material: gfx_fxt_bio_blooddrops, max: 128, use: "blood drops (fx_zombie_bloodsplat)"}
+  blood_gush:       {zone: common, material: gfx_fxt_bio_bloodgush, max: 128, use: "blood gush (fx_zombie_bloodsplat)"}
+  hurt_overlay:     {zone: common, material: overlay_low_health, max: 512, use: "full-screen red vignette when the player is hurt (swiped)"}
+  hit_direction:    {zone: common, material: hit_direction, max: 128, use: "damage direction indicator"}
+  hit_marker:       {zone: common, material: damage_feedback, max: 64, use: "hit marker (damage_feedback)"}
+  crosshair_side:   {zone: common, material: reticle_side_small, max: 64, use: "crosshair side bar (reticleSide of every zombies weapon but the tesla)"}
+  crosshair_center: {zone: nazi_zombie_factory, material: reticle_center_cross, max: 64, use: "crosshair centre cross"}
+  crosshair_tesla:  {zone: nazi_zombie_factory, material: hud_flamethrower_reticle, max: 128, use: "tesla gun reticleCenter"}
+  pap_camo:         {zone: nazi_zombie_factory, image: "~gold_spec-rgb&skins_gloss-l-11", max: 128, use: "pack-a-punch gold: the specular map of every *_gold / *_up material (colour map is blackness_c)"}
+
+# Sounds. `file` is the loaded sound's name as the zone lists it; OAT writes it as .wav or
+# .xwma, the script finds either. `iwd` sounds are streamed files read straight from the zip.
+# Output: mono Vorbis q3 (`stereo: true` keeps two channels), metadata stripped, bit-exact.
+sounds:
+  # weapons: fireSound (third person, mono) and fireSoundPlayer (first person, stereo source)
+  colt_fire:           {zone: nazi_zombie_factory, file: sfx/weapon/pistols/colt1911/fire/wpn_colt1911_mn.wav, alias: weap_colt_fire}
+  colt_fire_plr:       {zone: nazi_zombie_factory, file: sfx/weapon/pistols/colt1911/fire/wpn_colt1911_st_f.wav, alias: weap_colt_fire_plr}
+  colt_pap_fire:       {zone: nazi_zombie_factory, file: sfx/weapon/gren/m1gren/fire/wpn_m1gren_st_f.wav, alias: weap_m1gren_fire_plr}
+  m1carbine_fire:      {zone: nazi_zombie_factory, file: sfx/weapon/rifle/m1_carbine/fire/mono/wpn_m1carbine_mn_00.wav, alias: weap_carbine_fire}
+  m1carbine_fire_plr:  {zone: nazi_zombie_factory, file: sfx/weapon/rifle/m1_carbine/fire/wpn_m1carbine_st_f.wav, alias: weap_carbine_fire_plr}
+  thompson_fire:       {zone: nazi_zombie_factory, file: sfx/weapon/smg/thompson/fire/wpn_thompson_mn.wav, alias: weap_thompson_fire}
+  thompson_fire_plr:   {zone: nazi_zombie_factory, file: sfx/weapon/smg/thompson/fire/wpn_thompson_st_f.wav, alias: weap_thompson_fire_plr}
+  mp40_fire:           {zone: nazi_zombie_factory, file: sfx/weapon/smg/mp40/fire/mono/mono_00.wav, alias: weap_mp40_fire}
+  mp40_fire_plr:       {zone: nazi_zombie_factory, file: sfx/weapon/smg/mp40/fire/wpn_mp40_st_f.wav, alias: weap_mp40_fire_plr}
+  ray_gun_fire:        {zone: nazi_zombie_factory, file: sfx/weapon/ray_gun/wpn_ray_mn.wav, alias: weap_rgun_fire}
+  ray_gun_fire_plr:    {zone: nazi_zombie_factory, file: sfx/weapon/ray_gun/wpn_ray_st_f.wav, alias: weap_rgun_fire_plr}
+  tesla_fire:          {zone: localized_nazi_zombie_factory, file: sfx/weapon/tesla/new/wpn_tesla_fire_mn_f.wav, alias: wpn_tesla_fire_npc}
+  tesla_fire_plr:      {zone: localized_nazi_zombie_factory, file: sfx/weapon/tesla/new/wpn_tesla_fire_st_f.wav, alias: wpn_tesla_fire_plr}
+  uber_fire:           {zone: nazi_zombie_factory, file: sfx/weapon/uber/uber_shot_m.wav, alias: "weap_*_fire_ubershot_m (every upgraded gun but the Colt; zone order)"}
+  uber_fire_plr:       {zone: nazi_zombie_factory, file: sfx/weapon/uber/uber_shot_st.wav, alias: "weap_*_fire_ubershot_st (zone order)"}
+  # power-ups (_zombiemode_powerups.gsc)
+  powerup_spawn:       {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/powerup/power_up_spawn.wav, alias: spawn_powerup}
+  powerup_loop:        {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/powerup/power_up_loop.wav, alias: spawn_powerup_loop}
+  powerup_grab:        {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/powerup/power_up_grab.wav, alias: powerup_grabbed}
+  max_ammo_sting:      {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/full_ammo/full_ammo.wav, alias: full_ammo}
+  insta_kill_loop:     {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/insta_kill/insta_kill_loop.wav, alias: insta_kill_loop}
+  insta_kill_end:      {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/insta_kill/insta_kill.wav, alias: "insta_kill (played when it runs out)"}
+  double_points_loop:  {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/double_point/double_point_loop.wav, alias: double_point_loop}
+  double_points_end:   {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/double_point/double_point_off.wav, alias: points_loop_off}
+  nuke_flash:          {zone: localized_nazi_zombie_factory, file: sfx/amb/flare/flare_exp.wav, alias: nuke_flash}
+  nuke_zombie:         {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/nuke/nuke.wav, alias: "nuked (per zombie)"}
+  carpenter_loop:      {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/carp/carp_loop.wav, alias: carp_loop}
+  carpenter_end:       {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/powerups/carp/carp_end.wav, alias: carp_end}
+  # the announcer (play_devil_dialog). The same lines are in localized_english_iw05/06.iwd.
+  ann_max_ammo:        {zone: localized_nazi_zombie_factory, file: voiceovers/zombie/ann/ann_maxammo.wav, alias: ma_vox}
+  ann_insta_kill:      {zone: localized_nazi_zombie_factory, file: voiceovers/zombie/ann/ann_instakill.wav, alias: insta_vox}
+  ann_double_points:   {zone: localized_nazi_zombie_factory, file: voiceovers/zombie/ann/ann_doublepoints.wav, alias: dp_vox}
+  ann_nuke:            {zone: localized_nazi_zombie_factory, file: voiceovers/zombie/ann/ann_nuke.wav, alias: nuke_vox}
+  ann_carpenter:       {zone: localized_nazi_zombie_factory, file: voiceovers/zombie/ann/ann_carpenter.wav, alias: carp_vox}
+  # hits
+  hit_marker:          {zone: common_mp, file: sfx/mp/mp_hit_indication_3c.wav, alias: "MP_hit_alert (multiplayer; stock zombies plays none)"}
+  player_hit:          {zone: common, file: sfx/character/player/pain_small/pain_small_00.wav, alias: "player_pain_small (variant 0 of 8)"}
+  zombie_swipe:        {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/whoosh/whoosh_00.wav, alias: "attack_whoosh (variant 0 of 3)"}
+  # pack-a-punch
+  pap_upgrade:         {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/perksacola/packa_upgrade_weap.wav, alias: packa_weap_upgrade}
+  pap_ready:           {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/perksacola/packa_weap_ready.wav, alias: packa_weap_ready}
+  pap_sting:           {zone: localized_nazi_zombie_factory, file: sfx/levels/zombie/perksacola/jingle/packa_sting.wav, alias: mx_packa_sting}
+  pap_jingle:          {iwd: iw_27.iwd, file: sound/SFX/Levels/zombie/perksacola/jingle/packa_jingle.wav, alias: "mx_packa_jingle (streamed)", stereo: true}
+
+# Asked for and not in this game: listed so the manifest says why they are absent.
+missing:
+  fire_sale: "Fire Sale is a Black Ops power-up; World at War has no model, sound or script for it (no zombie_firesale in any stock zone)."
