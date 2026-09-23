@@ -89,11 +89,19 @@ PLACEABLE = {"script_model", "misc_model"}
 # each. The engine draws them; a replay viewer does not need them.
 MIN_PROP_SIZE = 12.0
 
+# World materials that are editor tools, not surfaces (see merge_world).
+TOOL_MATERIAL = re.compile(r"^(caulk|clip|nodraw|trigger|hint|skip|portal|mantle|shadow_?caster|"
+                           r"ladder|volume|origin|cushion|metalclip|foliage_?clip|monster_?clip)"
+                           r"|(^|_)caulk", re.I)
+
 # Husky's OBJ unit: centimetres (engine inches x 2.54). See merge_world.
 HUSKY_OBJ_SCALE = 2.54
 
 MAX_TEX = 512          # px on the long edge; Nacht's props ship 1024 and nobody can tell
 JPEG_QUALITY = 86
+# export_all.py sets this: textures leave here as lossless PNG and the optimiser
+# (optimize_glb.cjs) makes them WebP, so nothing is lossy-compressed twice.
+LOSSLESS_TEX = False
 
 
 def log(*a):
@@ -104,16 +112,29 @@ def log(*a):
 # step 1 -- unlink the fastfile
 # ---------------------------------------------------------------------------
 
+ARCHIVE_MODS = DEV / "archive" / "mods"
+ARCHIVE_STAGED = DEV / "archive" / "mods-staged"
+
+
+def find_fastfile(bsp: str):
+    """(fastfile, mod_dir or None). Stock maps come from the Steam install (read-only);
+    a custom map from the archive's normalised install (archive.md §7), the staged copy
+    first when one exists (mapmount.ps1 boots the same one), else WaW's own mods/."""
+    ff = WAW / "zone" / "english" / f"{bsp}.ff"
+    if ff.is_file():
+        return ff, None
+    for root in (ARCHIVE_STAGED, ARCHIVE_MODS, WAW / "mods"):
+        alt = root / bsp / f"{bsp}.ff"
+        if alt.is_file():
+            return alt, alt.parent
+    return None, None
+
+
 def unlink(bsp: str, work: Path, force: bool) -> Path:
     """Run OAT's Unlinker over <bsp>.ff. Returns the dump directory."""
-    ff = WAW / "zone" / "english" / f"{bsp}.ff"
-    if not ff.is_file():
-        # A custom map lives in mods/<bsp>/ instead, which is the same shape.
-        alt = WAW / "mods" / bsp / f"{bsp}.ff"
-        if alt.is_file():
-            ff = alt
-        else:
-            sys.exit(f"no fastfile for {bsp} (looked in {ff} and {alt})")
+    ff, mod_dir = find_fastfile(bsp)
+    if ff is None:
+        sys.exit(f"no fastfile for {bsp} (zone/english, archive/mods-staged, archive/mods, WaW mods/)")
     if not OAT.is_file():
         sys.exit(f"OpenAssetTools is not installed at {OAT}\n"
                  f"  download oat-windows.zip from\n"
@@ -134,7 +155,10 @@ def unlink(bsp: str, work: Path, force: bool) -> Path:
         # The zone carries 1720 sounds and 364 animations we will never draw, and
         # dumping them is most of the wall clock. Narrow it.
         "--include-assets", "xmodel,material,image,mapents",
-        "--search-path", f"{WAW / 'main'};{WAW / 'zone' / 'english'}",
+        # A custom map's images mostly live as loose .iwi in its own .iwd files, not in
+        # the zone -- so its mod folder goes on the search path too.
+        "--search-path", ";".join(str(p) for p in
+                                  [WAW / "main", WAW / "zone" / "english"] + ([mod_dir] if mod_dir else [])),
         "-o", str(work / "dump" / "?zone?"),
         str(ff),
     ]
@@ -144,7 +168,9 @@ def unlink(bsp: str, work: Path, force: bool) -> Path:
     # and writes only under -o. Rule 1 of the kickstart README.
     r = subprocess.run(cmd, capture_output=True, text=True)
     tail = "\n".join((r.stdout or "").splitlines()[-6:])
-    if r.returncode != 0:
+    # A custom zone often "finishes with N errors" (an asset type OAT's T4 writer skips);
+    # that is only fatal if the map_ents never came out.
+    if r.returncode != 0 and not (out / "maps" / f"{bsp}.d3dbsp.ents").is_file():
         sys.exit(f"Unlinker failed ({r.returncode}):\n{tail}\n{r.stderr[-2000:]}")
     log(f"unlinked in {time.time() - t:.1f}s -- {tail.splitlines()[-1] if tail else ''}")
     stamp.write_text("ok")
@@ -485,6 +511,18 @@ def count_unsupported_props(glb: 'Glb'):
     a, b, c = T[:, 0], T[:, 1], T[:, 2]
     lo = T[:, :, :2].min(1)
     hi = T[:, :, :2].max(1)
+    # A coarse XY grid over the triangles, so each prop tests the few hundred triangles in
+    # its cell and not all of them: a custom map is up to ~1M triangles and ~5000 props,
+    # and the unindexed version was O(props x triangles).
+    CELL = 256.0
+    grid = {}
+    c0 = np.floor(lo / CELL).astype(np.int64)
+    c1 = np.floor(hi / CELL).astype(np.int64)
+    for ti in range(len(T)):
+        for gx in range(c0[ti, 0], c1[ti, 0] + 1):
+            for gy in range(c0[ti, 1], c1[ti, 1] + 1):
+                grid.setdefault((gx, gy), []).append(ti)
+    grid = {k: np.asarray(v, dtype=np.int64) for k, v in grid.items()}
     hidden = {}
     unsupported = {}
     scene = glb.j["scenes"][0]["nodes"]
@@ -497,9 +535,12 @@ def count_unsupported_props(glb: 'Glb'):
             keep.append(ni)
             continue
         x, y, z = t
-        m = (lo[:, 0] <= x) & (hi[:, 0] >= x) & (lo[:, 1] <= y) & (hi[:, 1] >= y)
+        cand = grid.get((int(np.floor(x / CELL)), int(np.floor(y / CELL))))
+        if cand is None:
+            cand = np.zeros(0, dtype=np.int64)
+        m = cand[(lo[cand, 0] <= x) & (hi[cand, 0] >= x) & (lo[cand, 1] <= y) & (hi[cand, 1] >= y)]
         ok = False
-        if m.any():
+        if len(m):
             A, B, C = a[m], b[m], c[m]
             v0 = C[:, :2] - A[:, :2]
             v1 = B[:, :2] - A[:, :2]
@@ -549,6 +590,13 @@ def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
     # grew 2.54x away from the origin, which is what B saw.
     for g in groups.values():
         g['pos'] = [v / HUSKY_OBJ_SCALE for v in g['pos']]
+    # Tool surfaces the engine never draws (caulk_shadow casts a shadow and nothing else, clips
+    # are collision only). Husky exports them with their editor texture -- on Nacht a blue
+    # "caulk" checker lying on the terrain outside the start room. Not drawn here either.
+    tools = [k for k in groups if TOOL_MATERIAL.search(k)]
+    for k in tools:
+        del groups[k]
+    glb.dropped_tool_materials = tools
     isl, tris = drop_origin_brushmodels(groups)
     glb.dropped_origin_brushmodels = (isl, tris)
     if isl:
@@ -591,7 +639,7 @@ def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
                 if got:
                     ti = glb.add_image_bytes(f'{stem}.dds', got[0], got[1])
                     m['pbrMetallicRoughness']['baseColorTexture'] = {'index': ti}
-                    if got[1] == 'image/png':
+                    if got[2]:
                         glb.alpha_textures.add(ti)
                     mark_cutout(glb, m, ti)
             glb.j['materials'].append(m)
@@ -606,7 +654,7 @@ def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
 
 
 def load_dds(path: Path):
-    """DDS -> (png_or_jpeg_bytes, mime). Returns None if it cannot be read."""
+    """DDS -> (png_or_jpeg_bytes, mime, alpha_used). Returns None if it cannot be read."""
     try:
         from PIL import Image
     except ImportError:
@@ -622,6 +670,17 @@ def load_dds(path: Path):
                        Image.LANCZOS)
     import io
     buf = io.BytesIO()
+    if LOSSLESS_TEX:
+        # export_all.py: the optimiser re-encodes every texture to WebP, so hand it
+        # lossless pixels rather than JPEG it would compress a second time. Alpha is
+        # still dropped when unused -- mark_cutout keys MASK off "PNG with alpha".
+        if im.mode in ("RGBA", "LA", "P"):
+            rgba = im.convert("RGBA")
+            if rgba.getchannel("A").getextrema()[0] < 255:
+                rgba.save(buf, "PNG", compress_level=1)
+                return buf.getvalue(), "image/png", True
+        im.convert("RGB").save(buf, "PNG", compress_level=1)
+        return buf.getvalue(), "image/png", False
     # Alpha survives as PNG; everything else is a photo and compresses far better
     # as JPEG. A 1024 DXT1 diffuse is 680 KB as PNG and 38 KB as JPEG, and with
     # ~60 props in a map that is the difference between a 40 MB and a 6 MB .glb.
@@ -638,9 +697,9 @@ def load_dds(path: Path):
             im = rgba.convert("RGB")
         else:
             rgba.save(buf, "PNG", optimize=True)
-            return buf.getvalue(), "image/png"
+            return buf.getvalue(), "image/png", True
     im.convert("RGB").save(buf, "JPEG", quality=JPEG_QUALITY, optimize=True)
-    return buf.getvalue(), "image/jpeg"
+    return buf.getvalue(), "image/jpeg", False
 
 
 def mark_cutout(glb, material: dict, tex_index: int):
@@ -704,7 +763,7 @@ def merge_model(glb: Glb, gltf_path: Path, images_dir: Path, mat_cache: dict):
         if not got:
             continue
         tmap[i] = glb.add_image_bytes(name, got[0], got[1])
-        if got[1] == "image/png":
+        if got[2]:
             glb.alpha_textures.add(tmap[i])
 
     mmap = {}
@@ -876,6 +935,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         "props_unsupported_kept": getattr(glb, "unsupported", {}),
         "min_prop_size": MIN_PROP_SIZE,
         "world_obj_scale": HUSKY_OBJ_SCALE if (world and world.suffix.lower() == ".obj") else None,
+        "world_tool_materials_dropped": getattr(glb, "dropped_tool_materials", []),
         "world_origin_brushmodels_dropped": list(getattr(glb, "dropped_origin_brushmodels", (0, 0))),
         "sky_model": sky_name if sky_ok else None,
         "world_shell": bool(world and world.is_file()),
