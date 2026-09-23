@@ -43,7 +43,10 @@ const RULES = [
     id: 'crash', label: 'Crash', severity: 1,
     description: 'The game or the box instance crashed: a Windows crash dump, an unhandled exception named by overlay_guard, a trapped Sys_Error, Windows event 1000, a session that ended in "crash", or the host saw the instance exit unexpectedly.',
     test (ctx) {
-      const lines = ctx.grep(/overlay_guard: UNHANDLED EXCEPTION|Unhandled exception caught|=== Sys_Error TRAPPED ===|instance exited unexpectedly/i, GAME_LOGS.source + '|' + HOST_LOG.source)
+      // `(?!s)`: overlay_guard's start-up INFO line "unhandled exceptions are named before the
+      // engine's filter" matched this case-insensitively, so EVERY client bundle was flagged
+      // Crash P1 (lane CL, 2026-09-23: B's zombie_town hang showed "Crash (P1, 2x)").
+      const lines = ctx.grep(/overlay_guard: UNHANDLED EXCEPTION(?!s)|Unhandled exception caught|=== Sys_Error TRAPPED ===|instance exited unexpectedly/i, GAME_LOGS.source + '|' + HOST_LOG.source)
       const dumps = ctx.files.filter((f) => f.binary && /\.dmp$/i.test(f.name) && !/(^|\/)hang-/i.test(f.name) && f.size > 0)
       const ev = (ctx.manifest.events || []).filter((e) => Number(e.id || e.Id) === 1000)
       const m = ctx.manifest
@@ -71,7 +74,8 @@ const RULES = [
       return {
         count: Math.max(1, lines.length, dumps.length, ev.length),
         lines,
-        detail: [dumps.length ? `${dumps.length} hang dump${dumps.length > 1 ? 's' : ''}${empty ? ` (${empty} empty: MiniDumpWriteDump failed)` : ''}` : null, ev.length ? `Windows event 1002 ×${ev.length}` : null, lines.length ? firstText(ctx, lines) : null].filter(Boolean).join('; '),
+        // session.hang_where: the watchdog's one-line verdict (who holds the render lock), DLL >= lane CL.
+        detail: [m.session && m.session.hang_where ? String(m.session.hang_where).slice(0, 200) : null, dumps.length ? `${dumps.length} hang dump${dumps.length > 1 ? 's' : ''}${empty ? ` (${empty} empty: MiniDumpWriteDump failed)` : ''}` : null, ev.length ? `Windows event 1002 ×${ev.length}` : null, lines.length ? firstText(ctx, lines) : null].filter(Boolean).join('; '),
       }
     },
   },
