@@ -614,6 +614,104 @@ suspect is the sampling-instant jitter above, then DWM (next section).
 * The snap-on-click/wheel in the old build. It follows from the layout; nobody has seen it in play.
 * The abort's cursor restore is approximate with Windows pointer acceleration on.
 
+## 1g. 2026-09-23: every downside of the fix and of NOLEGACY, and what pays for each (lane 17b)
+
+B played 0.2.24. Frame time while moving the mouse is fine and he is happy with it. He asked for
+every downside of the mouse fix and of the NOLEGACY mode, written down honestly, and for each one
+to be fixed in code where code can fix it. Commit `0db25c9` is the code. The pure rules are in
+`components/raw_mouse_model.hpp`, and `tools/dev/mouse_tests.cpp` tests them (12 new cases, all
+pass). **B was playing the whole time, so no game was run.** Everything marked "unproven" below
+waits for his next ordinary session. `rawprobe` was not run either: every mode of it injects
+`SendInput` motion, and that would have moved B's own cursor.
+
+Reuse: the WOW64 block layout, the 8-byte stride, `ERROR_INSUFFICIENT_BUFFER` counting as a buffer
+problem and not a dead API, and absolute reports mapped to desktop pixels all come from SDL3
+(`WIN_PollRawInput`, `WIN_HandleRawMouseInput` in `src/video/windows/SDL_windowsevents.c`). The
+clip-on-capture and release-on-focus-loss shape comes from iw4x-client `RawMouse.cpp` (it clips
+after `CL_MouseEvent` returns true and calls `ClipCursor(NULL)` in the menu and on kill-focus). The
+pointer-speed table is the standard SPI_GETMOUSESPEED one.
+
+Facts read out of the dump today. They are the evidence for rows below.
+
+* **`CL_MouseEvent` (0x63D9A0) only adds** the deltas to `cl.mouseDx/Dy[index]`
+  (`add [eax*4+0x307D650], edx`, `add [eax*4+0x307D658], ecx`) and returns 1. In a UI (keyCatchers
+  & 0x10) it hands the client **x,y** to 0x5BB4F0 and returns 0. `sensitivity`, `m_filter`,
+  `cl_mouseAccel`, `m_pitch` / `ui_mousePitch` and invert are all applied after this point. They
+  see the same numbers as in the stock path, and two calls per frame add up.
+* **The WM_MOUSEWHEEL handler (0x60706B) queues one `K_MWHEELUP` (0xCE) or `K_MWHEELDOWN` (0xCD)
+  down+up per message.** Delta > 0 is up. Delta ≤ 0 is down, and that includes 0. A wheel is an
+  event, not a state, so the mask-differ argument that makes duplicate button messages harmless
+  does not apply to it.
+* `IN_Frame` has three callers (0x4625DC, 0x59E1B2, 0x644A3C). At 0x4625DC it runs just before
+  0x63E940. `Com_EventLoop` is called at 0x5AA578 and 0x5AA5A0.
+
+### The table
+
+Severity describes this player on this setup: 1000 Hz, 2560x1440 borderless, a second monitor.
+
+| # | Downside | Severity | Evidence | Compensation (code) | Proven? |
+|---|---|---|---|---|---|
+| D1 | **Double wheel notch** whenever legacy messages are on: the stock menus, the console, the frame of a flip, all of `ENW_RAW_MOUSE_NOLEGACY=0`. We synthesised the raw notch and also forwarded Windows' legacy twin. A real bug since 0.2.3 | **High** in menus (scrolls 2 per notch). In gameplay it only happens with NOLEGACY=0 or a wheel bind on the flip frame | 0x60706B read above, plus `apply_raw_buttons` in every mode | A **wheel ledger** pairs the twins. Whichever twin arrives first is delivered and the other is swallowed (3-frame TTL). A legacy notch with no raw twin (touchpad) is delivered. A zero delta is never synthesised | Rule: unit tests (the old path gives 10 for 5 notches, the new one 5; burst, twin-first, touchpad, expiry). **In game: unproven.** `ENW_INPUT_TRACE=1` now prints a `WHEEL … engine QUEUED … PERFECT/DOUBLED` verdict read from the engine's own event ring |
+| D13 | **`ENW_RAW_MOUSE_BUTTONS=0` left gameplay with no clicks and no wheel.** NOLEGACY means no legacy button messages, and with the tracker off nothing synthesised them | High, for that A/B knob only | Code read | BUTTONS=0 now implies NOLEGACY=0, with a WARN line | Code read. Not run |
+| D2 | The **`WOW64FIX=0` A/B arm** reproduces the old +16 read. A buffered wheel notch reads as lLastX = 0x00780400 (a random ~7.8 M-count spin), and a click as a 1–2 count nudge | High in that arm | Layout arithmetic, unit test | Any relative delta outside ±32767 (a HID axis is 16 bits) throws away the **whole report**: motion and buttons, counted and logged. The arm still loses buffered motion, which is what it is for | Unit test (the misread wheel is refused, a real ±32767 passes) |
+| D3 | The buffered offset depended only on `IsWow64Process`. A different layout would have turned clicks into yaw again | Low (the layout on this box is proven, §1f) | §1f | The offset now also comes from the block's own `dwSize` (40 → +16, 48 → +24). An unknown size is skipped, not guessed. On WOW64 the step to the next block rounds to 8, not 4 (the 64-bit side's alignment), and the buffer is `alignas(8)` (it only happened to be aligned before) | Unit tests (40/48/44/0, stride 41 → 48 vs 44, a wheel block parsed by size) |
+| D4 | A click that landed in the **buffered** queue (17–47 % of B's reports) was synthesised in `IN_Frame`, outside `Com_EventLoop`. So it could reach the usercmd **up to one frame later** than a dispatched click: 4 ms at 250 fps, 50 ms at 20 fps. Motion is not affected (`CL_MouseEvent` is called directly) | Low–Medium, and worse at low fps | Call order read above. **Not measured** | **The pump drain.** After `GetRawInputData` for the dispatched event, `OnRawInput` now also calls `GetRawInputBuffer`. That is MSDN's whole pattern, and SDL's is the same idea. Buffered clicks now enter the ring while the event loop is running. It also means *fewer* `WM_INPUT` dispatches, because whatever it drains is never dispatched. A re-entrancy guard protects the static buffer. `ENW_RAW_MOUSE_PUMP_DRAIN=0` reverts | **Unproven**: latency and frame-time effect. The `compensations` line counts `pump drains … carrying N reports` |
+| — | **Is a click delivered exactly once** (never dropped, never doubled), buffered or dispatched, in either mode? | — | §6 state machine | None needed. It now runs through the same code as the tests (`apply_transition`, `rewrite_low_word`, `decode_button_flags` moved into the header unchanged) | Unit tests against a model of the engine's differ: NOLEGACY buffered, legacy twin before and after raw, the first click ever, down+up in one report, stale-mask moves (§6b arm C). The engine side was proven in §6b for the legacy path only |
+| — | **Duplicate delivery** between the dispatched `WM_INPUT` and the buffer | none found | `GetMessage` removes the dispatched event from the buffered queue (MSDN). §1f's counts, 994–996 to the engine per 1000 injected, show no doubling | Both paths now share one `consume_mouse()`, so every guard covers both | Counts in §1f (harness) |
+| — | **Report order across the two `IN_MouseMove` calls per frame** | none found | One accumulator, filled in consumption order (FIFO). `CL_MouseEvent` adds, it does not overwrite (0x63D9F9) | — | Code read + dump read |
+| D5 | Any `GetRawInputBuffer` -1 turned the bulk read off for the session, including `ERROR_INSUFFICIENT_BUFFER` | Low | Code read. SDL3 grows and retries | Insufficient-buffer skips only this frame's bulk read (the report stays queued and its own `WM_INPUT` delivers it). Other errors must happen 3 times in a row before the bulk read is off | Unit test of the policy |
+| D6 | **A lost or stale clip was never noticed.** UAC, Ctrl+Alt+Del, Win+L, another program's `ClipCursor(NULL)`, `borderless` or `vid_restart` moving the window: `g_cursor_clipped` stayed true | **Medium** with a second monitor: the cursor can walk off, and a click there activates the other window | Code read | While clipped, every 8th call checks `GetClipCursor` against the client rect (2 px slack for DPI virtualisation) and re-applies if it differs. Counted and logged | Rule: unit tests. **In game: unproven** (`clip re-applied N`) |
+| D7 | With the recentre skipped, an OS cursor that Windows still moves **parks at the clip edge**. One lost clip later it is on the other screen | Medium (the same setup) | Code read | When the cursor leaves the middle half of the client rect, recentre **once** with the engine's own `IN_RecenterMouse`. That is every few hundred pixels of pointer travel, not every frame | Rule: unit tests. **Whether Windows moves the cursor under NOLEGACY at all is unknown.** The docs are ambiguous, and `edge recentres 0` in B's log after a session of turning would mean it does not |
+| D8 | The stock menu, the ENW Esc menu and the chat opened with the pointer **wherever it drifted** (the stock path recentred every frame, so stock menus opened centred) | Low, cosmetic | `CL_MouseEvent`'s UI branch takes client x,y | One recentre when `CL_MouseEvent` hands the mouse to a UI, and when `input_gate::set_captured(true)` opens our overlay while NOLEGACY is on. Not on focus loss (never move the desktop cursor while the player alt-tabs). Never in the harness sink | **Unproven** (`menu recentres N`) |
+| D9 | Registration is one entry per usage **per process**, and the last registration wins silently. If another module replaces or removes ours, NOLEGACY means a **dead mouse**, not a degraded one | Medium (probability unknown) | Win32 semantics | `GetRegisteredRawInputDevices` once a second. If the entry is not (our hwnd, our NOLEGACY bit), it is re-registered, at most 5 times. After that it gives up and goes to the **stock `GetCursorPos` path** (subclass stays in passthrough for the chat gate) and logs an ERROR | Rule: unit tests. Not seen in play |
+| D10 | `GetRawInputBuffer` drains the **thread's** whole raw queue, so another module's keyboard/HID raw input delivered to our thread was eaten and dropped | Low (nothing we know registers today) | Win32 semantics | The first non-mouse block in our drain turns the bulk read off (NOLEGACY stays). A foreign registration is logged once. It is not acted on until its reports actually show up, so a harmless overlay does not cost everyone the bulk read | Rule: unit test. Not seen in play |
+| D11 | **Absolute devices** (RDP, VMs, pen tablets, some remote-play tools): upstream took the 0..65535 coordinate as counts, about **25×** the sensitivity of the same movement in pixels on a 2560-wide desktop, with a jump when switching device. The relative accumulator also grew for ever and was an `int` | Low for B, high for those users | Code read | SDL3's mapping to desktop pixels (`MOUSE_VIRTUAL_DESKTOP` → `SM_*VIRTUALSCREEN`). The first absolute report after relative ones moves by 0. The relative accumulator is rebased every frame | Unit tests |
+| D12 | **Sensitivity matches stock only at Windows pointer speed 10/20 with Enhance Pointer Precision off.** The stock path inherited the slider factor and the EPP curve, and raw input sees neither | Medium for anyone with a non-default slider or EPP on. None for B if he is at 10/20 with EPP off | Stock deltas are `GetCursorPos` differences | Startup line: `Windows pointer speed N/20 (xK), Enhance pointer precision on/off` with a plain verdict. `ENW_RAW_MOUSE_WINSPEED=1` (opt-in) scales counts by the slider factor with the remainder carried, so nothing is lost to rounding. The EPP curve is deliberately not emulated: removing it is the point of raw input | Unit tests (table, carry). The log line shows B's own values |
+| — | **Alt-tab / another window / minimise** | handled | §6c/§6d: `WM_KILLFOCUS` and `WM_ACTIVATE(inactive)` unclip, put legacy back and release all buttons. `WM_SETFOCUS` resyncs and drops the first delta (upstream's anti-snap) | unchanged. The first report after regaining focus is discarded on purpose | Proven in §6b's run (forced release at 77055 ms) |
+| — | **In-process overlays** (the Steam overlay, the old Discord overlay) may read legacy messages and get no mouse while NOLEGACY is on. Out-of-process overlays (the new Discord one) take focus and fall into the alt-tab row | unknown | none | none possible without their API. `ENW_RAW_MOUSE_NOLEGACY=0` is the workaround | **Unproven** |
+| — | **Menus still get the flood** (legacy + `WM_INPUT` per report), because legacy is on there | Low (menus only) | design | none. The menu needs the legacy cursor, and unregistering raw in menus would blind the button tracker | — |
+| — | **8 kHz / overflow.** 512 blocks per call and the loop repeats, which covers about 4 frames at 8 kHz / 250 fps or ~1 at 20 fps. The OS raw-queue limit is undocumented. After a long hitch the whole backlog arrives as one frame's turn. That is real motion, which the stock path would have clamped at the screen edge | Low | design | none (it is the player's actual movement) | **Unproven** at 8 kHz on B's hardware. B is at 1 kHz |
+| — | **Hi-res wheels** (`usButtonData` < 120): each report is one notch | parity | 0x60706B | none. Stock's legacy messages behave the same | — |
+| — | **Precision-touchpad scroll in gameplay** under NOLEGACY (touchpads are legacy-only, no raw wheel) | Low | Win32 | none possible. It works in the menus through the legacy path and the ledger | **Unproven** |
+| — | **20–250 fps.** Only D4 (latency) and the wheel TTL (3 frames = 12 ms at 250, 150 ms at 20) depend on frame rate | Low | design | D4 | — |
+| — | **Game hangs with the clip on**: the cursor is trapped in the window until alt-tab | Low | design | none new | — |
+| — | **Cost of the compensations** | unmeasured | — | `GetClipCursor` every 8th call. Registration check once a second. The pump drain replaces dispatches with one bulk read. `ENW_RAW_MOUSE_PUMP_DRAIN=0` is the A/B | **Unproven**: B's frame-time lines decide it |
+
+### Every switch, so B can A/B
+
+| env | what it does now |
+|---|---|
+| `ENW_RAW_MOUSE=0` | the stock `GetCursorPos` path, and no raw input at all. The subclass stays in passthrough only for the chat/Esc gate |
+| `ENW_RAW_MOUSE_NOLEGACY=0` | legacy messages kept, per-frame recentre, no clip. This is 0.2.2's flood, but with the wheel fixed (D1) |
+| `ENW_RAW_MOUSE_BUFFER=0` | no bulk read. Every report comes through its own `WM_INPUT` (and so no pump drain either) |
+| `ENW_RAW_MOUSE_WOW64FIX=0` | the 0.2.3–0.2.20 +16 read (buffered motion lost), now without the wheel-spin hazard (D2) |
+| `ENW_RAW_MOUSE_PUMP_DRAIN=0` | **new**: 0.2.24's drain placement (IN_Frame only) |
+| `ENW_RAW_MOUSE_BUTTONS=0` | tracker off. **Now implies NOLEGACY=0** (D13) |
+| `ENW_RAW_MOUSE_WINSPEED=1` | **new, opt-in**: scale by the Windows pointer-speed factor |
+| `ENW_INPUT_TRACE=1` | per-button verdicts, and now a **WHEEL** verdict too |
+
+### What B reads after his next session (any session, no special run)
+
+About every 15 s: `mouse_polling: compensations -- wheel raw … / legacy … / twins swallowed … |
+impossible reports dropped … | bad blocks …, offset disagreements … | pump drains … carrying … |
+GetRawInputBuffer transient …, hard failures … | clip re-applied … | edge recentres … | menu
+recentres … | registration checks …, repairs … | foreign raw input … | absolute reports … | speed
+x…`. Expected on B's box: `impossible`, `bad blocks`, `disagreements`, `repairs`, `foreign` and
+`hard failures` all 0. `twins swallowed` ≈ the number of wheel notches he made in menus. `menu
+recentres` ≈ the number of times he opened a menu. `edge recentres` > 0 means Windows does move the
+cursor under NOLEGACY. `clip re-applied` > 0 is worth a look, because it means something outside
+the game took the clip.
+
+### Still unproven, because no game could run
+
+* Everything in game: the wheel verdict, the pump drain's latency and cost, the clip re-apply and
+  both recentres, and whether the Esc menu and the chat open centred.
+* Whether Windows moves the OS cursor under `RIDEV_NOLEGACY` (answered by `edge recentres`).
+* Whether any in-process overlay loses the mouse under NOLEGACY.
+* The 8 kHz and 20 fps behaviour on B's hardware.
+* DPI virtualisation for a DPI-unaware `CoDWaW.exe` on a scaled display. The 2 px slack is a guess
+  at the rounding, not a measurement.
+
 ---
 
 ## 4. The LocalAppData redirect: the game stops sharing a folder with the player's own (2026-09-23)
