@@ -1,0 +1,169 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_evacuation",
+  "title": "EVACUATION (SLOWED V2)",
+  "source": "custom",
+  "author": "ville88",
+  "released": "2017-11-08",
+  "fs_game": "mods/nazi_zombie_evacuation",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_evacuation.ff": "9d4e31e09a31c63cd9c4883add6b92b471bd11a4a6c23ae63d707fc01d63a537"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_bowie_bear",
+        "ee_exp_monkey",
+        "ee_perk_bear"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_bowie_bear, ee_exp_monkey, ee_perk_bear look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 96,
+    "script_count": 96,
+    "entities": 1254,
+    "ee_candidates": [
+      "ee_bowie_bear",
+      "ee_exp_monkey",
+      "ee_perk_bear"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        1750,
+        "zombie_debris",
+        "outside_west_debris"
+      ],
+      [
+        1500,
+        "zombie_double_door",
+        "outdoor1_blocker"
+      ],
+      [
+        1000,
+        "zombie_double_door",
+        "startroom_blocker"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto113466"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9d4e31e09a31c63cd9c4883add6b92b471bd11a4a6c23ae63d707fc01d63a537",
+    "map_specific_triggers": [
+      "secret_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "UGX_zombie_slowed_v2.exe",
+    "original_sha256": "a232aa9c6cf6900f6d70bde12d1ce7bdea9113339e91cd3dfb83cb00fdaa320f",
+    "original_size": 84727032,
+    "source_url": "http://www.mediafire.com/file/veg3onqn01la1zh/UGX_zombie_slowed_v2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T19:56:05Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending"
+    ],
+    "catalogue_description": "Style map \u2013 Der Riese 4 Perks Hidden power box (need find all brains for opening) Teleporter PAP Elec. Traps Magic Box crazy runners (no verruckt. ) Easter eggs: Hide and seek 3 radio 4 handle radio hidden message [update: 12.11.2017] + Buyable end + launch map from menu Author \u2013 Ville88 Special Thanks: C.H.N BlackJackJonnyy Tom-BMX MakeCents and forums: UGX-mods zombiemodding customcod cybercod dot org mappersunited cfgfactory modsonline and more\u2026",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_evacuation",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_evacuation.iwd:images/loadscreen_nazi_zombie_evacuation.iwi",
+        "nazi_zombie_evacuation.iwd:images/menu_map_nazi_zombie_evacuation.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_evacuation"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/evacuation/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/nazi-zombie-evacuation-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 130.9,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_evacuation.ff",
+      "nazi_zombie_evacuation_patch.ff"
+    ]
+  },
+  "site_hidden": true
+}

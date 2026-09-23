@@ -1,0 +1,225 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_in",
+  "title": "INSANATORIUM",
+  "source": "custom",
+  "author": "ZMBS DON GOONY",
+  "released": "April 15, 2012, 05:10:33 pm",
+  "fs_game": "mods/nazi_zombie_in",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_in.iwd": "840a79bb64f0d8a5af2608a8e1e0113461514b39f7d842757e0b6f4382c9f1c7"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        3000,
+        4000,
+        5000,
+        7000,
+        10000,
+        800000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, teleport_power_up name an ending and are this map's own; script hardcodes cost 800000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 116,
+    "script_count": 116,
+    "entities": 2417,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      4000,
+      5000,
+      7000,
+      10000,
+      800000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "zomb"
+      ],
+      [
+        3500,
+        "zombie_debris",
+        "trapsss"
+      ],
+      [
+        3500,
+        "zombie_debris",
+        "auto873"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "zom"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "kit"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "840a79bb64f0d8a5af2608a8e1e0113461514b39f7d842757e0b6f4382c9f1c7",
+    "map_specific_triggers": [
+      "art_trig",
+      "dt",
+      "gas",
+      "gasmask",
+      "gm",
+      "gmt1",
+      "hammer1",
+      "hammerdoortrig",
+      "jug",
+      "music_box_player",
+      "new2",
+      "new45",
+      "notic1",
+      "notic2",
+      "ooo",
+      "power_player",
+      "power_player1",
+      "purchase",
+      "room",
+      "select",
+      "teddy1",
+      "teddy2",
+      "teddy3",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_insanatorium.zip",
+    "original_sha256": "5d84ea87f48f63174f35ca4a46106586447f29e8c7df442bee721ec34c053ffe",
+    "original_size": 166551473,
+    "source_url": "http://www.mediafire.com/file/p6x2op8amr2061r/nazi_zombie_insanatorium.zip/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:24:17Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "zip",
+    "shipped_executables": [],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_in.iwd:images/zombie_vending_sleight_logo_c.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/insanatorium/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/nazi-zombie-insanatorium-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. ",
+  "precheck": {
+    "map_zone_inflated_mb": 139.5,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_in.ff",
+      "nazi_zombie_in_patch.ff"
+    ]
+  },
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 174,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95141 ms over the hold",
+    "first_error": null,
+    "match": "m_825e6132",
+    "at": "2026-09-23T20:16:51",
+    "instance": "inst-03",
+    "com_frameTime_advance_ms": 95141,
+    "com_error": [],
+    "console_errors": [
+      "9901:******* script runtime error *******",
+      "9905:Error: started from:",
+      "9909:Error: ************************************",
+      "9911:******* script runtime error *******",
+      "9915:Error: started from:",
+      "9919:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
+}

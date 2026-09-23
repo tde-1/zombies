@@ -1,0 +1,206 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "hellokitty_remastered",
+  "title": "HELLO KITTY REMASTERED",
+  "source": "custom",
+  "author": "ashawat750",
+  "released": "2016-06-27",
+  "fs_game": "mods/hellokitty_remastered",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@hellokittyremastered.iwd": "25b8670cf4e8da028c0823a9a2bace1760bb7dd6d01ffed1d64aa3fa3bd78d7c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 120,
+    "script_count": 120,
+    "entities": 453,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "auto32",
+        "?"
+      ],
+      [
+        4000,
+        "auto18",
+        "?"
+      ],
+      [
+        3000,
+        "auto12",
+        "?"
+      ],
+      [
+        2500,
+        "auto6",
+        "?"
+      ],
+      [
+        2500,
+        "auto15",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "25b8670cf4e8da028c0823a9a2bace1760bb7dd6d01ffed1d64aa3fa3bd78d7c",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger",
+      "hk_song1",
+      "tzp_jump_scare_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "HelloKittyRemastered.exe",
+    "original_sha256": "5b475a1d68479f9eb0cc30f89c9dd16493b443ab90e9a1655bef11fb6b1feab7",
+    "original_size": 327415381,
+    "source_url": "https://www.mediafire.com/file/o8j4n0p9pvl4dpv/HelloKittyRemastered.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:09:53Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Welcome to Hello Kitty Remastered! This map is a remaster of the custom zombie map named nazi_zombie_hello_kitty originally made by OnlineX420. This is my 2nd map and it was just a little project I decided doing. I hope you guys enjoy! \u2013 10 Perks (List Below) \u2013 BO2 and 2 Advanced Warfare weapons (List Below) \u2013 A BUNCH OF PINK \u2013 Napalm Zombie \u2013 Custom Perk and Powerup Shaders \u2013 Slide To Escape The Horde \u2013 Custom Perk Posters (Buy Perks From Posters) \u2013 Easter Egg Song and Easter Egg Jumpscare \u2013 Buyable Ending (50K) \u2013 Custom Zombies, Viewhands, HUD, and Camos \u2013 DOES NOT REQUIRE T4M! (Woo Hoo! ) Perks List: Quick Revive Speed Cola Double Tap Juggernog Deadshot Daiquiri Stamin-Up PHD Flopper Mule Kick Electric Cherry Widows Wine Weapon List: AN94 Blundergat Bowie Knife BO2 M1911 Tac45 M1927 {MotD Thompson} BO2 Raygun Executioner LSAT QBB LSW M27 M8A1 MK48 MP7 MSMC MTAR Peacekeeper S12 SMR SVU-12 SWAT Vector XPR Cel-3 AE4 EE Song: Go to the room with Electric Cherry. Right next to the door you bought to go upstairs, there should be a hidden broken TV screen. Shoot it. EE Jumpscare: Go to the room with the AN94 & Mule Kick. Inside the window, there is a hidden broken TV screen. Shoot it. CREDITS:",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_hellokitty_remastered",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "hellokittyremastered.iwd:images/hk_background.iwi",
+        "hellokittyremastered.iwd:images/loadscreen_hellokitty_remastered.iwi",
+        "hellokittyremastered.iwd:images/menu_map_hellokitty_remastered.iwi"
+      ],
+      "loadscreen": "loadscreen_hellokitty_remastered"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/hellokittyremastered/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/hello-kitty-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 56.3,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.3.iwd",
+        "entries": 473,
+        "scripts": 0,
+        "bytes": 99453118
+      },
+      {
+        "file": "hellokittyremastered.iwd",
+        "entries": 526,
+        "scripts": 32,
+        "bytes": 44331623
+      },
+      {
+        "file": "nsz_bo2_weapons_v1.3.2.iwd",
+        "entries": 326,
+        "scripts": 11,
+        "bytes": 82869945
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 6146
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "hellokitty_remastered.ff",
+      "hellokitty_remastered_patch.ff",
+      "mod.ff",
+      "hellokittyremastered.iwd:maps/_loadout.gsc",
+      "nsz_bo2_weapons_v1.3.2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

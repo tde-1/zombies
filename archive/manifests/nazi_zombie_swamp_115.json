@@ -1,0 +1,228 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_swamp_115",
+  "title": "SWAMP OF THE DOOMED ONES",
+  "source": "custom",
+  "author": "HitmanVere",
+  "released": "August 02, 2014, 02:00:17 pm",
+  "fs_game": "mods/nazi_zombie_swamp_115",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_swamp_115.iwd": "aad057d905faab85dc56f2134d7cafbbe49c1cd907862bff11c88dfa3f25099e"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_door"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_door look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 95,
+    "script_count": 95,
+    "entities": 841,
+    "ee_candidates": [
+      "ee_door"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "give_ammo",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "wall_5"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "buried"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "Door_2"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "Door_2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "aad057d905faab85dc56f2134d7cafbbe49c1cd907862bff11c88dfa3f25099e",
+    "map_specific_triggers": [
+      "bomb_trigger",
+      "box",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "give_ammo",
+      "heads_trigger",
+      "perk_1",
+      "perk_2",
+      "perk_3",
+      "perk_4",
+      "teddy_trig1",
+      "teddy_trig2",
+      "teddy_trig3",
+      "tool_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Swamp_Of_The_Doomed_Ones.exe",
+    "original_sha256": "9580967bdea93e33c2242fa54b5201236e3f2d3147a69e5e9eb6dbf8892546e7",
+    "original_size": 93234732,
+    "source_url": "http://www.mediafire.com/file/sp8j827xn7lekp6/Swamp_Of_The_Doomed_Ones.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:26:41Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_swamp_115.iwd:images/loadscreen_nazi_zombie_swamp_115.iwi",
+        "nazi_zombie_swamp_115.iwd:images/menu_map_nazi_zombie_swamp_115.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/swampofthedoomedones/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/swamp-of-the-doomed-ones-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 101.1,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985247
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_swamp_115.ff",
+      "nazi_zombie_swamp_115_patch.ff",
+      "nazi_zombie_swamp_115.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 191,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95122 ms over the hold",
+    "first_error": "Could not load rawfile \"shock/zombie_death.shock\".",
+    "match": "m_fa6eeb70",
+    "at": "2026-09-23T20:44:42",
+    "instance": "inst-10",
+    "com_frameTime_advance_ms": 95122,
+    "com_error": [],
+    "console_errors": [
+      "3370:Error: Could not load rawfile \"shock/zombie_death.shock\".",
+      "3371:Error: couldn't open 'shock/zombie_death.shock'.",
+      "4271:******* script runtime error *******",
+      "4275:Error: called from:",
+      "4279:Error: called from:",
+      "4283:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
+}

@@ -1,0 +1,216 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_andromeda",
+  "title": "ANDROMEDA",
+  "source": "custom",
+  "author": "Psh",
+  "released": "2015-11-03",
+  "fs_game": "mods/nazi_zombie_andromeda",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_andromeda.iwd": "36b4bce1094ce3295d78395ce4ee55d494e79b2ce1b21e0f629c6e18f2e78a0c"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_door_1_door",
+        "ee_door_2_door",
+        "ee_exit_door",
+        "ee_front_door",
+        "ee_side_door",
+        "ee_special_door",
+        "ee_zone",
+        "ee_zone_spawners",
+        "ee_zone_spawners_rise"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_door_1_door, ee_door_2_door, ee_exit_door, ee_front_door, ee_side_door, ee_special_door look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 114,
+    "script_count": 114,
+    "entities": 1974,
+    "ee_candidates": [
+      "ee_door_1_door",
+      "ee_door_2_door",
+      "ee_exit_door",
+      "ee_front_door",
+      "ee_side_door",
+      "ee_special_door",
+      "ee_zone",
+      "ee_zone_spawners",
+      "ee_zone_spawners_rise"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500,
+      3000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "pap_door"
+      ],
+      [
+        5000,
+        "pf1479_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf1144_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1159_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1156_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "36b4bce1094ce3295d78395ce4ee55d494e79b2ce1b21e0f629c6e18f2e78a0c",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger",
+      "soul_chest_area"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_andromeda_1.0.exe",
+    "original_sha256": "957d4fbd0c49d0813ffd862463cf63038c47ad848cb62d0f41a7f9b482bc4744",
+    "original_size": 363177669,
+    "source_url": "https://www.mediafire.com/file/pnbc0f6uzza876t/nazi_zombie_andromeda_1.0.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:07:17Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "This feels like more than just a dream\u2026 Features \u2013 Map is huge \u2013 11 Perks (No Who\u2019s Who) \u2013 6 Perk Limit \u2013 Wunderfizz \u2013 Buyable ending [Cost: 50000] *and/or* the god of Ray Guns [Cost: 30000] \u2013 Wall Weapons for dayz \u2013 All Custom Weapons \u2013 A decent enough challenge \u2013 Increased number of zombies per round \u2013 Increased zombie spawn rate \u2013 You get less points from killing \u2013 Soul Chests \u2013 Verruckt Sprinters (Not all) \u2013 Changing theme throughout the map \u2013 Solo Scoreboard \u2013 + More that I forget **There is no easter egg as of now, I am planning on adding one large and many small ones in later when I have more time and have dealt with the release of Black Ops 3. You might notice that some doors don\u2019t open, they will in conjunction with the EE. I plan on updating this map on the coming weeks maybe even sooner. Credits : -Tom-Bmx -Harry Bo21 (Awesome Perks) -TheRelaxingEnd (Video) -BluntStuffy (Soul Chests) -HitmanVere (PaP Camo\u2019s/ Scripting) -Toasty Roasty (Testing) -JR-Imagine (Hud) -CFGFACTORY (Guns) -thezombieproject (Scripting) -SajeOne (Buyable Ending) -InFInIX (Glowing eyes) -If I missed you please tell me! *Please post any bugs you find*",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "nazi_zombie_andromeda.iwd:images/andromeda_load_screen.iwi",
+        "nazi_zombie_andromeda.iwd:images/andro_load_screen.iwi",
+        "nazi_zombie_andromeda.iwd:images/brickmedievalblocks0276_1_preview.iwi",
+        "nazi_zombie_andromeda.iwd:images/brickoldmixedsize0040_1_preview.iwi",
+        "nazi_zombie_andromeda.iwd:images/brickoldmixedsize0064_1_preview.iwi",
+        "nazi_zombie_andromeda.iwd:images/bricksmallbrown0138_2_preview.iwi",
+        "nazi_zombie_andromeda.iwd:images/bricksmallbrown0264_5_preview.iwi",
+        "nazi_zombie_andromeda.iwd:images/camouflage0006_preview.iwi",
+        "nazi_zombie_andromeda.iwd:images/carpet0006_2_preview.iwi",
+        "nazi_zombie_andromeda.iwd:images/carpet0049_2_preview.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/andromeda/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/andromeda-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 155.7,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_perks v3.0.6.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      },
+      {
+        "file": "harrybo21_zombie_shield.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 6223872
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_andromeda_patch.ff",
+      "nazi_zombie_andromeda.iwd:animscripts/death.gsc",
+      "nazi_zombie_andromeda.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

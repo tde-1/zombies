@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_inf",
+  "title": "INFECTION",
+  "source": "custom",
+  "author": "tylerandmoroll",
+  "released": "2015-10-31",
+  "fs_game": "mods/nazi_zombie_inf",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "b6af31b2f4ceb921ac7b29c7efb62573f6ea269b6494b44b234d5911b937d8d5"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 154,
+    "script_count": 154,
+    "entities": 1312,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        7500,
+        "zombie_door",
+        "cellar_door"
+      ],
+      [
+        3000,
+        "zombie_vending_upgrade",
+        "auto203"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "train_gate_clip"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "Door_3A"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "Door_3A"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "b6af31b2f4ceb921ac7b29c7efb62573f6ea269b6494b44b234d5911b937d8d5",
+    "map_specific_triggers": [
+      "activate_mg",
+      "spinningflamesdamage",
+      "spinningflamestrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_inf.exe",
+    "original_sha256": "0248345872322e4b385cc84bf029df2d14f6bb46f80f28d58449d92b17a6eec9",
+    "original_size": 224953212,
+    "source_url": "https://www.mediafire.com/file/6aawwb2kaajw10n/nazi_zombie_inf.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T19:56:41Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "*Before going into detail, I first want to say this is my first map. Mods aren\u2019t heavy besides a few added extras and of course the UGX Mod 1.0. Features: \u2013 4 Original Perks (Edited Quick Revive, the cost increases 250 the next 2 times you use it) \u2013 Jogging / Running zombies from the start (Start zone is open enough to run around) \u2013 0 start points \u2013 1000 point random box \u2013 Lowered Wall Weapon Prices and Ammo (M9, Winchester, AK-74U) \u2013 Easter Egg type steps to unlock a 3000 point Pack a Punch \u2013 0 Spawn Delay between zombies \u2013 Longer round switch time to cope with the upgraded difficulty \u2013 Custom Trap \u2013 Auto Turrets A little about the map: I\u2019m fairly new to the zombies community in regards to actually creating maps. I wanted to make a map I had an idea for back in 8th grade. The maps overall layout is not great, and the style isn\u2019t too awesome, but I wanted my idea to come to life. The map is not very big, I\u2019d say overall a medium sized map. There is some detail but for the most part has an upped difficulty which requires more run room. Either way, I hope you all enjoy this map, and even if it sucks, thank you for playing it. I did try my best to recreate my old idea. Also keep in mind, my next maps are gonna have a much better layout and detailing in them. Like I said, this was just an old idea that I wanted to come to life. Easter Egg Hint Steps: Infection Easter Egg (Opening the Pack a Punch) Step 1: Bring life to the abandon air base Step 2: Inspect areas which are empty St",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "nazi_zombie_inf.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_inf.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/infection/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/infection-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: activate_mg, spinningflamesdamage, spinningflamestrig. ",
+  "precheck": {
+    "map_zone_inflated_mb": 105.0,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476940
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      },
+      {
+        "file": "viewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_nazi_zombie_inf.ff",
+      "mod.ff",
+      "nazi_zombie_inf.ff",
+      "nazi_zombie_inf_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

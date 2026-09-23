@@ -1,0 +1,174 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "derweizenfelder",
+  "title": "DER WEIZENFELDER (THE WHEATFIELD)",
+  "source": "custom",
+  "author": "Arl the Grand",
+  "released": "February 19, 2018, 04:00:08 am",
+  "fs_game": "mods/derweizenfelder",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@derweizenfelder.iwd": "601d5205d98d3e04d8d136839a9ced1586e29d89ace9d1cc7ce83b2134210865"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 1142,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "debris1"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto2"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto3"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf1198_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "601d5205d98d3e04d8d136839a9ced1586e29d89ace9d1cc7ce83b2134210865",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "derweizenfelder.exe",
+    "original_sha256": "a9169092d0ce1f34efc8c8609322efd95080518e2b187a82a1ed11f7a4fca46a",
+    "original_size": 64232842,
+    "source_url": "http://www.mediafire.com/file/eegaknak54vt5s5/derweizenfelder.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:26:30Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/derweizenfelder/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/der-weizenfelder-1-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 86.9,
+    "addon_iwds": [
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "derweizenfelder.ff",
+      "derweizenfelder_patch.ff",
+      "mod.ff",
+      "derweizenfelder.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "clean",
+    "map_loaded_runs": 2,
+    "misses": 257,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95156 ms over the hold",
+    "first_error": "ERROR: Pathnode (Path) at (-168 -1194 40) is in solid",
+    "match": "m_94b9ba17",
+    "at": "2026-09-23T19:46:53",
+    "instance": "inst-07",
+    "com_frameTime_advance_ms": 95156,
+    "com_error": [],
+    "console_errors": [
+      "3233:ERROR: Pathnode (Path) at (-168 -1194 40) is in solid",
+      "3234:ERROR: Pathnode (Path) at (-168 -1248 40) is in solid",
+      "3235:ERROR: Pathnode (Path) at (-168 -1161 40) is in solid",
+      "3236:ERROR: Pathnode (Path) at (-168 -1090 40) is in solid",
+      "3237:ERROR: Pathnode (Path) at (55 -1328 40) is in solid",
+      "3238:ERROR: Pathnode (Path) at (-177 -1416 40) is in solid"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
+}

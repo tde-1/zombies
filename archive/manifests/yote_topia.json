@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "yote_topia",
+  "title": "Yote-topia",
+  "source": "custom",
+  "author": "losangeles26",
+  "released": "2017-07-23",
+  "fs_game": "mods/yote_topia",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@yote_topia.iwd": "a707d6ff889ba87c102dd04f39c02c985cc112a3cb51b3e69b0ebf5e9f68688c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        9000,
+        10000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 250,
+    "script_count": 250,
+    "entities": 3,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      9000,
+      10000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "a707d6ff889ba87c102dd04f39c02c985cc112a3cb51b3e69b0ebf5e9f68688c",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "yote_topia.exe",
+    "original_sha256": "7bd9478d8eb458e47956ffcca9d018da8dd638e7483d7ed5b70c784367c8eb5b",
+    "original_size": 572496516,
+    "source_url": "http://www.mediafire.com/file/b7vqk2eetc1ib88/yote_topia.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/07/23/yote-topia/",
+    "fetched": "2026-09-23T19:59:43Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "Note: For the Nova Orbs in this game to look correctly, you need to make sure the setting \u201cSpecular Map\u201d is set to \u201cYes\u201d. To change it, start Call of Duty World at War, On the menu click \u201cOPTIONS & CONTROLS\u201d, then click \u201cGRAPHICS\u201d, then set \u201cSpecular Map\u201d to \u201cYes\u201d Features: This is a map to remember Yoteslaya. It is a huge map. It uses the UGX Mod and is not too difficult, so anyone can play it and just have fun. It has no doors to buy. It does have a buyable ending. Basically you do some random stuff and kill some zombies with a Non-Player Character Yote as he is a buyable powerup in the game. Five things we wanted the map to have: (1) Open World Feel \u2013 where you can go anywhere on the map (2) Fun/Easy Map \u2013 that is not too hard so anyone can play it, (3) Objective Based Ending \u2013 that is not reliant upon acquiring money but completing a few self explanatory objectives (4) Overpowered Easter Egg \u2013 that is pretty easy to figure out (5) Random Spawn Items \u2013 so the map is different everytime and people want to play it over again \u2013 keep it from getting boring too quickly. Strategy to Defeat This Map To defeat this map on single player \u201cClassic\u201d or \u201cArcade\u201d mode do the following: First, purchase a generic weapon better than your start weapon. Then purchase quick revive to save you if you get downed. Next, go on the tower that has the bank and the auto turrets and purchase the auto turrets as soon as you have enough money. Samantha will follow you up there. Keep her up there by dod",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_castleseige",
+        "loadscreen_nazi_zombie_riverstyx13",
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi",
+        "yote_topia.iwd:images/specialty_fastreload_zombies.iwi",
+        "yote_topia.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "yote_topia.iwd:images/ugx_mod_menu_template.iwi",
+        "yote_topia.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "yote_topia.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "yote_topia.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "yote_topia.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/yotetopia/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/yote-topia-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 152.5,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 110,
+        "scripts": 20,
+        "bytes": 31344994
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 452,
+        "scripts": 7,
+        "bytes": 85928073
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_yote_topia.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "yote_topia_patch.ff",
+      "yote_topia.iwd:maps/ugx_pap_handle.gsc",
+      "yote_topia.iwd:maps/_loadout.gsc",
+      "yote_topia.iwd:maps/_zombiemode_spawner.gsc",
+      "yote_topia.iwd:maps/_zombiemode_weapons.gsc"
+    ]
+  },
+  "site_hidden": true
+}

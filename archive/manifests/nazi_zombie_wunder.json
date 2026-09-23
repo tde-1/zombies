@@ -1,0 +1,176 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_wunder",
+  "title": "WINTER WUNDERLAND",
+  "source": "custom",
+  "author": "Wunderland",
+  "released": "2018-02-03",
+  "fs_game": "mods/nazi_zombie_wunder",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_wunder.iwd": "fd54b3c1e36b0a63cce28b8c67021abb538ae06eb22466291ba54eb43c4711b9"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        40000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 40000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 114,
+    "script_count": 114,
+    "entities": 895,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      40000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "door2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door1"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "door3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "fd54b3c1e36b0a63cce28b8c67021abb538ae06eb22466291ba54eb43c4711b9",
+    "map_specific_triggers": [
+      "dvii_bench",
+      "jukebox",
+      "soul_chest_area",
+      "zapper1_damage",
+      "zapper1_trigger",
+      "zapper2_damage",
+      "zapper2_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Winter_Wunderland.exe",
+    "original_sha256": "11bc917544b7631557824c3d8ab20ac5757aa3f13a53f14a1c119d2f73d1f17c",
+    "original_size": 308459068,
+    "source_url": "http://www.mediafire.com/file/4zo15ad5d5e5oyq/Winter_Wunderland.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T19:55:25Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "In an abandoned town deep in the mountains, the frozen undead rise from the snow\u2026",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_wunder"
+      ],
+      "iwd_images": [
+        "nazi_zombie_wunder.iwd:images/loadscreen_nazi_zombie_wunder.iwi",
+        "nazi_zombie_wunder.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_wunder.iwd:images/wunder_menu_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_wunder"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/winterwunderland/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/winter-wunderland-1-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 104.5,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_wunder.ff",
+      "nazi_zombie_wunder_patch.ff",
+      "nazi_zombie_wunder.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

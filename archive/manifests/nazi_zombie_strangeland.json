@@ -1,0 +1,180 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_strangeland",
+  "title": "STRANGELAND",
+  "source": "custom",
+  "author": "DrewFlow",
+  "released": "July 16, 2014, 02:06:12 am",
+  "fs_game": "mods/nazi_zombie_strangeland",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_strangeland.iwd": "b8f092e35b8a8a5acea6916100b36177a56f0b4b0dae267def6a44578c3f31ba"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        300000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 300000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 1407,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      300000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_debris",
+        "table"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "cavedoor"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "2door"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "tunnelwall"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "tunneldoor"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b8f092e35b8a8a5acea6916100b36177a56f0b4b0dae267def6a44578c3f31ba",
+    "map_specific_triggers": [
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "shoot_me",
+      "shoot_me0",
+      "shoot_me1",
+      "shoot_me2",
+      "shoot_me3",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Strangeland_v1.1_Final_.exe",
+    "original_sha256": "d90cb3a3e935b12da363361cf6c2375dd2d50d4544a4bad17d3242deef3b8137",
+    "original_size": 85305065,
+    "source_url": "https://www.mediafire.com/file/q3jnqa55hlq7jhq/Strangeland_%255Bv1.1_Final%255D.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:11:37Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_strangeland",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_strangeland.iwd:images/loadscreen_nazi_zombie_strangeland.iwi",
+        "nazi_zombie_strangeland.iwd:images/menu_map_nazi_zombie_strangeland.iwi",
+        "nazi_zombie_strangeland.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_strangeland"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/strangeland/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/strangeland-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 106.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_strangeland.ff",
+      "nazi_zombie_strangeland_patch.ff",
+      "nazi_zombie_strangeland.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

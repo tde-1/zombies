@@ -1,0 +1,240 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "backlot_zm",
+  "title": "BACKLOT REVISITED",
+  "source": "custom",
+  "author": "ConvictioNDR",
+  "released": "2016-05-22",
+  "fs_game": "mods/backlot_zm",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@backlot_zm.iwd": "42ed2ff5893c2590e5d993f6b84c53927b2e22eca7659faf9a575f9c549b7f7a"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "dumpster_part",
+        "soul_part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "dumpster_part, soul_part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 139,
+    "script_count": 139,
+    "entities": 1485,
+    "ee_candidates": [
+      "dumpster_part",
+      "soul_part"
+    ],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "pap_door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "opfor_door"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "mid_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "speed_zone7_debris"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "speed_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "42ed2ff5893c2590e5d993f6b84c53927b2e22eca7659faf9a575f9c549b7f7a",
+    "map_specific_triggers": [
+      "con_build",
+      "concrete",
+      "dogs_kill",
+      "dumpster_part",
+      "evac_true",
+      "gnome1",
+      "gnome2",
+      "gnome3",
+      "headshots_true",
+      "hide1",
+      "hide2",
+      "hide3",
+      "hide_reward",
+      "hide_seek",
+      "kdoor_true",
+      "key1_trig",
+      "key2_trig",
+      "key3_trig",
+      "key4_trig",
+      "kills_true",
+      "locker1",
+      "locker2",
+      "locker3",
+      "locker4",
+      "melee_true",
+      "perks_true",
+      "points_true",
+      "power_player",
+      "rebar",
+      "reward1_trig",
+      "reward2_trig",
+      "reward3_trig",
+      "reward4_trig",
+      "rounds_true",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "staff_build",
+      "staff_pickup",
+      "weapon_dumpster"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Backlot_Revisited_R1.1.exe",
+    "original_sha256": "c68cd2a043cf0a40404bfa1ed5c0e9474cf9cb7cdae1eae9100c25fe61bc81e1",
+    "original_size": 427530173,
+    "source_url": "https://www.mediafire.com/file/oai8sdj11mej255/Backlot_Revisited_R1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:25:37Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Backlot Revisted is an update to my 2014 release of Backlot Zombies. New areas, new features, new weapons, new modes, more detail and optimization improvements. Features: \u2013 Complete arsenal of modern weapons. \u2013 Difficulty option. \u2013 Gun game. Get so many kills to move on to the next gun. First to the final gun wins. \u2013 One in the Chamber. Everyone has a Deagle with 1 bullet. 1 kill = 1 bullet given. Survive as long as you can. \u2013 Sharpshooter. Every player is given a new random gun every 1 minute 15 seconds. First to 250 kills wins. \u2013 Ragtime mode (solo only). Turns the map into an old silent film complete with piano music. Works in any mode and the music is YouTube safe as it\u2019s from BO2. \u2013 Toggle Verrukt sprinters on or off. \u2013 Challenge and reward system. \u2013 Defeatable ending. \u2013 Weapon lockers. \u2013 Solo Scoreboard And more to be found through playing. Credits: AndreTheTirant \u2013 Help with various things in scripting and Radiant work. Bluntstuffy \u2013 Rigged aliens, soul chests. CODCZ115 \u2013 Loading Screen. DidUknowiPwn \u2013 Gun Game and other scripting stuff. jei9363 \u2013 Zipline script. Jiffy Noodles \u2013 Some upgraded weapon names. Make Cents \u2013 Randomize perk machines script. PROxFTW \u2013 Solo scoreboard. ShotgunRagtime \u2013 Some upgraded weapon names and testing. Swazzy \u2013 HUD Tom-BMX \u2013 Lime, Lemon, Xmodel Utils, xanim exporter, maya tanim plugin, iwi to dds converter, ghosts sound exporter. Treminaor \u2013 Hintstring fix. Yaph1l \u2013 Typewriter intro, zombie head in a jar. ZCTxCHAOSx- Captain\u2019s Curse and t",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "backlot_zm.iwd:images/specialty_fastreload_zombies.iwi",
+        "backlot_zm.iwd:images/weapon_red_cross_background.iwi",
+        "backlot_zm.iwd:images/weapon_red_cross_background_2.iwi",
+        "backlot_zm.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/backlotrevisited/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/backlot-revisited-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 184.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "backlot_zm.ff",
+      "backlot_zm_patch.ff",
+      "mod.ff",
+      "backlot_zm.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 181,
+    "fatal": 1,
+    "visible": 1,
+    "visible_owner": {
+      "release": 1
+    },
+    "visible_names": [
+      "item:mk2_frag"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95150 ms over the hold",
+    "first_error": null,
+    "match": "m_0e74ab3e",
+    "at": "2026-09-23T19:41:00",
+    "instance": "inst-06",
+    "com_frameTime_advance_ms": 95150,
+    "com_error": [],
+    "console_errors": [
+      "4657:Error: started from:",
+      "4661:Error: ************************************",
+      "4676:******* script runtime error *******",
+      "4680:Error: called from:",
+      "4684:Error: called from:",
+      "4688:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:mk2_frag",
+  "dedi_status": "box_map_loaded"
+}

@@ -1,0 +1,307 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_grave",
+  "title": "RAVE TO THE GRAVE",
+  "source": "custom",
+  "author": "Death_Reaper0",
+  "released": "2015-10-20",
+  "fs_game": "mods/nazi_zombie_grave",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_grave.iwd": "2fe40ba91008064289bbca6630049900503616fc0ed4d88528d77620ce71f468"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000,
+        7000,
+        8000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 130,
+    "script_count": 130,
+    "entities": 322,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000,
+      5500,
+      6000,
+      7000,
+      8000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "2fe40ba91008064289bbca6630049900503616fc0ed4d88528d77620ce71f468",
+    "map_specific_triggers": [
+      "bank_deposit",
+      "bank_withdraw",
+      "grave1",
+      "grave10",
+      "grave11",
+      "grave12",
+      "grave13",
+      "grave14",
+      "grave15",
+      "grave16",
+      "grave17",
+      "grave2",
+      "grave3",
+      "grave4",
+      "grave5",
+      "grave6",
+      "grave7",
+      "grave8",
+      "grave9",
+      "perkaholic",
+      "reaper_poster",
+      "shov_trig1",
+      "shov_trig2",
+      "shov_trig3",
+      "shov_trig4",
+      "trig1",
+      "trig2",
+      "trig3",
+      "weapon_locker"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "rave_to_the_GRAVE_.exe",
+    "original_sha256": "d293f852130ec6290a61627081986d9cb9813643fdbd860a21090cbd015a5bbe",
+    "original_size": 231342867,
+    "source_url": "https://www.mediafire.com/file/bt4qsonbby9qzn4/rave_to_the_GRAVE%2521.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:23:23Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "i wanted to make this because there aren\u2019t many Halloween maps out there, and it uses very similar script to my previous map, saloon. this is because i wouldn\u2019t of had much time in the next few weeks leading up to Halloween (school stuff) but i really wanted to show this off. don\u2019t worry, i have done bug checks additionally, i finished this in about 24 hours features 15 perks tranzit zombies no dogs small Easter Egg to unlock ending hint: gravedigger imported weapons (mw2, mw3, bo1) custom power-ups (bonus points/blood money, free pack-a-punch) perk limit increasing machine bank weapon locker spooky atmosphere perks juggernog quick revive (black ops version) speed cola mule kick vulture aid electric cherry custom perks Point crusher \u2013 bonus points on every kill Power down punch \u2013 power-up effects when downed Deep impact \u2013 10x more powerful knife and also now give a Bowie making it an instant knife kill for a very long time Discount soda \u2013 25% cash back after each purchase Blood bullets \u2013 regenerating bullets Guardian Angel ale \u2013 5 second god mode after taking damage with a cool down Dam-a-nade \u2013 3 times more powerful explosions Pack-a-box \u2013 1-5 chance of your active gun getting paped when the box times out (when the weapon goes back in) Blood sucker \u2013 gain health from kills that stack but wont stay after taking damage. For example, without jug normal max health is 100, if you get to 150 health and take 60 damage it goes to 90 but regenerates to 100 not 150 credits shippuden15",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_grave.iwd:images/bear_logo.iwi",
+        "nazi_zombie_grave.iwd:images/blood_logo.iwi",
+        "nazi_zombie_grave.iwd:images/damnade_logo.iwi",
+        "nazi_zombie_grave.iwd:images/deep_impact_logo.iwi",
+        "nazi_zombie_grave.iwd:images/discount_logo.iwi",
+        "nazi_zombie_grave.iwd:images/down_logo.iwi",
+        "nazi_zombie_grave.iwd:images/flash_logo.iwi",
+        "nazi_zombie_grave.iwd:images/guardian_logo.iwi",
+        "nazi_zombie_grave.iwd:images/packbox_logo.iwi",
+        "nazi_zombie_grave.iwd:images/perkaholic_logo.iwi",
+        "nazi_zombie_grave.iwd:images/point_logo.iwi",
+        "nazi_zombie_grave.iwd:images/polosa_logo.iwi",
+        "nazi_zombie_grave.iwd:images/repair_logo.iwi",
+        "nazi_zombie_grave.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_grave.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/ravetothegrave/cover.png",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/rave-to-the-grave-1.png"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 76.1,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273488
+      },
+      {
+        "file": "buried.iwd",
+        "entries": 84,
+        "scripts": 17,
+        "bytes": 18321193
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953536
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 557060
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019295
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_grave_patch.ff",
+      "nazi_zombie_grave.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 220,
+    "fatal": 21,
+    "visible": 21,
+    "visible_owner": {
+      "release": 21
+    },
+    "visible_names": [
+      "item:zombie_perk_bottle_bear",
+      "item:zombie_perk_bottle_blood",
+      "item:zombie_perk_bottle_discount",
+      "item:zombie_perk_bottle_doubletap",
+      "item:zombie_perk_bottle_down",
+      "item:zombie_perk_bottle_flash",
+      "item:zombie_perk_bottle_impact",
+      "item:zombie_perk_bottle_jugg",
+      "item:zombie_perk_bottle_palosa",
+      "item:zombie_perk_bottle_point",
+      "item:zombie_perk_bottle_repair",
+      "item:zombie_perk_bottle_revive",
+      "weapon:weapons/sp/zombie_perk_bottle_bear",
+      "weapon:weapons/sp/zombie_perk_bottle_blood",
+      "weapon:weapons/sp/zombie_perk_bottle_discount",
+      "weapon:weapons/sp/zombie_perk_bottle_down",
+      "weapon:weapons/sp/zombie_perk_bottle_flash",
+      "weapon:weapons/sp/zombie_perk_bottle_impact",
+      "weapon:weapons/sp/zombie_perk_bottle_palosa",
+      "weapon:weapons/sp/zombie_perk_bottle_point"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95170 ms over the hold",
+    "first_error": "unknown item 'zombie_perk_bottle_palosa': (file 'maps/_zombiemode_perks_black_ops.gsc', line 31)",
+    "match": "m_a9208103",
+    "at": "2026-09-23T20:30:01",
+    "instance": "inst-06",
+    "com_frameTime_advance_ms": 95170,
+    "com_error": [],
+    "console_errors": [
+      "4419:unknown item 'zombie_perk_bottle_palosa': (file 'maps/_zombiemode_perks_black_ops.gsc', line 31)",
+      "4422:Error: called from:",
+      "4426:Error: called from:",
+      "4430:Error: started from:",
+      "4434:Error: ************************************",
+      "4435:WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_down'"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:zombie_perk_bottle_bear, item:zombie_perk_bottle_blood, item:zombie_perk_bottle_discount, item:zombie_perk_bottle_doubletap, item:zombie_perk_bottle_down, item:zombie_perk_bottle_flash",
+  "dedi_status": "box_map_loaded"
+}

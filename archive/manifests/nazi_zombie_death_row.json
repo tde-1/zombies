@@ -1,0 +1,169 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_death_row",
+  "title": "DEATH ROW",
+  "source": "custom",
+  "author": "GBG",
+  "released": "February 12, 2014, 02:09:34 pm",
+  "fs_game": "mods/nazi_zombie_death_row",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_death_row.iwd": "351011a0dadaf2ed0c50203bd5cfe849dcebddf70631acf4b63b84e6f85f3585"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        85000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger name an ending and are this map's own; script hardcodes cost 85000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 1800,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      85000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door50"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door30"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door20"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door100"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "351011a0dadaf2ed0c50203bd5cfe849dcebddf70631acf4b63b84e6f85f3585",
+    "map_specific_triggers": [
+      "end_trigger",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "music_box_player",
+      "para_eggtrig",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "storage_trig",
+      "storage_upgrade_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "wingbg.exe",
+    "original_sha256": "4e6b0bab1564466f431bc4c9c0b9d5b30ae71f96013f8b23dd5f3f419a528bc4",
+    "original_size": 96069389,
+    "source_url": "https://www.mediafire.com/file/a5sata3h40q40ci/wingbg.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:19:07Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_death_row.iwd:images/gbg_logo.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/deathrow/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2020/09/nazi-zombie-death-row-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 101.7,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_death_row.ff",
+      "nazi_zombie_death_row_patch.ff"
+    ]
+  },
+  "site_hidden": true
+}

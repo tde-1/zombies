@@ -1,0 +1,222 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_train",
+  "title": "TRAINING",
+  "source": "custom",
+  "author": "holz",
+  "released": "November 19, 2013, 02:36:56 pm",
+  "fs_game": "mods/nazi_zombie_train",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "cca3520085b24cc88aa2191ef6d597efb1458a07a7882e1b9468db9cf391cd7e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_debris",
+          "zombie_cost": 40000
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 147,
+    "script_count": 147,
+    "entities": 3140,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0"
+    ],
+    "top_costs": [
+      [
+        40000,
+        "zombie_debris",
+        "door38"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door8"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door50"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door50"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door5"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 40000,
+      "targetname": "zombie_debris",
+      "target": "door38",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "cca3520085b24cc88aa2191ef6d597efb1458a07a7882e1b9468db9cf391cd7e",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "music_box_player",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "secret_trigger4",
+      "secret_trigger5",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ugxm_training_v1.2.exe",
+    "original_sha256": "e801d6da6abd9f82f4e8e5b7687112fe1d98ae5c226ae7e51be049f8c248b3db",
+    "original_size": 272133022,
+    "source_url": "https://www.mediafire.com/file/otrb4e2g9b1e3hr/nazi_zombie_ugxm_training_v1.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:18:00Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "nazi_zombie_train.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_train.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/training/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/training-4-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 86.8,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 26,
+        "bytes": 30450705
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      },
+      {
+        "file": "zzzbo1_perks_ugx_mod.iwd",
+        "entries": 5,
+        "scripts": 5,
+        "bytes": 49785
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_nazi_zombie_train.ff",
+      "localized_nazi_zombie_train_install.ff",
+      "mod.ff",
+      "nazi_zombie_localized_install.ff",
+      "nazi_zombie_train.ff",
+      "nazi_zombie_train_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc",
+      "zzzbo1_perks_ugx_mod.iwd:maps/_zombiemode_weapons.gsc"
+    ]
+  },
+  "site_hidden": true
+}

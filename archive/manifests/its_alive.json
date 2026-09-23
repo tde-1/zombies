@@ -1,0 +1,119 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "its_alive",
+  "title": "ITS ALIVE",
+  "source": "custom",
+  "author": "rustyandme",
+  "released": "June 05, 2015, 08:15:10 pm",
+  "fs_game": "mods/its_alive",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@its_alive.iwd": "894b5057ddaafe2d8f86532cd5dc3cef60fa696cc29f66e000bd19a271b5a4c5"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 196,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      4000,
+      5000,
+      7500,
+      10000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "894b5057ddaafe2d8f86532cd5dc3cef60fa696cc29f66e000bd19a271b5a4c5",
+    "map_specific_triggers": [
+      "buffer_area",
+      "exit_door",
+      "floor1_area",
+      "power_poster",
+      "spawn_area"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Its_Alive_v1.0.exe",
+    "original_sha256": "0d313223be2069e802cee551d4492f44044c74a31db78af0ca9827efed27e533",
+    "original_size": 142843850,
+    "source_url": "https://www.mediafire.com/file/c8it5ql6n6g39h4/It%2527s_Alive_v1.0.exe/file#39;s_Alive_v1.0.exe",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T19:57:54Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_its_alive",
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "its_alive.iwd:images/loadscreen_its_alive.iwi",
+        "its_alive.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_its_alive"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/itsalive/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/its-alive-3-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: buffer_area, exit_door, floor1_area, power_poster, spawn_area. ",
+  "precheck": {
+    "map_zone_inflated_mb": 69.0,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "its_alive.ff",
+      "its_alive_patch.ff",
+      "mod.ff",
+      "its_alive.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

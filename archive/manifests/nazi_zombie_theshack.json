@@ -1,0 +1,193 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_theshack",
+  "title": "THE SHACK",
+  "source": "custom",
+  "author": "GrantDaddy007",
+  "released": "June 20, 2013, 01:28:41 am",
+  "fs_game": "mods/nazi_zombie_theshack",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_theshack.iwd": "922fe4a5dc774aeda53e07834f6369cecdb37672ce98a81d55ee308ec8951785"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 35000
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        8000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 94,
+    "script_count": 94,
+    "entities": 3368,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      8000,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        35000,
+        "zombie_door",
+        "auto54"
+      ],
+      [
+        3000,
+        "zombie_door",
+        "blockerpower"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "blockerbarn"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "sticktrap"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blockerwater"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 35000,
+      "targetname": "zombie_door",
+      "target": "auto54",
+      "next_highest": 3000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "922fe4a5dc774aeda53e07834f6369cecdb37672ce98a81d55ee308ec8951785",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "disable_dialog",
+      "end_game_bear",
+      "enter",
+      "kino_teleporter_trigger",
+      "para_eggtrig",
+      "para_eggtrig1",
+      "para_eggtrig3",
+      "para_eggtrig4",
+      "secret_bear_up",
+      "sharktrig",
+      "sick",
+      "switchfoot1",
+      "switchfoot3",
+      "text1",
+      "trap_door_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_TheShack.exe",
+    "original_sha256": "101a1ddc97aa8f1d389208e1c3272fa1b5b67a6cadad11bceab76279a30739ca",
+    "original_size": 128070723,
+    "source_url": "https://www.mediafire.com/file/axlt3fdcz6gwola/nazi_zombie_TheShack.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:15:43Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_theshack",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_theshack.iwd:images/loadscreen_nazi_zombie_theshack.iwi",
+        "nazi_zombie_theshack.iwd:images/menu_map_nazi_zombie_theshack.iwi",
+        "nazi_zombie_theshack.iwd:images/shack_load_ending.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_theshack"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/theshack/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/the-shack-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 115.4,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_theshack.ff",
+      "nazi_zombie_theshack_patch.ff",
+      "nazi_zombie_theshack.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

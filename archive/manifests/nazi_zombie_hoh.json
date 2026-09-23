@@ -1,0 +1,236 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_hoh",
+  "title": "HOUSE OF HORROR",
+  "source": "custom",
+  "author": "cinnober",
+  "released": "July 10, 2014, 04:02:52 pm",
+  "fs_game": "mods/nazi_zombie_hoh",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_hoh.iwd": "18637f306bd11e9092be62a947d73c3ac21fab705d3af84a9735e7b0d1b81974"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "all_pieces",
+        "backleftwheel_true_part",
+        "backrightwheel_true_part",
+        "engine_true_part",
+        "frontleftwheel_true_part",
+        "frontrightwheel_true_part",
+        "hood_true_part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "all_pieces, backleftwheel_true_part, backrightwheel_true_part, engine_true_part, frontleftwheel_true_part, frontrightwheel_true_part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 120,
+    "script_count": 120,
+    "entities": 1607,
+    "ee_candidates": [
+      "all_pieces",
+      "backleftwheel_true_part",
+      "backrightwheel_true_part",
+      "engine_true_part",
+      "frontleftwheel_true_part",
+      "frontrightwheel_true_part",
+      "hood_true_part"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      60000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door_clipped",
+        "auto124"
+      ],
+      [
+        2000,
+        "zombie_door_clipped",
+        "auto122"
+      ],
+      [
+        2000,
+        "zombie_door_clipped",
+        "auto120"
+      ],
+      [
+        2000,
+        "zombie_door_clipped",
+        "auto119"
+      ],
+      [
+        2000,
+        "zombie_door_clipped",
+        "auto117"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "18637f306bd11e9092be62a947d73c3ac21fab705d3af84a9735e7b0d1b81974",
+    "map_specific_triggers": [
+      "Cinno_pickup",
+      "backleftwheel",
+      "backleftwheel_true",
+      "backrightwheel",
+      "backrightwheel_true",
+      "disable_dialog",
+      "engine",
+      "engine_true",
+      "frontleftwheel",
+      "frontleftwheel_true",
+      "frontrightwheel",
+      "frontrightwheel_true",
+      "gas_can",
+      "gas_cantrue",
+      "ghost_trig",
+      "hood",
+      "hood_true",
+      "model_delete",
+      "model_spawner",
+      "sound_triggers",
+      "trigger_delete_connected",
+      "zombie_door_clipped"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_hoh_2_.exe",
+    "original_sha256": "76e4b3acada5dc9f86a3b6486a97b9391fc0fa07267525cf804d9a7bb250db99",
+    "original_size": 97249057,
+    "source_url": "https://www.mediafire.com/file/arlp6m3zlpebifl/nazi_zombie_hoh%25282%2529.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:20:17Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_hoh"
+      ],
+      "iwd_images": [
+        "nazi_zombie_hoh.iwd:images/loadscreen_nazi_zombie_hoh.iwi",
+        "nazi_zombie_hoh.iwd:images/menu_map_nazi_zombie_hoh.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_hoh"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/houseofhorror/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/house-of-horror-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 117.1,
+    "addon_iwds": [
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_hoh.ff",
+      "nazi_zombie_hoh_patch.ff"
+    ]
+  },
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 174,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95160 ms over the hold",
+    "first_error": null,
+    "match": "m_17b3ee72",
+    "at": "2026-09-23T20:08:39",
+    "instance": "inst-02",
+    "com_frameTime_advance_ms": 95160,
+    "com_error": [],
+    "console_errors": [
+      "8032:Error: started from:",
+      "8036:Error: ************************************",
+      "8038:******* script runtime error *******",
+      "8042:Error: called from:",
+      "8046:Error: called from:",
+      "8050:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
+}
