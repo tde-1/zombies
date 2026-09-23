@@ -133,6 +133,10 @@ struct client_view {
     std::string name;
     std::string xuid;       // steamid/xuid as a string, empty if unknown
     std::string userinfo;   // raw, for the connect-token check
+    // A server-side test client (dedicated/bots.cpp, dev knobs only). Reported with
+    // active=false so the referee, the replay and AFK never treat a soak bot as a player:
+    // no roster row, no auth, no kick.
+    bool bot = false;
 };
 int max_clients();
 std::optional<client_view> client(int slot);

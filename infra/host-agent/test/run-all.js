@@ -12,7 +12,7 @@ import { BootQueue } from '../lib/bootqueue.js'
 import { ramPlan, parseMeminfo, MB } from '../lib/memguard.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
-import { InstanceManager, devKnobsFor, safeLeaseDvars, countPlusCommands, ENGINE_PLUS_LIMIT, LAUNCH_PS1_PLUS } from '../lib/instances.js'
+import { InstanceManager, devKnobsFor, devBotsFor, safeLeaseDvars, countPlusCommands, ENGINE_PLUS_LIMIT, LAUNCH_PS1_PLUS } from '../lib/instances.js'
 import { gameModeDvars, gameModeId } from '../lib/gamemode.js'
 import { leaseList, planLeases } from '../lib/leases.js'
 import { SERVER_RULES, RULESET, effectiveFps } from '../lib/verified.js'
@@ -977,7 +977,7 @@ t('a Custom lease dvar cannot inject command-line commands, and host-owned dvars
 
 t('dev knobs only for an AGENT lease in CUSTOM mode that asks, and explicitly empty otherwise', () => {
   const dev = { god: true }
-  eq(devKnobsFor({ agent: true, mode: 'custom', settings: { dev } }), { ENW_DEV_KNOBS: '1', ENW_DEV_GOD: '1' })
+  eq(devKnobsFor({ agent: true, mode: 'custom', settings: { dev } }), { ENW_DEV_KNOBS: '1', ENW_DEV_GOD: '1', ENW_DEV_BOTS: '' })
   for (const a of [
     { agent: false, mode: 'custom', settings: { dev } },          // a player's Custom game
     { mode: 'custom', settings: { dev } },                          // no agent flag (old site)
@@ -985,7 +985,7 @@ t('dev knobs only for an AGENT lease in CUSTOM mode that asks, and explicitly em
     { agent: 'true', mode: 'custom', settings: { dev } },           // not a real boolean
     { agent: true, mode: 'custom', settings: {} },                  // did not ask
     null,
-  ]) eq(devKnobsFor(a), { ENW_DEV_KNOBS: '', ENW_DEV_GOD: '' }, JSON.stringify(a))
+  ]) eq(devKnobsFor(a), { ENW_DEV_KNOBS: '', ENW_DEV_GOD: '', ENW_DEV_BOTS: '' }, JSON.stringify(a))
   const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
   const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'vdvars3'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
   const g = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'verified', settings: {} } })
@@ -1082,6 +1082,22 @@ t('the engine keeps 31 + commands: the box line fits with +map last, and a line 
   let wthrew = null
   try { wb.gameArgs(LAUNCH_PS1_PLUS) } catch (e) { wthrew = e }
   ok(wthrew, 'launch.ps1 prefix + 12 lease dvars is over the limit')
+})
+
+t('soak bots (dedi.md §26): agent Custom dev leases only, 1..4, and they get client slots', () => {
+  const lease = (dev, extra = {}) => ({ agent: true, mode: 'custom', settings: { dev }, ...extra })
+  eq(devKnobsFor(lease({ god: true, bots: 2 })), { ENW_DEV_KNOBS: '1', ENW_DEV_GOD: '1', ENW_DEV_BOTS: '2' })
+  eq(devKnobsFor(lease({ bots: 1 })), { ENW_DEV_KNOBS: '1', ENW_DEV_GOD: '', ENW_DEV_BOTS: '1' })
+  for (const bots of [0, 5, -1, 1.5, '2', null]) eq(devBotsFor(lease({ bots })), 0, String(bots))
+  eq(devKnobsFor({ agent: false, mode: 'custom', settings: { dev: { bots: 2 } } }).ENW_DEV_BOTS, '')
+  eq(devKnobsFor({ agent: true, mode: 'verified', settings: { dev: { bots: 2 } } }).ENW_DEV_KNOBS, '')
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'vbots'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  const g = m.create({ kind: 'game', assignment: lease({ god: true, bots: 3 }, { map: 'nazi_zombie_prototype', slots: [{}] }) })
+  ok(g.gameArgs().includes('+set sv_maxclients 3'), g.gameArgs().join(' '))
+  eq(g.gameEnv().ENW_DEV_BOTS, '3')
+  const p = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'verified', slots: [{}], settings: { dev: { bots: 3 } } } })
+  ok(p.gameArgs().includes('+set sv_maxclients 1'), 'a player lease ignores dev.bots')
 })
 
 // ---- game copies by SLOT, not by id (dedi.md §19, 2026-09-23) --------------------------

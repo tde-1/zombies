@@ -950,6 +950,11 @@ std::optional<client_view> client(int slot) {
     // A slot with a gentity and a name is in the game. The connection-state enum
     // offset is not published, so this is the honest test rather than a guessed one.
     v.active = gent != 0 && !v.name.empty();
+    int32_t test_client = 0;
+    if (peek(c + t4::client_extra_off::bIsTestClient, &test_client) && test_client != 0) {
+        v.bot = true;
+        v.active = false;
+    }
     if (!v.userinfo.empty()) {
         // userinfo is \key\value\...; pull the steam/xuid key if it is there.
         for (const char* k : {"\\xuid\\", "\\steamid\\", "\\guid\\"}) {
@@ -966,6 +971,9 @@ std::optional<client_view> client(int slot) {
 
 std::optional<usercmd_view> last_usercmd(int slot) {
     if (!g_report.clients || slot < 0 || slot >= kMaxClients) return std::nullopt;
+    int32_t test_client = 0;
+    if (peek(client_at(slot) + t4::client_extra_off::bIsTestClient, &test_client) && test_client != 0)
+        return std::nullopt;   // a soak bot (dedicated/bots.cpp) is not a player
     t4::usercmd_s cmd{};
     if (!peek(client_at(slot) + t4::client_extra_off::lastUsercmd, &cmd)) return std::nullopt;
     usercmd_view v;

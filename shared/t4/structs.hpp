@@ -108,6 +108,10 @@ namespace t4
     {
         constexpr std::size_t lastUsercmd = 0x11108; // usercmd_s (0x38)
         constexpr std::size_t ping        = 0x323E4;
+        // [V] 2026-09-23 (S2): read by SV_SendClientGameState 0x62F5A7 and SV_AddServerCommand
+        // 0x633D35; written by nothing in the image (SV_AddTestClient is compiled out) --
+        // server/components/dedicated/bots.cpp sets it for its soak bots.
+        constexpr std::size_t bIsTestClient = 0x52BFC;
     }
     namespace svs_off
     {
