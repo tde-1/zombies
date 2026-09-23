@@ -220,3 +220,101 @@ default values, dumps in `%LOCALAPPDATA%\CrashDumps`), `hkcu`, `hkcu-ours` (the 
 `HKCU\...\LocalDumps\CoDWaW.exe` → `ENW_ROOT\crashes\dumps`, minidump, 10; only when nothing else
 covered the exe; per exe name, so it also covers Steam-launched vanilla WaW for that Windows user),
 or `off`.
+
+## 7. The box side (host agent)
+
+Code `infra/host-agent/lib/telemetry.js` (the queue), `lib/telemetry-build.js` (the builder, run
+in a child process at `nice 19`), `SiteClient.uploadTelemetry`, wiring in `host.js`
+(`startTelemetry`, `instanceLogFiles`, `telemetryEnd`), the log ring in `lib/util.js`. Detail and
+where each log lives on the box: `host.md` §15. Tests `infra/host-agent/test/telemetry.js` (81).
+
+| Trigger | kind / reason | Contents |
+|---|---|---|
+| every game's end: terminate, retire (lease gone, superseded, slot needed), reuse (warm), crash / unexpected exit, agent shutdown | `host` / `instance_end` | `host-instance.log` (this instance's and match's lines from the ring), `host-box-context.log` (every line of the box from a minute before the game, ≤ 5,000), `instance-stdout.log`, `host-games_mp.log`, the DLL's `enw-<winpid>.log`, `engine-console.log` / `engine-games_mp.log` (the fs_homepath and mod copies), `summary.json`, `lease.json` (tokens redacted), `instance.json`; manifest `summary_line`, `dll_sha` (hashed at link time: the file at the end may be a newer one), `exit_code`, `exit_reason`, `host` health, `notes.replay` (path + sha only: replays stay on the box) |
+| an instance that never started (no copy, cap, lock) | `host` / `lease_refused` | as above |
+| a lease whose map the cache could not prepare | `host` / `pull_failed` | `host-lease.log` (the `/maps` lines and the lease's lines), `host-box-context.log`, `lease.json`, the map cache state |
+| disk free < 2 GB or MemAvailable < 300 MB, at most once an hour per condition | `host` / `box_warning` | `host-recent.log` (last 5,000 ring lines), `/proc/meminfo`, `df -h`, `ps` by RSS |
+| once a day, after 00:10 UTC (and at start if yesterday was missed) | `journal` / `daily_journal` | `journalctl -u enw-host-agent` for the UTC day (8 MB parts, ≤ 8) and `journalctl -k` (4 MB tail) |
+
+**Cost on a live game.** The ring is one array write per log line (20,000 lines, no I/O). At an
+end the agent's thread only filters the ring and copies log tails (async I/O, 16 MB per file);
+scrubbing and gzip happen in the niced child. Nothing is built or uploaded while a game boots or a
+map is being prepared (`busy`); uploads are one at a time, streamed, throttled to 8 MB/s. Text
+files are tailed to 16 MB each; a 413 rebuilds once with 2 MB tails.
+
+**Outbox** `<data>/telemetry/` (beside the spool; on the box `/root/ZombiesDev/telemetry` unless
+`ENW_TELEMETRY_DIR`): `staging/<id>/` (job.json, no secrets, so an agent restart builds it next
+start), `outbox/<id>.tar.gz` + `.json`, `rejected/`, `state.json`. Answers as the launcher's: 200 /
+duplicate deleted; 5xx / network 1 m, 5 m, 30 m, 2 h, 6 h; 429 `Retry-After`; 400 → `rejected/`;
+413 → rebuilt once, then `rejected/`. Kept **7 days / 3 GB**, oldest out first.
+
+**Scrub literals:** the box secret and the replay-signing private key; the lease's invite tokens.
+**Refused as files:** the keys dir, `enw-host.env`, and everything `isForbiddenFile` names.
+
+Env (all optional, `/root/enw-host.env`): `ENW_TELEMETRY=off`, `ENW_TELEMETRY_DIR`,
+`ENW_TELEMETRY_UPLOAD_MBPS` (8), `ENW_TELEMETRY_MAX_DAYS` (7), `ENW_TELEMETRY_MAX_GB` (3),
+`ENW_TELEMETRY_TAIL_MB` (16), `ENW_TELEMETRY_DISK_WARN_GB` (2), `ENW_TELEMETRY_MEM_WARN_MB` (300),
+`ENW_TELEMETRY_JOURNAL=off`, `ENW_TELEMETRY_JOURNAL_UNIT` (`enw-host-agent`), `ENW_LOG_RING`
+(20000). Flag `--telemetry off`. The dashboard's `/state` has a `telemetry` block.
+
+**Which files the site's rules read** (`rules.js`, fixed 2026-09-23 after the host half landed):
+`host-instance.log`, `host-lease.log` and `journal-*.log` are host logs; `engine-console.log`,
+`host-games_mp.log`, `instance-stdout.log` are game logs. `host-box-context.log` and
+`host-recent.log` are read by no rule: they hold other games' lines and must not flag this bundle.
+The ring's ISO timestamps (`…:50.978Z error`) match `host_error`.
+
+## 8. The site's own logs and the nightly jobs
+
+`web/server/lib/telemetry/siteLog.js`: every console line is also appended to
+`<data>/logs/site-<UTC date>.log`; `console.error`, an uncaught exception, a 5xx answer and a
+refused Play become `site` incidents at once (no bundle, coalesced per fingerprint for 6 h).
+`jobs.js`, checked every 10 minutes, once per UTC day (caught up at the next start): the day's
+site log as a `site` / `site_daily` bundle (flagged like any other), and the digest,
+`logs/digest/<date>.json` (the day's incidents grouped by flag). `store.js` retries any bundle the
+bucket has not got yet.
+
+## 9. Bucket layout
+
+```
+logs/client/<yyyy-mm-dd>/<steamid64>/<id>.tar.gz     a game session from a launcher
+logs/launcher/<yyyy-mm-dd>/<steamid64>/<id>.tar.gz   the launcher itself
+logs/host/<yyyy-mm-dd>/<box>/<id>.tar.gz             one box instance / pull / warning
+logs/journal/<yyyy-mm-dd>/<box>/<id>.tar.gz          the box's daily journal
+logs/site/<yyyy-mm-dd>/site/<id>.tar.gz              the site's day log
+logs/digest/<yyyy-mm-dd>.json                        the nightly digest
+```
+
+`<id>` is the site's incident id, not the sender's `bundle_id`. Only `logs/` is written; `updates/`
+and `mods/` are never touched by telemetry.
+
+## 10. Deploy (coordinator)
+
+1. **Site** (B's PC): merge, restart the site through `keepalive.ps1` as usual. The `incidents`
+   table is created at start (`database.js`). The site needs `infra\s3.env` readable (it already
+   is for the publish tools) — without keys, bundles stay in `data/telemetry/` and `store.js`
+   retries. Optional knobs in `infra/site.env.example` (`ZM_TELEMETRY_*`). `npm run build` for the
+   admin Issues page.
+2. **Launcher**: the next release (after 0.2.24) carries the outbox; publish as usual. Old
+   launchers send nothing.
+3. **Box agent**: deploy the host-agent tree (`lib/telemetry.js`, `lib/telemetry-build.js`,
+   `lib/telemetry/*.cjs`, `host.js`, `lib/siteclient.js`, `lib/util.js`) and restart the agent
+   **between games** (lease slot free). Telemetry is on by default whenever the agent has a site;
+   `ENW_TELEMETRY=off` in `/root/enw-host.env` turns it off without a code rollback. Deploy the
+   site first: an agent that meets an old site gets 404s and keeps its bundles in the outbox
+   (backoff, 7 days), which is harmless.
+4. **Client DLL**: `session-<pid>.json` (commit 81ad8d9) ships with the next client DLL build; the
+   launcher and the rules read it loosely and work without it.
+
+## 11. Unproven (2026-09-23)
+
+* **Nothing has been sent to the real bucket.** Every test uses a fake bucket or a local stand-in.
+  The first real bundle after deploy should be checked on the Issues page and in `logs/`.
+* **The box half on the box.** Tested on Windows only: `journalctl`, `nice`, `/proc/meminfo`,
+  `df`/`ps`, the Wine paths of `instanceLogFiles` (DLL log beside the DLL, fs_homepath console) are
+  from the code and dedi.md, not from a run on zombies-dev. The journal path with a real
+  `journalctl` has no test (only the "no journalctl" and "not due" paths).
+* **In the real Electron app**: the launcher's upload was proven with Node 24's `fetch` against the
+  site's real route (web test, cross-lane); Electron's main-process `fetch` streaming a file body is
+  not proven, nor the toast or the Settings line on screen.
+* **A real crash end to end** (a WER dump, SteamStub's exit code) — no game was launched.
+* Old incidents are never re-flagged when a rule changes.
