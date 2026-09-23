@@ -1101,6 +1101,16 @@ t('soak bots (dedi.md §26): agent Custom dev leases only, 1..4, and they get cl
   eq(soakBotConfig(lease({ god: true, bots: 1 })).emptyCloseMs, 24 * 60 * 60 * 1000, 'a bot soak is not closed as empty')
   eq(soakBotConfig(lease({ god: true })), {}, 'god alone keeps the empty close')
   eq(soakBotConfig({ agent: false, mode: 'custom', settings: { dev: { bots: 2 } } }), {}, 'never a player lease')
+  // The idle-close exemption (host.js checkIdle) keys on this too, so no real player's lease may
+  // match it: no `agent` flag at all (a player's Play), a truthy-but-not-true flag, Verified mode,
+  // or a party-supplied dev block with a bad count all keep the idle close.
+  for (const [why, a] of [
+    ['no agent flag (a player\'s Play)', { mode: 'custom', settings: { dev: { bots: 2 } } }],
+    ['agent "true" as a string', { agent: 'true', mode: 'custom', settings: { dev: { bots: 2 } } }],
+    ['agent Verified lease', { agent: true, mode: 'verified', settings: { dev: { bots: 2 } } }],
+    ['bots 0', lease({ bots: 0 })], ['bots 5', lease({ bots: 5 })], ['bots "2"', lease({ bots: '2' })], ['bots 1.5', lease({ bots: 1.5 })],
+    ['no settings', { agent: true, mode: 'custom' }],
+  ]) eq(soakBotConfig(a).emptyCloseMs, undefined, `idle close kept: ${why}`)
 })
 
 // ---- game copies by SLOT, not by id (dedi.md §19, 2026-09-23) --------------------------
