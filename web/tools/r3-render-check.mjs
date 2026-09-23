@@ -213,6 +213,22 @@ try {
   await O.shot('r3-old-3p')
   check('no page exceptions (old replay)', O.exceptions.length === 0, O.exceptions)
   await O.close()
+
+  // ---- optional: a REAL recorded replay (copied into the scratch replay dir) still plays --------
+  const real = process.argv.includes('--real') ? process.argv[process.argv.indexOf('--real') + 1] : null
+  if (real) {
+    const Q = await openReplay(real)
+    await Q.click('.r3d-play')
+    await sleep(5000)
+    await Q.key('Space', ' ', 32)
+    await Q.third()
+    const rf = await Q.ev('window.__r3d.fx()')
+    check(`real replay ${real}: plays, held weapons from its snapshot column`, rf && rf.gear.slots.length > 0, rf && rf.gear.slots)
+    check(`real replay ${real}: no FX cues, silent`, rf.sound.available === false, rf.sound)
+    await Q.shot(`r3-real-${real}`)
+    check(`no page exceptions (${real})`, Q.exceptions.length === 0, Q.exceptions)
+    await Q.close()
+  }
 } catch (e) {
   check('harness', false, String(e.stack || e.message || e))
 } finally {
