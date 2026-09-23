@@ -24,8 +24,12 @@ const os = require('os')
 const path = require('path')
 const { spawn } = require('child_process')
 
-const PORT = Number(process.env.ZM_TEST_PORT || 33991)
-const SITE = `http://127.0.0.1:${PORT}`
+const { freePort, waitHttp } = require('./_port')
+
+// 33991 when it is free; any free port when it is not (bug 14: another worktree's run, or a
+// leftover child, holding it). Picked in main(), before the first spawn.
+let PORT = Number(process.env.ZM_TEST_PORT || 33991)
+let SITE = `http://127.0.0.1:${PORT}`
 const ROOT = path.resolve(__dirname, '..')
 // Short, because a Windows path over 260 characters makes SQLite say SQLITE_CANTOPEN and
 // the message names neither the path nor the length.
@@ -82,31 +86,50 @@ const env = {
 fs.mkdirSync(env.ZM_REPLAY_DIR, { recursive: true })
 
 let child = null
+let childErr = ''
 function startServer() {
+  childErr = ''
   child = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js')], { env, cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] })
   child.stdout.on('data', () => {})
-  child.stderr.on('data', (d) => { if (process.env.ZM_TEST_VERBOSE) process.stderr.write(d) })
+  child.stderr.on('data', (d) => {
+    childErr = (childErr + d).slice(-4000)
+    if (process.env.ZM_TEST_VERBOSE) process.stderr.write(d)
+  })
   return child
 }
+// Resolves when the PID we spawned has exited (or after 5 s), so a restart never races the
+// old process for the port.
 function stopServer() {
-  // Only ever the PID we spawned. `taskkill /IM node.exe` would take the live site with it.
-  if (child && child.pid && !child.killed) { try { child.kill() } catch { /* already gone */ } }
+  const c = child
   child = null
+  // Only ever the PID we spawned. `taskkill /IM node.exe` would take the live site with it.
+  if (!c || !c.pid || c.exitCode !== null) return Promise.resolve()
+  return new Promise((resolve) => {
+    const t = setTimeout(resolve, 5000)
+    c.once('exit', () => { clearTimeout(t); resolve() })
+    try { c.kill() } catch { clearTimeout(t); resolve() }
+  })
 }
-async function waitUp(timeoutMs = 20000) {
+// A long, jittered wait that notices a dead child. A child that died on EADDRINUSE (the old
+// one still letting go of the port) is spawned again, a few times.
+async function waitUp(timeoutMs = 90000) {
   const until = Date.now() + timeoutMs
-  for (;;) {
+  for (let tries = 0; ; tries++) {
     try {
-      const r = await fetch(SITE + '/api/launcher/hello', { signal: AbortSignal.timeout(1500) })
-      if (r.ok) return
-    } catch { /* not yet */ }
-    if (Date.now() > until) throw new Error(`the test server never came up on ${PORT}`)
-    await new Promise((r) => setTimeout(r, 250))
+      await waitHttp(SITE + '/api/launcher/hello', { timeoutMs: Math.max(1000, until - Date.now()), child, stderr: () => childErr })
+      return
+    } catch (e) {
+      if (tries < 5 && /EADDRINUSE/.test(childErr) && Date.now() < until) {
+        await new Promise((r) => setTimeout(r, 500 + Math.floor(Math.random() * 500)))
+        startServer()
+        continue
+      }
+      throw e
+    }
   }
 }
 async function restart() {
-  stopServer()
-  await new Promise((r) => setTimeout(r, 400))
+  await stopServer()
   startServer()
   await waitUp()
 }
@@ -115,6 +138,10 @@ const MAP = 'nazi_zombie_asylum'
 const ME = '76561190000000001'
 
 async function main() {
+  PORT = await freePort(PORT)
+  SITE = `http://127.0.0.1:${PORT}`
+  env.ZM_PORT = String(PORT)
+
   // Seed the throwaway database the same way a real install does.
   await new Promise((resolve, reject) => {
     const s = spawn(process.execPath, [path.join(ROOT, 'server', 'db', 'seed.js'), '--demo'], { env, cwd: ROOT, stdio: 'ignore' })
@@ -353,8 +380,7 @@ async function main() {
     const lost = s.json.match_id
     await call('/api/launcher/local/live', { method: 'POST', body: { match_id: lost, state: { round: 18 } } })
 
-    stopServer()
-    await new Promise((r) => setTimeout(r, 400))
+    await stopServer()
     const prevData = process.env.ZM_DATA_DIR
     process.env.ZM_DATA_DIR = env.ZM_DATA_DIR
     delete require.cache[require.resolve('../server/db/database')]
@@ -459,8 +485,7 @@ async function main() {
     // is before any game exists. B's live site is the case it is for: six seeded games
     // already sitting there in the shape of a real one. So the predicate is tested here
     // directly — unmark everything, run it, and see what it picks up.
-    stopServer()
-    await new Promise((r) => setTimeout(r, 400))
+    await stopServer()
     const prevData = process.env.ZM_DATA_DIR
     process.env.ZM_DATA_DIR = env.ZM_DATA_DIR
     delete require.cache[require.resolve('../server/db/database')]

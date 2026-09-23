@@ -95,7 +95,7 @@ export default function Download() {
   const what = label || (map ? prettyTitle(map.title, map.key) : null)
   const heading = what
     ? `Install the launcher to play ${what}`
-    : partyId ? 'Install the launcher to join that party' : 'Install the ENW Zombies launcher'
+    : partyId ? 'Install the launcher to join that party' : 'Install the Zombies launcher'
 
   return (
     <div className="page" style={{ maxWidth: 720 }}>

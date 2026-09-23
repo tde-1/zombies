@@ -119,6 +119,33 @@ target_compile_options(enw_t4 PRIVATE
 # very bad afternoon.
 target_link_options(enw_t4 PRIVATE /DEBUG)
 
+# ------------------------------------------------- in-game settings schema --
+# The Esc menu's Settings tab (client-dll/components/settings_tab.cpp) draws the site's
+# own catalogue: shared/settings/ingame-settings.json, generated from
+# web/client/src/data/wawSettings.js by tools/settings/gen-ingame-schema.mjs. It is
+# embedded here as a byte array so the DLL carries no second list and needs no file at
+# run time. Re-configures when the JSON changes.
+set(ENW_SETTINGS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/shared/settings/ingame-settings.json")
+set(ENW_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ENW_SETTINGS_JSON}")
+file(READ "${ENW_SETTINGS_JSON}" _enw_settings_hex HEX)
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," _enw_settings_bytes "${_enw_settings_hex}")
+file(WRITE "${ENW_GENERATED_DIR}/enw_settings_schema.inc" "${_enw_settings_bytes}\n")
+target_include_directories(enw_t4 PRIVATE "${ENW_GENERATED_DIR}")
+
+# The settings model's unit test (pure code: schema load, visibility, the console text a
+# change becomes, binds). Built by default; run build\<name>\<cfg>\settings_model_test.exe.
+add_executable(settings_model_test
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/settings_model_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shared/core/json.cpp")
+target_include_directories(settings_model_test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/shared/core"
+    "${CMAKE_CURRENT_SOURCE_DIR}/client-dll/components"
+    "${ENW_GENERATED_DIR}")
+target_compile_definitions(settings_model_test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
+target_compile_options(settings_model_test PRIVATE /W4 /permissive- /utf-8 /EHsc)
+set_target_properties(settings_model_test PROPERTIES FOLDER tools)
+
 # --------------------------------------------------------------- loadtest --
 # A 32-bit host that just LoadLibrary()s the DLL, so we can smoke-test DllMain
 # without taking the game lock. Built by default; it costs nothing.

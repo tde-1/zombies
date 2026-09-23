@@ -22,7 +22,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import { verifyFile } from '../lib/replay.js'
+import { verifyFile, readFooter, readEvents } from '../lib/replay.js'
 import { mkdirp, parseArgs } from '../lib/util.js'
 
 const args = parseArgs(process.argv.slice(2))
@@ -221,6 +221,17 @@ try {
       const v = verifyFile(path.join(dir, f))
       if (v.ok) okmsg(`${box}/${f}: VALID — ${v.chunks} chunks, ${v.events} events, signed by ${v.keyId.slice(0, 8)}`)
       else bad(`${box}/${f}: ${v.errors.join('; ')}`)
+      // bug 7 (host.md 2026-09-23): a game the GAME ended (its own game_over reached the
+      // referee, so the footer's summary carries `reported`) must have that game_over IN
+      // the replay. host.js used to record it after finish() had already closed the file.
+      if (v.ok) {
+        const sum = readFooter(path.join(dir, f)).footer.summary
+        if (sum && sum.reported) {
+          const has = [...readEvents(path.join(dir, f))].some((e) => e.t === 'game_over')
+          if (has) okmsg(`${box}/${f}: the game's own game_over is in the replay`)
+          else bad(`${box}/${f}: the game ended itself (summary.reported) but its game_over is NOT in the replay`)
+        }
+      }
     }
   }
 

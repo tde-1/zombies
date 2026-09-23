@@ -117,6 +117,67 @@ print(json.dumps(out))
 '''
 
 
+# --from-bucket (tranche 2, 2026-09-23). B: "the bucket is the source of truth for map files".
+# The box pulls exactly the files /api/maps/<bsp>/files serves, from the public bucket copy
+# (mods/<bsp>/<path>, anonymous GET, nbg1 -> the box at ~47 MB/s), checks each size + sha256,
+# and renames the staging dir into place, so a half-pulled map is never visible. It refuses
+# to start unless the box keeps --min-free-mb free AFTER the pull: the box disk was at 99%
+# (411 MB free) when this was written, and a full disk under a live game is worse than a
+# skipped test. No original, no 7-Zip, nothing to clean up but the staging dir.
+REMOTE_BUCKET = r'''
+import base64, hashlib, json, os, shutil, subprocess, sys, urllib.request, urllib.parse
+spec = json.loads(base64.b64decode(sys.argv[1]))
+bsp, MODS = spec["bsp"], spec["mods"]
+final = os.path.join(MODS, bsp)
+stage = final + ".staging"
+out = {"bsp": bsp, "via": "bucket"}
+def sha(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as fh:
+        for c in iter(lambda: fh.read(1 << 20), b""):
+            h.update(c)
+    return h.hexdigest()
+def free_mb():
+    st = os.statvfs(MODS)
+    return st.f_bavail * st.f_frsize / 2**20
+try:
+    if os.path.isdir(final) and all(os.path.exists(os.path.join(final, f["rel"])) and
+                                    os.path.getsize(os.path.join(final, f["rel"])) == f["size"]
+                                    for f in spec["files"]):
+        out.update(status="ok", note="already installed")
+        raise SystemExit
+    need_mb = sum(f["size"] for f in spec["files"]) / 2**20
+    if free_mb() - need_mb < spec["min_free_mb"]:
+        raise RuntimeError("box disk: %.0f MB free, map needs %.0f MB, keeping %d MB free"
+                           % (free_mb(), need_mb, spec["min_free_mb"]))
+    shutil.rmtree(stage, ignore_errors=True)
+    got = 0
+    for f in spec["files"]:
+        dst = os.path.join(stage, f["rel"])
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        url = spec["base"] + "/" + urllib.parse.quote(spec["key_bsp"] + "/" + f["rel"])
+        r = urllib.request.urlopen(url, timeout=120)
+        with open(dst, "wb") as fh:
+            shutil.copyfileobj(r, fh, 1 << 20)
+        if os.path.getsize(dst) != f["size"] or sha(dst) != f["sha256"]:
+            raise RuntimeError("bucket copy of %s does not match the archive (size/sha256)" % f["rel"])
+        got += f["size"]
+    shutil.rmtree(final, ignore_errors=True)
+    os.rename(stage, final)
+    subprocess.run(["chown", "-R", "waw:waw", final])
+    out.update(status="ok", files=len(spec["files"]), bytes=got)
+except SystemExit:
+    pass
+except Exception as e:
+    out.update(status="fail", error=str(e)[:300])
+finally:
+    shutil.rmtree(stage, ignore_errors=True)
+out["box_free_mb"] = round(free_mb())
+print(json.dumps(out))
+'''
+BUCKET_BASE = "https://enw-zombies.nbg1.your-objectstorage.com/mods"
+
+
 def spec_for(bsp):
     ex = json.load(open(os.path.join(WORK, "reports", "extract.json"), encoding="utf-8"))
     for e in ex:
@@ -134,7 +195,7 @@ def spec_for(bsp):
                 files.append({"rel": rel, "sha256": f["sha256"], "size": f["size"]})
             return {"bsp": bsp, "mods": BOX_MODS, "url": meta["download_url"],
                     "sha256": meta["sha256"], "size": meta["size"], "files": files,
-                    "local_dir": m["dest"]}
+                    "local_dir": m["dest"], "key_bsp": m.get("bsp") or bsp}
     raise SystemExit("no extract.json entry for %s" % bsp)
 
 
@@ -143,6 +204,10 @@ def main():
     ap.add_argument("--map", required=True)
     ap.add_argument("--remove", action="store_true")
     ap.add_argument("--rsync", action="store_true")
+    ap.add_argument("--from-bucket", action="store_true",
+                    help="the box pulls mods/<bsp>/ from the public bucket (sync.js first)")
+    ap.add_argument("--min-free-mb", type=int, default=400,
+                    help="--from-bucket refuses a pull that would leave less than this free")
     a = ap.parse_args()
     bsp = a.map
     if not bsp or "/" in bsp or bsp in (".", "..") or " " in bsp:
@@ -168,10 +233,19 @@ def main():
         print(json.dumps(res))
         return
     spec.pop("local_dir")
+    remote = REMOTE
+    if a.from_bucket:
+        # Only what the site serves (mapfiles.js ALLOWED) is in the bucket; the rest of the
+        # extract (readmes, installer junk) is not map data and the box does not need it.
+        allowed = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik",
+                   ".menu", ".str", ""}
+        spec["files"] = [f for f in spec["files"] if os.path.splitext(f["rel"])[1].lower() in allowed]
+        spec.update(base=BUCKET_BASE, min_free_mb=a.min_free_mb)
+        remote = REMOTE_BUCKET
     arg = base64.b64encode(json.dumps(spec).encode()).decode()
     # The spec rides inside the script on stdin, not on argv: a map with many files makes a
     # base64 arg past ~8 KB and the Windows ssh command line cut it (futurama, arena: JSONDecodeError).
-    script = REMOTE.replace("base64.b64decode(sys.argv[1])", "base64.b64decode(%r)" % arg)
+    script = remote.replace("base64.b64decode(sys.argv[1])", "base64.b64decode(%r)" % arg)
     r = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST, "python3 -"], input=script,
                        capture_output=True, text=True, timeout=1800)
     line = (r.stdout.strip().splitlines() or [""])[-1]

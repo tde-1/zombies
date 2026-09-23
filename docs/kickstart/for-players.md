@@ -124,3 +124,20 @@ on the site afterwards, credited to your Steam account.
   normal.
 
 Anything else, or anything confusing: tell B. Confusing counts as a bug.
+
+---
+
+## Records rules (text for the site's records page)
+
+*(2026-09-23, from `docs/kickstart/verified-rules.md`. For the web lane to place; the wording is the
+deliverable.)*
+
+> **Records count from Verified games only.** Those run the stock game on our server. We check
+> the settings for you, and each record stores what we checked. Your FPS cap stays between 20 and
+> 250 for the whole game; changing it mid-game ends your record chance for that game. Cheats,
+> timescale and developer mode are off, and the movement settings are stock. If something breaks
+> a rule, the game tells you once and still counts for everything else. Pausing costs a record
+> nothing. Joining late, the whole party going
+> AFK, or a game resumed after a crash doesn't count. Every Verified game is recorded and signed,
+> so our boards need no video. Speedrun.com and ZWR still need your own full video. ZWR's PC
+> leaderboard also needs the Plutonium client.

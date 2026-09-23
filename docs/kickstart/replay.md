@@ -383,6 +383,7 @@ vocabularies meet.
 - **Lightmaps.** Husky does not export them (§4b), so the map is lit analytically from
   worldspawn rather than with the light the map was baked with. It is the single biggest
   remaining difference from how Nacht looks in game.
+- **(Superseded by §9, 2026-09-23: players and zombies are the game's own models now.)**
 - **Zombies are capsules.** The 297 xmodels in the zone include
   `char_ger_honorgd_body1_*` — the actual zombie — and it exports. Placing a skinned model
   per zombie and animating it from positions alone is a bigger job than it looks and is
@@ -983,9 +984,178 @@ What fills them:
 
 The side panel's points column also shows "—" instead of 0 when the score is not recorded.
 
+**2026-09-23 update (bug 7, referee.md §16):** the "DLL field needed" above is done. A §16 DLL reads
+score, kills, downs, revives and headshots from the game's own scoreboard fields. It puts them on
+snaps and on `stats` events, and the track carries a per-player `counters` timeline. With it,
+Points, Kills (attributed per player), Downs and Revives (revives given, `revive.by`) all come from
+the game. Files recorded before that keep the rules in this table.
+
 Screenshots (`docs/kickstart/ui/`): `replay-812-debug-0afb.png` / `-debug-6d80.png` (the
 `?r3ddebug` overlay with the numbers above), `replay-812-3p-6d80.png` (the player against the
 start-room wall), `replay-812-above-0afb.png`, `replay-812-fp-0afb.png`,
 `replay-812-fp-close-6d80.png` (zombie at 76 u under the crosshair), `replay-812-fp-far-6d80.png`
 (an ADS shot at 771 u), `replay-812-scoreboard.png`. The `replay-waw-*` shots from §8.11 were
 taken on the 2.54× shell.
+
+## 9. 2026-09-23 — player and zombie models: extraction, formats, sizes, viewer changes, what is not proven
+
+B's ask: "Rip the player model from the game as well as the zombie models and put them in the
+3D replays." Done for every stock character a zombies map dresses people in: the four generic
+Marines, the four heroes, the stock zombies of Nacht/Verrückt, Der Riese and Shi No Numa, and the
+hellhound. Textured, **rigged** (the xmodel skeleton is kept as a glTF skin), placed and turned by
+the recording, walking with a procedural gait. Capsules remain the fallback.
+
+### 9.1 Extraction — `tools/models/export_models.py`
+
+```
+python tools/models/export_models.py              # unlink if stale, build all 20, write models.json
+python tools/models/export_models.py --only zombie_nacht_1,dempsey
+python tools/models/export_models.py --force      # re-unlink and rebuild
+```
+
+| Tool | Licence | Version | Used for |
+|---|---|---|---|
+| OpenAssetTools Unlinker | GPL-3.0 | v0.33.0 (the same `ZombiesDev\tools\oat\` as §4; run, never vendored) | xmodel → skinned glTF, material, image → DDS, rawfile (the character scripts); `--list` on the custom maps |
+| numpy | BSD-3-Clause | 2.5.3 | accessor decode, bind-pose maths |
+| Pillow | MIT-CMU | 12.3.0 | DDS (DXT1/5) decode, resize, JPEG/PNG |
+| three.js `GLTFLoader`, `SkeletonUtils` | MIT | 0.185 (already a dependency) | loading, per-instance skeleton clones |
+
+What it runs (read-only over B's Steam install; nothing is written outside `ZombiesDev`; the game
+is never launched, the lock never taken; `Activision\CoDWaW` is not touched):
+
+```
+Unlinker.exe --model-format GLTF --image-format DDS --include-assets xmodel,material,image,rawfile
+  --search-path "<WaW>\main;<WaW>\zone\english" -o "ZombiesDev\modelwork\dump\?zone?"
+  "<WaW>\zone\english\nazi_zombie_{prototype,asylum,sumpf,factory}.ff"
+Unlinker.exe ... --include-assets rawfile  common.ff patch.ff nazi_zombie_{asylum,sumpf,factory}_patch.ff
+Unlinker.exe --list ... ZombiesDev\archive\mods\<map>\*.ff          # custom-map classification only
+```
+
+Work files: `ZombiesDev\modelwork\` (1.2 GB of dumps; disposable, re-created by the script).
+
+**Which parts make which character is read from the game's own scripts**, not guessed
+(`modelwork\dump\<zone>\character\*.gsc`, `xmodelalias\*.gsc`, `maps\_loadout.gsc`):
+
+* **Players.** `_loadout.gsc give_model`: on `nazi_zombie_sumpf/factory/asylum` (and coast, paris,
+  theater, test) it is `switch(self.entity_num)` → `char_zomb_player_0..3` = **Dempsey, Nikolai,
+  Takeo, Richtofen**; everywhere else, including Nacht and every custom map that ships the stock
+  loadout, it is `mptype\player_usa_marine` → `get_random_character(4)` → `char_usa_marine_player1..4`
+  (body + head + helmet + gear). Verrückt's own zone carries only the Marine models, so it gets the
+  Marines. Russian player bodies exist only in the campaign zones and no archived custom map carries
+  them (9.3), so they are not exported.
+* **Zombies.** `char_ger_honorguard(2)_zombies`: body alias (`body1_1`, `body2_1` / `body1_2`, `body2_2`;
+  Der Riese's `bodyz` alias) + `randomElement(zombieheadalias)` of 24 heads; Shi No Numa's
+  `char_jap_zombie`: `body5z_1/2` + one of 9 heads + `char_jap_impinf2_cap1`. Four variants per map
+  (three for Numa), each a different body/head pairing.
+* **Hellhound.** `character_sp_zombie_dog` → `zombie_wolf`.
+
+**Merging.** A character is several xmodels the engine attaches (`attach(head, "", true)` is a
+bone-merge). Each part's vertices are in its own root bone's frame, so every part is moved into
+the body's bind pose (`body_world(bone) · part_world(bone)⁻¹`, per dominant joint) and its joints
+re-pointed at the body's by name (a bone the body lacks goes to its nearest ancestor). The rig
+check: that correction must be the same matrix for every bone of a part; the largest disagreement
+over all 20 models is **0.001** (the parts are authored on the body's rig). Primitives sharing a
+colour texture are merged: **3–7 draw calls** per character. Normal/spec maps are dropped; colour
+maps go to **512 px** for the sheet covering ≥ 35 % of triangles, **256 px** otherwise, JPEG q82
+unless the alpha is used (then PNG + `alphaMode: MASK`). NORMAL is int8 (`KHR_mesh_quantization`),
+WEIGHTS u8 normalised, JOINTS u8. Budget **700 KB per model, enforced** (the build fails over it).
+Marines are lod0, everything else lod1.
+
+**Frame and scale.** Unlinker's glTF is Y-up with engine +X forward, in engine inches — exactly
+`scene.js toThree` — so nothing is rescaled. §8.12's 2.54× was Husky's centimetres; these never go
+through Husky. Check: model heights **71.2–73.5 u** (the 70-u hull + helmet/cap), the hellhound 59.9;
+in the pictures below they stand at the height of Nacht's doors and trucks.
+
+### 9.2 Where they are served (§7a)
+
+`C:\Users\b\ZombiesDev\maps\_models\` → **`/mapdata/_models/<id>.glb`** and
+`/mapdata/_models/models.json` (the existing `/mapdata` static mount, no server change; `_`
+directories are skipped by `listMaps`). `.glb` requests go through the same bucket 302 as the maps
+when the bucket holds a same-size copy under `mapdata/_models/` — **not uploaded** (the
+coordinator's call). Nothing is committed. Same IP posture as the map `.glb`s (§8, `ip-posture.md`):
+game-derived, closed-testing carve-out, gate-exempt like the rest of `/mapdata`.
+
+| Model | KB | tris | draws | joints | h (u) |
+|---|---:|---:|---:|---:|---:|
+| marine_1 / 2 / 3 / 4 | 336 / 386 / 364 / 361 | 9.0–10.6 k | 5–7 | 79 | 71.8–72.3 |
+| dempsey / nikolai / takeo / richtofen | 174 / 190 / 203 / 210 | 2.8–3.5 k | 3–4 | 79–106 | 71.2–73.5 |
+| zombie_nacht_1..4 | 159–170 | 2.4–2.5 k | 3–4 | 73 | 71.4–71.5 |
+| zombie_factory_1..4 | 161–166 | 2.4–2.5 k | 3–4 | 73 | 71.4–71.5 |
+| zombie_sumpf_1..3 | 151–185 | 2.2–2.5 k | 3 | 73 | 71.2–71.8 |
+| hellhound | 295 | 3.2 k | 3 | 58 | 59.9 |
+| **all 20 + models.json** | **4.4 MB** | | | | |
+
+A replay loads only what it can show: its players' models by slot, the map's zombie variants,
+and the dog only when the track marks one. Solo Nacht: **~1.0 MB**; two-player Der Riese: ~1.0 MB.
+
+### 9.3 Which set a map gets (`models.json`)
+
+1. **Stock map** → `maps[<bsp>]` (9.1).
+2. **Custom map** → `customs[<bsp>]`, decided at export time by what the custom's **own fastfiles**
+   carry (`Unlinker --list` of `mod.ff` + `<bsp>*.ff` in `ZombiesDev\archive\mods`, cached in
+   `modelwork\customs.json`): any hero body → the heroes by `entity_num`; else Marines by slot.
+   Zombies → Der Riese's if it carries `char_ger_honorgd_bodyz*`, Numa's if `char_jap_impinf_body5z*`,
+   else Nacht's. A custom's *own* characters (Minecraft, Mario…) are listed (`custom_characters`)
+   but never drawn — the stock set stands in. Of the 85 archived customs: 71 carry the heroes,
+   14 do not (→ Marines); zombies 73 Der Riese, 5 Nacht, 4 Numa, 3 with no stock body (→ Nacht).
+3. **Anything else** (not in the archive at the last export) → `default`: Marines by slot + Nacht
+   zombies. The bsp name is matched case-insensitively.
+
+### 9.4 Viewer changes
+
+* **`models.js`** (new): `loadModelSet`, `makeActor` (a `SkeletonUtils.clone` per instance, so every
+  actor has its own bones), `poseActor`, `variantOf`. Materials get a little of the albedo as
+  emission and no fog — the capsules' readability rule on a night map (§8.4).
+* **Motion.** The track has **no animation state** (position, yaw, stance bits, alive; §3/§8.4), so
+  the gait is procedural on the real skeleton: hips/knees/ankles/shoulders/spine swung about the
+  character's lateral axis (expressed in each bone's own frame, so it does not depend on the rig's
+  local conventions), phase = **inches walked along the track** (scrub-exact: the same instant is
+  always the same pose), amplitude from speed. Zombies lean and reach; players carry. Crouch bends
+  the legs and drops 18 u; prone lies face down; a player not alive lies on his back (the track does
+  not say downed vs dead). Idle breathes.
+* **Death.** A zombie track that ends within 1.5 s of a `kill` event for the same entity falls
+  backwards over 0.55 s, arms dropping, then sinks and is gone at 2 s. A track that ends otherwise
+  just vanishes. The HUD's "Zombies up" does not count the falling.
+* **`actors.js`**: models replace capsules for every player — including the focused one, whose
+  `scene.js` capsule is found and hidden (`scene.js` is still unedited) — and zombies come from a
+  per-model pool keyed by zombie track, so a zombie keeps its body for life. In first person the
+  focused player's model is hidden; the placeholder gun is unchanged. Yaw is the recorded yaw.
+* **Fallback.** No `models.json`, a failed `.glb`, or `?models=off` → the old capsules, unchanged.
+  `?r3ddebug` adds `window.__r3d.models()` (set, rule, who wears what) and `__r3d.seek(s)`.
+
+### 9.5 Proof (scratch site, headless Edge; the live site, 3200 and `web/data` untouched)
+
+Scratch instance on **3461** (this worktree's build, a `VACUUM INTO` copy of the live DB,
+`ZM_REPLAY_PULL=off`), replays from `ZombiesDev\replays`. Screenshots in the worktree's
+`tmp\shots\` (not committed):
+
+| File | What |
+|---|---|
+| `nacht-3p-zombie-74s.png`, `nacht-3p-zombie-68s.png` | `m_6d80aa20` (real DLL, Nacht): third person, the Marine at the window, an honour-guard zombie reaching through it 63 u away |
+| `nacht-3p-zombie-dies-81.4s.png` | the same, zombie 258 falling at its `kill` (81.1 s), a second zombie walking in behind |
+| `nacht-fp-74s.png` | first person: the zombie at the window, the placeholder gun, no body in the lens |
+| `nacht-3p-capsules-74s.png` | the same moment with `?models=off` |
+| `factory-3p-heroes-254s.png`, `factory-3p-slot1-nikolai-205s.png` | `m_2e346de4` (Der Riese, 2 players, simulator file): Dempsey (slot 0), Nikolai (slot 1), Der Riese zombies |
+| `custom-bloodsport-3p-25s.png` | `m_ce87b8c8` (`nazi_zombie_bloodsport`, real DLL, no world export): the custom fallback → Dempsey + Der Riese zombies over the grid |
+| `lineup-front.png`, `lineup-players-front.png`, `lineup-zombies-front.png`, `lineup-walk-side.png`, `lineup-crouch.png`, `lineup-down.png`, `lineup-death.png` | every model, and every pose, on a neutral stage (`tmp\modeltest\`) |
+
+`web` `npm test` passes (exit 0).
+
+### 9.6 What is not proven / not done
+
+* **No real animations.** OAT dumps the zones' xanims (582 in Der Riese: `ai_zombie_walk_v1`,
+  `ai_zombie_sprint_v1`, `ai_zombie_crawl`…), but only as the engine's binary (`version 17`; a test
+  dump is in `ZombiesDev\modelwork\xanimtest\`), which nothing here parses yet. That parser is the
+  next step and would replace the procedural gait; the rig it needs is already in every `.glb`.
+* **Walk vs run vs crawl is not recorded**, nor gibs/crawlers (§8.4 "anim state" is `re`-lane work);
+  a crawler is drawn walking.
+* **Hellhounds are never drawn**: the track does not say which AI is a dog (no `kind`); the model
+  and the `kind === 'dog'` path are ready for when the DLL records it.
+* **Marines by slot, not the game's pick** (`get_random_character(4)` is random per player and not
+  recorded). Heroes by slot = `entity_num` is the game's own rule, assuming slot = entity number.
+* **Downed vs dead** players look the same (on the back); last stand's pistol pose is not drawn.
+* **No weapon in the players' hands** (the `weapon_zombie_*` world models are in the zones; not
+  attached).
+* **Custom maps' own character models** are not exported; the stock set stands in (9.3).
+* **Not seen on the live site** (not deployed; the coordinator merges and restarts), and not on a
+  real GPU — every picture is SwiftShader.

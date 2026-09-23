@@ -1,0 +1,205 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_illuminati_island",
+  "title": "ILLUMINATI ISLAND",
+  "source": "custom",
+  "author": "Chunkdogg9",
+  "released": "2013-06-07",
+  "fs_game": "mods/nazi_zombie_illuminati_island",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "c4ec22585576d56d3d71f65f3e37918f508798664b4f7476e9339250e8d845e3"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "teleport_origins"
+        }
+      },
+      "candidates": [
+        "teleport_origins"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "teleport_origins name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 147,
+    "script_count": 147,
+    "entities": 1746,
+    "ee_candidates": [],
+    "ending_words": [
+      "teleport_origins"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door7"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "c4ec22585576d56d3d71f65f3e37918f508798664b4f7476e9339250e8d845e3",
+    "map_specific_triggers": [
+      "air_pump_trigger",
+      "bench_trigger",
+      "boat_place_trigger",
+      "boat_trigger_player_detect",
+      "engine_trigger",
+      "fuel_trig_four",
+      "fuel_trig_one",
+      "fuel_trig_three",
+      "fuel_trig_two",
+      "fuel_trigger",
+      "tubing_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_illuminati_island.exe",
+    "original_sha256": "9efb5e909ae43da853411bb297a19ab8be9e6c0509c438c7734e195af2fb5cf3",
+    "original_size": 216782611,
+    "source_url": "https://www.mediafire.com/file/0m3izo2273h7tpz/nazi_zombie_illuminati_island.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:27:00Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "This map features UGX Mod v1.0.3! Story to the map \u201cIt was that time of the year where all the elite came to an island in the Bermuda Triangle area. They were discussing an isusse about element 115 they were all having with it But on this day there scientist were experimenting with it on test subjects and something went horribly wrong. The blood thirsty zombies were born and broke out The Illuminati were evacuated from the island. Your left in the storage room, Its up to you to defend yourself\u2019s for as long as possible until you get the boat built to get off the island!\u201d Well this map has taken me a far few couple of months so here is the map hope you all enjoy Thanks to: SajeOne (Easter Egg, Testing and help out with thing) Treminaor The UGX Team for the mod",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "nazi_zombie_illuminati_island.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_illuminati_island.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/illuminatiisland/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/illuuminati-island-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.5,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30475777
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_nazi_zombie_illuminati_island.ff",
+      "mod.ff",
+      "nazi_zombie_illuminati_island.ff",
+      "nazi_zombie_illuminati_island_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

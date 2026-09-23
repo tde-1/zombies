@@ -27,11 +27,12 @@ export const MOVEMENT = {
   label: 'Movement',
   note: "Movement's one skin. Neutral grey ground; the map is the colour.",
   tokens: {
-    '--bg': '#101010',
+    // Black mainly (B, 2026-09-23): Movement's ground eight steps down. theme.css says why.
+    '--bg': '#080808',
     '--panel': 'rgba(255,255,255,.05)',
     '--panel-2': 'rgba(255,255,255,.085)',
-    '--panel-solid': '#1c1c1c',
-    '--panel-deep': '#0a0a0a',
+    '--panel-solid': '#141414',
+    '--panel-deep': '#040404',
     '--line': 'rgba(255,255,255,.09)',
     '--line-2': 'rgba(255,255,255,.16)',
     '--text': '#e7e7e7',
@@ -59,7 +60,7 @@ export const MOVEMENT = {
     '--good-rgb': '122,207,122',
     '--bad-rgb': '225,103,90',
     '--scrim-rgb': '12,12,12',
-    '--bg-grad': 'linear-gradient(178deg,#161616 0%,#101010 45%,#0a0a0a 100%)',
+    '--bg-grad': 'linear-gradient(178deg,#0e0e0e 0%,#080808 45%,#040404 100%)',
   },
 }
 

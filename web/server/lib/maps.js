@@ -97,7 +97,14 @@ const PROOF_MAPS = new Set(String(process.env.ZM_PROOF_MAPS || '').split(',').ma
 // short reason lib/serverNotes.js shows.
 let BOX = {}
 try { BOX = require('./boxProven.json').maps || {} } catch { BOX = {} }
-const BOX_PROVEN = new Set(Object.keys(BOX).filter((k) => BOX[k] && BOX[k].result === 'pass'))
+// ...AND its files are in the bucket (B, 2026-09-23: "the bucket is the source of truth for
+// map files and the box downloads maps on demand"). The box no longer needs a map installed
+// before a lease: the host agent pulls mods/<bsp>/ from the bucket (host.md). So the offer
+// rests on two measured facts, the box proof and `in_bucket` (popular.py --apply HEAD-checks
+// every file the site serves against the public bucket copy, size included). `in_bucket`
+// absent = recorded before the check existed (the popular 59, HEAD-checked by hand, archive.md
+// s10.4) and is treated as present; `false` withholds the offer until a sync fixes it.
+const BOX_PROVEN = new Set(Object.keys(BOX).filter((k) => BOX[k] && BOX[k].result === 'pass' && BOX[k].in_bucket !== false))
 
 /** 'proven' (five gates, real client), 'box' (loads on the box, no client yet), or null. */
 const serverLevel = (row) => {
@@ -403,7 +410,7 @@ function archiveStats() {
 }
 
 /** The download links and their health, for a map page's archive block. */
-const sourcesFor = (mapKey) => db.prepare(`SELECT url, site, kind, status, note, last_checked
+const sourcesFor = (mapKey) => db.prepare(`SELECT url, site, kind, status, note, last_checked, size_bytes
                                              FROM archive_sources WHERE map_key=? ORDER BY
                                              CASE status WHEN 'fetched' THEN 0 WHEN 'alive' THEN 1 ELSE 2 END, id`)
   .all(String(mapKey))

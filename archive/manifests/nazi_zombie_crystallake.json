@@ -1,0 +1,186 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_crystallake",
+  "title": "CRYSTAL LAKE",
+  "source": "custom",
+  "author": "pedrehitor",
+  "released": "January 23, 2014, 10:07:59 pm",
+  "fs_game": "mods/nazi_zombie_crystallake",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_crystallake.iwd": "ad509fc4909c2a13004b615f4d1f6e20396624fd14f329375bc25de86fd72932"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 1668,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      30000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "auto7"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto9"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto8"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto6"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ad509fc4909c2a13004b615f4d1f6e20396624fd14f329375bc25de86fd72932",
+    "map_specific_triggers": [
+      "gas_can",
+      "gas_cantrue",
+      "jukebox",
+      "oil",
+      "oiltrue",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_crystallake.exe",
+    "original_sha256": "234d8757d5c2d423801145ccbe3d73babdc4d695a92899b735fb36212908018a",
+    "original_size": 244028087,
+    "source_url": "http://www.mediafire.com/file/tk2r0ewzh15q20y/nazi_zombie_crystallake.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:34:23Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_crystallake"
+      ],
+      "iwd_images": [
+        "nazi_zombie_crystallake.iwd:images/loadscreen_nazi_zombie_crystallake.iwi",
+        "nazi_zombie_crystallake.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_crystallake.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_crystallake"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/crystallake/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/crystal-lake-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 123.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_crystallake.ff",
+      "nazi_zombie_crystallake_patch.ff",
+      "nazi_zombie_crystallake.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

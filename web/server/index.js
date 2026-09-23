@@ -31,6 +31,7 @@ const { SqliteStore } = require('./lib/sessionStore')
 const achievements = require('./lib/achievements')
 const mapRecords = require('./lib/mapRecords')
 const users = require('./lib/users')
+const { enwMarkSvg, PAGE_CSS } = require('./lib/enwMark')
 
 const PORT = Number(process.env.PORT || process.env.ZM_PORT || 3200)
 const HOST = process.env.ZM_HOST || '127.0.0.1'
@@ -179,10 +180,10 @@ if (fs.existsSync(path.join(CLIENT_DIST, 'index.html'))) {
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) return next()
     res.status(200).type('html').send(`<!doctype html><meta charset="utf-8"><title>ENW Zombies</title>
-<style>body{background:#11120e;color:#e4dfd1;font:15px/1.6 system-ui,sans-serif;padding:48px;max-width:640px;margin:0 auto}
-code{background:#1a1c15;padding:2px 6px;border-radius:5px;color:#e4dfd1}h1{font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:#9a9684}
-a{color:#b0342c}</style>
-<h1>ENW Zombies</h1>
+<style>${PAGE_CSS}body{font:15px/1.6 system-ui,sans-serif;padding:48px;max-width:640px;margin:0 auto}
+code{background:rgba(255,255,255,.085);padding:2px 6px;border-radius:5px;color:#e7e7e7}h1{margin:0 0 20px;line-height:0}
+p{color:#9b9b9b}a{color:#e7e7e7}</style>
+<h1>${enwMarkSvg(28)}</h1>
 <p>The API is up on this port. The client has not been built yet:</p>
 <p><code>cd web &amp;&amp; npm run build</code></p>
 <p>Or run the Vite dev server beside it: <code>npm run client</code> (port 5173, proxies /api here).</p>
@@ -251,6 +252,11 @@ live.setEmitter((matchId, frame) => io.to(`live:${matchId}`).emit('live', frame)
 // no `party:<id>` room to join, deliberately: every socket already sits in its own
 // `user:<steamid>` room from the moment it authenticates, so the fan-out is a list of
 // rooms rather than a membership that has to be kept in step with the party table.
+// Invites and party notices (lib/parties.js, Movement's emitUser): invite_received,
+// invite_withdrawn, party_updated — each to its people's own rooms.
+require('./lib/parties').setEmitter((steamIds, event, payload) => {
+  for (const sid of steamIds) io.to(`user:${sid}`).emit(event, payload)
+})
 partyProgress.setEmitter((steamIds, payload) => {
   for (const sid of steamIds) io.to(`user:${sid}`).emit('party-progress', payload)
 })

@@ -216,6 +216,8 @@ export const ENW_ITEMS = [
     src: 'launcher: cg_drawFPS "Simple" / "Off" (an enum on T4, launcher.md 0.2.3)' },
   { id: 'rawMouse', section: 'enw', label: 'Raw Mouse Input', kind: 'toggle', to: 'key:rawMouse', def: true,
     src: 'client DLL mouse_polling (client.md 1, 5): ENW_RAW_MOUSE=0 in the environment turns it off' },
+  { id: 'discordPresence', section: 'enw', label: 'Discord Rich Presence', kind: 'toggle', to: 'key:discordPresence', def: true,
+    src: 'launcher: discord.js (launcher.md "Discord rich presence"). Off clears it at once. Not a game setting.' },
   { id: 'discordOverlay', section: 'enw', label: 'Discord overlay', kind: 'select', to: 'key:discordOverlay', def: 'auto',
     options: [{ label: 'Auto', value: 'auto' }, { label: 'On', value: 'allow' }, { label: 'Off', value: 'refuse' }],
     src: 'client DLL overlay_guard (chat-overlay.md 13): ENW_DISCORD_HOOK=auto|allow|refuse. Auto lets Discord\'s hook in only while the game has a 50 MB block of address space free (it maps 50 MB and crashes the game without it)',
@@ -228,12 +230,95 @@ export const ENW_ITEMS = [
 
 export const ALL = [...ITEMS, ...BINDS, ...ENW_ITEMS]
 
+// ---- the in-game ENW Esc menu's Settings tab (esc-menu.md §9, 2026-09-23) --------------
+//
+// The client DLL draws the SAME catalogue in game: tools/settings/gen-ingame-schema.mjs
+// turns ALL + settingsLayout.js + this table into shared/settings/ingame-settings.json,
+// which the DLL build embeds. There is no second list in C++; launcher/test/waw-settings.js
+// checks that every item has a policy here, that every value passes the launcher's
+// whitelist, and that the generated file is current.
+//
+// For each item id (binds all share BIND_INGAME):
+//   apply    'live'        set the dvar now (`seta`); the engine archives it to the
+//                          profile's config.cfg on its next frame (Com_Frame 0x59DCF0 calls
+//                          Com_WriteConfiguration 0x59D8F0 whenever an archived dvar changed)
+//            'vid_restart' as WaW's own Graphics menu: the value is set (the engine latches
+//                          it) and an Apply button runs `vid_restart`. A box game only: the
+//                          engine refuses vid_restart while a listen server runs
+//                          ("Listen server cannot video restart.", CL_Vid_Restart_f
+//                          0x6420F0), so in Play Local it applies at the next launch.
+//            'next_launch' written to config.cfg for the launcher's read-back; the game
+//                          applies it next time (raw input is an environment switch).
+//            'site'        shown, not editable in game (display mode and monitor are the
+//                          launcher's: the DLL's borderless window is chosen at launch).
+//            false         never shown in game, with `why`.
+//   verified true = harmless: still offered in a Verified (records) game. False = hidden
+//            there: anything the records rules pin (com_maxfps must not change mid-game,
+//            web/server/lib/records.js), anything that restarts the renderer, and visual
+//            switches that can reveal more than the stock picture.
+//   values   the two dvar values a toggle writes, when they are not '0'/'1'.
+//   dvar     the dvar the in-game control writes when the catalogue has none.
+export const BIND_INGAME = { apply: 'live', verified: true }
+export const INGAME = {
+  // graphics
+  resolution: { apply: 'vid_restart', verified: false, notBorderless: true },
+  r_displayRefresh: { apply: 'vid_restart', verified: false },
+  r_aspectRatio: { apply: 'vid_restart', verified: false },
+  r_aaSamples: { apply: 'vid_restart', verified: false },
+  r_gamma: { apply: 'live', verified: true },
+  vsync: { apply: 'vid_restart', verified: false },
+  r_multiGpu: { apply: 'vid_restart', verified: false },
+  sm_enable: { apply: 'live', verified: false },
+  r_specular: { apply: 'live', verified: false },
+  r_gfxopt_water_simulation: { apply: 'live', verified: false },
+  r_gfxopt_dynamic_foliage: { apply: 'live', verified: false },
+  fx_marks: { apply: 'live', verified: false },
+  ai_corpseCount: { apply: false, why: 'an ai_ dvar: in a box game the server runs the AI, so the client value does nothing, and gameplay dvars are never the client\'s' },
+  // texture
+  r_texFilterMipMode: { apply: 'live', verified: true },
+  r_texFilterAnisoMin: { apply: 'live', verified: true },
+  r_picmip_manual: { apply: 'vid_restart', verified: false },
+  r_picmip: { apply: 'vid_restart', verified: false },
+  r_picmip_bump: { apply: 'vid_restart', verified: false },
+  r_picmip_spec: { apply: 'vid_restart', verified: false },
+  // sound
+  snd_menu_master: { apply: 'live', verified: true },
+  snd_menu_voice: { apply: 'live', verified: true },
+  snd_menu_music: { apply: 'live', verified: true },
+  snd_menu_sfx: { apply: 'live', verified: true },
+  snd_cinematicVolumeScale: { apply: 'live', verified: true },
+  snd_losOcclusion: { apply: 'live', verified: false },
+  // game
+  cg_mature: { apply: 'live', verified: true },
+  monkeytoy: { apply: false, why: 'mod-owned (mod-compat.md §3): a map\'s anti-cheat quits on it; never ours to set' },
+  cg_subtitles: { apply: 'live', verified: true },
+  hud_enable: { apply: 'live', verified: true },
+  cg_drawCrosshair: { apply: 'live', verified: true },
+  // look
+  ui_mousePitch: { apply: 'live', verified: true },
+  cl_freelook: { apply: 'live', verified: true },
+  m_filter: { apply: 'live', verified: true },
+  sensitivity: { apply: 'live', verified: true },
+  // enw
+  mode: { apply: 'site', verified: true, dvar: 'r_fullscreen' },
+  display: { apply: 'site', verified: true, dvar: 'r_monitor' },
+  fov: { apply: 'live', verified: true },
+  maxFps: { apply: 'live', verified: false },
+  showFps: { apply: 'live', verified: true, values: ['Off', 'Simple'] },
+  rawMouse: { apply: 'next_launch', verified: true, dvar: 'enw_rawmouse' },
+  discordPresence: { apply: false, why: 'the launcher\'s Discord rich presence, not a game setting: changed on the site or in the launcher' },
+  discordOverlay: { apply: false, why: 'chosen at launch: the client DLL reads ENW_DISCORD_HOOK once at start (overlay_guard, chat-overlay.md 13); changed on the site or in the launcher' },
+  r_dof_enable: { apply: 'live', verified: false },
+  r_glow_allowed: { apply: 'live', verified: false },
+}
+export const ingameOf = (it) => (it.kind === 'bind' ? BIND_INGAME : INGAME[it.id])
+
 // Everything the page offers that a game menu has and we do NOT map, and why.
 export const OMITTED = [
-  { label: 'Speaker Configuration (Stereo / 5.1 / 7.1)', why: 'options_sound drives it through ui_outputConfig and engine-evaluated visibility expressions that were not decoded; the game auto-detects it and forcing it is PCGamingWiki\'s documented way to break sound.' },
-  { label: 'Voice chat, Multiplayer and Co-op option pages', why: 'Online options for Activision\'s own co-op and multiplayer. ENW games do not use them.' },
-  { label: 'Chat keys (chatmodepublic, +talk), Previous Weapon (weapprev)', why: 'Bound by default_controls.cfg but not items in any Options menu.' },
-  { label: 'Graphics "Set Recommended" / Apply buttons', why: 'Engine UI scripts (setRecommended, vid_restart). The launcher applies everything at the next launch instead.' },
+  { label: 'Speaker Configuration (Stereo / 5.1 / 7.1)', why: 'The game auto-detects it. Forcing it can break sound.' },
+  { label: 'Voice chat, Multiplayer and Co-op option pages', why: 'Not used in ENW games.' },
+  { label: 'Chat keys (chatmodepublic, +talk), Previous Weapon (weapprev)', why: 'Not in any Options menu.' },
+  { label: 'Graphics "Set Recommended" / Apply buttons', why: 'The launcher applies everything at next launch.' },
 ]
 
 // ---- values ----------------------------------------------------------------------------
@@ -320,7 +405,7 @@ export function withValue(game, it, value) {
 // The object the launcher's `settings.set()` takes (window.enw.setSettings). Every
 // catalogue dvar is sent explicitly: a value, `null` (game default: `reset <dvar>`), or
 // '' (no opinion: the launcher stops writing it).
-export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordOverlay']
+export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'discordOverlay']
 export function toLauncherPatch(game) {
   const g = game || {}
   const out = {}

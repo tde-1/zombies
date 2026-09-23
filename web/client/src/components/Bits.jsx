@@ -5,13 +5,13 @@ import { ago, num } from '../api'
 // The small shared pieces. One file because each is a dozen lines and a directory of
 // twelve-line files is harder to read than one page of them.
 
-// ---- the ENW mark and the option-A lockup -------------------------------------------
-// 06: B picked option A — the Movement F3 lockup with "ZOMBIES" as the width-matched foot,
-// bone on olive-black. The path is the ENW mark from `assets/logo-mockups.html`; the
-// viewBox and the F3 proportions (word at 0.21 of the mark height, gap at 0.14) are that
-// file's, so the two render identically.
-const MARK = 'M2.05 0 70 0 70 30 2.05 30ZM20.05 66 70 66 70 93.9 20.05 93.9ZM2.05 128 70 128 70 156 2.05 156ZM76.22 2.51 168 88.64 168 0 198 0 198 154.04 102.04 66.5 102.04 156 76.22 156ZM204 148.74 228.82 80.79 259.32 151.48 321.8 0 287.99 0 259.48 73.33 231.19 1.3 204 65.78Z'
-const VB = [0, 0, 321.8, 156]
+// ---- the ENW mark -------------------------------------------------------------------
+// Movement's `assets/enw-mark.svg` paths, in its CORRECTED box (2026-09-23): the viewBox
+// starts at the E's ink (x 2.05) and ends at the W's tip (321.8), so the box is the ink.
+// The old 0 0 321.8 156 carried 2 units of air down the left. The same file is
+// `assets/enw-mark.svg`, which EnwWord (components/Enw.jsx) paints as a mask.
+export const MARK = 'M2.05 0 70 0 70 30 2.05 30ZM20.05 66 70 66 70 93.9 20.05 93.9ZM2.05 128 70 128 70 156 2.05 156ZM76.22 2.51 168 88.64 168 0 198 0 198 154.04 102.04 66.5 102.04 156 76.22 156ZM204 148.74 228.82 80.79 259.32 151.48 321.8 0 287.99 0 259.48 73.33 231.19 1.3 204 65.78Z'
+const VB = [2.05, 0, 319.75, 156]
 
 export function Mark({ h = 22 }) {
   return (

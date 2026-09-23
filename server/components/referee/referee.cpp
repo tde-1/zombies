@@ -24,6 +24,7 @@
 #include "logprint_mirror.hpp"
 #include "name_lock.hpp"
 #include "t4_bind.hpp"
+#include "verified_env.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -584,6 +585,7 @@ private:
         // before a server exists, so the first tick is the earliest honest moment,
         // and it is the message that makes the host agent open the replay file.
         if (!map_announced_) announce_map(ms);
+        poll_environment(ms);
 
         // When script variables become readable this takes over from the notify
         // counter: an absolute value beats a derived one, and it survives a late
@@ -735,6 +737,11 @@ private:
         if (active && !p.connected) {
             p.connected = true;
             p.spawned = false;
+            // A new connection reports its FPS cap afresh (the slot may be somebody
+            // else now). The host keeps the whole history per account, across reconnects.
+            p.fps = -1;
+            p.fps_first = -1;
+            p.fps_changes = 0;
             p.name = c->name;
             // client_view already pulls xuid/steamid/guid out of userinfo; the host
             // reads `ev.steamid || ev.xuid` and keys identity on it, so send both
@@ -744,6 +751,12 @@ private:
             p.jti.clear();
             p.party_slot = -1;
             p.refusal.clear();
+            // A new connection starts its own baseline: whoever held this slot before
+            // (or this player before a reconnect) must not turn into a negative delta.
+            p.have_score = false;
+            p.have_downs = false;
+            p.have_stats = false;
+            p.is_down = false;
             const std::string token = userinfo_value(c->userinfo, "enw_token").empty()
                                           ? userinfo_value(c->userinfo, "token")
                                           : userinfo_value(c->userinfo, "enw_token");
@@ -862,22 +875,50 @@ private:
 
             poll_roster(slot, ms);
 
+            // THE SCOREBOARD COUNTERS (referee.md §16). One 24-byte read of the player's
+            // gclient per server frame: score, kills, assists, downs, revives, headshots,
+            // the same ints the game's own Tab scoreboard shows. Until 2026-09-23 these
+            // came from player_int(), which was a stub returning nullopt, so no `points`,
+            // `down` or kill count ever left a real game and every result said 0.
+            //
+            // Only while the player is connected: a free slot's gclient is zeroed or
+            // reused, and a leaver keeps the last values we saw (the game_over row).
+            const auto st = p.connected ? referee::player_stats(slot) : std::nullopt;
+            if (!st) continue;
+
             // Points: no script notify exists, so this is the only way. Sampling
             // at server-frame rate is exact enough to attribute a purchase.
-            if (auto s = referee::player_int(slot, "score")) {
-                if (!p.have_score || *s != p.score) {
+            if (!p.have_score || st->score != p.score) {
+                json::writer w;
+                w.str("t", "points").integer("ms", ms).integer("slot", slot).integer("score", st->score);
+                if (p.have_score) w.integer("delta", st->score - p.score);
+                game_link::get().send(w);
+                p.score = st->score;
+                p.have_score = true;
+            }
+
+            // Revive: `reviver.revives++` in revive_success. The `player_revived` notify
+            // fires on the REVIVED player (`self notify`), so the counter is what names
+            // the reviver; the revived one is the single connected player we saw go down
+            // and not come back yet, when there is exactly one, else it is left off.
+            if (p.have_stats && st->revives > p.revives_native) {
+                for (int k = p.revives_native; k < st->revives; ++k) {
                     json::writer w;
-                    w.str("t", "points").integer("ms", ms).integer("slot", slot).integer("score", *s);
-                    if (p.have_score) w.integer("delta", *s - p.score);
+                    w.str("t", "revive").integer("ms", ms).integer("by", slot);
+                    int downed = -1, count = 0;
+                    for (int o = 0; o < kMaxPlayers; ++o) {
+                        if (o != slot && players_[o].connected && players_[o].is_down) { downed = o; ++count; }
+                    }
+                    if (count == 1) { w.integer("slot", downed); players_[downed].is_down = false; }
                     game_link::get().send(w);
-                    p.score = *s;
-                    p.have_score = true;
                 }
             }
 
             // Down: _laststand.gsc bumps self.downs and defines self.revivetrigger.
-            if (auto d = referee::player_int(slot, "downs")) {
+            {
+                const int* d = &st->downs;
                 if (p.have_downs && *d > p.downs) {
+                    p.is_down = true;
                     json::writer w;
                     w.str("t", "down").integer("ms", ms).integer("slot", slot);
                     game_link::get().send(w);
@@ -902,7 +943,32 @@ private:
                 p.downs = *d;
                 p.have_downs = true;
             }
-            // Revive is a notify (player_revived); the host pairs it with the down.
+            // A downed player whose entity is no longer alive bled out; nobody revives them.
+            if (p.is_down) {
+                if (auto e = referee::player_ent(slot); e && !e->alive) p.is_down = false;
+            }
+
+            // `stats`: the absolute counters, whenever one of them moves. Sent AFTER the
+            // `down` / `revive` edges of the same frame so a host that folds both sees the
+            // edge first and the absolute value second (lib/referee.js takes the max).
+            // This is the only place kills and headshots exist on the wire: the game has
+            // no kill event that names a player, and `points` carries no reason.
+            if (!p.have_stats || st->kills != p.kills || st->headshots != p.headshots ||
+                st->revives != p.revives_native || st->assists != p.assists ||
+                st->downs != p.downs_sent) {
+                json::writer w;
+                w.str("t", "stats").integer("ms", ms).integer("slot", slot)
+                    .integer("score", st->score).integer("kills", st->kills)
+                    .integer("headshots", st->headshots).integer("downs", st->downs)
+                    .integer("revives", st->revives).integer("assists", st->assists);
+                game_link::get().send(w);
+            }
+            p.kills = st->kills;
+            p.headshots = st->headshots;
+            p.assists = st->assists;
+            p.revives_native = st->revives;
+            p.downs_sent = st->downs;
+            p.have_stats = true;
         }
     }
 
@@ -1006,7 +1072,8 @@ private:
         const uint32_t duration = (game_ms_ >= match_start_ms_) ? game_ms_ - match_start_ms_ : 0;
 
         json::array players;
-        int total_points = 0, total_downs = 0, alive = 0;
+        int total_points = 0, total_downs = 0, total_kills = 0, alive = 0;
+        bool any_stats = false;
         const int n = referee::max_clients();
         for (int slot = 0; slot < n && slot < kMaxPlayers; ++slot) {
             auto c = referee::client(slot);
@@ -1034,16 +1101,45 @@ private:
             pw.str("identity", identity_word(p.identity));
             if (p.identity == 2 && p.party_slot >= 0) pw.integer("party_slot", p.party_slot);
             if (!p.refusal.empty()) pw.str("identity_reason", p.refusal);
+            // A fresh read for a player still here (game over can land between two frame
+            // polls, and the last kill is usually in that frame); the last values we saw
+            // for one who left.
+            auto& ps = players_[slot];
+            if (ps.connected) {
+                if (const auto st = referee::player_stats(slot)) {
+                    ps.score = st->score; ps.have_score = true;
+                    ps.downs = st->downs; ps.have_downs = true;
+                    ps.kills = st->kills; ps.headshots = st->headshots; ps.assists = st->assists;
+                    ps.revives_native = st->revives; ps.have_stats = true;
+                }
+            }
             if (p.have_score) { pw.integer("score", p.score); total_points += p.score; }
             if (p.have_downs) { pw.integer("downs", p.downs); total_downs += p.downs; }
-            pw.integer("revives", p.revives);
+            // The native counter names the REVIVER (`reviver.revives++`); the notify count
+            // is only the fallback for a build where the field table did not verify.
+            pw.integer("revives", p.have_stats ? p.revives_native : p.revives);
+            if (p.have_stats) {
+                pw.integer("kills", p.kills).integer("headshots", p.headshots)
+                    .integer("assists", p.assists);
+                total_kills += p.kills;
+                any_stats = true;
+            }
             if (auto s = referee::player_int(slot, "score_total")) pw.integer("score_total", *s);
             if (auto e = referee::player_ent(slot)) {
                 pw.boolean("alive", e->alive);
                 if (e->alive) ++alive;
             }
+            // The FPS cap this client reported (verified-rules.md): absent = never reported.
+            if (p.fps >= 0) {
+                pw.integer("com_maxfps", p.fps).integer("com_maxfps_first", p.fps_first)
+                    .integer("com_maxfps_changes", p.fps_changes);
+            }
             players.raw(pw.done());
         }
+        // The server's environment as last reported, so the one message a host may post a
+        // result from carries the settings the result was played under.
+        json::writer env;
+        for (const auto& [k, v] : env_.values()) env.str(k.c_str(), v);
 
         const size_t rows = players.count();
         json::writer w;
@@ -1054,8 +1150,10 @@ private:
             .integer("duration_ms", static_cast<long long>(duration))
             .integer("points_total", total_points)
             .integer("downs_total", total_downs)
-            .integer("players_alive", alive)
-            .raw("players", players.done());
+            .integer("players_alive", alive);
+        if (any_stats) w.integer("kills_total", total_kills);
+        w.raw("players", players.done())
+         .raw("dvars", env.done());
         game_link::get().send(w);
         referee::lp_player_event(-1, "match_end", std::to_string(round_));
 
@@ -1076,11 +1174,12 @@ private:
         game_link::get().send(m);
 
         ENW_INFO("referee: GAME OVER at round %d (%s) after %u ms; %d point(s) over %d player "
-                 "row(s), %d down(s), %d alive. Replay sampler stopped. match_end sent: the "
-                 "server is ALIVE and idle, waiting for the host to send `end` (map_restart) "
-                 "or to tear the instance down.",
+                 "row(s), %d down(s), %d kill(s)%s, %d alive. Replay sampler stopped. match_end "
+                 "sent: the server is ALIVE and idle, waiting for the host to send `end` "
+                 "(map_restart) or to tear the instance down.",
                  round_, reason, duration, total_points,
-                 static_cast<int>(rows), total_downs, alive);
+                 static_cast<int>(rows), total_downs, total_kills,
+                 any_stats ? "" : " (native stats not bound)", alive);
         ENW_INFO("referee: %zu distinct notifies seen, %llu suppressed", seen_.size(),
                  static_cast<unsigned long long>(suppressed_));
     }
@@ -1117,6 +1216,11 @@ private:
         last_round_ms_ = 0;
         game_over_ = false;
         match_start_ms_ = game_ms_;
+        // The next match's replay must carry its own starting environment, not rely on
+        // the previous match's events: forget what was sent and report it all again.
+        env_.clear();
+        last_env_ms_ = 0;
+        last_client_env_ms_ = 0;
         map_announced_ = false;   // the next frame re-announces, so the host opens a new replay
         core_frames_ = 0;
         referee::set_current_round(0);
@@ -1226,7 +1330,15 @@ private:
         bool have_score = false;
         int downs = 0;
         bool have_downs = false;
-        int revives = 0;      // counted off the player_revived notify
+        int revives = 0;      // counted off the player_revived notify (fallback only)
+        // --- the native scoreboard counters (2026-09-23, referee.md 16) -----------
+        bool have_stats = false;
+        int kills = 0;
+        int headshots = 0;
+        int assists = 0;
+        int revives_native = 0;   // gclient revives: the REVIVER's count
+        int downs_sent = 0;       // the downs value the last `stats` carried
+        bool is_down = false;     // went down, not yet revived or bled out
         // --- identity and presence (2026-09-22, referee.md 12) ------------------
         // Without these the host agent has no roster at all: `lib/referee.js`
         // creates a player row ONLY in ev_player_connect, and ev_player_spawn /
@@ -1250,7 +1362,61 @@ private:
         std::string jti;        // the token's single-use id, for the replay guard
         int party_slot = -1;    // the seat the SITE gave this player, when it said one
         std::string refusal;    // why, when identity == refused
+        // --- the client's FPS cap (2026-09-23, verified-rules.md) ---------------
+        // From userinfo `enw_fps` (client-dll fps_guard.cpp). -1 = never reported.
+        int fps = -1;
+        int fps_first = -1;
+        int fps_changes = 0;    // changes after the first report
     };
+
+    // ------------------------------------------------ the Verified environment --
+    // verified_env.hpp says what and why. Server dvars every 5 s (24 lookups), each
+    // client's reported FPS cap every 1 s (a userinfo string search). Both send only on
+    // first sight and on change, so a steady game costs the link nothing.
+    void poll_environment(uint32_t ms) {
+        if (last_env_ms_ == 0 || ms - last_env_ms_ >= 5000 || ms < last_env_ms_) {
+            last_env_ms_ = ms ? ms : 1;
+            for (const char* name : verified::kServerWatch) {
+                auto v = referee::dvar_get(name);
+                if (!v || !env_.observe(name, *v)) continue;
+                json::writer w;
+                w.str("t", "dvar").integer("ms", ms).str("name", name).str("value", *v);
+                game_link::get().send(w);
+                ENW_INFO("referee: dvar %s = \"%s\"", name, v->c_str());
+            }
+            // Not an engine dvar: whether this PROCESS was launched with dev knobs on
+            // (ENW_DEV_KNOBS=1 -- host `exec`, dedicated/soak.cpp's test god mode). It
+            // rides the same `dvar` event, and game_over's `dvars`, so the host's
+            // Verified judge (verified.js SERVER_RULES enw_dev_knobs '0') fails any run
+            // that had them, whatever else the run looked like (dedi.md §23).
+            const std::string knobs = dev_knobs_ ? "1" : "0";
+            if (env_.observe("enw_dev_knobs", knobs)) {
+                json::writer w;
+                w.str("t", "dvar").integer("ms", ms).str("name", "enw_dev_knobs").str("value", knobs);
+                game_link::get().send(w);
+                ENW_INFO("referee: dvar enw_dev_knobs = \"%s\"", knobs.c_str());
+            }
+        }
+        if (last_client_env_ms_ != 0 && ms - last_client_env_ms_ < 1000 && ms >= last_client_env_ms_) return;
+        last_client_env_ms_ = ms ? ms : 1;
+        const int n = referee::max_clients();
+        for (int slot = 0; slot < n && slot < kMaxPlayers; ++slot) {
+            auto c = referee::client(slot);
+            if (!c || !c->active) continue;
+            const int fps = verified::parse_client_fps(userinfo_value(c->userinfo, verified::kClientFpsKey));
+            auto& p = players_[slot];
+            if (fps < 0 || fps == p.fps) continue;
+            if (p.fps_first < 0) p.fps_first = fps; else ++p.fps_changes;
+            p.fps = fps;
+            json::writer w;
+            w.str("t", "client_dvar").integer("ms", ms).integer("slot", slot)
+                .str("name", "com_maxfps").integer("value", fps)
+                .integer("effective_fps", verified::effective_fps(fps));
+            game_link::get().send(w);
+            ENW_INFO("referee: slot %d reports com_maxfps %d (runs at %d fps)%s", slot, fps,
+                     verified::effective_fps(fps), p.fps_changes ? " -- CHANGED mid-game" : "");
+        }
+    }
 
     player_state players_[kMaxPlayers];
     std::set<std::string> seen_;
@@ -1274,6 +1440,9 @@ private:
     bool dev_knobs_ = false;
     std::string match_id_;                   // ENW_MATCH: the lease this process serves
     std::map<std::string, int> jti_seen_;    // single-use invite tokens, per match
+    verified::change_tracker env_;           // server dvars as last reported
+    uint32_t last_env_ms_ = 0;
+    uint32_t last_client_env_ms_ = 0;
 };
 
 }  // namespace

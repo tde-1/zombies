@@ -1,0 +1,189 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "labrats2",
+  "title": "Labrats!",
+  "source": "custom",
+  "author": "ShlongDingDong",
+  "released": "2016-07-30",
+  "fs_game": "mods/labrats2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@labrats2.iwd": "1af5af250ff6ff8b9320f239bf1761c50da872cc0a311020d6383974b8741310"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 1842,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      30000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "auto5"
+      ],
+      [
+        5000,
+        "pf1792_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto4"
+      ],
+      [
+        4000,
+        "pf1813_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_door",
+        "auto3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "1af5af250ff6ff8b9320f239bf1761c50da872cc0a311020d6383974b8741310",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Labrats2.exe",
+    "original_sha256": "9fbd2b766e545c2bca05e3fc72c2e8f8698f18a551890d1592fc6295e4557030",
+    "original_size": 271422751,
+    "source_url": "https://www.mediafire.com/file/v2d2bd9wckdap86/Labrats2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/07/30/labrats/",
+    "fetched": "2026-09-23T03:24:05Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "You are a RAT, whose life will consist of only testing your intelligence by the 2-legged, labcoat-wearing torturers. There is a light at the end of the maze though\u2026 Legend has it that all of the RATs that make it to the end never return. You\u2019re here to try your luck. Credits:",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/labrats/cover.png",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/labrats-4-768x432.png"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 50.3,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.3.iwd",
+        "entries": 474,
+        "scripts": 0,
+        "bytes": 99456265
+      },
+      {
+        "file": "nsz_bo2_weapons_v1.3.4.iwd",
+        "entries": 337,
+        "scripts": 0,
+        "bytes": 90627254
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "labrats2_patch.ff",
+      "mod.ff"
+    ]
+  },
+  "site_hidden": true
+}

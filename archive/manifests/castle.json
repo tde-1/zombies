@@ -1,0 +1,210 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "castle",
+  "title": "THE FORTRESS",
+  "source": "custom",
+  "author": "Soy-Yo Version: 1.1.1",
+  "released": "2015-08-31",
+  "fs_game": "mods/castle",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@castle.iwd": "953108db8c7937689910dd9ea827410bbf2c65d6ac178969f23932b25d12cfc8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1403,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "end_room_door3"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "end_room_door2"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "end_room_door1"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "perk_box"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "bricks"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "953108db8c7937689910dd9ea827410bbf2c65d6ac178969f23932b25d12cfc8",
+    "map_specific_triggers": [
+      "buy_slot_trigger",
+      "end_trigger",
+      "info_trigger1",
+      "info_trigger2",
+      "info_trigger3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Fortress.exe",
+    "original_sha256": "19a546360e23c57e16e311b3133fe6a9fbf52b01abc78cdcaa1f56a247f850ae",
+    "original_size": 103042007,
+    "source_url": "https://www.mediafire.com/file/53av4gluk1g35o2/Fortress.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:24:46Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Hello everyone. I\u2019m a new Spanish mapper and this is my first map. The game takes place inside a fortress or a castle. You are a/some tourist that were visiting it until you heard a very loud noise, like something big falling down and then people shouting and running everywhere. And when you finally reach the main door you realise that it is blocked. Now you have to survive there fighting against the zombies and you have to find some way to escape. I think this map is a bit hard (at least for me, I\u2019m very bad at zombies), as there aren\u2019t many big areas. And this is my first map so don\u2019t expect any masterpiece. I hope you enjoy it! Features All WaW Perks 5-hit Jugger-Nog Solo Revive (500 points) Double Tap 2.0 All BO Perks Electric Cherry Custom Main Menu Buyable Perk Slots Two Mini-Easter Eggs Custom PaP Camo Some Custom Textures Buyable Ending No PaP knuckles animation because of a bug I tried to add BO or BO2 weapons but it\u2019s been impossible for me Update changes v1.1 Bugs fixed A bit more light (the map continues being dark) Buyable ending is cheaper Speed Cola zone is bigger Removed PPsh from wall (sorry, but Tiyoushi was right) Deadshot Daiquiri costs now 1500 and some doors are cheaper Removed residual files that weren\u2019t being used Nuke gives 800 and carpenter 400 with x2 And I\u2019m sure I\u2019m must have forgotten some things (v1.1.1) The map isn\u2019t dark any more! [thanks to HitmanVere] (v1.1.1) Added details [thanks to HitmanVere] (v1.1.1) Other bugs dixed [thanks to HitmanVe",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "castle.iwd:images/custom_zombies_menu.iwi",
+        "castle.iwd:images/custom_zombies_menu2.iwi",
+        "castle.iwd:images/custom_zombies_menu3.iwi",
+        "castle.iwd:images/menu_map_castle.iwi",
+        "castle.iwd:images/menu_map_custom_zombies_menu.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/thefortress/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/the-fortress-6-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 98.8,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273560
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 557060
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "castle.ff",
+      "castle_patch.ff",
+      "mod.ff",
+      "castle.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

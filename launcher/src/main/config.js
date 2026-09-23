@@ -60,6 +60,12 @@ export const DEFAULTS = {
   minimiseToTray: true,
   stealthLaunch: false,     // dev-box.md rule 6 when true: windowed, muted, off-screen
   useGameLock: true,
+  // Discord Rich Presence (discord.js). The "ENW Zombies" application's id from the Discord
+  // Developer Portal. Empty = presence stays off. Order: ENW_DISCORD_CLIENT_ID >
+  // state/config.json `discordClientId` > the site's /api/launcher/hello
+  // `discord_client_id` (ZM_DISCORD_CLIENT_ID in infra/site.env, so B can set it without a
+  // launcher release) > this constant.
+  discordClientId: '',
 }
 
 let cached = null

@@ -7,7 +7,9 @@
          theme.css's :root, which is Movement's since 2026-09-22)
          (`assets/logo-mockups.html`: "The favicon is the mark alone"). Inline so there is no
          second request and no file to lose. -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-6 -6 334 168'%3E%3Crect x='-6' y='-6' width='334' height='168' fill='%23101010'/%3E%3Cpath fill='%23e7e7e7' d='M2.05 0 70 0 70 30 2.05 30ZM20.05 66 70 66 70 93.9 20.05 93.9ZM2.05 128 70 128 70 156 2.05 156ZM76.22 2.51 168 88.64 168 0 198 0 198 154.04 102.04 66.5 102.04 156 76.22 156ZM204 148.74 228.82 80.79 259.32 151.48 321.8 0 287.99 0 259.48 73.33 231.19 1.3 204 65.78Z'/%3E%3C/svg%3E" />
+    <!-- 2026-09-23: Movement's own favicon (movement-client/public/favicon.svg), the white
+         mark on its #0a0a0a rounded plate. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230a0a0a'/%3E%3Cpath transform='translate(14 32.55) scale(0.22374)' fill='%23ffffff' d='M2.05 0 70 0 70 30 2.05 30ZM20.05 66 70 66 70 93.9 20.05 93.9ZM2.05 128 70 128 70 156 2.05 156ZM76.22 2.51 168 88.64 168 0 198 0 198 154.04 102.04 66.5 102.04 156 76.22 156ZM204 148.74 228.82 80.79 259.32 151.48 321.8 0 287.99 0 259.48 73.33 231.19 1.3 204 65.78Z'/%3E%3C/svg%3E" />
     <title>ENW Zombies</title>
     <meta name="description" content="Every World at War custom zombies map, archived and playable." />
     <meta property="og:title" content="ENW Zombies" />
@@ -15,7 +17,8 @@
     <!-- Movement's ground, matching :root --bg. One theme now (B, 2026-09-22), so this is the
          only value it can be; it is what a mobile browser paints its chrome with before a
          single byte of CSS has arrived. -->
-    <meta name="theme-color" content="#101010" />
+    <meta name="theme-color" content="#080808" />
+    <style>html,body{background:#080808}</style>
   </head>
   <body>
     <div id="root"></div>

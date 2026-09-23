@@ -20,8 +20,14 @@ import { P, ensureDirs, isInside, protectedRoots, dirOfModule, unpacked } from '
 import { MOD_NAME } from './setup.js'
 import * as lock from './gamelock.js'
 import { listDisplays, pickDisplay } from './display.js'
-import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, usePlayerProfile, PROFILE } from './gamecfg.js'
-import { launchDvars, applyAccountToConfig, readBackAccount } from './wawcfg.js'
+import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, usePlayerProfile, PROFILE, FPS_CAP } from './gamecfg.js'
+
+// The DLL's fps_guard (client-dll/components/fps_guard.cpp) holds com_maxfps to 20..this
+// for the whole game, not just at launch, and reports it to the server for the Verified
+// rules (docs/kickstart/verified-rules.md). The launcher already never writes more than
+// FPS_CAP, so a player only meets the lock by typing a higher value in the console.
+export function fpsCapEnv() { return String(FPS_CAP) }
+import { launchDvars, applyAccountToConfig, readBackAccount, foldReadBack } from './wawcfg.js'
 import * as settings from './settings.js'
 import { modOwnedDvars, dropModOwned } from './modcompat.js'
 
@@ -405,6 +411,21 @@ export class GameLaunch extends EventEmitter {
         // The account's settings from the site's Settings page (WaW's Options menus),
         // merged into the config.cfg the engine reads on EVERY launch, so the in-game
         // menu shows them too. wawcfg.js says why this is not seed-once.
+        // Catch-up first (esc-menu.md §9): a change the game wrote to config.cfg that no
+        // read-back ever took (the launcher was closed or died while the game ran) would
+        // otherwise be overwritten by the account's older value right here. It is folded
+        // into this launch's settings and handed to the account with this run's read-back.
+        try {
+          const missed = readBackAccount({ homeDir, profile: o.profile || PROFILE, commit: true })
+          if (Object.keys(missed.changed).length) {
+            o.settings = foldReadBack(o.settings || {}, missed.changed)
+            this.opts.settings = o.settings
+            this.pendingReadBack = missed.changed
+            this.note(`settings the game saved that the launcher never read back (${Object.keys(missed.changed).join(', ')}): kept, and saved to the account with this run's read-back`)
+          }
+        } catch (e) {
+          this.note(`settings catch-up failed (${e.message}); carrying on`)
+        }
         const acct = applyAccountToConfig({ homeDir, profile: o.profile || PROFILE, settings: o.settings || {}, display })
         if (acct.wrote.length) this.note(`applied ${acct.pairs.length} account setting${acct.pairs.length === 1 ? '' : 's'}${acct.resets.length ? `, ${acct.resets.length} game default${acct.resets.length === 1 ? '' : 's'}` : ''} and ${Object.keys(acct.binds).length} bind${Object.keys(acct.binds).length === 1 ? '' : 's'} to ${acct.wrote[0]}`)
       } catch (e) {
@@ -475,6 +496,8 @@ export class GameLaunch extends EventEmitter {
         // window mode it is explicitly '0' rather than absent, so a dev run can never
         // inherit a borderless flag from somewhere else.
         ENW_BORDERLESS: borderlessEnv(o.settings || {}, this.playerMode),
+        // The mid-game FPS lock (fps_guard.cpp). See fpsCapEnv above.
+        ENW_FPS_CAP: fpsCapEnv(),
         // The DLL's raw-input mouse (mouse_polling.cpp reads `ENW_RAW_MOUSE=0` as off).
         // Only an explicit "off" in the account turns it off; the default stays the DLL's.
         ...(o.settings && o.settings.rawMouse === false ? { ENW_RAW_MOUSE: '0' } : {}),
@@ -743,8 +766,9 @@ export class GameLaunch extends EventEmitter {
       // to what this launch wrote. It wins over the older read-back for the same key,
       // because it compares against this launch rather than against the first seed.
       try {
-        const acct = readBackAccount({ homeDir: this.opts.homeDir || P.home, profile: this.opts.profile || PROFILE })
-        if (Object.keys(acct.changed).length) r.changed = { ...(r.changed || {}), ...acct.changed }
+        const acct = readBackAccount({ homeDir: this.opts.homeDir || P.home, profile: this.opts.profile || PROFILE, commit: true })
+        if (this.pendingReadBack) r.changed = foldReadBack(this.pendingReadBack, r.changed || {})
+        if (Object.keys(acct.changed).length) r.changed = foldReadBack(r.changed || {}, acct.changed)
       } catch (e) {
         this.note(`could not read the account settings back (${e.message})`)
       }

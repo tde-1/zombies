@@ -1,0 +1,158 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_fc2",
+  "title": "ZOMBIE FC2",
+  "source": "custom",
+  "author": "Coochy",
+  "released": "2015-07-13",
+  "fs_game": "mods/nazi_zombie_fc2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_fc2.iwd": "07264318ff62e63ac56db94203edbe01f5aca8df3cb2e7bed44bbd9b0a958985"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 427,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1000,
+        "zombie_debris",
+        "door12"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_3"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "07264318ff62e63ac56db94203edbe01f5aca8df3cb2e7bed44bbd9b0a958985",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_fc2.exe",
+    "original_sha256": "b6c7918c5b64ac6e38f74f45204d3f8e44d1998d1834c6e736e8c0a65622ed75",
+    "original_size": 82847360,
+    "source_url": "https://www.mediafire.com/file/eiel7cph64owrko/nazi_zombie_fc2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:31:18Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Welcome to Zombies F.C.2 take on a hord of zombies at a football match 8 rooms to explore and main pitch with buyable ending 20000. Tight map so get outside quick the drops ouside wil spawn in and near the goal posts their side of the pitch so get ammo will b hard unless your near the goal posts In game juggernog quick revive speed cold double tap packa punch Guns on Wall m1garand mp40 m1carbine stg44 bettys thompson Random Box Credits Sniperbolt\u2019s Tutorial Prefabs",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/fc2/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2021/06/nazi-zombie-fc2-4.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.6,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_fc2.ff",
+      "nazi_zombie_fc2_patch.ff"
+    ]
+  },
+  "site_hidden": true
+}

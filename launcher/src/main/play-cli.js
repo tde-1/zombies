@@ -9,6 +9,7 @@
 // --dry-run prints the exact command line and environment and starts nothing.
 import { BootFlow } from './bootflow.js'
 import { buildArgs } from './launch.js'
+import { ensureSteam } from './steam.js'
 import { listDisplays, pickDisplay, resolutionOf } from './display.js'
 import { resolveMode } from './gamecfg.js'
 import * as settings from './settings.js'
@@ -129,6 +130,9 @@ const flow = new BootFlow({
   connectTimeoutMs: seconds * 1000,
   nannySeconds: seconds + 30,
   settings: settings.get(),
+  // Steam must be up and signed in before a game starts. This dev tool checks and stops;
+  // it never starts or waits on B's Steam client (dev-box rule 8).
+  steam: process.env.ENW_SKIP_STEAM_CHECK === '1' ? null : (h) => ensureSteam({ ...h, allowStart: false }),
 })
 
 flow.on('step', (s) => {

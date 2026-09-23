@@ -167,7 +167,11 @@ function lease(o) {
   const vip = enw.anyVip(players.map((p) => p.steamid))
 
   const matchId = o.matchId || newMatchId()
-  const settings = mode === 'custom' ? (o.settings || {}) : {}
+  const settings = mode === 'custom' ? { ...(o.settings || {}) } : {}
+  // `dev` (test god mode and friends, dedi.md §23) is an agent's and nobody else's: a
+  // party leader can store any Custom settings (parties.setSettings), so it is dropped
+  // here for every lease that is not an agent's. The host also requires `agent` + custom.
+  if (!agent) delete settings.dev
 
   // The manifest travels WITH the lease. The box reads `referee/manifests/` from its own
   // disk today, which works because the repo is the same one; a real cloud box has no repo,
@@ -272,6 +276,8 @@ function shapeOf(a) {
     whitelist: (safeJson(a.players_json, []) || []).map((p) => p.steamid),
     vip: !!a.vip,
     kind: a.kind,
+    // An agent's lease (lease-cli). The host needs it to allow `settings.dev` (dedi.md §23).
+    agent: !!a.agent,
     tokens: safeJson(a.tokens_json, {}),
     manifest: manifestFor(a),
     map_version: a.map_version_id ? (db.prepare('SELECT version FROM map_versions WHERE id=?').get(a.map_version_id) || {}).version : null,
@@ -286,11 +292,23 @@ function manifestFor(a) {
   return m ? safeJson(m.json, null) : null
 }
 
-/** The box said `ready` / `live` / `booting`. */
-function ack(box, state, matchId) {
+/** The box said `ready` / `live` / `booting` / `preparing` / `failed`. */
+function ack(box, state, matchId, error = null) {
   if (!matchId) return
   const a = db.prepare('SELECT * FROM assignments WHERE match_id=? AND box_id=?').get(String(matchId), box.id)
   if (!a) return
+  // `failed`: the box could not prepare the lease's map (infra/host-agent/lib/mapcache.js)
+  // and will not boot it. Only a lease that never got going is ended here - a box cannot
+  // end a ready or live game this way - and the party goes back to picking, at once,
+  // rather than after the 90 s ghost reap.
+  if (state === 'failed') {
+    if (a.state !== 'leased') return
+    db.prepare("UPDATE assignments SET state='cancelled', ended_at=? WHERE id=?").run(now(), a.id)
+    if (a.party_id) db.prepare("UPDATE parties SET state='forming', match_id=NULL WHERE id=? AND match_id=?").run(a.party_id, a.match_id)
+    db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('assignment.box_failed', ?, ?, ?)")
+      .run(box.name, JSON.stringify({ match_id: a.match_id, error: error ? String(error).slice(0, 300) : null }), now())
+    return
+  }
   // Forward only: a late 'ready' must not take a live game back to ready (the launcher's
   // cancel guard keys on 'live'), and nothing here revives an ended lease.
   if (!['leased', 'ready', 'live'].includes(a.state)) return
@@ -328,7 +346,7 @@ function release(matchId, { by = null, named = null, force = false } = {}) {
   }
   const a = db.prepare('SELECT state FROM assignments WHERE match_id=?').get(String(matchId))
   if (a && a.state === 'live' && !force) {
-    return { ok: false, live: true, error: 'that game is live on the server; it ends there, not from a launcher cancel' }
+    return { ok: false, live: true, error: 'that game is live; end it in game' }
   }
   return cancel(matchId, by)
 }
@@ -364,4 +382,30 @@ function live() {
   })
 }
 
-module.exports = { lease, forBox, ack, cancel, release, live, nonceOf, capacity, notePoll, admit, NO_FREE }
+/**
+ * The most-played maps lately, for a box's idle-time prefetch (GET /api/gs/popular-maps,
+ * infra/host-agent/lib/mapcache.js). Counts real leases (agent leases excluded) per map
+ * over the last `days`, falls back to the maps table's lifetime `plays` for order among
+ * ties, and carries what a box needs to budget and fetch: the fs_game and the size of the
+ * map's files. Stock maps are left out - there is nothing to download for them.
+ */
+function popular({ days = 30, limit = 40 } = {}) {
+  const since = now() - Math.max(1, Math.min(365, Number(days) || 30)) * 86400_000
+  const rows = db.prepare(`SELECT a.map_key AS map, COUNT(*) AS plays FROM assignments a
+                            WHERE a.issued_at >= ? AND COALESCE(a.agent,0)=0
+                            GROUP BY a.map_key`).all(since)
+  const mapfiles = require('./mapfiles')
+  const out = []
+  for (const r of rows) {
+    const m = db.prepare('SELECT id, source, plays FROM maps WHERE key=?').get(r.map)
+    if (!m || m.source === 'stock') continue
+    const v = db.prepare('SELECT fs_game FROM map_versions WHERE map_id=? AND latest=1').get(m.id)
+    let size = 0
+    try { size = mapfiles.forMap(r.map).size_bytes || 0 } catch { size = 0 }
+    out.push({ map: r.map, fs_game: (v && v.fs_game) || null, plays: r.plays, lifetime_plays: m.plays || 0, size_bytes: size })
+  }
+  out.sort((x, y) => (y.plays - x.plays) || (y.lifetime_plays - x.lifetime_plays) || (x.map < y.map ? -1 : 1))
+  return out.slice(0, Math.max(1, Math.min(200, Number(limit) || 40)))
+}
+
+module.exports = { lease, forBox, ack, cancel, release, live, nonceOf, capacity, notePoll, admit, popular, NO_FREE }

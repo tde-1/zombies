@@ -87,6 +87,13 @@ const FEED_EVENTS = new Set([
   'explode',
 ])
 
+// THE GAME'S OWN SCOREBOARD COUNTERS (referee.md §16, bug 7, 2026-09-23). A §16 DLL reads
+// kills/downs/revives/headshots out of the player's gclient and sends them as absolute
+// values -- on `stats` events and, delta-coded, on snap players. They are the numbers the
+// in-game Tab scoreboard shows, so the viewer's Tab scoreboard uses them in preference to
+// anything it can infer. Files recorded before §16 have neither and keep the old rules.
+const COUNTER_KEYS = ['kills', 'downs', 'revives', 'headshots']
+
 /**
  * Decode a replay into a dense track.
  *
@@ -121,6 +128,24 @@ function buildTrack(file, replayLib, hz = 10) {
   const zLast = new Map()        // entnum -> key, so a reused entnum starts a new track
   const rounds = []
   const feed = []
+  // slot -> [[ms, kills, downs, revives, headshots], ...], one entry per change.
+  const counters = new Map()
+  const counterCur = new Map()
+  const noteCounters = (slot, ms, src) => {
+    if (slot === undefined || slot === null) return
+    const cur = counterCur.get(slot) || { kills: 0, downs: 0, revives: 0, headshots: 0 }
+    let changed = !counterCur.has(slot)
+    for (const k of COUNTER_KEYS) {
+      if (src[k] === undefined) continue
+      const v = Number(src[k])
+      if (Number.isFinite(v) && v !== cur[k]) { cur[k] = v; changed = true }
+    }
+    if (!COUNTER_KEYS.some((k) => src[k] !== undefined)) return
+    counterCur.set(slot, cur)
+    if (!changed) return
+    if (!counters.has(slot)) counters.set(slot, [])
+    counters.get(slot).push([ms || 0, cur.kills, cur.downs, cur.revives, cur.headshots])
+  }
 
   // `snap.zombies_alive` is the number of zombie AI entities ALIVE at that sample -- the
   // DLL's own comment says so (replay.cpp: "MEASURED: live AI entities this sample ... NOT
@@ -236,12 +261,13 @@ function buildTrack(file, replayLib, hz = 10) {
 
     if (FEED_EVENTS.has(e.t)) {
       const f = { ms: e.ms || 0, t: e.t }
-      for (const k of ['slot', 'n', 'score', 'delta', 'why', 'text', 'name', 'label', 'id', 'kind', 'reason', 'how', 'round']) {
+      for (const k of ['slot', 'by', 'n', 'score', 'delta', 'why', 'text', 'name', 'label', 'id', 'kind', 'reason', 'how', 'round']) {
         if (e[k] !== undefined) f[k] = e[k]
       }
       feed.push(f)
     }
 
+    if (e.t === 'stats') noteCounters(e.slot, e.ms, e)
     if (e.t !== 'snap') continue
     snapIndex++
     // Every snap updates the carried-forward state -- dropping one would lose a health
@@ -251,6 +277,7 @@ function buildTrack(file, replayLib, hz = 10) {
       if (!slots.has(p.slot)) slots.set(p.slot, new SlotState())
       const st = slots.get(p.slot)
       st.apply(p)
+      noteCounters(p.slot, e.ms, p)
       const was = lastHealth.get(p.slot)
       if (st.alive && was !== undefined && st.health < was && (endMs === null || e.ms < endMs)) {
         let src = null
@@ -358,6 +385,9 @@ function buildTrack(file, replayLib, hz = 10) {
       // record it yet (player_int("score") is unbound), and a column of zeros must not be
       // shown as points.
       has_score: !!(slots.get(slot) && slots.get(slot).sawScore),
+      // §16: [[ms, kills, downs, revives, headshots], ...] from the game's own counters, or
+      // null for a file recorded before the DLL could read them.
+      counters: counters.get(slot) || null,
     })
   }
 

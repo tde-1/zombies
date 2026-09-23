@@ -267,6 +267,89 @@ await test('the launch wires it: settingsArgs uses the account, start() merges t
   settings.set({ discordOverlay: 'auto' }, SID)
 })
 
+// ---- the in-game ENW Esc menu's Settings tab (esc-menu.md §9) -------------------------
+const gen = await import('../../tools/settings/gen-ingame-schema.mjs')
+
+await test('in-game schema: the committed shared/settings/ingame-settings.json is exactly what the catalogue generates', async () => {
+  const want = gen.render(await gen.buildSchema())
+  assert.equal(gen.readCommitted(), want, 'stale: run node tools/settings/gen-ingame-schema.mjs')
+})
+
+await test('in-game schema: every value a control can write passes the launcher whitelist; mod-owned and gameplay dvars are absent', async () => {
+  const s = await gen.buildSchema()
+  const byId = new Map(s.items.map((i) => [i.id, i]))
+  for (const it of s.items) {
+    if (it.kind === 'bind') { assert.ok(wawcfg.BIND_COMMANDS.includes(it.command), it.command); continue }
+    if (it.to === 'waw') {
+      assert.ok(wawcfg.canonDvar(it.dvar), `${it.id}: ${it.dvar} is not whitelisted`)
+      for (const v of it.values || []) if (v !== '') assert.notEqual(wawcfg.checkValue(wawcfg.canonDvar(it.dvar), v), undefined, `${it.id}=${v}`)
+      if (it.kind === 'slider') for (const v of [it.min, it.max]) assert.notEqual(wawcfg.checkValue(wawcfg.canonDvar(it.dvar), v), undefined, `${it.id}=${v}`)
+      for (const extra of Object.values(it.also || {})) for (const [d, v] of extra) assert.notEqual(wawcfg.checkValue(wawcfg.canonDvar(d), v), undefined, `${it.id} also ${d}=${v}`)
+    }
+  }
+  for (const bad of ['monkeytoy', 'con_external', 'sv_cheats', 'developer', 'ai_corpseCount']) {
+    assert.equal([...byId.values()].some((i) => String(i.dvar || '').toLowerCase() === bad.toLowerCase()), false, `${bad} must never be an in-game control`)
+  }
+  // A Verified game: com_maxfps may not change mid-game (records rule), nothing restarts the renderer.
+  assert.equal(byId.get('maxFps').verified, false)
+  for (const it of s.items) if (it.apply === 'vid_restart') assert.equal(it.verified, false, `${it.id} restarts the renderer`)
+  assert.equal(byId.get('sensitivity').verified, true)
+  assert.equal(byId.get('fov').max, 120, 'FOV tops out at the records cap')
+  assert.deepEqual(byId.get('showFps').values, ['Off', 'Simple'], 'cg_drawFPS is an enum on T4')
+})
+
+await test('raw input round-trips through config.cfg (enw_rawmouse): launch writes it, an in-game change comes back as rawMouse', () => {
+  const { home, p } = fakeHome('home-raw')
+  wawcfg.applyAccountToConfig({ homeDir: home, settings: { rawMouse: true }, display: DISPLAY })
+  let cfg = fs.readFileSync(p.engineCfg, 'utf8')
+  assert.match(cfg, /^seta enw_rawmouse "1"$/m)
+  assert.deepEqual(wawcfg.readBackAccount({ homeDir: home }).changed, {})
+  fs.writeFileSync(p.engineCfg, cfg.replace('seta enw_rawmouse "1"', 'seta enw_rawmouse "0"'))
+  assert.deepEqual(wawcfg.readBackAccount({ homeDir: home }).changed, { rawMouse: false })
+})
+
+await test('the sync message: what the in-game tab writes (write-through config.cfg) is the patch the launcher saves and the site reads', () => {
+  const { home, p } = fakeHome('home-ingame')
+  settings.set({ sensitivity: 5, fov: 80, waw: { r_aspectRatio: 'auto', ui_mousePitch: '0', m_pitch: '0.022' }, gameUpdatedAt: 40 }, SID)
+  wawcfg.applyAccountToConfig({ homeDir: home, settings: settings.get(SID), display: DISPLAY })
+  // The engine's write-through after the tab set sensitivity 7.5, FOV 95, invert, 16:9, rebound Use.
+  let cfg = fs.readFileSync(p.engineCfg, 'utf8')
+  cfg = cfg.replace(/^seta sensitivity "[^"]*"$/m, 'seta sensitivity "7.5"').replace(/^seta cg_fov "[^"]*"$/m, 'seta cg_fov "95"')
+    .replace(/^seta ui_mousePitch "[^"]*"$/m, 'seta ui_mousePitch "1"').replace(/^seta m_pitch "[^"]*"$/m, 'seta m_pitch "-0.022"')
+    .replace(/^seta r_aspectRatio "[^"]*"$/m, 'seta r_aspectRatio "wide 16:9"').replace(/^bind \S+ "\+activate"$/m, 'bind G "+activate"')
+  fs.writeFileSync(p.engineCfg, cfg)
+  const back = wawcfg.readBackAccount({ homeDir: home, commit: true })
+  assert.equal(back.changed.sensitivity, 7.5)
+  assert.equal(back.changed.fov, 95)
+  assert.deepEqual(back.changed.waw, { r_aspectRatio: 'wide 16:9', ui_mousePitch: '1', m_pitch: '-0.022' })
+  assert.deepEqual(back.changed.wawBinds['+activate'], ['G'])
+  const saved = settings.set(back.changed, SID)
+  const pageGame = site.fromLauncher(saved)
+  assert.equal(site.shownValue(pageGame, item('fov')), 95, '/settings shows the in-game FOV')
+  assert.equal(site.shownValue(pageGame, item('ui_mousePitch')), '1')
+  assert.equal(site.shownValue(pageGame, item('r_aspectRatio')), 'wide 16:9')
+  // commit moved the snapshot: the same file is no change the second time.
+  assert.deepEqual(wawcfg.readBackAccount({ homeDir: home }).changed, {})
+})
+
+await test('catch-up: a change the game saved but the launcher never read back survives the next launch\'s merge', () => {
+  const { home, p } = fakeHome('home-catchup')
+  const acct = { sensitivity: 5, fov: 80, gameUpdatedAt: 50 }
+  wawcfg.applyAccountToConfig({ homeDir: home, settings: acct, display: DISPLAY })
+  // The game wrote FOV 110 (write-through), then the launcher died: no read-back ran.
+  fs.writeFileSync(p.engineCfg, fs.readFileSync(p.engineCfg, 'utf8').replace(/^seta cg_fov "[^"]*"$/m, 'seta cg_fov "110"'))
+  // Next launch, exactly as launch.js start() does it: catch up, fold, then merge.
+  const missed = wawcfg.readBackAccount({ homeDir: home, commit: true })
+  assert.deepEqual(missed.changed, { fov: 110 })
+  const next = wawcfg.foldReadBack(acct, missed.changed)
+  wawcfg.applyAccountToConfig({ homeDir: home, settings: next, display: DISPLAY })
+  assert.match(fs.readFileSync(p.engineCfg, 'utf8'), /^seta cg_fov "110"$/m, 'the stale account value did not overwrite the in-game one')
+  const src = fs.readFileSync(new URL('../src/main/launch.js', import.meta.url), 'utf8')
+  assert.match(src, /const missed = readBackAccount\(\{ homeDir, profile: o\.profile \|\| PROFILE, commit: true \}\)/)
+  assert.ok(src.indexOf('const missed = readBackAccount') < src.indexOf('const acct = applyAccountToConfig'), 'catch-up runs before the merge')
+  assert.match(src, /this\.pendingReadBack\) r\.changed = foldReadBack/)
+})
+
 await test('with nothing saved from the site the launch line is exactly the old baseline', () => {
   const s = { ...settings.DEFAULT_SETTINGS }
   assert.deepEqual(launch.settingsArgs(s, DISPLAY), gamecfg.dvarsToArgs(gamecfg.baselineDvars(s, DISPLAY)))

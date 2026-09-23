@@ -1,0 +1,190 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "a_room",
+  "title": "HOTEL OF HELL",
+  "source": "custom",
+  "author": "Rattpak26",
+  "released": "2016-06-04",
+  "fs_game": "mods/a_room",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@a_room.iwd": "ae40c0cee4c6bb56840f824e594da640fbcf7be9ee292e27f44aa07dd78932c2"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 110,
+    "script_count": 110,
+    "entities": 1358,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf1277_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf1255_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1238_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1246_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1230_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ae40c0cee4c6bb56840f824e594da640fbcf7be9ee292e27f44aa07dd78932c2",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger",
+      "jukebox"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Hotel_Of_Hell.exe",
+    "original_sha256": "909d15d96464cb1ea0a1da1a287b102c639353ee0dd7fa6fb15ae06876915968",
+    "original_size": 200102736,
+    "source_url": "https://www.mediafire.com/file/tbhu0q0y6v9c8bt/Hotel_Of_Hell.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:30:50Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "a_room.iwd:images/menu_background_coop.iwi",
+        "a_room.iwd:images/menu_background_coop_blurred.iwi",
+        "a_room.iwd:images/menu_background_sp.iwi",
+        "a_room.iwd:images/menu_background_sp_blurred.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/hotelofhell/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/hotel-of-hell-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 82.7,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.1.iwd",
+        "entries": 474,
+        "scripts": 0,
+        "bytes": 99456205
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "a_room.ff",
+      "a_room_patch.ff",
+      "mod.ff",
+      "a_room.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

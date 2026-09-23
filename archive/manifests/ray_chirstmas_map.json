@@ -1,0 +1,237 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ray_chirstmas_map",
+  "title": "Christmas Delivery",
+  "source": "custom",
+  "author": "Ray1235",
+  "released": "2014-12-20",
+  "fs_game": "mods/ray_chirstmas_map",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "a67efeb669e835f3fc2522c1a7c6d64840a251fb4e14efb8eed5bac1d2cfbfc4"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "endgame"
+        }
+      },
+      "candidates": [
+        "endgame",
+        "endgame_activate",
+        "endgame_cam"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "endgame, endgame_activate, endgame_cam name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 172,
+    "script_count": 172,
+    "entities": 2177,
+    "ee_candidates": [],
+    "ending_words": [
+      "endgame",
+      "endgame_activate",
+      "endgame_cam"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "door_underground2"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "a67efeb669e835f3fc2522c1a7c6d64840a251fb4e14efb8eed5bac1d2cfbfc4",
+    "map_specific_triggers": [
+      "endgame",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "turret_ads_use"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Christmas_Delivery_-_ZM.exe",
+    "original_sha256": "4427a6a086a5a1531245958fc802a97bf66265017b0f89dbc0dbf22ca7dedbc2",
+    "original_size": 414322761,
+    "source_url": "http://www.mediafire.com/file/rr0y7qk227dyxo6/Christmas_Delivery_-_ZM.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/12/20/christmas-delivery/",
+    "fetched": "2026-09-23T03:34:41Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "ugx_mod",
+      "christmas_map",
+      "top_100",
+      "ugx_modded"
+    ],
+    "catalogue_description": "Features \u2013 Some weapons in UGX Mod replaced \u2013 Custom viewhands \u2013 UGX Mod 1.0.4 (with never seen before stuff!) Things never seen before in UGX Mod maps: \u2013 Class system (all abilities and perks of a class are lost upon death on COOP; last stand doesn\u2019t count for it) \u2013 99% replica of the new CoD walking (also has jumping) \u2013 Ghosts sliding \u2013 Custom trap \u2013 BO2 characters \u2013 Toggleable Zombie Counter (I hate forced zombie counters, but whateva) And here are some features that makes the map feel more like BO2 and typical players may or may not understand what is it: \u2013 BO2 Melee exert sounds \u2013 BO2 Melee animations for all guns \u2013 BO2 Knife model",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_subway",
+        "loadscreen_template_ray2",
+        "loadscreen_user",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "ray_chirstmas_map.iwd:images/menu_visor_grid_bottom.iwi",
+        "ray_chirstmas_map.iwd:images/menu_visor_grid_top.iwi",
+        "ray_chirstmas_map.iwd:images/menu_visor_left_bracket01.iwi",
+        "ray_chirstmas_map.iwd:images/menu_visor_right_bracket01.iwi",
+        "ray_chirstmas_map.iwd:images/mtl_p6_haiti_loading_wall_section_03_n.iwi",
+        "ray_chirstmas_map.iwd:images/specialty_fastreload_zombies.iwi",
+        "ray_chirstmas_map.iwd:images/ugx_mod_loadscreen_background.iwi",
+        "ray_chirstmas_map.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ray_chirstmas_map.iwd:images/ugx_mod_loadscreen_template_ray2.iwi",
+        "ray_chirstmas_map.iwd:images/ugx_mod_menu_background.iwi",
+        "ray_chirstmas_map.iwd:images/ugx_mod_menu_template.iwi",
+        "ray_chirstmas_map.iwd:images/ugx_mod_menu_template_ray.iwi",
+        "ray_chirstmas_map.iwd:images/_-gmtl_p6_haiti_loading_wall__a20f4c6b.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/christmasdelivery/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/christmas-delivery-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 99.7,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 117,
+        "scripts": 30,
+        "bytes": 30480985
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 392,
+        "scripts": 9,
+        "bytes": 78819113
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      },
+      {
+        "file": "zviewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      },
+      {
+        "file": "zzugx_mod_gun_mod.iwd",
+        "entries": 60,
+        "scripts": 0,
+        "bytes": 10122754
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "mod.ff",
+      "ray_chirstmas_map.ff",
+      "ray_chirstmas_map_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ray_chirstmas_map.iwd:maps/_loadout.gsc",
+      "ugx_mod.iwd:maps/_loadout.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc"
+    ]
+  },
+  "site_hidden": true
+}

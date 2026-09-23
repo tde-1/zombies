@@ -1,0 +1,199 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "pietercity",
+  "title": "PIETERCITY",
+  "source": "custom",
+  "author": "Pieternba2k",
+  "released": "2017-07-22",
+  "fs_game": "mods/pietercity",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@pietercity.iwd": "9d7060d208e200c049b078c95fc1464d2e052c39c8212ce053c2d146f7499547"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 570,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_door",
+        "auto8"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "auto7"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto6"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto5"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9d7060d208e200c049b078c95fc1464d2e052c39c8212ce053c2d146f7499547",
+    "map_specific_triggers": [
+      "text_intro"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "PIETERCITY1.0.exe",
+    "original_sha256": "ce6cdf16498a58e527c8464c94d849f3e934568432faa5615eef69deb162aad1",
+    "original_size": 117299479,
+    "source_url": "https://www.mediafire.com/file/bczi63y2xiame3a/PIETERCITY1.0.exe",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:37:52Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge",
+      "christmas_map"
+    ],
+    "catalogue_description": "Here my official first map: Pieter/Icecity (No t4m needed) Pietercity: created by Pieternba2k \u2014 No t4m Needed!! \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014- Credits and huge thanks for all these hero\u2019s: Shippuden (All black ops 1 weapons) Redspace (Napalm/moon zombie) Jerrie13 (pack a punch powerup/character Models + a lot more) Gympie5 (scripting + a lot more) Bamskater (All black ops 1 perks) DidUknowiPwn (perk powerup script) KDXDARK (Alien powerups script) Fusorf (Blackops3 perk shaders) CFG Factory UGX \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2013 if I forgot to credit you make sure to send me a message and Ill update this list as soon as possible! Enjoy the Map \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014- Features: 2 Boss zombies Black ops 1 wonder weapon Black ops 1 Perks/weapons Intense Gameplay/ Hard difficulty Buyable ending Custom textures/camos Beta testers: Lenny seener Jerrie13 Gympie5 theKing702 Custompwn Pschycofin Gameplay style Inspired by: Cheese cube unlimited by Zombiekiller The map includes some minor bugs/glitches and Ill try to fix them in the future You propably wont even notice them so dont worry",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/pietercity/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/pietercity-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 64.8,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3286864
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 557060
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019295
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "pietercity_patch.ff",
+      "pietercity.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

@@ -1,0 +1,190 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_laboratory",
+  "title": "LABORATORY",
+  "source": "custom",
+  "author": "ihmiskeho",
+  "released": "November 01, 2015, 09:22:56 pm",
+  "fs_game": "mods/nazi_zombie_laboratory",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_laboratory.iwd": "85a48d9b1f85c102da79920236ca3f0fde7e1a6908943dbafaa371ae3bf25e01"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_door_final"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_door_final look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 976,
+    "ee_candidates": [
+      "ee_door_final"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        50000,
+        "zombie_door",
+        "sewer_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "sewer_door2"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "elevator_door"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door4"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 50000,
+      "targetname": "zombie_door",
+      "target": "sewer_door",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "85a48d9b1f85c102da79920236ca3f0fde7e1a6908943dbafaa371ae3bf25e01",
+    "map_specific_triggers": [
+      "bench_trig",
+      "button10_trigger",
+      "button1_trigger",
+      "button2_trigger",
+      "button3_trigger",
+      "button4_trigger",
+      "button5_trigger",
+      "button6_trigger",
+      "button7_trigger",
+      "button8_trigger",
+      "button9_trigger",
+      "doortrig",
+      "generator2_trig",
+      "generator3_trig",
+      "generator_trig",
+      "key_trig",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "painting_trig",
+      "part1_trig",
+      "part2_trig",
+      "part3_trig",
+      "phd_trig",
+      "radio1_trigger",
+      "radio2_trigger",
+      "radio3_trigger",
+      "radio4_trigger",
+      "reaper_trig",
+      "rise_trigger",
+      "teddy_trig",
+      "touch_me"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_laboratory.exe",
+    "original_sha256": "be68fb4a9e541349342ffbe9f2a8bbf0d1c44608574474db432dbe4580529263",
+    "original_size": 124799679,
+    "source_url": "https://www.mediafire.com/file/p8uidvtxtwyd6bt/nazi_zombie_laboratory.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:32:26Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_laboratory"
+      ],
+      "iwd_images": [
+        "nazi_zombie_laboratory.iwd:images/loadscreen_nazi_zombie_laboratory.iwi",
+        "nazi_zombie_laboratory.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_laboratory"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/laboratory/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2021/09/nazi-zombie-laboratory-3-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 102.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_laboratory.ff",
+      "nazi_zombie_laboratory_patch.ff",
+      "nazi_zombie_laboratory.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}
