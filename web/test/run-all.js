@@ -527,6 +527,25 @@ async function main() {
     truthy(two.some((r) => r.round === 40), 'the 2p run is on the 2p board')
   })
 
+  // Watch beside a record row (Movement's WatchButton): every record surface says whether
+  // there is a replay and which match it is, so the button can open /replay/<match> directly.
+  check('record rows carry match_id and replay, on the map boards, the hub and the profile', () => {
+    results_.ingest({ box: 'test-box', summary: summary({ match_id: 'm_watch', players: ['76561198000000002'], rounds: 77 }),
+      replay: { file: 'w.enwr', size: 1, key_id: 'key0000000000002' } })
+    const solo = records.forMap('nazi_zombie_test').find((b) => b.category === 'round').counts.find((c) => c.player_count === 1).rows
+    const row = solo.find((r) => r.match_id === 'm_watch')
+    truthy(row, 'on the board')
+    eq(row.replay, true, 'board row has a replay')
+    const other = solo.find((r) => r.match_id !== 'm_watch' && !db.prepare('SELECT 1 FROM replays WHERE match_id=?').get(r.match_id))
+    if (other) eq(other.replay, false, 'a run with no replay says so')
+    const hub = records.hub({ category: 'round', playerCount: 1 }).find((h) => h.map_key === 'nazi_zombie_test')
+    eq(hub.top.match_id, 'm_watch', 'the hub row')
+    eq(hub.top.replay, true)
+    const held = records.heldBy('76561198000000002').find((h) => h.category === 'round' && h.player_count === 1)
+    eq(held.match_id, 'm_watch', 'the profile row')
+    eq(held.replay, true)
+  })
+
   check('a ZWR-profile run outside the rules still posts, marked', () => {
     results_.ingest({ box: 'test-box', summary: summary({ match_id: 'm_fov', players: ['76561198000000003'], rounds: 99, dvars: { cg_fov: 140 } }) })
     const zwr = db.prepare(`SELECT r.* FROM records r JOIN boards b ON b.id=r.board_id

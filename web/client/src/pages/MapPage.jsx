@@ -11,6 +11,7 @@ import { Section, Empty, Loading, Health, Untracked, PlayerLink, NotPlayable, Ne
 import BackButton from '../components/BackButton'
 import Comments from '../components/Comments'
 import { DownloadButton } from '../components/MapDownload'
+import WatchButton from '../components/WatchButton'
 
 // The map page, redesigned as Movement's (2026-09-22, B: "I kind of like what we've done here,
 // but redesign the map page to make it look a bit nicer"). The shape is Movement's
@@ -652,7 +653,7 @@ function Board({ board }) {
       <div className="listing">
         {!sel || sel.rows.length === 0 ? <Empty>No runs yet.</Empty> : (
           <table className="data">
-            <thead><tr><th className="num">#</th><th>Players</th><th className="num">{time ? 'Time' : 'Round'}</th><th /></tr></thead>
+            <thead><tr><th className="num">#</th><th>Players</th><th className="num">{time ? 'Time' : 'Round'}</th><th /><th /></tr></thead>
             <tbody>
               {sel.rows.map((r) => (
                 <tr key={r.id}>
@@ -660,6 +661,7 @@ function Board({ board }) {
                   <td>{r.players.map((p) => <PlayerLink key={p.steam_id} user={p} avatar={false} />).reduce((a, b) => [a, ', ', b])}</td>
                   <td className="num">{time ? clock(r.value_ms) : r.round}</td>
                   <td className="tiny">{r.profile_ok ? '' : <span className="hot" title={r.profile_note}>rules mismatch</span>}</td>
+                  <td className="rt-watch"><WatchButton matchId={r.match_id} replay={r.replay} /></td>
                 </tr>
               ))}
             </tbody>

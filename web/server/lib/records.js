@@ -91,7 +91,10 @@ function rowsFor(boardId, limit = 50) {
   const b = db.prepare('SELECT * FROM boards WHERE id=?').get(Number(boardId))
   if (!b) return []
   const order = b.sort === 'time_asc' ? 'r.value_ms ASC' : 'r.round DESC, r.value_ms ASC'
-  const rows = db.prepare(`SELECT r.*, g.ended_at, g.match_id AS game_match
+  // `has_replay`: a Watch button beside the row opens /replay/<match> straight away
+  // (Movement's WatchButton), so the row has to know whether there is one.
+  const rows = db.prepare(`SELECT r.*, g.ended_at, g.match_id AS game_match,
+                                  EXISTS (SELECT 1 FROM replays rp WHERE rp.game_id=r.game_id) AS has_replay
                              FROM records r LEFT JOIN games g ON g.id=r.game_id
                             WHERE r.board_id=? AND r.current=1 AND r.verified=1
                             ORDER BY ${order}, r.created_at ASC LIMIT ?`).all(Number(boardId), limit)
@@ -107,6 +110,7 @@ function rowsFor(boardId, limit = 50) {
     at: r.created_at,
     match_id: r.match_id || r.game_match || null,
     game_id: r.game_id || null,
+    replay: !!r.has_replay && !!(r.match_id || r.game_match),
     players: (safeJson(r.roster, []) || [String(r.steam_id)]).map((sid) => users.publicById(sid)).filter(Boolean),
   }))
 }
@@ -253,6 +257,7 @@ function heldBy(steamId) {
       held.push({
         map_key: r.map_key, map_title: r.title, category: r.category, label: CATEGORY_LABEL[r.category] || r.category,
         player_count: r.player_count, profile: r.profile, round: r.round, value_ms: r.value_ms, at: r.created_at,
+        match_id: top.match_id, replay: top.replay,
       })
     }
   }
