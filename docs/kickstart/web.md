@@ -3490,3 +3490,16 @@ regenerated: the item is in the excluded list, no group reaches the game.
 
 **Needs**: `npm run build` (client) + a site restart on B's word + the site.env line. No live data was
 written; the only schema change is two new tables, created on the next start.
+
+**Addendum (18:55 UK): the render and Electron checks were NOT run.** `heavy.lock` was held by lane RV
+until 18:51, then commit charge stood at 90% with B's PC lagging, so no build, headless browser or
+Electron window was started. Both checks are committed and ready, each under `heavy.lock` when commit
+charge < 85% and free RAM > 5 GB:
+
+* `cd web && npm run build && node tools/soc-rail-check.mjs ..\tmp\soc-rail 3491`: its own scratch site
+  on 3491 (fake 7656119800000060x, stand-in Movement DB), headless Edge on `/maps`, 6 checks
+  (friends block first, In launcher, In party gold pip, FRIEND tag, Everyone else, a late arrival
+  pushed without reload < 2.5 s) + `rail.png`, `rail-pushed.png`; kills its site and Edge on exit.
+* `cd launcher && npx electron test/attention-electron.mjs`: one invisible off-screen window, real
+  `flashFrame`, the dot from the real tray image, the toast XML into a real `Notification` (never
+  shown), the chime rendered offline (no speakers); prints `ATTENTION_ELECTRON {...}` and exits.
