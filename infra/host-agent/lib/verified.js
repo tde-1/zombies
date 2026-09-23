@@ -100,8 +100,9 @@ export class EnvLog {
  * @param {string[]} o.players  keys of the players who were in the game (for "unreported")
  * @param {boolean} [o.requireFpsReport]  unreported FPS is a violation (off until every client ships fps_guard)
  * @param {boolean} [o.requireServerEnv]  a server that reported no dvars is a violation (off until the DLL is deployed)
+ * @param {boolean} [o.allowFpsChange]  a change inside 20–250 after go-live is allowed (b2's wording); off = strictest
  */
-export function judge(env, { players = [], names = {}, requireFpsReport = false, requireServerEnv = false } = {}) {
+export function judge(env, { players = [], names = {}, requireFpsReport = false, requireServerEnv = false, allowFpsChange = false } = {}) {
   const violations = []
   const unknown = []
   const observed = { server: {}, fps: {} }
@@ -136,7 +137,9 @@ export function judge(env, { players = [], names = {}, requireFpsReport = false,
       if (v <= 0) violations.push(`${who} ran com_maxfps uncapped (0)`)
       else if (v < CLIENT_FPS.min || v > CLIENT_FPS.max) violations.push(`${who} ran com_maxfps ${v} (Verified allows ${CLIENT_FPS.min}–${CLIENT_FPS.max})`)
     }
-    if (vals.length > 1) violations.push(`${who} changed com_maxfps mid-game (${vals.join(' → ')})`)
+    // b2 allows changes inside 20–250 ("not to save yourself"); ZWR's current text could not
+    // be read. The strictest reading is the default, so a Verified run is clean on every board.
+    if (vals.length > 1 && !allowFpsChange) violations.push(`${who} changed com_maxfps mid-game (${vals.join(' → ')})`)
   }
   if (unreported.length) {
     const msg = `no FPS report from ${unreported.join(', ')}`
@@ -151,7 +154,7 @@ export function judge(env, { players = [], names = {}, requireFpsReport = false,
     unknown: [...new Set(unknown)],
     enforced: {
       server: { ...SERVER_RULES },
-      client: { com_maxfps: `${CLIENT_FPS.min}-${CLIENT_FPS.max}, unchanged after go-live` },
+      client: { com_maxfps: `${CLIENT_FPS.min}-${CLIENT_FPS.max}${allowFpsChange ? '' : ', unchanged after go-live'}` },
       require_fps_report: !!requireFpsReport,
       require_server_env: !!requireServerEnv,
     },

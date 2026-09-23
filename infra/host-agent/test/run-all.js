@@ -787,6 +787,17 @@ t('FPS above 250, uncapped, or changed mid-game each refuse the record', () => {
   }
 })
 
+t('verifiedAllowFpsChange (b2\'s wording) lets a change inside 20–250 stand, but never 333', () => {
+  const r = makeRef({ config: { verifiedAllowFpsChange: true } })
+  stockServer(r)
+  bootGame(r)
+  r.onEvent({ t: 'client_dvar', ms: MIN, slot: 0, name: 'com_maxfps', value: 250 })
+  r.onEvent({ t: 'client_dvar', ms: 2 * MIN, slot: 0, name: 'com_maxfps', value: 125 })
+  eq(r.verifiedEnv().ok, true)
+  r.onEvent({ t: 'client_dvar', ms: 3 * MIN, slot: 0, name: 'com_maxfps', value: 333 })
+  eq(r.verifiedEnv().ok, false)
+})
+
 t('an FPS change BEFORE go-live (menu, load) is the start value, not a mid-game change', () => {
   const r = makeRef()
   stockServer(r)

@@ -1,5 +1,14 @@
 # referee — script hook points, detection strategy, and the in-process referee
 
+> **2026-09-23 — Verified rules and record compliance: `verified-rules.md`.**
+> - The referee now sends `dvar` (24 server dvars) and `client_dvar` (each client's reported
+>   `com_maxfps`). `game_over` carries `dvars`.
+> - The host's `lib/verified.js` refuses a Verified record on a reported rule break.
+> - Spawn cadence on our dedi was measured equal to a listen server on Nacht.
+> - `wait_network_frame()` makes Shi No Numa and Der Riese spawns ping-dependent. It is not yet
+>   measured and needs a decision.
+> - Map eligibility table: §7 there.
+
 > ## STATUS AT HANDOVER (2026-09-20 04:00) — read this before anything below
 >
 > **The safe build for B:** `build.ps1 -Name referee` then `deploy.ps1 referee`, launched with **no

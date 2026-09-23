@@ -45,6 +45,9 @@ export const DEFAULTS = {
   // reported and breaks the rule always refuses the record.
   verifiedRequireFpsReport: false,
   verifiedRequireServerEnv: false,
+  // b2 allows FPS changes inside 20–250; the default refuses any change after go-live (the
+  // strictest reading, clean on every board). A decision for the coordinator/B.
+  verifiedAllowFpsChange: false,
 }
 
 let SEQ = 0
@@ -414,6 +417,7 @@ export class Referee extends EventEmitter {
       players: keys, names,
       requireFpsReport: !!this.cfg.verifiedRequireFpsReport,
       requireServerEnv: !!this.cfg.verifiedRequireServerEnv,
+      allowFpsChange: !!this.cfg.verifiedAllowFpsChange,
     })
   }
 
