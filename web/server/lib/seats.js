@@ -179,4 +179,7 @@ function sweep() {
 
 function forget(matchId) { seats.delete(String(matchId)) }
 
-module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, sweep, forget, RESUME_MS }
+/** Has the referee said anything about who is in this match since the site started? */
+const known = (matchId) => seats.has(String(matchId))
+
+module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, sweep, forget, known, RESUME_MS }
