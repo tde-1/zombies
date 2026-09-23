@@ -836,6 +836,10 @@ def main():
         "build": fingerprint,
         "attach": dict(m["attach"], grip={k: v for k, v in grip.items() if k != "palm"} if grip else None),
         "weapons": weapons,
+        # The replay's `weapon` field / event is the engine name (replay-events-v1.md): look it up here.
+        "weaponByEngineName": {**{w["weapon"]: {"weapon": k, "pap": False} for k, w in m["weapons"].items()},
+                               **{w["pap"]["weapon"]: {"weapon": k, "pap": True}
+                                  for k, w in m["weapons"].items() if w.get("pap")}},
         "powerups": powerups,
         "fx": fx,
         "fxJson": "_fx/fx.json",

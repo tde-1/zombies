@@ -212,6 +212,8 @@ as the maps and, not being in the bucket, are served locally. URLs in the file a
                                  engine: {...} },
                        pap: { displayName, glb | null, sameWorldModelAsBase?, viewGlb, muzzle, sounds, note? },
                        gameSounds, flashEffect, reticle } },
+  weaponByEngineName: { "zombie_thompson_upgraded": { weapon: "thompson", pap: true }, ... },  // R1's `weapon` names
+  // powerups' keys are R1's `powerup.kind` values (max_ammo, insta_kill, double_points, nuke, carpenter)
   powerups: { <kind>: { glb, xmodel, script, model, sounds:{pickup, announce, sting?, loop?, end?, each_zombie?},
                         glow:{sprite, spriteUrl}, spawnSound, idleLoop, groundLifeMs, blinkFromMs, durationMs? } },
   fx: { <name>: { url, w, h, blend, tint?, material?, image, zone, use } },  fxJson,
