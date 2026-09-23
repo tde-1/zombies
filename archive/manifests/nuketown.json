@@ -204,5 +204,31 @@
     ],
     "unproven": "no client joined: server-side load under Wine only"
   },
-  "dedi_status": "box_map_loaded"
+  "dedi_status": "box_map_loaded",
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "unproven",
+    "map_loaded_runs": 0,
+    "misses": 0,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {
+      "unresolved_refs": [
+        "xmodel:csgo_fiveseven",
+        "xmodel:lukkie_bottle_chugabud_view",
+        "xmodel:lukkie_bottle_chugabud_world",
+        "xmodel:lukkie_bottle_thombstone_view",
+        "xmodel:lukkie_bottle_thombstone_world",
+        "xmodel:t6_wpn_zmb_shield_dmg1_view",
+        "xmodel:t6_wpn_zmb_shield_dmg1_world",
+        "xmodel:t6_wpn_zmb_shield_dmg2_view",
+        "xmodel:tac_detect",
+        "xmodel:tac_stow"
+      ]
+    },
+    "tool": "archive/asset_audit.py"
+  }
 }

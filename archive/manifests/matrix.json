@@ -194,5 +194,23 @@
       "matrix.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 191,
+    "fatal": 2,
+    "visible": 2,
+    "visible_owner": {
+      "release": 2
+    },
+    "visible_names": [
+      "item:zombie_colt",
+      "item:zombie_colt_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

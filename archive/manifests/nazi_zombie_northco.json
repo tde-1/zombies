@@ -210,5 +210,41 @@
       "north_company_files.iwd:maps/_zombiemode_weapons.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 213,
+    "fatal": 45,
+    "visible": 28,
+    "visible_owner": {
+      "release": 28
+    },
+    "visible_names": [
+      "item:zombie_bo_olympia_upgraded",
+      "item:zombie_perk_bottle_vulture",
+      "weapon:weapons/sp/zombie_perk_bottle_vulture",
+      "xanim:zombie_dog_attack_look_down",
+      "xanim:zombie_dog_attack_look_left",
+      "xanim:zombie_dog_attack_look_right",
+      "xanim:zombie_dog_attack_look_up",
+      "xanim:zombie_dog_attack_player_miss_turnl",
+      "xanim:zombie_dog_attack_player_miss_turnr",
+      "xanim:zombie_dog_attackidle",
+      "xanim:zombie_dog_attackidle_bark",
+      "xanim:zombie_dog_attackidle_growl",
+      "xanim:zombie_dog_idle",
+      "xanim:zombie_dog_run",
+      "xanim:zombie_dog_run_attack",
+      "xanim:zombie_dog_run_attack_low",
+      "xanim:zombie_dog_run_attack_miss",
+      "xanim:zombie_dog_run_jump_40",
+      "xanim:zombie_dog_run_jump_window_40",
+      "xanim:zombie_dog_run_lean_l"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

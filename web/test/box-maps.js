@@ -129,6 +129,15 @@ async function main () {
     eq((await get('/map-files/custom_pop', 'wrong')).status, 401)
   })
 
+  await check('asset gate: a blocking asset_audit verdict is hidden on import, whatever site_hidden says', async () => {
+    const g = require('../server/lib/assetgate')
+    eq(g.hiddenFor({ site_hidden: false, asset_audit: { verdict: 'hide' } }), { hidden: 1, hidden_set: 1 })
+    eq(g.hiddenFor({ asset_audit: { verdict: 'fix' } }), { hidden: 1, hidden_set: 1 })
+    eq(g.hiddenFor({ site_hidden: false, asset_audit: { verdict: 'minor' } }), { hidden: 0, hidden_set: 1 })
+    eq(g.hiddenFor({ asset_audit: { verdict: 'unproven' } }), { hidden: 0, hidden_set: 0 })
+    eq(g.hiddenFor({ site_hidden: true }), { hidden: 1, hidden_set: 1 })
+  })
+
   await check('GET /api/gs/popular-maps', async () => {
     const r = await get('/popular-maps')
     eq(r.status, 200); eq(r.body.maps[0].map, 'custom_pop')

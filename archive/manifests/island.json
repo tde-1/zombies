@@ -192,5 +192,22 @@
       "nsz_bo2_weapons_v1.3.2.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 158,
+    "fatal": 1,
+    "visible": 1,
+    "visible_owner": {
+      "release": 1
+    },
+    "visible_names": [
+      "item:jukebox_button_press"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

@@ -732,12 +732,54 @@ def write_md(rep, path):
         fh.write("\n".join(L) + "\n")
 
 
+def summary(m, at):
+    """The manifest's `asset_audit` block: what asset_gate.py and import-archive.js read."""
+    return {"at": at, "verdict": m["verdict"], "map_loaded_runs": m["map_loaded_runs"],
+            "misses": m["misses"], "fatal": m["fatal"], "visible": m["visible"],
+            "visible_owner": m["visible_owner"], "visible_names": m["visible_names"][:20],
+            "client_check": m["client_check"][:20],
+            "static": {k: v[:10] for k, v in (m.get("static") or {}).items() if v},
+            "tool": "archive/asset_audit.py"}
+
+
+def write_manifests(rep, hide):
+    n = 0
+    for bsp, m in rep["maps"].items():
+        mf = os.path.join(MANIFESTS, bsp + ".json")
+        if m["source"] == "stock" or not os.path.exists(mf):
+            continue
+        with open(mf, encoding="utf-8") as fh:
+            raw = fh.read()
+        man = json.loads(raw)
+        # keep each manifest's own style (its writers differ): escaped or raw UTF-8, final newline
+        style = {"ascii": raw.isascii(), "nl": raw.endswith("\n")}
+        man["asset_audit"] = summary(m, rep["at"])
+        if bsp in hide:
+            if m["verdict"] != "hide":
+                raise SystemExit("%s: --hide asked, but its verdict is %s" % (bsp, m["verdict"]))
+            man["site_hidden"] = True
+            man["site_hidden_reason"] = (
+                "asset audit %s: the release itself lacks what a player meets (%s); a retail "
+                "listen server with the same files misses the same (archive.md 13)"
+                % (rep["at"][:10], ", ".join(m["visible_names"][:6])))
+        with open(mf, "w", encoding="utf-8") as fh:
+            json.dump(man, fh, indent=2, ensure_ascii=style["ascii"])
+            if style["nl"]:
+                fh.write("\n")
+        n += 1
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--map", action="append", default=[])
     ap.add_argument("--pull-box", action="store_true")
     ap.add_argument("--no-trace", action="store_true")
     ap.add_argument("--out", default=os.path.join(REPORTS, "asset-audit.json"))
+    ap.add_argument("--write-manifest", action="store_true",
+                    help="record each map's verdict as `asset_audit` in archive/manifests/<bsp>.json")
+    ap.add_argument("--hide", action="append", default=[],
+                    help="with --write-manifest: also set site_hidden + site_hidden_reason (a verdict=hide map)")
     a = ap.parse_args()
     if a.pull_box:
         print("box logs -> %s (tar rc %s)" % pull_box())
@@ -746,6 +788,9 @@ def main():
         with open(a.out, "w", encoding="utf-8") as fh:
             json.dump(rep, fh, indent=1)
         write_md(rep, os.path.splitext(a.out)[0] + ".md")
+    if a.write_manifest:
+        n = write_manifests(rep, set(a.hide))
+        print("asset_audit written into %d manifests" % n)
     for bsp, m in sorted(rep["maps"].items(), key=lambda kv: (kv[1]["verdict"], kv[0])):
         print("%-30s %-6s runs=%3d loaded=%3d misses=%4d fatal=%3d visible=%3d %-34s %s" % (
             bsp, "hidden" if m["hidden"] else "LIVE", m["processes"], m["map_loaded_runs"], m["misses"],

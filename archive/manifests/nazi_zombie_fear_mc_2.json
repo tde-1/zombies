@@ -139,5 +139,36 @@
   "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile.  DEDI/REFEREE 2026-09-22 (runs mapC and join83): THE FIRST CUSTOM MAP TO PASS THE FIVE-GATE 300 s PROOF WITH A REAL CLIENT. join83: CS_ACTIVE=1, referee ROUND 1, 76 of 76 getstatus answered, frame::count +293 in 5 s = 58.6 Hz, com_frameTime advanced 30031 ms over the last 30 s, Com_Frame-body 58.4 Hz, server RSS 323 MB flat -- PASS. Booted headless with ENW_DEDI_BIG_HEAP=1 (422 MB reserve). dedi.md 14.6.",
   "dedi_status": "pass_five_gates",
   "status": null,
-  "dedi_verdict_source": "dedi.md 14.6; runs mapC and join83"
+  "dedi_verdict_source": "dedi.md 14.6; runs mapC and join83",
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 14,
+    "misses": 370,
+    "fatal": 20,
+    "visible": 4,
+    "visible_owner": {
+      "release": 4
+    },
+    "visible_names": [
+      "xmodel:bo1_c_viet_zombie_female_head",
+      "xmodel:bo1_c_viet_zombie_napalm_head",
+      "xmodel:bo1_c_viet_zombie_nva1_body",
+      "xmodel:bo1_c_viet_zombie_vc_grunt_head"
+    ],
+    "client_check": [
+      "char_usa_marine_head1_1",
+      "char_usa_marine_head2_2",
+      "char_usa_marine_head3_3",
+      "char_usa_marine_head4_4",
+      "char_usa_marine_player_body1_1",
+      "char_usa_marine_player_body2_1",
+      "char_usa_raider_gear2",
+      "char_usa_raider_gear3",
+      "char_usa_raider_helm1",
+      "char_usa_raider_helm2"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

@@ -234,5 +234,48 @@
     ],
     "unproven": "no client joined: server-side load under Wine only"
   },
-  "dedi_status": "box_map_loaded"
+  "dedi_status": "box_map_loaded",
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 280,
+    "fatal": 47,
+    "visible": 4,
+    "visible_owner": {
+      "release": 4
+    },
+    "visible_names": [
+      "item:ballistic_knife_sickel",
+      "item:ballistic_knife_sickel_upgraded",
+      "weapon:weapons/sp/ballistic_knife_sickel",
+      "weapon:weapons/sp/ballistic_knife_sickel_upgraded"
+    ],
+    "client_check": [
+      "char_rus_guard_body1_1",
+      "char_rus_guard_body1_2",
+      "char_rus_guard_body1_g_behead",
+      "char_rus_guard_body1_g_larmoff_1",
+      "char_rus_guard_body1_g_larmspawn",
+      "char_rus_guard_body1_g_legsoff_1",
+      "char_rus_guard_body1_g_llegoff_1",
+      "char_rus_guard_body1_g_llegspawn",
+      "char_rus_guard_body1_g_lowclean",
+      "char_rus_guard_body1_g_rarmoff_1",
+      "char_rus_guard_body1_g_rarmspawn",
+      "char_rus_guard_body1_g_rlegoff_1",
+      "char_rus_guard_body1_g_rlegspawn",
+      "char_rus_guard_body1_g_torso_1",
+      "char_rus_guard_body1_g_upclean",
+      "char_rus_guard_body1_gear1_1",
+      "char_rus_guard_body1_gear2_1",
+      "char_rus_guard_body1_gear3_1",
+      "char_rus_guard_hat",
+      "char_rus_guard_head1_1"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "asset audit 2026-09-23: the release itself lacks what a player meets (item:ballistic_knife_sickel, item:ballistic_knife_sickel_upgraded, weapon:weapons/sp/ballistic_knife_sickel, weapon:weapons/sp/ballistic_knife_sickel_upgraded); a retail listen server with the same files misses the same (archive.md 13)"
 }

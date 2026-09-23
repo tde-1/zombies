@@ -180,5 +180,29 @@
       "nazi_zombie_rc.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 282,
+    "fatal": 69,
+    "visible": 6,
+    "visible_owner": {
+      "release": 6
+    },
+    "visible_names": [
+      "item:g36c",
+      "item:g36c_upgraded",
+      "item:inter",
+      "item:inter_upgraded",
+      "item:kf5",
+      "item:kf5_upgraded"
+    ],
+    "client_check": [
+      "aw_hazmat_viewhands"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

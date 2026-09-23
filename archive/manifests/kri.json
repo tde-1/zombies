@@ -155,5 +155,30 @@
       "kri.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 179,
+    "fatal": 9,
+    "visible": 9,
+    "visible_owner": {
+      "release": 9
+    },
+    "visible_names": [
+      "weapon:weapons/sp/m2_flamethrower_zombie_upgraded",
+      "weapon:weapons/sp/panzerschrek_zombie",
+      "weapon:weapons/sp/panzerschrek_zombie_upgraded",
+      "weapon:weapons/sp/zombie_kar98k",
+      "weapon:weapons/sp/zombie_kar98k_upgraded",
+      "weapon:weapons/sp/zombie_m1garand",
+      "weapon:weapons/sp/zombie_m1garand_upgraded",
+      "weapon:weapons/sp/zombie_type100_smg",
+      "weapon:weapons/sp/zombie_type100_smg_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

@@ -217,5 +217,20 @@
     ],
     "unproven": "no client joined: server-side load under Wine only"
   },
-  "dedi_status": "box_map_loaded"
+  "dedi_status": "box_map_loaded",
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "minor",
+    "map_loaded_runs": 1,
+    "misses": 155,
+    "fatal": 1,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [
+      "aw_hazmat_viewhands"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

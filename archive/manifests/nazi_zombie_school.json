@@ -162,5 +162,21 @@
     "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/41f7aaef8a558cb8864bed7b096038d3.jpg",
     "cover_size": 160834
   },
-  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. "
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "minor",
+    "map_loaded_runs": 1,
+    "misses": 243,
+    "fatal": 5,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [
+      "viewhands_player_sas_woodland",
+      "viewhands_sas_woodland"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

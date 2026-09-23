@@ -148,5 +148,28 @@
         "applied": false
       }
     ]
-  }
+  },
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 6,
+    "misses": 307,
+    "fatal": 10,
+    "visible": 5,
+    "visible_owner": {
+      "release": 5
+    },
+    "visible_names": [
+      "item:molotov",
+      "item:tesla_gun",
+      "item:tesla_gun_upgraded",
+      "weapon:weapons/sp/tesla_gun",
+      "weapon:weapons/sp/tesla_gun_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "asset audit 2026-09-23: the release itself lacks what a player meets (item:molotov, item:tesla_gun, item:tesla_gun_upgraded, weapon:weapons/sp/tesla_gun, weapon:weapons/sp/tesla_gun_upgraded); a retail listen server with the same files misses the same (archive.md 13)"
 }
