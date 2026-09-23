@@ -2827,3 +2827,105 @@ capture, not the page.) `npm test` is green.
 **Not proven:** signed in (the "Your maps" row was not drawn with a real account); phone widths;
 the launcher's window. On the live DB the cards view is just Popular + View all maps until an admin
 publishes a playlist. **Needs a client build and a site restart.**
+
+## 2026-09-23 — admin: parity with Movement and beyond
+
+B: "Really clean up the admin panel. Bring it up to parity with ENW Movement, and even beyond." `/admin`
+is rebuilt on Movement's operator console (`movement-client/src/pages/Admin.jsx`, `components/admin/*`,
+`server/lib/adminLog.js`), plus the pages Zombies needs and Movement does not have.
+
+**Shape (Movement's).** Header "ENW Zombies · Operator console / Administration" with live facts; one
+pill tab bar with counts, **grouped** Operate · People · Content · Log (ours has twice Movement's tabs);
+a to-do strip of clickable counts (at the door, reports open, key changed, no live playlists, flagged
+results, boxes offline); all state in the URL (`?tab=`, `?user=`, `?filter=`, `?flag=`), old tab names
+aliased. Movement's mapstaff `ConfirmDialog` guards **every** destructive action (Movement itself still
+uses `window.confirm` in most places): Esc/backdrop closes, optional/required reason, a typed phrase for
+the irreversible ones. Toasts after each action. One table component with search, sort and paging
+(client-side, or server-side for People, Maps, Games). CSS: `pages/admin/admin.css`, all `.adm-*`,
+global tokens only.
+
+### Parity table
+
+| Movement (tab / feature) | Ours | Notes |
+|---|---|---|
+| Now: health alerts, running servers, fleet, modes offline, replay gaps | **Now** (stats, boxes strip, latest log, lease a game, sweep) + **Boxes** | key-change alert is a banner on every tab |
+| ServerLogPanel (roster here/was, chat, say) | **Boxes** lease rows: players with seat state, slot, CPU/RAM/uptime, Watch | no "say": the protocol has no site-to-game line per match |
+| Log (lanes, search, actor, window, Load older) | **Log**, same, over `activity_log` | lanes boxes/people/moderation/records/content/other |
+| audit(): 49 explicit calls | explicit `audit()` on every admin write **plus** `adminLog.guard()` catch-all (`admin.action`) | beyond: no staff write goes unlogged; secrets redacted |
+| People: At the door (multi-select approve), Everyone | **People**: At the door (multi-select, approve pasted SteamID64s), Everyone (server search/filter/sort/paging), Active bans | the beta gate |
+| PersonSheet: standing, holdings, bans/warnings, their log | **Person sheet**: approved/mod/admin/archivist/VIP toggles, rename (admin), ban/infraction with duration + reason, lift, games, badges, log | no self-demotion, last admin stays (server-side, Movement's rule) |
+| Reports (Looking at it / Done / Dismiss, reply) | **Reports**, status chips, note, same answers | |
+| Maps: reports, offline, review queue, MapPanel | **Maps**: catalogue (health chips + counts, hidden, sort, paging), health select, Hide, map of the week, row/playlist membership, guide count, our-box level | broken asks first (it refuses leases) |
+| Records moderation (retire/unretire) | **Records**: replay grade, Verify vs pinned key, Void with reason, Watch | |
+| Mode home: playlists + badges | **Playlists** (editor), **Rows** (home shelves), **Badges** (holders, award/revoke, new staff badge) | |
+| — | **Games**: results filtered by referee flag (result_mismatch, instance_retired, …) with counts; summary JSON, DLL build, exe sha | Zombies-only |
+| — | **Chat**: global channel incl. removed, search, origin, system lines, Remove/Restore | party/DM stay private |
+| — | **Guides**: weakest first, Hide/Show/Delete (tombstone) | |
+| — | **Release**: latest.yml (version, date, installer present + size match, sha512, bucket, earlier), DLL per box | Zombies-only |
+| Videos (render/QC) | — | no equivalent |
+| roles user/mod/admin/owner | mod / admin (+ archivist) | no owner tier |
+
+### Zombies pages
+
+* **Boxes** (admin): reads `boxes.last_status_json` (agent heartbeat), live `assignments`, `lib/seats.js`
+  and `presence`. Per box: slots leased/max, agent reserve, protocol, connect address, key pin, last DLL
+  build heard; Settings edits address, max games, reserve; Enable/Disable (confirm). Per lease: players
+  and seat (in game / left / not joined / unknown), slot, CPU, RAM, uptime; **Retire** (cancel; the agent
+  retires an unlisted lease on its next poll, host.md §13.2) and **Restart** (fresh lease for the same
+  players, superseding theirs). **The guard is server-side** (`lib/adminBoxes.js`): while anybody is in,
+  both answer 409 with their names until `confirm` = exactly those SteamIDs; the panel lists the names and
+  wants "end it" typed. "In" = seat connected, or presence in that match < 90 s, or, for a `live` lease the
+  site has no seat data on since it started, everybody leased (marked unknown). The old
+  `POST /lease/:id/cancel` uses the same guard. Box creation stays in `tools/register-box.js` (secret).
+* **Playlists**: list (order, Publish/Unpublish) + editor (name, blurb, hidden/live/scheduled with UTC time,
+  drag or arrow order, remove, add by search, warnings for hidden/broken/not-on-our-box maps, Save/Revert,
+  Delete with typed slug, admin only). New playlists start hidden.
+* **Release**: `web/public/updates/latest.yml` (`ZM_UPDATES_DIR` overrides). The site is never told the
+  DLL's sha256; shown: build stamp + exe sha the referee heard (last game's `summary.hashes`),
+  `dll_sha256` if a future heartbeat sends it, and a **noted** deploy sha + commit (`settings` key
+  `box_dll:<box>`).
+
+### API added (`routes/admin.js`)
+
+`GET /log`, `/log/counts` · `GET /users` · `POST /approve {steam_ids, approved}` · `GET /bans` ·
+`GET /games`, `/games/:id` · `GET /chat`, `POST /chat/:id/remove|restore` · `GET /maps` ·
+`GET/POST/PUT/DELETE /playlists` (keys validated, 409 on slug) · `GET /boxes/live` ·
+`POST /boxes/:name/address` · `POST /leases/:matchId/retire|restart` · `GET /release`,
+`POST /release/box/:name` · `GET /badges/:id/holders`. Existing paths kept; previously unlogged writes
+(role, map edit, playlists, badges, report resolve, infraction, capacity, enable) now log.
+
+**CLI to panel.** approve.js → People; lease-cli.js → Now (lease) + Boxes (retire/restart);
+register-box `--address`/capacity → Boxes Settings. Stay CLI: register-box creation, wipe-demo,
+adopt-account, seed/align names, import-movement-profiles, live-bridge/local-run.
+
+### Seed the first playlists (coordinator)
+
+Live DB has 0 playlists. `web/tools/seed-playlists.js`: additive, idempotent (existing slug left alone;
+missing/broken/hidden keys skipped and named), `VACUUM INTO` backup before any write.
+
+```
+cd web
+node tools/seed-playlists.js                   # dry run against web/data
+node tools/seed-playlists.js --apply           # hidden; publish in Admin → Playlists
+node tools/seed-playlists.js --apply --live    # or publish at once
+```
+
+Set (all maps load on our box): Stock (4), Community classics (8), Minecraft (2), Small and fast (8),
+Big maps (8), Christmas (5). Proven on a copy: 6 created; second run "exists, left alone".
+
+### Tests, proof
+
+`test/admin.js` (in `npm test`, 23 checks): walks the router (61 routes all carry requireMod/Admin; all
+401 anon and 403 player; the 28 admin-only 403 for a mod); gate, roles, bans, playlist CRUD and public
+order, seed plan, map flags, chat, games by flag, release + DLL note (no secret in responses), the box
+guard (409 naming who, wrong list refused, restart supersedes, unknown seats on a live game, presence),
+the log (catch-all, filters, cursor, redaction). Full `npm test` green. Screenshots: headless Edge,
+private profile, scratch port 3587, copy of the live DB with the seed applied and a simulated online
+box-a with two leases: `tmp/admin-shots/admin-*.png` in the worktree (`admin-boxes-retire-who.png` is
+the names dialog).
+
+### Unproven
+
+The real box (Boxes saw a simulated heartbeat only); retire/restart against zombies-dev; a moderator's
+view (admin screens only); phone widths; the launcher window. Needs a client build and a site restart;
+the seed is the coordinator's to run.
