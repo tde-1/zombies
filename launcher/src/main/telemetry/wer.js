@@ -46,16 +46,16 @@ const val = (r, name) => {
 }
 
 // -> { local_dumps: 'hklm' | 'hkcu-ours' | 'hkcu' | 'off', dump_folder, dump_type, keys: [...] }
-export async function detectWer({ query = queryKey, ourFolder } = {}) {
+export async function detectWer({ query = queryKey, ourFolder, exe = EXE } = {}) {
   const read = async (hive, sub) => {
     try { const r = await query(`${hive}\\${BASE}${sub ? `\\${sub}` : ''}`); return r?.ok ? r : null } catch { return null }
   }
-  const [lmGlobal, lmExe, cuGlobal, cuExe] = await Promise.all([read('HKLM'), read('HKLM', EXE), read('HKCU'), read('HKCU', EXE)])
+  const [lmGlobal, lmExe, cuGlobal, cuExe] = await Promise.all([read('HKLM'), read('HKLM', exe), read('HKCU'), read('HKCU', exe)])
   const keys = []
   if (lmGlobal) keys.push('HKLM global')
-  if (lmExe) keys.push(`HKLM ${EXE}`)
+  if (lmExe) keys.push(`HKLM ${exe}`)
   if (cuGlobal) keys.push('HKCU global')
-  if (cuExe) keys.push(`HKCU ${EXE}`)
+  if (cuExe) keys.push(`HKCU ${exe}`)
   // The per-exe key beats the global one, HKLM beats HKCU.
   const pick = (exe, glob) => val(exe, 'DumpFolder') || val(glob, 'DumpFolder') || DEFAULT_FOLDER
   const type = (exe, glob) => { const v = val(exe, 'DumpType') ?? val(glob, 'DumpType'); return v == null ? 1 : parseInt(v, 16) || Number(v) || 1 }
@@ -78,19 +78,32 @@ export function regAdd(key, name, type, data, { run = execFile } = {}) {
   })
 }
 
-// Detect; if nothing covers CoDWaW.exe, create our HKCU key. Never throws.
-export async function ensureWer({ ourFolder, query = queryKey, add = regAdd, log = () => {} } = {}) {
+// Our launches run as ENWZombies.exe (gameexe.js: Discord detects `codwaw.exe` by name), and
+// the key is per exe name, so both names get the same treatment. The answer describes
+// CoDWaW.exe as before; `also` carries ENWZombies.exe's.
+export const EXES = [EXE, 'ENWZombies.exe']
+
+// Detect; if nothing covers an exe, create our HKCU key for it. Never throws.
+export async function ensureWer(opts = {}) {
+  const [first, ...rest] = EXES
+  const d = await ensureWerFor({ ...opts, exe: first })
+  const also = []
+  for (const exe of rest) also.push({ exe, ...(await ensureWerFor({ ...opts, exe })) })
+  return { ...d, also }
+}
+
+async function ensureWerFor({ ourFolder, query = queryKey, add = regAdd, log = () => {}, exe = EXE } = {}) {
   try {
-    const d = await detectWer({ query, ourFolder })
+    const d = await detectWer({ query, ourFolder, exe })
     if (d.local_dumps !== 'off') {
-      log(`WER LocalDumps: covered (${d.local_dumps}: ${d.keys.join(', ')}), dumps go to ${d.dump_folder}, DumpType ${d.dump_type}; nothing written`)
+      log(`WER LocalDumps (${exe}): covered (${d.local_dumps}: ${d.keys.join(', ')}), dumps go to ${d.dump_folder}, DumpType ${d.dump_type}; nothing written`)
       return { ...d, created: false }
     }
     try { fs.mkdirSync(assertWritable(ourFolder), { recursive: true }) } catch (e) {
       log(`WER LocalDumps: off, and our dump folder could not be made (${e.message}); not creating the key`)
       return { ...d, created: false, error: e.message }
     }
-    const key = `HKCU\\${BASE}\\${EXE}`
+    const key = `HKCU\\${BASE}\\${exe}`
     const results = [
       await add(key, 'DumpFolder', 'REG_EXPAND_SZ', ourFolder),
       await add(key, 'DumpCount', 'REG_DWORD', 10),
@@ -98,7 +111,7 @@ export async function ensureWer({ ourFolder, query = queryKey, add = regAdd, log
     ]
     const bad = results.find((r) => !r.ok)
     if (bad) { log(`WER LocalDumps: off; creating ${key} FAILED: ${bad.error}`); return { ...d, created: false, error: bad.error } }
-    const after = await detectWer({ query, ourFolder })
+    const after = await detectWer({ query, ourFolder, exe })
     log(`WER LocalDumps: was off; created ${key} (DumpFolder ${ourFolder}, DumpCount 10, DumpType 1 minidump); now ${after.local_dumps}`)
     return { ...after, created: true }
   } catch (e) {

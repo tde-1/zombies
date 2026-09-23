@@ -30,6 +30,8 @@ export function fpsCapEnv() { return String(FPS_CAP) }
 import { launchDvars, applyAccountToConfig, readBackAccount, foldReadBack } from './wawcfg.js'
 import * as settings from './settings.js'
 import { modOwnedDvars, dropModOwned } from './modcompat.js'
+import { ensureGameExe, exeName as pickExeName, STOCK_EXE } from './gameexe.js'
+import { load as loadConfig } from './config.js'
 
 // PACKAGED TRAP: this is handed to powershell.exe, which is not us and cannot read
 // inside app.asar. `asarUnpack: ["tools/**"]` in package.json puts a real copy beside
@@ -331,15 +333,24 @@ export class GameLaunch extends EventEmitter {
   async start() {
     const o = this.opts
     const gameDir = o.gameDir || P.game
-    const exe = path.join(gameDir, 'CoDWaW.exe')
+    const stockExe = path.join(gameDir, STOCK_EXE)
     const homeDir = o.homeDir || P.home
 
     // Rule 1, enforced here too rather than trusted: we never RUN out of the player's
-    // install either, because running implies writing (console.log, configs).
+    // install either, because running implies writing (console.log, configs). Checked
+    // BEFORE the exe copy below, so nothing is ever written into a protected folder.
     for (const root of protectedRoots()) {
-      if (isInside(exe, root)) throw new Error(`Refusing to launch out of ${root}. ENW runs its own copy.`)
+      if (isInside(stockExe, root)) throw new Error(`Refusing to launch out of ${root}. ENW runs its own copy.`)
     }
-    if (!fs.existsSync(exe)) throw new Error(`No game to launch at ${exe}. Run setup first.`)
+    if (!fs.existsSync(stockExe)) throw new Error(`No game to launch at ${stockExe}. Run setup first.`)
+    // ENWZombies.exe, a byte copy of our CoDWaW.exe, so Discord shows ENW Zombies and not
+    // "Call of Duty: World at War" (gameexe.js). Falls back to CoDWaW.exe, never refuses.
+    let conf = o.config
+    if (!conf) { try { conf = loadConfig() } catch { conf = {} } }
+    const pick = ensureGameExe(gameDir, o.exeName || pickExeName({ config: conf }))
+    const exe = pick.exe
+    this.exeName = path.basename(exe)
+    if (pick.copied || pick.fallback) this.note(`game exe: ${pick.reason}`)
     if (path.basename(exe).toLowerCase() === 'codwawmp.exe') throw new Error('ENW never launches the multiplayer executable.')
 
     ensureDirs()

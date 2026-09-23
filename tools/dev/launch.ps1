@@ -128,6 +128,13 @@ param(
     [string]$GameDir = '',
     [string]$DevRoot = 'C:\Users\b\ZombiesDev',
 
+    # The exe to start inside $GameDir. The launcher runs `ENWZombies.exe`, a byte copy
+    # of CoDWaW.exe, so Discord's game detection (which matches `codwaw.exe` by file
+    # name) does not show "Call of Duty: World at War" over ENW's own presence
+    # (launcher.md, "Discord shows ENW Zombies"). Default: the stock name.
+    [ValidatePattern('^[A-Za-z0-9_-]+\.exe$')]
+    [string]$ExeName = 'CoDWaW.exe',
+
     # What this launch is for; goes in the lock file so other agents know.
     [string]$Why = 'foundation test'
 )
@@ -135,7 +142,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 if (-not $GameDir) { $GameDir = Join-Path $DevRoot "waw-$Name" }
-$exe = Join-Path $GameDir 'CoDWaW.exe'
+if ($ExeName -ieq 'CoDWaWmp.exe') { throw 'Refusing to launch the multiplayer exe (dev-box.md rule 2).' }
+$exe = Join-Path $GameDir $ExeName
+# Every process name a game of ours can run under, for the "already running" checks.
+$gameNames = @('CoDWaW', 'ENWZombies', [IO.Path]::GetFileNameWithoutExtension($ExeName)) | Select-Object -Unique
 $logDir = Join-Path $DevRoot "logs\$Name"
 $homeDir = Join-Path $DevRoot "homes\$Name"
 $lockDir = Join-Path $DevRoot 'locks'
@@ -440,7 +450,7 @@ elseif (-not $NoLock -and -not $DryRun) {
     #      exists) instead of test-then-write, which two launchers could both win.
 
     # (1) Is the game already running, whoever started it?
-    $running = @(Get-Process -Name 'CoDWaW', 'CoDWaWmp' -ErrorAction SilentlyContinue)
+    $running = @(Get-Process -Name ($gameNames + 'CoDWaWmp') -ErrorAction SilentlyContinue)
     if ($running.Count -gt 0 -and -not $ForceLock) {
         $who = ($running | ForEach-Object { "$($_.ProcessName):$($_.Id)" }) -join ', '
         throw "CoDWaW is already running ($who). One game at a time (dev-box.md rule 5). " +
@@ -524,7 +534,7 @@ try {
         # now only about the safe-mode prompt. Still refuse if it names a live
         # game -- belt and braces costs nothing.
         $owner = if ($stalePid -gt 0) { Get-Process -Id $stalePid -ErrorAction SilentlyContinue } else { $null }
-        if ($owner -and $owner.ProcessName -like 'CoDWaW*') {
+        if ($owner -and ($owner.ProcessName -like 'CoDWaW*' -or $gameNames -contains $owner.ProcessName)) {
             if ($Companion) {
                 # The first instance of this experiment legitimately owns the
                 # marker. Leave it alone -- it is theirs to clean up -- and do not
@@ -675,7 +685,7 @@ try {
         return
     }
 
-    $before = @(Get-Process CoDWaW -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+    $before = @(Get-Process -Name $gameNames -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
 
     $proc = Start-Process -FilePath $exe -ArgumentList $a -WorkingDirectory $GameDir `
         -RedirectStandardOutput $outLog -RedirectStandardError $errLog -PassThru
@@ -747,7 +757,7 @@ try {
     else {
         Write-Host "our PID $($proc.Id) still ALIVE" -ForegroundColor Green
     }
-    $now = Get-Process CoDWaW -ErrorAction SilentlyContinue
+    $now = Get-Process -Name $gameNames -ErrorAction SilentlyContinue
     foreach ($p in $now) {
         $tag = if ($before -contains $p.Id) { 'pre-existing' } elseif ($p.Id -eq $proc.Id) { 'OURS' } else { 'NEW (not ours!)' }
         Write-Host ("  CoDWaW pid {0,-6} {1,-16} {2}" -f $p.Id, $tag, $p.Path)
