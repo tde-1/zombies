@@ -55,10 +55,17 @@ param(
     [string]$ServerFrom = 'dedi',
     # build\<name> for the CLIENT half. Needed to put the client DLL's `name_pin`
     # component on the client for the name-lock proof.
-    [string]$ClientFrom = ''
+    [string]$ClientFrom = '',
+    # Extra `+set` pairs for the CLIENT only, passed straight through to jointest.ps1's
+    # own -ClientExtraArgs (e.g. '+set','com_maxfps','60' -- the harness passes no
+    # com_maxfps to the client, and the rule is to always pass one).
+    [string[]]$ClientExtraArgs = @()
 )
 $ErrorActionPreference = 'Stop'
-$repo = 'C:\Users\b\Desktop\Zombies'
+# This checkout, not a hard-coded main: a worktree must run its OWN jointest.ps1 and
+# deploy its OWN build\<name> (bug 7, 2026-09-23: the hard-coded path deployed main's
+# stale build\dedi over the worktree's freshly deployed DLL).
+$repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $dev = 'C:\Users\b\ZombiesDev'
 $lock = "$dev\locks\game.lock"
 $out = "$dev\logs\dedi\$Tag-proof.txt"
@@ -80,7 +87,7 @@ if (Test-Path -LiteralPath $lock) { throw 'game.lock still held' }
 if ($BigHeap) { $env:ENW_DEDI_BIG_HEAP = '1' } else { $env:ENW_DEDI_BIG_HEAP = $null }
 
 $job = Start-Job -ScriptBlock {
-    param($repo, $tag, $watch, $map, $deploy, $bigHeap, $tok, $match, $link, $spoof, $serverFrom, $clientFrom)
+    param($repo, $tag, $watch, $map, $deploy, $bigHeap, $tok, $match, $link, $spoof, $serverFrom, $clientFrom, $clientExtra)
     Set-Location $repo
     if ($bigHeap) { $env:ENW_DEDI_BIG_HEAP = '1' }
     $a = @('-Tag', $tag, '-WatchSeconds', $watch, '-Map', $map)
@@ -91,8 +98,9 @@ $job = Start-Job -ScriptBlock {
     if ($spoof) { $a += @('-ClientNameDvar', $spoof) }
     if ($serverFrom) { $a += @('-ServerFrom', $serverFrom) }
     if ($clientFrom) { $a += @('-ClientFrom', $clientFrom) }
+    if ($clientExtra -and $clientExtra.Count) { $a += '-ClientExtraArgs'; $a += ($clientExtra -join ',') }
     & powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" @a 2>&1
-} -ArgumentList $repo, $Tag, $Watch, $Map, [bool]$Deploy, [bool]$BigHeap, $AuthToken, $MatchId, $LinkHost, $ClientNameDvar, $ServerFrom, $ClientFrom
+} -ArgumentList $repo, $Tag, $Watch, $Map, [bool]$Deploy, [bool]$BigHeap, $AuthToken, $MatchId, $LinkHost, $ClientNameDvar, $ServerFrom, $ClientFrom, $ClientExtraArgs
 
 # --- find the server PID, then poll the wire -------------------------------------
 $serverPid = 0

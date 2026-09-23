@@ -486,6 +486,18 @@ async function main() {
     eq(db.prepare('SELECT key_pinned FROM replays WHERE match_id=?').get('m_unpinned').key_pinned, 0)
   })
 
+  // bug 7 (referee.md §16): a pre-§16 host put its raw fold in `stats` and the value it
+  // reconciled with the game's own result at the top level; "stats first" kept the fold.
+  check('game_players takes the larger of stats.<x> and the row\'s reconciled <x> for the combat counters', () => {
+    const s = summary({ match_id: 'm_bug7_max', players: ['76561198000000004'] })
+    Object.assign(s.players[0], { kills: 7, headshots: 3, downs: 2, revives: 1 })
+    Object.assign(s.players[0].stats, { kills: 6, headshots: 0, downs: 0, revives: 0 })
+    const r = results_.ingest({ box: 'test-box', summary: s })
+    truthy(r.ok, r.error)
+    const row = db.prepare('SELECT gp.* FROM game_players gp JOIN games g ON g.id=gp.game_id WHERE g.match_id=?').get('m_bug7_max')
+    eq(row.kills, 7, 'kills'); eq(row.headshots, 3, 'headshots'); eq(row.downs, 2, 'downs'); eq(row.revives, 1, 'revives')
+  })
+
   check('a non-main finish ticks the shelf but does not mint the map badge', () => {
     // The test map's main finish is the Easter Egg, so a Round 20 finish is a tick only.
     results_.ingest({ box: 'test-box', summary: summary({ match_id: 'm_round', players: ['76561198000000003'], finish: { kind: 'round', label: 'Round 25' } }) })
@@ -957,6 +969,27 @@ async function main() {
     truthy(t.events.some((e) => e.t === 'explode'), 'no explode in the feed')
     eq(t.end_ms, 210, 'the end is not the intermission')
     eq(t.players[0].fire[0], 1, 'attack bit not carried')
+  })
+
+  check('the track carries the game\'s own scoreboard counters per player (bug 7, referee.md §16)', () => {
+    const { buildTrack } = require('../server/routes/replay')
+    const ev = [
+      { t: 'snap', ms: 0, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], health: 100, alive: true, score: 500, kills: 0, downs: 0, revives: 0, headshots: 0 }] },
+      { t: 'stats', ms: 40, slot: 0, score: 560, kills: 1, headshots: 0, downs: 0, revives: 0, assists: 0 },
+      { t: 'snap', ms: 50, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], score: 560, kills: 1 }] },
+      { t: 'revive', ms: 90, slot: 1, by: 0 },
+      { t: 'snap', ms: 100, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], revives: 1 }] },
+    ]
+    const lib = { readHeader: () => ({ header: { match_id: 'm_t7', map: 'nazi_zombie_prototype' } }), readEvents: () => ev }
+    const t = buildTrack('x.enwr', lib, 20)
+    const c = t.players[0].counters
+    truthy(Array.isArray(c), 'counters present')
+    eq(JSON.stringify(c), '[[0,0,0,0,0],[40,1,0,0,0],[100,1,0,1,0]]', 'one entry per change, the snap copy of a stats value adds none')
+    eq(t.players[0].has_score, true)
+    truthy(t.events.some((e) => e.t === 'revive' && e.by === 0), 'the reviver survives into the feed')
+    // A file from before §16 has no counters and keeps the old rules.
+    const old = buildTrack('x.enwr', { readHeader: lib.readHeader, readEvents: () => [ev[0]].map((e) => ({ ...e, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0] }] })) }, 20)
+    eq(old.players[0].counters, null)
   })
 
   // ── replay.md §8.11: WaW's round total, the counters, the inputs the HUD animates ──
