@@ -361,8 +361,8 @@ export function createActors(api) {
    */
   function handOf(slot) {
     const rec = players.get(slot)
-    if (!rec || !rec.model || !rec.model.hand) return null
-    return { bone: rec.model.hand, isTag: !!rec.model.handIsTag, root: rec.model.root }
+    if (!rec || !rec.model || !(rec.model.hand || rec.model.wrist)) return null
+    return { bone: rec.model.hand, isTag: !!rec.model.handIsTag, wrist: rec.model.wrist || null, root: rec.model.root }
   }
 
   /** Lane R3: the weapon line under a player's name ("Name" / "M1911"). Rebuilt on change only. */

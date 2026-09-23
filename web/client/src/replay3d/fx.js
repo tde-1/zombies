@@ -104,6 +104,24 @@ export function weaponKeys(name, raw) {
 export const coreWeapon = (n) => baseWeapon(n).replace(/^zombie_/, '').replace(/_zombie$/, '')
 const pick = (table, keys) => { if (table) for (const k of keys) if (table[k]) return table[k]; return null }
 
+/**
+ * The asset manifest's weapon entry for a name, or null: R2's `weaponByEngineName` (engine name ->
+ * { weapon, pap }) first, then every key form. Returns { entry, key, pap } (pap null = not said).
+ */
+export function assetWeapon(assets, name, raw) {
+  const W = assets && assets.weapons
+  if (!W) return null
+  const by = assets.weaponByEngineName
+  if (by) {
+    for (const n of [raw, name]) {
+      const m = n && by[n]
+      if (m && W[m.weapon]) return { entry: W[m.weapon], key: m.weapon, pap: !!m.pap }
+    }
+  }
+  for (const k of weaponKeys(name, raw)) if (W[k]) return { entry: W[k], key: k, pap: null }
+  return null
+}
+
 // What a weapon LOOKS like when there is no model for it: a class from waw.js's weapon table
 // when the name is there (its `cls`), else a guess from the name, else a rifle. Two non-guns the
 // scripts put in players' hands (v1 §2) have their own: the Pack-a-Punch knuckle crack is empty
@@ -150,14 +168,15 @@ const DISPLAY = {
   stielhandgranate: 'Stielhandgranate', fraggrenade: 'Frag Grenade', mk2_frag: 'Mk 2 Grenade', molotov: 'Molotov',
   zombie_melee: 'Knife', bowie_knife: 'Bowie Knife',
 }
+// WaW's upgraded names (the game's PATCH_*_UPGRADED strings; assets-pipeline.md §2 confirms the
+// six R2 extracted). The asset manifest's pap.displayName wins over this table.
 const DISPLAY_PAP = {
-  zombie_colt: 'Mustang & Sally', ray_gun: "Porter's X2 Ray Gun", tesla_gun: 'Wunderwaffe DG-3 JZ',
-  thompson: 'Gibs-O-Matic', mp40: 'The Afterburner', stg44: 'Spatz-447 +', bar: 'The Widow Maker',
+  zombie_colt: 'C-3000 b1at-ch35', colt: 'C-3000 b1at-ch35', ray_gun: "Porter's X2 Ray Gun", tesla_gun: 'Wunderwaffe DG-3 JZ',
+  thompson: 'Gibs-o-matic', mp40: 'The Afterburner', stg44: 'Spatz-447 +', bar: 'The Widow Maker',
   '30cal_bipod': 'B115 Accelerator', mg42_bipod: "Barracuda FU-A11", fg42_bipod: 'Die Klaue',
-  m1carbine: 'Widdershins RC-1', m1garand: 'The Imploder', kar98k: 'Armageddon', springfield: 'Armageddon',
+  m1carbine: 'Widdershins RC-1', m1garand: 'The Imploder', kar98k: 'Armageddon',
   gewehr43: 'G115 Compressor', ptrs41_zombie: 'The Penetrator', kar98k_scoped_zombie: 'Armageddon',
   shotgun: 'Gut Shot', doublebarrel: 'Bang Bangs', doublebarrel_sawed_grip: 'Snuff Box', panzerschrek: 'Longinus',
-  m2_flamethrower_zombie: 'Dragonfire', sw_357: 'Jackhammer', walther: 'Walther P38 +',
 }
 const pretty = (s) => String(s).replace(/^zombie_/, '').replace(/_zombie$/, '').replace(/_/g, ' ')
   .replace(/\b\w/g, (c) => c.toUpperCase())
@@ -169,7 +188,8 @@ export function displayName(name, pap, assets, raw) {
   const keys = weaponKeys(name, raw)
   if (!keys.length) return null
   if (/perk_bottle/.test(keys[0])) return 'Perk-a-Cola'
-  const w = pick(assets && assets.weapons, keys)
+  const aw = assetWeapon(assets, name, raw)
+  const w = aw && aw.entry
   if (w) {
     if (pap && w.pap && w.pap.displayName) return w.pap.displayName
     if (w.displayName) return pap && !w.pap ? `${w.displayName} (PaP)` : w.displayName
@@ -329,6 +349,10 @@ export function buildFx(track, assets = null) {
       }
       default: break
     }
+  }
+  for (const w of fx.windows) {
+    const covered = fx.windows.some((o) => o !== w && o.kind === w.kind && o.from <= w.to && o.to > w.to)
+    if (!covered) fx.cues.push({ ms: w.to, kind: 'powerup_end', pkind: w.kind })
   }
   fx.cues.sort((a, b) => a.ms - b.ms)
   fx.cueMs = fx.cues.map((c) => c.ms)
@@ -516,37 +540,52 @@ export class CueScheduler {
 }
 
 /**
- * Which sound a cue plays, from the asset manifest, or null (then nothing plays -- the
- * manifest missing means no sounds at all, never a broken viewer). Returns a KEY for
- * /mapdata/_sounds/<key>.ogg, or a path when the manifest gives one.
- *   fire           -> weapons[name].sounds.fire (fire_pap when upgraded)
- *   hit            -> sounds.hit_marker (sounds.hit_marker_head for a head hit, if present)
- *   damage         -> sounds.player_hit
- *   pap            -> sounds.pap_upgrade (the jingle)
- *   powerup_spawn  -> powerups[kind].sounds.spawn, else sounds.powerup_spawn
- *   powerup_pickup -> powerups[kind].sounds.pickup, then .announce (the announcer, 2D)
+ * Which sounds a cue plays, from the asset manifest (lane R2, assets-pipeline.md §3), or null --
+ * no manifest means no sound at all, never a broken viewer. Values are manifest paths
+ * ("_sounds/mp40_fire.ogg", relative to /mapdata/) or bare keys (-> /mapdata/_sounds/<key>.ogg).
+ *   fire           -> weapons[w].sounds.fire (third person) or .fire_plr (`firstPerson`); upgraded:
+ *                     pap.sounds.fire(_plr), else sounds.fire_pap(_plr)
+ *   hit            -> general.hit_marker (hit_marker_head if one exists)
+ *   damage         -> general.zombie_swipe, then general.player_hit (the swipe, then the pain)
+ *   pap            -> general.pap_upgrade (the machine at work)
+ *   pap_done       -> general.pap_ready
+ *   powerup_spawn  -> powerups[kind].spawnSound, else general.powerup_spawn
+ *   powerup_pickup -> powerups[kind].sounds.pickup, .announce (2D), .sting (2D, max ammo)
+ *   powerup_end    -> powerups[kind].sounds.end (insta-kill / double points running out)
  */
-export function soundsFor(cue, assets, pap) {
+export function soundsFor(cue, assets, pap, firstPerson) {
   if (!assets) return null
-  const S = assets.sounds || {}
+  const S = (assets.sounds && assets.sounds.general) || assets.sounds || {}
+  const G = (k) => (typeof S[k] === 'string' || Array.isArray(S[k]) ? S[k] : null)
   switch (cue.kind) {
     case 'fire': {
-      const w = pick(assets.weapons, weaponKeys(cue.name, cue.raw))
-      if (!w || !w.sounds) return null
-      return [(pap && w.sounds.fire_pap) || w.sounds.fire || null]
+      const aw = assetWeapon(assets, cue.name, cue.raw)
+      const w = aw && aw.entry
+      if (!w) return null
+      const ws = w.sounds || {}
+      const ps = (w.pap && w.pap.sounds) || {}
+      if (pap) {
+        const v = firstPerson ? (ps.fire_plr || ws.fire_pap_plr || ps.fire || ws.fire_pap) : (ps.fire || ws.fire_pap)
+        if (v) return [v]
+      }
+      return [(firstPerson && ws.fire_plr) || ws.fire || null]
     }
-    case 'hit': return [(cue.part === 'head' && S.hit_marker_head) || S.hit_marker || null]
-    case 'damage': return [S.player_hit || null]
-    case 'pap': return [S.pap_upgrade || S.pap_jingle || null]
-    case 'pap_done': return [S.pap_done || null]
+    case 'hit': return [(cue.part === 'head' && G('hit_marker_head')) || G('hit_marker')]
+    case 'damage': return [G('zombie_swipe'), G('player_hit')]
+    case 'pap': return [G('pap_upgrade') || G('pap_jingle')]
+    case 'pap_done': return [G('pap_ready') || G('pap_done')]
     case 'powerup_spawn': {
       const p = assets.powerups && assets.powerups[cue.pkind]
-      return [(p && p.sounds && p.sounds.spawn) || S.powerup_spawn || null]
+      return [(p && (p.spawnSound || (p.sounds && p.sounds.spawn))) || G('powerup_spawn')]
     }
     case 'powerup_pickup': {
       const p = assets.powerups && assets.powerups[cue.pkind]
-      const s = (p && p.sounds) || {}
-      return [s.pickup || S.powerup_pickup || null, s.announce || null]
+      const ps = (p && p.sounds) || {}
+      return [ps.pickup || G('powerup_grab') || G('powerup_pickup'), ps.announce || null, ps.sting || null]
+    }
+    case 'powerup_end': {
+      const p = assets.powerups && assets.powerups[cue.pkind]
+      return [(p && p.sounds && p.sounds.end) || null]
     }
     default: return null
   }
@@ -555,6 +594,7 @@ export function soundsFor(cue, assets, pap) {
 /** A manifest sound value -> a URL. A bare key is /mapdata/_sounds/<key>.ogg. */
 export function soundUrl(v, base = '/mapdata') {
   if (!v) return null
+  base = String(base).replace(/\/+$/, '')
   if (Array.isArray(v)) v = v[0]
   const s = String(v)
   if (/^(https?:)?\//.test(s)) return s

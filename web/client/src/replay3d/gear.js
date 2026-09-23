@@ -21,11 +21,11 @@
 import {
   Group, Mesh, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, OctahedronGeometry,
   MeshStandardMaterial, MeshBasicMaterial, Sprite, SpriteMaterial, CanvasTexture, AdditiveBlending,
-  Vector3, Quaternion, Euler, Box3, TextureLoader, SRGBColorSpace, Color,
+  Vector3, Quaternion, Euler, Box3, TextureLoader, SRGBColorSpace, Color, Matrix4,
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { toThree } from './scene.js'
-import { weaponClass, weaponKeys } from './fx.js'
+import { weaponClass, assetWeapon } from './fx.js'
 import { WEAPONS } from './waw.js'
 
 export const MAPDATA = '/mapdata'
@@ -48,6 +48,20 @@ const tmpV2 = new Vector3()
 const tmpQ = new Quaternion()
 const tmpE = new Euler(0, 0, 0, 'YZX')
 const tmpBox = new Box3()
+const tmpM = new Matrix4()
+const tmpM2 = new Matrix4()
+const ONE = new Vector3(1, 1, 1)
+
+// THE GRIP (lane R2, assets-pipeline.md §3 "Attaching a weapon to a player"). The engine hangs a
+// weapon's tag_weapon on the player's tag_weapon_right, but that tag is animated and in the bind
+// pose -- the only pose this viewer has (§9.6) -- it sits by the hip. So a weapon goes on
+// j_wrist_ri, in the PALM frame R2 measured over all 19 T4 humanoids (maxDisagreement 0.0001):
+// the manifest's attach.grip. These are its numbers, used when there is no manifest; every
+// visual below is built with its grip at the origin (a .glb is moved by -gripPoint), so the one
+// palm transform places every gun, placeholder or real.
+const DEFAULT_GRIP = { bone: 'j_wrist_ri', position: [-2.8812, -0.395, 0.1448], quaternion: [-0.194138, -0.853263, -0.40368, 0.267011] }
+const gripPos = new Vector3()
+const gripQ = new Quaternion()
 
 // ------------------------------------------------------------ procedural textures --
 
@@ -268,15 +282,22 @@ export function createGear(api, actors, assetsIn) {
     if (!e) {
       e = { state: 'loading', scene: null }
       glbs.set(u, e)
-      loader.loadAsync(u).then((g) => { e.scene = g.scene; e.state = 'ready' }).catch(() => { e.state = 'failed' })
+      // The viewer's loop only draws on a change; a model that lands while it is paused is one.
+      const done = () => { if (api.onGearLoaded) api.onGearLoaded() }
+      loader.loadAsync(u).then((g) => { e.scene = g.scene; e.state = 'ready'; done() }).catch(() => { e.state = 'failed'; done() })
     }
     return e
   }
-  const weaponEntry = (name, raw) => {
-    const W = assets && assets.weapons
-    if (!W) return null
-    for (const k of weaponKeys(name, raw)) if (W[k]) return W[k]
-    return null
+  const setGrip = () => {
+    const g = (assets && assets.attach && assets.attach.grip) || DEFAULT_GRIP
+    gripPos.fromArray(g.position || DEFAULT_GRIP.position)
+    gripQ.fromArray(g.quaternion || DEFAULT_GRIP.quaternion)
+  }
+  setGrip()
+  // The sprite's aspect from fx.json (muzzle_pistol is 128 x 64): [w/h] or 1.
+  const fxAspect = (name) => {
+    const f = assets && assets.fx && assets.fx[name]
+    return f && f.w && f.h ? f.w / f.h : 1
   }
 
   // What to draw for (name, pap, raw): a key that changes when the picture does, and what to build.
@@ -287,19 +308,26 @@ export function createGear(api, actors, assetsIn) {
     const ck = `${name}|${raw}|${pap ? 1 : 0}`
     const hit = visCache.get(ck)
     if (hit && !(hit.pending && hit.pending.state !== 'loading')) return hit.v
-    const w = weaponEntry(name, raw)
+    const aw = assetWeapon(assets, name, raw)
+    const w = aw && aw.entry
     const cls = weaponClass(name, WEAPONS, raw)
     let v = null
     let pending = null
     if (w) {
-      const u = assetUrl(pap && w.pap && w.pap.glb ? w.pap.glb : w.glb)
+      // R2: the upgraded gun's own gold model where the game has one (Colt, Carbine, Thompson,
+      // MP40); the Ray Gun and the Wunderwaffe keep their base world model in the game
+      // (pap.glb null, sameWorldModelAsBase) and so they do here -- no camo is invented for them.
+      const pp = pap && w.pap ? w.pap : null
+      const u = assetUrl(pp && pp.glb ? pp.glb : w.glb)
       const e = glb(u)
+      const mz = (pp && pp.muzzle) || w.muzzle || {}
+      const grip = w.attach && w.attach.gripLocal && w.attach.gripLocal.gripPoint
       if (e && e.state === 'ready') {
-        const camoIt = pap && !(w.pap && w.pap.glb)
-        v = { key: `glb:${u}:${camoIt ? 'pap' : ''}`, cls, glbScene: e.scene, camo: camoIt, muzzleTag: (w.muzzle && w.muzzle.tag) || 'tag_flash', sprite: w.muzzle && w.muzzle.sprite }
+        v = { key: `glb:${u}`, cls, glbScene: e.scene, camo: false, muzzleTag: mz.tag || 'tag_flash', sprite: mz.spriteUrl || mz.sprite, aspect: fxAspect(mz.sprite), grip }
       } else if (e && e.state === 'loading') pending = e
+      if (!v) v = { key: `proc:${cls}:${pap && !(w.pap && w.pap.sameWorldModelAsBase) ? 'pap' : ''}`, cls, glbScene: null, camo: !!pap && !(w.pap && w.pap.sameWorldModelAsBase), muzzleTag: null, sprite: mz.spriteUrl || mz.sprite, aspect: fxAspect(mz.sprite) }
     }
-    if (!v) v = { key: `proc:${cls}:${pap ? 'pap' : ''}`, cls, glbScene: null, camo: !!pap && cls !== 'none' && cls !== 'bottle', muzzleTag: null, sprite: w && w.muzzle && w.muzzle.sprite }
+    if (!v) v = { key: `proc:${cls}:${pap ? 'pap' : ''}`, cls, glbScene: null, camo: !!pap && cls !== 'none' && cls !== 'bottle', muzzleTag: null, sprite: null, aspect: 1 }
     visCache.set(ck, { v, pending })
     return v
   }
@@ -308,8 +336,11 @@ export function createGear(api, actors, assetsIn) {
     let obj
     let muzzle = null
     if (v.glbScene) {
-      obj = v.glbScene.clone(true)
-      obj.traverse((o) => { if (o.name === v.muzzleTag && !muzzle) muzzle = o })
+      const inner = v.glbScene.clone(true)
+      obj = new Group()
+      obj.add(inner)
+      if (v.grip) inner.position.set(-v.grip[0], -v.grip[1], -(v.grip[2] || 0))
+      inner.traverse((o) => { if (o.name === v.muzzleTag && !muzzle) muzzle = o })
       if (!muzzle) {
         // No tag_flash: the front of the model's box, at its middle height.
         tmpBox.setFromObject(obj)
@@ -352,9 +383,10 @@ export function createGear(api, actors, assetsIn) {
     s.muzzle = b.muzzle
     s.cls = v.cls
     s.key = v.key
+    s.aspect = v.aspect || 1
     s.holder.add(s.gun)
     ;(s.muzzle || s.gun).add(s.flash)
-    if (v.sprite) s.flash.material.map = spriteTex(v.sprite)
+    s.flash.material.map = v.sprite ? spriteTex(v.sprite) : defaultFlashSprite
   }
 
   // A seeded 0..1 from a shot's time, so the flash's size/roll is the same every time that
@@ -377,21 +409,20 @@ export function createGear(api, actors, assetsIn) {
       const h = actors && actors.handOf ? actors.handOf(p.slot) : null
       const yaw = (p.yaw || 0) * Math.PI / 180
       const pitch = (p.pitch || 0) * Math.PI / 180
-      if (h && h.bone && h.root && h.root.parent && h.root.parent.visible !== false) {
+      if (h && h.wrist) {
+        // The palm frame on j_wrist_ri (DEFAULT_GRIP / attach.grip): follows the arm's swing.
+        h.wrist.updateWorldMatrix(true, false)
+        tmpM.compose(gripPos, gripQ, ONE)
+        tmpM2.multiplyMatrices(h.wrist.matrixWorld, tmpM)
+        tmpM2.decompose(s.holder.position, s.holder.quaternion, tmpV2)
+        s.holder.scale.set(1, 1, 1)
+        root.worldToLocal(s.holder.position)
+      } else if (h && h.bone) {
+        // A rig with no j_wrist_ri: the hand bone's position, aimed by the recorded yaw/pitch.
         h.bone.updateWorldMatrix(true, false)
         h.bone.getWorldPosition(tmpV)
         root.worldToLocal(tmpV)
-        if (h.isTag) {
-          // Lane R2's tag_weapon: the weapon glb is authored in its frame.
-          h.bone.getWorldQuaternion(tmpQ)
-          s.holder.position.copy(tmpV)
-          s.holder.quaternion.copy(tmpQ)
-          continue
-        }
-        // A wrist: the grip sits ~3 u further along the aim.
-        tmpE.set(0, yaw, -pitch, 'YZX')
-        tmpV2.set(3, 0, 0).applyEuler(tmpE)
-        s.holder.position.copy(tmpV).add(tmpV2)
+        s.holder.position.copy(tmpV)
         s.holder.rotation.set(0, yaw, -pitch, 'YZX')
       } else {
         // Capsules: chest height, a hand's width right of centre, a little forward.
@@ -412,7 +443,8 @@ export function createGear(api, actors, assetsIn) {
       if (on) {
         const r = seeded(st.fireMs || 0)
         const k = 1 - st.fireAge / 60
-        s.flash.scale.setScalar((s.cls === 'pistol' ? 7 : s.cls === 'mg' ? 13 : 10) * (0.75 + 0.5 * r) * (0.6 + 0.4 * k))
+        const sz = (s.cls === 'pistol' ? 7 : s.cls === 'mg' ? 13 : 10) * (0.75 + 0.5 * r) * (0.6 + 0.4 * k)
+        s.flash.scale.set(sz * (s.aspect || 1), sz, 1)
         s.flash.material.rotation = r * Math.PI * 2
         s.flash.position.set(s.flash.scale.x * 0.35, 0, 0)
       }
@@ -444,7 +476,8 @@ export function createGear(api, actors, assetsIn) {
     vmState.gun.position.set(back, 0, 0)
     vmInner.add(vmState.gun)
     ;(vmState.muzzle || vmState.gun).add(vmFlash)
-    if (v.sprite) vmFlash.material.map = spriteTex(v.sprite)
+    vmFlash.material.map = v.sprite ? spriteTex(v.sprite) : defaultFlashSprite
+    vmState.aspect = v.aspect || 1
   }
   setViewmodelWeapon('m1garand', false)
   /**
@@ -467,7 +500,8 @@ export function createGear(api, actors, assetsIn) {
     vmFlash.visible = on && !NO_FLASH.has(vmState.cls)
     if (vmFlash.visible) {
       const r = seeded(fireMs || 0)
-      vmFlash.scale.setScalar((vmState.cls === 'pistol' ? 5 : 7) * (0.75 + 0.5 * r))
+      const sz = (vmState.cls === 'pistol' ? 5 : 7) * (0.75 + 0.5 * r)
+      vmFlash.scale.set(sz * (vmState.aspect || 1), sz, 1)
       vmFlash.material.rotation = r * Math.PI * 2
       vmFlash.position.set(vmFlash.scale.x * 0.3, 0, 0)
     }
@@ -533,6 +567,13 @@ export function createGear(api, actors, assetsIn) {
   function setAssets(a) {
     assets = a || null
     visCache.clear()
+    setGrip()
+    const glowFx = assets && assets.fx && assets.fx.powerup_glow
+    if (glowFx && glowFx.url) {
+      const t = spriteTex(glowFx.url)
+      const tint = glowFx.tint ? new Color(glowFx.tint) : new Color(0x5cff5c)
+      for (const p of pups) { p.glow.material.map = t; p.glow.material.color = tint; p.glow.material.needsUpdate = true }
+    }
     const t = manifestFlash(assets)
     if (t) {
       defaultFlashSprite = t
@@ -541,8 +582,17 @@ export function createGear(api, actors, assetsIn) {
     }
   }
 
+  /**
+   * Start loading, ahead of time, the models a replay will need: [[name, raw, pap], ...] weapons
+   * and power-up kinds. Without it the first frame of each weapon is its placeholder.
+   */
+  function preload(weapons, kinds) {
+    for (const [n, r, pp] of weapons || []) visualFor(n, pp, r)
+    for (const k of kinds || []) pupVisual(k)
+  }
+
   return {
-    root, update, setPowerups, dispose, setAssets,
+    root, update, setPowerups, dispose, setAssets, preload,
     viewmodel: vm, setViewmodelWeapon, updateViewmodel,
     // ?r3ddebug (window.__r3d.fx()): what is drawn right now, for the render check (replay.md §12).
     info: () => ({

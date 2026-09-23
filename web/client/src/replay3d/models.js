@@ -92,16 +92,17 @@ export function makeActor(tpl) {
   root.name = `model:${tpl.id}`
   inner.updateMatrixWorld(true)
   const bones = {}
-  // Lane R3 (§12): where a held weapon goes. `tag_weapon` is lane R2's rigged tag (the weapon
-  // glb is authored in its frame); without it, the right hand's bone, used for POSITION only
-  // (gear.js orients the gun by the recorded yaw/pitch, since the bone's local axes are the
-  // rig's business). First match wins.
+  // Lane R3 (§12): where a held weapon goes. `wrist` (j_wrist_ri) is what gear.js uses, with R2's
+  // measured palm frame (assets-pipeline.md §3: tag_weapon_right is animated and sits by the hip in
+  // the bind pose). `hand` is the fallback for a rig without a wrist bone: first match wins.
   const HAND = ['tag_weapon', 'tag_weapon_right', 'j_gun', 'j_wrist_ri']
   let hand = null
   let handRank = HAND.length
+  let wrist = null
   inner.traverse((o) => {
     const r = HAND.indexOf(o.name)
     if (r >= 0 && r < handRank) { hand = o; handRank = r }
+    if (o.name === 'j_wrist_ri' && !wrist) wrist = o
   })
   inner.traverse((o) => {
     if (o.isSkinnedMesh) {
@@ -122,7 +123,7 @@ export function makeActor(tpl) {
       bones[o.name] = { bone: o, bind: o.quaternion.clone(), axis: Z_AXIS.clone().applyQuaternion(wq.invert()).normalize() }
     }
   })
-  return { id: tpl.id, kind: tpl.info.kind, height: tpl.info.height || 72, root, body, bones, hand, handIsTag: handRank === 0 }
+  return { id: tpl.id, kind: tpl.info.kind, height: tpl.info.height || 72, root, body, bones, hand, handIsTag: handRank === 0, wrist }
 }
 
 function swing(a, name, rad) {

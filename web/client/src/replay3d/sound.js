@@ -27,7 +27,7 @@ const tmpV = new Vector3()
 
 // Per-cue loudness. The shot of the player being watched is not louder than anyone else's --
 // it is nearer, and the panner does that.
-const GAIN = { fire: 0.7, hit: 0.55, damage: 0.8, pap: 0.9, pap_done: 0.8, powerup_spawn: 0.6, powerup_pickup: 0.85, announce: 1 }
+const GAIN = { fire: 0.7, fire_plr: 0.55, hit: 0.55, damage: 0.8, pap: 0.9, pap_done: 0.8, powerup_spawn: 0.6, powerup_pickup: 0.85, powerup_end: 0.7, announce: 1, sting: 0.8 }
 
 export class ReplaySound {
   /**
@@ -51,12 +51,16 @@ export class ReplaySound {
     this.muted = loadMuted()
     this.enabled = false
     this.played = 0
+    this.ctx = null
+    this.emit = (c, delay) => this.cue(c, delay, this.ctx)
     // Wanted samples: only what this replay's cues can play.
     this.urls = new Set()
+    this.base = String((assets && assets.base) || '/mapdata/').replace(/\/+$/, '')
     if (assets && fx) {
       for (const c of fx.cues) {
-        for (const pap of c.kind === 'fire' ? [false, true] : [false]) {
-          for (const v of soundsFor(c, assets, pap) || []) { const u = soundUrl(v); if (u) this.urls.add(u) }
+        const variants = c.kind === 'fire' ? [[false, false], [true, false], [false, true], [true, true]] : [[false, false]]
+        for (const [pap, fp] of variants) {
+          for (const v of soundsFor(c, assets, pap, fp) || []) { const u = soundUrl(v, this.base); if (u) this.urls.add(u) }
         }
       }
     }
@@ -135,20 +139,32 @@ export class ReplaySound {
       this.sched.update(ms, false, rate, null)
       return
     }
-    this.sched.update(ms, playing, rate, (c, delay) => this.cue(c, delay, ctx))
+    this.ctx = ctx
+    this.sched.update(ms, playing, rate, this.emit)
   }
 
   cue(c, delay, ctx) {
     const following = ctx.mode !== 'free'
     switch (c.kind) {
       case 'hit':
-      case 'damage':
-        // Only for the player being watched, as the game only plays them to that player.
+      case 'damage': {
+        // Only for the player being watched, as the game only plays them to that player. A swipe
+        // is two: the whoosh, then the pain.
         if (!following || c.pid !== ctx.focus) return
-        return this.play2(soundsFor(c, this.assets)?.[0], delay, GAIN[c.kind])
+        const s = soundsFor(c, this.assets) || []
+        this.play2(s[0], delay, GAIN[c.kind])
+        if (s[1]) this.play2(s[1], delay + 0.08, GAIN[c.kind])
+        return
+      }
       case 'fire': {
         const pap = ctx.papAt ? ctx.papAt(c.pid, c.ms) : false
-        const s = soundsFor(c, this.assets, pap)
+        // The watched player's own shots in first person are the game's first-person sound
+        // (fireSoundPlayer, `fire_plr`), in the head; everyone else's are positional.
+        if (ctx.mode === 'eyes' && c.pid === ctx.focus) {
+          const s = soundsFor(c, this.assets, pap, true)
+          return s && this.play2(s[0], delay, GAIN.fire_plr)
+        }
+        const s = soundsFor(c, this.assets, pap, false)
         if (!s || !ctx.posOf(c.pid, c.ms, tmpV)) return
         return this.play3(s[0], delay, tmpV, GAIN.fire)
       }
@@ -166,16 +182,21 @@ export class ReplaySound {
           toThree(c.x, c.y, c.z + 24, tmpV)
           this.play3(s[0], delay, tmpV, GAIN[c.kind])
         } else this.play2(s[0], delay, GAIN[c.kind])
-        // The announcer is heard by everyone, everywhere.
+        // The announcer (and max ammo's sting) is heard by everyone, everywhere.
         if (s[1]) this.play2(s[1], delay + 0.15, GAIN.announce)
+        if (s[2]) this.play2(s[2], delay + 0.05, GAIN.sting)
         return
+      }
+      case 'powerup_end': {
+        const s = soundsFor(c, this.assets)
+        return s && this.play2(s[0], delay, GAIN.powerup_end)
       }
       default:
     }
   }
 
   buffer(v) {
-    const u = soundUrl(v)
+    const u = soundUrl(v, this.base)
     if (!u) return null
     const b = this.buffers.get(u)
     if (b === undefined) { this.urls.add(u); this.load(u); return null }

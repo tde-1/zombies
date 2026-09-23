@@ -227,11 +227,32 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   // ---- lane R3: the FX index (fx.js), and the per-frame scratch it writes into ----------
   // The asset manifest (lane R2). Missing is normal until R2 lands: then every weapon is a
   // placeholder of its class, every power-up a stand-in, and the replay is silent.
+  // `?assets=off` skips it, to see (and test) exactly what a machine without R2's pack gets.
   useEffect(() => {
     let dead = false
+    let off = false
+    try { off = new URLSearchParams(window.location.search).get('assets') === 'off' } catch { /* not a browser */ }
+    if (off) return undefined
     loadAssets().then((a) => { if (!dead) setAssets(a) })
     return () => { dead = true }
   }, [])
+  // R2's own images for the two overlays, when served: the game's hurt vignette
+  // (overlay_low_health) under the blood, and its damage_feedback hit marker. Without them the
+  // CSS stand-ins stay.
+  useEffect(() => {
+    const base = String((assets && assets.base) || '/mapdata/').replace(/\/+$/, '')
+    const url = (k) => { const f = assets && assets.fx && assets.fx[k]; return f && f.url ? `${base}/${String(f.url).replace(/^\.?\//, '')}` : null }
+    const hurt = url('hurt_overlay')
+    const mark = url('hit_marker')
+    if (bloodRef.current) {
+      bloodRef.current.classList.toggle('img', !!hurt)
+      bloodRef.current.style.backgroundImage = hurt ? `url("${hurt}")` : ''
+    }
+    if (hitRef.current) {
+      hitRef.current.classList.toggle('img', !!mark)
+      hitRef.current.style.setProperty('--hm-img', mark ? `url("${mark}")` : 'none')
+    }
+  }, [assets, track])
   const F = useMemo(() => buildFx(track, assets), [track, assets])
   // The snapshot column's weapon NAME (never the unproven-index fallback row): the fallback for
   // "what is in his hands" on a file with no `weapon` events.
@@ -432,6 +453,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     }
     // Lane R3: gear.js owns the held weapons, the flashes, the power-ups and the first-person
     // weapon (the §8.7 placeholder gun, now one per weapon class, or R2's glb when served).
+    api.onGearLoaded = () => { dirtyRef.current = true }
     const gear = createGear(api, actors, null)
     gearRef.current = gear
     gunRef.current = gear
@@ -596,8 +618,22 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     }
   }, [track, mapUrl, metaUrl])
 
-  // Lane R3: the manifest reaches the gear when it lands (glbs from then on).
-  useEffect(() => { if (gearRef.current) { gearRef.current.setAssets(assets); dirtyRef.current = true } }, [assets, track, mapUrl, metaUrl])
+  // Lane R3: the manifest reaches the gear when it lands (glbs from then on), and the models this
+  // replay will show start loading now rather than on first sight.
+  useEffect(() => {
+    const gear = gearRef.current
+    if (!gear) return
+    gear.setAssets(assets)
+    if (assets && track) {
+      const want = []
+      const seen = new Set()
+      const add = (n, r, pp) => { const k = `${n}|${r}|${pp}`; if (n && !seen.has(k)) { seen.add(k); want.push([n, r, !!pp]) } }
+      for (const p of track.players) for (const i of new Set(p.wpn || [])) { const w = track.weapons && track.weapons[i]; if (w && w.name) add(w.name, w.name, /_upgraded$/.test(w.name)) }
+      for (const [, a] of F.weapons) for (const e of a.ev) add(e.name, e.raw, e.pap)
+      gear.preload(want, [...new Set(F.powerups.map((p) => p.kind))])
+    }
+    dirtyRef.current = true
+  }, [assets, track, F, mapUrl, metaUrl])
 
   // Lane R3: the sound. Built per (track, manifest); silent until a gesture enables it.
   useEffect(() => {

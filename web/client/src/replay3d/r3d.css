@@ -242,6 +242,14 @@ body:has(.r3d) .chatdock { display: none; }
 .r3d-fx-hit .c { transform: rotate(225deg) translateX(calc(5px * var(--hm-s))); }
 .r3d-fx-hit .d { transform: rotate(315deg) translateX(calc(5px * var(--hm-s))); }
 .r3d-fx-hit.head i { background: #ffe0d8; }
+/* R2's damage_feedback image (32 x 64, the X in its top half), drawn as the stock script does:
+   24 x 48 virtual pixels at (-12, -12) from the crosshair [H: CoD4 _damagefeedback.gsc]. */
+.r3d-fx-hit.img i { display: none; }
+.r3d-fx-hit.img::before { content: ''; position: absolute; left: calc(-12px * var(--hm-s)); top: calc(-12px * var(--hm-s));
+  width: calc(24px * var(--hm-s)); height: calc(48px * var(--hm-s)); background: var(--hm-img) no-repeat 0 0 / 100% 100%; }
+.r3d-fx-hit.img.head::before { filter: sepia(1) saturate(4) hue-rotate(-30deg); }
+/* R2's overlay_low_health: the game's own hurt vignette, stretched over the view. */
+.r3d-fx-blood.img { background-repeat: no-repeat; background-size: 100% 100%; background-position: center; }
 /* Blood on a swipe: dark red at the edges, splattered, the middle clear. ENW's, procedural. */
 .r3d-fx-blood { position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: 2;
   background:
