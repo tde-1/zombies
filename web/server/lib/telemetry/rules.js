@@ -43,10 +43,11 @@ const RULES = [
     id: 'crash', label: 'Crash', severity: 1,
     description: 'The game or the box instance crashed: a Windows crash dump, an unhandled exception named by overlay_guard, a trapped Sys_Error, Windows event 1000, a session that ended in "crash", or the host saw the instance exit unexpectedly.',
     test (ctx) {
-      // `(?!s)`: overlay_guard's start-up INFO line "unhandled exceptions are named before the
-      // engine's filter" matched this case-insensitively, so EVERY client bundle was flagged
-      // Crash P1 (lane CL, 2026-09-23: B's zombie_town hang showed "Crash (P1, 2x)").
-      const lines = ctx.grep(/overlay_guard: UNHANDLED EXCEPTION(?!s)|Unhandled exception caught|=== Sys_Error TRAPPED ===|instance exited unexpectedly/i, GAME_LOGS.source + '|' + HOST_LOG.source)
+      // overlay_guard's real line is upper case (overlay_guard.cpp:214). Its start-up line
+      // "overlay_guard: unhandled exceptions are named before the engine's filter" is NOT a
+      // crash: matched case-blind it made every 0.2.2x client bundle a false P1 (incidents
+      // 34 and 37, crash review L1 2026-09-23). So that one alternative is case-sensitive.
+      const lines = ctx.grep(/overlay_guard: UNHANDLED EXCEPTION|[Uu]nhandled exception caught|=== Sys_Error TRAPPED ===|instance exited unexpectedly/, GAME_LOGS.source + '|' + HOST_LOG.source)
       const dumps = ctx.files.filter((f) => f.binary && /\.dmp$/i.test(f.name) && !/(^|\/)hang-/i.test(f.name) && f.size > 0)
       const ev = (ctx.manifest.events || []).filter((e) => Number(e.id || e.Id) === 1000)
       const m = ctx.manifest
@@ -80,6 +81,21 @@ const RULES = [
     },
   },
   {
+    // The dedicated server stopped simulating (dedi.md §23): the freeze watchdog's FREEZE
+    // line (server/components/dedicated/freeze_watchdog.cpp), or the host's record of it
+    // (exit_reason / SUMMARY flags server_freeze). B's 13:43 UTC fear_mc_2 game was
+    // incident 36 and got only P2 script_error: there was no rule for it (crash review L1).
+    id: 'server_freeze', label: 'Server froze', severity: 1, kinds: ['host', 'journal', 'client'],
+    description: 'The dedicated server stopped simulating: the freeze watchdog ended the match (FREEZE), or the host recorded server_freeze. The detail names the first escaped fault.',
+    test (ctx) {
+      const lines = ctx.grep(/dedi_freeze_watchdog: FREEZE\b|flags=\[[^\]]*server_freeze|game over: server_freeze/, GAME_LOGS.source + '|' + HOST_LOG.source)
+      const m = ctx.manifest
+      const said = m.exit_reason === 'server_freeze' || /server_freeze/.test(String(m.summary_line || ''))
+      if (!lines.length && !said) return null
+      return { count: Math.max(1, lines.length), lines, detail: [firstFault(ctx), lines.length ? firstText(ctx, lines) : 'the host recorded server_freeze'].filter(Boolean).join('; ') }
+    },
+  },
+  {
     id: 'oom_kill', label: 'Out of memory', severity: 1, kinds: ['journal', 'host'],
     description: 'The Linux kernel killed a process for memory (the box).',
     line: /Out of memory: Killed process|oom-kill|invoked oom-killer/i, files: new RegExp(KERNEL_LOG.source + '|' + HOST_LOG.source, 'i'),
@@ -100,6 +116,46 @@ const RULES = [
       for (const h of m) for (let i = h.idx; i < Math.min(h.idx + 12, ctx.text(h.file).length); i++) { const x = /"((?:EXE|PLATFORM|MENU|GAME)_[A-Z0-9_]+)"/.exec(ctx.text(h.file)[i]); if (x) codes.add(x[1]) }
       return `${m.length}×${codes.size ? ` (${[...codes].slice(0, 6).join(', ')})` : ''}`
     },
+  },
+  {
+    // An escaped frame without (yet) a freeze: the VM may already be damaged (dedi.md §23).
+    id: 'frame_escape', label: 'Server frame escaped', severity: 2, kinds: ['host', 'journal', 'client'],
+    description: 'A dedicated server frame left through an access violation (freeze_watchdog "escape fault"). The detail names the fault when it is a known one.',
+    test (ctx) {
+      if (ctx.flagged('server_freeze')) return null
+      const lines = ctx.grep(/dedi_freeze_watchdog: escape fault #\d+/, DLL_LOG.source)
+      return lines.length ? { count: lines.length, lines, detail: firstFault(ctx) || firstText(ctx, lines) } : null
+    },
+  },
+  {
+    // "Error: Exceeded limit of 1600 'loaded_sound' assets." (console), and the DLL's
+    // Com_Error dump: arg2 "Exceeded limit of %d '%s' assets. " + arg4 "<pool>" (error_trap.cpp).
+    // On the box 2026-09-23: loaded_sound (nazi_zombie_port ×3, nazi_zombie_ntc, batman),
+    // image (nazi_zombie_iplay2), fx (nazi_zombie_displace) at map load; snddriverglobals is
+    // the second load of mod.ff after the server fell back to the front end (dedi.md §11.4).
+    id: 'asset_limit', label: 'Asset pool full', severity: 2,
+    description: 'The engine ran out of an asset pool ("Exceeded limit of N \'pool\' assets"): the map is too big for stock limits. snddriverglobals means the server fell back to the front end after an earlier error or the last player leaving (dedi.md §11.4).',
+    test (ctx) {
+      const lines = []
+      const pools = new Set()
+      for (const h of ctx.grep(/Exceeded limit of (\d+|%d) '(\w+|%s)' assets/, GAME_LOGS.source)) {
+        const t = ctx.text(h.file)
+        let pool = (/Exceeded limit of \d+ '(\w+)' assets/.exec(t[h.idx]) || [])[1]
+        if (!pool) for (let i = h.idx + 1; i < Math.min(h.idx + 4, t.length) && !pool; i++) pool = (/arg4 = [0-9A-F]{8} "(\w+)"/.exec(t[i]) || [])[1]
+        lines.push(h)
+        if (pool) pools.add(pool)
+      }
+      if (!lines.length) return null
+      const p = [...pools]
+      const restart = p.includes('snddriverglobals')
+      return { count: lines.length, lines, detail: `${p.join(', ') || 'unknown pool'}${restart ? ' (snddriverglobals = the front-end restart symptom: read the FIRST error, dedi.md §11.4)' : ''}` }
+    },
+  },
+  {
+    // "Error: Need 59127143 more bytes of 'main' physical ram for alloc to succeed" (ugxm_pax on the box).
+    id: 'map_oom', label: 'Map out of memory', severity: 2,
+    description: 'The map needs more memory than the engine\'s pools hold ("Need N more bytes of \'main\' physical ram").',
+    line: /Need \d+ more bytes of '\w+' physical ram/, files: GAME_LOGS,
   },
   {
     id: 'script_error', label: 'Script errors', severity: 2,
@@ -285,6 +341,30 @@ function assets (ctx, wantNew) {
   return { count: pick.length, lines: pick.map(([, h]) => h), detail: `${pick.length} distinct: ${names.slice(0, 8).join(', ')}${names.length > 8 ? ', …' : ''}` }
 }
 
+// Escape-fault eips we have identified (mirror of server/components/dedicated/snd_alias_dvars.hpp
+// known_fault_name; crash review lane L1, dedi.md §25-§26). eip -> what it is.
+const SND = 'snd_errorOnMissing NULL on a dedicated server: a sound builtin got an alias the map lacks (dedi.md §25, fixed by dedi_snd_alias_dvars)'
+const FX = 'fx_enable NULL on a dedicated server: effect code ran with no FX system (dedi.md §26, fixed by dedi_snd_alias_dvars)'
+const KNOWN_FAULTS = {
+  '004F057E': SND, '0051BC60': SND, '0051BE67': SND, '0051C0EF': SND, '005227A5': SND, '005233FE': SND, '005E5C26': SND, '0066C2A5': SND,
+  '005C528F': SND, '0063B572': SND, '0064EC32': SND, '0064ECD2': SND,
+  '004E58B4': 'r_watersim_debug NULL on a dedicated server: a bullet hit water (dedi.md §26, fixed by dedi_snd_alias_dvars)',
+  '004AD6B5': FX, '004AD706': FX, '004B2E26': FX,
+  '005FFE23': 'packet receive read [0x3BFD478] after localVars overran it: a consequence of an earlier escaped frame (dedi.md §23)',
+  '006F3E6A': 'water simulation read a NULL buffer (dedi.md §12, fixed by dedi_watersim_pool)',
+}
+// "escape fault #1 tid 3608 code=C0000005 eip=004F057E reading 00000010" -> the first
+// fault's eip, and its name when known.
+function firstFault (ctx) {
+  const h = ctx.grep(/dedi_freeze_watchdog: escape fault #\d+ .*eip=[0-9A-F]{8}/, DLL_LOG.source)[0]
+  if (!h) return ''
+  const t = ctx.text(h.file)[h.idx]
+  const eip = (/eip=([0-9A-F]{8})/.exec(t) || [])[1]
+  const touched = (/(reading|writing) ([0-9A-F]{8})/.exec(t) || []).slice(1).join(' ')
+  const known = KNOWN_FAULTS[eip]
+  return `first fault eip ${eip}${touched ? ` ${touched}` : ''}${known ? ` = ${known}` : ' (unknown: name it, crash-review-2026-09-23.md)'}`
+}
+
 function firstText (ctx, lines) {
   const h = lines[0]
   return h ? String(ctx.text(h.file)[h.idx] || '').replace(/^\[[\d:.]+\] (\[\w+\] )?/, '').trim().slice(0, 200) : ''
@@ -294,4 +374,4 @@ const byId = new Map(RULES.map((r) => [r.id, r]))
 const catalogue = () => RULES.map((r) => ({ id: r.id, label: r.label, severity: r.severity, description: r.description, kinds: r.kinds || null }))
 const SEVERITY_NAMES = { 1: 'P1 crash/hang', 2: 'P2 error', 3: 'P3 warning', 4: 'P4 info' }
 
-module.exports = { ASSET_RE, assetKey, RULES, byId, catalogue, SEVERITY_NAMES, GAME_LOGS, DLL_LOG, CONSOLE_LOG, LAUNCHER_LOG, HOST_LOG }
+module.exports = { KNOWN_FAULTS, ASSET_RE, assetKey, RULES, byId, catalogue, SEVERITY_NAMES, GAME_LOGS, DLL_LOG, CONSOLE_LOG, LAUNCHER_LOG, HOST_LOG }

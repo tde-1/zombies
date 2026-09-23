@@ -25,8 +25,11 @@
 //     Marines / the four heroes, the stock zombies, a procedural gait), falling back to
 //     coloured capsules and one instanced capsule mesh when the models are not there;
 //   * the scoreboard (points, health), the round counter, the body count, the event
-//     feed, and round markers on the scrubber.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+//     feed, and round markers on the scrubber;
+//   * lane R4 (replay.md §13): in a co-op replay the panel is a spectator list -- click or
+//     tap a player to follow, 1-4 pick, Q/E or [ ] cycle, F first/third person, Esc free
+//     cam, a down marker with the next player who is up (spectate.js). Solo keeps 1/2/3.
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { createScene, isWebGL2Available, installWorldFov, toThree, forwardOf } from './scene.js'
 import { createActors, installSkyDome, SLOT_COLORS } from './actors.js'
 // Lane R3 (replay.md §12): weapons in hands, muzzle flash, hit markers, blood, Pack-a-Punch,
@@ -36,6 +39,8 @@ import {
 } from './fx.js'
 import { createGear, loadAssets } from './gear.js'
 import { ReplaySound } from './sound.js'
+// Lane R4 (replay.md §13): who the camera follows in a co-op replay -- a pure reducer.
+import { initSpectate, spectate, keyAction, isCoop, downPrompt, followLabel, downSpans, isDownAt } from './spectate.js'
 import {
   CG_FOV, VIEW_HEIGHT, HULL, HUD, BTN, stanceOf, WEAPONS, DEFAULT_WEAPON, weaponRow,
   simulateSpread, reticleGeom, cookAt, roundGlyphs, trackClock,
@@ -117,6 +122,7 @@ function IconPause() { return <svg viewBox="0 0 24 24" fill="currentColor"><path
 function IconBack() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V2L7 7l5 5V9a5 5 0 1 1-5 5H5a7 7 0 1 0 7-9z" /></svg> }
 function IconFwd() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V2l5 5-5 5V9a5 5 0 1 0 5 5h2a7 7 0 1 1-7-9z" /></svg> }
 function IconCog() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4c0-.6-.05-1.2-.15-1.75l2.05-1.6-2-3.46-2.4 1a7.9 7.9 0 0 0-3-1.75L15.1 1.5h-4l-.4 2.94a7.9 7.9 0 0 0-3 1.75l-2.4-1-2 3.46 2.05 1.6a8.3 8.3 0 0 0 0 3.5L3.3 15.35l2 3.46 2.4-1a7.9 7.9 0 0 0 3 1.75l.4 2.94h4l.4-2.94a7.9 7.9 0 0 0 3-1.75l2.4 1 2-3.46-2.05-1.6c.1-.55.15-1.15.15-1.75z" /></svg> }
+function IconEye() { return <svg className="r3d-spec-eye" viewBox="0 0 24 24" fill="currentColor" aria-label="Following"><path d="M12 5C6.5 5 2.7 9.2 1.5 12c1.2 2.8 5 7 10.5 7s9.3-4.2 10.5-7C21.3 9.2 17.5 5 12 5zm0 11.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-2.3a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z" /></svg> }
 function IconFull() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9V4h5v2H6v3zm11-5h5v5h-2V6h-3zM4 15h2v3h3v2H4zm14 3v-3h2v5h-5v-2z" /></svg> }
 
 /**
@@ -135,8 +141,21 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const [progress, setProgress] = useState(null)
   const [err, setErr] = useState(null)
   const [note, setNote] = useState(null)
-  const [camMode, setCamMode] = useState('follow')
-  const [focus, setFocus] = useState(track?.players?.[0]?.slot ?? 0)
+  // Lane R4: the follow target and the camera mode are one reducer (spectate.js), so a click on
+  // a panel row, a number key, Q/E/[ ], F and Esc all go through the same tested rules. Seek,
+  // play and pause never touch it: the follow target persists across them.
+  const [spec, dispatchSpec] = useReducer(spectate, track, initSpectate)
+  const camMode = spec.mode
+  const focus = spec.focus
+  const setCamMode = useCallback((mode) => dispatchSpec({ type: 'mode', mode }), [])
+  const coop = isCoop(track && track.players)
+  // The players at the playhead (name, alive), in panel order, for the key handler's cycling.
+  const listRef = useRef([])
+  // Down windows from the feed (down .. revive / spawn): a player is "up" only if the snapshot
+  // says alive AND no down is open, since last stand's `alive` is unproven (spectate.js).
+  const downSp = useMemo(() => downSpans(track && track.events), [track])
+  const specRef = useRef(spec)
+  useEffect(() => { specRef.current = spec }, [spec])
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [speedOpen, setSpeedOpen] = useState(false)
@@ -430,6 +449,8 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
           api, redraw: () => { dirtyRef.current = true },
           // Seek to replay seconds (screenshots, replay.md §9); the same as dragging the scrubber.
           seek: (s) => { timeRef.current = Math.max(0, s); dirtyRef.current = true },
+          // Lane R4: the follow state, for the render check.
+          spec: () => ({ ...specRef.current }),
         }
       }
     } catch { /* no window.location: not a browser */ }
@@ -715,6 +736,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         health: p.health[i], score: p.score[i], alive: p.alive[i] === 1,
         stance, height: BODY[stance].height,
       }
+      rec.up = rec.alive && !isDownAt(downSp, p.slot, t0 + timeRef.current * 1000)
       list.push(rec)
       if (rec.slot === focusRef.current) focusP = rec
     }
@@ -794,7 +816,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     // Zombies left: computed by the track from the round's stock total (lib/wawRules.js).
     const zl = track.zombies_left ? track.zombies_left[i] : null
     return { fire, xh, zs, i, list, alive: zs.length - zDying, left: zl == null ? null : zl, round: roundAt[i] || 0 }
-  }, [track, clk, t0, roundAt, weaponNameAt, spread, zombieYaw, walked, zombieDeathMs])
+  }, [track, clk, t0, roundAt, weaponNameAt, spread, zombieYaw, walked, zombieDeathMs, downSp])
 
   // ---- lane R3: weapons in hands, flashes, the viewmodel's weapon, power-ups, name tags ----
   // A pure function of replay time (fx.js), so a scrubbed or paused frame is what a played one
@@ -1049,6 +1071,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       if (freeMoving) api.tickFree(dt, api.state.keys.has('ShiftLeft') || api.state.keys.has('ShiftRight'))
 
       const s = sample()
+      if (s) listRef.current = s.list
       if (skyRef.current) skyRef.current()
       // Crosshair and gun: only animated while time moves -- a paused frame is a still,
       // the same as Movement's.
@@ -1130,12 +1153,19 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         return
       }
       if (e.type === 'keyup') { api && api.state.keys.delete(e.code); return }
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      // Lane R4: the spectator keys (spectate.js keyAction). Co-op: 1-4 pick a player, Q/E and
+      // [ ] cycle, F first/third person, Esc free cam. Solo: 1/2/3 are the camera modes, as ever.
+      const players = listRef.current
+      const act = keyAction(e.code, { coop: players.length > 1, mode: specRef.current.mode })
+      if (act) {
+        if (e.code === 'Escape' || e.code === 'KeyF') e.preventDefault()
+        if (!e.repeat) dispatchSpec({ ...act, players })
+        return
+      }
       api && api.state.keys.add(e.code)
       if (e.code === 'Space') { e.preventDefault(); togglePlayRef.current() }
       else if (e.code === 'KeyM') toggleMuteRef.current()
-      else if (e.code === 'Digit1') setCamMode('eyes')
-      else if (e.code === 'Digit2') setCamMode('follow')
-      else if (e.code === 'Digit3') setCamMode('free')
       else if (e.code === 'ArrowLeft') seek(timeRef.current - SKIP_S)
       else if (e.code === 'ArrowRight') seek(timeRef.current + SKIP_S)
     }
@@ -1229,6 +1259,17 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
   const pct = (ms) => `${Math.max(0, Math.min(100, ((ms - t0) / 1000 / (total || 1)) * 100))}%`
 
+  // Lane R4: the panel's "Following" line (with the followed player's weapon), and the down prompt.
+  const followNow = followLabel(hud.players, spec)
+  const downNow = downPrompt(hud.players, focus, camMode)
+  const followWeapon = (() => {
+    if (!followNow || followNow.free) return null
+    const tp = track.players.find((x) => x.slot === focus)
+    const k = hud.tick == null ? 0 : hud.tick
+    const w = weaponAt(F, focus, t0 + hud.t * 1000, () => colWeapon(tp, k), {})
+    return w.name ? displayName(w.name, w.pap, assets, w.raw) : null
+  })()
+
   return (
     <div className="r3d" ref={wrapRef}>
       <div className="r3d-top">
@@ -1243,7 +1284,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
           <div className="r3d-seg r3d-cams">
             {CAMS.map(([k, label]) => (
               <button key={k} className={camMode === k ? 'on' : ''} onClick={() => setCamMode(k)}
-                title={`${label} (${k === 'eyes' ? 1 : k === 'follow' ? 2 : 3})`}>{label}</button>
+                title={coop ? `${label} (${k === 'free' ? 'Esc' : 'F'})` : `${label} (${k === 'eyes' ? 1 : k === 'follow' ? 2 : 3})`}>{label}</button>
             ))}
           </div>
           {onClose && <button className="r3d-x r3d-icon" onClick={onClose} title="Close">✕</button>}
@@ -1294,12 +1335,45 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         </div>
       )}
 
-      <div className="r3d-zm-score">
-        {hud.players.map((p) => (
-          <div key={p.slot} className={'r3d-zm-row' + (p.slot === focus ? ' on' : '') + (p.alive ? '' : ' down')}
-            onClick={() => setFocus(p.slot)} title="Watch from this player">
+      {/* Lane R4: the followed player is down. The camera stays on him; this marks it and
+          offers the next player who is up (a tap or E). Co-op only, never in free cam. */}
+      {downNow && (
+        <div className="r3d-spec-down" role="status">
+          <span className="r3d-spec-down-tag">Down</span>
+          <span className="r3d-spec-down-name">{downNow.name}</span>
+          {downNow.next && (
+            <button type="button" className="r3d-spec-down-next" onClick={() => dispatchSpec({ type: 'next-alive', players: hud.players })}>
+              Watch {downNow.next.name} <kbd>E</kbd>
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className={'r3d-zm-score' + (coop ? ' coop' : '')}>
+        {followNow && (
+          <div className={'r3d-spec-head' + (followNow.free ? ' free' : '')} aria-live="polite">
+            {followNow.free
+              ? <><b>Free cam</b><span>{followNow.hint}</span></>
+              : <><span className="r3d-spec-lab">Following</span><b>{followNow.text}</b><span>{followNow.view}{followWeapon ? ` · ${followWeapon}` : ''}</span></>}
+          </div>
+        )}
+        {hud.players.map((p, n) => (
+          <div key={p.slot} role="button" tabIndex={0} aria-pressed={p.slot === focus && camMode !== 'free'}
+            className={'r3d-zm-row' + (p.slot === focus ? ' on' : '') + (p.slot === focus && camMode !== 'free' ? ' watching' : '') + (p.alive ? '' : ' down')}
+            onClick={(e) => {
+              if (!coop) return
+              // A mouse or a finger leaves no focus ring behind on the row it picked (the keys
+              // move the follow target, and a ring on the old row would read as the followed one).
+              if (e.detail > 0) e.currentTarget.blur()
+              dispatchSpec({ type: 'select', slot: p.slot, players: hud.players })
+            }}
+            onKeyDown={(e) => { if (coop && e.key === 'Enter') { e.stopPropagation(); dispatchSpec({ type: 'select', slot: p.slot, players: hud.players }) } }}
+            title={coop && n < 4 ? `Follow this player (${n + 1})` : 'Watch from this player'}>
+            {coop && n < 4 && <kbd className="r3d-spec-key">{n + 1}</kbd>}
             <span className="r3d-zm-dot" style={{ background: SLOT_COLORS[p.slot % SLOT_COLORS.length] }} />
             <span className="r3d-zm-name">{p.name}</span>
+            {coop && !p.alive && <span className="r3d-spec-tag">Down</span>}
+            {coop && p.slot === focus && camMode !== 'free' && <IconEye />}
             <span className={'r3d-zm-hp' + (p.health < 50 ? ' hurt' : '')}>
               <i style={{ width: `${Math.max(0, Math.min(100, p.health))}%` }} />
             </span>

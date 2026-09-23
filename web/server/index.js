@@ -20,6 +20,13 @@ const express = require('express')
 const session = require('express-session')
 const { Server: IO } = require('socket.io')
 
+// infra/discord.env (ZM_DISCORD_* / ENW_DISCORD_* only): read here so a node restart picks up
+// B's Discord application id without restarting the keepalive loop (lib/discordEnv.js).
+{
+  const set = require('./lib/discordEnv').load()
+  if (set.length) console.log(`[discord] infra/discord.env: ${set.join(', ')}`)
+}
+
 const { db } = require('./db/database')
 // The site's own log file and incidents (lib/telemetry/siteLog.js, docs/kickstart/telemetry.md
 // §9): installed first, so every console line from here on is also on disk.

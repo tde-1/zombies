@@ -21,7 +21,35 @@ const LINE_MAX = 400
 const ANSI = /\x1b\[[0-9;]*m/g
 
 // Crash-like flags get a wide window (what led up to it matters) and the log's last lines.
-const WIDE = new Set(['crash', 'hang', 'site_crash', 'oom_kill', 'launcher_error'])
+const WIDE = new Set(['crash', 'hang', 'server_freeze', 'site_crash', 'oom_kill', 'launcher_error'])
+
+// launcher.log is sent as a 4 MB tail: days of history. A line from before this bundle's
+// session is not evidence about it (crash review L1: yesterday's "play released the lease
+// (the launch failed)" and a morning 502 flagged every client bundle lease_refused and
+// launcher_update_failed). Lines stamped before the window are not grepped. The window:
+// the session's start (manifest.session.started_at, else created_at - duration_ms, else
+// created_at - 6 h) less 10 minutes, to created_at + 1 minute. No created_at -> no window.
+const LAUNCHER_FILE = /(^|\/)(launcher\.log|.*-std(out|err)\.log)$/i
+const ISO_AT = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z)/
+function launcherWindow (m) {
+  const end = Date.parse(m && m.created_at)
+  if (!Number.isFinite(end)) return null
+  let start = Date.parse(m.session && m.session.started_at)
+  if (!Number.isFinite(start)) start = Number(m.duration_ms) > 0 ? end - Number(m.duration_ms) : end - 6 * 3600e3
+  return { start: start - 10 * 60e3, end: end + 60e3 }
+}
+// Per line: is it inside the window? An unstamped line (a continuation: headers, a stack)
+// belongs to the stamped line above it; lines before the first stamp are kept.
+function windowMask (ls, win) {
+  const keep = new Array(ls.length)
+  let cur = true
+  for (let i = 0; i < ls.length; i++) {
+    const x = ISO_AT.exec(ls[i])
+    if (x) { const t = Date.parse(x[1]); cur = !Number.isFinite(t) || (t >= win.start && t <= win.end) }
+    keep[i] = cur
+  }
+  return keep
+}
 
 const CHRONIC_FILE = process.env.ZM_CHRONIC_ASSETS || path.join(__dirname, '..', '..', 'data', 'chronic-assets.json')
 let chronic = null
@@ -39,6 +67,9 @@ function evaluate ({ manifest = {}, files = [], texts = new Map() } = {}) {
   const kind = manifest.kind || 'client'
   const flags = []
   const results = {}
+  const win = launcherWindow(manifest)
+  const masks = new Map()
+  if (win) for (const [name, ls] of lines) if (LAUNCHER_FILE.test(name)) masks.set(name, windowMask(ls, win))
 
   const ctx = {
     manifest,
@@ -52,7 +83,8 @@ function evaluate ({ manifest = {}, files = [], texts = new Map() } = {}) {
       const out = []
       for (const [f, ls] of lines) {
         if (fre && !fre.test(f)) continue
-        for (let i = 0; i < ls.length; i++) if (rx.test(ls[i])) out.push({ file: f, idx: i })
+        const keep = masks.get(f)
+        for (let i = 0; i < ls.length; i++) if ((!keep || keep[i]) && rx.test(ls[i])) out.push({ file: f, idx: i })
       }
       return out
     },
