@@ -99,7 +99,7 @@ int main() {
         const std::string s = fmt(f);
         check(s == "{\"v\":1,\"pid\":23916,\"build\":\"enw_t4 Sep 23 2026 12:00:00\",\"started_at\":\"2026-09-23T03:41:53.012Z\","
                    "\"ended_at\":null,\"exit\":\"unknown\",\"exception\":null,\"last_error\":null,\"last_map\":null,"
-                   "\"frames\":0,\"largest_free_block_mb\":null,\"hang_dump\":null,\"discord_hook_refused\":0}\n",
+                   "\"frames\":0,\"largest_free_block_mb\":null,\"hang_dump\":null,\"hang_where\":null,\"discord_hook_refused\":0}\n",
               "startup record, byte for byte");
         check(valid_json(s), "startup record parses");
     }
@@ -161,7 +161,18 @@ int main() {
         check(has(s, "\"hang_dump\":\"C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\ENWZombies\\\\logs\\\\hang-34580-20260923-021500.dmp\""),
               "backslashes in a path escaped");
         check(has(s, "\"exit\":\"hang\""), "exit hang");
+        check(has(s, "\"hang_where\":null"), "no verdict -> null");
         check(valid_json(s), "hang record parses");
+    }
+    // --- hang with the watchdog's verdict (lane CL, zombie_town) ---
+    {
+        fields f;
+        f.exit = exit_kind::hang;
+        f.hang_where = "main waits on the render lock; holder tid 18204 at 0x6A1B2C3D (d3d9.dll+0x1B2C3D)";
+        const std::string s = fmt(f);
+        check(has(s, "\"hang_where\":\"main waits on the render lock; holder tid 18204 at 0x6A1B2C3D (d3d9.dll+0x1B2C3D)\""),
+              "hang_where written");
+        check(valid_json(s), "hang_where record parses");
     }
     // --- escaping of engine error text ---
     {

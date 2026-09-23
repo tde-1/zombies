@@ -22,6 +22,7 @@ import { makeLog, parseArgs, setLogLevel, mkdirp, id as makeId, fmtBytes, fmtDur
 import { GameLinkServer } from './lib/gamelink.js'
 import { InstanceManager, devKnobsFor } from './lib/instances.js'
 import { Referee } from './lib/referee.js'
+import { gameModeId } from './lib/gamemode.js'   // the map's own game mode (game-modes.md)
 import { ManifestStore } from './lib/manifests.js'
 import { ReplayWriter } from './lib/replay.js'
 import { TokenGuard, checkBinding } from './lib/tokens.js'
@@ -232,6 +233,7 @@ class Game extends EventEmitter {
     this.manifest = host.manifests.get(null)
     this.referee = new Referee({
       instanceId: instance.id, matchId: this.matchId, mode: this.mode, vip: this.vip,
+      gameMode: gameModeId(this.assignment),
       manifest: this.manifest, config: { ...cfg.referee, ...(refereeConfig || {}) }, log: this.log,
     })
     this.referee.on('command', (c) => this.sendToGame(c))
@@ -514,6 +516,9 @@ class Game extends EventEmitter {
     // Its environment was fixed at spawn: a process launched with dev knobs (dedi.md §23)
     // keeps them for life, so it must never be handed to the next lease warm.
     if (devKnobsFor(this.instance.assignment).ENW_DEV_KNOBS === '1') return { action: 'terminate', why: 'a dev-knob instance is never reused for another lease' }
+    // Same for a game mode (game-modes.md): the enw_menu_* dvars were on its command line, so
+    // a warm handoff would answer the next lease's menu with THIS lease's mode.
+    if (gameModeId(this.instance.assignment)) return { action: 'terminate', why: `a game-mode instance (${gameModeId(this.instance.assignment)}) is never reused for another lease` }
     if (cfg.afterGame === 'terminate') return { action: 'terminate', why: '--after-game terminate' }
     if (played >= cfg.gamesPerInstance) return { action: 'terminate', why: `${played} game(s) on this instance, the limit is ${cfg.gamesPerInstance}` }
     return { action: 'reuse', why: `game ${played} of ${cfg.gamesPerInstance} on this instance` }
@@ -612,6 +617,7 @@ class Game extends EventEmitter {
       instance: this.instance.id,
       box: cfg.boxName,
       mode: this.mode,
+      game_mode: gameModeId(this.assignment),
       map: mapEv.map,
       fs_game: mapEv.fs_game || null,
       map_name: this.manifest.title || null,
@@ -1502,6 +1508,7 @@ class HostAgent {
       // `end` is a map_restart, not a map change: a warm instance can only serve a lease
       // for the map it is already on. Anything else has to be a fresh process.
       if (map && g.referee.map && g.referee.map !== map) continue
+      if (gameModeId(g.instance?.assignment)) continue   // booted with a mode: never handed on
       this.warm.delete(id)
       clearTimeout(g.warmTimer)
       return g
@@ -1707,7 +1714,9 @@ class HostAgent {
     // roster in its environment at spawn, so a warm sim instance cannot be handed a
     // DIFFERENT party. What is proven tonight is the half below it — the handshake, the
     // warm state, and a second match on the same process (host.md §12).
-    const warm = this.coldOnly?.has(asg.match_id) ? null : this.takeWarm(asg.map)
+    // A lease with a game mode always boots fresh: the mode goes on the command line
+    // (game-modes.md), and a warm process was started without it.
+    const warm = this.coldOnly?.has(asg.match_id) || gameModeId(asg) ? null : this.takeWarm(asg.map)
     if (warm) {
       for (const [id, g] of this.warm) if (g !== warm) this.retire(g, `a lease for ${asg.map} arrived and this instance is on ${g.referee.map}`)
       return this.handWarm(warm, asg, tokens, roster)

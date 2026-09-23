@@ -90,7 +90,11 @@ param(
     # Extra `+set` pairs for the CLIENT only, appended after the harness's own (so they
     # win). mod-compat.md §1: reproducing a player's view means the player's renderer
     # dvars (r_mode, r_multiGpu, cg_fov ...), not the harness's 800x600.
-    [string[]]$ClientExtraArgs = @()
+    [string[]]$ClientExtraArgs = @(),
+
+    # Extra `+set` pairs for the SERVER only, placed before `+map` (so a map's script sees
+    # them from its first frame). game-modes.md: the host's host-owned enw_menu_* dvars.
+    [string[]]$ServerExtraArgs = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -188,6 +192,7 @@ try {
     # path has to already include it when the map load runs. (Same ordering bug class as
     # `+map` before `+set net_port`, STATUS.md "Fixed today".)
     if ($FsGame) { $serverArgs += @('+set', 'fs_game', $FsGame) }
+    if ($ServerExtraArgs.Count) { $serverArgs += $ServerExtraArgs; Say "server extra args: $($ServerExtraArgs -join ' ')" 'Cyan' }
     $serverArgs += @('+map', $Map)
     $serverExtra = @{}
     if ($MatchId)  { $serverExtra['MatchId'] = $MatchId }

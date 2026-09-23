@@ -77,7 +77,7 @@ function sessionFiles(pid, dirs) {
   return files
 }
 
-function readSession(pid, dirs) {
+export function readSession(pid, dirs) {
   try { return JSON.parse(fs.readFileSync(path.join(dirs.logs, `session-${pid}.json`), 'utf8')) } catch { return null }
 }
 
@@ -113,10 +113,15 @@ const werManifest = (w) => (w ? { local_dumps: w.local_dumps, dump_folder: w.dum
 // itself; the absence of the quit call is the site's signal). Here: a dump made by
 // Windows (WER) or by us for this pid is a crash; our hang watchdog's dump is a hang; an
 // exit code other than 0 that we did not cause is a crash; anything else is an exit.
+// The DLL's own verdict is `session.exit` ('crash' | 'hang' | 'error' | 'quit' | 'unknown',
+// session_record.cpp); it wins over an exit code. Lane CL (2026-09-23): B's zombie_town
+// hang was only called a hang because the watchdog left an EMPTY hang-*.dmp behind; the
+// watchdog now deletes a failed dump, so without reading `exit` it would have been a crash.
 export function classifyGame({ crashDumps = [], hangDumps = [], exitCode = null, stoppedByUs = false, phase = null, session = null }) {
   const sr = String(session?.exit_reason || session?.exitReason || '')
-  if (crashDumps.length) return 'game_crash'
-  if (hangDumps.length || /hang/i.test(sr)) return 'game_hang'
+  const verdict = String(session?.exit || '')
+  if (crashDumps.length || verdict === 'crash') return 'game_crash'
+  if (hangDumps.length || verdict === 'hang' || /hang/i.test(sr)) return 'game_hang'
   if (/crash|exception|fatal|error/i.test(sr)) return 'game_crash'
   if (phase === 'failed') return 'game_crash'
   if (!stoppedByUs && typeof exitCode === 'number' && exitCode !== 0) return 'game_crash'
