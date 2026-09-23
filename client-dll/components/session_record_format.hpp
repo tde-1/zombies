@@ -49,6 +49,7 @@ struct fields {
     uint64_t frames = 0;
     int32_t largest_free_tenths_mb = -1;  // -1: not measured (overlay_guard off / not yet)
     const char* hang_dump = nullptr;
+    const char* hang_where = nullptr;  // hang_watchdog's verdict, e.g. who holds the render lock
     uint32_t discord_hook_refused = 0;
 };
 
@@ -151,6 +152,7 @@ inline size_t format(const fields& f, char* buf, size_t cap) {
         o.raw("null");
     }
     o.key("hang_dump"); o.str(f.hang_dump);
+    o.key("hang_where"); o.str(f.hang_where);
     o.key("discord_hook_refused"); o.u64(f.discord_hook_refused);
     o.ch('}');
     o.ch('\n');

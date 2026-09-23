@@ -75,7 +75,8 @@ const RULES = [
       return {
         count: Math.max(1, lines.length, dumps.length, ev.length),
         lines,
-        detail: [dumps.length ? `${dumps.length} hang dump${dumps.length > 1 ? 's' : ''}${empty ? ` (${empty} empty: MiniDumpWriteDump failed)` : ''}` : null, ev.length ? `Windows event 1002 ×${ev.length}` : null, lines.length ? firstText(ctx, lines) : null].filter(Boolean).join('; '),
+        // session.hang_where: the watchdog's one-line verdict (who holds the render lock), DLL >= lane CL.
+        detail: [m.session && m.session.hang_where ? String(m.session.hang_where).slice(0, 200) : null, dumps.length ? `${dumps.length} hang dump${dumps.length > 1 ? 's' : ''}${empty ? ` (${empty} empty: MiniDumpWriteDump failed)` : ''}` : null, ev.length ? `Windows event 1002 ×${ev.length}` : null, lines.length ? firstText(ctx, lines) : null].filter(Boolean).join('; '),
       }
     },
   },
