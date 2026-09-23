@@ -3839,3 +3839,23 @@ On the production DLL two ILS-class games already take 1.6 of the 2 vCPUs before
 the fast path they take ~0.45. **RAM, not CPU, is the limit at low rounds**: MemAvailable is ~880 MB
 with no game, a game is 300–460 MB, so the third slot only fits a small map (the RAM guard's 700 MB
 floor already stops it). Whether 20+ rounds with 4 players changes the CPU picture is open.
+
+### 28.9 Box DLL 3557aaa3 "NOT applied": an ordering race, not S2's memory fast path (fixed, 356fdf8)
+
+The box logged `dedi_water_sim_off: NOT applied: [0x042B721C]=00000000 but Dvar_FindVar(r_gfxopt_water_simulation)=021BAC04`
+(nacht_reimagined inst-02 enw-4628, derberg, ccube). S2's `memory.cpp` change only makes image reads
+skip VirtualQuery; the read was right — the slot really was NULL. The dvar_s* is stored into
+[0x42B721C] by the renderer's registrar (0x70BB50 ← 0x70B358 ← 0x6E2430 ← R_RegisterDvars 0x6D5740),
+which on a dedi can run *after* our post_init; the instance's `seta r_gfxopt_water_simulation` had
+already created the (unregistered) dvar, so Dvar_FindVar found it. S2's faster startup moved post_init
+ahead of the registrar; it is a race either way (locally with S2 merged it now loses too). ILS logged
+nothing because it won the race and the value was already 0 (that path was silent).
+Fix: bind at post_init if the slot is filled, else on the first frame that has it (the gate at
+0x6F3F77 dereferences the slot, so no water query can run before then); write only a registered
+**bool** dvar (type byte 0 — a byte into a pre-registration string dvar would corrupt its pointer);
+log the already-0 case. `ENW_DEDI_WATER_SIM_LATE=1` (test) forces the late path.
+Proof, DLL `build\g2fix` from branch head 356fdf8 (= main b622811 incl. S2 + this commit), sha256
+`30de544613225a1fcaa650d3562b2082dce7ae43bb68999399ff998882571795`, nacht_reimagined local dedi + client:
+g2w2 (no knob) lost the race → `bound at frame 1`; g2w4 (late, config value 1) → `first frame with the
+dvar: r_gfxopt_water_simulation 1 -> 0`; g2w3 (won the race, value 1) → `post_init: 1 -> 0`. Every run:
+spawn 100/100, standing on the world at -87.6, 0 mismatches.
