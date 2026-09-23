@@ -12,8 +12,8 @@ The session ran from 2026-09-22 19:00 to here; the one-page version, with every 
 
 | | State | Pointer |
 |---|---|---|
-| **Launcher on the feed** | **0.2.20**, client DLL **`03b04bc3`** (main `81086d4`). Tonight: 0.2.7 → 0.2.20 | `launcher.md` "Releases 0.2.14–0.2.20" and the dated 0.2.7–0.2.13 sections |
-| **Box DLL** | **`6b1ccfc5`** in all 9 copies (net_probe lane, `sv_maxRate` 25000, clean worktree at main `fd29f8f`, includes the join fix). Rollback `binkw32.rollback-03b04bc3.dll`. Tonight: `b36fe140` → `f8a835bb` → `86f12b12` → `6fccc0e0` → `79d4317d` → `c0986e5e` → `f920bb39` (unrecorded, reverted) → `03b04bc3` → `6b1ccfc5` | `dedi.md` §22.2 (+ handoff hash check) |
+| **Launcher on the feed** | **0.2.22** (2026-09-23 11:50 UK), client DLL **`499b70c1`** (main `b568f01`, same binary as the box). Tonight: 0.2.7 → 0.2.22 | `launcher.md` release table |
+| **Box DLL** | **`499b70c1`** in all 9 copies (2026-09-23 11:45 UK; clean worktree `wt-coord2` at main `b568f01`: Esc-menu Settings tab, soak `enw_dev_god.off` trigger, everything merged). Rollback `binkw32.rollback-134a9d0f.dll`. Boot proven: agent lease `m_d7ad16e5`, `map_loaded`. Chain: `b36fe140` → `f8a835bb` → `86f12b12` → `6fccc0e0` → `79d4317d` → `c0986e5e` → `f920bb39` (unrecorded, reverted) → `03b04bc3` → `6b1ccfc5` → `683a475c` → `134a9d0f` → `499b70c1` | `dedi.md` §22.6 |
 | **Box host agent** | Several leases: 3 slots, 1 reserved for agents; v2 pull; `ready` at `map_loaded`; copies/lobby ports by slot; `restart.js`. `run-host.sh`: `ENW_NO_PAUSE=1`, `ENW_DEDI_WATCH_PROBE_SLOT=1` | `host.md` §13, `dedi.md` §18.6, §19, §21.3 |
 | **Site** | Live on B's PC; keepalive loop detached + Startup shortcut. **Proven by accident:** the PC crashed ~03:16, the loop was back 03:19:53, site + tunnel up 03:20:36. Everything merged through `b85ee4f` is live (bundle built 03:07). Live DB: 26 EE guides, 6 Movement banners, 0 playlists | `infra\keepalive.log`, `web.md` |
 | **Storage** | One bucket `enw-zombies` (installers + maps, 302 from the site); replay `.glb` not uploaded | `storage.md` §6 |
