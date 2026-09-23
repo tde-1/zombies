@@ -27,6 +27,16 @@ bool filter(UINT msg, WPARAM wp, LPARAM lp, LRESULT* result);
 // the menu drew this frame, and the overlay must not draw its own panel or notify lines.
 bool draw(int local_client);
 
+// [C1] The engine menu now up (keyCatchers 0x10) is the one the map STARTED under, not one
+// the player opened: the pause contract must not report it as `paused` (esc-menu.md §11.4).
+bool map_start_menu();
+
+// [C1] The ENW console's `quit` / `disconnect` / `restart`: the same paths as the menu's
+// Exit game (the site is told it was on purpose, then disconnect, then quit unless
+// `then_quit` is false) and Restart game (`setu enw_req restart.<n>`). True = started.
+bool request_exit(bool then_quit);
+bool request_restart_game();
+
 }  // namespace pause_menu
 
 // Implemented in chat_overlay.cpp (it needs the overlay's own state). The menu calls these

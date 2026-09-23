@@ -149,6 +149,54 @@ int main() {
         check(t4.feed(2, 5, 60000) == lockdown::step::none, "silence while still connecting is join_retry's, not ours");
     }
 
+    std::printf("start menu: a game never starts paused (esc-menu.md 11.4)\n");
+    {
+        using act = lockdown::start_menu::act;
+        // B's logs (fear_mc_2 on the box): 0x10 up from the first in-map frame and never
+        // cleared; the old rule reported `enw_ui paused` at exactly +2.0 s.
+        lockdown::start_menu m;
+        uint64_t now = 5000;
+        check(m.feed(now, false, true) == act::none && !m.inherited, "loading (not in a map): nothing, even with a menu up");
+        int closes = 0;
+        uint64_t first_close = 0;
+        bool paused_ever = false;
+        for (int i = 0; i < 40; ++i, now += 50) {   // 2 s in the map, the menu up all along
+            if (m.feed(now, true, true) == act::close) { if (!closes) first_close = now; ++closes; }
+            paused_ever |= m.counts_as_pause(true);
+        }
+        check(!paused_ever, "the menu the map starts under never counts as a pause (the 2.0 s `paused` of B's logs)");
+        check(closes == 1 && first_close - 5000 >= 1500 && first_close - 5000 < 1600, "it is closed once, 1.5 s into the map",
+              std::to_string(closes) + " at +" + std::to_string(first_close - 5000));
+        for (int i = 0; i < 100; ++i, now += 50) if (m.feed(now, true, true) == act::close) ++closes;
+        check(closes == 3, "a menu that ignores Esc is tried 3 times, 1 s apart, then left alone", std::to_string(closes));
+        // It closes; later the player opens a menu of his own: that one is a pause again.
+        m.feed(now, true, false); now += 50;
+        check(!m.inherited, "once it has closed after the grace window it is forgotten");
+        check(m.feed(now, true, true) == act::none && m.counts_as_pause(true), "a menu opened later is the player's: it counts");
+
+        // The load screen holds 0x10 for a frame, clears, then the map opens its menu at +350 ms.
+        lockdown::start_menu m2;
+        now = 100;
+        m2.feed(now, true, true); now += 16;
+        m2.feed(now, true, false); now += 334;
+        m2.feed(now, true, true);
+        check(m2.inherited && !m2.counts_as_pause(true), "a menu opened by the map in its first 1.5 s is the map's too");
+
+        // A clean start: no menu. Esc at +5 s opens the stock menu: counted, never closed by us.
+        lockdown::start_menu m3;
+        now = 0;
+        int c3 = 0;
+        for (int i = 0; i < 100; ++i, now += 50) if (m3.feed(now, true, false) == act::close) ++c3;
+        for (int i = 0; i < 100; ++i, now += 50) if (m3.feed(now, true, true) == act::close) ++c3;
+        check(c3 == 0 && m3.counts_as_pause(true), "a clean start: the player's own menu later is a pause, and never closed");
+
+        // A map restart (the restart request) leaves the map: the next start is judged afresh.
+        m.feed(now, false, false);
+        check(m.map_since == 0 && m.tries == 0, "leaving the map resets it");
+        m.feed(now, true, true);
+        check(m.inherited, "the restarted map's start menu is the map's again");
+    }
+
     std::printf("lockdown: what the player reads\n");
     {
         check(lockdown::describe("", true) == "The game has ended.", "no error after a game: it ended");
