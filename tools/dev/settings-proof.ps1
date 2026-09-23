@@ -31,7 +31,7 @@ $lock = "$dev\locks\game.lock"
 $clientHome = "$dev\homes\c1"
 
 function Wait-Lock {
-    $deadline = (Get-Date).AddMinutes(25)
+    $deadline = (Get-Date).AddMinutes(150)
     while ((Get-Date) -lt $deadline) {
         $busy = (Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count -gt 0
         if (-not $busy) {
@@ -44,7 +44,7 @@ function Wait-Lock {
         Write-Host "waiting for game.lock: $held"
         Start-Sleep -Seconds 5
     }
-    throw 'game.lock still held after 25 min'
+    throw 'game.lock still held after 150 min'
 }
 
 $env:ENW_TEST_NO_ACTIVATE = '1'
