@@ -62,8 +62,12 @@ $env:ENW_ESC_MENU_SELFTEST = '5'
 # atomic take is not a failed run. Retry the take, never the run.
 for ($try = 1; $try -le 6; $try++) {
     Write-Host "[$(Get-Date -Format HH:mm:ss)] jointest $Tag (take $try)" -ForegroundColor Cyan
-    $out = & powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" -Tag $Tag -ServerFrom $From -ClientFrom $From `
-        -WatchSeconds $Watch -ClientExtraArgs @('+set', 'com_maxfps', '125') 2>&1
+    # In-process: `powershell -File` splits an array argument into positional ones.
+    $out = @()
+    try {
+        $out = & "$repo\tools\dev\jointest.ps1" -Tag $Tag -ServerFrom $From -ClientFrom $From `
+            -WatchSeconds $Watch -ClientExtraArgs @('+set', 'com_maxfps', '125') *>&1
+    } catch { $out += "jointest threw: $_" }
     $out | ForEach-Object { Write-Host $_ }
     if (($out -join "`n") -match 'took game.lock|server PID') { break }
     Write-Host 'the lock was taken first; waiting again' -ForegroundColor Yellow
@@ -76,7 +80,7 @@ if ($Relaunch) {
     Wait-Lock
     $env:ENW_ESC_MENU_SELFTEST = '6'
     Write-Host "[$(Get-Date -Format HH:mm:ss)] jointest $Tag-relaunch" -ForegroundColor Cyan
-    & powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" -Tag "$Tag-relaunch" -ServerFrom $From -ClientFrom $From `
+    & "$repo\tools\dev\jointest.ps1" -Tag "$Tag-relaunch" -ServerFrom $From -ClientFrom $From `
         -WatchSeconds 25 -NoDeploy -ClientExtraArgs @('+set', 'com_maxfps', '125')
 }
 $env:ENW_ESC_MENU_SELFTEST = $null
