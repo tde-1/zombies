@@ -91,7 +91,13 @@ function rowsFor(boardId, limit = 50) {
   const b = db.prepare('SELECT * FROM boards WHERE id=?').get(Number(boardId))
   if (!b) return []
   const order = b.sort === 'time_asc' ? 'r.value_ms ASC' : 'r.round DESC, r.value_ms ASC'
-  const rows = db.prepare(`SELECT r.*, g.ended_at, g.match_id AS game_match
+  // `has_replay`, `kills`, `downs` are for the map page's records tab: a Watch button on the
+  // row when the game's replay is on file, and the team's kills and downs for that game. The
+  // two sums are NULL when the game has no player rows, so the page can hide an empty column.
+  const rows = db.prepare(`SELECT r.*, g.ended_at, g.match_id AS game_match,
+                                  (SELECT 1 FROM replays rp WHERE rp.game_id=r.game_id) AS has_replay,
+                                  (SELECT SUM(gp.kills) FROM game_players gp WHERE gp.game_id=r.game_id) AS team_kills,
+                                  (SELECT SUM(gp.downs) FROM game_players gp WHERE gp.game_id=r.game_id) AS team_downs
                              FROM records r LEFT JOIN games g ON g.id=r.game_id
                             WHERE r.board_id=? AND r.current=1 AND r.verified=1
                             ORDER BY ${order}, r.created_at ASC LIMIT ?`).all(Number(boardId), limit)
@@ -107,6 +113,9 @@ function rowsFor(boardId, limit = 50) {
     at: r.created_at,
     match_id: r.match_id || r.game_match || null,
     game_id: r.game_id || null,
+    replay: !!r.has_replay,
+    kills: r.team_kills == null ? null : r.team_kills,
+    downs: r.team_downs == null ? null : r.team_downs,
     players: (safeJson(r.roster, []) || [String(r.steam_id)]).map((sid) => users.publicById(sid)).filter(Boolean),
   }))
 }

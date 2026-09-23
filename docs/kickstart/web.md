@@ -2827,3 +2827,60 @@ capture, not the page.) `npm test` is green.
 **Not proven:** signed in (the "Your maps" row was not drawn with a real account); phone widths;
 the launcher's window. On the live DB the cards view is just Popular + View all maps until an admin
 publishes a playlist. **Needs a client build and a site restart.**
+
+## 2026-09-23 — map page: records tab, downloads pop-over, What's in it removed
+
+B: make `/maps/:id` (`/m/<map>`) look more like ENW Movement. Put the records in their own tab
+below, drawn like Movement's but a bit bigger, with a **Watch** button on the row ("not a
+complicated flow through multiple menus"). Keep the downloads at the bottom, behind a small
+pop-up. Keep About and the comments as they are. Get rid of "What's in it" for now.
+
+**Movement, read first.** `movement-client/src/components/MapDashboard.jsx` (the board under the
+banner, comments beside it), `RecordTable.jsx` `density="board"` (rank · player · time · points ·
+behind · date · Watch; `.rt-board` 44px rows, 13px text, 14.5px time, 9.5px mono head) and
+`replay3d/WatchButton.jsx` (Watch on the row, opens the viewer in one click).
+
+**What changed (`client/src/pages/MapPage.jsx`, new `MapPage.css`)**
+
+| Before | Now |
+|---|---|
+| "What's in it" tiles (perks, Pack-a-Punch, box, wall buys, wonder weapons, dogs, power...) | removed. `features` stays on the wire. The weapon-index idea is parked in `questions.md` → Parked ideas |
+| About · Records · Recent games · What counts as beating it · Download · Versions on the left, comments on the right | two tabs under the banner. **About** is the old split with About and Comments (and Live now / Friends who beat it) untouched. **Records** is the board on its own at full width. The Records tab shows the run count. `#records` opens the page on it, and switching tabs rewrites the hash with `replaceState` |
+| board: `table.data`, # · Players · Round, "Open challenges: ..." line | Movement's board grid a size up: **54px rows, 14.5px, 17px figure, 10.5px head**. Columns are # · Players (avatars) · Round · Time · Kills · Downs · Date · **Watch**. A time board leads with Time, then Round. Your own run is tinted in the map's colour |
+| every board as a chip, all four player counts, even empty ones | a chip only for boards **with runs** and a button only for player counts **with runs**. With one of each they are plain labels ("Highest round" · "Solo"). No runs anywhere: "No records yet." |
+| Download section (archived originals + every link + checker verdict) mid-page | **Files N** button at the foot. It opens a pop-over upward, with the install action (`DownloadButton`) on top, then one line per file: name, size, source (ENW archive / link health). It closes on Esc, a click outside, or the button again. No files: no button. Versions picker beside it when a map has more than one |
+| picture credit ("Screenshot from the release post"), "Creator unknown", "N games on this map now" under Play, Recent games, the referee's finish table with its Priority column, the scanner's "Scanner verdict: ..." readme line | removed. The generated card still says NO SCREENSHOT ON FILE on its face, Play still reads Join when a game is live, and Live now is still in the right column. "Beaten by ... by reaching round N" says what counts. The scanner line was the **whole** readme on all 5 maps that have one |
+
+**Which columns show.** Time is hidden when no row has a duration. **Kills and Downs are wired but
+hidden** until a row has a value over 0. `lib/records.js rowsFor` now returns `kills`/`downs`: the
+sums of that game's `game_players` rows, NULL when the game has none. Today every value is 0 (the
+box does not report them yet; another agent is on it). When they arrive the columns appear with
+no page change. Watch shows only where a row has `replay: true` (a `replays` row for the game).
+
+**Watch** is a `Link` to `/replay/<match_id>`, the route replay.md §7a serves, so it takes one
+click and there are no pages in between. Movement opens a modal over the page. Ours goes to the
+full-bleed viewer page, which already exists and already has Back.
+
+**Server (additive, no migration):** `rowsFor` adds `replay`, `kills`, `downs`. `GET /api/maps/:key`
+asks `forMap` for 25 rows a board instead of 10. `maps.sourcesFor` adds `size_bytes` (the column
+has existed since the storage pass) so the pop-over can show link sizes.
+
+**CSS.** Everything new is in `pages/MapPage.css`, scoped under `.mapdash` and built from existing
+tokens only. The global theme is another agent's and theme.css was not touched. So theme.css
+still carries `.mdfeat*`, `.mapdash-credit` and `.mapdash-live` with nothing using them.
+`.mapdash-feats` is still used by the Easter egg block.
+
+**Proof.** A private site on **:3461** against a `better-sqlite3` backup of the live DB (in
+`tmp/scratch-data`, read-only on the source), `ZM_REPLAY_PULL=off`, and headless Edge over CDP
+(`tmp/shoot.mjs`). Nacht (stock): 1 run, columns `# | Players | Round | Time | Date | Watch`, Watch →
+`/replay/m_0afb449b`, and the viewer drew Nacht and played. Minecraft Village Remastered (custom):
+2 runs, both with Watch; the Files pop-over listed 2 (the archived `.exe`, 593 MB, and the
+mediafire link, Held). "What's in it" appeared on neither page. Screenshots are in the worktree's
+`tmp/shots/`, not committed. `npm test` is green (143 + 41 + 15 + 19 + 12 + 10 + 12).
+
+**Not proven:** signed in (the "your run" tint and the rating were not drawn with a real account);
+phone widths; a board with several player counts or categories (the live data has one solo round
+board per map); Watch on a custom map's replay, because its `.enwr` is on the box and the scratch
+site had the pull turned off. The generated placeholder card is cropped at its edges in the
+banner, and that was already so before this change. **Needs a client build and a site restart**
+(the server fields).

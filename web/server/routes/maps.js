@@ -87,7 +87,7 @@ function router() {
     if (!d) return res.status(404).json({ error: 'no such map' })
     res.json({
       map: d,
-      boards: records.forMap(d.key, { versionId: req.query.version ? Number(req.query.version) : d.version_id }),
+      boards: records.forMap(d.key, { versionId: req.query.version ? Number(req.query.version) : d.version_id, limit: 25 }),
       comments: comments.list('map', d.key),
       lobbies: parties.publicLobbies(d.key),
       live: assignments.live().filter((g) => g.map === d.key),

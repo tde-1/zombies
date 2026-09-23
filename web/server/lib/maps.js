@@ -403,7 +403,7 @@ function archiveStats() {
 }
 
 /** The download links and their health, for a map page's archive block. */
-const sourcesFor = (mapKey) => db.prepare(`SELECT url, site, kind, status, note, last_checked
+const sourcesFor = (mapKey) => db.prepare(`SELECT url, site, kind, status, note, last_checked, size_bytes
                                              FROM archive_sources WHERE map_key=? ORDER BY
                                              CASE status WHEN 'fetched' THEN 0 WHEN 'alive' THEN 1 ELSE 2 END, id`)
   .all(String(mapKey))
