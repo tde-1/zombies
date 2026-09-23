@@ -149,6 +149,9 @@ const cfg = {
   warmRebindMs: Number(a['warm-rebind-ms'] ?? 5_000),
   gamesPerInstance: Number(a['games-per-instance'] ?? 5),
   endReplyMs: Number(a['end-reply-ms'] ?? 10_000),
+  // [RS] How long a run that ended on its own keeps its instance for a player's `restart`
+  // (lib/restart.js restartAfterEnd, esc-menu.md §12). 0 = off: the old immediate teardown.
+  restartGraceMs: Number(a['restart-grace-ms'] ?? process.env.ENW_RESTART_GRACE_MS ?? 10_000),
   mapReloadMs: Number(a['map-reload-ms'] ?? 60_000),
   warmIdleMs: Number(a['warm-idle-ms'] ?? 10 * 60_000),
   // ---- THE RAM GUARD (lib/memguard.js, host.md §16) -------------------------------------
@@ -268,6 +271,7 @@ class Game extends EventEmitter {
     this.onCloseBound = () => {
       this.conn = null
       this.log.info('game link closed')
+      this.graceOpen?.resolve('expired')   // [RS] no link, no restart: post the result now
       this.onLinkClosed()
     }
     conn.on('message', this.onMessageBound)
@@ -360,6 +364,11 @@ class Game extends EventEmitter {
     if (m.t === 'match_end') this.onMatchEnd(m)
     if (m.t === 'player_connect') this.authPlayer(m)
     if (m.t === 'restart_request') onRestartRequest(this, m)
+    // [RS] The number B asked for, host side: the request accepted -> a player spawned in the new run.
+    if (m.t === 'player_spawn' && this.restartAskedAt && !this.restartSpawnLogged) {
+      this.restartSpawnLogged = true
+      this.log.info(`restart: slot ${m.slot} spawned in run ${this.matchId} ${Date.now() - this.restartAskedAt} ms after the restart was accepted`)
+    }
     // A WARM instance opens its replay on the first sign of an actual game rather than on
     // `map_loaded` — see `onMapLoaded`. `record()` buffers everything until then, so
     // nothing is lost and the header carries the match the game turned out to be.
@@ -663,6 +672,37 @@ class Game extends EventEmitter {
   recordHostEvent(ev) { this.record({ ms: this.referee.now(), host: true, ...ev }) }
 
   // ---- end -----------------------------------------------------------------------
+  /**
+   * [RS] Hold a naturally ended run's instance (and its result POST) for the restart grace.
+   * Resolves 'restart' (lib/restart.js restartAfterEnd took it), 'expired', or null when the
+   * run does not qualify: only a clean, self-ended game whose server is alive, whose link
+   * is up and that still has a player in it. Anything broken goes straight on as before.
+   */
+  restartGrace(summary) {
+    const ms = cfg.restartGraceMs
+    if (!(ms > 0) || this.restarting) return null
+    if (!this.matchEndSeen || this.referee.matchEnd?.server_alive === false || !this.conn) return null
+    if (summary.end_reason === 'player_restart') return null
+    const bad = ['server_crash', 'instance_failed', 'link_closed', 'host_shutdown', 'server_freeze', 'restart_failed']
+    if (bad.some((f) => this.referee.flags.has(f))) return null
+    if (![...this.referee.players.values()].some((p) => p.connected)) return null
+    return new Promise((resolve) => {
+      const t = setTimeout(() => done('expired'), ms)
+      t.unref?.()
+      const done = (why) => {
+        if (!this.graceOpen) return
+        clearTimeout(t)
+        this.graceOpen = null
+        this.log.info(why === 'restart'
+          ? 'restart grace: a player restarted - the lease goes on'
+          : `restart grace: nobody restarted within ${ms} ms - the result goes to the site and the instance to its disposition`)
+        resolve(why)
+      }
+      this.graceOpen = { until: Date.now() + ms, resolve: done }
+      this.log.info(`restart grace: ${ms} ms for a player's \`restart\` before the result is posted and the instance let go`)
+    })
+  }
+
   async finish(summary) {
     if (this.finished) return
     this.finished = true
@@ -719,8 +759,16 @@ class Game extends EventEmitter {
     // player idling on the restarted map) and a lease whose warm handoff failed before the
     // map came back were never a game the site leased; a result for the second ENDS the
     // lease at the site (12:19:30, m_de1d40e6), which is the opposite of re-queueing it.
+    // [RS] THE RESTART GRACE (esc-menu.md §12). A run that ended on its own (a solo down,
+    // the end_game sequence) holds its instance and its result for --restart-grace-ms, so a
+    // player's `restart` a second after game over still restarts (lib/restart.js
+    // restartAfterEnd) instead of reaching a process that was torn down 220 ms after the
+    // end (bridge_zombie, m_abe60828). The replay above is already signed; only the POST
+    // waits, because the site closes the lease on it. A restart makes it `lease_continues`.
+    const grace = this.noResult ? null : await this.restartGrace(summary)
+    const leaseContinues = !!this.restarting || grace === 'restart'
     if (this.noResult) this.log.info(`no result posted for ${this.matchId}: ${this.noResult}`)
-    else await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay })
+    else await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay, ...(leaseContinues ? { lease_continues: true } : {}) })
       .catch((e) => this.log.warn(`result post failed (${e.message}) — held in the spool, not lost`))
     this.emit('finished', summary)
     // The instance is NOT reaped here any more. `dispose()` decides what becomes of it,
@@ -1275,6 +1323,9 @@ class HostAgent {
     // Re-entry guard AND the contract: a game being retired has had its disposition made
     // for it, so nothing downstream may pick another one.
     game.disposed = game.disposed || Promise.resolve({ action: 'terminate', why })
+    // [RS] A run in its restart grace is being let go (its lease ended at the site, a
+    // shutdown): the grace ends now and the result goes to the site without waiting.
+    game.graceOpen?.resolve('expired')
     // A GAME STILL WAITING TO BOOT NEVER BOOTS (host.md §16). Out of the queue first, and
     // synchronously, so no `await` below can let its turn come round in between.
     const where = this.bootQueue.cancel(id, why)

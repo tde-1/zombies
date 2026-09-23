@@ -46,8 +46,16 @@ const MAP_BACK_MS = 60_000           // handover -> the new map_loaded
 export function onRestartRequest(game, ev) {
   const log = game.log
   const slot = Number(ev.slot)
-  if (game.finished || game.restarting) {
-    const why = game.finished ? 'the run is already over' : 'a restart is already under way'
+  // [RS] THE END_GAME SEQUENCE. A solo player who goes down is at game over a second later
+  // (bridge_zombie, 14:10:43-44 UTC, m_abe60828): B's `restart` reached a game that had
+  // already ended, and the host tore the instance down 220 ms after game over. A finished
+  // run now holds its instance for a short grace (Game.finish, --restart-grace-ms) and a
+  // restart inside it starts the next run of the lease on the same process.
+  if (game.finished && game.graceOpen && !game.restarting) return restartAfterEnd(game, ev)
+  // [RS] A run whose map is not back yet (the successor between handover and map_loaded)
+  // cannot be restarted: restart spam must never send a second `end` into a map_restart.
+  if (game.finished || game.restarting || !game.referee.map) {
+    const why = game.finished ? 'the run is already over' : game.restarting ? 'a restart is already under way' : 'the map is not back yet'
     log.info(`restart_request slot ${slot}: ignored (${why})`)
     return { ok: false, why }
   }
@@ -121,6 +129,7 @@ export function handOver(old) {
   next.leaseId = lease
   next.runOfLease = run
   next.restartOf = old.matchId
+  next.restartAskedAt = old.restarting?.at || Date.now()   // [RS] for the latency line at the first spawn
   // Same process: `hello` is not said again (host.md §12.3).
   next.referee.hashes = { ...old.referee.hashes }
   next.referee.pid = old.referee.pid
@@ -161,6 +170,50 @@ export function handOver(old) {
   next.once('map_loaded', () => { clearTimeout(t); next.log.info(`restart: map back; run ${next.matchId} is recording`) })
   host.reportStatus?.()
   return next
+}
+
+/**
+ * [RS] A restart that arrives after the run has ENDED on its own (a solo down, the
+ * end_game sequence), while `Game.finish` holds the instance in its restart grace.
+ *
+ * The run is over and stays over: its replay is already signed and its result is a real
+ * game over (not abandoned). What the restart adds is the lease going on: the result is
+ * posted with `lease_continues` (so the site keeps the lease and the party in-game), the
+ * link goes to the successor `<lease>.r<n>` exactly as for a live restart, and `end`
+ * (map_restart + reset + map_loaded, referee.cpp do_end; no second game_over, the DLL's
+ * game is already over) brings the map back with the players still connected.
+ */
+export function restartAfterEnd(game, ev) {
+  const log = game.log
+  const slot = Number(ev.slot)
+  const rows = [...game.referee.players.values()]
+  const connected = rows.filter((p) => p.connected)
+  const p = game.referee.players.get(slot)
+  const solo = connected.length <= 1
+  const verified = !!(p && p.identity === 'verified')
+  if (!verified && !solo) {
+    const why = `slot ${slot} is ${p ? p.identity || 'unverified' : 'not in our roster'} and ${connected.length} players are connected`
+    log.warn(`restart_request after the end REFUSED: ${why}`)
+    return { ok: false, why }
+  }
+  const lease = game.leaseId || game.matchId
+  game.restarting = { slot, name: p?.name || ev.name || null, steamid: p?.steamid || null, at: Date.now(), afterEnd: true }
+  game.restartCarry = new Set(connected.filter((q) => q.identity === 'verified' && q.steamid).map((q) => String(q.steamid)))
+  const next = handOver(game)
+  if (!next) {
+    game.restarting = null
+    game.graceOpen?.resolve('expired')
+    return { ok: false, why: 'the link is gone' }
+  }
+  // Until the map is back, nothing but the reply and the map reaches the new run (host.js
+  // `absorbing`, the warm handoff's rule): the DLL's game is already over, so it should send
+  // no second game_over, and if it ever did it must not end the run that has not started.
+  next.absorbing = true
+  const cmd = next.referee.send({ t: 'end', reason: 'player_restart', match: lease })
+  game.restartCmdId = cmd.id
+  log.info(`restart_request ACCEPTED from slot ${slot} ${game.restarting.name || ''} after the run ended (${verified ? 'verified' : 'alone'}, ${connected.length} connected): run ${next.matchId} of lease ${lease} starts on this process; \`end\` sent`)
+  game.graceOpen.resolve('restart')
+  return { ok: true, afterEnd: true }
 }
 
 /** A player verified on the abandoned run of this lease, back after the reset. */
