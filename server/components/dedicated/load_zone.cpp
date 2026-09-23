@@ -46,6 +46,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 
 namespace enw::dedi {
 namespace {
@@ -82,6 +83,24 @@ void __cdecl on_spawn(const char* map, uint32_t restart) {
         !dedicated)
         return;   // not dedicated: the engine already loaded it at 0x632031
     if (!map || !memory::is_readable(map, 1)) return;
+    // [RS] A MAP_RESTART MUST NOT LOAD IT AGAIN. The restart byte above does not catch it:
+    // every `map_restart` a player's Restart game (or the host's `end`) issues reached here and
+    // loaded `<bsp>_load` a second time (rs7, Nacht: "(#2)", "(#3)" at each restart). For a
+    // stock map that zone is a loading screen and nothing broke; bridge_zombie keeps real
+    // assets in it, and every restart there faulted at 0x5AA0BD right after the reload
+    // (rs8: 4 escaped frames, 4 of 4 restarts; the client never re-entered, no round started).
+    // The engine's own listen path skips the zone on a restart (0x631FCE), so the zone is
+    // still loaded: a process only ever serves one map, so the same map again IS a restart.
+    static char last[64] = {};
+    if (last[0] && _stricmp(last, map) == 0) {
+        static std::atomic<uint32_t> skipped{0};
+        const uint32_t k = skipped.fetch_add(1) + 1;
+        if (k <= 3)
+            ENW_INFO("dedi_load_zone: %s_load is already loaded in this process -- a map_restart; not "
+                     "loading it again (#%u)", map, k);
+        return;
+    }
+    strncpy_s(last, map, _TRUNCATE);
     call_load_zone(map);
     const uint32_t n = g_loaded.fetch_add(1) + 1;
     ENW_INFO("dedi_load_zone: loaded %s_load for the dedicated server (#%u) -- a hosted game "

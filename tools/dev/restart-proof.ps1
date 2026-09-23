@@ -30,7 +30,9 @@ param(
     [int]$DashPort = 8961,
     [int]$GraceMs = 10000,
     [int]$Watch = 330,
-    [string]$Plan = 'live,spam,down,end'
+    [string]$Plan = 'live,spam,down,end',
+    # A/B: the dedicated server without load_zone.cpp's <bsp>_load (rs9)
+    [switch]$NoLoadZone
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -49,11 +51,11 @@ function Wait-Lock {
     while ((Get-Date) -lt $deadline) {
         $busy = (Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count -gt 0
         if (-not $busy) {
-            Start-Sleep -Milliseconds 1200
+            Start-Sleep -Milliseconds 150
             $busy = (Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count -gt 0
             if (-not $busy) { return }
         }
-        Start-Sleep -Milliseconds 700
+        Start-Sleep -Milliseconds 250
     }
     throw 'game.lock still held after 60 min'
 }
@@ -80,13 +82,21 @@ try {
     Note "registered instance $ServerName as $match ($Map)"
 
   for ($take = 1; $take -le 8; $take++) {
-    Wait-Lock
-    # The expectation lasts 10 min; a long wait for the lock outlives it.
-    $null = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$DashPort/api/local/expect" -ContentType 'application/json' `
-        -Body (@{ instance = $ServerName; match_id = $match; map = $Map } | ConvertTo-Json)
-    Note "game.lock is free; starting jointest (take $take)"
+    Note "waiting for game.lock inside the job (take $take)"
+    # The wait for the lock is INSIDE the job, right before jointest: a job's own start-up
+    # (~1 s) after the lock went free lost the race to every other lane's harness (rs3, rs6).
     $job = Start-Job -ScriptBlock {
-        param($repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $trigger)
+        param($repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $trigger, $lock, $DashPort, $NoLoadZone)
+        if ($NoLoadZone) { $env:ENW_DEDI_NO_LOAD_ZONE = '1' } else { $env:ENW_DEDI_NO_LOAD_ZONE = $null }
+        $deadline = (Get-Date).AddMinutes(60)
+        while ((Get-Date) -lt $deadline) {
+            $busy = (Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count -gt 0
+            if (-not $busy) { break }
+            Start-Sleep -Milliseconds 200
+        }
+        # The expectation lasts 10 min; a long wait for the lock outlives it.
+        $null = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$DashPort/api/local/expect" -ContentType 'application/json' `
+            -Body (@{ instance = $ServerName; match_id = $match; map = $Map } | ConvertTo-Json)
         $env:ENW_TEST_NO_ACTIVATE = '1'
         $env:ENW_BORDERLESS_COVER = '0'
         $env:ENW_FRAME_CAPTURE = '1'
@@ -96,8 +106,9 @@ try {
         $env:ENW_CHAT_SELFTEST = $null
         $env:ENW_USE_PRIVATE_LOCALAPPDATA = $null   # launch.ps1's default: the private LocalAppData
         & "$repo\tools\dev\jointest.ps1" -Tag $Tag -ServerFrom $From -ClientFrom $From -ServerName $ServerName `
-            -ClientName $ClientName -WatchSeconds $Watch -MatchId $match -LinkHost "127.0.0.1:$LinkPort" -Map $Map *>&1
-    } -ArgumentList $repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $trigger
+            -ClientName $ClientName -WatchSeconds $Watch -MatchId $match -LinkHost "127.0.0.1:$LinkPort" -Map $Map `
+            -ClientExtraArgs @('+set', 'com_maxfps', '30', '+set', 'r_mode', '640x480') *>&1   # coordinator: spare B's PC
+    } -ArgumentList $repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $trigger, $lock, $DashPort, [bool]$NoLoadZone
 
     $gm = "$out\host\$ServerName.games_mp.log"
     $count = {
@@ -150,7 +161,7 @@ try {
         if ($phase -eq 'fired') {
             if ($back -gt $base.back) {
                 Note "step ${step}: the map is back (host: 'restart: map back')"
-                $si++; $phase = 'wait'
+                $si++; $phase = 'wait'; $at = $null
             } elseif (-not $at) { $at = (Get-Date).AddSeconds(40) }
             elseif ((Get-Date) -ge $at) { Note "step ${step}: NO map back within 40 s"; $si++; $phase = 'wait'; $at = $null }
         }
