@@ -328,7 +328,7 @@ function release(matchId, { by = null, named = null, force = false } = {}) {
   }
   const a = db.prepare('SELECT state FROM assignments WHERE match_id=?').get(String(matchId))
   if (a && a.state === 'live' && !force) {
-    return { ok: false, live: true, error: 'that game is live on the server; it ends there, not from a launcher cancel' }
+    return { ok: false, live: true, error: 'that game is live; end it in game' }
   }
   return cancel(matchId, by)
 }

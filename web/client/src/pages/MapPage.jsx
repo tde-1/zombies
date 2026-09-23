@@ -176,7 +176,7 @@ export function MapBody({ mapKey: key }) {
             {/* What the map IS, one line, dots drawn by the row so an absent fact takes its
                 separator with it. Every item is a fact the site holds; none is invented. */}
             <div className="mapdash-facts">
-              {m.author && <Link className="mapdash-by" to={`/creator/${encodeURIComponent(m.author)}`} title={`Created by ${m.author}`}>Created by {m.author}</Link>}
+              {m.author && <Link className="mapdash-by" to={`/creator/${encodeURIComponent(m.author)}`}>Created by {m.author}</Link>}
               {released && <span>Released {released}</span>}
               {dl.size_bytes ? <span><b>{mb(dl.size_bytes)}</b></span> : null}
               {m.source === 'stock' && <span>Ships with WaW</span>}
@@ -630,7 +630,7 @@ function RecordBoard({ board, rows }) {
     hasWatch ? {
       h: '', w: '92px',
       c: (r) => (r.replay && r.match_id
-        ? <Link className="btn small mdrec-watch" to={`/replay/${encodeURIComponent(r.match_id)}`} title="Watch the replay">Watch</Link>
+        ? <Link className="btn small mdrec-watch" to={`/replay/${encodeURIComponent(r.match_id)}`}>Watch</Link>
         : null),
     } : null,
   ].filter(Boolean)

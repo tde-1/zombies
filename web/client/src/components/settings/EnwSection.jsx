@@ -45,13 +45,13 @@ export default function EnwSection({ onStatus }) {
             {/* ~~an `update` line here~~ — the "update" section below (LauncherBoxes) says it, with the button. */}
           </>
         ) : (
-          <div className="set-hint">open this page in the <EnwWord /> launcher to see the client here</div>
+          <div className="set-hint">open in the <EnwWord /> launcher to see the client</div>
         )}
       </div>
 
       <div className="set-group">
         <div className="set-section"><span>chat</span></div>
-        <div className="set-item" title="pause_on_chat · read by the in-game chat overlay (/api/game-chat/me)">
+        <div className="set-item" title="pause_on_chat">
           <label className="set-check">
             <input type="checkbox" checked={pauseOnChat} onChange={(e) => setPause(e.target.checked)} />
             <span>pause game while chatting (solo)</span>
@@ -71,10 +71,10 @@ export default function EnwSection({ onStatus }) {
 
       <div className="set-group">
         <div className="set-section"><span>how settings apply</span></div>
-        <div className="set-hint set-hint-block">saved to your account and applied at your next launch. changes you make in the game's own menus come back here after you quit.</div>
+        <div className="set-hint set-hint-block">saved to your account, applied at next launch. in-game changes sync back when you quit.</div>
         <details className="set-omitted">
           <summary>in the game's menus, not here</summary>
-          <ul>{OMITTED.map((o) => <li key={o.label}><b>{o.label}</b> — {o.why}</li>)}</ul>
+          <ul>{OMITTED.map((o) => <li key={o.label}><b>{o.label}</b>: {o.why}</li>)}</ul>
         </details>
       </div>
     </>

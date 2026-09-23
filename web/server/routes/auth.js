@@ -131,8 +131,8 @@ function finishLauncherFlow (req, res) {
     // which thing ran out.
     delete req.session.launcher
     signInProblem(res, 'That sign-in took too long',
-      'The launcher opened this page more than fifteen minutes ago, so it stopped waiting.',
-      'Close this tab and press <b>Sign in</b> in ENW Zombies again.')
+      'The launcher stopped waiting after 15 minutes.',
+      'Close this tab and press <b>Sign in</b> again.')
     return true
   }
   delete req.session.launcher
@@ -339,13 +339,13 @@ function router() {
           if (err) {
             console.warn(`[auth] Steam return failed: ${err.message || err}`)
             return signInProblem(res, 'Steam could not confirm that sign-in',
-              'Steam sent us back, but the answer did not check out. That is usually a sign-in that was left open too long, or Steam having a bad minute.',
+              'The sign-in was left open too long, or Steam had a problem.',
               'Close this tab and try <b>Sign in</b> again.', 400)
           }
           if (!user) {
             return signInProblem(res, 'That sign-in was cancelled',
-              'Steam did not sign you in, so nothing changed here.',
-              'Close this tab and press <b>Sign in</b> again when you are ready.', 400)
+              'Nothing changed.',
+              'Close this tab and press <b>Sign in</b> again.', 400)
           }
           req.user = user
           next()
@@ -414,7 +414,7 @@ function isLoopback (req) {
 // in place, under /auth/, so nothing is redirected out of the exemption.
 function signInProblem (res, title, what, next, status = 410) {
   res.status(status).type('html').send(`<!doctype html><meta charset="utf-8">
-<title>ENW Zombies — ${esc(title)}</title>
+<title>ENW Zombies · ${esc(title)}</title>
 <style>
   ${PAGE_CSS}
   body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;

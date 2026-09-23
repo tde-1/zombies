@@ -95,8 +95,8 @@ function grade(row) {
       grade: 'local',
       ok: false,
       reason: g.mode === 'local'
-        ? 'a Local game: it ran on the player’s own PC with the console available, so the signature proves the recording is unedited, not that the run is real'
-        : 'self-reported: this did not come from a game box we control',
+        ? 'a Local game: it ran on the player’s own PC, so the signature proves the file is unedited, not that the run is real'
+        : 'self-reported: not from one of our game boxes',
     }
   }
 
@@ -104,21 +104,21 @@ function grade(row) {
     return {
       grade: 'unknown-key',
       ok: false,
-      reason: 'the box did not say which key signed this, so it cannot be matched against the pin',
+      reason: 'the box did not say which key signed this',
     }
   }
   if (!row.key_pinned) {
     return {
       grade: 'unpinned',
       ok: false,
-      reason: `signed by ${row.key_id}, which is not the key pinned for ${row.box || 'this box'} — integrity is not authorship`,
+      reason: `signed by ${row.key_id}, not the key pinned for ${row.box || 'this box'}`,
     }
   }
   if (row.recovered || row.partial) {
     return {
       grade: 'recovered',
       ok: false,
-      reason: 'recovered after the host died mid-game: the signature only proves nothing changed since recovery. Good enough for a badge, not for a record',
+      reason: 'recovered after the host died mid-game. Good enough for a badge, not a record',
     }
   }
   return { grade: 'signed', ok: true, reason: "signed by the box's pinned key" }
@@ -150,7 +150,7 @@ function mayDownload(row, viewer) {
   } else if (a) {
     return { ok: true, why: 'a public game' }
   }
-  return { ok: false, reason: "someone else's full replay needs VIP, or the game to have been public. The signed summary is public either way" }
+  return { ok: false, reason: "someone else's full replay needs VIP or a public game. The signed summary is public" }
 }
 
 /** Everything about a replay that is public: the pointer, the grade, how to check it. */

@@ -1180,7 +1180,7 @@ async function main() {
     eq(good.grade, 'signed'); truthy(good.ok)
     const bad = replays.grade(replays.rowFor('m_unpinned'))
     eq(bad.grade, 'unpinned'); eq(bad.ok, false)
-    truthy(/integrity is not authorship/.test(bad.reason), 'and it says why')
+    truthy(/not the key pinned/.test(bad.reason), 'and it says why')
     void g
   })
 
@@ -1317,7 +1317,7 @@ async function main() {
     // A second player: the one who started a match does not also join it (once per match,
     // test/chat-dedupe.js).
     eq(chatSystem.record('box-a', { ...ev, name: 'secondName', event: 'joined' }).text, 'secondName joined Verrückt')
-    eq(chatSystem.record('box-a', { ...ev, event: 'down' }).text, 'ingameName just went down on round 30 on Verrückt')
+    eq(chatSystem.record('box-a', { ...ev, event: 'down' }).text, 'ingameName went down on round 30 on Verrückt')
     eq(chatSystem.record('box-a', { ...ev, event: 'ended' }).text, "ingameName's game on Verrückt ended on round 30")
   })
 

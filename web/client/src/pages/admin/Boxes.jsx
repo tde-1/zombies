@@ -29,7 +29,7 @@ function Box({ x, go, openUser, onDone }) {
   const [reserve, setReserve] = useState(x.capacity.configured_reserve == null ? '' : String(x.capacity.configured_reserve))
 
   const toggle = async () => {
-    const ok = await confirm({ title: `${x.enabled ? 'Disable' : 'Enable'} ${x.name}?`, lines: [x.enabled && 'It stops authenticating: no new leases, and its games cannot post results until it is enabled again.'], danger: x.enabled, label: x.enabled ? 'Disable' : 'Enable' })
+    const ok = await confirm({ title: `${x.enabled ? 'Disable' : 'Enable'} ${x.name}?`, lines: [x.enabled && 'No new leases, and its games cannot post results.'], danger: x.enabled, label: x.enabled ? 'Disable' : 'Enable' })
     if (ok && await act(() => api.post(`/api/admin/boxes/${x.id}/enabled`, { enabled: !x.enabled }), 'Saved')) onDone()
   }
   const saveEdit = async () => {
@@ -46,7 +46,7 @@ function Box({ x, go, openUser, onDone }) {
       title: `${verb} ${l.map}?`,
       lines: [
         `${l.match_id} on ${x.name}${l.instance ? ` · slot ${l.instance.id}` : ''}.`,
-        what === 'retire' ? 'The box stops this game on its next poll.' : 'A fresh game for the same players replaces this one; they relaunch into it.',
+        what === 'retire' ? 'The box stops this game on its next poll.' : 'The same players relaunch into a fresh game.',
         l.in_game === 0 && l.seats_known && 'Nobody is connected.',
       ],
       danger: true, label: verb,
@@ -57,7 +57,7 @@ function Box({ x, go, openUser, onDone }) {
       if (e.status !== 409 || !e.body || !e.body.needs_confirm) return act(() => Promise.reject(e))
       const again = await confirm({
         title: `${e.body.players.length === 1 ? 'Somebody is' : `${e.body.players.length} people are`} in this game`,
-        lines: [e.body.unknown ? 'The site has not heard who is connected since it started. Leased into it:' : `${verb} ends it for:`],
+        lines: [e.body.unknown ? 'Not known who is connected. Leased into it:' : `${verb} ends it for:`],
         people: e.body.players,
         type: 'end it', danger: true, label: `${verb} anyway`,
       })

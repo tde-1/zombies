@@ -355,7 +355,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     ;(async () => {
       try {
         if (!mapUrl) {
-          actorsOnly(`No world model for ${track.map} yet — showing players and zombies over a grid at the floor they walked on.`)
+          actorsOnly(`No world model for ${track.map} yet. Players and zombies only.`)
           await api.precompile()
           dirtyRef.current = true
           return
@@ -429,7 +429,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
           })
         }
         if (meta && meta.world_shell === false) {
-          setNote('Props and sky only — the world shell needs a memory-side export (replay.md §4).')
+          setNote('Props and sky only.')
           // Until the shell lands there is no floor, and a capsule floating in black
           // reads as a bug rather than as a missing export. scene.js's own grid, put
           // at the real floor height, is the cheapest honest stand-in: it is visibly
@@ -455,7 +455,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         // failure and a missing export want different actions from whoever reads it,
         // but the outcome is a watchable replay either way.
         if (!dead) {
-          try { actorsOnly(`No world model for ${track.map} — ${String(e.message || e)}. Players and zombies only.`) } catch { setErr(String(e.message || e)) }
+          try { actorsOnly(`No world model for ${track.map} (${String(e.message || e)}). Players and zombies only.`) } catch { setErr(String(e.message || e)) }
         }
       } finally {
         if (!dead) { setBoot('out'); setTimeout(() => !dead && setBoot('off'), 220) }
@@ -902,7 +902,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       </div>
 
       {settings.hud && (
-        <div className="r3d-waw-hud" title="Round (chalk, as WaW draws it) and zombies left this round">
+        <div className="r3d-waw-hud" title="Round and zombies left">
           <div className="r3d-waw-round">
             {(() => {
               const g = roundGlyphs(hud.round)
@@ -1037,7 +1037,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
                 ))}
               </tbody>
             </table>
-            <div className="r3d-waw-sb-foot">{rows.some((r) => r.points === '—') ? 'Points are not in this recording yet.' : ''}{rows.length > 1 && rows.some((r) => r.kills === '—') ? ' Kills are recorded unattributed in multiplayer.' : ''}</div>
+            <div className="r3d-waw-sb-foot">{rows.some((r) => r.points === '—') ? 'No points in this recording.' : ''}{rows.length > 1 && rows.some((r) => r.kills === '—') ? ' Kills are not per player in multiplayer.' : ''}</div>
           </div>
         )
       })()}

@@ -53,7 +53,7 @@ export default function Live() {
       <div className="page">
         <div className="card">
           <div className="section-label">Finished</div>
-          <h1>{meta.ended.map_title} — round {meta.ended.rounds}</h1>
+          <h1>{meta.ended.map_title} · round {meta.ended.rounds}</h1>
           <Link className="btn primary" to={`/game/${meta.ended.match_id}`} style={{ marginTop: 12 }}>The full breakdown</Link>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function Live() {
               <span className="chip">{connected.length}/4 playing</span>
               <span className="chip">{s.zombies_alive} zombies</span>
               <span className="chip">{dur(s.elapsed_ms)}</span>
-              {s.paused && <span className="tag hot">Paused{s.pause_reason ? ` — ${s.pause_reason}` : ''}</span>}
+              {s.paused && <span className="tag hot">Paused{s.pause_reason ? `: ${s.pause_reason}` : ''}</span>}
               {s.cap_left_ms != null && s.cap_left_ms < 3600_000 && <span className="tag hot">{dur(s.cap_left_ms)} to the cap</span>}
               {s.cap_ms == null && <span className="tag gold">Uncapped</span>}
               {s.flags.map((f) => <span className="tag hot" key={f}>{f.replace(/_/g, ' ')}</span>)}

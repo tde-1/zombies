@@ -84,9 +84,9 @@ function sentence(kind, who, where, round) {
     case 'started': return where ? `${who} started a game on ${where}` : `${who} started a game`
     case 'joined': return where ? `${who} joined ${where}` : `${who} joined a game`
     case 'down':
-      if (where && r) return `${who} just went down on round ${r} on ${where}`
-      if (where) return `${who} just went down on ${where}`
-      return `${who} just went down`
+      if (where && r) return `${who} went down on round ${r} on ${where}`
+      if (where) return `${who} went down on ${where}`
+      return `${who} went down`
     case 'ended':
       if (where && r) return `${who}'s game on ${where} ended on round ${r}`
       if (where) return `${who}'s game on ${where} ended`

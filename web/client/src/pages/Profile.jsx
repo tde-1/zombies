@@ -218,7 +218,7 @@ function ProfileBanner({ user, isSelf, name, movement, autoMap, friendState, sig
         <CopyProfileLink name={name} />
         {isSelf && mv.profile_url && (
           <a className="btn btn-ghost btn-sm" href={mv.profile_url} target="_blank" rel="noopener noreferrer"
-             title="Your banner is the one on your ENW Movement profile — change it there and it changes here">
+             title="Your banner comes from ENW Movement">
             {banner ? 'Change banner on Movement' : 'Add a banner on Movement'}
           </a>
         )}

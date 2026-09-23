@@ -134,8 +134,8 @@ export function NotFound() {
   return (
     <div className="page">
       <Link to="/" aria-label="ENW home" style={{ display: 'inline-block', margin: '8px 0 18px' }}><Lockup h={30} /></Link>
-      <h1>That page doesn&rsquo;t exist</h1>
-      <Link className="btn" to="/" style={{ marginTop: 16 }}>Back to the home page</Link>
+      <h1>Page not found</h1>
+      <Link className="btn" to="/" style={{ marginTop: 16 }}>Home</Link>
     </div>
   )
 }

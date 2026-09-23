@@ -3273,3 +3273,85 @@ injected `stats` event) and gave `kills 3` with `recorded.kills true`.
 **Needs:** a client build (`npm run build`) and a site restart for the viewer and route. The
 writer change only matters once a host posts counters. Existing zero rows are not rewritten: the
 games had no data to recover.
+
+## 2026-09-23, ~05:30 UK: copy audit, 1,580 strings reviewed, 99 changed, before/after
+
+B: "Do an audit over the entire site for any AI-looking over-explaining text and make sure
+everything is as concisely worded as possible." Voice matched to ENW Movement: short, plain,
+sentence case, British spelling, no hedging, no help text that restates its control, no prose
+em-dashes, one line per state.
+
+**Scope.** Every user-visible string in `web/client/src` (pages, components, admin, settings
+data, replay viewer), `web/server` (routes, lib, middleware: errors, notices, chat system lines,
+the sign-in problem pages) and `launcher/src/renderer` (shell, placeholder, password prompt).
+Extracted with a throwaway script (JSX text, string literals with words, template literals),
+then read file by file; multi-line JSX in the priority screens read directly. About 1,580
+strings after dropping SQL, class names and SVG paths. Left alone on purpose: keys, ids, dvar
+names, WaW's own menu labels, Movement's verbatim username verdicts, the host tool's replay
+verdicts (`VALID — …`, shared with `infra/host-agent`), and `launcher/src/main` (another lane
+owns the Steam boot-screen lines, which are already one line each). Em-dashes used as the
+empty-value placeholder in tables stay.
+
+**Already clean.** Most of the site: the name gate, `/download`, the party rail, invite toasts,
+the map page, records, admin tables and confirms had been written in Movement's voice tonight.
+Changes there are small.
+
+**Counts.** 99 strings changed: launcher renderer 35, site client 44, server messages 20.
+No text added. Two test assertions updated with their strings (`web/test/run-all.js`: the chat
+"went down" line, the unpinned-key reason).
+
+| # | Where | Before | After |
+|---|---|---|---|
+| 1 | launcher, setup | Keep ENW maps, saves, profiles and settings in that folder too — so plain Steam World at War never sees anything of ENW's, and ENW never writes to your own World at War data. / Keep ENW's game settings and logs in that folder. | Keep ENW maps, saves, profiles, settings and logs in that folder. |
+| 2 | launcher, settings | Lets ENW's own copy of the game use 4 GB instead of 2 GB - the big custom maps (ORBiT, UGX Requiem) run out of memory without it. It is two bytes in the header … puts those bytes straight back. | Needed for ORBiT and UGX Requiem. Only changes ENW's copy of the game. |
+| 3 | launcher, site down | Zombies lives on the site, so there is nothing to show until it is back. The launcher keeps checking when you press Try again (or Ctrl+R). | Zombies runs on the site. Try again, or press Ctrl+R. |
+| 4 | launcher, password | One shared password, sent to you with the launcher. It is not your account password. | The beta password sent with the launcher. Not your Steam password. |
+| 5 | launcher, password | That password was not accepted. | Wrong password. |
+| 6 | launcher, installed | Press Play on a map. Nothing here needs doing. | Press Play on a map. |
+| 7 | launcher, setup | What setting up will change | What this does |
+| 8 | launcher, setup | Install the ENW client there as binkw32.dll, keeping the original beside it. | Install the ENW client there as binkw32.dll. The original is kept. |
+| 9 | launcher, setup | You own World at War, but it is not installed / Install it through Steam. | World at War is not installed (body removed; the button says it) |
+| 10 | launcher, setup | We could not find World at War | World at War not found |
+| 11 | launcher, setup | It is somewhere else / Find it myself | Choose another folder / Choose folder |
+| 12 | launcher, settings | Off by default: with it on the game is capped to your monitor's refresh rate. | Caps FPS to your refresh rate. |
+| 13 | launcher, settings | Borderless uses the native size of that display and alt-tabs instantly. / Borderless always fills this display. | (removed) |
+| 14 | launcher, settings | Records allow up to 250; the server enforces allowed values. | Records allow up to 250. |
+| 15 | launcher, settings | WxH. Blank means the native size of the chosen display. | WxH. Blank for native. |
+| 16 | launcher, deep link | That link opened the launcher, but it did not name a map or a party. | That link has no map or party. |
+| 17 | launcher, updates | The update could not be checked. (…) | Update check failed: … |
+| 18 | launcher, setup | Done, but something in your install changed. Check the log. | Done, but your install changed. Check the log. |
+| 19 | /settings signed out | Sign in to keep your World at War settings on your account. They follow you to any PC you launch from. | Sign in to save your settings to your account. |
+| 20 | /settings ENW | saved to your account and applied at your next launch. changes you make in the game's own menus come back here after you quit. | saved to your account, applied at next launch. in-game changes sync back when you quit. |
+| 21 | /settings ENW | open this page in the ENW launcher to see the client here | open in the ENW launcher to see the client |
+| 22 | /settings omitted | options_sound drives it through ui_outputConfig and engine-evaluated visibility expressions that were not decoded; … PCGamingWiki's documented way to break sound. | The game auto-detects it. Forcing it can break sound. |
+| 23 | /settings omitted | Online options for Activision's own co-op and multiplayer. ENW games do not use them. | Not used in ENW games. |
+| 24 | /settings maps | no maps downloaded yet. a map's Download button puts one here. | no maps downloaded. |
+| 25 | /settings maps confirm | Remove X? 1.2 GB is freed. You can download it again. | Remove X? Frees 1.2 GB. |
+| 26 | map page, rail card | Download tooltip: Download now, play later | (removed) |
+| 27 | party rail | None of your friends are online. / Nobody else is online. | No friends online. / Nobody else online. |
+| 28 | party rail | The server is kept for you for about N more minutes | Kept for N more min |
+| 29 | profile comments | Nobody has posted on your profile yet. / No comments for X yet. | No comments yet. |
+| 30 | profile comments | Post comment | Post |
+| 31 | profile | Your banner is the one on your ENW Movement profile — change it there and it changes here | Your banner comes from ENW Movement |
+| 32 | badges | You can pin 3. Unpin one to make room. | Max 3 pinned. |
+| 33 | 404 | That page doesn't exist / Back to the home page | Page not found / Home |
+| 34 | chat system | X just went down on round 30 on Verrückt | X went down on round 30 on Verrückt |
+| 35 | sign-in page | Steam sent us back, but the answer did not check out. That is usually a sign-in that was left open too long, or Steam having a bad minute. | The sign-in was left open too long, or Steam had a problem. |
+| 36 | sign-in page | The launcher opened this page more than fifteen minutes ago, so it stopped waiting. | The launcher stopped waiting after 15 minutes. |
+| 37 | sign-in page | Steam did not sign you in, so nothing changed here. / … again when you are ready. | Nothing changed. / … again. |
+| 38 | Local game notice | Stored as a Local game. It earns no badge, no record and no XP, and its replay is not record evidence. | Stored as a Local game. No badges, records or XP. |
+| 39 | replay viewer | No world model for X yet — showing players and zombies over a grid at the floor they walked on. | No world model for X yet. Players and zombies only. |
+| 40 | admin, box | It stops authenticating: no new leases, and its games cannot post results until it is enabled again. | No new leases, and its games cannot post results. |
+
+Also changed, not in the table: the other admin confirms (restart, unknown seats, rename), the
+replay grade reasons (`lib/replays.js`), the launcher-cancel refusal, the stock-map download
+note, the replay scoreboard footnote, and every prose em-dash on those screens (tab titles,
+`Live` heading, badge tooltips, launcher candidate cards) turned into `·` or `:`.
+
+**Tests.** `web` `npm test`: all ten suites pass (144, 41, 15, 19, 12, 10, 12, 23, 12, 15).
+`launcher` `node test/run-all.js`: 165 passed, 1 failed, the pre-existing "this checkout must
+have a client DLL to ship" in a worktree; `waw-settings.js` 14/0, `modcompat.js` 6/0. Client
+`vite build` clean.
+
+**Needs a client build and a site restart; the launcher strings ship with the next launcher
+release.** No live data was written.

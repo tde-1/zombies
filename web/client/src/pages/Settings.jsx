@@ -167,7 +167,7 @@ export default function Settings() {
       <div className="page set-page">
         <div className="set-screen set-screen-empty">
           <div className="set-head"><h1>settings</h1></div>
-          <p className="set-hint set-hint-block">Sign in to keep your World at War settings on your account. They follow you to any PC you launch from.</p>
+          <p className="set-hint set-hint-block">Sign in to save your settings to your account.</p>
         </div>
       </div>
     )
