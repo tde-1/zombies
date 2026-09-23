@@ -71,6 +71,38 @@ for (const inter of [false, true]) {
     JSON.stringify(T) === JSON.stringify([0, 0, 0, 100, 0, 0, 0, 200, 50]), JSON.stringify(T))
 }
 
+// The SERVED file (replay.md §10: a meshopt Nacht was reverted because this reader had no int16
+// path). KHR_mesh_quantization: POSITION as normalized int16 and the dequantization in the
+// __world node's scale + translation -- exactly what gltf-transform's quantize() writes.
+{
+  const tri = [[0, 0, 0], [100, 0, 0], [0, 200, 50]]
+  const lo = [0, 0, 0], hi = [100, 200, 50]
+  const c = lo.map((v, k) => (v + hi[k]) / 2), h = Math.max(...hi.map((v, k) => (v - lo[k]) / 2))
+  const vb = Buffer.alloc(3 * 8)
+  tri.forEach((p, i) => p.forEach((v, k) => vb.writeInt16LE(Math.round(((v - c[k]) / h) * 32767), i * 8 + k * 2)))
+  const ib = Buffer.alloc(8)
+  ;[0, 1, 2].forEach((v, i) => ib.writeUInt16LE(v, i * 2))
+  const bin = Buffer.concat([vb, ib])
+  const j = {
+    asset: { version: '2.0' }, extensionsUsed: ['KHR_mesh_quantization'], extensionsRequired: ['KHR_mesh_quantization'],
+    nodes: [{ name: '__world', mesh: 0, translation: c, scale: [h, h, h] }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1 }] }],
+    bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 24, byteStride: 8 }, { buffer: 0, byteOffset: 24, byteLength: 6 }],
+    accessors: [{ bufferView: 0, componentType: 5122, normalized: true, count: 3, type: 'VEC3' },
+      { bufferView: 1, componentType: 5123, count: 3, type: 'SCALAR' }],
+    buffers: [{ byteLength: bin.length }],
+  }
+  let js = Buffer.from(JSON.stringify(j))
+  js = Buffer.concat([js, Buffer.alloc((4 - (js.length % 4)) % 4, 0x20)])
+  const binp = Buffer.concat([bin, Buffer.alloc((4 - (bin.length % 4)) % 4)])
+  const head = Buffer.alloc(12); head.writeUInt32LE(0x46546c67, 0); head.writeUInt32LE(2, 4); head.writeUInt32LE(12 + 8 + js.length + 8 + binp.length, 8)
+  const c1 = Buffer.alloc(8); c1.writeUInt32LE(js.length, 0); c1.writeUInt32LE(0x4e4f534a, 4)
+  const c2 = Buffer.alloc(8); c2.writeUInt32LE(binp.length, 0); c2.writeUInt32LE(0x004e4942, 4)
+  const T = Array.from(align.worldTriangles(align.readGlb(Buffer.concat([head, c1, js, c2, binp]))))
+  const err = Math.max(...T.map((v, i) => Math.abs(v - tri.flat()[i])))
+  ok('reader: quantized int16 POSITION + node dequantization reads back within 0.01 u', err < 0.01, `max err ${err.toFixed(4)}`)
+}
+
 ;(async () => {
   const bsp = 'nazi_zombie_prototype'
   const glb = path.join(MAPS, bsp, `${bsp}.glb`)
@@ -102,7 +134,17 @@ for (const inter of [false, true]) {
     }
   } catch { /* the recorded value above */ }
 
-  const r = align.check(glb, meta, first)
+  let r
+  try {
+    r = await align.check(glb, meta, first)
+  } catch (e) {
+    if (e.code !== 'NO_MESHOPT') throw e
+    console.log(`skipped: ${bsp} is meshopt-compressed and this machine has no meshopt decoder (npm --prefix client install)`)
+    console.log(`
+${pass} passed, ${fail} failed`)
+    if (fail) process.exitCode = 1
+    return
+  }
   console.log(JSON.stringify(r.world), 'windows', JSON.stringify(r.windows))
   const span = [r.world.hi[0] - r.world.lo[0], r.world.hi[1] - r.world.lo[1]]
   // Nacht with its terrain and sky is ~12 000 u across at the true scale; 2.54x is ~31 000.
@@ -111,6 +153,7 @@ for (const inter of [false, true]) {
   ok('window goals sit at the walls (exterior goals are ~55-60 u outside the window)', r.windows.median < 70 && r.windows.max < 90, JSON.stringify(r.windows))
   const truck = r.anchors.filter((a) => /opel_blitz/.test(a.model))
   ok('the trucks are at their map_ents origins', truck.length > 0 && truck.every((a) => a.nodeOffset !== null && a.nodeOffset < 0.5), JSON.stringify(truck.map((a) => a.nodeOffset)))
+  ok('nothing drawn lies past +-65536 u', r.farNodes.length === 0, JSON.stringify(r.farNodes.slice(0, 3)))
   ok('the first live player tick is within 20 u of a spawn', r.firstTick.distance <= 20, JSON.stringify(r.firstTick))
   ok('and stands on the floor there', r.firstTick.floorBelow !== null && Math.abs(r.firstTick.floorBelow) < 20, `origin - floor = ${r.firstTick.floorBelow}`)
   console.log(`\n${pass} passed, ${fail} failed`)
