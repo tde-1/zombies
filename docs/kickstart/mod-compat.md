@@ -46,6 +46,11 @@ record of B's run**: his client has written **no `console.log` for any launch si
 — so no `Could not load xmodel/xanim`, no device-lost line, nothing. **Fixing that is the first
 step for the next report**; the dev client with the same DLL source does write one, so it is
 something in B's install, not the engine.
+*(Correction 2026-09-23 ~04:00: wrong. B's engine writes `home\mods\<bsp>\console.log` on every
+launch — the fear_mc_2 one was last written at 03:42:30, the second his game died — but truncates
+it on every launch, and a rewritten file keeps its 09-22 creation time, which is what made it look
+stale. The DLL now keeps its own copy per process: `logs\console-<pid>.log`, `client.md`
+"2026-09-23 ~04:00".)*
 
 **What the box and a local dedi both do on this map, which is the mod's, not ours:**
 
@@ -182,7 +187,7 @@ their next Play.
 | `fs_game` | `mods/<bsp>` from the lease (`bootflow.js` `match.fs_game`) | `mods/<bsp>` | `mods/<bsp>` (`assignments.fs_game`) | `mods/<bsp>` (`-FsGame auto`) |
 | mod files | `home\localappdata\Activision\CoDWaW\mods\<bsp>` (the DLL redirects LocalAppData there) | same | `waw-en/mods/<bsp>`, symlinked 3x | junctions to `archive\mods\<bsp>` |
 | `+exec` | `enw_auth.cfg` (token) | same | — | — |
-| `console.log` | `home\mods\<bsp>\console.log` **(not written since 09-22 18:07 — §1)** | same | `waw-en/mods/<bsp>/console.log` (shared by all instances) | **one file shared by server and client** — `+set logfile 0` on one side to read the other |
+| `console.log` | `home\mods\<bsp>\console.log` — **written every launch, truncated every launch** (2026-09-23 correction: the "not written since 18:07" of §1 was a wrong read; the file keeps its 09-22 creation time when it is rewritten). Since `console_tap.cpp`: also `%LOCALAPPDATA%\ENWZombies\logs\console-<pid>.log`, always, per process (`client.md` 2026-09-23 ~04:00) | same | `waw-en/mods/<bsp>/console.log` (shared by all instances) | **one file shared by server and client** — `+set logfile 0` on one side to read the other |
 
 ## 7. Other incompatibilities this map shows, and what each needs
 
