@@ -1,4 +1,11 @@
-# Where things stand — 2026-09-23, 03:30 UK (end-of-session handoff)
+# Where things stand — 2026-09-23, 23:00 UK (evening handoff)
+
+> **Newest state: `docs/kickstart/next-session.md`, top table ("2026-09-23 evening handoff").** Launcher
+> **0.2.35**, box DLL **`59577dbe`**, host **`9e9e86a`**, site **`36193c4`**; 85 maps playable on our
+> servers; 235/236 maps with replay geometry. Local main is ahead of GitHub (push is B's).
+> Lanes MAPS and S2 were still running at handoff. The sections below are the earlier history.
+
+# Earlier: 2026-09-23, 03:30 UK (end-of-session handoff)
 
 > **This file is the current state of the code.** Design and decision history: the Obsidian vault at
 > `C:\Users\b\Desktop\shared-notes\ENW COD Zombies` (`19 - Build Log`). A new agent reads
