@@ -526,6 +526,12 @@ export function createGear(api, actors, assetsIn) {
   return {
     root, update, setPowerups, dispose, setAssets,
     viewmodel: vm, setViewmodelWeapon, updateViewmodel,
-    info: () => ({ slots: [...slots.entries()].map(([k, s]) => [k, s.key]), vm: vmState.key, glbs: [...glbs.entries()].map(([u, e]) => [u, e.state]) }),
+    // ?r3ddebug (window.__r3d.fx()): what is drawn right now, for the render check (replay.md §12).
+    info: () => ({
+      slots: [...slots.entries()].map(([k, s]) => ({ slot: k, key: s.key, shown: s.holder.visible, flash: s.flash.visible })),
+      vm: vmState.key, vmFlash: vmFlash.visible,
+      pickups: pups.filter((p) => p.holder.visible).map((p) => p.key),
+      glbs: [...glbs.entries()].map(([u, e]) => [u, e.state]),
+    }),
   }
 }

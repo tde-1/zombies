@@ -1031,7 +1031,10 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         snd.update(t0 + timeRef.current * 1000, playingRef.current, speedRef.current, sndCtx)
       }
 
-      if (s && now - hudAt > 66) {
+      // Paused frames only happen on a change (a seek, a camera switch), so every one of them
+      // updates the HUD: the 66 ms throttle used to swallow a seek that landed right after a
+      // camera switch, and the feed and the Tab scoreboard then showed the previous instant.
+      if (s && (now - hudAt > 66 || !playingRef.current)) {
         hudAt = now
         setHud({
           t: timeRef.current, round: s.round, alive: s.alive, left: s.left, players: s.list, tick: s.i,
