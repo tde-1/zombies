@@ -13,8 +13,41 @@ export function setLogLevel(name) {
 
 const COLOR = { debug: '\x1b[90m', info: '\x1b[36m', warn: '\x1b[33m', error: '\x1b[31m' }
 
+// THE LOG RING (telemetry, docs/kickstart/host.md §15). Every line any makeLog() logger
+// emits — debug included, whatever the console level — is also kept here, so an instance's
+// own host lines can be pulled out when it ends and put in its bundle. One array write per
+// line, no file I/O, no timers: a fixed-size circular buffer of { t, level, tag, msg }.
+export const LOG_RING_SIZE = Number(process.env.ENW_LOG_RING || 20_000)
+const RING = new Array(LOG_RING_SIZE)
+let ringNext = 0
+let ringCount = 0
+const fmtArg = (x) => (typeof x === 'string' ? x
+  : x instanceof Error ? (x.stack || x.message)
+  : (() => { try { return typeof x === 'object' ? JSON.stringify(x) : String(x) } catch { return String(x) } })())
+
+function ringPush(level, tag, args) {
+  RING[ringNext] = { t: Date.now(), level, tag, msg: args.length === 1 && typeof args[0] === 'string' ? args[0] : args.map(fmtArg).join(' ') }
+  ringNext = (ringNext + 1) % LOG_RING_SIZE
+  if (ringCount < LOG_RING_SIZE) ringCount++
+}
+
+/** The ring's lines, oldest first, optionally filtered: `(e) => bool`. */
+export function ringLines(filter = null) {
+  const out = []
+  const start = (ringNext - ringCount + LOG_RING_SIZE) % LOG_RING_SIZE
+  for (let i = 0; i < ringCount; i++) {
+    const e = RING[(start + i) % LOG_RING_SIZE]
+    if (e && (!filter || filter(e))) out.push(e)
+  }
+  return out
+}
+
+/** One ring entry as a log line: ISO time, level, tag, text. */
+export const ringFormat = (e) => `${new Date(e.t).toISOString()} ${e.level.padEnd(5)} ${e.tag} ${e.msg}`
+
 export function makeLog(tag) {
   const emit = (level, ...args) => {
+    try { ringPush(level, tag, args) } catch { /* the ring must never break a log call */ }
     if (LEVELS[level] < LOG_LEVEL) return
     const ts = new Date().toISOString().slice(11, 23)
     const head = `${COLOR[level]}${ts} ${level.padEnd(5)} ${tag}\x1b[0m`
