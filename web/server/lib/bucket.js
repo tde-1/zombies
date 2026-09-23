@@ -43,6 +43,11 @@ const keys = {
   update: (name) => `updates/${name}`,
   mapFile: (bsp, rel) => `mods/${bsp}/${String(rel).replace(/\\/g, '/')}`,
   mapdata: (rel) => `mapdata/${String(rel).replace(/\\/g, '/')}`,
+  // Log bundles (docs/kickstart/telemetry.md). `id` is the site's random 128-bit id: the
+  // bucket is public-read and refuses anonymous listing, so the id is what keeps a URL
+  // unguessable. `who` is a SteamID64 or a box name.
+  log: (kind, date, who, id) => `logs/${kind}/${date}/${String(who || 'anonymous').replace(/[^\w.-]/g, '_')}/${id}.tar.gz`,
+  digest: (date) => `logs/digest/${date}.json`,
 }
 
 // An anonymous HEAD on the public URL. Replaceable for the tests.

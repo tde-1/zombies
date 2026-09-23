@@ -33,6 +33,7 @@ import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
 import { onRestartRequest, handOver } from './lib/restart.js'   // a player's Restart game (esc-menu.md §3)
 import { MapCache, configFromEnv as mapCacheConfig, modNameOf } from './lib/mapcache.js'   // pull a leased map before boot
+import { Telemetry, configFromEnv as telemetryConfig, hashFileCached } from './lib/telemetry.js'   // every instance end is a log bundle (host.md §15)
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -155,6 +156,19 @@ const cfg = {
 cfg.mapCache = mapCacheConfig(process.env, { wine: cfg.wine, site: cfg.site })
 if (cfg.dryRun) cfg.mapCache.enabled = false
 
+// ---- TELEMETRY (lib/telemetry.js, host.md §15) ------------------------------------------
+// On whenever there is a site; `ENW_TELEMETRY=off` (in /root/enw-host.env) or
+// `--telemetry off` turns it off. Its data dir sits beside the spool (or the replays) so a
+// test that moves those moves this too, and never lands in B's ZombiesDev by accident.
+cfg.telemetry = telemetryConfig(process.env, {
+  site: cfg.site,
+  dataDir: a['spool-dir'] ? path.dirname(path.resolve(a['spool-dir']))
+    : a['replay-dir'] ? path.dirname(path.resolve(a['replay-dir']))
+    : (process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev'),
+})
+if (a.telemetry === 'off') { cfg.telemetry.enabled = false; cfg.telemetry.whyOff = '--telemetry off' }
+if (a['telemetry-dir']) cfg.telemetry.dir = a['telemetry-dir']
+
 /** One game: an instance, its link connection, its referee and its replay writer. */
 class Game extends EventEmitter {
   constructor(host, instance, { matchId, mode, vip, assignment, tokens, refereeConfig, selfReported = false }) {
@@ -173,6 +187,7 @@ class Game extends EventEmitter {
     this.pending = []
     this.writer = null
     this.replayFile = null
+    this.createdAt = Date.now()   // telemetry: this game's host lines are the ring from here on
     this.log = log.child(instance.id)
     this.manifest = host.manifests.get(null)
     this.referee = new Referee({
@@ -440,6 +455,10 @@ class Game extends EventEmitter {
       }
       return plan
     })()
+    // TELEMETRY: a finished game is a bundle whatever became of its instance. `retire()`
+    // already sent it on the terminate path; this catches reuse (the process lives on,
+    // warm) and a refused reuse (which retires the SUCCESSOR, not this game).
+    this.disposed.then((plan) => this.host.telemetryEnd(this, { why: `${plan?.action || '?'}: ${plan?.why || ''}` }), () => {})
     return this.disposed
   }
 
@@ -628,7 +647,9 @@ class Game extends EventEmitter {
     }
     summary.usage = this.instance.usage()
     this.gameLog.onSummary(summary); this.gameLog.close()
-    this.log.info(`SUMMARY ${summary.map} round ${summary.rounds} finish=${summary.finish?.kind || 'none'} ${fmtDur(summary.duration_ms)} flags=[${summary.flags.join(',')}] eligible=${summary.records_eligible}`)
+    this.summary = summary
+    this.summaryLine = `SUMMARY ${summary.map} round ${summary.rounds} finish=${summary.finish?.kind || 'none'} ${fmtDur(summary.duration_ms)} flags=[${summary.flags.join(',')}] eligible=${summary.records_eligible}`
+    this.log.info(this.summaryLine)
     this.host.games.set(this.matchId, { summary, replay })
     this.host.dash?.push('summary', { instance: this.instance.id, summary, replay })
     await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay })
@@ -805,6 +826,15 @@ class HostAgent {
       g.referee.onEvent(msg)
       g.record(msg)
       this.watchStartupDialog(g)
+      // The box DLL's sha, at link time: a DLL swapped mid-game leaves the running process
+      // on the old one (dedi.md §22.7), so the file at the END is not proof of what ran.
+      // 2.3 MB, hashed once per file version (cached), off the boot's critical path.
+      if (this.telemetry && cfg.wine && g.instance.kind === 'game') {
+        try {
+          const dll = path.join(g.instance.winePaths().gameDir, 'binkw32.dll')
+          hashFileCached(dll).then((sha) => { g.dllSha = sha }, () => {})
+        } catch { /* no wine paths */ }
+      }
     })
     this.instances.startSampling()
     this.reaper = setInterval(() => this.instances.reap(), 15_000); this.reaper.unref?.()
@@ -837,6 +867,7 @@ class HostAgent {
       // What this box can run, on every status post: the site's capacity() reads it.
       this.site.statusExtra = { protocol: 2, max_instances: this.instances.maxInstances }
       this.startMapCache()
+      this.startTelemetry()
       this.site.on('assignment', (asg) => this.onAssignment(asg))
       this.site.on('chat', (e) => this.onNetworkChat(e))
       this.site.start()
@@ -1044,8 +1075,131 @@ class HostAgent {
     log.info(`retiring instance ${id}: ${why}`)
     await this.instances.remove(id, why).catch((e) => log.warn(`could not remove ${id}: ${e.message}`))
     if (this.byInstance.get(id) === game) this.byInstance.delete(id)
+    // After the process is gone (its logs are final) and before the 2 s the lease path
+    // waits for Wine to hand the ports back, so the tails are copied before the next game
+    // in this slot truncates console.log. Not awaited: a retire never waits on telemetry.
+    this.telemetryEnd(game, { why })
     this.reportStatus()
     return true
+  }
+
+  // ---- telemetry (lib/telemetry.js, host.md §15) -----------------------------------------
+  startTelemetry() {
+    const tc = cfg.telemetry
+    if (!tc?.enabled) { log.info(`telemetry off (${tc?.whyOff || 'not configured'})`); return }
+    try {
+      this.telemetry = new Telemetry({
+        ...tc,
+        site: this.site,
+        boxName: cfg.boxName,
+        // Every literal secret this agent holds: the box secret and the replay-signing key.
+        // The keys dir and /root/enw-host.env are also refused as files, whatever they hold.
+        secrets: () => [cfg.secret, this.hostKey?.priv].filter(Boolean),
+        forbiddenDirs: [cfg.keyDir],
+        busy: () => (this.bootsPending || 0) > 0 || this.preparing.size > 0,
+        log: log.child('telemetry'),
+      }).start()
+    } catch (e) {
+      log.error(`telemetry: could not start (${e.message}) - left off; the agent runs as before`)
+      this.telemetry = null
+    }
+  }
+
+  /**
+   * Where one instance's logs are. Evidence for each (host.md §15.2):
+   *   <logDir>/<id>.log              the process's own stdout/stderr (instances.js logStream)
+   *   <logDir>/<id>.games_mp.log     the host's games_mp.log mirror (lib/gamelog.js)
+   *   <game copy>/enw-<pid>.log      the DLL's log: ENW_LOGDIR is not set in Wine mode, so it
+   *                                  lands beside the DLL (shared/core/logger.cpp; dedi.md §17
+   *                                  `waw-inst-02/enw-1356.log`). <pid> is the WINDOWS pid
+   *                                  the DLL says in `hello`, not the Linux one we spawned.
+   *   <fs_homepath>/<fs_game|main>/console.log   `+set logfile 2` (instances.js gameArgs)
+   *   <mods dir>/<mod>/console.log   a custom map's, when the homepath's mods is the shared
+   *                                  tree (archive/box_proof.py reads it there)
+   * Every candidate is listed; the stager keeps the ones that exist, once each.
+   */
+  instanceLogFiles(game) {
+    const inst = game.instance
+    const files = [
+      { name: 'instance-stdout.log', path: inst.logFile || path.join(cfg.logDir, `${inst.id}.log`) },
+      { name: 'host-games_mp.log', path: path.join(cfg.logDir, `${inst.id}.games_mp.log`) },
+    ]
+    if (inst.kind !== 'game') return { files, dll: null }
+    const pid = game.referee?.pid || null
+    const dirs = []
+    let gameDir = null
+    let home = null
+    if (cfg.wine) {
+      try {
+        const wp = inst.winePaths()
+        gameDir = wp.gameDir
+        home = path.join(cfg.wine.prefix, 'drive_c', ...wp.homeWin.replace(/^[A-Za-z]:\\/, '').split('\\'))
+      } catch { /* no wine paths */ }
+    } else {
+      gameDir = path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', `waw-${cfg.gameCopy}`)
+      dirs.push(path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'logs', cfg.gameCopy))
+    }
+    if (gameDir) dirs.unshift(gameDir)
+    const since = (inst.startedAt || game.createdAt) - 60_000
+    const fresh = (p) => { try { return fs.statSync(p).mtimeMs >= since } catch { return false } }
+    for (const d of dirs) {
+      if (pid) {
+        files.push({ name: `enw-${pid}.log`, path: path.join(d, `enw-${pid}.log`) })
+        files.push({ name: `console-${pid}.log`, path: path.join(d, `console-${pid}.log`) })
+      } else {
+        // No hello, so no pid: the newest DLL log written since this instance started.
+        try {
+          const newest = fs.readdirSync(d).filter((f) => /^enw-\d+\.log$/.test(f)).map((f) => path.join(d, f))
+            .filter(fresh).sort((x, y) => fs.statSync(y).mtimeMs - fs.statSync(x).mtimeMs)[0]
+          if (newest) files.push({ name: path.basename(newest), path: newest })
+        } catch { /* no dir */ }
+      }
+    }
+    const fsGame = game.assignment?.fs_game || inst.assignment?.fs_game || null
+    const engineDirs = []
+    if (home) engineDirs.push(path.join(home, ...(fsGame ? fsGame.split(/[\\/]/) : ['main'])))
+    const mod = modNameOf({ map: game.assignment?.map || game.referee?.map, fs_game: fsGame })
+    if (mod && cfg.mapCache?.modsDir) engineDirs.push(path.join(cfg.mapCache.modsDir, mod))
+    if (gameDir) engineDirs.push(path.join(gameDir, ...(fsGame ? fsGame.split(/[\\/]/) : ['main'])))
+    if (home && fsGame) engineDirs.push(path.join(home, 'main'))
+    for (const d of engineDirs) {
+      for (const f of ['console.log', 'games_mp.log']) {
+        const p = path.join(d, f)
+        if (fresh(p)) files.push({ name: `engine-${f}`, path: p })
+      }
+    }
+    return { files, dll: gameDir ? path.join(gameDir, 'binkw32.dll') : null }
+  }
+
+  /** One game's end -> one bundle (once per Game). Never throws, never awaited by a retire. */
+  telemetryEnd(game, { why = null } = {}) {
+    if (!this.telemetry || !game || game.telemetrySent) return null
+    game.telemetrySent = true
+    try {
+      const inst = game.instance
+      const s = game.summary || null
+      const refused = !inst.startedAt && !!inst.failReason
+      const { files, dll } = this.instanceLogFiles(game)
+      const asg = game.assignment || inst.assignment || null
+      return this.telemetry.instanceEnd({
+        reason: refused ? 'lease_refused' : 'instance_end',
+        exit_reason: s?.end_reason || game.referee?.endReason || (refused ? 'instance_failed' : 'retired'),
+        why: refused ? `${why || ''} (${inst.failReason})` : why,
+        match_id: game.matchId, instance: inst.id, pid: game.referee?.pid ?? null, linux_pid: inst.pid ?? null,
+        map: s?.map || game.referee?.map || asg?.map || null, mode: game.mode,
+        since: game.createdAt, duration_ms: s?.duration_ms ?? Date.now() - game.createdAt,
+        exit_code: inst.exitCode ?? null,
+        summary: s, summary_line: game.summaryLine || null, lease: asg,
+        instance_info: (() => { try { return inst.info() } catch { return null } })(),
+        replay_path: game.replayFile || null,
+        dll_path: dll && fs.existsSync(dll) ? dll : null, dll_sha: game.dllSha || null,
+        dll_version: game.referee?.hashes?.dll_build || null,
+        logs: files,
+        ring: { instance: inst.id, matches: [game.matchId, game.inheritedFrom].filter(Boolean) },
+        extraSecrets: Object.values(game.tokens || {}).concat(Object.values(asg?.tokens || {})).filter(Boolean),
+        notes: { games_on_instance: inst.gamesPlayed || 0, restarts: inst.restarts || 0, fail: inst.failReason || null, exit_signal: inst.exitSignal || null, flags: [...(game.referee?.flags || [])] },
+      })
+    } catch (e) { log.warn(`telemetry: instance end ${game.instance?.id}: ${e.message}`); return null }
   }
 
   /**
@@ -1217,11 +1371,16 @@ class HostAgent {
       if (!r.ok) {
         log.error(`lease ${asg.match_id}: could not prepare ${asg.map}: ${r.error}`)
         this.site?.status({ state: 'failed', match_id: asg.match_id, map: asg.map, error: `the server could not prepare the map: ${r.error}` })
+        this.telemetry?.pullFailed({ asg, error: r.error, since: entry.since, logs: this.mapCache?.stateFile ? [{ name: 'mapcache-state.json', path: this.mapCache.stateFile, tailBytes: 4 * 1024 * 1024 }] : [], notes: { progress: entry.progress } })
         return
       }
       if (r.pulled || r.repaired) log.info(`lease ${asg.match_id}: ${asg.map} ${r.pulled ? 'pulled' : 'repaired'} in ${((Date.now() - entry.since) / 1000).toFixed(1)} s - booting`)
       this.startLease(asg)
-    }).catch((e) => { this.preparing.delete(asg.match_id); log.error(`lease ${asg.match_id}: prepare failed: ${e.message}`) })
+    }).catch((e) => {
+      this.preparing.delete(asg.match_id)
+      log.error(`lease ${asg.match_id}: prepare failed: ${e.message}`)
+      this.telemetry?.pullFailed({ asg, error: e.stack || e.message, since: entry.since, notes: { progress: entry.progress } })
+    })
   }
 
   /** Boot (or hand a warm instance to) ONE lease. `applyLeases` decides which. */
@@ -1460,6 +1619,7 @@ class HostAgent {
       agent_uptime_s: Math.round(process.uptime()),
       link: { host: cfg.linkHost, port: this.link.port, conns: this.link.stats() },
       site: this.site ? { base: cfg.site, online: this.site.online, ...this.site.stats } : null,
+      telemetry: this.telemetry ? this.telemetry.info() : { enabled: false, why: cfg.telemetry?.whyOff || null },
       token_checks: { required: cfg.requireToken, ...this.tokenGuard.stats },
       local: { enabled: cfg.local, mode: cfg.adoptLocal ? 'adopt-any' : 'expected-only', lease_held: this.leaseHeld(), expected: [...this.expected.keys()] },
       after_game: { disposition: cfg.afterGame, games_per_instance: cfg.gamesPerInstance, warm: [...this.warm.keys()] },
@@ -1480,6 +1640,15 @@ class HostAgent {
     this.site?.stop()
     for (const g of this.byInstance.values()) if (!g.finished) { try { g.referee.finishGame('host_shutdown') } catch { /* ignore */ } }
     await this.instances.stopAll('host shutdown')
+    // Every game still here ends with the agent: stage its logs (a few seconds at most) so
+    // the next start builds and sends them. Nothing is built or uploaded on the way out.
+    if (this.telemetry) {
+      try {
+        for (const g of this.byInstance.values()) this.telemetryEnd(g, { why: 'host shutdown' })
+        await this.telemetry.flush(5000)
+        this.telemetry.stop()
+      } catch (e) { log.warn(`telemetry: at shutdown: ${e.message}`) }
+    }
     await this.link.close()
     await this.dash?.close()
   }

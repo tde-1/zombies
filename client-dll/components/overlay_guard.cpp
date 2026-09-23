@@ -47,6 +47,7 @@
 #include "frame.hpp"
 #include "logger.hpp"
 #include "overlay_guard_rules.hpp"
+#include "session_record.hpp"
 
 #include <windows.h>
 #include <winternl.h>
@@ -125,6 +126,8 @@ NTSTATUS NTAPI ldr_load_dll_detour(PWSTR path, PULONG flags, PUNICODE_STRING nam
         // hook that is already mapped.
         const bool allow = g_allowed_loads.load() > 0 || overlay_rule::allow_discord(g_mode, vm.largest);
         const long n = allow ? ++g_allowed_loads : ++g_refusals;
+        session_record::note_largest_free(vm.largest);
+        if (!allow) session_record::note_discord_refused(n);
         if (n <= 3) {
             char line[900];
             std::snprintf(line, sizeof line,
@@ -197,6 +200,9 @@ std::string describe(uintptr_t addr) {
 }
 
 LONG WINAPI on_unhandled(EXCEPTION_POINTERS* ep) {
+    // session-<pid>.json first: lock-free and heap-free, so it lands even when the log
+    // line below cannot (the logger's lock may be held by the thread that crashed).
+    session_record::write_crash(ep);
     if (ep && ep->ExceptionRecord) {
         const auto* r = ep->ExceptionRecord;
         const auto vm = overlay_rule::measure_free();
@@ -285,6 +291,7 @@ public:
         g_game_started = true;
         g_prev_filter = ::SetUnhandledExceptionFilter(&on_unhandled);
         const auto vm = overlay_rule::measure_free();
+        session_record::note_largest_free(vm.largest);
         ENW_INFO("overlay_guard: unhandled exceptions are named before the engine's filter (previous %p). "
                  "Address space at engine start: largest free block %.1f MB of %.1f MB free.",
                  reinterpret_cast<void*>(g_prev_filter), vm.largest / 1048576.0, vm.total / 1048576.0);
@@ -318,6 +325,7 @@ public:
             if (n > 1 && now - last >= 60000) {
                 last = now;
                 const auto v = overlay_rule::measure_free();
+                session_record::note_largest_free(v.largest);
                 ENW_INFO("overlay_guard: address space +%llu s: largest free block %.1f MB of %.1f MB free; "
                          "DiscordHook loads refused %ld, allowed %ld",
                          since_start_ms() / 1000, v.largest / 1048576.0, v.total / 1048576.0,

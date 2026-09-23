@@ -43,6 +43,7 @@ import * as gameproc from './gameproc.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
 import { Presence, presenceFor } from './discord.js'
+import { Telemetry, defaultDirs as telemetryDirs } from './telemetry/index.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -166,12 +167,44 @@ const raiseWindow = (why) => raiser.raise(why)
 // client keeps booting you back into the game").
 const followGate = makeFollowGate()
 
+// Log bundles to the site (telemetry/index.js; docs/kickstart/telemetry.md §6). Built
+// here, before the crash handlers, so an error at any point after load is bundled. It
+// does no I/O until start() (after the window) or an enqueue, and it never builds or
+// sends while a game this launcher started is alive.
+const telemetry = new Telemetry({
+  dirs: telemetryDirs(P),
+  api: () => state.api,
+  isGameRunning: () => !!state.flow || !!followGate.gameAlive(),
+  log: (line) => log('telemetry', line),
+  appVersion: app.getVersion(),
+  steamId: () => { try { return settings.session().steamid || null } catch { return null } },
+  // Literal values the scrubber redacts wherever they appear: the beta password, the
+  // session cookie values, the last in-game chat pass.
+  secrets: async () => {
+    const out = [cfg.load().sitePassword, state.lastChatBearer]
+    try {
+      if (state.siteInfo?.url && app.isReady()) {
+        for (const c of await electronSession.defaultSession.cookies.get({ url: state.siteInfo.url })) out.push(c.value)
+      }
+    } catch {}
+    return out.filter(Boolean)
+  },
+})
+state.telemetry = telemetry
+telemetry.on('first_sent', () => push('toast', { kind: 'info', text: 'Logs sent' }))
+
 // Anything unhandled is a crash report and a short plain message. Never a stack trace
 // in the player's face.
 function wireCrashReporting() {
   const send = async (kind, error, context) => {
     state.lastError = { kind, message: error?.message || String(error) }
     log('crash', kind, error?.message || error)
+    // A log bundle beside the silent report below (which stays as it was). A game crash
+    // has its own game bundle from the flow's 'ended'; everything else is the launcher's.
+    if (kind !== 'game_crash') {
+      const uncaught = context?.where === 'main' || context?.where === 'promise'
+      telemetry.enqueueLauncher({ reason: uncaught ? 'uncaught' : 'launcher_error', error, where: `${kind}${context?.where ? ` / ${context.where}` : ''}` })
+    }
     const payload = crash.build({
       kind, error, context: { ...context, appVersion: app.getVersion() },
       logs: [LOG, path.join(P.home, 'main', 'console.log')],
@@ -943,9 +976,14 @@ function wireIpc() {
     }
     const s = await steamSignIn()
     push('session', s)
+    telemetry.onSignedIn()   // bundles the site refused with 401 go now
     return s
   })
   handle('signOut', () => { const s = settings.signOut(); push('session', s); return s })
+
+  // Settings -> Logs: the last upload time and the outbox count, and Send logs now.
+  handle('telemetryStatus', () => telemetry.status())
+  handle('sendLogs', async () => { const r = await telemetry.sendNow(); return { ...r, status: telemetry.status() } })
 
   handle('getSettings', () => settings.get())
   handle('setSettings', (patch) => { const s = settings.set(patch); push('settings', s); refreshPresence(); return s })
@@ -1149,7 +1187,8 @@ function wireIpc() {
       api: opts.local ? null : state.api,
       // The in-game chat overlay's pass, for every launch including Play Local: chat is
       // not tracking, it is the player's account talking to the site.
-      chatPass: state.api ? () => state.api.chatPass() : null,
+      // (The last bearer is remembered only so the telemetry scrubber can redact it.)
+      chatPass: state.api ? async () => { const c = await state.api.chatPass(); if (c?.bearer) state.lastChatBearer = c.bearer; return c } : null,
       // Somebody else pressed Start: skip POST /api/launcher/play (only the leader may
       // call it) and go straight to watching for the match the site already leased.
       follow: !!opts.follow,
@@ -1205,6 +1244,14 @@ function wireIpc() {
     flow.on('update', noteMatch)
     flow.on('launched', () => followGate.watchPids(flow.launch?.pids))
     flow.on('launched', () => { state.launches = [...(state.launches || []).slice(-4), flow.launch] })
+    // Telemetry: what the game bundle needs to know about this session, gathered as it
+    // happens. The bundle itself is built after the game has gone (telemetry/index.js).
+    const tele = { startedAt: null, started: null, exit: null }
+    flow.on('launched', (st) => {
+      tele.startedAt = Date.now()
+      tele.started = st || null
+      try { flow.launch?.on('exit', (e) => { tele.exit = e }) } catch {}
+    })
     state.gate.block('game', 'a game is starting or running')
     state.tray?.rebuild()
     showSite(false)
@@ -1260,6 +1307,28 @@ function wireIpc() {
     }
 
     flow.on('ended', async (p) => {
+      // Every game exit, normal or not, is a game bundle. Only when a game process was
+      // actually started (a launch that failed before spawning has no game logs).
+      if (tele.started?.pid) {
+        const snap = flow.snapshot()
+        telemetry.enqueueGame({
+          pid: tele.started.pid,
+          pids: [...(flow.launch?.pids || [tele.started.pid])],
+          exitCode: tele.exit?.code ?? null,
+          signal: tele.exit?.signal ?? null,
+          startedAt: tele.startedAt,
+          endedAt: Date.now(),
+          map: snap.map || opts.map || null,
+          matchId: snap.matchId || null,
+          mode: snap.mode || opts.mode || null,
+          launchLine: tele.started.commandLine || flow.launch?.commandLine || null,
+          stdout: tele.started.stdout || null,
+          stderr: tele.started.stderr || null,
+          phase: p.phase,
+          detail: p.detail || null,
+          stoppedByUs: /ended by the player|you cancelled|launcher is closing|stopped by the launcher/i.test(p.detail || ''),
+        })
+      }
       if (p.phase === 'failed') await reportCrash('game_crash', new Error(p.detail || 'the game ended unexpectedly'), { map: opts.map })
       // Give the referee a moment to notice the game is gone and write its footer,
       // then stop polling. Without the delay we stop the relay before the summary
@@ -1761,6 +1830,7 @@ async function connectSiteApi() {
     const hello = await api.sayHello()
     state.api = api
     log('site hello', `protocol ${hello.protocol}, auth ${hello.auth}, signed in as ${hello.you?.name || 'nobody'}`)
+    if (hello.you) telemetry.onSignedIn()
     // From here the launcher keeps up with the party by itself: the staged map is
     // downloaded and reported, and somebody else's Start becomes our launch.
     state.startPartyWatch?.()
@@ -1919,6 +1989,13 @@ if (!single) {
 
     // Silently send anything that failed to send last time, then start the update lane.
     crash.flush(cfg.load().crashEndpoint).then((r) => { if (r.sent) log('flushed crash reports', r) })
+    // Telemetry: WER LocalDumps checked (and our HKCU key made only if nothing covers
+    // CoDWaW.exe), crashes\*.json not yet bundled go as one backlog bundle, and the outbox
+    // from earlier runs is flushed. All asynchronous; none of it blocks Play.
+    try {
+      telemetry.checkWer().catch(() => {})
+      telemetry.start()
+    } catch (e) { log('telemetry', `not started: ${e.message}`) }
     // The updater. Everything about it is allowed to fail: a friend's launcher that
     // will not open because an update check failed is the outcome we are avoiding.
     const feed = resolveFeed({ config: cfg.load(), siteUrl: state.siteInfo?.url })
@@ -2096,6 +2173,7 @@ if (!single) {
     // ever be noticed as "the next game recorded nothing".
     try { state.localRun?.stop() } catch {}
     try { state.presence?.stop() } catch {}
+    try { telemetry.stop() } catch {}
     try { if (hostAgent().stop()) log('hostagent', 'stopped the host agent we started') } catch {}
     // Applying is the only moment an update can disturb anything, so it happens here,
     // and only when no game is running and nothing is installing.

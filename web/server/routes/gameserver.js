@@ -211,6 +211,21 @@ function router() {
     res.json({ ok: true, latest: chat.latest() })
   })
 
+  // ---- telemetry (docs/kickstart/telemetry.md) -------------------------------------
+  // The box's log bundle: an instance's logs when it ends, the daily journal. The raw
+  // .tar.gz body (express.json above ignores application/gzip), the same ingest as a
+  // launcher's, filed under the box's name. The box holds no bucket keys; the site does.
+  r.post('/telemetry', async (req, res) => {
+    try {
+      const out = await require('../lib/telemetry/ingest').receive(req, { who: { box: req.box.name }, source: 'box' })
+      if (out.headers) for (const [k, v] of Object.entries(out.headers)) res.setHeader(k, v)
+      res.status(out.status).json(out.body)
+    } catch (e) {
+      console.error(`[gs] telemetry from ${req.box.name} failed: ${e.stack || e.message}`)
+      if (!res.headersSent) res.status(500).json({ error: 'the site could not store that bundle; keep it and try again' })
+    }
+  })
+
   return r
 }
 

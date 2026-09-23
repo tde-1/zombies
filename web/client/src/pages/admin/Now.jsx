@@ -24,7 +24,8 @@ export default function Now({ d, go, isAdmin, openUser, reload }) {
           <Stat label="Live playlists" value={c.playlists} tone={c.playlists ? '' : 'warn'} onClick={() => go('playlists')} />
           <Stat label="Games" value={num(c.games)} onClick={() => go('games')} />
           <Stat label="Flagged, 7d" value={c.flagged_7d} tone={c.flagged_7d ? 'warn' : ''} onClick={() => go('games', { flag: 'any' })} />
-          <Stat label="Records" value={num(c.records)} onClick={() => go('records')} />
+          <Stat label="Issues P1/P2" value={(c.incidents_p1 || 0) + (c.incidents_p2 || 0)} tone={c.incidents_p1 || c.incidents_p2 ? 'warn' : ''} onClick={() => go('issues', { severity: '1,2', reviewed: '0' })} />
+          <Stat label="Records"value={num(c.records)} onClick={() => go('records')} />
         </div>
 
         <Panel title="Boxes" right={isAdmin && <button className="btn small ghost" onClick={() => go('boxes')}>Open</button>}>
