@@ -3390,3 +3390,103 @@ host's real `Referee`):**
   `"snap_hz":20`, `"zombie_hz":20`. Same binary as launcher 0.2.27.
 * `freeze_watch_test.cpp` and `replay_events_test.cpp` (`server/tests/`) are not CMake targets, so the
   clean build did not run them.
+
+## 25. 2026-09-23 — lane S1: the §23 freeze is a NULL `snd_errorOnMissing`, reached from `playLocalSound`; fixed (`snd_alias_dvars.cpp`)
+
+### 25.1 The first failure: B's own game, before any soak ran
+
+The soak was waiting for the re-proof queue (32/51 at 14:45 UK). Meanwhile B's verified fear_mc_2 game
+`m_68e3fe9e` (inst-24 in `waw-inst-02`, Wine pid 3264, box DLL `04a3ad6d`, pause off) froze at **1 m 18 s**,
+round 1, 670 points, 1 kill. The §23.5 watchdog did its job on the box for the first time: `game over:
+server_freeze`, `SUMMARY … flags=[server_freeze] eligible=true`, `disposition: TERMINATE`, telemetry bundle
+**`a2c82e5d`** (`host/instance_end`, 9 files). Evidence copied to `ZombiesDev\logs\dedi\s1\b24.*`
+(`enw-3264.log`, the map's `console.log`, the host journal 13:41–13:47 UTC).
+
+**The watchdog named the first escaped frame:**
+
+```
+13:43:40.241 ESCAPED frame (1 in all) com_frameTime 93584. VM NOT AT REST: function_count=5 localVars +10
+13:43:40.241 escape fault #1 code=C0000005 eip=004F057E reading 00000010 | eax=00000000 …
+             callers: 00695598 00690000 0060E48B 0068A11C
+13:43:41.019 localVars is PAST THE END (+2917 slots)
+13:43:46.921 ESCAPED #2 … [0x3BFD478]=000008FE, localVars +32168;  fault #2 eip=005FFE23 (the §23 packet read)
+13:43:51.910 FREEZE -- com_frameTime 100226 has not moved for 5005 ms … ending the match
+```
+
+### 25.2 The cause, read off the decrypted image
+
+```
+004F04E0  PlayerCmd_playLocalSound  (builtin table entry at 0x83C278, "playlocalsound")
+004F054F  call 0x699F30             ; Scr_GetString(0)
+004F056D  call 0x5E5670             ; Com_FindSoundAlias(name)
+004F0575  test eax,eax / jne ok
+004F0579  mov eax, [0x3BE65DC]      ; snd_errorOnMissing   <- NULL on a dedicated server
+004F057E  cmp byte [eax+0x10], 0    ; <- fault: reads 0x00000010
+004F0585  push 0x858660             ; "unknown sound alias '%s'" -> Scr_Error
+```
+
+`0x695598` (the first caller) is `VM_Execute`'s `call [builtin table]`. `[0x3BE65DC]` is written in exactly
+one place: **SND_Init 0x6B47C0** (`mov edi,"snd_errorOnMissing"; call Dvar_RegisterBool 0x5EEE20; mov
+[0x3BE65DC],eax`), which a headless server never runs. A retail client has it at 0 and skips a missing alias
+silently.
+
+**Which alias:** the stock `_challenges_coop::updateRankAnnounceHUD` sets `notifyData.sound = "mp_level_up"`
+(and `"mp_challenge_complete"` for challenges); `_hud_message::showNotifyMessage` does `self
+playLocalSound(notifyData.sound)`. `mp_level_up` is a multiplayer alias. §23's impossible trace
+(`showNotifyMessage` ← `updateRankAnnounceHUD` ← `giveRankXP` ← `zom_kill`) is this exact chain, so **§23
+(12:33, 4 m 46 s) and §25 (13:43, 1 m 18 s) are one bug**: the first rank-up that plays a missing alias. The
+Nacht deaths of §18.6 / referee.md §15.4 had the same writer (0x697B97) and are very likely the same thing;
+not provable now (nothing logged their first escape).
+
+**The same hazard, everywhere** (`tmp`-sweep of every dvar SND_Init stores, read outside the sound code): two
+slots, twelve readers, all `mov reg,[slot]; cmp byte [reg+0x10],…` after a failed alias lookup:
+
+| slot | dvar | readers |
+|---|---|---|
+| `0x3BE65DC` | `snd_errorOnMissing` | builtins `playLocalSound`, `playSound`/`playSoundAsMaster`, `playLoopSound` (both tables), `stopSounds`, `musicPlay`, `ambientPlay` |
+| `0x3BE65D8` | `snd_reportSndAliasErrors` | 0x5C5180, the alias-index helper 0x63B560 (G_* callers), 0x64EBF0 (`"mp_player_join"`), 0x64EC90 |
+
+Any map script that plays a sound alias its zones lack kills a dedicated server the same way.
+
+### 25.3 The fix
+
+`server/components/dedicated/snd_alias_dvars.{hpp,cpp}`: at post_init (main thread, after Com_Init, before
+the map), on a dedicated server with the slot NULL, byte-check SND_Init's own `mov edi,<name>` / `mov
+[<slot>],eax` and the name string, then call **the engine's `Dvar_RegisterBool` with the engine's own name
+and description pointers, flags 0, default 0** — SND_Init's exact call, nothing else of SND_Init (no sound
+driver). A frame subscriber re-registers if post_init could not (off-thread), and 5 s after the map starts it
+logs whether `mp_level_up` / `mp_challenge_complete` / `mp_player_join` exist in the zones and runs one real
+engine reader (0x63B560) on an alias that cannot exist: registered → returns 0, no exception.
+`ENW_DEDI_NO_SND_ALIAS_DVARS=1` is the control; `ENW_DEDI_SND_ALIAS_TEST=1` runs the self-test even with the
+slot NULL (the AV is caught under `__try` and logged — the mechanism in one line).
+
+The fix removes this cause, not the class: any other AV inside a frame still leaves the VM half-run (§23.5
+"true fix"). The watchdog still catches that and ends the match cleanly.
+
+**Test:** `server/tests/snd_alias_dvars_test.cpp` (not a CMake target; command in its header) — 64/0: the
+reader model (missing + unregistered = AV; registered at 0 = silent), the decision table, and every address
+above checked against `ZombiesDev\dumps\codwaw-1.7-a.exe` (names, descriptions, SND_Init's instructions,
+default `xor al,al`, the call target, each reader's load and `+0x10` test). `freeze_watch_test` 134/0.
+
+**DLL** `6b838bdbaef50dcadfffcbf29297ec427889c0726b9befcdcc0c0be8f98e2dbc` (2,605,568 B), `build\s1` at
+branch merge `6629c7b` (main `435b114` + `c39701d`); copy at `ZombiesDev\logs\dedi\s1\enw_t4-6b838bdb.dll`.
+`loadtest` loads it. **Not on the box yet** (the coordinator deploys); no game was launched on B's PC.
+
+### 25.4 Unproven at this point
+
+- The fix in a running engine: no local run (B's PC is off-limits for games this session). The box proof is
+  the DLL log's `registered snd_errorOnMissing -> dvar_s …`, the alias line and the self-test line.
+- That a player's rank-up no longer escapes: needs a real player game past the first rank-up on the new DLL.
+- The soak itself: see 25.5.
+
+### 25.5 The soak (runs table; updated as runs end)
+
+The god-mode player in `boxsoak.ps1` is a **local client on B's PC** (`launch.ps1`), so it cannot run this
+session. The runs are **server-only holds**: an agent `--dev-god` lease on fake `…0003`, nobody joins, box-side
+samples over ssh every 60 s, up to 120 min or until the instance dies. With no player the round never starts
+(no kills, no rank-ups), so these holds test the idle server — memory, the frame body, the host's handling —
+not the §25 path.
+
+| run | map | DLL | start (UTC) | length | ended by | RSS start→end | notes |
+|---|---|---|---|---|---|---|---|
+| b24 (B's game, not a soak) | fear_mc_2 | 04a3ad6d | 13:42:04 | 1 m 18 s | `server_freeze` (watchdog) | — | fault 0x4F057E, §25.1 |
