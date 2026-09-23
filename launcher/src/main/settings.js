@@ -10,7 +10,7 @@
 // point: when the endpoint appears, nothing else changes.
 import fs from 'node:fs'
 import { P, ensureDirs, assertWritable } from './paths.js'
-import { MODES, clampFov, clampFps } from './gamecfg.js'
+import { MODES, clampFov, clampFps, MULTIGPU_REPAIR, MULTIGPU_REPAIR_LINE } from './gamecfg.js'
 import { validResolution } from './display.js'
 import { validateWaw, validateBinds } from './wawcfg.js'
 
@@ -192,6 +192,7 @@ export function set(rawPatch, steamid = null) {
   const { patch } = validate(rawPatch)
   const a = all()
   const id = steamid || session().steamid
+  guardRepaired(a, id, patch)
   const target = id ? (a.accounts[id] = mergeGame(a.accounts[id] || {}, patch)) : (a.local = mergeGame(a.local || {}, patch))
   // Keep the local copy in step so a signed-out launch still feels like the player's.
   if (id) a.local = mergeGame(a.local || {}, patch)
@@ -205,6 +206,8 @@ export function set(rawPatch, steamid = null) {
 // account. The marker lives in the settings file itself (`migrations: { <id>: [...] }`)
 // because that is the file the repair is about — a separate marker file could go out
 // of step with it.
+const MULTIGPU_DVAR = 'r_multiGpu'
+
 export const MIGRATIONS = {
   // 2026-09-22. B's account held `maxFps: 60` and `fov: 65` — the engine's own 2008
   // stock defaults, NOT anything he chose. They got there because the config.cfg we
@@ -223,6 +226,38 @@ export const MIGRATIONS = {
     if (Number(b.fov) === 65) { b.fov = 80; notes.push('fov 65 -> 80') }
     return notes
   },
+  // 2026-09-23. `r_multiGpu 1` was the ENW default (gamecfg.js COMMUNITY_FIXES, afc6276)
+  // and the site's Settings page said it "fixes stutter". B, 13:35: OFF fixed the
+  // invisible/garbled zombies on fear_mc_2 and most of the mouse stutter
+  // (mod-compat.md §10.4). A saved '1' cannot be told from the old default, so it is
+  // repaired once; turning it back on afterwards sticks. gamecfg.js migrateMultiGpu
+  // does the same to the config.cfg the engine reads.
+  [MULTIGPU_REPAIR]: (b) => {
+    if (!b.waw || String(b.waw[MULTIGPU_DVAR]) !== '1') return []
+    b.waw = { ...b.waw, [MULTIGPU_DVAR]: '0' }
+    return [MULTIGPU_REPAIR_LINE]
+  },
+}
+
+// Why each migration exists, for its one log line.
+const MIGRATION_WHY = {
+  'stock-defaults-2026-09-22': 'these were the engine\'s 2008 stock defaults, saved into the account by the 0.2.3 read-back bug, not a choice the player made',
+  [MULTIGPU_REPAIR]: 'ENW\'s own launch baseline pinned r_multiGpu 1 until 2026-09-23; on a single GPU it breaks skinned models and stutters',
+}
+
+// A copy of the settings that is OLDER than the r_multiGpu repair must not bring the old
+// default back. The site holds its own copy and pushes it here whenever its
+// `gameUpdatedAt` is newer than ours (web launcherBridge.js GameSettingsSync); until the
+// site's own migration has run (web/server/lib/settingsRepairs.js, at server start) that
+// copy can still say '1'. A patch that carries a `gameUpdatedAt` from before the repair
+// is such a copy. A patch with no stamp is the launcher's own (its Settings screen, the
+// read-back of an in-game change) or one from after the repair: the player's hand, kept.
+function guardRepaired(a, id, patch) {
+  if (!patch.waw || String(patch.waw[MULTIGPU_DVAR]) !== '1' || !('gameUpdatedAt' in patch)) return false
+  const at = Number(((a.migratedAt || {})[id || 'local'] || {})[MULTIGPU_REPAIR]) || 0
+  if (!at || Number(patch.gameUpdatedAt) >= at) return false
+  patch.waw = { ...patch.waw, [MULTIGPU_DVAR]: '0' }
+  return true
 }
 
 // Run every migration that has not run yet, for the signed-in account (or all of
@@ -231,6 +266,9 @@ export const MIGRATIONS = {
 export function migrate({ steamid = null, log = () => {} } = {}) {
   const a = all()
   a.migrations = a.migrations || {}
+  // When each migration ran, per block: guardRepaired() needs it to tell a copy from
+  // before the repair from a choice made after it.
+  a.migratedAt = a.migratedAt || {}
   const ran = []
   let dirty = false
 
@@ -243,10 +281,11 @@ export function migrate({ steamid = null, log = () => {} } = {}) {
       if (done.has(name)) continue
       const notes = fn(block) || []
       done.add(name)
+      a.migratedAt[id] = { ...(a.migratedAt[id] || {}), [name]: Date.now() }
       dirty = true
       if (notes.length) {
         ran.push({ id, name, notes })
-        log(`settings migration "${name}" on ${id === 'local' ? 'this computer' : `account ${id}`}: ${notes.join(', ')} — these were the engine's 2008 stock defaults, saved into the account by the 0.2.3 read-back bug, not a choice the player made`)
+        log(`settings migration "${name}" on ${id === 'local' ? 'this computer' : `account ${id}`}: ${notes.join(', ')} — ${MIGRATION_WHY[name] || 'a one-time repair'}`)
       }
     }
     a.migrations[id] = [...done]

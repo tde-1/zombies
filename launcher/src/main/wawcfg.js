@@ -261,7 +261,7 @@ function snapshotOf(text) {
   return { dvars: d, binds: cmds }
 }
 
-export const accountStamp = (homeDir = P.home, profile = PROFILE) => path.join(configPaths(homeDir, profile).profileDir, '.enw-account.json')
+export const accountStamp = (homeDir = P.home, profile = PROFILE) => configPaths(homeDir, profile).account
 
 // Every launch (player mode only): merge the account into each config.cfg that exists,
 // and record what the engine will read, so the read-back can tell an in-game change from

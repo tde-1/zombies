@@ -420,6 +420,9 @@ export function configPaths(homeDir = P.home, profile = PROFILE, localAppData = 
     // exists; the engine's localappdata tree may not on a dev run).
     readbackStamp: path.join(homeDir, 'players', 'profiles', profile, '.enw-readback.json'),
     migrations: path.join(homeDir, 'players', 'profiles', profile, '.enw-migrations.json'),
+    // What the last launch wrote into config.cfg for the account (wawcfg.js accountStamp):
+    // the read-back compares against it.
+    account: path.join(homeDir, 'players', 'profiles', profile, '.enw-account.json'),
   }
 }
 
@@ -572,6 +575,59 @@ export function migrateAdsBind({ homeDir = P.home, profile = PROFILE, localAppDa
   if (changed.length) {
     log(`aim down sights: rewrote bind MOUSE2 "+toggleads_throw" -> "+speed_throw" in ${changed.join(', ')} — the engine's active profile (${p.engineProfile}) still held the stock TOGGLE bind, which is the toggle-ADS B reported; T4 has no ADS dvar, the bind IS the setting`)
   }
+  return { ran: true, changed, profile: p.engineProfile, paths: p }
+}
+
+// One-time repair of `r_multiGpu 1`, the old ENW default (2026-09-22 04:13, afc6276, to
+// 2026-09-23), in the configs the engine reads.
+//
+// Evidence: B, 2026-09-23 13:35 — turning "Optimize for Dual Video Cards" OFF in game fixed
+// the invisible/garbled zombies on nazi_zombie_fear_mc_2 and most of the mouse stutter
+// (mod-compat.md §10.4). COMMUNITY_FIXES now pins 0, but seedHome() only reseeds on a
+// BASELINE_VERSION bump, and bumping it would re-merge every baseline dvar over whatever
+// the player has since changed in game. So this rewrites exactly one line, once.
+//
+// A `1` here is treated as the old default rather than a choice: until today the launcher
+// wrote it into every profile and the site told players it fixed stutter, so nobody's `1`
+// can be told apart from ours. The marker makes it once-only — a player who turns it back
+// on afterwards (two real GPUs) keeps it. The account snapshot (.enw-account.json) gets the
+// same edit so the next read-back does not mistake our repair for an in-game change.
+export const MULTIGPU_REPAIR = 'multigpu-off-2026-09-23'
+export const MULTIGPU_REPAIR_LINE = 'repair: r_multiGpu 1 -> 0 (old default)'
+
+export function migrateMultiGpu({ homeDir = P.home, profile = PROFILE, localAppData = null, log = () => {} } = {}) {
+  const p = configPaths(homeDir, profile, localAppData)
+  const m = readMigrations(p.migrations)
+  const done = new Set(m.done || [])
+  if (done.has(MULTIGPU_REPAIR)) return { ran: false, reason: 'already run for this profile', changed: [] }
+
+  const changed = []
+  // `seta r_multiGpu "1"`: any set verb, quoted or bare, the engine's casing or ours.
+  const re = /^([ \t]*)(seta|setu|set|sets)([ \t]+)(r_multigpu)([ \t]+)"?1"?[ \t]*$/gim
+  for (const file of [p.engineCfg, p.profileCfg, p.plainCfg]) {
+    let text
+    try { text = fs.readFileSync(file, 'utf8') } catch { continue }
+    re.lastIndex = 0
+    if (!re.test(text)) continue
+    re.lastIndex = 0
+    fs.writeFileSync(assertWritable(file), text.replace(re, '$1$2$3$4$5"0"'))
+    changed.push(file)
+  }
+  try {
+    const stamp = JSON.parse(fs.readFileSync(p.account, 'utf8'))
+    if (stamp && stamp.dvars && String(stamp.dvars.r_multigpu) === '1') {
+      stamp.dvars.r_multigpu = '0'
+      fs.writeFileSync(assertWritable(p.account), JSON.stringify(stamp, null, 2))
+    }
+  } catch {}
+
+  done.add(MULTIGPU_REPAIR)
+  try {
+    fs.mkdirSync(assertWritable(path.dirname(p.migrations)), { recursive: true })
+    fs.writeFileSync(assertWritable(p.migrations), JSON.stringify({ ...m, done: [...done], at: new Date().toISOString() }, null, 2))
+  } catch {}
+
+  if (changed.length) log(`${MULTIGPU_REPAIR_LINE} in ${changed.join(', ')}`)
   return { ran: true, changed, profile: p.engineProfile, paths: p }
 }
 
