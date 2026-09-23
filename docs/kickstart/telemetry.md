@@ -147,7 +147,7 @@ the worst flag's; no flags is P4.
 | flag | P | fires on | source of the string |
 |---|---|---|---|
 | `crash` | 1 | a non-empty `*.dmp` that is not `hang-*`; `overlay_guard: UNHANDLED EXCEPTION`; `Unhandled exception caught`; `=== Sys_Error TRAPPED ===`; host `instance exited unexpectedly`; Windows event 1000; `session.exit == 'crash'`; reason `game_crash` | overlay_guard.cpp, error_trap.cpp, host.js |
-| `hang` | 1 | `hang-*.dmp` (an empty one is called out: MiniDumpWriteDump failed); `hang_watchdog: the MAIN THREAD`; event 1002; `session.exit == 'hang'` | hang_watchdog.cpp |
+| `hang` | 1 | `hang-*.dmp` (an empty one is called out: MiniDumpWriteDump failed); `hang_watchdog: the MAIN THREAD`; event 1002; `session.exit == 'hang'`. The detail leads with `session.hang_where` (the watchdog's verdict, e.g. who holds the render lock; DLL from lane CL, `client.md` §13) | hang_watchdog.cpp |
 | `oom_kill` | 1 | box: `Out of memory: Killed process`, `oom-kill` in the kernel journal | journalctl -k |
 | `site_crash` | 1 | the site's own uncaught exception | siteLog.js |
 | `com_error` | 2 | `=== Com_Error TRAPPED ===`, detail lists the `EXE_…` codes in its argument dump | error_trap (DLL log) |

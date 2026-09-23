@@ -194,6 +194,14 @@ async function main () {
     const x = ev({ exit_code: 1 }, { 'enw-3.log': 'nothing' })
     eq(x.flags.join(), 'exit_abnormal'); eq(x.severity, 2)
   })
+  await check('flags (lane CL): overlay_guard\'s start-up INFO line is not a crash; the hang verdict reaches the detail', () => {
+    const quiet = ev({ reason: 'game_exit', exit_code: 0, session: { exit: 'quit' } }, { 'enw-5.log': "[15:12:40.694] [INFO ] overlay_guard: unhandled exceptions are named before the engine's filter (previous 005FF510)." })
+    eq(quiet.flags.includes('crash'), false, String(quiet.flags))
+    const real = ev({ reason: 'game_crash' }, { 'enw-6.log': '[1] [ERROR] overlay_guard: UNHANDLED EXCEPTION 0xC0000005 at 0x0041A2B3' })
+    truthy(real.flags.includes('crash'))
+    const h = ev({ reason: 'game_hang', session: { exit: 'hang', hang_where: 'main waits on the render lock; holder tid 7 at 0x0070E370 (CoDWaW.exe)' } }, { 'enw-7.log': '[1] [ERROR] hang_watchdog: the MAIN THREAD (tid 1) has not ticked for 8000 ms in a map.' })
+    has(h.hits.hang.detail, 'render lock; holder tid 7')
+  })
   await check('flags: host — instance crash, pull failure, lease refused, host errors, oom, box resources, result spooled', () => {
     const r = evaluate({ manifest: { kind: 'host', reason: 'pull_failed', host: { disk_free_gb: 1.2, mem_free_mb: 900 } }, files: [], texts: new Map([
       ['host.log', [

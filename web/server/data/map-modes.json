@@ -1,0 +1,2656 @@
+{
+ "generated": "2026-09-23T16:05:19Z",
+ "generator": "archive/scan_modes.py",
+ "maps": {
+  "battlestar_galactica": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "chal_dual_wield": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "chal_harambe": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "chal_pistols": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "corridor_challenge": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "dead_palace": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "futurama": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "lewl": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "mr_freeze": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "nazi_zombie_beachtown": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "nazi_zombie_depot": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "nazi_zombie_fivenights": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "nazi_zombie_forest": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "nazi_zombie_illuminati_island": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "nazi_zombie_northco": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "north_company_files.iwd:maps/ugxm_init.gsc",
+    "settings": "north_company_files.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "north_company_files.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "nazi_zombie_overlook": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "nazi_zombie_snowglobe": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "number2": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "ray_chirstmas_map": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "salaj_dust2": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "thirty_seven": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_1",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    }
+   ],
+   "options_off": [],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "ugx_artemovsk": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "fastcompile.iwd:maps/ugxm_init.gsc",
+    "settings": "fastcompile.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "fastcompile.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "ugxm_garage": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "ugxm_lostwoods": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  },
+  "ugxm_pax": {
+   "calls_vote": true,
+   "default": "classic",
+   "mechanism": "ugx_vote_11",
+   "modes": [
+    {
+     "id": "classic",
+     "label": "Classic",
+     "note": "Stock zombies with the UGX weapons and perks.",
+     "response": "cl"
+    },
+    {
+     "id": "gungame",
+     "label": "Gun Game",
+     "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch.",
+     "response": "gg"
+    },
+    {
+     "id": "arcademode",
+     "label": "Arcade Mode",
+     "note": "Classic plus UGX power-ups and boss rounds.",
+     "response": "ar"
+    },
+    {
+     "id": "sharpshooter",
+     "label": "Sharpshooter",
+     "note": "Everyone's gun changes on a timer; 15-minute game; no buying.",
+     "response": "ss"
+    },
+    {
+     "id": "bountyhunter",
+     "label": "Bounty Hunter",
+     "note": "Points race with a 15-minute limit.",
+     "response": "bh"
+    },
+    {
+     "id": "kingofthehill",
+     "label": "King of the Hill",
+     "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds.",
+     "response": "kh"
+    },
+    {
+     "id": "chaosmode",
+     "label": "Chaos Mode",
+     "note": "UGX's chaos rules with a time limit.",
+     "response": "cm"
+    }
+   ],
+   "options_off": [
+    "objectives",
+    "timed_gameplay"
+   ],
+   "source": {
+    "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+    "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+    "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+   }
+  }
+ },
+ "mechanisms": {
+  "ugx_vote_1": {
+   "answer_menu": "ugxm_vote_host",
+   "done": "ugxm_voting_complete",
+   "hide": [
+    "ugxm_vote_host",
+    "ugxm_vote_players"
+   ],
+   "label": "UGX Mod 1.0 game mode vote",
+   "start": "start"
+  },
+  "ugx_vote_11": {
+   "answer_menu": "ugxm_vote_host",
+   "done": "ugxm_voting_complete",
+   "hide": [
+    "ugxm_vote_host",
+    "ugxm_save_settings_client"
+   ],
+   "label": "UGX Mod 1.1 game mode vote",
+   "start": "ugx_start"
+  }
+ },
+ "other": {
+  "a_room": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "a_room.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "battlestar_galactica": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "chal_dual_wield": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "ugx_mod.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ],
+  "chal_harambe": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "ugx_mod.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ],
+  "chal_pistols": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "ugx_mod.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ],
+  "corridor_challenge": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "ugx_mod.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ],
+  "cryogenic": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "cryogenic.iwd:maps/tom_music_player_unl.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the bank",
+    "responses": [],
+    "script": "cryogenic.iwd:maps/trem_bank_2.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "cryogenic.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "dead_palace": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "dpp": [
+   {
+    "menus": [
+     "dukip_door_code"
+    ],
+    "note": "in game: a door keypad",
+    "responses": [
+     "door",
+     "enter_passcode",
+     "passcode_quit",
+     "reset_passcode"
+    ],
+    "script": "dpp.iwd:maps/mc_mod/dukip_door.gsc"
+   }
+  ],
+  "escape_asylum": [
+   {
+    "menus": [],
+    "note": "in game: the bank",
+    "responses": [],
+    "script": "escape_asylum.iwd:maps/trem_bank_2.gsc"
+   }
+  ],
+  "futurama": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "island": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "insel_der_toten.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "kingdom_hearts": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "kingdom_hearts.iwd:maps/tom_music_player_unl.gsc"
+   }
+  ],
+  "lewl": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "mr_freeze": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_arkham": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "nazi_zombie_arkham.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "nazi_zombie_beachtown": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_crystallake": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "nazi_zombie_crystallake.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "nazi_zombie_decapit3": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "decapitator3.iwd:maps/tom_music_player_unl.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "decapitator3.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "nazi_zombie_denial2": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "nazi_zombie_denial2.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "nazi_zombie_depot": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_dt2": [
+   {
+    "menus": [],
+    "note": "in game: a perk shop",
+    "responses": [
+     "deadshot",
+     "discountsales",
+     "doubletap",
+     "electriccherry",
+     "flopper",
+     "juggernog",
+     "killstreaker",
+     "mulekick",
+     "nothing",
+     "paybackrip",
+     "perkdoubler",
+     "quickrevive",
+     "shoes",
+     "specialty_armorvest",
+     "specialty_boost",
+     "specialty_bulletaccuracy",
+     "specialty_bulletdamage",
+     "specialty_detectexplosive",
+     "specialty_extraammo",
+     "specialty_fastreload",
+     "specialty_flak_jacket",
+     "specialty_leadfoot",
+     "specialty_longersprint",
+     "specialty_quickrevive",
+     "specialty_quieter",
+     "specialty_recon",
+     "specialty_reconnaissance",
+     "specialty_rof",
+     "specialty_shades",
+     "speedcola",
+     "staminup",
+     "stoppingpower",
+     "tombstone"
+    ],
+    "script": "nazi_zombie_dt2.iwd:maps/_zmg_perks_system_functions.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "10",
+     "11",
+     "12",
+     "13",
+     "14",
+     "15",
+     "16",
+     "17",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "nazi_zombie_dt2.iwd:maps/tom_music_player_unl.gsc"
+   }
+  ],
+  "nazi_zombie_fear_mc_2": [
+   {
+    "menus": [],
+    "note": "fear_mc_2: the mode is the FRONT-END dvar zomb_gamemode (0-7), never an in-game menu; a dedicated server runs 0. The in-game menu here is the Deprived shop",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "y"
+    ],
+    "script": "mod.ff:maps/_zombiemode_gamemode.gsc"
+   }
+  ],
+  "nazi_zombie_fivenights": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_forest": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "nazi_zombie_forest.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_illuminati_island": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_legion": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "nazi_zombie_legion.iwd:maps/tom_music_player_unl.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "nazi_zombie_legion.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "nazi_zombie_library": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "library.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "nazi_zombie_malibu": [
+   {
+    "menus": [],
+    "note": "in game: armour shop",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "mk16",
+     "mk17",
+     "mk22",
+     "mk33",
+     "mk37",
+     "mk39",
+     "mk40",
+     "mk42"
+    ],
+    "script": "nazi_zombie_malibu.iwd:maps/_malibu_hall_of_armors.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: a shop",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "mk1",
+     "mk2",
+     "mk3",
+     "mk4",
+     "mk5",
+     "mk6",
+     "mk7"
+    ],
+    "script": "nazi_zombie_malibu.iwd:maps/_malibu_magnificent_seven.gsc"
+   }
+  ],
+  "nazi_zombie_mine": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "nazi_zombie_mine.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "nazi_zombie_northco": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "north_company_files.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_ntc": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "zombietownchallenge.iwd:maps/tom_music_player_unl.gsc"
+   }
+  ],
+  "nazi_zombie_orbit": [
+   {
+    "menus": [
+     "mc_loadscreenorbit",
+     "mc_restart"
+    ],
+    "note": "orbit: `mc_loadscreenorbit` on players[0] BLOCKS until any response; its gun game is the FRONT-END dvar `gamemode`. Not a mode vote; see game-modes.md",
+    "responses": [
+     "ads",
+     "attack",
+     "use"
+    ],
+    "script": "mod.ff:maps/_zombiemode.gsc"
+   },
+   {
+    "menus": [
+     "dukip_door_code"
+    ],
+    "note": "in game: a door keypad",
+    "responses": [
+     "enter_passcode",
+     "passcode_quit",
+     "reset_passcode"
+    ],
+    "script": "mod.ff:maps/dukip_door.gsc"
+   }
+  ],
+  "nazi_zombie_overlook": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_pd": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "purpledimension.iwd:maps/tom_music_player_unl.gsc"
+   }
+  ],
+  "nazi_zombie_projectx": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "nazi_zombie_projectx.iwd:maps/tom_music_player_unl.gsc"
+   }
+  ],
+  "nazi_zombie_rooms": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "nazi_zombie_rooms.iwd:maps/tom_music_player_unl.gsc"
+   }
+  ],
+  "nazi_zombie_snowglobe": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "nazi_zombie_tluh": [
+   {
+    "menus": [],
+    "note": "in game: points shop",
+    "responses": [
+     "cancelled",
+     "item_eight",
+     "item_eleven",
+     "item_five",
+     "item_four",
+     "item_nine",
+     "item_one",
+     "item_seven",
+     "item_six",
+     "item_ten",
+     "item_three",
+     "item_two"
+    ],
+    "script": "nazi_zombie_tluh.iwd:maps/skillz_points_system.gsc"
+   },
+   {
+    "menus": [],
+    "note": "PER-PLAYER class pick at spawn (assault/medic/shotgun/special): each player's own choice, left in game",
+    "responses": [
+     "assault",
+     "failed",
+     "medic",
+     "shotgun",
+     "special"
+    ],
+    "script": "nazi_zombie_tluh.iwd:maps/weapon_loadout.gsc"
+   }
+  ],
+  "nazi_zombie_zhunterz": [
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "^1zhunterz.iwd:maps/ugx_jukebox.gsc"
+   }
+  ],
+  "number2": [
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "ray_chirstmas_map": [
+   {
+    "menus": [],
+    "note": "PER-PLAYER class pick at start (6 classes): each player's own choice, left in game",
+    "responses": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "start"
+    ],
+    "script": "ray_chirstmas_map.iwd:maps/ray_chirstmas_map.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "salaj_dust2": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "ugx_mod.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ],
+  "sammycustomsbox": [
+   {
+    "menus": [],
+    "note": "in game: a music player",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9"
+    ],
+    "script": "sammycustomsbox.iwd:maps/tom_music_player_unl.gsc"
+   }
+  ],
+  "thirty_seven": [
+   {
+    "menus": [],
+    "note": "in game: the bank",
+    "responses": [],
+    "script": "thirty_seven.iwd:maps/trem_bank_2.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_customize_char"
+    ],
+    "note": "only in UGX's separate customize-room map",
+    "responses": [
+     "CLOSE",
+     "CUSTOM_CHAR_CAT1",
+     "CUSTOM_CHAR_CAT2",
+     "CUSTOM_CHAR_CAT3",
+     "CUSTOM_CHAR_CAT4",
+     "NONE_ACCESSORY",
+     "NONE_BODY",
+     "NONE_HAT",
+     "NONE_HEAD",
+     "RESET",
+     "THIRDPERSON"
+    ],
+    "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc"
+   }
+  ],
+  "ugx_artemovsk": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "fastcompile.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "fastcompile.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ],
+  "ugxm_garage": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "ugx_mod.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ],
+  "ugxm_lostwoods": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "ugx_mod.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ],
+  "ugxm_pax": [
+   {
+    "menus": [],
+    "note": "in game: UGX elemental skill tree",
+    "responses": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "buy_button",
+     "clear_tree",
+     "close",
+     "mg",
+     "pistol",
+     "rifle",
+     "skill_elemental",
+     "smg",
+     "spread"
+    ],
+    "script": "ugx_mod.iwd:maps/ugx_elemental.gsc"
+   },
+   {
+    "menus": [],
+    "note": "in game: the jukebox",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc"
+   },
+   {
+    "menus": [],
+    "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)",
+    "responses": [],
+    "script": "ugx_mod.iwd:maps/ugxm_character.gsc"
+   },
+   {
+    "menus": [
+     "ugxm_vote_teams"
+    ],
+    "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s",
+    "responses": [
+     "captured",
+     "close",
+     "contested",
+     "moved",
+     "switch"
+    ],
+    "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc"
+   }
+  ]
+ },
+ "stats": {
+  "maps": 152,
+  "other": 49,
+  "ugx": 25
+ }
+}

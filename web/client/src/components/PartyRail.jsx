@@ -55,6 +55,7 @@ export default function PartyRail() {
         {R.signedIn && (
           <div className="prail-lobbyopts">
             <ModeSeg R={R} />
+            <GameModeSeg R={R} />
             <Visibility R={R} />
           </div>
         )}
@@ -366,6 +367,27 @@ function ModeSeg({ R }) {
                   onClick={() => can && R.mode !== k && R.setMode(k)}>{label}</button>
         ))}
       </div>
+    </div>
+  )
+}
+
+// The map's own game mode (docs/kickstart/game-modes.md): Battlestar Galactica's UGX vote --
+// Classic / Gun Game / Sharpshooter ... -- picked here, before Play, instead of in a menu in
+// the game (the server answers that menu and nobody sees it). Only for a map that has modes;
+// the leader picks, everyone else sees the pick. Records are kept per mode.
+function GameModeSeg({ R }) {
+  if (!R.gameModes || !R.gameModes.modes || R.gameModes.modes.length < 2) return null
+  const can = !R.party || (R.party.is_leader && R.party.state === 'forming')
+  return (
+    <div className="prail-chatscope prail-gamemode">
+      <select className={'vis-select' + (can ? '' : ' locked')} value={R.gameMode || R.gameModes.default}
+              disabled={!can || R.busy} aria-label="Game mode"
+              title={can ? 'The map\u2019s own game mode. Records are kept per mode.' : 'Leader only'}
+              onChange={(e) => can && R.setGameMode(e.target.value)}>
+        {R.gameModes.modes.map((m) => (
+          <option key={m.id} value={m.id} title={m.note || ''}>{m.label}</option>
+        ))}
+      </select>
     </div>
   )
 }

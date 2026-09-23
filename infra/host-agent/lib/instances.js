@@ -20,6 +20,7 @@
 //     may have their own CoDWaW.exe running.
 //   * A 'game' instance acquires ZombiesDev\locks\game.lock before launch and releases it
 //     on stop. A lock older than 15 min whose PID is dead is stale and may be taken.
+import { GAME_MODE_DVARS, gameModeDvars } from './gamemode.js'
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
@@ -29,6 +30,20 @@ import { ProcSampler } from './procstat.js'
 
 export const LOCK_FILE = path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'locks', 'game.lock')
 export const LOCK_STALE_MS = 15 * 60 * 1000
+
+// The engine keeps the exe path plus at most 31 `+` commands; Com_ParseCommandLine (0x59AFA0)
+// starts a new command at every '+' and stops at 0x20 lines, dropping the rest of the line
+// without an error -- `+map`, which must be last, first of all (game-modes.md, lane UGX).
+export const ENGINE_PLUS_LIMIT = 31
+// tools/dev/launch.ps1's own `+` commands ahead of -GameArgs: fs_homepath + 14 defaults, +1
+// spare (the Windows path is dev-only; the box uses the wine prefix, which is counted exactly).
+export const LAUNCH_PS1_PLUS = 16
+/** How many `+` commands the engine will see in these argv strings (it splits at every '+'). */
+export function countPlusCommands(list) {
+  let n = 0
+  for (const s of list) for (const ch of String(s)) if (ch === '+') n++
+  return n
+}
 
 export function readLock(file = LOCK_FILE) {
   try {
@@ -53,6 +68,8 @@ const HOST_OWNED_DVARS = new Set([
   'dedicated', 'developer', 'developer_script', 'logfile', 'net_port', 'net_ip', 'sv_maxclients',
   'com_maxfps', 'fs_game', 'fs_homepath', 'fs_basepath', 'fs_localappdata', 'fs_cdpath',
   'fs_basegame', 'zombiemode', 'sv_maxrate', 'rcon_password', 'sv_punkbuster', 'r_fullscreen',
+  // The map's game mode (game-modes.md): set from the lease's `game_mode`, never from a party.
+  ...GAME_MODE_DVARS,
 ].map((s) => s.toLowerCase()))
 export function safeLeaseDvars(entries) {
   const ok = []
@@ -160,7 +177,19 @@ export class Instance extends EventEmitter {
    *
    * `+set developer 1` is never passed (dev-box.md rule 6).
    */
-  gameArgs() {
+  gameArgs(prefixPlus = 0) {
+    const out = this.gameArgsUnchecked()
+    // The engine keeps at most ENGINE_PLUS_LIMIT `+` commands and silently drops the rest of
+    // the line -- `+map` (last) first of all (game-modes.md: Com_ParseCommandLine 0x59AFA0).
+    // A line that would not fit is refused here, loudly, instead of booting a server with no map.
+    const n = prefixPlus + countPlusCommands(out)
+    if (n > ENGINE_PLUS_LIMIT) {
+      throw new Error(`command line has ${n} '+' commands (${prefixPlus} from the launcher prefix); the engine keeps ${ENGINE_PLUS_LIMIT} and would drop the rest, +map included -- lease refused (fewer lease dvars)`)
+    }
+    return out
+  }
+
+  gameArgsUnchecked() {
     const a = this.assignment || {}
     const out = []
     // fs_game first: it decides where the engine even looks for the map and the console log.
@@ -178,6 +207,12 @@ export class Instance extends EventEmitter {
       `+set sv_maxclients ${Math.max(1, Math.min(8, Number(a.slots?.length || a.max_players || 4)))}`,
       `+set net_port ${this.port}`,
     )
+    // The map's own game mode (game-modes.md), host-owned, in Verified and Custom alike: the
+    // mode is the map's content, not a setting. Invalid -> none of it, and the map's own
+    // menu shows (the safe failure); the referee then marks the mode unconfirmed.
+    const gm = gameModeDvars(a.game_mode)
+    if (gm.error) this.log?.warn?.(`game mode refused (${gm.error}); the map's own menu will show`)
+    for (const [k, v] of gm.dvars) out.push(`+set ${k} ${v}`)
     // A lease's own dvars are for Custom games. A Verified game runs the stock server and
     // nothing else (verified-rules.md §4): a lease that asks for dvars in Verified gets
     // none of them, and the log says which were dropped.
@@ -264,7 +299,7 @@ export class Instance extends EventEmitter {
       // the pid we sample and the pid we kill.
       const w = this.mgr.wine
       const { gameDir, homeWin } = this.winePaths()
-      const argv = [
+      const prefix = [
         'CoDWaW.exe',
         '+set', 'fs_homepath', homeWin,
         '+set', 'r_fullscreen', '0', '+set', 'r_mode', '800x600',
@@ -275,8 +310,8 @@ export class Instance extends EventEmitter {
         // com_maxfps: without it dedicated mode free-runs at ~237 Hz and burns a whole
         // core (dedi.md §7j). jointest.ps1 passes 60; so do we.
         '+set', 'com_maxfps', String(w.maxFps || 60),
-        ...this.gameArgs().flatMap((s) => s.split(' ')),
       ]
+      const argv = [...prefix, ...this.gameArgs(countPlusCommands(prefix)).flatMap((s) => s.split(' '))]
       return { cmd: w.bin || 'wine', argv, cwd: gameDir }
     }
     // A real CoDWaW.exe, through the foundation agent's tools/dev/launch.ps1. Its real
@@ -290,7 +325,7 @@ export class Instance extends EventEmitter {
     // real string[]. Under -File the whole thing arrives as one string and -GameArgs
     // silently becomes a one-element array with a comma in it.
     const q = (s) => `'${String(s).replace(/'/g, "''")}'`
-    const ga = this.gameArgs()
+    const ga = this.gameArgs(LAUNCH_PS1_PLUS)
     const cmdline = [
       `& ${q(this.mgr.launchScript)}`,
       `-Name ${q(this.mgr.gameCopy)}`,
@@ -402,7 +437,13 @@ export class Instance extends EventEmitter {
         this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
       }
     }
-    const { cmd, argv, cwd } = this.spawnArgs()
+    let spawned
+    try { spawned = this.spawnArgs() } catch (e) {
+      this.state = 'failed'
+      this.failReason = e.message
+      this.log.warn(this.failReason); this.emit('failed', this.failReason); return false
+    }
+    const { cmd, argv, cwd } = spawned
     const env = {
       ...process.env,
       ENW_HOST: `${this.mgr.linkHost}:${this.mgr.linkPort}`,
