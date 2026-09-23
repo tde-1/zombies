@@ -14,6 +14,7 @@ import { InstanceManager, devKnobsFor, safeLeaseDvars } from '../lib/instances.j
 import { leaseList, planLeases } from '../lib/leases.js'
 import { SERVER_RULES, RULESET, effectiveFps } from '../lib/verified.js'
 import { contactSummary } from '../tools/replay-contact.js'
+import { rateSummary, upsampleZombies, addSyntheticR1, project } from '../tools/replay-rate.js'
 
 const TMP = mkdirp(path.join(os.tmpdir(), 'enw-host-tests'))
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..')
@@ -1057,6 +1058,46 @@ t('replay-contact: a game where the zombies never came near is not a sighting', 
     { t: 'kill', ms: 28500, id: 1 },
   ], { near: 150 })
   eq([met.seconds, met.minDist, met.nearSamples, met.firstNearS, met.kills, met.downs, met.met], [28, 30, 2, 27, 2, 1, true])
+})
+// tools/replay-rate.js (lane R1, replay-events-v1.md section 4): what rate a replay really
+// recorded at, and the 20 Hz zombie projection used for the before/after size.
+t('replay-rate: counts player and zombie snaps per second and the spacing', () => {
+  const ev = []
+  for (let i = 0; i <= 40; i++) {
+    const s = { t: 'snap', ms: 1000 + i * 50, players: [{ slot: 0, pos: [0, 0, 0] }] }
+    if (i % 2 === 0) s.zombies = [{ id: 260, pos: [i * 10, 0, 0], yaw: 0, health: 150 }]
+    ev.push(s)
+  }
+  ev.push({ t: 'kill', ms: 3000, id: 260 })
+  const r = rateSummary(ev)
+  eq([r.seconds, r.snaps, r.playerHz, r.zombieHz, r.gaps.g40_60, r.counts.kill], [2, 41, 20.5, 10.5, 40, 1])
+})
+t('replay-rate: upsampling fills the odd frames by id, interpolated, and leaves real gaps alone', () => {
+  const ev = [
+    { t: 'snap', ms: 0, players: [{ slot: 0 }], zombies_alive: 2, kills_round: 0, zombies: [{ id: 1, pos: [0, 0, 0], yaw: 350, health: 150 }, { id: 2, pos: [5, 5, 5], health: 90 }] },
+    { t: 'snap', ms: 50, players: [{ slot: 0 }] },
+    { t: 'round', ms: 60, n: 2 },
+    { t: 'snap', ms: 100, players: [{ slot: 0 }], zombies: [{ id: 1, pos: [10, -20, 4], yaw: 10, health: 150 }] },
+    { t: 'snap', ms: 150, players: [{ slot: 0 }] },   // last snap: no right-hand neighbour
+  ]
+  const up = upsampleZombies(ev)
+  eq(up[1].zombies, [{ id: 1, pos: [5, -10, 2], yaw: 360, health: 150 }, { id: 2, pos: [5, 5, 5], health: 90 }], 'interpolated + carried')
+  eq([up[1].zombies_alive, up[1].kills_round], [2, 0], 'counters copied')
+  eq(up[4].zombies, undefined, 'no neighbour, no invention')
+  eq(up[2], ev[2], 'events untouched')
+  eq(rateSummary(up).zombieHz, 20, 'the odd frame filled: 3 zombie snaps over 150 ms')
+})
+t('replay-rate: the synthetic event load is deterministic, only while zombies are up, and bigger', () => {
+  const ev = []
+  for (let i = 0; i < 200; i++) ev.push({ t: 'snap', ms: i * 50, players: [{ slot: 0, pos: [0, 0, 0] }], ...(i >= 100 ? { zombies: [{ id: 7, pos: [1, 1, 1] }] } : {}) })
+  const a = addSyntheticR1(ev), b = addSyntheticR1(ev)
+  eq(a, b, 'deterministic')
+  const fires = a.filter((e) => e.t === 'fire')
+  ok(fires.length >= 18 && fires.length <= 20, `~4 shots/s over 5 s of zombies, got ${fires.length}`)
+  ok(fires.every((e) => e.ms >= 100 * 50), 'no shots before a zombie is up')
+  ok(a.some((e) => e.t === 'snap' && e.players[0].clip != null), 'clip rides on the snap')
+  const p = project(ev, { dir: TMP })
+  ok(p.bytes.hz20ev > p.bytes.before && p.seconds === 9.95, `sizes grow: ${JSON.stringify(p.bytes)}`)
 })
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`)
 if (fail) { for (const [s, n, m] of results) if (s === 'FAIL') console.log(`  FAIL ${n}: ${m}`) }
