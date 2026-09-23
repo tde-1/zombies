@@ -15,6 +15,8 @@
 
 * **2026-09-23 01:45 UK — launcher: the relaunch loop is fixed (branch `launcher-after-game`, not merged, not published).** The party watcher re-launched the same match on every poll after the game exited (B: "keeps booting you back into the game"). A match is now followed at most once, never beside a live game of ours; only Play or the site's Resume (`enw.resumeMatch`, needs a site button) goes back in. `launcher.md`, same date.
 
+* **2026-09-23 ~03:00 UK — `/maps` Cards | List (branch `web-maps-view`, not merged; web.md, same date).** The collection rows are gone from the top of `/maps` (Home keeps them). The default is Movement's mode home: Popular, Your maps, a row per playlist, All playlists covers, and **View all maps**. Movement's `ModeViewSwitch` sits top right. List is the filter bar plus the rows and nothing else. The choice is saved (`zm_maps_view_v1`). `?view=` and any filter force a view for that visit without saving it. The live DB has no playlists, so the cards view there is Popular + View all maps until one is published. Needs a client build and a restart.
+
 ## Box, 2026-09-23 01:20 (coordinator)
 
 Pause is OFF on the box (`ENW_NO_PAUSE=1`): two paused Nacht games died of the script-VM localVars overflow ~30-54 s after a resume (dedi 18.6, referee 15.4); guarded DLL `79d4317d` + write probe deployed. Launcher 0.2.14 (Esc pauses on a box, client clock held) and 0.2.15 (relaunch loop gone) on the feed. Site restarted 01:12 with several-games-per-box, the launcher-cancel guard, quit-vs-crash and the 59 New maps.

@@ -2778,3 +2778,52 @@ extractor's `--selftest`.
 
 **Not proven:** phone widths; how the blur looks with a very long guide; and whether any of these
 steps are right. They are the map authors' own release text, and nobody has played them.
+
+## 2026-09-23, ~03:00 UK — `/maps` is Movement's mode home, with a Cards | List switch (branch `web-maps-view`)
+
+B: get rid of the strip at the top of `/maps` ("new maps / vanilla / high production"). The
+default is cards, like Movement's mode home, with the playlists. A switch top right goes to the list,
+and the choice is remembered. "View all maps" at the bottom goes to the list.
+
+**Removed.** The three collection rows (`MapRows`, New maps · Vanilla · High production) that sat
+above the list on `/maps`. That is the strip B named. Home still draws them, unchanged. Also removed:
+the old grid drawing of the list (the `Cards` half of the old switch drew every map as a grid) and
+its CSS (`.map-grid`). The brief read the strip as "collection/filter chips". The filter bar is
+still there, in the list view.
+
+**What each piece comes from (Movement → ours)**
+
+| Ours | Movement |
+|---|---|
+| `pages/Maps.jsx` `MapsHome` (the cards view) | `pages/ModeHome.jsx`: rows, then a row per playlist, then "All playlists" as covers, then the browse button |
+| "Popular" row (`/api/maps?sort=popular&limit=12`) | the "Popular on ENW" band, drawn as a `MapRow`. We count plays, not a week, so the tiles' facts line would have nothing to say |
+| "Your maps" row (signed in, `progress=played`) and its empty line | the "Your maps" row and "Play something and it lands here." |
+| a row per curated playlist, then "All playlists" | the playlist `MapRow`s and "All playlists" (`/api/playlists`, the same list `/playlists` draws). No "Play all": zombies has no playlist walk |
+| `components/PlaylistCover.jsx` + `.pl-*` CSS | `components/PlaylistCover.jsx` + theme.css `.pl-cover`, copied verbatim. The tiles are our thumbs and it is a `Link` |
+| "View all maps" (`.mode-browse`) | the "Browse all N surf maps" `.mode-browse` button |
+| `components/ModeViewSwitch.jsx` (Cards \| List) | `components/ModeViewSwitch.jsx` (Home \| Maps), same markup and CSS |
+| the list view (`.rdk-bar` + `MapListRow`) | `pages/Hub.jsx` + `MapList.jsx`, as before |
+
+**The view rule.** The switch saves the choice to `localStorage['zm_maps_view_v1']` (Movement's
+`gn_map_sort_v1` pattern) and the next visit opens on it. The old key `zm.maps.view` is ignored, so
+everybody starts on cards. A URL states a view without saving it. `?view=list` or `?view=cards`
+wins once, and so does any filter in the URL (the search box's "All maps matching…", a map page's
+tag link), because only the list answers a filter. "View all maps" goes to `?view=list` as a push, so
+Back returns to the cards. Switching to Cards drops the filters. **Movement does not do this**: its
+pool dropped `?view=` when it went to one drawing (Hub.jsx, 2026-08-19), and it saves no view. The
+saving is B's request, not a port.
+
+**Proof.** Headless Edge against a private site on 3417 with a copy of the DB. Three demo playlists
+were added **to the copy only**, because the live DB has **no playlists**. Checked in order: fresh
+visit → cards, and the switch shows Cards · View all maps → `?view=list`, 78 rows · Back → cards ·
+List switch → list, saved `list` · reload → still list · `/maps?q=nacht` → 2 rows · Cards switch →
+cards, saved `cards`, URL `/maps` · reload → cards · `/maps?view=list` → list, saved value still
+`cards` · `/maps` → cards. Screenshots:
+`ui/2026-09-23-maps-cards-default.png`, `ui/2026-09-23-maps-view-switch.png`,
+`ui/2026-09-23-maps-list-view.png`, `ui/2026-09-23-maps-list-after-reload.png`. (In the full-page
+cards shot, the fixed rail's sign-in button and the chat pill show mid-page. That comes from the
+capture, not the page.) `npm test` is green.
+
+**Not proven:** signed in (the "Your maps" row was not drawn with a real account); phone widths;
+the launcher's window. On the live DB the cards view is just Popular + View all maps until an admin
+publishes a playlist. **Needs a client build and a site restart.**

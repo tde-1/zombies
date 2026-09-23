@@ -1,31 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, num } from '../api'
 import { useSession } from '../session'
 import { Empty, Loading } from '../components/Bits'
-import { GridIcon, ListIcon } from '../components/Icons'
 import MapCard from '../components/MapCard'
 import MapListRow from '../components/MapListRow'
-import MapRows from '../components/MapRows'
+import MapRow from '../components/MapRow'
+import ModeViewSwitch from '../components/ModeViewSwitch'
+import PlaylistCover from '../components/PlaylistCover'
 import { hoverAmbience, endHoverAmbience } from '../ambience'
 
-// THE MAP BROWSER — Movement's, both of its drawings (B, 2026-09-22).
+// THE MAPS PAGE — Movement's mode home and Movement's pool, at one address (B, 2026-09-23).
 //
-// Movement's pool page is `movement-client/src/pages/Hub.jsx` plus `components/MapList.jsx`
-// and `components/MapCard.jsx`, and its bar is the records deck's `.rdk-bar`. This page is
-// those, with zombies' nouns and zombies' questions.
+// CARDS is `movement-client/src/pages/ModeHome.jsx` (MapsHome below). LIST is its pool page,
+// `pages/Hub.jsx` + `components/MapList.jsx`, with the records deck's `.rdk-bar`. The view is
+// the ONLY thing this page remembers — a filter is what you are doing right now, and a pool
+// that opened already narrowed to something you asked for last week is the site answering a
+// question nobody had asked.
 //
-// ── Two views, and they draw ONE list ────────────────────────────────────────────────────
-// A LIST view, where each row is the map's page entry, and a CARD/GRID view. Both are fed by
-// the same sorted, filtered array: they used to be two code paths on Movement and the same
-// filter produced two different orders depending on which way you happened to be looking at
-// it. The choice is remembered per browser, and it is the ONLY thing this page remembers —
-// a filter is what you are doing right now, and a pool that opened already narrowed to
-// something you asked for last week is the site answering a question nobody had asked.
-//
-// **The art is in both views.** Movement shows the map in its list as well as its grid — a
-// 48x28 plate flush to the row's left edge — and a list of two thousand names with no
-// pictures is a spreadsheet.
+// **The art is in the list.** Movement shows the map in its list — a plate flush to the row's
+// left edge — and a list of two thousand names with no pictures is a spreadsheet.
 //
 // ── What a map entry SAYS ────────────────────────────────────────────────────────────────
 // Name, then the bsp name as a subtitle, then the author, then the release date — and
@@ -41,11 +35,22 @@ import { hoverAmbience, endHoverAmbience } from '../ambience'
 // only where the pool actually splits on it.** Nothing here is tagged Hard yet, so there is
 // no Difficulty group — three chips that each empty the page say less than no chips.
 
-// The view is remembered per browser AND stateable on the URL, in that order of authority:
-// `?view=cards` wins, because a link somebody pasted is a thing they meant, and otherwise
-// the last view this browser chose stands. It is the only thing this page remembers.
-const VIEW_KEY = 'zm.maps.view'
-const readView = () => { try { return localStorage.getItem(VIEW_KEY) === 'cards' ? 'cards' : 'list' } catch { return 'list' } }
+// ── Two views (B, 2026-09-23) ────────────────────────────────────────────────────────────
+// CARDS is the default: Movement's mode home (`pages/ModeHome.jsx`) — card rows, the
+// playlists, and "View all maps" at the foot. LIST is the whole pool with the bar, replacing
+// everything. The switch top right is Movement's `ModeViewSwitch`.
+//
+// The switch SAVES the choice (localStorage, Movement's `gn_map_sort_v1` key pattern) and the
+// next visit opens on it. A URL states a view WITHOUT saving it: `?view=list` / `?view=cards`
+// win once, and so does any filter in the URL (a search link from the top bar, a tag on a map
+// page) — a filter is a question only the list answers. "View all maps" is such a link, so
+// Back returns to the cards. Movement itself has no saved view: its pool dropped `?view=` when
+// it went down to one drawing (Hub.jsx, 2026-08-19); the saving is B's, not a port.
+//
+// The old top strip — the collection rows (New maps, Vanilla, High production) stacked above
+// the list — is gone from this page (B, 2026-09-23). Home still draws them.
+const VIEW_KEY = 'zm_maps_view_v1'
+const readView = () => { try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'cards' } catch { return 'cards' } }
 
 // Every filter this page writes, so "am I filtering" and "clear all" are one list rather
 // than two that drift.
@@ -62,38 +67,44 @@ const SORTS = [
 export default function Maps() {
   const [sp, setSp] = useSearchParams()
   const { signedIn } = useSession()
-  const [home, setHome] = useState(null)
   const [list, setList] = useState(null)
   const [stored, setStored] = useState(readView)
   const scroller = useRef(null)
 
   const urlView = sp.get('view')
-  const view = urlView === 'cards' || urlView === 'list' ? urlView : stored
   const q = sp.get('q') || ''
   const archive = sp.get('archive') === '1'
   const filtering = PARAMS.some((k) => sp.get(k))
+  const view = urlView === 'cards' || urlView === 'list' ? urlView : (filtering || archive ? 'list' : stored)
 
-  useEffect(() => { api.get('/api/maps/home').then(setHome).catch(() => {}) }, [signedIn])
+  // A change of view starts at the top of the page, the way a page change does.
+  useEffect(() => { window.scrollTo(0, 0) }, [view])
 
   useEffect(() => {
+    if (view !== 'list') return
     const qs = new URLSearchParams()
     for (const k of [...PARAMS, 'sort', 'archive', 'limit']) {
       const v = sp.get(k)
       if (v) qs.set(k, v)
     }
     api.get(`/api/maps?${qs}`).then(setList).catch(() => {})
-  }, [sp, signedIn])
+  }, [sp, signedIn, view])
 
   const set = (k, v) => {
     const next = new URLSearchParams(sp)
     if (v) next.set(k, v); else next.delete(k)
     setSp(next, { replace: true })
   }
+  // The switch: saved, and the URL goes back to plain /maps. Cards drops the filters with it
+  // — they are the list's, and a filter left in the URL would put the list straight back.
   const pickView = (v) => {
     setStored(v)
     try { localStorage.setItem(VIEW_KEY, v) } catch { /* private browsing */ }
-    set('view', v)
+    const next = new URLSearchParams(v === 'cards' ? {} : sp)
+    next.delete('view')
+    setSp(next, { replace: true })
   }
+
 
   // One chip group, one URL param, comma-separated. Ticking is a toggle because that is what
   // "OR within the group" means as a gesture.
@@ -120,6 +131,7 @@ export default function Maps() {
     if (m) hoverAmbience(m)
   }
 
+  if (view === 'cards') return <MapsHome onView={pickView} onAll={() => setSp({ view: 'list' })} signedIn={signedIn} />
   if (!list) return <div className="page wide"><Loading /></div>
 
   const tags = (list.filters && list.filters.tags) || []
@@ -128,25 +140,11 @@ export default function Maps() {
 
   return (
     <div className="page wide">
-      {/* The rows come off `collections` and an admin owns them — New maps, Vanilla, High
-          production, and whatever else has been made. They stand down the moment anything is
-          filtered: you asked a question, and three shelves of maps that do not answer it are
-          in the way of the ones that do. */}
-      {!filtering && !archive && home && home.rows && <MapRows rows={home.rows} />}
-
       <section className="map-browser">
         <div className="mk-head">
           <h2 className="mk-title">{archive ? 'The archive' : 'All maps'}</h2>
           <span className="mk-count num">{num(list.total)}</span>
-          <div className="modeview" role="group" aria-label="How to view the maps">
-            {[['list', 'List', <ListIcon key="l" />], ['cards', 'Cards', <GridIcon key="g" />]].map(([k, label, icon]) => (
-              <button key={k} className={'modeview-btn' + (view === k ? ' on' : '')}
-                      aria-pressed={view === k}
-                      onClick={() => { if (view !== k) pickView(k) }}>
-                {icon}<span>{label}</span>
-              </button>
-            ))}
-          </div>
+          <ModeViewSwitch current="list" onGo={pickView} />
         </div>
 
         <div className="rdk-bar">
@@ -239,11 +237,7 @@ export default function Maps() {
         </div>
 
         {list.maps.length === 0 ? <div className="listing"><Empty>No maps match.</Empty></div>
-          : view === 'cards' ? (
-            <div className="map-grid" onMouseOver={over} onMouseLeave={endHoverAmbience}>
-              {list.maps.map((m) => <MapCard key={m.key} map={m} />)}
-            </div>
-          ) : (
+          : (
             <div className="mlist-wrap" ref={scroller} onMouseOver={over} onMouseLeave={endHoverAmbience}>
               {list.maps.map((m) => <MapListRow key={m.key} map={m} archive={archive} />)}
             </div>
@@ -259,6 +253,88 @@ export default function Maps() {
           </div>
         )}
       </section>
+    </div>
+  )
+}
+
+// ── CARDS: the mode home ─────────────────────────────────────────────────────────────────
+// Movement's `ModeHome.jsx`, in its order, with the rows zombies has the data for:
+//
+//   Popular        Movement's "Popular on ENW" band, drawn as a card row: we count plays per
+//                  map, not a week, so the tiles' facts line would have nothing to say.
+//   Your maps      signed in only; Movement's empty line when you have played nothing.
+//   a row per playlist, then "All playlists" as covers — Movement: the playlists themselves
+//                  first, the index at the end. Same list /playlists draws.
+//   View all maps  Movement's `.mode-browse` button; it opens the list.
+//
+// Every row is real or absent, Movement's rule: a row with nothing in it does not render.
+const ROW_N = 12
+
+function MapsHome({ onView, onAll, signedIn }) {
+  const nav = useNavigate()
+  const [popular, setPopular] = useState(null)
+  const [yours, setYours] = useState(null)
+  const [lists, setLists] = useState([])
+
+  useEffect(() => {
+    let dead = false
+    api.get(`/api/maps?sort=popular&limit=${ROW_N}`)
+      .then((d) => { if (!dead) setPopular(d) })
+      .catch(() => { if (!dead) setPopular({ maps: [], total: 0 }) })
+    api.get('/api/playlists').then((d) => { if (!dead) setLists((d && d.playlists) || []) }).catch(() => {})
+    if (signedIn) api.get(`/api/maps?progress=played&limit=${ROW_N}`).then((d) => { if (!dead) setYours(d) }).catch(() => {})
+    else setYours(null)
+    return () => { dead = true }
+  }, [signedIn])
+
+  const withMaps = lists.filter((pl) => pl.maps && pl.maps.length)
+  const curated = withMaps.filter((pl) => pl.kind !== 'creator')
+
+  return (
+    <div className="page wide">
+      <div className="mk-head">
+        <h2 className="mk-title">Maps</h2>
+        {popular && popular.total > 0 && <span className="mk-count num">{num(popular.total)}</span>}
+        <ModeViewSwitch current="cards" onGo={onView} />
+      </div>
+
+      {!popular ? <Loading /> : (
+        <>
+          {popular.maps.length > 0 && (
+            <MapRow title="Popular" count={popular.maps.length}>
+              {popular.maps.map((m) => <MapCard key={m.key} map={m} />)}
+            </MapRow>
+          )}
+
+          {signedIn && yours && (yours.maps.length > 0 ? (
+            <MapRow title="Your maps" count={yours.total}>
+              {yours.maps.map((m) => <MapCard key={m.key} map={m} />)}
+            </MapRow>
+          ) : (
+            <MapRow title="Your maps">
+              <div className="mhb-none">Play something and it lands here.</div>
+            </MapRow>
+          ))}
+
+          {curated.map((pl) => (
+            <MapRow key={pl.id} title={pl.name} count={pl.map_count}
+                    blurb={pl.progress ? `${pl.progress.done} / ${pl.progress.total} beaten` : null}
+                    onOpen={() => nav(`/playlists/${pl.slug}`)}>
+              {pl.maps.map((m) => <MapCard key={m.key} map={m} />)}
+            </MapRow>
+          ))}
+
+          {withMaps.length > 0 && (
+            <MapRow title="All playlists" count={withMaps.length}>
+              {withMaps.map((pl) => <PlaylistCover key={pl.id} playlist={pl} />)}
+            </MapRow>
+          )}
+
+          <div className="mode-browse">
+            <button className="btn mode-browse-btn" onClick={onAll}>View all maps</button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
