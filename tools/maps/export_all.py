@@ -67,7 +67,7 @@ STOCK = ["nazi_zombie_prototype", "nazi_zombie_asylum", "nazi_zombie_sumpf", "na
 PROVEN = STOCK + ["nazi_zombie_fear_mc_2"]          # web/server/lib/maps.js SERVER_PROVEN
 BUDGET_MB = 20.0          # per-map hard ceiling (Movement's is 30); over it -> 256 px textures
 TARGET_TEX = 512
-PIPELINE = "oat-0.33.0+huskylib-0.5(husky-0.8.0.0)+export_map+gltf-transform-4+webp80+q8u16"
+PIPELINE = "oat-0.33.0+huskylib-0.5(husky-0.8.0.0)+export_map+gltf-transform-4+webp80+q8u16+meshopt-low"
 
 
 # ---------------------------------------------------------------------------
@@ -318,24 +318,29 @@ def step_build(bsp, dump: Path, obj, force: bool, log):
 
 
 def step_optimize(bsp, raw: Path, log, budget_mb):
-    # Written beside the raw file, never into the served folder: NodeIO picks glb vs
-    # gltf+bin+images from the EXTENSION, so the name has to end in .glb.
-    tmp = raw.parent / f"{bsp}.opt.glb"
+    """-> (checkable.glb, served.glb, stats). Both beside the raw file, never in the served
+    folder (NodeIO picks glb vs gltf+bin+images from the EXTENSION, so names end in .glb).
+    checkable: float positions, what validate() and align_check read. served: the same
+    document meshopt-encoded (optimize_glb.cjs decodes it again and compares bounds)."""
+    chk = raw.parent / f"{bsp}.opt.glb"
+    srv = raw.parent / f"{bsp}.served.glb"
     stats = None
     for size, q in ((TARGET_TEX, 80), (256, 80), (256, 60)):
-        cmd = ["node", str(HERE / "optimize_glb.cjs"), str(raw), str(tmp), str(size), "--quality", str(q)]
+        cmd = ["node", str(HERE / "optimize_glb.cjs"), str(raw), str(chk), str(size), "--quality", str(q),
+               "--meshopt", str(srv)]
         t = time.time()
         r = subprocess.run(cmd, capture_output=True, text=True)
         if r.returncode != 0:
-            raise RuntimeError("optimize failed: " + (r.stderr or r.stdout)[-1500:])
+            raise RuntimeError("optimize failed: " + (r.stdout[-600:] + r.stderr[-1200:]))
         stats = json.loads(r.stdout.strip().splitlines()[-1])
-        mb = tmp.stat().st_size / 1048576
-        log(f"optimize: tex {size}px q{q} -> {mb:.2f} MB in {time.time() - t:.0f}s {stats}")
-        stats["bytes"] = tmp.stat().st_size
+        mb = srv.stat().st_size / 1048576
+        log(f"optimize: tex {size}px q{q} -> served {mb:.2f} MB (checkable "
+            f"{chk.stat().st_size / 1048576:.2f}) in {time.time() - t:.0f}s {stats}")
+        stats["bytes"] = srv.stat().st_size
         if mb <= budget_mb:
             break
-    stats["over_budget"] = tmp.stat().st_size / 1048576 > budget_mb
-    return tmp, stats
+    stats["over_budget"] = srv.stat().st_size / 1048576 > budget_mb
+    return chk, srv, stats
 
 
 def export_one(bsp, st, a, log):
@@ -364,18 +369,21 @@ def export_one(bsp, st, a, log):
     # 4 build
     raw, meta = step_build(bsp, dump, obj, a.force, log)
     # 5 optimize
-    tmp, stats = step_optimize(bsp, raw, log, a.budget_mb)
-    # 6 validate (on the optimised file: it is what the browser gets)
-    ok, val = validate(tmp, meta)
+    chk, srv, stats = step_optimize(bsp, raw, log, a.budget_mb)
+    # 6 validate the checkable file (float positions); the served one is the same document
+    # meshopt-encoded, and optimize_glb.cjs has already decoded it and compared bounds.
+    ok, val = validate(chk, meta)
     log(f"validate: ok={ok} {json.dumps(val)}")
     dst = MAPS / bsp / f"{bsp}.glb"
     dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(tmp), str(dst))
+    shutil.copy2(str(srv), str(dst))
     meta = dict(meta)
     meta.update({
         "built_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "glb_bytes": dst.stat().st_size,
         "raw_glb_bytes": raw.stat().st_size,
+        "checkable_glb_bytes": chk.stat().st_size,
+        "encoding": "EXT_meshopt_compression + KHR_mesh_quantization + EXT_texture_webp",
         "pipeline": PIPELINE,
         "optimize": stats,
         "validation": val,
@@ -384,7 +392,7 @@ def export_one(bsp, st, a, log):
     mf = MAPS / bsp / f"{bsp}.meta.json"
     mf.write_text(json.dumps(meta, indent=1), "utf8")
     # The §8.12 alignment check, the same code as web/test/map-align.js, on the staged file.
-    r = subprocess.run(["node", str(HERE / "align_check.cjs"), str(dst), str(mf)], capture_output=True, text=True)
+    r = subprocess.run(["node", str(HERE / "align_check.cjs"), str(chk), str(mf)], capture_output=True, text=True)
     try:
         al = json.loads(r.stdout.strip().splitlines()[-1])
     except Exception:

@@ -281,11 +281,16 @@ export function installSkyDome(api) {
     }
   })
   const { camera } = api
+  // A meshopt-served map (tools/maps/export_all.py) stores the dome's vertices quantized, and
+  // the translation that undoes the quantization lives on this node. Overwriting the position
+  // every frame would throw it away and drop the dome by half its height, so it is kept and
+  // added back. On an unquantized file it is (0, 0, 0) and nothing changes.
+  const base = sky.position.clone()
   return function updateSky() {
     // The dome lives inside the map group, which is rotated -90 about X, so the
     // camera's world position has to come back through that rotation or the sky
     // tracks the camera along the wrong axis and shears past the horizon.
-    parent.worldToLocal(sky.position.copy(camera.position))
+    parent.worldToLocal(sky.position.copy(camera.position)).add(base)
   }
 }
 

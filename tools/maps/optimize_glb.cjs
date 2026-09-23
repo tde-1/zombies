@@ -1,21 +1,30 @@
 #!/usr/bin/env node
-// Shrink export_map.py's raw .glb for the web -- ENW Movement's recipe, unchanged in kind
+// Shrink export_map.py's raw .glb for the web -- ENW Movement's recipe
 // (CSGO-Matchmaker/scripts/replay3d/optimize.js): dedup + flatten + prune, textures to WebP
-// at <= N px, NORMAL to 8-bit and TEXCOORD_0 to 16-bit through KHR_mesh_quantization.
+// at <= N px, NORMAL to 8-bit and TEXCOORD_0 to 16-bit through KHR_mesh_quantization -- plus
+// one step Movement does not take, meshopt, for the file that is served.
 //
 //   node tools/maps/optimize_glb.cjs <in.glb> <out.glb> [texture-size=512] [--quality 80]
+//                                    [--meshopt <served.glb>]
 //
-// NO Draco / meshopt / KTX2, for the same reason as Movement: each needs a decoder in the
-// viewer (a WASM one for meshopt and Basis, which a strict script-src refuses, and ~300 KB of
-// decoder for Draco), while KHR_mesh_quantization and EXT_texture_webp are read by three's
-// stock GLTFLoader with nothing registered. POSITION stays float32: quantizing it snaps the
-// map to a grid and opens seams between surfaces (Movement measured it on brush faces; a
-// Husky shell is the same kind of mesh).
+// <out.glb> is the CHECKABLE file: float32 POSITION and plain buffers, so export_all.py's
+// validator and web/server/lib/mapAlign.js read engine units straight out of it.
 //
-// Libraries: @gltf-transform/* 4.x (MIT) and sharp (Apache-2.0), resolved from the same
-// shared prefix Movement uses (R3D_NODE_PREFIX, default C:/Users/b/tools/r3dnode) -- nothing
+// --meshopt writes the SERVED file from exactly that document: EXT_meshopt_compression at
+// gltf-transform's `low` level, which also quantizes POSITION to 16 bits per mesh with a node
+// transform to undo it. Over Shi No Numa's 17 000-u shell that is 0.26 u per step, and every
+// primitive of `__world` is ONE mesh on ONE grid, so shared vertices stay shared and no seam
+// opens. It halves a shell-heavy map (Shi No Numa 20.8 -> 10.6 MB). Why Movement does not:
+// its site's script policy refuses WebAssembly, and three's meshopt decoder is WebAssembly.
+// zombies.enw.gg sends no such policy, and scene.js registers the decoder (a self-contained
+// module inside three, nothing extra served). The served bytes are decoded again here and the
+// `__world` bounds compared with the checkable file's before they are accepted.
+//
+// Libraries: @gltf-transform/* 4.x (MIT), sharp (Apache-2.0), meshoptimizer (MIT), resolved
+// from the prefix Movement uses (R3D_NODE_PREFIX, default C:/Users/b/tools/r3dnode) -- nothing
 // is added to this repo's package.json.
 'use strict'
+const fs = require('fs')
 const path = require('path')
 function req(name) {
   const cands = [name, path.join(process.env.R3D_NODE_PREFIX || 'C:/Users/b/tools/r3dnode', 'node_modules', name)]
@@ -25,21 +34,27 @@ function req(name) {
 }
 const { NodeIO } = req('@gltf-transform/core')
 const { ALL_EXTENSIONS, KHRMeshQuantization } = req('@gltf-transform/extensions')
-const { dedup, prune, flatten, textureCompress, quantize } = req('@gltf-transform/functions')
+const { dedup, prune, flatten, textureCompress, quantize, meshopt, getBounds } = req('@gltf-transform/functions')
+const { MeshoptEncoder, MeshoptDecoder } = req('meshoptimizer')
 const sharp = req('sharp')
 
 async function main() {
   const argv = process.argv.slice(2)
-  const qi = argv.indexOf('--quality')
-  const quality = qi >= 0 ? Number(argv[qi + 1]) : 80
-  const pos = argv.filter((a, i) => a !== '--quality' && argv[i - 1] !== '--quality')
+  const opt = (flag, dflt) => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] : dflt }
+  const quality = Number(opt('--quality', 80))
+  const served = opt('--meshopt', null)
+  const flags = new Set(['--quality', '--meshopt'])
+  const pos = argv.filter((a, i) => !flags.has(a) && !flags.has(argv[i - 1]))
   const [inp, out, sizeArg] = pos
   const size = Number(sizeArg || 512)
+  await MeshoptEncoder.ready
+  await MeshoptDecoder.ready
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS)
+    .registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder })
   const doc = await io.read(inp)
   await doc.transform(
-    // export_map.py already writes one mesh per model and many nodes; dedup() finishes the
-    // job across accessors, materials and textures (a texture two models both carry).
+    // export_map.py already writes one mesh per model and many nodes (a repeated xmodel is
+    // stored once); dedup() finishes the job across accessors, materials and textures.
     dedup(),
     flatten(),
     prune({ keepAttributes: false }),
@@ -47,12 +62,12 @@ async function main() {
     dedup({ propertyTypes: ['Texture', 'Material'] }),
   )
   await doc.transform(
+    // Tiled UVs (outside [0,1]) are left float by quantize() itself.
     quantize({ pattern: /^(NORMAL|TEXCOORD_0)$/, quantizeNormal: 8, quantizeTexcoord: 16 }),
   )
   // gltf-transform 4.4 decides whether to declare KHR_mesh_quantization from POSITION's
-  // component size alone, so with POSITION float (as here) it never declares it and the file
-  // would carry 8-bit normals no loader may accept. Declared from the attributes instead --
-  // Movement hit and fixed the same thing.
+  // component size alone, so with POSITION float it never does and the file would carry
+  // 8-bit normals no loader may accept. Declared from the attributes instead (Movement's fix).
   const root = doc.getRoot()
   const quantized = root.listMeshes().some((m) => m.listPrimitives().some((p) => p.listSemantics()
     .some((s) => (s === 'NORMAL' || s === 'TEXCOORD_0') && p.getAttribute(s).getComponentSize() < 4)))
@@ -63,10 +78,28 @@ async function main() {
     const ix = p.getIndices()
     tris += Math.floor((ix ? ix.getCount() : p.getAttribute('POSITION').getCount()) / 3)
   }
-  console.log(JSON.stringify({
+  const res = {
     meshes: root.listMeshes().length, nodes: root.listNodes().length,
     textures: root.listTextures().length, materials: root.listMaterials().length,
-    unique_tris: tris, texture_size: size, quality, quantized,
-  }))
+    unique_tris: tris, texture_size: size, quality, quantized, checkable_bytes: fs.statSync(out).size,
+  }
+  if (served) {
+    const worldBounds = (d) => {
+      const n = d.getRoot().listNodes().find((x) => x.getName() === '__world')
+      return n ? getBounds(n) : null
+    }
+    const before = worldBounds(doc)
+    await doc.transform(meshopt({ encoder: MeshoptEncoder, level: 'low' }))
+    await io.write(served, doc)
+    // Read the served bytes back through the decoder: what a browser will get.
+    const after = worldBounds(await io.read(served))
+    let err = 0
+    if (before && after) {
+      for (let k = 0; k < 3; k++) err = Math.max(err, Math.abs(before.min[k] - after.min[k]), Math.abs(before.max[k] - after.max[k]))
+    }
+    res.meshopt = { bytes: fs.statSync(served).size, world_bounds_err: +err.toFixed(3), ok: !before || err < 1 }
+    if (!res.meshopt.ok) { console.log(JSON.stringify(res)); process.exit(2) }
+  }
+  console.log(JSON.stringify(res))
 }
 main().catch((e) => { console.error(String((e && e.stack) || e)); process.exit(1) })

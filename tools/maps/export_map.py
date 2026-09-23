@@ -94,6 +94,10 @@ TOOL_MATERIAL = re.compile(r"^(caulk|clip|nodraw|trigger|hint|skip|portal|mantle
                            r"ladder|volume|origin|cushion|metalclip|foliage_?clip|monster_?clip)"
                            r"|(^|_)caulk", re.I)
 
+# Engine placeholder images Husky can report as a material's diffuse (see merge_world).
+PLACEHOLDER_TEX = re.compile(r"^(case\d+|\$|default|_?identity|white$|black$|gray$|grey$|noise)", re.I)
+WATERY = re.compile(r"water|puddle|mud|river|swamp|ocean|lake", re.I)
+
 # Husky's OBJ unit: centimetres (engine inches x 2.54). See merge_world.
 HUSKY_OBJ_SCALE = 2.54
 
@@ -102,6 +106,8 @@ JPEG_QUALITY = 86
 # export_all.py sets this: textures leave here as lossless PNG and the optimiser
 # (optimize_glb.cjs) makes them WebP, so nothing is lossy-compressed twice.
 LOSSLESS_TEX = False
+# Prop (xmodel) textures, px on the long edge. The shell keeps MAX_TEX.
+PROP_TEX = 256
 
 
 def log(*a):
@@ -634,6 +640,15 @@ def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
             m = {'name': key, 'doubleSided': True,
                  'pbrMetallicRoughness': {'metallicFactor': 0.0, 'roughnessFactor': 0.9}}
             stem = tex_of.get(name)
+            if stem and PLACEHOLDER_TEX.search(stem):
+                # Husky names the material's FIRST image as its diffuse. For a water/puddle
+                # technique that slot is an engine placeholder -- Nacht's `puddle_muddy_green`
+                # came out as `case64blue`, a bright blue checker lying in the mud. No texture;
+                # a flat colour that reads as what it is.
+                m['pbrMetallicRoughness']['baseColorFactor'] = (
+                    [0.16, 0.17, 0.15, 1.0] if WATERY.search(name) else [0.35, 0.35, 0.35, 1.0])
+                glb.placeholder_textures = getattr(glb, 'placeholder_textures', []) + [f'{name}:{stem}']
+                stem = None
             if stem:
                 got = load_dds(images_dir / f'{stem}.dds')
                 if got:
@@ -653,7 +668,7 @@ def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
     return len(glb.j['meshes']) - 1
 
 
-def load_dds(path: Path):
+def load_dds(path: Path, max_tex: int = 0):
     """DDS -> (png_or_jpeg_bytes, mime, alpha_used). Returns None if it cannot be read."""
     try:
         from PIL import Image
@@ -664,8 +679,9 @@ def load_dds(path: Path):
         im.load()
     except Exception:
         return None
-    if max(im.size) > MAX_TEX:
-        s = MAX_TEX / max(im.size)
+    lim = max_tex or MAX_TEX
+    if max(im.size) > lim:
+        s = lim / max(im.size)
         im = im.resize((max(1, int(im.width * s)), max(1, int(im.height * s))),
                        Image.LANCZOS)
     import io
@@ -723,7 +739,7 @@ def mark_cutout(glb, material: dict, tex_index: int):
             material["alphaCutoff"] = 0.5
 
 
-def merge_model(glb: Glb, gltf_path: Path, images_dir: Path, mat_cache: dict):
+def merge_model(glb: Glb, gltf_path: Path, images_dir: Path, mat_cache: dict, max_tex: int = 0):
     """Copy one Unlinker .gltf's meshes into `glb`. Returns the new mesh index."""
     src = json.loads(gltf_path.read_text(encoding="utf8"))
     bufs = []
@@ -759,10 +775,13 @@ def merge_model(glb: Glb, gltf_path: Path, images_dir: Path, mat_cache: dict):
         cand = images_dir / name
         if not cand.is_file():
             continue
-        got = load_dds(cand)
+        # Props get PROP_TEX (B, 2026-09-23: "downscale prop textures"): a crate is a few
+        # dozen pixels on screen at replay distance. Keyed apart from the shell's copy so a
+        # texture both use keeps the shell's resolution there.
+        got = load_dds(cand, max_tex or PROP_TEX)
         if not got:
             continue
-        tmap[i] = glb.add_image_bytes(name, got[0], got[1])
+        tmap[i] = glb.add_image_bytes(f"prop{max_tex or PROP_TEX}:{name}", got[0], got[1])
         if got[2]:
             glb.alpha_textures.add(tmap[i])
 
@@ -846,14 +865,14 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
 
     worldspawn = next((e for e in ents if e.get("classname") == "worldspawn"), {})
 
-    def mesh_for(name):
+    def mesh_for(name, max_tex=0):
         if name in mesh_of:
             return mesh_of[name]
         # lod0 is the one the player sees. Unlinker writes <name>_lod{0..3}.gltf.
         p = models / f"{name}_lod0.gltf"
         if not p.is_file():
             p = models / f"{name}.gltf"
-        mesh_of[name] = merge_model(glb, p, images, mat_cache) if p.is_file() else None
+        mesh_of[name] = merge_model(glb, p, images, mat_cache, max_tex) if p.is_file() else None
         return mesh_of[name]
 
     for e in ents:
@@ -896,7 +915,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
     sky_name = worldspawn.get("skyboxmodel")
     sky_ok = False
     if sky_name:
-        mi = mesh_for(sky_name)
+        mi = mesh_for(sky_name, MAX_TEX)   # the sky fills the screen: shell resolution
         if mi is not None:
             glb.j["nodes"].append({"name": "__sky", "mesh": mi, "rotation": Y_UP_TO_Z_UP})
             glb.j["scenes"][0]["nodes"].append(len(glb.j["nodes"]) - 1)
@@ -936,6 +955,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         "min_prop_size": MIN_PROP_SIZE,
         "world_obj_scale": HUSKY_OBJ_SCALE if (world and world.suffix.lower() == ".obj") else None,
         "world_tool_materials_dropped": getattr(glb, "dropped_tool_materials", []),
+        "world_placeholder_textures": getattr(glb, "placeholder_textures", []),
         "world_origin_brushmodels_dropped": list(getattr(glb, "dropped_origin_brushmodels", (0, 0))),
         "sky_model": sky_name if sky_ok else None,
         "world_shell": bool(world and world.is_file()),
