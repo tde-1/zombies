@@ -3,7 +3,8 @@
 //
 // Which DLLs we refuse to let into CoDWaW.exe, and how we measure the address space
 // they would need. See overlay_guard.cpp for why (Discord's graphics hook maps a
-// 50 MB view into a 2 GB process and dereferences NULL when that fails).
+// 50 MB view into a 2 GB process and dereferences NULL when that fails), and which
+// ones we let in anyway (ENW_DISCORD_HOOK=auto: only while a 50 MB hole exists).
 #pragma once
 
 #include <windows.h>
@@ -49,9 +50,50 @@ inline bool refuse_module(const wchar_t* name, size_t len) {
     return false;
 }
 
-// ENW_ALLOW_DISCORD_HOOK=1 lets Discord in (the player's own choice, and the way to
-// re-test once Discord fixes its NULL check). Anything else, or unset: refused.
-inline bool allow_from_env(const char* v) { return v && v[0] == '1' && !v[1]; }
+// ENW_DISCORD_HOOK=auto|allow|refuse (the launcher/site setting "Discord overlay":
+// Auto / On / Off; the launcher passes the stored value, auto|allow|refuse). Unset, empty
+// or anything else is auto; on/1 and off/0 are accepted for a hand-set environment.
+enum class mode { automatic, allow, refuse };
+
+inline bool eq_ci(const char* a, const char* b) {
+    for (; *a && *b; ++a, ++b) {
+        char x = *a, y = *b;
+        if (x >= 'A' && x <= 'Z') x = static_cast<char>(x + 32);
+        if (y >= 'A' && y <= 'Z') y = static_cast<char>(y + 32);
+        if (x != y) return false;
+    }
+    return !*a && !*b;
+}
+
+inline mode parse_mode(const char* v) {
+    if (!v || !*v) return mode::automatic;
+    if (eq_ci(v, "allow") || eq_ci(v, "on") || eq_ci(v, "1")) return mode::allow;
+    if (eq_ci(v, "refuse") || eq_ci(v, "off") || eq_ci(v, "0")) return mode::refuse;
+    return mode::automatic;
+}
+
+inline const char* mode_name(mode m) {
+    return m == mode::allow ? "allow" : m == mode::refuse ? "refuse" : "auto";
+}
+
+// What Discord's capture init maps in one piece (DiscordHook.dll 1342ee47cf7536:
+// CreateFileMappingA(..., 0, 0x3200048) + MapViewOfFile of all of it), and the smallest
+// single free region auto lets it in with: "a 50 MB block", made exact. The view is
+// rounded up to whole 4 KB pages (0x3201000) and must start on a 64 KB allocation
+// boundary, and a free region's own start can be up to 60 KB short of one, so a region of
+// 0x3210000 bytes (50.06 MB) always holds it and anything smaller may not.
+// Deliberately no margin for the game's own later allocations (coordinator, 2026-09-23:
+// "allow the hook when a >= 50 MB free block exists"); see chat-overlay.md 13.6.
+inline constexpr uint64_t kDiscordMapBytes = 52428872ull;
+inline constexpr uint64_t kAutoMinLargestFree = 0x3210000ull;
+
+// True = let DiscordHook.dll load. `largest_free` is measure_free().largest at the moment
+// it asks to load.
+inline bool allow_discord(mode m, uint64_t largest_free) {
+    if (m == mode::allow) return true;
+    if (m == mode::refuse) return false;
+    return largest_free >= kAutoMinLargestFree;
+}
 
 struct vm_free {
     uint64_t total = 0;    // bytes free in the user address space

@@ -24,10 +24,16 @@
 // Not ours to fix inside Discord; ours to prevent.
 //
 // What this does:
-//   1. ntdll!LdrLoadDll is detoured; a load of DiscordHook.dll is refused with
-//      STATUS_ACCESS_DENIED (Discord logs a failed attach and the game carries on,
-//      without Discord's in-game overlay / Go Live game capture / Clips). Opt back in
-//      with ENW_ALLOW_DISCORD_HOOK=1.
+//   1. ntdll!LdrLoadDll is detoured. When DiscordHook.dll asks to load, the largest free
+//      address block is measured; ENW_DISCORD_HOOK (launcher/site setting "Discord
+//      overlay") decides: auto (default) lets it in only while one free block of >= 50 MB
+//      exists (kAutoMinLargestFree, 50.06 MB: Discord's 50 MB view, page-rounded and
+//      64 KB-aligned), allow always, refuse never. Every decision is logged. A refusal returns
+//      STATUS_ACCESS_DENIED (Discord logs a failed attach, the game carries on without
+//      Discord's overlay / Go Live game capture / Clips) and, in auto, puts one line in
+//      our chat: "Discord overlay off: not enough memory on this map". The load-time
+//      measurement is the only gate: Discord maps ~1 s later on its own thread and there
+//      is no cheap, version-proof point to re-check it.
 //   2. Every DLL that loads after the game has started is logged with how long after
 //      process start it came and the largest free block of address space at that
 //      moment (LdrRegisterDllNotification) -- Medal, RTSS, OBS, Steam's overlay and the
@@ -55,6 +61,10 @@
 #include <string>
 #include <vector>
 
+namespace enw::client::chat_notice {
+void system_line(const char* text);  // chat_overlay.cpp
+}
+
 namespace enw::client::overlay_guard {
 namespace {
 
@@ -64,8 +74,11 @@ using ldr_load_dll_t = NTSTATUS(NTAPI*)(PWSTR path, PULONG flags, PUNICODE_STRIN
 ldr_load_dll_t g_real_ldr_load_dll = nullptr;
 void* g_ldr_target = nullptr;
 
-bool g_allow_discord = false;
+overlay_rule::mode g_mode = overlay_rule::mode::automatic;
 std::atomic<long> g_refusals{0};
+std::atomic<long> g_allowed_loads{0};
+std::atomic<bool> g_notice_pending{false};  // one in-game line per session, from the frame tick
+bool g_notice_done = false;
 ULONGLONG g_process_start_ms = 0;
 std::atomic<bool> g_game_started{false};
 
@@ -83,6 +96,10 @@ void enqueue(std::string s) {
 
 void drain() {
     if (!g_pending.exchange(false)) return;
+    if (g_notice_pending.exchange(false) && !g_notice_done) {
+        g_notice_done = true;
+        chat_notice::system_line("Discord overlay off: not enough memory on this map");
+    }
     std::vector<std::string> q;
     {
         std::lock_guard<std::mutex> lk(g_q_mu);
@@ -101,23 +118,34 @@ std::string narrow(const wchar_t* w, size_t n) {
 }
 
 NTSTATUS NTAPI ldr_load_dll_detour(PWSTR path, PULONG flags, PUNICODE_STRING name, PHANDLE handle) {
-    if (!g_allow_discord && name && name->Buffer &&
-        overlay_rule::refuse_module(name->Buffer, name->Length / sizeof(wchar_t))) {
-        const long n = ++g_refusals;
+    if (name && name->Buffer && overlay_rule::refuse_module(name->Buffer, name->Length / sizeof(wchar_t))) {
+        const auto vm = overlay_rule::measure_free();
+        // Once let in, it is in: a later LdrLoadDll of the same name (Discord re-asking, or
+        // a refcount bump) is passed through, so a refusal never claims to have kept out a
+        // hook that is already mapped.
+        const bool allow = g_allowed_loads.load() > 0 || overlay_rule::allow_discord(g_mode, vm.largest);
+        const long n = allow ? ++g_allowed_loads : ++g_refusals;
         if (n <= 3) {
-            const auto vm = overlay_rule::measure_free();
-            char line[768];
+            char line[900];
             std::snprintf(line, sizeof line,
-                          "overlay_guard: REFUSED '%s' (load #%ld, +%llu ms after process start, thread %lu). "
-                          "Discord's graphics hook maps a 50 MB view and crashes the game on the next Present "
-                          "when that fails (B, fear_mc_2, 2026-09-23 03:42). Largest free address block now "
-                          "%.1f MB of %.1f MB free. ENW_ALLOW_DISCORD_HOOK=1 lets it in.",
-                          narrow(name->Buffer, name->Length / sizeof(wchar_t)).c_str(), n, since_start_ms(),
-                          ::GetCurrentThreadId(), vm.largest / 1048576.0, vm.total / 1048576.0);
+                          "overlay_guard: %s '%s' (mode %s, load #%ld, +%llu ms after process start, thread %lu). "
+                          "Largest free address block %.1f MB of %.1f MB free; Discord's capture maps %.1f MB in "
+                          "one piece and crashes the game on the next Present when it cannot (B, fear_mc_2, "
+                          "2026-09-23 03:42); auto needs %.2f MB in one block. ENW_DISCORD_HOOK=auto|allow|refuse.",
+                          allow ? "ALLOWED" : "REFUSED", narrow(name->Buffer, name->Length / sizeof(wchar_t)).c_str(),
+                          overlay_rule::mode_name(g_mode), n, since_start_ms(), ::GetCurrentThreadId(),
+                          vm.largest / 1048576.0, vm.total / 1048576.0,
+                          overlay_rule::kDiscordMapBytes / 1048576.0, overlay_rule::kAutoMinLargestFree / 1048576.0);
             enqueue(line);
         }
-        if (handle) *handle = nullptr;
-        return kStatusAccessDenied;
+        if (!allow) {
+            if (g_mode == overlay_rule::mode::automatic) {
+                g_notice_pending = true;
+                g_pending = true;
+            }
+            if (handle) *handle = nullptr;
+            return kStatusAccessDenied;
+        }
     }
     return g_real_ldr_load_dll(path, flags, name, handle);
 }
@@ -221,10 +249,8 @@ public:
             ENW_INFO("overlay_guard: OFF (ENW_OVERLAY_GUARD=0)");
             return;
         }
-        g_allow_discord = overlay_rule::allow_from_env(std::getenv("ENW_ALLOW_DISCORD_HOOK"));
-        if (g_allow_discord) {
-            ENW_INFO("overlay_guard: DiscordHook.dll allowed (ENW_ALLOW_DISCORD_HOOK=1)");
-        } else if (HMODULE nt = ::GetModuleHandleW(L"ntdll.dll")) {
+        g_mode = overlay_rule::parse_mode(std::getenv("ENW_DISCORD_HOOK"));
+        if (HMODULE nt = ::GetModuleHandleW(L"ntdll.dll")) {
             g_ldr_target = reinterpret_cast<void*>(::GetProcAddress(nt, "LdrLoadDll"));
             MH_STATUS s = MH_ERROR_NOT_EXECUTABLE;
             if (g_ldr_target) {
@@ -234,14 +260,16 @@ public:
                 if (s == MH_OK) s = MH_EnableHook(g_ldr_target);
             }
             if (s == MH_OK) {
-                ENW_INFO("overlay_guard: DiscordHook.dll will be refused (ntdll!LdrLoadDll at %p). Discord's "
-                         "graphics hook needs a 50 MB mapping this 2 GB process cannot always give and crashes "
-                         "on the next Present when it fails. ENW_ALLOW_DISCORD_HOOK=1 allows it.",
-                         g_ldr_target);
+                ENW_INFO("overlay_guard: DiscordHook.dll gate armed, mode %s (ntdll!LdrLoadDll at %p). auto lets "
+                         "it load only when the largest free address block is at least %.2f MB: its capture maps "
+                         "%.1f MB in one piece and crashes the game on the next Present when it cannot. "
+                         "ENW_DISCORD_HOOK=auto|allow|refuse.",
+                         overlay_rule::mode_name(g_mode), g_ldr_target,
+                         overlay_rule::kAutoMinLargestFree / 1048576.0, overlay_rule::kDiscordMapBytes / 1048576.0);
             } else {
                 g_real_ldr_load_dll = nullptr;
                 ENW_WARN("overlay_guard: could not detour ntdll!LdrLoadDll (MinHook %d); Discord's hook is NOT "
-                         "kept out",
+                         "gated",
                          static_cast<int>(s));
             }
         }
@@ -260,7 +288,28 @@ public:
         ENW_INFO("overlay_guard: unhandled exceptions are named before the engine's filter (previous %p). "
                  "Address space at engine start: largest free block %.1f MB of %.1f MB free.",
                  reinterpret_cast<void*>(g_prev_filter), vm.largest / 1048576.0, vm.total / 1048576.0);
+        // Test only: ENW_OVERLAY_GUARD_PROBE=<path to any 32-bit DLL named DiscordHook.dll>
+        // and ENW_OVERLAY_GUARD_PROBE_AT=<seconds after engine start> make the main thread
+        // LoadLibrary it once, so the gate decides against the real address space of a real
+        // map without Discord having to choose to attach (it did not attach to any harness
+        // client on 09-23). Unset in every launcher game.
+        static std::wstring probe_path;
+        static ULONGLONG probe_at = 0;
+        if (const char* p = std::getenv("ENW_OVERLAY_GUARD_PROBE")) {
+            const char* at = std::getenv("ENW_OVERLAY_GUARD_PROBE_AT");
+            probe_at = ::GetTickCount64() + 1000ull * static_cast<ULONGLONG>(at ? std::atoi(at) : 60);
+            for (; *p; ++p) probe_path += static_cast<wchar_t>(static_cast<unsigned char>(*p));
+            ENW_INFO("overlay_guard: TEST probe armed: LoadLibrary of the named file in %s s",
+                     at ? at : "60");
+        }
         frame::subscribe("overlay_guard", [](uint64_t n) {
+            if (probe_at && ::GetTickCount64() >= probe_at) {
+                probe_at = 0;
+                HMODULE h = ::LoadLibraryW(probe_path.c_str());
+                const DWORD err = h ? 0 : ::GetLastError();
+                ENW_INFO("overlay_guard: TEST probe LoadLibrary -> %s (error %lu)", h ? "LOADED" : "refused/failed",
+                         static_cast<unsigned long>(err));
+            }
             drain();
             // Once a minute in a session, the address-space number that decides whether an
             // injected overlay (or the next zone) fits.
@@ -270,9 +319,9 @@ public:
                 last = now;
                 const auto v = overlay_rule::measure_free();
                 ENW_INFO("overlay_guard: address space +%llu s: largest free block %.1f MB of %.1f MB free; "
-                         "DiscordHook loads refused so far: %ld",
+                         "DiscordHook loads refused %ld, allowed %ld",
                          since_start_ms() / 1000, v.largest / 1048576.0, v.total / 1048576.0,
-                         g_refusals.load());
+                         g_refusals.load(), g_allowed_loads.load());
             }
         });
     }

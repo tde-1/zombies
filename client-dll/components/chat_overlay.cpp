@@ -2566,4 +2566,13 @@ bool in_game() { return ::enw::client::in_game(); }
 bool chat_open_alone() { return g_open && !g_embedded; }
 }  // namespace chat_embed
 
+// [overlay_guard] One of OUR notices as a yellow system line in the Global tab. Main thread
+// only (overlay_guard calls it from its frame tick), like every other writer of g_lines.
+namespace chat_notice {
+void system_line(const char* text) {
+    if (!g_enabled || !text) return;
+    add_local(CH_GLOBAL, text, true);
+}
+}  // namespace chat_notice
+
 }  // namespace enw::client

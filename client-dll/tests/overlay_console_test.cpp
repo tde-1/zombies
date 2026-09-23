@@ -50,12 +50,44 @@ int main() {
     check(!overlay_rule::refuse_module(buf, 19), "counted string, longer length");
 
     // --- the opt-in switch ---
-    check(!overlay_rule::allow_from_env(nullptr), "unset -> refuse");
-    check(!overlay_rule::allow_from_env(""), "empty -> refuse");
-    check(!overlay_rule::allow_from_env("0"), "0 -> refuse");
-    check(!overlay_rule::allow_from_env("yes"), "yes -> refuse (only 1)");
-    check(!overlay_rule::allow_from_env("10"), "10 -> refuse");
-    check(overlay_rule::allow_from_env("1"), "1 -> allow");
+    using overlay_rule::mode;
+    check(overlay_rule::parse_mode(nullptr) == mode::automatic, "unset -> auto");
+    check(overlay_rule::parse_mode("") == mode::automatic, "empty -> auto");
+    check(overlay_rule::parse_mode("auto") == mode::automatic, "auto");
+    check(overlay_rule::parse_mode("allow") == mode::allow, "allow");
+    check(overlay_rule::parse_mode("ALLOW") == mode::allow, "ALLOW, any case");
+    check(overlay_rule::parse_mode("on") == mode::allow, "on (the setting's label) -> allow");
+    check(overlay_rule::parse_mode("refuse") == mode::refuse, "refuse");
+    check(overlay_rule::parse_mode("Off") == mode::refuse, "Off -> refuse");
+    check(overlay_rule::parse_mode("maybe") == mode::automatic, "garbage -> auto");
+    check(overlay_rule::parse_mode("allowx") == mode::automatic, "prefix is not a match");
+
+    // --- the threshold: "a 50 MB block", exact ---
+    const uint64_t MB = 1024ull * 1024;
+    check(overlay_rule::kDiscordMapBytes == 52428872ull, "Discord's mapping, from its code");
+    check(overlay_rule::kAutoMinLargestFree == 0x3210000ull, "auto needs 50 MB + 64 KB in one piece");
+    check(overlay_rule::kAutoMinLargestFree >= ((overlay_rule::kDiscordMapBytes + 0xFFF) & ~0xFFFull) + 0xF000,
+          "threshold covers page rounding plus worst-case 64 KB alignment");
+    check(!overlay_rule::allow_discord(mode::automatic, static_cast<uint64_t>(12.3 * MB)),
+          "auto, 12.3 MB (ovg4 fear_mc_2 at +65 s) -> refuse");
+    check(!overlay_rule::allow_discord(mode::automatic, static_cast<uint64_t>(39.1 * MB)),
+          "auto, 39.1 MB (ovg1) -> refuse");
+    check(!overlay_rule::allow_discord(mode::automatic, overlay_rule::kDiscordMapBytes),
+          "auto, exactly Discord's byte count -> refuse (page/alignment slack)");
+    check(!overlay_rule::allow_discord(mode::automatic, 50 * MB), "auto, 50 MiB flat -> refuse (72 bytes short)");
+    check(!overlay_rule::allow_discord(mode::automatic, 0x3210000ull - 1), "auto, one byte under -> refuse");
+    check(overlay_rule::allow_discord(mode::automatic, 0x3210000ull), "auto, 50.06 MB -> allow");
+    check(overlay_rule::allow_discord(mode::automatic, 64 * MB), "auto, 64 MB -> allow");
+    check(overlay_rule::allow_discord(mode::automatic, static_cast<uint64_t>(127.6 * MB)),
+          "auto, 127.6 MB (fear_mc_2 at +5 s) -> allow");
+    check(overlay_rule::allow_discord(mode::allow, 0), "allow, 0 MB -> allow");
+    check(overlay_rule::allow_discord(mode::allow, 12 * MB), "allow, below -> allow");
+    check(!overlay_rule::allow_discord(mode::refuse, 900 * MB), "refuse, plenty -> refuse");
+    check(!overlay_rule::allow_discord(mode::refuse, 0), "refuse, 0 -> refuse");
+    check(std::strcmp(overlay_rule::mode_name(mode::automatic), "auto") == 0 &&
+              std::strcmp(overlay_rule::mode_name(mode::allow), "allow") == 0 &&
+              std::strcmp(overlay_rule::mode_name(mode::refuse), "refuse") == 0,
+          "mode names match the env values");
 
     // --- the address-space measure is real and moves when we take a block ---
     const auto a = overlay_rule::measure_free();
