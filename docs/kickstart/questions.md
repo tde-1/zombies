@@ -586,3 +586,11 @@ Nothing new below except the gathering; each line points at where the question w
 
 Older, still open: aim assist on Verified boards; solo on a dedicated server follows co-op rules
 (a records decision, vault 10); LICENSE files (GPL-3.0 client / AGPL-3.0 server, decided in principle).
+
+## Parked ideas (not questions; B's, written down so they are not lost)
+
+* **Weapon index** (B, 2026-09-23, while removing the map page's "What's in it"): see every map a
+  given gun or weapon type appears in, and group mods that share the same gun set (e.g.
+  EGX-based maps share guns). Half a start: `tools/maps/map_features.py` already reads each held
+  map's `include_weapon` calls, but keeps only the wonder weapons in
+  `web/server/data/map-features.json`; the full list would need keeping. Parked; nothing draws it.
