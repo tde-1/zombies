@@ -2221,3 +2221,13 @@ It polled the live site as `box-a`, the dev box row with secret `devkey-a`. On t
 Its party creation was refused by the beta gate (401). No lease was issued; I checked the `assignments` table read-only, and `zombies-dev` was untouched. I did not write to the DB to undo any of it.
 
 The test now has no default site and refuses `:3200`. `box-a`'s pinned key is a leftover the coordinator may clear from the admin page.
+
+## 2026-09-23 evening — soak-bot leases (lane S2, `dedi.md` §27)
+
+- `lib/instances.js`: `devBotsFor()` (1..4 from `settings.dev.bots`, agent Custom leases only),
+  `devKnobsFor()` sets `ENW_DEV_BOTS` and `ENW_DEV_KNOBS=1` for it, `sv_maxclients` ≥ bots.
+- `soakBotConfig()`: the DLL never reports a test client as a player, so a bot game looks empty.
+  For those leases only, the referee's empty close goes to 24 h (`a2c330d`) and `checkIdle()` skips
+  the never-joined close (`46748e1`). Every other lease is unchanged. Live on the box as `9e9e86a`.
+- Proven: a bot lease ran 30 min to round 16. A real player's lease still evicts it (`INCIDENT
+  ram_evict … real:true`, 22:01 UTC).
