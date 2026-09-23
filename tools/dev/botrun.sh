@@ -56,10 +56,17 @@ if [ -z "$PID" ]; then say "no game process"; exit 4; fi
 say "game pid $PID"
 
 # ---- the guard: a real player always wins ----------------------------------------------------
+# Polls the journal every 2 s (not `journalctl -f`, whose reader outlives the game) and exits
+# with the game, so a stale guard can never kill a recycled pid.
 (
-  journalctl -u enw-host-agent -f -n 0 --no-pager | while read -r line; do
-    if echo "$line" | grep -qE 'assignment changed: leased|RAM guard'; then
-      echo "[$(date -u +%H:%M:%S)] GUARD: the host is booting a lease -> killing our game $PID: $line" >> "$OUT/run.txt"
+  last=$(date +%s)
+  while kill -0 "$PID" 2>/dev/null; do
+    sleep 2
+    now=$(date +%s)
+    hit=$(journalctl -u enw-host-agent --since "@$last" --no-pager -o cat 2>/dev/null | grep -E 'assignment changed: leased|RAM guard' | head -1)
+    last=$now
+    if [ -n "$hit" ]; then
+      echo "[$(date -u +%H:%M:%S)] GUARD: the host is booting a lease -> killing our game $PID: $hit" >> "$OUT/run.txt"
       kill -9 "$PID" 2>/dev/null; exit 0
     fi
   done
@@ -105,7 +112,6 @@ while kill -0 "$PID" 2>/dev/null; do
   fi
 done
 kill "$GUARD" "$MEMG" 2>/dev/null
-for j in $(pgrep -f "journalctl -u enw-host-agent -f -n 0"); do [ "$(ps -o ppid= -p "$j" | tr -d ' ')" = "$GUARD" ] && kill "$j"; done
 say "game gone at t=$(( $(date +%s) - t0 ))s; last round $(grep 'referee: ROUND' "$LOG" | tail -1 | grep -oE 'ROUND [0-9]+')"
 [ -n "$LOG" ] && cp "$LOG" "$OUT/enw.log"
 CL=$(find "$HOMEDIR" -name console.log -newer "$OUT/wine.out" 2>/dev/null | head -1); [ -n "$CL" ] && cp "$CL" "$OUT/console.log"

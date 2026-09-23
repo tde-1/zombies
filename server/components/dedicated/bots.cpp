@@ -50,7 +50,7 @@
 // ---------------------------------------------------------------------------
 // Random input does not clear a round, and aiming would still leave round 30's ~6,000-health
 // zombies to a pistol. So once a zombie has been alive for ENW_DEV_BOT_KILL_AGE_MS (default
-// 4000, jittered 0.5x-1.5x per zombie, so some reach the bots and hit them), a bot kills it:
+// 8000, jittered 0.5x-1.5x per zombie, so some reach the bots and hit them), a bot kills it:
 //
 //   G_Damage 0x4F5D70 (cdecl, 12 args, the call GScr `dodamage` makes at 0x51CBD9):
 //     (targ, inflictor = bot, attacker = bot, dir, point, damage, dflags 0,
@@ -139,6 +139,14 @@ constexpr uintptr_t kGentHealth = 0x1C8;
 constexpr uintptr_t kSentientTeam = 0x4;            // sentient_s.eTeam (T4SP asserts)
 constexpr int kTeamAxis = 1;
 constexpr uintptr_t kLevelTime = 0x18F6DC8;         // level.time (pause.cpp)
+constexpr uintptr_t kSvsTime = 0x2547084;           // svs.time (SV_ClientThink 0x630BF1)
+constexpr uintptr_t kClientThink = 0x630BF0;        // SV_ClientThink(eax = client_s*, [esp+4] = usercmd*)
+constexpr uintptr_t kClDeltaMessage = 0xC;          // SV_BotUserMove 0x636047: = outgoingSequence - 1
+constexpr uintptr_t kClOutgoingSeq = 0x14;
+constexpr uintptr_t kPsOrigin = 0x20;               // gclient_s.ps (T4SP asserts)
+constexpr uintptr_t kPsDeltaAngles = 0x7C;
+constexpr uintptr_t kPsWeapon = 0x104;              // SV_BotUserMove 0x635E3D reads it for cmd.weapon
+constexpr uint32_t kButtonAttack = 0x1;             // SV_BotUserMove 0x635E9D (sv_botsPressAttackBtn)
 
 constexpr int kModPistolBullet = 1;                 // "MOD_PISTOL_BULLET" (table at 0x86A5xx)
 constexpr int kHitLocHead = 2;                      // none, helmet, head, ... (0x8DC2A4)
@@ -161,6 +169,7 @@ const prologue kPrologues[] = {
     {kEnterWorld, 10, {0x56, 0x8B, 0xF0, 0x57, 0x8D, 0x86, 0x48, 0x15, 0x01, 0x00}, "SV_ClientEnterWorld"},
     {kGDamage, 11, {0x8B, 0x54, 0x24, 0x0C, 0x8B, 0x4C, 0x24, 0x08, 0x83, 0xEC, 0x0C}, "G_Damage"},
     {kBotFrame, 2, {0x51, 0x83}, "bot frame loop"},
+    {kClientThink, 7, {0x51, 0x8B, 0x15, 0x84, 0x70, 0x54, 0x02}, "SV_ClientThink"},
 };
 
 using direct_connect_t = void(__cdecl*)(netadr_t);
@@ -172,6 +181,14 @@ using bot_frame_t = void(__cdecl*)();
 
 template <typename T>
 bool peek(uintptr_t a, T* out) { return memory::read(a, out); }
+
+// client_s fields live in the image's .data, which is read-write: a plain store. memory::write
+// would VirtualProtect twice per call, which under Wine is the same page-table scan the read
+// fast path avoids (shared/core/memory.cpp) -- 20 times a second per bot here.
+template <typename T>
+void poke(uintptr_t a, T v) {
+    if (memory::is_readable(reinterpret_cast<const void*>(a), sizeof(T))) *reinterpret_cast<volatile T*>(a) = v;
+}
 
 int env_int(const char* name, int dflt) {
     const char* v = std::getenv(name);
@@ -220,7 +237,7 @@ struct bots_state {
     bool armed = false;
     int wanted = 0;
     bool kill = true;
-    int kill_age_ms = 4000;
+    int kill_age_ms = 8000;
     int kills_per_s = 3;
     int start_ms = 10000;          // level.time before the first bot (the map settles first)
     uint16_t next_port = 0x5100;   // unique per bot: DirectConnect's reconnect scans compare it
@@ -232,6 +249,8 @@ struct bots_state {
     double kill_budget = 0;
     int last_level = -1;
     int next_attacker = 0;
+    bool random_walk = false;      // ENW_DEV_BOT_RANDOM=1: the engine's own SV_BotUserMove
+    uint32_t think_frames = 0;
     uint64_t kills_total = 0;
     LARGE_INTEGER qpf{}, last_sv{}, last_com{};
     HANDLE main_thread = nullptr;
@@ -331,13 +350,13 @@ bool add_bot() {
         return false;
     }
     const uintptr_t cl = client_at(slot);
-    memory::write(cl + kClTestClient, static_cast<int32_t>(1));
+    poke(cl + kClTestClient, static_cast<int32_t>(1));
     reinterpret_cast<send_gamestate_t>(enw::at(kSendGameState))(cl);
     alignas(4) uint8_t cmd[0x38] = {};
     call_enter_world(cl, cmd);
     // A bot sends no packets, so nothing ever reports it loaded: say it ourselves, or the
     // scripts' all_players_connected never fires and nobody spawns (measured, run t1).
-    memory::write(cl + kClLoadState, kLoaded);
+    poke(cl + kClLoadState, kLoaded);
     int32_t st = 0;
     uintptr_t gent = 0;
     peek(cl + kClState, &st);
@@ -422,6 +441,12 @@ void read_wanted_file() {
     const DWORD now = ::GetTickCount();
     if (g.last_file_check && now - g.last_file_check < 5000) return;
     g.last_file_check = now ? now : 1;
+    // The end of a soak (soak.cpp): enw_dev_god.off releases god mode, and the bots must stop
+    // killing too, or the zombies never reach them and the game never ends (measured, run t2).
+    if (g.kill && ::GetFileAttributesA("enw_dev_god.off") != INVALID_FILE_ATTRIBUTES) {
+        g.kill = false;
+        ENW_WARN("dev_bots: enw_dev_god.off present -- kills OFF, the zombies can end the game");
+    }
     FILE* f = std::fopen("enw_dev_bots.txt", "rb");
     if (!f) return;
     int n = -1;
@@ -454,7 +479,7 @@ void server_frame_work() {
         if (!is_bot_slot(s)) continue;
         int32_t ls = 0;
         if (peek(client_at(s) + kClLoadState, &ls) && ls != kLoaded)
-            memory::write(client_at(s) + kClLoadState, kLoaded);
+            poke(client_at(s) + kClLoadState, kLoaded);
     }
     read_wanted_file();
     if (level >= g.start_ms && bot_count() < g.wanted && level - g.last_add_level >= 1000 &&
@@ -463,6 +488,76 @@ void server_frame_work() {
         if (add_bot()) ++g.added; else ++g.failed;
     }
     scan_and_kill(level);
+}
+
+// ------------------------------------------------------------- the bot brain --------------
+// The engine's SV_BotUserMove walks at random, and on a zoned map (Der Riese style: ILS, run
+// ab-ils-fast) a bot that wanders out of the active zones stops the spawners -- round 1 never
+// ended. So by default a bot stands where the scripts spawned it (always inside the start zone),
+// turns to the nearest living zombie and fires on alternate server frames: real bullets, real
+// hit/impact events, and the zombies come to it as they would to a camping player.
+void call_client_think(uintptr_t client, void* ucmd) {
+    const uintptr_t fn = enw::at(kClientThink);
+    __asm {
+        mov edx, ucmd
+        push edx
+        mov eax, client
+        mov ecx, fn
+        call ecx
+        add esp, 4
+    }
+}
+
+int16_t angle_short(float deg) { return static_cast<int16_t>(static_cast<int>(deg * 65536.0f / 360.0f) & 0xFFFF); }
+
+void think_bots() {
+    ++g.think_frames;
+    int32_t svs_time = 0;
+    peek(enw::at(kSvsTime), &svs_time);
+    for (int s = 0; s < kMaxClients; ++s) {
+        if (!is_bot_slot(s)) continue;
+        const uintptr_t cl = client_at(s);
+        uintptr_t gent = 0, gc = 0;
+        if (!peek(cl + kClGentity, &gent) || !gent) continue;
+        peek(gent + kGentClient, &gc);
+        alignas(4) uint8_t cmd[0x38] = {};
+        std::memcpy(cmd + 0, &svs_time, 4);
+        if (gc) {
+            uint32_t weapon = 0;
+            float org[3] = {}, delta[3] = {};
+            peek(gc + kPsWeapon, &weapon);
+            peek(gc + kPsOrigin, &org);
+            peek(gc + kPsDeltaAngles, &delta);
+            cmd[0x14] = static_cast<uint8_t>(weapon);
+            // nearest living axis actor
+            float best = 1e30f, tgt[3] = {};
+            for (int n = kMaxClients; n < kMaxGentities; ++n) {
+                if (g.first_seen[n] < 0) continue;          // scan_and_kill's live-axis set
+                float o[3];
+                if (!peek(gent_at(n) + kGentOrigin, &o)) continue;
+                const float dx = o[0] - org[0], dy = o[1] - org[1], dz = o[2] - org[2];
+                const float d = dx * dx + dy * dy + dz * dz;
+                if (d < best) { best = d; tgt[0] = o[0]; tgt[1] = o[1]; tgt[2] = o[2]; }
+            }
+            if (best < 1e29f) {
+                const float dx = tgt[0] - org[0], dy = tgt[1] - org[1];
+                const float dz = (tgt[2] + 48.f) - (org[2] + 60.f);
+                const float yaw = std::atan2(dy, dx) * 57.29578f;
+                const float pitch = -std::atan2(dz, std::sqrt(dx * dx + dy * dy)) * 57.29578f;
+                const int16_t p = angle_short(pitch - delta[0]), y = angle_short(yaw - delta[1]);
+                int32_t a0 = static_cast<uint16_t>(p), a1 = static_cast<uint16_t>(y);
+                std::memcpy(cmd + 0x8, &a0, 4);
+                std::memcpy(cmd + 0xC, &a1, 4);
+                if (g.kill && best < 1500.f * 1500.f && (g.think_frames & 1)) {
+                    const uint32_t b = kButtonAttack;
+                    std::memcpy(cmd + 0x4, &b, 4);
+                }
+            }
+        }
+        int32_t seq = 0;
+        if (peek(cl + kClOutgoingSeq, &seq)) poke(cl + kClDeltaMessage, seq - 1);
+        call_client_think(cl, cmd);
+    }
 }
 
 void __cdecl bots_server_frame() {
@@ -477,7 +572,17 @@ void __cdecl bots_server_frame() {
                       "OFF for the rest of this game", static_cast<unsigned>(GetExceptionCode()));
         }
     }
-    g_orig_bot_frame();
+    if (g.random_walk || g.faulted) {
+        g_orig_bot_frame();
+        return;
+    }
+    __try {
+        think_bots();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        g.random_walk = true;
+        ENW_ERROR("dev_bots: an exception (0x%08X) in the bot brain -- falling back to the "
+                  "engine's random bots", static_cast<unsigned>(GetExceptionCode()));
+    }
 }
 
 void minute_line() {
@@ -555,9 +660,10 @@ public:
         for (int& t : g.first_seen) t = -1;
         g.wanted = std::max(0, std::min(want, kMaxClients));
         g.kill = env_int("ENW_DEV_BOT_KILL", 1) != 0;
-        g.kill_age_ms = std::max(0, env_int("ENW_DEV_BOT_KILL_AGE_MS", 4000));
+        g.kill_age_ms = std::max(0, env_int("ENW_DEV_BOT_KILL_AGE_MS", 8000));
         g.kills_per_s = std::max(1, env_int("ENW_DEV_BOT_KILLS_PER_S", 3));
         g.start_ms = std::max(0, env_int("ENW_DEV_BOT_START_MS", 10000));
+        g.random_walk = env_int("ENW_DEV_BOT_RANDOM", 0) != 0;
         ::QueryPerformanceFrequency(&g.qpf);
         if (!prologues_ok()) return;
         g_orig_bot_frame = reinterpret_cast<bot_frame_t>(enw::at(kBotFrame));
