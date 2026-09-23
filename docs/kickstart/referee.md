@@ -1856,3 +1856,164 @@ wrote **`00001DE3`**, and no pause length or sum in that game matches it. Its la
 **Next repro, for whoever deploys this:** also set `ENW_DEDI_WATCH_PROBE_SLOT=1` on the instance
 (dedi.md §13.2). It logs the EIP and registers of whatever store hits `[0x3BFD478]`, so the next
 failure names its writer instead of leaving it to inference.
+
+## 16. 2026-09-23 (~04:00–05:00 UK) — bug 7: kills, downs, revives and score from a real game
+
+Every real game on the site said 0 for score, kills, downs and revives. The Tab scoreboard and the
+profile showed a dash or hid the column. This section is the whole chain: what the box sent, where
+it broke, and the fix.
+
+### 16.1 What a real game's `game_over` actually contained (measured)
+
+B's `m_8a0a8e75` (fear_mc_2, verified, 2026-09-22 23:55, site game 57) had this `reported` block in
+its `summary_json` (read-only copy of the live DB):
+
+```json
+{"round":1,"reason":"end_game notify","duration_ms":95555,"points_total":0,"downs_total":0,"players_alive":1,
+ "players":[{"slot":0,"name":"myu","connected":true,"steamid":"76561198126330106","identity":"verified",
+             "revives":0,"alive":true}]}
+```
+
+The row has **no `score`, no `downs` and no `kills` field**. The host's own fold was 0 for
+everything too. Every real game in the live DB is the same: 17 `game_players` rows, all 0 across
+score, kills, headshots, downs, revives and points_earned. That covers 11 of B's games and 4 agent
+games, including two that reached round 2.
+
+In the box replays (118 files pulled from `/home/waw/zdev-host/replays`), **not one** of the
+52 signed files has a `points`, `down`, `revive` or `game_over` event. The only kill-shaped events
+are the sampler's `kill {how:"entity_gone"}`, which names no player.
+
+### 16.2 The breaks, in order
+
+1. **The source: the DLL never read the counters.** `t4_bind.cpp :: player_int()` was
+   `return std::nullopt;`, because it was written against script variables (`scriptvars=no` in
+   every run, §10.2, §11.2). So:
+   - `poll_players()` never sent a `points` or a `down`;
+   - `game_over` rows left out `score` and `downs`;
+   - kills were not read at all.
+
+   **The premise was wrong.** The co-op scoreboard counters are **native `gclient_s` fields**. The
+   engine resolves `self.score`, `.kills`, `.downs`, `.revives`, `.headshots` and `.assists`
+   through a client field table to plain ints, so no script-VM access is needed.
+2. **Host: the replay lost `game_over`.** `host.js onGameMessage` gave the event to the referee
+   first. The referee then calls `finishGame`, which emits `'over'`, which runs `finish()`, and
+   `finish()` sets `finished = true` synchronously. `record(m)` ran after that and dropped
+   `game_over` as a "late event". This is why no box replay has one (host.md §14).
+3. **Host → site: the reconciled value was thrown away.** `summary()` reconciled
+   `downs`/`revives` with the game's row at the top level, but put the raw fold in `stats`.
+   `web/server/lib/results.js` reads `stats.<x>` first, so the reconciled value never reached
+   `game_players`. There was also no kills path at all: kills came only from
+   `points.why === 'kill'`, and the DLL sends no `why`.
+4. **UI**: nothing was wrong beyond "no data". The profile correctly hides a column until a real
+   game has a non-zero value (`profile.js recordedStats`). The replay Tab scoreboard showed "—"
+   for points because `has_score` was false. Its Revives column counted `revive.slot` (the
+   player who got up), not the reviver.
+
+### 16.3 The addresses (measured, two signals each; `docs/re/t4-sp-map.md` §11)
+
+| What | Value | Signal 1 | Signal 2 |
+|---|---|---|---|
+| client field table | `0x83C568`, entries of 0x18 `{name, ofs, type, mask, setter, getter}`, 19 entries, NUL-terminated at `0x83C730` | walked by `GScr_AddFieldsForClient` 0x4ED1B0 (`mov edi,0x83C568 … add edi,0x18`) | indexed by `Scr_SetClientField` 0x4ED200 (`lea eax,[eax*8+0x83C568]` on idx*3) |
+| `score` | gclient+`0x20BC`, int | table entry at 0x83C628 (setter 0x4ECEB0) | the setter's store `mov [edi+0x20BC],esi` at 0x4ECF25 |
+| `kills`, `assists`, `downs`, `revives`, `headshots` | +`0x20C0`, `0x20C4`, `0x20C8`, `0x20CC`, `0x20D0`, all type 0 | table entries 0x83C5F8, 0x83C610, 0x83C580, 0x83C598, 0x83C5B0 | the co-op scoreboard builder 0x67CBC0 pushes `[level.clients + i*0x2348 + 0x20D0/CC/C8/C4/C0]` into `" %x %x %x %x %x %x %x %x"` (0x67CC1C…) |
+| `gclient_s` stride | `0x2348` | the same builder's `add ebp,0x2348` at 0x67CCB4 | the score setter divides `(gclient - level.clients)` by it (magic 0x74187D2B, `sar 0xC`) |
+| `level.clients` | `*(gclient_s**)0x18F5D88` | the setter's `mov ebx,[0x18F5D88]` | the builder's `mov eax,[0x18F5D88]` |
+
+The scripts that write these fields (`C:\Users\b\ZombiesDev\scripts`):
+- `self.score +=` in `_zombiemode_score.gsc`;
+- `attacker.kills++` / `.headshots++` in `_gameskill.gsc auto_adjust_enemy_died`, which
+  `_spawner.gsc:1333` threads on every spawned AI;
+- `self.downs++` in `_laststand.gsc:97`, plus `_zombiemode.gsc player_laststand` once the game is
+  in intermission;
+- `reviver.revives++` in `_laststand.gsc revive_success`.
+
+### 16.4 The fix (DLL: `t4_bind.cpp/.hpp`, `referee.cpp`, `replay.cpp`; commit `e9721bd`)
+
+- **`bind()` re-verifies all of §16.3 inside the running process** (`verify_client_fields`):
+  - every one of the six table entries (name, offset, type 0);
+  - the three code sites' bytes.
+  
+  Only then is `binding_report.client_fields` set. Anything else logs which check failed and
+  reads nothing. The bind line now includes `clientfields=yes`.
+- **`player_stats(slot)`** does one 24-byte read at gclient+0x20BC. The gclient is cross-checked
+  two ways: `g_entities[slot].client` must equal `level.clients + slot*0x2348`. Values outside
+  0..1e8 are refused. `player_int()` answers the six names from this read; every other field is
+  still `nullopt`.
+- **The referee's frame poll** (connected players only; the baseline resets on each connect edge):
+  - `points` on every score change (with `delta`);
+  - `down` + `player_down` on a downs increase;
+  - **`revive {by, slot?}`** when a player's native `revives` goes up. `slot` is included only
+    when exactly one other connected player is down; `player_revived` fires on the REVIVED
+    player, so the old notify count credited the wrong person and is now only a fallback;
+  - **`stats {slot, score, kills, headshots, downs, revives, assists}`** at connect and whenever
+    kills/headshots/downs/revives/assists moves, sent after that frame's edges.
+- **`game_over`**:
+  - each row is re-read fresh at game over;
+  - rows carry `score`, `downs`, `revives` (native), `kills`, `headshots`, `assists`;
+  - the header carries `kills_total`, but only when the fields verified, so absent is
+    distinguishable from 0;
+  - the GAME OVER log line prints kills.
+- **The replay snap** carries `score`, `kills`, `downs`, `revives`, `headshots` per player,
+  delta-coded like every other field.
+
+### 16.5 Proof
+
+- **`bug7b`, local dedi, five gates PASS** (`tools\dev\jointest-proof.ps1 -Tag bug7b -Watch 300
+  -Deploy`):
+  - token for the fake id `76561198000000001` (match `m_bug7b`), `authhost.mjs serve` as the link;
+  - private LocalAppData, `ENW_TEST_NO_ACTIVATE=1`, `ENW_BORDERLESS_COVER=0`, off-screen;
+  - client `com_maxfps 60`, server DLL sha256 `818d016e8c2a091a98d49851347f647ef970a2bb92a09ec539a789b15f0425e2`.
+
+  The server log:
+  `referee/bind: native client fields … VERIFIED against the field table and two code sites` and
+  `notify=yes scriptvars=no clientfields=yes …`. On the link, from the real game with an idle
+  client:
+
+  ```
+  points  ms 16484 slot 0 score 500                      (the game's own seed)
+  stats   ms 16484 slot 0 score 500 kills 0 downs 0 ...
+  points  ms 87844 slot 0 score 470 delta -30             (player_downed_penalty)
+  down    ms 87844 slot 0 ; player_down downs 2 round 1   (laststand + intermission: WaW's own count)
+  stats   ms 87844 slot 0 score 470 kills 0 downs 2 ...
+  points  ms 91828 slot 0 score 500 delta 30              (intermission: score = score_total)
+  game_over ... "points_total":500,"downs_total":2,"kills_total":0,
+     "players":[{"slot":0,"name":"anna-jpg","identity":"verified","steamid":"76561198000000001",
+                 "score":500,"downs":2,"revives":0,"kills":0,"headshots":0,"assists":0,"alive":true}]
+  ```
+
+  The control, `bug7a`: the same harness, but it deployed main's stale `build\dedi` (the harness
+  bug fixed in this branch). It sent `points_total 0, downs_total 0` and a row with only
+  `revives`, exactly what the box sends today.
+- **End to end, host → site → DB → profile, on the real `bug7b` transcript**
+  (`ZombiesDev\bug7\e2e.mjs`, scratch data dir, never `web/data`): host summary `score 500
+  downs 2`; `game_players` row `score 500, downs 2, points_earned 30`;
+  `profile.overallFor` `recorded.downs = true, downs = 2`. The site's replay track over the same
+  transcript: `has_score = true`, score changes `[500, 470, 500]`, counters
+  `[[16484,0,0,0,0],[87844,0,2,0,0]]`.
+- **Kills: SYNTHETIC, labelled.** Nobody shoots in a join run (§10.6), so no real kill was made.
+  `e2e.mjs --synthetic-kills 3` injects the exact `stats` event a §16 DLL sends for 3 kills by
+  slot 0, and the same count on the `game_over` row, into the real transcript. The result:
+  - host `kills 3, headshots 1` (row and `stats`);
+  - `game_players.kills = 3`;
+  - the profile turns the Kills column on (`recorded.kills = true`).
+
+  The DLL half of kills is the same 24-byte read that produced the real score and downs above.
+  The offset is proven statically by the table and the scoreboard builder, **but no engine-made
+  kill has been read yet.**
+
+### 16.6 Not done / not proven
+
+- **A real kill, a real revive, a real headshot**: this needs a shooter, and a second player for
+  a revive. The first real game on a box running this DLL is the proof: its `stats` events and
+  `game_players` row should show them.
+- A reconnect in the same slot: the DLL resets its baseline at the connect edge. The host keeps
+  high-water marks per person, so kills made after a reconnect whose gclient restarted at 0 are
+  under-counted until they pass the old count.
+- `downs` is WaW's own counter: a solo death on Nacht counts **2**, because `_laststand` and
+  `_zombiemode player_laststand` both increment it. That is what the game's scoreboard shows, and
+  it is reported as such, not "corrected".
+- `score_total` is still a script variable and is still absent. The host's `points_earned` (sum
+  of positive deltas) stands in for it.
+- `game_players.name` in the e2e run is "Unknown Soldier", the engine name at connect. The
+  host's roster name is not updated to the token's name (the name-lock lane). This is not
+  bug 7.

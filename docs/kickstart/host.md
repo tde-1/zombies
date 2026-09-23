@@ -1727,3 +1727,52 @@ closed as `empty` at 2 min, so the 7-minute grace never applied.
 ### 13.5 Proof on the box
 
 See dedi.md §19.6.
+
+## 14. Session 2026-09-23 (~04:00–05:00 UK) — bug 7: the counters, and the `game_over` no replay had
+
+The root cause is in the DLL (referee.md §16): it never read score, kills, downs or revives. Two
+host-side breaks sat downstream of it, and both are fixed here (commit `e9721bd`).
+
+### 14.1 Measured on the box
+
+- The `journalctl -u enw-host-agent` lines for B's real games (`m_8a0a8e75`, `m_ba9c2775.r2`,
+  both `end_game notify`) say `game over: end_game notify`. So the host DID receive the game's
+  `game_over`, and its summary's `reported` block holds the row (all zeros, referee.md §16.1).
+- **But not one of the 52 signed replays in `/home/waw/zdev-host/replays` contains a `game_over`
+  event.** The cause is the order in `host.js onGameMessage`:
+  1. `referee.onEvent(m)` runs first;
+  2. `ev_game_over` calls `finishGame`, which emits `'over'`, which runs `finish()`;
+  3. `finish()` sets `this.finished = true` *before its first await*;
+  4. only then does `this.record(m)` run, and it drops the event as a late one.
+
+  The contract ("`game_over` is the last event of the match") was broken on every game the game
+  itself ended.
+- Most real games did not end through the game at all. The site ended them: `lease … is no
+  longer live at the site`, or `supersedes`. `finishGame` runs host-side with no `reported`, so
+  **the fold is the result for most real games.** That is why the fix had to put the counters on
+  the live stream (`points` / `down` / `revive` / `stats`), not only on `game_over`.
+
+### 14.2 Changes
+
+- `host.js onGameMessage`: a `game_over` is **recorded before** the referee sees it. Every other
+  event keeps the old order.
+- `lib/referee.js`:
+  - **`ev_stats`** folds `kills`, `headshots`, `downs`, `revives` and `assists` as high-water
+    marks, so a `down`/`revive` edge and the absolute value that follows it count once.
+  - `summary()` computes ONE reconciled value per counter (kills, headshots, downs, revives: the
+    max of the fold and the game's row; `game > ours` is still flagged). It uses that value in
+    **both** the row and its `stats` block. The site reads `stats` first, and `stats` used to
+    carry the raw fold.
+  - `folded` now includes kills and headshots, and `reported.kills_total` is carried (null, not
+    0, from a DLL without the native fields).
+- `test/run-all.js`: 3 new tests (the §16 DLL's exact event sequence; the reconciled counters in
+  the row and in `stats`; `kills_total` null from an old DLL). **71 passed, 0 failed.**
+- `test/demo-network.js`: a replay whose footer summary has `reported` must contain `game_over`.
+  **0 failures**; all 3 replays carry it. `restart.js` 12/0, `multi-lease.js` PASS.
+
+### 14.3 Deploy note for the coordinator
+
+This is host code, so the box agent needs a restart to pick it up, on your word and under rule
+13. It works with the current box DLL: the old DLL sends no `stats`, so nothing changes except
+that `game_over` now reaches the replay. The counters only appear once the §16 box DLL is
+deployed (referee.md §16, dedi.md).

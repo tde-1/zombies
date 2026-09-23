@@ -983,6 +983,12 @@ What fills them:
 
 The side panel's points column also shows "—" instead of 0 when the score is not recorded.
 
+**2026-09-23 update (bug 7, referee.md §16):** the "DLL field needed" above is done. A §16 DLL reads
+score, kills, downs, revives and headshots from the game's own scoreboard fields. It puts them on
+snaps and on `stats` events, and the track carries a per-player `counters` timeline. With it,
+Points, Kills (attributed per player), Downs and Revives (revives given, `revive.by`) all come from
+the game. Files recorded before that keep the rules in this table.
+
 Screenshots (`docs/kickstart/ui/`): `replay-812-debug-0afb.png` / `-debug-6d80.png` (the
 `?r3ddebug` overlay with the numbers above), `replay-812-3p-6d80.png` (the player against the
 start-room wall), `replay-812-above-0afb.png`, `replay-812-fp-0afb.png`,
