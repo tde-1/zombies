@@ -20,7 +20,7 @@ import { EventEmitter } from 'node:events'
 import { execFile } from 'node:child_process'
 import { makeLog, parseArgs, setLogLevel, mkdirp, id as makeId, fmtBytes, fmtDur, sha256hex } from './lib/util.js'
 import { GameLinkServer } from './lib/gamelink.js'
-import { InstanceManager, devKnobsFor } from './lib/instances.js'
+import { InstanceManager, devKnobsFor, soakBotConfig } from './lib/instances.js'
 import { Referee } from './lib/referee.js'
 import { gameModeId } from './lib/gamemode.js'   // the map's own game mode (game-modes.md)
 import { ManifestStore } from './lib/manifests.js'
@@ -249,7 +249,7 @@ class Game extends EventEmitter {
     this.referee = new Referee({
       instanceId: instance.id, matchId: this.matchId, mode: this.mode, vip: this.vip,
       gameMode: gameModeId(this.assignment),
-      manifest: this.manifest, config: { ...cfg.referee, ...(refereeConfig || {}) }, log: this.log,
+      manifest: this.manifest, config: { ...cfg.referee, ...(refereeConfig || {}), ...soakBotConfig(this.assignment) }, log: this.log,
     })
     this.referee.on('command', (c) => this.sendToGame(c))
     // `finish()` is async (it closes and signs the replay, then posts the result) and the
