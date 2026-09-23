@@ -15,9 +15,9 @@
 
 # Which asset types to unlink from which zone (Unlinker --include-assets). Cheap: ~15 s total.
 zones:
-  nazi_zombie_factory: xmodel,material,image,weapon,loadedsound,rawfile
+  nazi_zombie_factory: xmodel,material,image,weapon,loadedsound,rawfile,xanim
   localized_nazi_zombie_factory: loadedsound
-  common: material,image,loadedsound,localize
+  common: material,image,loadedsound,localize,xanim
   common_mp: loadedsound
   patch: localize
 
@@ -147,6 +147,188 @@ weapons:
       muzzle: muzzle_tesla
       fire: uber_fire
       fire_plr: uber_fire_plr
+
+  # --- 2026-09-23 lane RV: every other gun Der Riese's box/walls can hand a player, and its
+  # Pack-a-Punch. Listed by WEAPON FILE only: world/view models, the flash and the fire sounds
+  # are read from it (the sounds' files by zone order, resolve_alias). No measured grip: the
+  # default (DEFAULT_GRIP_POINT). `aliases` are the same gun's engine names on Nacht /
+  # Verrueckt / Shi No Numa, drawn with this model. `cls` picks a sound stand-in when the zone
+  # cannot name the fire sound.
+  sw_357:
+    zone: nazi_zombie_factory
+    weapon: zombie_sw_357
+    cls: pistol
+    muzzle: muzzle_pistol
+    aliases: [sw_357]
+    pap:
+      weapon: zombie_sw_357_upgraded
+      muzzle: muzzle_pistol
+  kar98k:
+    zone: nazi_zombie_factory
+    weapon: zombie_kar98k
+    cls: rifle
+    muzzle: muzzle_rifle
+    aliases: [kar98k, kar98k_scoped_zombie]
+    pap:
+      weapon: zombie_kar98k_upgraded
+      muzzle: muzzle_rifle
+  gewehr43:
+    zone: nazi_zombie_factory
+    weapon: zombie_gewehr43
+    cls: rifle
+    muzzle: muzzle_rifle
+    aliases: [gewehr43]
+    pap:
+      weapon: zombie_gewehr43_upgraded
+      muzzle: muzzle_rifle
+  m1garand:
+    zone: nazi_zombie_factory
+    weapon: zombie_m1garand
+    cls: rifle
+    muzzle: muzzle_rifle
+    aliases: [m1garand]
+    pap:
+      weapon: zombie_m1garand_upgraded
+      muzzle: muzzle_rifle
+  m1garand_gl:
+    zone: nazi_zombie_factory
+    weapon: m1garand_gl_zombie
+    cls: rifle
+    muzzle: muzzle_rifle
+    aliases: [m1garand_gl]
+    pap:
+      weapon: m1garand_gl_zombie_upgraded
+      muzzle: muzzle_rifle
+  stg44:
+    zone: nazi_zombie_factory
+    weapon: zombie_stg44
+    cls: smg
+    muzzle: muzzle_rifle
+    aliases: [stg44]
+    pap:
+      weapon: zombie_stg44_upgraded
+      muzzle: muzzle_rifle
+  type100_smg:
+    zone: nazi_zombie_factory
+    weapon: zombie_type100_smg
+    cls: smg
+    muzzle: muzzle_rifle
+    aliases: [type100_smg]
+    pap:
+      weapon: zombie_type100_smg_upgraded
+      muzzle: muzzle_rifle
+  ppsh:
+    zone: nazi_zombie_factory
+    weapon: zombie_ppsh
+    cls: smg
+    muzzle: muzzle_rifle
+    aliases: [ppsh]
+    pap:
+      weapon: zombie_ppsh_upgraded
+      muzzle: muzzle_rifle
+  shotgun:
+    zone: nazi_zombie_factory
+    weapon: zombie_shotgun
+    cls: spread
+    muzzle: muzzle_heavy
+    aliases: [shotgun]
+    pap:
+      weapon: zombie_shotgun_upgraded
+      muzzle: muzzle_heavy
+  doublebarrel:
+    zone: nazi_zombie_factory
+    weapon: zombie_doublebarrel
+    cls: spread
+    muzzle: muzzle_heavy
+    aliases: [doublebarrel, doublebarrel_sawed_grip, zombie_doublebarrel_sawed]
+    pap:
+      weapon: zombie_doublebarrel_upgraded
+      muzzle: muzzle_heavy
+  bar:
+    zone: nazi_zombie_factory
+    weapon: zombie_bar
+    cls: mg
+    muzzle: muzzle_rifle
+    aliases: [bar, bar_bipod, bar_bipod_stand, bar_bipod_crouch, bar_bipod_prone]
+    pap:
+      weapon: zombie_bar_upgraded
+      muzzle: muzzle_rifle
+  fg42:
+    zone: nazi_zombie_factory
+    weapon: zombie_fg42
+    cls: mg
+    muzzle: muzzle_rifle
+    aliases: [fg42_bipod, fg42_bipod_stand, fg42_bipod_crouch, fg42_bipod_prone]
+    pap:
+      weapon: zombie_fg42_upgraded
+      muzzle: muzzle_rifle
+  30cal:
+    zone: nazi_zombie_factory
+    weapon: zombie_30cal
+    cls: mg
+    muzzle: muzzle_rifle
+    aliases: [30cal_bipod, 30cal_bipod_stand, 30cal_bipod_crouch, 30cal_bipod_prone]
+    pap:
+      weapon: zombie_30cal_upgraded
+      muzzle: muzzle_rifle
+  mg42:
+    zone: nazi_zombie_factory
+    weapon: zombie_mg42
+    cls: mg
+    muzzle: muzzle_rifle
+    aliases: [mg42_bipod, mg42_bipod_stand, mg42_bipod_crouch, mg42_bipod_prone]
+    pap:
+      weapon: zombie_mg42_upgraded
+      muzzle: muzzle_rifle
+  ptrs41:
+    zone: nazi_zombie_factory
+    weapon: ptrs41_zombie
+    cls: rifle
+    muzzle: muzzle_heavy
+    pap:
+      weapon: ptrs41_zombie_upgraded
+      muzzle: muzzle_heavy
+  panzerschrek:
+    zone: nazi_zombie_factory
+    weapon: panzerschrek_zombie
+    cls: launcher
+    muzzle: muzzle_heavy
+    aliases: [panzerschrek]
+    pap:
+      weapon: panzerschrek_zombie_upgraded
+      muzzle: muzzle_heavy
+  m2_flamethrower:
+    zone: nazi_zombie_factory
+    weapon: m2_flamethrower_zombie
+    cls: flame
+    muzzle: muzzle_heavy
+    pap:
+      weapon: m2_flamethrower_zombie_upgraded
+      muzzle: muzzle_heavy
+
+# Aliases of the six above on the older maps (Nacht's `thompson`, `mp40`, `m1carbine` ...) are the
+# weapon files' names without `zombie_`: the viewer's own key forms find them (fx.js weaponKeys).
+
+# The first-person arms (replay.md §14). Every stock zombies map sets viewmodel_usa_marine_arms
+# (maps/_loadout.gsc, the nazi_zombie_* branch); a custom map that ships the stock loadout does
+# too. The arms are exported skinned; the viewer poses them with each gun's own idle / ADS anim.
+viewhands:
+  marine:
+    zone: nazi_zombie_factory
+    xmodel: viewmodel_usa_marine_arms
+    maps: all
+viewhands_default: marine
+
+# A gun whose fire sound the zone cannot name by order gets its class's stock sound.
+sound_stand_ins:
+  pistol: {fire: colt_fire, fire_plr: colt_fire_plr}
+  smg: {fire: thompson_fire, fire_plr: thompson_fire_plr}
+  rifle: {fire: m1carbine_fire, fire_plr: m1carbine_fire_plr}
+  mg: {fire: mp40_fire, fire_plr: mp40_fire_plr}
+  spread: {fire: m1carbine_fire, fire_plr: m1carbine_fire_plr}
+  launcher: {fire: colt_pap_fire, fire_plr: colt_pap_fire}
+  flame: {fire: null, fire_plr: null}      # the flamethrower has no fire sound; it stays silent
+  default: {fire: m1carbine_fire, fire_plr: m1carbine_fire_plr}
 
 # Power-ups: maps/_zombiemode_powerups.gsc add_zombie_powerup(name, model, ...), Der Riese.
 # Durations are the script's: insta kill / double points 30 s; a drop sits 15 s, then blinks

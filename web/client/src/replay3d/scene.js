@@ -718,7 +718,7 @@ export function createScene(canvas, opts) {
   function setViewmodelFov(deg) {
     const f = Number(deg)
     if (!Number.isFinite(f)) return
-    vmCamera.fov = sourceFovToVertical(Math.max(30, Math.min(120, f)))
+    vmCamera.fov = sourceFovToVertical(Math.max(5, Math.min(120, f)))   // 5: a scoped ADS zoom (replay.md §14)
     vmCamera.updateProjectionMatrix()
   }
 
@@ -1889,7 +1889,7 @@ export function installWorldFov(api) {
   api.setWorldFov = function setWorldFov(deg) {
     const f = Number(deg)
     if (!Number.isFinite(f)) return
-    api.state.worldFov = Math.max(60, Math.min(120, f))
+    api.state.worldFov = Math.max(5, Math.min(120, f))   // 5, not 60: ADS zooms to the gun's adsZoomFov (§14)
   }
   return api
 }
