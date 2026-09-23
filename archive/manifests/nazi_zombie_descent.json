@@ -1,0 +1,198 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_descent",
+  "title": "Descent",
+  "source": "custom",
+  "author": "Sounder1995",
+  "released": "2016-12-01",
+  "fs_game": "mods/nazi_zombie_descent",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_descent.iwd": "514991b756b67c4595cca53876fc10b8f5cd927beb707f783b7c6cce23e0139d"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "endgame_poi"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3500,
+        10000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, endgame_poi name an ending and are this map's own; script hardcodes cost 10000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 2023,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "endgame_poi"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3500,
+      10000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_debris",
+        "cave_door"
+      ],
+      [
+        6000,
+        "mortar_purchase",
+        "?"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "hedge_one"
+      ],
+      [
+        4000,
+        "pf1585_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1440_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "514991b756b67c4595cca53876fc10b8f5cd927beb707f783b7c6cce23e0139d",
+    "map_specific_triggers": [
+      "mortar_purchase"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_descent.exe",
+    "original_sha256": "e26e2f447a29e0156decceb707c5436a771fea89fbde8d9a066040b72afd554e",
+    "original_size": 336313819,
+    "source_url": "http://www.mediafire.com/file/nnhb4ern7khyhm4/nazi_zombie_descent.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/12/01/descent/",
+    "fetched": "2026-09-23T17:25:06Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Opening and End Cutscenes Shotguns have tighter pellet spread when ADS Underwater Combat Buildable (with parts in randomized locations) Black Ops III perk set: Juggernog, Double Tap 2.0, Speed Cola, Quick Revive, Mule Kick, Stamin-Up, Deadshot Daiquiri, Electric Cherry, Widow\u2019s Wine Working Solo Revive Pack-a-Punch with Repack (for Black Ops III elemental effects) Takeo\u2019s Katana Super Effective Stamin-Up Mortars Call of Duty 4, World at War, and Black Ops 1 Weapons Custom Patriotic Camos (Weapon-Specific) Your favorite 2 custom wonder weapons from Puns return! Dive to Prone (\u201cDolphin Diving\u201d) Perk Machine Change Black Ops III Health System (3 hit down without Juggernog, 6-7 hit down with) Note: When ascending or descending while zombies are \u201calive,\u201d you may encounter frame drops as the game attempts to determine the proper path for the zombies. Known Bugs: Sometimes images won\u2019t load; exit level and re-launch map to fix. Double Tap 2.0 appears to not work properly on certain weapons. No rhyme or reason as to which weapons in particular (know it affects wonder weapon and Remington 700). Possibly only occurs for limb shots. No clue why. Connection / frame rate issue? End cutscene may not play. If this happens, go into your app data, open the Descent mod folder, open the Descent IWD file, copy and paste the end cutscene bik into main/video. Apparently, sometimes the Repack is free? Evidently, there\u2019s co-op bugs? Special Thanks:",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_descent"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.1.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "nazi_zombie_descent.iwd:images/loadscreen_nazi_zombie_descent.iwi",
+        "nazi_zombie_descent.iwd:images/menu_button_backing_right.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_descent"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/descent/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/descent-3-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.1.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_descent_patch.ff",
+      "nazi_zombie_descent.iwd:animscripts/death.gsc",
+      "nazi_zombie_descent.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

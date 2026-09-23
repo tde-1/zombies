@@ -1,0 +1,145 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_room",
+  "title": "THE BUILDING",
+  "source": "custom",
+  "author": "777TONES",
+  "released": "February 28, 2016, 08:20:46 pm",
+  "fs_game": "mods/nazi_zombie_room",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_room.iwd": "8a3b2e3a61c17abdb2a619ffc092d744c76eace3d37d0a295ee151309bf599e0"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 307,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto56"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto55"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto57"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto54"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "8a3b2e3a61c17abdb2a619ffc092d744c76eace3d37d0a295ee151309bf599e0",
+    "map_specific_triggers": [
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "The_Building.exe",
+    "original_sha256": "106d85bea3241d221f1a054bfbe237c892b47848b2438ced8714e136562bab8b",
+    "original_size": 64295777,
+    "source_url": "https://www.mediafire.com/file/hh6g58hova89xy8/The_Building.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:27:12Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/thebuilding/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2021/06/the-building-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: kino_mainframe_trigger, kino_teleporter_trigger. ",
+  "precheck": {
+    "map_zone_inflated_mb": 76.1,
+    "addon_iwds": [
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_room.ff",
+      "nazi_zombie_room_patch.ff",
+      "nazi_zombie_room.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

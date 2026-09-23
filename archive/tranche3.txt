@@ -1,3 +1,24 @@
 # tranche 3 (lane MAPS, 2026-09-23 evening): Cheese Cube first, then shortlist5.txt (popular order)
 nazi_zombie_ccube
 nazi_zombie_ccube_u
+# batch B (shortlist5.txt, popular order)
+backlot_zm
+derweizenfelder
+nazi_zombie_descent
+nazi_zombie_die_festung
+nazi_zombie_death_forest
+nazi_zombie_halloweencube
+nazi_zombie_hoh
+nazi_zombie_in
+nazi_zombie_kneedeep
+nazi_zombie_navideath
+nazi_zombie_grave
+xmas_refinery
+nazi_zombie_reich
+nazi_zombie_123
+nazi_zombie_swamp_115
+nazi_zombie_room
+ugx_the_cobos
+trailer_park_christmas
+ugx_bridge
+wfms_zombies

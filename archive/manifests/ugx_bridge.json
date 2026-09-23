@@ -1,0 +1,194 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ugx_bridge",
+  "title": "UGX BRIDGE",
+  "source": "custom",
+  "author": "RexNworld",
+  "released": "2017-09-04",
+  "fs_game": "mods/ugx_bridge",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "a6cedc93c66fea34fddbebe58a5c4a6b5a5ca18b0c4e77b5e84852a6ae8ef59f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000,
+        6000,
+        150000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 150000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 158,
+    "script_count": 158,
+    "entities": 485,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000,
+      150000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        500,
+        "ugxm_trap_machine",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "a6cedc93c66fea34fddbebe58a5c4a6b5a5ca18b0c4e77b5e84852a6ae8ef59f",
+    "map_specific_triggers": [
+      "end_door",
+      "moon_teleporter_a_trigger",
+      "moon_teleporter_b_trigger",
+      "rounds_survive_doors",
+      "secret_trigger",
+      "secret_trigger3",
+      "ugx_wallweapon",
+      "ugxm_trap_machine",
+      "upgrade"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "ugx_bridge.exe",
+    "original_sha256": "b1fb391a23e17dab09529a12b6c9e0412b502a0f9b4f29e4e87bd0dbe0b08a96",
+    "original_size": 433779772,
+    "source_url": "http://www.mediafire.com/file/k1ka46w29rdi9ck/ugx_bridge.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:21:48Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "Story The Second Mahanadi Rail Bridge is a rail bridge over the Mahanadi near Cuttack in the Indian state of Odisha. The first Mahanadi Rail Bridge was opened on 1 January 1899. It had 64 spans of 100 feet (30.48 meters) each, on wells 19 ft 6 inches (5.94 meters) in diameter sunk to 60 ft (18.28 meters) below low water level.[1] The Engineer in Charge of construction of the first Mahanadi Rail Bridge was William Beckett, who won a gold medal from the Institution of Civil Engineers in 1901 for a paper he presented on the bridge construction.[2] The 2.1 km (1.3 miles) long Second Mahanadi Rail Bridge built at a cost of Rs. 120 crore was commissioned in 2008. The bridge has been designed for a train speed of 160 km per hour (99.41 miles per hour). Adequate steps have been taken to withstand quake.[3]",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "ugx_bridge.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_bridge.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_camp.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_temp_background.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugxm_guns.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugxm_guns.iwd:images/ugx_logo_menu.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_arrow.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_overlay.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/ugxbridge/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/ugx-bridege-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 87.2,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 218,
+        "scripts": 71,
+        "bytes": 27941563
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 1137,
+        "scripts": 2,
+        "bytes": 183248876
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "ugx_bridge_patch.ff",
+      "ugx_mod.iwd:animscripts/death.gsc"
+    ]
+  },
+  "site_hidden": true
+}
