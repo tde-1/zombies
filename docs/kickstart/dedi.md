@@ -3676,7 +3676,7 @@ stores for the same reason (`memory::write` VirtualProtects twice per call).
 **Blocked from 16:36 UTC:** B's own verified zm_nuked lease `m_5a28dcbe` (state `ready`, nobody joined)
 holds ~460 MB, so MemAvailable sits at ~510 MB and every start is refused (floor 850). The queue
 (`/home/waw/zdev-test/s2/q2.txt`: ILS A/B fast vs `ENW_MEMORY_SLOW_READS=1`, ILS/ut_box_map/lorkeep 45 min,
-Nacht and Der Riese 120 min, DLL `9c0ef76e`) keeps retrying every 2 min and starts by itself;
+Nacht and Der Riese 120 min, DLL `b83ea7fd` = main `27026f6` (INT's four registrations) + S2, copy `ZombiesDevogsdedis2enw_t4-b83ea7fd.dll`) keeps retrying every 2 min and starts by itself;
 results append to `/home/waw/zdev-test/s2/queue.log`. Stop it with `pkill -f botqueue.sh` (the guard
 still ends a running game on the next lease).
 
