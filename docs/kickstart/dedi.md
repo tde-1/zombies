@@ -3201,3 +3201,78 @@ worktree `C:\Users\b\ZombiesDev\wt-coord2` at main **`ad2ea6b`** (lane 17 WOW64 
 rollback `/home/waw/binkw32.rollback-06a2e1bd.dll`. Host agent not restarted (no host change). Proof:
 agent lease `m_e7918082` (fake …0003, Nacht) → `map_loaded` in 7 s → `ready` → cancelled. Same binary
 as launcher 0.2.24.
+
+## 23. 2026-09-23 12:33 UTC — B's fear_mc_2 froze at 4 m 46 s: one escaped frame corrupted the script VM, and the VM then overran `localVars` (lane D1)
+
+B's verified 1p game `m_0c608cd9` (inst-04, Wine pid 4520 / Linux pid 386851, `nazi_zombie_fear_mc_2`,
+round 4, box DLL `10ba8544` from §22.8, pause OFF, write probe ON). `com_frameTime` stopped at
+285,811 ms; the outer loop kept running at 61.8 Hz; `net_probe` showed `msgs=0` to client 0; B's
+client saw the server go silent and quit through the lockdown end screen at 13:33:24 UK. The host
+agent saw nothing: its last line for the game is `game live … cap 24.0h`.
+
+**Evidence** (copied before anything else, `zombies-dev:/home/waw/zdev-host/freeze-20260923/` and
+`C:\Users\b\ZombiesDev\logs\freeze-20260923\`): `enw-4520.log`, the engine's `console.log`, the
+replay `m_0c608cd9.enwr`, the host journal from 12:27, `/proc` status/maps/stack, per-thread
+stat/wchan/syscall twice 5 s apart (`snap1/2.txt`), and a Windows-side `winedbg` `bt all`
+(`winedbg-bt.txt`; attached and detached, the process lived). No gdb on the box, so no core.
+
+### 23.1 What each source says, in time order
+
+| time (UTC) | source | what |
+|---|---|---|
+| 12:28:29–12:32:29 | `varpool` every 60 s | `localVars 03BDDE10` every time — that is `localVarsStack - 1`, the VM at rest. `[0x3BFD478] 021C1DF0` (the real dvar). Child pool ≤ 15,737 / 65,536 |
+| 12:28:34–12:32:59 | `dedi_rate_probe`, 53 windows | `Com_Frame-body` **equals** `frame-body-entered` in every window: no frame left the body early for 4½ minutes |
+| 12:32:59.9–12:33:04.97 | `dedi_rate_probe` | body **40.2** vs entered **40.4** Hz: **exactly one frame escaped**. No `Com_Error TRAPPED`, no `Sys_Error` — so it left through the engine's SEH abortframe (§12.1), i.e. an access violation somewhere inside the frame |
+| same window | `console.log` line 211769 | the **first impossible script trace** of the game: gumball's `GetTagOrigin` error printed as *called from* gumball `wait 2`, *called from* `_hud_message::showNotifyMessage`, `_challenges_coop::updateRankAnnounceHUD`, `giveRankXP`, *started from* `self waittill("zom_kill")`. Gumball's flash loop is not called by the HUD code; it is running **on top of the HUD thread's function frames**, which were never popped. The 211,768 lines before it (16,000+ runtime errors, all from the map's own gumball / anticheat / loadout scripts) have correct traces |
+| 12:33:05.213, frame 11741 | write probe | `WRITE #1 to [0x03BFD478] … just before eip=00697B99 … esi=0000615B` — the `mov [ebx],esi` in 0x697B60 |
+| 12:33:05.257 | `dedi_reflection_dvars` | slot `021C1DF0 → 0000615B` |
+| 12:33:09 → | `dedi_rate_probe` | body 2.2 Hz, then **0.0 Hz** for good; entered 61.8 Hz; `com_frameTime=285811` |
+| 12:33:29 | `varpool` | `localVars 03BFE2DC` — **33,075 slots** above rest in one go. `localVarsStack` has 2,048 |
+| 12:33:29 → | `dedi_temp_guard` | three `0x20000` put-backs, then quiet — a consequence (client messages into a dead frame), not a cause: it counted 0 before 12:33:29 |
+| 12:35:49 | `/proc`, 5 s apart | main thread `S`, `do_select`, 25 ticks per 5 s (5 % of a core — the 60 Hz pacing sleep); every other thread idle in `futex_wait`/`pipe_read` |
+| 12:37 | `winedbg bt all` | main thread in `recvfrom` ← codwaw **0x5FFDFF** ← 0x59DD95: the packet receive whose `WSAEWOULDBLOCK` branch loads `[0x3BFD478]` at 0x5FFE1D and faults at 0x5FFE23 (§12.5/§13.1). No thread is blocked on a lock or a wait of ours |
+
+### 23.2 The mechanism
+
+0x697B60 is **`Scr_AddLocalVars(inst@eax, localId@edx)`** and 0x697BB0 is **`VM_UnarchiveStack`**
+(T4SP-Server-Plugin `cscr_vm.hpp` names both; KisakCOD `scr_vm.cpp:4687` is the IW3 shape). When a
+waiting thread resumes, `VM_Resume` → `VM_UnarchiveStack` rebuilds its function frames and, for every
+frame, pushes the names of that frame's local variables onto `scrVmPub.localVars` with no bound. The
+stack is `gScrVmGlob.localVarsStack[2048]` at 0x3BDDE14 (`gScrVmGlob` = 0x3BDDDF8, T4SP), so rest is
+0x3BDDE10. IW asserts (debug builds only) that `function_count == 0` and `localVars == localVarsStack
+- 1` on entry to `VM_Resume`.
+
+```
+an access violation inside a script builtin / G_RunFrame path (not yet named)
+  -> the engine's own abortframe swallows it: the frame body unwinds to Com_Frame's setjmp (§12.1)
+     -> the VM is left mid-execution: function_count, function_frame, localVars not popped,
+        the HUD thread's frames still on scrVmPub.function_frame_start[]
+        -> later threads run on top of those frames (the impossible trace, line 211769)
+           and archive them when they wait
+           -> the next resume unarchives stale local-variable ids and Scr_AddLocalVars walks them:
+              33,075 pushes, 16x the stack, straight through .bss
+              -> [0x3BFD478] (r_reflectionProbeGenerate) becomes 0x615B, a name id
+                 -> every frame's packet receive faults at 0x5FFE23 on WSAEWOULDBLOCK
+                    -> every frame escapes; com_frameTime never moves again
+```
+
+**So it is not one of our hooks.** Pause was OFF. `temp_stack_guard`, `varpool`, `join_probe`,
+`reflection_probe_dvars` and the rate/net probes are read-only up to the freeze (the guard's first
+write is 24 s after it). Nothing of ours calls the VM. **It is also not the §16 NOP**: the store at
+0x693D35 is reached only while `scrVmGlob.loading` is set (`cmp [0x3BDDE0C],0` at 0x693D24), and this
+game was 4½ minutes past load. It is the engine's own frame-level exception swallowing, which is
+harmless in a retail client (it never faults) and lethal to a script VM on a headless server that
+does fault now and then (the water simulation in §12.2 was the first such fault; this is another).
+
+This is the same writer as Nacht's two box deaths (§18.6, referee.md §15.4: 0x5FAD and 0x1DE3 at
+0x697B97). Those had pauses; this one had none, so **pausing is not the cause**, which settles the
+question §18.6 left open. What those games' first escaped frame was is not recoverable: nothing
+logged one.
+
+### 23.3 What is still unknown
+
+**Which access violation escaped the frame at ~12:33:00–04.** The escape probe (§12.1,
+`ENW_DEDI_ESCAPE_PROBE=1`) was not armed on the box, and it would have logged it. The trace suggests
+the zombie-kill → `giveRankXP` → `_hud_message::showNotifyMessage` chain was executing (its frames are
+the ones left behind), so a HUD-element or sound builtin that reaches renderer- or client-only data
+on a headless server is the first place to look. That is a lead, not a finding.
