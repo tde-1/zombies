@@ -706,7 +706,7 @@ class Game extends EventEmitter {
       // sends them back to back, but a busy link reorders nothing and delays plenty) must
       // not have its warm instance destroyed because the result POST was quick.
       this.disposeTimer = setTimeout(() => {
-        if (this.matchEndSeen) return
+        if (this.matchEndSeen || this.disposed) return   // handed over (a warm session) or already decided
         this.log.warn('no match_end after game over — the game may or may not still be alive, so the instance is torn down rather than assumed idle')
         this.dispose()
       }, 3000)
@@ -1090,6 +1090,7 @@ class HostAgent {
       if (s.loadMs) simArgs.push('--load-ms', String(s.loadMs))
       if (s.neverLoads) simArgs.push('--never-loads')
       if (s.realWarm) simArgs.push('--real-warm')
+      if (s.stallRebind) simArgs.push('--stall-rebind', String(s.stallRebind))
     }
     const inst = this.instances.create({
       kind: opts.kind || 'sim',
@@ -1571,6 +1572,7 @@ class HostAgent {
         loadMs: asg.sim?.load_ms ?? (a['sim-load-ms'] ? Number(a['sim-load-ms']) : null),
         neverLoads: !!asg.sim?.never_loads,
         realWarm: !!(asg.sim?.real_warm ?? a['sim-real-warm']),
+        stallRebind: asg.sim?.stall_rebind ?? null,
       },
     })
     // QUEUED IS SAID OUT LOUD (host.md §15). A lease waiting behind another game's boot

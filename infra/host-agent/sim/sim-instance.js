@@ -57,6 +57,7 @@ const sim = new ZombiesSim({
   endFails: !!a['end-fails'] || process.env.ENW_SIM_END_FAILS === '1',
   noMatchEnd: !!a['no-match-end'] || process.env.ENW_SIM_NO_MATCH_END === '1',
   realWarm: !!a['real-warm'],
+  stallRebind: Number(a['stall-rebind'] || 0),
   // The lease this process was started for. The real referee reads exactly this variable,
   // once, at process start (game-link-v0 `end`.`match`).
   matchId: process.env.ENW_MATCH || a.match || null,
