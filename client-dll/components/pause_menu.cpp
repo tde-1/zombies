@@ -97,6 +97,7 @@
 namespace enw::auth { const std::string& token(); }            // auth_token.cpp
 namespace enw::client {
 namespace frame_capture { bool request(const char* name); }    // frame_capture.cpp
+namespace stock_font { void* pick(float real_scale); }          // stock_font.cpp
 namespace {
 
 // ------------------------------------------------------------------ addresses
@@ -735,15 +736,8 @@ struct font_pick { void* font; float xs; };
 font_pick font_for(float scale) {
     // CG_DrawChat's rule (chat_overlay.cpp pick_font): the real pixel scale against the
     // UI's own thresholds, so each size gets the crispest face World at War has for it.
-    const float real = g_pl.sy * scale;
-    void* f = nullptr;
-    const uintptr_t small = rd<uintptr_t>(kDvarUiSmallFont);
-    const uintptr_t xbig = rd<uintptr_t>(kDvarUiExtraBigFont);
-    const uintptr_t big = rd<uintptr_t>(kDvarUiBigFont);
-    if (small && rd<float>(small + kDvarValue) >= real) f = rd<void*>(kFontSmall);
-    else if (xbig && real >= rd<float>(xbig + kDvarValue)) f = rd<void*>(kFontExtraBig);
-    else if (big && real >= rd<float>(big + kDvarValue)) f = rd<void*>(kFontBig);
-    else f = rd<void*>(kFontNormal);
+    // Always the STOCK World at War font, never a mod's (stock_font.cpp, B 0.2.17).
+    void* f = stock_font::pick(g_pl.sy * scale);
     if (!f) return {nullptr, 0.f};
     const int ph = rd<int>(reinterpret_cast<uintptr_t>(f) + 4);
     if (ph <= 0 || ph > 256) return {nullptr, 0.f};

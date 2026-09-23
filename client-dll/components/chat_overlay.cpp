@@ -134,6 +134,7 @@
 
 namespace enw::client {
 namespace frame_capture { bool request(const char* name); }  // frame_capture.cpp
+namespace stock_font { void on_first_map_frame(); void* pick(float real_scale); }  // stock_font.cpp
 namespace {
 
 // ------------------------------------------------------------------ addresses
@@ -1719,16 +1720,10 @@ const void* g_scr = nullptr;
 placement g_pl{};
 
 void* pick_font(const placement& p) {
-    // CG_DrawChat 0x436977..0x4369DD, verbatim in logic: real text scale against
-    // the UI's font thresholds.
-    const float real = p.sy * g_text_scale;
-    const uintptr_t small = rd<uintptr_t>(kDvarUiSmallFont);
-    if (small && rd<float>(small + kDvarValue) >= real) return rd<void*>(kFontSmall);
-    const uintptr_t xbig = rd<uintptr_t>(kDvarUiExtraBigFont);
-    if (xbig && real >= rd<float>(xbig + kDvarValue)) return rd<void*>(kFontExtraBig);
-    const uintptr_t big = rd<uintptr_t>(kDvarUiBigFont);
-    if (big && real >= rd<float>(big + kDvarValue)) return rd<void*>(kFontBig);
-    return rd<void*>(kFontNormal);
+    // CG_DrawChat's rule (the real pixel scale against the UI's font thresholds),
+    // but ALWAYS World at War's stock font from this install, never a mod's
+    // (stock_font.cpp; B, 0.2.17).
+    return stock_font::pick(p.sy * g_text_scale);
 }
 
 float text_w(const char* s) {
@@ -1841,6 +1836,34 @@ void drain_inbox() {
 
 const float kWhite[4] = {1, 1, 1, 1};
 const float kDim[4] = {0.75f, 0.75f, 0.75f, 1};
+
+// ENW_CHAT_SELFTEST=4: the stock-font proof card. An OPAQUE block (so the map
+// behind it cannot change a pixel) with the same sample in each face the overlay
+// can pick, drawn through stock_font::pick, plus one line in the engine's CURRENT
+// bigFont for contrast. Captured on a stock map and on a font-replacing mod, the
+// top four lines must be pixel-identical and the last must differ.
+void draw_font_card() {
+    const float black[4] = {0, 0, 0, 1};
+    box(20.f, 250.f, 600.f, 150.f, black);
+    static const float reals[4] = {0.20f, 0.30f, 0.45f, 0.60f};   // small, normal, big, extraBig
+    static const char* labels[4] = {"small", "normal", "big", "extraBig"};
+    void* const keep_font = g_font;
+    const float keep_xs = g_xscale;
+    for (int i = 0; i < 5; ++i) {
+        void* f = i < 4 ? stock_font::pick(reals[i]) : *reinterpret_cast<void* const*>(kFontBig);
+        if (!f) continue;
+        const int ph = rd<int>(reinterpret_cast<uintptr_t>(f) + 4);
+        if (ph <= 0 || ph > 256) continue;
+        g_font = f;
+        g_xscale = g_text_scale * 48.0f / static_cast<float>(ph);
+        char line[160];
+        std::snprintf(line, sizeof line, "%s: The quick brown fox jumps 0123456789 !?%%&@",
+                      i < 4 ? labels[i] : "ENGINE bigFont (a mod's, if it has one)");
+        text(26.f, 272.f + 28.f * i, line, kWhite);
+    }
+    g_font = keep_font;
+    g_xscale = keep_xs;
+}
 
 void draw_notify() {
     // CG_DrawChat's rules: the newest cg_chatHeight lines younger than
@@ -2158,6 +2181,16 @@ const step kScript[] = {
 };
 // ENW_CHAT_SELFTEST=3: the pause test. Typing pause (overlay open 5 s), then the
 // Esc menu, with captures of cg_drawFPS at each edge.
+const step kScript4[] = {
+    {6000, S_SHOT, 0, 0, "fontcard"},
+    {7000, S_KEY, 'T', 0, nullptr},
+    {8500, S_SHOT, 0, 0, "fontcard-overlay"},
+    {9000, S_KEY, VK_ESCAPE, 0, nullptr},
+    {10000, S_KEY, VK_ESCAPE, 0, nullptr},     // the Esc menu (pause_menu.cpp draws with pick too)
+    {11500, S_SHOT, 0, 0, "fontcard-escmenu"},
+    {12000, S_KEY, VK_ESCAPE, 0, nullptr},
+    {13000, S_DONE, 0, 0, nullptr},
+};
 const step kScript3[] = {
     {5000, S_SHOT, 0, 0, "p-before"},
     {6000, S_KEY, 'T', 0, nullptr},
@@ -2234,8 +2267,9 @@ void inject_demo() {
 }
 
 void selftest_tick() {
-    const step* script = g_selftest_mode == 3 ? kScript3 : kScript;
-    const size_t count = g_selftest_mode == 3 ? sizeof kScript3 / sizeof kScript3[0] : sizeof kScript / sizeof kScript[0];
+    const step* script = g_selftest_mode == 4 ? kScript4 : g_selftest_mode == 3 ? kScript3 : kScript;
+    const size_t count = g_selftest_mode == 4 ? sizeof kScript4 / sizeof kScript4[0]
+                       : g_selftest_mode == 3 ? sizeof kScript3 / sizeof kScript3[0] : sizeof kScript / sizeof kScript[0];
     if (!g_selftest || !g_first_draw || g_step >= count) return;
     const DWORD t = ::GetTickCount() - g_first_draw;
     const step& s = script[g_step];
@@ -2362,6 +2396,7 @@ void draw_inner(int lc) {
 
     if (!g_logged_first_draw) {
         g_logged_first_draw = true;
+        stock_font::on_first_map_frame();
         const char* fname = rd<const char*>(reinterpret_cast<uintptr_t>(g_font));
         ENW_INFO("chat_overlay: FIRST DRAW from inside CG_Draw2D. scrPlaceView[%d] scale %.3f x "
                  "%.3f, origin (%.1f, %.1f); display %dx%d; font '%s' (%d px) -> x-scale %.4f",
@@ -2372,6 +2407,7 @@ void draw_inner(int lc) {
     if (pause_menu::draw(lc)) {}   // [esc-menu] the menu draws the panel itself
     else if (g_open) draw_panel(lc);
     else draw_notify();
+    if (g_selftest_mode == 4) draw_font_card();
     selftest_tick();
 }
 

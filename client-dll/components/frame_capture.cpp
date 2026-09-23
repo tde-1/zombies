@@ -88,6 +88,21 @@ bool write_bmp(const std::string& path, const uint8_t* bits, int pitch, int w, i
 
 void capture(IDirect3DDevice9* dev, const char* name);
 
+// Work that must run on the thread that owns the D3D device (the one that
+// presents): stock_font creates its texture here. One slot is enough.
+using device_job = void (*)(IDirect3DDevice9*);
+std::atomic<device_job> g_job{nullptr};
+
+void run_job_seh(IDirect3DDevice9* dev) {
+    device_job j = g_job.exchange(nullptr);
+    if (!j) return;
+    __try {
+        j(dev);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        ENW_ERROR("frame_capture: fault 0x%08lX in a device job", GetExceptionCode());
+    }
+}
+
 void capture_seh(IDirect3DDevice9* dev, const char* name) {
     __try {
         capture(dev, name);
@@ -149,6 +164,7 @@ HRESULT __stdcall present_hook(IDirect3DDevice9* dev, const RECT* a, const RECT*
         name.swap(g_pending);
     }
     if (!name.empty()) capture_seh(dev, name.c_str());
+    run_job_seh(dev);
     return g_real_present(dev, a, b, c, e);
 }
 
@@ -160,6 +176,7 @@ HRESULT __stdcall sc_present_hook(IDirect3DSwapChain9* sc, const RECT* a, const 
         name.swap(g_pending);
     }
     if (!name.empty() && g_dev) capture_seh(g_dev, name.c_str());
+    if (g_dev) run_job_seh(g_dev);
     return g_real_sc_present(sc, a, b, c, e, f);
 }
 
@@ -237,6 +254,15 @@ public:
 ENW_REGISTER_COMPONENT(frame_capture_component)
 
 }  // namespace
+
+// Run `fn` once, on the device's own thread, just before the next Present. Not
+// gated on the capture switch: this is how stock_font makes its texture. False
+// while the device is not up yet (ask again next frame).
+bool run_at_present(void (*fn)(IDirect3DDevice9*)) {
+    if (!install()) return false;
+    device_job expected = nullptr;
+    return g_job.compare_exchange_strong(expected, fn);
+}
 
 // Main thread. Returns false when the instrument is off or the device is not up.
 bool request(const char* name) {
