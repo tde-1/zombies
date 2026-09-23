@@ -200,24 +200,16 @@
       "ugxm_guns.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true,
+  "site_hidden": false,
   "asset_audit": {
-    "at": "2026-09-23T13:41:08",
-    "verdict": "hide",
-    "map_loaded_runs": 1,
+    "at": "2026-09-23T22:13:33",
+    "verdict": "minor",
+    "map_loaded_runs": 2,
     "misses": 206,
     "fatal": 5,
-    "visible": 4,
-    "visible_owner": {
-      "release": 2,
-      "ours": 2
-    },
-    "visible_names": [
-      "weapon:weapons/sp/crossbow_exp",
-      "weapon:weapons/sp/crossbow_exp_upgraded",
-      "xmodel:bo2_c_zom_dlc0_zom_sol_body1",
-      "xmodel:bo2_c_zom_dlc0_zom_solciv_body1"
-    ],
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
     "client_check": [
       "viewhands_iw6_devgru_elitel"
     ],
@@ -236,5 +228,45 @@
       ]
     },
     "tool": "archive/asset_audit.py"
-  }
+  },
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/crossbow_exp",
+        "from": "localized_common.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "445b4576ea0ae906b0511bfa4aa924734185fde9c8f56d5d5a551c81ecdd727a",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/crossbow_exp_upgraded",
+        "from": "localized_common.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "9a9f1d3d405d3889f83b6dffd2f44c57b8c39bb7607b10872f781243ebf2f711",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95139 ms over the hold",
+    "first_error": null,
+    "match": "m_6b03a4bf",
+    "at": "2026-09-23T21:20:41",
+    "instance": "inst-20",
+    "com_frameTime_advance_ms": 95139,
+    "com_error": [],
+    "console_errors": [
+      "5910:******* script runtime error *******",
+      "5914:Error: called from:",
+      "5918:Error: started from:",
+      "5922:Error: ************************************",
+      "5924:******* script runtime error *******",
+      "5928:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

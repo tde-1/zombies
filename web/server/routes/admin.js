@@ -327,6 +327,16 @@ function router() {
     res.json({ game: { ...g, flags: safeJson(g.flags, []), summary: safeJson(g.summary_json, null), summary_json: undefined } })
   })
 
+  // ---- Friend sync (lane SOC, lib/friendSync.js) --------------------------------------
+  // Which sources are wired, when each last read, how many pairs, the last error; and the
+  // places that were checked and hold no friend list. Run-now for after a config change.
+  r.get('/friend-sync', requireAdmin, (req, res) => res.json(require('../lib/friendSync').status()))
+  r.post('/friend-sync/run', requireAdmin, async (req, res) => {
+    const fs = require('../lib/friendSync')
+    const out = await fs.syncAll('admin').catch((e) => ({ ok: false, error: String(e.message || e) }))
+    res.json({ ...out, status: fs.status() })
+  })
+
   // ---- Chat -------------------------------------------------------------------------
   // The global channel (chat_network): every line, removed ones included, newest first.
   // Party lines and DMs are private and are not listed here.

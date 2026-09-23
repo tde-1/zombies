@@ -165,9 +165,9 @@ async function tests() {
     const by = Object.fromEntries(st.friends.map((f) => [f.name, f]))
     truthy(by.staminup && by.deadshot && by.juggernog, 'all three friends listed')
     eq(by.quickrevive, undefined, 'a stranger is not in a friends-scope list')
-    eq(by.deadshot.where, 'In game: Der Riese', 'box-reported game')
+    eq(by.deadshot.where, 'In game on Der Riese', 'box-reported game (roster.statusOf words since SOC; no live frame, so no round)')
     eq(by.deadshot.where_kind, 'game', 'kind')
-    eq(by.staminup.where, 'Lobby: Verruckt (1/4)', 'lobby')
+    eq(by.staminup.where, 'In party on Verruckt (1/4)', 'lobby')
     eq(by.juggernog.where, 'Online', 'idle')
   })
 

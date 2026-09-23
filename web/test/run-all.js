@@ -447,6 +447,110 @@ async function main() {
       eq(stateOf(r.match_id), 'cancelled')
       parties.leave(S)
     })
+
+    // [RS] The rail's × closes the server and keeps the party (B 2026-09-23).
+    check('the rail\'s ×: the server is cancelled, the party stays with its map, nothing to follow', () => {
+      const r = startSolo(S)
+      truthy(r.ok, r.error)
+      assignments.ack(MB(), 'live', r.match_id)
+      seats.observe(r.match_id, frame([[S, true]]))
+      const out = seats.end(S, r.match_id)
+      truthy(out.ok && out.cancelled, JSON.stringify(out))
+      eq(stateOf(r.match_id), 'cancelled')
+      const p = parties.forPlayer(S)
+      truthy(p, 'still in the party')
+      eq(JSON.stringify([p.state, p.match_id, p.map && p.map.key]), JSON.stringify(['forming', null, 'nazi_zombie_test']), 'forming, map kept')
+      eq(seats.resumeInfo(parties.launchInfo(S), S), null, 'no Resume into a closed server')
+      const w = watcher(S); w.flow = false
+      for (let i = 0; i < 10; i++) w.poll()
+      eq(w.launches, 0, 'the launcher follows nothing')
+      eq(seats.end(S, 'm_old').stale === true || seats.end(S, 'm_old').ok, true, 'a stale click changes nothing')
+    })
+
+    check('the rail\'s × in a party of two: host only; it ends the game for both; nobody leaves', () => {
+      const T = '76561198000000002'
+      const r = startSolo(S)
+      const a = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(r.match_id)
+      db.prepare('UPDATE assignments SET players_json=? WHERE id=?').run(JSON.stringify([...JSON.parse(a.players_json), { steamid: T, name: 'P2' }]), a.id)
+      db.prepare('INSERT INTO party_members (party_id, steam_id, ready, joined_at) VALUES (?,?,1,?)').run(a.party_id, T, now())
+      const no = seats.end(T, r.match_id)
+      eq(no.ok, false, 'a member cannot close the host\'s server')
+      eq(stateOf(r.match_id), 'leased', 'untouched')
+      truthy(seats.end(S, r.match_id).cancelled, 'the host can')
+      eq(stateOf(r.match_id), 'cancelled')
+      eq(parties.forPlayer(S).members.length, 2, 'both still in the party')
+      eq(seats.resumeInfo(parties.launchInfo(T), T), null, 'no Resume for the member either')
+      parties.leave(T); parties.leave(S)
+    })
+
+    // [RS] Idle-server auto-close (host lib/idle.js; esc-menu.md §13). m_5a28dcbe sat ready
+    // for 95 min with nobody in it.
+    check('a download in progress puts hold_idle on the lease (and moves the box\'s nonce); installed lifts it', () => {
+      const partyProgress = require('../server/lib/partyProgress')
+      const r = startSolo(S)
+      truthy(r.ok, r.error)
+      assignments.ack(MB(), 'ready', r.match_id)
+      const of = () => assignments.forBox(MB(), { v: 2 })
+      const lease = () => of().assignments.find((x) => x.match_id === r.match_id)
+      eq(lease().hold_idle, undefined, 'no hold')
+      const n0 = of().nonce
+      const pid = parties.forPlayer(S).id
+      partyProgress.push(pid, S, { state: 'downloading', map: 'nazi_zombie_test', pct: 5 })
+      eq(lease().hold_idle, true, 'held while downloading')
+      truthy(of().nonce !== n0, 'the nonce moved, so the box re-reads the list')
+      partyProgress.push(pid, S, { state: 'installed', map: 'nazi_zombie_test' })
+      eq(lease().hold_idle, undefined, 'lifted when installed')
+      assignments.cancel(r.match_id, 'test'); parties.leave(S)
+    })
+
+    check('the box says no_players: the lease ends, the party stays forming with its map, the launcher is told once', () => {
+      const r = startSolo(S)
+      assignments.ack(MB(), 'ready', r.match_id)
+      assignments.ack(MB(), 'no_players', r.match_id, 'nobody joined within 300 s of the server being ready', { rule: 'never_joined' })
+      eq(stateOf(r.match_id), 'cancelled')
+      const p = parties.forPlayer(S)
+      eq(JSON.stringify([p.state, p.match_id, p.map && p.map.key]), JSON.stringify(['forming', null, 'nazi_zombie_test']), 'forming, map kept')
+      eq(seats.closedFor(S) && seats.closedFor(S).text, 'Server closed: nobody joined.', 'the launcher\'s line')
+      eq(seats.closedFor(S).match_id, r.match_id, 'for that match')
+      eq(seats.resumeInfo(parties.launchInfo(S), S), null, 'no Resume into it')
+      const log = db.prepare("SELECT * FROM activity_log WHERE event='assignment.idle_closed' ORDER BY id DESC LIMIT 1").get()
+      truthy(log && JSON.parse(log.metadata).reason === 'no_players' && JSON.parse(log.metadata).match_id === r.match_id, 'recorded')
+      const w = watcher(S); w.flow = false
+      for (let i = 0; i < 5; i++) w.poll()
+      eq(w.launches, 0, 'nothing to follow')
+      parties.leave(S)
+    })
+
+    check('no_players never ends a lease that is already over, or another box\'s', () => {
+      const r = startSolo(S)
+      assignments.ack(MB(), 'live', r.match_id)
+      assignments.ack(boxes.byName('test-box'), 'no_players', r.match_id, 'x', { rule: 'never_joined' })
+      eq(stateOf(r.match_id), 'live', 'another box cannot')
+      assignments.cancel(r.match_id, 'test')
+      assignments.ack(MB(), 'no_players', r.match_id, 'x', { rule: 'never_joined' })
+      eq(stateOf(r.match_id), 'cancelled', 'unchanged')
+      parties.leave(S)
+    })
+
+    // [RS] A run that ended on its own and was restarted inside the host's restart grace:
+    // its result is posted with `lease_continues`, and the lease must survive it.
+    check('a result with lease_continues from the lease\'s own box keeps the lease; from another box it does not', () => {
+      const r = startSolo(S)
+      assignments.ack(MB(), 'live', r.match_id)
+      const res = results_.ingest({ box: 'multi-box', lease_continues: true, summary: summary({ match_id: r.match_id, players: [S], rounds: 1, finish: null }) })
+      truthy(res.ok, JSON.stringify(res))
+      eq(res.lease_continues, true)
+      eq(stateOf(r.match_id), 'live', 'the lease goes on under run 2')
+      eq(parties.forPlayer(S).state, 'in-game', 'and the party with it')
+      const r2 = results_.ingest({ box: 'multi-box', summary: { ...summary({ match_id: `${r.match_id}.r2`, players: [S], rounds: 3, finish: null }), lease_match_id: r.match_id } })
+      truthy(r2.ok, JSON.stringify(r2))
+      eq(stateOf(r.match_id), 'done', 'run 2 ending on its own closes it')
+      const q = startSolo(S)
+      assignments.ack(MB(), 'live', q.match_id)
+      results_.ingest({ box: 'test-box', lease_continues: true, summary: summary({ match_id: q.match_id, players: [S], rounds: 1, finish: null }) })
+      eq(stateOf(q.match_id), 'done', 'another box cannot keep a lease open')
+      parties.leave(S)
+    })
   }
 
   // ── the key pin ────────────────────────────────────────────────────────────
@@ -788,19 +892,19 @@ async function main() {
   check('a map no box will run is marked, with the reason, on the list and on the party', () => {
     const add = (key, health) => db.prepare(`INSERT OR IGNORE INTO maps (key, slug, title, source, health, main_finish, round_n, added_at)
                                               VALUES (?,?,?,'custom',?,'round',20,?)`).run(key, key, key, health, now())
-    add('nazi_zombie_derberg', 'playable')
+    add('water', 'playable')   // was Der Berg: box-proven 2026-09-23 (archive.md s14)
     add('nazi_zombie_unrun', 'playable')
     add('nazi_zombie_localonly', 'custom-only')
     const one = (k) => maps.project(db.prepare('SELECT * FROM maps WHERE key=?').get(k))
     eq(one('nazi_zombie_test').on_server, true, 'the proven fixture map is playable')
     eq(one('nazi_zombie_test').server_note, null, 'and carries no reason')
-    eq(one('nazi_zombie_derberg').on_server, false, 'Der Berg is not')
-    truthy(/engine limit/.test(one('nazi_zombie_derberg').server_note), 'and says why: ' + one('nazi_zombie_derberg').server_note)
+    eq(one('water').on_server, false, 'Water is not')
+    truthy(/engine limit/.test(one('water').server_note), 'and says why: ' + one('water').server_note)
     eq(one('nazi_zombie_unrun').server_note, 'Not tested on our servers yet')
     eq(one('nazi_zombie_localonly').server_note, 'Play Local only')
     const G = '76561198000000007'
     users.ensure(G, { username: 'golf' }); db.prepare('UPDATE users SET approved=1 WHERE steam_id=?').run(G)
-    const pty = parties.create(G, { mapKey: 'nazi_zombie_derberg' })
+    const pty = parties.create(G, { mapKey: 'water' })
     eq(pty.map.on_server, false, 'the party card knows too')
     truthy(pty.map.server_note, 'with the reason for its hover')
     parties.leave(G)

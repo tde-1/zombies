@@ -442,6 +442,7 @@ async function renderSettings() {
     "Needed for ORBiT and UGX Requiem. Only changes ENW's copy of the game.")
   field('Streamer mode', check('streamerMode'), 'Hides join codes and incoming invite details.')
   field('Discord rich presence', check('discordPresence'))
+  field('Notification sound', check('notifySound'), 'Invites, DMs and party chat while the launcher is not in front.')
   field('Remove unplayed maps', check('autoRemoveUnplayedMaps'))
   const scope = el('div', 'muted', s._scope ? `Saved to: ${s._scope}` : '')
   b.append(scope)
@@ -671,6 +672,8 @@ function wire() {
     if (p.file) toast(`${p.bsp}: ${p.file}`)
   })
   window.enw.onToast((t) => toast(t.text, t.kind, t.action))
+  // SOC (2026-09-23): the notification chime, when main.js's attention.js says so.
+  if (window.enw.onChime) window.enw.onChime(() => chime())
   window.enw.onSession(() => refresh())
   window.enw.onSettings(() => refresh())
   window.enw.onSite(() => refresh())
@@ -702,3 +705,28 @@ function wire() {
   const st = await refresh()
   if (!st.setup?.installed) { await renderFirstRun(); show('firstRun') }
 })()
+
+// THE CHIME (lane SOC, 2026-09-23). Two short soft tones, synthesised, so there is no sound
+// file to ship and nothing for the CSP to allow. Played here because this page never
+// navigates and keeps running while the window is hidden (backgroundThrottling off). One
+// AudioContext, reused; ~0.35 s, quiet enough to sit under a game's own audio.
+let chimeCtx = null
+function chime() {
+  try {
+    chimeCtx = chimeCtx || new AudioContext()
+    if (chimeCtx.state === 'suspended') chimeCtx.resume().catch(() => {})
+    const t0 = chimeCtx.currentTime + 0.01
+    for (const [f, at] of [[880, 0], [1320, 0.12]]) {
+      const o = chimeCtx.createOscillator()
+      const g = chimeCtx.createGain()
+      o.type = 'sine'
+      o.frequency.value = f
+      g.gain.setValueAtTime(0.0001, t0 + at)
+      g.gain.exponentialRampToValueAtTime(0.18, t0 + at + 0.015)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.22)
+      o.connect(g).connect(chimeCtx.destination)
+      o.start(t0 + at)
+      o.stop(t0 + at + 0.25)
+    }
+  } catch { /* no audio device: the flash and the dot still say it */ }
+}

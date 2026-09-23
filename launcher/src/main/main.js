@@ -11,7 +11,7 @@
 //   * NO OVERLAY, EVER. B was emphatic. The site lives in a native WebContentsView and
 //     our chrome sits BESIDE it, never on top of the game. When the boot screen or
 //     first-run wizard needs the whole window, the site view is hidden, not covered.
-import { app, BrowserWindow, WebContentsView, Tray, Menu, ipcMain, shell, dialog, nativeImage, session as electronSession } from 'electron'
+import { app, BrowserWindow, WebContentsView, Tray, Menu, ipcMain, shell, dialog, nativeImage, Notification, session as electronSession } from 'electron'
 import fs from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
@@ -45,6 +45,7 @@ import { LocalRun } from './localrun.js'
 import { Presence, presenceFor } from './discord.js'
 import { Telemetry, defaultDirs as telemetryDirs } from './telemetry/index.js'
 import { readSession } from './telemetry/collect.js'
+import { makeAttention, dotBitmap, toastXml } from './attention.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -407,7 +408,12 @@ async function createWindow() {
   await win.loadFile(path.join(RENDERER, 'shell.html'))
 
   const view = new WebContentsView({
-    webPreferences: { contextIsolation: true, nodeIntegration: false, preload: PRELOAD, sandbox: false },
+    // backgroundThrottling off (SOC, 2026-09-23): the site's socket IS the launcher's live
+    // connection -- invites, DMs, party chat, the online list -- and it has to keep working
+    // at full speed while the window sits minimised or in the tray. Chromium otherwise
+    // stretches a hidden page's timers to once a minute, and its 30 s presence heartbeat
+    // with them.
+    webPreferences: { contextIsolation: true, nodeIntegration: false, preload: PRELOAD, sandbox: false, backgroundThrottling: false },
   })
   state.siteView = view
   win.contentView.addChildView(view)
@@ -471,6 +477,9 @@ async function createWindow() {
   win.once('ready-to-show', () => win.show())
   win.show()
 
+  // Coming to the front means everything has been seen: stop the flash, clear the dot.
+  win.on('focus', () => state.attention?.focused())
+
   // Closing minimises to the tray so invites and "lobby ready" still reach the player
   // (spec 13 §2). Quit is a deliberate act, from the tray.
   win.on('close', (e) => {
@@ -488,6 +497,7 @@ function createTray() {
   const img = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty()
   const tray = new Tray(img)
   tray.setToolTip('ENW Zombies')
+  state.trayImage = img
   const rebuild = () => {
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: 'Open ENW Zombies', click: () => { state.win?.show(); state.win?.focus() } },
@@ -619,6 +629,9 @@ function handleDeepLink(raw) {
   // navigation of the site view. Joining-if-invited is the SITE's decision on that page
   // — the launcher must not invent a join, because it does not know the invite list.
   if (link.kind === 'party') openSitePath(`/party/${encodeURIComponent(link.party)}`, 'a party deep link')
+  // The toast's Accept (attention.js): accept that invite through the site, as the rail's
+  // Accept does, then show home, where the rail has already moved you into the party.
+  if (link.kind === 'invite') acceptInviteFromToast(link.invite)
   // A MAP LIVES IN THE SITE NOW. This used to be handled entirely in the renderer, by
   // selecting the map in the launcher's own rail; with the rail gone the link has to
   // navigate the wrapped view to the map's own page, which is where Play Local, the
@@ -630,6 +643,68 @@ function handleDeepLink(raw) {
   // the player's side, exactly like the link doing nothing.
   const send = () => push('deeplink', link)
   try { if (state.win.webContents.isLoading()) state.win.webContents.once('did-finish-load', send); else send() } catch { send() }
+}
+
+async function acceptInviteFromToast(inviteId) {
+  if (!state.api) { push('toast', { kind: 'error', text: 'The site is not reachable, so the invite could not be accepted.' }); return }
+  try {
+    const r = await state.api.req(`/api/party/invites/${Number(inviteId)}/accept`, { method: 'POST', body: {} })
+    if (!r.ok) throw new Error((r.data && r.data.error) || `the site said ${r.status}`)
+    log('attention', `accepted invite ${inviteId} from the toast`)
+    openSitePath('/', 'an accepted invite')
+  } catch (e) {
+    log('attention', `invite ${inviteId} not accepted: ${e.message}`)
+    push('toast', { kind: 'error', text: `Could not accept the invite: ${e.message}` })
+    openSitePath('/', 'an invite that could not be accepted')
+  }
+}
+
+// ------------------------------------------------------------- attention --
+// Flash, chime, toast and the unread dot (attention.js has the rules; this is the Electron
+// half). Built once, after the window and the tray.
+function unreadImages() {
+  if (state.unreadImages !== undefined) return state.unreadImages
+  state.unreadImages = null
+  try {
+    const base = state.trayImage
+    if (base && !base.isEmpty()) {
+      const { width, height } = base.getSize()
+      const tray = nativeImage.createFromBitmap(dotBitmap(base.toBitmap(), width, height), { width, height })
+      // The taskbar overlay: a 16x16 dot on its own.
+      const blank = Buffer.alloc(16 * 16 * 4)
+      const overlay = nativeImage.createFromBitmap(dotBitmap(blank, 16, 16), { width: 16, height: 16 })
+      state.unreadImages = { tray, overlay }
+    }
+  } catch (e) { log('attention', `no unread images: ${e.message}`) }
+  return state.unreadImages
+}
+
+function setupAttention() {
+  if (process.platform === 'win32') { try { app.setAppUserModelId('gg.enw.zombies.launcher') } catch {} }
+  state.attention = makeAttention({
+    win: () => state.win,
+    gameRunning: () => !!state.flow,
+    soundOn: () => settings.get().notifySound !== false,
+    streamer: () => !!settings.get().streamerMode,
+    // The shell page plays it (renderer shell.js, WebAudio): no sound file, no player.
+    chime: () => state.win?.webContents.send('enw:chime', {}),
+    toast: (t) => {
+      if (!Notification.isSupported()) return
+      const n = new Notification(process.platform === 'win32'
+        ? { toastXml: toastXml(t), silent: true }
+        : { title: t.title, body: t.body, silent: true })
+      n.on('click', () => { state.win?.show(); state.win?.focus() })
+      n.show()
+      state.lastToast = n       // held, or it can be collected before Windows is done with it
+    },
+    badge: (n) => {
+      const imgs = unreadImages()
+      try { state.tray?.tray.setImage(n && imgs ? imgs.tray : state.trayImage) } catch {}
+      try { state.tray?.tray.setToolTip(n ? `ENW Zombies (${n} new)` : 'ENW Zombies') } catch {}
+      try { state.win?.setOverlayIcon(n && imgs ? imgs.overlay : null, n ? `${n} new` : '') } catch {}
+    },
+    log: (m) => log('attention', m),
+  })
 }
 
 // Navigate the wrapped site view to one of its own paths. Never leaves the site's
@@ -732,6 +807,9 @@ function wireIpc() {
   })
   // close(), not destroy(): the tray rule in createWindow still decides what Close means.
   handle('winClose', () => { state.win?.close(); return true })
+  // The site heard an invite / DM / party line (web client attention.js); attention.js
+  // decides whether the player needs telling and how.
+  handle('attention', (ev) => (state.attention ? state.attention.signal(ev && typeof ev === 'object' ? ev : {}) : { skipped: 'not ready' }))
   handle('winIsMaximized', () => !!state.win?.isMaximized())
 
   handle('detect', (opts) => detect.detect(opts || {}))
@@ -1995,6 +2073,7 @@ if (!single) {
     wireSitePassword()
     await createWindow()
     createTray()
+    setupAttention()
 
     // Discord Rich Presence. After the window, never in the launch path; connecting is
     // asynchronous and Discord not running is a silent, backed-off retry (discord.js).

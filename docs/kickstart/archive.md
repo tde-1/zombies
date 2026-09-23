@@ -1118,3 +1118,97 @@ editing the rule, or hide it in the DB with the reason in the manifest, as §13.
   the six maps' sounds fixed; a client listening is the proof.
 * number2's misspelled `loacalized_number2.ff` (its dogs) could be staged under the loaded name
   (`install.add`, §9.6); the map is hidden for its absent `mk48` anyway.
+
+## 14. 2026-09-23 (evening) — Leviathan's `napalmblob`, the weapon rule behind it, Cheese Cube, and tranche 3 (lane MAPS)
+
+B, 17:30 UK: *"Get more maps working. Investigate Leviathan and why it's not working, and if you
+find the fix, apply it to a bunch of others. As a priority, get Cheese Cube and a lot more maps
+added."* Box leases on fake `76561198000000005`, one at a time. A pass now means `map_loaded`,
+**185 s alive** (125 s for a tranche-2 re-proof whose asset gate was already clean, coordinator
+20:15), `com_frameTime` advancing, and the **freeze watchdog clean** (`box_proof.py` now fails a
+run on any `dedi_freeze_watchdog` finding or `escape fault`). Box DLL `fd3039d2`. Console slices:
+`ZombiesDev\archive\logs\box-console\proof-maps-20260923\`.
+
+### 14.1 What `unknown item 'napalmblob'` is (read off the decrypted 1.7 image)
+
+```
+PrecacheItem          0x522D10  window open -> BG_GetWeaponIndexForName(name, G_RegisterWeapon)
+BG_GetWeaponIndexForName 0x41D4C0
+  already registered? (0x41D470, bg_weaponDefs 0x8F6770)            -> its index
+  fs_game non-empty ([0x2122B00], registered at 0x5DDF41)            -> RAW loader 0x422DE0
+      0x424130: FS read "weapons/%s/%s"; missing -> "WARNING: Could not load weapon file"
+      -> the def of `defaultweapon` instead
+  fs_game empty and useFastFile                                     -> DB_FindXAssetHeader(0x18)
+  0x41D538: useFastFile and 0x48DEA0(0x18, name) says "default asset" -> return 0
+PrecacheItem: index 0 -> Scr_Error("unknown item '%s'") 0x522D7F, terminal flag 0
+```
+
+So on **every custom map** (fs_game is always set) a weapon's *definition* comes from its raw
+file, and the zone copy is only an existence check. Leviathan's own `maps/_loadout.gsc:34`
+precaches `napalmblob`; the raw file exists (stock `main\iw_14.iwd`) but **none of the map's zones
+defines the weapon** (Unlinker `--list`; stock has it only inside each stock map's zone), so the
+check fails. The raiser passes terminal flag 0: on retail the error is printed and the thread
+carries on (it goes on to `napalmbloblight`, the same). It killed our server only because
+`+set logfile 2` sets `scrVarPub.developer` — the class `script_error_retail.cpp` (NOP at
+0x693D35) already fixes, and that is on the box. **Nobody had re-run Leviathan since.** It now
+passes: both `unknown item` lines are in its console, and the server plays on.
+
+The same code explains two more things:
+
+* **A weapon compiled into the zone but shipped with no raw file** loads as `defaultweapon`
+  under its own name — on retail too. Cheese Cube's wall MP40 (`zombie_mp40`, in
+  `nazi_zombie_ccube.ff`, nowhere as a raw file). **`archive/weapon_patch.py`** dumps the weapon
+  from the map's *own* zone (OpenAssetTools Unlinker, `WEAPONFILE` text) as a loose
+  `mods/<bsp>/weapons/sp/<name>`, adds it to `extract.json` (`"added": "zone-dump …"`, so the site
+  serves it, the bucket holds it and the box's map cache pulls it) and to the manifest's
+  `install.add[]` (`applied: true`). Checked against the three stock raw files that also exist as
+  zone assets (`kar98k`, `zombie_colt`, `zombie_melee`): identical but for OAT spelling defaults
+  and two keys the dumper omits (`twoHanded`, `adsTransBlendTime`, engine defaults apply).
+  Applied to `nazi_zombie_ccube`, `kri` (9), `nazi_zombie_laboratory` (6), `nazi_zombie_pogreb`,
+  `lewl`, and the perk/bowie helper "weapons" of `ahkanto`, `chickn`, `zombie_maze`. Cheese Cube's
+  re-proof logs **0** `Could not load weapon file` lines.
+* **A weapon only as a loose raw file** (Project Viking's evo/ksg, labrats2's 46) is read, then
+  refused by the 0x41D538 zone check — the release's own defect, unchanged; a DLL option is in a
+  follow-up chip (skip the check when a real raw file was read, both client and server).
+
+### 14.2 Two audit rules, conservative (`asset_audit.py`)
+
+* A **character xmodel no loaded zone references, whose every mention in the map's scripts is a
+  `PrecacheModel("…")`**, is `character_precache_only`, not a visible miss (Leviathan's
+  `bo1_c_usa_pent_ciaagent_body` in `_zombiemode_perks.gsc`: precached, never set). A head in a
+  script array (fear_mc_2's `bo1_c_viet_*`) is mentioned outside the precache and stays visible.
+* A **weapon nothing can hand out** — after removing its `add_zombie_weapon()` line,
+  `include_weapon("w", false)`, and `==` / `!=` / `case` comparisons, no mention is left, no wall
+  entity names it, and for `_upgraded` its base is equally unreachable — is
+  `weapon_registered_only` (Cheese Cube Unlimited's `mk6_laser`: every give is commented out).
+  Zombie Desert's `rand = "tesla_gun"` keeps its tesla visible; rooms' `tesla_gun_upgraded`
+  stays visible through Pack-a-Punch.
+
+Re-checked on 20 `hide` maps: only Leviathan (-> minor) and Cheese Cube Unlimited (-> clean)
+change.
+
+### 14.3 Other things that changed in the tools
+
+* `box_proof.py`: fake `…0005`; `watchdog` / `watchdog_clean` and `trapped` (lane 15's, never
+  merged) in each result; a pass needs the watchdog clean; **fail fast** on a `Sys_Error TRAPPED`
+  before `map_loaded` instead of waiting out `--load-wait`.
+* `popular.py --apply --only <list>`: publishes only the listed maps' results; every other
+  `boxProven.json` entry is kept as it is (boxproof.json also holds tranche 2's 35 s passes).
+* `mvp_status.py`: records a re-proof into an early manifest that `--apply` skips (no `precheck`).
+* `tranche.py verify` writes `reports/tranche2-verify.json` whatever the list — restored after
+  each run here; the tranche-3 copy is `tranche3-verify.json`.
+* `web/server/lib/serverNotes.js`: Der Berg's "engine limit" note is gone (it passes);
+  `web/test/run-all.js` uses Water as the not-playable fixture.
+* Originals of tranche 3 are on `C:` (`ZombiesDev\archive\originals`, 94 GB free at the time).
+  B cleared space 20:00 UK; bulk raw downloads may go to `E:\ZombiesArchive\` (created on first
+  use; not used yet).
+
+### 14.4 Cheese Cube
+
+| | release | bsp | box | asset gate | site |
+|---|---|---|---|---|---|
+| Cheese Cube (ZK Studios, 2013) | `Cheese_Cube_v1_-_by_ZK.exe` MediaFire, 79 MB, NSIS, sha256 `18d69444…` | `nazi_zombie_ccube` | PASS twice (second after `weapon_patch`) | clean | visible, playable |
+| Cheese Cube Unlimited v1.0 (2014) | `Cheese_Cube_Unlimited_v1.0.exe` MediaFire, 161 MB, NSIS, sha256 `a159fc00…` | `nazi_zombie_ccube_u` | PASS | clean (14.2) | visible, custom-only (undecided finish) |
+
+`cat:cheesecubeunlimitedcubeofcircles` (UGX thread, 401k views, no links) is the same map as
+Unlimited; `cat:cheesecubev1byzk` is the same file as Cheese Cube (archive.org copy, identical size).

@@ -1,0 +1,209 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "xmas_refinery",
+  "title": "REFINERY",
+  "source": "custom",
+  "author": "Rollonmath42",
+  "released": "2014-12-25",
+  "fs_game": "mods/xmas_refinery",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugxm_scripts.iwd": "fad67512624f0359a7e361c1e520eb66cda94d24d7a2f4c530f76641936ec3e7"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_trees_done"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_trees_done look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 149,
+    "script_count": 149,
+    "entities": 3,
+    "ee_candidates": [
+      "ee_trees_done"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "fad67512624f0359a7e361c1e520eb66cda94d24d7a2f4c530f76641936ec3e7",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "xmas_refinery_ugx.exe",
+    "original_sha256": "b7607afc781bdb5441ee1aa426841b8b07f24433c5f599a650daf2e04db4993b",
+    "original_size": 245909278,
+    "source_url": "https://www.mediafire.com/file/hvrihdh9vosnnwj/xmas_refinery_ugx.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:20:35Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending"
+    ],
+    "catalogue_description": "Description: Refinery is the second map (the first being Shanty Town, released only on ZM) I\u2019ve created that is a remake of one of the multiplayer maps in the PSP game Syphon Filter: Dark Mirror. I decided to go with this map for two main reasons: 1) Refinery was one of my favorite maps in the multiplayer (being there were only 6, there wasn\u2019t many to choose from in the first place) and 2) The way the map is set up is perfect for the conditions of the YAW contest which this map was entered in to (video will be linked at the bottom). Features: -Two easter eggs, one involving the winnable ending -New weapons from MW1 up to Ghosts (listed below) -Modified Gungame and Sharpshooter (only upgraded weapons) -Customized Dvars for different look (including FOV) -Zombie Counter -Different wall weapon setup -New effect and melee when using upgraded weapons Weapons (in random order): -MTAR (BO2) -G3 (MW1, different from the previous one in the UGX-Mod) -Commando (BO1) -M16A1 (BO1) -FAL OSW (BO2) -Model 1887 (MW2) -Kiparis (BO1) -Special Easter Egg Weapon -PDW (Ghosts, functions and is animated like the AW version) -FMG-9 (MW3) -PP90M1 (MW3) -Remington 870 MCS (BO2) -Ballista (BO2) -Ripper (Ghosts) Developer Walkthrough Custom Zombies | Refinery \u2013 Dev Gameplay Credits: DidUknowiPwn Offthewall HitmanVere Conrow Wallace Elfenliedtopfan5 Tom_Bmx ElTitoPricus Quizz Treminaor Sanya Master131 S1ippery Jim Ramsy Ray1235 Hellohi Thezombiekilla1031 TheRelaxingEnd",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_template_refinery",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "xmas_refinery.iwd:images/t5_weapon_red_cross_background.iwi",
+        "xmas_refinery.iwd:images/ugx_mod_loadscreen_template_refinery.iwi",
+        "xmas_refinery.iwd:images/ugx_mod_menu_template_refinery.iwi",
+        "xmas_refinery.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/refinery/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/refinery-2.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 51.8,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 89,
+        "scripts": 3,
+        "bytes": 30234120
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 42,
+        "scripts": 4,
+        "bytes": 6169451
+      },
+      {
+        "file": "ugxm_scripts.iwd",
+        "entries": 33,
+        "scripts": 32,
+        "bytes": 252815
+      },
+      {
+        "file": "viewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_xmas_refinery.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "xmas_refinery_patch.ff",
+      "ugxm_scripts.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_scripts.iwd:maps/_loadout.gsc",
+      "ugxm_scripts.iwd:maps/_zombiemode_spawner.gsc",
+      "ugxm_scripts.iwd:maps/_zombiemode_weapons.gsc"
+    ]
+  },
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 155,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {
+      "load_zone_only": [
+        "xmodel:viewhands_custom"
+      ]
+    },
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95170 ms over the hold",
+    "first_error": "Could not load rawfile \"shock/zombie_death.shock\".",
+    "match": "m_86ef48ff",
+    "at": "2026-09-23T20:33:39",
+    "instance": "inst-07",
+    "com_frameTime_advance_ms": 95170,
+    "com_error": [],
+    "console_errors": [
+      "3278:Error: started from:",
+      "3282:Error: ************************************",
+      "3284:******* script runtime error *******",
+      "3288:Error: called from:",
+      "3292:Error: called from:",
+      "3296:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
+}

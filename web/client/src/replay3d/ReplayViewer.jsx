@@ -35,15 +35,16 @@ import { createActors, installSkyDome, SLOT_COLORS } from './actors.js'
 // Lane R3 (replay.md §12): weapons in hands, muzzle flash, hit markers, blood, Pack-a-Punch,
 // power-ups and sound, from the R1 events. fx.js is the pure reducer; gear.js draws; sound.js plays.
 import {
-  buildFx, weaponAt, fireAge, hitMarkerAt, bloodAt, powerupsAt, chipsAt, displayName, POWERUP_LABEL,
+  buildFx, weaponAt, fireAge, hitMarkerAt, bloodAt, powerupsAt, chipsAt, displayName, POWERUP_LABEL, addInferredCues,
 } from './fx.js'
 import { createGear, loadAssets } from './gear.js'
 import { ReplaySound } from './sound.js'
+import { adsFracFromPresses, adsFracFromColumn, adsFov, DEFAULT_ADS_IN_MS, DEFAULT_ADS_OUT_MS } from './fpmath.js'
 // Lane R4 (replay.md §13): who the camera follows in a co-op replay -- a pure reducer.
 import { initSpectate, spectate, keyAction, isCoop, downPrompt, followLabel, downSpans, isDownAt } from './spectate.js'
 import {
   CG_FOV, VIEW_HEIGHT, HULL, HUD, BTN, stanceOf, WEAPONS, DEFAULT_WEAPON, weaponRow,
-  simulateSpread, reticleGeom, cookAt, roundGlyphs, trackClock,
+  simulateSpread, reticleGeom, cookAt, roundGlyphs, trackClock, shotTimes,
 } from './waw.js'
 import { fetchAsset, fetchJson } from './assets.js'
 import { loadModelSet } from './models.js'
@@ -184,6 +185,8 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   // Lane R3.
   const gearRef = useRef(null)
   const soundRef = useRef(null)
+  const adsRef = useRef(0)
+  const gestureRef = useRef(false)   // §14: the page has had its Play / speaker gesture
   const hitRef = useRef(null)
   const bloodRef = useRef(null)
   const chipRefs = useRef([])
@@ -272,7 +275,24 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       hitRef.current.style.setProperty('--hm-img', mark ? `url("${mark}")` : 'none')
     }
   }, [assets, track])
-  const F = useMemo(() => buildFx(track, assets), [track, assets])
+  const F = useMemo(() => {
+    const f = buildFx(track, assets)
+    // Lane RV (§14): a file with no recorded shots / swipes still sounds -- shots from the attack
+    // button (expanded by the weapon's fire type, §8.7), swipes from the health drops. A gun the
+    // stock table does not know fires semi-auto; no weapon at all (dead, not spawned) fires nothing.
+    if (track && clk) {
+      const GENERIC = { fire: 'Semi-Auto', fireTime: 0.12, type: 'bullet' }
+      const tickOf = (ms) => Math.max(0, Math.min(track.ticks - 1, Math.floor(clk.index(ms))))
+      const nameAt = (p, ms) => weaponNameAt(p, tickOf(ms))
+      addInferredCues(f, track, (p) => shotTimes(track, p, (ms) => {
+        const k = tickOf(ms)
+        if (!p.alive || !p.alive[k]) return null
+        const nm = weaponNameAt(p, k)
+        return nm ? (weaponRow(nm) || GENERIC) : null
+      }), nameAt)
+    }
+    return f
+  }, [track, assets, clk, weaponNameAt])
   // The snapshot column's weapon NAME (never the unproven-index fallback row): the fallback for
   // "what is in his hands" on a file with no `weapon` events.
   const colWeapon = useCallback((p, k) => {
@@ -479,7 +499,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     gearRef.current = gear
     gunRef.current = gear
     api.setViewmodel(gear.viewmodel)
-    if (window.__r3d) window.__r3d.fx = () => ({ gear: gear.info(), sound: soundRef.current ? soundRef.current.info() : null })
+    if (window.__r3d) window.__r3d.fx = () => ({ gear: gear.info(), sound: soundRef.current ? soundRef.current.info() : null, ads: adsRef.current, fov: api.state.worldFov })
     api.resize()
 
     // The floor to stand a gridded, model-less replay on: the lowest thing anybody or
@@ -662,11 +682,17 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     if (!api || !track) return
     const s = new ReplaySound(api, assets, F)
     soundRef.current = s
-    setSnd({ available: s.available, enabled: false, muted: s.muted })
+    // Lane RV (§14): this effect re-runs when the manifest lands, when the map loads, when the
+    // cues change. The old ReplaySound was the one the Play click enabled; a new one used to start
+    // disabled and stay silent until the next gesture. Once the page has had its gesture, a
+    // rebuilt one is enabled at once (the audio context is already unlocked).
+    if (gestureRef.current && s.available) { s.enable(); s.seek(t0 + timeRef.current * 1000) }
+    setSnd({ available: s.available, enabled: s.enabled, muted: s.muted })
     return () => { s.dispose(); if (soundRef.current === s) soundRef.current = null }
   }, [track, assets, F, mapUrl, metaUrl])
   // A gesture (Play, Space, the speaker button) is the only moment audio may start.
   const enableSound = useCallback(() => {
+    gestureRef.current = true
     const s = soundRef.current
     if (!s || !s.available) return
     if (!s.enabled) s.enable()
@@ -674,6 +700,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     setSnd({ available: true, enabled: s.enabled, muted: s.muted })
   }, [t0])
   const toggleMute = useCallback(() => {
+    gestureRef.current = true
     const s = soundRef.current
     if (!s || !s.available) return
     if (!s.enabled) { s.enable(); s.setMuted(false) } else s.setMuted(!s.muted)
@@ -857,8 +884,28 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     const fg = gearState.get(focus)
     gear.setViewmodelWeapon(fg && fg.name, fg && fg.pap, fg && fg.raw)
     const recorded = F.fires.has(focus)
-    gear.updateViewmodel(recorded ? fg.fireAge : null, fg ? fg.fireMs : 0, playingRef.current && s.fire, step)
-  }, [track, t0, F, gearState, fxScratch, assets])
+    // Lane RV (§14): aim down sights. The DLL's own fraction where the file has it (v2), else the
+    // ADS button eased at the gun's transition times; hip while down or dead.
+    let ads = 0
+    const fpl = track.players.find((p) => p.slot === focus)
+    const fl = s.list && s.list.find((p) => p.slot === focus)
+    if (fpl && (!fl || fl.alive)) {
+      const info = gear.fpInfoFor(fg && fg.name, fg && fg.pap, fg && fg.raw)
+      const col = clk ? adsFracFromColumn(fpl.ads, clk.index(nowMs)) : null
+      ads = col !== null ? col : adsFracFromPresses(fpl.presses && fpl.presses.ads, nowMs,
+        (info && info.adsInMs) || DEFAULT_ADS_IN_MS, (info && info.adsOutMs) || DEFAULT_ADS_OUT_MS)
+    }
+    adsRef.current = ads
+    gear.updateViewmodel(recorded ? fg.fireAge : null, fg ? fg.fireMs : 0, playingRef.current && s.fire, step, ads)
+    const api = sceneRef.current
+    if (api && eyes) {
+      const st = gear.fpState()
+      const fov = adsFov(CG_FOV, st.on ? st.zoomFov : null, ads)
+      api.setWorldFov(fov)
+      // The game draws its arms at the world's FOV; the §8.7 placeholder keeps the FOV it was tuned at.
+      api.setViewmodelFov(st.on ? fov : 90)
+    }
+  }, [track, t0, F, gearState, fxScratch, assets, clk])
 
   // What the sound needs from the viewer, one object for the life of the track: where a player
   // was at a cue's time (a fire, the jingle), and whether his gun was upgraded then.

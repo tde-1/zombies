@@ -584,6 +584,16 @@ void close_menu(const char* why) {
     ENW_INFO("pause_menu: CLOSED (%s) after %lu ms; enw_ui clear", why, ::GetTickCount() - g_opened_at);
 }
 
+// [RS] The restart, watched from here: the request, the map leaving (map_restart sends every
+// client back through the connect handshake), the map back. The number B asked for --
+// keypress to playing again -- is logged as "back in the map N ms after the request"; a
+// request nothing answers (a refused co-op player, a server that is already gone) says so on
+// the HUD instead of leaving the player wondering.
+struct restart_watch {
+    DWORD asked = 0;   // 0 = nothing pending
+    DWORD left = 0;    // the map went away (clc.state < 10)
+} g_rw;
+
 void request_restart() {
     ++g_req_seq;
     char cmd[64];
@@ -592,8 +602,64 @@ void request_restart() {
     ENW_INFO("pause_menu: RESTART requested: userinfo enw_req restart.%d (the server acts on the "
              "change; server/components/dedicated/restart_request.cpp)", g_req_seq);
     close_menu("Restart game");
-    g_notice = "^3Restart requested";
+    g_notice = "^3Restarting...";
     g_notice_t = ::GetTickCount();
+    g_rw = {::GetTickCount(), 0};
+}
+
+DWORD g_rw_shot = 0;   // a picture of the new run a few seconds in (only when frame capture is armed)
+bool g_req_primed = false;
+
+// [RS] THE FIRST `setu` OF A NEW DVAR IS NEVER SENT. `setu` creates the dvar and only then
+// adds the userinfo flag, so the change that created it does not mark userinfo modified and
+// the client never re-sends it (Quake 3's Cvar_Set_f, before ioq3 fixed it). Measured in rs4:
+// the console's `restart.1` never reached the server; `restart.2`, a change of an existing
+// userinfo dvar, did, 136 ms later. The Esc menu's Restart only ever worked because closing
+// the menu changes `enw_ui` in the same frame, which re-sends the whole userinfo. B's
+// `restart` on bridge_zombie was a console `restart.1`. So `enw_req` is created at the first
+// frame, before the connect, and rides in the connect userinfo as `0` (restart_request.cpp's
+// baseline); every restart after that is a change and is sent.
+void prime_req() {
+    if (g_req_primed) return;
+    g_req_primed = true;
+    cbuf("setu enw_req 0\n");
+    ENW_INFO("pause_menu: userinfo enw_req created as 0 (so the first restart is a change the engine sends)");
+}
+
+void restart_tick() {
+    prime_req();
+    if (g_rw_shot && ::GetTickCount() >= g_rw_shot) {
+        g_rw_shot = 0;
+        frame_capture::request("restart-new-run");
+    }
+    if (!g_rw.asked) return;
+    const DWORD now = ::GetTickCount();
+    const int st = rd<int>(kClcState);
+    if (!g_rw.left) {
+        if (st < 10) {
+            g_rw.left = now;
+            ENW_INFO("pause_menu: RESTART: the map left %lu ms after the request (clc.state %d)", now - g_rw.asked, st);
+            return;
+        }
+        if (now - g_rw.asked > 8000) {
+            ENW_WARN("pause_menu: RESTART: nothing happened %lu ms after the request (refused, or the server is gone)",
+                     now - g_rw.asked);
+            g_notice = "^1Restart refused";
+            g_notice_t = now;
+            g_rw = {};
+        }
+        return;
+    }
+    if (st >= 10) {
+        ENW_INFO("pause_menu: RESTART: back in the map %lu ms after the request (%lu ms out of it)",
+                 now - g_rw.asked, now - g_rw.left);
+        g_notice.clear();
+        g_rw = {};
+        g_rw_shot = now + 6000;
+    } else if (now - g_rw.left > 60000) {
+        ENW_WARN("pause_menu: RESTART: not back in the map 60 s after it left (clc.state %d)", st);
+        g_rw = {};
+    }
 }
 
 void begin_exit() {
@@ -1397,6 +1463,7 @@ public:
             if (g_open && ::GetTickCount() - g_last_draw > 1000 && !settings_tab::restart_in_progress())
                 close_menu("no map drawn for 1 s");
             start_menu_tick();   // [C1] esc-menu.md §11.4
+            restart_tick();      // [RS] esc-menu.md §12
         });
     }
 

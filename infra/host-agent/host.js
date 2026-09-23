@@ -20,7 +20,7 @@ import { EventEmitter } from 'node:events'
 import { execFile } from 'node:child_process'
 import { makeLog, parseArgs, setLogLevel, mkdirp, id as makeId, fmtBytes, fmtDur, sha256hex } from './lib/util.js'
 import { GameLinkServer } from './lib/gamelink.js'
-import { InstanceManager, devKnobsFor } from './lib/instances.js'
+import { InstanceManager, devKnobsFor, soakBotConfig } from './lib/instances.js'
 import { Referee } from './lib/referee.js'
 import { gameModeId } from './lib/gamemode.js'   // the map's own game mode (game-modes.md)
 import { ManifestStore } from './lib/manifests.js'
@@ -32,7 +32,8 @@ import { leaseList, planLeases } from './lib/leases.js'
 import { Dashboard } from './lib/dashboard.js'
 import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
-import { onRestartRequest, handOver } from './lib/restart.js'   // a player's Restart game (esc-menu.md §3)
+import { onRestartRequest, handOver } from './lib/restart.js'
+import { neverJoined } from './lib/idle.js'   // [RS] idle-server auto-close (esc-menu.md §13)   // a player's Restart game (esc-menu.md §3)
 import { MapCache, configFromEnv as mapCacheConfig, modNameOf } from './lib/mapcache.js'   // pull a leased map before boot
 import { BootQueue } from './lib/bootqueue.js'   // one boot at a time, players first (host.md §16)
 import { readMeminfo, ramPlan, MB } from './lib/memguard.js'   // the RAM guard (host.md §16)
@@ -150,6 +151,9 @@ const cfg = {
   warmRebindMs: Number(a['warm-rebind-ms'] ?? 5_000),
   gamesPerInstance: Number(a['games-per-instance'] ?? 5),
   endReplyMs: Number(a['end-reply-ms'] ?? 10_000),
+  // [RS] How long a run that ended on its own keeps its instance for a player's `restart`
+  // (lib/restart.js restartAfterEnd, esc-menu.md §12). 0 = off: the old immediate teardown.
+  restartGraceMs: Number(a['restart-grace-ms'] ?? process.env.ENW_RESTART_GRACE_MS ?? 10_000),
   mapReloadMs: Number(a['map-reload-ms'] ?? 60_000),
   warmIdleMs: Number(a['warm-idle-ms'] ?? 10 * 60_000),
   // ---- THE RAM GUARD (lib/memguard.js, host.md §16) -------------------------------------
@@ -163,7 +167,18 @@ const cfg = {
   // TEST ONLY: put simulated games through the boot queue too (they load instantly
   // otherwise, and the queue is only for real games). test/boot-queue.js.
   gateSims: !!a['gate-sims'],
+  // [RS] IDLE-SERVER AUTO-CLOSE (lib/idle.js, esc-menu.md §13; B 2026-09-23 19:10 after
+  // m_5a28dcbe held the box for 95 min with nobody in it). --idle-ready-ms: nobody admitted
+  // this long after the map is ready -> the lease ends (`no_players`). --idle-gone-ms:
+  // everybody gone this long -> the run ends (the referee's empty close and crash grace,
+  // below, unless --empty-close-ms / --crash-grace-ms say otherwise). 0 = off.
+  idleReadyMs: Number(a['idle-ready-ms'] ?? process.env.ENW_IDLE_READY_MS ?? 5 * 60_000),
+  idleGoneMs: Number(a['idle-gone-ms'] ?? process.env.ENW_IDLE_GONE_MS ?? 3 * 60_000),
   referee: {
+    ...(() => {
+      const g = Number(a['idle-gone-ms'] ?? process.env.ENW_IDLE_GONE_MS ?? 3 * 60_000)
+      return g > 0 ? { emptyCloseMs: g, crashGraceMs: g } : {}
+    })(),
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
     ...(a['cap-warn-ms'] ? { capWarnMs: String(a['cap-warn-ms']).split(',').map(Number) } : {}),
     ...(a['afk-warn-ms'] ? { afkWarnMs: Number(a['afk-warn-ms']) } : {}),
@@ -234,7 +249,7 @@ class Game extends EventEmitter {
     this.referee = new Referee({
       instanceId: instance.id, matchId: this.matchId, mode: this.mode, vip: this.vip,
       gameMode: gameModeId(this.assignment),
-      manifest: this.manifest, config: { ...cfg.referee, ...(refereeConfig || {}) }, log: this.log,
+      manifest: this.manifest, config: { ...cfg.referee, ...(refereeConfig || {}), ...soakBotConfig(this.assignment) }, log: this.log,
     })
     this.referee.on('command', (c) => this.sendToGame(c))
     // `finish()` is async (it closes and signs the replay, then posts the result) and the
@@ -257,7 +272,7 @@ class Game extends EventEmitter {
       this.referee.on(k, (d) => this.recordHostEvent({ t: 'referee', kind: k, ...(typeof d === 'object' ? d : { value: d }) }))
     }
     this.gameLog = new GameLog({ file: path.join(cfg.logDir, `${instance.id}.games_mp.log`), enabled: cfg.gameLog, prefix: cfg.gameLogPrefix })
-    this.tickTimer = setInterval(() => this.referee.tick(), 1000)
+    this.tickTimer = setInterval(() => { this.referee.tick(); this.checkIdle() }, 1000)
     this.tickTimer.unref?.()
   }
 
@@ -270,6 +285,7 @@ class Game extends EventEmitter {
     this.onCloseBound = () => {
       this.conn = null
       this.log.info('game link closed')
+      this.graceOpen?.resolve('expired', 'the game link closed')   // [RS] no link, no restart: post the result now
       this.onLinkClosed()
     }
     conn.on('message', this.onMessageBound)
@@ -362,6 +378,11 @@ class Game extends EventEmitter {
     if (m.t === 'match_end') this.onMatchEnd(m)
     if (m.t === 'player_connect') this.authPlayer(m)
     if (m.t === 'restart_request') onRestartRequest(this, m)
+    // [RS] The number B asked for, host side: the request accepted -> a player spawned in the new run.
+    if (m.t === 'player_spawn' && this.restartAskedAt && !this.restartSpawnLogged) {
+      this.restartSpawnLogged = true
+      this.log.info(`restart: slot ${m.slot} spawned in run ${this.matchId} ${Date.now() - this.restartAskedAt} ms after the restart was accepted`)
+    }
     // A WARM instance opens its replay on the first sign of an actual game rather than on
     // `map_loaded` — see `onMapLoaded`. `record()` buffers everything until then, so
     // nothing is lost and the header carries the match the game turned out to be.
@@ -383,6 +404,7 @@ class Game extends EventEmitter {
     if (!r.allow) r = this.admitReturning(ev) || r
     const p = this.referee.players.get(ev.slot)
     if (p) p.tokenOk = r.allow
+    if (r.allow) this.everAdmitted = true   // [RS] lib/idle.js: somebody joined this run
     // THE ANSWER IS ALSO THE IDENTITY. `token_check_disabled` is what TokenGuard says when
     // it holds no site key or is not enforcing — it is an admission, not a check, so it
     // leaves the claim where it was rather than promoting it to a verified account
@@ -468,6 +490,9 @@ class Game extends EventEmitter {
    */
   onMapLoaded(ev) {
     this.mapEv = ev
+    // [RS] The idle clock (lib/idle.js) starts when the map is READY: booting and loading
+    // never count. Once per run: a restarted run starts its own.
+    if (!this.readyAt) this.readyAt = Date.now()
     this.emit('map_loaded', ev)
     if (!this.deferReplay) this.openReplay(ev)
   }
@@ -668,7 +693,70 @@ class Game extends EventEmitter {
   /** A host-side decision (auth, AFK kick, cap warning, chat relayed in) is evidence too. */
   recordHostEvent(ev) { this.record({ ms: this.referee.now(), host: true, ...ev }) }
 
+  /**
+   * [RS] IDLE-SERVER AUTO-CLOSE, "never joined" (lib/idle.js; the "all gone" half is the
+   * referee's empty close / crash grace at --idle-gone-ms). A leased game whose map has been
+   * ready for --idle-ready-ms with nobody ever admitted, nobody connected and no join in
+   * progress at the site (`hold_idle`: a download, a Resume) ends: no game was played, so no
+   * result; the site is told `no_players` (it ends the lease and tells a waiting launcher),
+   * and the instance is retired with that reason (its telemetry bundle carries it).
+   */
+  checkIdle() {
+    if (this.idleClosed || this.finished || this.disposed || !this.readyAt) return
+    if (this.instance.foreign || !this.assignment || this.restarting || this.graceOpen) return
+    // A soak-bot lease (dedi.md §27) is played by server-side bots the referee never reports,
+    // so it always looks never-joined: the 5-minute close ended the Nacht soak m_bd4f87b4.
+    if (soakBotConfig(this.assignment).emptyCloseMs) return
+    const lease = this.leaseId || this.matchId
+    const asg = (this.host.latestLeases || []).find((l) => l.match_id === lease)
+    const connected = [...this.referee.players.values()].filter((p) => p.connected).length
+    const d = neverJoined({
+      now: Date.now(), readyAt: this.readyAt, admitted: !!this.everAdmitted, connected,
+      hold: !!asg?.hold_idle, readyMs: cfg.idleReadyMs,
+    })
+    if (!d) return
+    this.idleClosed = d
+    this.referee.flags.add('no_players')
+    this.noResult = `no game was played: ${d.detail}`
+    this.recordHostEvent({ t: 'idle_close', reason: d.reason, rule: d.rule, detail: d.detail })
+    this.log.warn(`IDLE CLOSE: ${d.detail} -- ending lease ${lease} (${d.reason})`)
+    this.host.site?.status({ state: 'no_players', match_id: lease, map: this.assignment?.map, error: d.detail, rule: d.rule })
+    this.host.retire(this, `${d.reason}: ${d.detail}`)
+  }
+
   // ---- end -----------------------------------------------------------------------
+  /**
+   * [RS] Hold a naturally ended run's instance (and its result POST) for the restart grace.
+   * Resolves 'restart' (lib/restart.js restartAfterEnd took it), 'expired', or null when the
+   * run does not qualify: only a clean, self-ended game whose server is alive, whose link
+   * is up and that still has a player in it. Anything broken goes straight on as before.
+   */
+  restartGrace(summary) {
+    const ms = cfg.restartGraceMs
+    if (!(ms > 0) || this.restarting) return null
+    if (!this.matchEndSeen || this.referee.matchEnd?.server_alive === false || !this.conn) return null
+    if (summary.end_reason === 'player_restart') return null
+    const bad = ['server_crash', 'instance_failed', 'link_closed', 'host_shutdown', 'server_freeze', 'restart_failed']
+    if (bad.some((f) => this.referee.flags.has(f))) return null
+    if (![...this.referee.players.values()].some((p) => p.connected)) return null
+    return new Promise((resolve) => {
+      const t = setTimeout(() => done('expired'), ms)
+      t.unref?.()
+      const done = (why, cause = null) => {
+        if (!this.graceOpen) return
+        clearTimeout(t)
+        this.graceOpen = null
+        this.log.info(why === 'restart'
+          ? 'restart grace: a player restarted - the lease goes on'
+          : cause ? `restart grace ended early (${cause}) - the result goes to the site now`
+          : `restart grace: nobody restarted within ${ms} ms - the result goes to the site and the instance to its disposition`)
+        resolve(why)
+      }
+      this.graceOpen = { until: Date.now() + ms, resolve: done }
+      this.log.info(`restart grace: ${ms} ms for a player's \`restart\` before the result is posted and the instance let go`)
+    })
+  }
+
   async finish(summary) {
     if (this.finished) return
     this.finished = true
@@ -725,8 +813,16 @@ class Game extends EventEmitter {
     // player idling on the restarted map) and a lease whose warm handoff failed before the
     // map came back were never a game the site leased; a result for the second ENDS the
     // lease at the site (12:19:30, m_de1d40e6), which is the opposite of re-queueing it.
+    // [RS] THE RESTART GRACE (esc-menu.md §12). A run that ended on its own (a solo down,
+    // the end_game sequence) holds its instance and its result for --restart-grace-ms, so a
+    // player's `restart` a second after game over still restarts (lib/restart.js
+    // restartAfterEnd) instead of reaching a process that was torn down 220 ms after the
+    // end (bridge_zombie, m_abe60828). The replay above is already signed; only the POST
+    // waits, because the site closes the lease on it. A restart makes it `lease_continues`.
+    const grace = this.noResult ? null : await this.restartGrace(summary)
+    const leaseContinues = !!this.restarting || grace === 'restart'
     if (this.noResult) this.log.info(`no result posted for ${this.matchId}: ${this.noResult}`)
-    else await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay })
+    else await this.host.site?.postResult({ box: cfg.boxName, instance: this.instance.id, summary, replay, ...(leaseContinues ? { lease_continues: true } : {}) })
       .catch((e) => this.log.warn(`result post failed (${e.message}) — held in the spool, not lost`))
     this.emit('finished', summary)
     // The instance is NOT reaped here any more. `dispose()` decides what becomes of it,
@@ -1132,6 +1228,8 @@ class HostAgent {
       // DLL's warm-instance behaviour.
       if (s.loadMs) simArgs.push('--load-ms', String(s.loadMs))
       if (s.neverLoads) simArgs.push('--never-loads')
+      if (s.noJoin) simArgs.push('--no-join')                        // [RS] idle close (test/idle-close.js)
+      if (s.leaveMs) simArgs.push('--leave-ms', String(s.leaveMs))
       if (s.realWarm) simArgs.push('--real-warm')
       if (s.stallRebind) simArgs.push('--stall-rebind', String(s.stallRebind))
     }
@@ -1281,6 +1379,9 @@ class HostAgent {
     // Re-entry guard AND the contract: a game being retired has had its disposition made
     // for it, so nothing downstream may pick another one.
     game.disposed = game.disposed || Promise.resolve({ action: 'terminate', why })
+    // [RS] A run in its restart grace is being let go (its lease ended at the site, a
+    // shutdown): the grace ends now and the result goes to the site without waiting.
+    game.graceOpen?.resolve('expired', `retired: ${why}`)
     // A GAME STILL WAITING TO BOOT NEVER BOOTS (host.md §16). Out of the queue first, and
     // synchronously, so no `await` below can let its turn come round in between.
     const where = this.bootQueue.cancel(id, why)
@@ -1746,6 +1847,8 @@ class HostAgent {
         seed: Number(asg.sim?.seed ?? 1337),
         loadMs: asg.sim?.load_ms ?? (a['sim-load-ms'] ? Number(a['sim-load-ms']) : null),
         neverLoads: !!asg.sim?.never_loads,
+        noJoin: !!asg.sim?.no_join,
+        leaveMs: asg.sim?.leave_ms ?? null,
         realWarm: !!(asg.sim?.real_warm ?? a['sim-real-warm']),
         stallRebind: asg.sim?.stall_rebind ?? null,
       },

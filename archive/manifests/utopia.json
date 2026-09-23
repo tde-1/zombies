@@ -1,0 +1,169 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "utopia",
+  "title": "Utopia",
+  "source": "custom",
+  "author": "CanadianTyler",
+  "released": "2016-03-30",
+  "fs_game": "mods/utopia",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        45000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 45000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 150,
+    "script_count": 150,
+    "entities": 3,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      45000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Utopia.exe",
+    "original_sha256": "cc9212d627693fc1df6f5a392887643ad42f4a55d2732e7647641bfc868724df",
+    "original_size": 213900877,
+    "source_url": "http://www.mediafire.com/file/mklewpbg4zkp4tt/Utopia.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/03/30/utopia/",
+    "fetched": "2026-09-23T20:08:50Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "V1.1 Change Log -bug fixes -new menu -new load screen -added more weapon camos This map takes place in a small city that has been over run by zombies. This map was made in only 15 hours. I wanted to challenge myself to see if I could make a whole map in under a day.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_template",
+        "loadscreen_user"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi",
+        "utopia.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "utopia.iwd:images/ugx_mod_menu_template.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/utopia/cover.jpeg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/utopia-1-768x432.jpeg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 50.9,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476950
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78781173
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_utopia.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "utopia.ff",
+      "utopia_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

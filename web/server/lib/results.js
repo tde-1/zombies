@@ -335,9 +335,15 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
   // An abandoned run that a player restarted is not the end of the lease: the game goes on
   // on the same box under the next run id, and closing the lease here would free the box
   // (and send the party back to forming) under a game that is still being played.
-  if (summary.end_reason !== 'player_restart') {
+  // The same for a run that ENDED on its own (a solo down) and was restarted inside the
+  // host's restart grace (esc-menu.md §12): the result is a real game over, and the box says
+  // `lease_continues` beside it because the next run of the lease is already on the map.
+  // Only from the box that holds the lease.
+  const continues = body.lease_continues === true && !!assignment && !!body.box && boxes.nameOf(assignment.box_id) === String(body.box)
+  if (summary.end_reason !== 'player_restart' && !continues) {
     try { closeAssignment(assignment, game) } catch (e) { out.errors.push('assignment: ' + e.message) }
   }
+  if (continues) out.lease_continues = true
 
   // The in-game line B asked for (2026-09-23): "Your record has been uploaded", said to each
   // verified player of a box game the moment the site has stored it — this call is the

@@ -1,0 +1,175 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "bunbury",
+  "title": "BUNBURY",
+  "source": "custom",
+  "author": "Ping998",
+  "released": "May 17, 2014, 05:56:56 pm",
+  "fs_game": "mods/bunbury",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@bunbury.iwd": "41cb1c1bf186838177047b3ec4ec23ca0b57380e08ebc77eba74e7fb07348846"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        5000,
+        6500,
+        9000,
+        21150
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 21150",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 1794,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      4000,
+      5000,
+      6500,
+      9000,
+      21150
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto64"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto63"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto61"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto60"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto59"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "41cb1c1bf186838177047b3ec4ec23ca0b57380e08ebc77eba74e7fb07348846",
+    "map_specific_triggers": [
+      "dig_site",
+      "give_ammo",
+      "paneltrig1",
+      "paneltrig2",
+      "paneltrig3",
+      "saw_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Bunbury.exe",
+    "original_sha256": "c49329c0f243df12c18b89b2990c8423c37f4035336a25d318e7893ad4064151",
+    "original_size": 121897359,
+    "source_url": "http://www.mediafire.com/file/6pearm9mxddw10d/Bunbury.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T20:07:58Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "bunbury.iwd:images/specialty_fastreload_zombies.iwi",
+        "bunbury.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/bunbury/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/bunbury-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "bunbury.ff",
+      "bunbury_patch.ff",
+      "mod.ff",
+      "bunbury.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

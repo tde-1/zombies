@@ -1,0 +1,251 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_123",
+  "title": "ZOMBIE SUMPF",
+  "source": "custom",
+  "author": "xJimmy33",
+  "released": "2014-03-21",
+  "fs_game": "mods/nazi_zombie_123",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_123.iwd": "3831f17fe3d75a80ba1eab459d47ac36a5ddd3532d3d105a9a8d3674f63afd22"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "mech_flogger_escape",
+        "start_endgame_chest"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        6000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, mech_flogger_escape, start_endgame_chest name an ending and are this map's own; script hardcodes cost 6000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 2187,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "mech_flogger_escape",
+      "start_endgame_chest"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "x12"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "x12"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "x11"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "x9"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "x8"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3831f17fe3d75a80ba1eab459d47ac36a5ddd3532d3d105a9a8d3674f63afd22",
+    "map_specific_triggers": [
+      "delete_rattle",
+      "enter",
+      "gate_trigger",
+      "mech_flogger_trigger",
+      "new_chest_1",
+      "soul_chest_area_1",
+      "soul_chest_area_2",
+      "soul_chest_area_3",
+      "soul_chest_area_4",
+      "soul_chest_area_end",
+      "soul_chest_reward",
+      "soul_chest_shoot_trigger_1",
+      "soul_chest_shoot_trigger_2",
+      "soul_chest_shoot_trigger_3",
+      "soul_chest_shoot_trigger_4"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Zombie_Sumpf_FINAL-END.exe",
+    "original_sha256": "6639ebf5ac63ebc99c05474feafa11362e75be1490bd8d4d9aeb23f55099149a",
+    "original_size": 122553226,
+    "source_url": "https://www.mediafire.com/file/vluyiuz4mrru0m6/Zombie_Sumpf_FINAL-END.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:24:03Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "leaderboard",
+      "top_100"
+    ],
+    "catalogue_description": "Map Features: \u2014 Main Easter-Egg with a new Wunderwaffe as reward and also a little surprise \u2014 Japanese Zombies \u2014 No Dogs \u2014 Blur effect at spawn \u2014 New weapons: Origins: MP40, STG44, Mauser;; / New Wunderwaffe;; / Ray-Gun Mark II;; / Shovel \u2014 Changed weapon FOV for a better weapon-feeling! \u2014 Changed FOV \u2014 Changed viewhands \u2014 Meleetime increased \u2014 You run faster with upgraded weapons! \u2014 BossZombies, after EE! \u2014 Solo random character \u2014 A Zipline \u2014 The Flogger-trap \u2014 4 Regular Perks;; SpeedCola, Jugger-Nog, QuickRevive, DoubleTap \u2014 Normal detail with a nice green fog \u2014 Pack a Punch \u2014 Mauser C96 as startpistol \u2014 The Panzersoldat with custom animations and also scripts by BluntStuffy! \u2014 HECTIC GAMEPLAY! \u2014 Some HUD-changes \u2014 An Ending \u2014 A \u201cPARTY-ROUND\u201d between round 25 and 30! \u2014 And more i forgot.. CREDITS: BluntStuffy \u2013> Scripter of most things in the map! Also the Wunderwaffe, MOTD-box, Mauser and the Panzersoldat-animations and scripts! YaPh1l \u2013> For scripting support and also for some questions! + Changed the MK2 impact & Blur effect at spawn TheKillery \u2013> PaP-Camo from the Mark II and Boomhilda NaziZombiesHD & Steviewonder87 \u2013> Mauser / Boomhilda models Henkownd \u2013> Panzersoldat-models Elfenlied & Rollonmath \u2013> Mark II animations Tito \u2013> Origins STG44, MOTD and Buried zombie models! Bookable \u2013> Zipline & Flogger script / tutorial DeadraDescent \u2013> MP weapon files UGX-Team \u2013> easy-fx UGX-Forum \u2013> General help ZM-Forum \u2013> General help TOM_BMX \u2013> Tools and the shovel! RadimaX -> Adde",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_123",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_123.iwd:images/loadscreen_nazi_zombie_123.iwi",
+        "nazi_zombie_123.iwd:images/menu_map_nazi_zombie_123.iwi",
+        "nazi_zombie_123.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_123.iwd:images/sumpf_menu_bg.iwi",
+        "nazi_zombie_123.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_123.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_123"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/sumpf/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/zombie-sumpf-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 125.5,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 146,
+        "scripts": 0,
+        "bytes": 394895
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_123.ff",
+      "nazi_zombie_123_patch.ff",
+      "nazi_zombie_123.iwd:animscripts/death.gsc",
+      "nazi_zombie_123.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 165,
+    "fatal": 8,
+    "visible": 8,
+    "visible_owner": {
+      "release": 8
+    },
+    "visible_names": [
+      "item:mg42_bipod",
+      "item:molotov",
+      "item:nambu_mp",
+      "item:nambu_mp_upgraded",
+      "item:thompson_bigammo_mp",
+      "weapon:weapons/sp/nambu_mp",
+      "weapon:weapons/sp/nambu_mp_upgraded",
+      "weapon:weapons/sp/thompson_bigammo_mp"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95159 ms over the hold",
+    "first_error": "Could not load xmodel \"zombie_vending_triple_gun_on\".",
+    "match": "m_020ae2d4",
+    "at": "2026-09-23T20:41:06",
+    "instance": "inst-09",
+    "com_frameTime_advance_ms": 95159,
+    "com_error": [],
+    "console_errors": [
+      "4519:Error: called from:",
+      "4523:Error: called from:",
+      "4527:Error: called from:",
+      "4531:Error: started from:",
+      "4535:Error: ************************************",
+      "4537:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:mg42_bipod, item:molotov, item:nambu_mp, item:nambu_mp_upgraded, item:thompson_bigammo_mp, weapon:weapons/sp/nambu_mp",
+  "dedi_status": "box_map_loaded"
+}

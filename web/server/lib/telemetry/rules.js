@@ -175,6 +175,12 @@ const RULES = [
     line: /join_retry: GIVING UP|"EXE_ERR_CANNOTJOININPROGRESS"|join_retry: the server refused/i, files: GAME_LOGS,
   },
   {
+    id: 'solo_parity', label: 'Not like solo', severity: 2,
+    description: 'The server\'s solo_parity self-check saw a game that does not play like World at War solo: a player spawned hurt, was off the ground for 5 s (floating/swimming), or a difficulty constant or the dedi\'s water switch is not solo\'s (dedi.md section 28).',
+    // server/components/dedicated/solo_parity.cpp: "solo_parity: MISMATCH slot N: <what>"
+    line: /solo_parity: MISMATCH/i, files: GAME_LOGS,
+  },
+  {
     id: 'auth_deny', label: 'Token refused', severity: 2,
     description: 'An invite token or chat pass was refused (DENY, wrong_match, bad_signature, expired).',
     line: /\bDENY\b|wrong_match|bad_signature|token (was )?(refused|rejected|expired)|reason[=:] ?'?(expired|wrong_match|bad_signature|malformed)/i,

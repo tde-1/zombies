@@ -396,7 +396,8 @@ def iwd_paths(kind, name):
     if kind == "image":
         return ["images/%s.iwi" % n]
     if kind in ("weapon", "item"):
-        return ["weapons/sp/%s" % n]
+        # a `weapon` miss is logged with its path ("weapons/sp/x"), an `item` by name ("x")
+        return ["weapons/sp/%s" % n.split("/")[-1]]
     if kind == "sound":
         return []
     if kind == "rawfile":
@@ -484,8 +485,17 @@ def role(kind, name, ctx=None):
             return "loadout", False, ("PrecacheItem in the map's own _loadout.gsc for an item its zone "
                                       "lacks: the campaign default loadout (a bsp not named nazi_zombie_*). "
                                       "Identical in retail; the release's own script")
+        if ctx.get("never_offered"):
+            # lane MAPS 2026-09-23: Cheese Cube Unlimited's `add_zombie_weapon("mk6_laser", ...)`
+            # registers a weapon its author then disabled (every give/take is commented out and
+            # no include_weapon names it): the box and walls never offer it.
+            return "weapon_registered_only", False, ("registered by add_zombie_weapon but never included, "
+                                                     "given or bought: no player meets it")
         return "weapon", True, "a script gives/precaches a weapon the map's zones do not hold"
     if kind == "weapon":
+        if ctx.get("never_offered"):
+            return "weapon_registered_only", False, ("weapon file of a weapon nothing includes in the box, "
+                                                     "gives or sells on a wall: no player meets it")
         return "weapon", True, "a weapon file the map's scripts ask for is not shipped"
     if kind == "xmodel":
         if RX_WEAPON_MODEL.search(n):
@@ -494,6 +504,15 @@ def role(kind, name, ctx=None):
             return "weapon_script", False, ("precached by script only; no weapon in the map's zones "
                                             "uses it (loadout/wall-chalk leftovers)")
         if RX_CHAR_MODEL.search(n):
+            # lane MAPS 2026-09-23: Leviathan's `_zombiemode_perks.gsc` precaches
+            # `bo1_c_usa_pent_ciaagent_body` and nothing ever sets or attaches it. A character
+            # model no loaded zone references AND whose every mention in the map's scripts is a
+            # PrecacheModel() call is a leftover no player meets. (A script-attached head, e.g.
+            # fear_mc_2's `level.zombie_heads[i] = "bo1_c_viet_..."`, is mentioned outside the
+            # precache and stays a character miss.)
+            if ctx.get("precache_only"):
+                return "character_precache_only", False, ("precached by script only: no loaded zone "
+                                                          "references it and no script sets/attaches it")
             return "character", True, "a character (player/zombie/dog) model"
         return "cosmetic", False, "a prop / world model"
     if kind in ("xanim", "waited"):
@@ -550,12 +569,20 @@ def visible(r):
     k, n, rl = r["kind"], r["name"].lower(), r["role"]
     if not r["fatal"]:
         return False
+    if r.get("where") == "load_zone_only":
+        # dedi.md §23.4 `load_zone.cpp` is on the box (every run logs "dedi_load_zone: loaded
+        # <bsp>_load"), and a client always loaded it: an older run's miss is history (lewl)
+        return False
     if rl == "character" and k == "xmodel":
         return not RX_GIB.search(n) and not RX_PLAYER_SET.search(n)
     if rl == "character":           # xanim / waited
         return bool(RX_CORE_AI_ANIM.search(n))
     if rl == "weapon":
         if n in HELPER_WEAPONS or n in UNCERTAIN_ITEMS:
+            return False
+        if k == "weapon" and r.get("where") == "shipped_iwd":
+            # the raw file is shipped NOW (weapon_patch.py added it after this log was
+            # written): an older run's "Could not load weapon file" is history, not a miss
             return False
         if k in ("item", "weapon"):
             return True
@@ -584,6 +611,81 @@ def owner(where):
 
 
 # ---- the audit -------------------------------------------------------------------------------
+_SCRIPT_TEXT = {}
+RX_PRECACHE_CALL = re.compile(r"precachemodel\s*\(\s*\"[^\"]*\"\s*\)", re.I)
+
+
+def precache_only(bsp, _entry, name):
+    """True when every mention of `name` in the map's own scripts (its zones and IWDs, read with
+    the referee's reader) is inside a PrecacheModel("...") call. No script text -> False."""
+    if bsp not in _SCRIPT_TEXT:
+        text = ""
+        d = os.path.join(MODS, bsp)
+        try:
+            sys.path.insert(0, os.path.join(REPO, "referee"))
+            import scan_map  # noqa: E402  (referee/scan_map.py)
+            ffs = sorted(glob.glob(os.path.join(d, "**", "*.ff"), recursive=True))
+            iwds = sorted(glob.glob(os.path.join(d, "**", "*.iwd"), recursive=True))
+            text = "\n".join(t for t, _src in scan_map.read_scripts(ffs, iwds).values()).lower()
+        except Exception as exc:
+            print("  precache_only: cannot read %s scripts: %s" % (bsp, exc), file=sys.stderr)
+        _SCRIPT_TEXT[bsp] = text
+    text = _SCRIPT_TEXT[bsp]
+    n = name.lower()
+    if not text or n not in text:
+        return False
+    return n not in RX_PRECACHE_CALL.sub("", text)
+
+
+RX_LINE_COMMENT = re.compile(r"//[^\n]*")
+RX_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+
+
+_ENT_TEXT = {}
+
+
+def never_offered(bsp, weapon):
+    """True when nothing can hand a player `weapon`: the map's scripts (comments stripped) never
+    include_weapon / include_zombie_weapon / giveweapon it, and no map entity (a wall-buy
+    trigger's `zombie_weapon_upgrade`) names it. Only then is its add_zombie_weapon() line a
+    registration no player meets. Any doubt -> False (it stays visible)."""
+    precache_only(bsp, None, "__load__")
+    text = RX_BLOCK_COMMENT.sub("", RX_LINE_COMMENT.sub("", _SCRIPT_TEXT.get(bsp, "")))
+    if not text:
+        return False
+    w = weapon.lower()
+    if w.endswith("_upgraded"):
+        # Pack-a-Punch builds the name (`current_weapon + "_upgraded"`): an upgraded weapon is
+        # offered exactly when its base weapon is (nazi_zombie_rooms' tesla_gun_upgraded).
+        if not never_offered(bsp, w[:-len("_upgraded")]):
+            return False
+    # Strictly: remove the mentions that cannot hand it out -- its add_zombie_weapon()
+    # registration, include_weapon("w", false) (kept OUT of the box), and == / != / case
+    # comparisons. ANY other mention (a bare include, giveweapon, `rand = "w"` in a box script,
+    # an array literal, a function argument) counts as an offer. Zombie Desert's
+    # `rand = "tesla_gun"` keeps its tesla visible; Cheese Cube Unlimited's mk6_laser is left
+    # with no mention at all.
+    q = re.escape('"%s"' % w)
+    rest = re.sub(r"add_zombie_weapon\s*\(\s*%s[^\n]*" % q, "", text)
+    rest = re.sub(r"include_(zombie_)?weapon\s*\(\s*%s\s*,\s*false\s*\)" % q, "", rest)
+    rest = re.sub(r"[!=]=\s*%s" % q, "", rest)
+    rest = re.sub(r"%s\s*[!=]=" % q, "", rest)
+    rest = re.sub(r"case\s+%s\s*:" % q, "", rest)
+    if '"%s"' % w in rest:
+        return False
+    if bsp not in _ENT_TEXT:
+        try:
+            import scan_map  # noqa: E402 (path set by precache_only)
+            ffs = sorted(glob.glob(os.path.join(MODS, bsp, "**", "*.ff"), recursive=True))
+            _ENT_TEXT[bsp] = json.dumps(scan_map.read_mapents(ffs)).lower()
+        except Exception as exc:
+            print("  never_offered: cannot read %s entities: %s" % (bsp, exc), file=sys.stderr)
+            _ENT_TEXT[bsp] = None
+    if _ENT_TEXT[bsp] is None or '"%s"' % w in _ENT_TEXT[bsp]:
+        return False
+    return True
+
+
 def extract_entries():
     ex = json.load(open(os.path.join(REPORTS, "extract.json"), encoding="utf-8"))
     out = {}
@@ -640,6 +742,12 @@ def audit(maps=None, trace=True):
                 ctx["has_dogs"] = ix["has_dogs"]
                 ctx["zone_ref"] = any((k, name.lower()) in refs for z, refs in ix["refs"].items()
                                       if z not in ix["unloaded_zones"] for k in UNL_KIND.get(kind, [kind]))
+                if kind == "xmodel" and not ctx["zone_ref"] and RX_CHAR_MODEL.search(name.lower()):
+                    ctx["precache_only"] = precache_only(bsp, ext.get(bsp), name)
+                if kind == "item" and (ctx.get("script") or "").lower().endswith("_zombiemode_weapons.gsc"):
+                    ctx["never_offered"] = never_offered(bsp, name)
+                if kind == "weapon":
+                    ctx["never_offered"] = never_offered(bsp, name.split("/")[-1])
             rl, cand, why = role(kind, name, ctx)
             r = {"kind": kind, "name": name, "count": cnt, "role": rl, "why": why,
                  "chronic": (kind, name) in chronic, "maps_missing_it": prevalence[(kind, name)],

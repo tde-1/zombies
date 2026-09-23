@@ -353,6 +353,14 @@ export class BootFlow extends EventEmitter {
       // deadline is still serverTimeoutMs (120 s); this only makes the wait visible.
       // 'poll', not 'change': the watcher's change key does not include `preparing`.
       watcher.on('poll', (p) => {
+        // [RS] THE BOX CLOSED THIS SERVER FOR WANT OF PLAYERS (host lib/idle.js; the site
+        // says `closed` once the lease is gone). Only for the match this flow was waiting on:
+        // an older close must never stop a new game. Terse: "Server closed: nobody joined."
+        if (p?.match?.match_id) this.seenMatchId = p.match.match_id
+        if (p?.closed && this.seenMatchId && p.closed.match_id === this.seenMatchId && !p?.match?.connect) {
+          resolve({ error: p.closed.text || 'Server closed.' })
+          return
+        }
         const d = preparingDetail(p?.match?.preparing)
         if (!d || p?.match?.connect) return
         const cur = this.steps.find((s) => s.id === 'reserving')

@@ -6,6 +6,7 @@
 //   node web/tools/lease-cli.js --match m_1234abcd --cancel
 //   node web/tools/lease-cli.js --map <bsp> --player 76561198000000001 --proof   # a map not yet in SERVER_PROVEN
 //   node web/tools/lease-cli.js --map <bsp> --player 76561198000000003 --dev-god  # soak: Custom + test god mode
+//   node web/tools/lease-cli.js --map <bsp> --player 76561198000000003 --dev-god --dev-bots 2  # + 2 soak bots (dedi.md §26)
 //
 // WHY THIS EXISTS, and what it is NOT. The real Start button is `POST /api/launcher/play`
 // -> `parties.launch()`, and it needs a signed-in SESSION. On the live site a session can
@@ -35,7 +36,13 @@ function arg(name, dflt = null) {
 
 const mapKey = arg('map')
 const players = String(arg('player', '') || '').split(',').map((s) => s.trim()).filter(Boolean)
-const mode = arg('dev-god') === true ? 'custom' : arg('mode', 'verified')
+// --dev-bots N (1..4, dedi.md §26): server-side soak bots that kill zombies so rounds advance.
+// Agent leases only, like --dev-god, and it implies Custom mode the same way.
+const devBots = arg('dev-bots') === null ? 0 : Number(arg('dev-bots'))
+if (devBots && !(Number.isInteger(devBots) && devBots >= 1 && devBots <= 4)) {
+  console.error('--dev-bots takes a whole number 1..4'); process.exit(2)
+}
+const mode = (arg('dev-god') === true || devBots > 0) ? 'custom' : arg('mode', 'verified')
 const watchId = arg('match')
 const wantCancel = arg('cancel') === true
 const wantWatch = arg('watch') === true || (!!watchId && !wantCancel)
@@ -137,11 +144,14 @@ if (watchId && wantWatch) {
     const gm = parties.setGameMode(leader, String(arg('game-mode')))
     if (!gm.ok) { console.error(`--game-mode: ${gm.error}`); process.exit(1) }
   }
-  if (devGod) {
-    if (arg('real') === true) { console.error('--dev-god is for agent leases only (drop --real)'); process.exit(2) }
-    const st = parties.setSettings(leader, { dev: { god: true } })
-    if (!st.ok) { console.error(`--dev-god: ${st.error}`); process.exit(1) }
-    console.log('dev lease: Custom mode, settings.dev.god (TEST ONLY: never a record)')
+  if (devGod || devBots) {
+    if (arg('real') === true) { console.error('--dev-god / --dev-bots are for agent leases only (drop --real)'); process.exit(2) }
+    const dev = {}
+    if (devGod) dev.god = true
+    if (devBots) dev.bots = devBots
+    const st = parties.setSettings(leader, { dev })
+    if (!st.ok) { console.error(`--dev-god/--dev-bots: ${st.error}`); process.exit(1) }
+    console.log(`dev lease: Custom mode, settings.dev ${JSON.stringify(dev)} (TEST ONLY: never a record)`)
   }
   // `force` on the ready check is the leader's own override — it is there because nobody's
   // launcher has reported a map download for a party this CLI just invented.

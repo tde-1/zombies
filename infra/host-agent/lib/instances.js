@@ -96,7 +96,28 @@ export function safeLeaseDvars(entries) {
 export function devKnobsFor(a) {
   const dev = a && a.agent === true && a.mode === 'custom' && a.settings && a.settings.dev
   const god = !!(dev && dev.god === true)
-  return { ENW_DEV_KNOBS: god ? '1' : '', ENW_DEV_GOD: god ? '1' : '' }
+  // Soak bots (dedi.md §26, server/components/dedicated/bots.cpp): server-side test clients
+  // that kill zombies so rounds advance. 1..4, whole numbers only; anything else is none.
+  const bots = devBotsFor(a)
+  const on = god || bots > 0
+  return { ENW_DEV_KNOBS: on ? '1' : '', ENW_DEV_GOD: god ? '1' : '', ENW_DEV_BOTS: bots > 0 ? String(bots) : '' }
+}
+
+/** How many soak bots an agent's Custom dev lease asked for (0 for every other lease). */
+export function devBotsFor(a) {
+  const dev = a && a.agent === true && a.mode === 'custom' && a.settings && a.settings.dev
+  const n = dev ? dev.bots : 0
+  return Number.isInteger(n) && n >= 1 && n <= 4 ? n : 0
+}
+
+/**
+ * A soak lease's bots (dedi.md §27) are server-side test clients the DLL's referee never reports
+ * as players, so to the host the game is empty -- and the empty close (two minutes) ended every
+ * bot soak at 2 m 00 s (`game over: empty`, 2026-09-23 18:52 UTC). Only an agent's Custom dev
+ * lease that asked for bots gets the empty close pushed out to the lease cap; nothing else changes.
+ */
+export function soakBotConfig(assignment) {
+  return devBotsFor(assignment) > 0 ? { emptyCloseMs: 24 * 60 * 60 * 1000 } : {}
 }
 
 function pidAlive(pid) {
@@ -204,7 +225,8 @@ export class Instance extends EventEmitter {
       '+set con_typewriterColorBase 1.0 1.0 1.0',
       '+set hud_drawhud 1',
       '+set ui_campaign american',
-      `+set sv_maxclients ${Math.max(1, Math.min(8, Number(a.slots?.length || a.max_players || 4)))}`,
+      // A soak lease's bots need client slots of their own (dedi.md §26).
+      `+set sv_maxclients ${Math.max(1, Math.min(8, Math.max(Number(a.slots?.length || a.max_players || 4), devBotsFor(a))))}`,
       `+set net_port ${this.port}`,
     )
     // The map's own game mode (game-modes.md), host-owned, in Verified and Custom alike: the

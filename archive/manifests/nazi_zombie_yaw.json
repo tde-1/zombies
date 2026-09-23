@@ -1,0 +1,220 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_yaw",
+  "title": "DEPRIVED (2P)",
+  "source": "custom",
+  "author": "death_reaper",
+  "released": "2015-12-10",
+  "fs_game": "mods/nazi_zombie_yaw",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_yaw.iwd": "a760f0fee4deb69530809874313e082bfbc523456ec8eb83334ccc596b2fdd1f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "buyable_random_weapon"
+        }
+      },
+      "candidates": [
+        "buyable_random_weapon",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "buyable_random_weapon, end_game name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 337,
+    "ee_candidates": [],
+    "ending_words": [
+      "buyable_random_weapon",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door10"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door8"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a760f0fee4deb69530809874313e082bfbc523456ec8eb83334ccc596b2fdd1f",
+    "map_specific_triggers": [
+      "buyable_random_weapon",
+      "credit_dispense",
+      "empty_clip",
+      "empty_reserve",
+      "slow_down",
+      "swap_gun",
+      "take_perk"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "deprived.exe",
+    "original_sha256": "a6c9192b10c5d8fede9bd4aff533d008bb5a9a34aeb9115a5fecbec07b9b76b5",
+    "original_size": 189383049,
+    "source_url": "https://www.mediafire.com/file/ff04gqdwvlpwcmw/deprived.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T20:04:48Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "FIRST OFF I WANT TO SAY THIS MAP ONLY WORKS WITH TWO PEOPLE, NO MORE, NO LESS, SO GRAB A FRIEND deprived is a challenge map that places players in a situation where they can not help the other player, instead they must beat them to the finish line. but you can troll the other player with 5 buy able trolls each with a different effect. perks are randomized and each player only can buy the 4 that spawn on their own side, but dont worry there are other ways to get the other perks\u2026 features: 9 perks (only 4 random available to each player) no dogs trolls buyable ending 1v1 style game play a free perk awarded after every 5000 points earned advanced warfare exo zombie credit dispensers (because why not) box alternative (different advantages/disadvantages) brand new op custom perk 2 new power-up drops (free perk, Tesla rain) credits: makecents tom_bmx ugx lots of various people in chat sorry if i missed someone",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_yaw.iwd:images/bear_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/blood_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/damnade_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/deep_impact_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/discount_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/down_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/flash_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/guardian_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/packbox_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/perkaholic_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/point_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/polosa_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/repair_logo.iwi",
+        "nazi_zombie_yaw.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_yaw.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/deprived/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/deprived-5.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 67.5,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273614
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953536
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 557099
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019295
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_yaw.ff",
+      "nazi_zombie_yaw_patch.ff",
+      "nazi_zombie_yaw.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

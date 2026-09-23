@@ -1054,6 +1054,30 @@ function migrate() {
   CREATE INDEX IF NOT EXISTS incidents_fp ON incidents(fingerprint, last_at);
   CREATE INDEX IF NOT EXISTS incidents_upload ON incidents(upload_state);`)
 
+  // FRIENDS FROM THE REST OF ENW (lane SOC, 2026-09-23; lib/friendSync.js). Additive only.
+  // One row per friend pair per SOURCE, pair stored low SteamID first, so the same two
+  // people friends on Movement AND here are two rows and removing one keeps the other.
+  // Only pairs where BOTH ends are ENW Zombies accounts are stored: an edge to somebody who
+  // never came here draws nothing and is not ours to keep. A successful sync of a source
+  // replaces that source's rows wholesale, so an unfriend on Movement reaches us.
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS friend_edges (
+    a          TEXT NOT NULL,
+    b          TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    synced_at  INTEGER,
+    PRIMARY KEY (a, b, source)
+  );
+  CREATE INDEX IF NOT EXISTS idx_friend_edges_b ON friend_edges(b);
+  CREATE TABLE IF NOT EXISTS friend_sync (
+    source     TEXT PRIMARY KEY,
+    tried_at   INTEGER,
+    ok_at      INTEGER,
+    edges      INTEGER DEFAULT 0,
+    error      TEXT,
+    reason     TEXT
+  );`)
+
   return db
 }
 

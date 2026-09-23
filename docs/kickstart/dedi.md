@@ -3573,3 +3573,350 @@ alias that killed B's games is missing on these maps too, and is now silent.
 - A bullet into water on the dedi (Shi No Numa-style map, a player shooting) — the reader is inferred to
   be water from the surface-type test; the registration itself is proven.
 - ils lag with a real internet client (26.3).
+
+### 26.6 Addendum (lane REL, 2026-09-23 18:17–18:45 UTC): the evening merges on the box
+
+Every DLL built in a clean detached worktree at a main commit (rule 17), each deployed only to production
+copies not running a game (`waw-inst-01..04`, `waw-probe`, `waw-stock`, `waw-vps1`; `waw-tinst-*` never
+touched), copy-to-temp + `mv`, `chown waw:waw`. No real player was live for any step (B's idle zm_nuked
+lease `m_5a28dcbe` ended 18:11; lane MAPS's fake-`…0005` queue ran throughout and was worked around).
+
+| DLL | main / worktree | copies | proof |
+|---|---|---|---|
+| `2fda99fe` | `43f722f` / `wt-rel4` (CL+UGX+SOC+RV) | 6 of 7, 18:13 | - |
+| `884dde5f` | `499e254` / `wt-rel5` (+G2) | 6 of 7, 18:17 | nacht_reimagined `m_018c6208`: `dedi_water_sim_off: post_init: r_gfxopt_water_simulation 1 -> 0`, `map_loaded`, all 4 `dedi_snd_alias_dvars … registered`, `game_mode: bound`, no MISMATCH (no player) |
+| `736236c8` | `9589c91` / `wt-rel6` (+S2) | 7 of 7 (inst-01 at 18:27) | - |
+| **`3557aaa3`** | `0a03304` / `wt-rel7` (+G2 CLIENT FROZEN) | **7 of 7**, 18:29 + inst-01 18:35 | nacht_reimagined `m_adde3e93`: `map_loaded`, snd dvars registered, **`dedi_water_sim_off: NOT applied: [0x042B721C]=00000000 but Dvar_FindVar(r_gfxopt_water_simulation)=021BAC04`**; nazi_zombie_ils `m_077a1836`: **16.4 % of one core over 60 s, `dedi_rate_probe` 61.0–61.3 Hz** (S2's fix holds), and no `dedi_water_sim_off` line at all |
+
+**Open, for lanes G2 + S2:** the water fix applies on `884dde5f` (G2, no S2) and on G2's own `92b01569`, and
+fails on every build with S2 merged (`736236c8`: derberg; `3557aaa3`: nacht_reimagined, and silent on
+ILS). S2 added `bots.cpp` (inert without `ENW_DEV_KNOBS`), the `memory.cpp` image fast path, and
+`t4_bind`/`structs` fields; `read_raw` itself is unchanged in substance, so the cause is not proven.
+The A/B is `ENW_MEMORY_SLOW_READS=1` on one lease. Until then the box has S2's CPU fix but not G2's water
+fix; `/home/waw/binkw32.rollback-884dde5f.dll` is the build with the water fix and without S2 (REL did not
+roll back: that trade is the coordinator's call).
+
+Host agent: main `9589c91` (UGX `gamemode.js`, the 31 `+`-command guard, S2 `settings.dev.bots`) deployed
+18:27 UTC in a gap in MAPS's queue; rollback `/home/waw/host-agent.rollback-20260923T1826Z.tgz`.
+Rollbacks for the DLL chain: `binkw32.rollback-{fd3039d2,2fda99fe,884dde5f,736236c8}.dll`.
+
+### 26.7 Addendum (lane REL, 18:50–19:20 UTC): RS + the G2 race fix on the box
+
+Order per lane RS: site (main `c99b346`, 19:52 UK), then host agent `c99b346` + DLL **`1b482aa2`** (clean
+`wt-rel8` at `c99b346`) into all 7 production copies in one gap with no game (18:58 UTC; rollbacks
+`host-agent.rollback-20260923T1857Z.tgz`, `binkw32.rollback-3557aaa3.dll`), then host `a2c330d` (S2 `3b5ffd8`)
+at 19:12 UTC (rollback `host-agent.rollback-20260923T1912Z.tgz`). The §26.6 regression is gone: it was
+G2's startup-order race (§28.9), not S2.
+
+* nacht_reimagined `m_35b82cb2`, nazi_zombie_ils `m_4bed9049` (fake …0006): `dedi_water_sim_off: post_init:
+  r_gfxopt_water_simulation is already 0 (dvar_s 021BAC04); held at 0`; 0 `solo_parity: MISMATCH` (the one
+  grep hit is the `armed` line quoting the word; no player, so no spawn checks); `restart_request: armed`
+  and `ui_gametype … slot [0x0208E8E8] was NULL … filled`. CPU over 60 s: nacht_reimagined 17.6 %, ILS
+  **17.9 %** of one core; `dedi_rate_probe` 60.9 Hz on both (S2's fast path holds).
+* UGX gungame, battlestar_galactica `m_86cc3964`: the host passed `+set enw_game_mode gungame:…` and the DLL
+  bound (`game_mode: bound (openMenu 004EF840)`), but no `ENWZombie;game_mode` event: with no client
+  connected the map never opens its vote menu, so there is nothing to answer. The answer itself is
+  unproven on the box (needs a real or harness client).
+* RS restart through the host path: unproven (needs a client sending `enw_req restart.<n>`).
+* RS idle auto-close, Nacht `m_07a483ce` left idle from 19:13 UTC: PROVEN: `19:18:02 host/inst-01 IDLE CLOSE: nobody joined within 300 s of the server being ready -- ending lease m_07a483ce (no_players)`; the game process was gone after.
+
+### 26.8 Addendum (lane REL, 19:34 UTC): S2 bot fixes on the box
+
+DLL **`70b28f5b`** (`70b28f5b025bd1edded67db142caa58ece0b121670568d8fa01f796f31e23e5f`), clean `ZombiesDev\wt-rel9`
+at local main `d8b580c` (= `1b482aa2`'s source + soc-loopfix (web only) + S2 `533cdae`: bots acknowledge every
+snapshot, look at the floor with no target, per-bot position line). Reviewed: every change is in
+`think_bots`/`minute_line`, reached only after `post_init` arms the component under `ENW_DEV_KNOBS=1`, so a
+player game runs the same code as `1b482aa2`; no launcher release. Deployed to the 7 production copies by
+temp + `mv` with no real player live (S2's Nacht soak `m_bd4f87b4`, fake …0003, kept running on its loaded
+image; `waw-tinst-*` untouched). Rollback `/home/waw/binkw32.rollback-1b482aa2.dll`. first new game on it pending at 19:34 UTC (the next lease, MAPS zombie_maze, was waiting on the RAM guard).
+Commit `d8b580c` is on local branches only (agent pushes blocked); main needs it pushed.
+
+### 26.9 Addendum (lane REL, 20:27 UTC): S2 `snapacknowledged` notify on the box
+
+DLL **`59577dbe`** (`59577dbe7b100450e5659248f684816ff1484768beabbf9190d345987a62573b`), clean `ZombiesDev\wt-rel10`
+at `4ead149` (= `70b28f5b` + S2 `52b2169`), built with `/m:2 /nodeReuse:false` (heavy.lock held by GEO; commit
+charge 84 %, 9.4 GB free). Gate reviewed: `notify_snapshot_acknowledged()` is called only from `think_bots()`,
+reached only through `bots_server_frame`, which `post_init` installs only with `ENW_DEV_KNOBS=1` and every
+prologue byte-checked (0x635760 included); inside, only when `bot_count() > 0` (test-client slots). A game
+without the dev knobs never reaches it. No unit harness exists for bots.cpp (engine-bound). The build warns
+C4405 (`add` is an asm reserved word); `dumpbin /disasm` of bots.obj shows `call dword ptr [ebp-18h]` =
+`at(0x69A8D0)`, so the call is correct, with esi/edi saved. Swapped into the 7 production copies by temp + `mv`
+(host not restarted; S2's ILS soak `m_2a9a49f4`, fake …0003, kept running on its loaded image). Rollback
+`/home/waw/binkw32.rollback-70b28f5b.dll`. Unproven until S2's next bot lease boots on it.
+
+## 28. 2026-09-23 evening — lane G2: the "one-hit downs" are a phantom water surface at z=0 on the dedicated server (`water_sim_off.cpp`), plus a solo-parity self-check (`solo_parity.cpp`)
+
+B, 14:00–14:27 UTC on box DLL `04a3ad6d`: Nuketown down the instant he spawned (game over in 1 s),
+nacht_reimagined "not touching the floor, missing inputs, floating", bridge_zombie / battlestar down
+on "one hit". Build: branch `worktree-agent-aac675948eb19e877` (main `27026f6` merged).
+
+### 28.1 What the evidence says, per map
+
+| map | B's replay / server log | cause |
+|---|---|---|
+| zm_nuked `m_89bf26b9` | spawn 72994 ms; `damage by:null hp 75` (+84 ms), `hp 39` (+125), down (+175), `hp 3` | **drowning**: the player spawned ~390 units under a water surface that exists only on the server |
+| nacht_reimagined `m_892d6c70` | player z p50 **-50**, zombies at the same x/y **35 units lower** (floor -87.6), all game | **swimming** at that surface (never on the ground) |
+| bridge_zombie `m_abe60828` | hit to 39 at 37.1 s, regen to 100 at 39.6 s, hit to 40 at 42.6 s, down 43.3 s | **stock**: two zombie hits (60 each) inside the 2.4 s regen delay |
+| battlestar `m_da684190` | hit to 40 at 66.9 s, down 68.4 s | **stock**, as bridge |
+
+A zombie hit is 60 on every map (AI melee 150 × `player_meleeDamageMultiplier` 0.4, which
+`_zombiemode`'s turret code confirms: `60 / player_damageMultiplier`), health 100, regen to full
+2.4 s after the last hit (`playerHealth_RegularRegenDelay` at frac 0.75), and in solo WaW the lethal
+hit is `PlayerLastStand` + `end_game` with no revive. So *one hit takes you to 40 and a second one
+inside 2.4 s ends a solo game* — on the box and in a solo listen game alike (28.4). The downs B felt
+as "one hit" on bridge/battlestar were two hits 0.7 s / 1.5 s apart. (Aside: bridge's first zombie
+had 1,500 health in round 1 while the rest had 150 — the map's own, not investigated.)
+
+### 28.2 The mechanism (read from the decrypted image)
+
+`0x6F3F70` answers "how high is the water here" for pmove (via 0x46DA70), script `getwaterheight`,
+missiles and physics. With `r_gfxopt_water_simulation` on (its dvar pointer is `[0x42B721C]`,
+registered by R_RegisterDvars at 0x70BB50 — which runs on the dedi), it samples the renderer's
+256×256 water-sim window (`0x6F2330` bounds, `0x6F3E00` waves) and adds the window's int16 base
+height grid `[0x4DD8BD0]`. The renderer scrolls that window round the viewer and fills it from the
+map's static grid (0x6F23C0). A dedicated server never runs that: `watersim_pool.cpp` (§11) makes the
+engine allocate the buffers so the server stops faulting — and they stay **zero**, so every point in
+the window reads "water surface at z = 0". With the switch off, 0x6F3F70 goes to **0x6F45B0**: the
+map's static grid, `-32768` (0x8AF860) where there is no water. Maps with floors above 0 (stock
+Nacht ≈ 0, bridge 170, battlestar 16, fear_mc_2 2304) never noticed.
+
+### 28.3 The fix: `server/components/dedicated/water_sim_off.cpp`
+
+Dedicated only: checks the gate bytes at 0x6F3F77 (`A1 1C 72 2B 04 80 78 10 00 57 74 65`) and that
+`[0x42B721C]` is `Dvar_FindVar("r_gfxopt_water_simulation")`, sets current and latched to 0 at
+post_init, and holds it every second. `ENW_DEDI_WATER_SIM=1` is the control arm. Clients are not
+touched (their renderer owns and fills the sim). Every map, not a per-map list.
+
+### 28.4 Proof (local dedi `waw-g2d` + invisible client `waw-g2c`, fake 76561198000000002; solo = listen)
+
+| run | map | build | spawn | on the ground | hits |
+|---|---|---|---|---|---|
+| g2r1/g2r3 | nacht_reimagined | no fix | **95/100** | **never** (z -46…-54, vel z ±3, 100 % "nothing") | — |
+| **g2r4** | nacht_reimagined | **fix** | 100/100 | **yes**: falls to **-87.6**, 100 % world | 60 → 40, second hit 0.41 s later = down → game over |
+| g2l2/**g2l3** | nacht_reimagined | solo listen | 100/100 | yes, **-87.6** | 60 → 40, second hit = down |
+| g2n3 | zm_nuked | no fix | 95/100, then -16, -4 (drowning, attacker none) | no | — |
+| **g2n4** | zm_nuked | **fix** | **100/100, no damage** | **no** — see 28.6 | killed at +45 s by something scripted (100 → 0, no laststand) |
+| **g2b1** | bridge_zombie | fix | 100/100 | yes (180.6) | 60 → 40, second hit 0.56 s later = down |
+| **g2p3** | nazi_zombie_prototype (control) | fix | 100/100 | yes (1.1) | 61 → 39, second hit 1.5 s later = down |
+
+Every fixed run: `r_gfxopt_water_simulation 0`, `g_gameskill 1`, `player_damageMultiplier 0.3226`
+(= solo 100/310), `player_meleeDamageMultiplier 0.400`. Logs `ZombiesDev\logs\dedi\g2*.server.enw.log`,
+link transcripts `ZombiesDev\logs\g2\<tag>\link.ndjson`.
+
+### 28.5 The self-check: `solo_parity.cpp` + `solo_parity_rules.hpp` (every map, every game)
+
+Per player, every server frame, read only: spawn health, every health drop with its last attacker,
+what the player stands on (`ps.groundEntityNum`), time off the ground. A spawn below full health, a
+live PM_NORMAL player off the ground for 5 s, and at +5 s `g_gameskill`, `g_player_maxhealth`,
+`player_damageMultiplier` (vs 100 / (310 × co-op scalar)), `player_meleeDamageMultiplier` and, on a
+dedi, `r_gfxopt_water_simulation` are checked; a difference is `solo_parity: MISMATCH slot N: …` in the
+DLL log and a warn `log` on the link. Telemetry rule **`solo_parity`** (P2) flags it. g2r3 (fix
+deliberately not applied) raised all three: `spawned HURT 95 of 100`, `FLOATING`, `water_simulation 1`.
+Unit test `server/tests/solo_parity_test.cpp` 27/0 (rules + the six addresses against the dump);
+`ENW_NO_SOLO_PARITY=1` turns it off.
+
+### 28.6 Open
+
+- **zm_nuked is still not playable locally with the fix**: the player spawns at the first
+  `initial_spawn_points` struct (-6315 160 -388), drops 5 units and stays "on nothing" with vel z
+  -87 (stuck), then dies at +45 s without a down. The map's own `coop_player_spawn_placement` dies on
+  `"players_" + undefined` (`_zombiemode.gsc:2917`) on the dedi, so who puts the player on that struct
+  is unknown; a solo listen reference could not be made (`Hunk_AllocateTempMemoryHigh: failed on
+  1435238401 bytes` in a local listen game). The self-check flags it (`FLOATING`).
+- **nazi_zombie_ils** lag (B: running/shooting slow, dropped inputs): B's replay has the player at z
+  ≈ -5 with parts of the floor at -47 — consistent with the same phantom water, **not run** with the fix.
+- The listen reference ran with `r_gfxopt_water_simulation 0` (its profile's value), so a client
+  *with* the sim on vs the fixed server is not measured; the sim only adds waves on real water.
+- Not on the box (lane INT deploys). The fix and the self-check need a box game on a below-zero map.
+
+### 28.7 Build (not deployed)
+
+`build\g2final\enw_t4.dll` from branch head `f67b11e` (main `27026f6`+ merged, no untracked
+sources), 2,677,760 bytes, sha256 **`e7efde2c8002ab9c6f2f858fe7905049d972f560861391b8b975990c75e61e5f`**.
+Proven with this exact file: g2r6, nacht_reimagined, spawn 100/100 on the world, stands on -87.6,
+one hit 60 → 40, second hit = down, 0 mismatches. It is a box DLL (server components); deploy per
+rule 17 from a clean worktree at the merge commit, rollback = the current box DLL `fd3039d2`. The
+first box game on a below-zero map should show `dedi_water_sim_off: post_init: r_gfxopt_water_simulation 1 -> 0`
+(or nothing, once an instance's config has archived the 0) and `solo_parity: slot 0 SPAWNED … on world`.
+
+### 28.8 Follow-up (19:15–19:30 UK): Nuketown was the client hanging; ILS was never in water
+
+**zm_nuked "stuck, scripted death at +45 s" (28.6) was the test CLIENT freezing, not the map.**
+`g2n4.client.enw.log`: `hang_watchdog: the MAIN THREAD … has not ticked for 8000 ms`, stack in
+`0x70E370` — the render-lock wait of lane CL's GPU occlusion-query hang (`client.md` §13, sun flare).
+With no usercmds the server never moved the player (frozen at vel z -87, "on nothing"), and the
+"death" at +45 s was the server dropping a client that had sent nothing for ~40 s. CL's
+`gpu_query_guard.cpp` (main, launcher **0.2.29**) fixes it: run **g2n5** (client DLL from main
+`07d924a`) — `gpu_query_guard: TRIPPED` on the client, the player spawns 100/100, stands on the world
+at -398.3, one zombie hit 61 → 39, the second 1.7 s later is the down → game over. 0 mismatches.
+Nothing map-side needed. `solo_parity` now tells the two apart: a player off the ground whose
+`lastUsercmd.serverTime` has not moved is `MISMATCH … CLIENT FROZEN`, not `FLOATING`.
+(The failed local solo listen of Nuketown is a separate thing: `Hunk_AllocateTempMemoryHigh` on a
+1,435,238,401-byte file read in the listen-only script/clientscript load path, 0x689980 → 0x68AED0.)
+
+**nazi_zombie_ils, g2i1 (fix on):** spawn (1588 -835 7) 100/100, drops to **-4.9 on the world** and
+stays there — so B's z ≈ -5 is ILS's floor, not water; hit 60 → 40, second hit = down; server
+58.4 Hz, `perf` p50 17.1 ms. 0 mismatches. The slowness B felt is not reproducible here (local,
+loopback); lane S2 attributes the box's ILS lag to Wine `VirtualQuery` CPU (their fix, not deployed).
+
+DLL at this commit (`build\g2final`, 2,677,760 bytes) sha256
+**`92b015691925b463f6eef74a7d712cffc54b3fa94e40023462907f2ecfbab403`** — it adds only the CLIENT
+FROZEN wording to `solo_parity`; the water fix is unchanged from `e7efde2c`.
+
+## 27. 2026-09-23 evening — lane S2: soak bots with no client anywhere, and why an idle nazi_zombie_ils server used 0.82 of a core
+
+### 27.1 Bots without B's PC: `server/components/dedicated/bots.cpp`
+
+T4 SP still has IW3's test-client machinery (`client_s.bIsTestClient` +0x52BFC read by
+SV_SendClientGameState 0x62F5A7 and SV_AddServerCommand 0x633D35, `sv_botsPressAttackBtn`,
+SV_BotUserMove 0x635DF0, the per-server-frame bot loop 0x636070 over every client whose
+`netchan.remoteAddress.type` is NA_BOT (0)), but nothing in the image ever sets `bIsTestClient`:
+SV_AddTestClient and `addtestclient` are compiled out (no `bot%d`, no connect template). Plutonium's
+`addtestclient` (what `t4sp_bot_warfare` uses) is theirs, not the exe's. So `bots.cpp` rebuilds
+SV_AddTestClient from the engine's own functions, IW3's shape:
+
+| step | engine function | why it works for a bot |
+|---|---|---|
+| `connect "\…\protocol\62\challenge\0\qport\<n>\name\enwbot<n>"` | SV_Cmd_TokenizeString 0x594D50 (ecx) | DirectConnect reads `SV_Cmd_Argv(1)` |
+| NA_BOT address, unique port | SV_DirectConnect 0x62E3A0 (netadr by value, 0x18 B) | type 0 skips the challenge (0x62E5D0) and the Demonware ticket (0x62ED37); NET_SendPacket drops type 0 (0x679185); ClientConnect 0x67BF40 runs the connect callback |
+| | SV_Cmd_EndTokenizedString 0x594D80 | |
+| `bIsTestClient = 1` | — | SV_SendClientGameState then writes the zeroed stats + 0x7F marker instead of `EXE_NEEDSTATS` |
+| gamestate | SV_SendClientGameState 0x62F500 (cdecl) | CS_CONNECTED → CS_CLIENTLOADING |
+| enter world | SV_ClientEnterWorld 0x62FC30 (eax = client, [esp+4] = usercmd) | CS_ACTIVE; tail-jumps ClientBegin 0x67C160 |
+| `client_s+4 = 10` | — | the top nibble of every client packet (SV_PacketEvent 0x6356D9) is its load state; `getnumconnectedplayers` 0x52E9E0 counts state 4 **and** this == 10, and `_load.gsc` waits for that count. Without it the bot is in the world and nobody ever spawns (run t1) |
+
+**The brain.** SV_RunFrame's `call 0x636070` at 0x636482 (nothing else hooks it) is retargeted to our
+function, so everything below runs **inside** the server frame, where the engine thinks for bots and
+where a bot's bullets reach G_Damage anyway: never from a frame subscriber, where a Com_Error longjmp
+would land in a dead frame. Each server frame each bot gets a usercmd (svs.time, its current weapon,
+view angles to the nearest living axis actor corrected by `ps.delta_angles`, attack on alternate frames
+within 1,500 units), `deltaMessage = outgoingSequence - 1`, and SV_ClientThink 0x630BF0. It stands where
+the scripts spawned it. The engine's own random walker (`ENW_DEV_BOT_RANDOM=1`) wanders out of the
+active zones on a zoned map: on nazi_zombie_ils one zombie spawned and round 1 never ended (run
+ab-ils-fast).
+
+**The kills.** A living axis actor with takedamage, older than `ENW_DEV_BOT_KILL_AGE_MS` (8,000,
+jittered 0.5–1.5× per zombie, so they reach the bots and hit them), is killed by G_Damage 0x4F5D70 with
+the bot as inflictor and attacker, MOD_PISTOL_BULLET, weapon -1 (the bot's own, 0x4F5DBB), hitLoc head:
+the call GScr `dodamage` makes (0x51CBD9). At most `ENW_DEV_BOT_KILLS_PER_S` (3) a second. So the
+zombie's damage/death scripts, kill points, rank XP (§25's `mp_level_up` path), powerups and the round
+counter run as for a player. `enw_dev_god.off` (soak.cpp's end-of-soak switch) also stops the kills,
+or the zombies never reach the bots and the game never ends (run t2 kept going to round 13).
+
+**The gate.** `ENW_DEV_KNOBS=1` or nothing is installed. Count: `ENW_DEV_BOTS=N` (1–4) or
+`enw_dev_bots.txt` next to CoDWaW.exe (re-read every 5 s, so a run can go from 1 to 4 bots). Host:
+`settings.dev.bots` on an agent's Custom lease → `ENW_DEV_BOTS`, and `sv_maxclients` ≥ bots
+(`devKnobsFor`/`devBotsFor`, run-all 109/0). `lease-cli --dev-bots N`. The referee treats a test client
+as absent (`client_view.bot`, `active=false`; `last_usercmd` none): no roster row, no auth, no kick, no
+AFK input. `dev_bots:` once a minute: server-frame gap (between SV_RunFrame calls) p50/p99/max, Com_Frame
+gap, level.time against the wall, main-thread CPU %, working set, entities in use, actors alive (max),
+kills.
+
+**Runner.** `tools/dev/botrun.sh` runs one game in the box's TEST copy `waw-tinst-01` (never
+`waw-inst-*`) with a given DLL, outside the host agent, samples every 60 s into a CSV, and ends through
+`enw_dev_god.off`. A guard polls the host journal every 2 s and kills **our** game at the first
+`assignment changed: leased` or `RAM guard` line, or when MemAvailable < 250 MB; it refuses to start
+under 850 MB (every production slot idle) or within 15 min of a verified non-fake admission.
+`tools/dev/botqueue.sh` runs a list, retrying refused starts every 2 min.
+
+### 27.2 The nazi_zombie_ils lag: the server ran its frame at ~24 Hz, and 94% of its CPU was our own guarded reads
+
+**B's ILS game** (14:23 UTC, inst-49, `enw-3944.log`, DLL 04a3ad6d, one internet client, rate 25000):
+the rate probe says `Com_Frame-body` **23.5–24.2 Hz** for the whole game against a 60 Hz target (13–15 Hz
+while he loaded in), and `net_probe` sends him **~24 messages/s** of 150–230 bytes, no fragments after the
+gamestate. A client's usercmds are read once per Com_Frame, so at 24 Hz every input waits up to ~42 ms
+before the server even sees it, and snapshots leave at 24 Hz instead of the 30 he asked for. The empty
+servers the host booted today show the same thing by map (median `Com_Frame-body` over each log, nobody
+connected): ILS **20.6 / 31.8 / 33.1 Hz**, zombie_town 22.2, lorkeep 27.8, fear_mc_2 32.5 (B in it),
+nuketown 37.2, … up to 55–57 for the light maps. None reached 60.
+
+**Where the time goes** (`perf record -t <main tid> -F 499`, 15 s, an idle production ILS server,
+16:05 UTC): the main thread used **0.82 of a core**; **1.2%** of the samples were CoDWaW.exe's own code.
+40% were one loop in Wine's `ntdll.so` (+0x5BDC0: a dword scan xor'ing a replicated byte — Wine's
+per-page protection-byte scan, `get_vprot_range_size`), 27% the 32-bit syscall gate in the vdso and
+27% the kernel (the two `rt_sigprocmask` of Wine's virtual-memory lock). That is **VirtualQuery**:
+`memory::is_readable` calls it before every `memory::read`, and `t4_bind`'s `peek` does the same, so
+every dword the referee, the replay sampler, AFK and the probes read each frame cost a scan of the
+region it lives in — and CoDWaW.exe's `.data` is one 72.9 MB region (~17,800 page bytes). A map with
+more entities is read more, so ILS paid most. On Windows VirtualQuery is cheap, which is why no local
+run ever showed it.
+
+**The fix** (`shared/core/memory.cpp`, generic, every map): a range wholly inside the game image is
+readable without asking, once a walk of the whole image (every 5 s, ~20 regions) has shown every page
+committed and readable; a failed walk turns the fast path off until one passes. Outside the image,
+unchanged. `ENW_MEMORY_SLOW_READS=1` is the control. `bots.cpp` writes its `client_s` fields with plain
+stores for the same reason (`memory::write` VirtualProtects twice per call).
+
+| same box, same map, DLL | who | main thread | Com_Frame-body |
+|---|---|---|---|
+| production fd3039d2, ILS, 16:05 | nobody | **0.82 core** | ~33 Hz |
+| production fd3039d2, zm_nuked, 16:51 | nobody (B's lease, not joined) | 0.46 core | 53.3 Hz |
+| S2 `0c2777bd` (fast path), ILS, 16:32–16:36 | 1 bot | **0.22 core** (main-thread 21–25%) | **61.0 Hz** |
+| S2 `add998a5` (fast path), Nacht, 16:18–16:26 | 1 bot, rounds 1→9 | 0.21 core | 61.0 Hz |
+
+### 27.3 Runs (box, `waw-tinst-01`, outside the host agent; updated as runs end)
+
+| run | map | DLL | start (UTC) | length | rounds | ended by | notes |
+|---|---|---|---|---|---|---|---|
+| t1 | Nacht | fa494e0e | 16:11 | 5 m | — | killed by us | bot seated (state 4, gentity 0176C6F0) but never spawned: load state not 10 (27.1) |
+| t2 | Nacht | add998a5 | 16:17 | 12 m | 1 → 13 | time up; god off, but kills went on (fixed) | 0 escapes; main thread 20%, Com_Frame 61 Hz, sv-frame gap p50 49 / p99 65 ms, level.time 1.000 of wall; RSS 308 MB flat; child vars 13.1k → 15.1k |
+| ab-ils-fast | ILS | 0c2777bd | 16:31 | 5 m | 1 | the guard (an agent lease) | random-walk bot: 1 zombie then no spawns (zoned map) → the stand-and-aim brain; 0.22 core, 61 Hz, one 2.5 s hitch in minute 2 |
+
+**Blocked from 16:36 UTC:** B's own verified zm_nuked lease `m_5a28dcbe` (state `ready`, nobody joined)
+holds ~460 MB, so MemAvailable sits at ~510 MB and every start is refused (floor 850). The queue
+(`/home/waw/zdev-test/s2/q2.txt`: ILS A/B fast vs `ENW_MEMORY_SLOW_READS=1`, ILS/ut_box_map/lorkeep 45 min,
+Nacht and Der Riese 120 min, DLL `b83ea7fd` = main `27026f6` (INT's four registrations) + S2, copy `ZombiesDevogsdedis2enw_t4-b83ea7fd.dll`) keeps retrying every 2 min and starts by itself;
+results append to `/home/waw/zdev-test/s2/queue.log`. Stop it with `pkill -f botqueue.sh` (the guard
+still ends a running game on the next lease).
+
+### 27.4 Capacity so far (fast-path DLL; low rounds only — round 20+ is what the queue measures)
+
+| | main thread | RSS |
+|---|---|---|
+| Nacht, 1 bot, rounds 1–13 | 0.21 core | 308 MB |
+| ILS, 1 bot, round 1 | 0.22 core | 386 MB |
+| zm_nuked, idle, **production** DLL | 0.46 core | 459 MB |
+| ILS, idle, **production** DLL | 0.82 core | 385 MB |
+| Steam client + CEF (always) | ~0.1 core | ~2.3 GB |
+
+On the production DLL two ILS-class games already take 1.6 of the 2 vCPUs before anyone plays; with
+the fast path they take ~0.45. **RAM, not CPU, is the limit at low rounds**: MemAvailable is ~880 MB
+with no game, a game is 300–460 MB, so the third slot only fits a small map (the RAM guard's 700 MB
+floor already stops it). Whether 20+ rounds with 4 players changes the CPU picture is open.
+
+### 28.9 Box DLL 3557aaa3 "NOT applied": an ordering race, not S2's memory fast path (fixed, 356fdf8)
+
+The box logged `dedi_water_sim_off: NOT applied: [0x042B721C]=00000000 but Dvar_FindVar(r_gfxopt_water_simulation)=021BAC04`
+(nacht_reimagined inst-02 enw-4628, derberg, ccube). S2's `memory.cpp` change only makes image reads
+skip VirtualQuery; the read was right — the slot really was NULL. The dvar_s* is stored into
+[0x42B721C] by the renderer's registrar (0x70BB50 ← 0x70B358 ← 0x6E2430 ← R_RegisterDvars 0x6D5740),
+which on a dedi can run *after* our post_init; the instance's `seta r_gfxopt_water_simulation` had
+already created the (unregistered) dvar, so Dvar_FindVar found it. S2's faster startup moved post_init
+ahead of the registrar; it is a race either way (locally with S2 merged it now loses too). ILS logged
+nothing because it won the race and the value was already 0 (that path was silent).
+Fix: bind at post_init if the slot is filled, else on the first frame that has it (the gate at
+0x6F3F77 dereferences the slot, so no water query can run before then); write only a registered
+**bool** dvar (type byte 0 — a byte into a pre-registration string dvar would corrupt its pointer);
+log the already-0 case. `ENW_DEDI_WATER_SIM_LATE=1` (test) forces the late path.
+Proof, DLL `build\g2fix` from branch head 356fdf8 (= main b622811 incl. S2 + this commit), sha256
+`30de544613225a1fcaa650d3562b2082dce7ae43bb68999399ff998882571795`, nacht_reimagined local dedi + client:
+g2w2 (no knob) lost the race → `bound at frame 1`; g2w4 (late, config value 1) → `first frame with the
+dvar: r_gfxopt_water_simulation 1 -> 0`; g2w3 (won the race, value 1) → `post_init: 1 -> 0`. Every run:
+spawn 100/100, standing on the world at -87.6, 0 mismatches.
+
+### 27.5 First host-lease runs on box DLL `736236c8` (REL: S2 + G2), 18:48–18:58 UTC
+
+| run | map | lease | ended by | rounds | zombies seen | notes |
+|---|---|---|---|---|---|---|
+| h-ils-1 | ILS | `m_3028baf8` (inst-08, …0003, 1 bot) | **host `game over: empty` at 2 m 00 s** | 1 | 1 (killed), then none | 61 Hz, main thread 20–24%, 0 escapes |
+| h-utbox-1 | ut_box_map | `m_6cab59af` | same, 2 m 00 s | 1 | **0** | 61 Hz, main thread 17–21%, 0 escapes |
+
+1. **The host closes a bot game as empty after two minutes**: the DLL's referee hides test clients
+   from the roster (27.1), so `lib/referee.js` `tickGrace` sees nobody and calls `finishGame('empty')`.
+   Fix (host, commit `3b5ffd8`): `soakBotConfig()` in `lib/instances.js` pushes `emptyCloseMs` to 24 h
+   for an agent Custom dev lease with `dev.bots` only; run-all 113/0. **Needs a host deploy** before any
+   soak through the host can run longer than 2 minutes.
+2. **Custom maps spawn no zombies (or one) for a bot**, while stock Nacht spawns normally (t2). Open;
+   the next thing to read is the DLC3-template zone/spawn scripts (`dlc3_code.gsc`, the zone manager's
+   player test) against what a test client lacks. Until it is fixed, bot soaks on custom maps test an
+   idle-but-live server, not rounds.

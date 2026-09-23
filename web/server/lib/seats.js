@@ -35,7 +35,10 @@
 
 const { db, now } = require('../db/database')
 
-const RESUME_MS = 10 * 60_000         // B: resumable for ten minutes, then the server goes
+// B: resumable for ten minutes, then the server goes. [RS] B, 2026-09-23 19:10: "every player
+// has been gone for 3 minutes" ends the game (the host's --idle-gone-ms, lib/idle.js), so the
+// window the rail offers is the same three minutes. ZM_IDLE_GONE_MS moves both halves' default.
+const RESUME_MS = Number(process.env.ZM_IDLE_GONE_MS) > 0 ? Number(process.env.ZM_IDLE_GONE_MS) : 3 * 60_000
 const RESUME_CONNECT_MS = 2 * 60_000  // a Resume must connect within this, or it is `left` again
 const seats = new Map()               // match_id -> Map(steamid -> { ever, connected, at, leftAt, quit, resumedAt })
 
@@ -156,6 +159,40 @@ function quit(steamid, matchId) {
 }
 
 /**
+ * CLOSE THE SERVER, KEEP THE PARTY (the rail's × on the server card; B 2026-09-23: "The X
+ * button in the bottom left should close the server, not leave the party"). The party's
+ * running game is ended for everybody in it (the lease is cancelled, the box retires the
+ * instance, the host signs the run) and the party goes back to forming with its map, mode
+ * and members as they were. The host of the party only (anybody else leaves through the
+ * party menu); a solo party's one member is its host. `match_id` given and not the party's
+ * game = a stale click: nothing changes.
+ */
+function end(steamid, matchId) {
+  const parties = require('./parties')
+  const assignments = require('./assignments')
+  const party = parties.forPlayer(steamid)
+  if (!party) return { ok: false, error: 'not in a party' }
+  if (String(party.leader) !== String(steamid)) return { ok: false, error: 'only the party host can close the server' }
+  const m = String(party.match_id || '')
+  if (matchId && m && String(matchId) !== m) return { ok: true, stale: true, match_id: m }
+  let cancelled = false
+  if (m) {
+    const a = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(m)
+    // Nobody is offered Resume into a server that was closed on purpose.
+    for (const p of (a ? JSON.parse(a.players_json || '[]') : [])) if (p && p.steamid) seat(m, p.steamid).quit = true
+    cancelled = !!(a && ['leased', 'ready', 'live'].includes(a.state) && assignments.cancel(m, String(steamid)).ok)
+  }
+  // A ready check or a launch with no lease yet goes back to forming the same way.
+  if (!cancelled && ['ready-check', 'launching'].includes(party.state)) parties.cancelReadyCheck(steamid)
+  if (party.state === 'in-game' || party.state === 'launching') {
+    db.prepare("UPDATE parties SET state='forming', match_id=NULL, ready_since=NULL, updated_at=? WHERE id=?").run(now(), party.id)
+  }
+  db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('party.end', ?, ?, ?)")
+    .run(String(steamid), JSON.stringify({ match_id: m || null, cancelled, party_size: party.members.length }), now())
+  return { ok: true, match_id: m || null, cancelled }
+}
+
+/**
  * The ten-minute backstop. A live lease whose every player has left (none connected, none
  * resuming) for RESUME_MS is cancelled. The referee normally ends such a game itself
  * (crash grace, then `players_did_not_return`); this is for the case where it does not.
@@ -177,9 +214,54 @@ function sweep() {
   return out
 }
 
+// ---- [RS] idle-server auto-close (host lib/idle.js; esc-menu.md §13) -------------------
+// A player whose server the box closed for want of players is told once, tersely, by the
+// launcher's poll (`/api/launcher/play` `closed`), for a few minutes after the close.
+const CLOSED_TEXT = { never_joined: 'Server closed: nobody joined.', all_gone: 'Server closed: everyone left.' }
+const CLOSED_SHOW_MS = 5 * 60_000
+const closedNotes = new Map()   // steamid -> { match_id, rule, text, at }
+
+function noteClosed(matchId, steamids, rule) {
+  const text = CLOSED_TEXT[rule] || CLOSED_TEXT.never_joined
+  for (const sid of steamids) {
+    closedNotes.set(String(sid), { match_id: String(matchId), rule: rule || 'never_joined', text, at: now() })
+    seat(matchId, sid).quit = true   // nobody is offered Resume into a server that was closed
+    // A game that is still open (a player loading, the end screen) hears it the way it hears
+    // "Your record has been uploaded.": a private notice on the overlay's feed, which the
+    // lockdown's end screen repeats (esc-menu.md §10.3).
+    try { require('./gameChat').notify(String(sid), text) } catch { /* no chat channel */ }
+  }
+  if (closedNotes.size > 5000) closedNotes.clear()
+}
+
+function closedFor(steamid) {
+  const n = closedNotes.get(String(steamid))
+  if (!n) return null
+  if (now() - n.at > CLOSED_SHOW_MS) { closedNotes.delete(String(steamid)); return null }
+  return n
+}
+
+/**
+ * A JOIN IN PROGRESS, as far as the site can tell (host lib/idle.js holds the "nobody joined"
+ * close while this is true): a player of the lease whose launcher is downloading the map, or
+ * who pressed Resume and has not connected yet.
+ */
+function joinInProgress(matchId, partyId, steamids) {
+  const t = now()
+  const m = seats.get(String(matchId))
+  for (const sid of steamids) {
+    const s = m && m.get(String(sid))
+    if (s && s.resumedAt && t - s.resumedAt < RESUME_CONNECT_MS && !s.connected) return true
+  }
+  if (!partyId) return false
+  try {
+    return require('./partyProgress').pending(partyId, steamids).some((p) => p.state === 'downloading')
+  } catch { return false }
+}
+
 function forget(matchId) { seats.delete(String(matchId)) }
 
 /** Has the referee said anything about who is in this match since the site started? */
 const known = (matchId) => seats.has(String(matchId))
 
-module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, sweep, forget, known, RESUME_MS }
+module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, end, sweep, forget, known, noteClosed, closedFor, joinInProgress, CLOSED_TEXT, RESUME_MS }

@@ -1,0 +1,200 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ccube",
+  "title": "Cheese Cube",
+  "source": "custom",
+  "author": "ZK Studios",
+  "released": "2013-04-18",
+  "fs_game": "mods/nazi_zombie_ccube",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ccube.iwd": "a3c7bf0f3c5de12129f3f591e266ff210910b44c90c278e111925bcef6711ca7"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 490,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      4000,
+      5000,
+      6000,
+      7000,
+      8000,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door5"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door3"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a3c7bf0f3c5de12129f3f591e266ff210910b44c90c278e111925bcef6711ca7",
+    "map_specific_triggers": [
+      "goals",
+      "trig1",
+      "trig2",
+      "trig3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Cheese_Cube_v1_-_by_ZK.exe",
+    "original_sha256": "18d694447f14d76f190898652fb4c0137d2561d5f39183c73887386c43155aa2",
+    "original_size": 78983876,
+    "source_url": "http://www.mediafire.com/file/923oad2kyjktdmi/Cheese_Cube_v1_-_by_ZK.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/04/18/cheese-cube/",
+    "fetched": "2026-09-23T17:12:06Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Welcome to the Cheese Cube! This map was created as a YouTube video series that used video comment ideas and discussions to make this map. It is, in fact, a cube of cheese that you must defend from the hungry zombies! \u2013 Standard Der Riese (but no dogs) \u2013 Box Map with 6 buyable doors \u2013 Pack-A-Punch is now the Cheese-O-Matic and will change the texture and names of the weapons you place in it \u2013 3 trigger activated song by bigdude33 \u2013 2 Custom perks \u2013 \u201cDr Dagger\u201d and \u201cDouble Dew\u201d \u2013 Returning Fan-Favorited Cheese Gun w/ sight \u2013 BO Perks \u2013 Double-Tap 2.0 \u2013 All perks are 2x the price (added difficulty to the map) \u2013 Modified Mystery Box \u2013 Re-skinned PaP weapons and zombies \u2013 Posters on the wall were created/submitted via YouTube message by video viewers Special Thanks to: bamskater33 (BO Perks) ConvictioNDR (Double-Tap 2.0) TheMightyDude (3 trigger song) bigdude33 (\u201cI love cheese\u201d song) and my entire YouTube audience for your ideas and support Enjoy guys The entire series of the making of this map can be found using the link below http://www.youtube.com/playlist?list=PLc7t4ZxTyTwpzpqTiYB1cEPGRa6Ti21Rs",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_ccube",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_ccube.iwd:images/loadscreen_nazi_zombie_ccube.iwi",
+        "nazi_zombie_ccube.iwd:images/menu_map_nazi_zombie_ccube.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ccube"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/cheesecube/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/cheese-cube-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: goals, trig1, trig2, trig3. ",
+  "precheck": {
+    "map_zone_inflated_mb": 88.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ccube.ff",
+      "nazi_zombie_ccube_patch.ff"
+    ]
+  },
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "clean",
+    "map_loaded_runs": 2,
+    "misses": 151,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95134 ms over the hold",
+    "first_error": "Could not load xanim \"pb_hold_run_right_satchel\".",
+    "match": "m_f1f677f9",
+    "at": "2026-09-23T19:35:21",
+    "instance": "inst-04",
+    "com_frameTime_advance_ms": 95134,
+    "com_error": [],
+    "console_errors": [
+      "3153:Error: Could not load xanim \"pb_hold_run_right_satchel\".",
+      "3154:Error: Could not load xanim \"pb_hold_run_back_satchel\".",
+      "3155:Error: Could not load xanim \"pb_hold_run_satchel\".",
+      "3156:Error: Could not load xanim \"pb_sprint_hold_satchel\".",
+      "3157:Error: Could not load xanim \"pb_crouch_hold_idle_satchel\".",
+      "3158:Error: Could not load xanim \"pb_hold_idle_satchel\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded",
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/zombie_mp40",
+        "from": "nazi_zombie_ccube.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "f5e1d7cba471d65f37458b3589829ed670499ac7bf89a8e74dd557b62ab028be",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/zombie_mp40_upgraded",
+        "from": "nazi_zombie_ccube.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "06b0016abd98c92850fb6a00ecc5e3a06cd1773322fbf2b3a32c286273d8b0ca",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
+  }
+}

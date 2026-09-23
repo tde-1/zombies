@@ -1,0 +1,224 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "backrooms",
+  "title": "Backrooms Map Challenge",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2022-02-27",
+  "fs_game": "mods/backrooms",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@backrooms.iwd": "96f464bfc2426fa86e79be5fbc1c0d18653f2f43498006b4f0e6d7bb0198e911"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 25000
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        3000,
+        4000,
+        5000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 117,
+    "script_count": 117,
+    "entities": 400,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      4000,
+      5000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        25000,
+        "zombie_door",
+        "auto11"
+      ],
+      [
+        3500,
+        "zombie_door",
+        "auto10"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "auto9"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto8"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto7"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 25000,
+      "targetname": "zombie_door",
+      "target": "auto11",
+      "next_highest": 3500
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "96f464bfc2426fa86e79be5fbc1c0d18653f2f43498006b4f0e6d7bb0198e911",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Backrooms.exe",
+    "original_sha256": "fb0d48a0a24859de932ce2525c1007d1ce8a9d1c9e137a99d76d07f55b5b696f",
+    "original_size": 263725797,
+    "source_url": "https://www.mediafire.com/file/9p3wn4f1k3vz9uy/Backrooms.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/02/27/backrooms-map-challenge/",
+    "fetched": "2026-09-23T20:07:41Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "UPDATED VERSION! Hello! this is my first CoD WaW custom map i ever made! The history behind it: i was with a friend playing a custom map when he say: \u201cEy it will be cool if there a backrooms custom map\u201d and i say:\u201dLet\u2019s fucking do it\u201d I hope you like it This map includes: -Mw2, mw3, bo2 and bo3 custom weapons -Bo1, Bo2 And Bo3 perks -Zombies from Mob of the dead -Buyable Ending -A Brutus (Hehehe) Fixed: -Electric cherry not working on coop, and added more perks -Remove the default weapon from the box -Added again the Profile/Friends button on the main menu (whoops) Tip: -Stay close to the walls, you never know what you gonna discover in the backrooms. . . Credits: ricko0z \u2013 Custom weapons shippuden1592 \u2013 Zombie Brutus, Custom menu, Change start weapon jei9363 \u2013 Mob of the Dead Zombies gympie6 \u2013 Other cods perks Crepp115 \u2013 For some help with scripting KielDCU \u2013 For some motivation and help with scripting ThunderFrosty \u2013 Some tutorials and help with details in the map Cajz \u2013 For the idea to start making maps and some ideas for this map (and for being an asshole <3) And all the community for the help and the tutorials to make this map possible \ud83d\ude00 (If i leave someone out the credits and i have some of your stuff in my map and want some credits, let me know)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "backrooms.iwd:images/menu_background_coop.iwi",
+        "backrooms.iwd:images/_-gzombie_vending_electric_c_logo.iwi",
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/backroomschallenge/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2022/02/backrooms-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 73.5,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985211
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 235,
+        "scripts": 7,
+        "bytes": 46705237
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "backrooms.ff",
+      "backrooms_patch.ff",
+      "mod.ff",
+      "nazi_zombie_backrooms_patch.ff",
+      "backrooms.iwd:maps/_loadout.gsc",
+      "backrooms.iwd:maps_loadout.gsc",
+      "gympie6_perks.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

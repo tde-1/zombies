@@ -1,0 +1,162 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ppg",
+  "title": "POWERPUFF GIRLS",
+  "source": "custom",
+  "author": "TheSuperSaiyan10",
+  "released": "June 03, 2018, 11:18:47 pm",
+  "fs_game": "mods/nazi_zombie_ppg",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ppg.iwd": "1562d446277efd2976f5f7186cc3b8f1882a7431181c4e7bbabafb856809c591"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 265,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf55_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf26_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf18_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf22_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf10_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "1562d446277efd2976f5f7186cc3b8f1882a7431181c4e7bbabafb856809c591",
+    "map_specific_triggers": [
+      "dubstep_trigger",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ppg.exe",
+    "original_sha256": "731bdaf8d41738b630779c93a1fbdc7db14537c08e5abf3f7e961f9f2bf72598",
+    "original_size": 228351187,
+    "source_url": "https://www.mediafire.com/file/dmp97oc2gwlbdlj/nazi_zombie_ppg.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T19:58:40Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "nazi_zombie_ppg.iwd:images/puffs_menu.iwi",
+        "nazi_zombie_ppg.iwd:images/ruffs_menu.iwi",
+        "nazi_zombie_ppg.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_ppg.iwd:images/ugx_mod_menu_template.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/powerpuffgirls/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/powerpuff-girls-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: dubstep_trigger, harrybo21_perk_trigger. ",
+  "precheck": {
+    "map_zone_inflated_mb": 66.7,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ppg.ff",
+      "nazi_zombie_ppg_patch.ff",
+      "nazi_zombie_ppg.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

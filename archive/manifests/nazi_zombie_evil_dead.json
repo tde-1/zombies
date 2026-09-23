@@ -1,0 +1,181 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_evil_dead",
+  "title": "Ash Vs Evil Dead",
+  "source": "custom",
+  "author": "Noahst",
+  "released": "2016-12-04",
+  "fs_game": "mods/nazi_zombie_evil_dead",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@evil_dead.iwd": "8cf6d4497f409c31c3ce82e782018ce1b59dd6004f6151866f0b4f1fb3eabea8"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 192,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf233_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf366_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf362_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "pf370_auto1",
+        "?"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "8cf6d4497f409c31c3ce82e782018ce1b59dd6004f6151866f0b4f1fb3eabea8",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "evil_dead.exe",
+    "original_sha256": "ba980b594f74f193b956d926b6f43ced715dfe6338b22fd2c0703d2fccef4c35",
+    "original_size": 403524194,
+    "source_url": "https://www.mediafire.com/file/nbcf2iryhhyc7q5/evil_dead.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/12/04/ash-vs-evil-dead/",
+    "fetched": "2026-09-23T18:12:15Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "KEEP IN MIND, THIS IS SIMPLY A SORT OF TEASER FOR MY EVENTUAL FULL FLEDGED EVIL DEAD MAP ON BO3!!! ITS NOT BIG, BUT ANY EVIL DEAD FAN WILL LOVE THIS, I PROMISE!!! CREDIT TO BLUNTSUFFY FOR THE SOUL BOX, TOM BMX FOR HIS TOOLS, HARRY BO21 FOR HIS PERK SYSTEM, AND ANY OTHERS I FORGOT FEATURES -ash voiceovers (play as ash!!!) -custom deadite monster sounds replacing the standard zombie vocals -bo1 and cod4 guns with a couple bo2 weapons -heavily detailed",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "evil_dead.iwd:images/weapon_red_cross_background.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/ashvsevildead/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/ash-vs-evil-dead-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: harrybo21_perk_trigger, soul_chest_area, soul_chest_reward. ",
+  "precheck": {
+    "map_zone_inflated_mb": 118.4,
+    "addon_iwds": [
+      {
+        "file": "evil_dead.iwd",
+        "entries": 217,
+        "scripts": 32,
+        "bytes": 26860095
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      },
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45674346
+      },
+      {
+        "file": "localized_english_iw06.iwd",
+        "entries": 1376,
+        "scripts": 0,
+        "bytes": 94752240
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_evil_dead_patch.ff",
+      "evil_dead.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

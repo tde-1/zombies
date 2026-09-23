@@ -1,0 +1,207 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_town",
+  "title": "Black Ops 2 Town Remake",
+  "source": "custom",
+  "author": "IZaRTaX",
+  "released": "2015-06-05",
+  "fs_game": "mods/nazi_zombie_town",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "7cae3903628c8f6e6ea962e7ecff12ac14ac16c4eecf34f8e72506c9fc7f45c8"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "building_part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "building_part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 112,
+    "script_count": 112,
+    "entities": 1004,
+    "ee_candidates": [
+      "building_part"
+    ],
+    "ending_words": [
+      "final_teleport",
+      "teleport_kill_1",
+      "zombie_teleport_target",
+      "zombie_teleport_target2",
+      "zombie_teleport_target3"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1000,
+        "rotating_door",
+        "pf1_auto147"
+      ],
+      [
+        1000,
+        "rotating_door",
+        "pf1_auto147"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        750,
+        "rotating_door",
+        "pf355_auto2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "7cae3903628c8f6e6ea962e7ecff12ac14ac16c4eecf34f8e72506c9fc7f45c8",
+    "map_specific_triggers": [
+      "amb_st",
+      "avion_trig",
+      "building_part",
+      "bus_end",
+      "bus_trig",
+      "crouch",
+      "enter13",
+      "enter14",
+      "enter15",
+      "enter16",
+      "enter3",
+      "enter4",
+      "enter5",
+      "enter6",
+      "enter7",
+      "enter8",
+      "galvaknuckles",
+      "jump",
+      "jump_fip",
+      "laught",
+      "lava_damage",
+      "metal_bank_trig",
+      "nuke",
+      "nuke2",
+      "nuke3",
+      "nuke4",
+      "nuke5",
+      "orage",
+      "plane_active_trig",
+      "player_zombie_trigger3",
+      "pont_crack",
+      "port",
+      "rotating_door",
+      "roule_trig",
+      "satchel_build_trig",
+      "satchel_exp_damage_trig",
+      "satchel_pick_trig",
+      "sound_tel_f",
+      "start",
+      "tele_nobug"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_town.exe",
+    "original_sha256": "fd9223e860fd9bd51d2f0904f1cf6987eb3ebc3340a7cddeeb63262d8a45e9f5",
+    "original_size": 488412890,
+    "source_url": "http://www.mediafire.com/file/wuxt8qk3xdr95iu/nazi_zombie_town.exe",
+    "source_page": "https://callofdutyrepo.com/2015/06/05/black-ops-2-town-remake/",
+    "fetched": "2026-09-23T20:03:19Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "top100",
+      "challenge",
+      "top_100"
+    ],
+    "catalogue_description": "Hello all, town is now available on call of duty waw. (a remake of the original black ops 2 town) [updated 06/05/2015] Features: bo2 weapon by : ElTitoPricus Special thanks: Disclaimer/Credits: Tom (Tools) ElTitoPricus (characters/weapons/voiceovers/zombies) Nukem \u2013 TMG (stamin-UP perk machine and code) DuaLVII (lava script) SparkyMcSparks (lava script) DidUknowiPwn (BO2 hud and font) n123q45 (additional script help) Bam\u2019s (cherry perk) Gunoftruth (blue eyes) offthewall (galvaknuckles Script) HitmanVere (BO2 Start \u2013 Hamr Weaponfiles \u2013 Round Soundalaises \u2013 General Help) RDV-steviewonder87-BlunStuffy (help) Good game : ) more screen visit : www.zartax-level-design.com/#!town/c1bs9 Correction V.2: -coop player model -mp5 -viewmodel -zombie dammage -missile clip",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_town",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_town.iwd:images/loadscreen_mp_surv_town_f.iwi",
+        "nazi_zombie_town.iwd:images/loadscreen_nazi_zombie_town.iwi",
+        "nazi_zombie_town.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_town"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/blackops2townremake/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/black-ops-2-town-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 175.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_town.ff",
+      "nazi_zombie_town_patch.ff"
+    ]
+  },
+  "site_hidden": true
+}

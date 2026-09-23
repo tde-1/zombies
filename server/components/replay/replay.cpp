@@ -212,6 +212,17 @@ private:
                     if (!prev.valid || combat->weapon_raw != prev.weapon_raw) p.str("weapon", combat->weapon_raw);
                     prev.weapon_raw = combat->weapon_raw;
                 }
+                // Aim down sights (replay_events 2): ps.fWeaponPosFrac in tenths, omitted when
+                // unchanged. A value that is not a fraction is never written.
+                if (combat->have_ads) {
+                    const int t = replay_ev::ads_tenths(combat->ads);
+                    if (t >= 0 && (!prev.valid || t != prev.ads)) {
+                        char a[8];
+                        std::snprintf(a, sizeof(a), "%d.%d", t / 10, t % 10);
+                        p.raw("ads", a);
+                    }
+                    if (t >= 0) prev.ads = t;
+                }
                 if (combat->have_ammo) {
                     if (!prev.valid || !prev.have_ammo || combat->clip != prev.clip) p.integer("clip", combat->clip);
                     if (!prev.valid || !prev.have_ammo || combat->ammo != prev.ammo) p.integer("ammo", combat->ammo);
@@ -479,6 +490,7 @@ private:
         bool have_ammo = false;
         int clip = 0;
         int ammo = 0;
+        int ads = -1;            // tenths last written, -1 none yet
         int health = 0;
         bool alive = false;
         int score = 0;

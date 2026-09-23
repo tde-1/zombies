@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "fight",
+  "title": "The Fight",
+  "source": "custom",
+  "author": "gustoman",
+  "released": "2017-01-09",
+  "fs_game": "mods/fight",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@fight.iwd": "7137205932549ab83c7cdf318238b94a2ea97b3dba53fe70864d330357759c24"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 1894,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "auto18"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto18"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto10"
+      ],
+      [
+        3000,
+        "zombie_door",
+        "auto7"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "auto17"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "7137205932549ab83c7cdf318238b94a2ea97b3dba53fe70864d330357759c24",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Fight.exe",
+    "original_sha256": "8f3f911acc8e7c4c4346adff7cf1815f4864cc43e777238cf41c61cd7241e09d",
+    "original_size": 226434433,
+    "source_url": "http://www.mediafire.com/file/cszpo2d6q74zrlh/Fight.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/01/09/the-fight/",
+    "fetched": "2026-09-23T19:55:55Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "THE FIGHT This map is about that you have to fight in small rooms and then in the big hall. Your objective is get the flag. When you get it, you win. HOW TO INSTALL When you download the map it may happen that windows defender will block this application. Just ignore that or if it says something like this \u201cclick here for more options\u201d just click on that and there will be more options for allow installation, so you can pass it and install it without any problem. SOLO/single-player When you start this map the main menu looks exactly same as original. There is not a SOLO/single-player button. If you want to play SOLO then you have to type into console this: devmap fight COOP/multiplayer If you want to play COOP/multiplayer then you have to create a lobby first. Then you have to go to the settings and change the mod for zombies and click on FIGHT map. Now you can play with friends, have fun. INFORMATION ABOUT MAP original WAW weapons just WAW perks buyable ending ( get the flag ) little challenging OTHER INFORMATION This is my first map I ever made. This map I made couple months ago but I didn\u2019t upload it yet. Reason why I\u2019m doing this now is because I want to share this map before I release my new project very soon. This map has some small mistakes but nothing big that would break the game. The map is playable on 100% but if you find any small bugs or glitches please just ignore them because I can\u2019t fix them anymore. Like I said I made this map couple moths ago and I don\u2019t have ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/thefight/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/the-fight-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 96.1,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "fight.ff",
+      "fight_patch.ff",
+      "mod.ff",
+      "nazi_zombie_fight_patch.ff",
+      "fight.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

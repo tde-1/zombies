@@ -134,6 +134,15 @@ export class ReplaySound {
    * @param ctx      { focus, mode, posOf(pid, ms, outVec3) -> bool, papAt(pid, ms) -> bool }
    */
   update(ms, playing, rate, ctx) {
+    // A context the browser suspended after the gesture (a device change, a background tab,
+    // Safari's `interrupted`) is resumed while playing: the page has its activation already.
+    if (this.enabled && playing && this.listener) {
+      const st = this.listener.context.state
+      if (st !== 'running' && st !== 'closed' && performance.now() - (this.resumedAt || 0) > 1000) {
+        this.resumedAt = performance.now()
+        this.listener.context.resume().catch(() => {})
+      }
+    }
     if (!this.enabled || this.muted || !this.listener || (typeof document !== 'undefined' && document.hidden)) {
       // Keep the cursor on the clock so turning the sound on does not replay the past.
       this.sched.update(ms, false, rate, null)

@@ -1,0 +1,167 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "wake_up",
+  "title": "WAKE UP",
+  "source": "custom",
+  "author": "Terminater743",
+  "released": "2016-02-13",
+  "fs_game": "mods/wake_up",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@wake_up.iwd": "eed8fdd603ddd7ef5e0cc8e95d5de6d1c7640b442988d76c3660aff80a8e5005"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 108,
+    "script_count": 108,
+    "entities": 296,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      30000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "auto9"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto8"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto6"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto5"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "eed8fdd603ddd7ef5e0cc8e95d5de6d1c7640b442988d76c3660aff80a8e5005",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Wake_Up.exe",
+    "original_sha256": "a46fcd8d6add575d43388a44de2ec4ae0eeda77f522f1f0a97f6f02068c803d8",
+    "original_size": 103050309,
+    "source_url": "https://www.mediafire.com/file/6ikkassa3rv86nd/Wake_Up.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:20:41Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "You Wake up in a room and all you can remember is being with your friend. You suddenly hear a noise which doesn\u2019t sound all too friendly so in fear for your life you pick a gun up from the bench near you and prepared yourself for battle. Try and find out what has happened to your friend and while your at it try not to bleed on anything. This is my first map which I know is not that good but I will get better the map is a normal map with no unique scripting a few custom textures but not much, feel free to play solo or die with your friends your choice the zombies health and the amount of points they give has been changed.you start in a small box with two doors which lead to a small corridor each way there are a few perks and one wall gun on one corridor there is the mystery box the other PAC a punch. Sorry about the previous error I believe I have fixed it. it woks on my computer place there is now a buyable ending so I hope it works this time and thx thanks to zombie-Kller for tutorials UGX for being able to try to make a map in the fist place thanks to Hitmanvere (member of ugx) sorry If I cant remember if you helped me if you did tell me and I will add you in",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/wakeup/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/wake-up-1-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 73.2,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "wake_up.ff",
+      "wake_up_patch.ff",
+      "work2.ff",
+      "wake_up.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

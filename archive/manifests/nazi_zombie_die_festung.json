@@ -1,0 +1,226 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_die_festung",
+  "title": "DIE FESTUNG",
+  "source": "custom",
+  "author": "NGcaudle",
+  "released": "2016-09-30",
+  "fs_game": "mods/nazi_zombie_die_festung",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_die_festung.iwd": "bc8811e76bc5c553fed2798fba41a2595ae7fc059ba417c65478f8b874431979"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "teleport_room_4"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        40000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, teleport_room_4 name an ending and are this map's own; script hardcodes cost 40000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 940,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "teleport_room_4"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      40000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_debris",
+        "zone9_door"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "zone9_door"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "zone6_door"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "zone4_door"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "zone4_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "bc8811e76bc5c553fed2798fba41a2595ae7fc059ba417c65478f8b874431979",
+    "map_specific_triggers": [
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_die_festung.exe",
+    "original_sha256": "354bca78355a3a34d3fb8fc38e4556f7cecb2a0a9f4457c2bc9b32f7ad8a9b3c",
+    "original_size": 239123860,
+    "source_url": "http://www.mediafire.com/file/s9ludzabv8s5l1e/nazi_zombie_die_festung.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:23:49Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Die Festung has been in the making for a while, mainly because I have put it off a lot due to being busy. I decided to make sure it was playable and release it since bo3 mod tools just got released the other day. Map Details: Bo1, Bo2, And MW3 Weapons Bo2 Knifing WaW, Bo1, Custom Perk/Bo1 Style Perk Bottles (No Perk Limit) Origin Player Models/Viewhands/Hud Kino Style Teleporter Buyable Ending Double Points Work On Drops Bo3 Perk Point System (prone = 100) Removed Dogs Credits: NGcaudle \u2013 Mapping/Model Porting/Custom Models Rorke \u2013 Weapon porting/Player Viewhands Harry Bo21 \u2013 Perks/Weapon DidUknowiPwn \u2013 Hud Steviewonder87 \u2013 Upgraded Weapon Camo Tom BMX \u2013 Buyable Ending Aidan \u2013 Kino Style Teleporter Jr-Imagine \u2013 Perks Thanks For Testing JZKitty Rorke Mentality_420 UPDATE: Map no longer needs T4M",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_die_festung"
+      ],
+      "iwd_images": [
+        "nazi_zombie_die_festung.iwd:images/bo1_vending_deadshot_logo_c.iwi",
+        "nazi_zombie_die_festung.iwd:images/bo1_vending_deadshot_logo_n.iwi",
+        "nazi_zombie_die_festung.iwd:images/loadscreen_nazi_zombie_die_festung.iwi",
+        "nazi_zombie_die_festung.iwd:images/menu_mp_weapons_an94.iwi",
+        "nazi_zombie_die_festung.iwd:images/menu_mp_weapons_pm.iwi",
+        "nazi_zombie_die_festung.iwd:images/menu_zm_weapons_mg08.iwi",
+        "nazi_zombie_die_festung.iwd:images/menu_zm_weapons_mp40.iwi",
+        "nazi_zombie_die_festung.iwd:images/menu_zm_weapons_rnma.iwi",
+        "nazi_zombie_die_festung.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_die_festung"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/diefestung/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/die-fustung.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 124.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_die_festung_patch.ff",
+      "nazi_zombie_die_festung.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 166,
+    "fatal": 10,
+    "visible": 10,
+    "visible_owner": {
+      "release": 10
+    },
+    "visible_names": [
+      "item:zombie_perk_bottle_deadshot",
+      "item:zombie_perk_bottle_mule",
+      "item:zombie_perk_bottle_revive",
+      "weapon:weapons/sp/mine_bouncing_betty",
+      "weapon:weapons/sp/zombie_perk_bottle_deadshot",
+      "weapon:weapons/sp/zombie_perk_bottle_doubletap",
+      "weapon:weapons/sp/zombie_perk_bottle_jugg",
+      "weapon:weapons/sp/zombie_perk_bottle_mule",
+      "weapon:weapons/sp/zombie_perk_bottle_revive",
+      "weapon:weapons/sp/zombie_perk_bottle_sleight"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95154 ms over the hold",
+    "first_error": "WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_mule'",
+    "match": "m_28852db7",
+    "at": "2026-09-23T21:36:43",
+    "instance": "inst-25",
+    "com_frameTime_advance_ms": 95154,
+    "com_error": [],
+    "console_errors": [
+      "4185:Error: called from:",
+      "4189:Error: called from:",
+      "4193:Error: started from:",
+      "4197:Error: ************************************",
+      "4199:WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_mule'",
+      "4201:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:zombie_perk_bottle_deadshot, item:zombie_perk_bottle_mule, item:zombie_perk_bottle_revive, weapon:weapons/sp/mine_bouncing_betty, weapon:weapons/sp/zombie_perk_bottle_deadshot, weapon:weapons/sp/zombie_perk_bottle_doubletap",
+  "dedi_status": "box_map_loaded"
+}

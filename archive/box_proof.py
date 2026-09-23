@@ -38,7 +38,8 @@ WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 HOST = "zombies-dev"
 FAKE = "76561198000000001"   # the popular-64 run; lane 2 uses it now, so --player overrides
 FAKES = {"76561198000000001", "76561198000000002", "76561198000000003",
-         "76561198000000004"}   # ...0004: the asset-audit lane (archive.md "asset audit")
+         "76561198000000004",   # ...0004: the asset-audit lane (archive.md "asset audit")
+         "76561198000000005"}   # ...0005: lane MAPS (archive.md s14, 2026-09-23 evening)
 # --player: tranche 2 leases as ...0002 (the agent-reserved slot) so it never collides with
 # lane 2's ...0001. --lease-repo: the checkout whose lease-cli (and web/data DB) the LIVE site
 # runs -- a worktree has no web/data, and its web/server may hold unmerged changes.
@@ -98,7 +99,7 @@ def mem_available_mb():
     return int(out) if out.isdigit() else 0
 
 
-def box_gate(min_mem_mb=650):
+def box_gate(min_mem_mb=760):
     """(ok, why). No live instance may hold a verified player that is not one of our fakes,
     and the box must have min_mem_mb available for our one instance."""
     live = live_instances()
@@ -155,15 +156,29 @@ def enw_evidence(inst, pid, bsp, copy=None):
     # copy (`wine: .../zdev/waw-inst-01 -> fs_homepath ...`), not in waw-inst-50: the old path
     # read nothing and reported "com_frameTime advanced only 0 ms" for a healthy run.
     log = "%s/enw-%s.log" % (copy or "%s/waw-%s" % (ZDEV, inst), pid)
-    txt = ssh("grep -a -E 'com_frameTime=|Com_Error TRAPPED|Sys_Error|liveness' %s | tail -40; "
+    # 2026-09-23 (lane MAPS): also the trapped error's own text (lane 15's `trapped`, never
+    # merged) and the freeze watchdog's verdict. A pass now needs the watchdog CLEAN: no
+    # `escape fault`, no escaped frame, no freeze -- `dedi_freeze_watchdog: armed` and
+    # `script VM back at rest` are its routine lines, everything else it says is a finding.
+    txt = ssh("grep -a -m12 -E 'arg[0-9] = [0-9A-F]+ \"' %s; echo ===ENW; "
+              "grep -a -E 'com_frameTime=|Com_Error TRAPPED|Sys_Error|liveness' %s | tail -40; "
+              "echo ===WATCHDOG; grep -a -E 'dedi_freeze_watchdog|escape fault' %s | "
+              "grep -a -v -E 'watchdog: armed|back at rest' | head -8; "
               "echo ===CONSOLE; grep -a -n -i -E 'script runtime error|error:|exceeded|need [0-9]+ more bytes|"
-              "could not|unknown item' %s/%s/console.log | tail -12" % (log, MODS, bsp))
-    enw, _, con = txt.partition("===CONSOLE")
+              "could not|unknown item' %s/%s/console.log | tail -12" % (log, log, log, MODS, bsp))
+    args, _, rest = txt.partition("===ENW")
+    enw, _, rest = rest.partition("===WATCHDOG")
+    wd, _, con = rest.partition("===CONSOLE")
+    msgs = re.findall(r'arg\d = [0-9A-F]+ "([^"]*)"', args)
+    watchdog = [w.strip()[:220] for w in wd.strip().splitlines() if w.strip()]
     ft = [int(x) for x in re.findall(r"com_frameTime=(\d+)", enw)]
     errs = re.findall(r"Com_Error TRAPPED.*", enw)
     return {"frametime_first": ft[0] if ft else None, "frametime_last": ft[-1] if ft else None,
             "frametime_advance_ms": (ft[-1] - ft[0]) if len(ft) > 1 else 0,
             "com_error": errs[:2], "sys_error": "Sys_Error" in enw,
+            "trapped": max([m.strip() for m in msgs if "%" not in m and len(m.strip()) > 3] or [None],
+                           key=lambda m: len(m or "")),
+            "watchdog": watchdog, "watchdog_clean": not watchdog,
             "console_errors": [c.strip()[:220] for c in con.strip().splitlines()][:12]}
 
 
@@ -253,6 +268,7 @@ def prove(bsp, hold, wait_busy, load_wait=150):
     exited = None
     preempted = None
     deadline = time.time() + load_wait
+    t_sys = 0
     try:
         while time.time() < deadline:
             time.sleep(5)
@@ -293,6 +309,15 @@ def prove(bsp, hold, wait_busy, load_wait=150):
                 if m:
                     exited = m.group(0)
                     break
+                # Fail fast (lane MAPS): a `Sys_Error TRAPPED` before map_loaded is final -- the
+                # main thread parks in the error loop and nothing else happens, so waiting out
+                # --load-wait (300 s) for it only keeps the box's one free slot busy.
+                if pid and not loaded_at and time.time() - t_sys >= 15:
+                    t_sys = time.time()
+                    log = "%s/enw-%s.log" % (copy or "%s/waw-%s" % (ZDEV, inst), pid)
+                    if "Sys_Error TRAPPED" in ssh("grep -a -m1 'Sys_Error TRAPPED' %s; true" % log):
+                        exited = "Sys_Error trapped before map_loaded (main thread parked)"
+                        break
             if loaded_at and time.time() - loaded_at >= hold:
                 break
         res["instance"], res["pid"] = inst, pid
@@ -305,10 +330,18 @@ def prove(bsp, hold, wait_busy, load_wait=150):
             res.update(result="skipped", reason="pre-empted: %s%s" % (
                 preempted if preempted.startswith("idle") else "another lease (%s) replaced ours" % preempted,
                 " after map_loaded" if loaded_at else ""))
+        elif not loaded_at and not inst:
+            # The host never booted it: its RAM guard (700 MB floor) or one-boot-at-a-time queue
+            # held our lease behind another game for the whole --load-wait. Says nothing about
+            # the map (nazi_zombie_laboratory 21:10, behind an agent's ut_box_map): a retry.
+            res.update(result="skipped", reason="never booted within %d s (host RAM guard / boot queue)" % load_wait)
         elif not loaded_at:
-            res.update(result="fail", reason="no map_loaded within %d s" % load_wait + (" (%s)" % exited if exited else ""))
+            res.update(result="fail", reason="no map_loaded within %d s" % load_wait + (" (%s)" % exited if exited else "")
+                       + ("; trapped: %s" % res["trapped"] if res.get("trapped") else ""))
         elif exited:
             res.update(result="fail", reason="map_loaded, then the process exited: " + exited)
+        elif res.get("watchdog"):
+            res.update(result="fail", reason="map_loaded, but the freeze watchdog fired: " + res["watchdog"][0][:160])
         elif res.get("frametime_advance_ms", 0) < 15000:
             res.update(result="fail", reason="map_loaded, but com_frameTime advanced only %s ms "
                        "(engine stopped simulating)" % res.get("frametime_advance_ms"))

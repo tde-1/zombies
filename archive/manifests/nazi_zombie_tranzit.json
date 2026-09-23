@@ -1,0 +1,248 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_tranzit",
+  "title": "Bus Depot",
+  "source": "custom",
+  "author": "RichGaming",
+  "released": "2016-04-04",
+  "fs_game": "mods/nazi_zombie_tranzit",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_tranzit.iwd": "92b47ad1c32dbc9f6a563c9a8f72927184fc5602e5f4349485171aa24050d0d5"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "game_won"
+        }
+      },
+      "candidates": [
+        "game_won",
+        "gersh_teleport"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "game_won, gersh_teleport name an ending and are this map's own; script hardcodes cost 3000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 142,
+    "script_count": 142,
+    "entities": 1569,
+    "ee_candidates": [],
+    "ending_words": [
+      "game_won",
+      "gersh_teleport"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf3346_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2330_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2339_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2317_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "tunnel_debris"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "92b47ad1c32dbc9f6a563c9a8f72927184fc5602e5f4349485171aa24050d0d5",
+    "map_specific_triggers": [
+      "bank_deposit",
+      "bank_withdraw",
+      "dig_site",
+      "end_game_switch",
+      "game_start",
+      "harrybo21_perk_trigger",
+      "ladder_build_trig",
+      "ladder_pick_trig",
+      "lava_damage",
+      "non_playable_area",
+      "ps_handle_build_trig",
+      "ps_handle_pick_trig",
+      "ps_light_build_trig",
+      "ps_light_pick_trig",
+      "ps_panel_build_trig",
+      "ps_panel_pick_trig",
+      "rotating_door",
+      "shovel_trigger",
+      "skull_01_loc_01",
+      "skull_01_loc_02",
+      "skull_01_loc_03",
+      "skull_02_loc_01",
+      "skull_02_loc_02",
+      "skull_02_loc_03",
+      "skull_03_loc_01",
+      "skull_03_loc_02",
+      "skull_03_loc_03",
+      "skull_04_loc_01",
+      "skull_04_loc_02",
+      "skull_04_loc_03",
+      "skull_05_loc_01",
+      "skull_05_loc_02",
+      "skull_05_loc_03",
+      "skulls_weapon_reward",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "start_logo_display",
+      "weapon_locker"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Bus_Depot_V1.2_.exe",
+    "original_sha256": "db26eb823c3b3597f85ffd588cf8356c97a56e73f20d90c1fdad7f65ceb5182a",
+    "original_size": 451776826,
+    "source_url": "http://www.mediafire.com/file/a8ybhjf5gg9f0s1/Bus_Depot_(V1.2).exe",
+    "source_page": "https://callofdutyrepo.com/2016/04/04/bus-depot/",
+    "fetched": "2026-09-23T18:20:08Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_bus_depot",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.1.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "nazi_zombie_tranzit.iwd:images/bus_depot_logo.iwi",
+        "nazi_zombie_tranzit.iwd:images/dukip_menu.iwi",
+        "nazi_zombie_tranzit.iwd:images/dukip_menu2.iwi",
+        "nazi_zombie_tranzit.iwd:images/loadscreen_nazi_zombie_bus_depot.iwi",
+        "nazi_zombie_tranzit.iwd:images/loadscreen_nazi_zombie_tranzit.iwi",
+        "nazi_zombie_tranzit.iwd:images/menu_button_backing_right.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/busdepot/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/0129546161e70bf7ce0d61cb7774c7a4-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 96.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 31,
+        "scripts": 0,
+        "bytes": 70892
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.1.iwd",
+        "entries": 474,
+        "scripts": 0,
+        "bytes": 99456205
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_town_patch.ff",
+      "nazi_zombie_tranzit.ff",
+      "nazi_zombie_tranzit_patch.ff",
+      "nazi_zombie_tranzit.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

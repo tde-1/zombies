@@ -170,15 +170,15 @@
     "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/derberg-2.jpg",
     "cover_size": 145093
   },
-  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3).  DEDI 2026-09-22 (runs map03, join67-join72): the ONLY custom map that boots cleanly and answers getstatus in 3 s -- and the server stops simulating 5.6 s in, every time, with a real client attached. Mechanism, named with a data breakpoint in join72: the map's scripts enumerate an object with ~3,900 child variables, and the engine's `scrVmPub.localVars` push loop at 0x697B60 has no bound check, so it overruns 0x28D78 bytes past gScrVmPub (0x3BD4700) into .bss and overwrites the `r_reflectionProbeGenerate` dvar pointer at 0x3BFD478 with a count. The packet receive dereferences that pointer on every WSAEWOULDBLOCK (0x5FFE23), the frame body unwinds and com_frameTime freezes at ~5.6 s. RETRACTION: dedi.md 12.5 called this 'a dvar the dedicated server never registered'; the dvar exists and registering it (join69) changed nothing. Fixing it means bounding that loop or enlarging localVars -- an engine-limit job, not attempted. dedi.md 13.1-13.2. DEDI/REFEREE 2026-09-22 (runs mapA/mapB/mapC, join80-join83): THE 'broken' VERDICT IS CONFIRMED AND THE BLAME IS CORRECTED. The previous session left open whether our dedicated server, a referee GSC overlay or the replay sampler was the shared cause. It is none of them, and that was settled by running the maps with ours REMOVED rather than by reading code. dedi.md 14, referee.md 11. Run mapB re-ran this map on the dedicated server with ENW_NO_SAMPLERS=1: the referee does not hook SV_Frame, the replay sampler does not arm, and nothing of ours runs inside the game loop. It stopped simulating at com_frameTime=5651, against 5659 (join69) and 5662 (join59) with everything on. The ~3,900-child enumeration that overruns scrVmPub.localVars at 0x697B60 is the MAP's script, not our sampler: referee::zombie_ents() walks g_entities[4..1024] reading gentity_s fields directly, scriptvars has been `no` in every run this project has recorded, and the only child-variable probe we own is behind ENW_LEVELVARS=1 and off since it scored zero. Bounding 0x697B60 is still an engine-limit job and still not attempted. status stays \"broken\".  ARCHIVE 2026-09-23: NO ADD-ON EXISTS TO BLAME. The release is four files (derberg.iwd, mod.arena, mod.ff, nazi_zombie_derberg_patch.ff) and matches the NSIS installer's own file table exactly. derberg.iwd is the map's own 394 MB asset pack and contains exactly ONE script, animscripts/pain.gsc -- no _utility, no _zombiemode, no _load override, nothing that could enumerate the world. There is nothing to exclude. Re-measured as shipped in run addon7 (dedicated, 30 s hold): `com_frameTime +0 ms over 8 probes (last 5651)`, the SAME 5651 ms stop as run mapB, so the localVars overflow is unchanged and is the map's own script. status stays \"broken\". dedi.md 15.",
-  "dedi_status": "broken",
-  "status": "broken",
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3).  DEDI 2026-09-22 (runs map03, join67-join72): the ONLY custom map that boots cleanly and answers getstatus in 3 s -- and the server stops simulating 5.6 s in, every time, with a real client attached. Mechanism, named with a data breakpoint in join72: the map's scripts enumerate an object with ~3,900 child variables, and the engine's `scrVmPub.localVars` push loop at 0x697B60 has no bound check, so it overruns 0x28D78 bytes past gScrVmPub (0x3BD4700) into .bss and overwrites the `r_reflectionProbeGenerate` dvar pointer at 0x3BFD478 with a count. The packet receive dereferences that pointer on every WSAEWOULDBLOCK (0x5FFE23), the frame body unwinds and com_frameTime freezes at ~5.6 s. RETRACTION: dedi.md 12.5 called this 'a dvar the dedicated server never registered'; the dvar exists and registering it (join69) changed nothing. Fixing it means bounding that loop or enlarging localVars -- an engine-limit job, not attempted. dedi.md 13.1-13.2. DEDI/REFEREE 2026-09-22 (runs mapA/mapB/mapC, join80-join83): THE 'broken' VERDICT IS CONFIRMED AND THE BLAME IS CORRECTED. The previous session left open whether our dedicated server, a referee GSC overlay or the replay sampler was the shared cause. It is none of them, and that was settled by running the maps with ours REMOVED rather than by reading code. dedi.md 14, referee.md 11. Run mapB re-ran this map on the dedicated server with ENW_NO_SAMPLERS=1: the referee does not hook SV_Frame, the replay sampler does not arm, and nothing of ours runs inside the game loop. It stopped simulating at com_frameTime=5651, against 5659 (join69) and 5662 (join59) with everything on. The ~3,900-child enumeration that overruns scrVmPub.localVars at 0x697B60 is the MAP's script, not our sampler: referee::zombie_ents() walks g_entities[4..1024] reading gentity_s fields directly, scriptvars has been `no` in every run this project has recorded, and the only child-variable probe we own is behind ENW_LEVELVARS=1 and off since it scored zero. Bounding 0x697B60 is still an engine-limit job and still not attempted. status stays \"broken\".  ARCHIVE 2026-09-23: NO ADD-ON EXISTS TO BLAME. The release is four files (derberg.iwd, mod.arena, mod.ff, nazi_zombie_derberg_patch.ff) and matches the NSIS installer's own file table exactly. derberg.iwd is the map's own 394 MB asset pack and contains exactly ONE script, animscripts/pain.gsc -- no _utility, no _zombiemode, no _load override, nothing that could enumerate the world. There is nothing to exclude. Re-measured as shipped in run addon7 (dedicated, 30 s hold): `com_frameTime +0 ms over 8 probes (last 5651)`, the SAME 5651 ms stop as run mapB, so the localVars overflow is unchanged and is the map's own script. status stays \"broken\". dedi.md 15.  BOX 2026-09-23 (lane MAPS, archive.md s14): map_loaded + 185 s alive, freeze watchdog clean, box DLL fd3039d2, match m_a5d333b5. Was: scrVmPub.localVars overrun at 0x697B60 -- the dedi.md s23/s25 escaped-frame class (a NULL client-only dvar read by server code); fixed by snd_alias_dvars (fd3039d2).",
+  "dedi_status": "box_map_loaded",
+  "status": "box_map_loaded",
   "dedi_verdict_source": "dedi.md 14; runs mapA (stock exe, listen server) and mapB (ENW_NO_SAMPLERS=1)",
   "asset_audit": {
-    "at": "2026-09-23T13:41:08",
+    "at": "2026-09-23T22:13:33",
     "verdict": "clean",
-    "map_loaded_runs": 5,
-    "misses": 180,
+    "map_loaded_runs": 6,
+    "misses": 183,
     "fatal": 0,
     "visible": 0,
     "visible_owner": {},
@@ -186,5 +186,16 @@
     "client_check": [],
     "static": {},
     "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95173 ms over the hold",
+    "match": "m_a5d333b5",
+    "at": "2026-09-23T19:26:57",
+    "instance": "inst-01",
+    "watchdog_clean": true,
+    "trapped": null,
+    "hold_s": 185,
+    "unproven": "no client joined: server-side load under Wine only"
   }
 }

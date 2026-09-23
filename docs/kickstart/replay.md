@@ -1507,6 +1507,8 @@ with the tooltip "No sounds for this replay".
   one §8.11 proved (Nacht #7 colt, #16 carbine) is drawn with its name, and any other index draws
   no gun. No marker, blood, pickups or chips are drawn, and it
   is silent. This was proven on the fixture with the v1 events stripped, and on the real `m_6d80aa20`.
+  *Retracted 2026-09-23 (lane RV, §14.1): "silent" was the bug B reported. An old file now sounds
+  from its attack presses and health drops, and a gun with no model is the fake rifle.*
 * **Names**: every lookup tries the engine name, the name without `_upgraded`, v1's stripped name, and
   `zombie_`/`_zombie` forms, with R2's `weaponByEngineName` tried first. `pid` or `slot` are both
   accepted, as are `ms` or a numeric `t`.
@@ -1604,6 +1606,144 @@ The full web `npm test` passes after merging main: every suite reports 0 failed,
 * **Not done**: the zombie blood burst on a hit (R2 has the `blood_*` sprites; not asked), the ground
   loop `powerup_loop` while a drop lies there, and the insta-kill/double-points loops while active.
 * **The live site** gets all this on merge plus a restart, on B's word (rule 15).
+
+## 13. (not written) — lane R4's spectator switching
+
+R4's own section was never written (B's PC rebooted at 15:30); `next-session.md` item 24 is its
+record, and the code comments that say "replay.md §13" (spectate.js, r4-render-check.mjs) mean it.
+
+## 14. 2026-09-23 (~17:45–19:30 UK), lane RV: the sound B could not hear, first-person arms + ADS, and a placeholder for every gun
+
+B (17:30): "Sound's not working on the client on the 3D web replayers. Also add the hand models and
+aim-down-sights, and guns that you don't have stored — use the fake gun in their place." Branch
+`worktree-agent-af5a1466289b6332f` (main merged at `07d924a`). The live site, port 3200 and
+`web/data` were not touched (read only: its log and a GET of three `/mapdata` URLs); the game was
+not launched; nothing was uploaded.
+
+### 14.1 Why there was no sound — two causes, both in the replays, neither in the audio code
+
+Measured, not guessed: headless Edge (output muted) with an **AnalyserNode spliced in front of
+the AudioContext destination** (a pass-through patch of `AudioNode.connect` installed before the
+page's scripts), a real mouse click on Play, against a scratch site running **main's own build**
+(what 3200 serves) and copies of the real files. The live site's `/mapdata/_sounds/*.ogg` answer
+`200 audio/ogg`, same origin, through the tunnel too — the gate, a 302 and CORS were not it, nor
+the codec (Ogg decodes in Chromium), nor the listener (it is on the camera).
+
+| Replay (B's, today) | Main's build | Why |
+|---|---|---|
+| `m_abe60828` bridge_zombie, v1, the Colt | **sound** (peak 0.87, 19 sounds in 7 s) | the path §12 built works |
+| `m_da684190` battlestar_galactica, v1, 17 shots of `m9` | **gunfire silent**: only 3 samples fetched (hit marker, swipe, pain), 5 sounds | a custom map's gun is not in the pack, and `soundsFor` returned nothing for it |
+| `m_0c608cd9` fear_mc_2, played 12:28 UTC (before R1's DLL), the one B opened at 18:07 | **no AudioContext at all** for 22:45 (`available: false`) | no `fire`/`damage` events in the file: §12 made every old replay silent **by design** |
+
+So "sound's not working" was true for most of what B watches: every game before 14:13 UK and
+every custom map whose guns are not stock. **Fix** (`fx.js`, `ReplayViewer.jsx`, `sound.js`):
+
+* **Cues for a file with none** (`addInferredCues`): a shot per attack press expanded by the
+  weapon's fire type (§8.7's `shotTimes`, [K]; an unknown gun fires semi-auto at 0.12 s), a swipe
+  per recorded health drop (`track.hits`). A player with recorded cues of a kind gets none inferred.
+  §12.3's "an old replay is silent" is **retracted**; R3's render check now asserts the opposite.
+* **A stand-in fire sound** (`standInWeapon`) for a gun the pack lacks: the stock gun of its
+  name's class, else the M1 Carbine (a rifle, as the fake gun is drawn). Knives, grenades, bottles
+  and the flamethrower stay silent.
+* **A rebuilt ReplaySound is enabled** once the page has had its Play/speaker gesture (it is
+  rebuilt when the manifest lands, the map loads or the cues change, and used to come back
+  disabled until the next click). A context the browser suspended is resumed while playing.
+
+After the fix, same harness, this branch: `m_da684190` peak 0.95 (22 sounds), `m_0c608cd9` peak
+0.69 from its presses. **Electron**: not run (no invisible launcher window was driven); its site
+view has no audio-relevant setting (`launcher/src/main/main.js`: no mute, no autoplay policy; the
+permission handler refuses permission prompts, which Web Audio does not raise), so it is the same
+Chromium path — unproven there.
+
+### 14.2 First-person arms and aim-down-sights
+
+**What the game does, read from its files.** Every stock zombies map sets
+`viewmodel_usa_marine_arms` (`maps/_loadout.gsc`, the `nazi_zombie_*` branch; a custom map that
+ships the stock loadout too) — the Marine arms are the only viewhands, so "per character" has
+nothing to choose from. The gun's viewmodel hangs on the arms' `tag_weapon` by its root `j_gun`;
+the arms' `tag_view` is the eye. The weapon file names `idleAnim` and `adsUpAnim`. **The ADS anim
+is scrubbed by the aim fraction**: its frame 0 is the hip pose (tag_torso low right; it equals
+`adsDownAnim`'s last frame) and its last frame the sights. Found the hard way: with the idle frame
+alone the hip gun sat 6.7 u under the eye, off screen.
+
+**Pipeline** (`export_assets.py`, `assets-pipeline.md` §7): `tools/models/xanim.py` reads the
+compiled xanim v17 Unlinker dumps (our own reader; field order checked against OAT's
+`CompiledXAnimLoader` and against the files: **582/582** of Der Riese's parse to the last byte).
+Out: `_weapons/viewhands_marine.glb` (skinned, 70 joints, 5.8 k tris, 186 KB) and
+`_weapons/fp_poses.json` (44 poses, 128 KB: each gun's idle frame and every frame of its ADS anim,
+bone-local, engine frame); per weapon `fp: { idle, ads, adsZoomFov, adsInMs, adsOutMs, standMove }`.
+
+**Viewer** (`fphands.js`, `fpmath.js`, `gear.js`): in first person the arms + the gun's own
+viewmodel (R2's `viewGlb`, the upgraded one after a PaP) replace the §8.7 placeholder as soon as
+all three have loaded; bones take the idle frame, the ADS anim's bones its frame at the aim
+fraction; the FOV eases from cg_fov 65 to the gun's `adsZoomFov` (the viewmodel pass uses the same
+FOV; `setWorldFov`/`setViewmodelFov` now allow down to 5, for the PTRS's 10). Kick is steadier
+when aimed. `standMove*` is NOT applied: in the weapon file it is the pull while moving (its
+siblings are `duckedOfs*`/`proneOfs*`), and applying it at rest put the gun 2.5 u too low.
+
+**Where the aim fraction comes from.** R1 records the usercmd buttons (`input`, bit 0x800 = ADS,
+checked here against a real file: held 32.834–34.079 s of `m_abe60828` while the Colt fired three
+times) but not the engine's state. So, two sources:
+1. **DLL (new, its own commit `5af3c78`, NOT on the box)**: the snap's per-player `ads` =
+   `ps.fWeaponPosFrac` in tenths, omitted when unchanged; `replay_events` **2**. Offset `0x110`,
+   bound only if `PlayerCmd_PlayerADS` 0x4EEE00's bytes are in the image (0x4EEE69
+   `8B 96 80 01 00 00 D9 82 10 01 00 00` = `mov edx,[esi+0x180]; fld [edx+0x110]`, exactly what
+   script `playerADS()` returns); T4SP asserts the same offset. The track carries it per tick
+   (`players[].ads`, tenths; null on older files). `replay_events_test` 66/66 (7 new).
+   `t4_bind.cpp`, `replay.cpp`, `referee.cpp` pass `cl /Zs /W4 /permissive-`; **not built into a
+   box DLL** (rule 17) — the coordinator's step (`replay-events-v1.md` §8).
+2. **Every file today**: the ADS button eased at the gun's `adsTransInTime`/`adsTransOutTime`.
+   It is intent, not state (the game refuses ADS while sprinting or reloading) [H]. Fire events
+   were not used: the button is better evidence and exists on every file.
+
+### 14.3 Guns the pack does not have, and the pack
+
+* **The fake gun** (`fx.js placeholderFor`, `gear.js`): a gun whose name the pack cannot resolve
+  is the procedural rifle (§12's `rifle` placeholder), rifle-sized, with the real name on the tag
+  and the Tab board (`displayName` was already name-driven); the name is logged once per page
+  (`[replay] weapon not in the asset pack, drawn as the placeholder rifle: m9`) and listed in
+  `__r3d.fx().gear.unknown`. A live player whose column says no weapon (`#0`, an unbound index)
+  holds it too. Non-guns keep their own stand-ins; with no pack (`?assets=off`) §12's class
+  placeholders stay.
+* **The pack** now has **every gun Der Riese's box and walls hand out and each PaP**: .357,
+  Kar98k, Gewehr 43, M1 Garand (+ launcher), STG-44, Type 100, PPSh-41, Trench gun,
+  Double-barrel, BAR, FG42, .30 cal, MG42, PTRS-41, Panzerschreck, M2 flamethrower, plus R2's
+  six. Older maps' names for the same guns (`thompson`, `bar_bipod`, `mg42_bipod`,
+  `kar98k_scoped_zombie`...) map to them (`aliases`). Fire sounds come from zone order; 2 of 34
+  had none there (Kar98k third-person, MG42 first-person: class stand-ins, said in `_assets.json`
+  `soundStandIn`), and the flamethrower has no fire sound. Not in the pack: the Arisaka and the
+  sawed-off (Shi No Numa's zone), the Springfield (Nacht) — they are fake guns.
+* **Size**: 183 files, **17.4 MB** (budget raised 15 → 20). A replay still loads only its guns.
+  **Live now**: the 99 new files were ADDED to `ZombiesDev\maps` (the 84 existing ones are
+  byte-identical); `_assets.json` was replaced after a backup
+  (`ZombiesDev\assetwork\backup\_assets.json.2026-09-23-pre-RV`). Main's viewer reads it unchanged
+  (new fields are ignored) and gets the 17 new real guns and their sounds today; the arms, ADS,
+  inferred sounds and the fake gun need this branch merged and a site restart (rule 15).
+
+### 14.4 Proof
+
+* `web npm test` green after merging main; **`replay-fp` 13/13** (new): the ADS ease and its
+  scrub-exactness, the DLL column, the pose layering and the ADS-anim scrub, the FOV, the fake-gun
+  rule, stand-in sounds, inferred cues, and the track's `ads` column.
+* **`web/tools/rv-render-check.mjs` 20/20** on a scratch site (3472; this build; fresh data dir;
+  copies of the real replays): signal at the destination after Play on all three real files; M
+  drops it to 0; first person hip → half way (0.49 at 120 ms of the Colt's 245) → ADS (1, FOV 60
+  = the Colt's `adsZoomFov`); the fixture's MP40 and its PaP viewmodel on the arms; the fake rifle
+  in `m9`'s hand with the name logged; `?assets=off` keeps the placeholder. R3's check 27/27 (one
+  assertion retracted, above), R4's 31/31 on the same site.
+* Screenshots (scratchpad, not committed): `rv-fp-hip-colt`, `rv-fp-mid-colt`, `rv-fp-ads-colt`,
+  `rv-fp-mp40`, `rv-fp-mp40-pap`, `rv-custom-fake-gun-3p`.
+
+### 14.5 Not proven / not done
+
+* **Heard by nobody** — the analyser proves a signal; headless output was muted. B's ears are the proof.
+* **Not seen in the Electron launcher**; not on a real GPU (SwiftShader).
+* **The DLL's `ads`** is compiled for syntax only and unit-tested; no game has recorded it.
+* **The pack export was not re-run for byte-determinism** after its last change (the PC was at
+  89 % commit); the 84 files shared with R2's pack came out byte-identical.
+* Poses are the idle frame only (no idle sway, fire, reload or raise anims); no stance offsets;
+  the third-person world model still has no aiming pose (§12.6).
+* Inferred shots on old files follow the stock fire-type table; a custom gun is semi-auto.
 
 ---
 

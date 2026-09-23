@@ -73,8 +73,68 @@ section rdata_section() {
     return s;
 }
 
+// ---------------------------------------------------------------------------------------
+// The game image fast path (lane S2, dedi.md §26)
+// ---------------------------------------------------------------------------------------
+// Every memory::read / peek asks VirtualQuery first. On Windows that is cheap. Under Wine
+// (the box) NtQueryVirtualMemory takes the virtual-memory lock (two rt_sigprocmask syscalls)
+// and scans the per-page protection bytes of the whole region the address lives in -- and
+// CoDWaW.exe's .data is one 72.9 MB region, ~17,800 pages, scanned on EVERY call. Measured
+// with perf on the box, 2026-09-23 16:05 UTC, an idle nazi_zombie_ils server: its main
+// thread used 0.82 of a core, and 94% of those samples were that scan and its syscalls
+// (ntdll.so get_vprot_range_size, the vdso syscall gate, the kernel); CoDWaW.exe's own code
+// was 1.2%. The per-frame readers (referee, replay sampler, AFK, probes) read statics that
+// all live in the image: svs, g_entities, level, the script variable pools.
+//
+// So: a range wholly inside the game image is readable without asking, PROVIDED a full walk
+// of the image has shown every page committed and readable. The walk is repeated every 5 s
+// (about twenty regions, cheap) and a failed walk turns the fast path off until one passes,
+// so a page someone protects NOACCESS is noticed within 5 s and never read blind before the
+// first walk. Anything outside the image still goes through VirtualQuery, unchanged.
+// ENW_MEMORY_SLOW_READS=1 turns the fast path off (the A/B control).
+namespace {
+struct image_range {
+    uintptr_t lo = 0, hi = 0;
+    volatile LONG ok = 0;
+    volatile DWORD walked_at = 0;
+    int mode = -1;   // -1 unknown, 0 off (env), 1 on
+};
+image_range g_image;
+
+bool region_walk_readable(uintptr_t lo, uintptr_t hi) {
+    MEMORY_BASIC_INFORMATION mbi{};
+    for (uintptr_t p = lo; p < hi;) {
+        if (::VirtualQuery(reinterpret_cast<const void*>(p), &mbi, sizeof(mbi)) == 0) return false;
+        if (mbi.State != MEM_COMMIT) return false;
+        if (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) return false;
+        p = reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize;
+    }
+    return true;
+}
+
+bool image_fast(uintptr_t a, size_t size) {
+    if (g_image.mode == 0) return false;
+    if (g_image.mode < 0) {
+        char buf[4]{};
+        g_image.mode = (::GetEnvironmentVariableA("ENW_MEMORY_SLOW_READS", buf, sizeof buf) && buf[0] == '1') ? 0 : 1;
+        const auto* nt = nt_headers();
+        if (!nt || g_image.mode == 0) { g_image.mode = 0; return false; }
+        g_image.lo = base();
+        g_image.hi = base() + nt->OptionalHeader.SizeOfImage;
+    }
+    if (a < g_image.lo || a + size > g_image.hi || a + size < a) return false;
+    const DWORD now = ::GetTickCount();
+    if (g_image.walked_at == 0 || now - g_image.walked_at > 5000) {
+        g_image.walked_at = now ? now : 1;
+        ::InterlockedExchange(&g_image.ok, region_walk_readable(g_image.lo, g_image.hi) ? 1 : 0);
+    }
+    return g_image.ok != 0;
+}
+}  // namespace
+
 bool is_readable(const void* addr, size_t size) {
     if (!addr || !size) return false;
+    if (image_fast(reinterpret_cast<uintptr_t>(addr), size)) return true;
     MEMORY_BASIC_INFORMATION mbi{};
     const auto* p = static_cast<const uint8_t*>(addr);
     const auto* end = p + size;

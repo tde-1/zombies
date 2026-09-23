@@ -2565,6 +2565,13 @@ release commit names it. The detail of each change is in the lane doc named.
 | 0.2.26 | `dad44a2` 14:10 (main `5d4d2b1`) | `1fda51c5` | D1 (freeze watchdog, dedi `_load` zone: server-side), H1 launcher wording. Superseded 7 min later by 0.2.27. 171/0 | `dedi.md` §23.4–23.5 |
 | **0.2.27** | `32deb50` 14:17 (main `bde7e19`, built clean in `wt-coord2`) | **`04a3ad6d`** | R1 replay events (zombies at 20 Hz, weapon/fire/hit/damage/pap/powerup; server-side) on top of D1. Same binary as the box (all 9 copies). 171/0 | `dedi.md` §22.10 |
 | **0.2.28** | `f45f4a7` 17:05 (main `645649c`, DLL built clean in `ZombiesDev\wt-int` at `fa1784f`) | **`fd3039d2`** | Lane INT, 2026-09-23 evening: **DP1 — the game runs as `ENWZombies.exe`, so Discord stops saying "Call of Duty: World at War"** (first release with it); server-side S1 + INT NULL-dvar registration (the box freezes), F1 rate scale x4, L1 fault names. Same binary as the box (all 9 copies). `stage-client --from …\wt-int\build\int\enw_t4.dll --allow-stale` (the main checkout's mtime came from the fast-forward; DLL source diff `fa1784f..645649c` empty). run-all 171/0, waw-settings 20/0, modcompat 6/0; feed `latest.yml` 0.2.28 on the site and the bucket | `dedi.md` §26, "Discord shows ENW Zombies" |
+| 0.2.29 | `8446349` 18:34 (main `0fc7a95`, DLL built clean in `ZombiesDev\wt-rel` at `0fc7a95`) | `0d9125d6` | Lane REL. Lane CL: **`gpu_query_guard` (the Town of the Dead / zombie_town hang: the render thread spun forever on a sun-flare occlusion query on AMD; 50 ms cap per wait, -1 after, off after 3 timeouts; `ENW_GPU_QUERY_GUARD=0` disables it)**, hang-watchdog `hang_where`, "World at War froze on <map>" notice. `stage-client --allow-stale` (fast-forward mtime; same commit). run-all 172/0, waw-settings 20/0, modcompat 6/0; C++ session_record 48/0, overlay_console 60/0. Superseded 10 min later by 0.2.30 | `client.md` §13 |
+| 0.2.30 | `8f26f05` 18:44 (main `07d924a`, DLL built clean in `ZombiesDev\wt-rel2` at `07d924a`) | `3970122b` | Lane REL: 0.2.29 + lane UGX server `game_mode` (answers the UGX mode vote from `enw_game_mode`; server-only) + host 31 `+`-command guard. Box DLL is the same binary (see STATUS). run-all 172/0, waw-settings 20/0, modcompat 6/0; C++ menu_answer 29/0. Feed `latest.yml` 0.2.30 on the site and the bucket | `game-modes.md`, `client.md` §13 |
+| 0.2.31 | `5aeeda7` 18:58 (main `babf16a`, DLL clean in `ZombiesDev\wt-rel3`) | `6cbf8566` | + lane SOC: launcher flash/chime/toast with Accept, tray/taskbar unread dot, `notifySound` (the DLL embeds `ingame-settings.json`, so it was rebuilt). run-all 185/0 | `web.md`, `launcher.md` SOC sections |
+| 0.2.32 | `9de004a` 19:12 (main `43f722f`, DLL clean in `ZombiesDev\wt-rel4`) | `2fda99fe` | + lane RV: `replay_events` 2 (per-player `ads`). replay_events_test 66/0; run-all 185/0 | `replay.md` §14 |
+| 0.2.33 | `1a22a43` 19:23 (main `9589c91`, DLL clean in `ZombiesDev\wt-rel6`) | `736236c8` | + lane G2 `water_sim_off` / `solo_parity` (dedi-only) + lane S2 image fast path / dev bots. solo_parity_test 27/0; run-all 185/0 | `dedi.md` §27, §28 |
+| 0.2.34 | `2efde6f` 19:31 (main `0a03304`, DLL clean in `ZombiesDev\wt-rel7`) | `3557aaa3` | Lane REL, final of the evening: + G2 follow-up (`solo_parity` says CLIENT FROZEN vs FLOATING). Same binary as the 7 box production copies. run-all 185/0, waw-settings 20/0, modcompat 6/0; feed `latest.yml` 0.2.34 on the site and the bucket. Box caveat: `dedi.md` §26.6 (water fix not applied on S2 builds; client unaffected) | `dedi.md` §26.6 |
+| **0.2.35** | `94dc269` 20:10 (main `c99b346` DLL source; DLL clean in `ZombiesDev\wt-rel8`) | **`1b482aa2`** | Lane REL: + lane RS (instant console restart, first-`restart` setup fix, dedi `ui_gametype` null fix, launcher bootflow for a restarted run) + G2 `water_sim_off` startup-race fix (`356fdf8`). Same binary as the 7 box copies. `stage-client --allow-stale` (worktree mtimes newer than the build; DLL source diff `c99b346..a2c330d` empty). run-all 185/0, waw-settings 20/0, modcompat 6/0; feed 0.2.35 on the site and the bucket | `esc-menu.md` §12–13, `dedi.md` §28.9 |
 
 **On the feed at handoff: 0.2.20** (`https://zombies.enw.gg/updates/latest.yml`, installer 302 to
 `enw-zombies.nbg1.your-objectstorage.com/updates/…`, checked 03:27 UK).
@@ -3056,3 +3063,60 @@ next site restart.
 
 **Unproven:** a real launch that performs the repair on B's PC (no game was launched), and a
 fear_mc_2 game on that launcher. The toggle itself is B's proof.
+
+## 2026-09-23 ~17:40–19:30 UK — flash, chime and toast for invites, DMs and party chat (lane SOC, branch `soc-friends`)
+
+B: *"Update instantly in the launcher — we have the tray icon. If ENW Zombies is minimised, it should
+flash the taskbar and make a noise. Same if you get a private message or party chat while not
+focused."* The site half (friends from Movement, the pushed online list, party/DM in the dock) is
+`web.md` under the same date.
+
+**Where the event comes from.** The wrapped site's own socket: inside the launcher that page IS the
+launcher's live connection, so an invite (`invite_received`) or a party/DM line (`chat-private`) reaches
+it the moment it is sent. The page (`web/client/src/attention.js`, mapping in `attentionEvents.js`)
+drops its own lines and system notices and calls **`window.enw.attention(ev)`** (preload, new).
+Nothing polls. The site view now has **`backgroundThrottling: false`**: minimised or in the tray, its
+socket and 30 s heartbeat keep full pace (Chromium otherwise stretches a hidden page's timers to once a
+minute, which dropped a tray launcher off everyone's online list).
+
+**What the launcher does** (`src/main/attention.js`, rules; `main.js setupAttention`, Electron):
+
+| Window | Invite | DM / party line |
+|---|---|---|
+| in front (visible, not minimised, focused) | nothing (the site's own toast) | nothing |
+| **a game running** (`state.flow`) | nothing: the in-game overlay shows it, and nothing may disturb a game (focusguard's rule) | nothing |
+| minimised or behind another window | `flashFrame(true)` until focused, chime, **Windows toast with Accept**, unread dot | flash, chime, unread dot |
+| closed to the tray (no taskbar button) | chime, toast with Accept, dot | chime, **toast once per burst**, dot |
+
+* **One chime per burst**: a signal within 4 s of the previous one is the same burst; a long
+  conversation still chimes every 30 s. **Notification sound** (default on; site `/settings` → ENW →
+  notifications, and the shell's Settings) turns only the chime off. The chime is two synthesised sine
+  tones (WebAudio in the shell page, ~0.35 s, quiet): no sound file, nothing for the CSP.
+* **The toast** is `toastXml` (Windows): `Accept` activates `enw-zombies://invite/<id>` (new route in
+  `deeplink.js`, digits only), which reaches the running launcher through the single-instance hand-off
+  and accepts through the site (`POST /api/party/invites/:id/accept`, the rail's Accept), then shows
+  home; a refused accept (expired, withdrawn) is a shell toast. The body opens the launcher
+  (`enw-zombies://open`). Silent (the chime is ours). **Streamer mode** hides who and what ("You have a
+  party invite").
+* **Unread**: the tray icon gets a red dot (drawn into its bitmap), the taskbar button an overlay dot,
+  the tray tooltip "ENW Zombies (n new)"; focus clears all three and stops the flash.
+* `app.setAppUserModelId('gg.enw.zombies.launcher')` (electron-builder's `appId`, which the installer's
+  shortcut carries) so Windows attributes the toasts.
+* Own messages never count; a double delivery of the same event id is one signal.
+
+**Tests.** `test/run-all.js` 184/0 with the client DLL artefact present (the one failure without it is
+the known "this checkout must have a client DLL" check in a fresh worktree): 13 new attention checks on
+a mocked BrowserWindow (focused, minimised, burst, 30 s re-chime, sound off, game running, tray, own and
+duplicate, focus clears, streamer mode, toast XML escaping + protocol Accept + deep-link parse, the dot
+bitmap, and the wiring: site view unthrottled, IPC, preload, chime, setting). `waw-settings` 20/0,
+`modcompat` 6/0, `discord-presence` 26/0, `telemetry` 20/0.
+
+**Unproven.** No real Electron run: a real `flashFrame`, a Windows toast and its Accept button through
+the protocol hand-off, the chime on real speakers, the tray dot on a real tray (memory rule; see the
+addendum if one ran). Whether `isVisible()` reports a minimised window as visible does not matter to the
+rules (minimised is treated as having a taskbar button either way). "Game running" is `state.flow`,
+i.e. a game this launcher started; a game focused but started some other way would still get a chime.
+
+**Ships in the next launcher** (not published by this lane) plus the site build and restart (without
+the site half the page never calls `attention`; without the launcher half the site's call is refused
+quietly, it is wrapped).

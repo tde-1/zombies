@@ -133,6 +133,10 @@ struct client_view {
     std::string name;
     std::string xuid;       // steamid/xuid as a string, empty if unknown
     std::string userinfo;   // raw, for the connect-token check
+    // A server-side test client (dedicated/bots.cpp, dev knobs only). Reported with
+    // active=false so the referee, the replay and AFK never treat a soak bot as a player:
+    // no roster row, no auth, no kick.
+    bool bot = false;
 };
 int max_clients();
 std::optional<client_view> client(int slot);
@@ -193,6 +197,7 @@ struct combat_binding {
     bool attacker = false;  // gentity.sentient +0x188 -> sentient.lastAttacker +0x2C (G_Damage)
     bool hitloc = false;    // gentity.actor +0x184 -> actor.damageHitLoc +0xD68 (script string)
     bool models = false;    // gentity.model +0x198 -> model configstring script string 0x2350F40
+    bool ads = false;       // ps.fWeaponPosFrac +0x110 (PlayerCmd_PlayerADS 0x4EEE00), lane RV
     std::string describe() const;
 };
 const combat_binding& combat_bound();
@@ -207,6 +212,8 @@ struct player_combat {
     int event_seq = 0;
     int events[4] = {0, 0, 0, 0};
     int last_attacker = -1;      // entity number, -1 none / unbound
+    bool have_ads = false;
+    float ads = 0.0f;            // ps.fWeaponPosFrac: 0 hip .. 1 aimed down the sights (playerADS())
 };
 std::optional<player_combat> player_combat_state(int slot);
 

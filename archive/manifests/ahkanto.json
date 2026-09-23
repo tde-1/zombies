@@ -195,12 +195,12 @@
       "ahkanto.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true,
+  "site_hidden": false,
   "asset_audit": {
-    "at": "2026-09-23T13:41:08",
+    "at": "2026-09-23T22:13:33",
     "verdict": "minor",
-    "map_loaded_runs": 1,
-    "misses": 179,
+    "map_loaded_runs": 2,
+    "misses": 180,
     "fatal": 1,
     "visible": 0,
     "visible_owner": {},
@@ -208,5 +208,37 @@
     "client_check": [],
     "static": {},
     "tool": "archive/asset_audit.py"
-  }
+  },
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/zombie_bowie_flourish",
+        "from": "mod.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "c4b680d5cedcea3e3ac542709db0e9f85f77571bf9dd1e5670322522296bbc5b",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95169 ms over the hold",
+    "first_error": null,
+    "match": "m_31a0dfcb",
+    "at": "2026-09-23T21:24:16",
+    "instance": "inst-21",
+    "com_frameTime_advance_ms": 95169,
+    "com_error": [],
+    "console_errors": [
+      "5485:Error: called from:",
+      "5489:Error: called from:",
+      "5493:Error: called from:",
+      "5497:Error: started from:",
+      "5501:Error: ************************************",
+      "5503:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

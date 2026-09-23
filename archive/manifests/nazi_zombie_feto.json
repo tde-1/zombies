@@ -1,0 +1,243 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_feto",
+  "title": "Nazi Zombie Feto",
+  "source": "custom",
+  "author": "efzoz",
+  "released": "2015-10-30",
+  "fs_game": "mods/nazi_zombie_feto",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "79d3cefe70acefaa3c5c793fc26cb9f9173a62f6baeb75715e91ae74eab65a73"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "ending_trig"
+        }
+      },
+      "candidates": [
+        "ending",
+        "ending_trig"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1250,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "ending, ending_trig name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 162,
+    "script_count": 162,
+    "entities": 2522,
+    "ee_candidates": [],
+    "ending_words": [
+      "ending",
+      "ending_trig"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "hiddendebris"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "zoneout3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "zoneout3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "paydoor"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "zonetopdebris"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "79d3cefe70acefaa3c5c793fc26cb9f9173a62f6baeb75715e91ae74eab65a73",
+    "map_specific_triggers": [
+      "bucket_trig",
+      "charging",
+      "dresser",
+      "ending_trig",
+      "endpanel",
+      "eyebot_trig",
+      "fpap_trig",
+      "ghost_locked",
+      "ghost_trigger",
+      "hint",
+      "hint_trig",
+      "keydoor_trig",
+      "keylocked",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "lil_trigger",
+      "locked",
+      "monkey_trig",
+      "monkeywait_trig",
+      "needpower",
+      "needpowerdoor",
+      "painting_trig",
+      "planetrigger",
+      "powerdoorlocked",
+      "radar",
+      "rotatedoor_1",
+      "rotatedoor_2",
+      "rotatedoor_3",
+      "rotatedoor_4",
+      "rotatedoor_5",
+      "rotatedoor_6",
+      "rotatedoor_7",
+      "rotatedoor_8",
+      "rotatedoor_9",
+      "satchel_build_trig",
+      "satchel_exp_damage_trig",
+      "satchel_pick_trig",
+      "satchel_pick_trig_2",
+      "satchel_pick_trig_3",
+      "satchel_pick_trig_4"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_feto.exe",
+    "original_sha256": "08ee88fba29dd3ba25bd80bd23ac7a0a40b4c7823193bfa4e5929dd870490570",
+    "original_size": 236982355,
+    "source_url": "http://www.mediafire.com/file/xlmcbjz13wo5rl3/nazi_zombie_feto.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/10/30/nazi-zombie-feto/",
+    "fetched": "2026-09-23T18:16:00Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending"
+    ],
+    "catalogue_description": "Probably the last version, I don\u2019t have the map file anymore Nazi_zombie_feto v1.1: added the cursed zombie added the head shot quest added the thunder gun mini quest edited the skull ability edited some small details fixed one small glitch added more fun! It took me some time to make this map, it\u2019s my first map so I learned how to make it while I was making it. I have found and fixed like a THOUSAND OF BUGS, but if one of those bastards is still out there and you manage to find it, call the police immediately. For those of you wondering, the map\u2019s name was supposed to be Nazi_zombie_Old_Castle, but Nazi_zombie_Feto was a internal joke between my friends and me. Now it\u2019s the mod name Some things you may find: Ending objectives (Can be found right at the begining of the map) Hints (You can buy hints in the library) custom trap Free pap (one time only and you have to do something to get it) EEs: alternative ending special ability Known bugs: If you activate the PaP teleporter and leave it right away it may crash, not allowing players to pack a punch anymore game might freeze for 2 seconds after the player opens a specific door in solo one of the windows is not rebuildable beta testers: Sugar Cakes Chafundi Chris Frank Skyfox vitinhogame credits: c.h.n \u2013> farm prefab ville88 \u2013> Old cemetery prefabs JR-Imagine \u2013> zombie counter BluntStuffy \u2013> soul chest Aidan \u2013> kino-style teleporter BamSkater \u2013> Zipline and bo1 perks Treminaor \u2013> adapted Bamskater\u2019s bo1 perks scripts to work wit",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user"
+      ],
+      "iwd_images": [
+        "nazi_zombie_feto.iwd:images/loadscreen_nazi_zombie_feto.iwi",
+        "nazi_zombie_feto.iwd:images/main_menu_feto.iwi",
+        "nazi_zombie_feto.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_feto.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/feto/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/nazi-zombie-feto-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.4,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30477006
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820607
+      },
+      {
+        "file": "zzzbo1_perks_ugx_mod.iwd",
+        "entries": 5,
+        "scripts": 5,
+        "bytes": 49785
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "mod.ff",
+      "nazi_zombie_feto_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc",
+      "zzzbo1_perks_ugx_mod.iwd:maps/_zombiemode_weapons.gsc"
+    ]
+  },
+  "site_hidden": true
+}

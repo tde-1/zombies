@@ -1,0 +1,168 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zmobie_mapoftehyear",
+  "title": "ZOMBIE SLAYER",
+  "source": "custom",
+  "author": "JWofle",
+  "released": "May 29, 2015, 10:18:02 am",
+  "fs_game": "mods/zmobie_mapoftehyear",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zmobie_mapoftehyear.iwd": "cf73c8dee086da704f8e3d1be96a7a5737a193c692bc5b207e94575817eb89d9"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 40000
+        }
+      },
+      "candidates": [],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "one purchase trigger at 40000 points, next highest is 10000 - almost certainly the ending",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 128,
+    "script_count": 128,
+    "entities": 1567,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        40000,
+        "zombie_door",
+        "auto54"
+      ],
+      [
+        10000,
+        "zombie_door",
+        "auto113374"
+      ],
+      [
+        10000,
+        "zombie_debris",
+        "body"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto113375"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf175_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 40000,
+      "targetname": "zombie_door",
+      "target": "auto54",
+      "next_highest": 10000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "cf73c8dee086da704f8e3d1be96a7a5737a193c692bc5b207e94575817eb89d9",
+    "map_specific_triggers": [
+      "hankey_slidedoor",
+      "killdakent"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "zmobie_mapoftehyear.exe",
+    "original_sha256": "5c52e2343d364126c0dca7dc8a7e6ba3b1d6b52740ea1150229c79688b5ebf9a",
+    "original_size": 72796008,
+    "source_url": "https://www.mediafire.com/file/pbrnl86bbji3ahf/zmobie_mapoftehyear.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:13:25Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "zmobie_mapoftehyear.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/slayer/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/zombie-slayer-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 100.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zmobie_mapoftehyear.ff",
+      "zmobie_mapoftehyear_patch.ff",
+      "zmobie_mapoftehyear.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

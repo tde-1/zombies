@@ -222,6 +222,10 @@ export const ENW_ITEMS = [
     options: [{ label: 'Auto', value: 'auto' }, { label: 'On', value: 'allow' }, { label: 'Off', value: 'refuse' }],
     src: 'client DLL overlay_guard (chat-overlay.md 13): ENW_DISCORD_HOOK=auto|allow|refuse. Auto lets Discord\'s hook in only while the game has a 50 MB block of address space free (it maps 50 MB and crashes the game without it)',
     note: 'Off on maps where it would crash the game' },
+  // SOC (2026-09-23): the launcher's chime for an invite, a DM or a party line while its
+  // window is not in front (launcher attention.js). The flash and the toast stay either way.
+  { id: 'notifySound', section: 'enw', label: 'Notification sound', kind: 'toggle', to: 'key:notifySound', def: true,
+    src: 'launcher: attention.js. Off = the taskbar still flashes and invites still toast, silently. Not a game setting.' },
   { id: 'r_dof_enable', section: 'enw', label: 'Depth of Field', kind: 'toggle', to: 'waw', dvar: 'r_dof_enable', def: '1',
     src: 'engine dvar, archived in the config.cfg the game writes (seta r_dof_enable "1" on every profile here). Not in WaW\'s menus.' },
   { id: 'r_glow_allowed', section: 'enw', label: 'Glow', kind: 'toggle', to: 'waw', dvar: 'r_glow_allowed', def: null,
@@ -313,6 +317,7 @@ export const INGAME = {
   // read-back saves them to the account; the launcher and the DLL act on them next launch.
   discordPresence: { apply: 'next_launch', verified: true, dvar: 'enw_discord' },
   discordOverlay: { apply: 'next_launch', verified: true, dvar: 'enw_discordhook' },
+  notifySound: { apply: false, why: 'the launcher\'s chime, not the game\'s: in a game the overlay shows invites and chat and the launcher stays quiet' },
   r_dof_enable: { apply: 'live', verified: true },
   r_glow_allowed: { apply: 'live', verified: true },
 }
@@ -410,7 +415,7 @@ export function withValue(game, it, value) {
 // The object the launcher's `settings.set()` takes (window.enw.setSettings). Every
 // catalogue dvar is sent explicitly: a value, `null` (game default: `reset <dvar>`), or
 // '' (no opinion: the launcher stops writing it).
-export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'discordOverlay']
+export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'discordOverlay', 'notifySound']
 export function toLauncherPatch(game) {
   const g = game || {}
   const out = {}

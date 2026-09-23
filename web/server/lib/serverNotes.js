@@ -13,7 +13,9 @@ const ENGINE_LIMIT = 'Hits a game engine limit on our servers'
 const MEMORY = 'Too big for the game’s memory limit'
 
 const KNOWN = {
-  nazi_zombie_derberg: ENGINE_LIMIT,     // dedi.md §13.2: scrVmPub.localVars overrun
+  // nazi_zombie_derberg was ENGINE_LIMIT (dedi.md §13.2 localVars overrun). That was the
+  // escaped-frame class dedi.md §23/§25/§26 fixed (box DLL fd3039d2): box-proven 2026-09-23,
+  // 185 s + watchdog clean (archive.md §14), so it is on boxProven.json and needs no note.
   nazi_zombie_octogonal: ENGINE_LIMIT,   // dedi.md §16.4: snddriverglobals singleton
   water: ENGINE_LIMIT,                   // dedi.md §16.4: memory reserve
   nazi_zombie_orbit: MEMORY,             // stalls the 32-bit client (lib/maps.js)
