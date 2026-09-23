@@ -49,6 +49,16 @@ dated section for tonight; read the newest one in your lane before you touch any
 | 03:07 | `/maps` opens on Movement's mode-home cards with a saved Cards \| List switch | `web.md` 2026-09-23 ~03:00 |
 | 03:26 | **fear_mc_2 lag = stock `sv_maxRate` 7000**; `net_probe` raises it to 25000 (20 snapshots/s, 0 fragments over the internet); box **`6b1ccfc5`** | `dedi.md` §22 |
 
+**Lane 12, 2026-09-23 12:30 (branch `worktree-agent-a3c4fdfc2d163a895`, not merged, not shipped):**
+no stock main menu (an end screen covers it from the first frame, says why, repeats the site's
+notice, quits to the launcher; also after 20 s of server silence, because a killed server is never
+timed out by this engine), the stock console locked (scan code 0x29 + keyCatchers catcher) and the
+ENW console in its place (catalogue settings only, same rules as Esc > Settings), **cg_fov was
+cheat-protected in box games — the Settings tab's FOV row never worked there; now unlocked and
+capped at 120**, "Your record has been uploaded." (site `gameChat.notify` at ingest → the overlay's
+feed), chat window starts with the backlog (`history=1`). `esc-menu.md` §10, `chat-overlay.md` §14.
+Open-bug 16's `monkeytoy 1` point is moot for players now: nobody reaches the stock console either way.
+
 ## Open bugs and unproven things (one line each, with the pointer)
 
 1. **Stretched Reapers Colt viewmodel on fear_mc_2**: not reproduced locally with identical files; the box server and B's session not ruled out. `mod-compat.md` §1, §9.
