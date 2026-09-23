@@ -3370,3 +3370,23 @@ host's real `Referee`):**
 - **A true fix** (not attempted, needs that name first): stop the abortframe from unwinding out of the
   VM, or repair the VM after an escape. That means killing the stale threads the way
   `VM_Execute`'s infinite-loop path does.
+
+### 22.10 Box DLL `04a3ad6d` + host agent `bde7e19` (2026-09-23 14:06–14:17 UK, integrator)
+
+* **Host agent `dcf0ee7`** (H1 boot queue + RAM guard, T1 telemetry) deployed 14:06 as the whole
+  `infra/host-agent` tree minus `test/`, plus `referee/manifests`, `chown -R waw:waw`; two agent leases at
+  once: `RAM guard: inst-01 may boot - 967 MB`, `inst-02 … queued to boot, 1 ahead of it`, both
+  `map_loaded`; three telemetry bundles reached the site (incidents 1–3) and `logs/` in the bucket.
+  974c2e8d (§22.9) booted fine in those leases.
+* **`1fda51c5`** (main `5d4d2b1`, D1) 14:10, rollback `binkw32.rollback-974c2e8d.dll`: Nacht `m_a5846b3d`
+  `map_loaded`; DLL log `dedi_freeze_watchdog: armed`, `dedi_load_zone: … loads <bsp>_load first`.
+  ray_chirstmas_map (hidden; agent lease allowed) `m_d7129f0e` → `map_loaded`; its console has 9
+  `Could not load xmodel` (cage lights, subway lamps, one collision model), **no zombie body or head**.
+* **`04a3ad6d…`** = `04a3ad6d8c9b43ae3e18a57ce6abe9dec1771f615b29160550a6a3dca2ea7c40` (2,597,376 B), clean
+  `wt-coord2` at main **`bde7e19`** (R1 on D1), 14:13, rollback `binkw32.rollback-1fda51c5.dll`. Host
+  agent `bde7e19` redeployed 14:14 between two maps of the A1 re-proof queue (rollback
+  `host-agent.rollback-20260923T1314Z.tgz`). Proof: Nacht `m_7ce70442` → `map_loaded`; DLL log `replay:
+  sampler armed (players 20 Hz, zombies 20 Hz, replay-events v1 …)`; replay header `"replay_events":1`,
+  `"snap_hz":20`, `"zombie_hz":20`. Same binary as launcher 0.2.27.
+* `freeze_watch_test.cpp` and `replay_events_test.cpp` (`server/tests/`) are not CMake targets, so the
+  clean build did not run them.
