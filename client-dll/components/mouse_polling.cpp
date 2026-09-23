@@ -462,6 +462,15 @@ double g_buf_motion = 0.0;
 // so a test game can never trap the desktop cursor.
 bool g_sink = false;
 
+// Plumbing counters for the probe line: every WM_INPUT that reached the proc,
+// GetRawInputData failures (and the first error), non-mouse reports, and the
+// most frequent other message id (to name a flood we did not expect).
+long g_wm_input_seen = 0;
+long g_rid_fail = 0;
+unsigned long g_rid_fail_err = 0;
+long g_rid_notmouse = 0;
+long g_msg_hist[0x400] = {};
+
 // ENW_FRAMETIME=1 (or ENW_MOUSE_JITTER=1): the view-turn meter (mouse_jitter.hpp)
 // plus the time our own input code costs per window. Nothing when off.
 bool g_probe = false;
@@ -935,7 +944,11 @@ void OnRawInput(LPARAM lparam) {
     UINT size = sizeof raw;
     const UINT got = ::GetRawInputData(reinterpret_cast<HRAWINPUT>(lparam), RID_INPUT, &raw,
                                        &size, sizeof(RAWINPUTHEADER));
-    if (got == static_cast<UINT>(-1) || raw.header.dwType != RIM_TYPEMOUSE) return;
+    if (got == static_cast<UINT>(-1)) {
+        if (++g_rid_fail == 1) g_rid_fail_err = ::GetLastError();
+        return;
+    }
+    if (raw.header.dwType != RIM_TYPEMOUSE) { ++g_rid_notmouse; return; }
 
     // NO `if (!g_in_focus) return;` HERE, and that is a fix, not an omission.
     //
@@ -1005,6 +1018,10 @@ int legacy_button_index(UINT msg, WPARAM wparam, bool* down) {
 LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     ::InterlockedIncrement(&g_msgs_total);
     ::InterlockedIncrement(&g_msgs_frame);
+    if (g_probe) {
+        if (msg == WM_INPUT) ++g_wm_input_seen;
+        ++g_msg_hist[msg < 0x3FF ? msg : 0x3FF];
+    }
 
     // ---- the input gate: a consumer's filter runs FIRST (input_gate.hpp).
     if (g_filter) {
@@ -1161,7 +1178,10 @@ void __cdecl in_mousemove() {
     }
     // The stock function's own first guard. Keep it: a background game must not
     // turn the player.
-    if (::GetForegroundWindow() != game_hwnd()) return;
+    // (Our call is NOT through the game's IAT, so focus_guard does not answer it:
+    // this is the real foreground window. The harness sink skips it, because an
+    // off-screen test game is never foreground by design.)
+    if (!g_sink && ::GetForegroundWindow() != game_hwnd()) return;
 
     const int64_t probe_t0 = g_probe ? qpc_now() : 0;
 
@@ -1263,6 +1283,16 @@ void probe_report(bool final_line) {
              g_jit.delivered(), secs > 0 ? g_jit.delivered() / secs : 0.0, msg_r, msg_m, buf_r,
              buf_m, g_rawbuf_off, g_wow64fix ? "ON" : "OFF (ENW_RAW_MOUSE_WOW64FIX=0, A/B only)",
              g_probe_frames ? g_probe_cost_us / g_probe_frames : 0.0, g_probe_cost_max_us);
+    unsigned top = 0;
+    for (unsigned m = 0; m < 0x400; ++m)
+        if (m != WM_INPUT && g_msg_hist[m] > g_msg_hist[top]) top = m;
+    ENW_INFO("mouse_jitter: window %ld plumbing -- WM_INPUT seen by our proc %ld, "
+             "GetRawInputData failed %ld (first error %lu), non-mouse %ld | busiest other "
+             "message 0x%04X x%ld",
+             g_probe_window, g_wm_input_seen, g_rid_fail, g_rid_fail_err, g_rid_notmouse, top,
+             g_msg_hist[top]);
+    std::memset(g_msg_hist, 0, sizeof g_msg_hist);
+    g_wm_input_seen = 0;
     g_jit.reset();
     g_probe_window_qpc = now;
     g_probe_cost_us = g_probe_cost_max_us = 0.0;
@@ -1485,6 +1515,25 @@ public:
             }
             if (!g_in_raw_input) return;  // passthrough: nothing to count
             probe_report(false);
+
+            // HARNESS ONLY (ENW_RAW_MOUSE_INPUTSINK=1). A never-activated test
+            // window never gets WM_ACTIVATE, so g_wv.activeApp stays 0 and
+            // IN_Frame (0x5FA8A0) tail-jumps to IN_DeactivateMouse instead of
+            // calling IN_MouseMove. With activeApp != 0 the path from 0x5FA8AF
+            // to our retarget at 0x5FA8E4 has no side effects (no ClipCursor,
+            // no SetCapture, no ShowCursor -- read from the dump), so holding it
+            // at 1 is the smallest change that lets the synthetic mouse reach
+            // CL_MouseEvent. Never set by the launcher.
+            if (g_sink && *enw::ptr<int>(t4::var::g_wv_activeApp) == 0) {
+                *enw::ptr<int>(t4::var::g_wv_activeApp) = 1;
+                static bool said = false;
+                if (!said) {
+                    said = true;
+                    ENW_WARN("mouse_polling: HARNESS: g_wv.activeApp held at 1 "
+                             "(ENW_RAW_MOUSE_INPUTSINK=1) so an off-screen, never-activated "
+                             "test game runs IN_MouseMove.");
+                }
+            }
 
             // Ground truth for the trace, and cheap: two reads and a walk of
             // whatever the engine queued since the last frame. Only when asked.

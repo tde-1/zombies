@@ -67,10 +67,42 @@ LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l) {
 }
 }  // namespace
 
+// B's own hands: a raw report with a real device handle. SendInput's reports
+// carry hDevice == NULL; anything else is a person on the physical mouse or
+// keyboard, and the injector stops at once so it never fights them for the cursor.
+volatile LONG g_real_input = 0;
+LRESULT CALLBACK watch_proc(HWND h, UINT m, WPARAM w, LPARAM l) {
+    if (m == WM_INPUT) {
+        RAWINPUTHEADER hdr = {};
+        UINT sz = sizeof hdr;
+        if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(l), RID_HEADER, &hdr, &sz,
+                              sizeof(RAWINPUTHEADER)) != static_cast<UINT>(-1) &&
+            hdr.hDevice != nullptr)
+            g_real_input = 1;
+    }
+    return ::DefWindowProcA(h, m, w, l);
+}
+
 // `rawprobe inject <secs> <hz> [block]`: the synthetic mouse for mousebench.ps1.
 // dx = +1 for `block` reports, then -1 for `block`, so each frame sees a steady
-// turn and the cursor ends where it began. No window, no raw registration.
+// turn and the cursor ends where it began. A hidden RIDEV_INPUTSINK watcher
+// aborts the run (exit 3) on the first report from a REAL device.
 int inject_only(int secs, int hz, int block) {
+    WNDCLASSA wc = {};
+    wc.lpfnWndProc = watch_proc;
+    wc.hInstance = ::GetModuleHandleA(nullptr);
+    wc.lpszClassName = "enw_rawprobe_watch";
+    ::RegisterClassA(&wc);
+    HWND watch = ::CreateWindowExA(WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW, wc.lpszClassName, "watch",
+                                   WS_POPUP, -4000, -4000, 16, 16, nullptr, nullptr, wc.hInstance,
+                                   nullptr);  // never shown
+    RAWINPUTDEVICE rid[2] = {{0x01, 0x02, RIDEV_INPUTSINK, watch},
+                             {0x01, 0x06, RIDEV_INPUTSINK, watch}};
+    if (!watch || !::RegisterRawInputDevices(rid, 2, sizeof rid[0])) {
+        std::printf("inject: cannot watch for real input (%lu); refusing to inject\n",
+                    ::GetLastError());
+        return 2;
+    }
     ::timeBeginPeriod(1);
     LARGE_INTEGER f, t0, now;
     ::QueryPerformanceFrequency(&f);
@@ -79,6 +111,21 @@ int inject_only(int secs, int hz, int block) {
     const long total = static_cast<long>(secs) * hz;
     long n = 0, ok = 0;
     while (n < total) {
+        MSG msg;
+        while (::PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE)) ::DispatchMessageA(&msg);
+        if (g_real_input) {
+            // Undo the net drift of the block in progress so the cursor is back.
+            const long into = n % (2L * block);
+            const long net = into <= block ? into : 2L * block - into;
+            INPUT back = {};
+            back.type = INPUT_MOUSE;
+            back.mi.dx = -net;
+            back.mi.dwFlags = MOUSEEVENTF_MOVE;
+            if (net) ::SendInput(1, &back, sizeof back);
+            std::printf("inject: ABORTED after %ld moves -- real mouse/keyboard input seen "
+                        "(someone is at the PC)\n", ok);
+            return 3;
+        }
         ::QueryPerformanceCounter(&now);
         const long due = static_cast<long>((now.QuadPart - t0.QuadPart) / period);
         while (n < due && n < total) {
