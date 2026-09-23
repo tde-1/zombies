@@ -176,7 +176,7 @@ const RULES = [
   },
   {
     id: 'solo_parity', label: 'Not like solo', severity: 2,
-    description: 'The server\'s solo_parity self-check saw a game that does not play like World at War solo: a player spawned hurt, was off the ground for 5 s (floating/swimming), or a difficulty constant or the dedi\'s water switch is not solo\'s (dedi.md section 27).',
+    description: 'The server\'s solo_parity self-check saw a game that does not play like World at War solo: a player spawned hurt, was off the ground for 5 s (floating/swimming), or a difficulty constant or the dedi\'s water switch is not solo\'s (dedi.md section 28).',
     // server/components/dedicated/solo_parity.cpp: "solo_parity: MISMATCH slot N: <what>"
     line: /solo_parity: MISMATCH/i, files: GAME_LOGS,
   },

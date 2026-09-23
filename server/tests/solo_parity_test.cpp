@@ -1,5 +1,5 @@
 // Unit test for server/components/dedicated/solo_parity_rules.hpp and the addresses
-// water_sim_off.cpp relies on (dedi.md section 27).
+// water_sim_off.cpp relies on (dedi.md section 28).
 //
 // Not under server/components/: CMake globs that directory into the DLL. Build and run:
 //
@@ -55,7 +55,7 @@ static void test_rules() {
     ok.damage_multiplier = 0.3226f; ok.melee_multiplier = 0.4f; ok.players = 1;
     check(check_env(ok).empty(), "stock solo environment has no mismatch");
     env water = ok; water.water_sim = 1;
-    check(has(check_env(water), "phantom water"), "water sim on a dedi is the section 27 bug");
+    check(has(check_env(water), "phantom water"), "water sim on a dedi is the section 28 bug");
     env listen = ok; listen.dedicated = false; listen.water_sim = 1;
     check(check_env(listen).empty(), "a listen server keeps its water simulation");
     env skill = ok; skill.gameskill = 3;

@@ -1,5 +1,5 @@
 // A dedicated server answers "how high is the water here?" the way a solo game does
-// (lane G2, dedi.md section 27).
+// (lane G2, dedi.md section 28).
 //
 // ---------------------------------------------------------------------------
 // The bug B played into on 2026-09-23 (nacht_reimagined "floating", Nuketown down on spawn)
@@ -84,7 +84,7 @@ int force_off(const char* when) {
     ++g_reasserts;
     ENW_INFO("dedi_water_sim_off: %s: r_gfxopt_water_simulation %u -> 0 (latched %u -> 0). The server now reads the "
              "map's static water grid (0x6F45B0) instead of the renderer's unfilled sim window, whose zero "
-             "base heights put a water surface at z=0 over every map (dedi.md section 27).",
+             "base heights put a water surface at z=0 over every map (dedi.md section 28).",
              when, cur, lat);
     return cur;
 }
@@ -98,7 +98,7 @@ public:
         if (std::getenv("ENW_DEDI_WATER_SIM")) {
             ENW_WARN("dedi_water_sim_off: OFF (ENW_DEDI_WATER_SIM set): the server keeps the renderer's water "
                      "simulation, whose base heights are all zero on a dedicated server -- a map below z=0 is "
-                     "under water here (the control arm, dedi.md section 27)");
+                     "under water here (the control arm, dedi.md section 28)");
             return;
         }
         if (!gate_bytes_ok()) {

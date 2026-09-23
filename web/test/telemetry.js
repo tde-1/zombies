@@ -301,7 +301,7 @@ async function main () {
     has(r.hits.asset_limit.detail, 'loaded_sound'); has(r.hits.asset_limit.detail, 'snddriverglobals'); has(r.hits.asset_limit.detail, '§11.4')
     eq(r.severity, 2)
   })
-  await check('flags: solo_parity MISMATCH from the server DLL (dedi.md section 27)', () => {
+  await check('flags: solo_parity MISMATCH from the server DLL (dedi.md section 28)', () => {
     // Real lines, g2r1 (nacht_reimagined on a dedi without the water fix), enw-<pid>.log.
     const r = ev({ kind: 'host' }, { 'enw-4412.log': [
       '[17:36:49.178] [INFO ] solo_parity: slot 0 SPAWNED at (14.3 -914.0 -47.7) health 95/100 pm_type 0 on nothing gravity 800 speed 190 box (-15 -15 0)-(15 15 70)',

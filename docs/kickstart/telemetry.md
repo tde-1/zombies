@@ -169,7 +169,7 @@ the worst flag's; no flags is P4.
 | `box_resources` | 3 | manifest `host.disk_free_gb < 2` or `mem_free_mb < 300`, reason `box_warning` | host agent |
 | `manual_report` | 3 | the player pressed **Send logs now** — ask them what happened | launcher |
 | `result_spooled` | 3 | `result post failed` | host.js |
-| `solo_parity` | 2 | `solo_parity: MISMATCH` — a player spawned hurt, was off the ground 5 s (floating/swimming), or a difficulty constant / the dedi's water switch is not solo WaW's (`dedi.md` §27) | solo_parity.cpp |
+| `solo_parity` | 2 | `solo_parity: MISMATCH` — a player spawned hurt, was off the ground 5 s (floating/swimming), or a difficulty constant / the dedi's water switch is not solo WaW's (`dedi.md` §28) | solo_parity.cpp |
 | `asset_missing_known` | 4 | asset errors that ARE on the chronic list | — |
 | `discord_refused` | 4 | overlay_guard refused DiscordHook.dll | overlay_guard.cpp |
 

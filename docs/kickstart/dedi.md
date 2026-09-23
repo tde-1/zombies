@@ -3574,13 +3574,13 @@ alias that killed B's games is missing on these maps too, and is now silent.
   be water from the surface-type test; the registration itself is proven.
 - ils lag with a real internet client (26.3).
 
-## 27. 2026-09-23 evening — lane G2: the "one-hit downs" are a phantom water surface at z=0 on the dedicated server (`water_sim_off.cpp`), plus a solo-parity self-check (`solo_parity.cpp`)
+## 28. 2026-09-23 evening — lane G2: the "one-hit downs" are a phantom water surface at z=0 on the dedicated server (`water_sim_off.cpp`), plus a solo-parity self-check (`solo_parity.cpp`)
 
 B, 14:00–14:27 UTC on box DLL `04a3ad6d`: Nuketown down the instant he spawned (game over in 1 s),
 nacht_reimagined "not touching the floor, missing inputs, floating", bridge_zombie / battlestar down
 on "one hit". Build: branch `worktree-agent-aac675948eb19e877` (main `27026f6` merged).
 
-### 27.1 What the evidence says, per map
+### 28.1 What the evidence says, per map
 
 | map | B's replay / server log | cause |
 |---|---|---|
@@ -3593,11 +3593,11 @@ A zombie hit is 60 on every map (AI melee 150 × `player_meleeDamageMultiplier` 
 `_zombiemode`'s turret code confirms: `60 / player_damageMultiplier`), health 100, regen to full
 2.4 s after the last hit (`playerHealth_RegularRegenDelay` at frac 0.75), and in solo WaW the lethal
 hit is `PlayerLastStand` + `end_game` with no revive. So *one hit takes you to 40 and a second one
-inside 2.4 s ends a solo game* — on the box and in a solo listen game alike (27.4). The downs B felt
+inside 2.4 s ends a solo game* — on the box and in a solo listen game alike (28.4). The downs B felt
 as "one hit" on bridge/battlestar were two hits 0.7 s / 1.5 s apart. (Aside: bridge's first zombie
 had 1,500 health in round 1 while the rest had 150 — the map's own, not investigated.)
 
-### 27.2 The mechanism (read from the decrypted image)
+### 28.2 The mechanism (read from the decrypted image)
 
 `0x6F3F70` answers "how high is the water here" for pmove (via 0x46DA70), script `getwaterheight`,
 missiles and physics. With `r_gfxopt_water_simulation` on (its dvar pointer is `[0x42B721C]`,
@@ -3610,14 +3610,14 @@ the window reads "water surface at z = 0". With the switch off, 0x6F3F70 goes to
 map's static grid, `-32768` (0x8AF860) where there is no water. Maps with floors above 0 (stock
 Nacht ≈ 0, bridge 170, battlestar 16, fear_mc_2 2304) never noticed.
 
-### 27.3 The fix: `server/components/dedicated/water_sim_off.cpp`
+### 28.3 The fix: `server/components/dedicated/water_sim_off.cpp`
 
 Dedicated only: checks the gate bytes at 0x6F3F77 (`A1 1C 72 2B 04 80 78 10 00 57 74 65`) and that
 `[0x42B721C]` is `Dvar_FindVar("r_gfxopt_water_simulation")`, sets current and latched to 0 at
 post_init, and holds it every second. `ENW_DEDI_WATER_SIM=1` is the control arm. Clients are not
 touched (their renderer owns and fills the sim). Every map, not a per-map list.
 
-### 27.4 Proof (local dedi `waw-g2d` + invisible client `waw-g2c`, fake 76561198000000002; solo = listen)
+### 28.4 Proof (local dedi `waw-g2d` + invisible client `waw-g2c`, fake 76561198000000002; solo = listen)
 
 | run | map | build | spawn | on the ground | hits |
 |---|---|---|---|---|---|
@@ -3625,7 +3625,7 @@ touched (their renderer owns and fills the sim). Every map, not a per-map list.
 | **g2r4** | nacht_reimagined | **fix** | 100/100 | **yes**: falls to **-87.6**, 100 % world | 60 → 40, second hit 0.41 s later = down → game over |
 | g2l2/**g2l3** | nacht_reimagined | solo listen | 100/100 | yes, **-87.6** | 60 → 40, second hit = down |
 | g2n3 | zm_nuked | no fix | 95/100, then -16, -4 (drowning, attacker none) | no | — |
-| **g2n4** | zm_nuked | **fix** | **100/100, no damage** | **no** — see 27.6 | killed at +45 s by something scripted (100 → 0, no laststand) |
+| **g2n4** | zm_nuked | **fix** | **100/100, no damage** | **no** — see 28.6 | killed at +45 s by something scripted (100 → 0, no laststand) |
 | **g2b1** | bridge_zombie | fix | 100/100 | yes (180.6) | 60 → 40, second hit 0.56 s later = down |
 | **g2p3** | nazi_zombie_prototype (control) | fix | 100/100 | yes (1.1) | 61 → 39, second hit 1.5 s later = down |
 
@@ -3633,7 +3633,7 @@ Every fixed run: `r_gfxopt_water_simulation 0`, `g_gameskill 1`, `player_damageM
 (= solo 100/310), `player_meleeDamageMultiplier 0.400`. Logs `ZombiesDev\logs\dedi\g2*.server.enw.log`,
 link transcripts `ZombiesDev\logs\g2\<tag>\link.ndjson`.
 
-### 27.5 The self-check: `solo_parity.cpp` + `solo_parity_rules.hpp` (every map, every game)
+### 28.5 The self-check: `solo_parity.cpp` + `solo_parity_rules.hpp` (every map, every game)
 
 Per player, every server frame, read only: spawn health, every health drop with its last attacker,
 what the player stands on (`ps.groundEntityNum`), time off the ground. A spawn below full health, a
@@ -3645,7 +3645,7 @@ deliberately not applied) raised all three: `spawned HURT 95 of 100`, `FLOATING`
 Unit test `server/tests/solo_parity_test.cpp` 27/0 (rules + the six addresses against the dump);
 `ENW_NO_SOLO_PARITY=1` turns it off.
 
-### 27.6 Open
+### 28.6 Open
 
 - **zm_nuked is still not playable locally with the fix**: the player spawns at the first
   `initial_spawn_points` struct (-6315 160 -388), drops 5 units and stays "on nothing" with vel z

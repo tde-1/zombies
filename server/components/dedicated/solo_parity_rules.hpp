@@ -1,5 +1,5 @@
 // solo_parity's rules: what World at War solo gives a player, and when a game on our server
-// does not look like it (lane G2, dedi.md section 27). PURE: no engine, no Windows. Unit-tested
+// does not look like it (lane G2, dedi.md section 28). PURE: no engine, no Windows. Unit-tested
 // in server/tests/solo_parity_test.cpp; the engine reads live in solo_parity.cpp.
 //
 // Every number is read out of the stock scripts (ZombiesDev\scripts\common\maps\_gameskill.gsc,
@@ -85,7 +85,7 @@ inline std::vector<std::string> check_env(const env& e) {
     std::vector<std::string> out;
     if (e.dedicated && e.water_sim != 0)
         out.push_back(fmt("r_gfxopt_water_simulation %.0f on a dedicated server: every map below z=0 is under "
-                          "phantom water (dedi.md section 27)", e.water_sim));
+                          "phantom water (dedi.md section 28)", e.water_sim));
     if (e.gameskill >= 0 && e.gameskill != kGameskill)
         out.push_back(fmt("g_gameskill %.0f, solo zombies runs %.0f (Regular)", e.gameskill, kGameskill));
     if (e.g_player_maxhealth >= 0 && e.g_player_maxhealth != kMaxHealth)

@@ -1,4 +1,4 @@
-// solo_parity: does a game on our server play like World at War solo? (lane G2, dedi.md section 27)
+// solo_parity: does a game on our server play like World at War solo? (lane G2, dedi.md section 28)
 //
 // Runs in every process that runs a server frame (a dedicated server, and a solo/listen game,
 // which is what makes the listen game the reference). Read only; nothing here changes the game.
@@ -334,7 +334,7 @@ public:
         referee::on_frame([](uint32_t ms) { on_frame(ms); });
         ENW_INFO("solo_parity: armed -- per player: spawn health, every health drop and its attacker, what the "
                  "player stands on, time off the ground; at +5 s the difficulty constants against solo WaW's. "
-                 "A difference is `solo_parity: MISMATCH` (dedi.md section 27).");
+                 "A difference is `solo_parity: MISMATCH` (dedi.md section 28).");
     }
     void pre_destroy() override {
         ENW_INFO("solo_parity: %llu mismatch(es) this process", static_cast<unsigned long long>(g_mismatches));
