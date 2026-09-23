@@ -152,5 +152,38 @@
       "nazi_zombie_halloweencube_patch.ff"
     ]
   },
-  "site_hidden": true
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T20:17:34",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 150,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95151 ms over the hold",
+    "first_error": null,
+    "match": "m_cda15654",
+    "at": "2026-09-23T20:03:25",
+    "instance": "inst-04",
+    "com_frameTime_advance_ms": 95151,
+    "com_error": [],
+    "console_errors": [
+      "4288:******* script runtime error *******",
+      "4292:Error: called from:",
+      "4296:Error: called from:",
+      "4300:Error: called from:",
+      "4304:Error: started from:",
+      "4308:Error: ************************************"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -243,5 +243,48 @@
       "nazi_zombie_death_forest.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T20:17:34",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 181,
+    "fatal": 6,
+    "visible": 6,
+    "visible_owner": {
+      "release": 6
+    },
+    "visible_names": [
+      "item:m2_flamethrower_zombie",
+      "item:m2_flamethrower_zombie_upgraded",
+      "item:ptrs41_zombie",
+      "item:ptrs41_zombie_upgraded",
+      "item:thundergun_upgraded",
+      "weapon:weapons/sp/thundergun_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95112 ms over the hold",
+    "first_error": null,
+    "match": "m_8c2c124e",
+    "at": "2026-09-23T19:58:06",
+    "instance": "inst-02",
+    "com_frameTime_advance_ms": 95112,
+    "com_error": [],
+    "console_errors": [
+      "5573:Error: called from:",
+      "5577:Error: called from:",
+      "5581:Error: started from:",
+      "5585:Error: ************************************",
+      "5590:******* script runtime error *******",
+      "5594:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:m2_flamethrower_zombie, item:m2_flamethrower_zombie_upgraded, item:ptrs41_zombie, item:ptrs41_zombie_upgraded, item:thundergun_upgraded, weapon:weapons/sp/thundergun_upgraded",
+  "dedi_status": "box_map_loaded"
 }

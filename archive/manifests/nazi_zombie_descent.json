@@ -194,5 +194,46 @@
       "nazi_zombie_descent.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T20:17:34",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 195,
+    "fatal": 39,
+    "visible": 2,
+    "visible_owner": {
+      "release": 2
+    },
+    "visible_names": [
+      "xanim:ai_zombie_window_attack_arm_l_out",
+      "xanim:ai_zombie_window_attack_arm_r_out"
+    ],
+    "client_check": [
+      "fraggrenade"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95131 ms over the hold",
+    "first_error": null,
+    "match": "m_41e0bba9",
+    "at": "2026-09-23T19:50:21",
+    "instance": "inst-09",
+    "com_frameTime_advance_ms": 95131,
+    "com_error": [],
+    "console_errors": [
+      "4732:Error: ************************************",
+      "4734:******* script runtime error *******",
+      "4738:Error: called from:",
+      "4742:Error: called from:",
+      "4746:Error: called from:",
+      "4750:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: xanim:ai_zombie_window_attack_arm_l_out, xanim:ai_zombie_window_attack_arm_r_out",
+  "dedi_status": "box_map_loaded"
 }

@@ -154,7 +154,7 @@
     ]
   },
   "asset_audit": {
-    "at": "2026-09-23T19:43:14",
+    "at": "2026-09-23T20:17:34",
     "verdict": "minor",
     "map_loaded_runs": 9,
     "misses": 406,

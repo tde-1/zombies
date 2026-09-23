@@ -199,5 +199,38 @@
       "nazi_zombie_hoh_patch.ff"
     ]
   },
-  "site_hidden": true
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T20:17:34",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 174,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95160 ms over the hold",
+    "first_error": null,
+    "match": "m_17b3ee72",
+    "at": "2026-09-23T20:08:39",
+    "instance": "inst-02",
+    "com_frameTime_advance_ms": 95160,
+    "com_error": [],
+    "console_errors": [
+      "8032:Error: started from:",
+      "8036:Error: ************************************",
+      "8038:******* script runtime error *******",
+      "8042:Error: called from:",
+      "8046:Error: called from:",
+      "8050:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

@@ -4,3 +4,9 @@ nazi_zombie_ccube
 nazi_zombie_ccube_u
 mw2rust
 nazi_zombie_derberg
+backlot_zm
+derweizenfelder
+nazi_zombie_descent
+nazi_zombie_death_forest
+nazi_zombie_halloweencube
+nazi_zombie_hoh

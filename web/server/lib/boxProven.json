@@ -7,6 +7,15 @@
    "match": "m_431b241e",
    "com_frameTime_advance_ms": 35080
   },
+  "backlot_zm": {
+   "result": "pass",
+   "at": "2026-09-23T19:41:00",
+   "match": "m_0e74ab3e",
+   "com_frameTime_advance_ms": 95150,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 427297000
+  },
   "bank_job": {
    "result": "pass",
    "at": "2026-09-22T23:49:28",
@@ -67,6 +76,15 @@
    "at": "2026-09-22T22:27:55",
    "match": "m_134a81be",
    "com_frameTime_advance_ms": 35107
+  },
+  "derweizenfelder": {
+   "result": "pass",
+   "at": "2026-09-23T19:46:53",
+   "match": "m_94b9ba17",
+   "com_frameTime_advance_ms": 95156,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 63890622
   },
   "dpp": {
    "result": "fail",
@@ -204,6 +222,15 @@
    "match": "m_80c82f39",
    "com_frameTime_advance_ms": 35088
   },
+  "nazi_zombie_death_forest": {
+   "result": "pass",
+   "at": "2026-09-23T19:58:06",
+   "match": "m_8c2c124e",
+   "com_frameTime_advance_ms": 95112,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 452922525
+  },
   "nazi_zombie_denial2": {
    "result": "pass",
    "at": "2026-09-22T23:24:55",
@@ -218,6 +245,15 @@
    "watchdog_clean": true,
    "in_bucket": true,
    "bucket_bytes": 540641275
+  },
+  "nazi_zombie_descent": {
+   "result": "pass",
+   "at": "2026-09-23T19:50:21",
+   "match": "m_41e0bba9",
+   "com_frameTime_advance_ms": 95131,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 335233585
   },
   "nazi_zombie_dome_snow": {
    "result": "pass",
@@ -243,11 +279,29 @@
    "match": "m_3ade5fbc",
    "com_frameTime_advance_ms": 35076
   },
+  "nazi_zombie_halloweencube": {
+   "result": "pass",
+   "at": "2026-09-23T20:03:25",
+   "match": "m_cda15654",
+   "com_frameTime_advance_ms": 95151,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 63454357
+  },
   "nazi_zombie_hanoizom": {
    "result": "pass",
    "at": "2026-09-22T23:23:13",
    "match": "m_1882b57b",
    "com_frameTime_advance_ms": 30056
+  },
+  "nazi_zombie_hoh": {
+   "result": "pass",
+   "at": "2026-09-23T20:08:39",
+   "match": "m_17b3ee72",
+   "com_frameTime_advance_ms": 95160,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 97016720
   },
   "nazi_zombie_hotelv2": {
    "result": "pass",

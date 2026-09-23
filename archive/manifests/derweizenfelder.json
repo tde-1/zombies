@@ -137,5 +137,38 @@
       "derweizenfelder.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T20:17:34",
+    "verdict": "clean",
+    "map_loaded_runs": 2,
+    "misses": 257,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95156 ms over the hold",
+    "first_error": "ERROR: Pathnode (Path) at (-168 -1194 40) is in solid",
+    "match": "m_94b9ba17",
+    "at": "2026-09-23T19:46:53",
+    "instance": "inst-07",
+    "com_frameTime_advance_ms": 95156,
+    "com_error": [],
+    "console_errors": [
+      "3233:ERROR: Pathnode (Path) at (-168 -1194 40) is in solid",
+      "3234:ERROR: Pathnode (Path) at (-168 -1248 40) is in solid",
+      "3235:ERROR: Pathnode (Path) at (-168 -1161 40) is in solid",
+      "3236:ERROR: Pathnode (Path) at (-168 -1090 40) is in solid",
+      "3237:ERROR: Pathnode (Path) at (55 -1328 40) is in solid",
+      "3238:ERROR: Pathnode (Path) at (-177 -1416 40) is in solid"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

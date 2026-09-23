@@ -198,5 +198,43 @@
       "backlot_zm.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T20:17:34",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 181,
+    "fatal": 1,
+    "visible": 1,
+    "visible_owner": {
+      "release": 1
+    },
+    "visible_names": [
+      "item:mk2_frag"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95150 ms over the hold",
+    "first_error": null,
+    "match": "m_0e74ab3e",
+    "at": "2026-09-23T19:41:00",
+    "instance": "inst-06",
+    "com_frameTime_advance_ms": 95150,
+    "com_error": [],
+    "console_errors": [
+      "4657:Error: started from:",
+      "4661:Error: ************************************",
+      "4676:******* script runtime error *******",
+      "4680:Error: called from:",
+      "4684:Error: called from:",
+      "4688:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:mk2_frag",
+  "dedi_status": "box_map_loaded"
 }
