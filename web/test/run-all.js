@@ -217,6 +217,24 @@ async function main() {
     assignments.cancel(r.match_id, 'test')
   })
 
+  check('settings.dev (soak god mode, dedi.md §23) survives only on an AGENT Custom lease, which says agent:true', () => {
+    boxes.create({ name: 'dev-box', matchKey: 'dev-secret', maxInstances: 3 })
+    const DB = () => boxes.byName('dev-box')
+    assignments.notePoll(DB(), 2)
+    const dev = { dev: { god: true }, dvars: { player_sustainAmmo: '1' } }
+    const ag = assignments.lease({ box: DB(), mapKey: 'nazi_zombie_test', mode: 'custom', settings: dev, players: P('76561198000000003'), agent: true })
+    const pl = assignments.lease({ box: DB(), mapKey: 'nazi_zombie_test', mode: 'custom', settings: dev, players: P('76561190000000021') })
+    const vf = assignments.lease({ box: DB(), mapKey: 'nazi_zombie_test', mode: 'verified', settings: dev, players: P('76561190000000022'), agent: true })
+    truthy(ag.ok && pl.ok, ag.error || pl.error)
+    const list = assignments.forBox(DB(), { v: 2 }).assignments
+    const of = (m) => list.find((x) => x.match_id === m)
+    eq(of(ag.match_id).agent, true); eq(JSON.stringify(of(ag.match_id).settings.dev), '{"god":true}')
+    eq(of(pl.match_id).agent, false); eq(of(pl.match_id).settings.dev, undefined, 'a player\'s Custom lease loses dev')
+    eq(JSON.stringify(of(pl.match_id).settings.dvars), '{"player_sustainAmmo":"1"}', 'but keeps its dvars')
+    if (vf.ok) eq(JSON.stringify(of(vf.match_id).settings), '{}', 'Verified carries no settings at all')
+    for (const r of [ag, pl, vf]) if (r.ok) assignments.cancel(r.match_id, 'test')
+  })
+
   boxes.create({ name: 'multi-box', matchKey: 'multi-secret', maxInstances: 3 })
   const MB = () => boxes.byName('multi-box')
   const lm = {}

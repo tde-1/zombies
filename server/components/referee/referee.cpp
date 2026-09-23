@@ -1384,6 +1384,18 @@ private:
                 game_link::get().send(w);
                 ENW_INFO("referee: dvar %s = \"%s\"", name, v->c_str());
             }
+            // Not an engine dvar: whether this PROCESS was launched with dev knobs on
+            // (ENW_DEV_KNOBS=1 -- host `exec`, dedicated/soak.cpp's test god mode). It
+            // rides the same `dvar` event, and game_over's `dvars`, so the host's
+            // Verified judge (verified.js SERVER_RULES enw_dev_knobs '0') fails any run
+            // that had them, whatever else the run looked like (dedi.md §23).
+            const std::string knobs = dev_knobs_ ? "1" : "0";
+            if (env_.observe("enw_dev_knobs", knobs)) {
+                json::writer w;
+                w.str("t", "dvar").integer("ms", ms).str("name", "enw_dev_knobs").str("value", knobs);
+                game_link::get().send(w);
+                ENW_INFO("referee: dvar enw_dev_knobs = \"%s\"", knobs.c_str());
+            }
         }
         if (last_client_env_ms_ != 0 && ms - last_client_env_ms_ < 1000 && ms >= last_client_env_ms_) return;
         last_client_env_ms_ = ms ? ms : 1;

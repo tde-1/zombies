@@ -5,6 +5,7 @@
 //   node web/tools/lease-cli.js --match m_1234abcd --watch        # follow a lease to ready
 //   node web/tools/lease-cli.js --match m_1234abcd --cancel
 //   node web/tools/lease-cli.js --map <bsp> --player 76561198000000001 --proof   # a map not yet in SERVER_PROVEN
+//   node web/tools/lease-cli.js --map <bsp> --player 76561198000000003 --dev-god  # soak: Custom + test god mode
 //
 // WHY THIS EXISTS, and what it is NOT. The real Start button is `POST /api/launcher/play`
 // -> `parties.launch()`, and it needs a signed-in SESSION. On the live site a session can
@@ -34,13 +35,19 @@ function arg(name, dflt = null) {
 
 const mapKey = arg('map')
 const players = String(arg('player', '') || '').split(',').map((s) => s.trim()).filter(Boolean)
-const mode = arg('mode', 'verified')
+const mode = arg('dev-god') === true ? 'custom' : arg('mode', 'verified')
 const watchId = arg('match')
 const wantCancel = arg('cancel') === true
 const wantWatch = arg('watch') === true || (!!watchId && !wantCancel)
+// --dev-god (dedi.md §23): an agent's SOAK lease. Forces Custom mode (a Verified lease can
+// never carry it) and puts `settings.dev.god` on the lease; the host turns that into
+// ENW_DEV_KNOBS=1 + ENW_DEV_GOD=1 for this one game only because the lease is an agent's
+// (the site drops `dev` from every other lease, the host requires `agent` + custom), and
+// the DLL's referee reports `enw_dev_knobs 1`, so the run can never be a record.
+const devGod = arg('dev-god') === true
 
 if (!mapKey && !watchId) {
-  console.error('usage: lease-cli.js --map <bsp> --player <id64>[,<id64>...] [--mode verified|custom]')
+  console.error('usage: lease-cli.js --map <bsp> --player <id64>[,<id64>...] [--mode verified|custom] [--dev-god]')
   console.error('       lease-cli.js --match <match_id> [--watch | --cancel]')
   process.exit(2)
 }
@@ -125,6 +132,12 @@ if (watchId && wantWatch) {
   }
   parties.setMap(leader, mapKey)
   parties.setMode(leader, mode)
+  if (devGod) {
+    if (arg('real') === true) { console.error('--dev-god is for agent leases only (drop --real)'); process.exit(2) }
+    const st = parties.setSettings(leader, { dev: { god: true } })
+    if (!st.ok) { console.error(`--dev-god: ${st.error}`); process.exit(1) }
+    console.log('dev lease: Custom mode, settings.dev.god (TEST ONLY: never a record)')
+  }
   // `force` on the ready check is the leader's own override — it is there because nobody's
   // launcher has reported a map download for a party this CLI just invented.
   const rc = parties.startReadyCheck(leader, { force: true })

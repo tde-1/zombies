@@ -10,7 +10,7 @@ import { ReplayWriter, verifyFile, readFooter, readChunk, readEvents } from '../
 import { issue, check, TokenGuard } from '../lib/tokens.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
-import { InstanceManager } from '../lib/instances.js'
+import { InstanceManager, devKnobsFor, safeLeaseDvars } from '../lib/instances.js'
 import { leaseList, planLeases } from '../lib/leases.js'
 import { SERVER_RULES, RULESET, effectiveFps } from '../lib/verified.js'
 
@@ -917,6 +917,49 @@ t('a Verified lease never passes its own dvars to the server', () => {
   const c = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'custom', settings: { dvars: { timescale: '2' } } } })
   ok(!v.gameArgs().some((a) => /sv_cheats|timescale/.test(a)), v.gameArgs().join(' '))
   ok(c.gameArgs().includes('+set timescale 2'), 'a Custom lease still gets its dvars')
+})
+
+// ---- dev knobs and lease-dvar injection (dedi.md §23, 2026-09-23) -----------------------
+t('enw_dev_knobs 1 (a dev-knob process, e.g. the soak god mode) refuses the record', () => {
+  const r = makeRef()
+  stockServer(r)
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'dvar', ms: 0, name: 'enw_dev_knobs', value: '1' })
+  r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 9, reason: 'end_game' })
+  const s = r.summary()
+  eq(s.records_eligible, false)
+  ok(s.verified_env.violations.some((v) => /enw_dev_knobs was 1/.test(v)), s.verified_env.violations.join('; '))
+})
+
+t('a Custom lease dvar cannot inject command-line commands, and host-owned dvars stay the host\'s', () => {
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'vdvars2'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  const c = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'custom', settings: { dvars: {
+    timescale: '1 +set developer 1', 'g_speed +quit': '1', developer: '1', logfile: '0', net_port: '1', player_sustainAmmo: '1',
+  } } } })
+  const args = c.gameArgs()
+  ok(!args.some((a) => /developer|\+quit|logfile 0|net_port 1\b/.test(a)), args.join(' '))
+  ok(args.includes('+set player_sustainAmmo 1'), 'a plain one still passes')
+  const { ok: pass, refused } = safeLeaseDvars([['a b', '1'], ['sv_cheats', '1'], ['x', '"q"'], ['Dedicated', '0']])
+  eq(pass, [['sv_cheats', '1']])
+  eq(refused.length, 3)
+})
+
+t('dev knobs only for an AGENT lease in CUSTOM mode that asks, and explicitly empty otherwise', () => {
+  const dev = { god: true }
+  eq(devKnobsFor({ agent: true, mode: 'custom', settings: { dev } }), { ENW_DEV_KNOBS: '1', ENW_DEV_GOD: '1' })
+  for (const a of [
+    { agent: false, mode: 'custom', settings: { dev } },          // a player's Custom game
+    { mode: 'custom', settings: { dev } },                          // no agent flag (old site)
+    { agent: true, mode: 'verified', settings: { dev } },           // Verified, never
+    { agent: 'true', mode: 'custom', settings: { dev } },           // not a real boolean
+    { agent: true, mode: 'custom', settings: {} },                  // did not ask
+    null,
+  ]) eq(devKnobsFor(a), { ENW_DEV_KNOBS: '', ENW_DEV_GOD: '' }, JSON.stringify(a))
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'vdvars3'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  const g = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'verified', settings: {} } })
+  eq(g.gameEnv().ENW_DEV_KNOBS, '', 'a player game overrides anything inherited from the agent\'s env')
 })
 // ---- game copies by SLOT, not by id (dedi.md §19, 2026-09-23) --------------------------
 // MEASURED on the box 2026-09-22 23:27-23:32: ids grow for the agent's whole life, the copy
