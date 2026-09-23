@@ -1,0 +1,242 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ccube_u",
+  "title": "Cheese Cube Unlimited",
+  "source": "custom",
+  "author": "ZK Studios",
+  "released": "2014-05-29",
+  "fs_game": "mods/nazi_zombie_ccube_u",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ccube_u.iwd": "48be0fbc50e8cf0d6c789f897d735e85cc27cdc3b26ed50007706ab373ad6e1e"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "piece_left_ric",
+        "piece_middle_ric",
+        "piece_right_ric",
+        "spawn_part_cage",
+        "stan_lee_egg",
+        "step_move1",
+        "step_move15",
+        "step_move16",
+        "step_move17",
+        "step_move18",
+        "step_move19",
+        "step_move20",
+        "step_move21",
+        "step_move22",
+        "step_move23",
+        "step_move24"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "piece_left_ric, piece_middle_ric, piece_right_ric, spawn_part_cage, stan_lee_egg, step_move1 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1091,
+    "ee_candidates": [
+      "piece_left_ric",
+      "piece_middle_ric",
+      "piece_right_ric",
+      "spawn_part_cage",
+      "stan_lee_egg",
+      "step_move1",
+      "step_move15",
+      "step_move16",
+      "step_move17",
+      "step_move18",
+      "step_move19",
+      "step_move20",
+      "step_move21",
+      "step_move22",
+      "step_move23",
+      "step_move24"
+    ],
+    "ending_words": [
+      "cheese_ending",
+      "cheese_ending_clip",
+      "ending_spawn",
+      "hammer_ending",
+      "thor_ending_door"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      7500,
+      9000,
+      10000,
+      12500,
+      15000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_debris",
+        "cheese_door15"
+      ],
+      [
+        8000,
+        "zombie_debris",
+        "cheese_door9"
+      ],
+      [
+        8000,
+        "zombie_debris",
+        "cheese_door5"
+      ],
+      [
+        6000,
+        "zombie_debris",
+        "cheese_door8"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "cheese_door3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "48be0fbc50e8cf0d6c789f897d735e85cc27cdc3b26ed50007706ab373ad6e1e",
+    "map_specific_triggers": [
+      "answer_a",
+      "answer_b",
+      "answer_c",
+      "answer_d",
+      "black_hole_scare",
+      "black_widow_trig",
+      "cap_shield1_trig",
+      "cap_shield2_trig",
+      "cap_shield3_trig",
+      "cap_shield4_trig",
+      "cheats",
+      "cheese_ending",
+      "cheese_target1",
+      "cheese_target2",
+      "cheese_target3",
+      "cheese_target4",
+      "cheese_target5",
+      "give_iron",
+      "give_mk1",
+      "give_mk16",
+      "give_mk4",
+      "give_mk5",
+      "give_mk6",
+      "give_wm",
+      "hall_of_armors",
+      "handle_build_trig",
+      "handle_pick_trig",
+      "left_trig_ric",
+      "middle_trig_ric",
+      "panel_build_trig",
+      "panel_pick_trig",
+      "pick_arm_l_trig",
+      "pick_arm_r_trig",
+      "pick_body_trig",
+      "pick_head_trig",
+      "pick_leg_l_trig",
+      "pick_leg_r_trig",
+      "place_arm_l_trig",
+      "place_arm_r_trig",
+      "place_body_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Cheese_Cube_Unlimited_v1.0.exe",
+    "original_sha256": "a159fc007c2c4f79cf1e2c17398db81beddf939652e5a47af54e2c70f3fd4aa8",
+    "original_size": 161098633,
+    "source_url": "http://www.mediafire.com/file/c8lr52vp2c2s8io/Cheese_Cube_Unlimited_v1.0.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/05/29/cheese-cube-unlimited/",
+    "fetched": "2026-09-23T17:12:34Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "top100",
+      "leaderboard",
+      "top_100",
+      "archive_file"
+    ],
+    "catalogue_description": "The cheese is back with an all new adventure! Experience a very unique zombies gameplay in this round-shaped cube This is a fairly difficult map to complete, so you had better grab a few cheese loving friends and wake up your A game! Features: \u2013 Unique gameplay \u2013 \u201cMoving\u201d environment \u2013 Black Ops 2 Weapons \u2013 Buildables \u2013 Puzzles \u2013 Trivia \u2013 Animated Pack-A-Punch camo \u2013 Extremis Zombies \u2013 Custom perks: PHD Flopper and Double Dew \u2013 Custom cheese perk shaders \u2013 Several custom powerups \u2013 Random easter eggs \u2013 Unique ending \u2013 Iron Man armors (6 total armors w/ different aspects of the following) \u2013 Jarvis Heads-Up-Display (HUD) \u2013 Targeting \u2013 Stat tracking \u2013 Viewhands \u2013 Player Models \u2013 Weapon systems, animations , fx \u2013 Iron Melee system \u2013 Enhanced player abilities (run speed, health, etc) \u2013 Special abilities for certain armors Special Thanks: offthewall: Dual CZ75s, player models/viewhands rigging, target script Redspace200: melee/jump script, napalm zombie, random script help Stuffed_Oatmeal and Pacman25: BO2 weapon files, model help HexZombies: Perk shaders, loadscreen MrTomBone8: PaP texture Bamskater33: PHD model YaPh1l: Random script help (helped Redspace\u2019s scripts as well) Testers: Victor Ferrari InvDenial fatkidslov3cak3 P0tz Nukem HexZombies Chromastone10",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_ccube_u",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_ccube_u.iwd:images/loadscreen_nazi_zombie_ccube_u.iwi",
+        "nazi_zombie_ccube_u.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ccube_u"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/cheesecubeunlimited/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2014/05/cheese-cube-unlimited-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 90.2,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ccube_u.ff",
+      "nazi_zombie_ccube_u_patch.ff",
+      "nazi_zombie_ccube_u.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}
