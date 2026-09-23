@@ -108,7 +108,7 @@ try {
         & "$repo\tools\dev\jointest.ps1" -Tag $Tag -ServerFrom $From -ClientFrom $From -ServerName $ServerName `
             -ClientName $ClientName -WatchSeconds $Watch -MatchId $match -LinkHost "127.0.0.1:$LinkPort" -Map $Map `
             -ClientExtraArgs @('+set', 'com_maxfps', '30', '+set', 'r_mode', '640x480') *>&1   # coordinator: spare B's PC
-    } -ArgumentList $repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $trigger, $lock, $DashPort, [bool]$NoLoadZone
+    } -ArgumentList $repo, $Tag, $From, $ServerName, $ClientName, $Watch, $match, $LinkPort, $Map, $trigger, $lock, $DashPort, $NoLoadZone.IsPresent
 
     $gm = "$out\host\$ServerName.games_mp.log"
     $count = {
