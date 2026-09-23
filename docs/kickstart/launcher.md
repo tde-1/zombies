@@ -2457,3 +2457,65 @@ B's current log. B, or a process outside the container, reads the real one.
 
 `npm test` 137 + 14, 0 failed (three new: the loop sequence incl. a Steam-restarted pid and 60
 polls after exit; new match / Resume / no id; main.js wiring).
+
+## 2026-09-23 02:30 — after a game, the nav is clickable at once
+
+B: *"When you close the game, there's a brief period where you can't click on the launcher, like
+the top navigation bar."*
+
+**Root cause: the 0.2.10 fix depended on the shell page painting, and a covered page does not paint.**
+0.2.10 hid the shell's `#chrome` strip (62 px, `-webkit-app-region: drag`) while the site shows, by
+calling `showSite(true)`: `siteView.setVisible(true)` first, then toggling `html.site-shown` in the
+shell. Measured in a dev window: once the site view is visible, Chromium marks the shell
+page under it hidden (`document.visibilityState === 'hidden'`, `requestAnimationFrame` never
+fires). A hidden page runs no lifecycle update, and the lifecycle update is where Electron sends a
+frame's drag regions to the window. So the class changed, the `display:none` was never laid out,
+and the strip's old drag region kept answering the window's hit test. On a frameless window the
+BrowserWindow's own webContents' regions win (0.2.10), so Maps, Records, the logo, **Update now**
+and the **account chip** answered `HTCAPTION` and a click became a window drag. After a game the
+launcher shows its boot screen, and **Back to the site** / **Close** is the `showSite(true)` that hits
+this. So does every other way out of a shell screen.
+
+Ruled out, measured: `setIgnoreMouseEvents` (never called in the launcher); the window being
+minimised or refocused late (nothing minimises it; `raiser.flush()` only raises a deferred deep
+link); a site reload on exit (the site does not listen for `boot`/`boot_done`); the DLL focus guard
+(the game is gone). Windows' foreground-lock would eat at most one click, and Chromium activates
+on click.
+
+**Numbers** (`ui/2026-09-23-launcher-after-game-timing.md`, WM_NCHITTEST at ~3 ms resolution):
+- HEAD: the nav never came back within the 2.4 s window in 15 of 15 trials (10 settings→Back,
+  5 game→boot screen→Back). It was still dead 30 s later, and the same with Chromium's native
+  occlusion on.
+- Fix: dead time after the site appears is **0 ms** for Maps, Update now and the account chip in
+  every trial (10 + 5 with occlusion off, 10 + 3 with it on). The site appears 50–58 ms after the
+  click instead of about 5 ms.
+
+**Fix** (`main.js`):
+- `showSite(true)` now hides the strip **first** (`stripGone()`: toggle the class, two
+  `requestAnimationFrame`s and a 40 ms settle in the shell, which is still visible at that point;
+  bounded at 300/400 ms). Only then does it call `siteView.setVisible(true)`. A generation counter
+  lets a later `showSite()` cancel a pending show. So the game-ended sequence (the `ended` handler
+  shows the site, then `boot_done` reopens the boot screen 15 ms later) no longer flashes the site.
+- The shell's `webPreferences.backgroundThrottling: false`: the shell keeps painting while it is
+  covered, so its regions reach the window whatever the order (24–37 ms on its own). The shell has
+  no running animations, so it costs nothing while a game runs.
+- `state.siteShown` makes a `showSite(true)` that happens while the site is already visible (deep
+  links, `openSitePath`) immediate, as before.
+
+**Proof**: dev window as in 0.2.12 (invisible, own everything), stand-in game `node` sleeping 6 s
+through `GameLaunch`/`BootFlow`, a scratch site on :3419, and clicks through CDP
+`Input.dispatchMouseEvent`. Screenshots: `ui/2026-09-23-launcher-after-game-1-boot-screen.png`
+(what the launcher shows after the game exits) and `-2-nav-live-account-menu.png` (account chip
+clicked 150 ms after Back: the menu opens and the update chip sits in the nav). `npm test`
+138 + 14, 0 failed (the 0.2.10 test follows the new shape; a new test pins the order, the
+generation check, the bound and `backgroundThrottling: false`).
+
+**Unproven:**
+- **B's real mouse.** WM_NCHITTEST is Windows' routing decision for a real click, so it is the best
+  evidence available here.
+- **Why B's window recovers "after a moment"** while the dev window never did (>30 s). Something in a
+  visible, focusable window with a real mouse must make the shell paint again (an activation or
+  occlusion recompute, perhaps). With the fix there is nothing left to recover from.
+- **A window minimised or in the tray when the site is shown.** `stripGone()` gives up after
+  300 ms and shows the site anyway. `backgroundThrottling: false` should still let the strip's
+  removal reach the window, but that case was not measured.
