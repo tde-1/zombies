@@ -37,7 +37,9 @@ param(
     [int]$Block = 1000,
     # Start an arm only after this much desktop idle; give up on the arm after -IdleWaitMinutes.
     [int]$IdleSeconds = 60,
-    [int]$IdleWaitMinutes = 20
+    [int]$IdleWaitMinutes = 20,
+    # The first 11:4x bench's injector: normal priority + Sleep(0). Default is a high-priority spin.
+    [switch]$Sleep0
 )
 $ErrorActionPreference = 'Stop'
 # `powershell -File` hands "-Arms a,b,c" over as ONE string.
@@ -143,7 +145,8 @@ foreach ($arm in $Arms) {
     $inj = ''
     $aborted = $false
     if ($arm -ne 'idle') {
-        $inj = (& $probe.FullName inject $InjectSeconds $Hz $Block) -join ' '
+        $pace = if ($Sleep0) { 'sleep0' } else { 'spin' }
+        $inj = (& $probe.FullName inject $InjectSeconds $Hz $Block $pace) -join ' '
         $aborted = ($LASTEXITCODE -ne 0)
     }
     else { Start-Sleep -Seconds $InjectSeconds }

@@ -71,14 +71,19 @@ LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l) {
 // carry hDevice == NULL; anything else is a person on the physical mouse or
 // keyboard, and the injector stops at once so it never fights them for the cursor.
 volatile LONG g_real_input = 0;
+DWORD g_real_type = 0;
+HANDLE g_real_dev = nullptr;
 LRESULT CALLBACK watch_proc(HWND h, UINT m, WPARAM w, LPARAM l) {
     if (m == WM_INPUT) {
         RAWINPUTHEADER hdr = {};
         UINT sz = sizeof hdr;
         if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(l), RID_HEADER, &hdr, &sz,
                               sizeof(RAWINPUTHEADER)) != static_cast<UINT>(-1) &&
-            hdr.hDevice != nullptr)
+            hdr.hDevice != nullptr && !g_real_input) {
             g_real_input = 1;
+            g_real_type = hdr.dwType;
+            g_real_dev = hdr.hDevice;
+        }
     }
     return ::DefWindowProcA(h, m, w, l);
 }
@@ -87,7 +92,7 @@ LRESULT CALLBACK watch_proc(HWND h, UINT m, WPARAM w, LPARAM l) {
 // dx = +1 for `block` reports, then -1 for `block`, so each frame sees a steady
 // turn and the cursor ends where it began. A hidden RIDEV_INPUTSINK watcher
 // aborts the run (exit 3) on the first report from a REAL device.
-int inject_only(int secs, int hz, int block) {
+int inject_only(int secs, int hz, int block, bool sleep0) {
     WNDCLASSA wc = {};
     wc.lpfnWndProc = watch_proc;
     wc.hInstance = ::GetModuleHandleA(nullptr);
@@ -109,7 +114,13 @@ int inject_only(int secs, int hz, int block) {
     ::QueryPerformanceCounter(&t0);
     const double period = static_cast<double>(f.QuadPart) / hz;
     const long total = static_cast<long>(secs) * hz;
-    long n = 0, ok = 0;
+    long n = 0, ok = 0, late2 = 0;
+    double late_max = 0.0;
+    // Above the game's threads, so the 1 kHz source is not itself the stutter.
+    if (!sleep0) {
+        ::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+        ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+    }
     while (n < total) {
         MSG msg;
         while (::PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE)) ::DispatchMessageA(&msg);
@@ -122,13 +133,23 @@ int inject_only(int secs, int hz, int block) {
             back.mi.dx = -net;
             back.mi.dwFlags = MOUSEEVENTF_MOVE;
             if (net) ::SendInput(1, &back, sizeof back);
-            std::printf("inject: ABORTED after %ld moves -- real mouse/keyboard input seen "
-                        "(someone is at the PC)\n", ok);
+            char name[256] = "?";
+            UINT nl = sizeof name;
+            ::GetRawInputDeviceInfoA(g_real_dev, RIDI_DEVICENAME, name, &nl);
+            std::printf("inject: ABORTED after %ld moves -- real %s input seen (someone is at the "
+                        "PC): device %s\n", ok, g_real_type == RIM_TYPEMOUSE ? "mouse" : "keyboard", name);
             return 3;
         }
         ::QueryPerformanceCounter(&now);
         const long due = static_cast<long>((now.QuadPart - t0.QuadPart) / period);
         while (n < due && n < total) {
+            // How late this report is against its 1/hz slot: the injector's OWN
+            // pacing, so a lumpy result can be blamed on the source or cleared of it.
+            const double late_ms =
+                1000.0 * (static_cast<double>(now.QuadPart - t0.QuadPart) - (n + 1) * period) /
+                static_cast<double>(f.QuadPart);
+            if (late_ms > late_max) late_max = late_ms;
+            if (late_ms > 2.0) ++late2;
             INPUT in = {};
             in.type = INPUT_MOUSE;
             in.mi.dx = ((n / block) & 1) ? -1 : 1;
@@ -137,18 +158,23 @@ int inject_only(int secs, int hz, int block) {
             if (::SendInput(1, &in, sizeof in) == 1) ++ok;
             ++n;
         }
-        ::Sleep(0);
+        // Spin at high priority by default; "sleep0" (arg 5) is the first bench's
+        // normal-priority Sleep(0) loop, kept to A/B the source's own pacing.
+        if (sleep0) ::Sleep(0); else YieldProcessor();
     }
     ::QueryPerformanceCounter(&now);
     const double el = static_cast<double>(now.QuadPart - t0.QuadPart) / f.QuadPart;
-    std::printf("inject: %ld moves sent (|dx|=1 each) in %.2f s = %.0f Hz\n", ok, el, ok / el);
+    std::printf("inject: %ld moves sent (|dx|=1 each) in %.2f s = %.0f Hz; pacing: %ld reports "
+                ">2 ms late (%.2f%%), worst %.2f ms\n",
+                ok, el, ok / el, late2, total ? 100.0 * late2 / total : 0.0, late_max);
     return 0;
 }
 
 int main(int argc, char** argv) {
     if (argc > 1 && std::strcmp(argv[1], "inject") == 0)
         return inject_only(argc > 2 ? std::atoi(argv[2]) : 30, argc > 3 ? std::atoi(argv[3]) : 1000,
-                           argc > 4 ? std::atoi(argv[4]) : 1000);
+                           argc > 4 ? std::atoi(argv[4]) : 1000,
+                           argc > 5 && std::strcmp(argv[5], "sleep0") == 0);
     const int secs = argc > 1 ? std::atoi(argv[1]) : 3;
     g_hz = argc > 2 ? std::atoi(argv[2]) : 1000;
     const bool buffer_mode = !(argc > 3 && std::strcmp(argv[3], "message") == 0);
