@@ -28,6 +28,36 @@ const serverNotes = require('./serverNotes')
 
 const MAX_PLAYERS = 4       // World at War has four client slots. This is the engine, not a policy.
 
+// ── Invites: Movement's party invites (CSGO-Matchmaker server/lib/party.js, origin/main),
+//    ported onto the zombies party row. See the INVITES block near the foot of this file.
+//
+// An invite is good for half an hour. Movement's never expire; ours do, because an invite
+// here is also a key (it opens a friends-only or private lobby, `join`), and a key that
+// works forever is a key nobody remembers handing out.
+const INVITE_TTL_MS = 30 * 60 * 1000
+const fresh = () => now() - INVITE_TTL_MS
+const { addColumn } = require('../db/database')
+// The invite LINK's code. Its own column rather than `parties.code`, which public lobbies
+// already show to everybody (publicLobbies): the link opens a private lobby, so its code is
+// handed out by the party and nowhere else, and the leader can change it.
+addColumn('parties', 'link_code', 'TEXT')
+
+// Socket fan-out, set by server/index.js: (steamIds[], event, payload) => void. Movement's
+// realtime.emitUser, with the same event names: invite_received, invite_withdrawn,
+// party_updated (with a `notice` for the toast).
+let emit = null
+function setEmitter(fn) { emit = fn }
+function tell(steamIds, event, payload) {
+  if (!emit) return
+  try { emit([...new Set((steamIds || []).map(String))], event, payload) } catch { /* a dead socket must not fail a party action */ }
+}
+const memberIds = (partyId) => db.prepare('SELECT steam_id FROM party_members WHERE party_id=?').all(Number(partyId)).map((m) => m.steam_id)
+const nameOf = (sid) => ((users.publicById(sid) || {}).name) || 'someone'
+function tellParty(partyId, notice = null, except = null) {
+  const ids = memberIds(partyId).filter((s) => s !== String(except || ''))
+  tell(ids, 'party_updated', { party_id: Number(partyId), notice })
+}
+
 function forPlayer(steamId) {
   const row = db.prepare(`SELECT p.* FROM party_members pm JOIN parties p ON p.id=pm.party_id WHERE pm.steam_id=?`).get(String(steamId))
   return row ? project(row, steamId) : null
@@ -75,7 +105,7 @@ function project(p, viewer = null) {
     installs_pending: progress.pending(p.id, members.map((m) => m.steam_id)),
     // The rail's roster draws these under the members, the way Movement's idle roster draws
     // the people it will invite: a row with a × that takes the invite back.
-    invited: db.prepare("SELECT * FROM party_invites WHERE party_id=? AND state='pending' ORDER BY created_at").all(p.id)
+    invited: db.prepare("SELECT * FROM party_invites WHERE party_id=? AND state='pending' AND created_at > ? ORDER BY created_at").all(p.id, fresh())
       .map((i) => ({ ...users.publicById(i.to_steam), invite_id: i.id }))
       .filter((u) => u && u.steam_id),
   }
@@ -99,15 +129,19 @@ function create(steamId, { mode = 'verified', mapKey = null, visibility = 'frien
 
 function ensure(steamId) { return forPlayer(steamId) || create(steamId) }
 
-function join(steamId, partyId) {
+function join(steamId, partyId, { viaLink = false } = {}) {
   const p = byId(partyId)
   if (!p) return { ok: false, error: 'no such party' }
+  if (db.prepare('SELECT 1 FROM party_members WHERE party_id=? AND steam_id=?').get(p.id, String(steamId))) {
+    return { ok: true, party: project(p, steamId) }
+  }
   const members = db.prepare('SELECT COUNT(*) c FROM party_members WHERE party_id=?').get(p.id).c
   if (members >= MAX_PLAYERS) return { ok: false, error: 'that lobby is full' }
   // A pending invite is the leader's own say-so, so it opens a friends-only lobby as well as
   // a private one. Without that, accepting an invite from somebody you are not friends with
-  // (the whole point of inviting by ENW name) was refused by the lobby that sent it.
-  const invited = !!db.prepare("SELECT 1 FROM party_invites WHERE party_id=? AND to_steam=? AND state='pending'").get(p.id, String(steamId))
+  // (the whole point of inviting by ENW name) was refused by the lobby that sent it. So is
+  // the party's invite link: holding it is the same say-so, handed over by a member.
+  const invited = viaLink || !!db.prepare("SELECT 1 FROM party_invites WHERE party_id=? AND to_steam=? AND state='pending' AND created_at > ?").get(p.id, String(steamId), fresh())
   if (p.visibility === 'private' && !invited) return { ok: false, error: 'that lobby is private' }
   if (p.visibility === 'friends' && !invited) {
     const friends = users.friendIds(p.leader)
@@ -118,8 +152,9 @@ function join(steamId, partyId) {
   if (p.visibility === 'public' && bans.publicBanned(steamId)) return { ok: false, error: 'you are banned from public lobbies' }
   leave(steamId)
   db.prepare('INSERT OR IGNORE INTO party_members (party_id, steam_id, ready, joined_at) VALUES (?,?,0,?)').run(p.id, String(steamId), now())
-  db.prepare("UPDATE party_invites SET state='used' WHERE party_id=? AND to_steam=?").run(p.id, String(steamId))
+  db.prepare("UPDATE party_invites SET state='used' WHERE party_id=? AND to_steam=? AND state='pending'").run(p.id, String(steamId))
   db.prepare('UPDATE parties SET updated_at=? WHERE id=?').run(now(), p.id)
+  tellParty(p.id, { kind: 'joined', username: nameOf(steamId) }, steamId)
   return { ok: true, party: project(byId(p.id), steamId) }
 }
 
@@ -128,10 +163,18 @@ function leave(steamId) {
   if (!p) return { ok: true }
   db.prepare('DELETE FROM party_members WHERE party_id=? AND steam_id=?').run(p.id, String(steamId))
   const left = db.prepare('SELECT * FROM party_members WHERE party_id=? ORDER BY joined_at').all(p.id)
-  if (!left.length) { db.prepare('DELETE FROM parties WHERE id=?').run(p.id); progress.clear(p.id) }
-  else if (String(p.leader) === String(steamId)) {
-    // Leadership passes to whoever has been there longest rather than dissolving the lobby.
-    db.prepare('UPDATE parties SET leader=?, updated_at=? WHERE id=?').run(left[0].steam_id, now(), p.id)
+  if (!left.length) {
+    // Movement's detachFromParty: the party is gone, so is every invite into it, and each
+    // person holding one is told rather than left with a card that errors on Accept.
+    const pend = db.prepare("SELECT id, to_steam FROM party_invites WHERE party_id=? AND state='pending' AND created_at > ?").all(p.id, fresh())
+    db.prepare('DELETE FROM parties WHERE id=?').run(p.id); progress.clear(p.id)
+    for (const i of pend) tell([i.to_steam], 'invite_withdrawn', { invite_id: i.id, party_id: p.id, notice: { kind: 'closed', username: nameOf(steamId) } })
+  } else {
+    if (String(p.leader) === String(steamId)) {
+      // Leadership passes to whoever has been there longest rather than dissolving the lobby.
+      db.prepare('UPDATE parties SET leader=?, updated_at=? WHERE id=?').run(left[0].steam_id, now(), p.id)
+    }
+    tellParty(p.id, { kind: 'left', username: nameOf(steamId) })
   }
   return { ok: true }
 }
@@ -351,27 +394,59 @@ function invite(from, to, stage = null) {
   const n = db.prepare('SELECT COUNT(*) c FROM party_members WHERE party_id=?').get(party.id).c
   if (n >= MAX_PLAYERS) return { ok: false, error: 'your party is full' }
   // One pending invite per person per party: pressing + twice is one invite, not two rows
-  // on the invitee's rail.
+  // on the invitee's rail. An EXPIRED one is closed and a fresh one made, so inviting
+  // somebody again after the half hour works and restarts the clock.
+  db.prepare("UPDATE party_invites SET state='expired' WHERE party_id=? AND to_steam=? AND state='pending' AND created_at <= ?").run(party.id, target.steam_id, fresh())
   const pending = db.prepare("SELECT id FROM party_invites WHERE party_id=? AND to_steam=? AND state='pending'").get(party.id, target.steam_id)
+  let inviteId = pending ? pending.id : null
   if (!pending) {
-    db.prepare(`INSERT INTO party_invites (party_id, from_steam, to_steam, state, created_at) VALUES (?,?,?, 'pending', ?)`)
-      .run(party.id, String(from), target.steam_id, now())
+    inviteId = db.prepare(`INSERT INTO party_invites (party_id, from_steam, to_steam, state, created_at) VALUES (?,?,?, 'pending', ?)`)
+      .run(party.id, String(from), target.steam_id, now()).lastInsertRowid
+    // Movement: invite_received to the invitee (their toast), party_updated to the party.
+    const card = invitesFor(target.steam_id).find((i) => Number(i.id) === Number(inviteId)) || null
+    tell([target.steam_id], 'invite_received', { invite: card })
+    tellParty(party.id, null)
   }
-  return { ok: true, to: users.pub(target), party: project(byId(party.id), from) }
+  return { ok: true, to: users.pub(target), invite_id: Number(inviteId), party: project(byId(party.id), from) }
+}
+
+/**
+ * The invitee says yes: Movement's acceptInvite (`POST /api/party/invites/:id/accept`). Only
+ * the invitee, only a pending invite, only inside its half hour; then it is `join`, which
+ * the invite itself lets through a friends-only or private lobby.
+ */
+function acceptInvite(steamId, inviteId) {
+  const inv = db.prepare('SELECT * FROM party_invites WHERE id=? AND to_steam=?').get(Number(inviteId), String(steamId))
+  if (!inv || inv.state !== 'pending') return { ok: false, error: 'that invite is gone' }
+  if (inv.created_at <= fresh()) {
+    db.prepare("UPDATE party_invites SET state='expired' WHERE id=?").run(inv.id)
+    return { ok: false, error: 'that invite expired' }
+  }
+  if (!byId(inv.party_id)) return { ok: false, error: 'that party no longer exists' }
+  return join(steamId, inv.party_id)
 }
 
 /** The invitee says no. Only the invitee can, and only to an invite addressed to them. */
 function declineInvite(steamId, inviteId) {
-  const r = db.prepare("UPDATE party_invites SET state='declined' WHERE id=? AND to_steam=? AND state='pending'").run(Number(inviteId), String(steamId))
-  return r.changes ? { ok: true } : { ok: false, error: 'no such invite' }
+  const inv = db.prepare("SELECT * FROM party_invites WHERE id=? AND to_steam=? AND state='pending'").get(Number(inviteId), String(steamId))
+  if (!inv) return { ok: false, error: 'no such invite' }
+  db.prepare("UPDATE party_invites SET state='declined' WHERE id=?").run(inv.id)
+  // Movement's notice: the party sees "<name> declined."
+  tellParty(inv.party_id, { kind: 'declined', username: nameOf(steamId) })
+  return { ok: true }
 }
 
 /** A member takes back an invite their party sent: the × on an "invited" row. */
 function cancelInvite(steamId, inviteId) {
   const party = forPlayerRow(steamId)
   if (!party) return { ok: false, error: 'you are not in a party' }
-  const r = db.prepare("UPDATE party_invites SET state='cancelled' WHERE id=? AND party_id=? AND state='pending'").run(Number(inviteId), party.id)
-  return r.changes ? { ok: true, party: project(byId(party.id), steamId) } : { ok: false, error: 'no such invite' }
+  const inv = db.prepare("SELECT * FROM party_invites WHERE id=? AND party_id=? AND state='pending'").get(Number(inviteId), party.id)
+  if (!inv) return { ok: false, error: 'no such invite' }
+  db.prepare("UPDATE party_invites SET state='cancelled' WHERE id=?").run(inv.id)
+  // Movement's withdrawInvite: the invitee's card goes, with a word about why.
+  tell([inv.to_steam], 'invite_withdrawn', { invite_id: inv.id, party_id: party.id, notice: { kind: 'withdrawn', username: nameOf(steamId) } })
+  tellParty(party.id, null, steamId)
+  return { ok: true, party: project(byId(party.id), steamId) }
 }
 
 /** The leader removes a member: Movement's × on a roster row, the host's alone. */
@@ -382,17 +457,89 @@ function kick(steamId, target) {
   const r = db.prepare('DELETE FROM party_members WHERE party_id=? AND steam_id=?').run(p.party.id, String(target))
   if (!r.changes) return { ok: false, error: 'they are not in your party' }
   clearReady(p.party.id)
+  tell([String(target)], 'party_updated', { party_id: p.party.id, notice: { kind: 'kicked', username: nameOf(steamId) } })
+  tellParty(p.party.id, { kind: 'removed', username: nameOf(target) }, steamId)
   return { ok: true, party: project(byId(p.party.id), steamId) }
 }
 
-const invitesFor = (steamId) => db.prepare(`SELECT i.*, p.map_key, p.mode, m.title AS map_title, m.art AS map_art
-                                              FROM party_invites i JOIN parties p ON p.id=i.party_id
-                                              LEFT JOIN maps m ON m.key=p.map_key
-                                             WHERE i.to_steam=? AND i.state='pending' ORDER BY i.created_at DESC`).all(String(steamId))
-  .map((i) => ({
-    id: i.id, party_id: i.party_id, from: users.publicById(i.from_steam),
-    map_key: i.map_key, map_title: i.map_title || null, map_art: i.map_art || null, mode: i.mode, at: i.created_at,
-  }))
+function invitesFor(steamId) {
+  return db.prepare(`SELECT i.*, p.map_key, p.mode, m.title AS map_title, m.art AS map_art,
+                            (SELECT COUNT(*) FROM party_members pm WHERE pm.party_id=p.id) AS size
+                       FROM party_invites i JOIN parties p ON p.id=i.party_id
+                       LEFT JOIN maps m ON m.key=p.map_key
+                      WHERE i.to_steam=? AND i.state='pending' AND i.created_at > ? ORDER BY i.created_at DESC`).all(String(steamId), fresh())
+    .map((i) => ({
+      id: i.id, party_id: i.party_id, from: users.publicById(i.from_steam),
+      map_key: i.map_key, map_title: i.map_title || null, map_art: i.map_art || null, mode: i.mode, at: i.created_at,
+      size: i.size, expires_at: i.created_at + INVITE_TTL_MS,
+    }))
+}
+
+// ── the invite LINK ─────────────────────────────────────────────────────────────
+// `https://<site>/party/<CODE>` and `enw-zombies://party/<CODE>` (the launcher opens the
+// second as the first: launcher/src/main/deeplink.js, launcher-v0 §7). Movement's closest
+// thing is GOnext's custom-lobby join code (lib/codes.js alphabet, `/custom/join/:code`);
+// the code here is the party's, so anyone a member hands it to can join while the party
+// lasts. The leader can change it, which kills the old link.
+const LINK_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+const LINK_LEN = 8
+function newLinkCode() {
+  const crypto = require('crypto')
+  for (let tries = 0; tries < 20; tries++) {
+    const b = crypto.randomBytes(LINK_LEN)
+    let c = ''
+    for (let i = 0; i < LINK_LEN; i++) c += LINK_ALPHABET[b[i] % 32]
+    if (!db.prepare('SELECT 1 FROM parties WHERE link_code=?').get(c)) return c
+  }
+  throw new Error('could not mint a link code')
+}
+const isLinkCode = (s) => new RegExp(`^[${LINK_ALPHABET}]{${LINK_LEN}}$`).test(String(s || '').toUpperCase())
+
+/** Your party's link (any member may share it). A party of one is made from `stage`, as invite() does. */
+function link(steamId, stage = null) {
+  if (!forPlayerRow(steamId)) {
+    const st = stage || {}
+    create(steamId, { mode: st.mode || 'verified', mapKey: st.map_key || null, visibility: st.visibility || 'friends' })
+  }
+  const p = forPlayerRow(steamId)
+  let code = p.link_code
+  if (!code) {
+    code = newLinkCode()
+    db.prepare('UPDATE parties SET link_code=? WHERE id=?').run(code, p.id)
+  }
+  return { ok: true, code, path: `/party/${code}`, deeplink: `enw-zombies://party/${code}` }
+}
+
+function resetLink(steamId) {
+  const p = mustLead(steamId)
+  if (!p.ok) return p
+  db.prepare('UPDATE parties SET link_code=? WHERE id=?').run(newLinkCode(), p.party.id)
+  return link(steamId)
+}
+
+const byLink = (code) => (isLinkCode(code) ? db.prepare('SELECT * FROM parties WHERE link_code=?').get(String(code).toUpperCase()) : null)
+
+/** What the link's landing card shows: whose party, which map, how full. Nothing else. */
+function linkPreview(code, viewer = null) {
+  const p = byLink(code)
+  if (!p) return { ok: false, error: 'that link is dead' }
+  const n = memberIds(p.id).length
+  const map = p.map_key ? db.prepare('SELECT key, title, art FROM maps WHERE key=?').get(p.map_key) : null
+  return {
+    ok: true,
+    party: {
+      id: p.id, leader: users.publicById(p.leader), size: n, full: n >= MAX_PLAYERS, mode: p.mode, state: p.state,
+      map: map ? { key: map.key, title: map.title, art: map.art } : null,
+      mine: viewer ? memberIds(p.id).includes(String(viewer)) : false,
+    },
+  }
+}
+
+function joinByLink(steamId, code) {
+  const p = byLink(code)
+  if (!p) return { ok: false, error: 'that link is dead' }
+  return join(steamId, p.id, { viaLink: true })
+}
 
 /** "Find a game": any public lobby on this map with room, or nothing. */
 function quickJoin(steamId, mapKey) {
@@ -415,5 +562,6 @@ module.exports = {
   MAX_PLAYERS, forPlayer, byId, byCode, project, create, ensure, join, leave,
   setMap, setMode, setVisibility, setSettings,
   startReadyCheck, setReady, cancelReadyCheck, launch, launchInfo, reportProgress,
-  invite, invitesFor, declineInvite, cancelInvite, kick, quickJoin, publicLobbies, forPlayerRow,
+  invite, invitesFor, acceptInvite, declineInvite, cancelInvite, kick, quickJoin, publicLobbies, forPlayerRow,
+  link, resetLink, linkPreview, joinByLink, isLinkCode, setEmitter, INVITE_TTL_MS,
 }

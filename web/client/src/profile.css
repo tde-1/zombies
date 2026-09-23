@@ -705,4 +705,6 @@ button.prof-fact-v:focus-visible { outline: 2px solid var(--accent); outline-off
 .prof-settings .field { display: grid; gap: 6px; }
 
 /* Watch beside the best round (Movement's r3d-watch, smaller in a stat cell). */
-.prof-overall .prof-stat-sub .prof-watch { margin-left: 8px; padding: 1px 8px; font-size: 11px; vertical-align: 1px; }
+.prof-overall .prof-stat-sub:has(.prof-watch) { display: flex; align-items: center; gap: 8px; overflow: visible; }
+.prof-overall .prof-stat-sub:has(.prof-watch) > a:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.prof-overall .prof-stat-sub .prof-watch { flex: none; padding: 1px 8px; font-size: 11px; color: var(--text); }
