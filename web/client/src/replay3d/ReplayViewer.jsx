@@ -1356,7 +1356,13 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         {hud.players.map((p, n) => (
           <div key={p.slot} role="button" tabIndex={0} aria-pressed={p.slot === focus && camMode !== 'free'}
             className={'r3d-zm-row' + (p.slot === focus ? ' on' : '') + (p.slot === focus && camMode !== 'free' ? ' watching' : '') + (p.alive ? '' : ' down')}
-            onClick={() => { if (coop) dispatchSpec({ type: 'select', slot: p.slot, players: hud.players }) }}
+            onClick={(e) => {
+              if (!coop) return
+              // A mouse or a finger leaves no focus ring behind on the row it picked (the keys
+              // move the follow target, and a ring on the old row would read as the followed one).
+              if (e.detail > 0) e.currentTarget.blur()
+              dispatchSpec({ type: 'select', slot: p.slot, players: hud.players })
+            }}
             onKeyDown={(e) => { if (coop && e.key === 'Enter') { e.stopPropagation(); dispatchSpec({ type: 'select', slot: p.slot, players: hud.players }) } }}
             title={coop && n < 4 ? `Follow this player (${n + 1})` : 'Watch from this player'}>
             {coop && n < 4 && <kbd className="r3d-spec-key">{n + 1}</kbd>}

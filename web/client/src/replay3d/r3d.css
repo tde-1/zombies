@@ -309,3 +309,10 @@ body:has(.r3d) .chatdock { display: none; }
   .r3d-zm-score.coop .r3d-zm-row { min-height: 36px; }
   .r3d-spec-down-next kbd { display: none; }
 }
+/* A phone in landscape: the header on one line, rows a little shorter, so four players fit. */
+@media (max-height: 520px) {
+  .r3d-spec-head { flex-direction: row; align-items: baseline; gap: 6px; padding-bottom: 5px; margin-bottom: 4px; }
+  .r3d-spec-head .r3d-spec-lab { display: none; }
+  .r3d-zm-score.coop { padding: 7px 10px; }
+  .r3d-zm-score.coop .r3d-zm-row { min-height: 30px; padding: 2px; }
+}
