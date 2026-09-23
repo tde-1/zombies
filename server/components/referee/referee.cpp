@@ -24,6 +24,7 @@
 #include "logprint_mirror.hpp"
 #include "name_lock.hpp"
 #include "t4_bind.hpp"
+#include "verified_env.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -584,6 +585,7 @@ private:
         // before a server exists, so the first tick is the earliest honest moment,
         // and it is the message that makes the host agent open the replay file.
         if (!map_announced_) announce_map(ms);
+        poll_environment(ms);
 
         // When script variables become readable this takes over from the notify
         // counter: an absolute value beats a derived one, and it survives a late
@@ -735,6 +737,11 @@ private:
         if (active && !p.connected) {
             p.connected = true;
             p.spawned = false;
+            // A new connection reports its FPS cap afresh (the slot may be somebody
+            // else now). The host keeps the whole history per account, across reconnects.
+            p.fps = -1;
+            p.fps_first = -1;
+            p.fps_changes = 0;
             p.name = c->name;
             // client_view already pulls xuid/steamid/guid out of userinfo; the host
             // reads `ev.steamid || ev.xuid` and keys identity on it, so send both
@@ -1042,8 +1049,17 @@ private:
                 pw.boolean("alive", e->alive);
                 if (e->alive) ++alive;
             }
+            // The FPS cap this client reported (verified-rules.md): absent = never reported.
+            if (p.fps >= 0) {
+                pw.integer("com_maxfps", p.fps).integer("com_maxfps_first", p.fps_first)
+                    .integer("com_maxfps_changes", p.fps_changes);
+            }
             players.raw(pw.done());
         }
+        // The server's environment as last reported, so the one message a host may post a
+        // result from carries the settings the result was played under.
+        json::writer env;
+        for (const auto& [k, v] : env_.values()) env.str(k.c_str(), v);
 
         const size_t rows = players.count();
         json::writer w;
@@ -1055,7 +1071,8 @@ private:
             .integer("points_total", total_points)
             .integer("downs_total", total_downs)
             .integer("players_alive", alive)
-            .raw("players", players.done());
+            .raw("players", players.done())
+            .raw("dvars", env.done());
         game_link::get().send(w);
         referee::lp_player_event(-1, "match_end", std::to_string(round_));
 
@@ -1117,6 +1134,11 @@ private:
         last_round_ms_ = 0;
         game_over_ = false;
         match_start_ms_ = game_ms_;
+        // The next match's replay must carry its own starting environment, not rely on
+        // the previous match's events: forget what was sent and report it all again.
+        env_.clear();
+        last_env_ms_ = 0;
+        last_client_env_ms_ = 0;
         map_announced_ = false;   // the next frame re-announces, so the host opens a new replay
         core_frames_ = 0;
         referee::set_current_round(0);
@@ -1250,7 +1272,49 @@ private:
         std::string jti;        // the token's single-use id, for the replay guard
         int party_slot = -1;    // the seat the SITE gave this player, when it said one
         std::string refusal;    // why, when identity == refused
+        // --- the client's FPS cap (2026-09-23, verified-rules.md) ---------------
+        // From userinfo `enw_fps` (client-dll fps_guard.cpp). -1 = never reported.
+        int fps = -1;
+        int fps_first = -1;
+        int fps_changes = 0;    // changes after the first report
     };
+
+    // ------------------------------------------------ the Verified environment --
+    // verified_env.hpp says what and why. Server dvars every 5 s (24 lookups), each
+    // client's reported FPS cap every 1 s (a userinfo string search). Both send only on
+    // first sight and on change, so a steady game costs the link nothing.
+    void poll_environment(uint32_t ms) {
+        if (last_env_ms_ == 0 || ms - last_env_ms_ >= 5000 || ms < last_env_ms_) {
+            last_env_ms_ = ms ? ms : 1;
+            for (const char* name : verified::kServerWatch) {
+                auto v = referee::dvar_get(name);
+                if (!v || !env_.observe(name, *v)) continue;
+                json::writer w;
+                w.str("t", "dvar").integer("ms", ms).str("name", name).str("value", *v);
+                game_link::get().send(w);
+                ENW_INFO("referee: dvar %s = \"%s\"", name, v->c_str());
+            }
+        }
+        if (last_client_env_ms_ != 0 && ms - last_client_env_ms_ < 1000 && ms >= last_client_env_ms_) return;
+        last_client_env_ms_ = ms ? ms : 1;
+        const int n = referee::max_clients();
+        for (int slot = 0; slot < n && slot < kMaxPlayers; ++slot) {
+            auto c = referee::client(slot);
+            if (!c || !c->active) continue;
+            const int fps = verified::parse_client_fps(userinfo_value(c->userinfo, verified::kClientFpsKey));
+            auto& p = players_[slot];
+            if (fps < 0 || fps == p.fps) continue;
+            if (p.fps_first < 0) p.fps_first = fps; else ++p.fps_changes;
+            p.fps = fps;
+            json::writer w;
+            w.str("t", "client_dvar").integer("ms", ms).integer("slot", slot)
+                .str("name", "com_maxfps").integer("value", fps)
+                .integer("effective_fps", verified::effective_fps(fps));
+            game_link::get().send(w);
+            ENW_INFO("referee: slot %d reports com_maxfps %d (runs at %d fps)%s", slot, fps,
+                     verified::effective_fps(fps), p.fps_changes ? " -- CHANGED mid-game" : "");
+        }
+    }
 
     player_state players_[kMaxPlayers];
     std::set<std::string> seen_;
@@ -1274,6 +1338,9 @@ private:
     bool dev_knobs_ = false;
     std::string match_id_;                   // ENW_MATCH: the lease this process serves
     std::map<std::string, int> jti_seen_;    // single-use invite tokens, per match
+    verified::change_tracker env_;           // server dvars as last reported
+    uint32_t last_env_ms_ = 0;
+    uint32_t last_client_env_ms_ = 0;
 };
 
 }  // namespace

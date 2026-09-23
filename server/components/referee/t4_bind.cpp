@@ -24,6 +24,7 @@
 // THE RULE EVERY ACCESSOR STILL FOLLOWS: if it is not bound and proven, return
 // nothing. Never dereference on a hope.
 #include "t4_bind.hpp"
+#include "verified_env.hpp"
 
 #include <atomic>
 
@@ -1063,7 +1064,38 @@ int current_round() { return g_current_round.load(std::memory_order_relaxed); }
 void set_recording(bool on) { g_recording.store(on, std::memory_order_relaxed); }
 bool recording() { return g_recording.load(std::memory_order_relaxed); }
 
-std::optional<std::string> dvar_get(const char*) { return std::nullopt; }
+// dvar_get: READ ONLY, bound 2026-09-23 for the Verified environment report
+// (verified_env.hpp, docs/kickstart/verified-rules.md). Everything it relies on is already
+// proven elsewhere in this DLL, not guessed here:
+//   * Dvar_FindVar 0x5EDE30 [V], called by dedicated.cpp and net_probe.cpp on this server;
+//     it returns null (not a fault) before Com_Init has registered the dvars.
+//   * dvar_s: type uint16 at +0x0A, current value (16 bytes) at +0x10 -- measured in
+//     dedicated.cpp (com_maxfps +0x10 = 85, fs_homepath +0x10 = char*), and net_probe.cpp
+//     reads sv_maxRate the same way.
+// Types other than int/enum/string are formatted per the CoD4 order those three match, and
+// an unknown type comes back raw ("?typeN:...") rather than as a guess.
+// dvar_set stays unbound: the referee reports the environment, it does not change it.
+std::optional<std::string> dvar_get(const char* name) {
+    if (!name || !*name) return std::nullopt;
+    static const bool ok = memory::looks_like_function(at(t4::fn::Dvar_FindVar));
+    if (!ok) return std::nullopt;
+    using find_t = void*(__cdecl*)(const char*);
+    void* d = reinterpret_cast<find_t>(at(t4::fn::Dvar_FindVar))(name);
+    if (!d) return std::nullopt;
+    const auto a = reinterpret_cast<uintptr_t>(d);
+    uint16_t type = 0;
+    uint8_t raw[16] = {};
+    if (!peek(a + 0x0A, &type)) return std::nullopt;
+    if (!memory::is_readable(reinterpret_cast<void*>(a + 0x10), sizeof raw)) return std::nullopt;
+    std::memcpy(raw, reinterpret_cast<const void*>(a + 0x10), sizeof raw);
+    std::string s;
+    if (type == verified::T_STRING) {
+        uint32_t p = 0;
+        std::memcpy(&p, raw, 4);
+        if (p) s = peek_string(p, 256);
+    }
+    return verified::format_value(type, raw, s);
+}
 bool dvar_set(const char*, const char*) { return false; }
 
 }  // namespace enw::referee

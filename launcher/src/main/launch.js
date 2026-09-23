@@ -20,7 +20,13 @@ import { P, ensureDirs, isInside, protectedRoots, dirOfModule, unpacked } from '
 import { MOD_NAME } from './setup.js'
 import * as lock from './gamelock.js'
 import { listDisplays, pickDisplay } from './display.js'
-import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, usePlayerProfile, PROFILE } from './gamecfg.js'
+import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, usePlayerProfile, PROFILE, FPS_CAP } from './gamecfg.js'
+
+// The DLL's fps_guard (client-dll/components/fps_guard.cpp) holds com_maxfps to 20..this
+// for the whole game, not just at launch, and reports it to the server for the Verified
+// rules (docs/kickstart/verified-rules.md). The launcher already never writes more than
+// FPS_CAP, so a player only meets the lock by typing a higher value in the console.
+export function fpsCapEnv() { return String(FPS_CAP) }
 import { launchDvars, applyAccountToConfig, readBackAccount } from './wawcfg.js'
 import * as settings from './settings.js'
 import { modOwnedDvars, dropModOwned } from './modcompat.js'
@@ -475,6 +481,8 @@ export class GameLaunch extends EventEmitter {
         // window mode it is explicitly '0' rather than absent, so a dev run can never
         // inherit a borderless flag from somewhere else.
         ENW_BORDERLESS: borderlessEnv(o.settings || {}, this.playerMode),
+        // The mid-game FPS lock (fps_guard.cpp). See fpsCapEnv above.
+        ENW_FPS_CAP: fpsCapEnv(),
         // The DLL's raw-input mouse (mouse_polling.cpp reads `ENW_RAW_MOUSE=0` as off).
         // Only an explicit "off" in the account turns it off; the default stays the DLL's.
         ...(o.settings && o.settings.rawMouse === false ? { ENW_RAW_MOUSE: '0' } : {}),
