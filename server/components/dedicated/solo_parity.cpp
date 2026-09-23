@@ -128,6 +128,7 @@ struct slot_state {
     int pm_type = -1;
     uint32_t last_summary = 0;
     uint32_t air_since = 0;
+    int32_t cmd_time_at_air = 0;
     bool floating_flagged = false;
     bool env_checked = false;
     uint32_t frames = 0, on_world = 0, on_ent = 0, in_air = 0;
@@ -283,18 +284,28 @@ void on_frame(uint32_t ms) {
 
         // Off the ground, as a live PM_NORMAL player, for longer than any jump or fall.
         if (ground == kNone && pm_type == 0 && alive) {
-            if (!st.air_since) st.air_since = ms ? ms : 1;
+            if (!st.air_since) {
+                st.air_since = ms ? ms : 1;
+                const auto cmd = referee::last_usercmd(slot);
+                st.cmd_time_at_air = cmd ? cmd->server_time : 0;
+            }
         } else {
             st.air_since = 0;
         }
         if (st.air_since && !st.floating_flagged &&
             solo_parity::airborne_mismatch(ms - st.air_since, alive, pm_type)) {
             st.floating_flagged = true;
-            char b[256];
+            // A client that stops sending usercmds (it hung: zm_nuked's GPU-query freeze, client.md
+            // section 13) is never moved by pmove either, so it hangs in the air too. Say which.
+            const auto cmd = referee::last_usercmd(slot);
+            const bool frozen = cmd && st.cmd_time_at_air && cmd->server_time == st.cmd_time_at_air;
+            char b[320];
             std::snprintf(b, sizeof b,
-                          "FLOATING: off the ground for %u ms at (%.1f %.1f %.1f), vel z %.0f -- a solo player "
-                          "stands on the floor",
-                          ms - st.air_since, org[0], org[1], org[2], vel[2]);
+                          "%s: off the ground for %u ms at (%.1f %.1f %.1f), vel z %.0f -- %s",
+                          frozen ? "CLIENT FROZEN" : "FLOATING", ms - st.air_since, org[0], org[1], org[2], vel[2],
+                          frozen ? "its usercmd time has not moved, so the CLIENT stopped sending input (a hung "
+                                   "game), not the server's physics"
+                                 : "a solo player stands on the floor");
             mismatch(slot, b);
             overlap_scan(slot, org, mins, maxs);
         }
