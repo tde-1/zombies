@@ -704,6 +704,9 @@ class Game extends EventEmitter {
   checkIdle() {
     if (this.idleClosed || this.finished || this.disposed || !this.readyAt) return
     if (this.instance.foreign || !this.assignment || this.restarting || this.graceOpen) return
+    // A soak-bot lease (dedi.md §27) is played by server-side bots the referee never reports,
+    // so it always looks never-joined: the 5-minute close ended the Nacht soak m_bd4f87b4.
+    if (soakBotConfig(this.assignment).emptyCloseMs) return
     const lease = this.leaseId || this.matchId
     const asg = (this.host.latestLeases || []).find((l) => l.match_id === lease)
     const connected = [...this.referee.players.values()].filter((p) => p.connected).length
