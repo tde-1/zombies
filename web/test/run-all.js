@@ -483,6 +483,55 @@ async function main() {
       parties.leave(T); parties.leave(S)
     })
 
+    // [RS] Idle-server auto-close (host lib/idle.js; esc-menu.md §13). m_5a28dcbe sat ready
+    // for 95 min with nobody in it.
+    check('a download in progress puts hold_idle on the lease (and moves the box\'s nonce); installed lifts it', () => {
+      const partyProgress = require('../server/lib/partyProgress')
+      const r = startSolo(S)
+      truthy(r.ok, r.error)
+      assignments.ack(MB(), 'ready', r.match_id)
+      const of = () => assignments.forBox(MB(), { v: 2 })
+      const lease = () => of().assignments.find((x) => x.match_id === r.match_id)
+      eq(lease().hold_idle, undefined, 'no hold')
+      const n0 = of().nonce
+      const pid = parties.forPlayer(S).id
+      partyProgress.push(pid, S, { state: 'downloading', map: 'nazi_zombie_test', pct: 5 })
+      eq(lease().hold_idle, true, 'held while downloading')
+      truthy(of().nonce !== n0, 'the nonce moved, so the box re-reads the list')
+      partyProgress.push(pid, S, { state: 'installed', map: 'nazi_zombie_test' })
+      eq(lease().hold_idle, undefined, 'lifted when installed')
+      assignments.cancel(r.match_id, 'test'); parties.leave(S)
+    })
+
+    check('the box says no_players: the lease ends, the party stays forming with its map, the launcher is told once', () => {
+      const r = startSolo(S)
+      assignments.ack(MB(), 'ready', r.match_id)
+      assignments.ack(MB(), 'no_players', r.match_id, 'nobody joined within 300 s of the server being ready', { rule: 'never_joined' })
+      eq(stateOf(r.match_id), 'cancelled')
+      const p = parties.forPlayer(S)
+      eq(JSON.stringify([p.state, p.match_id, p.map && p.map.key]), JSON.stringify(['forming', null, 'nazi_zombie_test']), 'forming, map kept')
+      eq(seats.closedFor(S) && seats.closedFor(S).text, 'Server closed: nobody joined.', 'the launcher\'s line')
+      eq(seats.closedFor(S).match_id, r.match_id, 'for that match')
+      eq(seats.resumeInfo(parties.launchInfo(S), S), null, 'no Resume into it')
+      const log = db.prepare("SELECT * FROM activity_log WHERE event='assignment.idle_closed' ORDER BY id DESC LIMIT 1").get()
+      truthy(log && JSON.parse(log.metadata).reason === 'no_players' && JSON.parse(log.metadata).match_id === r.match_id, 'recorded')
+      const w = watcher(S); w.flow = false
+      for (let i = 0; i < 5; i++) w.poll()
+      eq(w.launches, 0, 'nothing to follow')
+      parties.leave(S)
+    })
+
+    check('no_players never ends a lease that is already over, or another box\'s', () => {
+      const r = startSolo(S)
+      assignments.ack(MB(), 'live', r.match_id)
+      assignments.ack(boxes.byName('test-box'), 'no_players', r.match_id, 'x', { rule: 'never_joined' })
+      eq(stateOf(r.match_id), 'live', 'another box cannot')
+      assignments.cancel(r.match_id, 'test')
+      assignments.ack(MB(), 'no_players', r.match_id, 'x', { rule: 'never_joined' })
+      eq(stateOf(r.match_id), 'cancelled', 'unchanged')
+      parties.leave(S)
+    })
+
     // [RS] A run that ended on its own and was restarted inside the host's restart grace:
     // its result is posted with `lease_continues`, and the lease must survive it.
     check('a result with lease_continues from the lease\'s own box keeps the lease; from another box it does not', () => {

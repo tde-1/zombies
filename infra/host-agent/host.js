@@ -32,7 +32,8 @@ import { leaseList, planLeases } from './lib/leases.js'
 import { Dashboard } from './lib/dashboard.js'
 import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
-import { onRestartRequest, handOver } from './lib/restart.js'   // a player's Restart game (esc-menu.md §3)
+import { onRestartRequest, handOver } from './lib/restart.js'
+import { neverJoined } from './lib/idle.js'   // [RS] idle-server auto-close (esc-menu.md §13)   // a player's Restart game (esc-menu.md §3)
 import { MapCache, configFromEnv as mapCacheConfig, modNameOf } from './lib/mapcache.js'   // pull a leased map before boot
 import { BootQueue } from './lib/bootqueue.js'   // one boot at a time, players first (host.md §16)
 import { readMeminfo, ramPlan, MB } from './lib/memguard.js'   // the RAM guard (host.md §16)
@@ -166,7 +167,18 @@ const cfg = {
   // TEST ONLY: put simulated games through the boot queue too (they load instantly
   // otherwise, and the queue is only for real games). test/boot-queue.js.
   gateSims: !!a['gate-sims'],
+  // [RS] IDLE-SERVER AUTO-CLOSE (lib/idle.js, esc-menu.md §13; B 2026-09-23 19:10 after
+  // m_5a28dcbe held the box for 95 min with nobody in it). --idle-ready-ms: nobody admitted
+  // this long after the map is ready -> the lease ends (`no_players`). --idle-gone-ms:
+  // everybody gone this long -> the run ends (the referee's empty close and crash grace,
+  // below, unless --empty-close-ms / --crash-grace-ms say otherwise). 0 = off.
+  idleReadyMs: Number(a['idle-ready-ms'] ?? process.env.ENW_IDLE_READY_MS ?? 5 * 60_000),
+  idleGoneMs: Number(a['idle-gone-ms'] ?? process.env.ENW_IDLE_GONE_MS ?? 3 * 60_000),
   referee: {
+    ...(() => {
+      const g = Number(a['idle-gone-ms'] ?? process.env.ENW_IDLE_GONE_MS ?? 3 * 60_000)
+      return g > 0 ? { emptyCloseMs: g, crashGraceMs: g } : {}
+    })(),
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
     ...(a['cap-warn-ms'] ? { capWarnMs: String(a['cap-warn-ms']).split(',').map(Number) } : {}),
     ...(a['afk-warn-ms'] ? { afkWarnMs: Number(a['afk-warn-ms']) } : {}),
@@ -260,7 +272,7 @@ class Game extends EventEmitter {
       this.referee.on(k, (d) => this.recordHostEvent({ t: 'referee', kind: k, ...(typeof d === 'object' ? d : { value: d }) }))
     }
     this.gameLog = new GameLog({ file: path.join(cfg.logDir, `${instance.id}.games_mp.log`), enabled: cfg.gameLog, prefix: cfg.gameLogPrefix })
-    this.tickTimer = setInterval(() => this.referee.tick(), 1000)
+    this.tickTimer = setInterval(() => { this.referee.tick(); this.checkIdle() }, 1000)
     this.tickTimer.unref?.()
   }
 
@@ -392,6 +404,7 @@ class Game extends EventEmitter {
     if (!r.allow) r = this.admitReturning(ev) || r
     const p = this.referee.players.get(ev.slot)
     if (p) p.tokenOk = r.allow
+    if (r.allow) this.everAdmitted = true   // [RS] lib/idle.js: somebody joined this run
     // THE ANSWER IS ALSO THE IDENTITY. `token_check_disabled` is what TokenGuard says when
     // it holds no site key or is not enforcing — it is an admission, not a check, so it
     // leaves the claim where it was rather than promoting it to a verified account
@@ -477,6 +490,9 @@ class Game extends EventEmitter {
    */
   onMapLoaded(ev) {
     this.mapEv = ev
+    // [RS] The idle clock (lib/idle.js) starts when the map is READY: booting and loading
+    // never count. Once per run: a restarted run starts its own.
+    if (!this.readyAt) this.readyAt = Date.now()
     this.emit('map_loaded', ev)
     if (!this.deferReplay) this.openReplay(ev)
   }
@@ -676,6 +692,34 @@ class Game extends EventEmitter {
 
   /** A host-side decision (auth, AFK kick, cap warning, chat relayed in) is evidence too. */
   recordHostEvent(ev) { this.record({ ms: this.referee.now(), host: true, ...ev }) }
+
+  /**
+   * [RS] IDLE-SERVER AUTO-CLOSE, "never joined" (lib/idle.js; the "all gone" half is the
+   * referee's empty close / crash grace at --idle-gone-ms). A leased game whose map has been
+   * ready for --idle-ready-ms with nobody ever admitted, nobody connected and no join in
+   * progress at the site (`hold_idle`: a download, a Resume) ends: no game was played, so no
+   * result; the site is told `no_players` (it ends the lease and tells a waiting launcher),
+   * and the instance is retired with that reason (its telemetry bundle carries it).
+   */
+  checkIdle() {
+    if (this.idleClosed || this.finished || this.disposed || !this.readyAt) return
+    if (this.instance.foreign || !this.assignment || this.restarting || this.graceOpen) return
+    const lease = this.leaseId || this.matchId
+    const asg = (this.host.latestLeases || []).find((l) => l.match_id === lease)
+    const connected = [...this.referee.players.values()].filter((p) => p.connected).length
+    const d = neverJoined({
+      now: Date.now(), readyAt: this.readyAt, admitted: !!this.everAdmitted, connected,
+      hold: !!asg?.hold_idle, readyMs: cfg.idleReadyMs,
+    })
+    if (!d) return
+    this.idleClosed = d
+    this.referee.flags.add('no_players')
+    this.noResult = `no game was played: ${d.detail}`
+    this.recordHostEvent({ t: 'idle_close', reason: d.reason, rule: d.rule, detail: d.detail })
+    this.log.warn(`IDLE CLOSE: ${d.detail} -- ending lease ${lease} (${d.reason})`)
+    this.host.site?.status({ state: 'no_players', match_id: lease, map: this.assignment?.map, error: d.detail, rule: d.rule })
+    this.host.retire(this, `${d.reason}: ${d.detail}`)
+  }
 
   // ---- end -----------------------------------------------------------------------
   /**
@@ -1181,6 +1225,8 @@ class HostAgent {
       // DLL's warm-instance behaviour.
       if (s.loadMs) simArgs.push('--load-ms', String(s.loadMs))
       if (s.neverLoads) simArgs.push('--never-loads')
+      if (s.noJoin) simArgs.push('--no-join')                        // [RS] idle close (test/idle-close.js)
+      if (s.leaveMs) simArgs.push('--leave-ms', String(s.leaveMs))
       if (s.realWarm) simArgs.push('--real-warm')
       if (s.stallRebind) simArgs.push('--stall-rebind', String(s.stallRebind))
     }
@@ -1798,6 +1844,8 @@ class HostAgent {
         seed: Number(asg.sim?.seed ?? 1337),
         loadMs: asg.sim?.load_ms ?? (a['sim-load-ms'] ? Number(a['sim-load-ms']) : null),
         neverLoads: !!asg.sim?.never_loads,
+        noJoin: !!asg.sim?.no_join,
+        leaveMs: asg.sim?.leave_ms ?? null,
         realWarm: !!(asg.sim?.real_warm ?? a['sim-real-warm']),
         stallRebind: asg.sim?.stall_rebind ?? null,
       },
