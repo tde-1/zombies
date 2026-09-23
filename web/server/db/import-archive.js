@@ -27,6 +27,8 @@
 //   node server/db/import-archive.js                 the pipeline maps only
 //   node server/db/import-archive.js --catalogue     also the 2,276-map index
 //   node server/db/import-archive.js --dry           say what would change, change nothing
+//   node server/db/import-archive.js --guides        the Easter egg / power / song guides only
+//                                                    (reports/map_guides.json, lib/guides.js)
 //
 // Re-runnable. It never downgrades a map that already has a referee manifest
 // (`referee/manifests/`), because that one was read by a human and this one was not.
@@ -356,14 +358,35 @@ const norm = (k) => String(k).toLowerCase().replace(/^nazi_zombie_/, '').replace
 // ---- run ----------------------------------------------------------------------------
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_archive_sources_url ON archive_sources(url, map_key)')
 
-importPipelineMaps()
+// ---- 3. Easter egg / power / song guides (2026-09-23) ---------------------------------
+// `archive/easter_eggs.py` writes <work>/reports/map_guides.json out of the crawl cache;
+// lib/guides.js owns the table and the rules (attach to the first site key that exists,
+// keep staff decisions, drop what the heuristic no longer finds).
+//
+//   node server/db/import-archive.js --guides                 guides only
+//   node server/db/import-archive.js --guides --dry           say what would change
+//   ZM_ARCHIVE_GUIDES=<file> ...                              another report
+const GUIDES = process.env.ZM_ARCHIVE_GUIDES || path.join(WORK, 'reports', 'map_guides.json')
+function importGuides() {
+  const doc = readJson(GUIDES)
+  if (!doc) { console.log(`no guides at ${GUIDES} — run \`python archive/easter_eggs.py\` first`); return }
+  const s = require('../lib/guides').importDoc(doc, { dry: DRY })
+  console.log(`${DRY ? '(dry) ' : ''}guides: ${s.in_file} in the report (made ${doc.generated || '?'}), +${s.inserted} new, ${s.updated} updated, ` +
+    `${s.unchanged} unchanged, ${s.tombstoned} deleted by staff, ${s.removed} removed, ${s.kept_by_staff} kept by staff, ${s.no_map} for maps the site lacks, ${s.bad} unusable · ${s.maps} maps`)
+}
+
+// `--guides` on its own imports only the guides: the coordinator can load them into the
+// live database without re-running the map import.
+const GUIDES_ONLY = args.has('--guides') && !args.has('--catalogue') && !args.has('--maps')
+if (!GUIDES_ONLY) importPipelineMaps()
 if (args.has('--catalogue')) importCatalogue()
+if (args.has('--guides')) importGuides()
 
 const c = (t, w) => db.prepare(`SELECT COUNT(*) c FROM ${t}${w ? ' WHERE ' + w : ''}`).get().c
-console.log(DRY ? '(dry run, nothing written)' : 'imported:',
+if (!GUIDES_ONLY) console.log(DRY ? '(dry run, nothing written)' : 'imported:',
   `+${stats.maps} maps, ${stats.updated} updated, ${stats.catalogued} catalogued, ` +
   `${stats.files} originals, ${stats.covers} covers, ${stats.sources} sources, ${stats.tags} tags, ${stats.skipped} left to the referee agent`)
-if (!DRY) {
+if (!DRY && !GUIDES_ONLY) {
   console.log(`  playable now: ${c('maps', "hidden=0 AND health IN ('verified','playable','custom-only')")}` +
     ` · catalogued: ${c('maps', "health='catalogued'")} · links on file: ${c('archive_sources')}`)
 }

@@ -1378,6 +1378,30 @@ hr.rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
 .mdfeat.off .mdfeat-v { color: var(--faint); }
 .mdfeat.off .mdfeat-s { color: var(--faint); }
 
+/* ── The Easter egg: a community guide, blurred until asked for (lib/guides.js) ── */
+.mdguide .mdboards { margin-bottom: 12px; }
+.mdguide-hide {
+  background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+  font-size: 12px; font-weight: 600; color: var(--muted); text-decoration: underline; text-underline-offset: 3px;
+}
+.mdguide-hide:hover { color: var(--text); }
+.mdguide-body { position: relative; border-radius: var(--radius-sm); background: rgba(var(--scrim-rgb), .28); padding: 12px 14px; }
+.mdguide-body.veiled { min-height: 132px; max-height: 190px; overflow: hidden; }
+.mdguide-body.veiled .mdguide-inner {
+  filter: blur(7px); user-select: none; -webkit-user-select: none; pointer-events: none;
+}
+.mdguide-veil { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(var(--scrim-rgb), .22); }
+.mdguide-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 8px; }
+.mdguide-steps { margin: 0; padding-left: 22px; line-height: 1.55; }
+.mdguide-steps > li { margin: 3px 0; }
+.mdguide-steps > li::marker { color: var(--gold); font-family: var(--num); font-weight: 700; }
+.mdguide-steps > li.mdguide-sub { list-style: none; margin: 10px 0 2px -22px; font-weight: 700; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.mdguide-label { color: var(--text); }
+.mdguide-details { margin: 3px 0 4px; padding-left: 18px; color: var(--muted); font-size: 13px; }
+.mdguide-src { margin: 10px 0 0; }
+/* The card's mark: a main-quest guide is on file. Top-left, so it never meets Beaten. */
+.map-flag.ee { top: 8px; bottom: auto; color: var(--gold); }
+
 /* under the banner: the map's own record keeps two thirds, the thread the rest */
 .mapdash-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 22px; margin-top: 20px; align-items: start; }
 .mds-main, .mds-comments { min-width: 0; }

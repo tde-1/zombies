@@ -90,6 +90,12 @@ const PROOF_MAPS = new Set(String(process.env.ZM_PROOF_MAPS || '').split(',').ma
 /** Playable on OUR boxes: proven headless, and not broken since. */
 const onServer = (row) => !!row && (SERVER_PROVEN.has(row.key) || PROOF_MAPS.has(row.key)) && row.health !== 'broken'
 
+let mainQuestStmt = null
+function hasMainQuestGuide(key) {
+  if (!mainQuestStmt) mainQuestStmt = db.prepare("SELECT 1 FROM map_guides WHERE map_key=? AND kind='easter_egg' AND state='live' LIMIT 1")
+  return !!mainQuestStmt.get(key)
+}
+
 function project(row, { me = null } = {}) {
   if (!row) return null
   const out = {
@@ -104,6 +110,9 @@ function project(row, { me = null } = {}) {
     round_n: row.round_n,
     has_ee: !!row.has_ee,
     has_buyable: !!row.has_buyable,
+    // A community main-quest guide is on file (lib/guides.js) — the cards' "EE" tag. Not the
+    // same claim as `has_ee`, which is "the map has one"; this is "we can tell you how".
+    ee_guide: hasMainQuestGuide(row.key),
     description: row.description || null,
     art: row.art || null,
     thumb: thumbOf(row.art),
@@ -314,6 +323,9 @@ function detail(key, { me = null } = {}) {
     files: latest ? db.prepare('SELECT path, sha256, size, kind FROM map_files WHERE map_version_id=?').all(latest.id) : [],
     loadscreen: loadscreenOf(row.art),
     features: featuresFor(row.key),
+    // Easter egg / power / song guides from the archive (lib/guides.js). An empty list and
+    // the map page draws no section at all.
+    guides: require('./guides').forMap(row.key),
     download: downloadOf(row.key, latest),
   }
 }

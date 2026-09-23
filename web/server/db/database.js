@@ -938,6 +938,34 @@ function migrate() {
     error        TEXT
   )`)
 
+  // Easter egg / power / song / ending guides (2026-09-23, lib/guides.js). One row per
+  // (map, kind, title) — `sig` — written only by `import-archive.js --guides` out of
+  // archive/easter_eggs.py's report, never over HTTP. `state` is staff's: live, hidden
+  // (reversible) or deleted (a tombstone the next import respects). `origin` is 'archive'
+  // today; guides read out of a map's own scripts will be 'script'.
+  db.exec(`CREATE TABLE IF NOT EXISTS map_guides (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    sig           TEXT UNIQUE NOT NULL,
+    map_key       TEXT NOT NULL,
+    kind          TEXT NOT NULL CHECK (kind IN ('easter_egg','power','song','ending','other')),
+    title         TEXT NOT NULL,
+    reward        TEXT,
+    steps_json    TEXT NOT NULL,
+    source_url    TEXT,
+    source_site   TEXT,
+    source_author TEXT,
+    source_file   TEXT,
+    confidence    REAL NOT NULL,
+    evidence_json TEXT,
+    origin        TEXT NOT NULL DEFAULT 'archive',
+    state         TEXT NOT NULL DEFAULT 'live',
+    staff_by      TEXT,
+    staff_at      INTEGER,
+    imported_at   INTEGER,
+    updated_at    INTEGER
+  )`)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_map_guides_map ON map_guides(map_key, state)')
+
   // Scaffolding, marked as scaffolding.
   //
   // `npm run seed -- --demo` writes six games so the pages are not empty, and it writes
