@@ -149,6 +149,10 @@ game (it was blocked all along by the name of the load video we refuse, and then
 the client). While any pause holds, the client's clock stands still, so no twitch or FPS-meter
 spike at the edges. Measured on a local dedi + client; `chat-overlay.md` §11.
 
+**Round 4:** the overlay and the Esc menu always use World at War's own font, even on the many
+custom maps that replace it (read from the player's own install; only hashes ship). Proven
+pixel-identical on Nacht and on MW2 Rust; `chat-overlay.md` §12.
+
 ## Pause (2026-09-22, evening)
 
 The dedi now really pauses: Esc solo (and typing, with the "pause when using global chat"

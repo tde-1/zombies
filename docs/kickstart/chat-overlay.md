@@ -9,6 +9,7 @@
 > **§10 (round 2, after B used 0.2.12):** clicks fixed (the cursor was drawn off its hot spot),
 > a real text box, selectable history, a tab per DM conversation, `/w` and `/r`.
 > **§11 (round 3):** Esc works on a box and pauses it; the client clock holds while the server is frozen.
+> **§12 (round 4):** the overlay and the Esc menu always draw with WaW's stock font, whatever a mod loads.
 
 B's ask, in his words in substance: *later an in-game overlay where T opens chat, pauses the game
 if solo, and lets you type, replacing the game's own chat.*
@@ -630,3 +631,77 @@ read (logs over ssh); no lease was taken.
 
 **Not proven:** B's internet-latency case itself (the spike he saw is the extrapolate/adjust path
 with real jitter, which a LAN join barely exercises); a co-op all-in-menu pause with two clients.
+
+---
+
+## 12. Round 4 — always World at War's own font (2026-09-23, early)
+
+B on 0.2.17: *"The overlay must not use the font that comes from the map. It is currently changing
+based on the mod pack. It needs to be static: the exact same World at War font every time, for
+everything on the overlay."*
+
+### 12.1 What a mod does to the font (measured, not assumed)
+
+* **29 of the 78 archived mods** ship `fonts/*` fonts and the `fonts/gamefonts_pc` material and
+  `gamefonts_pc` image in their `mod.ff` (listed with OAT's Unlinker). **`fear_mc_2` is not one of
+  them**: its mod.ff, map, `_load`, `_patch` and gumball zones contain no font, and its IWDs no font
+  image. The proof uses **`mw2rust`**, which replaces all of it.
+* T4 overrides an asset **in place** (probe, `ENW_FONT_PROBE=1`, 01:58 on mw2rust): the font pool slot
+  `sharedUiInfo` points at (`0x00AD1C9C`, bigFont) holds the mod's font (20 px, 190 glyphs); the
+  stock header is moved to a spare slot of the same pool (`0x00AD1D2C`: 32 px, 191 glyphs, glyph
+  table in the `code_post_gfx` zone, SHA-256 equal to a stock game's). Material slots work the same.
+* **The atlas pixels are replaced even for the stock asset**: images are loaded from the IWDs by
+  name, and mw2rust ships `images/gamefonts_pc.iwi` (1024×1024). Both `gamefonts_pc` image slots
+  held the mod's texture. The stock pixels never enter the process.
+
+### 12.2 The fix (`client-dll/components/stock_font.cpp`), nothing of Activision's shipped
+
+Per `ip-posture.md` §0 everything of theirs must come from the player's own install at runtime, so
+the DLL carries **hashes, not data**:
+
+1. **Glyph tables**: the font pool slot named `fonts/X` whose glyph table's SHA-256 equals the stock
+   value recorded from a stock game (small, normal, big, extraBig). The live slot when no mod
+   overrides it, the moved original when one does.
+2. **Material**: the `fonts/gamefonts_pc` (and `_glow`) pool slot whose name string lies in the stock
+   zone (within 1.5 MB of that glyph table), copied into our memory (0x70) with its texture table.
+3. **Atlas**: read from the player's own `main\*.iwd` — never a mod's folder — the stored
+   `images/gamefonts_pc.iwi` (stock English: `localized_english_iw00.iwd`, IWi v6 DXT5 512×512, ten
+   mips smallest first, checked against the stock size), made into a D3D texture **on the device's
+   own thread** (`frame_capture::run_at_present`), wired into our own `GfxImage`.
+4. Our own `Font_s` per face points at the stock glyph table and our material. The overlay
+   (`chat_overlay.cpp pick_font`) and the Esc menu (`pause_menu.cpp font_for`, one line changed) ask
+   `stock_font::pick(real scale)`, which uses WaW's thresholds at their **stock** values (0.25 / 0.4
+   / 0.55, from the dvars' registration) rather than the dvars, which a mod can set.
+5. Resolved once, on the first in-map frame, after every zone of the map has loaded, and never
+   again: what it holds is our copies plus the `code_post_gfx` zone, which is never unloaded, so a
+   map's `_load`/`_patch` fastfiles and anything loaded later cannot change it. If anything is
+   missing (another language's glyph tables, a compressed atlas) it logs why once and falls back to
+   the engine's fonts.
+
+### 12.3 Proof
+
+`ENW_CHAT_SELFTEST=4` draws an opaque card with the same sample in each face through
+`stock_font::pick`, plus one line in the engine's *current* bigFont, and captures it (800×600,
+`waw-c2`, Play Local, invisible window):
+
+| run | map | log | card lines 1–4 (ours) | line 5 (engine's font) |
+|---|---|---|---|---|
+| 02:11:58 | Nacht (stock) | `READY ... stock atlas from ...\main\localized_english_iw00.iwd` | — | — |
+| 02:10:51 | **mw2rust** (fs_game mods/mw2rust) | stock headers in the moved slots; materials `OVERRIDDEN by a mod`; `READY` | **pixel-identical to Nacht** | 5,022 px differ (the mod's font) |
+
+![Nacht above, mw2rust below](ui/stock-font-card-nacht-vs-mw2rust.png)
+`ui/stock-font-overlay-on-mw2rust.jpg`: the open overlay in stock WaW type while the engine's own
+console print above it is in the mod's font.
+
+**Lock holds (c2 only, invisible window, each checked free):** 01:52:46–01:53:39, 01:54:29–01:55:22,
+01:56:00–01:56:38, 01:56:52–01:57:50, 01:58:01–01:59:04, 02:03:45–02:04:33, 02:04:51–02:05:24,
+02:05:47–02:06:25, 02:06:41–02:07:34, 02:08:01–02:08:54, 02:10:51–02:11:44, 02:11:58–02:12:36.
+
+**Not proven:** a box game (dedi + client) on a font-replacing map — the client-side mechanism is the
+same, but the local dedi still cannot run most custom maps (weapon-index mismatch, `dedi.md`); the ENW
+Esc menu (`pause_menu.cpp`) draws only in box games, so its switch to `stock_font::pick` is
+built but not captured; a non-English install (it will fall back and say so). Harness note: with
+`launch.ps1`'s new private LocalAppData default a copy needs a seeded `players\profiles` or `+map`
+never runs; `c2` was seeded from `c1`'s. The first mw2rust mount ran without
+`ENW_USE_PRIVATE_LOCALAPPDATA=1` and so also junctioned `mods\mw2rust` under B's real
+`%LOCALAPPDATA%\Activision\CoDWaW\mods` (a junction onto the archive; nothing written into B's files).

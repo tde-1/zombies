@@ -1419,3 +1419,14 @@ New, test-only: `components/frame_capture_timer.cpp`. `ENW_FRAME_CAPTURE_AT="10,
 same clock through `Cbuf_AddText` 0x594200. Both need `ENW_FRAME_CAPTURE=1`. No hooks; a frame
 subscriber. The stock `briefing` menu otherwise stays open on an off-screen client and the pause
 lane freezes the world as `solo_menu`.
+
+### 9c. Round 4 (2026-09-23) — the stock font, whatever the mod
+
+`components/stock_font.cpp` (`chat-overlay.md` §12): the overlay and the Esc menu draw with World at
+War's stock font even when a mod replaces `fonts/*` and the `gamefonts_pc` atlas (29 of 78 archived
+mods do). Glyph tables are found in the font pool by SHA-256 (the in-place override moves the stock
+header to a spare slot), the material by its name string lying in the `code_post_gfx` zone, and the
+atlas is read from the player's own `main\*.iwd` and made into a texture on the device thread
+(`frame_capture::run_at_present`). Only hashes ship. Proof: the sample card is pixel-identical on
+Nacht and on mw2rust. `ENW_FONT_PROBE=1` logs the font pool.
+
