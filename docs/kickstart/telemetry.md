@@ -242,7 +242,7 @@ scrubbing and gzip happen in the niced child. Nothing is built or uploaded while
 map is being prepared (`busy`); uploads are one at a time, streamed, throttled to 8 MB/s. Text
 files are tailed to 16 MB each; a 413 rebuilds once with 2 MB tails.
 
-**Outbox** `<data>/telemetry/` (beside the spool; on the box `/root/ZombiesDev/telemetry` unless
+**Outbox** `$ZOMBIES_DEV/telemetry/` (beside `spool/`; the parent of `--spool-dir` or `--replay-dir` when one is given; or
 `ENW_TELEMETRY_DIR`): `staging/<id>/` (job.json, no secrets, so an agent restart builds it next
 start), `outbox/<id>.tar.gz` + `.json`, `rejected/`, `state.json`. Answers as the launcher's: 200 /
 duplicate deleted; 5xx / network 1 m, 5 m, 30 m, 2 h, 6 h; 429 `Retry-After`; 400 → `rejected/`;

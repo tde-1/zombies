@@ -1,6 +1,6 @@
 'use strict'
 
-// The site's own log and its own incidents (docs/kickstart/telemetry.md §9).
+// The site's own log and its own incidents (docs/kickstart/telemetry.md §8).
 //
 // Before this, the site's stdout went nowhere: keepalive.ps1 starts `node server/index.js`
 // in a hidden window, so every console line was lost the moment it was printed. Now:
