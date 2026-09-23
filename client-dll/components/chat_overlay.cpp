@@ -670,7 +670,53 @@ bool esc_menu_open() {
     return in_map && (rd<int>(kKeyCatchers) & 0x10) != 0;
 }
 
+// ---- the Esc menu on a REMOTE server --------------------------------------
+// UI_SetActiveMenu(2) (0x5D6D74) sets cl_paused 1 when it opens "pausedmenu": the
+// single-player way of pausing, which assumes the server is in this process. On a
+// box it pauses only THIS client -- which then stops sending, so the enw_ui
+// `paused` it just set never reaches the server (hold-on run, 01:00: client logged
+// enw_ui paused, server logged nothing) and the zombies play on. With no local
+// server (sv_running 0) we put cl_paused straight back to 0 through the engine's
+// own setter (Dvar_SetIntByName 0x5EF930: EAX value, [esp+4] name): the client
+// keeps talking, the server hears `paused` and freezes the game for real, and
+// pause_hold keeps the picture still. Resume (0x5B6670) sets 0 itself.
+constexpr uintptr_t kDvarSetIntByName = 0x5EF930;
+constexpr uint8_t kDvarSetIntSig[] = {0x83, 0xEC, 0x24, 0x53, 0x8B, 0x5C, 0x24, 0x2C, 0x56, 0x57, 0x53, 0x8B, 0xF0};
+int g_setint_ok = -1;
+long g_unpaused_client = 0;
+
+void dvar_set_int(const char* name, int value) {
+    const uintptr_t fn = kDvarSetIntByName;
+    __asm {
+        push name
+        mov eax, value
+        mov edx, fn
+        call edx
+        add esp, 4
+    }
+}
+
+void keep_remote_client_running() {
+    const uintptr_t clp = rd<uintptr_t>(0x1F552C4), svr = rd<uintptr_t>(0x1F552DC);
+    if (!clp || !svr) return;
+    if (rd<int>(clp + kDvarValue) == 0 || rd<unsigned char>(svr + kDvarValue) != 0) return;
+    if (rd<int>(kClcState) != 10) return;
+    if (g_setint_ok < 0) {
+        uint8_t got[sizeof kDvarSetIntSig] = {};
+        g_setint_ok = memory::read_raw(kDvarSetIntByName, got, sizeof got) &&
+                      std::memcmp(got, kDvarSetIntSig, sizeof got) == 0;
+        if (!g_setint_ok) ENW_WARN("chat_overlay: 0x%08X is not Dvar_SetIntByName here; cl_paused left alone",
+                                   static_cast<unsigned>(kDvarSetIntByName));
+    }
+    if (!g_setint_ok) return;
+    dvar_set_int("cl_paused", 0);
+    if (++g_unpaused_client <= 5)
+        ENW_INFO("chat_overlay: the Esc menu set cl_paused 1 on a client of a REMOTE server; set it back "
+                 "to 0 so this client keeps sending (the server pauses the game on enw_ui paused)");
+}
+
 void report_ui_state() {
+    keep_remote_client_running();
     if (!g_notify_pause || !g_bound) return;
     const char* want = g_open ? "typing" : esc_menu_open() ? "paused" : "clear";
     const int pchat = g_me.have ? (g_me.pause_on_chat ? 1 : 0) : 1;
@@ -746,6 +792,144 @@ void clip_for_overlay(bool on) {
     if (!covers) return;
     const RECT r{tl.x, tl.y, br.x, br.y};
     g_we_clipped = ::ClipCursor(&r) != FALSE;
+}
+
+// ------------------------------------------------ the client side of a pause
+// B, 0.2.13 on the box: "when you press T and you're paused, one of the numbers
+// in the FPS meter spikes and the zombies twitch once or twice, then it's normal."
+//
+// What happens (read out of CL_SetCGameTime 0x63C6C0 and CL_AdjustTimeDelta
+// 0x63C400): the frozen server keeps SENDING snapshots, all stamped with the same
+// serverTime S (svs.time is held). The client's clock is realtime + serverTimeDelta
+// and never goes backwards (0x63C76B clamps it to the previous value), so it runs
+// on past S -- extrapolating the zombies forward (the twitch) -- while each new
+// snapshot pulls the delta down ("<FAST>" above 100 ms). Once the gap passes 1000 ms
+// CL_AdjustTimeDelta RESETs: cl.serverTime is written straight back to S (0x63C496),
+// the game clock jumps BACKWARDS, and cg_drawFPS's frame-time line spikes.
+//
+// The fix holds the client's clock while the server is frozen. "Frozen" is read off
+// the snapshots: a new snapshot (cl.snap.messageNum moved) carrying the same
+// serverTime as the last one. A LIVE server does that too, now and then, for one
+// snapshot (measured: 16-63 ms "freezes" in the hold-off run), so it takes two in a
+// row -- or one, when this client has just reported enw_ui typing/paused and so
+// expects the freeze. Whoever caused it (typing, the Esc menu, a co-op all-in-menu
+// pause, the host) the client holds. While it holds, cl.serverTimeDelta is pinned
+// every frame so realtime + delta sits just under the clock at detection: the
+// clock stands still, nothing extrapolates further, and CL_AdjustTimeDelta only ever
+// sees a small gap (no <FAST> pull, no <RESET>). On resume the delta is set once so
+// the clock continues from exactly where it stood at the real-time rate, the server
+// continues from S with no catch-up, and the engine's slow adjust owns it again.
+//
+// Addresses (all from 0x63C400 / 0x63C6C0): cl.snap.valid 0x3058530, .serverTime
+// 0x3058538, .messageNum 0x305853C (verified at runtime: +1 per snapshot);
+// cl.oldServerTime 0x305A620, cl.serverTime 0x305A624, cl.oldFrameServerTime
+// 0x305A628, cl.serverTimeDelta 0x305A62C, cl.extrapolatedSnapshot 0x305A634,
+// cl.newSnapshots 0x305A638; cls.realtime 0x48AE4E8. Off: ENW_PAUSE_HOLD=0.
+constexpr uintptr_t kSnapValid = 0x3058530;
+constexpr uintptr_t kSnapServerTime = 0x3058538;
+constexpr uintptr_t kSnapMessageNum = 0x305853C;
+constexpr uintptr_t kClServerTime = 0x305A624;
+constexpr uintptr_t kClServerTimeDelta = 0x305A62C;
+constexpr uintptr_t kClsRealtime = 0x48AE4E8;
+
+bool g_hold_enabled = true;
+bool g_frozen = false;
+int g_last_snap_time = 0, g_last_snap_msg = -1;
+int g_frozen_at = 0;             // S
+DWORD g_frozen_since = 0;
+long g_holds = 0;
+// The evidence: cl.serverTime per frame. A backwards step is the RESET jump.
+int g_prev_cl_time = 0;
+int g_max_step = 0, g_min_step = 0;           // over the current window
+int g_resume_max_step = 0, g_resume_min_step = 0;
+DWORD g_resume_until = 0;
+int g_freeze_max_step = 0, g_freeze_min_step = 0;
+int g_ext_past_s = 0;            // how far the clock got past S before the hold caught it
+int g_hold_clock = 0;            // cl.serverTime the hold keeps
+int g_dup_run = 0;               // consecutive snapshots with an unchanged serverTime
+
+void pause_hold_tick() {
+    if (rd<int>(kClcState) != 10 || !rd<int>(kSnapValid)) {
+        g_frozen = false;
+        g_last_snap_msg = -1;
+        g_prev_cl_time = 0;
+        return;
+    }
+    const int st = rd<int>(kSnapServerTime);
+    const int mn = rd<int>(kSnapMessageNum);
+    const int clt = rd<int>(kClServerTime);
+    const int step = g_prev_cl_time ? clt - g_prev_cl_time : 0;
+    g_prev_cl_time = clt;
+    if (g_frozen) {
+        g_freeze_max_step = (std::max)(g_freeze_max_step, step);
+        g_freeze_min_step = (std::min)(g_freeze_min_step, step);
+    } else if (g_resume_until && ::GetTickCount() < g_resume_until) {
+        g_resume_max_step = (std::max)(g_resume_max_step, step);
+        g_resume_min_step = (std::min)(g_resume_min_step, step);
+    } else if (g_resume_until) {
+        ENW_INFO("pause_hold: first 2 s after resume: cl.serverTime per-frame step %d..%d ms "
+                 "(a negative step is the clock going backwards)", g_resume_min_step, g_resume_max_step);
+        g_resume_until = 0;
+    }
+
+    if (mn != g_last_snap_msg) {
+        g_dup_run = (g_last_snap_msg >= 0 && st == g_last_snap_time) ? g_dup_run + 1 : 0;
+        const bool expected = g_ui_sent == "typing" || g_ui_sent == "paused";
+        if (g_dup_run >= (expected ? 1 : 2) && !g_frozen) {
+            g_frozen = true;
+            g_hold_clock = clt;
+            g_frozen_at = st;
+            g_frozen_since = ::GetTickCount();
+            g_freeze_max_step = g_freeze_min_step = 0;
+            g_ext_past_s = clt - st;
+            ++g_holds;
+            ENW_INFO("pause_hold: the server is FROZEN (snapshot %d carries serverTime %d again). "
+                     "Client clock %d (%+d ms past S); %s", mn, st, clt, clt - st,
+                     g_hold_enabled ? "holding it" : "NOT holding (ENW_PAUSE_HOLD=0)");
+        } else if (st != g_last_snap_time && g_frozen) {
+            g_frozen = false;
+            if (g_hold_enabled)   // continue from the held clock at the real-time rate
+                *reinterpret_cast<volatile int*>(kClServerTimeDelta) = clt - rd<int>(kClsRealtime);
+            ENW_INFO("pause_hold: the server RESUMED after %lu ms (serverTime %d -> %d). While frozen "
+                     "the client clock stepped %d..%d ms per frame and ended at %d (%+d ms past S)",
+                     ::GetTickCount() - g_frozen_since, g_frozen_at, st, g_freeze_min_step,
+                     g_freeze_max_step, clt, clt - g_frozen_at);
+            g_resume_until = ::GetTickCount() + 2000;
+            g_resume_max_step = g_resume_min_step = 0;
+        }
+        g_last_snap_msg = mn;
+        g_last_snap_time = st;
+    }
+    if (g_frozen && g_hold_enabled) {
+        const int realtime = rd<int>(kClsRealtime);
+        // 50 ms under the held clock: realtime moves on between this tick and the
+        // next CL_SetCGameTime, and the engine's never-backwards clamp (0x63C76B)
+        // then keeps the clock exactly at its last value instead of creeping by a frame.
+        *reinterpret_cast<volatile int*>(kClServerTimeDelta) = g_hold_clock - 50 - realtime;
+    }
+}
+
+// --------------------------------------------- the Esc menu, and why it did not
+// B: "Escape to pause the game doesn't work." In his box game (enw-38756.log) the
+// client never reported enw_ui paused, and the server never logged solo_menu.
+// This instrument records, for every Esc the player presses in a map with the
+// overlay closed, what the engine's Esc path (CL_KeyEvent 0x4783EB..0x47848A ->
+// UI_SetActiveMenu(2) 0x5D6D12 -> "pausedmenu") tests, and what keyCatchers is
+// 300 ms later.
+constexpr uintptr_t kCinePlaying = 0x3DB3F49, kCineA = 0x3DB3C40, kCineB = 0x3DB3D40;
+constexpr uintptr_t kDvarClPaused = 0x1F552C4, kDvarSvRunning = 0x1F552DC;
+constexpr uintptr_t kDvarCgCineFull = 0x368EBD4;
+DWORD g_esc_check_at = 0;
+
+void log_esc_state(const char* when) {
+    const uintptr_t clp = rd<uintptr_t>(kDvarClPaused), svr = rd<uintptr_t>(kDvarSvRunning),
+                    cf = rd<uintptr_t>(kDvarCgCineFull);
+    ENW_INFO("esc: %s: keyCatchers 0x%X, clc.state %d, cl_paused %d, sv_running %d, cinematic "
+             "flags f49=%d c40=%d d40=%d, cg_cinematicFullscreen %d, enw_ui '%s'", when,
+             rd<int>(kKeyCatchers), rd<int>(kClcState), clp ? rd<int>(clp + kDvarValue) : -1,
+             svr ? rd<unsigned char>(svr + kDvarValue) : -1, rd<unsigned char>(kCinePlaying),
+             rd<unsigned char>(kCineA), rd<unsigned char>(kCineB),
+             cf ? rd<unsigned char>(cf + kDvarValue) : -1, g_ui_sent.c_str());
 }
 
 // ------------------------------------------------------------------- tabs
@@ -1395,6 +1579,11 @@ bool filter(HWND, UINT msg, WPARAM wp, LPARAM lp, LRESULT* result) {
     *result = 0;
 
     if (!g_open) {
+        if (msg == WM_KEYDOWN && wp == VK_ESCAPE && !(lp & (1 << 30)) && in_game()) {
+            log_esc_state("Esc pressed (before the engine sees it)");
+            g_esc_check_at = ::GetTickCount() + 300;
+            return false;
+        }
         if (msg == WM_KEYDOWN && static_cast<int>(wp) == g_open_vk && !(lp & (1 << 30))) {
             // Only in a map, and only when neither the console (0x1) nor a menu
             // (0x10, UI) nor the stock message field (0x20) owns the keys.
@@ -1962,6 +2151,21 @@ const step kScript[] = {
     {28400, S_KEY, VK_ESCAPE, 0, nullptr},
     {29000, S_DONE, 0, 0, nullptr},
 };
+// ENW_CHAT_SELFTEST=3: the pause test. Typing pause (overlay open 5 s), then the
+// Esc menu, with captures of cg_drawFPS at each edge.
+const step kScript3[] = {
+    {5000, S_SHOT, 0, 0, "p-before"},
+    {6000, S_KEY, 'T', 0, nullptr},
+    {7500, S_SHOT, 0, 0, "p-typing-1.5s"},
+    {11000, S_SHOT, 0, 0, "p-typing-5s"},
+    {11500, S_KEY, VK_ESCAPE, 0, nullptr},     // closes the overlay
+    {12000, S_SHOT, 0, 0, "p-resumed-0.5s"},
+    {14000, S_KEY, VK_ESCAPE, 0, nullptr},     // the game's Esc menu
+    {16000, S_SHOT, 0, 0, "p-escmenu"},
+    {18000, S_KEY, VK_ESCAPE, 0, nullptr},
+    {19000, S_SHOT, 0, 0, "p-after-esc"},
+    {21000, S_DONE, 0, 0, nullptr},
+};
 size_t g_step = 0;
 int g_selftest_mode = 0;
 
@@ -2025,9 +2229,11 @@ void inject_demo() {
 }
 
 void selftest_tick() {
-    if (!g_selftest || !g_first_draw || g_step >= sizeof kScript / sizeof kScript[0]) return;
+    const step* script = g_selftest_mode == 3 ? kScript3 : kScript;
+    const size_t count = g_selftest_mode == 3 ? sizeof kScript3 / sizeof kScript3[0] : sizeof kScript / sizeof kScript[0];
+    if (!g_selftest || !g_first_draw || g_step >= count) return;
     const DWORD t = ::GetTickCount() - g_first_draw;
-    const step& s = kScript[g_step];
+    const step& s = script[g_step];
     if (t < s.at) return;
     ++g_step;
     const bool scripted = g_selftest_mode >= 2;
@@ -2231,6 +2437,7 @@ public:
             else g_open_vk = std::atoi(k);
         }
         g_notify_pause = !env_off("ENW_CHAT_NOTIFY");
+        g_hold_enabled = !env_off("ENW_PAUSE_HOLD");
         if (const char* st = std::getenv("ENW_CHAT_SELFTEST"); st && st[0] && st[0] != '0') {
             g_selftest = true;
             g_selftest_mode = std::atoi(st);
@@ -2260,6 +2467,11 @@ public:
         frame::subscribe("chat_overlay", [](uint64_t n) {
             if (n < 60) return;  // let the command-line execs settle first
             report_ui_state();
+            pause_hold_tick();
+            if (g_esc_check_at && ::GetTickCount() >= g_esc_check_at) {
+                g_esc_check_at = 0;
+                log_esc_state("300 ms after Esc");
+            }
         });
     }
 

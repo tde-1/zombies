@@ -119,6 +119,30 @@ volatile LONG g_bink_memory = 0; // fastfile opens this session: the menu backgr
 void* volatile g_bink_handles[16] = {};  // FILE handles only
 bool g_block_load = true;
 volatile ULONGLONG g_connect_tick = 0;  // GetTickCount64 at our CL_ConnectLocal
+volatile bool g_refused_any = false;    // a load video was refused this session
+
+// ---- the stale cinematic name a refused load video leaves behind -----------
+// FOUND 2026-09-23 (B: "Escape to pause the game doesn't work", box game on
+// 0.2.13). When the engine asks for `<map>_load.bik` it first stores the NAME in
+// the cinematic state (the string at 0x3DB3D40). We refuse the open, so nothing
+// ever plays and nothing ever runs the stop (0x6EBE20, which is what clears the
+// name) -- the name stays set for the whole game. Two engine paths read it:
+//   * CL_KeyEvent's Esc (0x478450..0x47846A): "a cinematic is up and
+//     cg_cinematicFullscreen is on" -> Esc is IGNORED. The pause menu never opens;
+//   * CG (0x437F12): the same test makes CG hand the frame to the fullscreen
+//     cinematic drawer (0x6EBF40) every frame.
+// Measured in a local dedi+client join (hold-off, 00:56): Esc pressed in the map
+// with the byte at 0x3DB3D40 = 110 ('n', "nazi_zombie_prototype_load") and
+// keyCatchers still 0x0 300 ms later. A Play Local game (+map) never refuses a
+// video, which is why its Esc worked all along.
+// The fix is the engine's own stop, called once the map is live, only when
+// nothing is playing (0x3DB3F49 == 0, 0x3DB3C40 == 0) and the pending name is the
+// one we refused (a map's own later cinematic is never touched).
+constexpr uintptr_t kCineName = 0x3DB3D40, kCinePlaying = 0x3DB3F49, kCineOther = 0x3DB3C40;
+constexpr uintptr_t kCinematicStop = 0x6EBE20;
+constexpr uint8_t kCinematicStopSig[] = {0x56, 0x8B, 0x35, 0x38, 0xB1, 0x7E, 0x00, 0x68, 0x60, 0x8F, 0x29, 0x02};
+bool g_stale_cleared = false;
+bool g_stale_sig_bad = false;
 
 bool contains_nocase(const char* hay, const char* needle) {
     const size_t n = std::strlen(needle);
@@ -145,6 +169,7 @@ void* __stdcall bink_open_detour(const char* name, unsigned flags) {
     if (is_path && g_armed && g_block_load && (contains_nocase(name, "_load.bik") || fallback)) {
         ENW_INFO("bink: REFUSED the load video '%s' for this join; the engine handles a "
                  "NULL BinkOpen. ENW_ALLOW_LOAD_VIDEO=1 lets it play.", name);
+        g_refused_any = true;
         return nullptr;
     }
     void* h = g_bink_open ? g_bink_open(name, flags) : nullptr;
@@ -196,6 +221,33 @@ void try_connect() {
     const auto fn = reinterpret_cast<CL_ConnectLocal_t>(live);
     fn(g_map, 0);
     ENW_INFO("connect_local: returned; client state [0x305842C] = %d", clc_state());
+}
+
+void stale_cinematic_tick(uint64_t) {
+    if (!g_refused_any || g_stale_cleared || g_stale_sig_bad) return;
+    if (clc_state() != 10) return;
+    const volatile char* nm = reinterpret_cast<const volatile char*>(kCineName);
+    if (!nm[0] || *reinterpret_cast<const volatile uint8_t*>(kCinePlaying) ||
+        *reinterpret_cast<const volatile uint8_t*>(kCineOther))
+        return;
+    char name[64] = {};
+    for (size_t i = 0; i + 1 < sizeof name && nm[i]; ++i) name[i] = nm[i];
+    if (!contains_nocase(name, "_load") && !contains_nocase(name, "default")) return;
+    uint8_t got[sizeof kCinematicStopSig] = {};
+    if (!memory::read_raw(kCinematicStop, got, sizeof got) ||
+        std::memcmp(got, kCinematicStopSig, sizeof got) != 0) {
+        g_stale_sig_bad = true;
+        ENW_WARN("connect_local: the refused video's name '%s' is still pending, but 0x%08X is not "
+                 "the cinematic stop on this image -- leaving it (Esc stays blocked)", name,
+                 static_cast<unsigned>(kCinematicStop));
+        return;
+    }
+    reinterpret_cast<void(__cdecl*)()>(kCinematicStop)();
+    g_stale_cleared = true;
+    ENW_INFO("connect_local: cleared the cinematic name '%s' our refused load video left pending "
+             "(engine stop 0x%08X; now '%s'). Without this the engine ignores Esc for the whole "
+             "game and CG runs the fullscreen-cinematic path every frame.",
+             name, static_cast<unsigned>(kCinematicStop), nm[0] ? "still set" : "clear");
 }
 
 ULONGLONG g_t0 = 0;          // post_init
@@ -278,6 +330,7 @@ public:
         if (!g_armed) return;
         g_t0 = ::GetTickCount64();
         enw::frame::subscribe("connect_local", gate_tick);
+        enw::frame::subscribe("connect_local_cine", stale_cinematic_tick);
         ENW_INFO("connect_local: will fire once the menu is up, no file video is open and "
                  "clc.state != 1 for "
                  "%llu ms, no sooner than %llu ms after now, and at %llu ms regardless "
