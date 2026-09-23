@@ -11,8 +11,8 @@ function check(name, fn) {
   try { fn(); pass++; console.log(`ok   ${name}`) } catch (e) { fail++; console.log(`FAIL ${name}\n     ${e.message}`) }
 }
 
-check('parse: comments, blanks, quotes; only ZM_DISCORD_* / ENW_DISCORD_* keys', () => {
-  const p = D.parse('# c\n\nZM_DISCORD_CLIENT_ID=1453044191826415736\r\nENW_DISCORD_INVITE="https://x"\nZM_SITE_PASSWORD=nope\nSTEAM_API_KEY=nope\nZM_DISCORD_EMPTY=\n# ENW_DISCORD_X=commented\n')
+check('parse: comments, blanks, quotes; only the keys code reads (never the public key or bot token)', () => {
+  const p = D.parse('# c\n\nZM_DISCORD_CLIENT_ID=1453044191826415736\r\nENW_DISCORD_INVITE="https://x"\nZM_SITE_PASSWORD=nope\nSTEAM_API_KEY=nope\nZM_DISCORD_PUBLIC_KEY=abcd\nZM_DISCORD_BOT_TOKEN=secret\n# ENW_DISCORD_X=commented\n')
   assert.deepStrictEqual(p, { ZM_DISCORD_CLIENT_ID: '1453044191826415736', ENW_DISCORD_INVITE: 'https://x' })
 })
 

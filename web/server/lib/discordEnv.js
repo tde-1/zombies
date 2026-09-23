@@ -10,7 +10,9 @@
 //
 // Deliberately narrow, so this never becomes a dotenv by the back door:
 //   * one fixed path (infra/discord.env next to site.env), never the cwd or the repo root;
-//   * only keys named ZM_DISCORD_* or ENW_DISCORD_* are taken, anything else is ignored;
+//   * only the keys some code actually reads are taken (KEYS below); anything else in the file
+//     -- ZM_DISCORD_PUBLIC_KEY and ZM_DISCORD_BOT_TOKEN, which B keeps there for later -- never
+//     reaches process.env, so a secret nothing uses cannot leak through a log or a child;
 //   * a value already in the environment (site.env via keepalive, or the shell) wins, except
 //     an empty one.
 // infra/discord.env.example is the committed template; the real file is gitignored (*.env).
@@ -19,7 +21,9 @@ const fs = require('fs')
 const path = require('path')
 
 const DEFAULT_FILE = path.join(__dirname, '..', '..', '..', 'infra', 'discord.env')
-const KEY_RE = /^(ZM|ENW)_DISCORD_[A-Z0-9_]+$/
+// ZM_DISCORD_CLIENT_ID: routes/launcher.js hello -> the launcher's Rich Presence.
+// ENW_DISCORD_INVITE:   lib/discord.js, the invite link in the top right.
+const KEYS = new Set(['ZM_DISCORD_CLIENT_ID', 'ENW_DISCORD_INVITE'])
 
 function parse(text) {
   const out = {}
@@ -30,7 +34,7 @@ function parse(text) {
     if (eq <= 0) continue
     const name = t.slice(0, eq).trim()
     const value = t.slice(eq + 1).trim().replace(/^(["'])(.*)\1$/, '$2')
-    if (!KEY_RE.test(name) || !value) continue
+    if (!KEYS.has(name) || !value) continue
     out[name] = value
   }
   return out
@@ -49,4 +53,4 @@ function load(file = DEFAULT_FILE, env = process.env) {
   return set
 }
 
-module.exports = { load, parse, DEFAULT_FILE }
+module.exports = { load, parse, DEFAULT_FILE, KEYS }
