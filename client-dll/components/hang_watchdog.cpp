@@ -21,6 +21,7 @@
 #include "component.hpp"
 #include "frame.hpp"
 #include "logger.hpp"
+#include "session_record.hpp"
 
 #include <windows.h>
 #include <dbghelp.h>
@@ -114,14 +115,21 @@ void write_dump() {
                   st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
     const std::string path = log_dir() + name;
     HANDLE f = ::CreateFileA(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (f == INVALID_HANDLE_VALUE) { ENW_ERROR("hang_watchdog: cannot create %s (%lu)", path.c_str(), ::GetLastError()); return; }
+    if (f == INVALID_HANDLE_VALUE) {
+        const DWORD e = ::GetLastError();
+        session_record::write_hang(nullptr);
+        ENW_ERROR("hang_watchdog: cannot create %s (%lu)", path.c_str(), e);
+        return;
+    }
     const BOOL ok = ::MiniDumpWriteDump(::GetCurrentProcess(), ::GetCurrentProcessId(), f,
                                         static_cast<MINIDUMP_TYPE>(MiniDumpWithIndirectlyReferencedMemory |
                                                                    MiniDumpWithThreadInfo),
                                         nullptr, nullptr, nullptr);
+    const DWORD err = ok ? 0 : ::GetLastError();
     ::CloseHandle(f);
+    session_record::write_hang(ok ? path.c_str() : nullptr);  // session-<pid>.json: exit 'hang'
     if (ok) ENW_ERROR("hang_watchdog: wrote %s", path.c_str());
-    else ENW_ERROR("hang_watchdog: MiniDumpWriteDump failed (%lu)", ::GetLastError());
+    else ENW_ERROR("hang_watchdog: MiniDumpWriteDump failed (%lu)", err);
 }
 
 void watch() {

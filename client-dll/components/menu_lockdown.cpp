@@ -35,6 +35,7 @@
 #include "menu_lockdown.hpp"
 #include "menu_lockdown_model.hpp"
 #include "notice_board.hpp"
+#include "session_record.hpp"
 
 #include <windows.h>
 
@@ -201,6 +202,10 @@ void tick(uint64_t) {
     if (st == ::enw::lockdown::step::show) {
         const std::string err = error_message();
         g_reason = g_t.lost ? std::string("Lost the connection to the server.") : ::enw::lockdown::describe(err, g_t.reached_map);
+        // session-<pid>.json: the error this session ended on (exit 'error' unless it is the
+        // server closing the game, or empty -- session_record_format.hpp is_error_end).
+        session_record::note_error(g_t.lost ? "Lost the connection to the server (it sent nothing while in the map)"
+                                            : err.c_str());
         g_notice = notice_board::latest(10 * 60 * 1000);   // the site's newest word to this player, if recent
         if (!g_notice.empty()) ENW_INFO("lockdown: the end screen repeats the site's notice: '%s'", g_notice.c_str());
         if (g_t.lost)
