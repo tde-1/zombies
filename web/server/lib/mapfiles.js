@@ -25,7 +25,11 @@ const ARCHIVE = process.env.ZM_ARCHIVE ||
   path.join(process.env.ZOMBIES_DEV || 'C:\\Users\\b\\ZombiesDev', 'archive')
 
 // Map data only. An installer that shipped inside a map folder is not ours to pass on.
-const ALLOWED = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc'])
+// Loose files are map data too (mod-compat.md §2): `images/*.iwi` textures, `clientscripts/
+// *.csc`, the load video `.bik`, and extension-less `weapons/sp/<name>` weapon files. Until
+// 2026-09-23 this list dropped them, so the box (staged with rsync) had them and every
+// client did not -- 145 of Futurama's files, 65 of Arena's.
+const ALLOWED = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc', '.csc', '.iwi', '.bik', '.menu', '.str', ''])
 const CACHE_MS = 60_000
 
 let cache = null
