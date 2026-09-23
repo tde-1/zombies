@@ -42,6 +42,7 @@ import * as steam from './steam.js'
 import * as gameproc from './gameproc.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
+import { Presence, presenceFor } from './discord.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -107,6 +108,11 @@ const state = {
   // can draw where it has got to instead of waiting for the next progress event.
   installProgress: new Map(),
   installErrors: new Map(),
+  // Discord Rich Presence (discord.js): the IPC client, when the game process started
+  // (the elapsed timer), and the round a Play Local run last reported.
+  presence: null,
+  gameStartedAt: null,
+  localRound: null,
 }
 
 // ------------------------------------------------------------------- logging --
@@ -942,7 +948,7 @@ function wireIpc() {
   handle('signOut', () => { const s = settings.signOut(); push('session', s); return s })
 
   handle('getSettings', () => settings.get())
-  handle('setSettings', (patch) => { const s = settings.set(patch); push('settings', s); return s })
+  handle('setSettings', (patch) => { const s = settings.set(patch); push('settings', s); refreshPresence(); return s })
   // Display settings need the monitor list, and only the main process can get it.
   handle('getDisplays', () => ({ displays: listDisplays(), modes: MODES }))
 
@@ -1179,6 +1185,12 @@ function wireIpc() {
         : (hooks) => steam.ensureSteam({ ...hooks, openUrl: (u) => shell.openExternal(u) }),
     })
     state.flow = flow
+    // Discord: a flow is "Loading" until the game process starts, then the timer runs.
+    // Listeners only; nothing here waits on Discord (discord.js).
+    state.gameStartedAt = null
+    state.localRound = null
+    flow.on('launched', () => { state.gameStartedAt = Date.now(); refreshPresence() })
+    flow.on('update', () => refreshPresence())
     // The ledger: this match has been launched (by the player or by following), and
     // these are the processes to check before any later launch (followgate.js).
     const how = opts.follow ? 'followed' : opts.local ? 'Play Local' : 'Play'
@@ -1222,7 +1234,10 @@ function wireIpc() {
     // up front so a launch that never happens does not leave a poller running.
     if (local) {
       state.localRun = local.run
-      local.run.on('frame', (f) => push('localRound', { match_id: local.matchId, round: f.round, players: f.players }))
+      local.run.on('frame', (f) => {
+        push('localRound', { match_id: local.matchId, round: f.round, players: f.players })
+        if (f.round !== state.localRound) { state.localRound = f.round; refreshPresence() }
+      })
       flow.on('launched', () => {
         log('localrun', `relaying ${local.matchId} from ${local.info.dashUrl}`)
         local.run
@@ -1254,6 +1269,8 @@ function wireIpc() {
       followGate.noteEnded(flow.snapshot().matchId)
       log('play', `the game ended (${p.phase}: ${p.detail || 'no detail'})${flow.snapshot().matchId ? `; ${flow.snapshot().matchId} will not be relaunched unless the player presses Play or Resume` : ''}`)
       state.flow = null
+      state.gameStartedAt = null
+      refreshPresence()
       state.gate.unblock('game')
       state.tray?.rebuild()
       showSite(true)
@@ -1263,6 +1280,8 @@ function wireIpc() {
     const clear = () => {
       if (state.flow !== flow) return
       state.flow = null
+      state.gameStartedAt = null
+      refreshPresence()
       state.gate.unblock('game')
       state.tray?.rebuild()
       showSite(true)
@@ -1473,7 +1492,7 @@ function wireIpc() {
   state.startPartyWatch = () => {
     if (state.playWatcher || !state.api) return
     const w = new PlayWatcher(state.api)
-    w.on('poll', (p) => { try { onPlay(p) } catch (e) { log('party', `watch: ${e.message}`) } })
+    w.on('poll', (p) => { try { onPlay(p) } catch (e) { log('party', `watch: ${e.message}`) } refreshPresence() })
     w.on('error', () => {})     // a site that is down is not an error the player can act on
     state.playWatcher = w
     state.onPlay = onPlay
@@ -1745,8 +1764,34 @@ async function connectSiteApi() {
     // From here the launcher keeps up with the party by itself: the staged map is
     // downloaded and reported, and somebody else's Start becomes our launch.
     state.startPartyWatch?.()
+    refreshPresence()   // the site may carry the Discord application id
   } catch (e) {
     log('site hello failed', e.message)
+  }
+}
+
+// ------------------------------------------------------------ Discord presence --
+//
+// discord.js has the states and the pipe. This only gathers what the launcher already
+// knows (the running flow, the last /play poll, a local run's round) and hands it over.
+// Cheap and synchronous: it runs on every poll and flow update, and can never throw into
+// its caller.
+function discordClientId() {
+  return process.env.ENW_DISCORD_CLIENT_ID || cfg.load().discordClientId || state.api?.hello?.discord_client_id || ''
+}
+
+function refreshPresence() {
+  try {
+    if (!state.presence) return
+    const on = settings.get().discordPresence !== false
+    state.presence.setClientId(discordClientId())
+    state.presence.setEnabled(on)
+    if (!on) return
+    const snap = state.flow ? state.flow.snapshot() : null
+    const game = snap ? { map: snap.map, title: snap.title, mode: snap.mode, matchId: snap.matchId, startedAt: state.gameStartedAt } : null
+    state.presence.update(presenceFor({ enabled: on, game, play: state.lastPlay, localRound: state.localRound, siteUrl: state.siteInfo?.url }))
+  } catch (e) {
+    log('discord', `presence: ${e.message}`)
   }
 }
 
@@ -1860,6 +1905,13 @@ if (!single) {
     wireSitePassword()
     await createWindow()
     createTray()
+
+    // Discord Rich Presence. After the window, never in the launch path; connecting is
+    // asynchronous and Discord not running is a silent, backed-off retry (discord.js).
+    try {
+      state.presence = new Presence({ enabled: settings.get().discordPresence !== false, clientId: discordClientId(), log: (m) => log('discord', m) })
+      refreshPresence()
+    } catch (e) { log('discord', `presence not started: ${e.message}`) }
 
     if (state.pendingDeepLink) { const held = state.pendingDeepLink; state.pendingDeepLink = null; handleDeepLink(held) }
     const link = linkFromArgv(process.argv)
@@ -2043,6 +2095,7 @@ if (!single) {
     // port and referee games for a launcher that no longer exists — and it would only
     // ever be noticed as "the next game recorded nothing".
     try { state.localRun?.stop() } catch {}
+    try { state.presence?.stop() } catch {}
     try { if (hostAgent().stop()) log('hostagent', 'stopped the host agent we started') } catch {}
     // Applying is the only moment an update can disturb anything, so it happens here,
     // and only when no game is running and nothing is installing.

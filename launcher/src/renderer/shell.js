@@ -445,6 +445,7 @@ async function renderSettings() {
     "run out of memory without it. It is two bytes in the header of the copy ENW made; your own Steam copy " +
     "of World at War is never modified, and turning this off puts those bytes straight back.")
   field('Streamer mode', check('streamerMode'), 'Hides join codes and incoming invite details.')
+  field('Discord rich presence', check('discordPresence'))
   field('Remove unplayed maps', check('autoRemoveUnplayedMaps'))
   const scope = el('div', 'muted', s._scope ? `Saved to: ${s._scope}` : '')
   b.append(scope)

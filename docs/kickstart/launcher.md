@@ -2670,3 +2670,100 @@ game toast in the real UI (no screenshot, no game launched; the shell toast is d
 launcher's chrome, whether it shows over the site view is existing behaviour and unchecked); that
 a real SteamStub-stuck process has `MainWindowHandle` 0 (inferred from "no window"); the volume
 reaching the game's sound (no game run).
+
+## 2026-09-23 05:00 — Discord rich presence: states, assets, setting, B's checklist
+
+B: ENW Zombies as the app name, the ENW logo in the menus, the map's picture in a game, Solo / party
+size, the round, the elapsed time, and one switch. `src/main/discord.js`, tests
+`test/discord-presence.js` (22, in `npm test`).
+
+**Prior art.** ENW Movement (`CSGO-Matchmaker`) has no Discord Rich Presence. Its only "rich
+presence" is Steam's (`bot/lib/steam-real.js` `uploadRichPresence`), so there was no app id,
+library or asset naming to reuse. No Zombies Discord application id was in the repo, `infra/` or the
+vault, so the id is a config value (below) and B creates the app.
+
+**No dependency.** Discord's local IPC is a named pipe (`\?\pipe\discord-ipc-0..9`). Each frame is
+an 8-byte header (op, length, int32 LE) and a JSON body: handshake `{v:1, client_id}`, then
+`SET_ACTIVITY {pid, activity}`. Leaving `activity` out clears it. The module also answers
+ping/pong, handles CLOSE (e.g. 4000 Invalid Client ID) and treats READY as connected.
+
+**States** (Discord shows the app name, then `details`, then `state` + party size):
+
+| Launcher knows | details | state | party | large image | small image | timer |
+|---|---|---|---|---|---|---|
+| no game, no party (or a party of 1), signed out, placeholder | Browsing maps | – | – | `enw` | – | – |
+| party of 2–4, no game | In a party | staged map name, else "In the lobby" | n of 4 | `enw` | – | – |
+| a flow is running, game not started yet | map name | Loading | n of 4 if party | map card | `enw` | – |
+| in game, solo | map name | Solo · Round 7 (or "Solo" before a round is known) | – | map card | `enw` | since the game process started |
+| in game, party | map name | Round 7 (or "In game") | n of 4 | map card | `enw` | since the game process started |
+| Verified | as above | as above | | | hover text "Verified" | |
+| setting off | nothing (cleared) | | | | | |
+
+- **Map name**: the flow's title, else the site's catalogue title, run through the site's own
+  `prettyTitle` rule (copied, because the packaged launcher has no `web/`), else the bsp without
+  `nazi_zombie_`.
+- **Party size and round come from the /play poll the launcher already runs** (0.2 Hz, 1 Hz with a
+  boot screen). They are only used when the poll names *this* game's match id, so a stale party never
+  lends its size. The round is a new field on that poll, `match.round`, read from the live frame the
+  box already pushes to the site (`lib/live.js`, in memory). Nothing polls the game. A Play Local
+  run uses its own relay's `frame.round`.
+- **Map picture**: `https://<site>/media/maps/<stem>.thumb.webp?v=…` (400 px) beside the catalogue's
+  `art`. Discord's image proxy has to fetch it without the beta password, so `middleware/gate.js`
+  now exempts **only** `^/media/maps/<stem>(.thumb)?.webp$`, the map-card picture and nothing else.
+  A non-https site (dev) or a map with no art uses `enw` as the large image instead.
+- **Never sent**: Steam ids, names, the server address, the match id, the party code, the invite
+  token, join secrets, buttons. A test serialises the payloads and checks for each one.
+
+**Robustness.** The Presence object is created after the window and tray, never in `startPlay`,
+`BootFlow` or the Steam check. It only adds `flow.on('launched' | 'update')` listeners and one call
+per poll. Every entry point is synchronous and wrapped (`refreshPresence` catches everything), and
+every socket has an `'error'` handler. If Discord is not running, the launcher tries pipes 0–9 and
+then retries after 2 s, 4 s, 8 s … up to 60 s. It logs once, not every time. When Discord starts
+later, the next retry picks it up and sends the current activity. When Discord quits, the retries
+start again. Updates are deduplicated and throttled to one every 4 s (Discord allows about 5 per
+20 s); a burst sends only the last one. The game exiting returns to the menus state. Quitting the
+launcher (`before-quit`) clears the activity and closes the pipe (Discord would also clear it when
+the pipe closed). Turning the setting off clears it at once, closes the pipe and stops retrying.
+
+**Setting**: `discordPresence` (default on), one switch.
+- Launcher: `settings.js` `DEFAULT_SETTINGS`, `validate`, `GAME_KEYS`.
+- Shared schema: web `data/wawSettings.js` `ENW_ITEMS` + `LAUNCHER_KEYS`, which is what lane 4's
+  in-game Esc-menu Settings tab reads.
+- Site: `lib/users.js` `GAME_KEYS`; `/settings` → ENW → "discord / rich presence"
+  (`settingsLayout.js`; `Settings.jsx` now draws the ENW tab's catalogue groups under
+  `EnwSection`).
+- Launcher's own settings screen: "Discord rich presence".
+- `setSettings` calls `refreshPresence()`, so a change applies immediately.
+
+**The application id.** Order: `ENW_DISCORD_CLIENT_ID` env > `state/config.json` `discordClientId` >
+the site's `/api/launcher/hello` `discord_client_id`, from **`ZM_DISCORD_CLIENT_ID` in
+`infra/site.env`** > `config.js` `DEFAULTS.discordClientId` (empty). With no id the feature does
+nothing and logs `no Discord application id configured` once. The site route means B's id reaches
+every installed launcher at its next start, with no release.
+
+### B's checklist (two minutes)
+
+1. https://discord.com/developers/applications → **New Application** → name it **ENW Zombies**
+   (this is the name Discord shows: "Playing ENW Zombies"). Set the app icon to the ENW mark too.
+2. **Rich Presence → Art Assets → Add Image(s)**: the ENW mark as a PNG, at least 512×512 (e.g.
+   `launcher/src/renderer/assets/icon-256.png` upscaled, or the site's mark exported to PNG). Name
+   the asset **`enw`** exactly. Save. Assets can take a few minutes to appear.
+3. **General Information → Application ID** → copy it. Paste it into `infra/site.env` as
+   `ZM_DISCORD_CLIENT_ID=<id>`, then let the site cycle (keepalive). Every launcher picks it up at its
+   next start. For one PC only, `state/config.json` `"discordClientId": "<id>"` also works.
+4. Open Discord, restart the launcher. Your profile should say *Playing ENW Zombies · Browsing maps*.
+
+### Not proven
+
+- **A real Discord client.** Discord is not installed or running on this machine, and there is no
+  application id yet. Everything above was driven against a fake Discord on a real named pipe that
+  speaks the same framing. So these have never been seen on a real profile:
+  - the wording as Discord renders it;
+  - an https **webp** URL accepted as `large_image`. Discord has proxied external https images for
+    RPC since 2023, but webp through that proxy has not been checked. If the card shows a blank
+    square, the fallback is one line in `mapImage()`: return null, so it uses `enw`;
+  - whether the party size shows without a `party.id` (none is sent, deliberately).
+- **The real launcher window.** The wiring is covered by source tests. No dev Electron window was
+  started, because B's launcher was running on this desktop.
+- **`match.round` on a live box game.** The code reads the same in-memory frame as `/live`. It has
+  not been watched during a real game.

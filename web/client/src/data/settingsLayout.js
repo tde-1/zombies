@@ -40,6 +40,8 @@ export const GROUPS = [
   { tab: 'controls', id: 'interact', label: 'interact', items: binds('interact'), keys: true },
   { tab: 'controls', id: 'look', label: 'look', items: binds('look'), keys: true },
   { tab: 'game', id: 'game', label: 'game', items: ['cg_mature', 'cg_subtitles', 'hud_enable', 'cg_drawCrosshair', 'monkeytoy'] },
+  // Drawn on the ENW tab under EnwSection (pages/Settings.jsx).
+  { tab: 'enw', id: 'discord', label: 'discord', items: ['discordPresence'] },
 ]
 
 // Shorter, Gaff-style row labels. Anything not here uses the game's own label, lowercased.
@@ -81,6 +83,7 @@ export const LABELS = {
   m_filter: 'smooth mouse',
   cl_freelook: 'free look',
   rawMouse: 'raw input',
+  discordPresence: 'rich presence',
   cg_mature: 'mature content',
   cg_subtitles: 'subtitles',
   hud_enable: 'hud',

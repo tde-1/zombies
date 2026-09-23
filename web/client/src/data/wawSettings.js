@@ -216,6 +216,8 @@ export const ENW_ITEMS = [
     src: 'launcher: cg_drawFPS "Simple" / "Off" (an enum on T4, launcher.md 0.2.3)' },
   { id: 'rawMouse', section: 'enw', label: 'Raw Mouse Input', kind: 'toggle', to: 'key:rawMouse', def: true,
     src: 'client DLL mouse_polling (client.md 1, 5): ENW_RAW_MOUSE=0 in the environment turns it off' },
+  { id: 'discordPresence', section: 'enw', label: 'Discord Rich Presence', kind: 'toggle', to: 'key:discordPresence', def: true,
+    src: 'launcher: discord.js (launcher.md "Discord rich presence"). Off clears it at once. Not a game setting.' },
   { id: 'r_dof_enable', section: 'enw', label: 'Depth of Field', kind: 'toggle', to: 'waw', dvar: 'r_dof_enable', def: '1',
     src: 'engine dvar, archived in the config.cfg the game writes (seta r_dof_enable "1" on every profile here). Not in WaW\'s menus.' },
   { id: 'r_glow_allowed', section: 'enw', label: 'Glow', kind: 'toggle', to: 'waw', dvar: 'r_glow_allowed', def: null,
@@ -316,7 +318,7 @@ export function withValue(game, it, value) {
 // The object the launcher's `settings.set()` takes (window.enw.setSettings). Every
 // catalogue dvar is sent explicitly: a value, `null` (game default: `reset <dvar>`), or
 // '' (no opinion: the launcher stops writing it).
-export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse']
+export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence']
 export function toLauncherPatch(game) {
   const g = game || {}
   const out = {}

@@ -136,6 +136,10 @@ function router() {
       // bare SteamID, which the launcher must not put behind `+set name`; the wrapped site
       // shows the picker, and every lease is refused until it is done (middleware/auth.js).
       needs_name: req.me ? require('../lib/names').needsName(req.me.steam_id) : false,
+      // The "ENW Zombies" Discord application, for the launcher's Rich Presence
+      // (launcher/src/main/discord.js). Set in infra/site.env so it needs no launcher
+      // release; null = presence stays off. A public id, not a secret.
+      discord_client_id: /^\d{17,20}$/.test(process.env.ZM_DISCORD_CLIENT_ID || '') ? process.env.ZM_DISCORD_CLIENT_ID : null,
     })
   })
 
@@ -172,6 +176,9 @@ function router() {
         token: launch.token,
         connect: launch.connect,
         state: launch.state,
+        // The round, from the live frame the box already pushes (lib/live.js, in memory):
+        // the launcher's Discord presence shows it. Null when no fresh frame.
+        round: (() => { const f = live.get(launch.match_id); return f && f.state && f.state.round > 0 ? f.state.round : null })(),
       } : null,
       settings: users.settings(sid),
       vip: enw.isVip(sid),
