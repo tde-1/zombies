@@ -1660,6 +1660,32 @@ await test('the map is installed before the game is launched, and a failed insta
   assert.equal(s2.steps.find((s) => s.id === 'in_game').state, 'failed')
 })
 
+// host.md §15: B cancelled a silent "Reserving server" twice at ~30 s while his lease sat
+// in the box's boot queue. The box now says `queued` and the boot screen says so.
+await test('a boot queued on the box shows on the boot screen, and the launch still goes through', async () => {
+  const api = fakeApi()
+  let n = 0
+  const queued = { state: 'reserving', party: { id: 7, is_leader: false }, map: { key: 'water' },
+                   match: { match_id: 'm_q', connect: null, token: 't', state: 'leased', preparing: { phase: 'queued', ahead: 1, reason: 'boot' } } }
+  api.play = async () => (++n < 3 ? queued : { ...queued, state: 'ready', match: { ...queued.match, preparing: null, state: 'ready', connect: '10.0.0.5:28960' } })
+  const flow = new BootFlow({ map: 'water', api, follow: true, launch: false, serverTimeoutMs: 8000 })
+  const seen = []
+  flow.on('step', (s) => seen.push(`${s.id}:${s.detail}`))
+  const snap = await flow.runViaSite(api)
+  assert.ok(seen.includes('reserving:the server is starting another game first; yours is next'), seen.join(' | '))
+  assert.equal(snap.failed, false)
+  assert.equal(flow.host, '10.0.0.5:28960')
+})
+
+await test('the preparing words: queued, memory, a map pull, and nothing for nothing', async () => {
+  const { preparingDetail } = await import('../src/main/bootflow.js')
+  assert.equal(preparingDetail({ phase: 'queued', ahead: 2 }), 'the server is starting 2 games before yours, one at a time')
+  assert.equal(preparingDetail({ phase: 'queued', ahead: 0 }), 'the server is starting your game')
+  assert.equal(preparingDetail({ phase: 'queued', ahead: 0, reason: 'memory' }), 'the server is freeing memory for your game')
+  assert.equal(preparingDetail({ phase: 'downloading', percent: 41.6 }), 'the server is downloading the map (42%)')
+  assert.equal(preparingDetail(null), null)
+})
+
 // A stock map has no payload ANYWHERE: the site holds no files for it by design, so
 // the download step must never run. This is the exact launch B lost.
 await test('a stock map skips the download step instead of asking the site for files', async () => {
