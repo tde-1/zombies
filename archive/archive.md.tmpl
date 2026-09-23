@@ -697,3 +697,59 @@ file in the release carries it.
 pages, so they are covered; what is left uncovered is catalogue entries seen only on ZWR, UGX or
 archive.org. UGX thread bodies (§8) carry attachments; archive.org items carry files. Both are a
 page request per map and were not made tonight.
+
+## 11. 2026-09-23 (early) — Easter egg steps out of what we already hold (`archive/easter_eggs.py`)
+
+B: "Figure out a way to explain Easter eggs. Through the stuff we archive there might be sections
+or guides ... Find the Easter egg steps for as many maps as you can." Branch `web-easter-eggs`.
+
+**No requests.** The script reads the crawl cache and the extracts only:
+
+| Source | Scanned | Guides kept |
+|---|---:|---:|
+| callofdutyrepo release posts (pass C cache, `entry-content` only) | 387 posts | **26** |
+| UGX-Mods threads (`fetch_ugx_threads.py` cache, every post with its own poster, quotes and signatures stripped) | 12 threads, 180 posts | 0 |
+| moddb addon pages | 19 | 0 (the one EE mention is a tag) |
+| archive.org item descriptions (`catalogue.sqlite`, line breaks already gone) | 40 | 0 |
+| readmes shipped in `extract/` and `mods/` (`*.txt/*.md/*.rtf/*.nfo`; PDF only if `pypdf` is installed — it is not, and no PDF was found) | 9 files | 0 |
+
+**Result: 26 guides on 20 maps** (8 main quest, 2 power, 2 song, 5 ending, 9 side quest), 32
+candidates, 6 rejected as low. All 20 resolve to a site map (3 playable: `battlestar_galactica`,
+`cxca`, `shinomori`; 17 catalogue rows). Output `reports/map_guides.json`, schema
+`enw.map_guides/1`; `web/server/db/import-archive.js --guides` loads it (web.md, same date).
+
+**How it tells a guide from a feature list.** A release post is mostly a feature list ("Easter Egg",
+"Buyable Ending", "Soul Boxes"), and a heading followed by nouns is not a guide. The test is whether
+the lines under a heading are *instructions*: an imperative verb first ("Shoot the three skulls"),
+"Step N", a numbered list, a titled step ("APPEASE THE BOXES – Fill all 6 soul boxes"), or a
+one-liner ("To turn on the power, activate the 5 generators", "Shoot three teddy bears to access
+Pack-a-Punch"). Anchors inside changelogs and credits ("Fixed minor Easter Egg bugs", "X for in
+game objective system") are refused. Confidence in [0, 1] = heading (kind / guide words) + step
+count + share of steps that are instructions + numbering + places named, minus a feature-list
+penalty and a single-weak-line penalty; **only ≥ 0.45 (medium) is written**, ≥ 0.70 is "high".
+"What it gets you" comes from the heading, else an ending anywhere, else the last two steps (a
+perk's *name* only counts in a heading: "next to PHD Flopper" is a place). Unknown stays null.
+`python archive/easter_eggs.py --selftest` runs eight fixed cases (kept, feature list, changelog,
+credits, one-liners); `web/test/guides.js` runs it.
+
+Sample (steps abridged here; the site quotes them with author and link):
+
+- **xSanchez78's Der Riese Mod** — Main quest, 0.99, alaurenc9 on callofdutyrepo: link all teleporters → get monkeys → get the Hacker → obtain the Retriever → find the secret room → charge the teleporters → escape. Ends the game.
+- **Escher** — Main quest, 0.90, JayJiveCertified: fill the six soul boxes → Pack-a-Punch the free Mark 3 → shoot the green door → shoot three teddy bears (locations as details) → kill the NPC → buy all 11 Secure Points. Plus a side-quest tab.
+- **Unterwegs** — Ending 1.00 (8 steps, power → parts → switch → hidden buttons → buyable ending), plus Widow's Wine and perk-slot side quests.
+- **Psychopath** — Power 0.77: shoot the three power towers (each located), then the door by the box opens.
+- **Hello Kitty Remastered** — Song 0.74: the room with Electric Cherry, the broken TV by the stairs door, shoot it.
+
+**Unproven / known gaps.**
+- Nobody has played any of these. A guide is the author's release text, not a verified walkthrough.
+- Precision was checked by reading all 26 by eye; **recall was not measured** — a probe over the
+  codrepo/UGX lines with an EE word and a verb found the obvious misses (fixed) and left prose
+  hints and feature lines, but guides written as flowing paragraphs mostly still fall through.
+- The UGX threads gave nothing: the 12 cached threads are release posts whose EE text is not
+  steps, and the replies on page 1 are not guides. Later pages and the other ~590 UGX threads
+  were never fetched (a page request per thread; not made tonight).
+- 1,012 codrepo posts pass C never fetched are the biggest pool of more guides (`crawlers/codrepo.py --pass c`).
+- Stock maps (Nacht, Verrückt, Shi No Numa, Der Riese) get nothing: that text is Activision's
+  territory and nothing in the archive covers it.
+- Next, as B said: read the steps out of the map's own GSC (`referee/scan_map.py`'s flags are the
+  start); those rows would come in as `origin='script'`.
