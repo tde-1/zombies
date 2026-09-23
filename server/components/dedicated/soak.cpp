@@ -28,6 +28,12 @@
 // reports `enw_dev_knobs 1` on the link so the host's Verified judge fails the run if
 // it ever did (verified.js SERVER_RULES). ENW_DEV_GOD alone does nothing but say so.
 //
+// THE END OF A SOAK: a file `enw_dev_god.off` next to CoDWaW.exe (the working
+// directory; checked once a second, like pause.cpp's operator trigger) releases god
+// mode and CLEARS the bit, so the idle player is eaten and the game ends the way a
+// real game does -- end_game -> game_over -> match_end -> the host's disposition.
+// Deleting the file arms it again.
+//
 // ---------------------------------------------------------------------------
 // 2. varpool probe  (on in every dedicated game; ENW_NO_VARPOOL_PROBE=1 turns it off)
 // ---------------------------------------------------------------------------
@@ -88,6 +94,18 @@ struct god_state {
     uint64_t sets = 0;      // times we had to set the bit (spawns, respawns)
 };
 god_state g_god;
+
+void release_god() {
+    for (int slot = 0; slot < kMaxClients; ++slot) {
+        const uintptr_t ent = kGEntities + static_cast<uintptr_t>(slot) * kGentityStride;
+        uint32_t flags = 0;
+        if (peek(ent + kGentFlags, &flags) && (flags & kFlGodmode)) {
+            memory::write(enw::at(ent + kGentFlags), flags & ~kFlGodmode);
+            ENW_WARN("dev_god: slot %d godmode OFF (enw_dev_god.off present)", slot);
+        }
+        g_god.on[slot] = false;
+    }
+}
 
 void hold_god() {
     for (int slot = 0; slot < kMaxClients; ++slot) {
@@ -207,7 +225,20 @@ public:
         probe_ = !env_is("ENW_NO_VARPOOL_PROBE", "1");
         if (!god_ && !probe_) return;
         enw::frame::subscribe("dedi_soak", [this](uint64_t n) {
-            if (god_ && (n % 15) == 0) hold_god();
+            if (god_) {
+                const DWORD now = ::GetTickCount();
+                if (now - last_trigger_check_ >= 1000) {
+                    last_trigger_check_ = now;
+                    const bool off = ::GetFileAttributesA("enw_dev_god.off") != INVALID_FILE_ATTRIBUTES;
+                    if (off != released_) {
+                        released_ = off;
+                        ENW_WARN("dev_god: trigger file enw_dev_god.off %s -> god mode %s", off ? "PRESENT" : "gone",
+                                 off ? "RELEASED (the players can die; this is how a soak ends)" : "held again");
+                        if (off) release_god();
+                    }
+                }
+                if (!released_ && (n % 15) == 0) hold_god();
+            }
             if (probe_) {
                 const DWORD now = ::GetTickCount();
                 if (last_probe_ == 0 || now - last_probe_ >= 60000) {
@@ -224,6 +255,8 @@ private:
     bool god_ = false;
     bool probe_ = false;
     DWORD last_probe_ = 0;
+    DWORD last_trigger_check_ = 0;
+    bool released_ = false;
 };
 
 ENW_REGISTER_COMPONENT(soak_component)
