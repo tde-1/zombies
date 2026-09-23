@@ -1887,7 +1887,7 @@ reaches `DLL_PROCESS_DETACH` in the game (if it `TerminateProcess`es, a quit rea
 
 ---
 
-## 13. 2026-09-23 ~16:45–17:45 — lane CL: "my game crashed launching Town of the Dead" was a hang in the engine's GPU query wait (`components/gpu_query_guard.cpp`)
+## 13. 2026-09-23 ~16:45–18:30 — lane CL: "my game crashed launching Town of the Dead" was a hang in the engine's GPU query wait (`components/gpu_query_guard.cpp`)
 
 B, 0.2.27 (client DLL `04a3ad6d`), `zombie_town`, 15:12:40 UK. **Not a crash.** The game froze
 ~0.3 s after its first in-game frame; Windows closed the frozen window 30 s later (exit code
@@ -1929,6 +1929,7 @@ its lock released by hand, `cl3`).
 | `cl8` 17:24 | `db909469`, `zombie_town`, guard **off** | **hang** (4th); the watchdog's full report: holder tid, its stack, every thread's EIP via `NtGetNextThread`, `hang_where` in the session record; dump still failed `0x80070008` |
 | `cl9` 17:34 | final DLL `cc859f8a`, guard on | **crashed during the map load** (0xC0000005 read of NULL at `0x70F4D0`, 8 s in, before the first frame): `largest free address block 1.2 MB of 32.7 MB free` — address-space exhaustion, a different class (below). The guard had not engaged |
 | `cl10` 17:39 | `cc859f8a`, guard off | no hang in 30 s — but only 53 fps (other lanes' games were running); the hang is timing-dependent |
+| `cl12r2` 18:23 | **final DLL `cc859f8a`**, private copies `waw-clc`/`waw-cls`, guard on | guard timed out 3× at 0.56–0.70 s after the first frame and **tripped**; played on 90 s at 105–142 fps, no hang, no crash (largest free block 185 MB at +3 s) |
 | `cl7`, `cl11` | — | **discarded**: another lane deployed its own DLL (`a077f3ac`) into the shared `waw-c1` between my deploy and my launch. Later runs use private copies `waw-clc` / `waw-cls` |
 
 The render-lock holder, from the watchdog and from an external read-only probe of the live process:
