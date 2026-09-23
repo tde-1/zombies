@@ -2694,6 +2694,10 @@ reader of it on this path also requires `cl_paused`, which stays 0 on the dedi, 
   resume with its length and player count.
 * Off switch: `ENW_NO_PAUSE=1`. Dedicated only — a listen server keeps the engine's own SP pause.
 
+### 18.6 2026-09-23 00:10-01:20 box time - pause OFF on the box, guarded DLL 79d4317d, write probe on
+
+B's solo Nacht m_506fba68 (DLL 6fccc0e0): chat pause 24.5 s, clean resume, then at 00:02:51 `[0x3BFD478]` overwritten (0x5FAD), Com_Frame body 0 Hz from ~00:02:55, client EXE_ERR_SERVER_TIMEOUT 00:03:31. The 23:44 game died the same way (0x1DE3) after 13 pauses. The writer is the script VM's localVars copy at 0x697B97 (dedi 13.2, referee.md 15.4) - not a pause write; whether pausing provokes it is open. Stopgap by the coordinator: `export ENW_NO_PAUSE=1` in /home/waw/run-host.sh (games do not freeze; Esc opens the menu only), and `export ENW_DEDI_WATCH_PROBE_SLOT=1` so the next hit names its writer. Box DLL now `79d4317d1c534889...` (pause write guards + localVars probe; rollback `/home/waw/binkw32.rollback-6fccc0e0.dll`), host agent restarted idle 01:20.
+
 ### 18.5 2026-09-22 20:12 box time — superseded by a main-HEAD build (coordinator)
 
 The box now runs `86f12b1274ae7341...` (1,622,016 bytes), built by the coordinator from a clean

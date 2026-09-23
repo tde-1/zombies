@@ -12,6 +12,10 @@
 
 * **2026-09-23 01:45 UK — launcher: the relaunch loop is fixed (branch `launcher-after-game`, not merged, not published).** The party watcher re-launched the same match on every poll after the game exited (B: "keeps booting you back into the game"). A match is now followed at most once, never beside a live game of ours; only Play or the site's Resume (`enw.resumeMatch`, needs a site button) goes back in. `launcher.md`, same date.
 
+## Box, 2026-09-23 01:20 (coordinator)
+
+Pause is OFF on the box (`ENW_NO_PAUSE=1`): two paused Nacht games died of the script-VM localVars overflow ~30-54 s after a resume (dedi 18.6, referee 15.4); guarded DLL `79d4317d` + write probe deployed. Launcher 0.2.14 (Esc pauses on a box, client clock held) and 0.2.15 (relaunch loop gone) on the feed. Site restarted 01:12 with several-games-per-box, the launcher-cancel guard, quit-vs-crash and the 59 New maps.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
