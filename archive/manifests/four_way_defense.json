@@ -1,0 +1,174 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "four_way_defense",
+  "title": "Defense / Pistol Defense",
+  "source": "custom",
+  "author": "tannnnnaiirrr",
+  "released": "2015-05-27",
+  "fs_game": "mods/four_way_defense",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@defense.iwd": "a74a24ba9192e771b7c33915599fa3c197308ea526efcd3fddbd2827702207ad"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game",
+        "player_teleport_point"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        15000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game, player_teleport_point name an ending and are this map's own; script hardcodes cost 15000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 593,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game",
+      "player_teleport_point"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      15000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "give_ammo",
+        "?"
+      ],
+      [
+        1500,
+        "give_ammo",
+        "?"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf201_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a74a24ba9192e771b7c33915599fa3c197308ea526efcd3fddbd2827702207ad",
+    "map_specific_triggers": [
+      "give_ammo"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Defense.exe",
+    "original_sha256": "a126be24aadcc437c38b71c1321415da5c1d90ee9c04b5b05bc0b8f1f4a47b2c",
+    "original_size": 227119684,
+    "source_url": "http://www.mediafire.com/file/n2capkbmmfk1a0t/Defense.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/05/27/defense-pistol-defense/",
+    "fetched": "2026-09-23T03:37:35Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Very simple concept\u2026 4 bunkers, you teleport to a new one every round. Each one has different items you can use. You can spawn with none of your friends, or all 3 of them. Features: -Jug, Speed, Q Revive, PHD, Deadshot and Mule Kick (Q Revive works in solo) -Map will only include pistols (spanning from cod 4, mw2, mw3 to bo2 and even titanfall) -Buyable ammo -Buyable Mortar Rounds -Buyable ending -Clip Refilling Max Ammos -CoD 4 viewhands -Some extremely unique PaP variants (you\u2019ll have to test all the pistols out to find the unique ones, some are just reqular upgraded guns) -Custom PaP muzzle flashes and camos -Verruckt Style Sprinters -Melee Weapon \u2013 Sword (at start of game) -CotD Zombie Models -Completely Random Teleporting\u2026 makes for nice replay value! -Secrets! Weapon List: -Tactical Desert Eagle (mw2) -Holepuncher Desert Eagle (mw3) -Desert Eagle (cod 4) -M93 Raffica -ASP -B23R Silencer -USP.45 Silencer (cod 4) -Mauser C96 -Colt.45 (cod 4) -Monkey Bombs -CZ75 -Glock (mw2) -MP9 -.44 Magnum -MK22 -Remington New Model Army -P226 -T850 (5-shot revolver) -M9 (cod 4) -RE45 (titanfall) -Kimber -USP Match -SA1911 -***** ******* Vid is a little outdated mapping wise, but here is a beta: http://www.youtube.com/watch?v=MneHUriaowE By outdated, I mean the PaP is no longer in the center of the map. -Credits *DidUknowiPwn (Random Teleportation) *LOADS of people over at CFG Factory for Ported MW2, MW3, BO, BO2, Titanfall, and other custom models *Me (Mapping, some custom textures, som",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "defense.iwd:images/specialty_fastreload_zombies.iwi",
+        "defense.iwd:images/untitled.iwi",
+        "defense.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/defensepistoldefense/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/defense-2.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 73.3,
+    "addon_iwds": [
+      {
+        "file": "call_of_dead.iwd",
+        "entries": 36,
+        "scripts": 6,
+        "bytes": 7427578
+      },
+      {
+        "file": "defense.iwd",
+        "entries": 395,
+        "scripts": 16,
+        "bytes": 62705804
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "four_way_defense_patch.ff",
+      "mod.ff",
+      "defense.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

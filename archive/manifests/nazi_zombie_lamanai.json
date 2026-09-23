@@ -1,0 +1,175 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_lamanai",
+  "title": "LAMANAI",
+  "source": "custom",
+  "author": "iBarnett",
+  "released": "April 03, 2014, 03:55:32 am",
+  "fs_game": "mods/nazi_zombie_lamanai",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_lamanai.iwd": "e458740db173f3bd0936f69e5129585f172b3a7a2f30baea3fa95d1f832afeb0"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 1334,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door94"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door92"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e458740db173f3bd0936f69e5129585f172b3a7a2f30baea3fa95d1f832afeb0",
+    "map_specific_triggers": [
+      "shoot_me",
+      "shoot_me2",
+      "shoot_me3",
+      "shoot_me4",
+      "zk_hintstring",
+      "zk_hintstring2"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_lamanai.exe",
+    "original_sha256": "b8153999b6ad50717cd95457de2f55d0f78f49152e83e373f2f21af238c3d5e3",
+    "original_size": 71975211,
+    "source_url": "https://www.mediafire.com/file/d9dgrjn5z6kz72r/nazi_zombie_lamanai.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:40:15Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/lamanai/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/lamanai-3-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 107.7,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_lamanai.ff",
+      "nazi_zombie_lamanai_patch.ff"
+    ]
+  },
+  "site_hidden": true
+}

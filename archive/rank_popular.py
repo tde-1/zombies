@@ -31,6 +31,10 @@ def main():
     ap.add_argument("--n", type=int, default=60)
     ap.add_argument("--max-mb", type=int, default=1400)
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "shortlist3.txt"))
+    ap.add_argument("--report", default="popular.json",
+                    help="reports/<name> to write the ranking to (tranche 2: popular2.json, so "
+                         "archive.md s10's popular.json stays the record of the first 64)")
+    ap.add_argument("--min-mb", type=int, default=20)
     args = ap.parse_args()
 
     db = catalogue.connect()
@@ -70,7 +74,7 @@ def main():
                     continue
                 if "UpdaterExe" in l["url"] or "ugx-mod-standalone" in l["url"]:
                     continue
-                if l["size"] > args.max_mb * 2**20 or l["size"] < 20 * 2**20:
+                if l["size"] > args.max_mb * 2**20 or l["size"] < args.min_mb * 2**20:
                     continue
                 if best is None or l["size"] > best["size"]:
                     best = {"url": l["url"], "host": host, "size": l["size"]}
@@ -90,7 +94,7 @@ def main():
         for r in rows:
             fh.write("%s  # %s views (%s)%s, %.0f MB, %s\n" % (r["norm"], r["views"], r["views_source"],
                      " top100" if r["top100"] else "", r["link"]["size"] / 2**20, r["link"]["host"]))
-    json.dump(rows, open(os.path.join(WORK, "reports", "popular.json"), "w", encoding="utf-8"), indent=1)
+    json.dump(rows, open(os.path.join(WORK, "reports", args.report), "w", encoding="utf-8"), indent=1)
     for i, r in enumerate(rows, 1):
         print("%2d %-40s %6d %-8s %s %5.0f MB %s" % (i, r["name"][:40], r["views"], r["views_source"],
               "T" if r["top100"] else " ", r["link"]["size"] / 2**20, r["link"]["host"]))

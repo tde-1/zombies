@@ -1,0 +1,174 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_overlook",
+  "title": "THE OVERLOOK HOTEL",
+  "source": "custom",
+  "author": "CraftDAnimations",
+  "released": "2015-09-20",
+  "fs_game": "mods/nazi_zombie_overlook",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "ba1d8ab20ba46f9f7f5d95f0374ea8cad6c9e0e1b65bcec2b0c784ea91b82c91"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        22000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 22000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 146,
+    "script_count": 146,
+    "entities": 3,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      22000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "ba1d8ab20ba46f9f7f5d95f0374ea8cad6c9e0e1b65bcec2b0c784ea91b82c91",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_overlook.exe",
+    "original_sha256": "6aaca06a45b2d0200b78997aff3a7fd7a283b3deb45a13657a8aa97068715eb5",
+    "original_size": 471191254,
+    "source_url": "https://www.mediafire.com/file/s7g384mgbaf7vgt/nazi_zombie_overlook.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:31:12Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "What is up guys and welcome to my first ever map. Now guess what? Its NOT a box map LMAO. Now this map took me about 2 months to create and even though I did make it and am totally biased \u2013 I think its good. This map was created for YouAlwaysWin as a timed exclusive and then given to a few YouTubers. But I am happy to announce it is now available to all. The map is based off the Stephen King film \u201cThe Shining\u201d set inside The Overlook Hotel. The main aim of the map is to simply survive and obtain the buyable ending. Now for those of you who noticed it looks a little different \u2013 the redness \u2013 this is down to a setting in the game being changed. Now by default SPECULAR MAP is set to NO but here he has it set to YES. When it comes to you playing on release just make sure this setting is set to NO. Map Features UGX Mod Buyable Ending No Dogs Pack-A-Punch Videos: YouAlwaysWin : https://www.youtube.com/watch?v=GkHFeoJwVuM Laggin24x : https://www.youtube.com/watch?v=0qin-uXK8Rw Map Credits: I would like to thank the following for either their help directly or indirectly. UGX-mods.com \u2013 The Amazing UGX Mod ZCTxCHAOSx \u2013 Lots and Lots of help ZOMB1E-KLLR \u2013 various YouTube Tutorials Tom BMX \u2013 The Axe Model Treminaor \u2013 UGX Mod v1.1 Viewhands for v1.0.x WorldGoonSquad \u2013 Various in-game assets If I have missed anyone please hit me up on @CraftDAnimation and I will sort that. I have had a very hard last month so right now things are VERY vague.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user"
+      ],
+      "iwd_images": [
+        "nazi_zombie_overlook.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_overlook.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/theoverlookhotel/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/the-overlook-hotel-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 59.2,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 118,
+        "scripts": 31,
+        "bytes": 30491156
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 402,
+        "scripts": 10,
+        "bytes": 79944356
+      },
+      {
+        "file": "viewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "mod.ff",
+      "nazi_zombie_overlook.ff",
+      "nazi_zombie_overlook_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "nazi_zombie_overlook.iwd:maps/_loadout.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

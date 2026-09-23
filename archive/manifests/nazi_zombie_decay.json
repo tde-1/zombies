@@ -1,0 +1,180 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_decay",
+  "title": "Vindicta Diaboli",
+  "source": "custom",
+  "author": "Megadeth9811",
+  "released": "2016-06-22",
+  "fs_game": "mods/nazi_zombie_decay",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_decay.iwd": "e803aa4527d364a1af00ff982f7fe5f26607a97edca71c0f59fd136db068491c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 108,
+    "script_count": 108,
+    "entities": 816,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      25000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        5000,
+        "pf39_auto2",
+        "?"
+      ],
+      [
+        4000,
+        "pf1059_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf846_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf480_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1056_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e803aa4527d364a1af00ff982f7fe5f26607a97edca71c0f59fd136db068491c",
+    "map_specific_triggers": [
+      "dubstep_trigger",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "vindicta_diaboli.exe",
+    "original_sha256": "e6a1374809c246a46678bbd48ddbe770e7273ce491559c3b7801ddc63965e328",
+    "original_size": 457653685,
+    "source_url": "http://www.mediafire.com/file/6sujv2pmt253j9e/vindicta_diaboli.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/06/22/vindicta-diaboli/",
+    "fetched": "2026-09-23T03:41:15Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Trapped in the realm of Satan, you must endure his wrath!!! ______________________________________ Vindicta Diaboli (Vengeance Of The Devil) This is a hell-themed zombies map that is the successor to Necro Forest with harrybo21\u2019s perks and a buyable ending. Features include: -Hell-ish theme -Harrybo21\u2019s perks (Each player can carry 6 perks) -Buyable ending -Weapons (non-elemental) improved from Necro Forest along with a couple new ones: -Colt M1911 -B23R -Ballista -SMR -M27 -MP7 -Peacekeeper -AN-94 -AK-47 -SCAR-H -Type-25 -.44 Magnum -Skorpion EVO -Chicom CQB -Remington 870MCS -KSG -XPR-50 -MK-48 -Ray Gun -Ray Gun Mark II -Blundergat -Der Riese teleporter system -Easter Egg Song: Hold F on all 3 teddy bears hidden in the map to activate the hidden song! -Known Issues: -There are no teleporter effects (I had to exlude them to avoid the 400fx limit) -Sometimes the mystery box light will disappear. Credits: -Megadeth9811 (Me): Mapping -Harrybo21: Black Ops Perks -BluntStuffy: Raygun Mk2 FX I will do my best to update this map, but for now, here is the initial release:",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/vindictadiaboli/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/vindicta-diaboli-3-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.9,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_decay_patch.ff",
+      "nazi_zombie_decay.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

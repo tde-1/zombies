@@ -1,0 +1,233 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_decapit3",
+  "title": "DECAPITATOR 3",
+  "source": "custom",
+  "author": "Mattdu5300",
+  "released": "2016-01-21",
+  "fs_game": "mods/nazi_zombie_decapit3",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@decapitator3.iwd": "b2d53f003894015d2efbec968a3c0da6e1ba98bca8b58727aa8482919f1c2e59"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_a1",
+        "ee_a1_trig",
+        "ee_a2",
+        "ee_a2_trig",
+        "ee_a3",
+        "ee_a3_trig"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_a1, ee_a1_trig, ee_a2, ee_a2_trig, ee_a3, ee_a3_trig look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 117,
+    "script_count": 117,
+    "entities": 583,
+    "ee_candidates": [
+      "ee_a1",
+      "ee_a1_trig",
+      "ee_a2",
+      "ee_a2_trig",
+      "ee_a3",
+      "ee_a3_trig"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      7000,
+      120000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_door",
+        "door17"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door18"
+      ],
+      [
+        1500,
+        "pf723_auto1",
+        "pf723_auto2"
+      ],
+      [
+        1500,
+        "pf723_auto1",
+        "pf723_auto2"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door19"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 10000,
+      "targetname": "zombie_door",
+      "target": "door17",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b2d53f003894015d2efbec968a3c0da6e1ba98bca8b58727aa8482919f1c2e59",
+    "map_specific_triggers": [
+      "activate_mg",
+      "build_a1_place_trig",
+      "build_a1_trig",
+      "build_a2_place_trig",
+      "build_a2_trig",
+      "ee_a1_trig",
+      "ee_a2_trig",
+      "ee_a3_trig",
+      "jukebox",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "turnonelec_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Decapitator3.exe",
+    "original_sha256": "b2750603d5d5680f2f98387fda317025192fd3909c0c836761e88b8f293085c4",
+    "original_size": 272121904,
+    "source_url": "https://www.mediafire.com/file/tbhndbdeq2v8t5x/Decapitator3.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:38:15Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Map Features: Modern Warfare, 2 & 3 Weapons Black ops Weapons Black ops 2 Weapons Shoot 3 Teddy Bears for a reward Build the current 1 Boss zombie per round 10 perks Zombie counter Custom Viewhands Custom textures Custom PaP Camo Custom HUD End Game (120,000) Difficulty (HARD) (Verruckt Runners) Credit : Darkdav (For 2D Plan) Created By : MaTTDu53 (Me) Beta Tester : DarkDav MaTTDu53 (Me) Wunderbaffe A thank you, (JR-IMAGINE, HARRYBO21, ZOMB1E-KLLR, CFGFACTORY, WOLF_SILVER, FR-MAPPING, ZOMBIEMODDING, UGX-MODS, NEXTGENTACTICS, DEATH_REAPER0, JBIRD632, SCRIPTZ, THEZOMBIEKILLA6, JEI9363)",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "decapitator3.iwd:images/guardian_logo.iwi",
+        "decapitator3.iwd:images/nzr_menu2.iwi",
+        "decapitator3.iwd:images/perkaholic_logo.iwi",
+        "decapitator3.iwd:images/specialty_fastreload_zombies.iwi",
+        "decapitator3.iwd:images/weapon_red_cross_background - Copie.iwi",
+        "decapitator3.iwd:images/weapon_red_cross_background.dds",
+        "decapitator3.iwd:images/weapon_red_cross_background.iwi",
+        "decapitator3.iwd:images/weapon_red_cross_background_iw5.dds",
+        "decapitator3.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "decapitator3.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "decapitator3.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "decapitator3.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "decapitator3.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/decapitator3/cover.png",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/decapitator-3-768x432.png"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 70.6,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273488
+      },
+      {
+        "file": "call_of_dead.iwd",
+        "entries": 35,
+        "scripts": 6,
+        "bytes": 7497842
+      },
+      {
+        "file": "decapitator3.iwd",
+        "entries": 671,
+        "scripts": 32,
+        "bytes": 122195939
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 556980
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_decapit3.ff",
+      "nazi_zombie_decapit3_patch.ff",
+      "decapitator3.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

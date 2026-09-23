@@ -1,0 +1,197 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "no_way_out",
+  "title": "NO WAY OUT",
+  "source": "custom",
+  "author": "Marsvinking",
+  "released": "2015-01-23",
+  "fs_game": "mods/no_way_out",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@no_way_out.iwd": "a1e2c0e9bcc6d34af1dc36ef8cd2e49c983d875697e26e88f22bb8112bfddc17"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "easter_trigger"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "easter_trigger look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 114,
+    "script_count": 114,
+    "entities": 1285,
+    "ee_candidates": [
+      "easter_trigger"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      3100,
+      3520,
+      4000,
+      5000,
+      80000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "hidden_door"
+      ],
+      [
+        2500,
+        "rotating_door",
+        "auto377"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "Door_Debris3"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "slidedoor_BookShelf"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "Door_Debris4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a1e2c0e9bcc6d34af1dc36ef8cd2e49c983d875697e26e88f22bb8112bfddc17",
+    "map_specific_triggers": [
+      "easter_trigger",
+      "fuse_build_trig",
+      "fuse_pick_trig",
+      "handle_build_trig",
+      "handle_pick_trig",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "panel_build_trig",
+      "panel_pick_trig",
+      "rotating_door",
+      "turn_power_on"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "zm_no_way_out.exe",
+    "original_sha256": "e7fcb0b5915c01c404f9e396c9716aed3eebd3839eb94d1354695278dc4dddbf",
+    "original_size": 268136477,
+    "source_url": "https://www.mediafire.com/file/dn7pawaigury5hc/zm_no_way_out.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:32:38Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "THIS Map is No more a BETA. I will only work on bugs or glitches on this one else its done V1 No_Way_Out Video https://www.youtube.com/watch?v=zjKyVRpIU1c https://www.youtube.com/watch?v=zjKyVRpIU1c THX to ianGreen for the video 1 Hour Special Hey i\u2019ve being working on a map for awhile and never thought off realeasing it acctually. But here it is, i will still update it if there is some problems on it like bugs glitches or even errors. Custom Zombies Custom Textures Some custom weapons 4 Wonder Weapons Custom Hud Custom sounds Dog Round: Sorry for those who hates the dogs but i like em xD These dog rounds will be hard if your on a low level which will make it harder which i think is awesome. The harder the better in my opinion All of the black ops Perks and 1 perk from black ops 2 1 Hidden Debris 3 TeddyMonkey Easter Egg On each off the 3 TeddyMonkey Easter egg there is difficulities to get them enabled. V2 Updates New playermodels New Viewhands Added 2 new zombie spawners at start room Some changes to the textures Some glitch/bug fixes Some new stuff added to the map V3 Updates V3 Is Finally Out this is the last beta i\u2019m doing and then the final map will be realeased. M8A1 Is now upgradable Scavenger Is now upgradable The both Raygun marks 2 are fixed, before the model of it looked bad but now fixed and they are also changed by how they look, this is a gun which i definetly would recommend to upgrade aswell as Scavenger upgrade. Alot of new Details and yeah you will recogniz",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_no_way_out",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "no_way_out.iwd:images/airport_menuscreen.iwi",
+        "no_way_out.iwd:images/loadscreen_no_way_out.iwi"
+      ],
+      "loadscreen": "loadscreen_no_way_out"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/nowayout/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/no-way-out-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 107.3,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 51,
+        "scripts": 3,
+        "bytes": 2461106
+      },
+      {
+        "file": "ascencion_zombies.iwd",
+        "entries": 27,
+        "scripts": 6,
+        "bytes": 4714616
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 556980
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "no_way_out.ff",
+      "no_way_out_patch.ff",
+      "no_way_out.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

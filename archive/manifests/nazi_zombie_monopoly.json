@@ -1,0 +1,176 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_monopoly",
+  "title": "Monopoly Zombies",
+  "source": "custom",
+  "author": "NGcaudle",
+  "released": "2020-06-22",
+  "fs_game": "mods/nazi_zombie_monopoly",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_monopoly.iwd": "cb8e45d37ea1cb7d2afd91fb0997603a03358a41cca13b7b2fc73eb4050e792e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        55000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 55000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 462,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      55000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2500,
+        "zombie_debris",
+        "roll_19"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "roll_18"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "roll_17"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "roll_16"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "roll_15"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "cb8e45d37ea1cb7d2afd91fb0997603a03358a41cca13b7b2fc73eb4050e792e",
+    "map_specific_triggers": [
+      "chance_triggers",
+      "outside_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "_3Monopoly.exe",
+    "original_sha256": "01f3917bd7f7b352c75c3cc8a9330dc18582ef195c7441021a068dc3cb2f5ab4",
+    "original_size": 149518335,
+    "source_url": "https://www.mediafire.com/file/28kllxwqmxwukdb/%5E3Monopoly.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/06/22/monopoly-zombies/",
+    "fetched": "2026-09-23T03:26:29Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Hello today I bring you the Monopoly zombie map for world at war for those of you who can\u2019t run bo3 or don\u2019t own it but still wanted to play this amazing challenge map!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_monopoly"
+      ],
+      "iwd_images": [
+        "nazi_zombie_monopoly.iwd:images/loadscreen_nazi_zombie_monopoly.iwi",
+        "nazi_zombie_monopoly.iwd:images/menu_mp_weapons_hk416.iwi",
+        "nazi_zombie_monopoly.iwd:images/menu_mp_weapons_pm.iwi",
+        "nazi_zombie_monopoly.iwd:images/menu_mp_weapons_scar.iwi",
+        "nazi_zombie_monopoly.iwd:images/menu_zm_weapons_mg08.iwi",
+        "nazi_zombie_monopoly.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_monopoly.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_monopoly.iwd:images/zombie_vending_mule_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_monopoly"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/monopoly/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2020/07/monopoly-zombies.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 95.2,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_monopoly.ff",
+      "nazi_zombie_monopoly_patch.ff",
+      "nazi_zombie_monopoly.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

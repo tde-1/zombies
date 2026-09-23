@@ -1,0 +1,238 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "batman",
+  "title": "Wayne Manor",
+  "source": "custom",
+  "author": "whippytrout",
+  "released": "2016-01-18",
+  "fs_game": "mods/batman",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@batman.iwd": "7189ddbdb84ad7906f15510d0b4f994cc94c7f919d91b383483b89bbfa1464e5"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_door",
+        "boss_zone",
+        "boss_zone_spawners",
+        "boss_zone_spawners_dog",
+        "enter_boss_zone",
+        "joker_boss_final_door",
+        "riddler_part_1",
+        "riddler_part_1_trig",
+        "riddler_part_2",
+        "riddler_part_2_trig",
+        "riddler_part_3",
+        "riddler_part_3_trig"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_door, boss_zone, boss_zone_spawners, boss_zone_spawners_dog, enter_boss_zone, joker_boss_final_door look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 153,
+    "script_count": 153,
+    "entities": 3771,
+    "ee_candidates": [
+      "boss_door",
+      "boss_zone",
+      "boss_zone_spawners",
+      "boss_zone_spawners_dog",
+      "enter_boss_zone",
+      "joker_boss_final_door",
+      "riddler_part_1",
+      "riddler_part_1_trig",
+      "riddler_part_2",
+      "riddler_part_2_trig",
+      "riddler_part_3",
+      "riddler_part_3_trig"
+    ],
+    "ending_words": [
+      "riddler_buyable_model",
+      "riddler_buyable_model_trig",
+      "win_door_1"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "riddler_door_1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "riddler_door_1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "riddler_door_1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "return_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "return_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "7189ddbdb84ad7906f15510d0b4f994cc94c7f919d91b383483b89bbfa1464e5",
+    "map_specific_triggers": [
+      "car_run_trig",
+      "clock_info_trig",
+      "clock_keys_1_trig",
+      "clock_keys_2_trig",
+      "clock_keys_3_trig",
+      "fireplace_trigger",
+      "freeze_door_1_trig",
+      "freeze_door_2_trig",
+      "freeze_prisoner_trig",
+      "joker_intro_trig_touch",
+      "kinorock1",
+      "kinorock2",
+      "kinorock3",
+      "portal",
+      "riddler_buyable_model_trig",
+      "riddler_light_trig_1",
+      "riddler_light_trig_1_blue",
+      "riddler_light_trig_2",
+      "riddler_light_trig_2_blue",
+      "riddler_light_trig_3",
+      "riddler_light_trig_3_blue",
+      "riddler_light_trig_4",
+      "riddler_light_trig_4_blue",
+      "riddler_light_trig_5",
+      "riddler_light_trig_5_blue",
+      "riddler_part_1_trig",
+      "riddler_part_2_trig",
+      "riddler_part_3_trig",
+      "riddler_start_trigger_1",
+      "satchel_build_trig",
+      "satchel_exp_damage_trig",
+      "satchel_pick_trig",
+      "satchel_pick_trig_2",
+      "satchel_pick_trig_3",
+      "satchel_pick_trig_4",
+      "save_robin_trig",
+      "shock_trigs",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "start_blackout_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Wayne_Manor.exe",
+    "original_sha256": "bde0bfc5d0440a835f8050b45edfba58aebbb3f1496cd88d07bfc7b8b2033e94",
+    "original_size": 378675604,
+    "source_url": "http://www.mediafire.com/file/5ogtnd8muw9a9dd/Wayne_Manor.exe",
+    "source_page": "https://callofdutyrepo.com/2016/01/18/wanye-manor/",
+    "fetched": "2026-09-23T03:28:47Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "bossfight_ending",
+      "top_100"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "batman.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/waynemanor/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/wayne-manor-3.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 159.6,
+    "addon_iwds": [
+      {
+        "file": "buried.iwd",
+        "entries": 84,
+        "scripts": 17,
+        "bytes": 18321193
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 25,
+        "scripts": 0,
+        "bytes": 55100
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "batman_patch.ff",
+      "batman_patchorig.ff",
+      "mod.ff",
+      "batman.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

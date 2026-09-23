@@ -1,0 +1,166 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_pogreb",
+  "title": "POGREB",
+  "source": "custom",
+  "author": "ville88",
+  "released": "2016-06-26",
+  "fs_game": "mods/nazi_zombie_pogreb",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_pogreb.iwd": "a45e3b389b96e9eb6e78ff130b7beec4bd196dc9675e0b132b8064f20d653392"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_bowie_bear",
+        "ee_exp_monkey",
+        "ee_perk_bear"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_bowie_bear, ee_exp_monkey, ee_perk_bear look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 953,
+    "ee_candidates": [
+      "ee_bowie_bear",
+      "ee_exp_monkey",
+      "ee_perk_bear"
+    ],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1750,
+        "zombie_debris",
+        "debris2"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "southwest_blocker"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "northwest_blocker"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "northeast_blocker"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto48"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a45e3b389b96e9eb6e78ff130b7beec4bd196dc9675e0b132b8064f20d653392",
+    "map_specific_triggers": [
+      "secret_trigger",
+      "teddy_trigger",
+      "trig1",
+      "trig2",
+      "trig3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_pogreb.exe",
+    "original_sha256": "e28f85c79721573d86e914537db93b71061369bb2620c13af97efe504deb71b2",
+    "original_size": 78507599,
+    "source_url": "https://www.mediafire.com/file/29db49uqeuo76c5/nazi_zombie_pogreb.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:26:10Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "challenge"
+    ],
+    "catalogue_description": "PAP Easter eggs (audio) Audio secrets (radio and phono) Mystery box (magic box weapon) Detailed Electric trap (need power activate) Classic world at war style Cod Waw Weapons (no modern) Secret door (power switch way) Bowie kinife No mixed rounds Size \u2013 small Author \u2013 Ville88 (I\u2019m) Special Thanks: BlackJackJonnyy MakeCents c.h.n SuperJenya Thanks sites: Zombiemodding forum Ugx-mods \u2013 forum Customcod Wiki wiki.modsrepository mappersunited cfgfactory",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_pogreb",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_pogreb.iwd:images/loadscreen_nazi_zombie_pogreb.iwi",
+        "nazi_zombie_pogreb.iwd:images/menu_map_nazi_zombie_pogreb.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_pogreb"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/pogreb/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/zombie-pogreb-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 111.2,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_pogreb.ff",
+      "nazi_zombie_pogreb.iwd:animscripts/death.gsc",
+      "nazi_zombie_pogreb.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

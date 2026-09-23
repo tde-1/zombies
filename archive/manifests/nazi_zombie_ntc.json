@@ -1,0 +1,189 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ntc",
+  "title": "Zombie Town Challenge",
+  "source": "custom",
+  "author": "yoman321",
+  "released": "2016-01-31",
+  "fs_game": "mods/nazi_zombie_ntc",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zombietownchallenge.iwd": "c00f9956d9b2a69c24fc127572608f32a59a79e722c4223e351dcfb90f98ff03"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        150000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 150000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 832,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      150000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        4000,
+        "pf5322_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf4749_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf4739_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf4736_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto9"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c00f9956d9b2a69c24fc127572608f32a59a79e722c4223e351dcfb90f98ff03",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "ZombieTownChallengeV1.1.exe",
+    "original_sha256": "e1101e638b21693d14c82dd1fc5f19445c9d74b0901050f59974259578ef64c1",
+    "original_size": 438276953,
+    "source_url": "http://www.mediafire.com/file/ovba8t6f3xqer3b/ZombieTownChallengeV1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/01/31/zombie-town-challenge/",
+    "fetched": "2026-09-23T03:39:02Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "challenge"
+    ],
+    "catalogue_description": "Hello guys, So I have been working on a map a whole week and decide to release it! There\u2019s no actual story about it, you can imagine one if you want. So This is a challenging map, Its in a town and there\u2019s zombie coming from everywhere! This Map Was Totally Created By TheSuperDude!",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "zombietownchallenge.iwd:images/specialty_fastreload_zombies.iwi",
+        "zombietownchallenge.iwd:images/weapon_red_cross_background.iwi",
+        "zombietownchallenge.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/townchallenge/cover.jpeg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/zombie-town-challenge-1-768x432.jpeg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 103.9,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      },
+      {
+        "file": "zombietownchallenge.iwd",
+        "entries": 952,
+        "scripts": 33,
+        "bytes": 223731692
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ntc.ff",
+      "nazi_zombie_ntc_patch.ff",
+      "zombietownchallenge.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

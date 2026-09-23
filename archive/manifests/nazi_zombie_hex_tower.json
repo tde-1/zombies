@@ -1,0 +1,197 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_hex_tower",
+  "title": "Hexagon Tower: Zombie Challenge Map",
+  "source": "custom",
+  "author": "Psh",
+  "released": "2015-09-04",
+  "fs_game": "mods/nazi_zombie_hex_tower",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_hex_tower.iwd": "c81b93686d1563b5c4d3c27142e3762500aa35ed100d0672a70d84e190877d0c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 107,
+    "script_count": 107,
+    "entities": 947,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf338_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf332_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "wunderf"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "pap"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "box"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c81b93686d1563b5c4d3c27142e3762500aa35ed100d0672a70d84e190877d0c",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_hex_tower_1.2.exe",
+    "original_sha256": "c10c2ac3431382370b83f0533a17900a5ce30d93fa790bcb4712c705fa32a8de",
+    "original_size": 229902071,
+    "source_url": "http://www.mediafire.com/file/6f49umx6w2ol64y/nazi_zombie_hex_tower_1.2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/09/04/hexagon-tower-zombie-challenge-map/",
+    "fetched": "2026-09-23T03:25:22Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "Escape to the top of the tower! Was bored so I decided to start a small project and here it is. This map could be considered a precursor to my next big release: as they share the same style and features. Every few floors, the area to train and survive gets smaller. All main doors are 2000 with 3 Doors being 3000 to get to the Box/Pap/Wunderfizz. There is no EE or song, just some plain old survival. I dare someone to beat the map with all perks. Features \u2013 11 Perks NO PERK LIMIT (Tombstone can only be acquired through the wunderfizz and not playing solo) \u2013 Wunderfizz \u2013 Some Pap\u2019d guns have explosive ammo (Send the enemies flying when they die) \u2013 Buyable ending [Cost: 25000] \u2013 1 Wall Weapon on every level \u2013 Weapons from most of the CoD\u2019s (Papable) \u2013 Extremely hard map (The more players the easier) \u2013 Increased number of zombies per round \u2013 Increased zombie spawn rate 1.2 Patch Notes -Changed the big room a huge amount, it\u2019s no longer a train fest. -Changed the Jug room -Fixed Clipping around windows -Nerfed the TAC45 -Buffed the RE45 PaP damage x2 -Reduced the number of zombies per round as it gave more points and made it easier -Increased zombie spawn rate from 0.8 to 0.7 -Added 5 Weapons (SCAR-L,Scorpion EVO,MSR,USAS-12,STRIKER) -Moved the MK14 in the big room into a more annoying spot -Forgot to mention in the main post that the map has no dogs for those who haven\u2019t played it or are just wondering Credits: -Tom bmx -Harry Bo21 (Awesome Perks) -BluntStuffy (Elemental Ammo) -Hi",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_hex_tower",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "nazi_zombie_hex_tower.iwd:images/concreteplates0002_1_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/concreteplates0007_9_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/concreteplates0016_5_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/floorshexagonal0027_1_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/metalbulkheads0039_7_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/metalfloorsbare0013_1_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/metalplatesducts0019_2_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/metalplatesnew0010_1_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/metalplatesnew0014_1_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/metalplatesnew0026_2_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/metalplatesnew0034_2_preview.iwi",
+        "nazi_zombie_hex_tower.iwd:images/metalplatesnew0038_2_preview.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_hex_tower"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/hexagontowerchallenge/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/hexagon-tower-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.7,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 155,
+        "scripts": 1,
+        "bytes": 17355482
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_hex_tower_patch.ff",
+      "nazi_zombie_hex_tower.iwd:animscripts/death.gsc",
+      "nazi_zombie_hex_tower.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

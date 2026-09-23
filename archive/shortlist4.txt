@@ -1,0 +1,76 @@
+# tranche 2 (2026-09-23): rank_popular.py --n 110 --max-mb 700 --report popular2-candidates.json, top 75 = 17.5 GB
+pokemonkantocarnagenighttime  # 119401 views (ugx), 261 MB
+supremechickensnest  # 71996 views (ugx), 205 MB
+perkacolainc  # 71383 views (ugx), 112 MB
+labrats  # 71373 views (ugx), 259 MB
+labyrinth  # 71009 views (ugx), 283 MB
+thelastchristmas  # 70596 views (ugx), 259 MB
+thefortress  # 67321 views (ugx), 98 MB
+asylum  # 67267 views (ugx), 241 MB
+rooms  # 67026 views (ugx), 140 MB
+hexagontowerchallenge  # 65505 views (ugx), 219 MB
+blut  # 65348 views (ugx), 123 MB
+spruktbyl  # 64296 views (ugx), 358 MB
+adayinthelife  # 51223 views (ugx) top100, 258 MB
+pogreb  # 63491 views (ugx), 75 MB
+factoryofthedead  # 63476 views (ugx), 59 MB
+monopoly  # 63435 views (ugx), 143 MB
+nachtdertoten  # 62588 views (ugx), 59 MB
+recontamination  # 49942 views (ugx) top100, 320 MB
+illuminatiisland  # 62089 views (ugx), 207 MB
+dasherrenhaus  # 49571 views (ugx) top100, 375 MB
+killhousebo3  # 61950 views (ugx), 334 MB
+iplayundeadamusementpark  # 49224 views (ugx) top100, 472 MB
+inseldertoten  # 61380 views (ugx), 329 MB
+waynemanor  # 49073 views (ugx) top100, 361 MB
+puns  # 60999 views (ugx), 353 MB
+matrix  # 48576 views (ugx) top100, 140 MB
+salajdust2  # 60663 views (ugx), 535 MB
+box  # 60533 views (ugx), 57 MB
+compound  # 60496 views (ugx), 298 MB
+wahnsinn  # 60277 views (ugx), 319 MB
+hotelofhell  # 60053 views (ugx), 191 MB
+theoverlookhotel  # 59781 views (ugx), 449 MB
+fc2  # 59494 views (ugx), 79 MB
+russianbase  # 57940 views (ugx), 274 MB
+thelastundeadhouse  # 57637 views (ugx), 189 MB
+sammycustomsbox  # 57482 views (ugx), 357 MB
+stranded  # 57402 views (ugx), 236 MB
+laboratory  # 57260 views (ugx), 119 MB
+nowayout  # 56477 views (ugx), 256 MB
+necroforest  # 55723 views (ugx), 353 MB
+pistolsonlychallenge  # 55576 views (ugx), 340 MB
+corridorchallenge  # 55290 views (ugx), 323 MB
+the115displacement  # 55281 views (ugx), 583 MB
+crystallake  # 54542 views (ugx), 233 MB
+christmasdelivery  # 43541 views (ugx) top100, 395 MB
+seelow  # 54337 views (ugx), 215 MB
+nukedertoten  # 54323 views (ugx), 80 MB
+bunker  # 54117 views (ugx), 137 MB
+busdepot1945  # 53769 views (ugx), 272 MB
+northcompany  # 53299 views (ugx), 271 MB
+projectx  # 53269 views (ugx), 273 MB
+blackoutproject  # 53110 views (ugx), 228 MB
+neonfighter  # 52983 views (ugx), 196 MB
+lsd  # 52147 views (ugx), 96 MB
+shrink  # 51385 views (ugx), 277 MB
+dust2  # 47938 views (ugx), 131 MB
+rise  # 47559 views (ugx), 433 MB
+kri  # 47522 views (ugx), 66 MB
+defensepistoldefense  # 46728 views (ugx), 217 MB
+sniperchallenge  # 46641 views (ugx), 58 MB
+pietercity  # 46568 views (ugx), 112 MB
+minecraftmaze  # 45558 views (ugx), 165 MB
+decapitator3  # 44648 views (ugx), 260 MB
+campground  # 44609 views (ugx), 367 MB
+townchallenge  # 44142 views (ugx), 418 MB
+paxugxedition  # 44021 views (ugx), 385 MB
+ubahn  # 43254 views (ugx), 142 MB
+lifewithnielshouse  # 43198 views (ugx), 89 MB
+house69  # 43056 views (ugx), 107 MB
+ppolpunlimited  # 42888 views (ugx), 208 MB
+bpwaiting  # 42589 views (ugx), 96 MB
+lamanai  # 42525 views (ugx), 69 MB
+lostwoods  # 42393 views (ugx), 464 MB
+vindictadiaboli  # 42135 views (ugx), 436 MB
+bioevil  # 41942 views (ugx), 69 MB
