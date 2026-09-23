@@ -2132,10 +2132,11 @@ void draw_panel(int lc) {
 // touches the Windows clipboard (a private buffer stands in for it).
 struct step { DWORD at; int kind; int a; int b; const char* s; };
 enum { S_DEMO, S_SHOT, S_KEY, S_KEYMOD, S_TYPE, S_HOVER_TAB, S_CLICK_TAB, S_DBL_INPUT, S_DRAG_HIST,
-       S_CLICK_NAME, S_WHEEL, S_CLICK_CONTACT, S_LOG, S_DONE };
+       S_CLICK_NAME, S_WHEEL, S_CLICK_CONTACT, S_LOG, S_CLEAR_MENU, S_DONE };
 const step kScript[] = {
     {3000, S_DEMO, 0, 0, nullptr},             // only when there is no site to talk to
     {6000, S_SHOT, 0, 0, "notify"},
+    {7000, S_CLEAR_MENU, 0, 0, nullptr},
     {8000, S_KEY, 'T', 0, nullptr},
     {9000, S_HOVER_TAB, 1, 0, nullptr},        // the pointer over "Party": the tip must be on it
     {9800, S_SHOT, 0, 0, "hover-party"},
@@ -2294,6 +2295,16 @@ void selftest_tick() {
                  g_input.substr(sel_lo(), sel_hi() - sel_lo()).c_str());
         break;
     case S_KEY: if (scripted) post_key(s.a); break;
+    case S_CLEAR_MENU:
+        // A custom map's own intro menu (fear_mc_2's is not `briefing`) holds keyCatchers
+        // 0x10 on an off-screen client and T is refused; Esc closes it. Only when a menu
+        // is up, so a stock map never gets the pause menu from this.
+        if (scripted && (rd<int>(kKeyCatchers) & 0x10)) {
+            ENW_INFO("chat_overlay: selftest closes the map's menu with Esc (keyCatchers 0x%X)",
+                     rd<int>(kKeyCatchers));
+            post_key(VK_ESCAPE);
+        }
+        break;
     case S_KEYMOD:
         if (scripted) {
             const int n = s.s ? std::atoi(s.s) : 1;
