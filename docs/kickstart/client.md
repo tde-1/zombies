@@ -675,7 +675,7 @@ Severity describes this player on this setup: 1000 Hz, 2560x1440 borderless, a s
 | — | **Precision-touchpad scroll in gameplay** under NOLEGACY (touchpads are legacy-only, no raw wheel) | Low | Win32 | none possible. It works in the menus through the legacy path and the ledger | **Unproven** |
 | — | **20–250 fps.** Only D4 (latency) and the wheel TTL (3 frames = 12 ms at 250, 150 ms at 20) depend on frame rate | Low | design | D4 | — |
 | — | **Game hangs with the clip on**: the cursor is trapped in the window until alt-tab | Low | design | none new | — |
-| — | **Cost of the compensations** | unmeasured | — | `GetClipCursor` every 8th call. Registration check once a second. The pump drain replaces dispatches with one bulk read. `ENW_RAW_MOUSE_PUMP_DRAIN=0` is the A/B | **Unproven**: B's frame-time lines decide it |
+| — | **Cost of the compensations** | unmeasured | — | `GetClipCursor` every 8th call. Registration check once a second. The pump drain replaces dispatches with one bulk read. `ENW_RAW_MOUSE_PUMP_DRAIN=0` is the A/B | **Partly measured (P1, 2026-09-23 14:24):** p99 6.25 ms at ~249 fps with the drain on and off (B's real mouse, not the synthetic one; see "Still unproven" below) |
 
 ### Every switch, so B can A/B
 
@@ -706,6 +706,17 @@ the game took the clip.
 
 * Everything in game: the wheel verdict, the pump drain's latency and cost, the clip re-apply and
   both recentres, and whether the Esc menu and the chat open centred.
+  **→ Partly run by lane P1, 2026-09-23 14:24–14:28, on `974c2e8d`** (`p1m17d1` / `p1m17d0`,
+  fear_mc_2, local dedi, INPUTSINK, 250 fps; `next-session.md` "Local proofs 2026-09-23
+  afternoon"). **Proven:** the `compensations --` line runs in game every ~3.6 s. The pump drain
+  works: `PUMP_DRAIN=1` logged `pump drains 1885 carrying 163 reports`, and `=0` logged 0. Every
+  fault counter was 0 in both arms (impossible, bad blocks, disagreements, transient, hard
+  failures, repairs, foreign, absolute). Frame p99 was **6.25 ms** in every steady window in both
+  arms. `=0` had two windows at 6.50/6.75 ms and 8 frames over 16.7 ms; `=1` had none after the
+  load window. **Not a controlled A/B:** B was using his mouse, and the 1 kHz injector aborted
+  both times (285 and 16,332 moves), so the input was mostly his. `clip re-applied`, `edge
+  recentres` and `menu recentres` were 0, which means nothing here: an unfocused harness window
+  never clips. They still need B's own session.
 * Whether Windows moves the OS cursor under `RIDEV_NOLEGACY` (answered by `edge recentres`).
 * Whether any in-process overlay loses the mouse under NOLEGACY.
 * The 8 kHz and 20 fps behaviour on B's hardware.
