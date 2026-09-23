@@ -4,6 +4,7 @@ import { useSession } from '../../session'
 import { OMITTED } from '../../data/wawSettings'
 import { bridge, useLauncherStatus, describeLauncher } from '../launcherBridge'
 import { LauncherUpdateBox, InstalledMapsBox } from '../LauncherBoxes'
+import EnwWord from '../Enw'
 
 // /settings -> ENW. Its own file on purpose: this tab is where the launcher's own things
 // live (the client, its version, and - next - the installed maps and the Update button),
@@ -44,7 +45,7 @@ export default function EnwSection({ onStatus }) {
             {/* ~~an `update` line here~~ — the "update" section below (LauncherBoxes) says it, with the button. */}
           </>
         ) : (
-          <div className="set-hint">open this page in the ENW launcher to see the client here</div>
+          <div className="set-hint">open this page in the <EnwWord /> launcher to see the client here</div>
         )}
       </div>
 

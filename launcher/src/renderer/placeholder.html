@@ -8,14 +8,22 @@
      2026-09-22 the launcher has no chrome of its own: the window is frameless and this
      page's bar is the title bar, with the same three window buttons the site draws. -->
 <style>
-  :root { --bg:#101010; --panel:rgba(255,255,255,.05); --panel-2:rgba(255,255,255,.085); --text:#e7e7e7; --muted:#9b9b9b; --faint:#6e6e6e; --bad:#e1675a; --nav-h:62px }
+  :root { --bg:#080808; --panel:rgba(255,255,255,.05); --panel-2:rgba(255,255,255,.085); --text:#e7e7e7; --muted:#9b9b9b; --faint:#6e6e6e; --bad:#e1675a; --nav-h:62px; color-scheme:dark }
   * { box-sizing:border-box }
   html, body { margin:0; background:var(--bg); color:var(--text); font:14px/1.6 "Segoe UI",system-ui,sans-serif }
+  body { background:var(--bg) linear-gradient(178deg,#0e0e0e 0%,#080808 45%,#040404 100%) fixed }
   nav { position:sticky; top:0; height:var(--nav-h); display:flex; align-items:center; -webkit-app-region:drag; user-select:none }
   nav button, nav a { -webkit-app-region:no-drag }
-  .lockup { position:absolute; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:flex-start; line-height:1 }
-  .lockup .enw { font-weight:800; font-size:17px; letter-spacing:.08em }
-  .lockup .zm { font-weight:600; font-size:7.5px; letter-spacing:.42em; margin-top:2px }
+  .lockup { position:absolute; left:50%; transform:translateX(-50%); display:flex; line-height:0; color:#fff }
+  .lockup .mark { display:block; filter:brightness(.92) }
+  /* the mark as the word ENW in a sentence (the site's .enw-inline): cap height x 1.04 */
+  .enw-w { display:inline-block; vertical-align:baseline; height:.728em; width:calc(.728em * 2.0496795); fill:currentColor }
+  ::-webkit-scrollbar { width:10px; height:10px; background:transparent }
+  ::-webkit-scrollbar-track { background:transparent }
+  html::-webkit-scrollbar-track { background:#040404 }
+  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.12); border-radius:999px; border:2px solid transparent; background-clip:padding-box; min-height:36px }
+  ::-webkit-scrollbar-thumb:hover { background-color:rgba(255,255,255,.22) }
+  ::-webkit-scrollbar-corner { background:transparent }
   /* 0.2.11: the update chip, the same one the site's nav draws (web/client UpdateChip.jsx),
      so an update is reachable when the site is not. */
   .upd { margin-left:auto; margin-right:10px; display:none; align-items:center; gap:8px; height:34px; padding:0 6px 0 14px; border-radius:999px; background:var(--panel-2); font-size:12.5px; font-weight:600; -webkit-app-region:no-drag }
@@ -49,7 +57,7 @@
 </head>
 <body>
 <nav>
-  <div class="lockup" aria-label="ENW"><span class="enw">ENW</span></div>
+  <div class="lockup"><svg class="mark" role="img" aria-label="ENW" viewBox="2.05 0 319.75 156" width="36.9" height="18"><path id="enw-mark" fill="currentColor" d="M2.05 0 70 0 70 30 2.05 30ZM20.05 66 70 66 70 93.9 20.05 93.9ZM2.05 128 70 128 70 156 2.05 156ZM76.22 2.51 168 88.64 168 0 198 0 198 154.04 102.04 66.5 102.04 156 76.22 156ZM204 148.74 228.82 80.79 259.32 151.48 321.8 0 287.99 0 259.48 73.33 231.19 1.3 204 65.78Z"/></svg></div>
   <div class="upd" id="upd" role="status" aria-live="polite"></div>
   <div class="wc" id="wc">
     <button id="wcMin" title="Minimise" aria-label="Minimise"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
@@ -59,7 +67,7 @@
 </nav>
 <div class="wrap">
   <h1>The site is not answering</h1>
-  <p class="one-liner">ENW Zombies lives on the site, so there is nothing to show until it is back.
+  <p class="one-liner"><svg class="enw-w" role="img" aria-label="ENW" viewBox="2.05 0 319.75 156"><use href="#enw-mark"/></svg> Zombies lives on the site, so there is nothing to show until it is back.
   The launcher keeps checking when you press Try again (or Ctrl+R).</p>
 
   <div class="actions">
@@ -70,7 +78,7 @@
   <h2>Where it looks</h2>
   <div class="box">
     <ul>
-      <li><code>https://zombies.enw.gg</code> — the ENW Zombies site</li>
+      <li><code>https://zombies.enw.gg</code> — the <svg class="enw-w" role="img" aria-label="ENW" viewBox="2.05 0 319.75 156"><use href="#enw-mark"/></svg> Zombies site</li>
       <li><code>http://127.0.0.1:3200</code> and <code>:5173</code> — a local copy of the site (<code>web/</code>)</li>
       <li><code>http://127.0.0.1:8080</code> — the mock site (<code>infra/host-agent/mock-site</code>)</li>
     </ul>

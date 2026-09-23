@@ -2884,3 +2884,111 @@ board per map); Watch on a custom map's replay, because its `.enwr` is on the bo
 site had the pull turned off. The generated placeholder card is cropped at its edges in the
 banner, and that was already so before this change. **Needs a client build and a site restart**
 (the server fields).
+
+## 2026-09-23, ~04:30 UK — theme: black, logo, scrollbar (branch of the global layer)
+
+B: *"a lot black or dark as the theme. Black mainly. Use the map colours very sparingly, only on the
+map page. The rest of the site is dark, dark and black, very serious looking, but still a derivative
+of ENW Movement."* *"Use the ENW SVG logo everywhere."* *"Clean up the scroll bar on the right."*
+Global layer only: tokens, `theme.css` shared blocks, the shell, rail, nav, shared components, the
+launcher's own pages. Page markup of `/m/:key`, `/admin`, `/id/:who`, `/records` was not touched;
+those pages move through the tokens they inherit.
+
+### Tokens (`theme.css :root` and `themes.js`, kept identical)
+
+| Token | Was (Movement) | Now | How it was derived |
+|---|---|---|---|
+| `--bg` | `#101010` | `#080808` | Movement's ground, eight steps down |
+| `--bg-grad` | `#161616 → #101010 → #0a0a0a` | `#0e0e0e → #080808 → #040404` | same angle and stops, each stop eight down |
+| `--panel-solid` | `#1c1c1c` | `#141414` | `--panel` (.05 white) over the new `--bg`, resolved |
+| `--panel-deep` | `#0a0a0a` | `#040404` | the gradient's foot |
+| `--rail-grad` | — | white .028 → .008 → 0, top down | new: the rail's ground, what is left of the WaW default gradient (overnight decision 5) |
+| `--scroll-track` / `--scroll-thumb` / `--scroll-thumb-hover` | — | `#040404` / white .12 / white .22 | new |
+| `--panel`, `--panel-2`, `--line*`, `--text`, `--muted`, `--faint`, `--accent*`, signal colours | | unchanged | Movement's rule: the greys do not move |
+
+`index.html`: `theme-color` `#080808`, an inline `html,body{background:#080808}` so nothing paints
+before the CSS, and the favicon is now Movement's own (`movement-client/public/favicon.svg`: the
+white mark on its `#0a0a0a` rounded plate).
+
+**`.btn.primary` is Movement's `.btn-accent`**: near-white on the black, not `--hot` red. Red stays
+for refusals and destructive actions (`.btn.danger`, `.um-danger`, `.wc-close`, `.tag.np`).
+This changes Sign in, Continue and Download everywhere; the map page's own Play (`.playbtn`) keeps
+the map colour.
+
+### Map colour on the map page only
+
+* `ambience.js`: the backdrop and pour paint **only for the open map on `/m/<key>`**
+  (`onMapPage()`). Home's selected map, hover previews in the list and on cards, and a profile's
+  banner leave the ground black. The calls in `Home.jsx`, `Maps.jsx`, `MapCard.jsx`,
+  `MapListPanel.jsx` and `Profile.jsx` are untouched; restoring a tier is that one test.
+  With nothing open, `data-amb` is removed rather than pouring a near-neutral WaW pair. §11e's
+  "the site is grey and the map is the colour" still holds; the grey is now black.
+* Hue washes removed outside the map page: the rail's server card and its no-art plate, the list
+  view's row wash and art plate (`.mlrow`), the search panel's no-art plate, `/settings` installed
+  maps' no-art plate. Kept: `.map-card` / `.pl-cover` (map cards), `.fcard.has-map` (a lobby row
+  wearing its map's picture), the server card's picture, and everything on `.mapdash`.
+* The rail (`.prail`) takes `--rail-grad`: near-black, top-lit, gone by the middle.
+
+### The ENW mark
+
+* `client/src/assets/enw-mark.svg`: Movement's file, byte for byte (the corrected box that starts
+  at the E's ink, 319.75 × 156).
+* `components/Enw.jsx`: `EnwWord`, Movement's `EnwWord.jsx` verbatim (the mark as the word "ENW"
+  in a sentence: a mask over `currentColor`, cap height × 1.04), and `EnwName` (mark + "Zombies").
+  `.enw-inline` CSS is Movement's verbatim.
+* `Bits.jsx` `Mark` uses the corrected viewBox (`2.05 0 319.75 156`); the old `0 0 321.8 156` carried
+  2 units of air down the left. The nav mark takes Movement's `.enw-mark-link` hover (92% → 100%).
+* Text "ENW" replaced by the mark: account menu (launcher line, "Install the ENW client"), rail
+  invite box ("Type an ENW name"), `/settings` ENW hint, `/archive` "Not playable on ENW",
+  the name picker (both lines), `/download` heading (the mark is above it, so the heading is now
+  "Install the Zombies launcher"), the 404 (mark added), the server's sign-in problem page and its
+  no-build fallback (`server/lib/enwMark.js`, inline SVG, black), the launcher's loopback sign-in
+  page (`main.js signInPage`), the launcher's screens strip (`shell.html`) and its "site is not
+  answering" page (`placeholder.html`, the lockup and both prose mentions).
+* **Not a lockup with ZOMBIES under the mark.** B took that foot off (the plain ENW logo, above).
+  "ENW Zombies" in a line is the mark, a space, then "Zombies".
+* Left as text on purpose: `<title>`s, `aria-label`s, input placeholders ("ENW name…"), tooltips,
+  data values (`ENW-Verified`, `ENW-<fingerprint>`), Discord messages.
+* **Not changed, owned by other lanes tonight:** Admin's "ENW link" section title, Profile's "No
+  such player on ENW Zombies." and its banner tooltip. Each is a one-line `<EnwWord />` swap.
+
+### Scrollbars
+
+`theme.css`: one set of `::-webkit-scrollbar` rules for the whole document (Movement's rail thumb
+made global: a pill inset 2px by a transparent border, 10px, transparent track inside containers,
+`#040404` on the page itself) and, only where those pseudo-elements do not exist (Firefox),
+`scrollbar-color` + `scrollbar-width: thin` (inside `@supports not selector(::-webkit-scrollbar)`,
+because in Chromium 121+ `scrollbar-color` switches the pseudo-elements off). `color-scheme: dark`
+on `html` for native controls. Containers that hide their bar (`.maprow-track`, `.mv-nav-center`)
+still do. The launcher's site view is the site, so it inherits this; `shell.css` and
+`placeholder.html` carry the same rules for the launcher's own screens.
+
+Launcher leftovers of the old olive palette went at the same time: the boot art gradient
+(`#2d3021`), the toast (`#1a1c15`), the focus ring (`rgba(123,126,88)`), and both windows'
+`backgroundColor` (`#101010` → `#080808`).
+
+### Bug 14: "test server never came up on 33991"
+
+`test/_port.js`: `freePort(preferred)` takes 33991 when nothing holds it and an OS-assigned port
+when something does; `waitHttp()` polls with a jittered backoff (150 ms → 1 s) to a 60–90 s deadline
+and stops at once, with the child's stderr tail, if the child exits. `local-run.js` uses both,
+awaits the old child's exit before a restart, and respawns a child that died on `EADDRINUSE`.
+`launcher-signin.js` picks its three ports the same way (it used to poll 15 s and carry on
+regardless). Proof: with a dummy listener holding 33991 and **two `local-run.js` running at once**,
+both passed 41/0.
+
+### Verified (headless Edge over CDP, scratch site on :3471, `VACUUM INTO` copy of the live DB)
+
+Screenshots in the worktree's `tmp/shots/` (not committed): home signed out and signed in, home
+with a map open, `/maps` cards and list, `/m/nazi_zombie_ali`, `/records`, `/archive` scrolled
+(the page scrollbar), `/download`, the 404, `/settings`, the rail's invite box, the account menu,
+`/id/myu`, `/admin`, the name picker, the sign-in problem page, and the launcher's placeholder
+(opened as a file). Probed: `data-amb` is set on `/m/<key>` and absent on `/`, `/maps` and after a
+card hover. `web npm test` green (143 / 41 / 15 / 19 / 12 / 10 / 12). A second run at 04:15 had
+`map-align.js` at 4/6: it reads `ZombiesDev\maps\*.glb`, and `nazi_zombie_prototype.glb` was
+re-exported at 04:13 by another lane; main's own checkout fails it the same way. Launcher
+`run-all.js` 137/1, the one failure is the worktree having no built client DLL.
+
+**Not proven:** the real launcher window (frameless title bar over the black nav, the shell's
+screens); Firefox; phone widths. **Needs a client build and a site restart; the launcher pages ship
+with the next launcher build.**

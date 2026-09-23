@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
+import EnwWord from '../components/Enw'
 
 // ── The name gate ───────────────────────────────────────────────────────────────────────
 //
@@ -134,12 +135,12 @@ export default function UsernameSetup ({ me, onDone }) {
       <div className="card name-gate" style={{ textAlign: 'left', padding: 28 }}>
         <h2 style={{ textAlign: 'center', margin: 0 }}>Choose your name</h2>
         <p className="muted" style={{ textAlign: 'center', marginTop: 6 }}>
-          Your ENW username, the same as on ENW Movement.
+          Your <EnwWord /> username, the same as on <EnwWord /> Movement.
         </p>
 
         {suggest && suggest.name ? (
           <p className="small" style={{ marginTop: 14, marginBottom: 0 }}>
-            On ENW Movement you are <b>{suggest.name}</b>.{' '}
+            On <EnwWord /> Movement you are <b>{suggest.name}</b>.{' '}
             {suggest.available
               ? (trimmed === suggest.name ? null
                   : <button type="button" className="btn small ghost" onClick={() => { touched.current = true; setName(suggest.name) }}>Use it</button>)
