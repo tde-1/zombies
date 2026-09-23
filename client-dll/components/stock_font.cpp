@@ -505,12 +505,72 @@ void probe_now() {
     }
 }
 
+// ---- vid_restart (esc-menu.md §9) ------------------------------------------------
+// `vid_restart` destroys the D3D device (our atlas texture was made on it) and the game
+// window, and reloads the UI's assets. Everything resolved above may then point at
+// freed memory. So the first pick() that sees a different device or window throws the
+// whole resolution away and starts again (worker search, texture on the new device);
+// until that is done the engine's own fonts are used. The old texture is not Released:
+// its device is gone, and a leaked 350 KB managed texture per restart is the safe side.
+// before_vid_restart() (the Settings tab's Apply) additionally holds the stock font off
+// from the moment the restart is queued, so nothing is drawn with it in between.
+constexpr uintptr_t kDxDevice = 0x3BF3B08;
+constexpr uintptr_t kGameHwnd = 0x22C1BE4;   // g_wv.hwnd (addresses.hpp)
+uint32_t g_seen_dev = 0;
+uint32_t g_seen_hwnd = 0;
+bool g_hold = false;
+ULONGLONG g_hold_t = 0;
+
+void forget_everything(const char* why) {
+    g_state = 0;
+    g_tex_state = 0;
+    g_image_words[1] = 0;
+    g_fail.clear();
+    g_iwi_from.clear();
+    std::vector<uint8_t>().swap(g_iwi);
+    for (auto& f : g_faces) f.ok = false;
+    g_worker = 0;   // last: the next pick() posts a new search
+    ENW_INFO("stock_font: %s -- the stock font is found again for the new device (the engine's fonts until then)", why);
+}
+
+// True while the stock font must not be used this frame.
+bool device_changed_or_held() {
+    const uint32_t dev = *reinterpret_cast<const volatile uint32_t*>(kDxDevice);
+    const uint32_t hwnd = *reinterpret_cast<const volatile uint32_t*>(kGameHwnd);
+    if (!dev || !hwnd) return true;   // mid-restart: no device, no window
+    if (!g_seen_dev) { g_seen_dev = dev; g_seen_hwnd = hwnd; }
+    const bool changed = dev != g_seen_dev || hwnd != g_seen_hwnd;
+    if (changed) {
+        if (g_worker.load() == 1) return true;   // a search is running: wait for it, then forget it
+        g_seen_dev = dev;
+        g_seen_hwnd = hwnd;
+        g_hold = false;
+        forget_everything("the device or window changed (vid_restart)");
+        return true;
+    }
+    if (g_hold) {
+        if (::GetTickCount64() - g_hold_t < 20000) return true;
+        g_hold = false;
+        ENW_WARN("stock_font: held for a vid_restart that never came (20 s); using the stock font again");
+    }
+    return false;
+}
+
 }  // namespace
+
+void before_vid_restart() {
+    g_hold = true;
+    g_hold_t = ::GetTickCount64();
+    ENW_INFO("stock_font: vid_restart queued: the engine's fonts until the new device is up and the stock font is found again");
+}
 
 // The face for a real pixel scale, by World at War's own thresholds at their STOCK
 // values (ui_smallFont 0.25, ui_bigFont 0.4, ui_extraBigFont 0.55, from their
 // registration at 0x5D0430..0x5D048E) -- not the dvars, which a mod may change.
 void* pick(float real_scale) {
+    const int want0 = real_scale <= 0.25f ? F_SMALL : real_scale >= 0.55f ? F_XBIG
+                      : real_scale >= 0.4f ? F_BIG : F_NORMAL;
+    if (device_changed_or_held()) return *reinterpret_cast<void* const*>(g_faces[want0].live);
     const int w = g_worker.load();
     if (w == 0 && *reinterpret_cast<const uint32_t*>(kLiveBig)) {
         g_worker = 1;

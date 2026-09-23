@@ -267,7 +267,7 @@ const gen = await import('../../tools/settings/gen-ingame-schema.mjs')
 
 await test('in-game schema: the committed shared/settings/ingame-settings.json is exactly what the catalogue generates', async () => {
   const want = gen.render(await gen.buildSchema())
-  assert.equal(fs.readFileSync(gen.OUT, 'utf8'), want, 'stale: run node tools/settings/gen-ingame-schema.mjs')
+  assert.equal(gen.readCommitted(), want, 'stale: run node tools/settings/gen-ingame-schema.mjs')
 })
 
 await test('in-game schema: every value a control can write passes the launcher whitelist; mod-owned and gameplay dvars are absent', async () => {

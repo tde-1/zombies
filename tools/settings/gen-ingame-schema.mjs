@@ -105,11 +105,14 @@ export async function buildSchema() {
 }
 
 export const render = (schema) => JSON.stringify(schema, null, 1) + '\n'
+// The committed file as text with LF endings (core.autocrlf checks it out with CRLF on
+// Windows; the content is what matters, and the DLL's JSON parser takes either).
+export const readCommitted = () => fs.readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n')
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const want = render(await buildSchema())
   if (process.argv.includes('--check')) {
-    const have = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : ''
+    const have = fs.existsSync(OUT) ? readCommitted() : ''
     if (have !== want) {
       console.error(`${path.relative(repo, OUT)} is STALE: run node tools/settings/gen-ingame-schema.mjs`)
       process.exit(1)
