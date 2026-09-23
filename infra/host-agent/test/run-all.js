@@ -13,6 +13,7 @@ import { mkdirp } from '../lib/util.js'
 import { InstanceManager, devKnobsFor, safeLeaseDvars } from '../lib/instances.js'
 import { leaseList, planLeases } from '../lib/leases.js'
 import { SERVER_RULES, RULESET, effectiveFps } from '../lib/verified.js'
+import { contactSummary } from '../tools/replay-contact.js'
 
 const TMP = mkdirp(path.join(os.tmpdir(), 'enw-host-tests'))
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..')
@@ -1043,6 +1044,20 @@ console.log('\n== several leases per box ==')
     eq(planLeases([L('m_a')], [], {}).boot.map((x) => x.match_id), ['m_a'])
   })
 }
+// tools/replay-contact.js (mod-compat.md §10): "it worked last night" only counts if the
+// player met a zombie in that game.
+t('replay-contact: a game where the zombies never came near is not a sighting', () => {
+  const snap = (ms, p, zs) => ({ t: 'snap', ms, zombies_alive: zs.length, players: [{ slot: 0, pos: p }], zombies: zs.map((z, i) => ({ id: 100 + i, pos: z })) })
+  const far = contactSummary([snap(1000, [0, 0, 0], [[2000, 0, 0]]), snap(41000, [0, 0, 0], [[1644, 0, 0]])])
+  eq([far.seconds, far.minDist, far.nearSamples, far.met], [40, 1644, 0, false])
+  const met = contactSummary([
+    { t: 'snap', ms: 0, players: [{ slot: 0, pos: [0, 0, 0], kills: 0, downs: 0 }] },   // players-only frame
+    snap(27000, [0, 0, 0], [[500, 0, 0], [96, 0, 0]]),
+    { t: 'snap', ms: 28000, players: [{ slot: 0, pos: [0, 0, 0], kills: 2, downs: 1 }], zombies: [{ id: 1, pos: [30, 0, 0] }] },
+    { t: 'kill', ms: 28500, id: 1 },
+  ], { near: 150 })
+  eq([met.seconds, met.minDist, met.nearSamples, met.firstNearS, met.kills, met.downs, met.met], [28, 30, 2, 27, 2, 1, true])
+})
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`)
 if (fail) { for (const [s, n, m] of results) if (s === 'FAIL') console.log(`  FAIL ${n}: ${m}`) }
 process.exit(fail ? 1 : 0)

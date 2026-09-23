@@ -120,6 +120,15 @@
 //    semantics are kept so the dvar can drop straight in.
 // 4. No r_autopriority / Key_ClearStates on focus loss; those are separate
 //    upstream features, not part of the polling-rate fix.
+// 5. (2026-09-23, lane 17b) Thirteen compensations for the downsides of this
+//    design, D1-D13, each marked where it lives and tabled in client.md §1g:
+//    the double wheel (a real bug since 0.2.3), impossible-delta and per-block
+//    offset guards, the drain inside the pump (MSDN's full pattern), a softer
+//    GetRawInputBuffer failure policy, clip re-verification, edge and menu
+//    recentres, a registration watchdog, foreign raw input, absolute devices in
+//    pixels, the Windows pointer-speed log/opt-in, and ENW_RAW_MOUSE_BUTTONS=0
+//    no longer leaving gameplay without clicks. The pure rules are in
+//    raw_mouse_model.hpp and tested by tools/dev/mouse_tests.cpp.
 
 // ===========================================================================
 // 2026-09-23 -- WHERE MOUSE BUTTONS ACTUALLY COME FROM, AND THE STATE MACHINE
@@ -243,6 +252,7 @@
 #include "memory.hpp"
 #include "mouse_jitter.hpp"
 #include "raw_buffer.hpp"
+#include "raw_mouse_model.hpp"
 
 #include <cmath>
 #include <cstdio>
@@ -260,21 +270,11 @@ namespace {
 #ifdef ENW_HAVE_T4_ADDRESSES
 
 // ------------------------------------------------------------------ upstream
-// rawMouseValue_t, ported from iw4x-client RawMouse.hpp/.cpp verbatim in shape.
-struct rawMouseValue_t {
-    int current = 0;
-    int previous = 0;
-
-    void ResetDelta() { previous = current; }
-    int GetDelta() const { return current - previous; }
-
-    void Update(int value, bool absolute) {
-        // An absolute-positioning device reports a coordinate, not a delta.
-        // Treating it as a delta spins the view; upstream zeroes first.
-        if (absolute) current = 0;
-        current += value;
-    }
-};
+// rawMouseValue_t, ported from iw4x-client RawMouse.hpp/.cpp. It lives in
+// raw_mouse_model.hpp now (2026-09-23, lane 17b) so mouse_tests can drive it, with
+// two documented changes there: no jump on an absolute<->relative device switch,
+// and the relative accumulator rebased every frame so it cannot overflow.
+using enw::rawmodel::rawMouseValue_t;
 
 // ------------------------------------------------------------------- state
 rawMouseValue_t g_raw_x;
@@ -463,6 +463,37 @@ double g_buf_motion = 0.0;
 // so a test game can never trap the desktop cursor.
 bool g_sink = false;
 
+// ===========================================================================
+// 2026-09-23 -- LANE 17b: THE DOWNSIDES, AND WHAT PAYS FOR EACH (client.md §1g)
+// ===========================================================================
+// B played 0.2.24 and is happy with the frame time. He asked for every downside of
+// this component and of NOLEGACY to be listed honestly and paid for in code where
+// code can. The table is client.md §1g; the pure rules are raw_mouse_model.hpp; the
+// state for each payment is here, one line each, and every one of them has a
+// counter in the 15 s `compensations` log line so B's next session proves or
+// clears it without anyone else at the machine.
+unsigned long long g_frame_no = 0;           // the frame tick's n, for the wheel ledger
+enw::rawmodel::wheel_ledger g_wheel;         // D1: the double-wheel twin pairing
+long g_wheel_raw = 0, g_wheel_legacy = 0;    //     notches seen per source
+long g_que_wheel = 0;                        //     K_MWHEELUP/DOWN downs the engine queued (trace)
+long g_implausible = 0;                      // D2: relative deltas > 16 bits discarded
+long g_block_bad = 0;                        // D3: buffered blocks with a size we do not know
+long g_block_offset_disagree = 0;            //     block size said a different offset than IsWow64Process
+bool g_pump_drain = true;                    // D4: drain the buffer inside the pump (ENW_RAW_MOUSE_PUMP_DRAIN=0)
+long g_pump_drains = 0, g_pump_drain_reports = 0;
+long g_bulk_fail_run = 0;                    // D5: consecutive non-transient GetRawInputBuffer failures
+long g_bulk_transient = 0;                   //     ERROR_INSUFFICIENT_BUFFER (skipped, not fatal)
+long g_clip_reapplied = 0;                   // D6: the clip was lost or stale and put back
+long g_edge_recentres = 0;                   // D7: occasional recentre when the cursor left the middle
+long g_menu_recentres = 0;                   // D8: one recentre when the game hands the mouse to a menu
+long g_reg_checks = 0, g_reg_repairs = 0;    // D9: our raw registration was replaced/removed
+bool g_reg_gave_up = false;
+long g_foreign_regs = 0;                     // D10: another module registered raw input in this process
+long g_abs_reports = 0;                      // D11: MOUSE_MOVE_ABSOLUTE reports (mapped to pixels)
+enw::rawmodel::scaler g_scale;               // D12: ENW_RAW_MOUSE_WINSPEED=1 opt-in
+int g_win_speed = 10;
+bool g_win_epp = false;
+
 // Plumbing counters for the probe line: every WM_INPUT that reached the proc,
 // GetRawInputData failures (and the first error), non-mouse reports, and the
 // most frequent other message id (to name a flood we did not expect).
@@ -519,25 +550,67 @@ inline int64_t qpc_now() {
 // the cursor to the client rect once, and stop recentring. One less SetCursorPos
 // and one less synthesised message per frame.
 bool g_cursor_clipped = false;
+RECT g_clip_rect = {};  // the client rect in screen coordinates, as last clipped
 long g_recentres_skipped = 0;
 
+bool client_screen_rect(RECT* out) {
+    if (!g_hwnd || !::IsWindow(g_hwnd)) return false;
+    RECT c = {};
+    if (!::GetClientRect(g_hwnd, &c)) return false;
+    POINT tl = {c.left, c.top};
+    POINT br = {c.right, c.bottom};
+    ::ClientToScreen(g_hwnd, &tl);
+    ::ClientToScreen(g_hwnd, &br);
+    *out = {tl.x, tl.y, br.x, br.y};
+    return out->right > out->left && out->bottom > out->top;
+}
+
+// D6 (lane 17b). The clip used to be applied ONCE and then trusted for as long as
+// g_cursor_clipped said so. But the clip is a desktop-wide resource that other
+// things change behind our back: the secure desktop (UAC, Ctrl+Alt+Del, Win+L)
+// resets it, any other program can ClipCursor(NULL), and borderless.cpp or a
+// vid_restart can move or resize the window under a clip that still names the old
+// rect. On B's 2560x1440 borderless panel with a second monitor, a lost clip plus
+// the skipped recentre is a cursor that can walk onto the other screen, and a click
+// there activates whatever is under it. So while we hold the clip we re-check it
+// every few calls (GetClipCursor against the client rect, 2 px slack for DPI
+// virtualisation) and put it back if it is gone or stale. `clip re-applied` in the
+// compensations line counts it.
+long g_clip_check_tick = 0;
 void clip_cursor_to_client(bool on) {
-    if (on == g_cursor_clipped) return;
     if (on && g_sink) return;  // harness: never clip the desktop to an off-screen game
     if (on) {
-        if (!g_hwnd || !::IsWindow(g_hwnd)) return;
-        RECT c = {};
-        if (!::GetClientRect(g_hwnd, &c)) return;
-        POINT tl = {c.left, c.top};
-        POINT br = {c.right, c.bottom};
-        ::ClientToScreen(g_hwnd, &tl);
-        ::ClientToScreen(g_hwnd, &br);
-        const RECT screen = {tl.x, tl.y, br.x, br.y};
-        if (!::ClipCursor(&screen)) return;
+        if (g_cursor_clipped && (++g_clip_check_tick & 7) != 0) return;  // re-check every 8th call
+        RECT want = {};
+        if (!client_screen_rect(&want)) return;
+        if (g_cursor_clipped) {
+            RECT have = {};
+            if (::GetClipCursor(&have) && enw::rawmodel::rect_same(have, want, 2)) return;
+            ++g_clip_reapplied;
+            if (g_clip_reapplied <= 3 || g_verbose)
+                ENW_INFO("mouse_polling: the cursor clip was lost or stale (now %ld,%ld-%ld,%ld, want "
+                         "%ld,%ld-%ld,%ld) -- re-applied (%ld so far). Something outside the game "
+                         "reset it (UAC / Ctrl+Alt+Del / another program) or the window moved.",
+                         have.left, have.top, have.right, have.bottom, want.left, want.top,
+                         want.right, want.bottom, g_clip_reapplied);
+        }
+        if (!::ClipCursor(&want)) return;
+        g_clip_rect = want;
+        g_cursor_clipped = true;
     } else {
+        if (!g_cursor_clipped) return;
         ::ClipCursor(nullptr);
+        g_cursor_clipped = false;
     }
-    g_cursor_clipped = on;
+}
+
+// D7/D8: IN_RecenterMouse, the engine's own (SetCursorPos to the window centre, and
+// it stores the centre at 0x229A0C0/BC), plus the oldPos bookkeeping the stock
+// branch of in_mousemove does, so a later stock frame sees no jump.
+void recentre_now() {
+    in_recenter_mouse()();
+    *enw::ptr<int>(t4::var::s_wmv_oldPos_x) = *enw::ptr<int>(t4::var::s_wmv_centre_x);
+    *enw::ptr<int>(t4::var::s_wmv_oldPos_y) = *enw::ptr<int>(t4::var::s_wmv_centre_y);
 }
 
 // Measured device report rate, the instrument CoD2x exposes as `m_rinput_hz`.
@@ -620,6 +693,64 @@ void set_nolegacy(bool want) {
                  want ? "OFF" : "back ON", want ? "game" : "menu/console", g_nolegacy_flips);
 }
 
+// D9/D10 (lane 17b): is our registration still ours, and is anyone else's raw input
+// landing in our thread's queue? Once a second from the frame tick. The rules and
+// the reasons are in raw_mouse_model.hpp (classify_registrations).
+void check_registration() {
+    if (!g_in_raw_input || g_reg_gave_up || !g_hwnd) return;
+    ++g_reg_checks;
+    RAWINPUTDEVICE list[16] = {};
+    UINT n = 16;
+    const UINT got = ::GetRegisteredRawInputDevices(list, &n, sizeof(RAWINPUTDEVICE));
+    if (got == static_cast<UINT>(-1)) return;  // > 16 registrations: not a state we reason about
+    enw::rawmodel::reg_entry e[16] = {};
+    const DWORD our_tid = ::GetCurrentThreadId();
+    for (UINT i = 0; i < got; ++i) {
+        e[i].page = list[i].usUsagePage;
+        e[i].usage = list[i].usUsage;
+        e[i].flags = list[i].dwFlags;
+        e[i].target_is_ours = list[i].hwndTarget == g_hwnd;
+        e[i].target_on_our_thread =
+            !list[i].hwndTarget || ::GetWindowThreadProcessId(list[i].hwndTarget, nullptr) == our_tid;
+    }
+    const auto v = enw::rawmodel::classify_registrations(e, got, g_nolegacy_now);
+
+    if (v.foreign_on_thread && !g_foreign_regs++) {
+        // Only noted here. Whether its reports really land in OUR queue is decided
+        // by evidence, in drain_raw_buffer: the first non-mouse block it meets turns
+        // the bulk read off. Turning it off on a registration alone would cost the
+        // bulk read to every player whose overlay registers a keyboard it never
+        // routes to us.
+        ENW_INFO("mouse_polling: another module in this process has a non-mouse raw input "
+                 "registration that may deliver to the game thread. If its reports show up in "
+                 "our GetRawInputBuffer drain, the bulk read turns itself off.");
+    }
+    if (v.mouse_ours) return;
+
+    // Replaced (other window, legacy flag flipped) or removed. Put ours back -- a few
+    // times. If something keeps taking it, stop fighting: go to the stock
+    // GetCursorPos path, which needs no registration at all, rather than leave the
+    // player with a mouse that turns nothing.
+    ++g_reg_repairs;
+    if (g_reg_repairs <= 5 && register_raw(true, g_nolegacy_now)) {
+        ENW_WARN("mouse_polling: our raw mouse registration was %s by something else in the "
+                 "process -- re-registered (repair %ld of at most 5). With NOLEGACY on, a lost "
+                 "registration is a dead mouse, so this is checked once a second.",
+                 v.mouse_present ? "REPLACED" : "REMOVED", g_reg_repairs);
+        return;
+    }
+    g_reg_gave_up = true;
+    ENW_ERROR("mouse_polling: the raw mouse registration keeps being taken (%ld repairs). Giving "
+              "up on raw input for this session and falling back to the stock GetCursorPos path "
+              "so the mouse keeps working. The high-polling-rate fix is OFF until restart.",
+              g_reg_repairs);
+    g_nolegacy_now = false;
+    clip_cursor_to_client(false);
+    g_in_raw_input = false;  // in_mousemove now calls the engine's own IN_MouseMove
+    g_enabled = false;       // and a vid_restart re-install stays in passthrough
+    g_passthrough = true;
+}
+
 // ===========================================================================
 // THE BUTTON STATE MACHINE. The argument for it is in the file header; this is
 // the implementation, and it is deliberately small.
@@ -683,12 +814,11 @@ const char* button_name(int i) {
 // the LOW WORD of wParam is the button mask; WM_XBUTTON* and WM_MOUSEWHEEL
 // carry the button number / wheel delta in the high word and it must survive.
 WPARAM rewrite_mask(WPARAM wp) {
-    if (!g_btn_track || !g_btn_known) return wp;
-    const WPARAM lo = wp & 0xFFFF;
-    const WPARAM fixed = (lo & ~g_btn_known) | (g_btn_mask & g_btn_known);
-    if (fixed == lo) return wp;
-    ++g_mask_rewrites;
-    return (wp & ~static_cast<WPARAM>(0xFFFF)) | fixed;
+    if (!g_btn_track) return wp;
+    // The rule itself is enw::rawmodel::rewrite_low_word (tested in mouse_tests).
+    const WPARAM out = enw::rawmodel::rewrite_low_word(wp, g_btn_mask, g_btn_known);
+    if (out != wp) ++g_mask_rewrites;
+    return out;
 }
 
 void send_to_engine(UINT msg, WPARAM wp, LPARAM lp) {
@@ -729,8 +859,7 @@ void emit_button(int idx, bool down, LPARAM lp) {
     };
     if (idx < 0 || idx > 4) return;
     const auto& m = kMap[idx];
-    if (down) g_btn_mask |= m.mk; else g_btn_mask &= ~m.mk;
-    g_btn_known |= m.mk;
+    enw::rawmodel::apply_transition(&g_btn_mask, &g_btn_known, m.mk, down);
 
     const WPARAM lo = g_btn_mask | modifier_bits();
     const WPARAM wp = m.xbtn ? MAKEWPARAM(static_cast<WORD>(lo), static_cast<WORD>(m.xbtn)) : lo;
@@ -780,25 +909,31 @@ void apply_raw_buttons(USHORT flags, SHORT wheel) {
     if (!flags || !g_btn_track || !g_prev_wndproc || !g_hwnd) return;
     const LPARAM lp = cursor_lparam();
 
-    static const struct { USHORT dn; USHORT up; int idx; } kRaw[5] = {
-        {RI_MOUSE_LEFT_BUTTON_DOWN,   RI_MOUSE_LEFT_BUTTON_UP,   0},
-        {RI_MOUSE_RIGHT_BUTTON_DOWN,  RI_MOUSE_RIGHT_BUTTON_UP,  1},
-        {RI_MOUSE_MIDDLE_BUTTON_DOWN, RI_MOUSE_MIDDLE_BUTTON_UP, 2},
-        {RI_MOUSE_BUTTON_4_DOWN,      RI_MOUSE_BUTTON_4_UP,      3},
-        {RI_MOUSE_BUTTON_5_DOWN,      RI_MOUSE_BUTTON_5_UP,      4},
-    };
     // A single report can carry a down AND an up for the same button (a click
     // shorter than one report interval). Emit both, down first, so the engine
-    // differs two transitions instead of losing the pair.
-    for (const auto& r : kRaw) {
-        if (flags & r.dn) emit_button(r.idx, true, lp);
-        if (flags & r.up) emit_button(r.idx, false, lp);
+    // differs two transitions instead of losing the pair. The decode is
+    // enw::rawmodel::decode_button_flags (tested in mouse_tests).
+    enw::rawmodel::raw_transition t[10];
+    const int nt = enw::rawmodel::decode_button_flags(flags, t);
+    for (int i = 0; i < nt; ++i) emit_button(t[i].idx, t[i].down, lp);
+    // D1 (lane 17b), THE DOUBLE WHEEL. The engine's WM_MOUSEWHEEL handler (0x60706B)
+    // queues one MWHEELUP/DOWN down+up per MESSAGE, so unlike a button a duplicate
+    // is a second notch. Whenever legacy messages are on (menu, console, the frame
+    // of a flip, ENW_RAW_MOUSE_NOLEGACY=0) Windows sends its own WM_MOUSEWHEEL for
+    // the same notch, and 0.2.3-0.2.24 delivered both. The ledger pairs the twins;
+    // raw_mouse_model.hpp has the rule. A zero delta is not a notch (and the engine
+    // would read it as MWHEELDOWN), so it is never synthesised.
+    if (flags & RI_MOUSE_WHEEL) {
+        ++g_wheel_raw;
+        if (g_wheel.on_raw(wheel, g_frame_no))
+            send_to_engine(WM_MOUSEWHEEL,
+                           MAKEWPARAM(static_cast<WORD>(g_btn_mask | modifier_bits()),
+                                      static_cast<WORD>(wheel)),
+                           lp);
+        else if (g_trace)
+            ENW_INFO("input_trace: %8u ms  RAW  wheel %d NOT sent -- its legacy twin already was",
+                     trace_ms(), static_cast<int>(wheel));
     }
-    if (flags & RI_MOUSE_WHEEL)
-        send_to_engine(WM_MOUSEWHEEL,
-                       MAKEWPARAM(static_cast<WORD>(g_btn_mask | modifier_bits()),
-                                  static_cast<WORD>(wheel)),
-                       lp);
 }
 
 // ------------------------------------------------- the engine's own verdict
@@ -829,6 +964,15 @@ void drain_engine_event_ring() {
         if (type != 1) continue;  // SE_KEY
         const int key = *reinterpret_cast<int*>(slot + 0x08);
         const int down = *reinterpret_cast<int*>(slot + 0x0C);
+        // K_MWHEELDOWN 0xCD / K_MWHEELUP 0xCE, read off the WM_MOUSEWHEEL handler
+        // 0x60706B (it pushes exactly these). One DOWN per notch the engine took.
+        if ((key == 0xCD || key == 0xCE) && down) {
+            ++g_que_wheel;
+            if (g_trace)
+                ENW_INFO("input_trace: %8u ms  QUEUED %s  <- the engine", trace_ms(),
+                         key == 0xCE ? "MWHEELUP" : "MWHEELDOWN");
+            continue;
+        }
         const int idx = key - static_cast<int>(t4::var::K_MOUSE1);
         if (idx < 0 || idx > 4) continue;
         if (down) ++g_que_down[idx]; else ++g_que_up[idx];
@@ -864,6 +1008,15 @@ void report_verdict(const char* when) {
                  lost_d ? (lost_d > 0 ? "  (downs lost)" : "  (extra downs)") : "",
                  lost_u ? (lost_u > 0 ? "  (ups lost)" : "  (extra ups)") : "");
     }
+    if (g_wheel_raw || g_wheel_legacy || g_que_wheel) {
+        // Physical notches = raw notches (every notch has a raw report while raw is
+        // registered). A legacy notch with no raw twin (a touchpad) adds one.
+        const long physical = g_wheel_raw + (g_wheel_legacy > g_wheel_raw ? g_wheel_legacy - g_wheel_raw : 0);
+        ENW_INFO("input_trace (%s): WHEEL  raw notches %ld  |  legacy msgs %ld  |  twins swallowed "
+                 "%ld  |  engine QUEUED %ld  ->  %s",
+                 when, g_wheel_raw, g_wheel_legacy, g_wheel.swallowed(), g_que_wheel,
+                 g_que_wheel == physical ? "PERFECT" : g_que_wheel > physical ? "DOUBLED" : "DROPPED");
+    }
     ENW_INFO("input_trace (%s): masks rewritten %ld, forced releases %ld, "
              "Sys_QueEvent overflow windows %ld, tracker %s, NOLEGACY %s (%ld flips)",
              when, g_mask_rewrites, g_force_release, g_que_overflow,
@@ -871,68 +1024,164 @@ void report_verdict(const char* when) {
              g_nolegacy_flips);
 }
 
+// ONE report, from either path, into the accumulators and the button tracker.
+// Before lane 17b the two paths each had their own copy of this; now there is one,
+// so a guard added here guards both. Returns false if the report was discarded.
+bool consume_mouse(const RAWMOUSE& m, bool buffered) {
+    const bool absolute = (m.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
+    long x = m.lLastX, y = m.lLastY;
+    if (absolute) {
+        // D11: a coordinate in 0..65535, mapped onto the screen in PIXELS (SDL3's
+        // rule) so an RDP session, a VM or a pen tablet turns the view at the same
+        // rate as the stock path's pixel deltas instead of ~25x faster.
+        ++g_abs_reports;
+        const bool virt = (m.usFlags & MOUSE_VIRTUAL_DESKTOP) != 0;
+        x = enw::rawmodel::absolute_to_pixels(
+            x, virt ? ::GetSystemMetrics(SM_XVIRTUALSCREEN) : 0,
+            ::GetSystemMetrics(virt ? SM_CXVIRTUALSCREEN : SM_CXSCREEN));
+        y = enw::rawmodel::absolute_to_pixels(
+            y, virt ? ::GetSystemMetrics(SM_YVIRTUALSCREEN) : 0,
+            ::GetSystemMetrics(virt ? SM_CYVIRTUALSCREEN : SM_CYSCREEN));
+    } else if (!enw::rawmodel::plausible_relative(x, y)) {
+        // D2: no 16-bit HID axis can say this. It is a misread (the 0.2.3-0.2.20
+        // WOW64 bug turned a wheel notch into lLastX = 0x00780400), so the whole
+        // report is untrustworthy -- motion AND buttons -- and none of it reaches
+        // the engine. Only reachable with ENW_RAW_MOUSE_WOW64FIX=0 today; the guard
+        // is what makes that A/B arm safe to play (no random 180s on a wheel notch).
+        if (++g_implausible <= 3)
+            ENW_WARN("mouse_polling: discarded an impossible %s raw report (dx=%ld dy=%ld, "
+                     "flags=0x%04X). A relative mouse axis is 16 bits; this is a misread, not "
+                     "motion. %ld so far.",
+                     buffered ? "buffered" : "dispatched", x, y,
+                     static_cast<unsigned>(m.usButtonFlags), g_implausible);
+        return false;
+    }
+    if (buffered) {
+        ++g_buf_reports;
+        g_buf_motion += std::fabs(static_cast<double>(m.lLastX)) + std::fabs(static_cast<double>(m.lLastY));
+    } else {
+        ++g_msg_reports;
+        g_msg_motion += std::fabs(static_cast<double>(m.lLastX)) + std::fabs(static_cast<double>(m.lLastY));
+    }
+    g_raw_x.Update(static_cast<int>(x), absolute);
+    g_raw_y.Update(static_cast<int>(y), absolute);
+    // IN BOTH MODES, and that is defect 2's fix. The old code did this only while
+    // NOLEGACY was registered, on the reasoning that the legacy messages were
+    // already carrying the clicks. They were -- but the flip happens once a frame,
+    // so a report generated on one side of it and consumed on the other was either
+    // doubled or dropped. Now raw input is the only source of button transitions
+    // and every legacy message is mask-rewritten to agree with it (see wndproc), so
+    // the engine sees exactly one edge per transition either way.
+    if (m.usButtonFlags)
+        apply_raw_buttons(m.usButtonFlags, static_cast<SHORT>(m.usButtonData));
+    return true;
+}
+
+bool g_wow64_layout = false;  // the REAL buffer layout (IsWow64Process), even with WOW64FIX=0
+
 // Read every pending raw report in ONE call instead of one WM_INPUT dispatch
 // each. Returns how many reports it consumed.
 long drain_raw_buffer() {
     if (!g_in_raw_input || !g_bulk_read) return 0;
+    // One static buffer, and since lane 17b this also runs from inside the WndProc
+    // (the pump drain), so it must never re-enter itself: a button it synthesises
+    // goes to the engine's proc, and anything there that pumped messages would
+    // bring a WM_INPUT back here mid-parse. Nothing in the engine's mouse handlers
+    // does (they only Sys_QueEvent), but the guard costs one bool.
+    static bool busy = false;
+    if (busy) return 0;
+    struct guard { guard() { busy = true; } ~guard() { busy = false; } } g;
     // 512 reports is ~4 frames' worth at 8 kHz / 250 fps; the loop runs again if
-    // there is more.
-    static BYTE buf[512 * (sizeof(RAWINPUT) + 16)];
+    // there is more. alignas(8) (lane 17b): GetRawInputBuffer requires the buffer
+    // aligned for RAWINPUT, and on WOW64 that is the 64-bit struct -- 8 bytes. A
+    // static BYTE array is only guaranteed 1; it happened to be aligned in 0.2.24.
+    alignas(8) static BYTE buf[512 * (sizeof(RAWINPUT) + 16)];
     long consumed = 0;
     for (;;) {
         UINT size = sizeof buf;
         const UINT n = ::GetRawInputBuffer(reinterpret_cast<PRAWINPUT>(buf), &size,
                                            sizeof(RAWINPUTHEADER));
         if (n == static_cast<UINT>(-1)) {
-            // Not "no reports": the call itself failed. Known cause: another
-            // injected module (Special K, SpecialKO/SpecialK#354) leaves
-            // GetRawInputBuffer returning -1 / ERROR_PROC_NOT_FOUND. Silently
-            // treating that as "no input" is a dead mouse, so give up on the
-            // bulk read for the rest of the session and let the per-message
-            // GetRawInputData path in OnRawInput carry everything.
-            if (++g_bulk_failures == 1)
-                ENW_WARN("mouse_polling: GetRawInputBuffer failed (GetLastError=%lu). Falling "
-                         "back to one GetRawInputData per WM_INPUT for the rest of this "
-                         "session. RIDEV_NOLEGACY stays on -- the legacy WM_MOUSEMOVE half of "
-                         "the flood is still gone -- but the per-message read is back.",
-                         ::GetLastError());
+            // Not "no reports": the call itself failed. D5 (lane 17b): which failure
+            // matters. ERROR_INSUFFICIENT_BUFFER is the next block not fitting (SDL3
+            // grows its buffer on exactly this) -- the report stays queued and its own
+            // WM_INPUT still delivers it, so skip the bulk read THIS time only. Any
+            // other error (Special K, SpecialKO/SpecialK#354: ERROR_PROC_NOT_FOUND) is
+            // a broken API; after kBulkFailLimit in a row, give up on the bulk read
+            // for the session and let the per-message GetRawInputData path carry
+            // everything. 0.2.24 gave up on the FIRST -1 of any kind.
+            const DWORD err = ::GetLastError();
+            if (enw::rawmodel::bulk_error_is_transient(err)) {
+                ++g_bulk_transient;
+                break;
+            }
+            ++g_bulk_failures;
+            if (++g_bulk_fail_run < enw::rawmodel::kBulkFailLimit) break;
+            ENW_WARN("mouse_polling: GetRawInputBuffer failed %ld times in a row (GetLastError=%lu). "
+                     "Falling back to one GetRawInputData per WM_INPUT for the rest of this "
+                     "session. RIDEV_NOLEGACY stays on -- the legacy WM_MOUSEMOVE half of "
+                     "the flood is still gone -- but the per-message read is back.",
+                     g_bulk_fail_run, err);
             g_bulk_read = false;
             break;
         }
+        g_bulk_fail_run = 0;
         if (n == 0) break;
 
-        PRAWINPUT ri = reinterpret_cast<PRAWINPUT>(buf);
+        const BYTE* p = buf;
         for (UINT i = 0; i < n; ++i) {
+            const auto* ri = reinterpret_cast<const RAWINPUT*>(p);
             // Same reasoning as OnRawInput: no `g_in_focus` gate. A stuck flag
             // silently discarded every report.
             if (ri->header.dwType == RIM_TYPEMOUSE) {
                 // NOT `ri->data.mouse`: under WOW64 that is 8 bytes early and
                 // reads zero motion and zero buttons (see g_rawbuf_off).
-                const RAWMOUSE& m = *enw::rawbuf::mouse_of(ri, g_rawbuf_off);
-                ++g_buf_reports;
-                g_buf_motion += std::fabs(static_cast<double>(m.lLastX)) +
-                                std::fabs(static_cast<double>(m.lLastY));
-                const bool absolute = (m.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
-                g_raw_x.Update(m.lLastX, absolute);
-                g_raw_y.Update(m.lLastY, absolute);
-                // IN BOTH MODES, and that is defect 2's fix. The old code
-                // did this only while NOLEGACY was registered, on the
-                // reasoning that the legacy messages were already carrying
-                // the clicks. They were -- but the flip happens once a frame,
-                // so a report generated on one side of it and consumed on the
-                // other was either doubled or dropped. Now raw input is the
-                // only source of button transitions and every legacy message
-                // is mask-rewritten to agree with it (see wndproc), so the
-                // engine sees exactly one edge per transition either way.
-                if (m.usButtonFlags)
-                    apply_raw_buttons(m.usButtonFlags, static_cast<SHORT>(m.usButtonData));
-                ::InterlockedIncrement(&g_events_total);
-                ::InterlockedIncrement(&g_events_this_frame);
-                ++consumed;
+                unsigned off = g_rawbuf_off;
+                bool ok = true;
+                if (g_wow64fix) {
+                    // D3 (lane 17b): the block says where its RAWMOUSE is (dwSize =
+                    // header + 24). A second signal next to IsWow64Process; an unknown
+                    // size is skipped, never guessed at.
+                    const unsigned from_block = enw::rawmodel::offset_from_block_size(ri->header.dwSize);
+                    if (!from_block) {
+                        ok = false;
+                        if (++g_block_bad <= 3)
+                            ENW_WARN("mouse_polling: a buffered mouse block has dwSize %lu, which is "
+                                     "neither the 32-bit (40) nor the WOW64 (48) layout. Skipped, "
+                                     "not guessed at (%ld so far).",
+                                     static_cast<unsigned long>(ri->header.dwSize), g_block_bad);
+                    } else if (from_block != off) {
+                        if (++g_block_offset_disagree == 1)
+                            ENW_WARN("mouse_polling: IsWow64Process said the RAWMOUSE is at +%u but "
+                                     "the block's own size says +%u. Believing the block.",
+                                     off, from_block);
+                        off = from_block;
+                    }
+                }
+                if (ok && consume_mouse(*enw::rawbuf::mouse_of(ri, off), true)) {
+                    ::InterlockedIncrement(&g_events_total);
+                    ::InterlockedIncrement(&g_events_this_frame);
+                    ++consumed;
+                }
+            } else {
+                // D10 (lane 17b): a keyboard/HID report in OUR thread's queue.
+                // Someone else in the process registered it and GetRawInputBuffer
+                // just took it from them. This one is gone; stop the bulk read so
+                // the next ones reach whoever wanted them as their own WM_INPUT.
+                ++g_rid_notmouse;
+                if (g_bulk_read) {
+                    g_bulk_read = false;
+                    ENW_WARN("mouse_polling: GetRawInputBuffer returned a non-mouse report (type "
+                             "%lu) -- another module's raw input shares the game thread's queue "
+                             "and the bulk read would keep eating it. Bulk read OFF for the rest of "
+                             "the session; NOLEGACY stays on and per-message reads carry the mouse.",
+                             static_cast<unsigned long>(ri->header.dwType));
+                }
             }
-            ri = NEXTRAWINPUTBLOCK(ri);
+            p += enw::rawmodel::block_stride(ri->header.dwSize, g_wow64_layout);
         }
         ++g_buffered_reads;
+        if (!g_bulk_read) break;  // a foreign report turned it off mid-drain
         if (n * (sizeof(RAWINPUT) + 16) < sizeof buf / 2) break;  // it all fitted
     }
     g_buffered_reports += consumed;
@@ -989,18 +1238,9 @@ void OnRawInput(LPARAM lparam) {
     // for `g_first_raw_update`, which is what actually needs focus transitions
     // (upstream's alt-tab angle-snap fix).
 
-    ++g_msg_reports;
-    g_msg_motion += std::fabs(static_cast<double>(raw.data.mouse.lLastX)) +
-                    std::fabs(static_cast<double>(raw.data.mouse.lLastY));
-    const bool absolute = (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
-    g_raw_x.Update(raw.data.mouse.lLastX, absolute);
-    g_raw_y.Update(raw.data.mouse.lLastY, absolute);
-
-    // This event's button transitions, in BOTH modes. See drain_raw_buffer for
-    // why the old `g_nolegacy_now &&` guard was defect 2 rather than a saving.
-    if (raw.data.mouse.usButtonFlags)
-        apply_raw_buttons(raw.data.mouse.usButtonFlags,
-                          static_cast<SHORT>(raw.data.mouse.usButtonData));
+    // Motion and this event's button transitions, in BOTH modes (consume_mouse;
+    // see it for why the old `g_nolegacy_now &&` guard was defect 2).
+    consume_mouse(raw.data.mouse, false);
 
     // Upstream's alt-tab fix: the first update after (re)acquiring the device
     // carries everything that happened while we were not looking, and applying
@@ -1018,6 +1258,26 @@ void OnRawInput(LPARAM lparam) {
                  "Raw input is live; mouse motion is no longer coming from screen pixels.",
                  static_cast<long>(raw.data.mouse.lLastX), static_cast<long>(raw.data.mouse.lLastY),
                  static_cast<unsigned>(raw.data.mouse.usFlags));
+
+    // D4 (lane 17b): MSDN's documented pattern in full -- GetRawInputData for the
+    // event we were handed, THEN GetRawInputBuffer for everything queued behind it,
+    // here, inside the pump. 0.2.24 left the "then" to in_mousemove, which the engine
+    // calls from IN_Frame -- and a click synthesised there goes into Sys_QueEvent's
+    // ring outside Com_EventLoop (one of the two IN_Frame callers, 0x4625DC, calls
+    // it right before 0x63E940; the event loops are 0x5AA578/0x5AA5A0). So a click
+    // that happened to land in the buffered queue (17-47 % of reports in B's logs)
+    // can reach the game up to one frame later than one that was dispatched: 4 ms at
+    // 250 fps, 50 ms at 20. That is read from the call order, NOT measured. Draining
+    // here puts those clicks into the ring while Com_EventLoop is still running,
+    // like the stock path's. It also means the pump sees fewer WM_INPUT
+    // dispatches, not more: whatever this drains will never be dispatched.
+    // in_mousemove still drains too, for what arrives between the pump and IN_Frame.
+    // ENW_RAW_MOUSE_PUMP_DRAIN=0 reverts to 0.2.24's placement.
+    if (g_pump_drain && g_nolegacy_wanted && g_bulk_read) {
+        const long n = drain_raw_buffer();
+        ++g_pump_drains;
+        g_pump_drain_reports += n;
+    }
 }
 
 // The index of a WM_?BUTTON? message in our 0..4 button space, or -1.
@@ -1102,8 +1362,23 @@ LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     case WM_LBUTTONDOWN: case WM_LBUTTONUP:
     case WM_RBUTTONDOWN: case WM_RBUTTONUP:
     case WM_MBUTTONDOWN: case WM_MBUTTONUP:
-    case WM_XBUTTONDOWN: case WM_XBUTTONUP:
     case WM_MOUSEWHEEL: {
+        // D1 (lane 17b): the legacy twin of a raw notch we already delivered is
+        // swallowed; a legacy notch with no raw twin (touchpad, PostMessage) is
+        // forwarded, mask-corrected, as before. With the tracker off
+        // (ENW_RAW_MOUSE_BUTTONS=0) raw never synthesises a wheel, so nothing is
+        // paired and every legacy notch passes.
+        ++g_wheel_legacy;
+        const int delta = GET_WHEEL_DELTA_WPARAM(wparam);
+        if (g_btn_track && delta != 0 && !g_wheel.on_legacy(delta, g_frame_no)) {
+            if (g_trace)
+                ENW_INFO("input_trace: %8u ms  LEG  wheel %d swallowed -- its raw twin was already "
+                         "delivered", trace_ms(), delta);
+            return 0;
+        }
+        return ::CallWindowProcA(g_prev_wndproc, hwnd, msg, rewrite_mask(wparam), lparam);
+    }
+    case WM_XBUTTONDOWN: case WM_XBUTTONUP: {
         bool down = false;
         const int idx = legacy_button_index(msg, wparam, &down);
         if (idx >= 0) {
@@ -1223,21 +1498,42 @@ void __cdecl in_mousemove() {
     // drain and the WndProc path has already counted it.
     if (g_nolegacy_wanted) drain_raw_buffer();
 
-    const int dx = g_raw_x.GetDelta();
-    const int dy = g_raw_y.GetDelta();
+    int dx = g_raw_x.GetDelta();
+    int dy = g_raw_y.GetDelta();
     g_raw_x.ResetDelta();
     g_raw_y.ResetDelta();
+    // D12 (lane 17b), opt-in only: ENW_RAW_MOUSE_WINSPEED=1 scales counts by the
+    // Windows pointer-speed factor the stock path inherited (raw_mouse_model.hpp).
+    g_scale.apply(&dx, &dy);
 
     // The menu still wants a real client-space cursor position, so we read it
     // exactly as the engine does and keep the engine's own oldPos in step --
     // otherwise falling back to the stock path would produce one huge jump.
     POINT p = {};
     ::GetCursorPos(&p);
+    const POINT screen_p = p;
     *enw::ptr<int>(t4::var::s_wmv_oldPos_x) = p.x;
     *enw::ptr<int>(t4::var::s_wmv_oldPos_y) = p.y;
     ::ScreenToClient(game_hwnd(), &p);
 
     const int recentre = cl_mouse_event(p.x, p.y, dx, dy);
+    if (recentre && g_nolegacy_now) {
+        // Hold (and, D6, re-verify) the clip every gameplay frame, not only on
+        // frames that moved: a lost clip is found within 8 calls either way.
+        clip_cursor_to_client(true);
+        // D7 (lane 17b): with the recentre skipped, an OS cursor that Windows
+        // still moves walks to the clip edge and parks there. One lost clip later
+        // it is on B's second monitor. So when it leaves the middle half of the
+        // client rect, recentre ONCE -- the engine's own IN_RecenterMouse. Every
+        // few hundred pixels of pointer travel instead of every frame; if Windows
+        // does not move the cursor under NOLEGACY this never fires, and the
+        // `edge recentres` counter in the log is how we find out which it is.
+        if ((dx || dy) && g_cursor_clipped &&
+            enw::rawmodel::outside_inner(screen_p, g_clip_rect, 25)) {
+            recentre_now();
+            ++g_edge_recentres;
+        }
+    }
     if (recentre && (dx || dy)) {
         // THE THIRD LEG OF THE FLOOD. IN_RecenterMouse is SetCursorPos to the
         // window centre, and SetCursorPos synthesises a WM_MOUSEMOVE into the
@@ -1250,13 +1546,21 @@ void __cdecl in_mousemove() {
         // SetCursorPos plus a message per frame. Quake3e does the same thing:
         // IN_CaptureMouse clips once and the raw path never recentres.
         if (g_nolegacy_now) {
-            clip_cursor_to_client(true);
-            ++g_recentres_skipped;
+            ++g_recentres_skipped;  // clipped above instead
         } else {
-            in_recenter_mouse()();
-            *enw::ptr<int>(t4::var::s_wmv_oldPos_x) = *enw::ptr<int>(t4::var::s_wmv_centre_x);
-            *enw::ptr<int>(t4::var::s_wmv_oldPos_y) = *enw::ptr<int>(t4::var::s_wmv_centre_y);
+            recentre_now();
         }
+    }
+
+    // D8 (lane 17b): the game is handing the mouse to a menu (or the console) this
+    // frame. The stock path recentred every gameplay frame, so a stock menu always
+    // opened with the pointer in the middle; with the recentre skipped it would open
+    // wherever the pointer drifted -- at an edge. One recentre on the flip restores
+    // the stock picture. Not on focus loss: that path never gets here, and moving
+    // the desktop cursor while the player alt-tabs away would be ours to answer for.
+    if (!recentre && g_nolegacy_now && !g_sink) {  // the harness never moves the desktop cursor
+        recentre_now();
+        ++g_menu_recentres;
     }
 
     // CL_MouseEvent's return is the engine's own answer to "does the GAME own
@@ -1526,6 +1830,45 @@ public:
         // DEFAULT ON since 0.2.3. `ENW_RAW_MOUSE_NOLEGACY=0` is the one-word
         // A/B back to 0.2.2's behaviour.
         g_nolegacy_wanted = !env_off("ENW_RAW_MOUSE_NOLEGACY");
+        // D13 (lane 17b): ENW_RAW_MOUSE_BUTTONS=0 means "buttons come from the legacy
+        // messages, untouched". Under NOLEGACY there ARE no legacy button messages,
+        // and with the tracker off nothing synthesises them either -- so in 0.2.4-
+        // 0.2.24 that A/B knob left gameplay with NO clicks and NO wheel at all. It
+        // now takes NOLEGACY off with it, which is the only configuration in which it
+        // means what it says.
+        if (!g_btn_track && g_nolegacy_wanted) {
+            g_nolegacy_wanted = false;
+            ENW_WARN("mouse_polling: ENW_RAW_MOUSE_BUTTONS=0 implies ENW_RAW_MOUSE_NOLEGACY=0: "
+                     "with NOLEGACY on there would be no legacy button messages to pass through "
+                     "and the game would get no clicks at all.");
+        }
+        g_pump_drain = !env_off("ENW_RAW_MOUSE_PUMP_DRAIN");
+        g_wow64_layout = enw::rawbuf::mouse_offset() == 24;
+
+        // D12 (lane 17b): the Windows pointer settings the stock path inherited and
+        // raw input does not. Logged always, applied only on ENW_RAW_MOUSE_WINSPEED=1.
+        {
+            int speed = 10;
+            int mouse[3] = {0, 0, 0};  // thresholds + acceleration ("Enhance pointer precision")
+            ::SystemParametersInfoA(SPI_GETMOUSESPEED, 0, &speed, 0);
+            ::SystemParametersInfoA(SPI_GETMOUSE, 0, mouse, 0);
+            g_win_speed = speed;
+            g_win_epp = mouse[2] != 0;
+            const double k = enw::rawmodel::windows_speed_multiplier(speed);
+            const bool apply = env_on("ENW_RAW_MOUSE_WINSPEED");
+            if (apply) g_scale.set(k);
+            ENW_INFO("mouse_polling: Windows pointer speed %d/20 (x%.3g), Enhance pointer precision "
+                     "%s. Raw input ignores both; the stock path used both. %s",
+                     speed, k, g_win_epp ? "ON" : "off",
+                     (speed == 10 && !g_win_epp)
+                         ? "At 10/20 with EPP off they are identical: 1 count = 1 pixel, same "
+                           "sensitivity as stock."
+                         : apply ? "ENW_RAW_MOUSE_WINSPEED=1: counts are scaled by the speed "
+                                   "factor (not the EPP curve) to match the stock feel."
+                                 : "So the same in-game sensitivity feels different from vanilla "
+                                   "WaW here; multiply `sensitivity` by the factor above to match, "
+                                   "or set ENW_RAW_MOUSE_WINSPEED=1.");
+        }
         if (g_nolegacy_wanted)
             ENW_INFO("mouse_polling: NOLEGACY mode armed (the default; ENW_RAW_MOUSE_NOLEGACY=0 "
                      "reverts to 0.2.2). While the game owns the mouse: Windows generates no "
@@ -1623,6 +1966,9 @@ public:
                 }
             }
             if (!g_in_raw_input) return;  // passthrough: nothing to count
+            g_frame_no = n;  // the wheel ledger's clock
+            if (n % 250 == 0) check_registration();  // D9/D10, about once a second
+            if (!g_in_raw_input) return;             // ...which may have given up
             probe_frame_flush();
             probe_report(false);
 
@@ -1709,6 +2055,23 @@ public:
                                                     static_cast<double>(g_buffered_reads)
                                               : 0.0,
                              g_recentres_skipped, g_cursor_clipped ? "on" : "off");
+                // Lane 17b: one line per ~15 s with a counter for every compensation
+                // in client.md §1g, so B's next ordinary session proves or clears
+                // each of them without anyone else at the machine.
+                ENW_INFO("mouse_polling: compensations -- wheel raw %ld / legacy %ld / twins "
+                         "swallowed %ld | impossible reports dropped %ld | bad blocks %ld, "
+                         "offset disagreements %ld | pump drains %ld carrying %ld reports | "
+                         "GetRawInputBuffer transient %ld, hard failures %ld%s | clip re-applied "
+                         "%ld | edge recentres %ld | menu recentres %ld | registration checks "
+                         "%ld, repairs %ld%s | foreign raw input %ld | absolute reports %ld | "
+                         "speed x%.3g%s",
+                         g_wheel_raw, g_wheel_legacy, g_wheel.swallowed(), g_implausible,
+                         g_block_bad, g_block_offset_disagree, g_pump_drains, g_pump_drain_reports,
+                         g_bulk_transient, g_bulk_failures, g_bulk_read ? "" : " (bulk read OFF)",
+                         g_clip_reapplied, g_edge_recentres, g_menu_recentres, g_reg_checks,
+                         g_reg_repairs, g_reg_gave_up ? " (GAVE UP: stock path)" : "",
+                         g_foreign_regs, g_abs_reports, g_scale.factor(),
+                         g_scale.factor() == 1.0 ? "" : " (ENW_RAW_MOUSE_WINSPEED)");
                 if (g_trace) report_verdict("15 s window");
             }
         });
@@ -1767,6 +2130,13 @@ void set_captured(bool on) {
             ::CallWindowProcA(g_prev_wndproc, g_hwnd, WM_MOUSEMOVE, 0, cursor_lparam());
         }
         g_captured = true;
+        // D8 for our own UI (the Esc menu, the chat): it draws WaW's cursor at the OS
+        // pointer, which in gameplay sat wherever the skipped recentre left it. The
+        // stock menu always opened with it in the middle; so does ours.
+        if (g_nolegacy_now && !g_sink) {
+            recentre_now();
+            ++g_menu_recentres;
+        }
         set_nolegacy(false);
         clip_cursor_to_client(false);
         g_raw_x.ResetDelta();
