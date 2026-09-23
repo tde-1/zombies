@@ -238,21 +238,16 @@
       "nazi_zombie_ccube_u.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true,
+  "site_hidden": false,
   "asset_audit": {
-    "at": "2026-09-23T19:24:45",
-    "verdict": "hide",
+    "at": "2026-09-23T19:43:14",
+    "verdict": "clean",
     "map_loaded_runs": 1,
     "misses": 194,
-    "fatal": 2,
-    "visible": 2,
-    "visible_owner": {
-      "release": 2
-    },
-    "visible_names": [
-      "item:mk6_laser",
-      "weapon:weapons/sp/mk6_laser"
-    ],
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
     "client_check": [],
     "static": {},
     "tool": "archive/asset_audit.py"
@@ -276,6 +271,5 @@
     ],
     "unproven": "no client joined: server-side load under Wine only"
   },
-  "site_hidden_reason": "asset gate: hide -- missing: item:mk6_laser, weapon:weapons/sp/mk6_laser",
   "dedi_status": "box_map_loaded"
 }

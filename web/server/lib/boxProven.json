@@ -117,6 +117,15 @@
    "match": "m_bdf100ee",
    "com_frameTime_advance_ms": 35126
   },
+  "mw2rust": {
+   "result": "pass",
+   "at": "2026-09-23T19:23:15",
+   "match": "m_94c604a7",
+   "com_frameTime_advance_ms": 95210,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 308372426
+  },
   "nacht_reimagined": {
    "result": "pass",
    "at": "2026-09-22T21:45:53",
@@ -167,12 +176,12 @@
   },
   "nazi_zombie_ccube": {
    "result": "pass",
-   "at": "2026-09-23T19:15:00",
-   "match": "m_ced36234",
-   "com_frameTime_advance_ms": 95176,
+   "at": "2026-09-23T19:35:21",
+   "match": "m_f1f677f9",
+   "com_frameTime_advance_ms": 95134,
    "watchdog_clean": true,
    "in_bucket": true,
-   "bucket_bytes": 78620695
+   "bucket_bytes": 78644624
   },
   "nazi_zombie_ccube_u": {
    "result": "pass",
@@ -200,6 +209,15 @@
    "at": "2026-09-22T23:24:55",
    "match": "m_2978f6ed",
    "com_frameTime_advance_ms": 35082
+  },
+  "nazi_zombie_derberg": {
+   "result": "pass",
+   "at": "2026-09-23T19:26:57",
+   "match": "m_a5d333b5",
+   "com_frameTime_advance_ms": 95173,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 540641275
   },
   "nazi_zombie_dome_snow": {
    "result": "pass",

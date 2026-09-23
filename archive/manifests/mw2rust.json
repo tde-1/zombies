@@ -130,15 +130,14 @@
       "buyable_ending",
       "challenge"
     ],
-    "catalogue_description": "Features: – Does not require T4M! – Harry’s Perks (11 perks) *No Vulture aid and Tombstone* – 100,000 Buyable Ending – No Dogs – No grabbing zombies – All MW2 weapons except the explosives – No Perk Limit -NIGHTMARE MODE (Provides an extreme challenge) -FUN MODE (For those looking for a casual game, includes faster speed and increased points to name a few features) *The end game when in fun mode is 500,000 because it’s fun mode, not grind to the end mode, survive until you die. * *You can combine these modes* *Select the modes by going in coop host settings* 1.01 Changes -Buyable ending now 65,000 (Was 100,000) -Increased knifing speed -Buffed the Vibrator -Zombies no longer spawn miles out of play (To speed up the early rounds) -Fixed other shit Credits: -Tom-Bmx -Harry Bo21 -HitmanVere -ricko0z -JR-Imagine -Treminaor -Rorke -DamianoTBM -Make-Cents -Scobalula -DidUKnowIPwn -RDV -steviewonder87 -JBird632 -Bluntstuffy -DuaLVII -If I missed you plz",
+    "catalogue_description": "Features: \u2013 Does not require T4M! \u2013 Harry\u2019s Perks (11 perks) *No Vulture aid and Tombstone* \u2013 100,000 Buyable Ending \u2013 No Dogs \u2013 No grabbing zombies \u2013 All MW2 weapons except the explosives \u2013 No Perk Limit -NIGHTMARE MODE (Provides an extreme challenge) -FUN MODE (For those looking for a casual game, includes faster speed and increased points to name a few features) *The end game when in fun mode is 500,000 because it\u2019s fun mode, not grind to the end mode, survive until you die. * *You can combine these modes* *Select the modes by going in coop host settings* 1.01 Changes -Buyable ending now 65,000 (Was 100,000) -Increased knifing speed -Buffed the Vibrator -Zombies no longer spawn miles out of play (To speed up the early rounds) -Fixed other shit Credits: -Tom-Bmx -Harry Bo21 -HitmanVere -ricko0z -JR-Imagine -Treminaor -Rorke -DamianoTBM -Make-Cents -Scobalula -DidUKnowIPwn -RDV -steviewonder87 -JBird632 -Bluntstuffy -DuaLVII -If I missed you plz",
     "cover": "media/mw2rust/mw2-rust-aombies-1.jpg",
     "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/mw2-rust-aombies-1.jpg",
     "cover_size": 165687
   },
-  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3).  DEDI 2026-09-22 (run map05, after the mount fix): the map now LOADS and spawns a server (`------ Server Initialization ------ / Server: mw2rust`), then dies with a GSC runtime error and the server shuts down. `undefined is not an array, string, or vector` at `common_scripts/utility.gsc:463 while( !level.flag[ msg ] )`, from `maps/mw2rust.gsc:179 flag_wait(\"electricity_on\")` reached through `common_scripts/utility.gsc:586 entities[keys[i]] thread [[process]]()`, from `maps/mw2rust.gsc:119 array_thread(end_trig, ::end_game)`. `level.flag` is created by `maps/_load.gsc:97`'s `flag_init(\"all_players_connected\")`, so a map-provided script is flag_waiting before `_load::main()` has run. NOT ours: we mount no overlay (fs_game is the map's own mod, the referee is C++ and ships nothing inside it), the console shows `Loading fastfile 'mod'` and the map fastfile loading, and Der Berg answers getstatus with the same mount. Why the same script survives on a listen server is NOT established. dedi.md 13.3, referee.md 10. DEDI/REFEREE 2026-09-22 (runs mapA/mapB/mapC, join80-join83): THE 'broken' VERDICT IS CONFIRMED AND THE BLAME IS CORRECTED. The previous session left open whether our dedicated server, a referee GSC overlay or the replay sampler was the shared cause. It is none of them, and that was settled by running the maps with ours REMOVED rather than by reading code. dedi.md 14, referee.md 11. Run mapA booted this map on a STOCK CoDWaW.exe -- binkw32 proxy reverted, ZERO ENW code in the process -- as a LISTEN server, and it produced the byte-identical script runtime error. The cause is the map's own script order: main() starts a flag-dependent thread BEFORE it calls maps\\_zombiemode::main(), which is what calls maps\\_load::main(), which is where flag_init(\"all_players_connected\") lives. A GSC `thread` begins executing immediately and flag_wait's first act is to index level.flag, so it faults before anything can have created the array. WHY THE COMMUNITY PLAYS IT ANYWAY IS NOT ESTABLISHED, and is written down as unestablished; the likeliest answer is that the archived download is a repack. Nothing in this lane can fix it. status stays \"broken\". From mw2rust.iwd: main() does array_thread(end_trig, ::end_game) at line 119 and maps\\_zombiemode::main() at line 122; end_game() reaches flag_wait(\"electricity_on\") at line 179.  ARCHIVE 2026-09-23 (runs addon5 baseline / addon6 / addon7, dedicated, seeded private localappdata): THE ADD-ON-IWD THEORY IS TESTED AND DEAD. Run addon6, both add-ons excluded: the SAME `flag_wait(\"electricity_on\")` at maps/mw2rust.gsc:179, which is the MAP'S OWN line and carries the map author's own comment `//remove line if you want it to work without power`. The add-ons are not the cause. dedi.md 15.",
-  "dedi_status": "broken",
-  "site_status": "map_error",
-  "status": "broken",
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3).  DEDI 2026-09-22 (run map05, after the mount fix): the map now LOADS and spawns a server (`------ Server Initialization ------ / Server: mw2rust`), then dies with a GSC runtime error and the server shuts down. `undefined is not an array, string, or vector` at `common_scripts/utility.gsc:463 while( !level.flag[ msg ] )`, from `maps/mw2rust.gsc:179 flag_wait(\"electricity_on\")` reached through `common_scripts/utility.gsc:586 entities[keys[i]] thread [[process]]()`, from `maps/mw2rust.gsc:119 array_thread(end_trig, ::end_game)`. `level.flag` is created by `maps/_load.gsc:97`'s `flag_init(\"all_players_connected\")`, so a map-provided script is flag_waiting before `_load::main()` has run. NOT ours: we mount no overlay (fs_game is the map's own mod, the referee is C++ and ships nothing inside it), the console shows `Loading fastfile 'mod'` and the map fastfile loading, and Der Berg answers getstatus with the same mount. Why the same script survives on a listen server is NOT established. dedi.md 13.3, referee.md 10. DEDI/REFEREE 2026-09-22 (runs mapA/mapB/mapC, join80-join83): THE 'broken' VERDICT IS CONFIRMED AND THE BLAME IS CORRECTED. The previous session left open whether our dedicated server, a referee GSC overlay or the replay sampler was the shared cause. It is none of them, and that was settled by running the maps with ours REMOVED rather than by reading code. dedi.md 14, referee.md 11. Run mapA booted this map on a STOCK CoDWaW.exe -- binkw32 proxy reverted, ZERO ENW code in the process -- as a LISTEN server, and it produced the byte-identical script runtime error. The cause is the map's own script order: main() starts a flag-dependent thread BEFORE it calls maps\\_zombiemode::main(), which is what calls maps\\_load::main(), which is where flag_init(\"all_players_connected\") lives. A GSC `thread` begins executing immediately and flag_wait's first act is to index level.flag, so it faults before anything can have created the array. WHY THE COMMUNITY PLAYS IT ANYWAY IS NOT ESTABLISHED, and is written down as unestablished; the likeliest answer is that the archived download is a repack. Nothing in this lane can fix it. status stays \"broken\". From mw2rust.iwd: main() does array_thread(end_trig, ::end_game) at line 119 and maps\\_zombiemode::main() at line 122; end_game() reaches flag_wait(\"electricity_on\") at line 179.  ARCHIVE 2026-09-23 (runs addon5 baseline / addon6 / addon7, dedicated, seeded private localappdata): THE ADD-ON-IWD THEORY IS TESTED AND DEAD. Run addon6, both add-ons excluded: the SAME `flag_wait(\"electricity_on\")` at maps/mw2rust.gsc:179, which is the MAP'S OWN line and carries the map author's own comment `//remove line if you want it to work without power`. The add-ons are not the cause. dedi.md 15.  BOX 2026-09-23 (lane MAPS, archive.md s14): map_loaded + 185 s alive, freeze watchdog clean, box DLL fd3039d2, match m_94c604a7. Was: flag_wait before flag_init (script runtime error made fatal by logfile); fixed by script_error_retail.cpp.",
+  "dedi_status": "box_map_loaded",
+  "status": "box_map_loaded",
   "dedi_verdict_source": "dedi.md 14; runs mapA (stock exe, listen server) and mapB (ENW_NO_SAMPLERS=1)",
   "install": {
     "exclude": [
@@ -155,10 +154,10 @@
     ]
   },
   "asset_audit": {
-    "at": "2026-09-23T13:41:08",
+    "at": "2026-09-23T19:43:14",
     "verdict": "minor",
-    "map_loaded_runs": 8,
-    "misses": 405,
+    "map_loaded_runs": 9,
+    "misses": 406,
     "fatal": 2,
     "visible": 0,
     "visible_owner": {},
@@ -166,5 +165,16 @@
     "client_check": [],
     "static": {},
     "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95210 ms over the hold",
+    "match": "m_94c604a7",
+    "at": "2026-09-23T19:23:15",
+    "instance": "inst-61",
+    "watchdog_clean": true,
+    "trapped": null,
+    "hold_s": 185,
+    "unproven": "no client joined: server-side load under Wine only"
   }
 }

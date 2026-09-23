@@ -2,3 +2,5 @@
 nazi_zombie_leviathan
 nazi_zombie_ccube
 nazi_zombie_ccube_u
+mw2rust
+nazi_zombie_derberg
