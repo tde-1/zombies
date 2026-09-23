@@ -58,6 +58,7 @@
 // Clean room: our own code; addresses and facts only.
 
 #include "boot_direct.hpp"
+#include "menu_lockdown.hpp"   // [lockdown] drawn through this file's SCR_DrawScreenField seam
 #include "component.hpp"
 #include "frame.hpp"
 #include "logger.hpp"
@@ -307,8 +308,9 @@ void draw_guarded() {
 
 void __cdecl field_hook(int stereo) {
     g_field(stereo);
-    if (g_faults >= 3 || !rd<int>(kUiReady)) return;
-    if (g_waiting || (g_gave_up_silent && ::GetTickCount64() - g_gave_up_ms <= 15000)) draw_guarded();
+    if (!rd<int>(kUiReady)) return;
+    if (g_faults < 3 && (g_waiting || (g_gave_up_silent && ::GetTickCount64() - g_gave_up_ms <= 15000))) draw_guarded();
+    menu_lockdown::draw_over();   // [lockdown] last: it covers the main menu, and this line with it
 }
 
 // ------------------------------------------------------------ frame tick --
@@ -377,12 +379,36 @@ void tick(uint64_t) {
     }
 }
 
+// SCR_DrawScreenField's one call site -> field_hook. Byte-checked; on any mismatch nothing is
+// patched and neither the waiting line nor the lockdown cover is drawn.
+void bind_field_seam() {
+    if (g_patched_draw) return;
+    if (memory::call_target(kFieldCallSite) == kDrawScreenField &&
+        bytes_at(kFieldCallSite - 1, reinterpret_cast<const uint8_t*>("\x56"), 1) &&
+        bytes_at(kFieldCallSite + 5, kFieldSiteAfter, sizeof kFieldSiteAfter) &&
+        bytes_at(kDrawScreenField, kFieldSig, sizeof kFieldSig) &&
+        bytes_at(kUIDrawText, kUIDrawTextSig, sizeof kUIDrawTextSig) &&
+        bytes_at(kRTextWidth, kRTextWidthSig, sizeof kRTextWidthSig) &&
+        memory::retarget_call(kFieldCallSite, reinterpret_cast<const void*>(&field_hook))) {
+        g_patched_draw = true;
+        ENW_INFO("join_retry: SCR_DrawScreenField's call (0x%08X) bound: the waiting line and the main-menu "
+                 "lockdown cover draw after the engine's screen", static_cast<unsigned>(kFieldCallSite));
+    } else {
+        ENW_WARN("join_retry: could not bind SCR_DrawScreenField (0x%08X: %s); no waiting line, no lockdown cover",
+                 static_cast<unsigned>(kFieldCallSite), memory::hex_dump(kFieldCallSite - 1, 9).c_str());
+    }
+}
+
 class join_retry_component final : public component {
 public:
     const char* name() const override { return "join_retry"; }
     bool is_supported() override { return !is_dedicated_process(); }
 
     void post_unpack() override {
+        // [lockdown] The seam is bound for EVERY client process now, not only a launcher join:
+        // menu_lockdown.cpp draws its cover after the engine's screen through it (one owner of
+        // the call site, README hard rule 9). The retry below is still a launcher join's only.
+        bind_field_seam();
         const char* m = std::getenv("ENW_CLIENT_CONNECT");
         if (!m || !*m) return;   // Play Local, a menu launch: the stock rules
         const char* off = std::getenv("ENW_JOIN_RETRY");
@@ -412,20 +438,7 @@ public:
         g_patched_error = true;
         g_armed = true;
 
-        // The line is a nicety: without it the retry still works.
-        if (memory::call_target(kFieldCallSite) == kDrawScreenField &&
-            bytes_at(kFieldCallSite - 1, reinterpret_cast<const uint8_t*>("\x56"), 1) &&
-            bytes_at(kFieldCallSite + 5, kFieldSiteAfter, sizeof kFieldSiteAfter) &&
-            bytes_at(kDrawScreenField, kFieldSig, sizeof kFieldSig) &&
-            bytes_at(kUIDrawText, kUIDrawTextSig, sizeof kUIDrawTextSig) &&
-            bytes_at(kRTextWidth, kRTextWidthSig, sizeof kRTextWidthSig) &&
-            memory::retarget_call(kFieldCallSite, reinterpret_cast<const void*>(&field_hook))) {
-            g_patched_draw = true;
-        } else {
-            ENW_WARN("join_retry: could not bind the waiting line to SCR_DrawScreenField "
-                     "(0x%08X: %s); retrying without it", static_cast<unsigned>(kFieldCallSite),
-                     memory::hex_dump(kFieldCallSite - 1, 9).c_str());
-        }
+        // The line is a nicety: without it the retry still works (the seam is bound above).
         g_cbuf_ok = bytes_at(kCbufAddText, kCbufSig, sizeof kCbufSig);
         ENW_INFO("join_retry: bound. CL_ConnectionlessPacket's Com_Error (0x%08X) now retries "
                  "'not ready yet' refusals every 2 s for %d s; waiting line %s. "

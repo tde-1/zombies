@@ -112,7 +112,16 @@ async function serve(port) {
   say(LOBBY, 'global', 'anyone up for Verruckt? lobby is open')
   say(INGAME, 'global', 'round 14 on Der Riese, the trap is carrying')
   say(IDLE, 'dm', 'want in on the next one?', ME)
-  const server = app({ withChat: true, quitStub: true }).listen(port, '127.0.0.1')
+  const a = app({ withChat: true, quitStub: true })
+  // DEV ONLY (lockdown lane, esc-menu.md §10.3): stands in for the box-authenticated
+  // POST /api/gs/result. tools/dev/authhost.mjs --result posts here on the game's game_over;
+  // the site's own ingest runs exactly as the box route runs it.
+  a.post('/dev/result', (q, r) => {
+    const out = require('../server/lib/results').ingest(q.body, { requireVerifiedIdentity: true })
+    console.log(`[dev] result ${q.body && q.body.summary && q.body.summary.match_id} -> ok=${out.ok} notified=${out.notified} ${out.error || ''}`)
+    r.status(out.ok ? 200 : 400).json({ ok: out.ok, notified: out.notified, error: out.error })
+  })
+  const server = a.listen(port, '127.0.0.1')
   await new Promise((r) => server.once('listening', r))
   // Keep the seeded friends "online" (presence is a 2-minute window).
   setInterval(() => {

@@ -105,7 +105,7 @@ const nameOf = (sid) => { const p = users.publicById(sid); return (p && p.name) 
 
 function project(r) {
   return {
-    id: r.id, at: r.at, channel: r.channel, kind: 'chat',
+    id: r.id, at: r.at, channel: r.channel, kind: r.channel === 'notice' ? 'system' : 'chat',
     from: r.from_name, steamid: r.from_sid,
     to: r.to_sid || null, to_name: r.to_name || null,
     party_id: r.party_id || null, text: r.text,
@@ -171,6 +171,25 @@ function send(me, { channel, to, text }) {
   return { ok: false, error: 'unknown channel' }
 }
 
+// A NOTICE: one line the site says to one player, in their game only (never the global ring,
+// never another player). The first is "Your record has been uploaded." — said when a box's
+// result for a game this player was verified in has been stored (lib/results.js ingest), which
+// is the moment the site has the record: the host's POST is answered by the same call.
+// Stored in the private ring as `channel = 'notice'`, `to_sid` = the player, so the overlay's
+// long-poll carries it with no new route; projected as `kind: 'system'` so the overlay draws
+// it as a system line (chat_overlay.cpp line_from_json files `notice` under Global).
+function notify(steamId, text) {
+  const sid = String(steamId || '')
+  const body = clean(text)
+  if (!/^\d{17}$/.test(sid) || !body) return null
+  const info = db.prepare(`INSERT INTO chat_private (at, channel, from_sid, from_name, to_sid, to_name, text)
+                           VALUES (?,?,?,?,?,?,?)`).run(now(), 'notice', '', 'ENW', sid, null, body)
+  const line = project(db.prepare('SELECT * FROM chat_private WHERE id=?').get(info.lastInsertRowid))
+  trim()
+  wake()
+  return line
+}
+
 function trim() {
   if (Math.random() < 0.05) db.prepare('DELETE FROM chat_private WHERE id NOT IN (SELECT id FROM chat_private ORDER BY id DESC LIMIT ?)').run(KEEP)
 }
@@ -181,13 +200,13 @@ function privateFor(steamId, cursor = 0, { tailN = 30, limit = 100 } = {}) {
   const sid = String(steamId)
   const party = parties.forPlayer(sid)
   const pid = party ? party.id : -1
-  const where = `removed=0 AND ((channel='party' AND party_id=?) OR (channel='dm' AND (from_sid=? OR to_sid=?)))`
+  const where = `removed=0 AND ((channel='party' AND party_id=?) OR (channel='dm' AND (from_sid=? OR to_sid=?)) OR (channel='notice' AND to_sid=?))`
   if (!Number(cursor) && tailN > 0) {
     return db.prepare(`SELECT * FROM chat_private WHERE ${where} ORDER BY id DESC LIMIT ?`)
-      .all(pid, sid, sid, tailN).reverse().map(project)
+      .all(pid, sid, sid, sid, tailN).reverse().map(project)
   }
   return db.prepare(`SELECT * FROM chat_private WHERE id > ? AND ${where} ORDER BY id ASC LIMIT ?`)
-    .all(Number(cursor), pid, sid, sid, limit).map(project)
+    .all(Number(cursor), pid, sid, sid, sid, limit).map(project)
 }
 
 const latestPrivate = () => (db.prepare('SELECT MAX(id) m FROM chat_private').get().m || 0)
@@ -256,4 +275,4 @@ function meFor(u) {
   }
 }
 
-module.exports = { setSecret, mintPass, verifyPass, send, feed, privateFor, meFor, contactsOf, setEmitter, PASS_TTL_S }
+module.exports = { setSecret, mintPass, verifyPass, send, notify, feed, privateFor, meFor, contactsOf, setEmitter, PASS_TTL_S }

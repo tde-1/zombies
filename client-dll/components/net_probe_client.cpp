@@ -27,6 +27,7 @@
 
 #include <windows.h>
 
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -55,6 +56,7 @@ struct src_stats {
 
 using recvfrom_t = int(__stdcall*)(uintptr_t, char*, int, int, void*, int*);
 recvfrom_t g_orig = nullptr;
+std::atomic<ULONGLONG> g_last_inband_tick{0};   // [lockdown] GetTickCount64 of the last in-band datagram
 std::mutex g_mu;
 src_stats g_src[8];
 double g_window_start = 0;
@@ -137,6 +139,7 @@ int __stdcall recvfrom_hook(uintptr_t sock, char* buf, int len, int flags, void*
                     if (g > 250) ++s->gap250;
                 }
                 s->last_ms = t;
+                g_last_inband_tick = ::GetTickCount64();   // [lockdown] the server is still talking
             }
         }
         flush_locked(t);
@@ -179,6 +182,13 @@ public:
 };
 
 }  // namespace
+
+// [lockdown] menu_lockdown.cpp: when did the server last send an in-band datagram (0 = never,
+// or the probe is off). A box that is killed after a game over sends no disconnect, and this
+// engine then never times the client out (l12b: 60 s at clc.state 10 with cl_timeout 10).
+namespace net_probe_client_api {
+ULONGLONG last_inband_tick() { return g_last_inband_tick.load(); }
+}  // namespace net_probe_client_api
 }  // namespace enw::client
 
 ENW_REGISTER_COMPONENT(enw::client::net_probe_client)

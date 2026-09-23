@@ -76,6 +76,8 @@
 #include "input_gate.hpp"
 #include "pause_menu.hpp"
 #include "settings_tab.hpp"   // [settings] the Settings tab (esc-menu.md §9)
+#include "menu_lockdown.hpp"        // [console] the main-menu lockdown (esc-menu.md §10.1)
+#include "restricted_console.hpp"   // [console] the ENW console (esc-menu.md §10.2)
 
 #include <windows.h>
 #include <winhttp.h>
@@ -712,6 +714,12 @@ bool is_open() { return g_open; }
 bool filter(UINT msg, WPARAM wp, LPARAM lp, LRESULT* result) {
     if (!g_enabled) return false;
     *result = 0;
+    if (menu_lockdown::swallow_input(msg)) return true;   // [console] our end screen: the main menu under it gets nothing
+    {   // [console] the ENW console first: the console key never reaches the engine (esc-menu.md §10.2)
+        const bool can_open = !g_open && !g_quit_step && chat_embed::in_game() && !chat_embed::chat_open_alone() &&
+                              !(rd<int>(kKeyCatchers) & 0x30) && rd<int>(kClcState) >= 9;
+        if (restricted_console::filter(msg, wp, lp, result, can_open)) return true;
+    }
     if (msg == WM_CHAR && g_eat_esc_char && wp == 0x1B) { g_eat_esc_char = false; return true; }
 
     if (!g_open) {
@@ -1285,6 +1293,8 @@ bool draw(int lc) {
     g_vw = g_pl.sx > 0 && dw > 0 ? (dw - g_pl.ox) / g_pl.sx : 640.f;
     drain();
     selftest_tick();
+    restricted_console::draw(g_vw);                    // [console] no-op while closed (it keeps its clock)
+    if (restricted_console::is_open()) return true;   // [console] the overlay draws nothing under it
     if (!g_open) {
         if (!g_notice.empty() && now - g_notice_t < 5000) {
             txt((g_vw - tw(g_notice, 0.4f)) / 2.f, 120.f, g_notice, kWhite, 0.4f);
@@ -1331,6 +1341,7 @@ public:
         if (!g_enabled) return;
         start_net();
         settings_tab::init({&txt, &tw, &box});   // [settings] the stock-font drawing calls above
+        restricted_console::init({&txt, &tw, &box});   // [console] the same calls
         frame::subscribe("pause_menu", [](uint64_t) {
             exit_tick();
             settings_tab::frame_tick();   // [settings] write-through checks, bind flush

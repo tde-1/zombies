@@ -146,6 +146,19 @@ target_compile_definitions(settings_model_test PRIVATE WIN32_LEAN_AND_MEAN NOMIN
 target_compile_options(settings_model_test PRIVATE /W4 /permissive- /utf-8 /EHsc)
 set_target_properties(settings_model_test PROPERTIES FOLDER tools)
 
+# The lockdown lane's unit test (esc-menu.md §10): the ENW console's model against the same
+# embedded schema, and the main-menu lockdown's state machine. Pure code.
+add_executable(lockdown_test
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/lockdown_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shared/core/json.cpp")
+target_include_directories(lockdown_test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/shared/core"
+    "${CMAKE_CURRENT_SOURCE_DIR}/client-dll/components"
+    "${ENW_GENERATED_DIR}")
+target_compile_definitions(lockdown_test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
+target_compile_options(lockdown_test PRIVATE /W4 /permissive- /utf-8 /EHsc)
+set_target_properties(lockdown_test PROPERTIES FOLDER tools)
+
 # --------------------------------------------------------------- loadtest --
 # A 32-bit host that just LoadLibrary()s the DLL, so we can smoke-test DllMain
 # without taking the game lock. Built by default; it costs nothing.
