@@ -104,6 +104,10 @@ Feature docs written on the night of 2026-09-22/23 (each names its lanes in its 
 [`storage.md`](storage.md) (the `enw-zombies` bucket), [`ip-posture.md`](ip-posture.md) (what of
 Activision's we may serve: nothing).
 
+| Doc | Lane | Owns (write only here) |
+|---|---|---|
+| [`telemetry.md`](telemetry.md) | **telemetry** (2026-09-23) | `shared/telemetry/`, `web/server/lib/telemetry/`, `web/server/routes/telemetry.js`, `launcher/src/main/telemetry/`, `infra/host-agent/lib/telemetry*`, `tools/telemetry/`, the admin **Issues** page — every crash, launcher error, box instance end and site error bundled, scrubbed, flagged and stored under `logs/` in the bucket. **When a player reports a problem, start at its §11** |
+
 Shared, and owned by nobody:
 
 | | |

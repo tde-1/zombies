@@ -78,6 +78,7 @@ Open-bug 16's `monkeytoy 1` point is moot for players now: nobody reaches the st
 15. **Launcher volume setting does nothing**: it writes `snd_volume`, which is not a dvar in this exe; the real one is `snd_menu_master`. `client.md` §10, `launcher/src/main/gamecfg.js`.
 16. **B's real WaW profile was written by the harness twice tonight** (`launch.ps1` 01:25, `mapmount.ps1` junction into his mods folder). Both now default to the private LocalAppData (`340ea09`, `e1797e8`); `monkeytoy 1` (a map's anti-cheat) was also saved into B's account settings, so **his console is off on every map until he changes it back** in Settings. `mod-compat.md` §3.
 17. Also unproven from tonight, lower: the Esc menu by B's own hand and on the box through the site (`esc-menu.md` §8); the 59 New maps with a client (19 have ≥110 MB zones; `dedi.md` §20.4); a real launcher Play against the join fix on the box (`client.md` §11b); the pre-launch mod file check through a signed-in launcher (`mod-compat.md` §9); grenade classname `grenade` on T4 (`replay.md` §8.6); four players in one game; round 2.
+18. **fear_mc_2 zombies invisible (AA4/spec/glow on) or garbled (off)** (B, 0.2.24, 12:49 and 13:15–13:21 UK): broken skinning on the client; B always had AA4/spec/glow on (the "settings changed at 01:45" theory in `mod-compat.md` §10 is withdrawn, §10.1). Not new in the DLL on the evidence: the 00:53 stretched Colt was the same class of bug; `r_multiGpu 1` has been pinned by the launcher since 09-22 04:13. Ruled out: map files, asset errors, write-through, DLL writes into entities, model-set mismatch. Local A/B ready: `tools/dev/z1-ab.ps1` (§10.3) — V0 must reproduce first. B's toggles (r_multiGpu, Discord overlay Off) are the fastest answer.
 
 ## Decisions only B can make (`questions.md`, "Open at handoff")
 
@@ -98,6 +99,7 @@ Older and still open: aim assist on Verified boards; solo-on-a-dedi follows co-o
 1a. Mouse: the three one-minute runs at 1000 Hz from `client.md` §1f ("What B tests"): run 1 `ENW_FRAMETIME=1`, run 2 `ENW_FRAMETIME=1 ENW_RAW_MOUSE_WOW64FIX=0`, run 3 `ENW_FRAMETIME=1 ENW_RAW_MOUSE_BUFFER=0`; turn steadily and flick; send the three `%LOCALAPPDATA%\ENWZombies\logs\enw-<pid>.log` files and which run felt best.
 2. Settings → turn the console back on (a map saved `monkeytoy 1` into your account).
 3. Play fear_mc_2 on the box again: it should no longer lag. If it does, the box log now says why.
+3a. fear_mc_2 broken zombies (open bug 18): in the game, Esc → Settings → Graphics → dual video cards **off → Apply** → look. Then, in a new game, site /settings → ENW → Discord overlay **Off** → look. Tell us which one fixed them (or neither). `mod-compat.md` §10.3.
 4. If a game freezes, send `%LOCALAPPDATA%\ENWZombies\logs\hang-*.dmp` and the `enw-<pid>.log` beside it.
 
 ## How to run things

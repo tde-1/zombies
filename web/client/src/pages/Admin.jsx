@@ -18,6 +18,7 @@ import Guides from './admin/Guides'
 import Badges from './admin/Badges'
 import Boxes from './admin/Boxes'
 import Release from './admin/Release'
+import Issues from './admin/Issues'
 import './admin/admin.css'
 
 // The operator console (2026-09-23, web.md "admin: parity with Movement and beyond").
@@ -28,7 +29,7 @@ import './admin/admin.css'
 // Zombies-only pages: Boxes, Games, Release, Playlists, Rows, Guides.
 
 const TABS = [
-  ['Operate', [['now', 'Now'], ['boxes', 'Boxes', 'admin'], ['games', 'Games'], ['release', 'Release', 'admin']]],
+  ['Operate', [['now', 'Now'], ['boxes', 'Boxes', 'admin'], ['games', 'Games'], ['issues', 'Issues'], ['release', 'Release', 'admin']]],
   ['People', [['people', 'People'], ['reports', 'Reports'], ['chat', 'Chat'], ['records', 'Records']]],
   ['Content', [['maps', 'Maps'], ['playlists', 'Playlists'], ['rows', 'Rows'], ['guides', 'Guides'], ['badges', 'Badges']]],
   ['', [['log', 'Log']]],
@@ -69,7 +70,7 @@ function Console({ isAdmin }) {
   const c = d.counts
   const badge = {
     people: c.waiting, reports: c.new, boxes: d.key_warnings.length,
-    games: c.flagged_7d, playlists: c.playlists === 0 ? '!' : 0,
+    games: c.flagged_7d, issues: (c.incidents_p1 || 0) + (c.incidents_p2 || 0), playlists: c.playlists === 0 ? '!' : 0,
   }
   const todo = [
     c.waiting > 0 && ['people', `${c.waiting} at the door`, 'warn', { filter: 'waiting' }],
@@ -77,6 +78,9 @@ function Console({ isAdmin }) {
     ...d.key_warnings.map((b) => ['boxes', `${b.name}: replay key changed`, 'bad']),
     c.playlists === 0 && ['playlists', 'No live playlists: /maps shows Popular only', 'warn'],
     c.flagged_7d > 0 && ['games', `${c.flagged_7d} flagged ${c.flagged_7d === 1 ? 'result' : 'results'} this week`, '', { flag: 'any' }],
+    (c.incidents_p1 > 0 || c.incidents_p2 > 0) && ['issues',
+      `${[c.incidents_p1 > 0 && `${c.incidents_p1} P1`, c.incidents_p2 > 0 && `${c.incidents_p2} P2`].filter(Boolean).join(', ')} to review`,
+      c.incidents_p1 > 0 ? 'bad' : 'warn', { severity: '1,2', reviewed: '0' }],
     c.boxes > 0 && c.boxes_online < c.boxes && ['boxes', `${c.boxes - c.boxes_online} of ${c.boxes} boxes offline`, ''],
   ].filter(Boolean)
 
@@ -139,6 +143,7 @@ function Console({ isAdmin }) {
         {tab === 'chat' && <Chat {...page} />}
         {tab === 'records' && <Records {...page} />}
         {tab === 'games' && <Games {...page} />}
+        {tab === 'issues' && <Issues {...page} />}
         {tab === 'maps' && <Maps {...page} />}
         {tab === 'playlists' && <Playlists {...page} />}
         {tab === 'rows' && <Rows {...page} />}

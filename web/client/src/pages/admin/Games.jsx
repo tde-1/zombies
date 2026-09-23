@@ -8,7 +8,7 @@ import { Panel, Table, Search, Chips, Empty, when, stamp, useLoad } from './kit'
 // looks like". Open one to read the summary the box sent, verbatim.
 export default function Games({ params, openUser }) {
   const [flag, setFlag] = useState(params.get('flag') || '')
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(params.get('q') || '')
   const [mode, setMode] = useState('')
   const [pg, setPg] = useState(1)
   const [open, setOpen] = useState(null)

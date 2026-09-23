@@ -3355,3 +3355,21 @@ have a client DLL to ship" in a worktree; `waw-settings.js` 14/0, `modcompat.js`
 
 **Needs a client build and a site restart; the launcher strings ship with the next launcher
 release.** No live data was written.
+
+## 2026-09-23 — admin Issues page (telemetry)
+
+Lane T1 (telemetry) adds **Issues** to the console (Operate group, after Games): the crash/error/log
+bundles from launchers, boxes and the site, flagged on arrival. Everything about the pipeline, the
+routes and the flag rules is in [telemetry.md](telemetry.md) (§3 for `/api/admin/incidents…`).
+
+* `pages/admin/Issues.jsx`: server-side table (time, who or box, kind, map, version, P1–P4, flag chips,
+  size; sort on time/who/kind/severity/size; 50 a page). Filters: severity chips (multi), flag chips with
+  counts from `facets`, kind/person/version/map selects, Unreviewed/Reviewed/All (default Unreviewed),
+  search. Initial filters read from the URL (`?tab=issues&severity=1,2&reviewed=0`, also `flag`, `kind`,
+  `who`, `version`, `map`, `q`, `incident=<id>` to open one).
+* The sheet: summary, metadata (match id opens Games searched for it), each flag hit with count and
+  collapsible excerpts, files, manifest; Download bundle, Copy AI brief, Mark reviewed / Reopen, the
+  next-session bug line and a note (POST review). Esc closes (a person sheet on top closes first).
+  Admins get "Build digest".
+* `counts.incidents_p1` / `incidents_p2` (unreviewed, 30 days): tab badge, a to-do strip item and a Now
+  stat, each opening Issues on unreviewed P1/P2. Games now also reads `?q=` from the URL.

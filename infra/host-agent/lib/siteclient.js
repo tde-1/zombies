@@ -15,11 +15,32 @@
 //   POST /api/gs/live         a frame of each live game, for the site's spectator view
 //   GET  /api/gs/map-files/:bsp  a map's files, size and sha256 (the map cache's pull list)
 //   GET  /api/gs/popular-maps    the most-played maps lately (the map cache's prefetch)
+//   POST /api/gs/telemetry       one log bundle, raw .tar.gz (lib/telemetry.js, host.md §15)
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
+import http from 'node:http'
+import https from 'node:https'
 import path from 'node:path'
+import { Transform } from 'node:stream'
 import { makeLog, sleep, mkdirp } from './util.js'
 import { describe as describeLeases } from './leases.js'
+
+/** Pass a stream through at no more than `bps` bytes a second (0 = unthrottled). */
+export function throttle(src, bps) {
+  if (!bps || bps <= 0) return src
+  const t0 = Date.now()
+  let sent = 0
+  const t = new Transform({
+    transform(chunk, _enc, cb) {
+      sent += chunk.length
+      const wait = (sent / bps) * 1000 - (Date.now() - t0)
+      if (wait > 5) setTimeout(() => cb(null, chunk), wait)
+      else cb(null, chunk)
+    },
+  })
+  src.on('error', (e) => t.destroy(e))
+  return src.pipe(t)
+}
 
 export class SiteClient extends EventEmitter {
   constructor({ base, secret, boxName = 'box', pollMs = 3000, chatWaitS = 20, spoolDir = null, spoolMs = 15_000, liveHz = 4, log } = {}) {
@@ -256,6 +277,62 @@ export class SiteClient extends EventEmitter {
         this.log.debug(`live frame: ${e.message}`)
       }
     }
+  }
+
+  // ---- telemetry (docs/kickstart/telemetry.md §3, host.md §15) ------------------------
+  /**
+   * POST one log bundle to `/api/gs/telemetry`: the raw .tar.gz streamed from disk, never
+   * read into memory, throttled to `bytesPerSec` so a live game's own traffic is never
+   * starved. NEVER THROWS on an HTTP answer — the caller (lib/telemetry.js) decides what a
+   * 400 / 413 / 429 / 5xx means for the outbox. Throws only on a network failure.
+   *   -> { status, json, retryAfterMs }
+   */
+  uploadTelemetry(filePath, { bundleId, kind, reason, bytesPerSec = 8 * 1024 * 1024, timeoutMs = null } = {}) {
+    return new Promise((resolve, reject) => {
+      let size
+      try { size = fs.statSync(filePath).size } catch (e) { reject(e); return }
+      const url = new URL(this.base + '/api/gs/telemetry')
+      const mod = url.protocol === 'https:' ? https : http
+      // Generous: the throttled transfer time plus a minute for the site to read and flag it.
+      const limit = timeoutMs ?? Math.round((size / Math.max(1, bytesPerSec)) * 1000 * 2 + 60_000)
+      let settled = false
+      const done = (fn, v) => { if (settled) return; settled = true; clearTimeout(timer); fn(v) }
+      const req = mod.request(url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/gzip',
+          'content-length': String(size),
+          'x-match-secret': this.secret,
+          'x-enw-bundle-id': String(bundleId || ''),
+          'x-enw-bundle-kind': String(kind || ''),
+          'x-enw-bundle-reason': String(reason || ''),
+        },
+      }, (res) => {
+        let text = ''
+        res.setEncoding('utf8')
+        res.on('data', (d) => { if (text.length < 65536) text += d })
+        res.on('end', () => {
+          let json = null
+          try { json = text ? JSON.parse(text) : null } catch { /* non-JSON */ }
+          const ra = res.headers['retry-after']
+          let retryAfterMs = null
+          if (ra != null) {
+            const n = Number(ra)
+            retryAfterMs = Number.isFinite(n) ? n * 1000 : Math.max(0, Date.parse(ra) - Date.now())
+            if (!Number.isFinite(retryAfterMs)) retryAfterMs = null
+          }
+          if (res.statusCode < 500 && res.statusCode !== 0) this.online = true
+          done(resolve, { status: res.statusCode, json, text: json ? null : text.slice(0, 200), retryAfterMs })
+        })
+        res.on('error', (e) => done(reject, e))
+      })
+      const timer = setTimeout(() => { req.destroy(new Error(`telemetry upload timed out after ${limit} ms`)) }, limit)
+      timer.unref?.()
+      req.on('error', (e) => done(reject, e))
+      const src = fs.createReadStream(filePath, { highWaterMark: 256 * 1024 })
+      src.on('error', (e) => { req.destroy(e); done(reject, e) })
+      throttle(src, bytesPerSec).pipe(req)
+    })
   }
 
   sayToNetwork(msg) {

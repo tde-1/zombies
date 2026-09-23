@@ -1991,3 +1991,55 @@ The site half is additive, and it is tested in `web/test/box-maps.js` (8/8):
   I/O effect on a live Wine server has not been measured.
 * The map list comes from the site's archive report on B's PC. A map whose files the report lacks
   cannot be pulled; its lease fails and says so.
+
+## 15. 2026-09-23 — telemetry: every instance end is a log bundle (lane T1)
+
+The design, the triggers, the outbox, the env keys and the deploy are in
+[`telemetry.md`](telemetry.md) §7 and §10; this section is what the agent does that the rest of
+this doc should know about.
+
+### 15.1 What changed in the agent
+
+* **`lib/util.js` — the log ring.** Every `makeLog()` line (debug included, whatever the console
+  level) is also pushed into a 20,000-entry circular array (`ENW_LOG_RING`). No I/O, no timers.
+  `ringLines(filter)` / `ringFormat` read it. It is what lets a bundle carry *this instance's*
+  host lines without a per-instance log file.
+* **`host.js`.** `startTelemetry()` after `startMapCache()` (only with a site; a failure to start
+  leaves the agent running without it). `retire()` calls `telemetryEnd(game)` after the process is
+  gone and **before** the slot is reused (the next game truncates `console.log`); `Game.dispose()`
+  files reused/warm games. Both prepare-failure paths call `telemetry.pullFailed`. At link time the
+  box DLL is hashed (`hashFileCached`, once per file version) so `dll_sha` is what ran, not what is
+  on disk at the end (§22.7 of dedi.md: a swapped DLL). `shutdown()` stages every live game's logs
+  and flushes for ≤ 5 s; building and sending wait for the next start. `/state` has `telemetry`.
+* **`lib/siteclient.js`.** `uploadTelemetry(file, { bundleId, kind, reason, bytesPerSec })`:
+  `POST /api/gs/telemetry`, streamed from disk, throttled (8 MB/s default), never throws on an
+  HTTP answer.
+* **`mock-site/site.js`** answers `/api/gs/telemetry` (200 / duplicate; `--telemetry-status N`
+  forces an answer), so a run against the mock never fills its outbox.
+
+### 15.2 Where an instance's logs are (the bundle's sources)
+
+| in the bundle | on the box |
+|---|---|
+| `instance-stdout.log` | `<logDir>/<id>.log`, the process's stdout/stderr |
+| `host-games_mp.log` | `<logDir>/<id>.games_mp.log`, the agent's mirror (`lib/gamelog.js`) |
+| `enw-<pid>.log` | beside the DLL in the instance's game copy (`ENW_LOGDIR` is unset under Wine); `<pid>` is the **Windows** pid from `hello`, else the newest `enw-*.log` written since the instance started |
+| `engine-console.log`, `engine-games_mp.log` | `<fs_homepath>/<fs_game or main>/`, the mod's folder in the map cache, the game copy's `<fs_game>` — every candidate modified since the start, once each |
+| `host-instance.log` | the ring: lines tagged with the instance, or naming the instance / match (`inst-01` never matches `inst-010`) |
+| `host-box-context.log` | the ring: every line from a minute before the game (≤ 5,000); context only, no flag reads it |
+
+### 15.3 Tests
+
+`test/telemetry.js`, 81, in `npm test`: the `.cjs` copies; an instance end (box secret, host
+private key, invite token gone from every file; the keys dir and `enw-host.env` refused; tails;
+the ring lines of that instance only); the upload against a stand-in (headers, byte-for-byte
+body, 200 / duplicate / 400 / 413 rebuild / 429 / 500 backoff / unreachable, busy deferral, the
+throttle); the journal where there is no `journalctl`; retention; `pull_failed`, `box_warning` and
+a crashed instance run through **the site's own flag rules**; a restart between staging and
+building; the `host.js` wiring. The site's web test also drives the real `SiteClient.uploadTelemetry`
+against the real `/api/gs/telemetry`.
+
+### 15.4 Unproven
+
+Not run on zombies-dev: the Wine log paths, `journalctl`, `nice`, `df`/`ps`, `/proc/meminfo`.
+The first deploy should be checked with `/state` → `telemetry` and the site's Issues page.
