@@ -45,7 +45,9 @@ constexpr uintptr_t kSvPausedDvar = 0x1F9645C;   // dvar_s* sv_paused; pause.cpp
 constexpr size_t kDvarCurrent = 0x10;
 constexpr int kSlots = 4;
 constexpr uint32_t kPollMs = 100;
-constexpr uint32_t kDebounceMs = 15000;          // one restart per 15 s, whoever asks
+constexpr uint32_t kDebounceMs = 3000;           // [RS] at most one request per 3 s, whoever asks,
+                                                 // and none while one is still pending (was 15 s:
+                                                 // a real second restart 10 s in was dropped)
 constexpr uint32_t kHostAnswerMs = 15000;
 constexpr uint32_t kLocalWaitMs = 5000;          // for the pause gate to let go
 
@@ -136,10 +138,10 @@ private:
     void on_request(int slot, const std::string& who, const std::string& value) {
         const uint32_t now = game_link::now_ms();
         ++requests_;
-        if (last_restart_ && now - last_restart_ < kDebounceMs) {
-            ENW_INFO("restart_request: slot %d ('%s') asked again (%s) %u ms after the last restart: "
-                     "ignored (one per %u s)", slot, who.c_str(), value.c_str(), now - last_restart_,
-                     kDebounceMs / 1000);
+        if ((last_restart_ && now - last_restart_ < kDebounceMs) || (mode_ != pending::none && now - since_ < 5000)) {
+            ENW_INFO("restart_request: slot %d ('%s') asked again (%s) %u ms after the last request: "
+                     "ignored (%s)", slot, who.c_str(), value.c_str(), now - last_restart_,
+                     mode_ != pending::none ? "that one is still under way" : "one per 3 s");
             return;
         }
         auto& link = game_link::get();

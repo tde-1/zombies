@@ -50,6 +50,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <deque>
@@ -136,8 +137,12 @@ void close_console(const char* why) {
     ENW_INFO("console: CLOSED (%s) after %lu ms", why, ::GetTickCount() - g_opened_at);
 }
 
-// [C1] `restart` asks twice (the Esc menu's Restart is two clicks too).
-DWORD g_restart_armed = 0;
+// [RS] `restart` acts at once (B, 2026-09-23: "if you type restart in console, it shouldn't
+// ask you to confirm since it's in console"). Typing a whole word is the confirmation; the
+// Esc menu's button keeps its two clicks. A second `restart` within 5 s of one that went
+// out is absorbed here (spam never becomes a second request); the server and the host
+// have their own guards on top (restart_request.cpp, infra/host-agent/lib/restart.js).
+DWORD g_restart_sent = 0;
 
 void execute(const std::string& line) {
     namespace con = ::enw::console;
@@ -154,7 +159,6 @@ void execute(const std::string& line) {
         for (const auto& r : rows) out(r);
         reply = std::to_string(rows.size()) + " row(s)";
     };
-    if (c.v != con::verb::restart) g_restart_armed = 0;
     switch (c.v) {
     case con::verb::none: return;
     case con::verb::help:
@@ -191,15 +195,21 @@ void execute(const std::string& line) {
     case con::verb::unbind: reply = settings_tab::console_unbind(c.name); out(reply); break;
     case con::verb::apply: reply = settings_tab::console_apply(); out(reply); break;
     case con::verb::restart:
-        if (!g_restart_armed || ::GetTickCount() - g_restart_armed > 5000) {
-            g_restart_armed = ::GetTickCount();
-            reply = "restart again to confirm";
-            out("^3" + reply);
+        if (g_restart_sent && ::GetTickCount() - g_restart_sent < 5000) {
+            reply = "restarting";   // already asked: spam is absorbed here
+            out(reply);
+            close_console("restart");
             break;
         }
-        g_restart_armed = 0;
-        if (pause_menu::request_restart_game()) { reply = "restarting"; out(reply); close_console("restart"); }
-        else { reply = "restart: box games only"; out("^1" + reply); }
+        if (pause_menu::request_restart_game()) {
+            g_restart_sent = ::GetTickCount();
+            reply = "restarting";
+            out(reply);
+            close_console("restart");
+        } else {
+            reply = "restart: not in a game";
+            out("^1" + reply);
+        }
         break;
     case con::verb::disconnect:
     case con::verb::quit: {
@@ -412,6 +422,48 @@ void post_line(const char* s) {
     post(WM_KEYUP, VK_RETURN, key_lp(0x1C, true));
 }
 
+// [RS] Proof hook (esc-menu.md §12): ENW_CONSOLE_RESTART_FILE=<path>. When the file appears
+// it is deleted, and the console is opened and `restart` typed into it as a player would --
+// N times, 400 ms apart, when the file says N (restart spam). The harness drops the file at
+// the moment it wants (live, while downed, during the end_game sequence). Test runs only.
+std::string g_rf_path;
+DWORD g_rf_next = 0;
+int g_rf_left = 0;
+bool g_rf_key_sent = false;
+DWORD g_rf_poll = 0;
+
+void restart_file_tick() {
+    if (g_rf_path.empty()) return;
+    const DWORD now = ::GetTickCount();
+    if (g_rf_left > 0) {
+        if (now < g_rf_next) return;
+        if (!g_rf_key_sent) {
+            if (!g_open) post_console_key();
+            g_rf_key_sent = true;
+            g_rf_next = now + 200;
+            return;
+        }
+        ENW_INFO("console: RESTART FILE: typing `restart` (%d left)", g_rf_left - 1);
+        post_line("restart");
+        g_rf_key_sent = false;
+        g_rf_next = now + 400;
+        --g_rf_left;
+        return;
+    }
+    if (now - g_rf_poll < 100) return;
+    g_rf_poll = now;
+    FILE* f = nullptr;
+    if (fopen_s(&f, g_rf_path.c_str(), "rb") != 0 || !f) return;
+    char buf[16] = {};
+    fread(buf, 1, sizeof buf - 1, f);
+    fclose(f);
+    ::DeleteFileA(g_rf_path.c_str());
+    g_rf_left = std::max(1, std::min(10, std::atoi(buf)));
+    g_rf_next = now;
+    g_rf_key_sent = false;
+    ENW_INFO("console: RESTART FILE seen: %d `restart` line(s) to type", g_rf_left);
+}
+
 void selftest_tick() {
     if (!g_selftest || !g_first_map) return;
     const DWORD t = ::GetTickCount() - g_first_map;
@@ -555,6 +607,10 @@ public:
             return;
         }
         if (const char* st = std::getenv("ENW_CONSOLE_SELFTEST"); st && st[0] && st[0] != '0') g_selftest = std::atoi(st);
+        if (const char* rf = std::getenv("ENW_CONSOLE_RESTART_FILE"); rf && rf[0]) {   // [RS]
+            g_rf_path = rf;
+            ENW_INFO("console: RESTART FILE armed: %s", rf);
+        }
         ENW_INFO("console: World at War's console is locked (the key under Esc never reaches the engine; keyCatchers "
                  "0x1 is closed the frame it is set). The ENW console takes the key in a map.%s",
                  g_selftest ? " SELFTEST." : "");
@@ -563,6 +619,7 @@ public:
         frame::subscribe("console_lock", [](uint64_t n) {
             tick(n);
             selftest_tick();
+            restart_file_tick();   // [RS]
         });
     }
     void pre_destroy() override {
