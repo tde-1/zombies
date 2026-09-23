@@ -659,6 +659,31 @@ t('a game_over from a DLL without native stats leaves kills_total null, not 0', 
   eq(r.summary().reported.kills_total, null)
 })
 
+t('a frozen server\'s game_over carries server_freeze onto the record; the result stays eligible', () => {
+  // dedi.md §23: the DLL watchdog ends the match itself when com_frameTime stops.
+  const r = makeRef()
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'round', ms: 1000, n: 4 })
+  r.onEvent({ t: 'game_over', ms: 285_811, round: 4, reason: 'server_freeze', flags: ['server_freeze', 'made_up_flag', 7],
+    players: [{ slot: 0, name: 'P0', revives: 0, alive: true }] })
+  const s = r.summary()
+  ok(s.flags.includes('server_freeze'), 'server_freeze is on the record')
+  ok(!s.flags.includes('made_up_flag'), 'an unknown game flag is ignored')
+  eq(s.reported.flags, ['server_freeze', 'made_up_flag'], 'what the game said is kept verbatim (strings only)')
+  eq(s.reported.reason, 'server_freeze')
+  eq(s.reported.round, 4)
+  ok(s.records_eligible, 'a freeze marks the record; it does not refuse it')
+})
+
+t('a normal game_over has no game flags', () => {
+  const r = makeRef()
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'game_over', ms: 5000, round: 1, reason: 'end_game' })
+  const s = r.summary()
+  ok(!s.flags.includes('server_freeze'))
+  eq(s.reported.flags, [])
+})
+
 console.log('\n== player_down (the system-line event, game-link-v0 2026-09-23) ==')
 
 t('player_down does NOT double-count a down: `down` is the counter, it is the sentence', () => {
