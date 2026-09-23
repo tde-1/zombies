@@ -43,7 +43,7 @@ const MANIFEST_DIRS = [
 // Data only. Anything else in a mod folder is a reason to stop, not to filter quietly.
 // Loose images, client scripts, menus and the load video are what a mod ships as well
 // (mod-compat.md §2); extension-less weapon files pass the `ext &&` guard below.
-const ALLOWED_EXT = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc', '.csc', '.iwi', '.bik', '.menu', '.str', '.json', '.png', '.jpg', '.dds'])
+const ALLOWED_EXT = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc', '.csc', '.iwi', '.bik', '.menu', '.str', '.wav', '.mp3', '.json', '.png', '.jpg', '.dds'])
 const BANNED_EXT = new Set(['.exe', '.dll', '.bat', '.cmd', '.ps1', '.scr', '.com', '.msi', '.vbs', '.js'])
 
 const sha256 = (file) => {

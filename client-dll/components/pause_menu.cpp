@@ -78,6 +78,7 @@
 #include "settings_tab.hpp"   // [settings] the Settings tab (esc-menu.md §9)
 #include "menu_lockdown.hpp"        // [console] the main-menu lockdown (esc-menu.md §10.1)
 #include "restricted_console.hpp"   // [console] the ENW console (esc-menu.md §10.2)
+#include "menu_lockdown_model.hpp"  // [C1] the menu a map starts under (esc-menu.md §11.4)
 
 #include <windows.h>
 #include <winhttp.h>
@@ -330,6 +331,9 @@ std::string g_notice;                  // drawn on the HUD for a few seconds aft
 DWORD g_notice_t = 0;
 DWORD g_quit_t = 0;                    // when the quit step started
 int g_quit_step = 0;                   // 0 idle, 1 waiting for the site, 2 disconnect sent, 3 quit sent
+bool g_quit_final = true;              // [C1] false: the console's `disconnect` (the lockdown's end screen quits)
+::enw::lockdown::start_menu g_start;   // [C1] the menu the map started under (esc-menu.md §11.4)
+bool g_start_close = true;             // [C1] ENW_MAP_START_MENU=keep leaves it up (it still never pauses)
 bool g_selftest = false;
 int g_selftest_mode = 0;
 DWORD g_first_draw = 0;
@@ -618,6 +622,7 @@ void exit_tick() {
         ENW_INFO("pause_menu: disconnect sent");
     } else if (g_quit_step == 2 && now - g_quit_t > 400) {
         g_quit_step = 3;
+        if (!g_quit_final) { ENW_INFO("pause_menu: disconnect only (console); the end screen takes it from here"); return; }
         ENW_INFO("pause_menu: quit");
         cbuf("quit\n");
     }
@@ -1277,9 +1282,48 @@ void selftest_tick() {
     }
 }
 
+// [C1] The menu a map starts under (esc-menu.md §11.4). Fed every frame; in a box game a
+// start menu still up 1.5 s into the map is closed with the player's own key (Esc, straight
+// to the engine's WndProc: the stock way a menu closes, so its onClose script runs), and it
+// never counts as a pause either way.
+void start_menu_tick() {
+    const bool in_map = rd<int>(kClcState) >= 10;
+    const int kc = rd<int>(kKeyCatchers);
+    const bool was = g_start.inherited;
+    const auto act = g_start.feed(::GetTickCount64(), in_map, (kc & 0x10) != 0);
+    if (!was && g_start.inherited)
+        ENW_INFO("pause_menu: the map started under an engine menu (keyCatchers 0x%X, %llu ms into the map): the map's, "
+                 "not a pause -- enw_ui stays clear%s", kc, ::GetTickCount64() - g_start.map_since,
+                 g_start_close && box_game() ? "; closing it at 1.5 s" : "");
+    if (act != ::enw::lockdown::start_menu::act::close) return;
+    if (!g_start_close || !box_game() || g_open || restricted_console::is_open() || g_quit_step) return;
+    if (!(rd<int>(kKeyCatchers) & 0x10)) return;   // gone this very frame: an Esc now would open the pause menu
+    ENW_INFO("pause_menu: CLOSING the map's start menu (try %d, keyCatchers 0x%X, %llu ms into the map) with Esc to the "
+             "engine, as the player's own Esc did", g_start.tries, rd<int>(kKeyCatchers), ::GetTickCount64() - g_start.map_since);
+    const LPARAM sc = static_cast<LPARAM>(::MapVirtualKeyA(VK_ESCAPE, MAPVK_VK_TO_VSC)) << 16;
+    input_gate::send_to_engine(WM_KEYDOWN, VK_ESCAPE, 1 | sc);
+    input_gate::send_to_engine(WM_KEYUP, VK_ESCAPE, 1 | sc | (1 << 30) | (static_cast<LPARAM>(1) << 31));
+}
+
 }  // namespace
 
 namespace pause_menu {
+
+bool map_start_menu() { return g_start.inherited && (rd<int>(kKeyCatchers) & 0x10) != 0; }
+
+bool request_exit(bool then_quit) {
+    if (!g_enabled || g_quit_step) return false;
+    g_quit_final = then_quit;
+    close_menu(then_quit ? "console quit" : "console disconnect");
+    begin_exit();
+    return true;
+}
+
+bool request_restart_game() {
+    if (!g_enabled || !box_game() || rd<int>(kClcState) < 10) return false;
+    request_restart();
+    return true;
+}
 
 bool draw(int lc) {
     if (!g_enabled) return false;
@@ -1327,6 +1371,7 @@ public:
             return;
         }
         g_all_games = env_is("ENW_ESC_MENU", "all");
+        g_start_close = !env_is("ENW_MAP_START_MENU", "keep");   // [C1]
         if (const char* st = std::getenv("ENW_ESC_MENU_SELFTEST"); st && st[0] && st[0] != '0') {
             g_selftest = true;
             g_selftest_mode = std::atoi(st);
@@ -1351,6 +1396,7 @@ public:
             // across it, so the game stays paused and the menu is back with the picture.
             if (g_open && ::GetTickCount() - g_last_draw > 1000 && !settings_tab::restart_in_progress())
                 close_menu("no map drawn for 1 s");
+            start_menu_tick();   // [C1] esc-menu.md §11.4
         });
     }
 

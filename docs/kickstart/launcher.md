@@ -694,7 +694,7 @@ mode: borderless at 2560x1440   (windowMode player)
   +set m_filter 0  +set cl_mouseAccel 0
   +set r_texFilterAnisoMin 16  +set r_texFilterAnisoMax 16
   +set r_picmip 0  +set r_picmip_bump 0  +set r_picmip_spec 0
-  +set r_multiGpu 1  +set sm_enable 1
+  +set r_multiGpu 0  +set sm_enable 1          (1 until 2026-09-23: mod-compat.md §10.4)
   +set cl_maxpackets 100  +set snaps 30  +set rate 25000
   +set snd_volume 1
   +map <map>   /   +connect <host>
@@ -734,7 +734,7 @@ harmless and it is the switch the DLL reads.
 | `cl_mouseAccel` | `0` | PCGW's catch: the menu's Smooth Mouse toggle only writes `m_filter`; acceleration stays on unless this is set too. | PCGW |
 | `r_texFilterAnisoMin` / `Max` | `16` | Stock max is 4x. Free on any modern GPU. | PCGW (anisotropic filtering) |
 | `r_picmip` / `_bump` / `_spec` | `0` | Full-resolution textures, pinned so a "Set Optimal Settings?" pass cannot leave them downscaled. | PCGW |
-| `r_multiGpu` | `1` | PCGW's named fix for *"stuttering on modern systems despite a locked frame rate"* — the menu calls it Dual Video Cards. | PCGW (stuttering) |
+| `r_multiGpu` | `0` | **Was `1` until 2026-09-23** (PCGW's "stuttering" fix). On a single GPU it breaks skinned models (invisible/garbled zombies, the stretched Colt) and stutters — B confirmed 13:35; `mod-compat.md` §10.4. Still a player toggle. | PCGW (stuttering), reversed |
 | `sm_enable` | `1` | Shadow maps, pinned at the stock value. | PCGW |
 | `cl_maxpackets` | `100` | Stock 30 is a dial-up default. Netcode only; the server clamps what it will not take. | Plutonium T4 docs |
 | `snaps` | `30` | Asks for 30 snapshots/s instead of 20. The server decides what it sends. | Plutonium T4 docs |
@@ -2561,6 +2561,7 @@ release commit names it. The detail of each change is in the lane doc named.
 | **0.2.22** | `0e52407` 11:50 (main `b568f01`, built clean in `wt-coord2`) | **`499b70c1`** | In-game Esc menu Settings tab (the site's catalogue, write-through, Apply = vid_restart; `esc-menu.md` §9); launcher read-back carries raw input and catches up a missed read-back; Discord rich presence; client FPS-cap report for Verified; black theme + ENW mark; copy audit. Same binary as the box (all 9 copies). 166/0 | `esc-menu.md` §9, `dedi.md` newest section |
 | **0.2.23** | `088a38a` 12:36 (main `f8bc2d9`, built clean in `wt-coord2`) | **`06a2e1bd`** | Lane 1: Discord overlay hook guard; lane 12: no stock main menu, stock console locked + ENW restricted console, *Your record has been uploaded* notice, chat history=1. Same binary as the box (all 9 copies). 166/0 | `chat-overlay.md` §13–14, `esc-menu.md` §10 |
 | **0.2.24** | `3c0ba19` 12:45 (main `ad2ea6b`, built clean in `wt-coord2`) | **`10ba8544`** | Lane 17: WOW64 raw-input fix (buffered raw-mouse reports keep their motion; `ENW_RAW_MOUSE_WOW64FIX=0` / `ENW_RAW_MOUSE_BUFFER=0` for B's comparison runs). Same binary as the box (all 9 copies). 166/0 | `client.md` §1f |
+| **0.2.25** | `fb902e9` 13:49 (main `5696406`, built clean in `wt-coord2`) | **`974c2e8d`** | Lane C1: ENW console commands + aliases with Tab completion (`/quit`, `fov 90`, ...), every setting changeable in every game (Verified locks only `com_maxfps`), no paused start under a map's start menu; 17b mouse compensations; T1 telemetry; G1 `r_multiGpu` 0 for everyone (repaired on first launch, with Discord); A1 asset audit. Same binary as the box (all 9 copies). 169/0 | `esc-menu.md` §11, `mod-compat.md` §10.4 |
 
 **On the feed at handoff: 0.2.20** (`https://zombies.enw.gg/updates/latest.yml`, installer 302 to
 `enw-zombies.nbg1.your-objectstorage.com/updates/…`, checked 03:27 UK).
@@ -2914,3 +2915,48 @@ client DLL; it stops the `&&` chain, so the rest were run one by one), waw-setti
   is widely reported but not measured here (B's PC is covered by HKLM, so the launcher writes
   nothing on it).
 * **The toast** *Logs sent* and the Settings line have not been seen on screen.
+
+## 2026-09-23 — `r_multiGpu` is 0 for everyone, and the old 1 is repaired once (lane G1)
+
+B, 13:35: turning **dual video cards (`r_multiGpu`) OFF** fixed the invisible/garbled zombies on
+fear_mc_2 and most of the mouse stutter. The launcher had pinned `1` since `afc6276` (09-22 04:13)
+on PCGW's advice. Cause and mechanism: `mod-compat.md` §10.4.
+
+**Baseline.** `COMMUNITY_FIXES` pins `r_multiGpu 0` (command line and a fresh seed). It stays a
+player setting: a `waw.r_multiGpu` from the site or the in-game menu replaces the baseline value in
+place, as every other WaW-menu item does. `BASELINE_VERSION` is **not** bumped: a bump re-merges every
+baseline dvar over what the player has since changed in game.
+
+**One-time repair, three places, each with its own marker:**
+
+| where | what | marker | runs |
+|---|---|---|---|
+| `config.cfg` the engine reads (active profile under the LocalAppData redirect) + the fs_homepath copies | `seta r_multiGpu "1"` (any set verb, any casing, quoted or bare) → `"0"`; the account snapshot `.enw-account.json` moves with it so the read-back does not report the repair as an in-game change | `multigpu-off-2026-09-23` in `.enw-migrations.json` (shared with the ADS repair) | `gamecfg.migrateMultiGpu`, every player-mode launch, right after `migrateAdsBind` and before the catch-up read-back |
+| the launcher's saved settings (`state\settings.json`, `local` and every account) | `waw.r_multiGpu '1'` → `'0'`; `gameUpdatedAt` is not moved | `migrations[<id>]` + `migratedAt[<id>]` | `settings.migrate`, at launcher start |
+| the site's `users.settings_json` | the same, `game.waw` and a top-level `waw` | `site_migrations` row | `web/server/lib/settingsRepairs.js`, at server start, after a `VACUUM INTO` backup |
+
+Each logs `repair: r_multiGpu 1 -> 0 (old default)`. A `1` is treated as the old default because until
+today nobody's `1` could be told from ours (the launcher wrote it into every profile and the site's
+hint called it a stutter fix). Once the marker is written, a player who turns it on keeps it.
+
+**The race with the site copy.** The site repairs its copy only when it restarts (B's word), and the
+site pushes its copy into the launcher whenever its `updatedAt` is newer (`launcherBridge.js`
+`GameSettingsSync`). So `settings.set()` holds back a patch that carries a `gameUpdatedAt` from
+**before** this account's repair and says `r_multiGpu '1'` (`guardRepaired`). A patch with no stamp
+(the launcher's own Settings screen, the post-game read-back) or one stamped after the repair is the
+player's hand and is kept.
+
+**Tests.** `test/run-all.js` 169 passed (166 + three: the baseline and a player's `1` on the launch
+line; the config repair once-only, snapshot moved, a later in-game `1` read back as the player's,
+the shared marker file; the account repair, the stale-site-copy guard, a later choice kept).
+`test/waw-settings.js` 19/0 (the in-game schema `--check` included). Web: `npm test` 13 suites green,
+run-all 148 (one new: stored `1`s repaired once, backup first in `backup-<ISO>`, `updatedAt`
+untouched, a later `1` kept).
+
+**Ships in the next launcher** (not published by this lane): baseline 0, the config and settings
+repairs, the new hint. The in-game Settings tab's hint comes from `shared/settings/ingame-settings.json`,
+which the client DLL embeds, so it changes with the next client DLL build. The site half runs on the
+next site restart.
+
+**Unproven:** a real launch that performs the repair on B's PC (no game was launched), and a
+fear_mc_2 game on that launcher. The toggle itself is B's proof.

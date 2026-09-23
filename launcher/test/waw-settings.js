@@ -290,9 +290,12 @@ await test('in-game schema: every value a control can write passes the launcher 
   for (const bad of ['monkeytoy', 'con_external', 'sv_cheats', 'developer', 'ai_corpseCount']) {
     assert.equal([...byId.values()].some((i) => String(i.dvar || '').toLowerCase() === bad.toLowerCase()), false, `${bad} must never be an in-game control`)
   }
-  // A Verified game: com_maxfps may not change mid-game (records rule), nothing restarts the renderer.
+  // A Verified game (B, 2026-09-23, esc-menu.md §11.3): every setting is changeable there too,
+  // vid_restart ones through Apply; only the records rule's own item is locked -- com_maxfps.
   assert.equal(byId.get('maxFps').verified, false)
-  for (const it of s.items) if (it.apply === 'vid_restart') assert.equal(it.verified, false, `${it.id} restarts the renderer`)
+  assert.deepEqual(s.items.filter((it) => !it.verified).map((it) => it.id), ['maxFps'], 'only max fps is locked in a Verified game')
+  assert.equal(byId.get('discordPresence').dvar, 'enw_discord')
+  assert.equal(byId.get('discordOverlay').dvar, 'enw_discordhook')
   assert.equal(byId.get('sensitivity').verified, true)
   assert.equal(byId.get('fov').max, 120, 'FOV tops out at the records cap')
   assert.deepEqual(byId.get('showFps').values, ['Off', 'Simple'], 'cg_drawFPS is an enum on T4')
@@ -306,6 +309,19 @@ await test('raw input round-trips through config.cfg (enw_rawmouse): launch writ
   assert.deepEqual(wawcfg.readBackAccount({ homeDir: home }).changed, {})
   fs.writeFileSync(p.engineCfg, cfg.replace('seta enw_rawmouse "1"', 'seta enw_rawmouse "0"'))
   assert.deepEqual(wawcfg.readBackAccount({ homeDir: home }).changed, { rawMouse: false })
+})
+
+await test('discord switches round-trip through config.cfg (enw_discord, enw_discordhook): an in-game change comes back as discordPresence / discordOverlay', () => {
+  const { home, p } = fakeHome('home-discord')
+  wawcfg.applyAccountToConfig({ homeDir: home, settings: { discordPresence: true, discordOverlay: 'auto' }, display: DISPLAY })
+  const cfg = fs.readFileSync(p.engineCfg, 'utf8')
+  assert.match(cfg, /^seta enw_discord "1"$/m)
+  assert.match(cfg, /^seta enw_discordhook "auto"$/m)
+  assert.deepEqual(wawcfg.readBackAccount({ homeDir: home }).changed, {})
+  fs.writeFileSync(p.engineCfg, cfg.replace('seta enw_discord "1"', 'seta enw_discord "0"').replace('seta enw_discordhook "auto"', 'seta enw_discordhook "refuse"'))
+  assert.deepEqual(wawcfg.readBackAccount({ homeDir: home }).changed, { discordPresence: false, discordOverlay: 'refuse' })
+  fs.writeFileSync(p.engineCfg, cfg.replace('seta enw_discordhook "auto"', 'seta enw_discordhook "sometimes"'))
+  assert.deepEqual(wawcfg.readBackAccount({ homeDir: home }).changed, {}, 'a value outside auto/allow/refuse is not claimed')
 })
 
 await test('the sync message: what the in-game tab writes (write-through config.cfg) is the patch the launcher saves and the site reads', () => {

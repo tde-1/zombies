@@ -211,5 +211,26 @@
     ],
     "unproven": "no client joined: server-side load under Wine only"
   },
-  "dedi_status": "box_map_loaded"
+  "dedi_status": "box_map_loaded",
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 158,
+    "fatal": 5,
+    "visible": 3,
+    "visible_owner": {
+      "release": 3
+    },
+    "visible_names": [
+      "item:aug",
+      "weapon:weapons/sp/aug",
+      "weapon:weapons/sp/zombie_cymbal_monkey"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "asset audit 2026-09-23: the release itself lacks what a player meets (item:aug, weapon:weapons/sp/aug, weapon:weapons/sp/zombie_cymbal_monkey); a retail listen server with the same files misses the same (archive.md 13)"
 }

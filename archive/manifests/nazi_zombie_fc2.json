@@ -154,5 +154,20 @@
       "nazi_zombie_fc2_patch.ff"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "minor",
+    "map_loaded_runs": 1,
+    "misses": 154,
+    "fatal": 1,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [
+      "fraggrenade"
+    ],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

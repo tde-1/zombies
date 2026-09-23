@@ -205,5 +205,18 @@
         "result": "RUN addon6: the file was staged in and the engine DID load it (`Loading fastfile 'nazi_zombie_leviathan_patch'` at console line 2197, where run map03 had fallen back to `Loading fastfile 'default'`). `unknown item 'napalmblob'` at maps/_loadout.gsc:34 is UNCHANGED. The missing patch fastfile is real and is now a named fact about this release, but it is not what breaks the map. Not applied."
       }
     ]
+  },
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "clean",
+    "map_loaded_runs": 5,
+    "misses": 198,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
   }
 }

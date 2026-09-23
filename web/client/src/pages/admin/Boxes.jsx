@@ -84,6 +84,14 @@ function Box({ x, go, openUser, onDone }) {
         <span><b>{x.leases.length}</b>/{x.capacity.max} slots leased</span>
         <span><b>{x.capacity.reserve}</b> kept for agents</span>
         <span>protocol <b>v{x.capacity.protocol}</b></span>
+        {x.mem && (
+          <span title={`MemAvailable at the last heartbeat. Below the floor the box refuses agent boots and a player's boot evicts agent games.${x.mem.total_bytes ? ` Total ${mb(x.mem.total_bytes)}.` : ''}`}>
+            RAM free <b className={x.mem.floor_bytes && x.mem.available_bytes < x.mem.floor_bytes ? 'hot' : ''}>{mb(x.mem.available_bytes)}</b>
+            {x.mem.floor_bytes ? <span className="faint"> · floor {mb(x.mem.floor_bytes)}</span> : null}
+          </span>
+        )}
+        {x.boot_queue && x.boot_queue.queued && x.boot_queue.queued.length > 0 && <span><b>{x.boot_queue.queued.length}</b> boot{x.boot_queue.queued.length === 1 ? '' : 's'} queued</span>}
+        {x.incidents > 0 && <span title={x.last_incident ? JSON.stringify(x.last_incident) : ''}><b className="hot">{x.incidents}</b> incident{x.incidents === 1 ? '' : 's'}{x.last_incident ? <span className="faint"> · last {x.last_incident.kind}</span> : null}</span>}
         <span>connect <b className="mono">{x.address || 'not set'}</b></span>
         <span>replay key {x.key.pinned ? <b className="mono">{x.key.pinned}</b> : <b className="hot">none pinned</b>}{x.key.pending && <b className="hot"> · pending {x.key.pending}</b>}</span>
         <span>DLL build {x.build && x.build.dll_build ? <b className="mono">{x.build.dll_build}</b> : <b className="faint">not heard</b>} <button type="button" className="linkish" onClick={() => go('release')}>Release</button></span>

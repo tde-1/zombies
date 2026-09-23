@@ -1361,7 +1361,7 @@ one-minute check).
 | Graphics | Anti-Aliasing | `r_aaSamples` (via `ui_r_aasamples`) | Off=1, 2x=2, 4x=4 | recommended → `reset` | `waw` |
 | Graphics | Brightness | `r_gamma` | 0.5–3 | 1 | `waw`; tested |
 | Graphics | Sync Every Frame | `r_vsync` (via `ui_r_vsync`) | 0/1 | 0 (configure.cfg) | existing `vsync`; tested |
-| Graphics | Optimize for Dual Video Cards | `r_multiGpu` | 0/1 | 0 (ENW baseline 1) | `waw` |
+| Graphics | Optimize for Dual Video Cards | `r_multiGpu` | 0/1 | 0 (ENW baseline 0 since 2026-09-23; was 1 — broke skinning, `mod-compat.md` §10.4) | `waw` |
 | Graphics | Shadows | `sm_enable` | 0/1 | recommended → `reset` (ENW 1) | `waw`; tested (reset) |
 | Graphics | Specular Map | `r_specular` | 0/1 | recommended → `reset` | `waw` |
 | Graphics | Ocean Simulation | `r_gfxopt_water_simulation` | 0/1 | 1 | `waw` |

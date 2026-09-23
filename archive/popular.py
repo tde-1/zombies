@@ -168,7 +168,7 @@ def short_note(r, cause):
 
 BUCKET_BASE = "https://enw-zombies.nbg1.your-objectstorage.com/mods"
 # What web/server/lib/mapfiles.js serves (and so what tools/s3/sync.js uploads).
-SERVED_EXT = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik", ".menu", ".str", ""}
+SERVED_EXT = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik", ".menu", ".str", ".wav", ".mp3", ""}
 
 
 def bucket_check(bsps):
@@ -245,6 +245,13 @@ def apply():
     proof = load("boxproof.json", {})
     write_box_proven(proof)
     n = 0
+    # The asset gate (archive.md 13): a pass un-hides a map only if nothing a player meets is
+    # missing on it. One fresh audit for the whole batch (it reads every console log once).
+    import asset_gate
+    passing = [b for b, r in proof.items() if r.get("result") == "pass"
+               and os.path.exists(os.path.join(MANIFESTS, b + ".json"))]
+    # A pass with no console log saved is unproven, not refused: the refusal is for a miss.
+    gated = asset_gate.gate_many(passing, allow_unproven=True) if passing else {}
     for bsp, r in proof.items():
         mf = os.path.join(MANIFESTS, bsp + ".json")
         if not os.path.exists(mf) or r.get("result") not in ("pass", "fail"):
@@ -269,7 +276,13 @@ def apply():
         # kept hidden comes out -- a pass as "New", a fail as broken with its cause (hidden from
         # the Maps list by health, shown on the Archive page like the first five).
         if "site_hidden" in m:
-            m["site_hidden"] = False
+            ok, v, why = gated.get(bsp, (True, None, None)) if r["result"] == "pass" else (True, None, None)
+            m["site_hidden"] = not ok
+            if ok:
+                m.pop("site_hidden_reason", None)
+            else:
+                m["site_hidden_reason"] = "asset gate: %s -- %s" % (v, why)
+                print("  kept hidden by the asset gate: %s (%s: %s)" % (bsp, v, why))
         if r["result"] == "pass":
             m["dedi_status"] = "box_map_loaded"
             if m.get("health") == "broken":

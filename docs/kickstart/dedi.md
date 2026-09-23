@@ -3202,6 +3202,16 @@ rollback `/home/waw/binkw32.rollback-06a2e1bd.dll`. Host agent not restarted (no
 agent lease `m_e7918082` (fake …0003, Nacht) → `map_loaded` in 7 s → `ready` → cancelled. Same binary
 as launcher 0.2.24.
 
+### 22.9 Box DLL `974c2e8d` (2026-09-23 13:48 UK, integrator)
+
+**`974c2e8d226576568b5be66bae01c148e1bc9de1cab23f2ca90af3a2a0875bfc`** (2,497,536 B), clean detached
+worktree `C:\Users\b\ZombiesDev\wt-coord2` at main **`5696406`** (merge of lane C1 on `59e425d`: 17b,
+T1, G1, A1; `settings_model_test` 65/0, `lockdown_test` 196/0, `mouse_tests` all passed). Installed into
+all 9 copies (temp name + `mv`, `chown waw:waw`) while B played (his running game keeps its DLL; his
+next boot takes this one); replaced `10ba8544`, rollback `/home/waw/binkw32.rollback-10ba8544.dll`.
+**Not proven on the box:** no agent lease was run (rule 13: B was in a live instance), host agent not
+restarted. Same binary as launcher 0.2.25. Prove with a fake-…0003 Nacht lease once B's game ends.
+
 ## 23. 2026-09-23 12:33 UTC — B's fear_mc_2 froze at 4 m 46 s: one escaped frame corrupted the script VM, and the VM then overran `localVars` (lane D1)
 
 B's verified 1p game `m_0c608cd9` (inst-04, Wine pid 4520 / Linux pid 386851, `nazi_zombie_fear_mc_2`,

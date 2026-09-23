@@ -1790,6 +1790,37 @@ async function main() {
     eq(p.waw.sm_enable, null, 'a game-default item must reach the launcher as null (reset)')
   })
 
+  check('r_multiGpu repair: stored 1s become 0 once, with a backup first, and a later 1 is kept', () => {
+    // B, 2026-09-23 13:35: dual video cards OFF fixed the broken zombies on fear_mc_2
+    // (mod-compat.md §10.4). 1 was ENW's old baseline, so a stored 1 is repaired, once.
+    const repairs = require('../server/lib/settingsRepairs')
+    const on = '76561198000000051'
+    const off = '76561198000000052'
+    const flat = '76561198000000053'
+    for (const s of [on, off, flat]) users.ensure(s, {})
+    users.saveSettings(on, { game: { waw: { r_multiGpu: '1', r_aaSamples: '4' }, updatedAt: 1700000000000 } })
+    users.saveSettings(off, { game: { waw: { r_multiGpu: '0' }, updatedAt: 1700000000000 } })
+    db.prepare('UPDATE users SET settings_json=? WHERE steam_id=?').run(JSON.stringify({ waw: { r_multigpu: '1' } }), flat)
+    const lines = []
+    const r = repairs.repairMultiGpu({ log: (l) => lines.push(l) })
+    eq(r.ran, true)
+    eq(r.changed, 2, 'accounts repaired')
+    eq(users.settings(on).game.waw.r_multiGpu, '0')
+    eq(users.settings(on).game.waw.r_aaSamples, '4', 'nothing else is touched')
+    eq(users.settings(on).game.updatedAt, 1700000000000, 'the repair must not make the site copy "newer"')
+    eq(users.settings(off).game.waw.r_multiGpu, '0')
+    eq(users.settings(flat).waw.r_multigpu, '0', 'a top-level waw map is repaired too')
+    truthy(lines.length === 1 && lines[0].includes('repair: r_multiGpu 1 -> 0 (old default)'), `the log line: ${lines.join(' | ')}`)
+    truthy(r.backup && fs.existsSync(r.backup) && fs.statSync(r.backup).size > 0, 'no backup was written')
+    truthy(path.basename(path.dirname(r.backup)).startsWith('backup-'), 'the backup is not in a backup-<ISO> folder')
+    truthy(r.backup.startsWith(TMP), 'the backup left the throwaway data dir')
+    // Idempotent: the player turns it on again afterwards and keeps it.
+    users.saveSettings(on, { game: { waw: { r_multiGpu: '1' }, updatedAt: Date.now() } })
+    const again = repairs.run({ log: (l) => lines.push(l) })
+    eq(again[0].ran, false, 'the repair ran twice')
+    eq(users.settings(on).game.waw.r_multiGpu, '1', 'a later choice of 1 was overwritten')
+  })
+
   check('the stored game blob refuses junk: bad keys, long values, a quit smuggled into a bind', () => {
     const g = users.sanitizeGame({ fov: 400, mode: 'kiosk', waw: { 'r_gamma; quit': '1', r_gamma: 'x'.repeat(40), fx_marks: '0' }, wawBinds: { '+attack': ['MOUSE1', 'K;QUIT', 'F', 'G'] } })
     eq(g.fov, 120)

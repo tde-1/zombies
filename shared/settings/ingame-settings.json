@@ -21,6 +21,10 @@
   {
    "id": "game",
    "label": "Game"
+  },
+  {
+   "id": "enw",
+   "label": "ENW"
   }
  ],
  "groups": [
@@ -195,6 +199,15 @@
     "hud_enable",
     "cg_drawCrosshair"
    ]
+  },
+  {
+   "tab": "enw",
+   "id": "discord",
+   "label": "discord",
+   "items": [
+    "discordPresence",
+    "discordOverlay"
+   ]
   }
  ],
  "items": [
@@ -203,7 +216,7 @@
    "label": "resolution",
    "kind": "select",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_mode",
    "to": "key:resolution",
    "def": "",
@@ -239,7 +252,7 @@
    "label": "refresh rate",
    "kind": "select",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_displayRefresh",
    "to": "waw",
    "def": "",
@@ -271,7 +284,7 @@
    "label": "aspect ratio",
    "kind": "select",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_aspectRatio",
    "to": "waw",
    "def": "auto",
@@ -294,7 +307,7 @@
    "label": "anti-aliasing",
    "kind": "select",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_aaSamples",
    "to": "waw",
    "def": "",
@@ -328,7 +341,7 @@
    "label": "vsync",
    "kind": "toggle",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_vsync",
    "to": "key:vsync",
    "def": "0",
@@ -342,23 +355,23 @@
    "label": "dual video cards",
    "kind": "toggle",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_multiGpu",
    "to": "waw",
    "def": "0",
-   "enw": "1",
+   "enw": "0",
    "values": [
     "0",
     "1"
    ],
-   "hint": "on in ENW: fixes stutter on modern PCs"
+   "hint": "off: on a single GPU it breaks skinned models and stutters"
   },
   {
    "id": "sm_enable",
    "label": "shadows",
    "kind": "toggle",
    "apply": "live",
-   "verified": false,
+   "verified": true,
    "dvar": "sm_enable",
    "to": "waw",
    "def": "",
@@ -373,7 +386,7 @@
    "label": "specular map",
    "kind": "toggle",
    "apply": "live",
-   "verified": false,
+   "verified": true,
    "dvar": "r_specular",
    "to": "waw",
    "def": "",
@@ -387,7 +400,7 @@
    "label": "ocean simulation",
    "kind": "toggle",
    "apply": "live",
-   "verified": false,
+   "verified": true,
    "dvar": "r_gfxopt_water_simulation",
    "to": "waw",
    "def": "1",
@@ -401,7 +414,7 @@
    "label": "dynamic foliage",
    "kind": "toggle",
    "apply": "live",
-   "verified": false,
+   "verified": true,
    "dvar": "r_gfxopt_dynamic_foliage",
    "to": "waw",
    "def": "1",
@@ -415,7 +428,7 @@
    "label": "bullet impacts",
    "kind": "toggle",
    "apply": "live",
-   "verified": false,
+   "verified": true,
    "dvar": "fx_marks",
    "to": "waw",
    "def": "1",
@@ -463,7 +476,7 @@
    "label": "texture quality",
    "kind": "select",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_picmip_manual",
    "to": "waw",
    "def": "0",
@@ -482,7 +495,7 @@
    "label": "texture detail",
    "kind": "select",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_picmip",
    "to": "waw",
    "def": "",
@@ -505,7 +518,7 @@
    "label": "normal map detail",
    "kind": "select",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_picmip_bump",
    "to": "waw",
    "def": "",
@@ -528,7 +541,7 @@
    "label": "specular map detail",
    "kind": "select",
    "apply": "vid_restart",
-   "verified": false,
+   "verified": true,
    "dvar": "r_picmip_spec",
    "to": "waw",
    "def": "",
@@ -616,7 +629,7 @@
    "label": "line of sight occlusion",
    "kind": "toggle",
    "apply": "live",
-   "verified": false,
+   "verified": true,
    "dvar": "snd_losOcclusion",
    "to": "waw",
    "def": "1",
@@ -1282,11 +1295,46 @@
    "hint": "fixes high polling rate mice"
   },
   {
+   "id": "discordPresence",
+   "label": "rich presence",
+   "kind": "toggle",
+   "apply": "next_launch",
+   "verified": true,
+   "dvar": "enw_discord",
+   "to": "key:discordPresence",
+   "def": "1",
+   "values": [
+    "0",
+    "1"
+   ]
+  },
+  {
+   "id": "discordOverlay",
+   "label": "discord overlay",
+   "kind": "select",
+   "apply": "next_launch",
+   "verified": true,
+   "dvar": "enw_discordhook",
+   "to": "key:discordOverlay",
+   "def": "auto",
+   "values": [
+    "auto",
+    "allow",
+    "refuse"
+   ],
+   "labels": [
+    "auto",
+    "on",
+    "off"
+   ],
+   "hint": "auto turns it off when a map is short of memory"
+  },
+  {
    "id": "r_dof_enable",
    "label": "depth of field",
    "kind": "toggle",
    "apply": "live",
-   "verified": false,
+   "verified": true,
    "dvar": "r_dof_enable",
    "to": "waw",
    "def": "1",
@@ -1300,7 +1348,7 @@
    "label": "glow",
    "kind": "toggle",
    "apply": "live",
-   "verified": false,
+   "verified": true,
    "dvar": "r_glow_allowed",
    "to": "waw",
    "def": "",
@@ -1320,16 +1368,6 @@
    "id": "monkeytoy",
    "dvar": "monkeytoy",
    "why": "mod-owned (mod-compat.md §3): a map's anti-cheat quits on it; never ours to set"
-  },
-  {
-   "id": "discordPresence",
-   "dvar": "",
-   "why": "the launcher's Discord rich presence, not a game setting: changed on the site or in the launcher"
-  },
-  {
-   "id": "discordOverlay",
-   "dvar": "",
-   "why": "chosen at launch: the client DLL reads ENW_DISCORD_HOOK once at start (overlay_guard, chat-overlay.md 13); changed on the site or in the launcher"
   }
  ]
 }

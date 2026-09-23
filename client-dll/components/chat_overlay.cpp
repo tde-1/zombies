@@ -680,9 +680,11 @@ bool esc_menu_open() {
     // 2 s without a gap: the first networked run (chatpause1) showed the load screen
     // still holding 0x10 on the first CG frame, which paused a solo server for 62 ms.
     // The Esc menu keeps CG drawing underneath it, so the clock does not stop.
+    // [C1] ...but not the menu the MAP started under (fear_mc_2's start menu): that one
+    // paused every box game 2.0 s in until the player pressed Esc (esc-menu.md §11.4).
     const DWORD now = ::GetTickCount();
     const bool in_map = in_game() && g_streak_start && now - g_streak_start > 2000;
-    return in_map && (rd<int>(kKeyCatchers) & 0x10) != 0;
+    return in_map && (rd<int>(kKeyCatchers) & 0x10) != 0 && !pause_menu::map_start_menu();
 }
 
 // ---- the Esc menu on a REMOTE server --------------------------------------

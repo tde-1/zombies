@@ -186,5 +186,27 @@
       "nazi_zombie_laboratory.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T13:41:08",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 198,
+    "fatal": 6,
+    "visible": 6,
+    "visible_owner": {
+      "release": 6
+    },
+    "visible_names": [
+      "weapon:weapons/sp/m7_launcher_zombie",
+      "weapon:weapons/sp/m7_launcher_zombie_upgraded",
+      "weapon:weapons/sp/panzerschrek_zombie",
+      "weapon:weapons/sp/panzerschrek_zombie_upgraded",
+      "weapon:weapons/sp/zombie_kar98k",
+      "weapon:weapons/sp/zombie_kar98k_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  }
 }

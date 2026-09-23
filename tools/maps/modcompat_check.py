@@ -46,6 +46,10 @@ LAUNCHER_BANNED = js_set(os.path.join(REPO, "launcher", "src", "main", "library.
 def client_gets(rel):
     """None if a launcher installs `rel`, else the reason it does not."""
     ext = os.path.splitext(rel)[1].lower()
+    # mapfiles.js refuses a `..` path SEGMENT (traversal); a `..` inside a name is a file
+    # (Neon Fighter's `HarryBos Mysterybox Pack V1..0.0.iwd`, archive.md 13)
+    if ".." in re.split(r"[\\/]", rel):
+        return "site filter (a '..' path segment)"
     if ext not in SITE_ALLOWED:
         return "site filter (mapfiles.js ALLOWED has no '%s')" % (ext or "no extension")
     if ext in LAUNCHER_BANNED:

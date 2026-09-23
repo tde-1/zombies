@@ -1660,6 +1660,32 @@ await test('the map is installed before the game is launched, and a failed insta
   assert.equal(s2.steps.find((s) => s.id === 'in_game').state, 'failed')
 })
 
+// host.md §16: B cancelled a silent "Reserving server" twice at ~30 s while his lease sat
+// in the box's boot queue. The box now says `queued` and the boot screen says so.
+await test('a boot queued on the box shows on the boot screen, and the launch still goes through', async () => {
+  const api = fakeApi()
+  let n = 0
+  const queued = { state: 'reserving', party: { id: 7, is_leader: false }, map: { key: 'water' },
+                   match: { match_id: 'm_q', connect: null, token: 't', state: 'leased', preparing: { phase: 'queued', ahead: 1, reason: 'boot' } } }
+  api.play = async () => (++n < 3 ? queued : { ...queued, state: 'ready', match: { ...queued.match, preparing: null, state: 'ready', connect: '10.0.0.5:28960' } })
+  const flow = new BootFlow({ map: 'water', api, follow: true, launch: false, serverTimeoutMs: 8000 })
+  const seen = []
+  flow.on('step', (s) => seen.push(`${s.id}:${s.detail}`))
+  const snap = await flow.runViaSite(api)
+  assert.ok(seen.includes('reserving:the server is starting another game first; yours is next'), seen.join(' | '))
+  assert.equal(snap.failed, false)
+  assert.equal(flow.host, '10.0.0.5:28960')
+})
+
+await test('the preparing words: queued, memory, a map pull, and nothing for nothing', async () => {
+  const { preparingDetail } = await import('../src/main/bootflow.js')
+  assert.equal(preparingDetail({ phase: 'queued', ahead: 2 }), 'the server is starting 2 games before yours, one at a time')
+  assert.equal(preparingDetail({ phase: 'queued', ahead: 0 }), 'the server is starting your game')
+  assert.equal(preparingDetail({ phase: 'queued', ahead: 0, reason: 'memory' }), 'the server is freeing memory for your game')
+  assert.equal(preparingDetail({ phase: 'downloading', percent: 41.6 }), 'the server is downloading the map (42%)')
+  assert.equal(preparingDetail(null), null)
+})
+
 // A stock map has no payload ANYWHERE: the site holds no files for it by design, so
 // the download step must never run. This is the exact launch B lost.
 await test('a stock map skips the download step instead of asking the site for files', async () => {
@@ -1859,6 +1885,96 @@ await test('the ADS bind repair is once-only and never clobbers a player-changed
   assert.equal(keep.ran, true)
   assert.deepEqual(keep.changed, [], 'a player-changed bind is left exactly alone')
   assert.match(fs.readFileSync(path.join(p2, 'config.cfg'), 'utf8'), /\+melee/)
+})
+
+await test('r_multiGpu: the baseline pins 0 and a player who has two GPUs can still turn it on', async () => {
+  // B, 2026-09-23 13:35: OFF fixed the invisible/garbled zombies on fear_mc_2 and most of
+  // the stutter (mod-compat.md §10.4). 1 was the baseline from afc6276 until today.
+  const fix = gamecfg.COMMUNITY_FIXES.find((f) => f.dvar === 'r_multiGpu')
+  assert.equal(fix.value, '0')
+  const base = new Map(gamecfg.baselineDvars({}, null))
+  assert.equal(base.get('r_multiGpu'), '0', 'the launch line carries r_multiGpu 0')
+  const wawcfg = await import('../src/main/wawcfg.js')
+  const mine = wawcfg.launchDvars({ waw: { r_multiGpu: '1' } }, null)
+  assert.deepEqual(mine.filter(([d]) => d === 'r_multiGpu'), [['r_multiGpu', '1']], 'a player\'s own 1 replaces the baseline, once')
+})
+
+await test('r_multiGpu repair: the old default 1 in config.cfg becomes 0 once, and a later 1 is the player\'s', async () => {
+  const wawcfg = await import('../src/main/wawcfg.js')
+  const H = path.join(process.env.ENW_ROOT, 'mgpu')
+  const profiles = path.join(H, 'localappdata', 'Activision', 'CoDWaW', 'players', 'profiles')
+  fs.mkdirSync(path.join(profiles, 'anna'), { recursive: true })
+  fs.writeFileSync(path.join(profiles, 'active.txt'), 'anna')
+  const engineCfg = path.join(profiles, 'anna', 'config.cfg')
+  fs.writeFileSync(engineCfg, 'unbindall\r\nseta r_aaSamples "4"\r\nseta r_multiGpu "1"\r\nseta sm_enable "1"\r\ncon_hidechannel *\r\n')
+  const plain = path.join(H, 'main', 'config.cfg')
+  fs.mkdirSync(path.dirname(plain), { recursive: true })
+  fs.writeFileSync(plain, 'set r_multigpu 1\r\n')
+  // What the last launch wrote: the account snapshot the read-back compares against.
+  const stampFile = wawcfg.accountStamp(H)
+  assert.equal(stampFile, gamecfg.configPaths(H).account)
+  fs.mkdirSync(path.dirname(stampFile), { recursive: true })
+  fs.writeFileSync(stampFile, JSON.stringify({ dvars: { r_multigpu: '1', r_aasamples: '4' }, binds: {} }))
+
+  const lines = []
+  const r = gamecfg.migrateMultiGpu({ homeDir: H, log: (l) => lines.push(l) })
+  assert.equal(r.ran, true)
+  assert.deepEqual(r.changed.sort(), [engineCfg, plain].sort())
+  const text = fs.readFileSync(engineCfg, 'utf8')
+  assert.match(text, /^seta r_multiGpu "0"\r$/m)
+  assert.match(text, /seta r_aaSamples "4"/, 'nothing else is touched')
+  assert.match(text, /con_hidechannel \*/)
+  assert.match(fs.readFileSync(plain, 'utf8'), /^set r_multigpu "0"/m)
+  assert.equal(lines.length, 1)
+  assert.ok(lines[0].startsWith('repair: r_multiGpu 1 -> 0 (old default)'), lines[0])
+  // Our repair is not an in-game change: the snapshot moved with it.
+  assert.equal(JSON.parse(fs.readFileSync(stampFile, 'utf8')).dvars.r_multigpu, '0')
+  assert.equal(wawcfg.readBackAccount({ homeDir: H }).changed.waw, undefined, 'the read-back saw the repair as the player\'s change')
+
+  // Once only: the player turns it back on in game (two real GPUs) and keeps it.
+  fs.writeFileSync(engineCfg, text.replace('seta r_multiGpu "0"', 'seta r_multiGpu "1"'))
+  const again = gamecfg.migrateMultiGpu({ homeDir: H, log: (l) => lines.push(l) })
+  assert.equal(again.ran, false)
+  assert.equal(lines.length, 1)
+  assert.match(fs.readFileSync(engineCfg, 'utf8'), /seta r_multiGpu "1"/, 'a later choice of 1 survives')
+  assert.equal(wawcfg.readBackAccount({ homeDir: H }).changed.waw.r_multiGpu, '1', 'and is read back as the player\'s')
+
+  // It shares the marker file with the ADS repair without clobbering it.
+  gamecfg.migrateAdsBind({ homeDir: H })
+  const marks = JSON.parse(fs.readFileSync(gamecfg.configPaths(H).migrations, 'utf8')).done
+  assert.ok(marks.includes('multigpu-off-2026-09-23') && marks.includes('ads-hold-2026-09-22'), JSON.stringify(marks))
+})
+
+await test('r_multiGpu repair: the saved account setting goes 1 -> 0 once, and an older site copy cannot bring it back', () => {
+  const SID = '76561190000000012'
+  settings.signOut()
+  settings.signIn({ steamid: SID, name: 'twogpu' })
+  // The account as the site left it before the fix (gameUpdatedAt from the past).
+  settings.set({ waw: { r_multiGpu: '1', r_aaSamples: '4' }, gameUpdatedAt: 1700000000000 })
+  const lines = []
+  const m = settings.migrate({ log: (l) => lines.push(l) })
+  assert.equal(settings.get(SID).waw.r_multiGpu, '0')
+  assert.equal(settings.get(SID).waw.r_aaSamples, '4', 'nothing else is touched')
+  assert.equal(settings.get(SID).gameUpdatedAt, 1700000000000, 'the repair does not make this copy "newer" than the site\'s')
+  assert.ok(m.ran.some((x) => x.id === SID && x.name === 'multigpu-off-2026-09-23'))
+  assert.ok(lines.some((l) => l.includes('repair: r_multiGpu 1 -> 0 (old default)')), lines.join(' | '))
+
+  // The site's copy, still unmigrated and older than the repair, is pushed back in: held.
+  settings.set({ waw: { r_multiGpu: '1' }, gameUpdatedAt: 1700000000001 })
+  assert.equal(settings.get(SID).waw.r_multiGpu, '0', 'a pre-repair copy brought the old default back')
+
+  // The player's own hand, after the repair: kept. From the launcher (no stamp) ...
+  settings.set({ waw: { r_multiGpu: '1' } })
+  assert.equal(settings.get(SID).waw.r_multiGpu, '1')
+  // ... and from the site, stamped after the repair.
+  settings.set({ waw: { r_multiGpu: '0' } })
+  settings.set({ waw: { r_multiGpu: '1' }, gameUpdatedAt: Date.now() + 1000 })
+  assert.equal(settings.get(SID).waw.r_multiGpu, '1')
+  // And never repaired twice.
+  const second = settings.migrate({ log: () => {} })
+  assert.equal(second.ran.length, 0)
+  assert.equal(settings.get(SID).waw.r_multiGpu, '1')
+  settings.signOut()
 })
 
 await test('the launcher never takes focus from a running game', () => {

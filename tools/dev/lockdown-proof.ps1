@@ -37,7 +37,10 @@ param(
     [int]$KillServerAt = 0,
     # `+set monkeytoy 0` on the client: the stock SP console is otherwise disabled by the game
     # itself, so the catcher (the engine's own console key sent past our filter) proves nothing.
-    [switch]$MonkeyToyOff
+    [switch]$MonkeyToyOff,
+    # ENW_CONSOLE_SELFTEST: 1 = the console script; 2 = the same, ending in `/quit` for real
+    # (lane C1, esc-menu.md §11.6: the client must end on its own after the site quit call).
+    [ValidateSet('1', '2')][string]$ConsoleSelftest = '1'
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -64,7 +67,7 @@ $env:ENW_BORDERLESS_COVER = '0'
 $env:ENW_FRAME_CAPTURE = '1'
 $env:ENW_FRAME_CAPTURE_AT = $CaptureAt
 $env:ENW_FRAME_CAPTURE_CMDS = $Cmds
-$env:ENW_CONSOLE_SELFTEST = '1'
+$env:ENW_CONSOLE_SELFTEST = $ConsoleSelftest
 $env:ENW_CHAT_BASE = $ChatBase
 $env:ENW_CHAT_BEARER = $ChatBearer
 $env:ENW_ESC_MENU = $null
