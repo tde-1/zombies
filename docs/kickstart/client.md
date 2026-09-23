@@ -1254,3 +1254,15 @@ windows are created `WS_EX_NOACTIVATE`, its startup `ShowWindow(SW_SHOW)` become
 `SetFocus`). With it a test game never takes the foreground from the person at the PC (0 of 129
 samples foreground, both round-2 runs). Never set by the launcher.
 
+### 9b. Round 3 (2026-09-23) — Esc on a box, and holding the clock through a pause
+
+`chat-overlay.md` §11. Three fixes, each measured in a local dedi + client join:
+* `connect_local.cpp`: a refused load video left its name pending at `0x3DB3D40`, which makes
+  CL_KeyEvent ignore Esc for the whole game (`cg_cinematicFullscreen`). The engine's own stop
+  (`0x6EBE20`) now clears it once the map is live.
+* `chat_overlay.cpp`: the Esc menu's `cl_paused 1` paused only a remote client and stopped it sending
+  `enw_ui paused`; with no local server it is set back to 0 (`Dvar_SetIntByName` `0x5EF930`).
+* `chat_overlay.cpp` `pause_hold`: while snapshots arrive with a held serverTime, `cl.serverTimeDelta`
+  is pinned so the client clock stands still, and set once on resume so it continues without a jump.
+  `ENW_PAUSE_HOLD=0` reverts.
+

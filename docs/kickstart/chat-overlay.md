@@ -8,6 +8,7 @@
 > seen** (§9.8). §0-§8 are kept as written: the plan, then the server lane's contract.
 > **§10 (round 2, after B used 0.2.12):** clicks fixed (the cursor was drawn off its hot spot),
 > a real text box, selectable history, a tab per DM conversation, `/w` and `/r`.
+> **§11 (round 3):** Esc works on a box and pauses it; the client clock holds while the server is frozen.
 
 B's ask, in his words in substance: *later an in-game overlay where T opens chat, pauses the game
 if solo, and lets you type, replacing the game's own chat.*
@@ -546,3 +547,86 @@ the engine creates its window at the centre of the screen before `launch.ps1` pa
   name, `/w name hi`, Esc. The DLL log shows every `click #n ... -> tab n` line.
 * The real Windows clipboard path (the selftest deliberately does not touch it).
 * Exclusive fullscreen (§9.8 still stands).
+
+---
+
+## 11. Round 3 — pause from the client's side (2026-09-23, early)
+
+B, a real box game on 0.2.13 (client `enw-38756.log`, box `waw-inst-01/enw-1024.log`): *"When you
+press T and you're paused, one of the numbers in the top-right FPS meter spikes and the zombies
+twitch a little once or twice, then it goes normal"* and *"Escape to pause the game doesn't work."*
+The box log agrees on both: every T was `ui=typing` → `PAUSED (solo_chat)`; no Esc ever produced
+`ui=paused`, and the client never reported it.
+
+### 11.1 Esc did nothing at all: a refused video left its name behind
+
+`connect_local` refuses the map's load video for a launcher join (§7 of `client.md`). The engine
+stores the video's **name** (`0x3DB3D40`) before opening it; the open fails, nothing plays, so the
+engine's cinematic stop (`0x6EBE20`, the only thing that clears the name) never runs. For the rest of
+the game:
+
+* CL_KeyEvent's Esc (`0x478450..0x47846A`): "a cinematic is up and `cg_cinematicFullscreen` is on"
+  → **Esc is ignored**, `UI_SetActiveMenu(2)` never runs, no pause menu;
+* CG (`0x437F12`) sends every frame through the fullscreen-cinematic drawer.
+
+Measured (local dedi + client join, `hold-off`, 00:56): Esc in the map with `0x3DB3D40 = 'n'`
+(`nazi_zombie_prototype_load`), keyCatchers still `0x0` 300 ms later. A Play Local game (`+map`)
+never refuses a video, which is why its Esc always worked. **Fix** (`connect_local.cpp`): once the map
+is live, if nothing is playing and the pending name is the one we refused, call the engine's own stop
+(byte-checked). Next run (`hold-on`, 01:00): `cleared the cinematic name 'nazi_zombie_prototype_load'`,
+then Esc → keyCatchers `0x10`, `cl_paused 1`, `enw_ui paused`.
+
+### 11.2 …and then the menu paused only the client
+
+`UI_SetActiveMenu(2)` (`0x5D6D74`) sets `cl_paused 1` — single-player's way of pausing, which assumes
+the server is in this process. Connected to a box it pauses only the client, which then stops
+sending: in `hold-on` the client set `enw_ui paused` and the server never heard it (no `ui=paused`,
+no `solo_menu`). With no local server (`sv_running 0`) the overlay now puts `cl_paused` back to 0
+through the engine's own `Dvar_SetIntByName` (`0x5EF930`, byte-checked), so the client keeps talking,
+the server freezes the game on `paused`, and §11.3 keeps the picture still. Next run (`hold-on2`, 01:05): Esc → the stock "PAUSED / Resume Carnage" menu
+(`ui/pause-r3-escmenu-remote.jpg`), the client logged `set it back to 0`, and the **server logged
+`slot 0 ui=paused` → `PAUSED (solo_menu)`, then `RESUMED after 3985 ms ... level.time held at 27950`**
+on the second Esc. This fix lives in `chat_overlay.cpp`'s frame tick, so `ENW_CHAT_OVERLAY=0` turns
+it off too.
+
+### 11.3 The twitch: the client clock runs on while the server stands still
+
+Read out of `CL_SetCGameTime` (`0x63C6C0`) and `CL_AdjustTimeDelta` (`0x63C400`): the frozen server
+keeps sending snapshots, all stamped with the held serverTime S. The client clock is `cls.realtime +
+cl.serverTimeDelta`, never allowed backwards (`0x63C76B`), so at the freeze it runs past S —
+extrapolating the zombies forward — while each snapshot pulls the delta down (`<FAST>` over 100 ms;
+`<RESET>`, which writes the clock straight back to S, over 1000 ms). Over the internet the gaps are
+larger and noisier than on a LAN, which is where B's spike and twitch come from; on the local join
+the stock client stayed within 0–17 ms steps (`hold-off`), so the local numbers below prove the
+mechanism, not B's exact symptom.
+
+**Fix** (`chat_overlay.cpp`, `pause_hold`): the freeze is read off the snapshots — a new snapshot
+(`cl.snap.messageNum` 0x305853C moved) with an unchanged `cl.snap.serverTime` (0x3058538). A live
+server does that too for single snapshots (measured: 16–63 ms "freezes" in `hold-off`), so it takes
+two in a row, or one when this client has just reported `typing`/`paused`. While frozen,
+`cl.serverTimeDelta` (0x305A62C) is pinned each frame 50 ms under the clock at detection, so the
+engine's own clamp holds the clock exactly still and the adjust never sees a big gap. On resume the
+delta is set once so the clock continues from where it stood at real-time rate. Off:
+`ENW_PAUSE_HOLD=0`. It holds for any freeze (typing, Esc, co-op all-in-menu, the host), because it
+reads the server, not the keys.
+
+| run (local d2 + c1, `ENW_CHAT_SELFTEST=3`) | freeze | clock during it | first 2 s after resume |
+|---|---|---|---|
+| `hold-off` (00:56, `ENW_PAUSE_HOLD=0`) | typing 5.47 s | steps 0..16 ms (kept moving) | 0..17 ms |
+| `hold-on` (01:00) | typing 5.47 s | **0..0 ms, stood at S−5** | 0..17 ms, no negative step |
+| `hold-on2` (01:05) | typing 5.49 s | 0..0 ms, stood at S+8 | 0..17 ms, no negative step |
+| `hold-on2` (01:05) | **Esc menu 4.0 s** (`solo_menu`) | 0..0 ms, stood at S−7 | 0..17 ms, no negative step |
+
+17 ms is one frame at the test's 60 fps: at the open and at the close the clock never stepped more than
+one frame and never backwards, and while frozen it did not move at all. `cg_drawFPS` stayed flat
+across both edges in the captures (`(13-19) 16.00 cg ms/frame`).
+
+### 11.4 Lock holds
+
+All local, `waw-d2` + `waw-c1`, `ENW_TEST_NO_ACTIVATE=1`, each checked free first (no lock, no
+CoDWaW.exe): 00:56:21–00:57:49 (`hold-off`), 01:00:10–01:01:37 (`hold-on`), 01:05:36–01:07:03
+(`hold-on2`). At 01:02 the lock was held by B's launcher; I waited until 01:05:14. The box was only
+read (logs over ssh); no lease was taken.
+
+**Not proven:** B's internet-latency case itself (the spike he saw is the extrapolate/adjust path
+with real jitter, which a LAN join barely exercises); a co-op all-in-menu pause with two clients.

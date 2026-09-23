@@ -126,6 +126,11 @@ with copy, a tab per DM conversation, click a name or `/w name text` / `/r text`
 logged clicks at 1280x720 windowed and 2560x1440 borderless, with test windows that never take
 focus. B's one-minute hand check is `chat-overlay.md` §10.4.
 
+**Round 3 (after B's box game on 0.2.13):** Esc now opens the pause menu on a box and freezes the
+game (it was blocked all along by the name of the load video we refuse, and then the menu paused only
+the client). While any pause holds, the client's clock stands still, so no twitch or FPS-meter
+spike at the edges. Measured on a local dedi + client; `chat-overlay.md` §11.
+
 ## Pause (2026-09-22, evening)
 
 The dedi now really pauses: Esc solo (and typing, with the "pause when using global chat"
