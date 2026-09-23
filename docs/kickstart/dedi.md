@@ -2869,3 +2869,13 @@ service instance and booted on slot 0 with the new DLL and host code: `map_loade
   left on the box for the next multi-instance test (about 70 MB).
 * The `linked (… Sep 22 2026 20:28:57)` build string in the journal is still stale (§17's cosmetic
   note).
+
+## 20. 2026-09-23 — a player's Restart game (`restart_request.cpp`, esc-menu lane)
+
+`server/components/dedicated/restart_request.cpp`: userinfo `enw_req restart.<n>` (the ENW Esc
+menu's Restart) is acted on per slot, on a change only; with a host link it becomes
+`restart_request` on the game link and the host answers with the referee's own `end`
+(`player_restart`) — the run ends as abandoned and a new run id takes over; with no link a solo
+player's request is a plain `map_restart`. Proven end to end on local `host2`+`c2` against the
+real host agent (`esc-menu.md` §3, §7). **Measured on the way: `level.time` keeps counting across a
+`map_restart` on this engine**; the clients re-entering the connect handshake is the signal.

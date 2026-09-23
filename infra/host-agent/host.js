@@ -30,6 +30,7 @@ import { SiteClient } from './lib/siteclient.js'
 import { Dashboard } from './lib/dashboard.js'
 import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
+import { onRestartRequest, handOver } from './lib/restart.js'   // a player's Restart game (esc-menu.md §3)
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -270,6 +271,7 @@ class Game extends EventEmitter {
     if (m.t === 'map_loaded') this.onMapLoaded(m)
     if (m.t === 'match_end') this.onMatchEnd(m)
     if (m.t === 'player_connect') this.authPlayer(m)
+    if (m.t === 'restart_request') onRestartRequest(this, m)
     // A WARM instance opens its replay on the first sign of an actual game rather than on
     // `map_loaded` — see `onMapLoaded`. `record()` buffers everything until then, so
     // nothing is lost and the header carries the match the game turned out to be.
@@ -285,7 +287,9 @@ class Game extends EventEmitter {
 
   // ---- invite tokens ------------------------------------------------------------
   authPlayer(ev) {
-    const r = this.host.tokenGuard.admit(ev, this.matchId)
+    // A restarted run of a lease checks tokens against the LEASE and re-admits the players it
+    // verified before the restart (lib/restart.js); every other game is exactly as before.
+    const r = (this.restartAdmit && this.restartAdmit(ev)) || this.host.tokenGuard.admit(ev, this.leaseId || this.matchId)
     const p = this.referee.players.get(ev.slot)
     if (p) p.tokenOk = r.allow
     // THE ANSWER IS ALSO THE IDENTITY. `token_check_disabled` is what TokenGuard says when
@@ -367,6 +371,8 @@ class Game extends EventEmitter {
     this.matchEndSeen = true
     clearTimeout(this.disposeTimer)
     this.emit('match_end_seen', ev)
+    // A player's Restart game: the link goes to the next run NOW (lib/restart.js).
+    if (this.restarting) handOver(this)
     // Belt and braces: `game_over` is supposed to arrive first and `finish()` is supposed
     // to be under way. If a game sends `match_end` on its own we still owe a result.
     if (!this.finished) {
@@ -1053,7 +1059,7 @@ class HostAgent {
   // ---- the pull protocol ---------------------------------------------------------
   onAssignment(asg) {
     if (asg.status !== 'leased') return
-    if ([...this.byInstance.values()].some((g) => g.matchId === asg.match_id && !g.finished)) return
+    if ([...this.byInstance.values()].some((g) => (g.leaseId || g.matchId) === asg.match_id && !g.finished)) return
     log.info(`lease ${asg.match_id}: ${asg.map} ${asg.mode} ${asg.players?.length || 0}p`)
 
     // A SUPERSEDED LEASE'S INSTANCE IS STILL RUNNING, AND IT OWNS UDP 3074.
@@ -1075,7 +1081,7 @@ class HostAgent {
     // Settings?" dialog - see `watchStartupDialog`). `retire()` removes the instance
     // from `byInstance`, so the re-entry below sees an empty list and boots exactly once.
     const stale = [...this.byInstance.values()].filter(
-      (g) => !g.finished && !this.warm.has(g.instance.id) && g.matchId !== asg.match_id)
+      (g) => !g.finished && !this.warm.has(g.instance.id) && (g.leaseId || g.matchId) !== asg.match_id)
     if (stale.length) {
       Promise.all(stale.map((g) => this.retire(g, `lease ${asg.match_id} supersedes ${g.matchId}`)))
         // …and then LET THE SOCKETS GO. Wine hands the UDP ports back a moment after the

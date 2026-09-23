@@ -9,6 +9,8 @@
 
 * **2026-09-23 00:45 UK — the box runs three game servers at once (`dedi.md` §19).** The "3074 + one fallback" limit was wrong. The engine probes 100 lobby ports, and the new dedi DLL `6fccc0e0…` (`lobby_port.cpp`) logs every bind and takes `ENW_LOBBY_PORT` (3074+slot). Three servers were proven up together, all answering, ~304 MB and ~0.33 core each, ~300 MB RAM left. Four needs Steam without its browser or a bigger box. **Fixed an outage:** after four boots the host agent failed every lease, B's Play included (23:27–23:32 box time, "no game copy at waw-inst-05"). Copies now go by slot. **Still one game per box at the site**: a second Play supersedes the first, and that is the web lane's to change.
 
+* **2026-09-23 ~01:40 UK — the ENW Esc menu (branch `esc-menu`, not merged, `docs/kickstart/esc-menu.md`).** Esc in a box game opens ours instead of World at War's: Resume, Restart game, Exit game, the chat panel embedded, friends online with the map they are on (Invite) and invites to you (Accept). The pause contract is unchanged (`enw_ui paused`). **Restart** is proven end to end on a local dedicated server with the real host agent: the run ends as abandoned (signed replay, `player_restart`), a new run `<lease>.r2` takes over on the same lease, the player is re-admitted. **Exit game** calls `POST /api/party/quit` then quits — **the site route does not exist yet** (contract in `esc-menu.md` §5, site lane): until it does, the launcher boots a quitting player back into a live lease. Not yet on the box or through the site.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:

@@ -111,6 +111,7 @@
 
 #include "chat_link.hpp"
 #include "input_gate.hpp"
+#include "pause_menu.hpp"   // the Esc menu (pause_menu.cpp): hook points marked [esc-menu]
 
 #include <windows.h>
 #include <winhttp.h>
@@ -288,6 +289,8 @@ HINTERNET g_session = nullptr;
 bool g_enabled = true;
 bool g_bound = false;
 bool g_open = false;
+bool g_embedded = false;                 // [esc-menu] open as part of the Esc menu
+float g_anchor_x = 5.f, g_anchor_y = 200.f;  // [esc-menu] its anchor while embedded
 
 // Tabs (round 2, B: "use tabs properly; a DM tab per conversation"). Global and
 // Party are fixed; every DM conversation is its own tab; "+" is the recipient
@@ -672,7 +675,8 @@ bool esc_menu_open() {
 
 void report_ui_state() {
     if (!g_notify_pause || !g_bound) return;
-    const char* want = g_open ? "typing" : esc_menu_open() ? "paused" : "clear";
+    const char* want = pause_menu::is_open() ? "paused"   // [esc-menu] menu wins
+                     : g_open ? "typing" : esc_menu_open() ? "paused" : "clear";
     const int pchat = g_me.have ? (g_me.pause_on_chat ? 1 : 0) : 1;
     if (pchat != g_pchat_sent) {
         g_pchat_sent = pchat;
@@ -837,7 +841,7 @@ void open_overlay(const char* why) {
 }
 
 void close_overlay(const char* why) {
-    if (!g_open) return;
+    if (!g_open || g_embedded) return;   // [esc-menu] the menu closes it (chat_embed::close)
     g_open = false;
     if (g_drag != D_NONE && ::GetCapture() == input_gate::window()) ::ReleaseCapture();
     g_drag = D_NONE;
@@ -1393,6 +1397,7 @@ bool filter(HWND, UINT msg, WPARAM wp, LPARAM lp, LRESULT* result) {
     }
     if (!g_enabled || !g_bound) return false;
     *result = 0;
+    if (pause_menu::filter(msg, wp, lp, result)) return true;   // [esc-menu] first
 
     if (!g_open) {
         if (msg == WM_KEYDOWN && static_cast<int>(wp) == g_open_vk && !(lp & (1 << 30))) {
@@ -1726,8 +1731,8 @@ const float kGold[4] = {0.93f, 0.82f, 0.45f, 1};
 
 void draw_panel(int lc) {
     const uintptr_t pos = rd<uintptr_t>(kDvarHudChatPos);
-    const float cx = pos ? rd<float>(pos + kDvarValue) : 5.f;
-    const float cy = pos ? rd<float>(pos + kDvarValue + 4) : 200.f;
+    const float cx = g_embedded ? g_anchor_x : pos ? rd<float>(pos + kDvarValue) : 5.f;   // [esc-menu]
+    const float cy = g_embedded ? g_anchor_y : pos ? rd<float>(pos + kDvarValue + 4) : 200.f;
     const int rows = 10;
     g_hist_rows_vis = rows;
     const float W = 340.f;
@@ -1777,10 +1782,10 @@ void draw_panel(int lc) {
         g_net_ok_cached = ok;
         const std::string s = ok ? std::string("^2online") : std::string("^1offline");
         const float sw = text_w(s.c_str());
-        g_close_rect = {x0 + W - 16.f, top, 16.f, 18.f};
+        g_close_rect = g_embedded ? rect{-1e6f, -1e6f, 0, 0} : rect{x0 + W - 16.f, top, 16.f, 18.f};   // [esc-menu]
         if (g_close_rect.hit(mx, my)) { const float hv[4] = {1, 1, 1, 0.12f}; box(g_close_rect.x, g_close_rect.y, g_close_rect.w, g_close_rect.h, hv); }
         text(x0 + W - 22.f - sw, top + 14.f, s.c_str(), kDim);
-        text(x0 + W - 12.f, top + 14.f, "x", kWhite);
+        if (!g_embedded) text(x0 + W - 12.f, top + 14.f, "x", kWhite);
     }
 
     const float hist_w = W - 12.f;
@@ -1895,7 +1900,7 @@ void draw_panel(int lc) {
     // from its top-left (round 1) put the visible tip 16 units -- 48 px at 1440p --
     // below-right of where a click actually lands, which is why B could move the
     // pointer but never hit a tab.
-    if (g_mouse_in && g_mouse_x >= 0) {
+    if (!g_embedded && g_mouse_in && g_mouse_x >= 0) {   // [esc-menu] the menu draws it, last
         void* cur = rd<void*>(kUiCursor);
         if (cur) {
             reinterpret_cast<stretch_pic_t>(kRStretchPic)(
@@ -2158,7 +2163,8 @@ void draw_inner(int lc) {
                  rd<int>(kVidDisplayH), fname && !::IsBadStringPtrA(fname, 64) ? fname : "?", ph,
                  g_xscale);
     }
-    if (g_open) draw_panel(lc);
+    if (pause_menu::draw(lc)) {}   // [esc-menu] the menu draws the panel itself
+    else if (g_open) draw_panel(lc);
     else draw_notify();
     selftest_tick();
 }
@@ -2174,7 +2180,7 @@ void __cdecl draw_hook(int lc) {
                       g_faults == 3 ? "disabling the overlay" : "skipping this frame");
         if (g_faults >= 3) {
             g_enabled = false;
-            if (g_open) { g_open = false; clip_for_overlay(false); input_gate::set_captured(false); }
+            if (g_open) { g_open = false; g_embedded = false; clip_for_overlay(false); input_gate::set_captured(false); }
         }
     }
 }
@@ -2278,4 +2284,27 @@ public:
 ENW_REGISTER_COMPONENT(chat_overlay)
 
 }  // namespace
+
+// [esc-menu] What the Esc menu (pause_menu.cpp) may call. Declared in pause_menu.hpp.
+namespace chat_embed {
+void open() {
+    if (!g_enabled || !g_bound) return;
+    if (g_open && !g_embedded) g_embedded = true;   // T was open: keep it, now embedded
+    else if (!g_open) { open_overlay("Esc menu"); g_embedded = true; }
+}
+void close() {
+    if (!g_embedded) return;
+    g_embedded = false;
+    close_overlay("Esc menu closed");
+}
+void draw_at(float x, float y) {
+    if (!g_open || !g_font) return;
+    g_anchor_x = x;
+    g_anchor_y = y;
+    draw_panel(0);
+}
+bool in_game() { return ::enw::client::in_game(); }
+bool chat_open_alone() { return g_open && !g_embedded; }
+}  // namespace chat_embed
+
 }  // namespace enw::client

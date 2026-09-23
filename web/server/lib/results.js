@@ -161,7 +161,14 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
   const existing = db.prepare('SELECT * FROM games WHERE match_id=?').get(String(summary.match_id))
   const map = db.prepare('SELECT * FROM maps WHERE key=?').get(String(summary.map || ''))
   const version = map ? db.prepare('SELECT * FROM map_versions WHERE map_id=? AND latest=1').get(map.id) : null
-  const assignment = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(String(summary.match_id))
+  // A player's Restart game (docs/kickstart/esc-menu.md §3) ends one run and starts the next
+  // on the same lease: the next run has its own id `<lease>.r<n>` and names the lease in
+  // `lease_match_id`. Only a run id that really is a run of that lease is attached to it.
+  const leaseId = typeof summary.lease_match_id === 'string' && String(summary.match_id).startsWith(summary.lease_match_id + '.r')
+    ? summary.lease_match_id : null
+  let assignment = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(String(leaseId || summary.match_id))
+  // ...and only by the box that holds that lease.
+  if (leaseId && assignment && body.box && boxes.nameOf(assignment.box_id) !== String(body.box)) assignment = null
 
   const row = {
     match_id: String(summary.match_id),
@@ -308,7 +315,12 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
     if (map) db.prepare('UPDATE maps SET plays = COALESCE(plays,0) + 1 WHERE id=?').run(map.id)
     recountBeaten(game.map_key)
   } catch (e) { out.errors.push('counts: ' + e.message) }
-  try { closeAssignment(assignment, game) } catch (e) { out.errors.push('assignment: ' + e.message) }
+  // An abandoned run that a player restarted is not the end of the lease: the game goes on
+  // on the same box under the next run id, and closing the lease here would free the box
+  // (and send the party back to forming) under a game that is still being played.
+  if (summary.end_reason !== 'player_restart') {
+    try { closeAssignment(assignment, game) } catch (e) { out.errors.push('assignment: ' + e.message) }
+  }
 
   if (out.errors.length) {
     db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('result.partial', ?, ?, ?)")

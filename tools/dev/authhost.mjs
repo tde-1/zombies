@@ -21,7 +21,11 @@
 // transcript so a run can be read afterwards.
 //
 //   node tools/dev/authhost.mjs mint   --keydir <d> --match m_x --steamid 7656... [--forge]
-//   node tools/dev/authhost.mjs serve  --keydir <d> --match m_x --port 38795 --out <f>
+//   node tools/dev/authhost.mjs serve  --keydir <d> --match m_x --port 38795 --out <f> [--restart]
+//
+// --restart (esc-menu lane): answer a player's `restart_request` the way the real host does
+// (infra/host-agent/lib/restart.js): verified or alone -> `end {reason:'player_restart',
+// match}`, and re-admit the players it had verified when the DLL re-reports them.
 //
 // Never point --keydir at web/keys: a dev run must not touch the site's real key.
 import fs from 'node:fs'
@@ -142,7 +146,7 @@ if (mode !== 'serve') {
 }
 
 // ------------------------------------------------------------------ serve --
-const { TokenGuard } = await import(
+const { TokenGuard, check: checkToken } = await import(
   'file://' + path.join(repo, 'infra', 'host-agent', 'lib', 'tokens.js').replace(/\\/g, '/'))
 const hostKeys = await import(
   'file://' + path.join(repo, 'infra', 'host-agent', 'lib', 'keys.js').replace(/\\/g, '/'))
@@ -158,6 +162,9 @@ const out = fs.createWriteStream(outPath, { flags: 'w' })
 const guard = new TokenGuard(hostKeys.publicFromRaw(siteKeys.site().pub),
                              { singleUse: true, requireToken: true })
 
+const restartMode = flag('restart')
+let carry = new Set()             // steamids verified before a restart, re-admitted once after it
+const verified = new Map()        // slot -> steamid, ALLOWed with reason ok
 const say = (s) => { const l = `[authhost] ${s}`; console.log(l); out.write(l + '\n') }
 say(`match=${matchId} port=${port} keydir=${keydir} site key ${siteKeys.site().keyId}`)
 
@@ -175,7 +182,12 @@ net.createServer((sock) => {
       let m; try { m = JSON.parse(line) } catch { continue }
       if (m.t === 'hello') { say('game said hello'); send({ t: 'hello_ack', v: 0 }) }
       if (m.t === 'player_connect') {
-        const r = guard.admit(m, matchId)
+        const sid = String(m.steamid || '')
+        const carried = restartMode && carry.has(sid) && m.token
+          ? checkToken(guard.publicKey, m.token, { matchId, steamid: sid, seen: null }) : null
+        const r = carried && carried.ok ? { allow: true, reason: 'ok', carried: true } : guard.admit(m, matchId)
+        if (carried && carried.ok) { carry.delete(sid); say(`slot ${m.slot} ${sid} was verified before the restart: re-admitted`) }
+        if (r.allow && r.reason === 'ok') verified.set(Number(m.slot), sid)
         say(`auth slot ${m.slot} ${m.name || ''} ${m.steamid || '(no id)'} identity=${m.identity}: ` +
             `${r.allow ? 'ALLOW' : 'DENY'} (${r.reason})`)
         send({ t: 'auth', slot: m.slot, allow: r.allow, reason: r.reason })
@@ -184,6 +196,18 @@ net.createServer((sock) => {
         say('GAME OVER: ' + JSON.stringify(m.players))
       }
       if (m.t === 'match_end') say('match_end (this harness never reuses an instance)')
+      if (m.t === 'restart_request') {
+        const slot = Number(m.slot)
+        const ok = verified.has(slot) || Number(m.players) === 1
+        say(`RESTART REQUEST slot ${slot} ${m.name || ''} req=${m.req} players=${m.players} -> ${restartMode ? (ok ? 'ACCEPTED' : 'REFUSED') : 'ignored (no --restart)'}`)
+        if (restartMode && ok) {
+          carry = new Set(verified.values())
+          verified.clear()
+          send({ t: 'end', id: `rs${Date.now()}`, reason: 'player_restart', match: matchId })
+        }
+      }
+      if (m.t === 'map_loaded') say(`map_loaded ${m.map || ''}`)
+      if (m.t === 'reply') say(`reply ${m.id} ok=${m.ok}${m.error ? ' ' + m.error : ''}`)
     }
   })
   sock.on('close', () => say('link closed'))

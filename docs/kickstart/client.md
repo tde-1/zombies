@@ -1254,3 +1254,18 @@ windows are created `WS_EX_NOACTIVATE`, its startup `ShowWindow(SW_SHOW)` become
 `SetFocus`). With it a test game never takes the foreground from the person at the PC (0 of 129
 samples foreground, both round-2 runs). Never set by the launcher.
 
+
+## 10. 2026-09-23 — the ENW Esc menu (`components/pause_menu.cpp`), branch `esc-menu`
+
+B: *"Replace the escape menu with our custom menu: Resume, Restart game (tells the dedicated server
+to restart), Exit game, the chat, and invites from your friends and friends online with what maps
+they're on."* Built; the write-up, the restart contract and every run are in **`esc-menu.md`**.
+
+| File | What |
+|---|---|
+| `components/pause_menu.cpp` + `.hpp` | All of the menu. Esc is taken in the gate filter before the engine's WndProc sees it, so World at War's pause menu never opens. Box games only (`clc.serverAddress.type` 0x300FFF8 != NA_LOOPBACK); `ENW_ESC_MENU=all` also Play Local, `=0` off. Draws with the overlay's engine calls in the 640x480 virtual space, right panel right-aligned on wide screens. Friends/invites from `GET /api/game-chat/menu/state` (10 s, only while open) over the chat pass. Restart = `setu enw_req restart.<n>` (two clicks). Exit = `POST /api/party/quit` (2 s cap) then `disconnect`, `quit`. Selftest `ENW_ESC_MENU_SELFTEST=1` (captures), `=2` (+ a real restart request), `=3` (Exit for real). |
+| `components/chat_overlay.cpp` | **Only hook points, each marked `[esc-menu]`**: `pause_menu::filter()` first in the filter, `pause_menu::draw()` first in the draw hook, `report_ui_state` says `paused` while the menu is up (menu wins), `close_overlay` is a no-op while embedded, `draw_panel` takes the menu's anchor and hides its own close box and cursor while embedded; plus the `chat_embed` block at the end (open / close / draw_at / in_game / chat_open_alone). |
+
+The pause contract is unchanged: the menu reports exactly what the stock Esc menu did (`enw_ui
+paused`), measured on a dedicated server: `pause: PAUSED (solo_menu, 1 player(s))` on open,
+`RESUMED ... no catch-up` on close (`esc-menu.md` §7).
