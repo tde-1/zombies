@@ -19,6 +19,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFile } from 'node:child_process'
+import { GAME_IMAGES } from './gameexe.js'
 
 export const GRACE_MS = 60_000
 
@@ -28,16 +29,19 @@ const PWSH = `${process.env.SystemRoot || 'C:\\Windows'}\\System32\\WindowsPower
 // MainWindowHandle is non-zero only for a process with a visible top-level window, which
 // a game off-screen at -4000,-4000 still has. Resolves null when it cannot tell (so the
 // caller refuses rather than guesses).
+// `image` is one name or a list: our launches run as ENWZombies.exe (gameexe.js), the player's
+// own World at War and older launchers as CoDWaW.exe, and either one blocks a Play.
+export const imageFilter = (image) => [].concat(image).map((n) => `Name='${String(n).replace(/[^\w.-]/g, '')}'`).join(' OR ')
 const script = (image) => [
   "$ErrorActionPreference='SilentlyContinue'",
-  "$o=@(Get-CimInstance Win32_Process -Filter \"Name='" + String(image).replace(/[^\w.-]/g, '') + "'\" | ForEach-Object {",
+  "$o=@(Get-CimInstance Win32_Process -Filter \"" + imageFilter(image) + "\" | ForEach-Object {",
   ' $p=Get-Process -Id $_.ProcessId;',
   ' [pscustomobject]@{pid=[int]$_.ProcessId;created=([DateTimeOffset]$_.CreationDate).ToUnixTimeMilliseconds();cmd=[string]$_.CommandLine;win=[int64]$p.MainWindowHandle}',
   '})',
   "if($o.Count -eq 0){'[]'}else{ConvertTo-Json -InputObject $o -Compress}",
 ].join('\n')
 
-export function listGameProcesses({ run = execFile, image = 'CoDWaW.exe' } = {}) {
+export function listGameProcesses({ run = execFile, image = GAME_IMAGES } = {}) {
   return new Promise((resolve) => {
     run(PWSH, ['-NoProfile', '-NonInteractive', '-Command', script(image)], { timeout: 15000, windowsHide: true }, (err, stdout) => {
       if (err) return resolve(null)

@@ -16,6 +16,7 @@ import path from 'node:path'
 import { writeBundle } from './bundle.cjs'
 import { scrubJson } from './scrub.cjs'
 import { expandEnv } from './wer.js'
+import { dumpNamesFor } from '../gameexe.js'
 
 export const MB = 1024 * 1024
 export const LAUNCHER_LOG_TAIL = 4 * MB
@@ -47,9 +48,12 @@ function dumpDirs(dirs, wer) {
 export function crashDumpsFor(pid, dirs, wer, sinceMs = 0) {
   const out = []
   for (const d of dumpDirs(dirs, wer)) {
-    const p = path.join(d, `CoDWaW.exe.${pid}.dmp`)
-    const st = statOf(p)
-    if (st && st.isFile() && st.mtimeMs >= sinceMs - 60_000) out.push(p)
+    // CoDWaW.exe.<pid>.dmp or ENWZombies.exe.<pid>.dmp: WER names it after the image.
+    for (const name of dumpNamesFor(pid)) {
+      const p = path.join(d, name)
+      const st = statOf(p)
+      if (st && st.isFile() && st.mtimeMs >= sinceMs - 60_000) out.push(p)
+    }
   }
   return out
 }
@@ -214,7 +218,7 @@ export async function collectLauncherBundle(ctx = {}, opts = {}) {
     for (const d of [...dumpDirs(dirs, wer), dirs.logs]) {
       for (const f of ls(d)) {
         if (!/\.dmp$/i.test(f)) continue
-        if (d !== dirs.logs && !/^CoDWaW\.exe\./i.test(f)) continue
+        if (d !== dirs.logs && !/^(?:CoDWaW|ENWZombies)\.exe\./i.test(f)) continue
         if (d === dirs.logs && !/^hang-/i.test(f)) continue
         const p = path.join(d, f)
         const st = statOf(p)

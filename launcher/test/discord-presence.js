@@ -345,6 +345,83 @@ await test('site: /hello names the application id from ZM_DISCORD_CLIENT_ID, /pl
   assert.ok(!exempt.test('/media/maps/x.loadscreen.webp') && !exempt.test('/media/avatars/x.webp') && !exempt.test('/media/maps/../x.webp'))
 })
 
+// ------------------------------------------------ DP1: never "World at War" --
+// Discord detects a game by exe FILE NAME (World at War = codwaw.exe / codwawmp.exe, any
+// folder) and lists it beside our activity. So our launches start ENWZombies.exe, a byte
+// copy of our own CoDWaW.exe (src/main/gameexe.js; launcher.md "Discord shows ENW Zombies").
+console.log('\nDiscord: the game runs as ENWZombies.exe')
+const GX = await import('../src/main/gameexe.js')
+const gameproc = await import('../src/main/gameproc.js')
+const steamMod = await import('../src/main/steam.js')
+const collect = await import('../src/main/telemetry/collect.js')
+
+// World at War's entry in Discord's detectable list (GET /api/v9/applications/detectable,
+// application 363412728888557568, fetched 2026-09-23).
+const WAW_DETECTABLE = ['installers/pbsvc.exe', 'codwaw.exe', 'codwawmp.exe']
+const detected = (exePath) => WAW_DETECTABLE.some((n) => exePath.toLowerCase().replace(/\\/g, '/').endsWith(`/${n}`))
+
+await test('the launch name is ENWZombies.exe, which Discord does not detect; CoDWaW.exe is only an explicit opt-out', () => {
+  assert.equal(GX.exeName({ env: {}, config: {} }), 'ENWZombies.exe')
+  assert.ok(!detected(`C:\\Users\\x\\AppData\\Local\\ENWZombies\\game\\${GX.exeName({ env: {} })}`))
+  assert.ok(detected('C:\\Users\\x\\AppData\\Local\\ENWZombies\\game\\CoDWaW.exe'), 'the stock name is detected in OUR folder too (seen on B\'s PC, 13:28)')
+  assert.equal(GX.exeName({ env: { ENW_GAME_EXE: 'codwaw.exe' } }), 'CoDWaW.exe')
+  assert.equal(GX.exeName({ env: {}, config: { gameExe: 'CoDWaW.exe' } }), 'CoDWaW.exe')
+  assert.equal(GX.exeName({ env: { ENW_GAME_EXE: 'CoDWaWmp.exe' }, config: { gameExe: '..\\evil.exe' } }), 'ENWZombies.exe', 'anything else is ignored, never the MP exe')
+  assert.deepEqual(GX.GAME_IMAGES, ['CoDWaW.exe', 'ENWZombies.exe'])
+})
+
+await test('ensureGameExe: copies CoDWaW.exe once, re-copies when it changes (the 4 GB flag), falls back to CoDWaW.exe and never throws', () => {
+  const dir = path.join(TMP, 'game-exe')
+  fs.mkdirSync(dir, { recursive: true })
+  const stock = path.join(dir, 'CoDWaW.exe')
+  assert.equal(GX.ensureGameExe(dir).fallback, true, 'no CoDWaW.exe: fall back (the caller refuses "No game to launch")')
+  fs.writeFileSync(stock, Buffer.from('MZ....PE..stock-bytes'))
+  let r = GX.ensureGameExe(dir)
+  assert.deepEqual([path.basename(r.exe), r.copied, r.fallback], ['ENWZombies.exe', true, false])
+  assert.deepEqual(fs.readFileSync(r.exe), fs.readFileSync(stock))
+  r = GX.ensureGameExe(dir)
+  assert.equal(r.copied, false, 'identical: not rewritten')
+  // The LAA toggle writes two header bytes into CoDWaW.exe; the next Play carries them over.
+  const b = fs.readFileSync(stock); b[3] ^= 0x20; fs.writeFileSync(stock, b)
+  r = GX.ensureGameExe(dir)
+  assert.equal(r.copied, true)
+  assert.deepEqual(fs.readFileSync(r.exe), b)
+  assert.ok(!fs.readdirSync(dir).some((f) => f.includes('.tmp-')), 'no temp file left behind')
+  // The copy cannot be written (e.g. ENWZombies.exe still running): start CoDWaW.exe, say why.
+  const failing = { ...fs, copyFileSync: () => { const e = new Error('busy'); e.code = 'EBUSY'; throw e } }
+  fs.writeFileSync(stock, Buffer.from('changed-again'))
+  r = GX.ensureGameExe(dir, 'ENWZombies.exe', { fsx: failing })
+  assert.deepEqual([path.basename(r.exe), r.fallback], ['CoDWaW.exe', true])
+  assert.match(r.reason, /EBUSY.*Discord may also list World at War/)
+  assert.equal(path.basename(GX.ensureGameExe(dir, 'CoDWaW.exe').exe), 'CoDWaW.exe')
+})
+
+await test('launch.js: rule 1 is checked on CoDWaW.exe BEFORE the copy is written, then ENWZombies.exe is what is spawned', () => {
+  const src = String(fs.readFileSync(new URL('../src/main/launch.js', import.meta.url)))
+  const start = src.slice(src.indexOf('  async start() {'))
+  const iRule1 = start.indexOf('protectedRoots()')
+  const iCopy = start.indexOf('ensureGameExe(')
+  const iSpawn = start.indexOf('spawn(exe, args')
+  assert.ok(iRule1 > 0 && iCopy > iRule1 && iSpawn > iCopy, 'protected roots -> copy -> spawn')
+  assert.match(start, /const exe = pick\.exe/)
+  assert.doesNotMatch(start, /path\.join\(gameDir, 'CoDWaW\.exe'\)/)
+})
+
+await test('"already running" sees both names: gameproc filter, steam.gameProcesses, crash dumps, event log', async () => {
+  assert.equal(gameproc.imageFilter(GX.GAME_IMAGES), "Name='CoDWaW.exe' OR Name='ENWZombies.exe'")
+  assert.equal(gameproc.imageFilter("x'; rm"), "Name='xrm'", 'a name cannot break out of the WQL string')
+  const seen = []
+  const pids = await steamMod.gameProcesses({ processes: async (n) => { seen.push(n); return n === 'ENWZombies.exe' ? [42] : [7] } })
+  assert.deepEqual(seen, ['CoDWaW.exe', 'ENWZombies.exe'])
+  assert.deepEqual(pids, [7, 42])
+  const dumps = path.join(TMP, 'dumps'); fs.mkdirSync(dumps, { recursive: true })
+  fs.writeFileSync(path.join(dumps, 'ENWZombies.exe.4242.dmp'), 'x')
+  const found = collect.crashDumpsFor(4242, { crashDumps: dumps, ourDumps: path.join(TMP, 'none') }, null, 0)
+  assert.deepEqual(found.map((p) => path.basename(p)), ['ENWZombies.exe.4242.dmp'])
+  const probe = String(fs.readFileSync(new URL('../src/main/telemetry/probe.js', import.meta.url)))
+  assert.match(probe, /\(CoDWaW\|ENWZombies\)\\\\\.exe/)
+})
+
 console.log(`\n${pass} passed, ${fail} failed`)
 try { fs.rmSync(TMP, { recursive: true, force: true }) } catch {}
 process.exit(fail ? 1 : 0)

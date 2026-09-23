@@ -21,6 +21,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, execFile } from 'node:child_process'
 import { getValue, queryKey } from './winreg.js'
+import { GAME_IMAGES } from './gameexe.js'
 
 const KEY = 'HKCU\\Software\\Valve\\Steam'
 const ACTIVE = `${KEY}\\ActiveProcess`
@@ -180,6 +181,8 @@ export async function ensureSteam({
 
 // Any World at War process on this PC, ours or not. A second copy beside a running one is
 // never what the player meant, and a copy stuck in SteamStub is invisible.
+// Both names: ours run as ENWZombies.exe (gameexe.js), the player's own as CoDWaW.exe.
 export async function gameProcesses({ processes = listProcesses } = {}) {
-  return processes('CoDWaW.exe')
+  const lists = await Promise.all(GAME_IMAGES.map((n) => processes(n)))
+  return [].concat(...lists)
 }

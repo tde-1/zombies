@@ -61,14 +61,14 @@ export async function machine(opts = {}) {
 // ------------------------------------------------------ the Windows event log --
 
 // Application-log events 1000 (Application Error), 1001 (Windows Error Reporting) and
-// 1002 (Application Hang) whose text names CoDWaW.exe, from `fromMs` on (default: the
+// 1002 (Application Hang) whose text names CoDWaW.exe or ENWZombies.exe (gameexe.js), from `fromMs` on (default: the
 // last hour). Resolves [] on any failure, with the reason in the log line the caller
 // writes, never an exception.
 export async function events({ fromMs = Date.now() - 3600_000, run } = {}) {
   const script = [
     "$ErrorActionPreference='SilentlyContinue'",
     `$since=[DateTimeOffset]::FromUnixTimeMilliseconds(${Math.floor(Number(fromMs) || 0)}).LocalDateTime`,
-    "$e=@(Get-WinEvent -FilterHashtable @{LogName='Application';Id=1000,1001,1002;StartTime=$since} | Where-Object { $_.Message -match 'CoDWaW\\.exe' } | Select-Object -First 20 | ForEach-Object { [pscustomobject]@{id=$_.Id;time=$_.TimeCreated.ToUniversalTime().ToString('o');provider=$_.ProviderName;message=[string]$_.Message} })",
+    "$e=@(Get-WinEvent -FilterHashtable @{LogName='Application';Id=1000,1001,1002;StartTime=$since} | Where-Object { $_.Message -match '(CoDWaW|ENWZombies)\\.exe' } | Select-Object -First 20 | ForEach-Object { [pscustomobject]@{id=$_.Id;time=$_.TimeCreated.ToUniversalTime().ToString('o');provider=$_.ProviderName;message=[string]$_.Message} })",
     "if($e.Count -eq 0){'[]'}else{ConvertTo-Json -InputObject $e -Compress}",
   ].join('\n')
   const r = await ps(script, 15_000, run)
