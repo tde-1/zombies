@@ -3943,3 +3943,44 @@ with the site byte-checked before the component arms (`52b2169`). `533cdae` also
 at the floor (the non-forced DoSpawn does not spawn in a player's view; harmless, kept) and adds a
 per-bot position line to the minute log. **Proof**: ut_box_map `s-utbox` on `59577dbe`, rounds
 1 → 4 in the first four minutes, kills 6 → 14 a minute (on `70b28f5b`, one zombie in 30 minutes).
+
+### 27.7 Soak table (host agent dev leases unless noted; ended 23:02 UK when B's own lease evicted ours)
+
+| run | map | DLL | length | rounds | ended by | result |
+|---|---|---|---|---|---|---|
+| t2 (test copy) | Nacht | S2 `add998a5` | 12 m | 1 → 13 | time up | pass, 0 escapes |
+| h-ils-1 / h-utbox-1 | ILS / ut_box_map | `736236c8` | 2 m | 1 | host empty close (fixed `a2c330d`) | no fault |
+| h-nacht-2h `m_bd4f87b4` | Nacht | `1b482aa2` | 5 m | 1 → 6 | host never-joined close (fixed `46748e1`) | no fault |
+| h-factory-2h | Der Riese | `1b482aa2` | 5 m | 1 | host idle close, restart | stalled at round 1 (the §27.6 bug) |
+| s-ils `m_2a9a49f4` | ILS | **`70b28f5b`** (booted 20:53 UTC, before the 59577dbe swap) | 36 m | 1 | time up | **stable** (61 Hz, 0.21 core, 388 MB flat, 0 escapes); no rounds: the §27.6 bug |
+| **s-utbox `m_90772c23`** | ut_box_map | **`59577dbe`** | 30 m | **1 → 16**, 441 kills | B's real lease evicted it (`INCIDENT ram_evict`, players first — as designed) | **pass**: 0 escapes, 61 Hz, sv-frame p99 65 ms, main thread 18–22 %, RSS 335 MB flat |
+
+Not run (B wrapped the session): lorkeep 30 min, ILS with rounds, Nacht / Der Riese 2 h to round 30+,
+4 bots. No freeze, no escaped frame and no crash in any run on any DLL since the S1/INT/S2 fixes.
+
+### 27.8 Capacity (this box: 2 vCPU, 3.8 GB, Steam CEF ~2.3 GB, ~880 MB free with no game)
+
+| game (1 bot unless said) | main thread | RSS | Com_Frame |
+|---|---|---|---|
+| Nacht r1–13 | 0.21 core | 308 MB | 61 Hz |
+| ut_box_map r1–16 | 0.18–0.22 core | 335 MB | 61 Hz |
+| ILS r1 | 0.21 core | 388 MB | 61 Hz |
+| ILS idle, pre-fast-path DLL (fd3039d2) | 0.82 core | 385 MB | ~33 Hz |
+
+**Verdict:** with the memory fast path, CPU is no longer the limit: three games take ~0.7 of the
+2 vCPUs at these rounds, and the server frame held 61 Hz with sv-frame p99 65 ms (the 20 Hz snapshot
+tick never slipped, level.time ran at 0.999–1.000 of the wall clock). **RAM is the limit**: two
+normal-sized games fit beside Steam; a third fits only if all three are small (the RAM guard's 700 MB
+floor decides). Rounds 20+ and 4 bots are not measured yet; the zombie count rises with round and
+players, so re-measure before promising three 4-player games.
+
+**Next session, the 2 h soaks** (from this worktree or main once merged; each is an agent dev lease on
+fake …0003, shares the box through the host's boot queue; a real player always evicts it):
+
+```
+powershell -ExecutionPolicy Bypass -File tools\dev\leasesoak.ps1 -Tag s2-nacht -Map nazi_zombie_prototype -Minutes 120 -Bots 1
+powershell -ExecutionPolicy Bypass -File tools\dev\leasesoak.ps1 -Tag s2-factory -Map nazi_zombie_factory -Minutes 120 -Bots 1
+# alternating with MAPS: tools\dev\s2plan.ps1 -List <file of "tag map minutes bots [player] [members]">
+# 4 bots: -Bots 4 -Player 76561198000000004 -Members 76561198000000014,76561198000000015,76561198000000016
+```
+Output: `ZombiesDev\logs\dedi\s2\<tag>.{txt,csv,enw.log,journal.txt}`.
