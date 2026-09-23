@@ -51,13 +51,14 @@ static void test_decide() {
 }
 
 static void test_table() {
-    check(kSlotCount == 2, "two dvars");
+    check(kSlotCount == 4, "four dvars (two sound, r_watersim_debug, fx_enable)");
+    for (size_t i = 0; i < kSlotCount; ++i) check(kSlots[i].value == 0, "every dvar is registered at 0 (fx_enable too, although a client has 1)");
     check(std::strcmp(kSlots[0].name_text, "snd_errorOnMissing") == 0, "slot 0 name");
     check(kSlots[0].slot == 0x3BE65DC, "slot 0 is [0x3BE65DC], the pointer read at 0x4F0579");
     for (size_t i = 0; i < kReaderCount; ++i) {
         bool known = false;
         for (size_t j = 0; j < kSlotCount; ++j) known |= kReaders[i].slot == kSlots[j].slot;
-        check(known, "every reader reads one of our two slots");
+        check(known, "every reader reads one of our slots");
     }
     uint8_t a[5], b[5];
     expected_insns(kSlots[0], a, b);
@@ -77,6 +78,9 @@ static void test_table() {
           "0x5FFE23 is a consequence");
     check(known_fault_name(0x4F0579) == nullptr, "a load is not a fault site");
     check(known_fault_name(0) == nullptr, "unknown -> nullptr");
+    check(known_fault_name(0x4E58B4) && std::strstr(known_fault_name(0x4E58B4), "r_watersim_debug"), "0x4E58B4 is the water bullet");
+    check(known_fault_name(0x4AD6B5) && std::strstr(known_fault_name(0x4AD6B5), "fx_enable"), "0x4AD6B5 is fx_enable");
+    check(std::strstr(known_fault_name(0x51BC60), "sound") != nullptr, "0x51BC60 is a sound dvar");
     check(sizeof kReaderFaultEips / sizeof kReaderFaultEips[0] == kReaderCount, "one fault eip per reader");
 }
 
@@ -127,9 +131,9 @@ static void test_image(const image& img) {
         check(ds && std::strcmp(reinterpret_cast<const char*>(ds), s.desc_text) == 0, what);
         uint8_t a[5], b[5];
         expected_insns(s, a, b);
-        std::snprintf(what, sizeof what, "image: SND_Init 0x%X is `mov edi, %s`", unsigned(s.name_insn), s.name_text);
+        std::snprintf(what, sizeof what, "image: %s 0x%X is `mov edi, %s`", s.registrar, unsigned(s.name_insn), s.name_text);
         check(img.at(s.name_insn) && std::memcmp(img.at(s.name_insn), a, 5) == 0, what);
-        std::snprintf(what, sizeof what, "image: SND_Init 0x%X stores %s to 0x%X", unsigned(s.store_insn), s.name_text, unsigned(s.slot));
+        std::snprintf(what, sizeof what, "image: %s 0x%X stores %s to 0x%X", s.registrar, unsigned(s.store_insn), s.name_text, unsigned(s.slot));
         check(img.at(s.store_insn) && std::memcmp(img.at(s.store_insn), b, 5) == 0, what);
         // Between the name and the store: `call Dvar_RegisterBool` (E8 rel32), and a
         // `xor al, al` (default 0) right before the name -- or for slot 1, before it too.
@@ -139,8 +143,14 @@ static void test_image(const image& img) {
         std::snprintf(what, sizeof what, "image: %s is registered by Dvar_RegisterBool 0x%X", s.name_text, unsigned(kDvarRegisterBool));
         check(call[0] == 0xE8 && target == kDvarRegisterBool, what);
         const uint8_t* x = img.at(s.name_insn - 2);
-        std::snprintf(what, sizeof what, "image: %s defaults to 0 (`xor al, al`)", s.name_text);
-        check(x[0] == 0x32 && x[1] == 0xC0, what);
+        std::snprintf(what, sizeof what, "image: %s's engine default is %u", s.name_text, unsigned(s.engine_default));
+        check(s.engine_default ? (x[0] == 0xB0 && x[1] == 0x01) : (x[0] == 0x32 && x[1] == 0xC0), what);
+        if (s.flags) {   // `push <flags>` (68 imm32) right before the default
+            const uint8_t* p = img.at(s.name_insn - 7);
+            const uint32_t f = p[1] | (p[2] << 8) | (p[3] << 16) | (static_cast<uint32_t>(p[4]) << 24);
+            std::snprintf(what, sizeof what, "image: %s's flags are 0x%X", s.name_text, unsigned(s.flags));
+            check(p[0] == 0x68 && f == s.flags, what);
+        }
     }
     for (size_t i = 0; i < kReaderCount; ++i) {
         const reader& r = kReaders[i];
