@@ -67,6 +67,56 @@ struct tracker {
     }
 };
 
+// ---------------------------------------------------------------------------------------
+// THE MENU A MAP STARTS UNDER (esc-menu.md §11.4, B 2026-09-23 after 0.2.24: "a game starts
+// PAUSED with the blur layer, and the player must press Esc to unpause").
+//
+// MEASURED in B's logs (enw-5840/23396/29660, fear_mc_2 on the box): an engine menu
+// (keyCatchers 0x10, KEYCATCH_UI) is up from the first in-map frames -- the map's own start
+// menu (its onOpen/onClose run the map's anti-cheat: `mc_ac 1`, `exec dvar_locker.cfg`).
+// The chat overlay's pause contract read ANY 0x10 menu after 2 s in a map as "the player is
+// in the Esc menu" and sent `setu enw_ui paused` exactly 2.0 s after the first in-game
+// frame in every run, so the dedicated server froze the game (solo_menu) under the map's
+// blurred menu until the player pressed Esc. The player never asked for that pause.
+//
+// So: a menu that is up within `grace_ms` of the first in-map frame is the MAP's, not the
+// player's. It never counts as a pause, and in a box game it is closed for the player
+// (Esc to the engine, as the player's own Esc did) `close_after_ms` into the map, at most
+// `max_tries` times. A menu that opens later is judged exactly as before.
+struct start_menu {
+    uint32_t grace_ms = 1500;        // up within this long of the map's first frame: the map's menu
+    uint32_t close_after_ms = 1500;  // and still up this long into the map: close it
+    uint32_t retry_ms = 1000;
+    int max_tries = 3;
+
+    uint64_t map_since = 0;          // first in-map frame (0 = not in a map)
+    bool inherited = false;          // the 0x10 menu now up is the one the map started under
+    int tries = 0;
+    uint64_t last_try = 0;
+
+    enum class act { none, close };
+
+    // Once a frame: `in_map` = clc.state 10; `menu_up` = keyCatchers & 0x10.
+    act feed(uint64_t now, bool in_map, bool menu_up) {
+        if (!in_map) { map_since = 0; inherited = false; tries = 0; last_try = 0; return act::none; }
+        if (!map_since) map_since = now ? now : 1;
+        const uint64_t age = now - map_since;
+        if (!menu_up) {
+            if (age > grace_ms) inherited = false;   // the start menu is gone for good
+            return act::none;
+        }
+        if (age <= grace_ms) inherited = true;
+        if (!inherited || age < close_after_ms || tries >= max_tries) return act::none;
+        if (tries && now - last_try < retry_ms) return act::none;
+        ++tries;
+        last_try = now;
+        return act::close;
+    }
+
+    // What the pause contract may read as "the player is in a menu".
+    bool counts_as_pause(bool menu_up) const { return menu_up && !inherited; }
+};
+
 // The engine's error text (com_errorMessage, usually a localisation key) as a line a player
 // can read. Anything we do not recognise is shown as the engine wrote it, minus the key's
 // EXE_ prefix and underscores, so nothing is hidden.

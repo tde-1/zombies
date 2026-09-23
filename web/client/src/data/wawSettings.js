@@ -252,42 +252,44 @@ export const ALL = [...ITEMS, ...BINDS, ...ENW_ITEMS]
 //            'site'        shown, not editable in game (display mode and monitor are the
 //                          launcher's: the DLL's borderless window is chosen at launch).
 //            false         never shown in game, with `why`.
-//   verified true = harmless: still offered in a Verified (records) game. False = hidden
-//            there: anything the records rules pin (com_maxfps must not change mid-game,
-//            web/server/lib/records.js), anything that restarts the renderer, and visual
-//            switches that can reveal more than the stock picture.
+//   verified true = changeable in a Verified (records) game too. False = shown there but
+//            LOCKED (read-only): only what the records rules themselves pin -- com_maxfps must
+//            not change mid-game (verified-rules.md §4, host verified.js). B, 2026-09-23: every
+//            setting the launcher can change must be changeable in the Esc menu and the console
+//            in every game, Verified included (esc-menu.md §11). FOV <= 120 is the slider's own
+//            max plus the DLL's cap; cheat / ai_ / g_ / sv_ dvars are never catalogue items.
 //   values   the two dvar values a toggle writes, when they are not '0'/'1'.
 //   dvar     the dvar the in-game control writes when the catalogue has none.
 export const BIND_INGAME = { apply: 'live', verified: true }
 export const INGAME = {
   // graphics
-  resolution: { apply: 'vid_restart', verified: false, notBorderless: true },
-  r_displayRefresh: { apply: 'vid_restart', verified: false },
-  r_aspectRatio: { apply: 'vid_restart', verified: false },
-  r_aaSamples: { apply: 'vid_restart', verified: false },
+  resolution: { apply: 'vid_restart', verified: true, notBorderless: true },
+  r_displayRefresh: { apply: 'vid_restart', verified: true },
+  r_aspectRatio: { apply: 'vid_restart', verified: true },
+  r_aaSamples: { apply: 'vid_restart', verified: true },
   r_gamma: { apply: 'live', verified: true },
-  vsync: { apply: 'vid_restart', verified: false },
-  r_multiGpu: { apply: 'vid_restart', verified: false },
-  sm_enable: { apply: 'live', verified: false },
-  r_specular: { apply: 'live', verified: false },
-  r_gfxopt_water_simulation: { apply: 'live', verified: false },
-  r_gfxopt_dynamic_foliage: { apply: 'live', verified: false },
-  fx_marks: { apply: 'live', verified: false },
+  vsync: { apply: 'vid_restart', verified: true },
+  r_multiGpu: { apply: 'vid_restart', verified: true },
+  sm_enable: { apply: 'live', verified: true },
+  r_specular: { apply: 'live', verified: true },
+  r_gfxopt_water_simulation: { apply: 'live', verified: true },
+  r_gfxopt_dynamic_foliage: { apply: 'live', verified: true },
+  fx_marks: { apply: 'live', verified: true },
   ai_corpseCount: { apply: false, why: 'an ai_ dvar: in a box game the server runs the AI, so the client value does nothing, and gameplay dvars are never the client\'s' },
   // texture
   r_texFilterMipMode: { apply: 'live', verified: true },
   r_texFilterAnisoMin: { apply: 'live', verified: true },
-  r_picmip_manual: { apply: 'vid_restart', verified: false },
-  r_picmip: { apply: 'vid_restart', verified: false },
-  r_picmip_bump: { apply: 'vid_restart', verified: false },
-  r_picmip_spec: { apply: 'vid_restart', verified: false },
+  r_picmip_manual: { apply: 'vid_restart', verified: true },
+  r_picmip: { apply: 'vid_restart', verified: true },
+  r_picmip_bump: { apply: 'vid_restart', verified: true },
+  r_picmip_spec: { apply: 'vid_restart', verified: true },
   // sound
   snd_menu_master: { apply: 'live', verified: true },
   snd_menu_voice: { apply: 'live', verified: true },
   snd_menu_music: { apply: 'live', verified: true },
   snd_menu_sfx: { apply: 'live', verified: true },
   snd_cinematicVolumeScale: { apply: 'live', verified: true },
-  snd_losOcclusion: { apply: 'live', verified: false },
+  snd_losOcclusion: { apply: 'live', verified: true },
   // game
   cg_mature: { apply: 'live', verified: true },
   monkeytoy: { apply: false, why: 'mod-owned (mod-compat.md §3): a map\'s anti-cheat quits on it; never ours to set' },
@@ -306,10 +308,13 @@ export const INGAME = {
   maxFps: { apply: 'live', verified: false },
   showFps: { apply: 'live', verified: true, values: ['Off', 'Simple'] },
   rawMouse: { apply: 'next_launch', verified: true, dvar: 'enw_rawmouse' },
-  discordPresence: { apply: false, why: 'the launcher\'s Discord rich presence, not a game setting: changed on the site or in the launcher' },
-  discordOverlay: { apply: false, why: 'chosen at launch: the client DLL reads ENW_DISCORD_HOOK once at start (overlay_guard, chat-overlay.md 13); changed on the site or in the launcher' },
-  r_dof_enable: { apply: 'live', verified: false },
-  r_glow_allowed: { apply: 'live', verified: false },
+  // The launcher's two Discord switches travel as ENW's own archived dvars, as raw input does
+  // (launcher wawcfg.js DISCORD_DVARS): the game writes them to config.cfg, the launcher's
+  // read-back saves them to the account; the launcher and the DLL act on them next launch.
+  discordPresence: { apply: 'next_launch', verified: true, dvar: 'enw_discord' },
+  discordOverlay: { apply: 'next_launch', verified: true, dvar: 'enw_discordhook' },
+  r_dof_enable: { apply: 'live', verified: true },
+  r_glow_allowed: { apply: 'live', verified: true },
 }
 export const ingameOf = (it) => (it.kind === 'bind' ? BIND_INGAME : INGAME[it.id])
 

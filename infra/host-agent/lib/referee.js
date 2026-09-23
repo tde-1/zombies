@@ -23,6 +23,8 @@ import { EnvLog, judge } from './verified.js'
 
 const MIN = 60_000
 const HOUR = 60 * MIN
+// Flags a game may put on its own `game_over` (game-link-v0). Anything else is ignored.
+export const GAME_FLAGS = new Set(['server_freeze'])
 
 export const DEFAULTS = {
   capMs: 24 * HOUR,
@@ -485,8 +487,14 @@ export class Referee extends EventEmitter {
       players_alive: Number.isFinite(ev.players_alive) ? Number(ev.players_alive) : null,
       players: Array.isArray(ev.players) ? ev.players.filter((x) => x && typeof x === 'object') : [],
       dvars: ev.dvars && typeof ev.dvars === 'object' ? ev.dvars : null,
+      flags: Array.isArray(ev.flags) ? ev.flags.filter((f) => typeof f === 'string').slice(0, 8) : [],
       at: new Date().toISOString(),
     }
+    // Flags the GAME raises about itself. Only the known ones reach the record, so a DLL
+    // cannot write an arbitrary word onto a result. `server_freeze` (dedi.md §23): the
+    // server stopped simulating and its watchdog ended the match; the result stands as it
+    // was at the freeze and is marked, not refused.
+    for (const f of this.reported.flags) if (GAME_FLAGS.has(f)) this.flags.add(f)
     this.env.seedFromGameOver(ev.dvars)
     this.finishGame(this.endReason)
   }

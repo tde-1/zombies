@@ -39,8 +39,8 @@
 // Mod-owned dvars (monkeytoy, con_external, sv_cheats), developer, cheats and gameplay
 // dvars: refused by settings::forbidden_dvar whatever the schema says. A dvar the running
 // map sets itself (its .enw-installed.json modDvars.owned, launcher modcompat.js) is shown
-// read-only. In a Verified game (the invite token is present) only items the catalogue
-// marks harmless are shown at all.
+// read-only. In a Verified game (the invite token is present) every item is shown and only
+// the records rule's own (com_maxfps, catalogue `verified: false`) is locked (§11.3).
 //
 // ============================================================================
 // VIDEO SETTINGS THAT NEED vid_restart
@@ -100,6 +100,8 @@ bool g_vts_ok = false;
 size_t g_tab = 0;
 float g_scroll[16] = {};
 std::vector<std::pair<std::string, std::string>> g_binds;
+bool g_binds_loaded = false;   // [C1] the console binds without the tab ever having been shown
+bool g_restart_console = false;   // [C1] the running vid_restart came from the console's `apply`
 settings::context g_ctx;
 int g_restricted_override = -1;
 std::string g_capture_id;
@@ -304,6 +306,7 @@ void refresh_context() {
 void load_binds() {
     const std::string path = config_path();
     g_binds = settings::parse_binds(read_file(path));
+    g_binds_loaded = true;
     ENW_INFO("settings: %zu binds read from %s", g_binds.size(), path.empty() ? "(no profile path)" : path.c_str());
 }
 
@@ -631,7 +634,7 @@ void draw(float x, float y, float w, float h, float mx, float my) {
     const float fy = y + h - foot;
     box(x, fy, w, foot, kStrip);
     float text_w = w - 12.f;
-    if (!g_pending.empty() && !g_ctx.listen_server && !g_ctx.restricted) {
+    if (!g_pending.empty() && !g_ctx.listen_server) {   // [C1] Verified games too (esc-menu.md §11.3)
         const std::string l = g_restart ? "Restarting..." : "Apply (restart video)";
         const float bw = tw(l, 0.24f) + 14.f;
         const float bx = x + w - bw - 3.f;
@@ -646,7 +649,7 @@ void draw(float x, float y, float w, float h, float mx, float my) {
     if (!g_capture_id.empty()) foot_text = "^3Press a key or mouse button.  Esc cancels, Delete clears.";
     else if (!g_hover_note.empty()) foot_text = g_hover_note;
     else if (!g_status.empty() && now - g_status_t < 8000) foot_text = g_status;
-    else if (g_ctx.restricted) foot_text = "Verified game: only settings that change nothing about the run";
+    else if (g_ctx.restricted) foot_text = "Verified game: max fps is locked; everything else is yours";
     else foot_text = "Saved as you change them. The site's /settings shows the same.";
     txt(x + 6.f, fy + 12.f, fit(foot_text, text_w, 0.22f), kDim, 0.22f);
 }
@@ -750,6 +753,18 @@ void frame_tick() {
     if (!g_ok) return;
     if (g_bind_flush > 0 && --g_bind_flush == 0) raise_archive_flag();
     const DWORD now = ::GetTickCount();
+    // [C1] The console's `apply` restarts the video with the tab not drawn: end the restart
+    // here when the device or the window has changed (draw() does the same while it is up).
+    // Only a console restart: the menu's own stays open across it until draw() sees it end.
+    if (g_restart && g_restart_console && (rd<uint32_t>(kDxDevice) != g_restart_dev || rd<uint32_t>(kGameHwnd) != g_restart_hwnd ||
+                                           now - g_restart_t > 30000)) {
+        g_restart = false;
+        g_restart_console = false;
+        ENW_INFO("settings: vid_restart DONE (frame tick) %lu ms after apply; the input gate is %s", now - g_restart_t,
+                 input_gate::installed() ? "installed" : "NOT installed");
+        refresh_context();
+        set_status("Video restarted");
+    }
     if (g_checks.empty() || now - g_last_check < 200) return;
     g_last_check = now;
     const std::string path = config_path();
@@ -794,7 +809,7 @@ void frame_tick() {
 bool restart_in_progress() { return g_restart && ::GetTickCount() - g_restart_t < 30000; }
 
 bool apply_restart() {
-    if (g_pending.empty() || g_ctx.listen_server || g_ctx.restricted || g_restart) return false;
+    if (g_pending.empty() || g_ctx.listen_server || g_restart) return false;   // [C1] Verified too
     std::string ids;
     for (const auto& p : g_pending) ids += (ids.empty() ? "" : ", ") + p;
     g_restart_dev = rd<uint32_t>(kDxDevice);
@@ -803,6 +818,7 @@ bool apply_restart() {
              ids.c_str(), g_restart_hwnd, g_restart_dev);
     stock_font::before_vid_restart();
     g_restart = true;
+    g_restart_console = false;   // [C1] console_apply sets it after this returns
     g_restart_gap = false;
     g_restart_t = ::GetTickCount();
     g_pending.clear();
@@ -864,18 +880,24 @@ void set_restricted_override(int v) {
 }
 
 // ------------------------------------------------------------ [console] public
-// The ENW console's settings (restricted_console.cpp). Nothing here reaches the engine but
-// apply_value above: the console has no other way to write.
+// The ENW console's settings and binds (restricted_console.cpp, esc-menu.md §11). Nothing
+// here reaches the engine but apply_value / apply_bind above, `unbind <key>` with a key
+// from the model's list, and apply_restart: the console has no other way to write. Replies
+// are one short line in the console's voice: "fov 90", "aa 4x -- apply", "fps: locked in a
+// Verified game".
 namespace {
 
+void ensure_binds() {
+    if (g_binds_loaded) return;
+    load_binds();
+    g_binds_loaded = true;
+}
+
 const settings::item* console_item(const std::string& name, std::string* reply) {
-    if (!g_ok) { *reply = "Settings are not available in this build."; return nullptr; }
+    if (!g_ok) { *reply = "settings unavailable in this build"; return nullptr; }
     const settings::item* it = ::enw::console::resolve(g_s, name);
     if (!it) { *reply = ::enw::console::refusal_for(name); return nullptr; }
     refresh_context();
-    std::string why;
-    const auto vis = settings::visibility(*it, g_ctx, &why);
-    if (vis == settings::shown::hidden) { *reply = it->dvar + " is locked in a Verified game."; return nullptr; }
     return it;
 }
 
@@ -883,27 +905,37 @@ std::string shown_value(const settings::item& it) {
     bool pend = false;
     const std::string cur = current_of(it, &pend);
     std::string o = settings::display_value(it, cur);
-    if (it.k == settings::kind::select || it.k == settings::kind::toggle) {
-        if (o != cur && !cur.empty()) o += " (" + cur + ")";
-    }
-    if (pend) o += ", after Apply";
+    if (o.empty()) o = "\"\"";
+    if (pend) o += " (after apply)";
     return o;
 }
 
 std::string after_note(const settings::item& it) {
-    if (it.a == settings::apply::vid_restart)
-        return g_ctx.listen_server ? " Applies next launch." : " Esc > Settings > Apply to restart the video.";
-    if (it.a == settings::apply::next_launch) return " Applies next launch.";
+    if (it.a == settings::apply::vid_restart) return g_ctx.listen_server ? " -- next launch" : " -- apply";
+    if (it.a == settings::apply::next_launch) return " -- next launch";
     return {};
 }
 
+std::string keys_text(const settings::item& it) {
+    const auto keys = settings::keys_of(g_binds, it.command);
+    std::string o;
+    for (const auto& k : keys) o += (o.empty() ? "" : ", ") + k;
+    return o.empty() ? "unbound" : o;
+}
+
 }  // namespace
+
+const settings::schema* console_schema() { return g_ok ? &g_s : nullptr; }
 
 std::string console_get(const std::string& name) {
     std::string reply;
     const auto* it = console_item(name, &reply);
     if (!it) return reply;
-    return it->dvar + " is " + shown_value(*it) + "  (" + it->label + ", " + ::enw::console::range_text(*it) + ")";
+    std::string why;
+    const auto vis = settings::visibility(*it, g_ctx, &why);
+    const std::string sn = ::enw::console::short_name(*it);
+    if (vis != settings::shown::editable && !why.empty()) return sn + " " + shown_value(*it) + "  (" + why + ")";
+    return sn + " " + shown_value(*it) + "  (" + ::enw::console::range_text(*it) + ")";
 }
 
 std::string console_set(const std::string& name, const std::string& value) {
@@ -913,18 +945,21 @@ std::string console_set(const std::string& name, const std::string& value) {
         ENW_INFO("console: REFUSED %s '%s': %s", name.c_str(), value.c_str(), reply.c_str());
         return reply;
     }
+    const std::string sn = ::enw::console::short_name(*it);
     std::string why;
     if (settings::visibility(*it, g_ctx, &why) != settings::shown::editable) {
         ENW_INFO("console: REFUSED %s '%s': %s", it->dvar.c_str(), value.c_str(), why.c_str());
-        return it->dvar + ": " + why + ".";
+        return sn + ": " + why;
     }
+    std::string v = value;
+    if (settings::lower(v) == "default") v = it->enw_def.empty() ? it->def : it->enw_def;
     std::string norm, err;
-    if (!::enw::console::validate(*it, value, &norm, &err)) {
+    if (!::enw::console::validate(*it, v, &norm, &err)) {
         ENW_INFO("console: REFUSED %s '%s': %s", it->dvar.c_str(), value.c_str(), err.c_str());
         return err;
     }
-    if (!apply_value(*it, norm, "console")) return it->dvar + " could not be set.";
-    return it->dvar + " set to " + settings::display_value(*it, norm) + "." + after_note(*it);
+    if (!apply_value(*it, norm, "console")) return sn + ": not set";
+    return sn + " " + settings::display_value(*it, norm) + after_note(*it);
 }
 
 std::string console_reset(const std::string& name) {
@@ -932,33 +967,111 @@ std::string console_reset(const std::string& name) {
     const auto* it = console_item(name, &reply);
     if (!it) return reply;
     const std::string def = it->enw_def.empty() ? it->def : it->enw_def;
-    if (def.empty()) return it->dvar + " has no default.";
+    if (def.empty()) return ::enw::console::short_name(*it) + ": no default (the game picks it)";
     return console_set(it->dvar, def);
 }
 
-std::vector<std::string> console_list(const std::string& prefix) {
+std::vector<std::string> console_help(const std::string& name) {
+    std::vector<std::string> out;
+    std::string reply;
+    const auto* it = console_item(name, &reply);
+    if (!it) { out.push_back(reply); return out; }
+    std::string why;
+    const auto vis = settings::visibility(*it, g_ctx, &why);
+    const std::string sn = ::enw::console::short_name(*it);
+    std::string l = sn + " -- " + settings::lower(it->label) + ", " + ::enw::console::range_text(*it) + ", now " + shown_value(*it);
+    if (it->a == settings::apply::vid_restart) l += ", needs apply";
+    if (it->a == settings::apply::next_launch) l += ", next launch";
+    if (vis != settings::shown::editable && !why.empty()) l += " (" + why + ")";
+    out.push_back(l);
+    std::string also;
+    for (const auto& n : ::enw::console::other_names(*it)) also += (also.empty() ? "" : ", ") + n;
+    if (!also.empty()) out.push_back("  also: " + also);
+    return out;
+}
+
+std::vector<std::string> console_list(const std::string& filter) {
     std::vector<std::string> out;
     if (!g_ok) return out;
     refresh_context();
-    const std::string p = settings::lower(prefix);
+    const std::string f = settings::lower(filter);
     for (const auto& it : g_s.items) {
-        if (it.k == settings::kind::bind || it.k == settings::kind::info || it.dvar.empty()) continue;
-        if (settings::visibility(it, g_ctx, nullptr) != settings::shown::editable) continue;
-        if (!p.empty() && settings::lower(it.dvar).rfind(p, 0) != 0 && settings::lower(it.id).rfind(p, 0) != 0) continue;
-        out.push_back(it.dvar + " " + shown_value(it) + "  (" + it.label + ", " + ::enw::console::range_text(it) + ")");
+        if (!::enw::console::console_item(it)) continue;
+        if (!f.empty()) {
+            bool hit = ::enw::console::short_name(it).rfind(f, 0) == 0 || settings::lower(it.dvar).rfind(f, 0) == 0 ||
+                       settings::lower(it.label).find(f) != std::string::npos;
+            for (const auto& n : ::enw::console::other_names(it)) hit = hit || settings::lower(n).rfind(f, 0) == 0;
+            if (!hit) continue;
+        }
+        std::string why;
+        const auto vis = settings::visibility(it, g_ctx, &why);
+        out.push_back(::enw::console::short_name(it) + " " + shown_value(it) +
+                      (vis != settings::shown::editable && !why.empty() ? "  (" + why + ")" : std::string()));
     }
     return out;
 }
 
-std::vector<std::string> console_names() {
+std::vector<std::string> console_binds(const std::string& filter) {
     std::vector<std::string> out;
     if (!g_ok) return out;
+    ensure_binds();
+    const std::string f = settings::lower(filter);
     for (const auto& it : g_s.items) {
-        if (it.k == settings::kind::bind || it.k == settings::kind::info || it.dvar.empty()) continue;
-        if (settings::visibility(it, g_ctx, nullptr) != settings::shown::editable) continue;
-        out.push_back(it.dvar);
+        if (it.k != settings::kind::bind) continue;
+        const std::string an = ::enw::console::action_name(it);
+        if (!f.empty() && an.rfind(f, 0) != 0 && settings::lower(it.label).find(f) == std::string::npos &&
+            settings::lower(it.command).find(f) == std::string::npos)
+            continue;
+        out.push_back(an + " " + keys_text(it));
     }
     return out;
+}
+
+std::string console_bind(const std::string& key, const std::string& action) {
+    if (!g_ok) return "settings unavailable in this build";
+    refresh_context();
+    ensure_binds();
+    const std::string k = ::enw::console::normalize_key(key);
+    if (k.empty()) return key + ": not a key";
+    if (::enw::console::trim(action).empty()) {
+        const std::string cmd = settings::command_of(g_binds, k);
+        if (cmd.empty()) return k + " is free";
+        for (const auto& it : g_s.items)
+            if (it.k == settings::kind::bind && settings::lower(it.command) == settings::lower(cmd))
+                return k + " -> " + ::enw::console::action_name(it);
+        return k + " -> " + cmd;
+    }
+    const settings::item* it = ::enw::console::resolve_action(g_s, action);
+    if (!it) return action + ": unknown action -- binds";
+    std::string why;
+    if (settings::visibility(*it, g_ctx, &why) != settings::shown::editable) return ::enw::console::action_name(*it) + ": " + why;
+    if (!apply_bind(*it, k, "console")) return ::enw::console::action_name(*it) + ": not bound";
+    return ::enw::console::action_name(*it) + " " + keys_text(*it);
+}
+
+std::string console_unbind(const std::string& key) {
+    if (!g_ok) return "settings unavailable in this build";
+    ensure_binds();
+    const std::string k = ::enw::console::normalize_key(key);
+    if (k.empty()) return key + ": not a key";
+    const std::string had = settings::command_of(g_binds, k);
+    const auto cmds = settings::unbind_commands(&g_binds, k);
+    for (const auto& c : cmds) cbuf((c + "\n").c_str());
+    ++g_changes;
+    g_bind_flush = 2;   // raise the archive bit after the unbind has run, so config.cfg is rewritten
+    ENW_INFO("settings: unbind %s (held '%s') via console", k.c_str(), had.c_str());
+    return k + " free";
+}
+
+std::string console_apply() {
+    if (!g_ok) return "settings unavailable in this build";
+    refresh_context();
+    if (g_ctx.listen_server) return "apply: a local game applies video next launch";
+    if (g_restart) return "apply: already restarting";
+    if (g_pending.empty()) return "apply: nothing pending";
+    if (!apply_restart()) return "apply: refused";
+    g_restart_console = true;
+    return "restarting video";
 }
 
 }  // namespace enw::client::settings_tab

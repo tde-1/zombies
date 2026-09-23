@@ -53,6 +53,33 @@ export function check(publicKey, token, { matchId = null, steamid = null, now = 
   return { ok: true, reason: 'ok', payload }
 }
 
+/**
+ * THE RETURNING PLAYER (host.md §16.4). A client connected to a game stays connected
+ * through the `map_restart` that ends it, and re-announces itself to the warm instance
+ * with the token it joined with: bound to the PREVIOUS match, used once already, and
+ * possibly past its five minutes. `check()` rightly refuses that (`wrong_match`, then
+ * `replayed`, then `expired`) and before 2026-09-23 the host kicked the player it had
+ * verified a second earlier (box journal 12:17:02, "DENY (wrong_match)").
+ *
+ * This asks the narrower question: is this a token the SITE signed, for THIS SteamID, for
+ * one of THESE matches? Signature, version, match and SteamID must all hold; expiry and
+ * single use do not apply, because the connection it vouches for never went away. The
+ * caller also requires that the host itself verified that SteamID in that match.
+ */
+export function checkBinding(publicKey, token, { matchIds = [], steamid = null } = {}) {
+  if (!publicKey || typeof token !== 'string' || !token.includes('.')) return { ok: false, reason: 'malformed' }
+  const [b, s] = token.split('.')
+  let body, sig
+  try { body = unb64u(b); sig = unb64u(s) } catch { return { ok: false, reason: 'malformed' } }
+  if (sig.length !== 64 || !verify(publicKey, body, sig)) return { ok: false, reason: 'bad_signature' }
+  let payload
+  try { payload = JSON.parse(body.toString('utf8')) } catch { return { ok: false, reason: 'bad_payload' } }
+  if (payload.v !== 0) return { ok: false, reason: 'bad_version' }
+  if (!matchIds.map(String).includes(String(payload.m))) return { ok: false, reason: 'wrong_match', payload }
+  if (steamid == null || String(payload.sid) !== String(steamid)) return { ok: false, reason: 'wrong_steamid', payload }
+  return { ok: true, reason: 'returning', payload }
+}
+
 // A host-side guard: holds the site's public key plus the jti set for this boot.
 export class TokenGuard {
   constructor(publicKey, { singleUse = true, requireToken = true } = {}) {
