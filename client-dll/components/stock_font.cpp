@@ -41,6 +41,7 @@
 #include <d3d9.h>
 
 #include <atomic>
+#include <thread>
 
 #include <algorithm>
 #include <cstdlib>
@@ -364,7 +365,7 @@ void make_texture(IDirect3DDevice9* dev) {
 
 // Copy a stock material (its texture images resolved to stock too) into `dst`.
 bool clone_material(uint32_t live_mat, const char* name, uint8_t* dst, uint8_t* tt) {
-    const uint32_t m = find_stock_slot(live_mat, kMaterialSlot, 0, name, 512);
+    const uint32_t m = find_stock_slot(live_mat, kMaterialSlot, 0, name, 8192);
     if (!m) { g_fail = std::string("no stock material '") + name + "'"; return false; }
     std::memcpy(dst, reinterpret_cast<const void*>(m), kMaterialSlot);
     const int n = (std::max)(1, (std::min)(8, static_cast<int>(dst[kMatTextureCount])));
@@ -432,6 +433,30 @@ void resolve() {
                  "fonts instead -- a mod's font will show", g_fail.c_str());
 }
 
+// The search runs on its OWN thread, never the game's (B's 0.2.18 hung ~200 ms
+// after a first in-map frame in which this had run on the main thread for 110 ms;
+// cause not proven, but the main thread must not carry it). It only reads memory
+// and one file; the main thread polls g_worker and draws with the engine's fonts
+// until it is done.
+std::atomic<int> g_worker{0};   // 0 not started, 1 running, 2 done
+
+void resolve_seh() {
+    __try {
+        resolve();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        g_state = -1;
+        g_fail = "fault while searching";
+    }
+}
+
+void worker() {
+    const ULONGLONG t0 = ::GetTickCount64();
+    resolve_seh();
+    ENW_INFO("stock_font: search finished in %llu ms on a worker thread (state %d)", ::GetTickCount64() - t0,
+             g_state);
+    g_worker = 2;
+}
+
 bool g_probed = false;
 
 void dump_material(uint32_t m) {
@@ -486,8 +511,12 @@ void probe_now() {
 // values (ui_smallFont 0.25, ui_bigFont 0.4, ui_extraBigFont 0.55, from their
 // registration at 0x5D0430..0x5D048E) -- not the dvars, which a mod may change.
 void* pick(float real_scale) {
-    if (g_state == 0) resolve();
-    if (g_state == 2) {
+    const int w = g_worker.load();
+    if (w == 0 && *reinterpret_cast<const uint32_t*>(kLiveBig)) {
+        g_worker = 1;
+        std::thread(worker).detach();   // posted, never waited on
+    }
+    if (w == 2 && g_state == 2) {
         const int t = g_tex_state.load();
         if (t == 0 && frame_capture::run_at_present(&make_texture)) g_tex_state = 1;
         if (t == 2) {
@@ -504,7 +533,7 @@ void* pick(float real_scale) {
     }
     const int want = real_scale <= 0.25f ? F_SMALL : real_scale >= 0.55f ? F_XBIG
                      : real_scale >= 0.4f ? F_BIG : F_NORMAL;
-    if (g_state == 1)
+    if (w == 2 && g_state == 1)
         for (int k = want; k >= 0; --k)   // a face that failed its hash falls back one smaller
             if (g_faces[k].ok) return g_faces[k].hdr;
     return *reinterpret_cast<void* const*>(g_faces[want].live);

@@ -705,3 +705,27 @@ built but not captured; a non-English install (it will fall back and say so). Ha
 never runs; `c2` was seeded from `c1`'s. The first mw2rust mount ran without
 `ENW_USE_PRIVATE_LOCALAPPDATA=1` and so also junctioned `mods\mw2rust` under B's real
 `%LOCALAPPDATA%\Activision\CoDWaW\mods` (a junction onto the archive; nothing written into B's files).
+
+### 12.4 2026-09-23 02:40 — B's hang on zm_nuked (0.2.18), and what changed
+
+B's client (`enw-34580.log`) hung ~200 ms after its first in-game frame on `zm_nuked`. In that run
+`stock_font` had searched on the MAIN thread for 110 ms and failed ("no stock material" — the moved
+material slot was more than 512 slots away) and fell back to the engine's fonts; **its render-thread
+texture job never ran** (it is only posted after a successful search), so the render-thread theory
+does not fit this log. 0.2.17 → 0.2.18 changed nothing in the DLL but `stock_font`.
+
+* **Reproduced B's path on the box** (fake-ID lease `m_3727222c`, local `c1`, 2560×1440 borderless,
+  `r_multiGpu 1`, invisible window, 02:33): the identical log sequence (stock headers found, no
+  stock material, fallback, first in-game frame, cinematic name cleared) and **no hang** — 90 s of
+  heartbeats. The one thing not reproduced is sound: harness launches run `snd_menu_master 0`, so the
+  boot lane's mute/restore went 0 → 0, where B's went 0 → 1 in the same 200 ms.
+* **Changed anyway**: the search now runs on its own worker thread (only memory reads and one
+  file); the main thread draws with the engine's fonts until it is done, posts the texture job, polls
+  a flag, and never waits. Material search span 512 → 8192 slots. Timed: 156 ms on the worker on
+  mw2rust, card still pixel-identical to Nacht.
+* **`components/hang_watchdog.cpp`** (new, `ENW_HANG_WATCHDOG=0` off): if the frame tick is silent
+  8 s in a map, it logs the main thread's 16 return addresses and writes
+  `hang-<pid>-<time>.dmp` (MiniDumpWithIndirectlyReferencedMemory | ThreadInfo) into the log folder,
+  once. Proven with `ENW_HANG_TEST=1` (a deliberate 12 s sleep): stack logged, 412 KB dump written,
+  game resumed. Note for reading it: frames in `binkw32.dll+…` are OUR DLL (it is loaded under the
+  proxy's name); the PDB is next to `build/client-lane/enw_t4.dll`.
