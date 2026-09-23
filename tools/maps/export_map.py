@@ -98,6 +98,9 @@ TOOL_MATERIAL = re.compile(r"^(caulk|clip|nodraw|trigger|hint|skip|portal|mantle
 PLACEHOLDER_TEX = re.compile(r"^(case\d+|\$|default|_?identity|white$|black$|gray$|grey$|noise)", re.I)
 WATERY = re.compile(r"water|puddle|mud|river|swamp|ocean|lake", re.I)
 
+# Beyond this (engine units, any axis) nothing is reachable; see merge_world.
+WORLD_LIMIT = 65536.0
+
 # Husky's OBJ unit: centimetres (engine inches x 2.54). See merge_world.
 HUSKY_OBJ_SCALE = 2.54
 
@@ -607,6 +610,30 @@ def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
     glb.dropped_origin_brushmodels = (isl, tris)
     if isl:
         log(f"dropped {isl} brushmodel islands ({tris} triangles) piled on the engine origin")
+    # Far-flung triangles. bcast's shell has a piece at y = 1 331 200 -- twenty times past the
+    # engine's own world limit -- which made the map "1.3 million units long" and would make
+    # the viewer's camera frame a void. Nothing a player can reach lies beyond +-65536 u, so
+    # triangles with a vertex out there are dropped (counted in the sidecar) and the vertex
+    # arrays compacted, so accessor bounds describe what is drawn.
+    far = 0
+    for g in groups.values():
+        P, I = g['pos'], g['idx']
+        keep = []
+        for t in range(0, len(I), 3):
+            if any(abs(P[3 * I[t + k] + c]) > WORLD_LIMIT for k in range(3) for c in range(3)):
+                far += 1
+            else:
+                keep += I[t:t + 3]
+        if len(keep) != len(I):
+            used = sorted(set(keep))
+            remap = {v: i for i, v in enumerate(used)}
+            for key, w in (('pos', 3), ('nrm', 3), ('uv', 2)):
+                A = g[key]
+                g[key] = [A[w * v + c] for v in used for c in range(w)]
+            g['idx'] = [remap[v] for v in keep]
+    glb.dropped_far_triangles = far
+    if far:
+        log(f"dropped {far} shell triangles beyond +-{WORLD_LIMIT} u")
     groups = {k: g for k, g in groups.items() if g['idx']}
     # Kept for the floating-prop pass in build(): every surviving world triangle.
     glb.world_groups = groups
@@ -956,6 +983,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         "world_obj_scale": HUSKY_OBJ_SCALE if (world and world.suffix.lower() == ".obj") else None,
         "world_tool_materials_dropped": getattr(glb, "dropped_tool_materials", []),
         "world_placeholder_textures": getattr(glb, "placeholder_textures", []),
+        "world_far_triangles_dropped": getattr(glb, "dropped_far_triangles", 0),
         "world_origin_brushmodels_dropped": list(getattr(glb, "dropped_origin_brushmodels", (0, 0))),
         "sky_model": sky_name if sky_ok else None,
         "world_shell": bool(world and world.is_file()),
