@@ -467,6 +467,48 @@ async function renderSettings() {
   p.append(f)
 
   renderUpdateCheck(p)
+  renderLogs(p)
+}
+
+// ------------------------------------------------------------------ send logs --
+//
+// Logs go to ENW by themselves after every game and every launcher error (telemetry,
+// main process). This is the manual one, plus the two facts worth showing: when logs
+// last went, and how many are waiting.
+function logsLine(t) {
+  if (!t) return ''
+  const at = t.last_upload_at ? new Date(t.last_upload_at) : null
+  const when = !at ? 'never'
+    : (Date.now() - at.getTime() < 20 * 3600_000 ? at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : at.toLocaleDateString())
+  return `Logs last sent ${when}${t.outbox ? ` · ${t.outbox} waiting` : ''}`
+}
+
+function renderLogs(p) {
+  if (!window.enw.sendLogs) return
+  const box = el('div', 'field')
+  box.append(el('label', null, 'Logs'))
+  const btn = el('button', null, 'Send logs now')
+  const line = el('div', 'hint', '')
+  const bar = el('div', 'update-row')
+  bar.append(btn)
+  box.append(bar)
+  box.append(line)
+  p.append(box)
+  window.enw.telemetryStatus().then((t) => { line.textContent = logsLine(t) }).catch(() => {})
+  btn.onclick = async () => {
+    btn.disabled = true
+    line.classList.remove('bad')
+    line.textContent = 'Sending…'
+    try {
+      const r = await window.enw.sendLogs()
+      line.textContent = r.ok ? logsLine(r.status) : r.message
+      line.classList.toggle('bad', !r.ok)
+    } catch (e) {
+      line.textContent = `Could not send the logs: ${e.message}`
+      line.classList.add('bad')
+    }
+    btn.disabled = false
+  }
 }
 
 // ------------------------------------------------------------- check for updates --

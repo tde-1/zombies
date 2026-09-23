@@ -112,3 +112,33 @@ The same body and answers; auth is the box's `x-match-secret` like every `/api/g
 ## 5. Flag rules
 
 (filled in below by the lane)
+
+## 6. The launcher side
+
+Code `launcher/src/main/telemetry/` (queue `index.js`, contents `collect.js`, `outbox.js`,
+`probe.js`, `wer.js`), `SiteApi.uploadBundle`, wiring in `main.js`, **Send logs now** in Settings.
+Detail, disk layout, the WER finding on B's PC and what is unproven: `launcher.md`, section
+*2026-09-23 — telemetry: what the launcher uploads*. Tests `launcher/test/telemetry.js` (20).
+
+| Trigger | kind / reason | Notable contents |
+|---|---|---|
+| every game exit (any phase, a game process was spawned) | `client` / `game_crash`, `game_hang`, `game_exit` | `enw-`, `console-`, `session-<pid>` for every pid of the launch (Steam's relaunch too), `hang-<pid>-*.dmp`, WER `CoDWaW.exe.<pid>.dmp`, the launch's stdout/stderr, `launcher.log` (4 MB tail), settings, the map's `.enw-installed.json`; manifest `events` (1000/1001/1002 for CoDWaW.exe, last hour), `session`, `launch_line`, `exit_code`, `dll_sha` |
+| launcher error, `uncaughtException`, `unhandledRejection` | `launcher` / `launcher_error`, `uncaught` | `error.txt`, config/settings/detection (scrubbed by key), the last session's logs; one per message per 10 min |
+| start, `crashes\*.json` not yet bundled | `launcher` / `backlog` | those reports, once each |
+| Settings → Send logs now | `launcher` / `manual` | the last 3 sessions, events, ≤ 2 dumps newer than 24 h; sent at once |
+
+Classification: a WER/our dump for the pid → `game_crash`; a hang-watchdog dump → `game_hang`; an
+exit code ≠ 0 the launcher did not cause, or `session.exit_reason` naming a crash → `game_crash`;
+else `game_exit`.
+
+Upload rules (the launcher's reading of §3): nothing is built or sent while a game this launcher
+started is alive, nor for 5 s after it exits; an upload in flight is aborted (not counted) if a game
+starts; one bundle at a time, streamed. 200 / `duplicate` → deleted; 5xx or network → 1 min, 5 min,
+30 min, 2 h, 6 h, then every 6 h; 429 → `Retry-After`; 401 → until the next sign-in or 30 min;
+400 → `ENW_ROOT\telemetry\rejected\`, never retried; 413 → rebuilt once without dumps, then dropped.
+Outbox `ENW_ROOT\telemetry\outbox\`, at most 30 days / 2 GB, oldest first. First automatic upload
+ever: one toast, *Logs sent*. `manifest.wer.local_dumps`: `hklm` (B's PC: the global HKLM key with
+default values, dumps in `%LOCALAPPDATA%\CrashDumps`), `hkcu`, `hkcu-ours` (the launcher made
+`HKCU\...\LocalDumps\CoDWaW.exe` → `ENW_ROOT\crashes\dumps`, minidump, 10; only when nothing else
+covered the exe; per exe name, so it also covers Steam-launched vanilla WaW for that Windows user),
+or `off`.
