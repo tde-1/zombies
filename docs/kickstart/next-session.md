@@ -80,6 +80,18 @@ Open-bug 16's `monkeytoy 1` point is moot for players now: nobody reaches the st
 17. Also unproven from tonight, lower: the Esc menu by B's own hand and on the box through the site (`esc-menu.md` §8); the 59 New maps with a client (19 have ≥110 MB zones; `dedi.md` §20.4); a real launcher Play against the join fix on the box (`client.md` §11b); the pre-launch mod file check through a signed-in launcher (`mod-compat.md` §9); grenade classname `grenade` on T4 (`replay.md` §8.6); four players in one game; round 2.
 18. **fear_mc_2 zombies invisible (AA4/spec/glow on) or garbled (off)** (B, 0.2.24, 12:49 and 13:15–13:21 UK): broken skinning on the client; B always had AA4/spec/glow on (the "settings changed at 01:45" theory in `mod-compat.md` §10 is withdrawn, §10.1). Not new in the DLL on the evidence: the 00:53 stretched Colt was the same class of bug; `r_multiGpu 1` has been pinned by the launcher since 09-22 04:13. Ruled out: map files, asset errors, write-through, DLL writes into entities, model-set mismatch. Local A/B ready: `tools/dev/z1-ab.ps1` (§10.3) — V0 must reproduce first. B's toggles (r_multiGpu, Discord overlay Off) are the fastest answer.
 
+19. **Lane C1 (2026-09-23 ~14:30, branch `worktree-agent-afa2e08ce5b4d56e3`, not shipped)**: B's
+    13:20 asks. (a) **A game started PAUSED under the map's blurred menu** — root cause in B's logs:
+    fear_mc_2's own start menu holds keyCatchers 0x10 from the load and the overlay's pause rule
+    read any 0x10 after 2 s in a map as the Esc menu → `enw_ui paused` at exactly +2.0 s → the
+    server froze the game. Fixed (`lockdown::start_menu`: never a pause, closed 1.5 s in, box games;
+    `ENW_MAP_START_MENU=keep`). (b) The ENW console: `/quit` (slash optional), `disconnect`,
+    `restart`, `apply`, `bind`/`unbind`/`binds`, `help <name>`, `list`, every setting by short name
+    and aliases, Tab completion, terse replies. (c) Every setting in every game, Verified included;
+    only max fps is locked there; Discord switches in game (needs a launcher release for the
+    read-back). Unit tests only (`lockdown_test` 196/0, `settings_model_test` 65/0); **the in-game
+    proof recipe is `esc-menu.md` §11.6** and needs the lock with B away. `esc-menu.md` §11.
+
 ## Decisions only B can make (`questions.md`, "Open at handoff")
 
 1. **Q-ip-1** — the name: keep ENW Zombies (recommended) or change before public. `ip-posture.md` §3.
