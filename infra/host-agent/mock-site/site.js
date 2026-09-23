@@ -109,6 +109,28 @@ const server = http.createServer(async (req, res) => {
     const b = box(req)
     if (!b) return json(res, 401, { error: 'bad or missing x-match-secret' })
 
+    // A log bundle (docs/kickstart/telemetry.md §3). The real site reads, flags and stores
+    // it; this one counts the bytes, checks the gzip magic, de-duplicates on the bundle id
+    // and answers the contract's 200, so an agent run against the mock never fills its
+    // outbox. `--telemetry-status 413` (or 400/429/500) makes it answer that instead.
+    if (p === '/api/gs/telemetry' && req.method === 'POST') {
+      let n = 0
+      let head = null
+      req.on('data', (d) => { if (!head) head = d.subarray(0, 2); n += d.length })
+      req.on('end', () => {
+        const forced = Number(a['telemetry-status'] || 0)
+        if (forced) return json(res, forced, { ok: false, error: `forced ${forced}` })
+        if (!head || head[0] !== 0x1f || head[1] !== 0x8b) return json(res, 400, { ok: false, error: 'not a gzip' })
+        const bid = String(req.headers['x-enw-bundle-id'] || '')
+        state.telemetry = state.telemetry || new Map()
+        const duplicate = state.telemetry.has(bid)
+        state.telemetry.set(bid, { box: b.name, kind: req.headers['x-enw-bundle-kind'], reason: req.headers['x-enw-bundle-reason'], bytes: n, at: Date.now() })
+        log.info(`TELEMETRY ${b.name} ${req.headers['x-enw-bundle-kind']}/${req.headers['x-enw-bundle-reason']} ${bid.slice(0, 8)} ${n} B${duplicate ? ' (duplicate)' : ''}`)
+        json(res, 200, { ok: true, id: bid.slice(0, 12), duplicate, severity: 3, flags: [] })
+      })
+      return
+    }
+
     if (p === '/api/gs/assignment' && req.method === 'GET') {
       const asg = state.assignments.get(b.name)
       if (!asg) return json(res, 200, { status: 'idle', nonce: 'idle' })
@@ -280,6 +302,7 @@ const server = http.createServer(async (req, res) => {
       assignments: Object.fromEntries(state.assignments),
       games: state.games,
       chat: state.chat.slice(-50),
+      telemetry: [...(state.telemetry || new Map()).entries()].map(([id, t]) => ({ id, ...t })),
       invite_key: siteKey.keyId,
     })
   }

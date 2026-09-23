@@ -343,7 +343,7 @@ function preparingFor(a) {
   if (!p || typeof p !== 'object') return null
   const n = (x) => (Number.isFinite(Number(x)) ? Math.max(0, Number(x)) : 0)
   const out = { phase: String(p.phase || 'downloading').slice(0, 20), bytes_done: n(p.bytes_done), bytes_total: n(p.bytes_total), percent: Math.min(100, n(p.percent)) }
-  // `queued` (host.md §15): the box has the lease and is waiting to start its game - one game
+  // `queued` (host.md §16): the box has the lease and is waiting to start its game - one game
   // boots at a time, a player's first - or waiting for memory. `ahead` is how many boots go
   // first; the launcher says so instead of a silent "Reserving server" (B cancelled at 30 s).
   if (out.phase === 'queued') {

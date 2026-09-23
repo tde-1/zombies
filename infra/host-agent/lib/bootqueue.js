@@ -4,7 +4,7 @@
 // ONE GAME BOOTS AT A TIME (vps.md §15): `--boot 4` in one tick got one instance to a loaded
 // map; started one after another, each waited on, they came up. Until 2026-09-23 that rule
 // was a promise chain in `host.js boot()`, and it had three faults, all of which showed in
-// the 12:12-12:15 UTC incident (host.md §15):
+// the 12:12-12:15 UTC incident (host.md §16):
 //
 //   1. A queued boot could not be cancelled. Retiring its lease removed the instance from
 //      the manager, but the link in the chain still ran `inst.start()` when its turn came:

@@ -306,7 +306,7 @@ export class Instance extends EventEmitter {
   }
 
   start() {
-    // A REMOVED INSTANCE NEVER STARTS (host.md §15). The manager has forgotten it — its port
+    // A REMOVED INSTANCE NEVER STARTS (host.md §16). The manager has forgotten it — its port
     // and slot may already be someone else's — so a process started now is an orphan: the
     // 2026-09-23 12:13 incident was exactly this, a queued boot whose lease had been retired
     // starting 50 s later and saying `hello` to a host that no longer knew it.

@@ -1060,8 +1060,8 @@ t('replay-contact: a game where the zombies never came near is not a sighting', 
   ], { near: 150 })
   eq([met.seconds, met.minDist, met.nearSamples, met.firstNearS, met.kills, met.downs, met.met], [28, 30, 2, 27, 2, 1, true])
 })
-// ---- the boot queue, the RAM guard, the returning player (host.md §15) ---------------------
-console.log('\n== boot queue / RAM guard / returning player (host.md §15) ==')
+// ---- the boot queue, the RAM guard, the returning player (host.md §16) ---------------------
+console.log('\n== boot queue / RAM guard / returning player (host.md §16) ==')
 async function at(name, fn) {
   try { await fn(); pass++; results.push(['ok', name]); console.log(`\x1b[32m ok  \x1b[0m ${name}`) }
   catch (e) { fail++; results.push(['FAIL', name, e.message]); console.log(`\x1b[31mFAIL \x1b[0m ${name}\n        ${e.message}`) }

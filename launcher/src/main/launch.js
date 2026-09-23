@@ -20,7 +20,7 @@ import { P, ensureDirs, isInside, protectedRoots, dirOfModule, unpacked } from '
 import { MOD_NAME } from './setup.js'
 import * as lock from './gamelock.js'
 import { listDisplays, pickDisplay } from './display.js'
-import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, usePlayerProfile, PROFILE, FPS_CAP } from './gamecfg.js'
+import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, migrateMultiGpu, usePlayerProfile, PROFILE, FPS_CAP } from './gamecfg.js'
 
 // The DLL's fps_guard (client-dll/components/fps_guard.cpp) holds com_maxfps to 20..this
 // for the whole game, not just at launch, and reports it to the server for the Verified
@@ -408,6 +408,11 @@ export class GameLaunch extends EventEmitter {
         // bind sitting in the engine's own `$$$` profile.
         const ads = migrateAdsBind({ homeDir, profile: o.profile || PROFILE, log: (m) => this.note(m) })
         if (ads.ran && !ads.changed.length) this.note(`aim down sights: the bind is not the stock toggle one, so it was left alone (profile ${ads.profile})`)
+        // One-time too: r_multiGpu 1 was the ENW default until 2026-09-23 and breaks
+        // skinned models on a single GPU (mod-compat.md §10.4). Before the catch-up
+        // read-back below, which must not see the repair as an in-game change.
+        const mgpu = migrateMultiGpu({ homeDir, profile: o.profile || PROFILE, log: (m) => this.note(m) })
+        if (mgpu.ran && !mgpu.changed.length) this.note(`r_multiGpu: no config carried the old default 1, nothing to repair (profile ${mgpu.profile})`)
         // The account's settings from the site's Settings page (WaW's Options menus),
         // merged into the config.cfg the engine reads on EVERY launch, so the in-game
         // menu shows them too. wawcfg.js says why this is not seed-once.

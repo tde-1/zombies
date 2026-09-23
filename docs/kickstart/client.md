@@ -1361,7 +1361,7 @@ one-minute check).
 | Graphics | Anti-Aliasing | `r_aaSamples` (via `ui_r_aasamples`) | Off=1, 2x=2, 4x=4 | recommended → `reset` | `waw` |
 | Graphics | Brightness | `r_gamma` | 0.5–3 | 1 | `waw`; tested |
 | Graphics | Sync Every Frame | `r_vsync` (via `ui_r_vsync`) | 0/1 | 0 (configure.cfg) | existing `vsync`; tested |
-| Graphics | Optimize for Dual Video Cards | `r_multiGpu` | 0/1 | 0 (ENW baseline 1) | `waw` |
+| Graphics | Optimize for Dual Video Cards | `r_multiGpu` | 0/1 | 0 (ENW baseline 0 since 2026-09-23; was 1 — broke skinning, `mod-compat.md` §10.4) | `waw` |
 | Graphics | Shadows | `sm_enable` | 0/1 | recommended → `reset` (ENW 1) | `waw`; tested (reset) |
 | Graphics | Specular Map | `r_specular` | 0/1 | recommended → `reset` | `waw` |
 | Graphics | Ocean Simulation | `r_gfxopt_water_simulation` | 0/1 | 1 | `waw` |
@@ -1786,3 +1786,90 @@ harness kill. DLL `build/overlayguard/enw_t4.dll` at `5e15d75`, sha256
 `9acc16d9e4fb21cf916be73e2d75c6c6cee0e669cd77e0c02b2b070670092fa9` (not published). Not proven: the
 chat line on screen, an ALLOWED decision in a game, a real Discord attach; no margin is kept for the
 game after an allow. Detail: `chat-overlay.md` §13.6.
+
+
+## 12. 2026-09-23 ~13:15 — `session-<pid>.json`: one small file per session for the launcher (T1 telemetry, `components/session_record.cpp`)
+
+The launcher can flag a session (crash / hang / error / quit) without parsing a 50 MB log. Under the
+T1 decision (nothing new in the frame path, logging unchanged, only what is cheap), the component has
+**no frame subscriber and no hook**: other components fill a few plain globals where the number is
+already computed, and the file is written at four moments that are already rare.
+
+**Where:** beside `enw-<pid>.log`, i.e. the directory of `log::file_path()` (`ENW_LOGDIR`, which the
+launcher sets to `%LOCALAPPDATA%\ENWZombies\logs`; else beside the DLL, as the logger). Client
+processes only. Off: `ENW_SESSION_RECORD=0`.
+
+| When | Who writes | `exit` |
+|---|---|---|
+| startup, once (`post_load`, loader thread, before the SteamStub wait) | `session_record.cpp` | `unknown` — a hard kill leaves this |
+| clean shutdown: `pre_destroy`, i.e. `DLL_PROCESS_DETACH` from `ExitProcess` (`quit`, our Esc menu's Exit, the lockdown's quit, Alt+F4) | `session_record.cpp` | `quit`, or `error` when the session ended on an engine error (below) |
+| the unhandled-exception filter, **first statement, before the logger line and before chaining to the engine's filter** | `overlay_guard.cpp` `on_unhandled` → `write_crash` | `crash` + `exception` |
+| after the hang minidump (or its failure) | `hang_watchdog.cpp` `write_dump` → `write_hang` | `hang` + `hang_dump` (null if the dump failed) |
+
+A record is only rewritten with an equal or worse exit (`unknown < quit < error < hang < crash`); a
+crash record is never rewritten (so the engine's filter → `Sys_Error` → the window closed later does
+not turn `crash` into `quit`). A hang that recovers and then quits stays `hang` with a fresh
+`ended_at` and frame count.
+
+**The shape** (one line, pure ASCII, `\n`-terminated; real output of the built DLL under
+`loadtest.exe`, `ENW_CLIENT_CONNECT=fear_mc_2`, after `FreeLibrary`):
+
+```json
+{"v":1,"pid":2616,"build":"enw_t4 Sep 23 2026 13:13:23","started_at":"2026-09-23T12:13:53.347Z","ended_at":"2026-09-23T12:13:57.347Z","exit":"quit","exception":null,"last_error":null,"last_map":"fear_mc_2","frames":0,"largest_free_block_mb":null,"hang_dump":null,"discord_hook_refused":0}
+```
+
+and a crash (the unit test's rendering of B's 03:42 crash):
+`"exit":"crash","exception":{"code":"0xC0000005","address":"0x6A21F7FD","module":"DiscordHook.dll","offset":"0x1F7FD"}`.
+
+| Field | Source (already computed there) |
+|---|---|
+| `build` | `"enw_t4 " __DATE__ " " __TIME__` — the same compile stamp `dllmain.cpp` logs as "enw_t4 build"; **there is no git sha in the DLL**. The launcher knows the sha256 of the DLL it installed |
+| `started_at`, `ended_at` | UTC ISO 8601 with ms; `ended_at` null in the startup record; for `hang` it is when the hang was recorded |
+| `last_map` | `ENW_CLIENT_CONNECT` (the launcher's join map; one map per process since the lockdown quits at the menu). Null for a hand launch |
+| `frames` | `frame::count()`, the core's interlocked counter; no per-frame work added |
+| `largest_free_block_mb` | overlay_guard's measurements: at engine start, at every DiscordHook load decision, once a minute. One decimal. Null if overlay_guard is off |
+| `discord_hook_refused` | overlay_guard's refusal count |
+| `last_error` | **`com_errorMessage` as `menu_lockdown` read it when the game fell back to the menu** (its end screen), or "Lost the connection to the server (...)" for its silent-server rule. `exit` becomes `error` unless the text is empty or the server closing the game (`*DISCONNECT*`, how every box game ends) — `session_fmt::is_error_end` |
+| `exception` | `code`, `address`, `module` (the image's PE export-directory name, or the exe's file name), `offset`; module/offset null outside any image |
+
+**Deviation, on purpose: `last_error` is not the "=== Com_Error TRAPPED ===" text.** That trap is
+`server/components/dedicated/error_trap.cpp` (compiled into the client DLL too, but the dedi lane's
+file), and a Com_Error/Sys_Error hook of our own would break rule 9. So `Sys_Error` text (which parks
+the main thread; the hang watchdog then records `hang`) and Com_Errors that do not end the session are
+not in the record — they stay in `enw-<pid>.log`. If wanted later: one call from `error_trap.cpp`'s
+`log_error` into `session_record::note_error` (dedi lane's decision).
+
+**The crash path.** `write_crash` takes no lock (a try-once `InterlockedExchange`), allocates nothing,
+does not use `snprintf` (the CRT's per-thread data and locale may allocate on an engine thread that
+never used the CRT) — the formatter is plain loops into a static 16 KB buffer
+(`session_record_format.hpp`) — and names the module with `VirtualQuery` + reading the image's PE
+headers under `__try`, not `GetModuleHandleEx`/`GetModuleFileName` (both take the loader lock, which
+the crashing thread may hold). Then one `CreateFileA` / `WriteFile` / `CloseHandle`. The existing
+`ENW_ERROR` line after it still takes the logger's lock, as before; the record is on disk first. The
+only shared state it reads are fixed-size char buffers whose last byte is never written, so a torn
+read is still NUL-bounded, and every string is read at most 1024 bytes. Known window: a non-crash
+write in progress on another thread at the instant of the crash could interleave in the file (both
+open with `CREATE_ALWAYS`); vanishingly rare, and the launcher treats unparseable as unknown.
+
+**For the launcher.** Read `<logs>\session-<pid>.json` **after the process has exited** (the pid is the
+game process's). It is complete whenever it parses; it is rewritten whole each time (never appended).
+`exit: "unknown"` after exit = killed hard (TerminateProcess, power loss) or a crash with overlay_guard
+off (`ENW_OVERLAY_GUARD=0`) or a crash whose filter never ran (e.g. a stack overflow that killed the
+thread, or WER taking it first). If it does not parse, treat it as `unknown`.
+
+**Proof.** Unit test `client-dll/tests/session_record_test.cpp` **44/0** (x86 `cl /W4`, no warnings):
+the startup record byte for byte, empty → null, the exception object with and without a module, path
+backslashes, quotes / backslash / `\n\r\t` / control bytes / Windows-1252 bytes (`é`) in error
+text, the 1024-byte cap, overflow returns 0 (never a truncated record), the worst case of the real
+globals fits 16 KB, every record parses (a small validator in the test), `iso_utc`, `is_error_end`.
+`overlay_console_test.cpp` still **60/0**. One DLL build, `build/t1-session/enw_t4.dll` (worktree
+`agent-ac8b6c03e75664e66`, HEAD `c8f1505` + these uncommitted files; `git status` showed no other
+lane's `.cpp` under `client-dll/`, `server/`, `shared/`), sha256
+**`233948549fa75bf38163e18bec8ac1a997cae2059493a10fe38e60e1468d0c10`** — not staged, not published.
+`loadtest.exe` (no game, no lock) loaded it: startup record written, rewritten `quit` at
+`FreeLibrary` (the JSON above).
+
+**Not proven:** a real crash writing its record (only the formatter is tested; `write_crash` needs the
+engine, since the filter is installed at `post_init`); a real hang record; that the engine's `quit`
+reaches `DLL_PROCESS_DETACH` in the game (if it `TerminateProcess`es, a quit reads `unknown`); the
+`error` classification against real box endings (which `com_errorMessage` a normal game-over leaves).

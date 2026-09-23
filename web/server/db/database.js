@@ -992,6 +992,56 @@ function migrate() {
     if (n) console.log(`[db] marked ${n} seeded demo game${n === 1 ? '' : 's'}`)
   }
 
+  // ── Telemetry (docs/kickstart/telemetry.md, 2026-09-23) ─────────────────────────────
+  // One row per log bundle a launcher or a box sent, and per thing the site itself saw go
+  // wrong. `public_id` is the random 128-bit id in the bundle's bucket key — the bucket is
+  // public-read with listing refused, so the key is the only thing between a URL and the
+  // logs, and it is never derived from anything guessable. `bundle_id` is the SENDER's id,
+  // for de-duplicating a retried upload. `hits` holds, per flag, its count, a one-line
+  // detail and the log lines around it, so the admin sheet and the AI brief never need
+  // the bundle itself. Severity 1..4 = P1 crash/hang, P2 error, P3 warning, P4 info.
+  db.exec(`CREATE TABLE IF NOT EXISTS incidents (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id       TEXT UNIQUE NOT NULL,
+    bundle_id       TEXT,
+    source          TEXT NOT NULL,              -- 'launcher' | 'box' | 'site'
+    kind            TEXT NOT NULL,              -- client | launcher | host | journal | site
+    reason          TEXT,
+    steam_id        TEXT,
+    box             TEXT,
+    at              INTEGER NOT NULL,           -- when it happened (the bundle's created_at)
+    received_at     INTEGER NOT NULL,
+    launcher_version TEXT,
+    dll_sha         TEXT,
+    map_key         TEXT,
+    match_id        TEXT,
+    instance        TEXT,
+    severity        INTEGER NOT NULL DEFAULT 4,
+    flags           TEXT NOT NULL DEFAULT '[]',
+    hits            TEXT,
+    summary         TEXT,
+    manifest        TEXT,
+    files           TEXT,
+    size            INTEGER DEFAULT 0,
+    bucket_key      TEXT,
+    local_path      TEXT,
+    upload_state    TEXT DEFAULT 'pending',     -- pending | uploaded | local | failed | none
+    upload_error    TEXT,
+    fingerprint     TEXT,                       -- site incidents: coalesce the same error
+    count           INTEGER DEFAULT 1,
+    last_at         INTEGER,
+    reviewed        INTEGER DEFAULT 0,
+    reviewed_by     TEXT,
+    reviewed_at     INTEGER,
+    bug             TEXT,
+    note            TEXT
+  );
+  CREATE INDEX IF NOT EXISTS incidents_at ON incidents(at);
+  CREATE INDEX IF NOT EXISTS incidents_sev ON incidents(severity, reviewed);
+  CREATE INDEX IF NOT EXISTS incidents_bundle ON incidents(bundle_id);
+  CREATE INDEX IF NOT EXISTS incidents_fp ON incidents(fingerprint, last_at);
+  CREATE INDEX IF NOT EXISTS incidents_upload ON incidents(upload_state);`)
+
   return db
 }
 

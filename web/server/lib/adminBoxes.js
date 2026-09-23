@@ -111,7 +111,7 @@ function detail() {
       key: b.key,
       capacity: { max: cap.max, reserve: cap.reserve, protocol: cap.protocol, configured_max: b.max_instances, configured_reserve: b.reserve },
       host: status.host || null,
-      // The host agent's RAM guard (host.md §15): MemAvailable, and the floor below which it
+      // The host agent's RAM guard (host.md §16): MemAvailable, and the floor below which it
       // refuses agent boots. Null from an agent older than the guard, or a Windows box.
       mem: status.mem && Number.isFinite(Number(status.mem.available_bytes)) ? {
         available_bytes: Number(status.mem.available_bytes),

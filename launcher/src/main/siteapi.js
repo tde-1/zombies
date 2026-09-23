@@ -12,6 +12,7 @@
 // process has its own cookie jar, so `cookieProvider` is injected by main.js from the
 // Electron session. Without it (the CLIs) the client is simply signed out and says so.
 import { EventEmitter } from 'node:events'
+import fs from 'node:fs'
 
 export const PROTOCOL = 0
 
@@ -131,6 +132,41 @@ export class SiteApi extends EventEmitter {
       const r = await this.req('/api/launcher/report', { method: 'POST', body: { kind, message, context }, timeoutMs: 4000 })
       return r.ok
     } catch { return false }
+  }
+
+  // A log bundle (docs/kickstart/telemetry.md §3, `POST /api/telemetry/upload`): the raw
+  // .tar.gz as the body, streamed from disk, with the same cookie and beta password as
+  // req(). The launcher holds no bucket keys; the site stores it. Timeout grows with the
+  // size (100 KB/s floor, never under 60 s). Resolves { status, data, text, retryAfter };
+  // rejects only on a network error or an abort (the caller's `signal`).
+  async uploadBundle(filePath, { bundleId, kind, reason, signal = null } = {}) {
+    const size = fs.statSync(filePath).size
+    const headers = {
+      accept: 'application/json',
+      'content-type': 'application/gzip',
+      'content-length': String(size),
+      'x-enw-launcher': this.appVersion,
+      'x-enw-bundle-id': String(bundleId || ''),
+      'x-enw-bundle-kind': String(kind || ''),
+      'x-enw-bundle-reason': String(reason || ''),
+    }
+    const cookie = this.cookieProvider ? await this.cookieProvider(this.baseUrl).catch(() => null) : null
+    if (cookie) headers.cookie = cookie
+    if (this.password) headers.authorization = 'Basic ' + Buffer.from(`enw:${this.password}`).toString('base64')
+    const timeoutMs = Math.max(60_000, Math.ceil(size / (100 * 1024)) * 1000)
+    const signals = [AbortSignal.timeout(timeoutMs), ...(signal ? [signal] : [])]
+    const res = await fetch(`${this.baseUrl}/api/telemetry/upload`, {
+      method: 'POST',
+      headers,
+      body: fs.createReadStream(filePath),
+      duplex: 'half',
+      redirect: 'manual',
+      signal: AbortSignal.any(signals),
+    })
+    const text = await res.text().catch(() => '')
+    let data = null
+    try { data = JSON.parse(text) } catch {}
+    return { status: res.status, data, text: text.slice(0, 2000), retryAfter: res.headers.get('retry-after') }
   }
 
   async getSettings() {

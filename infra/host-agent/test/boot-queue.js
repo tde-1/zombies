@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// THE 2026-09-23 12:12-12:21 UTC INCIDENTS, REPLAYED AGAINST A REAL HOST AGENT (host.md §15).
+// THE 2026-09-23 12:12-12:21 UTC INCIDENTS, REPLAYED AGAINST A REAL HOST AGENT (host.md §16).
 //
 // A real host agent with simulated games (no WaW), `--gate-sims` so sims go through the boot
 // queue like real games, a fake /proc/meminfo the test writes, and a stand-in site speaking

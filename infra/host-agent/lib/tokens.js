@@ -54,7 +54,7 @@ export function check(publicKey, token, { matchId = null, steamid = null, now = 
 }
 
 /**
- * THE RETURNING PLAYER (host.md §15.4). A client connected to a game stays connected
+ * THE RETURNING PLAYER (host.md §16.4). A client connected to a game stays connected
  * through the `map_restart` that ends it, and re-announces itself to the warm instance
  * with the token it joined with: bound to the PREVIOUS match, used once already, and
  * possibly past its five minutes. `check()` rightly refuses that (`wrong_match`, then

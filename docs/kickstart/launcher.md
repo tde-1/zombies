@@ -694,7 +694,7 @@ mode: borderless at 2560x1440   (windowMode player)
   +set m_filter 0  +set cl_mouseAccel 0
   +set r_texFilterAnisoMin 16  +set r_texFilterAnisoMax 16
   +set r_picmip 0  +set r_picmip_bump 0  +set r_picmip_spec 0
-  +set r_multiGpu 1  +set sm_enable 1
+  +set r_multiGpu 0  +set sm_enable 1          (1 until 2026-09-23: mod-compat.md §10.4)
   +set cl_maxpackets 100  +set snaps 30  +set rate 25000
   +set snd_volume 1
   +map <map>   /   +connect <host>
@@ -734,7 +734,7 @@ harmless and it is the switch the DLL reads.
 | `cl_mouseAccel` | `0` | PCGW's catch: the menu's Smooth Mouse toggle only writes `m_filter`; acceleration stays on unless this is set too. | PCGW |
 | `r_texFilterAnisoMin` / `Max` | `16` | Stock max is 4x. Free on any modern GPU. | PCGW (anisotropic filtering) |
 | `r_picmip` / `_bump` / `_spec` | `0` | Full-resolution textures, pinned so a "Set Optimal Settings?" pass cannot leave them downscaled. | PCGW |
-| `r_multiGpu` | `1` | PCGW's named fix for *"stuttering on modern systems despite a locked frame rate"* — the menu calls it Dual Video Cards. | PCGW (stuttering) |
+| `r_multiGpu` | `0` | **Was `1` until 2026-09-23** (PCGW's "stuttering" fix). On a single GPU it breaks skinned models (invisible/garbled zombies, the stretched Colt) and stutters — B confirmed 13:35; `mod-compat.md` §10.4. Still a player toggle. | PCGW (stuttering), reversed |
 | `sm_enable` | `1` | Shadow maps, pinned at the stock value. | PCGW |
 | `cl_maxpackets` | `100` | Stock 30 is a dial-up default. Netcode only; the server clamps what it will not take. | Plutonium T4 docs |
 | `snaps` | `30` | Asks for 30 snapshots/s instead of 20. The server decides what it sends. | Plutonium T4 docs |
@@ -2770,3 +2770,192 @@ every installed launcher at its next start, with no release.
   started, because B's launcher was running on this desktop.
 - **`match.round` on a live box game.** The code reads the same in-memory frame as `/live`. It has
   not been watched during a real game.
+
+## 2026-09-23 — telemetry: what the launcher uploads
+
+Lane T1, launcher half. The contract (bundle format, the route, its answers) is
+[`telemetry.md`](telemetry.md); §6 there is the launcher's summary. Code: `src/main/telemetry/`
+(`index.js` the queue, `collect.js` what goes in, `outbox.js`, `probe.js`, `wer.js`; `scrub.cjs`,
+`tar.cjs`, `bundle.cjs` are byte-identical copies of `shared/telemetry/`, never edited here),
+`SiteApi.uploadBundle` in `siteapi.js`, wiring in `main.js`, the button in `shell.js`. Tests:
+`test/telemetry.js` (20, in `npm test`).
+
+B: *"Any time the client crashes, any time a user has an issue with the launcher or the game, I want
+as much logging as possible ... Crash logs always automatically upload, including mine ... Don't
+sacrifice performance. Store more logs rather than less."*
+
+### What uploads, when
+
+| When | Bundle | Files |
+|---|---|---|
+| **Every game exit** (quit, crash, hang, kill; the flow's `ended`, any phase, when a game process was spawned) | `client` / `game_crash` \| `game_hang` \| `game_exit` | `launcher.log` (last 4 MB); the launch's `<stamp>-stdout.log` / `-stderr.log` if not empty; per game pid (a Steam restart's adopted pid too): `enw-<pid>.log`, `console-<pid>.log`, `console-<pid>.old.log`, `session-<pid>.json` (also copied into `manifest.session`), `hang-<pid>-*.dmp`, WER's `CoDWaW.exe.<pid>.dmp` from `%LOCALAPPDATA%\CrashDumps`, `<ENW>\crashes\dumps` or WER's own folder (only a dump no older than the session); `state\settings.json` (parsed, secrets scrubbed by key); the map's `.enw-installed.json` |
+| A launcher error that `reportCrash` handles, `uncaughtException`, `unhandledRejection` | `launcher` / `launcher_error` \| `uncaught` | `launcher.log` tail, `error.txt` (message + stack), `settings.json`, `config.json`, `detection.json` (scrubbed by key), the last game session's `enw`/`console`/`session` files, the last two non-empty game stdout/stderr files. **At most one per error message per 10 min.** A `game_crash` report does not make one (the game bundle covers it) |
+| Launcher start, once per report | `launcher` / `backlog` | every `crashes\*.json` newer than the last backlog (`backlog_mark` in `state\telemetry.json`), up to 100; the files are left where they are |
+| Settings → **Send logs now** | `launcher` / `manual` | as above plus the last **3** game sessions, the last six stdout/stderr files, the event log, and at most **two** dumps (hang or WER) newer than 24 h |
+
+Every manifest carries `launcher_version`, `dll_sha` (sha256 of `<ENW>\game\binkw32.dll`, the client
+actually installed, cached by size+mtime), `steam_id` when signed in, `machine` (`os`, `cpu`, `cores`,
+`ram_gb`, `ram_free_gb`, `gpus[]` from one `Get-CimInstance Win32_VideoController` per launcher run,
+10 s cap), `wer`. A game bundle adds `map`, `match_id`, `mode`, `pid`, `exit_code`, `exit_reason`
+(`session.exit_reason`, else the signal, else the flow's detail), `duration_ms`, `launch_line`
+(scrubbed; the token pipe name goes), `dll_version` (`session.build`), and `events`: Application-log
+events 1000/1001/1002 that name `CoDWaW.exe` in the hour before the exit (one `Get-WinEvent` call, 15 s
+cap, `[]` on any failure). **Never bundled:** `enw_auth.cfg` (not listed at all; the bundler's
+forbidden list refuses it too). Literal secrets handed to the scrubber: the beta password, the
+session cookie values, the last in-game chat pass. Dumps are not scrubbed (process memory; accepted
+in `telemetry.md`).
+
+**Crash or exit.** The launcher cannot tell a quit from a crash by itself (`esc-menu.md` §5). Order:
+a WER/our dump for the pid → `game_crash`; a hang-watchdog dump (or a session exit reason saying hang)
+→ `game_hang`; a session exit reason saying crash/exception/fatal, the phase `failed`, or an exit code
+other than 0 that the launcher did not cause (End game / Cancel / closing) → `game_crash`; else
+`game_exit`. Under SteamStub the spawned process may not be the one that runs the game (the nanny
+adopts the relaunched pid), so `exit_code` can be the stub's; the dump check is the reliable signal.
+
+### Where on disk
+
+Everything under `ENW_ROOT`, through `assertWritable`:
+
+| Path | |
+|---|---|
+| `telemetry\outbox\<bundle_id>.json` | the sidecar: `{ bundle_id, kind, reason, created_at, attempts, next_at, last_error, built, job, wait_signin, no_binary }`. Written BEFORE the bundle is built, so a game that ends seconds before the launcher quits is bundled at the next start |
+| `telemetry\outbox\<bundle_id>.tar.gz` | the bundle |
+| `telemetry\rejected\` | bundles the site answered 400 to, with their sidecar; never retried |
+| `state\telemetry.json` | `last_upload_at`, `last_bundle_id`, `first_auto_sent`, `backlog_mark` |
+| `crashes\dumps\` | WER's dump folder, only if the launcher made the HKCU key (below) |
+
+### The queue
+
+* **Nothing while a game is running.** "Running" is `state.flow || followGate.gameAlive()` (any pid
+  this launcher started or adopted). Bundles are built and sent only after the game has gone
+  **+5 s**; the queue checks before every step, logs `paused: a game is running` once, and polls every
+  15 s. An upload in flight is aborted if a game starts (checked every 2 s) and goes again later
+  without counting as a failure. Send logs now is the one exception: the player pressed it.
+* **One at a time**: builds and uploads are serialised through one chain, streamed from disk.
+* **Answers:** 200 (incl. `duplicate: true`) → both files deleted, `last_upload_at` written;
+  5xx / network → backoff **1 min, 5 min, 30 min, 2 h, 6 h, then every 6 h**; 429 → `Retry-After`
+  (seconds or a date; at least 60 s; not counted); 401 → waits for the next sign-in (the launcher's
+  own sign-in, or a site hello that names a player), else retried every 30 min; 400 → `rejected\`;
+  413 → rebuilt **once** without dumps (same `bundle_id`), a second 413 drops it; no site → 5 min,
+  not counted. A bundle that fails to build three times is dropped.
+* **Retention:** at most **30 days** and **2 GB** (outbox + rejected); oldest deleted first; each
+  deletion is a log line.
+* Every step is a `telemetry` line in `launcher.log`.
+
+**Upload:** `SiteApi.uploadBundle(file, { bundleId, kind, reason, signal })` → `POST
+/api/telemetry/upload`, body the raw file (`fs.createReadStream`, `duplex: 'half'`),
+`content-type: application/gzip`, `content-length`, `x-enw-bundle-id|kind|reason`, `x-enw-launcher`,
+the session cookie and the Basic beta password exactly like `req()`. Timeout = size at 100 KB/s, at
+least 60 s. **No bucket keys anywhere in the launcher** (a test greps for them).
+
+### WER LocalDumps
+
+`wer.js`, at start, never blocking: `reg query` of `HKLM` and `HKCU`
+`Software\Microsoft\Windows\Windows Error Reporting\LocalDumps` and `...\LocalDumps\CoDWaW.exe`. If
+anything covers CoDWaW.exe, nothing is written and the manifest says `wer.local_dumps` =
+`hklm` | `hkcu` | `hkcu-ours` and the folder. If nothing does, the launcher creates **one** key,
+`HKCU\...\LocalDumps\CoDWaW.exe` with `DumpFolder = <ENW_ROOT>\crashes\dumps`, `DumpCount = 10`,
+`DumpType = 1` (a minidump: a full dump is up to 2 GB per crash, over the site's 200 MB cap; a
+minidump is what every crash so far was diagnosed from). **HKLM is never written** (`regAdd`
+refuses any key that is not HKCU).
+
+**The key is per exe NAME, so it also covers CoDWaW.exe started from Steam (vanilla World at War) for
+this Windows user:** a vanilla crash also leaves a minidump in our `crashes\dumps` folder. We never
+touch the player's install, and those dumps leave the PC only in a Send logs now (dumps newer than
+24 h) or when their pid is a game this launcher started. Worth saying to a friend who asks.
+
+**On B's PC (read-only query, 2026-09-23):** `HKLM\...\LocalDumps` exists **with no values** of its
+own (the global key; some other app made it: EADesktop, EALauncher, ErrorReporter, filezilla,
+fzstorj and Resolve have sub-keys), no `CoDWaW.exe` sub-key, nothing in HKCU. So the defaults apply
+to every exe: `%LOCALAPPDATA%\CrashDumps`, 10 dumps, DumpType 1, and that is why the folder holds
+seven `CoDWaW.exe.<pid>.dmp` of 76–80 MB each (22–23 Sep). `wer.local_dumps` = `hklm`; the launcher
+writes nothing there. The event-log probe on the same PC returned 20 CoDWaW.exe events from the last
+24 h (543 ms): APPCRASH pairs (1000 + 1001) and two AppHangB1 (1001 + 1002, 01:21 and 02:44 UTC).
+The GPU probe took 276 ms.
+
+### Settings
+
+**Logs**, under *Where things are*: **Send logs now**, and one line: *Logs last sent 13:52* (a date
+when older than 20 h; *never*), plus *· 2 waiting* when the outbox is not empty. The press builds a
+`manual` bundle and uploads it at once; the line becomes the new time, or one short reason (*Sign in
+to send logs. Saved; sends after sign-in.* / *Could not reach the site. Saved; sends later.*). The
+**first successful automatic upload ever** shows the toast *Logs sent*, once (`first_auto_sent`);
+never again, and never for a manual send.
+
+### Tests
+
+`test/telemetry.js`, 20: the three `.cjs` copies byte-identical to `../shared/telemetry/`; a game
+bundle from a fake `ENW_ROOT` (a `setu enw_token "…"` line, an invite token, the beta password and the
+pipe name gone from every text file and the manifest; `enw_auth.cfg` absent; the fake `.dmp` byte for
+byte as binary; every manifest field); `classifyGame`; `noBinary`; a manual launcher bundle; the
+outbox against a local HTTP server (200 incl. duplicate, the cookie, Basic and `x-enw-bundle-*`
+headers and the exact body; 500/503 backoff; 429 Retry-After; 401 then sign-in; 400 → rejected; 413
+→ rebuild without dumps → drop; 30 days / 2 GB; one bundle per error per 10 min; backlog once);
+nothing built or sent while a game runs, the 5 s quiet, an upload aborted by a game start; Send logs
+now; WER detection and the HKCU-only write (fake registry); `main.js` wiring. `npm test`: run-all
+165 passed, 1 failed (the pre-existing *repairs the client DLL* test: a worktree has no staged
+client DLL; it stops the `&&` chain, so the rest were run one by one), waw-settings 19/0, modcompat
+6/0, discord-presence 22/0, telemetry 20/0.
+
+### Unproven
+
+* ~~**Against the real site route.**~~ Proven 2026-09-23 (later the same day): `web/test/telemetry.js`
+  drives this `SiteApi.uploadBundle` against the site's real `/api/telemetry/upload` (throwaway DB,
+  fake bucket): 200 with the crash flag, duplicate on a resend, 401 signed out, the bucket key
+  `logs/client/...`. Still nothing sent to port 3200 (the live site).
+* **In the real Electron app.** No launcher window was started and no game was launched; the wiring
+  is source-tested. That Electron's main-process `fetch` streams a file body with a `content-length`
+  exactly as Node 24 does in the test is unproven.
+* **The exit code of a real crash** as the launcher sees it under SteamStub (the stub vs the
+  relaunched pid). The dump check does not depend on it.
+* **`session-<pid>.json`**: its fields (`exit_reason`, `build`) are read loosely, because the DLL
+  side is being written at the same time.
+* **The HKCU LocalDumps key.** Microsoft documents LocalDumps under HKLM; WER honouring the HKCU copy
+  is widely reported but not measured here (B's PC is covered by HKLM, so the launcher writes
+  nothing on it).
+* **The toast** *Logs sent* and the Settings line have not been seen on screen.
+
+## 2026-09-23 — `r_multiGpu` is 0 for everyone, and the old 1 is repaired once (lane G1)
+
+B, 13:35: turning **dual video cards (`r_multiGpu`) OFF** fixed the invisible/garbled zombies on
+fear_mc_2 and most of the mouse stutter. The launcher had pinned `1` since `afc6276` (09-22 04:13)
+on PCGW's advice. Cause and mechanism: `mod-compat.md` §10.4.
+
+**Baseline.** `COMMUNITY_FIXES` pins `r_multiGpu 0` (command line and a fresh seed). It stays a
+player setting: a `waw.r_multiGpu` from the site or the in-game menu replaces the baseline value in
+place, as every other WaW-menu item does. `BASELINE_VERSION` is **not** bumped: a bump re-merges every
+baseline dvar over what the player has since changed in game.
+
+**One-time repair, three places, each with its own marker:**
+
+| where | what | marker | runs |
+|---|---|---|---|
+| `config.cfg` the engine reads (active profile under the LocalAppData redirect) + the fs_homepath copies | `seta r_multiGpu "1"` (any set verb, any casing, quoted or bare) → `"0"`; the account snapshot `.enw-account.json` moves with it so the read-back does not report the repair as an in-game change | `multigpu-off-2026-09-23` in `.enw-migrations.json` (shared with the ADS repair) | `gamecfg.migrateMultiGpu`, every player-mode launch, right after `migrateAdsBind` and before the catch-up read-back |
+| the launcher's saved settings (`state\settings.json`, `local` and every account) | `waw.r_multiGpu '1'` → `'0'`; `gameUpdatedAt` is not moved | `migrations[<id>]` + `migratedAt[<id>]` | `settings.migrate`, at launcher start |
+| the site's `users.settings_json` | the same, `game.waw` and a top-level `waw` | `site_migrations` row | `web/server/lib/settingsRepairs.js`, at server start, after a `VACUUM INTO` backup |
+
+Each logs `repair: r_multiGpu 1 -> 0 (old default)`. A `1` is treated as the old default because until
+today nobody's `1` could be told from ours (the launcher wrote it into every profile and the site's
+hint called it a stutter fix). Once the marker is written, a player who turns it on keeps it.
+
+**The race with the site copy.** The site repairs its copy only when it restarts (B's word), and the
+site pushes its copy into the launcher whenever its `updatedAt` is newer (`launcherBridge.js`
+`GameSettingsSync`). So `settings.set()` holds back a patch that carries a `gameUpdatedAt` from
+**before** this account's repair and says `r_multiGpu '1'` (`guardRepaired`). A patch with no stamp
+(the launcher's own Settings screen, the post-game read-back) or one stamped after the repair is the
+player's hand and is kept.
+
+**Tests.** `test/run-all.js` 169 passed (166 + three: the baseline and a player's `1` on the launch
+line; the config repair once-only, snapshot moved, a later in-game `1` read back as the player's,
+the shared marker file; the account repair, the stale-site-copy guard, a later choice kept).
+`test/waw-settings.js` 19/0 (the in-game schema `--check` included). Web: `npm test` 13 suites green,
+run-all 148 (one new: stored `1`s repaired once, backup first in `backup-<ISO>`, `updatedAt`
+untouched, a later `1` kept).
+
+**Ships in the next launcher** (not published by this lane): baseline 0, the config and settings
+repairs, the new hint. The in-game Settings tab's hint comes from `shared/settings/ingame-settings.json`,
+which the client DLL embeds, so it changes with the next client DLL build. The site half runs on the
+next site restart.
+
+**Unproven:** a real launch that performs the repair on B's PC (no game was launched), and a
+fear_mc_2 game on that launcher. The toggle itself is B's proof.

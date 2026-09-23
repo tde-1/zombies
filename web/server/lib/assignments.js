@@ -311,7 +311,7 @@ function ack(box, state, matchId, error = null) {
   }
   // `yielded`: the box retired an AGENT's game to make room for a real player's - it was
   // booting when the player's lease queued behind it, or the box was short of memory
-  // (host.md §15). The site half of rule 4, for a lease the box had already started. Only
+  // (host.md §16). The site half of rule 4, for a lease the box had already started. Only
   // an agent lease ends this way: a box can never yield a player's game.
   if (state === 'yielded') {
     if (!a.agent || !['leased', 'ready', 'live'].includes(a.state)) return

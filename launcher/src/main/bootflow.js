@@ -346,7 +346,7 @@ export class BootFlow extends EventEmitter {
           resolve({ play: p })
         }
       })
-      // SAY WHAT THE BOX IS DOING WHILE WE WAIT (host.md §15). The site passes the box's own
+      // SAY WHAT THE BOX IS DOING WHILE WE WAIT (host.md §16). The site passes the box's own
       // word through as `match.preparing`: a map pull, or `queued` - the box has the lease
       // and is waiting for the game booting ahead of it, or for memory. On 2026-09-23 a
       // silent "Reserving server" made B cancel twice at ~30 s behind a queued boot. The

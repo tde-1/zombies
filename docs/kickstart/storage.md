@@ -113,6 +113,14 @@ accepts them.
 
 ## 5. How the site uses them
 
+> **2026-09-23 (telemetry, [`telemetry.md`](telemetry.md)):** the site now also **writes** to the
+> bucket — log bundles under `logs/<kind>/<yyyy-mm-dd>/<steamid or box>/<128-bit id>.tar.gz` and
+> the nightly `logs/digest/<date>.json` — so it now reads the S3 **keys** from `infra\s3.env`
+> (through `tools/s3/lib.cjs`, as the publish tools do). The sentence below ("names only, never
+> the keys") is true only of the download redirects. Anonymous listing of the bucket is refused
+> (checked 2026-09-23: `GET /?list-type=2` → 403), which is what makes the random id in a log's
+> key its protection. `updates/` and `mods/` are untouched by it.
+
 `web/server/lib/bucket.js`. **Off unless `S3_BUCKET_FILES` / `S3_BUCKET_MAPS` are in the site's
 environment** (`infra\site.env`, loaded by `keepalive.ps1`). The site holds bucket **names**
 only, never the keys: the buckets are public, so "does the bucket have it" is an anonymous

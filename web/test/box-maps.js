@@ -175,7 +175,7 @@ async function main () {
     eq(db.prepare('SELECT state FROM assignments WHERE match_id=?').get(g).state, 'live')
   })
 
-  // ---- host.md §15: a queued boot, `yielded`, and the RAM figure ------------------------
+  // ---- host.md §16: a queued boot, `yielded`, and the RAM figure ------------------------
   const S2 = '76561198000000002'
   parties.create(S2, { mode: 'custom', mapKey: 'custom_rare', visibility: 'private' })
   parties.startReadyCheck(S2, { force: true })

@@ -57,6 +57,9 @@ contextBridge.exposeInMainWorld('enw', {
   getSettings: () => call('getSettings'),
   setSettings: (patch) => call('setSettings', patch),
   getDisplays: () => call('getDisplays'),
+  // Settings -> Logs (telemetry): { last_upload_at, outbox }, and Send logs now.
+  telemetryStatus: () => call('telemetryStatus'),
+  sendLogs: () => call('sendLogs'),
 
   // Playing.
   play: (opts) => call('play', opts),

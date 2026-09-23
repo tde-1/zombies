@@ -113,7 +113,7 @@ export class ZombiesSim extends EventEmitter {
     // to any match are `wrong_match`, which is the safe direction.
     this.matchId = opts.matchId || null
     this.noMatchEnd = !!opts.noMatchEnd            // model a server that never says it is idle
-    // THE REAL DLL ON A WARM INSTANCE (host.md §15.4, box journal 2026-09-23 12:17-12:19):
+    // THE REAL DLL ON A WARM INSTANCE (host.md §16.4, box journal 2026-09-23 12:17-12:19):
     // a client still connected when its game ended comes straight back into the restarted
     // map with its old token, and an `end` then reports a result for that session if
     // anybody connected since the last restart - round or no round. Off by default.

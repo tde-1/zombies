@@ -1,6 +1,6 @@
 // The RAM guard: may this box start one more game process right now?
 //
-// MEASURED 2026-09-23 12:13-12:15 UTC (host.md §15): three CoDWaW.exe on the 3.8 GB box,
+// MEASURED 2026-09-23 12:13-12:15 UTC (host.md §16): three CoDWaW.exe on the 3.8 GB box,
 // with Steam's browser holding ~2 GB, took MemAvailable to 4 MB. Each instance is
 // ~360-450 MB RSS once its map is loaded (dedi.md §19), and a WARM instance (finished, map
 // restarted, nobody in it) holds the same. Nothing on the host checked memory before a boot.
