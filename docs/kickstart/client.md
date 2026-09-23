@@ -493,6 +493,127 @@ What the switch does:
 `ENW_RAW_MOUSE=0` remains the full revert. **Untested against a real high-rate mouse**, for the
 reason above; it compiles, loads and arms, and that is all that is claimed.
 
+## 1f. 2026-09-23 — the WOW64 raw-buffer bug, a harness that works, and the 1 kHz numbers (lane 17)
+
+B's mouse is set to **1000 Hz**, not 8 kHz. The stutter is at 1 kHz. Branch
+`worktree-agent-a5c23903ea0e7949a`. The raw-input design is still iw4x-client's `RawMouse` (§1b).
+This section adds one bug fix and the instruments that go with it.
+
+### The bug (fixed in `30d09a4`, proven)
+
+`GetRawInputBuffer` in a 32-bit process on 64-bit Windows lays each block out with the **64-bit**
+`RAWINPUTHEADER` (24 bytes), so the `RAWMOUSE` starts at +24. `drain_raw_buffer()` read
+`ri->data.mouse`, which is at +16 (the 32-bit header). From 0.2.3 to 0.2.20, every report that
+came through the buffered read (7–47 % of B's reports) was read 8 bytes early. With the game in the
+foreground, `wParam` is `RIM_INPUT` = 0, so the bad read gives zero motion and zero buttons. The
+turn simply loses those reports. The same layout also turns a click or wheel in a buffered report
+into a yaw: `lLastX` lands on the real `ulButtons`. A wheel notch comes out as 0x00780400 counts.
+That part follows from the layout and has not been seen in play. The proof is `tools/dev/rawprobe`:
+every injected move carries a `dwExtraInfo` marker, and the marker read back at **+16 0/2974** and
+at **+24 2974/2974** (rerun after the merge: 0/4103 vs 2973/2973 injected). The same fix exists in
+MSDN's `GetRawInputBuffer` remarks and SDL3's `WIN_PollRawInput`. The code is in
+`components/raw_buffer.hpp`, which picks the offset with `IsWow64Process`.
+`ENW_RAW_MOUSE_WOW64FIX=0` brings back the old read, for A/B only.
+
+### The harness, and three traps it hit (each would have produced a wrong number)
+
+`tools/dev/mousebench.ps1` runs one invisible game per arm (`ENW_TEST_NO_ACTIVATE=1`, off-screen,
+private LocalAppData, `com_maxfps 250`, under `game.lock` via `launch.ps1`). `rawprobe inject` is a
+1000 Hz `SendInput` mouse. `ENW_FRAMETIME=1` turns on the `frametime` and `mouse_jitter` lines.
+Harness-only knob: `ENW_RAW_MOUSE_INPUTSINK=1` registers with `RIDEV_INPUTSINK`, holds
+`g_wv.activeApp` at 1 (`IN_Frame` 0x5FA8A0 otherwise never calls `IN_MouseMove` for a
+never-activated window) and skips the foreground check. The launcher never sets it.
+
+1. **The injector was the stutter.** At normal priority with `Sleep(0)`, a running 250 fps game
+   took its core for whole scheduler quanta: **41 % of reports more than 2 ms late, worst 345 ms**.
+   Every harness number from before 11:53 on 2026-09-23 was measured against a lumpy source. It now
+   spins at high priority (**0–0.07 % > 2 ms, worst 1.8–3.4 ms**) and prints its own pacing line.
+   `-Sleep0` keeps the old loop.
+2. **T4 calls `IN_MouseMove` twice per engine frame.** 2432 of 2432 frames had exactly 2 calls: one
+   with the frame's counts, then one about 0.3 ms later that finds almost nothing. The first meter
+   worked per call, so it scored every second call as a dropout. That was the "90–95 % jitter,
+   70 % dropouts" of the first benches, and it is not a property of the input. The meter now adds
+   up the calls and is fed once per engine frame. Its `dt` runs between the first calls of two
+   frames, which is when the counts are sampled. `mouse_tests` has the case.
+3. **B is at his PC.** Each arm starts only after 60–120 s of desktop idle
+   (`GetLastInputInfo`). It never starts while a CoDWaW.exe outside `ZombiesDev` is running, and it
+   queues on the lock again after the idle wait. `rawprobe inject` watches raw input with
+   `RIDEV_INPUTSINK` and **stops on the first report from a real device** (exit 3, and it names the
+   device). The bench then kills its own game and releases the lock. This fired 4 times today on
+   B's mouse and keyboard, and it had no false positives on injected input.
+
+### The numbers (synthetic 1000 Hz, `nazi_zombie_prototype`, 250 fps cap, 3 × 10 s windows while injecting)
+
+Frame pacing and delivery, with the fix (default) and without it (`ENW_RAW_MOUSE_WOW64FIX=0`).
+Bench `mousebench-20260923-120243.txt`, spin injector, logs `enw-25020` (fix) and `enw-29936`
+(bug):
+
+| arm | fps | p99 | max | sd | frames > 16.7 ms | counts to engine /s (injected 1000) | buffered reports /10 s → counts |
+|---|---|---|---|---|---|---|---|
+| **fix** | 241.5–242.3 | 12.00–12.50 ms | 14.8–15.1 ms | 1.81–1.86 ms | 0 | **994 / 996 / 901** | 1532–1715 → all of them |
+| **bug** | 241.5–242.3 | 12.00–12.75 ms | 16.4–18.1 ms | 1.82–1.85 ms | 1 / 1 / 0 | **1479 / 1496 / 1389** | 1528–1729 → **0** |
+| no input (same runs, windows 8–10) | 245–247 | 10.25–10.75 ms | 12.4–14.6 ms | 1.37–1.62 ms | 0 | — | — |
+
+View-turn (delta) jitter, per-frame meter, fix arm (`enw-29884`, 12:22; the run was cut short when
+B touched the keyboard, so this is one full 10 s window):
+
+| arm | moving frames | jitter | p50 err | p99 err | dropouts | ideal-source floor (simulated) |
+|---|---|---|---|---|---|---|
+| fix | 2320 | **28.7 %** | 25 % | 163 % | 55 (2.4 %) | 13.1 % / p50 13 % |
+
+How to read these numbers:
+
+* **Frame pacing does not change with the fix at 1 kHz.** p99, sd and >16.7 ms are the same within
+  run-to-run noise. The worst frame is 1–3 ms longer on the bug arm, which is not significant from
+  three windows. Moving the mouse at 1 kHz costs about **1.5 ms on p99** (10.5 → 12.2 ms) against
+  the same run's idle windows. Our code in `in_mousemove`, which includes the engine's
+  `CL_MouseEvent` it calls, averages **~90–100 µs per call** while moving, against ~13 µs idle.
+  There are two calls per frame, so that is about 5 % of a 4 ms frame.
+* **Delivery does change.** With the fix, the engine gets the counts that were sent: 994 to 996 per
+  second against 1000 sent, with the buffered ~17 % carrying their motion. Without the fix, the
+  buffered reports carry 0 counts, and in this harness the engine got **~1.45×** the counts that
+  were sent. That is wrong motion, not missing motion. The reason is a harness artefact: under
+  `RIDEV_INPUTSINK`, `wParam` is 1, so the +16 read gives `usFlags = MOUSE_MOVE_ABSOLUTE`, and
+  iw4x's `Update()` then zeroes `current`, so each such report is a snap back to position 0. In
+  B's foreground game `wParam` is 0, so the same bug drops the report instead. **Nobody has
+  measured the bug arm's per-frame jitter.** The time limit ended the run before it.
+* **The fix arm's 28.7 % is about twice the floor.** An evenly paced 1 kHz source sampled at
+  these frame times reads about 13 % from the whole-report quantisation alone (simulated from the
+  logged frame times). Our guess is that the other ~15 points come from the frame's sampling
+  instant (pump → first `IN_MouseMove`) moving within the frame. That is not proven.
+* The `cadence` line's `WM_INPUT gaps` are **dispatch** times inside our WndProc. The pump runs
+  once per frame, so they show the pump's cadence, not how evenly Windows delivered the reports.
+
+### What B tests: three runs, one minute each, on his own screen at 1000 Hz
+
+Build: this branch's DLL. Set `ENW_FRAMETIME=1` for all three runs. Turn steadily the whole minute
+and flick a few times. Read `frametime: window`, `mouse_jitter: window N (…)` and
+`mouse_jitter: window N cadence` from `%LOCALAPPDATA%\ENWZombies\logs\enw-<pid>.log`.
+
+| run | environment | what it decides |
+|---|---|---|
+| 1 | `ENW_FRAMETIME=1` | the fix (default): buffered reports carry their motion |
+| 2 | `ENW_FRAMETIME=1 ENW_RAW_MOUSE_WOW64FIX=0` | 0.2.3–0.2.20 exactly: buffered reports lost |
+| 3 | `ENW_FRAMETIME=1 ENW_RAW_MOUSE_BUFFER=0` | no bulk read at all; every report via its `WM_INPUT` |
+
+Run 1 should show `buffered N carrying ≈N counts` and fewer `DROPOUTS` than run 2. Run 2 should show
+`buffered N carrying 0 counts`. The verdict is **B's feel plus the dropouts and jitter figures**,
+not the frame times, which the fix does not move. If runs 1 and 3 feel the same and both beat
+run 2, the stutter B felt was lost reports, and this closes it. If run 1 still stutters, the next
+suspect is the sampling-instant jitter above, then DWM (next section).
+
+### Still unproven
+
+* Whether the fix removes the stutter **B feels**. No human hand has been on the mouse with this
+  build.
+* Anything that needs a visible window: DWM composition, the cursor, 250 fps against his panel,
+  and the legacy `WM_MOUSEMOVE` path (legacy messages go to the window under the cursor, never an
+  off-screen game).
+* The per-frame jitter of the bug arm and of `ENW_RAW_MOUSE_BUFFER=0`, which the time limit cut.
+  Also why the fix arm's jitter sits ~15 points above the quantisation floor.
+* The snap-on-click/wheel in the old build. It follows from the layout; nobody has seen it in play.
+* The abort's cursor restore is approximate with Windows pointer acceleration on.
+
 ---
 
 ## 4. The LocalAppData redirect: the game stops sharing a folder with the player's own (2026-09-23)
