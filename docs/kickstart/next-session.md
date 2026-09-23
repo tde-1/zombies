@@ -1,4 +1,20 @@
-# Next session — start here (2026-09-23)
+# Next session — start here (2026-09-23 evening handoff, 23:00 UK)
+
+**Read this block first; the older sections below are history.** Coordinator session 16:30–23:00 UK
+(B's PC rebooted 15:30 and killed the afternoon agents). Every lane's detail is in its lane doc and in
+the vault Build Log (`19 - Build Log`, "16:30 UK — new coordinator session" roster and entries).
+
+| | State at 23:00 UK |
+|---|---|
+| Launcher | **0.2.35** on the feed, client DLL `1b482aa2` |
+| Box DLL | **`59577dbe`** (= `1b482aa2` + dev-gated bot fixes only), host agent **`9e9e86a`**; box still CX23 2 vCPU / 3.8 GB |
+| Site | live on main **`5530167`** (restarted 22:51): 85 maps playable on our servers (was 64) |
+| Fixed and live today | NULL `snd_errorOnMissing`/`r_watersim_debug`/`fx_enable` freeze class (lorkeep, ILS, ut_box, fear_mc_2); phantom z=0 water on the dedi (Nuketown drowning, nacht_reimagined floating; `water_sim_off` + `solo_parity` self-check); Wine VirtualQuery CPU cost (ILS 0.82 → 0.18 core, 24 → 61 Hz); AMD sun-flare occlusion-query hang (Town of the Dead, Nuketown, 8 maps; `gpu_query_guard`); UGX mode votes answered from the party's pick (25 maps, per-mode records); instant console restart + post-game restart window + × closes the server + idle auto-close (5 min no join / 3 min empty); friends from Movement + everyone online in the rail + launcher flash/chime/toast; replay sound, first-person arms + ADS, placeholder gun, 17 more guns; ENWZombies.exe (Discord shows ENW Zombies) + `infra/discord.env`; 31 `+`-command cap guard; the SOC blank-page ReferenceError |
+| Still running at handoff | **MAPS** (`aee8a57d93e4557fb`, 104 maps queued: 70 new + 34 re-proofs; unhides passes and appends boxProven.json — merge its branch + restart the site to make them "playable"), **GEO** (`aceedc562af7e9564`, offline OAT T4 GfxWorld dumper: every one of 158 fastfiles gets a shell; batch 2 + renders + promotion pending), **S2** (`ab43c68ad02590cd9`, bot soaks alternating with MAPS; `snapacknowledged` fix for custom-map bot spawns unproven) |
+| Unproven | a real player on: restart via the host path, the gungame vote answer, the water fix, Town of the Dead after the guard; S2's custom-map bot rounds; 2 h soaks |
+| For B | CX33 (€10.79/mo gross) or a temporary box for soaks; dt2 visible with `asset_audit_pending` (m4a1_zm missing); 11 box-pass maps hidden by the asset gate (raw weapon patch path); Q-soc-1 "the ENW main server" for friends; `git push origin main` (agent pushes are blocked by the permission classifier) |
+
+# Next session — earlier (2026-09-23 03:30 handoff)
 
 Written 2026-09-23 ~03:30 UK at the end-of-session handoff (the session ran from 2026-09-22 19:00
 to here). If this page and `../../STATUS.md` disagree, STATUS wins. The vault
