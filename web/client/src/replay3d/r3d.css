@@ -213,3 +213,19 @@
    never saw a click (replay.md 8.2). Movement's viewer has nothing floating over its bar;
    neither does this one. */
 body:has(.r3d) .chatdock { display: none; }
+
+/* The Tab scoreboard (replay.md 8.12): WaW's dark, square panel with the stencil numbers --
+   the same red and Impact-family face as the round. Columns are the game's CGAME_SB_* strings. */
+.r3d-waw-sb { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); z-index: 5; min-width: min(560px, calc(100% - 32px));
+  background: rgba(8, 8, 8, .86); border: 1px solid rgba(120, 20, 12, .7); box-shadow: 0 10px 40px rgba(0, 0, 0, .6); padding: 12px 16px 10px;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif; letter-spacing: .03em; color: #e8ddd6; }
+.r3d-waw-sb-head { display: flex; justify-content: space-between; font-size: 20px; color: rgb(170, 14, 6); text-transform: uppercase; margin-bottom: 8px; }
+.r3d-waw-sb table { width: 100%; border-collapse: collapse; font-size: 17px; }
+.r3d-waw-sb th { text-align: right; font-weight: 400; font-size: 12px; color: rgba(210, 190, 185, .7); text-transform: uppercase; padding: 2px 8px 6px; border-bottom: 1px solid rgba(120, 20, 12, .6); }
+.r3d-waw-sb th:first-child, .r3d-waw-sb td:first-child { text-align: left; }
+.r3d-waw-sb td { text-align: right; padding: 5px 8px; font-variant-numeric: tabular-nums; }
+.r3d-waw-sb td i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; vertical-align: middle; }
+.r3d-waw-sb tr.on td { background: rgba(120, 20, 12, .28); }
+.r3d-waw-sb-foot { margin-top: 6px; font-family: system-ui, sans-serif; font-size: 11px; color: rgba(210, 190, 185, .6); letter-spacing: 0; min-height: 13px; }
+.r3d-waw-debug { position: absolute; left: 16px; top: calc(12px + var(--r3d-h) + 70px); z-index: 6; margin: 0; padding: 8px 10px; max-width: calc(100% - 32px);
+  background: rgba(0, 0, 0, .78); color: #9fe39f; font: 11px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; pointer-events: none; }

@@ -799,6 +799,15 @@ async function main() {
     eq(s[2], 1, 'one colt shot adds hipSpreadFireAdd 1 (x255) after the decay clamp')
   })
 
+  check('the map version changes with the export, so a re-export is a new .glb URL (§8.12)', () => {
+    const { mapVersion } = require('../server/routes/replay')
+    const a = mapVersion({ glb: true, built_at: '2026-09-23T00:00:00Z', mtime_ms: 1, bytes: 10 })
+    const b = mapVersion({ glb: true, built_at: '2026-09-23T00:06:49Z', mtime_ms: 1, bytes: 10 })
+    const c = mapVersion({ glb: true, built_at: '2026-09-23T00:00:00Z', mtime_ms: 2, bytes: 10 })
+    truthy(a !== b && a !== c && b !== c, `${a} / ${b} / ${c}`)
+    eq(mapVersion({ glb: false }), null)
+  })
+
   check('usercmd angles become a view pitch, zeroed at the spawn', () => {
     const { buildTrack } = require('../server/routes/replay')
     const ev = [

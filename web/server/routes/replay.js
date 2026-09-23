@@ -53,7 +53,7 @@ class SlotState {
     if (p.pos) this.pos = p.pos
     if (p.ang) this.ang = p.ang
     if (p.health !== undefined) this.health = p.health
-    if (p.score !== undefined) this.score = p.score
+    if (p.score !== undefined) { this.score = p.score; this.sawScore = true }
     if (p.alive !== undefined) this.alive = p.alive
     if (p.weapon !== undefined) this.weapon = String(p.weapon)
     if (p.stance !== undefined) this.stance = p.stance
@@ -354,6 +354,10 @@ function buildTrack(file, replayLib, hz = 10) {
       // (`va`, 2026-09-22 late build) when the file has them; otherwise it is null.
       pitch: c.pitch.some((v) => v !== null) ? c.pitch : null,
       presses: presses.get(slot) || { fire: [], frag: [], ads: [] },
+      // §8.12: whether `score` was ever recorded for this player. The real DLL does not
+      // record it yet (player_int("score") is unbound), and a column of zeros must not be
+      // shown as points.
+      has_score: !!(slots.get(slot) && slots.get(slot).sawScore),
     })
   }
 
@@ -414,26 +418,40 @@ const r1 = (v) => Math.round(Number(v) * 10) / 10
  * `statSync` on a path it was going to build anyway, and it is what lets the page say
  * *no world model yet* and still play the game over a floor.
  *
- * `built_at` is the cache key: the `.glb` is served `immutable` for a year, so a re-export
- * has to change the URL, and the sidecar is the only thing that knows it changed.
+ * `version` is the cache key (§8.12): `built_at` from the sidecar plus the .glb's own mtime
+ * and size, so even an export whose sidecar did not change (or a hand-copied .glb) is a new
+ * URL. The .glb itself is `no-cache` with an ETag; the version makes the URL change too.
  */
+/** The one string that changes whenever the served geometry does. */
+function mapVersion(ex) {
+  if (!ex || !ex.glb) return null
+  return `${ex.built_at || 'na'}.${ex.mtime_ms || 0}.${ex.bytes || 0}`
+}
+
 function mapExportFor(bsp) {
   const out = { bsp: bsp || null, glb: false, meta: false, built_at: null, bytes: 0, world_shell: null }
   if (!bsp || !/^[A-Za-z0-9._-]+$/.test(bsp)) return out
   const dir = path.join(MAPS_DIR, bsp)
-  try { const st = fs.statSync(path.join(dir, `${bsp}.glb`)); out.glb = st.isFile(); out.bytes = st.size } catch { /* not exported */ }
+  try {
+    const st = fs.statSync(path.join(dir, `${bsp}.glb`))
+    out.glb = st.isFile(); out.bytes = st.size; out.mtime_ms = Math.round(st.mtimeMs)
+  } catch { /* not exported */ }
   try {
     const meta = JSON.parse(fs.readFileSync(path.join(dir, `${bsp}.meta.json`), 'utf8'))
     out.meta = true
     out.built_at = meta.built_at || null
     out.world_shell = !!meta.world_shell
+    out.world_obj_scale = meta.world_obj_scale || null
   } catch { /* geometry without a sidecar still draws */ }
+  out.version = mapVersion(out)
   return out
 }
 
 /** Answer with a pre-gzipped body, or inflate it for the rare client that says it cannot. */
 function send(req, res, gz) {
   res.type('application/json')
+  // Revalidate every time: the track names the map export's version (§8.12).
+  res.setHeader('Cache-Control', 'no-cache')
   if (/gzip/i.test(req.headers['accept-encoding'] || '')) {
     res.setHeader('Content-Encoding', 'gzip')
     return res.end(gz)
@@ -578,7 +596,13 @@ function router() {
   r.get('/:matchId/track', async (req, res) => {
     const hz = Math.min(20, Math.max(2, Number(req.query.hz) || 10))
     const key = `${req.params.matchId}:${hz}`
-    if (cache.has(key)) return send(req, res, cache.get(key))
+    // §8.12: the cached track carries `map_export.built_at`, which is the viewer's cache key
+    // for the 38 MB .glb. A re-export while the site runs used to leave the OLD built_at in
+    // this cache until a restart, so browsers kept asking for (and getting from their own
+    // cache) the old geometry under the old URL. A hit is only a hit if the export is still
+    // the one the track was built against.
+    const hit = cache.get(key)
+    if (hit && mapVersion(mapExportFor(hit.map)) === hit.built) return send(req, res, hit.body)
 
     let file = fileFor(req.params.matchId)
     // Not here yet? It may still be on the box that recorded it. One scp, then the
@@ -609,7 +633,7 @@ function router() {
       // immutable the moment it is signed.
       const body = zlib.gzipSync(Buffer.from(JSON.stringify(track)), { level: 6 })
       if (cache.size > 8) cache.clear()
-      cache.set(key, body)
+      cache.set(key, { body, map: track.map, built: mapVersion(track.map_export) })
       send(req, res, body)
     } catch (e) {
       // An unsigned or truncated replay has no footer, and readEvents refuses it. That
@@ -646,8 +670,11 @@ function mapsStatic() {
     // the cause — and index.js's own `/mapdata` catch-all is what guarantees that.
     fallthrough: true,
     setHeaders(res, filePath) {
-      if (filePath.endsWith('.meta.json')) res.setHeader('Cache-Control', 'no-cache')
-      else res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+      // §8.12: `no-cache` on everything. The .glb URL is versioned (`?v=<built_at>`), and
+      // express.static sends an ETag and Last-Modified, so an unchanged map is a 304 -- one
+      // round trip, no bytes. `immutable` for a year saved that round trip and cost a stale
+      // map for as long as anything anywhere named the old version.
+      res.setHeader('Cache-Control', 'no-cache')
     },
   })]
 }
@@ -673,4 +700,4 @@ function listMaps() {
   } catch { return [] }
 }
 
-module.exports = { router, mapsStatic, listMaps, MAPS_DIR, buildTrack }
+module.exports = { router, mapsStatic, listMaps, MAPS_DIR, buildTrack, mapExportFor, mapVersion }
