@@ -193,6 +193,7 @@ struct combat_binding {
     bool attacker = false;  // gentity.sentient +0x188 -> sentient.lastAttacker +0x2C (G_Damage)
     bool hitloc = false;    // gentity.actor +0x184 -> actor.damageHitLoc +0xD68 (script string)
     bool models = false;    // gentity.model +0x198 -> model configstring script string 0x2350F40
+    bool ads = false;       // ps.fWeaponPosFrac +0x110 (PlayerCmd_PlayerADS 0x4EEE00), lane RV
     std::string describe() const;
 };
 const combat_binding& combat_bound();
@@ -207,6 +208,8 @@ struct player_combat {
     int event_seq = 0;
     int events[4] = {0, 0, 0, 0};
     int last_attacker = -1;      // entity number, -1 none / unbound
+    bool have_ads = false;
+    float ads = 0.0f;            // ps.fWeaponPosFrac: 0 hip .. 1 aimed down the sights (playerADS())
 };
 std::optional<player_combat> player_combat_state(int slot);
 
