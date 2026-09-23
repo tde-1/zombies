@@ -246,5 +246,62 @@
       "nazi_zombie_grave.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T20:49:32",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 220,
+    "fatal": 21,
+    "visible": 21,
+    "visible_owner": {
+      "release": 21
+    },
+    "visible_names": [
+      "item:zombie_perk_bottle_bear",
+      "item:zombie_perk_bottle_blood",
+      "item:zombie_perk_bottle_discount",
+      "item:zombie_perk_bottle_doubletap",
+      "item:zombie_perk_bottle_down",
+      "item:zombie_perk_bottle_flash",
+      "item:zombie_perk_bottle_impact",
+      "item:zombie_perk_bottle_jugg",
+      "item:zombie_perk_bottle_palosa",
+      "item:zombie_perk_bottle_point",
+      "item:zombie_perk_bottle_repair",
+      "item:zombie_perk_bottle_revive",
+      "weapon:weapons/sp/zombie_perk_bottle_bear",
+      "weapon:weapons/sp/zombie_perk_bottle_blood",
+      "weapon:weapons/sp/zombie_perk_bottle_discount",
+      "weapon:weapons/sp/zombie_perk_bottle_down",
+      "weapon:weapons/sp/zombie_perk_bottle_flash",
+      "weapon:weapons/sp/zombie_perk_bottle_impact",
+      "weapon:weapons/sp/zombie_perk_bottle_palosa",
+      "weapon:weapons/sp/zombie_perk_bottle_point"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95170 ms over the hold",
+    "first_error": "unknown item 'zombie_perk_bottle_palosa': (file 'maps/_zombiemode_perks_black_ops.gsc', line 31)",
+    "match": "m_a9208103",
+    "at": "2026-09-23T20:30:01",
+    "instance": "inst-06",
+    "com_frameTime_advance_ms": 95170,
+    "com_error": [],
+    "console_errors": [
+      "4419:unknown item 'zombie_perk_bottle_palosa': (file 'maps/_zombiemode_perks_black_ops.gsc', line 31)",
+      "4422:Error: called from:",
+      "4426:Error: called from:",
+      "4430:Error: started from:",
+      "4434:Error: ************************************",
+      "4435:WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_down'"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:zombie_perk_bottle_bear, item:zombie_perk_bottle_blood, item:zombie_perk_bottle_discount, item:zombie_perk_bottle_doubletap, item:zombie_perk_bottle_down, item:zombie_perk_bottle_flash",
+  "dedi_status": "box_map_loaded"
 }

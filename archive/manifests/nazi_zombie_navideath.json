@@ -223,5 +223,62 @@
       "nazi_zombie_navideath.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T20:49:32",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 192,
+    "fatal": 31,
+    "visible": 31,
+    "visible_owner": {
+      "release": 31
+    },
+    "visible_names": [
+      "item:T850",
+      "item:T850_upgraded",
+      "item:ak47",
+      "item:ak47_upgraded",
+      "item:beretta_mp",
+      "item:beretta_mp_upgraded",
+      "item:halo_magnum",
+      "item:halo_magnum_upgraded",
+      "item:molotov",
+      "item:vector_mp",
+      "item:vector_mp_upgraded",
+      "item:zap_gun_upgraded",
+      "item:zombie_perk_bottle_deadshot",
+      "item:zombie_perk_bottle_mulekick",
+      "item:zombie_perk_bottle_phd",
+      "item:zombie_perk_bottle_staminup",
+      "item:zombie_scav",
+      "item:zombie_scav_upgraded",
+      "weapon:weapons/sp/T850",
+      "weapon:weapons/sp/T850_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95098 ms over the hold",
+    "first_error": "Could not load xmodel \"bo2_p6_zm_vending_electric_cherry_off\".",
+    "match": "m_9afaadec",
+    "at": "2026-09-23T20:26:18",
+    "instance": "inst-05",
+    "com_frameTime_advance_ms": 95098,
+    "com_error": [],
+    "console_errors": [
+      "5573:Error: called from:",
+      "5577:Error: started from:",
+      "5581:Error: ************************************",
+      "5582:Error: Could not load xmodel \"bo2_p6_zm_vending_electric_cherry_off\".",
+      "5583:Error: Could not load xmodel \"bo2_p6_zm_vending_electric_cherry_on\".",
+      "5585:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:T850, item:T850_upgraded, item:ak47, item:ak47_upgraded, item:beretta_mp, item:beretta_mp_upgraded",
+  "dedi_status": "box_map_loaded"
 }

@@ -10,3 +10,11 @@ nazi_zombie_descent
 nazi_zombie_death_forest
 nazi_zombie_halloweencube
 nazi_zombie_hoh
+nazi_zombie_123
+nazi_zombie_grave
+nazi_zombie_in
+nazi_zombie_kneedeep
+nazi_zombie_navideath
+nazi_zombie_reich
+nazi_zombie_swamp_115
+xmas_refinery

@@ -181,5 +181,38 @@
       "nazi_zombie_reich.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T20:49:32",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 193,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95154 ms over the hold",
+    "first_error": "ERROR: Pathnode (Path) at (-152 2408 216) is in solid",
+    "match": "m_c7b5dbc5",
+    "at": "2026-09-23T20:37:23",
+    "instance": "inst-08",
+    "com_frameTime_advance_ms": 95154,
+    "com_error": [],
+    "console_errors": [
+      "3269:ERROR: Pathnode (Path) at (-152 2408 216) is in solid",
+      "3270:ERROR: Pathnode (Path) at (-1392 424 72) is in solid",
+      "3271:ERROR: Pathnode (Path) at (-24 -440 72) is in solid",
+      "3272:ERROR: Pathnode (Path) at (-1176 1864 -120) is in solid",
+      "3273:ERROR: Pathnode (Path) at (-1048 1912 -120) is in solid",
+      "3274:ERROR: Pathnode (Path) at (232 1568 152) is in solid"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

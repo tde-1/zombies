@@ -202,5 +202,50 @@
       "nazi_zombie_123.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T20:49:32",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 165,
+    "fatal": 8,
+    "visible": 8,
+    "visible_owner": {
+      "release": 8
+    },
+    "visible_names": [
+      "item:mg42_bipod",
+      "item:molotov",
+      "item:nambu_mp",
+      "item:nambu_mp_upgraded",
+      "item:thompson_bigammo_mp",
+      "weapon:weapons/sp/nambu_mp",
+      "weapon:weapons/sp/nambu_mp_upgraded",
+      "weapon:weapons/sp/thompson_bigammo_mp"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95159 ms over the hold",
+    "first_error": "Could not load xmodel \"zombie_vending_triple_gun_on\".",
+    "match": "m_020ae2d4",
+    "at": "2026-09-23T20:41:06",
+    "instance": "inst-09",
+    "com_frameTime_advance_ms": 95159,
+    "com_error": [],
+    "console_errors": [
+      "4519:Error: called from:",
+      "4523:Error: called from:",
+      "4527:Error: called from:",
+      "4531:Error: started from:",
+      "4535:Error: ************************************",
+      "4537:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:mg42_bipod, item:molotov, item:nambu_mp, item:nambu_mp_upgraded, item:thompson_bigammo_mp, weapon:weapons/sp/nambu_mp",
+  "dedi_status": "box_map_loaded"
 }

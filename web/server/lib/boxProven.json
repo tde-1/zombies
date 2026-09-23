@@ -156,6 +156,15 @@
    "match": "m_80fa40ad",
    "com_frameTime_advance_ms": 35047
   },
+  "nazi_zombie_123": {
+   "result": "pass",
+   "at": "2026-09-23T20:41:06",
+   "match": "m_020ae2d4",
+   "com_frameTime_advance_ms": 95159,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 122353418
+  },
   "nazi_zombie_arena": {
    "result": "pass",
    "at": "2026-09-23T00:24:28",
@@ -279,6 +288,15 @@
    "match": "m_3ade5fbc",
    "com_frameTime_advance_ms": 35076
   },
+  "nazi_zombie_grave": {
+   "result": "pass",
+   "at": "2026-09-23T20:30:01",
+   "match": "m_a9208103",
+   "com_frameTime_advance_ms": 95170,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 232128163
+  },
   "nazi_zombie_halloweencube": {
    "result": "pass",
    "at": "2026-09-23T20:03:25",
@@ -315,6 +333,15 @@
    "match": "m_f7346b9e",
    "com_frameTime_advance_ms": 35082
   },
+  "nazi_zombie_in": {
+   "result": "pass",
+   "at": "2026-09-23T20:16:51",
+   "match": "m_825e6132",
+   "com_frameTime_advance_ms": 95141,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 167215136
+  },
   "nazi_zombie_inferno": {
    "result": "fail",
    "at": "2026-09-22T23:53:16",
@@ -327,6 +354,15 @@
    "at": "2026-09-22T22:04:29",
    "match": "m_6e265fe2",
    "com_frameTime_advance_ms": 35052
+  },
+  "nazi_zombie_kneedeep": {
+   "result": "pass",
+   "at": "2026-09-23T20:22:39",
+   "match": "m_3359ba32",
+   "com_frameTime_advance_ms": 95159,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 109774249
   },
   "nazi_zombie_legion": {
    "result": "pass",
@@ -367,6 +403,15 @@
    "match": "m_4d723eff",
    "com_frameTime_advance_ms": 35073
   },
+  "nazi_zombie_navideath": {
+   "result": "pass",
+   "at": "2026-09-23T20:26:18",
+   "match": "m_9afaadec",
+   "com_frameTime_advance_ms": 95098,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 377634958
+  },
   "nazi_zombie_path": {
    "result": "pass",
    "at": "2026-09-22T22:13:52",
@@ -397,6 +442,15 @@
    "match": "m_e686c198",
    "com_frameTime_advance_ms": 30049
   },
+  "nazi_zombie_reich": {
+   "result": "pass",
+   "at": "2026-09-23T20:37:23",
+   "match": "m_c7b5dbc5",
+   "com_frameTime_advance_ms": 95154,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 89077157
+  },
   "nazi_zombie_relax": {
    "result": "pass",
    "at": "2026-09-22T23:35:52",
@@ -415,6 +469,15 @@
    "at": "2026-09-22T23:40:07",
    "match": "m_bad764bc",
    "com_frameTime_advance_ms": 40133
+  },
+  "nazi_zombie_swamp_115": {
+   "result": "pass",
+   "at": "2026-09-23T20:44:42",
+   "match": "m_fa6eeb70",
+   "com_frameTime_advance_ms": 95122,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 93283281
   },
   "nazi_zombie_tank": {
    "result": "pass",
@@ -470,6 +533,15 @@
    "at": "2026-09-22T22:05:45",
    "match": "m_f592ad24",
    "com_frameTime_advance_ms": 30072
+  },
+  "xmas_refinery": {
+   "result": "pass",
+   "at": "2026-09-23T20:33:39",
+   "match": "m_86ef48ff",
+   "com_frameTime_advance_ms": 95170,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 245704956
   },
   "zm_hospital": {
    "result": "pass",

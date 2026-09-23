@@ -167,5 +167,38 @@
       "nazi_zombie_kneedeep.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T20:49:32",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 170,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95159 ms over the hold",
+    "first_error": "Could not load xanim \"pb_hold_run_left_satchel\".",
+    "match": "m_3359ba32",
+    "at": "2026-09-23T20:22:39",
+    "instance": "inst-04",
+    "com_frameTime_advance_ms": 95159,
+    "com_error": [],
+    "console_errors": [
+      "3219:Error: Could not load xanim \"pb_hold_run_left_satchel\".",
+      "3220:Error: Could not load xanim \"pb_hold_run_right_satchel\".",
+      "3221:Error: Could not load xanim \"pb_hold_run_back_satchel\".",
+      "3222:Error: Could not load xanim \"pb_hold_run_satchel\".",
+      "3223:Error: Could not load xanim \"pb_sprint_hold_satchel\".",
+      "3224:Error: Could not load xanim \"pb_crouch_hold_idle_satchel\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }
