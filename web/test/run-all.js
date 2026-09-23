@@ -447,6 +447,61 @@ async function main() {
       eq(stateOf(r.match_id), 'cancelled')
       parties.leave(S)
     })
+
+    // [RS] The rail's × closes the server and keeps the party (B 2026-09-23).
+    check('the rail\'s ×: the server is cancelled, the party stays with its map, nothing to follow', () => {
+      const r = startSolo(S)
+      truthy(r.ok, r.error)
+      assignments.ack(MB(), 'live', r.match_id)
+      seats.observe(r.match_id, frame([[S, true]]))
+      const out = seats.end(S, r.match_id)
+      truthy(out.ok && out.cancelled, JSON.stringify(out))
+      eq(stateOf(r.match_id), 'cancelled')
+      const p = parties.forPlayer(S)
+      truthy(p, 'still in the party')
+      eq(JSON.stringify([p.state, p.match_id, p.map && p.map.key]), JSON.stringify(['forming', null, 'nazi_zombie_test']), 'forming, map kept')
+      eq(seats.resumeInfo(parties.launchInfo(S), S), null, 'no Resume into a closed server')
+      const w = watcher(S); w.flow = false
+      for (let i = 0; i < 10; i++) w.poll()
+      eq(w.launches, 0, 'the launcher follows nothing')
+      eq(seats.end(S, 'm_old').stale === true || seats.end(S, 'm_old').ok, true, 'a stale click changes nothing')
+    })
+
+    check('the rail\'s × in a party of two: host only; it ends the game for both; nobody leaves', () => {
+      const T = '76561198000000002'
+      const r = startSolo(S)
+      const a = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(r.match_id)
+      db.prepare('UPDATE assignments SET players_json=? WHERE id=?').run(JSON.stringify([...JSON.parse(a.players_json), { steamid: T, name: 'P2' }]), a.id)
+      db.prepare('INSERT INTO party_members (party_id, steam_id, ready, joined_at) VALUES (?,?,1,?)').run(a.party_id, T, now())
+      const no = seats.end(T, r.match_id)
+      eq(no.ok, false, 'a member cannot close the host\'s server')
+      eq(stateOf(r.match_id), 'leased', 'untouched')
+      truthy(seats.end(S, r.match_id).cancelled, 'the host can')
+      eq(stateOf(r.match_id), 'cancelled')
+      eq(parties.forPlayer(S).members.length, 2, 'both still in the party')
+      eq(seats.resumeInfo(parties.launchInfo(T), T), null, 'no Resume for the member either')
+      parties.leave(T); parties.leave(S)
+    })
+
+    // [RS] A run that ended on its own and was restarted inside the host's restart grace:
+    // its result is posted with `lease_continues`, and the lease must survive it.
+    check('a result with lease_continues from the lease\'s own box keeps the lease; from another box it does not', () => {
+      const r = startSolo(S)
+      assignments.ack(MB(), 'live', r.match_id)
+      const res = results_.ingest({ box: 'multi-box', lease_continues: true, summary: summary({ match_id: r.match_id, players: [S], rounds: 1, finish: null }) })
+      truthy(res.ok, JSON.stringify(res))
+      eq(res.lease_continues, true)
+      eq(stateOf(r.match_id), 'live', 'the lease goes on under run 2')
+      eq(parties.forPlayer(S).state, 'in-game', 'and the party with it')
+      const r2 = results_.ingest({ box: 'multi-box', summary: { ...summary({ match_id: `${r.match_id}.r2`, players: [S], rounds: 3, finish: null }), lease_match_id: r.match_id } })
+      truthy(r2.ok, JSON.stringify(r2))
+      eq(stateOf(r.match_id), 'done', 'run 2 ending on its own closes it')
+      const q = startSolo(S)
+      assignments.ack(MB(), 'live', q.match_id)
+      results_.ingest({ box: 'test-box', lease_continues: true, summary: summary({ match_id: q.match_id, players: [S], rounds: 1, finish: null }) })
+      eq(stateOf(q.match_id), 'done', 'another box cannot keep a lease open')
+      parties.leave(S)
+    })
   }
 
   // ── the key pin ────────────────────────────────────────────────────────────

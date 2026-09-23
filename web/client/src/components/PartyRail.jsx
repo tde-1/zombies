@@ -109,7 +109,14 @@ function Roster({ R }) {
     <div className="rblock">
       <div className="rlabel">
         <span>{p && p.members.length > 1 ? 'Party' : 'Your party'} · {p ? p.members.length : 1}</span>
-        {(!p || !p.full) && R.approved && <CopyInviteLink R={R} />}
+        <span className="rlabel-acts">
+          {(!p || !p.full) && R.approved && <CopyInviteLink R={R} />}
+          {/* Leaving the party lives here, in the party block (B 2026-09-23), not on the card. */}
+          {p && p.members.length > 1 && (
+            <button className="rlabel-code rlabel-leave" disabled={R.busy} title="Leave party"
+                    onClick={() => { if (window.confirm('Leave this party?')) R.leave() }}>Leave</button>
+          )}
+        </span>
       </div>
       {shown.map((r) => (
         <PlayerCard key={r.id} user={r.user} role={r.role} host={r.host} onRemove={r.onRemove} removeLabel={r.removeLabel} />
@@ -506,9 +513,11 @@ function ServerCard({ R }) {
         )}
         <div className="prail-live-copy">
           {map && !playable && <span className="prail-live-np"><NotPlayable map={map} /></span>}
-          {p && (
-            <button className="prail-live-end" disabled={R.busy} title="Leave party" aria-label="Leave party"
-                    onClick={() => { if (window.confirm('Leave this party?')) R.leave() }}>×</button>
+          {/* The × closes the SERVER (B 2026-09-23), for the whole party, and keeps the party.
+              Only while there is one, and only for its host. Leave is in the party block. */}
+          {p && p.is_leader && (state === 'launching' || state === 'in-game' || R.resumable) && (
+            <button className="prail-live-end" disabled={R.busy} title="Close server" aria-label="Close server"
+                    onClick={() => { if (window.confirm('Close the server? The game ends for the party.')) R.closeServer() }}>×</button>
           )}
           <div className="prail-live-name" title={serverName}>{map ? serverName : 'Pick a map'}</div>
           <div className="prail-live-mode">{statusLabel}</div>

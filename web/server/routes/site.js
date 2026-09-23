@@ -195,6 +195,14 @@ function router() {
     res.json(seats.quit(sid, b.match_id ? String(b.match_id).slice(0, 40) : null))
   })
 
+  // CLOSE THE SERVER from the rail's server card (its ×): the party's game ends for everybody
+  // and the party stays, back to forming with its map (lib/seats.js `end`). Host only.
+  r.post('/party/end', requireUser, (req, res) => {
+    const b = req.body && typeof req.body === 'object' ? req.body : {}
+    const out = seats.end(req.me.steam_id, b.match_id ? String(b.match_id).slice(0, 40) : null)
+    res.status(out.ok ? 200 : 400).json(out)
+  })
+
   // RESUME from the rail's server card: back into the game this player crashed out of.
   // The launcher's watcher follows the phase this puts back (`in-game`), with a fresh token.
   r.post('/party/resume', requireUser, (req, res) => {

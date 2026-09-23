@@ -156,6 +156,40 @@ function quit(steamid, matchId) {
 }
 
 /**
+ * CLOSE THE SERVER, KEEP THE PARTY (the rail's × on the server card; B 2026-09-23: "The X
+ * button in the bottom left should close the server, not leave the party"). The party's
+ * running game is ended for everybody in it (the lease is cancelled, the box retires the
+ * instance, the host signs the run) and the party goes back to forming with its map, mode
+ * and members as they were. The host of the party only (anybody else leaves through the
+ * party menu); a solo party's one member is its host. `match_id` given and not the party's
+ * game = a stale click: nothing changes.
+ */
+function end(steamid, matchId) {
+  const parties = require('./parties')
+  const assignments = require('./assignments')
+  const party = parties.forPlayer(steamid)
+  if (!party) return { ok: false, error: 'not in a party' }
+  if (String(party.leader) !== String(steamid)) return { ok: false, error: 'only the party host can close the server' }
+  const m = String(party.match_id || '')
+  if (matchId && m && String(matchId) !== m) return { ok: true, stale: true, match_id: m }
+  let cancelled = false
+  if (m) {
+    const a = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(m)
+    // Nobody is offered Resume into a server that was closed on purpose.
+    for (const p of (a ? JSON.parse(a.players_json || '[]') : [])) if (p && p.steamid) seat(m, p.steamid).quit = true
+    cancelled = !!(a && ['leased', 'ready', 'live'].includes(a.state) && assignments.cancel(m, String(steamid)).ok)
+  }
+  // A ready check or a launch with no lease yet goes back to forming the same way.
+  if (!cancelled && ['ready-check', 'launching'].includes(party.state)) parties.cancelReadyCheck(steamid)
+  if (party.state === 'in-game' || party.state === 'launching') {
+    db.prepare("UPDATE parties SET state='forming', match_id=NULL, ready_since=NULL, updated_at=? WHERE id=?").run(now(), party.id)
+  }
+  db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('party.end', ?, ?, ?)")
+    .run(String(steamid), JSON.stringify({ match_id: m || null, cancelled, party_size: party.members.length }), now())
+  return { ok: true, match_id: m || null, cancelled }
+}
+
+/**
  * The ten-minute backstop. A live lease whose every player has left (none connected, none
  * resuming) for RESUME_MS is cancelled. The referee normally ends such a game itself
  * (crash grace, then `players_did_not_return`); this is for the case where it does not.
@@ -182,4 +216,4 @@ function forget(matchId) { seats.delete(String(matchId)) }
 /** Has the referee said anything about who is in this match since the site started? */
 const known = (matchId) => seats.has(String(matchId))
 
-module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, sweep, forget, known, RESUME_MS }
+module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, end, sweep, forget, known, RESUME_MS }
