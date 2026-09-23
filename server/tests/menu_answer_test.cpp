@@ -31,6 +31,24 @@ int main() {
         check(s.responses.size() == 2 && s.responses[0] == "gg" && s.responses[1] == "start", "responses in order");
         check(s.done_notify == "ugxm_voting_complete", "done notify kept");
     }
+    // the host's separator is '.', a ',' still parses
+    {
+        spec s = parse("ugxm_vote_host.ugxm_vote_players", "ugxm_vote_host:ss.start", "ugxm_voting_complete");
+        check(s.active() && s.hides("ugxm_vote_players") && s.responses.size() == 2 && s.responses[0] == "ss", "dot separator");
+    }
+    // the packed single dvar the host sends
+    {
+        std::string id;
+        spec s = parse_packed("gungame:ugxm_vote_host.ugxm_vote_players:ugxm_vote_host:gg.start:ugxm_voting_complete", &id);
+        check(s.active() && id == "gungame" && s.responses[0] == "gg" && s.done_notify == "ugxm_voting_complete", "packed, five fields");
+        spec f = parse_packed("x:m:m:gg", &id);
+        check(f.active() && f.done_notify.empty(), "packed, four fields");
+        check(!parse_packed("gungame:m:m", nullptr).active(), "packed, three fields refused");
+        check(!parse_packed("gun game:m:m:gg", nullptr).active(), "packed, bad id refused");
+        check(!parse_packed("x:m:m:gg:done:extra", nullptr).active(), "packed, six fields refused");
+        check(!parse_packed("x:m:other:gg", nullptr).active(), "packed, answering an unhidden menu refused");
+        check(!parse_packed("", nullptr).active() && parse_packed("", nullptr).error.empty(), "packed, empty is off");
+    }
     // refusals: anything that is not plain tokens refuses the whole thing
     {
         check(!parse("a b", "a b:gg", "").active(), "space refused");

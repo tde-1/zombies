@@ -1,6 +1,6 @@
 // game_mode: the map's own pre-game choice menu (UGX Mod's gamemode vote on Battlestar
 // Galactica and friends) is answered by the SERVER with the mode the party picked on the site,
-// and the menu is never sent to any client. docs/kickstart/game-modes.md; the dvars and the
+// and the menu is never sent to any client. docs/kickstart/game-modes.md; the dvar and the
 // schedule are in menu_answer.hpp.
 //
 // Two engine touches, both read off our own dump (tools/re/t4map.py) and byte-checked here
@@ -137,10 +137,7 @@ std::string dvar_or_empty(const char* name) {
 const spec& current_spec() {
     if (g_spec_read) return g_spec;
     g_spec_read = true;
-    g_mode_id = dvar_or_empty("enw_game_mode");
-    if (!plain_token(g_mode_id)) g_mode_id.clear();
-    g_spec = parse(dvar_or_empty("enw_menu_hide"), dvar_or_empty("enw_menu_answer"),
-                   dvar_or_empty("enw_menu_done"));
+    g_spec = parse_packed(dvar_or_empty("enw_game_mode"), &g_mode_id);
     if (!g_spec.error.empty()) {
         ENW_ERROR("game_mode: REFUSED the host's menu answer (%s); the map's own menu will show",
                   g_spec.error.c_str());
@@ -331,7 +328,7 @@ public:
         });
         enw::frame::subscribe("game_mode", [](uint64_t) { tick(); });
         g_bound = true;
-        ENW_INFO("game_mode: bound (openMenu %08X). Dormant unless the host sets enw_menu_hide/enw_menu_answer.",
+        ENW_INFO("game_mode: bound (openMenu %08X). Dormant unless the host sets enw_game_mode.",
                  static_cast<unsigned>(kOpenMenu));
     }
 };

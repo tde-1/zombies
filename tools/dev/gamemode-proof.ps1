@@ -51,43 +51,47 @@ import('file://' + path.join(process.argv[1], 'infra', 'host-agent', 'lib', 'gam
 "@
     $lines = & node -e $js $repo $Map $Mode
     if ($LASTEXITCODE -ne 0 -or -not $lines) { throw "could not build the mode dvars for $Map/$Mode" }
-    foreach ($l in $lines) { $k, $v = $l -split ' ', 2; $serverExtra += @('+set', $k, $v) }
+    foreach ($l in @($lines)) { $k, $v = $l -split ' ', 2; $serverExtra += @('+set', $k, $v) }
 }
-"mode $Mode on $Map -> server extra: $($serverExtra -join ' ')" | Tee-Object -FilePath "$out\proof.txt"
+"mode $Mode on $Map -> server extra: $($serverExtra -join ' ')" | Out-File -FilePath "$out\proof.txt" -Encoding utf8
 
 # ---- wait for the one game slot on this PC -------------------------------------------------
-$deadline = (Get-Date).AddMinutes(60)
-while ((Get-Date) -lt $deadline) {
-    $busy = (Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count -gt 0
-    if (-not $busy) {
-        Start-Sleep -Seconds 5
-        $busy = (Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count -gt 0
-        if (-not $busy) { break }
-    }
-    Start-Sleep -Seconds 5
-}
-if ((Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count) { throw 'the game slot never came free' }
-
-# ---- the link host and the player's token --------------------------------------------------
-$token = (& node "$repo\tools\dev\authhost.mjs" mint --match $match --steamid $steamid).Trim()
-$link = Start-Process -FilePath node -ArgumentList @("$repo\tools\dev\authhost.mjs", 'serve', '--match', $match, '--port', '38795', '--out', "$out\link.ndjson") `
-    -PassThru -WindowStyle Hidden -RedirectStandardOutput "$out\authhost.out.txt" -RedirectStandardError "$out\authhost.err.txt"
-Start-Sleep -Seconds 1
-
+# Polled fast on purpose: another lane running join tests back to back re-takes the lock within
+# seconds, and a slow poll never sees the gap. jointest/launch.ps1 take the lock atomically, so a
+# race is refused, never shared.
 $env:ENW_TEST_NO_ACTIVATE = '1'
 $env:ENW_BORDERLESS_COVER = '0'
 $env:ENW_FRAME_CAPTURE = '1'
 $env:ENW_FRAME_CAPTURE_AT = $CaptureAt
 $env:ENW_FRAME_CAPTURE_DIR = $out
 $env:ENW_USE_PRIVATE_LOCALAPPDATA = $null
-try {
-    & "$repo\tools\dev\jointest.ps1" -Tag $Tag -Map $Map -ServerFrom $From -ClientFrom $From -WatchSeconds $Watch `
-        -AuthToken $token -MatchId $match -LinkHost '127.0.0.1:38795' `
-        -ClientExtraArgs @('+set', 'com_maxfps', '60') -ServerExtraArgs $serverExtra *>&1 |
-        Tee-Object -FilePath "$out\jointest.txt" | Out-Null
-}
-finally {
-    if ($link -and -not $link.HasExited) { Stop-Process -Id $link.Id -Force -ErrorAction SilentlyContinue }
+$deadline = (Get-Date).AddMinutes(90)
+for ($try = 1; $try -le 12 -and (Get-Date) -lt $deadline; $try++) {
+    while ((Get-Date) -lt $deadline) {
+        $busy = (Test-Path -LiteralPath $lock) -or @(Get-Process -Name CoDWaW -ErrorAction SilentlyContinue).Count -gt 0
+        if (-not $busy) { break }
+        Start-Sleep -Milliseconds 400
+    }
+    # ---- the link host and the player's token ----------------------------------------------
+    $token = (& node "$repo\tools\dev\authhost.mjs" mint --match $match --steamid $steamid).Trim()
+    $link = Start-Process -FilePath node -ArgumentList @("$repo\tools\dev\authhost.mjs", 'serve', '--match', $match, '--port', '38795', '--out', "$out\link.ndjson") `
+        -PassThru -WindowStyle Hidden -RedirectStandardOutput "$out\authhost.out.txt" -RedirectStandardError "$out\authhost.err.txt"
+    Start-Sleep -Milliseconds 500
+    $text = ''
+    try {
+        $text = (& "$repo\tools\dev\jointest.ps1" -Tag $Tag -Map $Map -ServerFrom $From -ClientFrom $From -WatchSeconds $Watch `
+            -AuthToken $token -MatchId $match -LinkHost '127.0.0.1:38795' `
+            -ClientExtraArgs @('+set', 'com_maxfps', '60') -ServerExtraArgs $serverExtra *>&1 | Out-String)
+    }
+    catch { $text += "jointest threw: $_" }
+    finally {
+        if ($link -and -not $link.HasExited) { Stop-Process -Id $link.Id -Force -ErrorAction SilentlyContinue }
+    }
+    $text | Out-File -FilePath "$out\jointest.txt" -Encoding utf8
+    # A lost race (another lane's game started between our check and launch.ps1's own
+    # interlock) is refused before anything ran: wait for the slot again.
+    if ($text -match 'server PID \d+') { break }
+    "take $try lost the race for the game slot; waiting again" | Out-File -FilePath "$out\proof.txt" -Append -Encoding utf8
 }
 
 # ---- what happened ------------------------------------------------------------------------
@@ -106,4 +110,5 @@ $cl = Get-ChildItem "$logs\$Tag.client.enw.log" -ErrorAction SilentlyContinue
 if ($cl) { $sum += Select-String -Path $cl.FullName -Pattern 'frame_capture|keyCatchers' | Select-Object -First 20 | ForEach-Object { $_.Line } }
 $sum += '-- files:'
 $sum += Get-ChildItem $out -File | ForEach-Object { "$($_.Name) $($_.Length)" }
-$sum | Tee-Object -FilePath "$out\proof.txt" -Append
+$sum | Out-File -FilePath "$out\proof.txt" -Append -Encoding utf8
+$sum

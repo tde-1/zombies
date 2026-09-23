@@ -994,17 +994,17 @@ t('dev knobs only for an AGENT lease in CUSTOM mode that asks, and explicitly em
 // ---- the map's own game mode (game-modes.md, lane UGX, 2026-09-23) ----------------------
 const UGX_GG = { id: 'gungame', label: 'Gun Game', mechanism: 'ugx_vote_1', hide: ['ugxm_vote_host', 'ugxm_vote_players'],
   answer_menu: 'ugxm_vote_host', responses: ['gg', 'start'], done: 'ugxm_voting_complete' }
-t('game mode: a UGX pick becomes the four host-owned dvars, in Verified and Custom alike', () => {
-  eq(gameModeDvars(UGX_GG).dvars, [['enw_game_mode', 'gungame'], ['enw_menu_hide', 'ugxm_vote_host,ugxm_vote_players'],
-    ['enw_menu_answer', 'ugxm_vote_host:gg,start'], ['enw_menu_done', 'ugxm_voting_complete']])
+t('game mode: a UGX pick becomes ONE host-owned dvar (the engine keeps 31 + commands), in Verified and Custom alike', () => {
+  eq(gameModeDvars(UGX_GG).dvars, [['enw_game_mode', 'gungame:ugxm_vote_host.ugxm_vote_players:ugxm_vote_host:gg.start:ugxm_voting_complete']])
   eq(gameModeDvars(null), { dvars: [] })
   const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
   const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'gmode'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
   for (const mode of ['verified', 'custom']) {
     const g = m.create({ kind: 'game', assignment: { map: 'battlestar_galactica', mode, game_mode: UGX_GG, settings: {} } })
     const args = g.gameArgs()
-    ok(args.includes('+set enw_menu_answer ugxm_vote_host:gg,start'), `${mode}: ${args.join(' ')}`)
-    ok(args.indexOf('+set enw_game_mode gungame') < args.indexOf('+map battlestar_galactica'), 'before +map')
+    ok(args.includes('+set enw_game_mode gungame:ugxm_vote_host.ugxm_vote_players:ugxm_vote_host:gg.start:ugxm_voting_complete'), `${mode}: ${args.join(' ')}`)
+    eq(args.filter((x) => x.startsWith('+set enw_')).length, 1, 'one + command, not four')
+    ok(args.findIndex((x) => x.startsWith('+set enw_game_mode ')) < args.indexOf('+map battlestar_galactica'), 'before +map')
   }
 })
 t('game mode: a party can never set the mode dvars, and a bad catalogue entry passes nothing', () => {

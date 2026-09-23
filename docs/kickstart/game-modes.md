@@ -44,10 +44,10 @@ the prefix). We send `ugx_start`.
 
 ```
 site (party leader picks)          host agent                       dedicated server (DLL)
-parties.game_mode ──lease──► game_mode spec ──► +set enw_game_mode gungame
-  (only a mode the map        (re-checked:          +set enw_menu_hide ugxm_vote_host,ugxm_vote_players
-   offers; default =           plain tokens,        +set enw_menu_answer ugxm_vote_host:gg,start
-   the map's own)              host-owned dvars)    +set enw_menu_done ugxm_voting_complete
+parties.game_mode ──lease──► game_mode spec ──► +set enw_game_mode \
+  (only a mode the map        (re-checked:           gungame:ugxm_vote_host.ugxm_vote_players:ugxm_vote_host:gg.start:ugxm_voting_complete
+   offers; default =           plain tokens,          (id : menus to hide : answered menu : responses : done notify)
+   the map's own)              ONE host-owned dvar)
                                                        │
                      openMenu("ugxm_vote_*") ──► NOT SENT to any client (no 't' command)
                      +600 ms: menuresponse(ugxm_vote_host, "gg") as players[0]
@@ -66,13 +66,13 @@ records: board per mode (category `round@gungame`, boards.game_mode)
   copied from `ClientDisconnect` 0x67C5E8: `Scr_AddString` 0x69A7E0 ×2, `Scr_NotifyNum`
   0x698CC0 with `scr_const.menuresponse` (the word at `0x1F33D92`), guarded like the engine
   (`[0x3882B88]` set, `[0x3882B7C]` clear), from the frame tick. Responses go 600 ms apart
-  (UGX re-arms its waittill one server frame after each); if `enw_menu_done` has not fired 4 s
-  after the last one the sequence is resent (idempotent), three rounds at most. Dormant unless all
-  three dvars parse; a half-valid config is refused whole (the map's own menu then shows — the
+  (UGX re-arms its waittill one server frame after each); if the done notify has not fired 4 s
+  after the last one the sequence is resent (idempotent), three rounds at most. Dormant unless `enw_game_mode`
+  parses; a half-valid config is refused whole (the map's own menu then shows — the
   safe failure). `is_supported()` = dedicated only.
-* **Host** (`lib/gamemode.js`): `gameModeDvars(asg.game_mode)` → the four dvars, every piece
-  `[A-Za-z0-9_]{1,63}`, ≤ 8 items, answered menu must be hidden, else **none**. The four names are
-  in `HOST_OWNED_DVARS`, so a party's Custom `settings.dvars` can never set them. They go on
+* **Host** (`lib/gamemode.js`): `gameModeDvars(asg.game_mode)` → ONE dvar, `enw_game_mode`, every piece
+  `[A-Za-z0-9_]{1,63}`, ≤ 8 items, answered menu must be hidden, else **none**. The name (and
+  `enw_menu_hide/answer/done`) is in `HOST_OWNED_DVARS`, so a party's Custom `settings.dvars` can never set it. It goes on
   Verified and Custom games alike (the mode is the map's content, not a setting). A lease with a
   mode always boots fresh and its instance is never reused warm (`disposition()`), because the
   dvars are on that process's command line. The referee tracks the DLL's `game_mode` events and the
@@ -98,6 +98,15 @@ records: board per mode (category `round@gungame`, boards.game_mode)
   mode included.
 * **UI**: the rail's lobby options get a mode picker (a select under Verified/Custom) whenever
   the staged/party map has ≥ 2 modes; it is the launcher's too (the launcher embeds the site).
+
+**Why ONE dvar (found by the local proof, 2026-09-23 ~17:45).** The first version put four `+set`s
+on the line. The harness's server line then had 32 `+` commands, and the engine **silently dropped
+the 32nd — `+map`**: no map, the process fell into client init and died on `Exceeded limit of 1
+'snddriverglobals' assets` (runs `gm-gungame-2`, `gm-gungame-3`; the control `gm-none-3` with 28
+loaded fine). The engine keeps the exe path plus **31 `+` commands** — read, not guessed: `Com_ParseCommandLine` 0x59AFA0 starts at 1 line and stops splitting at `cmp edx, 0x20` (0x59AFC1), dropping the rest of the line; the box's own line is 25
+today (B's `m_da684190`), so one more is safe and four would have been too, but a Custom lease
+with a few `settings.dvars` could push any box line past 31 and lose `+map` without an error.
+**For the host lane:** cap the argv (drop lease dvars, never `+map`) and log it.
 
 **DB migration** (in `migrate()`, additive only, safe on the live DB while it serves):
 `parties.game_mode TEXT`, `assignments.game_mode TEXT`, `games.game_mode TEXT`,
@@ -135,9 +144,42 @@ The other hits, and why none is answered:
 Re-run: `python archive/scan_modes.py --table` (writes `web/server/data/map-modes.json`, prints
 this table). Script text is parsed in memory and never written out.
 
-## 4. Proofs
+## 4. Proofs (local, 2026-09-23 17:53–18:31 UK)
 
-*(filled in below as the runs land — see §4.1)*
+Harness `tools/dev/gamemode-proof.ps1` (new): a dedicated server (`waw-d2`) + one invisible client
+(`waw-c1`, off-screen, no focus, private LocalAppData, fake SteamID `…0001` with a minted token),
+DLL `build\ugx` from this branch (main merged), game link to `authhost.mjs` so every link event is
+in a transcript, timed client captures at +4/12/25/45 s in the map that log `keyCatchers`. The
+server's extra `+set` is produced by the real pipeline — `gameModes.leaseSpec` → the host's
+`gameModeDvars` — never typed. Each run took game.lock through jointest and released it.
+Everything is under `ZombiesDev\logs\gamemode\<tag>\` (proof.txt, link.ndjson, captures) and
+`ZombiesDev\logs\dedi\<tag>.*`.
+
+| Run | Mode dvar | What the transcript and the DLL say | Client, every capture | Picture |
+|---|---|---|---|---|
+| `gm-none-3` (control) | none | no `game_mode` events; the vote never completes (no `ugxm_voting_complete` in 60 s) | `keyCatchers 0x10` at 4, 12, 25, 45 s; the client's own start-menu closer tried Esc 3× and the vote stayed | `cap_12s.png`: the UGX vote screen, "Gamemode: Classic … Start Game" |
+| `gm-gungame-4` | gungame | `hidden ugxm_vote_host ent 0` 19.69 s → `answered gg` 20.30 → `answered start` 20.91 → `notify voting_complete`, `ugxm_voting_complete` 20.94 → `done` 20.95 | `0x0` at 4, 12, 25, 45 s | `cap_25s.png`: Gun Game HUD, "Points until next gun 1000 · Current Gun 1 out of 32" |
+| `gm-sharpshooter-4` | sharpshooter | hidden → `ss` → `start` → done in 1.27 s | `0x0` ×4 | `cap_25s.png`: sniper rifle, "Time until next switch 0:07", 14:37 game clock |
+| `gm-classic-4` | classic | hidden → `cl` → `start` → done in 1.28 s | `0x0` ×4 | normal game |
+
+(`0x10` for the first frame of every run, gone within 0.2 s, is the map's own loading menu that
+Nacht also has; `pause_menu` logs it the same way on stock maps.)
+
+**The result posts with the mode**: `gm-gungame-4`'s 1,226 real link events fed through the host's
+own `Referee` (gameMode `gungame`) give `game_mode_applied: true`, `game_mode_seen {hidden:1,
+answered:[gg,start], done:true}`, eligible; ingested by the site's own `results.ingest` on a
+scratch DB after a real party → `setGameMode` → `launch` (the box payload carried the full spec):
+`games.game_mode = gungame`, `records_eligible 1`, boards `round@gungame` "Highest round · Gun
+Game" on all three profiles, `forMap` one Gun Game group. The control's events through the same
+path: `game_mode_applied: false`, flag `game_mode_unconfirmed`, not eligible.
+(`ZombiesDev\logs\gamemode\result_proof.txt`.)
+
+Tests: web `npm test` all suites 0 failed (new `game-modes` 10/0), host `run-all` 111/0 +
+mapcache 22/0 + telemetry 81/0, launcher `run-all` 171/0 (with the ignored client DLL artifact
+copied into the worktree), `server/tests/menu_answer_test.cpp` 29/0, `vite build` clean.
+
+Found on the way and fixed here: `tools/dev/launch.ps1` splits GameArgs on commas (so the lists
+are '.'-separated), and the 31-command line limit above (so it is one dvar).
 
 ## 5. Deploy (nothing of this is deployed; coordinator's call)
 
@@ -160,7 +202,15 @@ in `/home/waw/zdev-host/logs/host/inst-NN.games_mp.log`.
 
 ## 6. Unproven
 
-See §4.1 for what the local runs showed. Not run at all: a UGX 1.1 map in game (the mechanism is
-read from its script and menu strings only), two or more real players (the answer goes to
-`players[0]`, whoever connected first), King of the Hill / Chaos Mode, the site UI in a browser
-(built with `vite build`, exercised by `web/test/game-modes.js` at the API only), and the box.
+* **The box.** Nothing is deployed; the proof after deploy is in §5.
+* **A UGX 1.1 map in game** (ugxm_garage & co.): the mechanism (`ugx_start`, the hidden
+  `ugxm_save_settings_client`) is read from its script and menu strings, never run.
+* **Two or more players.** The answer goes to whoever is `players[0]` (the first to connect);
+  non-hosts' `ugxm_vote_players` is hidden and their votes stay unconfirmed, so only the pick
+  counts — read, not run.
+* King of the Hill / Chaos Mode / Arcade / Bounty Hunter in game; a whole Gun Game or Sharpshooter
+  game to its own end (does UGX's `end_game` read as a normal game over to the referee?).
+* The site UI in a browser (the picker and the records mode tabs are built with `vite build` and
+  exercised at the API by `web/test/game-modes.js`, not clicked).
+* The full host agent process (the Referee and the ingest were run on the real events, the
+  agent's spawn/argv path by unit test only).

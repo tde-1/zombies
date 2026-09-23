@@ -11,14 +11,19 @@
 //                                                "gg" gungame, "ss" sharpshooter, "cl" classic,
 //                                                "ar" arcademode, "bh" bountyhunter, "start"
 //
-// The party leader picks the mode on the site instead. The host puts three dvars on the
-// dedicated server's command line (host-owned: a party can never set them,
-// infra/host-agent/lib/instances.js HOST_OWNED_DVARS):
+// The party leader picks the mode on the site instead. The host puts ONE dvar on the dedicated
+// server's command line (host-owned: a party can never set it, infra/host-agent/lib/instances.js
+// HOST_OWNED_DVARS), five ':'-separated fields:
 //
-//     enw_menu_hide    ugxm_vote_host,ugxm_vote_players   menus the server never sends
-//     enw_menu_answer  ugxm_vote_host:gg,start            the responses, in order, sent as
-//                                                          the player the menu was opened for
-//     enw_menu_done    ugxm_voting_complete               the level notify that proves it took
+//     +set enw_game_mode gungame:ugxm_vote_host.ugxm_vote_players:ugxm_vote_host:gg.start:ugxm_voting_complete
+//                        ^mode id ^menus the server never sends    ^answered   ^responses ^the level notify
+//                                                                   menu        in order   that proves it took
+//
+// ONE dvar, not four, because the engine keeps at most 32 command-line lines (the exe path and
+// 31 `+` commands) and silently DROPS the rest: measured 2026-09-23, a local harness launch with
+// four separate dvars had 32 `+` commands, lost its `+map` (Com_ParseCommandLine 0x59AFA0 stops
+// at `cmp edx, 0x20`, 0x59AFC1), and the server fell into client init
+// ("Exceeded limit of 1 'snddriverglobals' assets"). The box's own line has 25 today.
 //
 // Every name and response is one plain token of [A-Za-z0-9_], at most 63 characters, at most
 // 8 of each. Anything else is refused as a whole: a half-parsed answer could hide a menu the
@@ -43,13 +48,15 @@ inline bool plain_token(const std::string& s) {
     return true;
 }
 
-// Split on `sep`; false if any piece is not a plain token or there are too many.
-inline bool split_tokens(const std::string& s, char sep, std::vector<std::string>& out) {
+// Split on '.' or ','; false if any piece is not a plain token or there are too many. The host
+// sends '.': a comma is a separator to some launch layers (tools/dev/launch.ps1 splits GameArgs
+// on commas), a dot is special to nothing on a command line or in the engine's `set`.
+inline bool split_tokens(const std::string& s, std::vector<std::string>& out) {
     out.clear();
     if (s.empty()) return true;
     size_t start = 0;
     while (true) {
-        const size_t at = s.find(sep, start);
+        const size_t at = s.find_first_of(".,", start);
         const std::string piece = s.substr(start, at == std::string::npos ? std::string::npos : at - start);
         if (!plain_token(piece)) return false;
         out.push_back(piece);
@@ -95,13 +102,13 @@ inline spec parse(const std::string& hide, const std::string& answer, const std:
     spec s;
     if (hide.empty() && answer.empty()) return s;
     std::vector<std::string> h;
-    if (!split_tokens(hide, ',', h) || h.empty()) { s.error = "enw_menu_hide is not a list of plain tokens"; return s; }
+    if (!split_tokens(hide, h) || h.empty()) { s.error = "enw_menu_hide is not a list of plain tokens"; return s; }
     const size_t colon = answer.find(':');
     if (colon == std::string::npos) { s.error = "enw_menu_answer has no ':'"; return s; }
     const std::string menu = answer.substr(0, colon);
     std::vector<std::string> r;
     if (!plain_token(menu)) { s.error = "enw_menu_answer menu is not a plain token"; return s; }
-    if (!split_tokens(answer.substr(colon + 1), ',', r) || r.empty()) { s.error = "enw_menu_answer responses are not plain tokens"; return s; }
+    if (!split_tokens(answer.substr(colon + 1), r) || r.empty()) { s.error = "enw_menu_answer responses are not plain tokens"; return s; }
     if (!done.empty() && !plain_token(done)) { s.error = "enw_menu_done is not a plain token"; return s; }
     s.hide = h;
     bool hidden = false;
@@ -110,6 +117,25 @@ inline spec parse(const std::string& hide, const std::string& answer, const std:
     s.answer_menu = menu;
     s.responses = r;
     s.done_notify = done;
+    return s;
+}
+
+// The packed form above. Four fields (no done notify) or five.
+inline spec parse_packed(const std::string& v, std::string* mode_id = nullptr) {
+    if (v.empty()) return spec{};
+    std::vector<std::string> f;
+    size_t start = 0;
+    while (true) {
+        const size_t at = v.find(':', start);
+        f.push_back(v.substr(start, at == std::string::npos ? std::string::npos : at - start));
+        if (at == std::string::npos || f.size() > 5) break;
+        start = at + 1;
+    }
+    spec s;
+    if (f.size() < 4 || f.size() > 5) { s.error = "enw_game_mode is not id:hide:menu:responses[:done]"; return s; }
+    if (!plain_token(f[0])) { s.error = "enw_game_mode id is not a plain token"; return s; }
+    s = parse(f[1], f[2] + ":" + f[3], f.size() == 5 ? f[4] : std::string());
+    if (s.error.empty() && mode_id) *mode_id = f[0];
     return s;
 }
 

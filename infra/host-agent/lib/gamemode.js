@@ -9,8 +9,11 @@
 //       hide: ['ugxm_vote_host', 'ugxm_vote_players'], answer_menu: 'ugxm_vote_host',
 //       responses: ['gg', 'start'], done: 'ugxm_voting_complete' }
 //
-// This turns it into the four HOST-OWNED dvars the DLL reads (server/components/game_mode):
-// `enw_game_mode`, `enw_menu_hide`, `enw_menu_answer`, `enw_menu_done`. They are host-owned in
+// This turns it into ONE host-owned dvar the DLL reads (server/components/game_mode):
+//   enw_game_mode  <id>:<hide.hide>:<answer menu>:<resp.resp>[:<done notify>]
+// One, not four: the engine keeps at most 31 `+` commands and silently drops the rest, `+map`
+// included (menu_answer.hpp; measured). Lists are '.'-separated (a ',' is a separator to some
+// launch layers). The name, and the three it replaced, are host-owned in
 // the same sense as `dedicated` and `net_port` (instances.js HOST_OWNED_DVARS): a party's
 // Custom `settings.dvars` can never set them, and they go on a Verified game's command line
 // too, because the mode is the map's own content, not a setting.
@@ -49,13 +52,8 @@ export function gameModeDvars(gm) {
   if (!responses) return { dvars: [], error: 'game_mode.responses is not a short list of plain tokens' }
   const done = gm.done == null || gm.done === '' ? '' : String(gm.done)
   if (done && !TOKEN.test(done)) return { dvars: [], error: 'game_mode.done is not a plain token' }
-  const dvars = [
-    ['enw_game_mode', id],
-    ['enw_menu_hide', hide.join(',')],
-    ['enw_menu_answer', `${menu}:${responses.join(',')}`],
-  ]
-  if (done) dvars.push(['enw_menu_done', done])
-  return { dvars }
+  const packed = [id, hide.join('.'), menu, responses.join('.'), ...(done ? [done] : [])].join(':')
+  return { dvars: [['enw_game_mode', packed]] }
 }
 
 /** The requested mode's id, or null. */
