@@ -15,6 +15,13 @@ the vault Build Log (`19 - Build Log`, "16:30 UK — new coordinator session" ro
 | Unproven | a real player on: restart via the host path, the gungame vote answer, the water fix, Town of the Dead after the guard; S2's custom-map bot rounds; 2 h soaks |
 | For B | CX33 (€10.79/mo gross) or a temporary box for soaks; dt2 visible with `asset_audit_pending` (m4a1_zm missing); 11 box-pass maps hidden by the asset gate (raw weapon patch path); Q-soc-1 "the ENW main server" for friends; `git push origin main` (agent pushes are blocked by the permission classifier) |
 
+**CE (2026-09-24 00:15 UK, `client.md` §14):** B's "died at the end and the game crashed" (Cheese Cube, 0.2.35) was **F12**: WaW's
+stock `screenshotJPEG` at 2560×1440 needs an 11 MB temp-hunk block from a 10 MB hunk → ERR_DROP → lockdown quit. Every map, any
+moment, any display >3.4 MP. Fixed by `screenshot_guard.cpp` (JPEG buffer from the heap); reproduced guard-off (ce2) and proven
+guard-on on Nacht through game over → end screen → clean quit (ce4). Branch `worktree-agent-ae9502ddee2a48065`, client DLL
+`0e85ca48`, next launcher publish. **Open:** Cheese Cube run + the Documents redirect run (refused by the agent's permission
+guard), and **delete `C:\Users\b\Documents\Activision`** (three test JPEGs this lane's runs created; the engine writes shots there).
+
 # Next session — earlier (2026-09-23 03:30 handoff)
 
 Written 2026-09-23 ~03:30 UK at the end-of-session handoff (the session ran from 2026-09-22 19:00

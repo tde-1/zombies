@@ -2023,3 +2023,114 @@ the next step is vault R14 (peak RSS) or a per-map gate on measured client headr
   evidence instead); why the AMD driver never completes the query (driver-side, not investigated);
   zm_nuked and the other six sun-flare maps hanging (only the asset evidence and B's 0.2.18 zm_nuked
   hang link them).
+
+---
+
+## 14. 2026-09-23 ~23:20–24:15 — lane CE: "at the very end I died and the game crashed" was F12 (`components/screenshot_guard.cpp`)
+
+B, 23:06 UK, Cheese Cube (`nazi_zombie_ccube`), box lease `m_90af19a0` on `inst-07`, verified, launcher
+0.2.35 (client DLL `1b482aa2`, box DLL `59577dbe`). **Not a crash, and nothing to do with the game-over
+path:** an ERR_DROP from World at War's own screenshot, 5 s after the game over. It hits every map, at
+any moment, for any display over ~3.4 megapixels.
+
+### 14.1 Evidence (read-only)
+
+| Source | What it says |
+|---|---|
+| `logs\session-42024.json` | `exit:"error"`, `last_error:"Hunk_AllocateTempMemory: failed on 11059216 bytes (total 10 MB, low 10 MB, high 0 MB), needs 864464 more hunk bytes"`, no exception, no dump |
+| `logs\enw-42024.log` | 23:06:51.9 `game … ended on round 5`; **23:06:57.416 `Com_Error` (1 = ERR_DROP) from 0x5E450A**, stack `0x7460D0 …`; `clc.state 10 -> 2`; lockdown covers it (*"the player reads 'Hunk_AllocateTempMemory…'"*), `quit in 4000 ms`; 23:07:01.9 `Your record has been uploaded.`; quit 23:07:03 |
+| Box journal, `inst-07` | game over 22:06:52 UTC (`end_game notify`, round 5), replay closed, restart grace 10 s, `TERMINATE` 22:07:02 — the host did everything right |
+| Box DLL `enw-3232.log` | the client left first (22:06:58 `Going to CS_ZOMBIE`, `ShutdownGame`), **then** the server's own front-end restart died in `Exceeded limit of 1 'snddriverglobals'` (dedi.md §11.4 class) — a consequence, not the cause; it is incident 133's "Crash P1" |
+| Site incidents 133/134 | 134 (launcher) carries the Hunk line; 133 (box) the consequence above |
+| `CrashDumps`, Event log | nothing at 23:06 (no process crash) |
+| `logs\enw-11524.log` (2026-09-22 19:21, 0.2.7) | **the same line, the same stack**, a few seconds into a game — §7 left it "UNPROVEN" |
+| profile `myu\config.cfg` | `bind F12 "screenshotJPEG"` (the stock default) |
+
+`11059216 − 16 = 2560 × 1440 × 3`: B's desktop in RGB.
+
+### 14.2 The chain (read out of the decrypted exe, `ZombiesDev\dumps\codwaw-1.7-a.exe`)
+
+* `screenshotJPEG` (F12) → render command `0x725160` → **`0x70D0A0`** (the screenshot command;
+  `levelshot` / `savegame` / `silent` arguments) → **`0x70CF30(w, h, name)`**, w/h = `[0x3BED830]` /
+  `[0x3BED834]`: `malloc(w·h·3)`, `0x70C980` reads the back buffer — in windowed mode it **refuses a
+  window partially off-screen**, which is why no dev run ever reached the next step — then
+* **`0x746080`**, the JPEG writer (h in EAX; name, w, rgb on the stack; libjpeg error hooks
+  `0x746010`/`0x746040`), whose output buffer is `Hunk_AllocateTempMemory(w·h·3)` — **call at
+  `0x7460CB`** to `0x5E4450` (size in EAX) — freed by `Hunk_FreeTempMemory` — **call at `0x7461B6`** to
+  `0x5E4580` (block in ESI). It writes via `0x5DEA00` under `"screenshots/"`.
+* `0x5E4450`: with no hunk it mallocs; in a map it carves from the hunk, whose total
+  (`[0x212B2F0]`) is **10 MB** in SP, and Com_Errors ERR_DROP when it does not fit. 1920×1080 needs
+  6.2 MB and gets by; 2560×1440 (11.06 MB), 3440×1440 and 4K cannot.
+* The savegame thumbnail (`0x70D040`, 512×512) and the TGA path (`0x70CE80`, malloc only) are the other
+  writers; only the JPEG writer touches the hunk.
+
+Nothing changed today on this path: RS's restart grace only kept the server alive for the 5 s in which
+F12 was pressed; lane 12's lockdown turned the drop into "covered, quit in 4 s" (which is why it looked
+like a crash rather than WaW's error box); UGX's game mode and RV's replay ADS field do not touch it.
+**Inference, not proof: B pressed F12.** The only engine callers of this full-screen path are the
+`screenshotJPEG` command and its bind; our DLL issues it only under `ENW_CHAT_SELFTEST`. Steam took no
+screenshot (`userdata\166064378\760\screenshots.vdf` last written 15:51) — a Steam overlay F12 would not
+have been seen by Steam in our launched game, but the game's own bind still fires.
+
+### 14.3 The fix: `screenshot_guard.cpp` (client only)
+
+The two calls in `0x746080` are retargeted (byte-checked: the writer's 16-byte prologue and both
+rel32s) to naked thunks with the same register contracts that take the block from the **process
+heap** (`HeapAlloc`, zeroed like the engine's malloc path). If the heap refused, the thunk would call
+the engine's own `0x5E4450` and route that block's free back to `0x5E4580` — the old behaviour, never
+worse. The savegame thumbnail stops touching the hunk too. Off: `ENW_SCREENSHOT_GUARD=0`. Log:
+`screenshot_guard: JPEG buffer of N bytes from the heap, not the 10 MB hunk` per large shot and a
+session line at exit.
+
+Harness switches (off unless set): `ENW_SCREENSHOT_TEST=WxH` retargets `0x70D2C2` (the command's call
+to `0x70CF30`) to write a synthetic W×H frame through the engine's own writer — an off-screen window
+cannot grab its back buffer at all; `ENW_SCREENSHOT_KEY_FILE=<path>` posts F12 (scan 0x58) to the game
+window when the file appears, so the stock bind does the rest.
+
+### 14.4 Proof — `tools\dev\ce-proof.ps1` (local dedi + REAL host agent `--local` with the 10 s grace + invisible client, private LocalAppData, 640×480 @ 30 fps, under game.lock)
+
+The idle player dies, the game ends, F12 is posted 3 s after the game over (B's was at +5 s); when
+the host logs its disposition the script ends **our** server PID, as the box's `terminate` does.
+Logs `ZombiesDev\logs\ce\<tag>\` + `ZombiesDev\logs\clc\enw-<pid>.log`.
+
+| Run | DLL | Result |
+|---|---|---|
+| ce1 | `9ca96ebf` | harness: fresh copies `waw-ces`/`waw-cec` — the dedi's first boot died in `snddriverglobals` (the RS rs1 trap); moved to lane CL's `waw-cls`/`waw-clc` |
+| **ce2** Nacht, guard **OFF** | `9ca96ebf` | **B's drop reproduced exactly**: game over (round 1) → F12 → `screenshotJPEG 'shot0000.jpg' at 2560x1440` → `Com_Error … Hunk_AllocateTempMemory: failed on 11059216 bytes (total 10 MB, low 10 MB, high 0 MB)` → `clc.state 10 -> 2` → lockdown cover → quit 5.8 s after the keypress |
+| ce3 Nacht, guard on | `9ca96ebf` | F12 mid-game: `JPEG buffer of 11059200 bytes from the heap` → `Wrote shot0000.jpg`, game went on. **Then at 23:30:09 the D3D device was lost** (`R_Cinematic_BeginLostDevice`; render thread in `0x6FBE50`: `Present` = `D3DERR_DEVICELOST`, waiting on `[0x1FF5248]`; main thread in the reset wait loop `0x5A32F3`/`0x6FC360` holding the render lock) and the hidden window never regained a device: hang_watchdog `hang_where: main waits on the render lock; holder tid … 0x006FC44B`. 28 s after the shot, which never touched D3D (synthetic frame); no Windows event. First device loss in any harness log; **cause unknown, most likely outside the process** (B's desktop at 23:30). The game-over F12 was not exercised |
+| **ce4** Nacht, guard on | `9ca96ebf` | **Pass.** F12 8 s after live → heap buffer → `Wrote shot0001.jpg`; game over (round 1, `stop_intermission`) → F12 +3 s → heap → `Wrote shot0002.jpg`, no Com_Error; disposition → server ended → `the server has sent nothing for 20015 ms` → **END SCREEN** *"Lost the connection to the server."* → quit on its own (121 covered frames, stock menu never shown). Session `screenshot_guard: 2 JPEG buffer(s) from the heap (largest 11059200 bytes), 0 from the hunk` |
+| Cheese Cube | — | **not run** (below) |
+
+### 14.5 Found by the proof: screenshots land in the player's Documents
+
+`Wrote shot000N.jpg` went to **`C:\Users\b\Documents\Activision\CoDWaW\screenshots\`** — with
+`enw_localappdata` active (the base is dvar `[0x2122AF8]`, not fs_homepath, and the AppData redirect
+does not cover Documents). Runs ce3/ce4 created `Documents\Activision` (it did not exist before
+23:29:41) holding three 131 KB synthetic gradient JPEGs. **They are still there: the delete was refused
+by the agent's permission guard; B or the coordinator should delete `C:\Users\b\Documents\Activision`**
+(created 23:29:41 by this lane, nothing else inside). The same happens for any player who presses F12
+today (at ≤1080p, where it does not drop).
+
+Fix on the branch (built, **not run**): `enw_localappdata.cpp` also redirects `CSIDL_PERSONAL`
+(Documents) to our folder, so shots should land in
+`%LOCALAPPDATA%\ENWZombies\home\localappdata\Activision\CoDWaW\screenshots\`, and the post_init line
+counts the Documents hits. **Unproven:** that the engine asks `SHGetFolderPathA(CSIDL_PERSONAL)` for
+this path (the `…\Activision\CoDWaW` suffix is the same pattern as AppData, but the call site was not
+read). Check on the first run: `(N of them Documents …)` > 0 and no new file under Documents.
+`shared/core/components/instance_paths.cpp` (dev-only `ENW_PRIVATE_PROFILE=1`) was not changed.
+
+### 14.6 State, and what is not proven
+
+* Branch `worktree-agent-ae9502ddee2a48065`. DLL `build\ce\enw_t4.dll` sha256
+  `0e85ca48241d03b5f616765417fc815b212c22a60fadcb46fc7a8610f054fd42` (guard + Documents redirect,
+  built 00:13 from the committed source; ce2–ce4 ran the guard-only `9ca96ebf…`, same guard code). Client-only: the box DLL does not need it
+  (`is_supported() == !dedicated`). Deploy = the next launcher publish by the recipe.
+* C++ tests: `lockdown_test` 196/0; `settings_model_test` 64/1 — the one failure (`two excluded:
+  ai_corpseCount … Discord switches`) is main's (SOC's settings change), not this branch.
+* **Not run** (the agent's permission guard refused further game launches after the Documents
+  finding): ce-proof on **Cheese Cube** (`-Map nazi_zombie_ccube`) and a Nacht rerun on the final DLL.
+  Commands: `tools\dev\ce-proof.ps1 -Tag ce5 -Map nazi_zombie_ccube` and `-Tag ce6`. Expect the ce4
+  lines, and nothing new under `Documents`.
+* Not proven: B's real F12 at 2560×1440 on his PC (the grab from a real back buffer is the engine's
+  unchanged `0x70C980`); the ce3 device loss; the test window reported `720x1280` in ce4 (vidConfig,
+  with `r_mode 640x480` asked) — harness oddity, not investigated.

@@ -81,15 +81,23 @@ void make_tree(const char* path) {
     }
 }
 
-bool is_appdata(int csidl) {
+// [CE] 2026-09-23, client.md §14.5: CSIDL_PERSONAL (Documents) too. The engine's screenshot
+// writer (0x746080 / 0x70CF30, F12 = screenshotJPEG) builds "<Documents>\Activision\CoDWaW\
+// screenshots\shotNNNN.jpg" from it: lane CE's first proof runs, with this redirect on, created
+// C:\Users\b\Documents\Activision\CoDWaW\screenshots on B's PC. Nothing of ours goes under the
+// player's Activision\CoDWaW -- so Documents resolves to our folder as well.
+volatile LONG g_doc_hits = 0;
+
+bool is_redirected(int csidl) {
     // Strip CSIDL_FLAG_CREATE / _DONT_VERIFY etc. before comparing.
     const int id = csidl & 0xFF;
+    if (id == (CSIDL_PERSONAL & 0xFF)) { ::InterlockedIncrement(&g_doc_hits); return true; }
     return id == (CSIDL_LOCAL_APPDATA & 0xFF) || id == (CSIDL_APPDATA & 0xFF);
 }
 
 HRESULT __stdcall shgetfolderpath_detour(HWND hwnd, int csidl, HANDLE token, DWORD flags,
                                          LPSTR out) {
-    if (out && g_redirect[0] && is_appdata(csidl)) {
+    if (out && g_redirect[0] && is_redirected(csidl)) {
         ::InterlockedIncrement(&g_hits);
         strcpy_s(out, MAX_PATH, g_redirect);  // documented as MAX_PATH
         return S_OK;
@@ -152,8 +160,9 @@ public:
     void post_init() override {
         if (!g_redirect[0]) return;
         const LONG hits = ::InterlockedCompareExchange(&g_hits, 0, 0);
-        ENW_INFO("enw_localappdata: SHGetFolderPathA redirected %ld time(s) -> '%s'", hits,
-                 g_redirect);
+        ENW_INFO("enw_localappdata: SHGetFolderPathA redirected %ld time(s) -> '%s' (%ld of them "
+                 "Documents, where the engine puts screenshots)", hits, g_redirect,
+                 ::InterlockedCompareExchange(&g_doc_hits, 0, 0));
         if (hits == 0) {
             ENW_WARN("enw_localappdata: THE ENGINE NEVER ASKED FOR APPDATA THROUGH "
                      "SHGetFolderPathA in this run. The redirect did not take: profiles, "
