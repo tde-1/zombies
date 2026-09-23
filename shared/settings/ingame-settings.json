@@ -346,12 +346,12 @@
    "dvar": "r_multiGpu",
    "to": "waw",
    "def": "0",
-   "enw": "1",
+   "enw": "0",
    "values": [
     "0",
     "1"
    ],
-   "hint": "on in ENW: fixes stutter on modern PCs"
+   "hint": "off: on a single GPU it breaks skinned models and stutters"
   },
   {
    "id": "sm_enable",

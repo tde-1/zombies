@@ -95,7 +95,7 @@ export const LABELS = {
 // One line, only where the value does not explain itself.
 export const HINTS = {
   r_aaSamples: 'above 2x can hang on alt-tab',
-  r_multiGpu: 'on in ENW: fixes stutter on modern PCs',
+  r_multiGpu: 'off: on a single GPU it breaks skinned models and stutters',
   r_picmip_manual: 'manual unlocks the three below',
   snd_losOcclusion: 'muffles sounds behind walls',
   rawMouse: 'fixes high polling rate mice',

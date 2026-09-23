@@ -115,8 +115,14 @@ export const COMMUNITY_FIXES = [
   { dvar: 'r_picmip_bump', value: '0', name: 'Texture quality high (bump)', why: 'Same, for normal maps.', source: 'https://www.pcgamingwiki.com/wiki/Call_of_Duty:_World_at_War#Video' },
   { dvar: 'r_picmip_spec', value: '0', name: 'Texture quality high (spec)', why: 'Same, for specular maps.', source: 'https://www.pcgamingwiki.com/wiki/Call_of_Duty:_World_at_War#Video' },
   {
-    dvar: 'r_multiGpu', value: '1', name: 'Dual video cards on',
-    why: 'PCGW\'s named fix for "stuttering on modern systems despite a locked frame rate" — the setting is labelled Dual Video Cards and helps regardless of how many GPUs you have.',
+    // WAS '1' from afc6276 (2026-09-22) to 2026-09-23, on PCGW's "stuttering on modern
+    // systems" advice. Wrong for us: B confirmed 2026-09-23 13:35 that turning it OFF
+    // fixed the invisible/garbled zombies on nazi_zombie_fear_mc_2 and most of the mouse
+    // stutter. On a single GPU it double-buffers skinned vertex data for alternate-frame
+    // rendering (mod-compat.md §10.4). Still a player toggle for someone with two GPUs;
+    // migrateMultiGpu() below repairs configs that carry the old '1'.
+    dvar: 'r_multiGpu', value: '0', name: 'Dual video cards off',
+    why: 'Pinned at the stock 0, reversing PCGW\'s "turn it on for stutter" fix (the source below): with it on, a single GPU breaks skinned models (invisible or garbled zombies) and stutters — B, 2026-09-23. Turn it on yourself only if you really run two GPUs. Evidence: docs/kickstart/mod-compat.md §10.4.',
     source: 'https://www.pcgamingwiki.com/wiki/Call_of_Duty:_World_at_War#Stuttering_on_modern_systems',
   },
   {
