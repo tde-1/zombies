@@ -175,13 +175,14 @@ function trim() {
   if (Math.random() < 0.05) db.prepare('DELETE FROM chat_private WHERE id NOT IN (SELECT id FROM chat_private ORDER BY id DESC LIMIT ?)').run(KEEP)
 }
 
-// Private lines this player may see, newer than `cursor` (or the latest `tailN` when 0).
+// Private lines this player may see, newer than `cursor` (or the latest `tailN` when 0;
+// `tailN: 0` makes 0 an ordinary cursor).
 function privateFor(steamId, cursor = 0, { tailN = 30, limit = 100 } = {}) {
   const sid = String(steamId)
   const party = parties.forPlayer(sid)
   const pid = party ? party.id : -1
   const where = `removed=0 AND ((channel='party' AND party_id=?) OR (channel='dm' AND (from_sid=? OR to_sid=?)))`
-  if (!Number(cursor)) {
+  if (!Number(cursor) && tailN > 0) {
     return db.prepare(`SELECT * FROM chat_private WHERE ${where} ORDER BY id DESC LIMIT ?`)
       .all(pid, sid, sid, tailN).reverse().map(project)
   }
@@ -199,13 +200,29 @@ function waitPrivate(seconds) {
   })
 }
 
-// The overlay's one request: both rings, long-polled. `g` / `p` are the two cursors; 0
-// means "I have nothing yet" and gets the recent tail so the box is not empty on join.
-async function feed(me, { g = 0, p = 0, wait = 20, isClosed = () => false } = {}) {
+// The overlay's one request: both rings, long-polled. `g` / `p` are the two cursors.
+//
+// 0 means "I have just started" and gets THE CURSOR AND NO LINES — the box drain's rule
+// (routes/gameserver.js, since=0). It used to get the recent tail, and the overlay stamps
+// every line with the moment it ARRIVED (chat_overlay.cpp line_from_json), so joining a game
+// put the last five lines of the ring on the HUD as if just said: the previous game's
+// "myu started a game on <map>" beside this one's. That was B's "duplicate messages when you
+// first join" (2026-09-23; web.md, profile/records/invites/chat dedupe). A client that wants
+// the backlog asks for it (`history`), and every line of it carries `backfill: true` so it
+// can file it as history rather than news.
+async function feed(me, { g = 0, p = 0, wait = 20, history = false, isClosed = () => false } = {}) {
   const sid = String(me.steam_id)
+  // The cursors are taken BEFORE any wait, so a fresh client that waits is handed exactly
+  // what was said after it asked — never the backlog, and never a gap.
+  const g0 = Number(g) || chat.latest()
+  const p0 = Number(p) || latestPrivate()
+  const back = (l) => ({ ...l, backfill: true })
+  let first = true
   const collect = () => {
-    const global = Number(g) ? chat.since(Number(g)) : chat.tail(20)
-    const priv = privateFor(sid, Number(p))
+    const withHistory = first && history
+    first = false
+    const global = withHistory && !Number(g) ? chat.tail(20).map(back) : chat.since(g0)
+    const priv = withHistory && !Number(p) ? privateFor(sid, 0).map(back) : privateFor(sid, p0, { tailN: 0 })
     return { global, priv }
   }
   let out = collect()
@@ -215,14 +232,12 @@ async function feed(me, { g = 0, p = 0, wait = 20, isClosed = () => false } = {}
     if (isClosed()) return null
     out = collect()
   }
-  const gl = out.global.length ? out.global[out.global.length - 1].id : 0
-  const pl = out.priv.length ? out.priv[out.priv.length - 1].id : 0
+  const newest = (rows) => rows.filter((l) => !l.backfill).reduce((m, l) => Math.max(m, l.id), 0)
   return {
     ok: true,
-    // Cursors never go backwards, and a fresh client is moved to "now" on its first poll
-    // so it does not replay the tail again next time.
-    g: Math.max(Number(g) || 0, gl, Number(g) ? 0 : chat.latest()),
-    p: Math.max(Number(p) || 0, pl, Number(p) ? 0 : latestPrivate()),
+    // Cursors never go backwards: the last line handed over, or "now" for a fresh client.
+    g: Math.max(g0, newest(out.global)),
+    p: Math.max(p0, newest(out.priv)),
     global: out.global,
     private: out.priv,
   }

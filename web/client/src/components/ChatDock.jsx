@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { socket, onChat } from '../socket'
+import { mergeLines, lastId } from '../chatLines'
 import { useSession } from '../session'
 
 // ── Cross-server chat, on every page ──────────────────────────────────────────
@@ -88,22 +89,23 @@ export default function ChatDock() {
 
   const logRef = useRef(null)
   const pinned = useRef(true)
-  const seen = useRef(new Set())
   const openRef = useRef(open)
   openRef.current = open
+  // The ids on screen, for the unread count and the catch-up cursor. Kept in step with
+  // `lines` by the merge itself, so it is never a second truth that can drift.
+  const held = useRef([])
 
-  const append = useCallback((incoming) => {
-    const add = incoming.filter((e) => e && e.id != null && !seen.current.has(e.id))
-    if (!add.length) return
-    for (const e of add) seen.current.add(e.id)
-    setLines((prev) => {
-      const next = [...prev, ...add].slice(-CAP)
-      // Rebuild the id set from what survived the cap, or a line that scrolled off
-      // and came round again on a refetch could never be drawn.
-      seen.current = new Set(next.map((x) => x.id))
-      return next
-    })
-    if (!openRef.current) setUnread((n) => Math.min(99, n + add.length))
+  // EVERY source goes through one merge keyed on the ring's id (chatLines.js): the
+  // backlog, the socket, and the catch-up after a reconnect. The old fill RESET the list,
+  // so a live line that landed before the backlog answered was dropped, and a reconnect
+  // never caught up at all (web.md, 2026-09-23 chat dedupe).
+  const append = useCallback((incoming, { live = false } = {}) => {
+    const have = new Set(held.current.map((l) => Number(l.id)))
+    const fresh = (incoming || []).filter((e) => e && e.id != null && !have.has(Number(e.id)))
+    if (!fresh.length) return
+    held.current = mergeLines(held.current, fresh, CAP)
+    setLines(held.current)
+    if (live && !openRef.current) setUnread((n) => Math.min(99, n + fresh.length))
   }, [])
 
   // The fill. The ring is on the server and the socket only carries what happens
@@ -111,7 +113,7 @@ export default function ChatDock() {
   useEffect(() => {
     let dead = false
     api.get('/api/chat?limit=60')
-      .then((d) => { if (dead) return; seen.current = new Set(); setLines([]); append(d.chat || []); setState('ready') })
+      .then((d) => { if (dead) return; append(d.chat || []); setState('ready') })
       .catch(() => { if (!dead) setState('offline') })
     return () => { dead = true }
   }, [append])
@@ -119,7 +121,20 @@ export default function ChatDock() {
   // Live. The same socket event the boxes' lines land on — `chatNetwork.setEmitter`
   // in `server/index.js` — so a line from a game and a line from a browser arrive by
   // one path and cannot get out of order with each other.
-  useEffect(() => onChat((line) => append([line])), [append])
+  useEffect(() => onChat((line) => append([line], { live: true })), [append])
+
+  // A reconnect (the site restarting, the launcher's reload, a laptop waking) asks only
+  // for what it missed: `?since=` the newest id held. The merge drops anything the socket
+  // also delivers.
+  useEffect(() => {
+    const onConnect = () => {
+      const since = lastId(held.current)
+      if (!since) return
+      api.get(`/api/chat?since=${since}&limit=200`).then((d) => append(d.chat || [], { live: true })).catch(() => {})
+    }
+    socket.on('connect', onConnect)
+    return () => socket.off('connect', onConnect)
+  }, [append])
 
   // Pin to the bottom only while the reader is already there (Movement's rule).
   const onScroll = () => {

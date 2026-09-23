@@ -346,7 +346,14 @@ function router() {
   })
 
   // ---- global chat --------------------------------------------------------------
-  r.get('/chat', (req, res) => res.json({ chat: chat.tail(Number(req.query.limit || 40)), latest: chat.latest() }))
+  // `?since=<id>` is the dock's catch-up after a socket reconnect: only what it missed, in
+  // order, never the tail again. Without it, the backlog (the tail).
+  r.get('/chat', (req, res) => {
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 40))
+    const since = Number(req.query.since)
+    const rows = Number.isFinite(since) && since > 0 ? chat.since(since, { limit }) : chat.tail(limit)
+    res.json({ chat: rows, latest: chat.latest() })
+  })
 
   r.post('/chat', requireUser, (req, res) => {
     const text = (req.body && req.body.text) || ''

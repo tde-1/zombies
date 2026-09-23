@@ -1262,7 +1262,9 @@ async function main() {
     chatSystem._reset()
     const ev = { name: 'ingameName', map: 'nazi_zombie_asylum', map_name: 'Verrückt', round: 30, match_id: 'm_sys1', instance: 'i1' }
     eq(chatSystem.record('box-a', { ...ev, event: 'started' }).text, 'ingameName started a game on Verrückt')
-    eq(chatSystem.record('box-a', { ...ev, event: 'joined' }).text, 'ingameName joined Verrückt')
+    // A second player: the one who started a match does not also join it (once per match,
+    // test/chat-dedupe.js).
+    eq(chatSystem.record('box-a', { ...ev, name: 'secondName', event: 'joined' }).text, 'secondName joined Verrückt')
     eq(chatSystem.record('box-a', { ...ev, event: 'down' }).text, 'ingameName just went down on round 30 on Verrückt')
     eq(chatSystem.record('box-a', { ...ev, event: 'ended' }).text, "ingameName's game on Verrückt ended on round 30")
   })
