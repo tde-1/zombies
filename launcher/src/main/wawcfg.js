@@ -168,8 +168,10 @@ export function launchDvars(settings = {}, display = null) {
 // The dvars from the account that go into config.cfg every launch: everything the site or
 // the launcher's own Settings screen decides. Not the bundled community fixes - those stay
 // seed-once, exactly as before, so an in-game change to one of them is never undone.
+// `snd_menu_master` is the account's volume (bug 15): a `+set` alone loses to the
+// config.cfg the engine execs after it, so the volume has to be in the file too.
 const ACCOUNT_DVARS = new Set(['r_fullscreen', 'r_mode', 'r_displayrefresh', 'vid_xpos', 'vid_ypos', 'r_monitor',
-  'r_vsync', 'com_maxfps', 'cg_fov', 'sensitivity', 'cg_drawfps'])
+  'r_vsync', 'com_maxfps', 'cg_fov', 'sensitivity', 'cg_drawfps', 'snd_menu_master'])
 
 export function accountConfigLines(settings = {}, display = null) {
   const pairs = launchDvars(settings, display)

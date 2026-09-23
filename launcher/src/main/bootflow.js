@@ -19,6 +19,7 @@ import { EventEmitter } from 'node:events'
 import { GameLaunch } from './launch.js'
 
 const STEP_LABELS = {
+  steam: 'Steam',
   download: 'Downloading the map',
   reserving: 'Reserving server',
   loading: 'Loading map',
@@ -80,6 +81,10 @@ export class BootFlow extends EventEmitter {
       notes: this.launch?.notes || [],
       dialogs: this.launch?.dialogs || [],
       failed: this.steps.some((s) => s.state === 'failed'),
+      // Steam was not up or not signed in: nothing was reserved or started, and the
+      // screen offers Retry instead of a list of stopped steps.
+      steamFailed: this.steamFailed || null,
+      retry: !!this.steamFailed,
       done: this.steps.some((s) => s.id === 'in_game' && s.state === 'done'),
     }
   }
@@ -113,6 +118,11 @@ export class BootFlow extends EventEmitter {
   async run() {
     const o = this.opts
     const siteUrl = (o.siteUrl || 'http://127.0.0.1:8099').replace(/\/$/, '')
+
+    // Steam first, for every kind of launch: SteamStub will not decrypt the game without
+    // a signed-in client (steam.js), and asking the site for a box we then cannot join
+    // would only hold it for nobody.
+    if (!(await this.steamGate())) return this.snapshot()
 
     // Play Local is a different journey (spec 13 §4): the map runs on the player's own
     // PC as a normal client, solo, with nothing tracked. There is no server to reserve
@@ -230,6 +240,33 @@ export class BootFlow extends EventEmitter {
     } catch {
       return null
     }
+  }
+
+  // `opts.steam` is steam.js :: ensureSteam (main.js passes it; tests pass a fake). The
+  // step is only drawn when there was something to wait for, like `download`.
+  async steamGate() {
+    const f = this.opts.steam
+    if (typeof f !== 'function') return true
+    let r
+    try {
+      r = await f({
+        onState: ({ message }) => this.step('steam', 'active', message),
+        cancelled: () => this.cancelled,
+      })
+    } catch (e) {
+      r = { ok: false, reason: 'error', message: 'Steam didn\'t start.' }
+    }
+    if (r?.ok) {
+      if (this.steps.some((s) => s.id === 'steam')) this.step('steam', 'done', 'signed in')
+      return true
+    }
+    if (r?.reason === 'cancelled' || this.cancelled) {
+      if (this.steps.some((s) => s.id === 'steam')) this.step('steam', 'failed', 'cancelled')
+      return false
+    }
+    this.steamFailed = r?.message || 'Steam didn\'t start.'
+    this.step('steam', 'failed', this.steamFailed)
+    return false
   }
 
   async runViaSite(api) {

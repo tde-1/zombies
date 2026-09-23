@@ -66,6 +66,10 @@ contextBridge.exposeInMainWorld('enw', {
   playLocal: (session) => call('playLocal', session),
   cancelPlay: () => call('cancelPlay'),
   closeBoot: () => call('closeBoot'),
+  // The boot screen's Retry after Steam was not up or not signed in.
+  retryPlay: () => call('retryPlay'),
+  // The "already running" toast's End game (only for a game this launcher started).
+  endGame: (pid) => call('endGame', pid),
   // The site's Resume: go back into a match this launcher already launched once.
   resumeMatch: (matchId) => call('resumeMatch', matchId),
 
