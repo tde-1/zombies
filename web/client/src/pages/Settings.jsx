@@ -220,9 +220,8 @@ export default function Settings() {
                     <SettingRow it={it} game={game} change={change} ctx={ctx} />
                   </div>
                 ))
-            ) : tab === 'enw' ? (
-              <EnwSection onStatus={setStatus} />
             ) : (
+              <>{tab === 'enw' && <EnwSection onStatus={setStatus} />}{
               groupsOf(tab).map((g) => (
                 <div key={g.id} className={`set-group ${g.keys ? 'set-keys' : ''}`}>
                   <div className="set-section">
@@ -233,7 +232,7 @@ export default function Settings() {
                   {g.keys && g.id === 'move' && <div className="set-hint">click a box, then press a key or mouse button. esc cancels, backspace clears.</div>}
                   {groupItems(g).map((it) => <SettingRow key={it.id} it={it} game={game} change={change} ctx={ctx} />)}
                 </div>
-              ))
+              ))}</>
             )}
           </div>
         </div>
