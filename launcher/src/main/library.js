@@ -41,7 +41,9 @@ const MANIFEST_DIRS = [
 ]
 
 // Data only. Anything else in a mod folder is a reason to stop, not to filter quietly.
-const ALLOWED_EXT = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc', '.json', '.png', '.jpg', '.dds'])
+// Loose images, client scripts, menus and the load video are what a mod ships as well
+// (mod-compat.md §2); extension-less weapon files pass the `ext &&` guard below.
+const ALLOWED_EXT = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc', '.csc', '.iwi', '.bik', '.menu', '.str', '.json', '.png', '.jpg', '.dds'])
 const BANNED_EXT = new Set(['.exe', '.dll', '.bat', '.cmd', '.ps1', '.scr', '.com', '.msi', '.vbs', '.js'])
 
 const sha256 = (file) => {
@@ -196,7 +198,9 @@ function repair(file, rel) {
 // These are 200 MB - 1 GB over a Cloudflare tunnel from a home connection. That is
 // minutes, not seconds, so progress is reported per chunk with a rate and an estimate:
 // a download that looks hung is a download people kill.
-export async function installFromSite(bsp, { api, onProgress = () => {}, signal = null, mapsBase = null } = {}) {
+// `only` (mod-compat.md §4): a Set of file paths to fetch again, when the pre-launch check
+// found those files differ from the server's. Every other file keeps its record entry.
+export async function installFromSite(bsp, { api, onProgress = () => {}, signal = null, mapsBase = null, only = null } = {}) {
   if (!api) throw new Error('not connected to the site')
   const listed = await api.req(`/api/maps/${encodeURIComponent(bsp)}/files`)
   if (!listed.ok) throw new Error(listed.data?.error || `the site answered ${listed.status}`)
@@ -225,7 +229,10 @@ export async function installFromSite(bsp, { api, onProgress = () => {}, signal 
   }
   fs.mkdirSync(dest, { recursive: true })
 
-  const total = spec.size_bytes || spec.files.reduce((n, f) => n + (f.size || 0), 0)
+  const prior = only ? new Map(((readRecordOf(dest) || {}).files || []).map((f) => [f.rel, f])) : null
+  const total = only
+    ? spec.files.filter((f) => only.has(f.path)).reduce((n, f) => n + (f.size || 0), 0)
+    : (spec.size_bytes || spec.files.reduce((n, f) => n + (f.size || 0), 0))
   const started = Date.now()
   let done = 0
   const copied = []
@@ -233,6 +240,7 @@ export async function installFromSite(bsp, { api, onProgress = () => {}, signal 
 
   for (const f of spec.files) {
     const ext = path.extname(f.path).toLowerCase()
+    if (only && !only.has(f.path)) { if (prior.has(f.path)) copied.push(prior.get(f.path)); continue }
     if (BANNED_EXT.has(ext)) { problems.push(`refused ${f.path}: ENW never installs an executable that came with a map`); continue }
     if (ext && !ALLOWED_EXT.has(ext)) { problems.push(`skipped ${f.path}: not a file type a map needs`); continue }
 
@@ -329,6 +337,7 @@ export const installDir = (bsp) => path.join(P.maps, bsp)
 export const modLink = (bsp) => installDir(bsp)
 
 const RECORD = '.enw-installed.json'
+function readRecordOf(dir) { try { return JSON.parse(fs.readFileSync(path.join(dir, RECORD), 'utf8')) } catch { return null } }
 
 export function isInstalled(bsp) {
   const d = installDir(bsp)

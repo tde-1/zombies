@@ -74,10 +74,12 @@ param(
     # Skip deploying; use whatever is already in the copies.
     [switch]$NoDeploy,
 
-    # Extra +set pairs for the CLIENT only, appended last (e.g. '+set r_mode 1280x720').
-    [string[]]$ClientExtraArgs = @(),
+    [string]$DevRoot = 'C:\Users\b\ZombiesDev',
 
-    [string]$DevRoot = 'C:\Users\b\ZombiesDev'
+    # Extra `+set` pairs for the CLIENT only, appended after the harness's own (so they
+    # win). mod-compat.md §1: reproducing a player's view means the player's renderer
+    # dvars (r_mode, r_multiGpu, cg_fov ...), not the harness's 800x600.
+    [string[]]$ClientExtraArgs = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -132,7 +134,7 @@ if (-not $NoDeploy) {
 # custom map delete the one in the mod folder by its explicit path.
 foreach ($copy in @($ServerName, $ClientName)) {
     $paths = @((Join-Path $DevRoot "homes\$copy\main\console.log"))
-    if ($FsGame) { $paths += (Join-Path $DevRoot ("homes\$copy\" + ($FsGame -replace '/', '') + '\console.log')) }
+    if ($FsGame) { $paths += (Join-Path $DevRoot ("homes\$copy\" + ($FsGame -replace '/', '\') + '\console.log')) }
     foreach ($p in $paths) {
         if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
     }
@@ -226,7 +228,7 @@ try {
     )
     # The client needs the same mod mounted or it cannot load the map it is sent to.
     if ($FsGame) { $clientArgs += @('+set', 'fs_game', $FsGame) }
-    if ($ClientExtraArgs.Count) { $clientArgs += $ClientExtraArgs }
+    if ($ClientExtraArgs.Count) { $clientArgs += $ClientExtraArgs; Say "client extra args: $($ClientExtraArgs -join ' ')" 'Cyan' }
     if ($ClientNameDvar) {
         $clientArgs += @('+set', 'name', $ClientNameDvar)
         # AND the env var the client DLL's `name_pin` reads, which re-issues
@@ -309,7 +311,7 @@ finally {
         # the search silently fell back to main\console.log (see the clear-down above).
         $src = $null
         if ($FsGame) {
-            $modLog = Join-Path $homeDir (($FsGame -replace '/', '') + '\console.log')
+            $modLog = Join-Path $homeDir (($FsGame -replace '/', '\') + '\console.log')
             if (Test-Path -LiteralPath $modLog) { $src = Get-Item -LiteralPath $modLog }
         }
         if (-not $src) {

@@ -30,6 +30,7 @@ import * as lock from './gamelock.js'
 import { Updater, IdleGate, applyPending, pending } from './updates.js'
 import { BootFlow } from './bootflow.js'
 import * as library from './library.js'
+import * as modcompat from './modcompat.js'
 import { SiteApi, PlayWatcher, electronCookieProvider } from './siteapi.js'
 import * as partyprogress from './partyprogress.js'
 import { AutoUpdater, resolveFeed } from './autoupdate.js'
@@ -733,7 +734,13 @@ function wireIpc() {
     // holds no files for it by design, and asking anyway is what failed B's Nacht der
     // Untoten launch (library.js :: STOCK_MAPS).
     if (library.isStock(bsp)) return { already: true, stock: true, skipped: 'installed: stock' }
-    if (library.isInstalled(bsp)) return { already: true }
+    if (library.isInstalled(bsp) && !state.installs.has(bsp)) {
+      // Installed is not the same as "the server's files" (mod-compat.md §4): check, and
+      // fetch again only what differs, before anybody sees a stretched gun.
+      const p = matchServer(bsp, extra).finally(() => state.installs.delete(bsp))
+      state.installs.set(bsp, p)
+      return p
+    }
     // One install per map at a time. The party watcher starts the download the moment
     // the leader stages a map; the boot flow then asks for the same map again a minute
     // later and must WAIT for that one rather than start a second copy into the same
@@ -743,6 +750,32 @@ function wireIpc() {
     const p = runInstall(bsp, { announce, extra }).finally(() => state.installs.delete(bsp))
     state.installs.set(bsp, p)
     return p
+  }
+
+  // The pre-launch mod check. Needs the site's file list; with no site (dev, offline) the
+  // install record is all we have and the map is used as it is.
+  async function matchServer(bsp, extra = null) {
+    if (!state.api || !state.api.can('map_downloads')) return { already: true, checked: false }
+    let listed
+    try { listed = await state.api.req(`/api/maps/${encodeURIComponent(bsp)}/files`) } catch (e) {
+      log('maps', `${bsp}: could not ask the site for its file list (${e.message}); using the installed copy`)
+      return { already: true, checked: false }
+    }
+    if (!listed.ok || !listed.data?.files?.length) return { already: true, checked: false }
+    const dir = library.installDir(bsp)
+    const c = modcompat.checkInstalled(dir, listed.data)
+    if (c.ok) return { already: true, checked: true }
+    if (c.extra.length) log('maps', `${bsp}: removed ${modcompat.removeExtras(dir, c.extra).join(', ')} -- the server does not load them`)
+    if (!c.bad.length) return { already: true, checked: true, removed: c.extra }
+    log('maps', `${bsp}: ${c.bad.length} file(s) differ from the server's, fetching them again: ${c.bad.map((b) => `${b.path} (${b.why})`).join('; ')}`)
+    push('toast', { kind: 'info', text: `Repairing the map: ${c.bad.length} file${c.bad.length === 1 ? '' : 's'} did not match the server's.` })
+    state.gate.block('mapinstall', 'a map is being repaired')
+    try {
+      return await library.installFromSite(bsp, {
+        api: state.api, mapsBase: cfg.load().mapsBase, only: new Set(c.bad.map((b) => b.path)),
+        onProgress: (pr) => { push('mapProgress', { bsp, ...pr }); try { extra?.(pr) } catch {} },
+      })
+    } finally { state.gate.unblock('mapinstall') }
   }
 
   async function runInstall(bsp, { announce = false, extra = null } = {}) {

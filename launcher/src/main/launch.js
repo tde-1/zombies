@@ -23,6 +23,7 @@ import { listDisplays, pickDisplay } from './display.js'
 import { baselineDvars, dvarsToArgs, seedHome, applyReadBack, resolveMode, migrateAdsBind, usePlayerProfile, PROFILE } from './gamecfg.js'
 import { launchDvars, applyAccountToConfig, readBackAccount } from './wawcfg.js'
 import * as settings from './settings.js'
+import { modOwnedDvars, dropModOwned } from './modcompat.js'
 
 // PACKAGED TRAP: this is handed to powershell.exe, which is not us and cannot read
 // inside app.asar. `asarUnpack: ["tools/**"]` in package.json puts a real copy beside
@@ -743,6 +744,19 @@ export class GameLaunch extends EventEmitter {
         if (Object.keys(acct.changed).length) r.changed = { ...(r.changed || {}), ...acct.changed }
       } catch (e) {
         this.note(`could not read the account settings back (${e.message})`)
+      }
+      // A custom map's own scripts and menus set dvars we also manage (Minecraft Village
+      // forces monkeytoy 1 and cg_fov); the engine archives them, and without this they
+      // came back as the PLAYER's choice (mod-compat.md §3).
+      try {
+        const fg = String(this.opts.fsGame || '')
+        if (fg && fg !== MOD_NAME && /^mods\/[\w.-]+$/.test(fg)) {
+          const d = dropModOwned(r.changed || {}, modOwnedDvars(path.join(P.maps, fg.slice(5))))
+          if (d.dropped.length) this.note(`not saving ${d.dropped.join(', ')}: ${fg} sets ${d.dropped.length === 1 ? 'that dvar' : 'those dvars'} itself`)
+          r.changed = d.changed
+        }
+      } catch (e) {
+        this.note(`mod-owned dvar check failed (${e.message}); read-back kept as is`)
       }
       this.readBack = r
       const n = Object.keys(r.changed || {}).length
