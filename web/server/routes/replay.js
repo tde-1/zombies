@@ -94,6 +94,30 @@ const FEED_EVENTS = new Set([
 // anything it can infer. Files recorded before §16 have neither and keep the old rules.
 const COUNTER_KEYS = ['kills', 'downs', 'revives', 'headshots']
 
+// LANE R3 (replay.md §12): the R1 events (docs/protocol/replay-events-v1.md) the viewer draws
+// and plays -- weapons in hands, muzzle flashes, hit markers, blood, Pack-a-Punch, power-ups.
+// They are NOT feed lines (a fire event per shot would drown the feed); they go to `fx`,
+// compacted to the fields the viewer reads. The kind comes from a string `t` (today's
+// convention) or `type`, the time from `ms` or a numeric `t`, the player from `pid` or `slot`.
+const FX_EVENTS = new Set(['weapon', 'fire', 'hit', 'damage', 'pap', 'powerup'])
+const FX_FIELDS = ['pid', 'slot', 'name', 'pap', 'raw', 'zid', 'part', 'dmg', 'by', 'hp', 'state', 'id', 'kind', 'until']
+function fxOf(e) {
+  const kind = typeof e.t === 'string' ? e.t : (typeof e.type === 'string' ? e.type : null)
+  if (!kind || !FX_EVENTS.has(kind)) return null
+  const ms = Number.isFinite(e.ms) ? e.ms : (typeof e.t === 'number' ? e.t : null)
+  if (ms === null) return null
+  const f = { t: kind, ms }
+  for (const k of FX_FIELDS) if (e[k] !== undefined) f[k] = e[k]
+  if (f.pid === undefined && f.slot !== undefined) f.pid = f.slot
+  delete f.slot
+  const pos = Array.isArray(e.pos) ? e.pos : null
+  for (const [i, k] of [[0, 'x'], [1, 'y'], [2, 'z']]) {
+    const v = e[k] !== undefined ? e[k] : (pos ? pos[i] : undefined)
+    if (v !== undefined && Number.isFinite(Number(v))) f[k] = Math.round(Number(v) * 10) / 10
+  }
+  return f
+}
+
 /**
  * Decode a replay into a dense track.
  *
@@ -128,6 +152,7 @@ function buildTrack(file, replayLib, hz = 10) {
   const zLast = new Map()        // entnum -> key, so a reused entnum starts a new track
   const rounds = []
   const feed = []
+  const fx = []                  // lane R3: weapon/fire/hit/damage/pap/powerup, see fxOf
   // slot -> [[ms, kills, downs, revives, headshots], ...], one entry per change.
   const counters = new Map()
   const counterCur = new Map()
@@ -268,7 +293,11 @@ function buildTrack(file, replayLib, hz = 10) {
     }
 
     if (e.t === 'stats') noteCounters(e.slot, e.ms, e)
-    if (e.t !== 'snap') continue
+    if (e.t !== 'snap') {
+      const f = fxOf(e)
+      if (f) fx.push(f)
+      continue
+    }
     snapIndex++
     // Every snap updates the carried-forward state -- dropping one would lose a health
     // change forever, because the next snap omits the field precisely BECAUSE it was
@@ -433,6 +462,8 @@ function buildTrack(file, replayLib, hz = 10) {
     zombies_left_source: leftSource,
     round_totals: roundTotals,
     hits,
+    // Lane R3: the R1 events, time-ordered, [] for every file recorded before them.
+    fx,
   }
 }
 
