@@ -2694,6 +2694,10 @@ reader of it on this path also requires `cl_paused`, which stays 0 on the dedi, 
   resume with its length and player count.
 * Off switch: `ENW_NO_PAUSE=1`. Dedicated only — a listen server keeps the engine's own SP pause.
 
+### 18.7 2026-09-23 00:37 box time - DLL c0986e5e (restart_request) + host agent with lib/restart.js
+
+Built by the coordinator from a clean worktree at main `c72190f` (esc-menu merged on top of several-leases). Installed into every waw-*/binkw32.dll (rollback `/home/waw/binkw32.rollback-79d4317d.dll`), host agent redeployed, restarted idle. Proof: fake-ID lease m_2d46c742 on Nacht -> booted inst-01, `lobby_port: bind log armed`, `restart_request: armed`, map_loaded 6 s after boot, cancelled, idle 00:37:53. `ENW_NO_PAUSE=1` and `ENW_DEDI_WATCH_PROBE_SLOT=1` still exported in run-host.sh.
+
 ### 18.6 2026-09-23 00:10-01:20 box time - pause OFF on the box, guarded DLL 79d4317d, write probe on
 
 B's solo Nacht m_506fba68 (DLL 6fccc0e0): chat pause 24.5 s, clean resume, then at 00:02:51 `[0x3BFD478]` overwritten (0x5FAD), Com_Frame body 0 Hz from ~00:02:55, client EXE_ERR_SERVER_TIMEOUT 00:03:31. The 23:44 game died the same way (0x1DE3) after 13 pauses. The writer is the script VM's localVars copy at 0x697B97 (dedi 13.2, referee.md 15.4) - not a pause write; whether pausing provokes it is open. Stopgap by the coordinator: `export ENW_NO_PAUSE=1` in /home/waw/run-host.sh (games do not freeze; Esc opens the menu only), and `export ENW_DEDI_WATCH_PROBE_SLOT=1` so the next hit names its writer. Box DLL now `79d4317d1c534889...` (pause write guards + localVars probe; rollback `/home/waw/binkw32.rollback-6fccc0e0.dll`), host agent restarted idle 01:20.
