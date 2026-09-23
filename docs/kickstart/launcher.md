@@ -2568,7 +2568,7 @@ is `snd_menu_master`; `client.md` §10).
 
 ## 2026-09-23 — Play starts Steam; volume is `snd_menu_master` (bug 15)
 
-Commit `774a2fb` (not in a release yet; the coordinator publishes).
+Commits `774a2fb`, `2e819de` (not in a release yet; the coordinator publishes).
 
 ### What Play with Steam closed used to do
 
@@ -2603,10 +2603,35 @@ released (a follower's lease is the party's):
 Cancel during the wait stops it. `ENW_SKIP_STEAM_CHECK=1` turns the gate off. Registry reads are
 `reg.exe query`, read-only; the launcher never writes Steam's keys and never signs anyone in or out.
 
-**Second Play.** `startPlay` refuses when a game this launcher started is alive (as before) **or
-any `CoDWaW.exe` is running** (tasklist): toast *World at War is already running.*, the IPC call
-rejects with the same line, nothing else happens. The follow path records the match before
-calling, so a refused follow is not retried every poll.
+**Ordering, every entry point.** `GameLaunch` (the only thing that spawns `CoDWaW.exe`) is built
+only inside `BootFlow`, in its three paths, and `await this.steamGate()` is the first await of
+`run()`, ahead of all three. `main.js` has one `new BootFlow` (in `startPlay`, gate wired);
+Play, party follow, Play Local, Resume and Retry all go through `startPlay`. Deep links
+(`enw-zombies://map|party`, the legacy forms) only navigate the site view and never press Play.
+`play-cli.js` (dev) passes the gate with `allowStart: false`: it checks and stops (*Steam isn't
+running.* / *Not signed in to Steam.*), never starting or waiting on B's client. Tests pin all of this.
+
+**Second Play: a live game or a stuck one** (`src/main/gameproc.js`, commit `2e819de`). On Play,
+every running `CoDWaW.exe` is read in one PowerShell call (pid, creation time, command line,
+`MainWindowHandle`) and classified, first rule wins:
+
+| Rule | Kind | Action |
+|---|---|---|
+| `+set dedicated` on its command line | other | never touched, Play refused |
+| a visible top-level window (an off-screen test window counts) | live | refused |
+| started by this launcher and it connected (engine console.log, map up, or token pipe read) | live | refused |
+| ours, and its DLL log `<ENW logs>\enw-<pid>.log` (newer than the process) says `steamstub: STILL ENCRYPTED` | stuck | ended |
+| the dev box's `game.lock` names it and it is not the launcher's | other | never touched, refused |
+| younger than 60 s | starting | refused (*World at War is still starting.*) |
+| no window, older than 60 s | stuck | ended |
+
+Refused: toast *World at War is already running.*; it carries an **End game** button only when the
+pid is one this launcher started this session (`endGame` refuses any other pid and stops only
+that launch's own pids). Stuck: the list is read again, and a pid still stuck is ended with
+`taskkill /PID <pid> /F`; a window that appeared in between saves it. Then Play goes on (toast
+*Closed a stuck World at War.*). Every decision is a `play` line in `launcher.log`. If the process
+list cannot be read, the old rule applies (refuse if ours is alive or any `CoDWaW.exe` is named).
+The follow path records the match before calling, so a refused follow is not retried every poll.
 
 ### Volume (bug 15)
 
@@ -2629,6 +2654,18 @@ tests (fake clock: every state, both timeouts, cancel, throw, stale registry aft
 boot flow never asking the site when Steam fails) and 2 volume tests. Live, read-only: `readState()`
 on this PC → `running, signedIn, pid 9252`, `ensureSteam()` returned in 73 ms with nothing drawn.
 
+After `2e819de`: **164 passed, 1 failed** (the same DLL test), 14/0, 6/0. +11 tests: both
+classifications (every rule, window beats encrypted, re-read saves a process that got a window,
+kill failure, unreadable list), the DLL-log reader, PowerShell output parsing, the ordering
+(a failing gate leaves every BootFlow path with no `GameLaunch`; the gate is the first await;
+nothing outside BootFlow spawns the game; deep links never reach `startPlay`), `play-cli`'s
+check-only gate. Live, read-only: the process lister returned `[]` for `CoDWaW.exe` (237 ms), and
+on `explorer.exe`/`svchost.exe` it read windows correctly (explorer live, windowless svchost stuck
+by the rules — nothing was ended).
+
 **Unproven:** the starting/sign-in path against a real closed Steam (not tested: B's account); that
-`-silent` still shows the login window when there is no saved login; the Retry and spinner in the
-real UI (no screenshot, no game launched); the volume reaching the game's sound (no game run).
+`-silent` still shows the login window when there is no saved login; the Retry, spinner and End
+game toast in the real UI (no screenshot, no game launched; the shell toast is drawn in the
+launcher's chrome, whether it shows over the site view is existing behaviour and unchecked); that
+a real SteamStub-stuck process has `MainWindowHandle` 0 (inferred from "no window"); the volume
+reaching the game's sound (no game run).
