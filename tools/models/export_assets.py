@@ -81,11 +81,18 @@ WORLD_TEX = 256          # px, long edge: a gun in a player's hand is a few pixe
 VIEW_TEX = 512           # px: the first-person gun fills a corner of the screen
 POWERUP_TEX = 256
 JPEG_QUALITY = 82
-GLB_BUDGET = 450 * 1024  # bytes per .glb; the build fails over it
+GLB_BUDGET = 450 * 1024  # bytes per world/power-up .glb; the build fails over it
+VIEW_BUDGET = 700 * 1024 # bytes per viewmodel .glb (the tesla gun's is 13.8 k triangles)
+ALPHA_TEX = 256          # px cap for a colour map whose alpha is used (it stays PNG)
 PACK_BUDGET = 15 * 1024 * 1024
-OGG_QUALITY = "3"        # libvorbis -q:a (~80-110 kbit/s stereo, ~50 mono)
+OGG_QUALITY = "3"        # libvorbis -q:a (~80-110 kbit/s stereo, ~50 mono); a sound may override
 
 LOG_LINES: list = []
+WRITTEN: dict = {}       # output dir name -> file names written this run
+
+
+def wrote(path: Path):
+    WRITTEN.setdefault(path.parent.name, set()).add(path.name)
 
 
 def log(*a):
@@ -315,16 +322,16 @@ def fit(im, max_px: int):
 
 
 def encode_colour(im, max_px: int):
-    """-> (bytes, mime, alpha_used). JPEG unless the alpha is used (export_models.py's rule)."""
-    im = fit(im, max_px)
+    """-> (bytes, mime, alpha_used). JPEG unless the alpha is used (export_models.py's rule);
+    an alpha-used map stays PNG and is capped at ALPHA_TEX, PNG being 5-10x a JPEG."""
     buf = io.BytesIO()
     if im.mode in ("RGBA", "LA", "P"):
         rgba = im.convert("RGBA")
         lo, _ = rgba.getchannel("A").getextrema()
         if lo < 128:
-            rgba.save(buf, "PNG", optimize=True)
+            fit(rgba, min(max_px, ALPHA_TEX)).save(buf, "PNG", optimize=True)
             return buf.getvalue(), "image/png", True
-    im.convert("RGB").save(buf, "JPEG", quality=JPEG_QUALITY, optimize=True)
+    fit(im, max_px).convert("RGB").save(buf, "JPEG", quality=JPEG_QUALITY, optimize=True)
     return buf.getvalue(), "image/jpeg", False
 
 
@@ -382,6 +389,10 @@ def build_static(xmodel: str, zone: str, out_path: Path, name: str, kind: str, m
             nrm = g.acc(at["NORMAL"]).astype(np.float32) if "NORMAL" in at else np.zeros_like(pos)
             uv = g.acc(at["TEXCOORD_0"]).astype(np.float32) if "TEXCOORD_0" in at else np.zeros((len(pos), 2), np.float32)
             idx = g.acc(prim["indices"]).reshape(-1).astype(np.int64)
+            # Unlinker's primitives index into one shared vertex array: keep only the used ones.
+            used = np.unique(idx)
+            lut = np.full(len(pos), -1, np.int64); lut[used] = np.arange(len(used))
+            pos, nrm, uv, idx = pos[used], nrm[used], uv[used], lut[idx]
             mname = g.j["materials"][prim["material"]]["name"] if prim.get("material") is not None else "none"
             mj, _ = material_json(zone, mname)
             colour = tex_of(mj, "colorMap") if mj else None
@@ -400,24 +411,29 @@ def build_static(xmodel: str, zone: str, out_path: Path, name: str, kind: str, m
     j = {"asset": {"version": "2.0", "generator": "ENW Zombies tools/models/export_assets.py",
                    "extras": {"id": name, "kind": kind, "xmodel": xmodel, "zone": zone,
                               "source": "Treyarch xmodel via OpenAssetTools (GPL-3.0); game asset, never commit"}},
+         "extensionsUsed": ["KHR_mesh_quantization"], "extensionsRequired": ["KHR_mesh_quantization"],
          "scene": 0, "scenes": [{"nodes": [0]}], "nodes": [{"name": name, "children": []}],
          "meshes": [], "materials": [], "textures": [], "images": [],
          "samplers": [{"magFilter": 9729, "minFilter": 9987}],
          "accessors": [], "bufferViews": [], "buffers": []}
     blob = bytearray()
 
-    def view(data: bytes, target=None):
+    def view(data: bytes, target=None, stride=None):
         while len(blob) % 4:
             blob.append(0)
         bv = {"buffer": 0, "byteOffset": len(blob), "byteLength": len(data)}
         if target:
             bv["target"] = target
+        if stride:
+            bv["byteStride"] = stride
         blob.extend(data)
         j["bufferViews"].append(bv)
         return len(j["bufferViews"]) - 1
 
-    def accessor(v, ctype, typ, count, mn=None, mx=None):
+    def accessor(v, ctype, typ, count, mn=None, mx=None, normalized=False):
         a = {"bufferView": v, "componentType": ctype, "count": count, "type": typ}
+        if normalized:
+            a["normalized"] = True
         if mn is not None:
             a["min"], a["max"] = mn, mx
         j["accessors"].append(a)
@@ -429,13 +445,15 @@ def build_static(xmodel: str, zone: str, out_path: Path, name: str, kind: str, m
         pos = np.concatenate(gr["pos"])
         nrm = np.concatenate(gr["nrm"])
         ln = np.linalg.norm(nrm, axis=1, keepdims=True); ln[ln == 0] = 1
-        nrm = (nrm / ln).astype(np.float32)
+        # NORMAL as normalized int8, padded to 4 bytes a vertex (KHR_mesh_quantization, as the
+        # player models): a quarter of the vertex data.
+        n8 = np.zeros((len(nrm), 4), np.int8); n8[:, :3] = np.round(nrm / ln * 127).astype(np.int8)
         uv = np.concatenate(gr["uv"])
         idx = np.concatenate(gr["idx"])
         tris += len(idx) // 3
         at = {"POSITION": accessor(view(pos.tobytes(), 34962), 5126, "VEC3", len(pos),
                                    r6(pos.min(axis=0)), r6(pos.max(axis=0))),
-              "NORMAL": accessor(view(nrm.tobytes(), 34962), 5126, "VEC3", len(pos)),
+              "NORMAL": accessor(view(n8.tobytes(), 34962, 4), 5120, "VEC3", len(pos), normalized=True),
               "TEXCOORD_0": accessor(view(uv.tobytes(), 34962), 5126, "VEC2", len(pos))}
         if len(pos) < 65536:
             ib, ict = idx.astype(np.uint16).tobytes(), 5123
@@ -501,6 +519,7 @@ def build_static(xmodel: str, zone: str, out_path: Path, name: str, kind: str, m
     out += struct.pack("<II", len(bn), 0x004E4942) + bn
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_bytes(out)
+    wrote(out_path)
     gold = any(m["gold"] for m in mats.values())
     for n in notes:
         log(f"  note {name}: {n}")
@@ -554,6 +573,7 @@ def build_sound(key: str, s: dict, out_dir: Path) -> dict:
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0 or not out.is_file():
         sys.exit(f"ffmpeg failed for {key}: {r.stderr[-1500:]}")
+    wrote(out)
     return {"url": f"_sounds/{key}.ogg", "bytes": out.stat().st_size, "durationMs": probe_ms(out),
             "channels": 2 if s.get("stereo") else 1,
             "source": (f"{s['iwd']}:{s['file']}" if "iwd" in s else f"{s['zone']}.ff:{s['file']}"),
@@ -581,6 +601,7 @@ def build_fx(name: str, f: dict, out_dir: Path) -> dict:
     im = fit(open_dds(ip).convert("RGBA"), int(f.get("max", 256)))
     out = out_dir / f"{name}.png"
     im.save(out, "PNG", optimize=True)
+    wrote(out)
     d = {"url": f"_fx/{name}.png", "file": f"{name}.png", "w": im.width, "h": im.height,
          "blend": blend, "bytes": out.stat().st_size, "image": img, "zone": zone, "use": f.get("use")}
     if mname:
@@ -751,12 +772,23 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="utf8")
 
+    # A section that was rebuilt owns its directory: anything this run did not write goes
+    # (a renamed or dropped asset must not linger and be served).
+    built = {"_weapons": "weapons", "_powerups": "powerups", "_fx": "fx", "_sounds": "sounds"}
+    for d, sect in built.items():
+        if only and sect not in only:
+            continue
+        for f in sorted((OUT / d).glob("*")):
+            if f.is_file() and f.name not in WRITTEN.get(d, set()) and f.name != "fx.json":
+                log(f"removing stale {d}/{f.name}")
+                f.unlink()
+
     # budgets
     total, over = manifest_path.stat().st_size, []
     for d in ("_weapons", "_powerups", "_fx", "_sounds"):
         for f in sorted((OUT / d).glob("*")):
             total += f.stat().st_size
-            if f.suffix == ".glb" and f.stat().st_size > GLB_BUDGET:
+            if f.suffix == ".glb" and f.stat().st_size > (VIEW_BUDGET if f.stem.endswith("_view") else GLB_BUDGET):
                 over.append(f"{d}/{f.name} {f.stat().st_size // 1024} KB")
     log(f"pack total {total / 1024 / 1024:.2f} MB (budget {PACK_BUDGET // 1024 // 1024} MB); wrote {manifest_path}")
     log(f"done in {time.time() - t0:.1f}s")
@@ -766,7 +798,7 @@ def main():
     if problems:
         sys.exit("cross-check failed:\n  " + "\n  ".join(problems))
     if over:
-        sys.exit(f"over the {GLB_BUDGET // 1024} KB per-glb budget: {', '.join(over)}")
+        sys.exit(f"over the per-glb budget ({GLB_BUDGET // 1024} KB, views {VIEW_BUDGET // 1024} KB): {', '.join(over)}")
     if total > PACK_BUDGET:
         sys.exit(f"pack is {total / 1024 / 1024:.2f} MB, over the {PACK_BUDGET // 1024 // 1024} MB budget")
 
