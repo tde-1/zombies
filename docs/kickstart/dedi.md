@@ -3167,3 +3167,15 @@ A real launcher Play on the fixed box (B's session ended); more than one player 
 each is ~100 KB/s up per game — not measured); `sv_fps 30` (not tried: 20 Hz at 0 delay removes what B
 described); socket buffers / `SO_SNDBUF` (nothing in the numbers points there); client delta failures
 (not counted).
+
+### 22.6 Box DLL `499b70c1` (2026-09-23 11:45 UK, integrator)
+
+**`499b70c130911f3f1673d988b4491d0d17426ab4972b7b18c32a63a3a89ad474`** (2,272,768 B), built with
+`tools\dev\build.ps1 -Name dedi` in the clean detached worktree `C:\Users\b\ZombiesDev\wt-coord2` at main
+**`b568f01`** (merges of lanes 10, 14 and 4: the in-game Esc-menu Settings tab and the soak component's
+`enw_dev_god.off` trigger). Installed into all 9 `waw-*/binkw32.dll` (copy to a temp name, `mv`, `chown
+waw:waw`) with no game running and no live assignment; it replaced **`134a9d0f`** (04:48), rollback
+`/home/waw/binkw32.rollback-134a9d0f.dll`. Host agent restarted idle (no host-agent file change). Proof:
+agent lease `m_d7ad16e5` (fake …0003, Nacht) → `linked (… Sep 23 2026 11:44:06)` → `map_loaded` in 6 s →
+`ready` → cancelled. The build string is the first of two builds (the second relinked only the test fix),
+so it is not a hash check; `sha256sum` on the box is. Same binary as launcher 0.2.22.
