@@ -363,3 +363,12 @@ reproduce before anything else means anything** — the harness never reproduced
 V0/V0o draw zombies correctly, the difference is B's environment (Discord actually attaching,
 address space, the internet path to the box), and D1 plus a real launcher game with Settings →
 ENW → Discord overlay **Off** are the tests; the C-variants are then moot.
+
+## 11. "Every file the mod ships" had two more holes (lane A1, 2026-09-23 ~13:40 UK)
+
+The rule at the top of this file was still broken in `web/server/lib/mapfiles.js`, found by the
+asset audit (`archive.md` §13): loose `sound/**.wav|.mp3` were not in `ALLOWED` (203 files on six
+maps), and `rel.includes('..')` refused Neon Fighter's `HarryBos Mysterybox Pack V1..0.0.iwd` as
+path traversal. Both fixed (a `..` *segment* is refused, a `..` in a name is a file), test in
+`web/test/box-maps.js`; the launcher's `ALLOWED_EXT` takes `.wav/.mp3` in its next publish (0.2.24
+skips them with a note). `tools/maps/modcompat_check.py` reads the same filter, so it now agrees.
