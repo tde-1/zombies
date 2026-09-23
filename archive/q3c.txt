@@ -69,3 +69,5 @@ utopia
 nazi_zombie_wunder
 yote_topia
 nazi_zombie_zhotel
+zombie_maze
+nazi_zombie_school

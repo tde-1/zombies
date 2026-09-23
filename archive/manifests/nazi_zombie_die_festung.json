@@ -175,5 +175,52 @@
       "nazi_zombie_die_festung.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 166,
+    "fatal": 10,
+    "visible": 10,
+    "visible_owner": {
+      "release": 10
+    },
+    "visible_names": [
+      "item:zombie_perk_bottle_deadshot",
+      "item:zombie_perk_bottle_mule",
+      "item:zombie_perk_bottle_revive",
+      "weapon:weapons/sp/mine_bouncing_betty",
+      "weapon:weapons/sp/zombie_perk_bottle_deadshot",
+      "weapon:weapons/sp/zombie_perk_bottle_doubletap",
+      "weapon:weapons/sp/zombie_perk_bottle_jugg",
+      "weapon:weapons/sp/zombie_perk_bottle_mule",
+      "weapon:weapons/sp/zombie_perk_bottle_revive",
+      "weapon:weapons/sp/zombie_perk_bottle_sleight"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95154 ms over the hold",
+    "first_error": "WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_mule'",
+    "match": "m_28852db7",
+    "at": "2026-09-23T21:36:43",
+    "instance": "inst-25",
+    "com_frameTime_advance_ms": 95154,
+    "com_error": [],
+    "console_errors": [
+      "4185:Error: called from:",
+      "4189:Error: called from:",
+      "4193:Error: started from:",
+      "4197:Error: ************************************",
+      "4199:WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_mule'",
+      "4201:******* script runtime error *******"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:zombie_perk_bottle_deadshot, item:zombie_perk_bottle_mule, item:zombie_perk_bottle_revive, weapon:weapons/sp/mine_bouncing_betty, weapon:weapons/sp/zombie_perk_bottle_deadshot, weapon:weapons/sp/zombie_perk_bottle_doubletap",
+  "dedi_status": "box_map_loaded"
 }

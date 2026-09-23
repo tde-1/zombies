@@ -226,8 +226,9 @@ def write_box_proven(proof):
         except (OSError, ValueError):
             out = {}
         proof = {b: r for b, r in proof.items() if b in ONLY[0]}
-        for b in proof:
-            out.pop(b, None)
+        for b, r in proof.items():
+            if r.get("result") in ("pass", "fail"):   # a skipped re-run keeps the old entry
+                out.pop(b, None)
     passing = [b for b, r in proof.items() if r.get("result") == "pass"]
     inb = bucket_check(set(passing))
     for bsp, r in sorted(proof.items()):
@@ -255,8 +256,16 @@ def write_box_proven(proof):
                                           sum(1 for v in out.values() if v["result"] == "fail")))
 
 
+def never_booted(r):
+    """A 'fail' with no instance at all: the host's RAM guard / boot queue held the lease for the
+    whole --load-wait and never started the game (box_proof.py before 21:40 UK wrote these as
+    fail; it now writes skipped). Says nothing about the map -> treated as skipped here."""
+    return r.get("result") == "fail" and not r.get("instance") and "no map_loaded" in (r.get("reason") or "")
+
+
 def apply():
     proof = load("boxproof.json", {})
+    proof = {b: (dict(r, result="skipped") if never_booted(r) else r) for b, r in proof.items()}
     if ONLY[0] is not None:
         proof = {b: r for b, r in proof.items() if b in ONLY[0]}
     write_box_proven(proof)

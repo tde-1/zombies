@@ -99,7 +99,7 @@ def mem_available_mb():
     return int(out) if out.isdigit() else 0
 
 
-def box_gate(min_mem_mb=650):
+def box_gate(min_mem_mb=760):
     """(ok, why). No live instance may hold a verified player that is not one of our fakes,
     and the box must have min_mem_mb available for our one instance."""
     live = live_instances()
