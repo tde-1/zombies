@@ -1430,3 +1430,61 @@ atlas is read from the player's own `main\*.iwd` and made into a texture on the 
 (`frame_capture::run_at_present`). Only hashes ship. Proof: the sample card is pixel-identical on
 Nacht and on mw2rust. `ENW_FONT_PROBE=1` logs the font pool.
 
+
+## 11. 2026-09-23 ~02:30–03:00 — a join that is refused as "not ready yet" waits instead of dying (`components/join_retry.cpp`)
+
+B on the box: *"it said maps cannot be joined mid-game when I tried to join at the very start."* The
+server half and the race are in `dedi.md` §21: since §10's direct boot the client connects ~3.4 s
+after process start, the box had just loaded bridge_zombie, the dedi opened its co-op gate 140 ms too
+late, and the stock client turned the one `error\nEXE_ERR_CANNOTJOININPROGRESS` into a fatal
+`Com_Error(ERR_DROP)`. The server no longer refuses; this is the belt for any refusal that really means
+"not ready yet".
+
+### 11a. How
+
+* **Where the refusal becomes fatal.** Both OOB `error` and `lobbyerror` replies end in one call inside
+  `CL_ConnectionlessPacket` 0x643380: `push msg; push "%s"; push 1; call Com_Error` at **0x643D50**,
+  followed by `add esp,0xC; mov al,1`. That rel32 is retargeted (8 bytes before and 5 after checked) to
+  a naked thunk with Com_Error's exact stack. `EXE_ERR_CANNOTJOININPROGRESS`, `EXE_SERVERISFULL`,
+  `EXE_BAD_CHALLENGE` and `EXE_ERR_HOSTALREADYCONNECTED` → it **returns** (the caller reports the packet
+  handled) after putting `clc.state` (0x305842C) back to 4 and `clc.connectTime` (0x3010010) to
+  `cls.realtime` (0x48AE4E8). Anything else → `jmp Com_Error` with the stack untouched.
+* **The retry is the engine's own** `CL_CheckForResend` 0x642C80 (state 4 = `getchallenge`, 5 =
+  `connect`), not a second `CL_ConnectLocal`. While waiting, the frame tick brings its 3000 ms resend
+  forward to 2000 ms — for refusals and for "no answer yet" (the server process still starting).
+* **The line.** After `SCR_DrawScreenField` 0x478DC0 (its one caller `push esi; call; add esp,4` at
+  **0x479271**, retargeted, byte-checked): *Waiting for the server... N s* and a grey second line (*The
+  server is starting up* / *The map is still starting on the server*), centred through `UI_DrawText`
+  on scrPlaceFull 0x957360 (the placement of the engine's own connect screen 0x5D7D40) in the stock
+  font (`stock_font::pick`, §9c). Up after 2.5 s in state 4/5 with no answer, or at the first refusal;
+  it lifts `boot_direct`'s black cover (`boot_direct::lift_cover`). The engine's error code is in the
+  log only. Picture: `ui/2026-09-23-join-retry-waiting.png`.
+* **Giving up** after `ENW_JOIN_RETRY_SECONDS` (default 60) from the connect: after refusals, the next
+  refusal goes to the engine's error box with our message (*The ENW server did not let you in within
+  60 seconds. Press Play again.*; 4 s grace so it is that path and not the silent one); with no answer
+  at all, `disconnect` through `Cbuf_AddText` and *Could not reach the server / Press Play again in the
+  launcher.* over the menu for 15 s (`ui/2026-09-23-join-retry-noanswer-and-giveup.png`).
+* Launcher joins only (`ENW_CLIENT_CONNECT`), never a dedicated process. **Off: `ENW_JOIN_RETRY=0`**
+  (nothing patched; the stock error).
+
+### 11b. Proof (local `jrd` + `jrc`, off-screen, `ENW_TEST_NO_ACTIVATE=1`; logs `ZombiesDev\logs\dedi\`)
+
+| run | server | client |
+|---|---|---|
+| `final-nacht-control` | old race forced (`ENW_JOIN_GATE_TEST_CLOSED_MS=6000`), client `ENW_JOIN_RETRY=0` | **B's bug reproduced**: one refusal, `Com_Error … EXE_ERR_CANNOTJOININPROGRESS`, clc.state 5 → 2, never asks again |
+| `final-nacht-retry` | same, retry on | refusal 1 at +0.0 s, line up, 3 refusals 2 s apart, `IN -- … after 6.2 s and 3 refusal(s)`, first in-game frame |
+| `final-bridge-retry` | same on bridge_zombie | 3 refusals, in after 6.2 s, in game |
+| `giveup2` | `ENW_DEDI_NO_JIP=1` (refuses forever), `ENW_JOIN_RETRY_SECONDS=10` | 6 refusals 2 s apart, then `GIVING UP after 10.2 s` through Com_Error with our message |
+| `noanswer1` | none (connect to a dead port), 10 s | line *The server is starting up*, then `disconnect` and *Could not reach the server* over the menu |
+| `final-*-first` (dedi.md §21.4) | fixed server started 2.3–2.6 s AFTER the client | `WAITING … no answer yet`, then in on the first answer; Nacht, bridge_zombie, fear_mc_2 |
+
+Run `retry1` found the one bug: the refusal set `connectTime` 1 s back AND the tick brought the resend
+forward, so it asked every 1.0 s; fixed before the `final-*` runs.
+
+**Client DLL for the coordinator (not published): `build/client-lane/enw_t4.dll` =
+`03b04bc3414d12ceb7bb3c65bcb773a4424a438846a4bb3874e8670163e85db5`**, from a clean worktree at main
+`81086d4` — the same binary as the box's dedi DLL (one full build carries both halves).
+
+**Not proven:** a real launcher Play on the box against this build (the box half was proven with a
+scripted connect, dedi.md §21.4); B's machine; the line at 2560x1440 (drawn on scrPlaceFull, so it is
+stretched the way the engine's own connect text is).

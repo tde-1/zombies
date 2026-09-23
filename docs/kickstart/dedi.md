@@ -2994,3 +2994,93 @@ menu's Restart) is acted on per slot, on a change only; with a host link it beco
 player's request is a plain `map_restart`. Proven end to end on local `host2`+`c2` against the
 real host agent (`esc-menu.md` §3, §7). **Measured on the way: `level.time` keeps counting across a
 `map_restart` on this engine**; the clients re-entering the connect handshake is the signal.
+
+## 21. 2026-09-23 ~02:30–03:00 UK — the join gate no longer depends on timing (`join_in_progress.cpp`)
+
+B, bridge_zombie on the box: *"it said maps cannot be joined mid-game when I tried to join at the
+very start."*
+
+### 21.1 The race, read off the box
+
+inst-01 `enw-2460.log`: `01:19:06.822 map_loaded`, `01:19:07.086 SV_DirectConnect()` (B's client),
+`01:19:07.227 dedi_join_in_progress: … set 0 -> 1 on frame 16`. The dvar was already registered;
+the component only **looked** every 16th frame (`(n & 15) != 0 → return`), and the frame counter
+starts when the map load ends. So a connect that was already waiting when the map finished (its
+`getchallenge` sat in the socket during the load and was answered in the first frames) reached the
+gate while it was still 0 and was refused with `EXE_ERR_CANNOTJOININPROGRESS`. The stock client makes
+that `Com_Error(ERR_DROP)` and never asks again (SV_DirectConnect stayed at 1). Before 0.2.17 the
+client's ~2.9 s menu wait hid the race; the direct boot (client.md §10) exposed it on every map, worse
+on maps that load slowly on the box.
+
+### 21.2 What the engine does with a connect that arrives before `map_loaded`
+
+Nothing bad. The load does not pump the network: packets that arrive during it queue in the UDP
+socket and are handled in order in the first frames after it (box: 128 `getchallenge`+`connect`
+pairs, sent from the moment of the lease, all answered 35–45 ms after `map_loaded`, before this
+component's first frame tick). Before the socket is bound the client's packets are simply lost and
+`CL_CheckForResend` sends again (every 3 s stock, every 2 s with `join_retry`). No crash, no wedge,
+no "retry" answer needed from the server.
+
+### 21.3 The fix: three layers, none of which waits for a frame
+
+The dvar **is** written at registration after all (t4map missed the store; t4-sp-map.md §9 row 4
+corrected): `xor al,al; mov edi,"party_joinInProgressAllowed"; call Dvar_RegisterBool 0x5EEE20;
+mov [0x339A774],eax` at `0x654D3C..0x654D48`, in the party dvar block `0x654530` (Com_Init via
+`0x5FB560`).
+
+1. **Default on.** `32 C0` → `B0 01` at `0x654D3C` (16 bytes checked). If the dvar is already
+   registered at `post_init` (it is locally on today's component order; on the box it was not), the
+   value is set to 1 there too.
+2. **The branches.** Unless `ENW_JOIN_GATE_STOCK=1`: `SV_DirectConnect`'s two reads become short
+   jumps over the pointer load, the compare and the branch, so a NULL dvar cannot be dereferenced
+   either: `0x62E9BB` (the reconnect scan, 12 bytes checked) → `EB 0A`, `0x62EBC4` (the gate, 15 bytes
+   checked) → `EB 0D` to the password check at `0x62EBD3`. ECX/EAX are dead at both targets.
+3. **The poll** runs every frame (was every 16th), as the backstop for party code writing it back.
+
+`ENW_DEDI_NO_JIP=1` still leaves everything stock. **Test only:** `ENW_JOIN_GATE_TEST_CLOSED_MS=<n>`
+reproduces the old race on purpose (no patches, dvar held at 0 for n ms after the first frame), which
+is how the client half (client.md §11) was proven.
+
+The host lane closed the third layer in the same hour: `46fe734` reports a fresh boot `ready` at
+`map_loaded`, so the launcher (which launches on `match.connect`, present only in `ready`/`live`)
+starts the client after the map is up. Box lease `m_a9a0e1c9`: `map_loaded` 01:59:30.657,
+`ready_at` 01:59:31.445. The launcher needed no change.
+
+### 21.4 Proof
+
+Local (`jointest.ps1` gained `-ClientEarlyMs <ms>` — the server's `launch.ps1` runs in a job and the
+client starts that many ms after the server PROCESS appears — and `-ServerLagMs <ms>` — the harness
+takes game.lock, the client starts first and the server that much later; the client needs
+`-ClientExtraArgs '+set','net_port','28990'` in that mode or it takes 28960 first). Copies `jrd`
+(server) + `jrc` (client), DLL `03b04bc3` (the box DLL below), logs `ZombiesDev\logs\dedi\<tag>.*`:
+
+| run | map | how | server | client |
+|---|---|---|---|---|
+| `early7` | bridge_zombie | client first, server +2.3 s | socket bound 00.511, client `getchallenge` 00.527 (**during the load**), `map_loaded` 01.462, SV_DirectConnect 01.490 = frame 1, accepted | in game 05.556 |
+| `final-nacht-first` | Nacht | client first, server +2.6 s | first frame: `value 1 (open from registration)`; connect 0.67 s after `map_loaded` | in game |
+| `final-bridge-first` | bridge_zombie | client first, server +2.3 s | same | in game |
+| `final-fear-first` | nazi_zombie_fear_mc_2 | client first, server +2.3 s | same | in game |
+| `final-nacht-control` | Nacht | old race forced (`TEST_CLOSED_MS=6000`), **`ENW_JOIN_RETRY=0`** | 1 refusal | **B's bug**: `Com_Error EXE_ERR_CANNOTJOININPROGRESS`, never asks again |
+| `final-nacht-retry` / `final-bridge-retry` | Nacht / bridge_zombie | old race forced, retry on | 3 refusals, then accepted | in game after 6.2 s (client.md §11) |
+
+**Box** (idle, journal `idle` since 01:41:47, no game process; fake-ID leases, `lease-cli --backup`):
+`m_6e9697ae` then `m_a9a0e1c9`, bridge_zombie on inst-01, while `connspam.py` (scratch: `getchallenge` +
+`connect "\protocol\62\challenge\<last>\…"` every 100 ms from before the lease) watched the replies.
+inst log `enw-2648.log`: the three patches applied, `map_loaded` 01:59:30.626, SV_DirectConnect from
+01:59:30.661 (before the first frame tick at 30.794, which read `value 1 (open from registration)` —
+on the box the dvar was **not** yet registered at post_init, so the default patch did it). Replies
+seen: `challengeResponse`, one `EXE_BAD_CHALLENGE` (the probe's first connect carried challenge 0),
+then **`connectResponse mods/bridge_zombie`** 85 ms later. **Never `EXE_ERR_CANNOTJOININPROGRESS`.**
+Both leases cancelled, box `idle` 01:59:37. (`m_6e9697ae`'s probe sent a malformed userinfo and only
+proves the queueing.)
+
+### 21.5 Box DLL
+
+**`03b04bc3414d12ceb7bb3c65bcb773a4424a438846a4bb3874e8670163e85db5`** (2,012,160 B), built from a clean
+worktree at main **`81086d4`** (`C:\Users\b\ZombiesDev\wt-joinretry` — **not** `wt-pause`, which had two
+untracked files of another lane, `net_probe.cpp`/`net_probe_client.cpp`, that CMake's glob compiles).
+Installed 01:58 UTC into all 9 `waw-*/binkw32.dll`, chowned, host agent restarted idle. **What it
+replaced was not `c0986e5e`**: the box had `f920bb39…` (2,001,920 B, installed ~01:35 UTC, = `wt-pause`'s
+`build\dedi` of 02:34 UK, which contains that `net_probe` code). Rollback copy:
+`/home/waw/binkw32.rollback-f920bb39.dll`. `ENW_NO_PAUSE=1` and `ENW_DEDI_WATCH_PROBE_SLOT=1` still
+exported in `run-host.sh`. Whoever owns `net_probe`: rebuild from main ≥ `81086d4`, or this fix goes.
