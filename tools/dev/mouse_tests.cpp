@@ -92,6 +92,24 @@ void test_jitter_uneven_frames_even_rate() {
     CHECK(j.dropouts() == 0);
 }
 
+// T4 calls IN_MouseMove twice per engine frame; the second call finds ~nothing.
+// Fed per call that is a "dropout" every other sample; summed per frame (what
+// probe_frame_flush does) it is the even turn it really is.
+void test_jitter_double_call_per_frame() {
+    enw::mousejitter::meter per_call, per_frame;
+    per_call.reset();
+    per_frame.reset();
+    for (int i = 0; i < 1000; ++i) {
+        per_call.add(4.0, 3.7);
+        per_call.add(0.0, 0.3);
+        per_frame.add(4.0 + 0.0, 4.0);
+    }
+    CHECK(per_call.dropouts() >= 990);
+    CHECK(per_call.jitter_pct() > 80.0);
+    CHECK(per_frame.dropouts() == 0);
+    CHECK(per_frame.jitter_pct() < 0.01);
+}
+
 void test_jitter_stationary_ignored() {
     enw::mousejitter::meter j;
     j.reset();
@@ -107,6 +125,7 @@ int main() {
     test_jitter_even();
     test_jitter_dropouts();
     test_jitter_uneven_frames_even_rate();
+    test_jitter_double_call_per_frame();
     test_jitter_stationary_ignored();
     if (g_fail) std::printf("mouse_tests: %d FAILED\n", g_fail);
     else std::printf("mouse_tests: all passed\n");

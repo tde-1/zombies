@@ -245,6 +245,7 @@
 #include "raw_buffer.hpp"
 
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -483,6 +484,25 @@ double g_probe_cost_max_us = 0.0;  // worst single in_mousemove call
 long g_probe_frames = 0;
 long g_probe_msg_reports0 = 0, g_probe_buf_reports0 = 0;
 double g_probe_msg_motion0 = 0.0, g_probe_buf_motion0 = 0.0;
+// Cadence: WHERE a lumpy turn comes from. Per window: the gap between
+// consecutive WM_INPUT arrivals at our proc (is the OS delivering in bursts?),
+// the counts each gameplay in_mousemove handed over and the time since the
+// previous one (is the engine consuming in bursts?), and the first 24 of those
+// (counts@ms) as a literal sample.
+long g_cad_arrive[5] = {};  // gap <0.5, 0.5-1.5, 1.5-4, 4-10, >=10 ms
+int64_t g_cad_last_arrive = 0;
+long g_cad_counts[5] = {};  // per call: 0, 1-2, 3-5, 6-10, >10
+long g_cad_dt[5] = {};      // per call: <1, 1-3, 3-5, 5-10, >=10 ms
+long g_cad_calls[4] = {};   // engine frames with 0, 1, 2, 3+ in_mousemove calls
+int64_t g_probe_frame_qpc = 0;   // previous frame's first in_mousemove (its sampling instant)
+int64_t g_frame_first_qpc = 0;
+int g_frame_dx = 0, g_frame_dy = 0, g_frame_calls = 0;
+bool g_frame_owned = false;
+char g_cad_sample[24 * 12] = {};
+int g_cad_sample_n = 0;
+inline int cad_bucket(double v, double a, double b, double c, double d) {
+    return v < a ? 0 : v < b ? 1 : v < c ? 2 : v < d ? 3 : 4;
+}
 
 inline int64_t qpc_now() {
     LARGE_INTEGER n{};
@@ -1019,7 +1039,15 @@ LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     ::InterlockedIncrement(&g_msgs_total);
     ::InterlockedIncrement(&g_msgs_frame);
     if (g_probe) {
-        if (msg == WM_INPUT) ++g_wm_input_seen;
+        if (msg == WM_INPUT) {
+            ++g_wm_input_seen;
+            const int64_t t = qpc_now();
+            if (g_cad_last_arrive && g_qpc_freq > 0.0)
+                ++g_cad_arrive[cad_bucket(1000.0 * static_cast<double>(t - g_cad_last_arrive) /
+                                              g_qpc_freq,
+                                          0.5, 1.5, 4.0, 10.0)];
+            g_cad_last_arrive = t;
+        }
         ++g_msg_hist[msg < 0x3FF ? msg : 0x3FF];
     }
 
@@ -1251,12 +1279,56 @@ void __cdecl in_mousemove() {
         g_probe_cost_us += cost;
         if (cost > g_probe_cost_max_us) g_probe_cost_max_us = cost;
         ++g_probe_frames;
-        if (g_probe_last_qpc && recentre) {
+        // T4 calls IN_MouseMove TWICE per engine frame (measured 2026-09-23 12:14:
+        // "4@4.8 0@0.4 3@2.7 0@0.2 ..." -- a call with the frame's counts, then one
+        // ~0.3 ms later that finds almost nothing). Metering per CALL scored every
+        // second call as a dropout (the 90 %+ "jitter" of the first benches). So
+        // the calls are summed here and the meter is fed once per engine frame by
+        // probe_frame_flush() from the frame tick.
+        if (g_frame_calls == 0) g_frame_first_qpc = probe_t0;  // this frame's sampling instant
+        if (recentre) {
+            g_frame_dx += dx;
+            g_frame_dy += dy;
+            g_frame_owned = true;
+        }
+        ++g_frame_calls;
+        if (g_probe_last_qpc && recentre && (dx || dy || g_frame_dx || g_frame_dy)) {
             const double dt = 1000.0 * static_cast<double>(now - g_probe_last_qpc) / g_qpc_freq;
-            g_jit.add(std::sqrt(static_cast<double>(dx) * dx + static_cast<double>(dy) * dy), dt);
+            const double d = std::sqrt(static_cast<double>(dx) * dx + static_cast<double>(dy) * dy);
+            ++g_cad_counts[d <= 0.0 ? 0 : cad_bucket(d, 0.0, 2.5, 5.5, 10.5)];
+            ++g_cad_dt[cad_bucket(dt, 1.0, 3.0, 5.0, 10.0)];
         }
         g_probe_last_qpc = now;
     }
+}
+
+// Once per engine frame (the frame tick): the view-turn meter's input is what
+// the engine was handed over the whole frame, against the frame's length.
+void probe_frame_flush() {
+    if (!g_probe || !g_qpc_freq) return;
+    // dt is between the FIRST in_mousemove of consecutive frames: that call is
+    // where the frame's counts are sampled (right after the pump), so it is the
+    // interval the counts really cover. Frame-tick-to-frame-tick carries the
+    // render time's variation instead and read ~40 % on an even source.
+    if (!g_frame_calls) { g_frame_owned = false; return; }
+    const int64_t now = g_frame_first_qpc;
+    if (g_probe_frame_qpc && g_frame_owned) {
+        const double dt = 1000.0 * static_cast<double>(now - g_probe_frame_qpc) / g_qpc_freq;
+        const double d = std::sqrt(static_cast<double>(g_frame_dx) * g_frame_dx +
+                                   static_cast<double>(g_frame_dy) * g_frame_dy);
+        g_jit.add(d, dt);
+        ++g_cad_calls[g_frame_calls < 3 ? g_frame_calls : 3];
+        if (g_jit.delivered() > 0.0 && g_cad_sample_n < 24) {
+            const size_t used = std::strlen(g_cad_sample);
+            std::snprintf(g_cad_sample + used, sizeof g_cad_sample - used, "%s%.0f@%.1f",
+                          g_cad_sample_n ? " " : "", d, dt);
+            ++g_cad_sample_n;
+        }
+    }
+    g_probe_frame_qpc = now;
+    g_frame_dx = g_frame_dy = 0;
+    g_frame_calls = 0;
+    g_frame_owned = false;
 }
 
 // One line per ~10 s window when the probe is on. Called from the frame tick.
@@ -1277,7 +1349,7 @@ void probe_report(bool final_line) {
              "p50 err %d%%, p99 err %d%%, DROPOUTS %ld (a frame that turned by 0 between two that "
              "moved) | counts handed to the engine %.0f (%.0f/s) | reports: dispatched %ld "
              "carrying %.0f counts, buffered %ld carrying %.0f counts (RAWMOUSE @+%u, WOW64 fix "
-             "%s) | our input code: %.1f us/frame avg, %.1f us worst in_mousemove",
+             "%s) | our input code: %.1f us/call avg, %.1f us worst in_mousemove",
              ++g_probe_window, secs, g_jit.moving_frames(), g_jit.jitter_pct(),
              g_jit.pct_error_percentile(0.50), g_jit.pct_error_percentile(0.99), g_jit.dropouts(),
              g_jit.delivered(), secs > 0 ? g_jit.delivered() / secs : 0.0, msg_r, msg_m, buf_r,
@@ -1291,6 +1363,21 @@ void probe_report(bool final_line) {
              "message 0x%04X x%ld",
              g_probe_window, g_wm_input_seen, g_rid_fail, g_rid_fail_err, g_rid_notmouse, top,
              g_msg_hist[top]);
+    ENW_INFO("mouse_jitter: window %ld cadence -- WM_INPUT gaps <0.5/0.5-1.5/1.5-4/4-10/>=10 ms: "
+             "%ld/%ld/%ld/%ld/%ld | per in_mousemove counts 0/1-2/3-5/6-10/>10: %ld/%ld/%ld/%ld/%ld "
+             "| call spacing <1/1-3/3-5/5-10/>=10 ms: %ld/%ld/%ld/%ld/%ld | engine frames with "
+             "0/1/2/3+ calls: %ld/%ld/%ld/%ld | per-FRAME sample counts@ms: %s",
+             g_probe_window, g_cad_arrive[0], g_cad_arrive[1], g_cad_arrive[2], g_cad_arrive[3],
+             g_cad_arrive[4], g_cad_counts[0], g_cad_counts[1], g_cad_counts[2], g_cad_counts[3],
+             g_cad_counts[4], g_cad_dt[0], g_cad_dt[1], g_cad_dt[2], g_cad_dt[3], g_cad_dt[4],
+             g_cad_calls[0], g_cad_calls[1], g_cad_calls[2], g_cad_calls[3],
+             g_cad_sample_n ? g_cad_sample : "-");
+    std::memset(g_cad_calls, 0, sizeof g_cad_calls);
+    std::memset(g_cad_arrive, 0, sizeof g_cad_arrive);
+    std::memset(g_cad_counts, 0, sizeof g_cad_counts);
+    std::memset(g_cad_dt, 0, sizeof g_cad_dt);
+    g_cad_sample[0] = 0;
+    g_cad_sample_n = 0;
     std::memset(g_msg_hist, 0, sizeof g_msg_hist);
     g_wm_input_seen = 0;
     g_jit.reset();
@@ -1514,6 +1601,7 @@ public:
                 return;
             }
             if (!g_in_raw_input) return;  // passthrough: nothing to count
+            probe_frame_flush();
             probe_report(false);
 
             // HARNESS ONLY (ENW_RAW_MOUSE_INPUTSINK=1). A never-activated test

@@ -94,7 +94,7 @@ public static double Seconds() { var l = new LII(); l.cbSize = 8; GetLastInputIn
 '@
 function Test-ForeignGame {
     [bool](Get-Process CoDWaW, CoDWaWmp -ErrorAction SilentlyContinue |
-        Where-Object { $_.Path -notlike "*\waw-$Copy\*" })
+        Where-Object { $_.Path -notlike "$dev\*" })   # B's own game: anything outside ZombiesDev
 }
 
 $results = @()
@@ -107,7 +107,7 @@ foreach ($arm in $Arms) {
         if (-not $held) { break }
         Write-Host "waiting for game.lock: $($held.Trim())"; Start-Sleep -Seconds 10
     }
-    if (Test-ForeignGame) { Write-Host "a CoDWaW.exe that is not ours is running: bench ends"; break }
+    if (Test-ForeignGame) { Write-Host "B's own game is running: bench ends"; break }
     $idleDeadline = (Get-Date).AddMinutes($IdleWaitMinutes)
     while ([EnwBench.Idle]::Seconds() -lt $IdleSeconds -and (Get-Date) -lt $idleDeadline) {
         Start-Sleep -Seconds 5
@@ -115,6 +115,12 @@ foreach ($arm in $Arms) {
     if ([EnwBench.Idle]::Seconds() -lt $IdleSeconds) {
         Write-Host "arm ${arm}: the desktop was never idle for $IdleSeconds s: skipped"
         $results += "=== arm $arm  SKIPPED (desktop in use)"; continue
+    }
+    # The idle wait can be long: another agent may have taken the lock meanwhile.
+    $deadline2 = (Get-Date).AddMinutes(30)
+    while ((Test-Path -LiteralPath $lock) -or (Get-Process CoDWaW -ErrorAction SilentlyContinue)) {
+        if ((Get-Date) -gt $deadline2) { throw 'game.lock never came free' }
+        Write-Host 'lock taken during the idle wait; waiting'; Start-Sleep -Seconds 10
     }
     foreach ($k in $knobs) { Remove-Item "Env:$k" -ErrorAction SilentlyContinue }
     foreach ($kv in $armEnv[$arm].GetEnumerator()) { Set-Item "Env:$($kv.Key)" $kv.Value }
