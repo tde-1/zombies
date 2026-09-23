@@ -136,6 +136,10 @@ function router() {
       // bare SteamID, which the launcher must not put behind `+set name`; the wrapped site
       // shows the picker, and every lease is refused until it is done (middleware/auth.js).
       needs_name: req.me ? require('../lib/names').needsName(req.me.steam_id) : false,
+      // The "ENW Zombies" Discord application, for the launcher's Rich Presence
+      // (launcher/src/main/discord.js). Set in infra/site.env so it needs no launcher
+      // release; null = presence stays off. A public id, not a secret.
+      discord_client_id: /^\d{17,20}$/.test(process.env.ZM_DISCORD_CLIENT_ID || '') ? process.env.ZM_DISCORD_CLIENT_ID : null,
     })
   })
 
@@ -172,6 +176,11 @@ function router() {
         token: launch.token,
         connect: launch.connect,
         state: launch.state,
+        // The round, from the live frame the box already pushes (lib/live.js, in memory):
+        // the launcher's Discord presence shows it. Null when no fresh frame.
+        round: (() => { const f = live.get(launch.match_id); return f && f.state && f.state.round > 0 ? f.state.round : null })(),
+        // Non-null while the box pulls the map before booting it ("Preparing map...").
+        preparing: launch.preparing || null,
       } : null,
       settings: users.settings(sid),
       vip: enw.isVip(sid),
@@ -306,7 +315,7 @@ function router() {
       settings: users.settings(req.me.steam_id),
       // Said plainly so the launcher can put it on the boot screen rather than inventing
       // its own wording.
-      notice: 'Local game — untracked. No badges, no records and no XP.',
+      notice: 'Local game. No badges, records or XP.',
     })
   })
 
@@ -423,7 +432,7 @@ function router() {
       // it sent is the round that landed rather than assuming a 200 means agreement.
       stored: { rounds: (require('../lib/results').byId(out.game_id) || {}).rounds ?? null, map_key: row.map_key },
       url: `/game/${row.match_id}`,
-      notice: 'Stored as a Local game. It earns no badge, no record and no XP, and its replay is not record evidence.',
+      notice: 'Stored as a Local game. No badges, records or XP.',
     })
   })
 

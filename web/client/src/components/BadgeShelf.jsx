@@ -51,7 +51,7 @@ function fullLabel(b) {
   if (b.description) bits.push(b.description)
   const on = awardedOn(b.awarded_at)
   if (on) bits.push(`Awarded ${on}`)
-  return bits.join(' — ')
+  return bits.join(' · ')
 }
 
 // The card a badge shows when you point at it (or focus it).
@@ -175,7 +175,7 @@ function usePins(badges, onChanged) {
     if (busy) return
     const isPinned = pinnedIds.has(badge.id)
     if (!isPinned && pinned.length >= maxPinned) {
-      window.alert(`You can pin ${maxPinned}. Unpin one to make room.`)
+      window.alert(`Max ${maxPinned} pinned.`)
       return
     }
     const next = isPinned

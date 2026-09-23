@@ -167,7 +167,7 @@ export default function Settings() {
       <div className="page set-page">
         <div className="set-screen set-screen-empty">
           <div className="set-head"><h1>settings</h1></div>
-          <p className="set-hint set-hint-block">Sign in to keep your World at War settings on your account. They follow you to any PC you launch from.</p>
+          <p className="set-hint set-hint-block">Sign in to save your settings to your account.</p>
         </div>
       </div>
     )
@@ -220,9 +220,8 @@ export default function Settings() {
                     <SettingRow it={it} game={game} change={change} ctx={ctx} />
                   </div>
                 ))
-            ) : tab === 'enw' ? (
-              <EnwSection onStatus={setStatus} />
             ) : (
+              <>{tab === 'enw' && <EnwSection onStatus={setStatus} />}{
               groupsOf(tab).map((g) => (
                 <div key={g.id} className={`set-group ${g.keys ? 'set-keys' : ''}`}>
                   <div className="set-section">
@@ -233,7 +232,7 @@ export default function Settings() {
                   {g.keys && g.id === 'move' && <div className="set-hint">click a box, then press a key or mouse button. esc cancels, backspace clears.</div>}
                   {groupItems(g).map((it) => <SettingRow key={it.id} it={it} game={game} change={change} ctx={ctx} />)}
                 </div>
-              ))
+              ))}</>
             )}
           </div>
         </div>

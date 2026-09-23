@@ -217,6 +217,24 @@ async function main() {
     assignments.cancel(r.match_id, 'test')
   })
 
+  check('settings.dev (soak god mode, dedi.md §23) survives only on an AGENT Custom lease, which says agent:true', () => {
+    boxes.create({ name: 'dev-box', matchKey: 'dev-secret', maxInstances: 3 })
+    const DB = () => boxes.byName('dev-box')
+    assignments.notePoll(DB(), 2)
+    const dev = { dev: { god: true }, dvars: { player_sustainAmmo: '1' } }
+    const ag = assignments.lease({ box: DB(), mapKey: 'nazi_zombie_test', mode: 'custom', settings: dev, players: P('76561198000000003'), agent: true })
+    const pl = assignments.lease({ box: DB(), mapKey: 'nazi_zombie_test', mode: 'custom', settings: dev, players: P('76561190000000021') })
+    const vf = assignments.lease({ box: DB(), mapKey: 'nazi_zombie_test', mode: 'verified', settings: dev, players: P('76561190000000022'), agent: true })
+    truthy(ag.ok && pl.ok, ag.error || pl.error)
+    const list = assignments.forBox(DB(), { v: 2 }).assignments
+    const of = (m) => list.find((x) => x.match_id === m)
+    eq(of(ag.match_id).agent, true); eq(JSON.stringify(of(ag.match_id).settings.dev), '{"god":true}')
+    eq(of(pl.match_id).agent, false); eq(of(pl.match_id).settings.dev, undefined, 'a player\'s Custom lease loses dev')
+    eq(JSON.stringify(of(pl.match_id).settings.dvars), '{"player_sustainAmmo":"1"}', 'but keeps its dvars')
+    if (vf.ok) eq(JSON.stringify(of(vf.match_id).settings), '{}', 'Verified carries no settings at all')
+    for (const r of [ag, pl, vf]) if (r.ok) assignments.cancel(r.match_id, 'test')
+  })
+
   boxes.create({ name: 'multi-box', matchKey: 'multi-secret', maxInstances: 3 })
   const MB = () => boxes.byName('multi-box')
   const lm = {}
@@ -486,6 +504,18 @@ async function main() {
     eq(db.prepare('SELECT key_pinned FROM replays WHERE match_id=?').get('m_unpinned').key_pinned, 0)
   })
 
+  // bug 7 (referee.md §16): a pre-§16 host put its raw fold in `stats` and the value it
+  // reconciled with the game's own result at the top level; "stats first" kept the fold.
+  check('game_players takes the larger of stats.<x> and the row\'s reconciled <x> for the combat counters', () => {
+    const s = summary({ match_id: 'm_bug7_max', players: ['76561198000000004'] })
+    Object.assign(s.players[0], { kills: 7, headshots: 3, downs: 2, revives: 1 })
+    Object.assign(s.players[0].stats, { kills: 6, headshots: 0, downs: 0, revives: 0 })
+    const r = results_.ingest({ box: 'test-box', summary: s })
+    truthy(r.ok, r.error)
+    const row = db.prepare('SELECT gp.* FROM game_players gp JOIN games g ON g.id=gp.game_id WHERE g.match_id=?').get('m_bug7_max')
+    eq(row.kills, 7, 'kills'); eq(row.headshots, 3, 'headshots'); eq(row.downs, 2, 'downs'); eq(row.revives, 1, 'revives')
+  })
+
   check('a non-main finish ticks the shelf but does not mint the map badge', () => {
     // The test map's main finish is the Easter Egg, so a Round 20 finish is a tick only.
     results_.ingest({ box: 'test-box', summary: summary({ match_id: 'm_round', players: ['76561198000000003'], finish: { kind: 'round', label: 'Round 25' } }) })
@@ -525,6 +555,25 @@ async function main() {
     const two = round.counts.find((c) => c.player_count === 2).rows
     truthy(!solo.some((r) => r.round === 40), 'the 2p run is not on the solo board')
     truthy(two.some((r) => r.round === 40), 'the 2p run is on the 2p board')
+  })
+
+  // Watch beside a record row (Movement's WatchButton): every record surface says whether
+  // there is a replay and which match it is, so the button can open /replay/<match> directly.
+  check('record rows carry match_id and replay, on the map boards, the hub and the profile', () => {
+    results_.ingest({ box: 'test-box', summary: summary({ match_id: 'm_watch', players: ['76561198000000002'], rounds: 77 }),
+      replay: { file: 'w.enwr', size: 1, key_id: 'key0000000000002' } })
+    const solo = records.forMap('nazi_zombie_test').find((b) => b.category === 'round').counts.find((c) => c.player_count === 1).rows
+    const row = solo.find((r) => r.match_id === 'm_watch')
+    truthy(row, 'on the board')
+    eq(row.replay, true, 'board row has a replay')
+    const other = solo.find((r) => r.match_id !== 'm_watch' && !db.prepare('SELECT 1 FROM replays WHERE match_id=?').get(r.match_id))
+    if (other) eq(other.replay, false, 'a run with no replay says so')
+    const hub = records.hub({ category: 'round', playerCount: 1 }).find((h) => h.map_key === 'nazi_zombie_test')
+    eq(hub.top.match_id, 'm_watch', 'the hub row')
+    eq(hub.top.replay, true)
+    const held = records.heldBy('76561198000000002').find((h) => h.category === 'round' && h.player_count === 1)
+    eq(held.match_id, 'm_watch', 'the profile row')
+    eq(held.replay, true)
   })
 
   check('a ZWR-profile run outside the rules still posts, marked', () => {
@@ -959,6 +1008,27 @@ async function main() {
     eq(t.players[0].fire[0], 1, 'attack bit not carried')
   })
 
+  check('the track carries the game\'s own scoreboard counters per player (bug 7, referee.md §16)', () => {
+    const { buildTrack } = require('../server/routes/replay')
+    const ev = [
+      { t: 'snap', ms: 0, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], health: 100, alive: true, score: 500, kills: 0, downs: 0, revives: 0, headshots: 0 }] },
+      { t: 'stats', ms: 40, slot: 0, score: 560, kills: 1, headshots: 0, downs: 0, revives: 0, assists: 0 },
+      { t: 'snap', ms: 50, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], score: 560, kills: 1 }] },
+      { t: 'revive', ms: 90, slot: 1, by: 0 },
+      { t: 'snap', ms: 100, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0], revives: 1 }] },
+    ]
+    const lib = { readHeader: () => ({ header: { match_id: 'm_t7', map: 'nazi_zombie_prototype' } }), readEvents: () => ev }
+    const t = buildTrack('x.enwr', lib, 20)
+    const c = t.players[0].counters
+    truthy(Array.isArray(c), 'counters present')
+    eq(JSON.stringify(c), '[[0,0,0,0,0],[40,1,0,0,0],[100,1,0,1,0]]', 'one entry per change, the snap copy of a stats value adds none')
+    eq(t.players[0].has_score, true)
+    truthy(t.events.some((e) => e.t === 'revive' && e.by === 0), 'the reviver survives into the feed')
+    // A file from before §16 has no counters and keeps the old rules.
+    const old = buildTrack('x.enwr', { readHeader: lib.readHeader, readEvents: () => [ev[0]].map((e) => ({ ...e, players: [{ slot: 0, pos: [0, 0, 0], ang: [0, 0] }] })) }, 20)
+    eq(old.players[0].counters, null)
+  })
+
   // ── replay.md §8.11: WaW's round total, the counters, the inputs the HUD animates ──
   check('the round total is the stock _zombiemode.gsc formula, per map family', () => {
     const { roundTotal } = require('../server/lib/wawRules')
@@ -1128,7 +1198,7 @@ async function main() {
     eq(good.grade, 'signed'); truthy(good.ok)
     const bad = replays.grade(replays.rowFor('m_unpinned'))
     eq(bad.grade, 'unpinned'); eq(bad.ok, false)
-    truthy(/integrity is not authorship/.test(bad.reason), 'and it says why')
+    truthy(/not the key pinned/.test(bad.reason), 'and it says why')
     void g
   })
 
@@ -1262,8 +1332,10 @@ async function main() {
     chatSystem._reset()
     const ev = { name: 'ingameName', map: 'nazi_zombie_asylum', map_name: 'Verrückt', round: 30, match_id: 'm_sys1', instance: 'i1' }
     eq(chatSystem.record('box-a', { ...ev, event: 'started' }).text, 'ingameName started a game on Verrückt')
-    eq(chatSystem.record('box-a', { ...ev, event: 'joined' }).text, 'ingameName joined Verrückt')
-    eq(chatSystem.record('box-a', { ...ev, event: 'down' }).text, 'ingameName just went down on round 30 on Verrückt')
+    // A second player: the one who started a match does not also join it (once per match,
+    // test/chat-dedupe.js).
+    eq(chatSystem.record('box-a', { ...ev, name: 'secondName', event: 'joined' }).text, 'secondName joined Verrückt')
+    eq(chatSystem.record('box-a', { ...ev, event: 'down' }).text, 'ingameName went down on round 30 on Verrückt')
     eq(chatSystem.record('box-a', { ...ev, event: 'ended' }).text, "ingameName's game on Verrückt ended on round 30")
   })
 

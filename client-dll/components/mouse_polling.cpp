@@ -1600,6 +1600,28 @@ public:
                 if (install_window_hook()) g_installed = true;
                 return;
             }
+            // `vid_restart` destroys the game window and makes a new one (borderless.cpp
+            // says the same). The subclass -- and with it the input gate the chat overlay
+            // and the Esc menu live on -- and the raw-input registration (hwndTarget) went
+            // with the old one. Install again on the new window. esc-menu.md §9.
+            {
+                const HWND now = game_hwnd();
+                if (g_hwnd && (!::IsWindow(g_hwnd) || (now && now != g_hwnd))) {
+                    if (!now || !::IsWindow(now)) return;   // mid-restart: no window yet
+                    ENW_INFO("mouse_polling: the game window was recreated (0x%p -> 0x%p, vid_restart); "
+                             "installing the subclass%s again", g_hwnd, now,
+                             g_passthrough ? "" : " and raw input");
+                    const HWND old = g_hwnd;
+                    g_in_raw_input = false;   // the registration named the dead window
+                    g_nolegacy_now = false;
+                    g_prev_wndproc = nullptr;
+                    if (!install_window_hook()) {
+                        ENW_WARN("mouse_polling: could not install on the new window 0x%p; will retry", now);
+                        g_hwnd = old;   // compare against the old one again next frame
+                        return;
+                    }
+                }
+            }
             if (!g_in_raw_input) return;  // passthrough: nothing to count
             probe_frame_flush();
             probe_report(false);

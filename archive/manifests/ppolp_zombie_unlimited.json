@@ -1,0 +1,189 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ppolp_zombie_unlimited",
+  "title": "PPOLP ZOMBIE UNLIMITED",
+  "source": "custom",
+  "author": "ppolp",
+  "released": "2015-08-25",
+  "fs_game": "mods/ppolp_zombie_unlimited",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ppolp_zombie_unlimited.iwd": "7e296c8c6d113c483b8be43d41f0fe5e5b4c4b43a67ab81d3c2d10aa756aab3e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 1224,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "doortunels"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "doorbunk"
+      ],
+      [
+        5000,
+        "pf1566_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf1065_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1056_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "7e296c8c6d113c483b8be43d41f0fe5e5b4c4b43a67ab81d3c2d10aa756aab3e",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger",
+      "mbox_bandr_build_trig",
+      "mbox_bandr_pick_trig",
+      "mbox_base_build_trig",
+      "mbox_base_pick_trig",
+      "mbox_lid_build_trig",
+      "mbox_lid_pick_trig",
+      "secret_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "ppolp_zombie_unlimited.exe",
+    "original_sha256": "2e6a2f4178f6985151be5a0b64feb72d577c992d0c943423ea349e3369a0e3c3",
+    "original_size": 217738796,
+    "source_url": "https://www.mediafire.com/file/2b8oyh3n1tfyorc/ppolp_zombie_unlimited.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:40:01Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Hi, i\u2019m going to present my first custom map. Features: \u2013 BO2 Perks (Thanks Harry21) \u2013 Guns from BO2, MW3, MW2(Thanks to El Ricos) \u2013 Custom textures(Many textures thanks to TOMBMX) \u2013 Electric Power \u2013 Remove Dogs \u2013 Custom Viewhands(Thanks to TOM_BMX) \u2013 Better vision \u2013 Mini easter egg(Open door) \u2013 Communal Mystery Box(All players can take a weapon from Mystery Box) \u2013 Mountable Mystery Box(BYZMODZ) \u2013 Buyable Ending (Need to activate the power) \u2013 An attempt to improve the graphics Credits: \u2013 Harrybo21 \u2013 BYZMODZ \u2013 TOM_BMX \u2013 UGX(Forum) \u2013 Gogeta \u2013 Shippuden \u2013 El ricos \u2013 Jzob123",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "ppolp_zombie_unlimited.iwd:images/menu_button_backing_right.iwi",
+        "ppolp_zombie_unlimited.iwd:images/perkaholic_logo.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/ppolpunlimited/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/pplop-zombie-unlimited-1-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 73.0,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 156,
+        "scripts": 1,
+        "bytes": 17377517
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "ppolp_zombie_unlimited_patch.ff",
+      "ppolp_zombie_unlimited.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

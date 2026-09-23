@@ -1503,3 +1503,67 @@ bytes, fragments, arrival gap avg/max/sd, gaps >100/>250 ms. `ENW_NET_PROBE=0` o
 fear_mc_2 was the server's stock `sv_maxRate 7000` (dedi.md §22): 10 → 3 snapshots/s over the internet,
 20/s after. **Launcher lane: baseline `rate 25000`, `snaps 30`, `cl_maxpackets 100`** (dedi.md §22.4) —
 a player with a low `rate` in config.cfg is otherwise still capped by his own setting.
+
+
+## 2026-09-23 ~04:00 — the chat-Enter crash was Discord; engine console per process (`overlay_guard.cpp`, `console_tap.cpp`)
+
+**Crash (B, 03:42, fear_mc_2 on the box, 0.2.20).** Not the chat overlay: Discord's in-process
+graphics hook (`DiscordHook.dll`, injected ~36 s after launch) maps a 50 MB view for its capture
+object, gets nothing because the 2 GB non-LAA process has no 50 MB hole left on fear_mc_2 (measured
+**39.1 / 19.6 MB** largest free block a minute in, `ovg1`/`ovg2`), and then dereferences the NULL
+object on the next Present (DiscordHook+0x1F7FD, write to 0x45; B's `CrashDumps\CoDWaW.exe.23916.dmp`,
+Event 1000, `discord_hook.log`). Same offset in `waw-nc` at 03:10 with nobody typing. Full chain,
+disassembly and table: **`chat-overlay.md` §13**.
+
+**`components/overlay_guard.cpp`** (client only, `ENW_OVERLAY_GUARD=0` off): `ntdll!LdrLoadDll`
+detour refuses `DiscordHook.dll` (`ENW_ALLOW_DISCORD_HOOK=1` allows it); every DLL loaded after engine
+start is logged with ms since launch and the largest free address block; one address-space line a
+minute; an unhandled exception is logged with module+offset before the engine's filter hides it.
+
+**B's "missing" console.log (next-session bug 2) — the premise was wrong.** The engine wrote it every
+launch, to `%LOCALAPPDATA%\ENWZombies\home\mods\<fs_game>\console.log` (fear_mc_2's: last written
+03:42:30, the second the game died). It looked dead because it is one file per map, it is truncated
+on every launch, and a rewritten file keeps its first creation time (09-22 17:07). The isolation
+redirect (`enw_localappdata.cpp`) does not move it: `fs_homepath` is the launcher's
+`ENWZombies\home`, the redirect only moves `fs_localAppData` (profiles, mod files).
+It is still the wrong tool on a player's PC — it needs `logfile`, which puts the script VM in
+developer mode (dedi.md §16), and a relaunch wipes it — so:
+
+**`components/console_tap.cpp`** (client only, `ENW_CONSOLE_TAP=0` off): a MinHook detour on
+`Com_PrintMessage` (0x59A170, cdecl `(channel, msg, type)`, byte-checked `55 8B EC 83 E4 F8 56 57 8B
+7D 0C`; Com_Printf / DPrintf / PrintError all end there) writes **`%LOCALAPPDATA%\ENWZombies\logs\
+console-<pid>.log`** (or `ENW_LOGDIR`) beside `enw-<pid>.log`, always, whatever `logfile` says. The
+detour writes and then calls the engine; `WriteFile` per message (in the OS cache the moment it
+returns, so it survives a crash); a `[hh:mm:ss.mmm]` stamp per line to line up with the DLL log;
+colour codes stripped; each distinct message at most 5 times per 10 s then a `(suppressed N more…)`
+count (fear_mc_2 prints "Failed to log on." every frame: 12,703 of 48,598 lines in 2 min); rotates at
+16 MB to `console-<pid>.old.log`. The launcher still passes `+set logfile 2`; dropping it would make
+a player's script VM retail again, and is a launcher-lane decision.
+
+**Proof.** Unit test `client-dll/tests/overlay_console_test.cpp` **40/0** (x86 `cl`). Local dedi +
+client on fear_mc_2 (`jointest`, `nd`+`nc`, invisible, `ENW_TEST_NO_ACTIVATE=1`,
+`ENW_BORDERLESS_COVER=0`, `com_maxfps 125`, private LocalAppData): `ovg1` (lock 04:16:01–04:18:07)
+wrote `ZombiesDev\logs\nc\console-25180.log`, 2.3 MB, starting
+`1.7.1263 CL(350073) JADAMS2 … / begin $init / ----- FS_Startup -----`; both runs 105 s alive at
+125 fps with the guard armed. Enter in the chat on fear_mc_2: `ovg4` (lock 04:59:54–05:02:01),
+`CLOSED (Enter)` at 05:00:42.758, 105 s alive, no fault (offline line: no site in the harness);
+`console-30112.log` 7,004 lines with the limiter. Table: `chat-overlay.md` §13.4.
+**DLL for the coordinator (not published):** `build/overlayguard/enw_t4.dll` from worktree HEAD
+`84e6201`, sha256 `7b0135abad15c789d6a2f7252249e7bee78f6925d24e2fba38395df5f496972f`.
+
+**Not proven:** a refusal against a real Discord attach (Discord did not try these pids); the
+tap on B's PC and at 2560x1440; Discord's retry behaviour after a refusal.
+
+**Revision ~11:00–12:00 (`dd8ac00`, `224f6ba`, merge `5e15d75`) — the guard no longer refuses Discord
+outright.** `ENW_DISCORD_HOOK=auto|allow|refuse` (replaces `ENW_ALLOW_DISCORD_HOOK`); auto (default)
+lets `DiscordHook.dll` load only while the largest free address block is ≥ 0x3210000 bytes (Discord's
+50 MB view, page-rounded and 64 KB-aligned), logs every decision with the measured block, and on a
+refusal puts one line in the chat Global tab ("Discord overlay off: not enough memory on this map").
+Setting "Discord overlay" Auto/On/Off (`discordOverlay`) on /settings → ENW, carried by the launcher
+as `ENW_DISCORD_HOOK` the same way as `ENW_RAW_MOUSE`. Test-only `ENW_OVERLAY_GUARD_PROBE(_AT)`.
+Unit test **60/0**. Proof `ovg5` (fear_mc_2, client pid 17356, lock 11:49:52–11:51:59): +4 s
+134.3 MB largest free, +64 s 34.9 MB, probe at +71 s **REFUSED** in auto, game ran on to the
+harness kill. DLL `build/overlayguard/enw_t4.dll` at `5e15d75`, sha256
+`9acc16d9e4fb21cf916be73e2d75c6c6cee0e669cd77e0c02b2b070670092fa9` (not published). Not proven: the
+chat line on screen, an ALLOWED decision in a game, a real Discord attach; no margin is kept for the
+game after an allow. Detail: `chat-overlay.md` §13.6.

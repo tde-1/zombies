@@ -160,7 +160,7 @@ export default function ProfileComments({ profileId, me, ownerName }) {
           <div className="empty">Comments are offline.</div>
         ) : list.length === 0 ? (
           <div className="empty">
-            {mineProfile ? 'Nobody has posted on your profile yet.' : `No comments for ${ownerName || 'this player'} yet.`}
+            No comments yet.
           </div>
         ) : (
           // Every post gets its own header — a profile wall is read top to bottom over months,
@@ -181,7 +181,7 @@ export default function ProfileComments({ profileId, me, ownerName }) {
                 <button
                   className="msg-del"
                   type="button"
-                  title={c.mine ? 'Delete your comment' : 'Delete this comment'}
+                  title="Delete"
                   aria-label={`Delete comment by ${c.username}`}
                   onClick={() => remove(c)}
                 >×</button>
@@ -208,7 +208,7 @@ export default function ProfileComments({ profileId, me, ownerName }) {
           />
           <div className="cmt-wall-actions">
             <span className="faint small">{err ? <span className="hot">{err}</span> : `${text.length}/${BODY_MAX}`}</span>
-            <button className="btn btn-sm btn-accent" type="submit" disabled={busy || !text.trim()}>Post comment</button>
+            <button className="btn btn-sm btn-accent" type="submit" disabled={busy || !text.trim()}>Post</button>
           </div>
         </form>
       ) : (

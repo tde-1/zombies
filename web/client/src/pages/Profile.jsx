@@ -6,6 +6,7 @@ import { Loading } from '../components/Bits'
 import MapBanner from '../components/MapBanner'
 import ProfileComments from '../components/ProfileComments'
 import BadgeShelf, { BadgePins } from '../components/BadgeShelf'
+import WatchButton from '../components/WatchButton'
 import { setAmbienceOverride } from '../ambience'
 import { mapHue, prettyTitle } from '../data/mapText'
 import '../profile.css'
@@ -143,7 +144,7 @@ export default function Profile() {
 
         <div className="prof-grid">
           <ProfileRail user={p} isSelf={isSelf} badges={badges} standing={d.standing}
-                       overall={d.overall} onBadgesChanged={reloadProfile} />
+                       onBadgesChanged={reloadProfile} />
 
           <div className="prof-main">
             {/* where the time went comes FIRST (Movement's order): the maps someone lives on say
@@ -151,18 +152,19 @@ export default function Profile() {
                 and nothing else — records and badges are always public (99 §4.1). */}
             {d.history_hidden ? (
               <section className="prof-section">
-                <div className="card prof-card"><div className="empty">{name} keeps their game history private.</div></div>
+                <div className="card prof-card"><div className="empty">History is private.</div></div>
               </section>
             ) : (
               <div className="prof-split">
-                <PlayedMaps title="Top maps" rows={(d.maps && d.maps.top) || []} name={isSelf ? 'You' : name} />
-                <PlayedMaps title="Recent maps" rows={(d.maps && d.maps.recent) || []} name={isSelf ? 'You' : name} recency />
+                <PlayedMaps title="Most played" rows={(d.maps && d.maps.top) || []} />
+                <PlayedMaps title="Recently played" rows={(d.maps && d.maps.recent) || []} recency />
               </div>
             )}
 
-            <Overall o={d.overall} />
-
+            {/* Movement's order: the maps, then the records. */}
             {d.records && d.records.length > 0 && <RecordsHeld rows={d.records} />}
+
+            <Overall o={d.overall} />
 
             {/* The wall goes LAST, Steam-style: it is the thing you scroll to the bottom for. */}
             <ProfileComments profileId={p.steam_id} me={me} ownerName={name} />
@@ -216,7 +218,7 @@ function ProfileBanner({ user, isSelf, name, movement, autoMap, friendState, sig
         <CopyProfileLink name={name} />
         {isSelf && mv.profile_url && (
           <a className="btn btn-ghost btn-sm" href={mv.profile_url} target="_blank" rel="noopener noreferrer"
-             title="Your banner is the one on your ENW Movement profile — change it there and it changes here">
+             title="Your banner comes from ENW Movement">
             {banner ? 'Change banner on Movement' : 'Add a banner on Movement'}
           </a>
         )}
@@ -235,11 +237,13 @@ function ProfileBanner({ user, isSelf, name, movement, autoMap, friendState, sig
 function IdentityBar({ user, name, isSelf, where, movement, topMap, overall, badges, onBadgesChanged }) {
   const flag = countryCode(movement && movement.country)
   const o = overall || {}
+  // A figure with no value is left out, never dashed (Movement hides WRs and podiums at 0;
+  // here every cell follows that rule).
   const cells = [
-    { k: 'Games', v: nf(o.games) },
-    { k: 'Best round', v: o.best_round ? nf(o.best_round.round) : '—' },
-    ...(o.records_held > 0 ? [{ k: 'Records held', v: nf(o.records_held), gold: true }] : []),
-    { k: 'Time played', v: o.time_ms > 0 ? fmtDuration(o.time_ms) : '—' },
+    ...(o.games > 0 ? [{ k: 'Games', v: nf(o.games) }] : []),
+    ...(o.best_round ? [{ k: 'Best round', v: nf(o.best_round.round) }] : []),
+    ...(o.records_held > 0 ? [{ k: 'Records', v: nf(o.records_held), gold: true }] : []),
+    ...(o.time_ms > 0 ? [{ k: 'Time played', v: fmtDuration(o.time_ms) }] : []),
   ]
   return (
     <div className="prof-idbar">
@@ -262,23 +266,25 @@ function IdentityBar({ user, name, isSelf, where, movement, topMap, overall, bad
           {user.archivist && <span className="tag prof-role">Archivist</span>}
         </h1>
         {/* The tagline says ONE thing: the map this player is known for, off the clock. */}
-        <div className="prof-tagline">
-          {topMap
-            ? <><span className="prof-tag-k">Most played:</span>{' '}<b>{mapTitle(topMap)}</b></>
-            : <span className="muted">{isSelf ? 'Play a map and it shows up here.' : 'No games yet.'}</span>}
-        </div>
+        {topMap && (
+          <div className="prof-tagline">
+            <span className="prof-tag-k">Most played:</span>{' '}<b>{mapTitle(topMap)}</b>
+          </div>
+        )}
       </div>
 
       <BadgePins badges={badges} isSelf={isSelf} onChanged={onBadgesChanged} />
 
-      <div className={'prof-stats' + (cells.length === 4 ? ' is-four' : '')}>
-        {cells.map((c) => (
-          <div className="prof-stat" key={c.k}>
-            <div className="prof-stat-k">{c.k}</div>
-            <div className={'prof-stat-v' + (c.gold ? ' gold' : '')}>{c.v}</div>
-          </div>
-        ))}
-      </div>
+      {cells.length > 0 && (
+        <div className={'prof-stats' + (cells.length === 4 ? ' is-four' : '')}>
+          {cells.map((c) => (
+            <div className="prof-stat" key={c.k}>
+              <div className="prof-stat-k">{c.k}</div>
+              <div className={'prof-stat-v' + (c.gold ? ' gold' : '')}>{c.v}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -294,13 +300,12 @@ function PresenceDot({ where }) {
 }
 
 // ── the rail: badges and the facts ────────────────────────────────────────────
-function ProfileRail({ user, isSelf, badges, standing, overall, onBadgesChanged }) {
+function ProfileRail({ user, isSelf, badges, standing, onBadgesChanged }) {
   const s = standing || {}
   return (
     <aside className="prof-rail">
       <div className="prof-rail-card">
         <BadgeShelf badges={badges} isSelf={isSelf} onChanged={onBadgesChanged} />
-        {!(badges.all || []).length && <div className="section-label" style={{ marginBottom: 0 }}>No badges yet</div>}
 
         <div className="prof-rail-facts">
           {user.created_at && (
@@ -314,12 +319,6 @@ function ProfileRail({ user, isSelf, badges, standing, overall, onBadgesChanged 
             <div className="prof-fact">
               <span className="prof-fact-k">Level</span>
               <span className="prof-fact-v">{s.prestige > 0 && s.emblem ? `${s.emblem.label} · ` : ''}{nf(s.level)}</span>
-            </div>
-          )}
-          {overall && overall.time_ms > 0 && (
-            <div className="prof-fact">
-              <span className="prof-fact-k">Total time played</span>
-              <span className="prof-fact-v">{fmtDuration(overall.time_ms)}</span>
             </div>
           )}
         </div>
@@ -376,8 +375,8 @@ function FriendButton({ name, state, who, onChanged }) {
 // Movement's rows: a fixed band, the map's art covering it, a left-weighted scrim so the type
 // stays readable. Art comes through <MapBanner>, so a map with no picture degrades to its own
 // hue wash — never a broken image. Each row carries the zombies facts B asked for: the time
-// spent (right), and the games and best round (sub-line); "Recent maps" adds when.
-function PlayedMaps({ title, rows, recency, name }) {
+// spent (right), and the games and best round (sub-line); "Recently played" adds when.
+function PlayedMaps({ title, rows, recency }) {
   return (
     <section className="prof-section">
       <div className="prof-section-head">
@@ -385,7 +384,7 @@ function PlayedMaps({ title, rows, recency, name }) {
       </div>
       <div className="card prof-card">
         {rows.length === 0
-          ? <div className="empty">{name === 'You' ? 'You have' : `${name} has`} not played a game yet.</div>
+          ? <div className="empty">No games yet.</div>
           : <div className="pm-list">
               {rows.slice(0, MAP_ROWS).map((r) => (
                 <Link className="pm-row" key={r.key} to={`/m/${r.key}`} title={mapTitle(r)}>
@@ -399,7 +398,7 @@ function PlayedMaps({ title, rows, recency, name }) {
                       {recency && r.last_played && <span>{ago(r.last_played)}</span>}
                     </span>
                   </span>
-                  <span className="pm-dur">{r.time_ms > 0 ? fmtDuration(r.time_ms) : '—'}</span>
+                  {r.time_ms > 0 && <span className="pm-dur">{fmtDuration(r.time_ms)}</span>}
                 </Link>
               ))}
             </div>}
@@ -409,33 +408,32 @@ function PlayedMaps({ title, rows, recency, name }) {
 }
 
 // ── Overall ───────────────────────────────────────────────────────────────────
-// B's second section: the whole career in one card. Kills, downs and revives appear only when
-// the server says the game records them (server/lib/profile.js — until then every real game
-// reports 0 for all three, and a printed zero would claim a fact nobody measured).
+// B's section: the career in one card. Only what has a value is printed — no dashes, no
+// zeros. Kills, downs and revives arrive null from the server until the game records them
+// (server/lib/profile.js), and are hidden until then. Time played, records and the join date
+// are already in the identity bar and the rail, so they are not repeated here.
 function Overall({ o }) {
   if (!o) return null
   const b = o.best_round
+  const has = (n) => n != null && Number(n) > 0
   const cells = [
-    { k: 'Games played', v: nf(o.games) },
-    { k: 'Rounds played', v: nf(o.rounds_played), title: 'Every round each game ran while you were in it, summed across your games' },
-    {
+    ...(has(o.games) ? [{ k: 'Games', v: nf(o.games) }] : []),
+    ...(has(o.rounds_played) ? [{ k: 'Rounds', v: nf(o.rounds_played) }] : []),
+    ...(b ? [{
       k: 'Best round',
-      v: b ? nf(b.round) : '—',
-      title: 'Verified games only, the same rule as the boards',
-      sub: b ? (
+      v: nf(b.round),
+      sub: (
         <>
           <Link to={`/game/${b.match_id}`}>{prettyTitle(b.map_title, b.map_key)}</Link>
-          {b.replay && <> · <Link to={`/replay/${b.match_id}`}>replay</Link></>}
+          <WatchButton matchId={b.match_id} replay={b.replay} className="prof-watch" />
         </>
-      ) : 'Verified games only',
-    },
-    { k: 'Time played', v: o.time_ms > 0 ? fmtDuration(o.time_ms) : '—' },
-    { k: 'Records held', v: nf(o.records_held), gold: o.records_held > 0 },
-    ...(o.kills != null ? [{ k: 'Kills', v: nf(o.kills) }] : []),
-    ...(o.downs != null ? [{ k: 'Downs', v: nf(o.downs) }] : []),
-    ...(o.revives != null ? [{ k: 'Revives', v: nf(o.revives) }] : []),
-    { k: 'Member since', v: fmtDate(o.member_since) },
+      ),
+    }] : []),
+    ...(has(o.kills) ? [{ k: 'Kills', v: nf(o.kills) }] : []),
+    ...(has(o.downs) ? [{ k: 'Downs', v: nf(o.downs) }] : []),
+    ...(has(o.revives) ? [{ k: 'Revives', v: nf(o.revives) }] : []),
   ]
+  if (!cells.length) return null
   return (
     <section className="prof-section">
       <div className="prof-section-head">
@@ -444,7 +442,7 @@ function Overall({ o }) {
       <div className="card prof-card">
         <div className="prof-overall">
           {cells.map((c) => (
-            <div className="prof-stat" key={c.k} title={c.title}>
+            <div className="prof-stat" key={c.k}>
               <div className="prof-stat-k">{c.k}</div>
               <div className={'prof-stat-v' + (c.gold ? ' gold' : '')}>{c.v}</div>
               {c.sub && <div className="prof-stat-sub">{c.sub}</div>}
@@ -457,33 +455,37 @@ function Overall({ o }) {
 }
 
 // ── records held ──────────────────────────────────────────────────────────────
-// Movement's record rows wear the played-map card; so do ours. The figure is the round, gold,
-// or the time for a speedrun category.
+// Movement's RecordCard: the played-map card, and the Watch button BESIDE the link rather than
+// inside it (`.rec-cell` > `.pm-row` + `.rec-watch`), so Watch opens the replay and the rest of
+// the row opens the map. The figure is the round, gold, or the time for a speedrun category.
 function RecordsHeld({ rows }) {
   return (
     <section className="prof-section">
       <div className="prof-section-head">
-        <div className="section-label">Records held</div>
-        <span className="muted small">{plural(rows.length, 'record', 'records')}</span>
+        <div className="section-label">Records</div>
+        <span className="muted small">{nf(rows.length)}</span>
       </div>
       <div className="card prof-card">
         <div className="pm-list">
           {rows.map((r, i) => (
-            <Link className="pm-row" key={i} to={`/m/${r.map_key}`}>
-              <MapBanner map={artOf({ key: r.map_key, art: r.art })} />
-              <span className="pm-scrim" aria-hidden="true" />
-              <span className="pm-main">
-                <span className="pm-name">{prettyTitle(r.map_title, r.map_key)}</span>
-                <span className="pm-sub pm-bits">
-                  <span>{r.label}</span>
-                  <span>{r.player_count === 1 ? 'solo' : `${r.player_count} players`}</span>
-                  {r.at && <span>{ago(r.at)}</span>}
+            <div className="rec-cell" key={i}>
+              <Link className="pm-row" to={`/m/${r.map_key}`}>
+                <MapBanner map={artOf({ key: r.map_key, art: r.art })} />
+                <span className="pm-scrim" aria-hidden="true" />
+                <span className="pm-main">
+                  <span className="pm-name">{prettyTitle(r.map_title, r.map_key)}</span>
+                  <span className="pm-sub pm-bits">
+                    <span>{r.label}</span>
+                    <span>{r.player_count === 1 ? 'solo' : `${r.player_count}p`}</span>
+                    {r.at && <span>{ago(r.at)}</span>}
+                  </span>
                 </span>
-              </span>
-              <span className="pm-figs">
-                <span className="pm-time" style={{ color: 'var(--gold)' }}>{r.round ? `Round ${r.round}` : clock(r.value_ms)}</span>
-              </span>
-            </Link>
+                <span className="pm-figs">
+                  <span className="pm-time" style={{ color: 'var(--gold)' }}>{r.round ? `Round ${r.round}` : clock(r.value_ms)}</span>
+                </span>
+              </Link>
+              <WatchButton className="rec-watch" matchId={r.match_id} replay={r.replay} label={prettyTitle(r.map_title, r.map_key)} />
+            </div>
           ))}
         </div>
       </div>
@@ -503,17 +505,16 @@ function OwnSettings({ onSaved }) {
   return (
     <section className="prof-section prof-settings">
       <div className="prof-section-head">
-        <div className="section-label">Your profile settings</div>
-        <Link className="muted small" to="/settings">Game settings →</Link>
+        <div className="section-label">Privacy</div>
+        <Link className="muted small" to="/settings">Game settings</Link>
       </div>
       <div className="card prof-card grid c2">
-        <label className="field"><span>Game history (Top and Recent maps)</span>
+        <label className="field"><span>Played maps</span>
           <select defaultValue={u.privacy_history || 'public'} onChange={(e) => put({ history: e.target.value })}>
             <option value="public">Public</option>
             <option value="private">Hidden</option>
-          </select>
-          <div className="hint">Records, badges and Overall stay public.</div></label>
-        <label className="field"><span>Who can comment on your profile</span>
+          </select></label>
+        <label className="field"><span>Comments</span>
           <select defaultValue={u.profile_comments || 'everyone'} onChange={(e) => put({ profile_comments: e.target.value })}>
             <option value="everyone">Everyone</option>
             <option value="friends">Friends</option>

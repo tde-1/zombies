@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { usePlayGate } from '../components/playGate'
 import { setAmbienceOverride, gradeAmbient, WAW_DEFAULT } from '../ambience'
 import { sampleImageColors } from '../data/sampleColors'
 import { prettyTitle, releasedOf } from '../data/mapText'
-import { api, ago, clock, num } from '../api'
+import { api, clock, num } from '../api'
 import { useSession } from '../session'
 import { useRail } from '../rail'
 import { Section, Empty, Loading, Health, Untracked, PlayerLink, NotPlayable, NewOnServer } from '../components/Bits'
 import BackButton from '../components/BackButton'
 import Comments from '../components/Comments'
 import { DownloadButton } from '../components/MapDownload'
+import './MapPage.css'
 
 // The map page, redesigned as Movement's (2026-09-22, B: "I kind of like what we've done here,
 // but redesign the map page to make it look a bit nicer"). The shape is Movement's
@@ -21,19 +22,21 @@ import { DownloadButton } from '../components/MapDownload'
 //                 the map's name, what it is (creator, release, size, how it ends), the
 //                 standing (the best round on the board, yours, how many have beaten it) and
 //                 Play at the foot. Movement's R1 "Inset": two closed shapes in one panel.
-//   WHAT'S IN IT  the Call of Duty facts: perks, Pack-a-Punch, the box, wall buys, wonder
-//                 weapons, hellhounds, traps, teleporters, power — read out of the map's own
-//                 fastfile (tools/maps/map_features.py). A map we hold no files for has no
-//                 such block, and the page prints nothing rather than a guess.
-//   THE SPLIT     the board and the map's own record of itself (description, how it is
-//                 beaten, where it came from) keep two thirds; the thread takes the rest.
+//   ~~WHAT'S IN IT~~  removed 2026-09-23 (B: "Get rid of 'What's in it' for now"). The
+//                 payload still carries `features`; nothing draws it. Parked idea: a weapon
+//                 index (questions.md, "Parked ideas").
+//   TWO TABS      (2026-09-23, B: "put the records behind ... in its own tab below")
+//                 About: the description beside the comments, as it was. Records: Movement's
+//                 one-map board a size up, one row per run, Watch on the row.
+//   FILES         at the foot, behind one small button that opens a pop-over (B: "hide it
+//                 behind a little pop-up").
 //
 // The page is still one body in two frames: /m/<map> — the YouTube deep link, which must
 // never change — and home's right-hand region render this same component.
 //
-// Two things still come straight from the referee's manifest rather than from prose: what
-// counts as beating this map, and the signals the server watches. Restating those in the
-// page's own words would let the page and the box disagree.
+// ~~The referee's finish table and watched signals were drawn from its manifest.~~ Removed
+// 2026-09-23 as a player-facing section; the banner's "Beaten by ... by reaching round N"
+// comes from the same map row.
 export default function MapPage() {
   const { key } = useParams()
   const R = useRail()
@@ -67,14 +70,11 @@ function useMapColour(art) {
 
 const mb = (n) => (n >= 1073741824 ? `${(n / 1073741824).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1048576))} MB`)
 
-// What the picture IS. A generated card must never pass for a screenshot, and a loading screen
-// out of the map's own files is worth saying — it is the picture the game itself shows.
-const PICTURE = {
-  site: 'Screenshot from the release post',
-  iwd: "The map's own loading screen",
-  stock: "WaW's loading screen",
-  placeholder: '',   // the generated card says NO SCREENSHOT ON FILE on its own face
-}
+// ~~PICTURE: a credit line under the picture ("Screenshot from the release post")~~ removed
+// 2026-09-23 as page noise. The generated card still says NO SCREENSHOT ON FILE on its own
+// face, and the Cover | Loading screen switch names the second picture.
+
+const readTab = () => { try { return window.location.hash === '#records' ? 'records' : 'about' } catch { return 'about' } }
 
 export function MapBody({ mapKey: key }) {
   const { signedIn, approved } = useSession()
@@ -83,6 +83,15 @@ export function MapBody({ mapKey: key }) {
   const [err, setErr] = useState(null)
   const [version, setVersion] = useState(null)
   const [shot, setShot] = useState('art')
+  // Which tab under the banner. `#records` opens on the board, so a link can point at it.
+  const [tab, setTabState] = useState(readTab)
+  const setTab = (t) => {
+    setTabState(t)
+    try {
+      const u = window.location.pathname + window.location.search + (t === 'records' ? '#records' : '')
+      window.history.replaceState(window.history.state, '', u)
+    } catch { /* no history */ }
+  }
 
   const load = useCallback(() => {
     const qs = version ? `?version=${version}` : ''
@@ -109,7 +118,6 @@ export function MapBody({ mapKey: key }) {
   const title = prettyTitle(m.title, m.key)
   const released = releasedOf(m)
   const dl = m.download || {}
-  const f = m.features
   // Play here is the RAIL's Play with this map staged first — Movement's map page "Spin up"
   // is the rail's launch too, so there is one way to start a game and one place (the server
   // card) that shows where it has got to. The play gate is inside it: in a plain browser this
@@ -124,6 +132,7 @@ export function MapBody({ mapKey: key }) {
   // with who and how many; then yours; then how many have beaten it. Movement's three figures,
   // with a round where it has a time.
   const top = bestRound(d.boards)
+  const runs = (d.boards || []).reduce((n, b) => n + b.counts.reduce((k, c) => k + c.rows.length, 0), 0)
   const catalogued = m.health === 'catalogued'
   const picture = shot === 'loadscreen' && m.loadscreen ? m.loadscreen : m.art
 
@@ -140,9 +149,6 @@ export function MapBody({ mapKey: key }) {
           {picture
             ? <img className="map-banner" src={picture} alt={`${title}`} />
             : <span className="mapdash-none">no picture</span>}
-          <div className="mapdash-credit">
-            {shot === 'loadscreen' ? "The map's own loading screen" : (PICTURE[m.art_source] || '')}
-          </div>
           {m.loadscreen && (
             <div className="mapdash-shots seg" role="tablist" aria-label="Which picture">
               <button role="tab" aria-selected={shot === 'art'} className={shot === 'art' ? 'on' : ''} onClick={() => setShot('art')}>Cover</button>
@@ -170,9 +176,7 @@ export function MapBody({ mapKey: key }) {
             {/* What the map IS, one line, dots drawn by the row so an absent fact takes its
                 separator with it. Every item is a fact the site holds; none is invented. */}
             <div className="mapdash-facts">
-              {m.author
-                ? <Link className="mapdash-by" to={`/creator/${encodeURIComponent(m.author)}`} title={`Created by ${m.author}`}>Created by {m.author}</Link>
-                : <span>Creator unknown</span>}
+              {m.author && <Link className="mapdash-by" to={`/creator/${encodeURIComponent(m.author)}`}>Created by {m.author}</Link>}
               {released && <span>Released {released}</span>}
               {dl.size_bytes ? <span><b>{mb(dl.size_bytes)}</b></span> : null}
               {m.source === 'stock' && <span>Ships with WaW</span>}
@@ -247,17 +251,31 @@ export function MapBody({ mapKey: key }) {
                 </div>
               </>
             )}
-            {d.live.length > 0 && (
-              <div className="mapdash-live"><i aria-hidden="true" />{d.live.length} {d.live.length === 1 ? 'game' : 'games'} on this map now</div>
-            )}
             {err && <div className="playbtn-note hot">{err}</div>}
           </div>
         </div>
       </div>
 
-      {f && <Features f={f} />}
       {m.guides && m.guides.length > 0 && <Guides key={m.key} mapKey={m.key} guides={m.guides} />}
 
+      {/* Two tabs under the banner (B, 2026-09-23): About with the comments beside it, as it
+          was, and Records on its own. The count on the Records tab is how many runs are on
+          the map's boards, so nobody clicks through to an empty table to find out. */}
+      <div className="mdtabs" role="tablist" aria-label="Map sections">
+        <button type="button" role="tab" aria-selected={tab === 'about'} className={'mdtab' + (tab === 'about' ? ' on' : '')} onClick={() => setTab('about')}>About</button>
+        <button type="button" role="tab" aria-selected={tab === 'records'} className={'mdtab' + (tab === 'records' ? ' on' : '')} onClick={() => setTab('records')}>
+          Records{runs > 0 && <b className="mdtab-n">{runs}</b>}
+        </button>
+      </div>
+
+      {tab === 'records' ? (
+        <section className="mdrec-wrap" aria-label="Records">
+          <Records boards={d.boards} />
+          {/* ~~Recent games~~ removed 2026-09-23: on a played map it was a list of R0 games
+              with nobody's name on them, under the board that already ranks the real runs.
+              `recent` stays on the wire. */}
+        </section>
+      ) : (
       <div className="mapdash-split">
         <div className="mds-main">
           <Section title="About">
@@ -269,100 +287,16 @@ export function MapBody({ mapKey: key }) {
                   Release post: <a href={m.release_post} target="_blank" rel="noreferrer noopener">{hostOf(m.release_post)}</a>
                 </p>
               )}
-              {m.readme && <pre className="block" style={{ whiteSpace: 'pre-wrap' }}>{m.readme}</pre>}
+              {/* The finish scanner's own line ("Scanner verdict: …") is not the map's readme;
+                  on 2026-09-23 it was the whole of every readme on the site. */}
+              {readmeOf(m.readme) && <pre className="block" style={{ whiteSpace: 'pre-wrap' }}>{readmeOf(m.readme)}</pre>}
             </div>
           </Section>
 
-          <Section title="Records">
-            <Boards boards={d.boards} />
-          </Section>
-
-          <Section title="Recent games">
-            {d.recent.length === 0 ? <Empty>No games yet.</Empty> : (
-              // A table, not `.maprow`: that class became the home page's scrolling row of
-              // cards in §11, and these rows had been quietly wearing its margins since.
-              <div className="listing">
-                <table className="data">
-                  <tbody>
-                    {d.recent.map((g) => (
-                      <tr key={g.id}>
-                        <td className="num" style={{ width: 70 }}><Link to={`/game/${g.match_id}`}><b>R{g.rounds}</b></Link></td>
-                        <td>{g.players.map((p) => p.name).join(', ')}</td>
-                        <td>{g.mode === 'local' || g.self_reported ? <Untracked /> : <span className="tag">{g.mode}</span>}</td>
-                        <td className="tiny">{g.finish && g.finish.label !== `Round ${g.rounds}` ? g.finish.label : ''}</td>
-                        <td className="tiny num">{ago(g.ended_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Section>
-
-          <Section title="What counts as beating it">
-            {d.map.finishes.length === 0 ? <Empty>Round {m.round_n || 20}, the default.</Empty> : (
-              <div className="card pad-0">
-                <table className="data">
-                  <thead><tr><th>Finish</th><th className="num">Priority</th><th>Solo</th></tr></thead>
-                  <tbody>
-                    {d.map.finishes.map((x) => (
-                      <tr key={x.id}>
-                        <td>{x.label}</td>
-                        <td className="num">{x.priority}</td>
-                        <td>{x.solo_ok ? 'yes' : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {d.map.signals.length > 0 && (
-                  <div className="row wrap" style={{ gap: 5, padding: '10px 14px' }}>
-                    <span className="tiny">Also watched</span>
-                    {d.map.signals.map((s) => <span className="tag" key={s.id}>{s.label}</span>)}
-                  </div>
-                )}
-              </div>
-            )}
-          </Section>
-
-          {(d.sources && d.sources.length > 0) || (d.map.files && d.map.files.some((x) => x.kind === 'original')) ? (
-            <Section title="Download" right={dl.links ? <span className="tiny">{dl.links_alive} of {dl.links} links alive</span> : null}>
-              {d.map.files && d.map.files.filter((x) => x.kind === 'original').map((x) => (
-                <div className="card" key={x.path} style={{ marginBottom: 8 }}>
-                  <div className="spread">
-                    <div className="mono tiny">{x.path}</div>
-                    <span className="tag good">Archived</span>
-                  </div>
-                  <div className="tiny">{x.size ? `${mb(x.size)} · ` : ''}sha256 <code>{x.sha256}</code></div>
-                </div>
-              ))}
-              {d.sources && d.sources.length > 0 && (
-                <div className="listing">
-                  <table className="data">
-                    <tbody>
-                      {d.sources.map((s2, i) => (
-                        <tr key={i}>
-                          <td className="tiny">{s2.kind === 'page' ? 'Release post' : 'Download'}</td>
-                          <td className="mono tiny" style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            <a href={s2.url} target="_blank" rel="noreferrer noopener">{s2.site || s2.url}</a>
-                          </td>
-                          <td><LinkHealth status={s2.status} /></td>
-                          <td className="tiny">{s2.note || ''}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Section>
-          ) : null}
-
-          {d.map.versions.length > 1 && (
-            <Section title="Versions">
-              <select value={version || d.map.version_id} onChange={(e) => setVersion(Number(e.target.value))} style={{ maxWidth: 260 }}>
-                {d.map.versions.map((v) => <option key={v.id} value={v.id}>{v.version}{v.latest ? ' (latest)' : ''}</option>)}
-              </select>
-            </Section>
-          )}
+          {/* ~~Records, Recent games~~ moved to the Records tab. ~~What counts as beating it~~
+              removed 2026-09-23: the referee's finish table (with its Priority column) is the
+              box's business; "Beaten by ... by reaching round N" in the banner says it for a
+              player. ~~Download~~ is the Files pop-over at the foot of the page. */}
         </div>
 
         <div className="mds-comments">
@@ -394,10 +328,27 @@ export function MapBody({ mapKey: key }) {
           </Section>
         </div>
       </div>
+      )}
+
+      {/* The foot: the files behind one small button, and the version picker where a map has
+          more than one version. */}
+      <div className="mdfoot">
+        <Files mapKey={m.key} files={d.map.files || []} sources={d.sources || []} catalogued={catalogued} />
+        {d.map.versions.length > 1 && (
+          <label className="mdfoot-ver">
+            <span className="tiny">Version</span>
+            <select value={version || d.map.version_id} onChange={(e) => setVersion(Number(e.target.value))}>
+              {d.map.versions.map((v) => <option key={v.id} value={v.id}>{v.version}{v.latest ? ' (latest)' : ''}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
     </div>
     </div>
   )
 }
+
+const readmeOf = (t) => String(t || '').split('\n').filter((l) => !/^\s*Scanner verdict:/i.test(l)).join('\n').trim()
 
 const hostOf = (u) => { try { return new URL(u).host.replace(/^www\./, '') } catch { return u } }
 
@@ -419,50 +370,6 @@ function bestRound(boards) {
     }
   }
   return best
-}
-
-// ---- what is in it -----------------------------------------------------------------------
-// One tile per fact, and only the facts the map's files state. A "no" is printed where it is
-// information a player asks about (no Pack-a-Punch, no perks on Nacht); a zero count of
-// something nobody expects (teleporters) is left off rather than printed as a dash.
-function Features({ f }) {
-  const wonder = (f.wonder_weapons || []).filter((w) => w !== 'Monkey Bombs')
-  const monkeys = (f.wonder_weapons || []).includes('Monkey Bombs')
-  const perkCount = (f.perks || []).length + (f.other_perks || 0)
-  const tiles = [
-    {
-      k: 'Perks',
-      v: perkCount ? String(perkCount) : 'None',
-      s: perkCount ? [...(f.perks || []), f.other_perks ? `+${f.other_perks} custom` : null].filter(Boolean).join(', ') : 'no perk machines',
-      off: !perkCount,
-    },
-    { k: 'Pack-a-Punch', v: f.pack_a_punch ? 'Yes' : 'No', s: f.pack_a_punch ? 'upgrade machine on the map' : 'no upgrade machine', off: !f.pack_a_punch },
-    { k: 'Mystery Box', v: f.box ? String(f.box) : 'None', s: f.box > 1 ? 'locations, it moves' : f.box === 1 ? 'location, it stays' : 'no box', off: !f.box },
-    { k: 'Wall weapons', v: String(f.wall_weapons || 0), s: 'chalk buys', off: !f.wall_weapons },
-    { k: 'Wonder weapons', v: wonder.length ? String(wonder.length) : 'None', s: wonder.join(', ') || 'none in the box', off: !wonder.length },
-    { k: 'Hellhounds', v: f.dogs ? 'Yes' : 'No', s: f.dogs ? 'dog rounds' : 'no dog rounds', off: !f.dogs },
-    { k: 'Power', v: f.power_switch ? 'Switch' : 'Always on', s: f.power_switch ? 'turn it on first' : 'no power switch' },
-    f.traps ? { k: 'Traps', v: 'Yes', s: 'electric / placed traps' } : null,
-    f.teleporters ? { k: 'Teleporters', v: String(f.teleporters), s: 'pads to link' } : null,
-    monkeys ? { k: 'Equipment', v: 'Monkeys', s: 'Cymbal Monkey in the box' } : null,
-  ].filter(Boolean)
-  return (
-    <section className="mapdash-feats" aria-label="What is in this map">
-      <div className="mapdash-feats-head">
-        <div className="section-label">What's in it</div>
-        <span className="tiny">Read from the map's own files</span>
-      </div>
-      <div className="mdfeat-grid">
-        {tiles.map((t) => (
-          <div className={'mdfeat' + (t.off ? ' off' : '')} key={t.k}>
-            <div className="mdfig-k">{t.k}</div>
-            <div className="mdfeat-v">{t.v}</div>
-            <div className="mdfeat-s" title={t.s}>{t.s}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
 }
 
 // ---- the Easter egg -----------------------------------------------------------------------
@@ -597,75 +504,161 @@ function LinkHealth({ status }) {
   return <span className="tag">Unchecked</span>
 }
 
-// Board order and the empty ones.
-//
-// Every map carries the four ZWR challenge brackets (No Power, No Perks, No Jug, First
-// Room) as well as its own categories, and on a map nobody has run yet that is six boards
-// all empty. So: the headline boards render in full, and empty challenge brackets collapse
-// to one line that still names them.
-const ORDER = ['round', 'ee_speedrun', 'buyable_speedrun', 'no_power', 'no_perks', 'no_jug', 'first_room']
-const CHALLENGE = new Set(['no_power', 'no_perks', 'no_jug', 'first_room'])
-const hasRuns = (b) => b.counts.some((c) => c.rows.length)
+// ---- the files, behind one button ----------------------------------------------------------
+// B (2026-09-23): "I like having the downloads at the bottom; maybe hide it behind a little
+// pop-up." One small button at the foot says how many files; it opens a pop-over with the
+// install action on top and one line per file: name, size, where it comes from. It closes on
+// Esc, on a click outside it, and on the button again.
+const baseName = (p) => String(p || '').split(/[\\/]/).pop()
 
-function Boards({ boards }) {
-  const [pick, setPick] = useState(null)
-  if (!boards.length) return <Empty>No records yet.</Empty>
-  const sorted = [...boards].sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.category))
-  const shown = sorted.filter((b) => !CHALLENGE.has(b.category) || hasRuns(b))
-  const emptyChallenges = sorted.filter((b) => CHALLENGE.has(b.category) && !hasRuns(b))
-  const cur = shown.find((b) => b.category === pick) || shown[0]
+function Files({ mapKey, files, sources, catalogued }) {
+  const [open, setOpen] = useState(false)
+  const box = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const onDown = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('mousedown', onDown); window.removeEventListener('keydown', onKey) }
+  }, [open])
+
+  const originals = files.filter((x) => x.kind === 'original')
+  const links = sources.filter((s) => s.kind !== 'page')
+  const n = originals.length + links.length
+  // Nothing on record: no button. The banner's Download is the install action either way.
+  if (!n) return null
   return (
-    <>
-      {shown.length > 1 && (
-        <div className="mdboards" role="tablist" aria-label="Which board">
-          {shown.map((b) => (
-            <button key={b.category} role="tab" aria-selected={cur === b} className={'mdboard' + (cur === b ? ' on' : '')} onClick={() => setPick(b.category)}>
-              {b.label}
-            </button>
-          ))}
+    <div className="mdfiles" ref={box}>
+      <button type="button" className="mapdash-tool mdfiles-btn" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(!open)}>
+        Files{n ? <b className="mdtab-n">{n}</b> : null}
+      </button>
+      {open && (
+        <div className="mdfiles-pop" role="dialog" aria-label="Files">
+          {!catalogued && <div className="mdfiles-act"><DownloadButton mapKey={mapKey} /></div>}
+          <ul className="mdfiles-list">
+            {originals.map((x) => (
+              <li key={x.path} className="mdfile">
+                <span className="mdfile-n mono" title={x.sha256 ? `sha256 ${x.sha256}` : undefined}>{baseName(x.path)}</span>
+                <span className="mdfile-s">{x.size ? mb(x.size) : ''}</span>
+                <span className="mdfile-src"><span className="tag good">ENW archive</span></span>
+              </li>
+            ))}
+            {links.map((s, i) => (
+              <li key={i} className="mdfile">
+                <a className="mdfile-n" href={s.url} target="_blank" rel="noreferrer noopener" title={s.url}>{s.site || hostOf(s.url)}</a>
+                <span className="mdfile-s">{s.size_bytes ? mb(s.size_bytes) : ''}</span>
+                <span className="mdfile-src"><LinkHealth status={s.status} /></span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-      {cur && <Board key={cur.category} board={cur} />}
-      {emptyChallenges.length > 0 && (
-        <p className="tiny" style={{ marginTop: 8 }}>Open challenges: {emptyChallenges.map((b) => b.label).join(', ')}.</p>
-      )}
-    </>
+    </div>
   )
 }
 
-function Board({ board }) {
-  const [pc, setPc] = useState(board.counts.find((c) => c.rows.length)?.player_count ?? 1)
-  const sel = board.counts.find((c) => c.player_count === pc) || board.counts[0]
-  const time = board.sort === 'time_asc'
+// ---- the records tab ------------------------------------------------------------------------
+// Movement's one-map board (RecordTable density="board": rank, player, time, points, behind,
+// date, Watch) a size up, with zombies' figures where Movement has surf ones. Watch is on the
+// row and goes straight to the replay viewer (/replay/:matchId). Only boards with runs get a
+// chip and only player counts with runs get a button; a column every row leaves empty (Time on
+// a board without durations, Kills and Downs until the box reports them) is not drawn.
+const ORDER = ['round', 'ee_speedrun', 'buyable_speedrun', 'no_power', 'no_perks', 'no_jug', 'first_room']
+const hasRuns = (b) => b.counts.some((c) => c.rows.length)
+const pcLabel = (n) => (n === 1 ? 'Solo' : `${n}p`)
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const day = (ms) => {
+  if (!ms) return '—'
+  const t = new Date(ms)
+  return `${t.getDate()} ${MONTHS[t.getMonth()]} ${t.getFullYear()}`
+}
+
+function Records({ boards }) {
+  const [pick, setPick] = useState(null)
+  const [pc, setPc] = useState(null)
+  const shown = [...(boards || [])].filter(hasRuns)
+    .sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.category))
+  if (!shown.length) return <div className="mdrec-empty">No records yet.</div>
+  const cur = shown.find((b) => b.category === pick) || shown[0]
+  const counts = cur.counts.filter((c) => c.rows.length)
+  const sel = counts.find((c) => c.player_count === pc) || counts[0]
   return (
-    <div className="mds-board">
-      <div className="spread" style={{ marginBottom: 8 }}>
-        <div className="section-label">{board.label}</div>
-        <div className="mdscope">
-          {board.counts.map((c) => (
-            <button key={c.player_count} className={'mdscope-b' + (c.player_count === pc ? ' on' : '')} onClick={() => setPc(c.player_count)}>
-              {c.player_count === 1 ? 'Solo' : `${c.player_count}p`}
-            </button>
-          ))}
-        </div>
+    <div className="mdrec">
+      <div className="mdrec-bar">
+        {shown.length > 1 ? (
+          <div className="mdboards" role="tablist" aria-label="Which board">
+            {shown.map((b) => (
+              <button key={b.category} type="button" role="tab" aria-selected={cur === b} className={'mdboard' + (cur === b ? ' on' : '')} onClick={() => setPick(b.category)}>{b.label}</button>
+            ))}
+          </div>
+        ) : <div className="mdrec-label">{cur.label}</div>}
+        {counts.length > 1 ? (
+          <div className="mdscope" role="tablist" aria-label="Players">
+            {counts.map((c) => (
+              <button key={c.player_count} type="button" role="tab" aria-selected={c === sel} className={'mdscope-b' + (c === sel ? ' on' : '')} onClick={() => setPc(c.player_count)}>{pcLabel(c.player_count)}</button>
+            ))}
+          </div>
+        ) : <span className="mdrec-label mdrec-pc">{pcLabel(sel.player_count)}</span>}
       </div>
-      <div className="listing">
-        {!sel || sel.rows.length === 0 ? <Empty>No runs yet.</Empty> : (
-          <table className="data">
-            <thead><tr><th className="num">#</th><th>Players</th><th className="num">{time ? 'Time' : 'Round'}</th><th /></tr></thead>
-            <tbody>
-              {sel.rows.map((r) => (
-                <tr key={r.id}>
-                  <td className={`rank num ${r.rank === 1 ? 'r1' : ''}`}>{r.rank}</td>
-                  <td>{r.players.map((p) => <PlayerLink key={p.steam_id} user={p} avatar={false} />).reduce((a, b) => [a, ', ', b])}</td>
-                  <td className="num">{time ? clock(r.value_ms) : r.round}</td>
-                  <td className="tiny">{r.profile_ok ? '' : <span className="hot" title={r.profile_note}>rules mismatch</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <RecordBoard key={`${cur.category}-${sel.player_count}`} board={cur} rows={sel.rows} />
     </div>
+  )
+}
+
+function RecordBoard({ board, rows }) {
+  const { me } = useSession()
+  const time = board.sort === 'time_asc'
+  const hasTime = rows.some((r) => r.value_ms > 0)
+  // Kills and downs are wired (lib/records.js sums the game's player rows) and hidden while
+  // every row says 0 or nothing, which is every row until the box reports them.
+  const hasKills = rows.some((r) => r.kills > 0)
+  const hasDowns = rows.some((r) => r.downs > 0)
+  const hasWatch = rows.some((r) => r.replay && r.match_id)
+  const cols = [
+    { h: '#', w: '56px', c: (r) => <span className={'mdrec-rank' + (r.rank === 1 ? ' gold' : '')}>{r.rank}</span> },
+    { h: 'Players', w: 'minmax(0, 1fr)', l: true, c: (r) => <Who r={r} /> },
+    time
+      ? { h: 'Time', w: '130px', c: (r) => <span className={'mdrec-t' + (r.rank === 1 ? ' top' : '')}>{clock(r.value_ms)}</span> }
+      : { h: 'Round', w: '96px', c: (r) => <span className={'mdrec-t' + (r.rank === 1 ? ' top' : '')}>{r.round}</span> },
+    time
+      ? { h: 'Round', w: '84px', c: (r) => <span className="mdrec-n">{r.round}</span> }
+      : hasTime ? { h: 'Time', w: '112px', c: (r) => <span className="mdrec-n">{clock(r.value_ms)}</span> } : null,
+    hasKills ? { h: 'Kills', w: '84px', t: 'Team kills in that game', c: (r) => <span className="mdrec-n">{r.kills ?? '—'}</span> } : null,
+    hasDowns ? { h: 'Downs', w: '84px', t: 'Team downs in that game', c: (r) => <span className="mdrec-n">{r.downs ?? '—'}</span> } : null,
+    { h: 'Date', w: '124px', c: (r) => <span className="mdrec-n" title={r.at ? new Date(r.at).toLocaleString() : undefined}>{day(r.at)}</span> },
+    hasWatch ? {
+      h: '', w: '92px',
+      c: (r) => (r.replay && r.match_id
+        ? <Link className="btn small mdrec-watch" to={`/replay/${encodeURIComponent(r.match_id)}`}>Watch</Link>
+        : null),
+    } : null,
+  ].filter(Boolean)
+  const style = { '--mdrec-cols': cols.map((c) => c.w).join(' ') }
+  return (
+    <div className="mdrec-tab" style={style}>
+      <div className="mdrec-head">
+        {cols.map((c, i) => <span key={i} className={c.l ? 'l' : ''} title={c.t}>{c.h}</span>)}
+      </div>
+      {rows.map((r) => {
+        const mine = me && r.players.some((p) => String(p.steam_id) === String(me.steam_id))
+        return (
+          <div className={'mdrec-row' + (mine ? ' me' : '')} key={r.id}>
+            {cols.map((c, i) => <span key={i} className={c.l ? 'l' : ''}>{c.c(r)}</span>)}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// A run's players: each with their picture, as Movement's holder cell. A run that broke the
+// board's rules keeps its place and says so on hover.
+function Who({ r }) {
+  return (
+    <span className="mdrec-who">
+      {r.players.map((p) => <PlayerLink key={p.steam_id} user={p} />)}
+      {!r.profile_ok && <span className="tag hot" title={r.profile_note || undefined}>Rules mismatch</span>}
+    </span>
   )
 }

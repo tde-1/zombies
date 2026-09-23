@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_perk",
+  "title": "PERK A COLA INC",
+  "source": "custom",
+  "author": "qwerty195",
+  "released": "2015-10-07",
+  "fs_game": "mods/nazi_zombie_perk",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@PerkAColaInc.iwd": "a3f485c4aed36a607685b4452481825e3013ea1900f3133b932eb5e4e282d587"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 110,
+    "script_count": 110,
+    "entities": 1547,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      50000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        5000,
+        "pf458_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf1479_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf865_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf657_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf654_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a3f485c4aed36a607685b4452481825e3013ea1900f3133b932eb5e4e282d587",
+    "map_specific_triggers": [
+      "elevator_antijump",
+      "harrybo21_perk_trigger",
+      "mbox_bandr_build_trig",
+      "mbox_bandr_pick_trig",
+      "mbox_base_build_trig",
+      "mbox_base_pick_trig",
+      "mbox_lid_build_trig",
+      "mbox_lid_pick_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "PerkAColaIncv1.1.exe",
+    "original_sha256": "627df43f4b9292a7fec78c81e86e5f477cae3fb8cad5f16f5de773914b26ed96",
+    "original_size": 117065186,
+    "source_url": "https://www.mediafire.com/file/r7r9onrhl34rpb2/PerkAColaIncv1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:23:48Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "archive_file"
+    ],
+    "catalogue_description": "WELCOME TO PERK-A-COLA INCORPORATED. WHERE THE THIRST-QUENCHING BEVERAGES ARE MADE. Side effects may include : faster hand motions, seeing illusions such as green gas, immunity to explosions, and the emission of electricity through the hands. FEATURES Black ops 1 & 2 perks (except who\u2019s who ) Pack A Punch Fan Blade Traps The Sailor Boss Buildable Mystery Box Buyable Ending [50,000] Dolphin Diving Furniture That I want you To Climb On FEATURES Credits- -Harrybo21 (the perks) -Bookable (the elevator) -MakeCents (the fan blade traps) -Apex (moon-style boss) -Byzmodz (buildable mystery box) -HitmanVere (pap camos) note that this is version 1.0 and could contain bugs or glitches, feel free to reply with any problems.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "PerkAColaInc.iwd:images/perkaholic_logo.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/perkacolainc/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/perk-a-cola-inc-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 93.0,
+    "addon_iwds": [
+      {
+        "file": "PerkAColaInc.iwd",
+        "entries": 119,
+        "scripts": 23,
+        "bytes": 5071535
+      },
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 158,
+        "scripts": 1,
+        "bytes": 17381828
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_perk.ff",
+      "nazi_zombie_perk_patch.ff",
+      "PerkAColaInc.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

@@ -8,8 +8,9 @@
      white-wash panels, and the one red. The green/olive/bone theme went with the old bar
      (2026-09-22) - the launcher is supposed to look like the site, because it is the site.
      Old token names are kept so the rules below did not all have to be rewritten. */
-  --bg: #101010;
-  --bg-2: #0a0a0a;
+  /* Black since 2026-09-23 (the site's :root: Movement's ground eight steps down). */
+  --bg: #080808;
+  --bg-2: #040404;
   --panel: rgba(255, 255, 255, .05);
   --panel-2: rgba(255, 255, 255, .085);
   --line: rgba(255, 255, 255, .09);
@@ -33,6 +34,18 @@
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
+html { color-scheme: dark; }
+
+/* Scrollbars: the site's (web/client/src/theme.css) - thin, a black track, a pill thumb. */
+::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .12); border-radius: 999px;
+  border: 2px solid transparent; background-clip: padding-box; min-height: 36px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .22); }
+::-webkit-scrollbar-corner { background: transparent; }
+.screen::-webkit-scrollbar-track { background: var(--bg-2); }
 body {
   background: var(--bg);
   color: var(--text);
@@ -66,7 +79,7 @@ input, select {
   background: var(--panel-2); border: none;
   border-radius: var(--pill); padding: 8px 14px; width: 100%; outline: none;
 }
-input:focus, select:focus { background: rgba(255, 255, 255, .12); box-shadow: 0 0 0 2px rgba(123, 126, 88, .3); }
+input:focus, select:focus { background: rgba(255, 255, 255, .12); box-shadow: 0 0 0 2px rgba(217, 217, 217, .12); }
 /* A checkbox is not a text field: the browser default is a white box that reads as a
    different application to everything around it. */
 input[type=checkbox] {
@@ -100,9 +113,9 @@ code { font-family: var(--mono); font-size: 12px; color: var(--bone-dim); word-b
    otherwise win the window's hit test over the site's nav (0.2.10). main.js showSite()
    toggles `html.site-shown`; display:none is what makes Chromium re-send the regions. */
 html.site-shown #chrome { display: none; }
-.lockup { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; margin-right: 10px; }
-.lockup .enw { font-weight: 800; font-size: 17px; letter-spacing: .08em; color: var(--text); }
-.lockup .zm { font-weight: 600; font-size: 7.5px; letter-spacing: .42em; color: var(--text); margin-top: 2px; }
+/* The ENW mark (Movement's assets/enw-mark.svg, corrected box), white at 92%. */
+.lockup { display: flex; line-height: 0; margin-right: 10px; color: #fff; }
+.lockup .mark { display: block; filter: brightness(.92); }
 #chromeBack { background: transparent; color: var(--text-dim); padding: 9px 18px; }
 #chromeBack:hover:not(:disabled) { background: var(--panel); color: var(--text); }
 .spacer { flex: 1; }
@@ -184,7 +197,7 @@ html.site-shown #chrome { display: none; }
 #boot { padding: 0; }
 #boot .art {
   height: 42%; min-height: 220px; position: relative;
-  background: linear-gradient(150deg, #2d3021, #101109 75%);
+  background: linear-gradient(150deg, #161616, #080808 75%);
   display: flex; align-items: flex-end;
 }
 #boot .art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, var(--bg) 2%, transparent 65%); }
@@ -198,7 +211,7 @@ html.site-shown #chrome { display: none; }
 
 .toast-wrap { position: fixed; bottom: 14px; left: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: 420px; }
 .toast {
-  background: #1a1c15; border: none; border-radius: var(--radius);
+  background: #141414; border: none; border-radius: var(--radius);
   padding: 11px 15px; font-size: 12.5px; color: var(--text);
   box-shadow: 0 12px 34px rgba(0, 0, 0, .42), inset 3px 0 0 var(--olive);
 }
@@ -214,6 +227,12 @@ html.site-shown #chrome { display: none; }
 #bootClose { display: none; }
 #bootClose.on { display: inline-block; }
 #bootCancel.off { display: none; }
+.toast .toast-action { margin-left: 10px; padding: 2px 10px; font-size: 12px; }
+#bootRetry { display: none; }
+#bootRetry.on { display: inline-block; }
+/* Starting Steam / waiting for sign-in: a spinner in place of the step's dot. */
+.step .dot.spin { display: inline-block; width: 12px; height: 12px; margin: 3px 2px 0; border: 2px solid var(--text-dim); border-top-color: var(--blood-bright); border-radius: 50%; animation: enw-spin .8s linear infinite; }
+@keyframes enw-spin { to { transform: rotate(360deg); } }
 #bootNotes { margin-top: 18px; }
 #detBtn { margin-top: 10px; width: 100%; }
 

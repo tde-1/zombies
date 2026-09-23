@@ -1,0 +1,240 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_tluh",
+  "title": "THE LAST UNDEAD HOUSE",
+  "source": "custom",
+  "author": "gamer9294 Version: 1.1",
+  "released": "2016-02-19",
+  "fs_game": "mods/nazi_zombie_tluh",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_tluh.iwd": "dcb0753e8eca2e4a0109c30ed7132dcba1c31f4027c2f0c20b4c8394729b28e6"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "can_parts_endgame1",
+        "crate_parts_endgame1",
+        "ee_ammo_carepackages_trig",
+        "fuse_part_place_trig",
+        "fuses_parts",
+        "gen_parts_endgame1",
+        "hawk_ee_end_trig",
+        "hawk_ee_end_up",
+        "parts_placing_location1",
+        "parts_placing_location2",
+        "parts_placing_location3",
+        "parts_placing_trig"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "can_parts_endgame1, crate_parts_endgame1, ee_ammo_carepackages_trig, fuse_part_place_trig, fuses_parts, gen_parts_endgame1 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 133,
+    "script_count": 133,
+    "entities": 3040,
+    "ee_candidates": [
+      "can_parts_endgame1",
+      "crate_parts_endgame1",
+      "ee_ammo_carepackages_trig",
+      "fuse_part_place_trig",
+      "fuses_parts",
+      "gen_parts_endgame1",
+      "hawk_ee_end_trig",
+      "hawk_ee_end_up",
+      "parts_placing_location1",
+      "parts_placing_location2",
+      "parts_placing_location3",
+      "parts_placing_trig"
+    ],
+    "ending_words": [
+      "elec_trap_ending",
+      "pwr_handles_endgame",
+      "ridable_car_endgame"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1100,
+      1400,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      8500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "plant_room_debris"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "halfway_backyard_debris"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "halfway_backyard_debris"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "backyard_spool_debris"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "backyard_block1_debris"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "dcb0753e8eca2e4a0109c30ed7132dcba1c31f4027c2f0c20b4c8394729b28e6",
+    "map_specific_triggers": [
+      "auto_door_trig",
+      "bunker_safedoor_trig",
+      "cash_deposit_trigs",
+      "cash_withdraw_trigs",
+      "ddoor_trig1",
+      "discountsales_perk_trig1",
+      "door_trig01",
+      "door_trig02",
+      "door_trig03",
+      "door_trig04",
+      "door_trig05",
+      "door_trig06",
+      "door_trig07",
+      "door_trig08",
+      "door_trig09",
+      "door_trig10",
+      "door_trig11",
+      "door_trig12",
+      "door_trig13",
+      "door_trig14",
+      "door_trig15",
+      "ee_ammo_carepackages_trig",
+      "elec_trap_damages",
+      "elec_trap_damages2",
+      "elec_trap_user",
+      "elec_trap_user2",
+      "electric_sparks_dmg",
+      "fuse_part_place_trig",
+      "garage_trig1",
+      "hawk_ee_end_trig",
+      "main_door_trig01",
+      "main_pwr_doors_trig",
+      "parts_placing_trig",
+      "pc_hack_sys1",
+      "perks_system_trig",
+      "players_into_bullet",
+      "players_into_truck",
+      "points_system_trigs",
+      "pwr_handles_endgame",
+      "radio_music_trigs"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "The_Last_Undead_House_v1.1.exe",
+    "original_sha256": "ec03342d07f49797916617273744ea0a1e2114e1f2212c431e121fe2322774c9",
+    "original_size": 198571416,
+    "source_url": "https://www.mediafire.com/file/qxbm5ccur82ioha/The_Last_Undead_House_v1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:31:43Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Story: A few years ago there was a virus called \u2018Deadly-Z \u2018 after years and years is it impossible for the people to hide from the virus. The last man Alive had one option to survive that was in the last house standing, we hope that he can survive it. Features: Weapon Loadout (on Start) Small objectives custom gun game switchable difficulty modes Searchbags (cod ghosts) 6 Treasure Chests (magic box) 4 codwaw perks: Juggernog, Sleight of Hand, Doubletap, Quick Revive Custom guns (bo1, bo2, mw2, mw1, waw) Custom textures Surviving rounds Boss zombies Powerups Fieldorder (cod ghosts) Perks Bank/Storage Bo2 Bank Easter eggs Bo1 perk: Stamin-up custom perks: Stopping Power & Discount Sales 2 different endgames Hells Retriever/redeemer Difficulties: if you changed the difficulty to \u201c Easy \u201d then it will disabling the Boss Zombies. Game modes: Survival/Mission: This Game mode is the default game mode, just survival and some objectives with endgames Gun Game v1.0: I made my own custom Gun Game, this gun game is based on kills: extra cash (for guns) by kills: Headshots Boss custom bonus drops: x2 teddybear x2 will double your cash for the guns to make it faster that you have a next gun. teddybear will only works in co-op, the player that takes the teddybear keeps his gun and the other players will going 1 weapon back, this is because make it funny and more challenging to reach the last gun. after round 14 it will also allow you to give extra cash by damage on zombies. I know it is mor",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_tluh",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_tluh.iwd:images/loadscreen_nazi_zombie_tluh.iwi",
+        "nazi_zombie_tluh.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_tluh"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/thelastundeadhouse/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2019/04/the-last-undead-house-3-1.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 108.1,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_hells_retriever_redeemer v1.0.1.iwd",
+        "entries": 28,
+        "scripts": 0,
+        "bytes": 2288971
+      },
+      {
+        "file": "trem_hintstrings.iwd",
+        "entries": 1,
+        "scripts": 1,
+        "bytes": 1108
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_tluh.ff",
+      "nazi_zombie_tluh_patch.ff",
+      "nazi_zombie_tluh.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

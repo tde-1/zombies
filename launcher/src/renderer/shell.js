@@ -58,8 +58,15 @@ function show(name) {
 }
 function hideAll() { show(null) }
 
-function toast(text, kind = 'info') {
+function toast(text, kind = 'info', action = null) {
   const t = el('div', `toast ${kind === 'error' ? 'error' : ''}`, text)
+  // One small action, when the main process offers it (the "already running" toast's
+  // End game). Only calls the main process allows from a toast.
+  if (action && action.call === 'endGame' && window.enw.endGame) {
+    const b = el('button', 'toast-action', action.label || 'End game')
+    b.onclick = () => { b.disabled = true; window.enw.endGame(action.arg).then(() => t.remove()).catch((e) => { b.disabled = false; toast(e.message, 'error') }) }
+    t.append(b)
+  }
   $('toasts').append(t)
   setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(() => t.remove(), 450) }, 7000)
 }
@@ -105,7 +112,7 @@ function renderStatus() {
   if (st.errors) kv('Status', `could not read: ${Object.keys(st.errors).join(', ')}`, 'bad')
   if (st.logging && st.logging.writable === false) kv('Log', `cannot write ${st.logging.file}`, 'bad')
 
-  const det = el('button', 'ghost', 'What we found')
+  const det = el('button', 'ghost', 'What we checked')
   det.id = 'detBtn'
   det.onclick = showDetection
   b.append(det)
@@ -139,7 +146,7 @@ async function renderFirstRun(result) {
     if (st.setup.clientDll) bd.append(el('div', 'muted mono', `binkw32.dll · ${st.setup.clientDll.size.toLocaleString()} bytes`))
     const laa = st.setup.largeAddressAware
     if (laa?.present) bd.append(el('div', 'muted mono', `CoDWaW.exe · ${laa.laa ? '4 GB memory (large address aware)' : '2 GB memory (stock)'}${laa.characteristics != null ? ` · Characteristics 0x${laa.characteristics.toString(16).padStart(4, '0')}` : ''}`))
-    bd.append(el('div', null, 'Press Play on a map. Nothing here needs doing.'))
+    bd.append(el('div', null, 'Press Play on a map.'))
     c.append(bd)
     body.append(c)
     const close = el('button', 'primary', 'Back to the site')
@@ -156,7 +163,7 @@ async function renderFirstRun(result) {
 
   if (r.ok) {
     const c = el('div', 'card good')
-    c.append(el('div', 'head', `Found World at War — ${r.game.grade === 'verified' ? 'verified' : 'accepted'}`))
+    c.append(el('div', 'head', `World at War found · ${r.game.grade === 'verified' ? 'verified' : 'accepted'}`))
     const bd = el('div', 'body')
     bd.append(el('div', null, r.game.dir))
     bd.append(el('div', 'mono', `version ${r.game.version || '?'}${r.game.sha256 ? ` · sha256 ${r.game.sha256.slice(0, 16)}…` : ''}`))
@@ -166,13 +173,12 @@ async function renderFirstRun(result) {
     body.append(c)
 
     const what = el('div', 'card')
-    what.append(el('div', 'head', 'What setting up will change'))
+    what.append(el('div', 'head', 'What this does'))
     const ul = el('ul', 'changed')
     for (const line of [
       `Create ${S.status?.enwRoot || 'an ENW folder'} with a small copy of the game (about 8 MB).`,
-      'Install the ENW client there as binkw32.dll, keeping the original beside it.',
-      'Keep ENW maps, saves, profiles and settings in that folder too — so plain Steam World at War never sees anything of ENW\'s, and ENW never writes to your own World at War data.',
-      'Keep ENW\'s game settings and logs in that folder.',
+      'Install the ENW client there as binkw32.dll. The original is kept.',
+      'Keep ENW maps, saves, profiles, settings and logs in that folder.',
     ]) ul.append(el('li', null, line))
     const kept = el('li', 'kept', 'Your Steam copy is not touched.')
     ul.append(kept)
@@ -184,22 +190,21 @@ async function renderFirstRun(result) {
     actions.append(go)
   } else if (r.state === 'owned_not_installed') {
     const c = el('div', 'card')
-    c.append(el('div', 'head', 'You own World at War, but it is not installed'))
-    c.append(el('div', 'body', 'Install it through Steam.'))
+    c.append(el('div', 'head', 'World at War is not installed'))
     body.append(c)
     const b1 = el('button', 'primary', 'Install via Steam')
     b1.onclick = () => window.enw.installViaSteam()
     actions.append(b1)
   } else {
     const c = el('div', 'card bad')
-    c.append(el('div', 'head', 'We could not find World at War'))
+    c.append(el('div', 'head', 'World at War not found'))
     body.append(c)
     const b1 = el('button', null, 'Get World at War on Steam')
     b1.onclick = () => window.enw.getOnSteam()
     actions.append(b1)
   }
 
-  const browse = el('button', r.ok ? 'ghost' : 'primary', r.ok ? 'It is somewhere else' : 'Find it myself')
+  const browse = el('button', r.ok ? 'ghost' : 'primary', r.ok ? 'Choose another folder' : 'Choose folder')
   browse.onclick = doBrowse
   actions.append(browse)
 
@@ -212,7 +217,7 @@ async function doBrowse() {
   const r = await window.enw.browse()
   if (r.cancelled) return
   if (r.ok) {
-    if (r.corrected) toast(`Not quite the right folder — found the game ${r.how}.`)
+    if (r.corrected) toast(`Found the game ${r.how}.`)
     await renderFirstRun({ ok: true, game: r.game, candidates: r.candidates, routes: [], state: 'installed' })
   } else {
     toast(r.reason, 'error')
@@ -245,7 +250,7 @@ async function doSetup(gameDir) {
     const m = await window.enw.setup({ gameDir })
     off()
     const done = el('div', `card ${m.sourceUnchanged ? 'good' : 'bad'}`)
-    done.append(el('div', 'head', m.sourceUnchanged ? 'Done' : 'Done, but something in your install changed. Check the log.'))
+    done.append(el('div', 'head', m.sourceUnchanged ? 'Done' : 'Done, but your install changed. Check the log.'))
     done.append(el('div', 'body', m.gameDir))
     body.append(done)
     const close = el('button', 'primary', 'Continue')
@@ -293,7 +298,7 @@ function showDetection(extra) {
   b.append(el('h2', null, 'Candidates'))
   for (const c of r.candidates || []) {
     const card = el('div', `card ${c.ok ? 'good' : 'bad'}`)
-    card.append(el('div', 'head', `${c.ok ? 'Accepted' : 'Rejected'} — ${c.dir}`))
+    card.append(el('div', 'head', `${c.ok ? 'Accepted' : 'Rejected'} · ${c.dir}`))
     card.append(el('div', 'body', c.reason))
     const box = el('div', 'checks')
     box.style.marginTop = '10px'
@@ -316,6 +321,7 @@ function renderBoot(snap) {
   show('boot')
   $('bootCancel').classList.remove('off')
   $('bootClose').classList.remove('on')
+  $('bootRetry').classList.remove('on')
   // The title when the site told us one, the bsp when it did not. Never a blank.
   $('bootMap').textContent = snap.title || snap.map || '—'
   $('bootMode').textContent = modeLabel(snap.mode)
@@ -323,19 +329,22 @@ function renderBoot(snap) {
   // `download` is the party/late-joiner map install, and it is the one step that is
   // only drawn when it happened: most launches have the map already and a permanently
   // greyed "Downloading the map" row would be noise on every one of them.
-  const order = ['download', 'reserving', 'loading', 'ready', 'launching', 'in_game']
+  // `steam` is drawn only when Steam had to be started or signed in to (steam.js). When
+  // it failed nothing else ran, so it is the only row: one line and Retry.
+  const order = snap.steamFailed ? ['steam'] : ['steam', 'download', 'reserving', 'loading', 'ready', 'launching', 'in_game']
   const wrap = $('bootSteps')
   wrap.replaceChildren()
   for (const id of order) {
     const s = snap.steps.find((x) => x.id === id)
-    if (id === 'download' && !s) continue
+    if ((id === 'download' || id === 'steam') && !s) continue
     const row = el('div', `step ${s ? s.state : ''}`)
-    row.append(el('div', 'dot', !s ? '·' : s.state === 'done' ? '✓' : s.state === 'failed' ? '✕' : '›'))
+    if (id === 'steam' && s?.state === 'active') row.append(el('div', 'dot spin', ''))
+    else row.append(el('div', 'dot', !s ? '·' : s.state === 'done' ? '✓' : s.state === 'failed' ? '✕' : '›'))
     const body = el('div', 'body')
     const t = el('div', 'title')
     // The step's own label when it has one: Play Local relabels these, because
     // "Reserving server" is a lie on a game that runs on your own PC.
-    t.append(document.createTextNode(s?.label || ({ download: 'Downloading the map', reserving: 'Reserving server', loading: 'Loading map', ready: 'Ready', launching: 'Launching World at War', in_game: 'In game' })[id]))
+    t.append(document.createTextNode(s?.label || ({ steam: 'Steam', download:'Downloading the map', reserving: 'Reserving server', loading: 'Loading map', ready: 'Ready', launching: 'Launching World at War', in_game: 'In game' })[id]))
     if (s?.simulated) t.append(el('span', 'sim', 'simulated'))
     body.append(t)
     body.append(el('div', 'detail', s ? s.detail : 'waiting'))
@@ -414,26 +423,25 @@ async function renderSettings() {
   if (displays.length) {
     field('Monitor', sel('display', [
       ['primary', 'Main display'],
-      ...displays.map((d) => [d.id, `${d.label} — ${d.width}x${d.height}${d.primary ? ' (main)' : ''}`]),
-    ]), 'Borderless always fills this display.')
+      ...displays.map((d) => [d.id, `${d.label} · ${d.width}x${d.height}${d.primary ? ' (main)' : ''}`]),
+    ]))
   }
   field('Window mode', sel('mode', [
     ['borderless', 'Borderless windowed (recommended)'],
     ['fullscreen', 'Fullscreen'],
     ['windowed', 'Windowed'],
-  ]), 'Borderless uses the native size of that display and alt-tabs instantly.')
+  ]))
   if (mode !== 'borderless') {
-    field('Resolution', text('resolution', displays.find((d) => d.primary) ? `${displays.find((d) => d.primary).width}x${displays.find((d) => d.primary).height}` : '1920x1080'), 'WxH. Blank means the native size of the chosen display.')
+    field('Resolution', text('resolution', displays.find((d) => d.primary) ? `${displays.find((d) => d.primary).width}x${displays.find((d) => d.primary).height}` : '1920x1080'), 'WxH. Blank for native.')
   }
   field('Field of view', num('fov', 65, 120), 'Records allow up to 120.')
-  field('Max FPS', num('maxFps', 60, 250), 'Records allow up to 250; the server enforces allowed values.')
-  field('Vsync', check('vsync'), "Off by default: with it on the game is capped to your monitor's refresh rate.")
+  field('Max FPS', num('maxFps', 60, 250), 'Records allow up to 250.')
+  field('Vsync', check('vsync'), 'Caps FPS to your refresh rate.')
   field('Show FPS', check('showFps'))
   field('4 GB memory for big maps', check('largeAddressAware'),
-    "Lets ENW's own copy of the game use 4 GB instead of 2 GB - the big custom maps (ORBiT, UGX Requiem) " +
-    "run out of memory without it. It is two bytes in the header of the copy ENW made; your own Steam copy " +
-    "of World at War is never modified, and turning this off puts those bytes straight back.")
+    "Needed for ORBiT and UGX Requiem. Only changes ENW's copy of the game.")
   field('Streamer mode', check('streamerMode'), 'Hides join codes and incoming invite details.')
+  field('Discord rich presence', check('discordPresence'))
   field('Remove unplayed maps', check('autoRemoveUnplayedMaps'))
   const scope = el('div', 'muted', s._scope ? `Saved to: ${s._scope}` : '')
   b.append(scope)
@@ -450,12 +458,12 @@ async function renderSettings() {
   row('Site', st?.site?.url)
   const siteIn = document.createElement('input')
   siteIn.value = st?.config?.siteUrl || ''
-  siteIn.placeholder = 'http://127.0.0.1:3200 — leave blank to detect'
+  siteIn.placeholder = 'http://127.0.0.1:3200'
   siteIn.onchange = () => window.enw.setConfig({ siteUrl: siteIn.value || null }).then(refresh)
   const f = el('div', 'field')
   f.append(el('label', null, 'Site URL'))
   f.append(siteIn)
-  f.append(el('div', 'hint', 'Blank: try the usual local ports.'))
+  f.append(el('div', 'hint', 'Blank to detect.'))
   p.append(f)
 
   renderUpdateCheck(p)
@@ -489,7 +497,7 @@ function renderUpdateCheck(p) {
     S.update = { phase: 'checking', message: 'Checking…' }
     paintUpdate()
     try { S.update = await window.enw.checkForUpdates() }
-    catch (e) { S.update = { phase: 'failed', message: `The update could not be checked. (${e.message})` } }
+    catch (e) { S.update = { phase: 'failed', message: `Update check failed: ${e.message}` } }
     paintUpdate()
   }
   const restart = el('button', null, 'Restart now')
@@ -607,7 +615,12 @@ function wire() {
     renderBoot(snap)
     $('bootCancel').classList.add('off')
     $('bootClose').classList.add('on')
+    $('bootRetry').classList.toggle('on', !!snap.retry)
   })
+  $('bootRetry').onclick = () => {
+    $('bootRetry').classList.remove('on')
+    window.enw.retryPlay().catch((e) => toast(e.message, 'error'))
+  }
   // A map install still reports, and the one place it can be seen from the chrome is a
   // toast on the terminal states: the bar itself belongs to the page that started it
   // (the site's party panel and its map page both draw one).
@@ -615,7 +628,7 @@ function wire() {
     if (!p.done || !p.total || p.done < p.total) return
     if (p.file) toast(`${p.bsp}: ${p.file}`)
   })
-  window.enw.onToast((t) => toast(t.text, t.kind))
+  window.enw.onToast((t) => toast(t.text, t.kind, t.action))
   window.enw.onSession(() => refresh())
   window.enw.onSettings(() => refresh())
   window.enw.onSite(() => refresh())
@@ -635,7 +648,7 @@ function wire() {
     if (link.kind === 'party') { hideAll(); toast(`Opened from a link: party ${link.party}`); return }
     // `home` is a real outcome, not a silent no-op — a link that pointed at nothing we
     // recognise still opens a working launcher, and says so rather than seeming ignored.
-    if (link.kind === 'home') { hideAll(); toast('That link opened the launcher, but it did not name a map or a party.') }
+    if (link.kind === 'home') { hideAll(); toast('That link has no map or party.') }
   })
   // Progress is PUSHED (main.js `push('update_status', …)`), never polled, so the
   // percentage moves smoothly and nothing keeps ticking after Settings is closed.

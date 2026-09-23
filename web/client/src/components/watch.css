@@ -1,0 +1,8 @@
+/* The Watch button, from Movement's theme.css (l.8915, l.4666-4667, l.6983-6985).
+   Component-scoped: imported by WatchButton.jsx only. */
+.r3d-watch { padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+td.rt-watch { text-align: right; width: 1%; white-space: nowrap; }
+.rt-watch .r3d-watch { padding: 4px 10px; }
+.rec-cell { position: relative; }
+.rec-cell .rec-watch { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 2; }
+.rec-cell:has(.rec-watch) .pm-figs { padding-right: 62px; }

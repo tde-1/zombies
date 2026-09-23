@@ -1,0 +1,200 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zombie_maze",
+  "title": "Labyrinth V2",
+  "source": "custom",
+  "author": "MJPWGaming",
+  "released": "2015-07-29",
+  "fs_game": "mods/zombie_maze",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@updatedlabyrinth.iwd": "3119bc80b50aa7a6da334ac9e8acdab611a96cfa33b070f8a93ef309d5d4e108"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_clip1",
+        "ee_quote1",
+        "ee_quote2",
+        "ee_quote3",
+        "ee_quote4",
+        "ee_quote5_final"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_clip1, ee_quote1, ee_quote2, ee_quote3, ee_quote4, ee_quote5_final look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1803,
+    "ee_candidates": [
+      "ee_clip1",
+      "ee_quote1",
+      "ee_quote2",
+      "ee_quote3",
+      "ee_quote4",
+      "ee_quote5_final"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      93500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "itzdoor3"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "itzdoor2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door19"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "itzdoor"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3119bc80b50aa7a6da334ac9e8acdab611a96cfa33b070f8a93ef309d5d4e108",
+    "map_specific_triggers": [
+      "buy_slot_trigger",
+      "dispose",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "knife_trig",
+      "knife_trig2",
+      "knife_trig3",
+      "paptrig",
+      "shoot_me1",
+      "shoot_me_ee1",
+      "shoot_triggers",
+      "soul_chest_area",
+      "step5_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Labyrinth_V2.52.exe",
+    "original_sha256": "e7878a0a9b2928ae8315a8c726f22b8d05b09edb826515261ad46d540f4776a6",
+    "original_size": 296432542,
+    "source_url": "http://www.mediafire.com/file/9599xft1f8sqkdw/Labyrinth_V2.52.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/07/29/labyrinth-v2/",
+    "fetched": "2026-09-23T03:24:24Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending"
+    ],
+    "catalogue_description": "YOUTUBERS \u2013 TURN MUSIC ALL THE WAY DOWN! MUSIC IS INCLUDED THAT PLAYS AUTOMATICLY WITHOUT ACTIVATION AND YOU WILL GET A CLAIM",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "updatedlabyrinth.iwd:images/dukip_menu.iwi",
+        "updatedlabyrinth.iwd:images/dukip_menu2.iwi",
+        "updatedlabyrinth.iwd:images/fnafboxlogo.iwi",
+        "updatedlabyrinth.iwd:images/logoonstripes.iwi",
+        "updatedlabyrinth.iwd:images/mmlogo.iwi",
+        "updatedlabyrinth.iwd:images/mm_logo.iwi",
+        "updatedlabyrinth.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/labyrinth/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/08/labyrinth-2-768x428.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.0,
+    "addon_iwds": [
+      {
+        "file": "nuketown_zombies.iwd",
+        "entries": 48,
+        "scripts": 17,
+        "bytes": 10474621
+      },
+      {
+        "file": "updatedlabyrinth.iwd",
+        "entries": 595,
+        "scripts": 28,
+        "bytes": 193094878
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zombie_maze.ff",
+      "zombie_maze_patch.ff",
+      "updatedlabyrinth.iwd:maps/_loadout.gsc",
+      "updatedlabyrinth.iwd:maps_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

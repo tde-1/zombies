@@ -1,0 +1,204 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_spruktbyl",
+  "title": "SPRUKTBYL",
+  "source": "custom",
+  "author": "isrevivingyou",
+  "released": "2015-01-12",
+  "fs_game": "mods/nazi_zombie_spruktbyl",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_spruktbyl.iwd": "11822b0b4a87c961a93a3da683fb197d31700c440d94c19e26f899d7719fc016"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        9000,
+        75000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 75000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 2939,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      9000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1750,
+        "zombie_door",
+        "arpew4"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "arpew8"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "arpew7"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "aaa2"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "aaa2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "11822b0b4a87c961a93a3da683fb197d31700c440d94c19e26f899d7719fc016",
+    "map_specific_triggers": [
+      "dvii_bench",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "secret_trig2",
+      "secret_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Spruktbyl_1.0.3_English.exe",
+    "original_sha256": "9f63e39088b0c21110555b9f0beb8c11d36a4d625317eb2f0763ac4da14a4a4a",
+    "original_size": 375700027,
+    "source_url": "https://www.mediafire.com/file/7odz0hb5mcz22oy/Spruktbyl_1.0.3_English.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:25:51Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Hi guys,today I bring you my new custom map spruktbyl Enjoy Features: \u2013 Kino-Style Teleporter \u2013 10 Perks \u2013 No Dogs \u2013 Custom PAP Camo \u2013 Black Ops Quick Revive (solo) \u2013 Zombie counter \u2013 Buyable end game \u2013 Zombies boss \u2013 Secret shootables door \u2013 Weapons from BO2, MW2, MW3, BO1 , BT4, BT3,COD GHOST Special thanks to: shippuden1592 Gogeta22344 Pedrehitor74 Deper ZOMB1E-KLLR DuaLVII Javipotter cfgfactory Tom-bmx thezombiekilla6 Rollonmath42 Elfenliedtopfan",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_spruktbyl.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/spruktbyl/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/nazi-zombie-spruktbyl.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 100.5,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2994596
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 547490
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 13972
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_spruktbyl_patch.ff",
+      "nazi_zombie_spruktbyl.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

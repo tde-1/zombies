@@ -168,9 +168,22 @@ private:
             if (!prev.valid || e->health != prev.health) p.integer("health", e->health);
             if (!prev.valid || e->alive != prev.alive) p.boolean("alive", e->alive);
 
-            if (auto s = referee::player_int(slot, "score")) {
-                if (!prev.valid || *s != prev.score) p.integer("score", *s);
-                prev.score = *s;
+            // The game's own scoreboard counters (referee.md 16), each omitted when
+            // unchanged like everything else here. `kills` is what lets the viewer's Tab
+            // scoreboard credit kills per player with company; the `kill` events below
+            // are entity deaths and name nobody.
+            if (auto st = referee::player_stats(slot)) {
+                if (!prev.valid || !prev.have_stats || st->score != prev.score) p.integer("score", st->score);
+                if (!prev.valid || !prev.have_stats || st->kills != prev.kills) p.integer("kills", st->kills);
+                if (!prev.valid || !prev.have_stats || st->downs != prev.downs) p.integer("downs", st->downs);
+                if (!prev.valid || !prev.have_stats || st->revives != prev.revives) p.integer("revives", st->revives);
+                if (!prev.valid || !prev.have_stats || st->headshots != prev.headshots) p.integer("headshots", st->headshots);
+                prev.score = st->score;
+                prev.kills = st->kills;
+                prev.downs = st->downs;
+                prev.revives = st->revives;
+                prev.headshots = st->headshots;
+                prev.have_stats = true;
             }
             if (auto cmd = referee::last_usercmd(slot)) {
                 // VIEW PITCH (replay.md 8.11). `ang` above is the player ENTITY's angles, and
@@ -347,6 +360,11 @@ private:
         int health = 0;
         bool alive = false;
         int score = 0;
+        bool have_stats = false;
+        int kills = 0;
+        int downs = 0;
+        int revives = 0;
+        int headshots = 0;
         uint8_t weapon = 0;
         const char* stance = "";
         int16_t cmd_pitch = 0;

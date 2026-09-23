@@ -55,6 +55,12 @@ const EXEMPT = [
   // and the session are different things. An account is not access.
   /^\/auth\/steam(\/|$)/,
   /^\/auth\/launcher(\/|$)/,
+  // A map's card picture, and only that (tools/maps/map_art.py: <stem>.webp and
+  // <stem>.thumb.webp). The launcher's Discord Rich Presence shows it as the large image
+  // while a player is in that map, and Discord's image proxy fetches it from here: it
+  // cannot type a password, so behind the gate every friend's presence would show a blank
+  // square. It is the picture on the map's public card; the page around it stays gated.
+  /^\/media\/maps\/[a-z0-9_-]+(\.thumb)?\.webp$/,
 ]
 
 function timingSafeEqual (a, b) {

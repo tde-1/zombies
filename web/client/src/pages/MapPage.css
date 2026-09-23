@@ -1,0 +1,104 @@
+/* The map page's tabs, records board and files pop-over (2026-09-23). Scoped to .mapdash and
+   drawn only with the site's existing tokens; the global theme lives in theme.css and is not
+   touched here. --map-c is the map's own colour (MapPage.jsx useMapColour): this page is the
+   one place the site is tinted by a map. */
+
+/* ---- the tabs under the banner ---- */
+.mapdash .mdtabs {
+  display: flex; gap: 4px; margin-top: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.mapdash .mdtab {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  padding: 10px 16px 11px; margin-bottom: -1px;
+  font: inherit; font-size: 14px; font-weight: 650; color: var(--muted);
+  border-bottom: 2px solid transparent;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.mapdash .mdtab:hover { color: var(--text); }
+.mapdash .mdtab.on { color: var(--text); border-bottom-color: hsl(var(--map-c) / .95); }
+.mapdash .mdtab-n {
+  font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 700;
+  padding: 1px 7px; border-radius: var(--pill); background: rgba(var(--text-rgb), .09); color: var(--muted);
+}
+.mapdash .mdtabs + .mapdash-split { margin-top: 18px; }
+
+/* ---- the records tab: Movement's one-map board (.rt-board), a size up ----
+   Movement: 44px rows, 13px text, 14.5px time, 9.5px head. Here: 54px, 14.5px, 17px, 10.5px. */
+.mapdash .mdrec-wrap { margin-top: 18px; }
+.mapdash .mdrec-wrap > .section { margin-top: 22px; }
+.mapdash .mdrec-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 12px;
+}
+.mapdash .mdrec-bar .mdboards { margin-bottom: 0; }
+.mapdash .mdrec-label { font-size: 14px; font-weight: 700; color: var(--text); }
+.mapdash .mdrec-pc { font-size: 12.5px; font-weight: 650; color: var(--muted); }
+.mapdash .mdrec-empty {
+  padding: 34px 16px; text-align: center; color: var(--muted); font-size: 14px;
+  background: var(--panel); border-radius: var(--radius);
+}
+
+.mapdash .mdrec-tab { background: var(--panel); border-radius: var(--radius); overflow: hidden; }
+.mapdash .mdrec-head, .mapdash .mdrec-row {
+  display: grid; grid-template-columns: var(--mdrec-cols); align-items: center; gap: 12px;
+  padding: 0 18px;
+}
+.mapdash .mdrec-head {
+  padding-top: 9px; padding-bottom: 9px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase;
+  font-weight: 700; color: var(--faint); background: var(--panel-2);
+}
+.mapdash .mdrec-row {
+  min-height: 54px; font-size: 14.5px; border-top: 1px solid var(--line);
+  transition: background .14s ease;
+}
+.mapdash .mdrec-row:first-of-type { border-top: 0; }
+.mapdash .mdrec-row:hover { background: rgba(var(--text-rgb), .045); }
+.mapdash .mdrec-row.me { background: hsl(var(--map-c) / .22); box-shadow: inset 3px 0 0 hsl(var(--map-c) / .95); }
+/* everything right-aligned but the players */
+.mapdash .mdrec-head > span, .mapdash .mdrec-row > span { text-align: right; min-width: 0; }
+.mapdash .mdrec-head > .l, .mapdash .mdrec-row > .l { text-align: left; }
+
+.mapdash .mdrec-rank, .mapdash .mdrec-t, .mapdash .mdrec-n { font-family: var(--num); font-variant-numeric: tabular-nums; }
+.mapdash .mdrec-rank { font-weight: 700; color: var(--muted); }
+.mapdash .mdrec-rank.gold { color: var(--gold); }
+.mapdash .mdrec-t { font-size: 17px; font-weight: 700; color: var(--muted); }
+.mapdash .mdrec-t.top { color: var(--text); }
+.mapdash .mdrec-n { font-size: 13px; color: var(--faint); }
+.mapdash .mdrec-who { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 8px 0; }
+.mapdash .mdrec-who .avatar.sm { width: 24px; height: 24px; }
+.mapdash .mdrec-watch { padding: 6px 14px; }
+
+@container mapdash (max-width: 700px) {
+  .mapdash .mdrec-head, .mapdash .mdrec-row { padding: 0 10px; gap: 8px; }
+  .mapdash .mdrec-row { font-size: 13.5px; }
+  .mapdash .mdrec-t { font-size: 15px; }
+}
+
+/* ---- the foot: Files behind one small button ---- */
+.mapdash .mdfoot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--line);
+}
+.mapdash .mdfoot:empty { display: none; }
+.mapdash .mdfoot-ver { display: inline-flex; align-items: center; gap: 8px; }
+.mapdash .mdfoot-ver select { max-width: 220px; }
+.mapdash .mdfiles { position: relative; }
+.mapdash .mdfiles-btn { display: inline-flex; align-items: center; gap: 8px; }
+/* it opens UPWARD: the button sits at the very foot of the page */
+.mapdash .mdfiles-pop {
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 20;
+  width: min(460px, 86vw); padding: 12px;
+  background: var(--panel-solid); border: 1px solid var(--line-2); border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+}
+.mapdash .mdfiles-act { display: flex; justify-content: flex-start; margin-bottom: 10px; }
+.mapdash .mdfiles-list { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto; }
+.mapdash .mdfile {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  padding: 7px 2px; border-top: 1px solid var(--line); font-size: 12.5px;
+}
+.mapdash .mdfile:first-child { border-top: 0; }
+.mapdash .mdfile-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mapdash .mdfile-s { font-family: var(--num); font-variant-numeric: tabular-nums; color: var(--muted); }

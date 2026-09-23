@@ -2557,6 +2557,8 @@ release commit names it. The detail of each change is in the lane doc named.
 | 0.2.18 | `58e4842` 02:15 | `1b103258` | Overlay and Esc menu always in the stock WaW font (from the player's own files, hash-checked) | `chat-overlay.md` §12 |
 | 0.2.19 | `f0eff31` 02:45 | `f11dc67c` | Hang watchdog (stack + minidump after 8 s silent in a map); stock-font search on a worker thread, material span 8192 | `chat-overlay.md` §12.4 |
 | **0.2.20** | `071d4d8` 03:03 | **`03b04bc3`** | Join retry: a "not ready yet" refusal waits (*Waiting for the server...*, every 2 s for 60 s) instead of a fatal error. Same binary as the box's join-fix build (main `81086d4`) | `client.md` §11, `dedi.md` §21 |
+| **0.2.21** | 04:45 (merge of `worktree-agent-a1dcc71d5e1022724`) | `03b04bc3` (unchanged) | Play checks Steam first and starts it silently if closed (*Starting Steam...* / *Waiting for Steam sign-in*, 60 s / 150 s, one-line failure + Retry); a stuck `CoDWaW.exe` (SteamStub never decrypted, no window) is ended and Play continues, a live one is refused with *End game* only for our own process; volume writes `snd_menu_master` (bug 15). 165/0 | this file, section *2026-09-23 — Play starts Steam* |
+| **0.2.22** | `0e52407` 11:50 (main `b568f01`, built clean in `wt-coord2`) | **`499b70c1`** | In-game Esc menu Settings tab (the site's catalogue, write-through, Apply = vid_restart; `esc-menu.md` §9); launcher read-back carries raw input and catches up a missed read-back; Discord rich presence; client FPS-cap report for Verified; black theme + ENW mark; copy audit. Same binary as the box (all 9 copies). 166/0 | `esc-menu.md` §9, `dedi.md` newest section |
 
 **On the feed at handoff: 0.2.20** (`https://zombies.enw.gg/updates/latest.yml`, installer 302 to
 `enw-zombies.nbg1.your-objectstorage.com/updates/…`, checked 03:27 UK).
@@ -2565,3 +2567,204 @@ release commit names it. The detail of each change is in the lane doc named.
 the `rate 25000` / `snaps 30` / `cl_maxpackets 100` baseline that §22.4 asks this lane for. Also still
 wrong: the launcher's volume setting writes `snd_volume`, which is not a dvar in this exe (the real one
 is `snd_menu_master`; `client.md` §10).
+
+## 2026-09-23 — Play starts Steam; volume is `snd_menu_master` (bug 15)
+
+Commits `774a2fb`, `2e819de` (not in a release yet; the coordinator publishes).
+
+### What Play with Steam closed used to do
+
+`CoDWaW.exe` is SteamStub-wrapped (`docs/re/steam-drm.md`). The launcher spawned it anyway.
+Measured on this PC (board.md 2026-09-21 19:12, dedi's join test with Steam down): the process
+stays alive, `.text` stays encrypted, the DLL logs `steamstub: STILL ENCRYPTED after 60000 ms ...
+Is the Steam client running` and disables every hook. No window. The boot screen then said
+*World at War is running*, sat on *waiting for the game to connect* (90 s, then "the site has not
+seen you join yet", for ever), and every later Play was refused with *World at War is still
+running* because the invisible stuck process was. The launcher-path version of this was not
+re-run tonight (Steam on this PC is B's and stays up); the chain is read from the code plus that log.
+
+### The flow now (`src/main/steam.js`, `BootFlow.steamGate`)
+
+Runs first in `BootFlow.run()`, for Play, follow and Play Local, before the site is asked for a box.
+
+| State | Tell | Boot screen (step "Steam", spinner) | Timeout |
+|---|---|---|---|
+| ready | a `steam.exe` is running, `ActiveProcess\pid` is that process, `ActiveUser` ≠ 0 | nothing drawn | — |
+| starting | no `steam.exe` → spawn `steam.exe -silent` (path from `SteamExe`, then `SteamPath`, then Program Files; `steam://open/main` if the spawn throws) | *Starting Steam...* | 60 s for `steam.exe` to appear |
+| signin | `steam.exe` up, `ActiveUser` 0 (or the key still names a dead session's pid) | *Waiting for Steam sign-in* | 150 s |
+| settling | just signed in | *Steam is ready* | 6 s, then the launch continues (a game started the instant the client appears exits silently; vps.md) |
+
+Failures, each one line, one red step, a **Retry** button (`retryPlay` → the same `startPlay`
+options again) and *Back to the site*; no other step is drawn, nothing was leased, and no lease is
+released (a follower's lease is the party's):
+
+* *Steam isn't installed.* — no `steam.exe` anywhere. Immediate.
+* *Steam didn't start.* — no `steam.exe` after 60 s, or the ensure threw (never a stack).
+* *Not signed in to Steam.* — still `ActiveUser` 0 after 150 s.
+
+Cancel during the wait stops it. `ENW_SKIP_STEAM_CHECK=1` turns the gate off. Registry reads are
+`reg.exe query`, read-only; the launcher never writes Steam's keys and never signs anyone in or out.
+
+**Ordering, every entry point.** `GameLaunch` (the only thing that spawns `CoDWaW.exe`) is built
+only inside `BootFlow`, in its three paths, and `await this.steamGate()` is the first await of
+`run()`, ahead of all three. `main.js` has one `new BootFlow` (in `startPlay`, gate wired);
+Play, party follow, Play Local, Resume and Retry all go through `startPlay`. Deep links
+(`enw-zombies://map|party`, the legacy forms) only navigate the site view and never press Play.
+`play-cli.js` (dev) passes the gate with `allowStart: false`: it checks and stops (*Steam isn't
+running.* / *Not signed in to Steam.*), never starting or waiting on B's client. Tests pin all of this.
+
+**Second Play: a live game or a stuck one** (`src/main/gameproc.js`, commit `2e819de`). On Play,
+every running `CoDWaW.exe` is read in one PowerShell call (pid, creation time, command line,
+`MainWindowHandle`) and classified, first rule wins:
+
+| Rule | Kind | Action |
+|---|---|---|
+| `+set dedicated` on its command line | other | never touched, Play refused |
+| a visible top-level window (an off-screen test window counts) | live | refused |
+| started by this launcher and it connected (engine console.log, map up, or token pipe read) | live | refused |
+| ours, and its DLL log `<ENW logs>\enw-<pid>.log` (newer than the process) says `steamstub: STILL ENCRYPTED` | stuck | ended |
+| the dev box's `game.lock` names it and it is not the launcher's | other | never touched, refused |
+| younger than 60 s | starting | refused (*World at War is still starting.*) |
+| no window, older than 60 s | stuck | ended |
+
+Refused: toast *World at War is already running.*; it carries an **End game** button only when the
+pid is one this launcher started this session (`endGame` refuses any other pid and stops only
+that launch's own pids). Stuck: the list is read again, and a pid still stuck is ended with
+`taskkill /PID <pid> /F`; a window that appeared in between saves it. Then Play goes on (toast
+*Closed a stuck World at War.*). Every decision is a `play` line in `launcher.log`. If the process
+list cannot be read, the old rule applies (refuse if ours is alive or any `CoDWaW.exe` is named).
+The follow path records the match before calling, so a refused follow is not retried every poll.
+
+### Volume (bug 15)
+
+`settings.volume` went out as `+set snd_volume`. In the decrypted 1.7 image `snd_volume` is only a
+string in a data table (`0x8819CC`, referenced from `0x8E4DC0`) and is never registered, so the
+setting did nothing (`client.md` §10b). Now `snd_menu_master` (`VOLUME_DVAR` in `gamecfg.js`;
+read back from it; `modcompat.js` managed set), and it is in `wawcfg.js`'s per-launch config.cfg
+set, because a `+set` alone loses to the config the engine execs after it. The site's own
+Master Volume (`waw.snd_menu_master`) still replaces it in place. The six sound dvars the site
+writes (`snd_menu_master/voice/music/sfx`, `snd_cinematicVolumeScale`, `snd_losOcclusion`) are all
+loaded as `mov edi,<name>` in the sound init (`0x6B4963`..`0x6B4EC1`), i.e. registered; a test
+re-checks that against the dump when it is on the machine. The dev harness's
+`+set snd_volume 0` (launch.js offscreen/small) is harmless and left; it also sets `snd_menu_master 0`.
+
+### Tests and what is not proven
+
+`node test/run-all.js`: 153 passed, 1 failed (the pre-existing *repairs the client DLL* test: the
+worktree has no staged client DLL). `waw-settings.js` 14/0, `modcompat.js` 6/0. New: 14 Steam
+tests (fake clock: every state, both timeouts, cancel, throw, stale registry after a crash, the
+boot flow never asking the site when Steam fails) and 2 volume tests. Live, read-only: `readState()`
+on this PC → `running, signedIn, pid 9252`, `ensureSteam()` returned in 73 ms with nothing drawn.
+
+After `2e819de`: **164 passed, 1 failed** (the same DLL test), 14/0, 6/0. +11 tests: both
+classifications (every rule, window beats encrypted, re-read saves a process that got a window,
+kill failure, unreadable list), the DLL-log reader, PowerShell output parsing, the ordering
+(a failing gate leaves every BootFlow path with no `GameLaunch`; the gate is the first await;
+nothing outside BootFlow spawns the game; deep links never reach `startPlay`), `play-cli`'s
+check-only gate. Live, read-only: the process lister returned `[]` for `CoDWaW.exe` (237 ms), and
+on `explorer.exe`/`svchost.exe` it read windows correctly (explorer live, windowless svchost stuck
+by the rules — nothing was ended).
+
+**Unproven:** the starting/sign-in path against a real closed Steam (not tested: B's account); that
+`-silent` still shows the login window when there is no saved login; the Retry, spinner and End
+game toast in the real UI (no screenshot, no game launched; the shell toast is drawn in the
+launcher's chrome, whether it shows over the site view is existing behaviour and unchecked); that
+a real SteamStub-stuck process has `MainWindowHandle` 0 (inferred from "no window"); the volume
+reaching the game's sound (no game run).
+
+## 2026-09-23 05:00 — Discord rich presence: states, assets, setting, B's checklist
+
+B: ENW Zombies as the app name, the ENW logo in the menus, the map's picture in a game, Solo / party
+size, the round, the elapsed time, and one switch. `src/main/discord.js`, tests
+`test/discord-presence.js` (22, in `npm test`).
+
+**Prior art.** ENW Movement (`CSGO-Matchmaker`) has no Discord Rich Presence. Its only "rich
+presence" is Steam's (`bot/lib/steam-real.js` `uploadRichPresence`), so there was no app id,
+library or asset naming to reuse. No Zombies Discord application id was in the repo, `infra/` or the
+vault, so the id is a config value (below) and B creates the app.
+
+**No dependency.** Discord's local IPC is a named pipe (`\?\pipe\discord-ipc-0..9`). Each frame is
+an 8-byte header (op, length, int32 LE) and a JSON body: handshake `{v:1, client_id}`, then
+`SET_ACTIVITY {pid, activity}`. Leaving `activity` out clears it. The module also answers
+ping/pong, handles CLOSE (e.g. 4000 Invalid Client ID) and treats READY as connected.
+
+**States** (Discord shows the app name, then `details`, then `state` + party size):
+
+| Launcher knows | details | state | party | large image | small image | timer |
+|---|---|---|---|---|---|---|
+| no game, no party (or a party of 1), signed out, placeholder | Browsing maps | – | – | `enw` | – | – |
+| party of 2–4, no game | In a party | staged map name, else "In the lobby" | n of 4 | `enw` | – | – |
+| a flow is running, game not started yet | map name | Loading | n of 4 if party | map card | `enw` | – |
+| in game, solo | map name | Solo · Round 7 (or "Solo" before a round is known) | – | map card | `enw` | since the game process started |
+| in game, party | map name | Round 7 (or "In game") | n of 4 | map card | `enw` | since the game process started |
+| Verified | as above | as above | | | hover text "Verified" | |
+| setting off | nothing (cleared) | | | | | |
+
+- **Map name**: the flow's title, else the site's catalogue title, run through the site's own
+  `prettyTitle` rule (copied, because the packaged launcher has no `web/`), else the bsp without
+  `nazi_zombie_`.
+- **Party size and round come from the /play poll the launcher already runs** (0.2 Hz, 1 Hz with a
+  boot screen). They are only used when the poll names *this* game's match id, so a stale party never
+  lends its size. The round is a new field on that poll, `match.round`, read from the live frame the
+  box already pushes to the site (`lib/live.js`, in memory). Nothing polls the game. A Play Local
+  run uses its own relay's `frame.round`.
+- **Map picture**: `https://<site>/media/maps/<stem>.thumb.webp?v=…` (400 px) beside the catalogue's
+  `art`. Discord's image proxy has to fetch it without the beta password, so `middleware/gate.js`
+  now exempts **only** `^/media/maps/<stem>(.thumb)?.webp$`, the map-card picture and nothing else.
+  A non-https site (dev) or a map with no art uses `enw` as the large image instead.
+- **Never sent**: Steam ids, names, the server address, the match id, the party code, the invite
+  token, join secrets, buttons. A test serialises the payloads and checks for each one.
+
+**Robustness.** The Presence object is created after the window and tray, never in `startPlay`,
+`BootFlow` or the Steam check. It only adds `flow.on('launched' | 'update')` listeners and one call
+per poll. Every entry point is synchronous and wrapped (`refreshPresence` catches everything), and
+every socket has an `'error'` handler. If Discord is not running, the launcher tries pipes 0–9 and
+then retries after 2 s, 4 s, 8 s … up to 60 s. It logs once, not every time. When Discord starts
+later, the next retry picks it up and sends the current activity. When Discord quits, the retries
+start again. Updates are deduplicated and throttled to one every 4 s (Discord allows about 5 per
+20 s); a burst sends only the last one. The game exiting returns to the menus state. Quitting the
+launcher (`before-quit`) clears the activity and closes the pipe (Discord would also clear it when
+the pipe closed). Turning the setting off clears it at once, closes the pipe and stops retrying.
+
+**Setting**: `discordPresence` (default on), one switch.
+- Launcher: `settings.js` `DEFAULT_SETTINGS`, `validate`, `GAME_KEYS`.
+- Shared schema: web `data/wawSettings.js` `ENW_ITEMS` + `LAUNCHER_KEYS`, which is what lane 4's
+  in-game Esc-menu Settings tab reads.
+- Site: `lib/users.js` `GAME_KEYS`; `/settings` → ENW → "discord / rich presence"
+  (`settingsLayout.js`; `Settings.jsx` now draws the ENW tab's catalogue groups under
+  `EnwSection`).
+- Launcher's own settings screen: "Discord rich presence".
+- `setSettings` calls `refreshPresence()`, so a change applies immediately.
+
+**The application id.** Order: `ENW_DISCORD_CLIENT_ID` env > `state/config.json` `discordClientId` >
+the site's `/api/launcher/hello` `discord_client_id`, from **`ZM_DISCORD_CLIENT_ID` in
+`infra/site.env`** > `config.js` `DEFAULTS.discordClientId` (empty). With no id the feature does
+nothing and logs `no Discord application id configured` once. The site route means B's id reaches
+every installed launcher at its next start, with no release.
+
+### B's checklist (two minutes)
+
+1. https://discord.com/developers/applications → **New Application** → name it **ENW Zombies**
+   (this is the name Discord shows: "Playing ENW Zombies"). Set the app icon to the ENW mark too.
+2. **Rich Presence → Art Assets → Add Image(s)**: the ENW mark as a PNG, at least 512×512 (e.g.
+   `launcher/src/renderer/assets/icon-256.png` upscaled, or the site's mark exported to PNG). Name
+   the asset **`enw`** exactly. Save. Assets can take a few minutes to appear.
+3. **General Information → Application ID** → copy it. Paste it into `infra/site.env` as
+   `ZM_DISCORD_CLIENT_ID=<id>`, then let the site cycle (keepalive). Every launcher picks it up at its
+   next start. For one PC only, `state/config.json` `"discordClientId": "<id>"` also works.
+4. Open Discord, restart the launcher. Your profile should say *Playing ENW Zombies · Browsing maps*.
+
+### Not proven
+
+- **A real Discord client.** Discord is not installed or running on this machine, and there is no
+  application id yet. Everything above was driven against a fake Discord on a real named pipe that
+  speaks the same framing. So these have never been seen on a real profile:
+  - the wording as Discord renders it;
+  - an https **webp** URL accepted as `large_image`. Discord has proxied external https images for
+    RPC since 2023, but webp through that proxy has not been checked. If the card shows a blank
+    square, the fallback is one line in `mapImage()`: return null, so it uses `enw`;
+  - whether the party size shows without a `party.id` (none is sent, deliberately).
+- **The real launcher window.** The wiring is covered by source tests. No dev Electron window was
+  started, because B's launcher was running on this desktop.
+- **`match.round` on a live box game.** The code reads the same in-memory frame as `/live`. It has
+  not been watched during a real game.

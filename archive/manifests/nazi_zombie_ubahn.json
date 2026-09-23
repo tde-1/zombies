@@ -1,0 +1,200 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ubahn",
+  "title": "U-BAHN",
+  "source": "custom",
+  "author": "CrazyRandomzZ",
+  "released": "2014-12-24",
+  "fs_game": "mods/nazi_zombie_ubahn",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ubahn.iwd": "3f0f33294ebfdf09e4137a638b942d1e9251d6c06ec11c81c61c938918e07041"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "end_trigger",
+        "escape",
+        "escape_door",
+        "teleport_door",
+        "teleport_door_hint"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        15000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger, escape, escape_door, teleport_door, teleport_door_hint name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 1779,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger",
+      "escape",
+      "escape_door",
+      "teleport_door",
+      "teleport_door_hint"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      15000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "door7"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door7"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "train"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "train"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "train"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3f0f33294ebfdf09e4137a638b942d1e9251d6c06ec11c81c61c938918e07041",
+    "map_specific_triggers": [
+      "end_trigger",
+      "escape",
+      "pap_box_trig",
+      "radio1_trigger",
+      "radio2_trigger",
+      "secret_trigger",
+      "secret_trigger1",
+      "secret_trigger2",
+      "secret_trigger3",
+      "secret_trigger4",
+      "teleport_door_hint",
+      "weapontrade"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ubahn.exe",
+    "original_sha256": "f3110dc707da8f470c4e3525cb17e48e74af3e94540e09ba1e85e2825e5423c4",
+    "original_size": 149182860,
+    "source_url": "http://www.mediafire.com/file/u7ekod2g0c3cfsd/nazi_zombie_ubahn.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:39:28Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg"
+    ],
+    "catalogue_description": "Nazi Zombies U-Bahn Debrief Time: Unknown Place: Berlin Germany Goal: Locate the train platform and escape before its to late! so not much or a story line here this is just good old fashion zombies madness. the map is packed with custom weapons and a Easter egg along the way. Feature List -Black Ops Weapons -Black Ops Quick Revive -mw2 weapons -special weapons -beatable ending -end game location with PAP mystery box -Replayable Music Boxs -Fast Paced zombie spawning -Secret Room -easter eggs -weapon trader system Testers LPs (beta version of the map, has been changed and updated MAJORLY since theese videos. TheGamingGeek15 + CrazyRandomzz",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/ubahn/cover.jpeg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/nazi-zombie-u-bahn-1-768x432.jpeg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 139.7,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985211
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ubahn.ff",
+      "nazi_zombie_ubahn_patch.ff",
+      "nazi_zombie_ubahn.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

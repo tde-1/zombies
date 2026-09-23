@@ -136,6 +136,8 @@ const GAME_KEYS = {
   showFps: (v) => !!v,
   sensitivity: (v) => (Number.isFinite(Number(v)) && Number(v) > 0 && Number(v) <= 100 ? Number(v) : undefined),
   rawMouse: (v) => v !== false,
+  discordPresence: (v) => v !== false,
+  discordOverlay: (v) => (['auto', 'allow', 'refuse'].includes(v) ? v : undefined),
 }
 function sanitizeGame(g) {
   if (!g || typeof g !== 'object' || Array.isArray(g)) return undefined

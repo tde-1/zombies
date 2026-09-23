@@ -1,0 +1,207 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "salaj_dust2",
+  "title": "SALAJ DUST 2",
+  "source": "custom",
+  "author": "gustoman",
+  "released": "2017-06-18",
+  "fs_game": "mods/salaj_dust2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "f24497dad8243ba05bc136e2c608226b37dbab03ecfb7435a9bb70738cb7c7fe",
+    "raw/maps/_zombiemode.gsc@salaj_dust2.iwd": "601d5205d98d3e04d8d136839a9ced1586e29d89ace9d1cc7ce83b2134210865"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000,
+        6000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 198,
+    "script_count": 198,
+    "entities": 1909,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "debris2"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "debris10"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "debris1"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "debris1"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "f24497dad8243ba05bc136e2c608226b37dbab03ecfb7435a9bb70738cb7c7fe",
+    "map_specific_triggers": [
+      "ugx_wallweapon",
+      "ugxm_trap_machine"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "salaj_dust2.exe",
+    "original_sha256": "4c02b4e7b68cd36c49dad754cb31b1503beedb702daae9d08b3e9e4c43dd4ea0",
+    "original_size": 561379655,
+    "source_url": "http://www.mediafire.com/file/0u664a4199033e0/salaj_dust2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:30:00Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "SALAJ_DUST2 What really say about this map? I think everyone know this map from game Counter-Strike. I created new Dust2 and I tried my best to give you best feeling of Counter-Strike and new experience of Call of Duty Zombies. My question is are you ready visit zombies in Dust2 or zombies are ready for you? HOW TO INSTALL When you download the map it may happen that windows defender will block this application. Just ignore that or if it says something like this \u201cclick here for more options\u201d just click on that and there will be more options for allow installation, so you can pass it and install it without any problem. BEFORE YOU START PLAYING Before you start play game you have to go to the settings/UGX options/weapon bob turn it \u201cON\u201d save and close. You have to do this every time when you will play this map. If you will not do it then you will get stuck on screen because there will be not \u201cstart button\u201d. COOP / Multiplayer If you want to play COOP with 3 or 4 friends it may happen that one of you got stuck on screen. If you are stuck just type to console \u201cpause\u201d and it should works. INFORMATION ABOUT MAP UGX v1.1 ( game modes: calssic, gungame, arcademod, king of the hill, sharpshooter, bounty hunter, chaos mode ) 11 Perks Pack a Punch Elemental Machine Traps Machine Weapons ( MW, BO1, BO2, BO3 ) CS:GO Ranking System Plant the C4 Bomb Some Custom Textures Xbox 360 Controller Support CREDITS Creator: GU$TOMAN Bomb Scripting: fanmagic Map Testers: Eeyoreboy and Patcher THANKS ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_camp.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_temp_background.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_template.iwi",
+        "ugxm_guns.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugxm_guns.iwd:images/ugx_logo_menu.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_arrow.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_overlay.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/salajdust2/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/salaj-dust2-2-1.jpg"
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.1,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 218,
+        "scripts": 71,
+        "bytes": 29507037
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 1137,
+        "scripts": 2,
+        "bytes": 183248876
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "salaj_dust2_patch.ff",
+      "salaj_dust2.iwd:raw/animscripts/death.gsc",
+      "salaj_dust2.iwd:raw/maps/_loadout.gsc",
+      "ugx_mod.iwd:animscripts/death.gsc"
+    ]
+  },
+  "site_hidden": true
+}

@@ -676,6 +676,26 @@ becomes `n` (checked against the six bytes first, in `post_unpack` — in `post_
 reads SteamStub ciphertext `FF 24 F8 3A 98 4F`, measured). The engine then asks for `n` and falls
 forward on its own.
 
+## 11. The co-op scoreboard counters are native gclient fields (referee, 2026-09-23) — all [V]
+
+Bug 7 (referee.md §16). `player.score`, `.kills`, `.assists`, `.downs`, `.revives` and
+`.headshots` are **not script variables**. They resolve through the client field table to ints in
+`gclient_s`, so they can be read without any script-VM binding.
+
+| Name | Value | Evidence |
+|---|---|---|
+| client field table | `0x83C568`, stride 0x18 `{const char* name; int ofs; int type; int mask; setter; getter}`, NUL name at `0x83C730` (19 entries) | walked by `GScr_AddFieldsForClient` **0x4ED1B0** (`mov edi,0x83C568`, `add edi,0x18`, registers each with `0x6000 \| idx`); indexed by `Scr_SetClientField` **0x4ED200** (`lea eax,[eax*8+0x83C568]` after `idx*3`, calls `[entry+0x10]` if set) |
+| `score` | gclient `+0x20BC` int, setter 0x4ECEB0 | table entry 0x83C628; setter stores `mov [edi+0x20BC],esi` at **0x4ECF25** (and score/10 into `level.clients[n]+0x21E8`) |
+| `kills` / `assists` / `downs` / `revives` / `headshots` | `+0x20C0` / `+0x20C4` / `+0x20C8` / `+0x20CC` / `+0x20D0`, type 0, no setter | table entries 0x83C5F8 / 0x83C610 / 0x83C580 / 0x83C598 / 0x83C5B0; the co-op scoreboard builder **0x67CBC0** pushes `[level.clients + i*0x2348 + 0x20D0,0x20CC,0x20C8,0x20C4,0x20C0]` and `+0x20B4` (statusicon) into `" %x %x %x %x %x %x %x %x"` (0x67CC1C–0x67CC4E), then sends it as server command `'b'` (`"%c %i %s"`, push 0x62) |
+| `gclient_s` size | `0x2348` | the builder's `add ebp,0x2348` at 0x67CCB4; the score setter's `(gclient - level.clients) / 0x2348` (magic 0x74187D2B, `sar 0xC`) |
+| `level.clients` | `*(gclient_s**)0x18F5D88` (`level_locals_t + 0`) | `mov ebx,[0x18F5D88]` in the setter; `mov eax,[0x18F5D88]` in the builder; loop bound `level.maxclients` at `0x18F6DC0` |
+
+Also in the table, not used yet: `spectatorclient +0x20B0` (setter 0x4ECF30), `archivetime +0x20B8`,
+`psoffsettime +0x2234`, `pers +0x20DC`, `nolean`/`nopronerotation` (+0xC, type 0x12, masks
+0x2000000/0x10000000). `referee/t4_bind.cpp verify_client_fields()` re-reads the six entries and
+the three code sites in the running process before it reads anything. `re`: these belong in
+`shared/t4/structs.hpp` as `gclient_off` once that lane takes them.
+
 ## 4. Open threads
 - Pin `Scr_NotifyNum`, `Cbuf_AddText`/`Cmd_ExecuteString`, exact `SV_DropClient`. Anchors:
   SV_AddOperatorCommands 0x62C9B0 (console dispatch), the VM at 0x696E6D. KisakCOD structure +

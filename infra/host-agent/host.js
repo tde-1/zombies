@@ -20,7 +20,7 @@ import { EventEmitter } from 'node:events'
 import { execFile } from 'node:child_process'
 import { makeLog, parseArgs, setLogLevel, mkdirp, id as makeId, fmtBytes, fmtDur, sha256hex } from './lib/util.js'
 import { GameLinkServer } from './lib/gamelink.js'
-import { InstanceManager } from './lib/instances.js'
+import { InstanceManager, devKnobsFor } from './lib/instances.js'
 import { Referee } from './lib/referee.js'
 import { ManifestStore } from './lib/manifests.js'
 import { ReplayWriter } from './lib/replay.js'
@@ -32,6 +32,7 @@ import { Dashboard } from './lib/dashboard.js'
 import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
 import { onRestartRequest, handOver } from './lib/restart.js'   // a player's Restart game (esc-menu.md §3)
+import { MapCache, configFromEnv as mapCacheConfig, modNameOf } from './lib/mapcache.js'   // pull a leased map before boot
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -114,6 +115,11 @@ const cfg = {
   // gets their result while they are still looking at the launcher.
   localOrphanMs: Number(a['local-orphan-ms'] ?? 15_000),
   liveHz: Number(a['live-hz'] ?? 4),   // frames per second to the site's spectator view
+  // ---- THE MAP CACHE (lib/mapcache.js, host.md "2026-09-23 - map cache") ----------------
+  // A lease for a map that is not in mods/ (or whose files differ from the site's list)
+  // pulls it from the bucket before boot, inside ENW_MODS_BUDGET_GB. On by default on a
+  // Wine box with a site; ENW_MAP_CACHE=off turns it off. Read from /root/enw-host.env.
+  mapCache: null,   // filled in below, once `wine` and `site` are known
   // ---- GAME OVER: what happens to the instance afterwards ----------------------------
   // The referee sends `game_over` (the result) and then `match_end` ("this process is
   // idle and the instance can be reclaimed"). The contract — referee.md §10.3,
@@ -145,6 +151,9 @@ const cfg = {
     ...(a['empty-close-ms'] ? { emptyCloseMs: Number(a['empty-close-ms']) } : {}),
   },
 }
+
+cfg.mapCache = mapCacheConfig(process.env, { wine: cfg.wine, site: cfg.site })
+if (cfg.dryRun) cfg.mapCache.enabled = false
 
 /** One game: an instance, its link connection, its referee and its replay writer. */
 class Game extends EventEmitter {
@@ -261,10 +270,18 @@ class Game extends EventEmitter {
   }
 
   onGameMessage(m) {
+    // `game_over` IS RECORDED BEFORE THE REFEREE SEES IT. The referee answers it by calling
+    // the game (`finishGame` -> 'over' -> `finish()`), and `finish()` sets `finished`
+    // synchronously, before its first await — so recording afterwards dropped it as a
+    // "late event". Every real game's replay on the box (checked 2026-09-23: 52 signed
+    // files, 0 with a game_over) ended without the one event the contract says is the last,
+    // and the game's own per-player result was in the summary but not in the evidence.
+    const recordFirst = m && m.t === 'game_over'
+    if (recordFirst) this.record(m)
     // 1. the referee decides what it means
     this.referee.onEvent(m)
     // 2. it goes into the replay, unmodified
-    this.record(m)
+    if (!recordFirst) this.record(m)
     // 3. the side effects that are the HOST's job, not the referee's
     // A warm instance re-announces `map_loaded` after `end`, and the next game's first
     // connect must read as a START rather than as a join of the game that just finished.
@@ -399,6 +416,9 @@ class Game extends EventEmitter {
     if (me.server_alive === false) return { action: 'terminate', why: 'match_end said server_alive:false' }
     if (bad.length) return { action: 'terminate', why: `the game did not end cleanly (${bad.join(', ')})` }
     if (!this.conn) return { action: 'terminate', why: 'the link is gone' }
+    // Its environment was fixed at spawn: a process launched with dev knobs (dedi.md §23)
+    // keeps them for life, so it must never be handed to the next lease warm.
+    if (devKnobsFor(this.instance.assignment).ENW_DEV_KNOBS === '1') return { action: 'terminate', why: 'a dev-knob instance is never reused for another lease' }
     if (cfg.afterGame === 'terminate') return { action: 'terminate', why: '--after-game terminate' }
     if (played >= cfg.gamesPerInstance) return { action: 'terminate', why: `${played} game(s) on this instance, the limit is ${cfg.gamesPerInstance}` }
     return { action: 'reuse', why: `game ${played} of ${cfg.gamesPerInstance} on this instance` }
@@ -642,6 +662,10 @@ class HostAgent {
     // its map and is sitting at `map_loaded` with nobody in it. It is the cheapest thing
     // a box can hand the next lease — no process start, no map load, no 4-10 s wait.
     this.warm = new Map()           // instanceId -> Game (idle, map loaded, no match)
+    // Leases whose map is being checked or pulled (lib/mapcache.js). Each holds a slot:
+    // it is a game that WILL boot, and the site counts it as one already.
+    this.preparing = new Map()      // matchId -> { asg, since, progress }
+    this.mapCache = null
     mkdirp(cfg.replayDir); mkdirp(cfg.logDir); mkdirp(cfg.keyDir); mkdirp(cfg.spoolDir)
     this.hostKey = keys.loadOrCreate(path.join(cfg.keyDir, `host-${cfg.boxName}.json`))
     this.manifests = new ManifestStore([
@@ -725,6 +749,49 @@ class HostAgent {
     } else log.info(`${have} game copies for ${have} instance slot(s): ${w.gameDir}`)
   }
 
+  /** The map cache, when it is on (cfg.mapCache). A cache that cannot start is logged and left off. */
+  startMapCache() {
+    const mc = cfg.mapCache
+    if (!mc?.enabled) { log.info('map cache off (ENW_MAP_CACHE; on by default only with --wine and a site)'); return }
+    if (!mc.modsDir) { log.error('map cache: no mods dir (ENW_MODS_DIR, or --wine-game-dir) - left off'); return }
+    try {
+      this.mapCache = new MapCache({
+        ...mc,
+        log: log.child('maps'),
+        fetchFiles: (bsp) => this.site.mapFiles(bsp),
+        fetchPopular: () => this.site.popularMaps(),
+        inUse: () => this.mapsInUse(),
+        leased: () => (this.latestLeases || []).map((x) => modNameOf(x)).filter(Boolean),
+        busy: () => (this.bootsPending || 0) > 0 || this.preparing.size > 0,
+      }).init()
+      const i = this.mapCache.info()
+      const gb = (n) => (n / 2 ** 30).toFixed(1)
+      log.info(`map cache ON: ${i.mods_dir}, ${i.maps} map dir(s), ${gb(i.used_bytes)} GB used of a ${gb(mc.budgetBytes)} GB budget, ` +
+        `${gb(i.free_bytes)} GB free (reserve ${gb(mc.minFreeBytes)}), bucket ${mc.bucketUrl}, prefetch top ${mc.prefetchTop}, trim ${mc.trim ? 'on' : 'off'}`)
+      // One tick a minute: trim ONE dir if over budget, or start ONE throttled prefetch.
+      // setInterval's first tick is a minute out, so a restart never trims before the
+      // assignment poll has told us which maps are leased.
+      const tick = () => this.mapCache.maintain().catch((e) => log.error(`map cache: ${e.message}`))
+      this.mapCacheTimer = setInterval(tick, 60_000); this.mapCacheTimer.unref?.()
+    } catch (e) {
+      log.error(`map cache could not start (${e.message}) - left off; leases boot whatever is on disk`)
+      this.mapCache = null
+    }
+  }
+
+  /** Mod names (and bsp names) a running process is on: live, warm and booting games. */
+  mapsInUse() {
+    const out = new Set()
+    for (const g of this.byInstance.values()) {
+      if (g.finished) continue
+      const map = g.assignment?.map || g.referee?.map || null
+      const n = modNameOf({ map, fs_game: g.assignment?.fs_game })
+      if (n) out.add(n)
+      if (map) out.add(String(map))
+    }
+    return out
+  }
+
   async start() {
     this.checkSlotCopies()
     await this.link.listen()
@@ -769,6 +836,7 @@ class HostAgent {
         .map((g) => ({ instance: g.instance.id, match_id: g.matchId, state: g.referee.state() }))
       // What this box can run, on every status post: the site's capacity() reads it.
       this.site.statusExtra = { protocol: 2, max_instances: this.instances.maxInstances }
+      this.startMapCache()
       this.site.on('assignment', (asg) => this.onAssignment(asg))
       this.site.on('chat', (e) => this.onNetworkChat(e))
       this.site.start()
@@ -1097,7 +1165,8 @@ class HostAgent {
       return
     }
     for (const asg of boot) {
-      if (this.instances.instances.size >= this.instances.maxInstances) {
+      if (this.preparing.has(asg.match_id)) continue
+      if (this.instances.instances.size + this.preparing.size >= this.instances.maxInstances) {
         // The site should never lease past what this box reported it can run. If it did
         // (a warm instance holding a slot, or the site ahead of our cap), free a warm
         // instance if there is one, and look again shortly either way.
@@ -1116,8 +1185,43 @@ class HostAgent {
         return
       }
       this.startedMatches.add(asg.match_id)
-      this.startLease(asg)
+      this.prepareLease(asg)
     }
+  }
+
+  /**
+   * Make sure the lease's map is on disk and matches the site's list, THEN start it.
+   *
+   * While the map is checked or pulled the lease is `preparing`: posted to the site with
+   * its progress, and listed in every heartbeat's `instances` with its match id, so the
+   * site's ghost reaper (web/server/lib/boxes.js, 90 s) does not end a lease that is
+   * merely downloading. That listing IS the host-side ready gate: `ready` is still only
+   * said at map_loaded, however long the pull took.
+   */
+  prepareLease(asg) {
+    const warmOnMap = [...this.warm.values()].some((g) => !g.finished && !g.assignment && g.referee.map === asg.map)
+    if (!this.mapCache || !modNameOf(asg) || warmOnMap) return this.startLease(asg)
+    const entry = { asg, since: Date.now(), progress: { map: asg.map, phase: 'listing', bytes_done: 0, bytes_total: 0, percent: 0 } }
+    this.preparing.set(asg.match_id, entry)
+    let lastPost = 0
+    const post = (force) => {
+      if (!force && Date.now() - lastPost < 2000) return
+      lastPost = Date.now()
+      this.site?.status({ state: 'preparing', match_id: asg.match_id, map: asg.map, nonce: asg.nonce, preparing: entry.progress })
+    }
+    post(true)
+    this.mapCache.ensure(asg, { onProgress: (p) => { entry.progress = p; post(false) } }).then((r) => {
+      this.preparing.delete(asg.match_id)
+      const still = (this.latestLeases || []).some((x) => x.match_id === asg.match_id)
+      if (!still) { log.info(`lease ${asg.match_id} ended while its map was being prepared; not booting it`); return }
+      if (!r.ok) {
+        log.error(`lease ${asg.match_id}: could not prepare ${asg.map}: ${r.error}`)
+        this.site?.status({ state: 'failed', match_id: asg.match_id, map: asg.map, error: `the server could not prepare the map: ${r.error}` })
+        return
+      }
+      if (r.pulled || r.repaired) log.info(`lease ${asg.match_id}: ${asg.map} ${r.pulled ? 'pulled' : 'repaired'} in ${((Date.now() - entry.since) / 1000).toFixed(1)} s - booting`)
+      this.startLease(asg)
+    }).catch((e) => { this.preparing.delete(asg.match_id); log.error(`lease ${asg.match_id}: prepare failed: ${e.message}`) })
   }
 
   /** Boot (or hand a warm instance to) ONE lease. `applyLeases` decides which. */
@@ -1196,6 +1300,15 @@ class HostAgent {
     game.once('map_loaded', sendReady)
   }
 
+  mapCacheSummary() {
+    // The disk walk is cheap but not free: once a minute is plenty for a heartbeat field.
+    if (!this.mcInfo || Date.now() - this.mcInfo.at > 60_000) {
+      const i = this.mapCache.info()
+      this.mcInfo = { at: Date.now(), v: { maps: i.maps, used_bytes: i.used_bytes, free_bytes: i.free_bytes, budget_bytes: i.budget_bytes } }
+    }
+    return { ...this.mcInfo.v, pulling: [...this.mapCache.jobs.keys()] }
+  }
+
   async reportStatus() {
     // LIVE means a match is being played, not "this process has ever seen one". Counting
     // `byInstance` counted finished games too, so a box went `live` at its first lease and
@@ -1208,10 +1321,19 @@ class HostAgent {
       warm_instances: [...this.warm.keys()],
       // Per instance: the process (`state`) AND the game on it (`phase`, `map`, whether it
       // has announced map_loaded), so the site and an operator can see each lease's game.
-      instances: this.instances.list().map((i) => {
-        const g = this.byInstance.get(i.id)
-        return { ...i.info(), phase: g?.referee?.phase || null, map: g?.referee?.map || null, map_loaded: !!g?.referee?.map, warm: this.warm.has(i.id), leased: !!g?.assignment }
-      }),
+      instances: [
+        ...this.instances.list().map((i) => {
+          const g = this.byInstance.get(i.id)
+          return { ...i.info(), phase: g?.referee?.phase || null, map: g?.referee?.map || null, map_loaded: !!g?.referee?.map, warm: this.warm.has(i.id), leased: !!g?.assignment }
+        }),
+        // A lease whose map is being pulled has no process yet, but it IS running here:
+        // without this entry the site's reaper ends it 90 s after it was issued.
+        ...[...this.preparing.values()].map((p) => ({
+          id: null, match_id: p.asg.match_id, state: 'preparing', phase: 'preparing', map: p.asg.map,
+          map_loaded: false, warm: false, leased: true, port: null, preparing: p.progress,
+        })),
+      ],
+      ...(this.mapCache ? { map_cache: this.mapCacheSummary() } : {}),
       host: hostInfo(),
       local_mode: cfg.local ? (cfg.adoptLocal ? 'adopt' : 'expect') : false,
       // Offer our replay-signing PUBLIC key on every heartbeat. The site pins it on first
@@ -1352,7 +1474,7 @@ class HostAgent {
 
   async shutdown() {
     log.info('shutting down')
-    clearInterval(this.reaper); clearInterval(this.statusTimer)
+    clearInterval(this.reaper); clearInterval(this.statusTimer); clearInterval(this.mapCacheTimer)
     for (const g of this.warm.values()) clearTimeout(g.warmTimer)
     this.warm.clear()
     this.site?.stop()

@@ -1,0 +1,212 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ugxm_lostwoods",
+  "title": "Lost Woods",
+  "source": "custom",
+  "author": "whiterice",
+  "released": "2017-12-26",
+  "fs_game": "mods/ugxm_lostwoods",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "0437822f2d0bc23b1bf86791fa77cc31cb553513f8a179031612ee24e8b8ad7d"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000,
+        6000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 161,
+    "script_count": 161,
+    "entities": 1535,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto6"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto242"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto238"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto237"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto7"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "0437822f2d0bc23b1bf86791fa77cc31cb553513f8a179031612ee24e8b8ad7d",
+    "map_specific_triggers": [
+      "bear_1",
+      "bear_2",
+      "bear_3",
+      "jukebox",
+      "moon_teleporter_a_trigger",
+      "moon_teleporter_b_trigger",
+      "ugx_wallweapon"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "ugxm_lostwoods.exe",
+    "original_sha256": "16b902bff49b614e228b5ec57c6ae2d3f86821dad0ed9372f75c877a44ddb58c",
+    "original_size": 486364008,
+    "source_url": "https://www.mediafire.com/file/venmgnikajgpc5g/ugxm_lostwoods.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/12/26/lost-woods/",
+    "fetched": "2026-09-23T03:40:49Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "ugx_mod",
+      "ugx_modded"
+    ],
+    "catalogue_description": "Welcome to the lost woods with UGX MOD 1.1 This is a recreation of the lost woods from Ocarina of time, but made with world at war assets and radiant. Includes buyable ending. Credit to: Pentagon Characters Bwc66930 jei9363 DTZxPorter Halo Magnum Moses ODX Rollonmath42 sevengplukez www.models-resource.com ZK UGX!!!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_camp.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_temp_background.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "ugxm_guns.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugxm_guns.iwd:images/ugx_logo_menu.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_arrow.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_overlay.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi",
+        "ugxm_lostwoods.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugxm_lostwoods.iwd:images/ugx_mod_menu_template.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/lostwoods/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/lost-woods-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 68.3,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 214,
+        "scripts": 66,
+        "bytes": 26186222
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 1139,
+        "scripts": 2,
+        "bytes": 186585217
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "ugxm_lostwoods_patch.ff",
+      "ugx_mod.iwd:animscripts/death.gsc"
+    ]
+  },
+  "site_hidden": true
+}

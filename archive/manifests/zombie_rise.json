@@ -1,0 +1,273 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zombie_rise",
+  "title": "Rise V2",
+  "source": "custom",
+  "author": "JR-Imagine",
+  "released": "2014-12-12",
+  "fs_game": "mods/zombie_rise",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "94060ea70fa0a1f805a6e4f4daa56996bdd90a0441a8a992bc8b480349ae11d4"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_",
+        "ee_step1",
+        "ee_step2",
+        "ee_step2_area",
+        "ee_step3",
+        "ee_step3_target_trig",
+        "ee_step4",
+        "ee_step4_p1",
+        "ee_step4_p1_trig",
+        "ee_step4_p2",
+        "ee_step4_p2_trig",
+        "ee_step4_p3",
+        "ee_step4_p3_trig",
+        "ee_step4_p4",
+        "ee_step4_p4_trig",
+        "ee_step4_p5",
+        "ee_step4_p5_trig",
+        "ee_step4_p6",
+        "ee_step4_p6_trig",
+        "ee_step5",
+        "ee_step5_brush1",
+        "ee_step5_brush2",
+        "ee_step5_brush3",
+        "ee_step5_trig1",
+        "ee_step5_trig2",
+        "ee_step5_trig3",
+        "ee_step6",
+        "ee_step6_fx_goto",
+        "ee_step6_radius",
+        "ee_step7",
+        "ee_step7_console_trig",
+        "ee_step7_trig"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_, ee_step1, ee_step2, ee_step2_area, ee_step3, ee_step3_target_trig look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 115,
+    "script_count": 115,
+    "entities": 3535,
+    "ee_candidates": [
+      "ee_",
+      "ee_step1",
+      "ee_step2",
+      "ee_step2_area",
+      "ee_step3",
+      "ee_step3_target_trig",
+      "ee_step4",
+      "ee_step4_p1",
+      "ee_step4_p1_trig",
+      "ee_step4_p2",
+      "ee_step4_p2_trig",
+      "ee_step4_p3",
+      "ee_step4_p3_trig",
+      "ee_step4_p4",
+      "ee_step4_p4_trig",
+      "ee_step4_p5",
+      "ee_step4_p5_trig",
+      "ee_step4_p6",
+      "ee_step4_p6_trig",
+      "ee_step5",
+      "ee_step5_brush1",
+      "ee_step5_brush2",
+      "ee_step5_brush3",
+      "ee_step5_trig1",
+      "ee_step5_trig2",
+      "ee_step5_trig3",
+      "ee_step6",
+      "ee_step6_fx_goto",
+      "ee_step6_radius",
+      "ee_step7",
+      "ee_step7_console_trig",
+      "ee_step7_trig"
+    ],
+    "ending_words": [
+      "buyable_ending_trig"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door_shaft"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_jugg_area"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_jugg_area"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_cabin"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door_park"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "94060ea70fa0a1f805a6e4f4daa56996bdd90a0441a8a992bc8b480349ae11d4",
+    "map_specific_triggers": [
+      "audiolog173_trig",
+      "audiolog179_trig",
+      "audiolog180_trig",
+      "audiolog185_trig",
+      "bottle1",
+      "bottle2",
+      "bottle3",
+      "bottle4",
+      "buyable_ending_trig",
+      "door_expl_trig",
+      "ee_step2_area",
+      "ee_step3_target_trig",
+      "ee_step4_p1_trig",
+      "ee_step4_p2_trig",
+      "ee_step4_p3_trig",
+      "ee_step4_p4_trig",
+      "ee_step4_p5_trig",
+      "ee_step4_p6_trig",
+      "ee_step5_trig1",
+      "ee_step5_trig2",
+      "ee_step5_trig3",
+      "ee_step6_radius",
+      "ee_step7_console_trig",
+      "ee_step7_trig",
+      "fan_trap_area",
+      "fan_trap_trig",
+      "heyyey_trig",
+      "humpty_dumpty_trig",
+      "jugg1",
+      "jugg2",
+      "jugg3",
+      "jumpscare1_trig",
+      "jumpscare2_trig",
+      "jumpscare4_trig",
+      "monster_trig",
+      "nascar_jugg_trig",
+      "poster_ngt_trig",
+      "poster_trickser_trig",
+      "power_switch1_trig",
+      "power_switch2_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Rise_V2_-_UGX_Installer.exe",
+    "original_sha256": "f15be852dc870b44924acff40cef5189fbf41efc514436fb21f5dd710c0de2e5",
+    "original_size": 454200892,
+    "source_url": "http://www.mediafire.com/file/e833b3v801ctxd6/Rise_V2_-_UGX_Installer.exe",
+    "source_page": "https://callofdutyrepo.com/2014/12/12/rise-v2/",
+    "fetched": "2026-09-23T03:37:17Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll",
+      "RiseV2.exe"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending"
+    ],
+    "catalogue_description": "Description: Washington DC, USA, 2023 \u2013 A group of scientics are expirimenting with dimensional portals at an underground base in Washington. A canister of Element 115, the resource used to power the portal, accidentally got spilled and caused a large scale zombie outbreak. In an attempt to escape from a horde, Ludwig accidentally activated the prototype he had been working on and got sucked in. However, the prototype was instable and caused Ludwig to get stuck between two dimensions. You wake up in an abandoned building and are trying to survive when suddenly Ludwig manages to contact you\u2026 Features: In-Depth Easter Egg with reward Buyable ending (Easter egg needs to be completed first) Tons of custom guns BO Perks + Electric Cherry Double Tap 2.0 BO2 Perk & Powerup Shaders Kino-Style Teleporter (Doesn\u2019t require linking though) Timed Gameplay (Optional) Ascension Style Vision (Optional) Zombie Counter (Optional) Multiple Power Switches Buildables Double Pack-A-Punch Musical Easter Eggs Radios (Audio logs & songs) Difficulties (Normal & Hard (Verruckt Runners)) 4 Perk Limit (Though, more perks can be obtained through drops) Jumpscares (BO2 style, won\u2019t encounter unless looking for them) Trolls \u2026 Weapons: M27 IAR (BF3) AK-47 (MW) MP5 (MW) G3 (MW) M40A3 (MW) G36C (MW) M249 SAW (MW) AK74u (MW) ACR (MW2) UMP-45 (MW2) Striker (MW2) Intervention (MW2) Vector K10 (MW2) SCAR-H (MW2) F2000 (MW2) M16A4 (MW2) Model 1887 (MW2) Tar-21 (MW2) Desert Eagle (MW3) M4A1 (MW3) PP90M1 (MW3) Five-S",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "risev2.iwd:images/fxt_fx_distortion_splash.iwi",
+        "risev2.iwd:images/icbm_missilelogo.iwi",
+        "risev2.iwd:images/menu_background_coop.iwi",
+        "risev2.iwd:images/menu_map_zombie_rise.iwi",
+        "risev2.iwd:images/rise_background_menu.iwi",
+        "risev2.iwd:images/rise_loadscreen.iwi",
+        "risev2.iwd:images/specialty_fastreload_zombies.iwi",
+        "risev2.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/rise/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/rise-v2-4-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 3 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll, RiseV2.exe. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 103.1,
+    "addon_iwds": [
+      {
+        "file": "risev2.iwd",
+        "entries": 594,
+        "scripts": 0,
+        "bytes": 330071942
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zombie_rise.ff",
+      "zombie_rise_patch.ff"
+    ]
+  },
+  "site_hidden": true
+}

@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_iplay2",
+  "title": "iPlay Undead Amusement Park",
+  "source": "custom",
+  "author": "Psh",
+  "released": "2016-03-18",
+  "fs_game": "mods/nazi_zombie_iplay2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_iplay2.iwd": "e332f954d78985134d7302387c5ddb46ee2a154637e5f8654cfccb5af9da831d"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        60000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 60000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 125,
+    "script_count": 125,
+    "entities": 2206,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      60000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "lounge_door"
+      ],
+      [
+        5000,
+        "pf5516_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "power_door"
+      ],
+      [
+        4000,
+        "pf6558_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "icbm2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e332f954d78985134d7302387c5ddb46ee2a154637e5f8654cfccb5af9da831d",
+    "map_specific_triggers": [
+      "dubstep_trigger",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_iplay2_1.0.0.exe",
+    "original_sha256": "d852c06973a57b0284200ff8834be180263d74fad9e12e48821c104c807be84f",
+    "original_size": 495332705,
+    "source_url": "http://www.mediafire.com/file/vz0cyzlwsd4dzm1/nazi_zombie_iplay2_1.0.0.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/03/18/iplay/",
+    "fetched": "2026-09-23T03:28:04Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "challenge",
+      "top_100"
+    ],
+    "catalogue_description": "Changes: -NO LONGER REQUIRES T4M. -All weapons have been changed. -Reduced the chance of a boss spawning by a lot. -Reduced the number of targets for endgame from 15 to 5. -Reduced the number of targets for PAP from 5 to 3. -Scobalula\u2019s Max Ammo script that refills the clip. *Targets have not been moved* -Added a new Nightmare difficulty setting. -Probably harder than Octagon. -Increases the spawn rate. -Zombies become sprinters much faster. -Eventually they become tranzit sprinters. -Few bugs (I\u2019ll fix them eventually ) -Song bears don\u2019t make sound. -2 Walls weapons are untextured white, oh well. -*Report any other bugs plz*",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_iplay2",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "nazi_zombie_iplay2.iwd:images/brickmedievalblocks0276_1_preview.iwi",
+        "nazi_zombie_iplay2.iwd:images/brickoldmixedsize0040_1_preview.iwi",
+        "nazi_zombie_iplay2.iwd:images/brickoldmixedsize0064_1_preview.iwi",
+        "nazi_zombie_iplay2.iwd:images/bricksmallbrown0138_2_preview.iwi",
+        "nazi_zombie_iplay2.iwd:images/bricksmallbrown0264_5_preview.iwi",
+        "nazi_zombie_iplay2.iwd:images/camouflage0006_preview.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_iplay2"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/iplayundeadamusementpark/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/iplay-4-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 205.3,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.0.iwd",
+        "entries": 469,
+        "scripts": 0,
+        "bytes": 97314457
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_iplay2_patch.ff",
+      "nazi_zombie_iplay2.iwd:animscripts/death.gsc",
+      "nazi_zombie_iplay2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

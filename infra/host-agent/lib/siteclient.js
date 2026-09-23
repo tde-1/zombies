@@ -13,6 +13,8 @@
 //   GET  /api/gs/chat-feed    long-poll drain of the cross-server chat ring
 //   POST /api/gs/chat         a player said something in one of our games
 //   POST /api/gs/live         a frame of each live game, for the site's spectator view
+//   GET  /api/gs/map-files/:bsp  a map's files, size and sha256 (the map cache's pull list)
+//   GET  /api/gs/popular-maps    the most-played maps lately (the map cache's prefetch)
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -106,6 +108,19 @@ export class SiteClient extends EventEmitter {
     const k = await this.req('/api/gs/keys')
     this.emit('keys', k)
     return k
+  }
+
+  // ---- the map cache's two questions (lib/mapcache.js) ------------------------------
+  // Under /api/gs because that is the one part of the site the closed-beta password gate
+  // lets a box through (the public /api/maps/<bsp>/files answers a box with the gate page).
+  /** The files a map needs, with size and sha256: the site's /api/maps/<bsp>/files shape. */
+  mapFiles(bsp) {
+    return this.req(`/api/gs/map-files/${encodeURIComponent(bsp)}`, { timeoutMs: 15_000 })
+  }
+
+  /** The most-played maps lately, for the idle-time prefetch. */
+  popularMaps() {
+    return this.req('/api/gs/popular-maps', { timeoutMs: 15_000 })
   }
 
   status(body) {

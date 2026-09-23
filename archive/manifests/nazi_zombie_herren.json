@@ -1,0 +1,193 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_herren",
+  "title": "DAS HERRENHAUS 1.2",
+  "source": "custom",
+  "author": "sethnorris",
+  "released": "2016-02-01",
+  "fs_game": "mods/nazi_zombie_herren",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_herren.iwd": "c9fea59e809d8d74e8adbdde5ac49e774de7193c71bbbc134f2411305c8d3bd9"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_zombie_spawner",
+        "start_boss_spawner"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_zombie_spawner, start_boss_spawner look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 200,
+    "script_count": 200,
+    "entities": 2945,
+    "ee_candidates": [
+      "boss_zombie_spawner",
+      "start_boss_spawner"
+    ],
+    "ending_words": [
+      "fx_teleport_ambient"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "undercorridor_door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "gazebo_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "gazebo_debris"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "mine_door"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "mine_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c9fea59e809d8d74e8adbdde5ac49e774de7193c71bbbc134f2411305c8d3bd9",
+    "map_specific_triggers": [
+      "blunder_trigger",
+      "boiler_zappers",
+      "boiler_zappers_down",
+      "cavern_fall",
+      "death_fog",
+      "dorm_zappers",
+      "gazebo_blades",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "leap_of_faith",
+      "monstertrig",
+      "power_box_trig",
+      "red_button",
+      "schuster_painting",
+      "shield_trigger",
+      "soul_chest_area",
+      "urn_cleaning",
+      "urn_pickup",
+      "urn_place",
+      "workbench",
+      "zombie_trap"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Das_Herrenhaus_1.2.exe",
+    "original_sha256": "e328605ececefc57123c2644268973a66a6499a63bfb50a3e58d726c92474a32",
+    "original_size": 393325531,
+    "source_url": "https://www.mediafire.com/file/ayyf6w9quw0nbgq/Das_Herrenhaus_1.2.exe",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:27:17Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Description: Das Herrenhaus is a zombie single player/Co-op map based in Der Riese style scripts and tries to capture the kino der toten feel. It represents an elite boarding school ruled by nazi scientists. Background Story: In the last days of WW2 a british paratrooper unit was sent to a remote place near the Rhine. What was told to the soldiers was that they were going to set free a boarding school ruled by a nazi officer, and identified member of the group 935, the doctor Hermann Schuster. However the destiny of that unit remains untold. Two months after, with the war finished, the strange place was closed and abandoned. Nothing was heard of the students, professors, the british soldiers or even the doctor Schuster himself. A week later, somehow, Richtofen landed the teleporter inside the cursed building\u2026 The locals still remember that night, those screams, those lights\u2026 Features Overlook: Complete, circular and challenging map for regular zombie games Perfectly working Bo1 Perks with Double tap 2.0 WW2 and cold war era themed guns with custom PaP and working attachments Optional Major EE that starts with the release of a very hard Zombie Boss Secondary EE for Wonder Weapon Buildables And much more I don\u2019t want to spoil CREDITS Tom Bmx: Tools and tutorials BluntStuffy: Most of bugs fixing, EE scripting Steviewonder87: Major contributor, mentoring with weapon porting and animation. Gameplay features imaginer. Radimax: Loads of Testing Hours and Main Hall Roof TitoPricus & ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_herren"
+      ],
+      "iwd_images": [
+        "nazi_zombie_herren.iwd:images/dec_nova6_logo.iwi",
+        "nazi_zombie_herren.iwd:images/loadscreen_nazi_zombie_herren.iwi",
+        "nazi_zombie_herren.iwd:images/menu_background_coop.iwi",
+        "nazi_zombie_herren.iwd:images/menu_background_coop_blurred.iwi",
+        "nazi_zombie_herren.iwd:images/menu_map_nazi_zombie_herren.iwi",
+        "nazi_zombie_herren.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_herren.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_herren.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_herren.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_herren"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/dasherrenhaus/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/das-hennenhaus-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 190.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_herren.ff",
+      "nazi_zombie_herren_patch.ff",
+      "nazi_zombie_herren.iwd:animscripts/death.gsc",
+      "nazi_zombie_herren.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

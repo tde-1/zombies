@@ -1,6 +1,6 @@
 {
   "name": "@enw-zombies/launcher",
-  "version": "0.2.20",
+  "version": "0.2.22",
   "private": true,
   "type": "module",
   "description": "ENW Zombies launcher",
@@ -12,7 +12,7 @@
     "start": "electron .",
     "detect": "node src/main/detect-cli.js",
     "setup": "node src/main/setup-cli.js",
-    "test": "node test/run-all.js && node test/waw-settings.js && node test/modcompat.js",
+    "test": "node test/run-all.js && node test/waw-settings.js && node test/modcompat.js && node test/discord-presence.js",
     "test:launch": "node test/launch-harness.js",
     "play": "node src/main/play-cli.js",
     "maps": "node src/main/maps-cli.js",

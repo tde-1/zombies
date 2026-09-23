@@ -96,7 +96,7 @@ export function InstalledMapsBox() {
     const ks = [...sel]
     if (!ks.length) return
     const names = ks.map((k) => titleOf(k)).join(', ')
-    if (!window.confirm(`Remove ${ks.length === 1 ? names : `${ks.length} maps (${names})`}? ${fmtSize(selBytes)} is freed. You can download ${ks.length === 1 ? 'it' : 'them'} again.`)) return
+    if (!window.confirm(`Remove ${ks.length === 1 ? names : `${ks.length} maps (${names})`}? Frees ${fmtSize(selBytes)}.`)) return
     setBusy(true); setNote('')
     try {
       const out = await remove(ks)
@@ -124,8 +124,8 @@ export function InstalledMapsBox() {
         <span>installed maps</span>
         <span className="imaps-total mono">{list ? `${list.length} · ${fmtSize(total)}` : '…'}</span>
       </div>
-      {!list ? <div className="set-hint">reading the map folder…</div>
-        : list.length === 0 ? <div className="set-hint">no maps downloaded yet. a map's Download button puts one here.</div>
+      {!list ? <div className="set-hint">loading…</div>
+        : list.length === 0 ? <div className="set-hint">no maps downloaded.</div>
           : (
             <div className="lbox">
               <div className="imaps" role="listbox" aria-multiselectable="true" aria-label="Installed maps">

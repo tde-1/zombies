@@ -33,15 +33,21 @@
      KEEP IN STEP WITH themes.js. Those values are written as INLINE custom properties on
      <html> and an inline custom property BEATS this block — a stale hex there does not lose
      to this file, it silently wins over it. */
-  --bg: #101010;
+  /* BLACK MAINLY (B, 2026-09-23: "dark and black, very serious looking, but still a derivative
+     of ENW Movement"). Movement's ground taken down eight steps and nothing else: its
+     #161616 / #101010 / #0a0a0a gradient is #0e0e0e / #080808 / #040404 here, same angle, same
+     stops. The panels are still Movement's alpha washes, so every surface sinks with the
+     ground. The greys, the accent and the signal colours are Movement's exactly ("the greys
+     do not move"). Map colour lives on the map page and the map cards only (ambience.js). */
+  --bg: #080808;
 
   /* Movement's borderless elevation: a wash of the type colour, not a solid panel, so a
      card on a card still reads as two surfaces without a single 1px edge. --panel-solid is
      for the few places that must be opaque (the nav scrim, a dropdown over a table). */
   --panel: rgba(255, 255, 255, .05);
   --panel-2: rgba(255, 255, 255, .085);
-  --panel-solid: #1c1c1c;
-  --panel-deep: #0a0a0a;
+  --panel-solid: #141414;   /* --panel over --bg, resolved */
+  --panel-deep: #040404;
 
   --line: rgba(255, 255, 255, .09);
   --line-2: rgba(255, 255, 255, .16);
@@ -80,7 +86,15 @@
   /* the scrim the map-card's own overlays are built from */
   --scrim-rgb: 12, 12, 12;
 
-  --bg-grad: linear-gradient(178deg, #161616 0%, #101010 45%, #0a0a0a 100%);
+  --bg-grad: linear-gradient(178deg, #0e0e0e 0%, #080808 45%, #040404 100%);
+  /* The rail's ground: what is left of the WaW default gradient (overnight decision 5),
+     near-black, lit from the top, gone by the middle of the column. */
+  --rail-grad: linear-gradient(180deg, rgba(255, 255, 255, .028) 0%, rgba(255, 255, 255, .008) 50%, rgba(255, 255, 255, 0) 100%);
+
+  /* Scrollbars: thin, a black track, a thumb one step up from a panel. */
+  --scroll-track: #040404;
+  --scroll-thumb: rgba(255, 255, 255, .12);
+  --scroll-thumb-hover: rgba(255, 255, 255, .22);
 
   --radius: 14px;
   --radius-sm: 10px;
@@ -100,6 +114,31 @@
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
+/* Dark native controls: select popups, date pickers and the scrollbars of anything the rules
+   below do not reach. */
+html { color-scheme: dark; background: var(--bg); }
+
+/* ── scrollbars, every scroll container ──────────────────────────────────────
+   Chromium (the site and the launcher's view): the pseudo-elements, one set for the whole
+   document. Movement's rail thumb (a pill inset 2px by a transparent border) made global,
+   on a black track. Firefox: the standard pair, only where the pseudo-elements do not
+   exist, because in Chromium 121+ setting scrollbar-color switches the pseudo-elements off. */
+::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb); border-radius: 999px;
+  border: 2px solid transparent; background-clip: padding-box; min-height: 36px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-thumb-hover); }
+::-webkit-scrollbar-thumb:active { background-color: var(--scroll-thumb-hover); }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+html::-webkit-scrollbar-track, body::-webkit-scrollbar-track { background: var(--scroll-track); }
+@supports not selector(::-webkit-scrollbar) {
+  html { scrollbar-color: var(--scroll-thumb) var(--scroll-track); }
+  * { scrollbar-width: thin; }
+  html * { scrollbar-color: var(--scroll-thumb) transparent; }
+}
 
 body {
   margin: 0;
@@ -263,7 +302,7 @@ html.in-launcher .mv-nav-right { right: 0; }
 /* the map's own art, or its holding hue when we hold no picture for it */
 .nav-search-art {
   width: 40px; height: 26px; flex: none; border-radius: 5px;
-  background-color: hsl(var(--h, 30) 14% 22%);
+  background-color: rgba(var(--text-rgb), .06);
   background-size: cover; background-position: center;
 }
 .nav-search-name { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -321,13 +360,32 @@ html.in-launcher .mv-nav-right { right: 0; }
   stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
 }
 
-/* The logo lockup, option A (06: the Movement F3 lockup with ZOMBIES as the width-matched
-   foot, bone on olive-black). */
-.lockup .mark { display: block; color: var(--text); }
-.lockup .word {
-  display: block; white-space: nowrap; line-height: 1; font-weight: 600;
-  color: var(--text);
+/* The ENW mark (components/Enw.jsx). One asset, assets/enw-mark.svg, Movement's corrected
+   file: its box starts AT the E's ink, so 2.0496795 (319.75 / 156) is the picture's ratio. */
+.lockup { display: inline-flex; line-height: 0; }
+.lockup .mark { display: block; color: #fff; }
+/* Movement's .enw-mark-link: the resting mark at 92% and full white under the pointer. */
+a .lockup .mark, .mv-lockup .mark { filter: brightness(.92); transition: filter .16s ease; }
+a:hover .lockup .mark, .mv-lockup:hover .mark { filter: brightness(1); }
+@media (prefers-reduced-motion: reduce) { a .lockup .mark, .mv-lockup .mark { transition: none; } }
+
+/* THE MARK INSIDE A SENTENCE: Movement's .enw-inline (components/EnwWord.jsx), verbatim. It
+   stands in for the WORD "ENW": cap height times its measured 1.04, the ink's own ratio for the
+   width, and painted as a mask over currentColor so it takes the line's colour. */
+.enw-inline {
+  --enw-inline-h: calc(1em * .7 * 1.04);
+  display: inline-block; vertical-align: baseline; flex: none;
+  height: var(--enw-inline-h); width: calc(var(--enw-inline-h) * 2.0496795);
+  margin: 0;
+  background-color: currentColor;
+  -webkit-mask-image: var(--enw-mark-url); mask-image: var(--enw-mark-url);
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
+/* "ENW Zombies" in a line of text is the mark, a word space, then "Zombies" in the line's own
+   face. Not a lockup with ZOMBIES under the mark: B took that foot off (web.md, the plain ENW
+   logo). */
+.enw-name { white-space: nowrap; }
 
 /* ── type ──────────────────────────────────────────────────────────────────── */
 h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -.3px; margin: 0; }
@@ -391,8 +449,11 @@ h3 { font-size: 16px; }
 }
 .btn:hover { background: rgba(var(--text-rgb), .13); }
 .btn:disabled { opacity: .4; cursor: not-allowed; background: var(--panel-2); }
-.btn.primary { background: var(--hot); color: #fff; font-weight: 700; }
-.btn.primary:hover { background: var(--hot-deep); }
+/* ~~--hot red~~ 2026-09-23: Movement's .btn-accent. The one filled button is near-white on the
+   black, not red; red is left to refusals and destructive actions (.btn.danger, .um-danger). */
+.btn.primary { background: var(--accent); color: var(--accent-ink); font-weight: 700; box-shadow: 0 6px 22px rgba(var(--accent-rgb), .14); }
+.btn.primary:hover { background: var(--accent); color: var(--accent-ink); transform: translateY(-1px); box-shadow: 0 9px 26px rgba(var(--accent-rgb), .14); }
+.btn.primary:disabled { transform: none; box-shadow: none; background: var(--panel-2); color: var(--muted); }
 .btn.accent { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .btn.accent:hover { background: var(--accent-2); }
 .btn.ghost { background: transparent; color: var(--muted); }
@@ -597,14 +658,14 @@ table.data td.num, table.data th.num { text-align: right; font-family: var(--num
   display: grid; grid-template-columns: 56px minmax(0, 1.15fr) minmax(0, .75fr) 88px auto 104px;
   gap: 14px; align-items: center; padding: 5px 14px; min-height: 44px;
   border-top: 1px solid var(--line); color: inherit;
-  background: linear-gradient(90deg, hsl(var(--h, 40) 14% 40% / .07), transparent 22%);
+  background: transparent;
   transition: background .14s ease;
 }
 .mlrow:first-child { border-top: 0; }
-.mlrow:hover { background: linear-gradient(90deg, hsl(var(--h, 40) 16% 44% / .13), rgba(var(--text-rgb), .05) 28%); }
+.mlrow:hover { background: rgba(var(--text-rgb), .05); }
 .mlrow-art {
   width: 56px; height: 32px; border-radius: 5px; overflow: hidden; flex: none;
-  display: grid; place-items: center; background: hsl(var(--h, 40) 10% 15%);
+  display: grid; place-items: center; background: rgba(var(--text-rgb), .06);
   color: var(--faint); font-family: var(--mono); font-size: 8.5px; letter-spacing: .8px; text-transform: uppercase;
 }
 .mlrow-art img { width: 100%; height: 100%; object-fit: cover; }
@@ -856,11 +917,10 @@ html[data-amb-strong] #amb-pour { --amb-a: 58; }
   position: sticky; top: var(--nav-h); height: calc(100vh - var(--nav-h));
   flex: none; width: var(--rail-w); z-index: 20; overflow: hidden;
   display: flex; flex-direction: column;
-  background: transparent; border: none;
+  background: var(--rail-grad); border: none;
 }
 .prail-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 6px 12px 14px; display: flex; flex-direction: column; gap: 12px; }
 .prail-body::-webkit-scrollbar { width: 9px; }
-.prail-body::-webkit-scrollbar-thumb { background: var(--panel-2); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 .prail-foot { flex: none; padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); }
 .prail .avatar { width: 34px; height: 34px; font-size: 14px; }
 
@@ -1015,14 +1075,14 @@ html[data-amb-strong] #amb-pour { --amb-a: 58; }
   --h: 40;
   position: relative; min-height: 152px; overflow: hidden;
   border: none; border-radius: var(--radius);
-  background: linear-gradient(180deg, hsl(var(--h) 32% 46% / .1), var(--panel) 60%);
+  background: var(--panel);
   box-shadow: var(--shadow-1);
 }
 .map-banner, .map-banner-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 /* ours: a map with no cover shows its engine stem, the cards' own fallback, not a photograph */
 .map-banner-ph {
   display: flex; align-items: flex-start; justify-content: flex-end; padding: 12px 14px;
-  background: linear-gradient(160deg, hsl(var(--h) 22% 26%), hsl(var(--h) 16% 15%) 60%, var(--panel));
+  background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.03) 60%, var(--panel));
   font-family: var(--mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,.4);
 }
 .prail-live-empty { position: absolute; inset: 0; background: radial-gradient(100% 140% at 80% 10%, var(--accent-soft), transparent 62%), var(--bg-grad); }
@@ -1811,7 +1871,7 @@ html.in-launcher .upd-chip { -webkit-app-region: no-drag; }
 .imap input { margin: 0; accent-color: var(--accent); width: 15px; height: 15px; }
 .imap-art {
   width: 64px; height: 38px; border-radius: 6px; overflow: hidden; display: grid; place-items: center;
-  background: hsl(var(--h, 20) 30% 22%); color: rgba(255,255,255,.7); font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  background: rgba(var(--text-rgb), .06); color: rgba(255,255,255,.7); font-family: var(--mono); font-size: 10px; text-transform: uppercase;
 }
 .imap-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .imap-text { display: flex; flex-direction: column; min-width: 0; }

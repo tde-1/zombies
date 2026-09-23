@@ -38,8 +38,11 @@ import { UpdateCheck, fakeUpdater } from './updatecheck.js'
 import * as deeplink from './deeplink.js'
 import { makeWindowRaiser } from './focusguard.js'
 import { makeFollowGate, FOLLOW_STATES } from './followgate.js'
+import * as steam from './steam.js'
+import * as gameproc from './gameproc.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
+import { Presence, presenceFor } from './discord.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -105,6 +108,11 @@ const state = {
   // can draw where it has got to instead of waiting for the next progress event.
   installProgress: new Map(),
   installErrors: new Map(),
+  // Discord Rich Presence (discord.js): the IPC client, when the game process started
+  // (the elapsed timer), and the round a Play Local run last reported.
+  presence: null,
+  gameStartedAt: null,
+  localRound: null,
 }
 
 // ------------------------------------------------------------------- logging --
@@ -199,7 +207,7 @@ async function askForPassword({ site, retry = false }) {
       minimizable: false,
       maximizable: false,
       title: 'ENW Zombies',
-      backgroundColor: '#101010',
+      backgroundColor: '#080808',
       autoHideMenuBar: true,
       webPreferences: { contextIsolation: false, nodeIntegration: false, sandbox: false },
     })
@@ -340,7 +348,7 @@ async function createWindow() {
     minHeight: MIN_HEIGHT,
     show: false,
     frame: false,
-    backgroundColor: '#101010',
+    backgroundColor: '#080808',
     autoHideMenuBar: true,
     title: 'ENW Zombies',
     webPreferences: {
@@ -940,7 +948,7 @@ function wireIpc() {
   handle('signOut', () => { const s = settings.signOut(); push('session', s); return s })
 
   handle('getSettings', () => settings.get())
-  handle('setSettings', (patch) => { const s = settings.set(patch); push('settings', s); return s })
+  handle('setSettings', (patch) => { const s = settings.set(patch); push('settings', s); refreshPresence(); return s })
   // Display settings need the monitor list, and only the main process can get it.
   handle('getDisplays', () => ({ displays: listDisplays(), modes: MODES }))
 
@@ -1031,15 +1039,53 @@ function wireIpc() {
       .catch((e) => log('play', `could NOT release the lease (${why}): ${e.message}`))
   }
 
+  // Games this launcher started this session (the last few), for gameproc.classify: did it
+  // connect, and did SteamStub leave it encrypted. A pid from an earlier session still
+  // counts as ours when its DLL log in OUR logs folder is newer than the process.
+  function ourGame(pid, createdAt = 0) {
+    const l = (state.launches || []).find((x) => x.pids?.has(pid))
+    let encrypted = false
+    try {
+      const f = path.join(P.logs, `enw-${pid}.log`)
+      if (fs.statSync(f).mtimeMs >= createdAt) encrypted = gameproc.dllLogSaysEncrypted(P.logs, pid)
+    } catch {}
+    if (!l) return encrypted ? { connected: false, encrypted: true, earlier: true } : null
+    return { connected: !!(l.mapUp || l._logSource || l.tokenPipe?.delivered), encrypted }
+  }
+
   async function startPlay(opts = {}) {
     if (state.flow) throw new Error('A launch is already in progress.')
     // Never a second World at War beside one we started, whoever asks: a flow that gave
     // up (a failed step) clears `state.flow` while the game can still be running.
     const alive = followGate.gameAlive()
-    if (alive) {
-      log('play', `refused to launch ${opts.map || '?'} (${opts.follow ? 'follow' : 'play'}): World at War (process ${alive}) that this launcher started is still running`)
-      throw new Error('World at War is still running. Close it first.')
+    // Any CoDWaW.exe on the PC is classified first (gameproc.js): a live game refuses the
+    // Play; a STUCK one (no window past the grace period, or ours with SteamStub's
+    // "STILL ENCRYPTED" in its log: a launch made while Steam was closed) is ended by pid
+    // and the Play goes on. A dedicated server, or a pid the dev lock names, is never
+    // touched. Every decision is logged.
+    const how0 = opts.follow ? 'follow' : 'play'
+    const lockNow = lock.enabled() ? lock.read() : null
+    const cleared = await gameproc.clearForPlay({
+      ctxFor: (p) => ({ ours: ourGame(p.pid, p.createdAt), lockPid: lockNow?.held && !lockNow.stale && lockNow.name !== 'launcher' ? lockNow.pid : null }),
+      log: (line) => log('play', line),
+    }).catch((e) => ({ ok: false, unknown: true, error: e }))
+    if (!cleared.ok) {
+      // Could not read the process list: refuse only if we know of one (the old rule).
+      if (cleared.unknown && !alive && !(await steam.gameProcesses().catch(() => [])).length) {
+        log('play', 'could not classify running games; none found by name, so going on')
+      } else {
+        const b = cleared.blocking
+        const started = (pid) => (state.launches || []).some((x) => x.pids?.has(pid))
+        const oursPid = b && started(b.proc.pid) ? b.proc.pid : (alive && (!b || b.proc.pid === alive) ? alive : null)
+        const text = b?.kind === 'starting' ? steam.MSG.gameStarting : steam.MSG.gameRunning
+        log('play', `refused to launch ${opts.map || '?'} (${how0}): ${b ? `CoDWaW.exe ${b.proc.pid} is ${b.kind} (${b.why})` : `World at War (process ${alive}) is still running`}`)
+        push('toast', { kind: 'warn', text, ...(oursPid ? { action: { label: 'End game', call: 'endGame', arg: oursPid } } : {}) })
+        throw new Error(text)
+      }
     }
+    if (cleared.killed?.length) push('toast', { kind: 'info', text: 'Closed a stuck World at War.' })
+    // Remembered for the boot screen's Retry (a Steam that was not up or not signed in).
+    state.lastPlayOpts = opts
 
     // The client DLL this launcher ships must be the one the game loads. An
     // auto-update replaces the copy beside the app and nothing else, so before
@@ -1133,8 +1179,18 @@ function wireIpc() {
       instance: local?.matchId || undefined,
       fsGame: opts.fsGame || undefined,
       lockName: 'launcher',
+      // Steam up and signed in before anything else (steam.js). ENW_SKIP_STEAM_CHECK=1
+      // for a machine where the registry tells lies.
+      steam: process.env.ENW_SKIP_STEAM_CHECK === '1' ? null
+        : (hooks) => steam.ensureSteam({ ...hooks, openUrl: (u) => shell.openExternal(u) }),
     })
     state.flow = flow
+    // Discord: a flow is "Loading" until the game process starts, then the timer runs.
+    // Listeners only; nothing here waits on Discord (discord.js).
+    state.gameStartedAt = null
+    state.localRound = null
+    flow.on('launched', () => { state.gameStartedAt = Date.now(); refreshPresence() })
+    flow.on('update', () => refreshPresence())
     // The ledger: this match has been launched (by the player or by following), and
     // these are the processes to check before any later launch (followgate.js).
     const how = opts.follow ? 'followed' : opts.local ? 'Play Local' : 'Play'
@@ -1148,6 +1204,7 @@ function wireIpc() {
     }
     flow.on('update', noteMatch)
     flow.on('launched', () => followGate.watchPids(flow.launch?.pids))
+    flow.on('launched', () => { state.launches = [...(state.launches || []).slice(-4), flow.launch] })
     state.gate.block('game', 'a game is starting or running')
     state.tray?.rebuild()
     showSite(false)
@@ -1177,7 +1234,10 @@ function wireIpc() {
     // up front so a launch that never happens does not leave a poller running.
     if (local) {
       state.localRun = local.run
-      local.run.on('frame', (f) => push('localRound', { match_id: local.matchId, round: f.round, players: f.players }))
+      local.run.on('frame', (f) => {
+        push('localRound', { match_id: local.matchId, round: f.round, players: f.players })
+        if (f.round !== state.localRound) { state.localRound = f.round; refreshPresence() }
+      })
       flow.on('launched', () => {
         log('localrun', `relaying ${local.matchId} from ${local.info.dashUrl}`)
         local.run
@@ -1209,6 +1269,8 @@ function wireIpc() {
       followGate.noteEnded(flow.snapshot().matchId)
       log('play', `the game ended (${p.phase}: ${p.detail || 'no detail'})${flow.snapshot().matchId ? `; ${flow.snapshot().matchId} will not be relaunched unless the player presses Play or Resume` : ''}`)
       state.flow = null
+      state.gameStartedAt = null
+      refreshPresence()
       state.gate.unblock('game')
       state.tray?.rebuild()
       showSite(true)
@@ -1218,6 +1280,8 @@ function wireIpc() {
     const clear = () => {
       if (state.flow !== flow) return
       state.flow = null
+      state.gameStartedAt = null
+      refreshPresence()
       state.gate.unblock('game')
       state.tray?.rebuild()
       showSite(true)
@@ -1230,6 +1294,13 @@ function wireIpc() {
       // launcher refuses every later Play with "a launch is already in progress".
       if (snap.failed) {
         clear()
+        // Steam was not ready: nothing was leased by us, and a follower's lease is the
+        // party's, so there is nothing to give back.
+        if (snap.steamFailed) {
+          log('play', `not launched: ${snap.steamFailed}`)
+          push('boot_done', { ...snap, phase: 'failed', detail: snap.steamFailed })
+          return
+        }
         // AND THE LEASE HAS TO GO BACK. A flow that failed after the site leased a box
         // left the lease `ready` and the instance parked with a map loaded for nobody:
         // measured on 2026-09-22 as m_dca96c74, still holding inst-01 three minutes
@@ -1309,6 +1380,19 @@ function wireIpc() {
   // again — which is how m_dca96c74 outlived the boot screen that made it.
   handle('cancelPlay', () => { state.flow?.cancel('you cancelled'); releaseLease('you cancelled'); showSite(true); return true })
   handle('closeBoot', () => { showSite(true); return true })
+  // The toast's End game: only ever a game this launcher started (gameproc.js).
+  handle('endGame', (pid) => {
+    const l = (state.launches || []).find((x) => x.pids?.has(Number(pid)))
+    if (!l) throw new Error('Not a game this launcher started.')
+    log('play', `ending World at War (process ${pid}) from the toast`)
+    l.stop('ended by the player')
+    return true
+  })
+  // The boot screen's Retry, after Steam was not up or not signed in: the same Play again.
+  handle('retryPlay', () => {
+    if (!state.lastPlayOpts) throw new Error('Nothing to retry.')
+    return startPlay(state.lastPlayOpts)
+  })
   // The site's Resume (and anything else that is the PLAYER asking to go back into a
   // match this launcher already launched once): lift the ledger for that match, then
   // follow it now if the last poll still names it. followgate.js.
@@ -1408,7 +1492,7 @@ function wireIpc() {
   state.startPartyWatch = () => {
     if (state.playWatcher || !state.api) return
     const w = new PlayWatcher(state.api)
-    w.on('poll', (p) => { try { onPlay(p) } catch (e) { log('party', `watch: ${e.message}`) } })
+    w.on('poll', (p) => { try { onPlay(p) } catch (e) { log('party', `watch: ${e.message}`) } refreshPresence() })
     w.on('error', () => {})     // a site that is down is not an error the player can act on
     state.playWatcher = w
     state.onPlay = onPlay
@@ -1491,14 +1575,18 @@ async function supportsLoopbackSignIn() {
   } catch { return false }
 }
 
+// The site's palette (web/client/src/theme.css, black since 2026-09-23) and the ENW mark
+// (Movement's assets/enw-mark.svg, corrected box), so the browser tab reads as the site.
+const ENW_MARK_SVG = '<svg role="img" aria-label="ENW" viewBox="2.05 0 319.75 156" width="57" height="28" style="display:block;margin:0 auto 1.4rem;filter:brightness(.92)"><path fill="#fff" d="M2.05 0 70 0 70 30 2.05 30ZM20.05 66 70 66 70 93.9 20.05 93.9ZM2.05 128 70 128 70 156 2.05 156ZM76.22 2.51 168 88.64 168 0 198 0 198 154.04 102.04 66.5 102.04 156 76.22 156ZM204 148.74 228.82 80.79 259.32 151.48 321.8 0 287.99 0 259.48 73.33 231.19 1.3 204 65.78Z"/></svg>'
+
 function signInPage(title, body) {
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + title + '</title>' +
-    '<style>html,body{height:100%;margin:0}' +
-    'body{background:#12130e;color:#e8e4d9;font:16px/1.5 "Segoe UI",system-ui,sans-serif;' +
+    '<style>html,body{height:100%;margin:0}html{color-scheme:dark;background:#080808}' +
+    'body{background:#080808 linear-gradient(178deg,#0e0e0e 0%,#080808 45%,#040404 100%);color:#e7e7e7;font:16px/1.5 "Segoe UI",system-ui,sans-serif;' +
     'display:flex;align-items:center;justify-content:center;text-align:center}' +
-    '.c{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .6rem;color:#f3efe3}' +
-    'p{margin:.4rem 0;color:#a9a496}.m{color:#b0342c}</style></head>' +
-    '<body><div class="c"><h1>' + title + '</h1>' + body + '</div></body></html>'
+    '.c{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .6rem;color:#e7e7e7}' +
+    'p{margin:.4rem 0;color:#9b9b9b}.m{color:#e1675a}</style></head>' +
+    '<body><div class="c">' + ENW_MARK_SVG + '<h1>' + title + '</h1>' + body + '</div></body></html>'
 }
 
 // How long the player has to finish in their browser.
@@ -1676,8 +1764,34 @@ async function connectSiteApi() {
     // From here the launcher keeps up with the party by itself: the staged map is
     // downloaded and reported, and somebody else's Start becomes our launch.
     state.startPartyWatch?.()
+    refreshPresence()   // the site may carry the Discord application id
   } catch (e) {
     log('site hello failed', e.message)
+  }
+}
+
+// ------------------------------------------------------------ Discord presence --
+//
+// discord.js has the states and the pipe. This only gathers what the launcher already
+// knows (the running flow, the last /play poll, a local run's round) and hands it over.
+// Cheap and synchronous: it runs on every poll and flow update, and can never throw into
+// its caller.
+function discordClientId() {
+  return process.env.ENW_DISCORD_CLIENT_ID || cfg.load().discordClientId || state.api?.hello?.discord_client_id || ''
+}
+
+function refreshPresence() {
+  try {
+    if (!state.presence) return
+    const on = settings.get().discordPresence !== false
+    state.presence.setClientId(discordClientId())
+    state.presence.setEnabled(on)
+    if (!on) return
+    const snap = state.flow ? state.flow.snapshot() : null
+    const game = snap ? { map: snap.map, title: snap.title, mode: snap.mode, matchId: snap.matchId, startedAt: state.gameStartedAt } : null
+    state.presence.update(presenceFor({ enabled: on, game, play: state.lastPlay, localRound: state.localRound, siteUrl: state.siteInfo?.url }))
+  } catch (e) {
+    log('discord', `presence: ${e.message}`)
   }
 }
 
@@ -1791,6 +1905,13 @@ if (!single) {
     wireSitePassword()
     await createWindow()
     createTray()
+
+    // Discord Rich Presence. After the window, never in the launch path; connecting is
+    // asynchronous and Discord not running is a silent, backed-off retry (discord.js).
+    try {
+      state.presence = new Presence({ enabled: settings.get().discordPresence !== false, clientId: discordClientId(), log: (m) => log('discord', m) })
+      refreshPresence()
+    } catch (e) { log('discord', `presence not started: ${e.message}`) }
 
     if (state.pendingDeepLink) { const held = state.pendingDeepLink; state.pendingDeepLink = null; handleDeepLink(held) }
     const link = linkFromArgv(process.argv)
@@ -1974,6 +2095,7 @@ if (!single) {
     // port and referee games for a launcher that no longer exists — and it would only
     // ever be noticed as "the next game recorded nothing".
     try { state.localRun?.stop() } catch {}
+    try { state.presence?.stop() } catch {}
     try { if (hostAgent().stop()) log('hostagent', 'stopped the host agent we started') } catch {}
     // Applying is the only moment an update can disturb anything, so it happens here,
     // and only when no game is running and nothing is installing.

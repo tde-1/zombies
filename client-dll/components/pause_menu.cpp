@@ -75,6 +75,7 @@
 #include "chat_link.hpp"
 #include "input_gate.hpp"
 #include "pause_menu.hpp"
+#include "settings_tab.hpp"   // [settings] the Settings tab (esc-menu.md §9)
 
 #include <windows.h>
 #include <winhttp.h>
@@ -331,7 +332,10 @@ bool g_selftest = false;
 int g_selftest_mode = 0;
 DWORD g_first_draw = 0;
 
-enum button : int { B_RESUME = 0, B_RESTART = 1, B_EXIT = 2, B_COUNT = 3 };
+// [settings] B_SETTINGS is drawn second (kOrder); the enum keeps the old numbers.
+enum button : int { B_RESUME = 0, B_RESTART = 1, B_EXIT = 2, B_SETTINGS = 3, B_COUNT = 4 };
+constexpr int kOrder[B_COUNT] = {B_RESUME, B_SETTINGS, B_RESTART, B_EXIT};
+int g_view = 0;                        // [settings] 0 friends + chat, 1 the Settings tab
 int g_confirm = -1;                    // a button waiting for its second click
 DWORD g_confirm_t = 0;
 
@@ -560,12 +564,15 @@ void open_menu(const char* why) {
     ENW_INFO("pause_menu: OPEN (%s) -- the stock pause menu never saw the key; enw_ui paused "
              "(clc.state %d, keyCatchers 0x%X, server address type %d)", why, rd<int>(kClcState),
              rd<int>(kKeyCatchers), rd<int>(kServerAddrType));
+    if (g_view == 1) settings_tab::on_show();   // [settings]
 }
 
 void close_menu(const char* why) {
     if (!g_open) return;
     g_open = false;
     g_confirm = -1;
+    settings_tab::on_hide();   // [settings] ends a capture or a drag (a drag is applied)
+    g_view = 0;
     g_menu_open_net = false;
     chat_embed::close();
     ENW_INFO("pause_menu: CLOSED (%s) after %lu ms; enw_ui clear", why, ::GetTickCount() - g_opened_at);
@@ -617,6 +624,15 @@ void exit_tick() {
 void click_button(int b) {
     const DWORD now = ::GetTickCount();
     if (b == B_RESUME) { close_menu("Resume"); return; }
+    if (b == B_SETTINGS) {   // [settings]
+        if (!settings_tab::available()) { set_status("^1Settings are not available in this build"); return; }
+        g_view = g_view == 1 ? 0 : 1;
+        g_confirm = -1;
+        if (g_view == 1) settings_tab::on_show();
+        else settings_tab::on_hide();
+        ENW_INFO("pause_menu: view -> %s", g_view == 1 ? "Settings" : "friends and chat");
+        return;
+    }
     if (g_confirm == b && now - g_confirm_t <= 4000) {
         g_confirm = -1;
         if (b == B_RESTART) request_restart();
@@ -647,14 +663,24 @@ bool on_click(int cx, int cy) {
     float x, y;
     to_virtual(cx, cy, &x, &y);
     ++g_clicks;
+    if (g_view == 1 && settings_tab::capturing()) {   // [settings] the click IS the key (MOUSE1)
+        settings_tab::mouse_down(x, y, 0);
+        return true;
+    }
     for (int b = 0; b < B_COUNT; ++b)
         if (g_btn[b].hit(x, y)) {
             ENW_INFO("pause_menu: click #%ld at client (%d,%d) -> virtual (%.1f,%.1f) -> button %s%s",
-                     g_clicks, cx, cy, x, y, b == B_RESUME ? "Resume" : b == B_RESTART ? "Restart game" : "Exit game",
+                     g_clicks, cx, cy, x, y, b == B_RESUME ? "Resume" : b == B_RESTART ? "Restart game"
+                                             : b == B_SETTINGS ? "Settings" : "Exit game",
                      g_confirm == b ? " (confirmed)" : "");
             click_button(b);
             return true;
         }
+    if (g_view == 1) {   // [settings] every other click in the Settings view is the tab's
+        ENW_INFO("pause_menu: click #%ld at client (%d,%d) -> virtual (%.1f,%.1f) -> Settings tab", g_clicks, cx, cy, x, y);
+        settings_tab::mouse_down(x, y, 0);
+        return true;
+    }
     for (const auto& h : g_row_hits) {
         if (!h.r.hit(x, y)) continue;
         if (h.kind == 0 && h.index < g_site.friends.size()) {
@@ -698,6 +724,58 @@ bool filter(UINT msg, WPARAM wp, LPARAM lp, LRESULT* result) {
         g_eat_esc_char = true;
         open_menu("Esc");
         return true;
+    }
+
+    // [settings] The Settings view owns the keyboard and every click and wheel notch in it:
+    // the chat panel is not drawn there, so its input line must not type unseen.
+    if (g_view == 1) {
+        float vx = 0, vy = 0;
+        switch (msg) {
+        case WM_KEYDOWN:
+            if (wp == VK_ESCAPE) {
+                if (!(lp & (1 << 30))) {
+                    g_eat_esc_char = true;
+                    if (settings_tab::capturing()) settings_tab::key_down(wp, lp);   // cancels the capture
+                    else { g_view = 0; settings_tab::on_hide(); ENW_INFO("pause_menu: Esc -> back from Settings"); }
+                }
+                return true;
+            }
+            settings_tab::key_down(wp, lp);
+            return true;
+        case WM_CHAR:
+            return true;
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        case WM_XBUTTONDOWN: {
+            g_mouse_x = static_cast<short>(LOWORD(lp));
+            g_mouse_y = static_cast<short>(HIWORD(lp));
+            to_virtual(g_mouse_x, g_mouse_y, &vx, &vy);
+            const int b = msg == WM_RBUTTONDOWN ? 1 : msg == WM_MBUTTONDOWN ? 2 : (HIWORD(wp) == XBUTTON1 ? 3 : 4);
+            settings_tab::mouse_down(vx, vy, b);
+            return true;
+        }
+        case WM_LBUTTONUP:
+            to_virtual(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)), &vx, &vy);
+            settings_tab::mouse_up(vx, vy);
+            return true;
+        case WM_RBUTTONUP:
+        case WM_MBUTTONUP:
+        case WM_XBUTTONUP:
+            return true;
+        case WM_MOUSEMOVE:
+            g_mouse_x = static_cast<short>(LOWORD(lp));
+            g_mouse_y = static_cast<short>(HIWORD(lp));
+            g_mouse_in = true;
+            to_virtual(g_mouse_x, g_mouse_y, &vx, &vy);
+            settings_tab::mouse_move(vx, vy);
+            return true;
+        case WM_MOUSEWHEEL:
+            to_virtual(g_mouse_x, g_mouse_y, &vx, &vy);
+            settings_tab::wheel(vx, vy, GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA);
+            return true;
+        default:
+            break;   // WM_LBUTTONDOWN below: the left column's buttons first
+        }
     }
 
     switch (msg) {
@@ -797,23 +875,41 @@ void draw_menu(float mx, float my) {
     else if (!g_site.party_map.empty()) sub = g_site.party_map;
     if (!sub.empty()) txt(x0, 106.f, sub, kDim, 0.24f);
 
-    const char* labels[B_COUNT] = {"Resume", "Restart game", "Exit game"};
-    const char* confirm[B_COUNT] = {"", "Click again to restart", "Click again to exit"};
+    const char* labels[B_COUNT] = {"Resume", "Restart game", "Exit game", "Settings"};
+    const char* confirm[B_COUNT] = {"", "Click again to restart", "Click again to exit", ""};
     if (g_confirm >= 0 && ::GetTickCount() - g_confirm_t > 4000) g_confirm = -1;
-    for (int b = 0; b < B_COUNT; ++b) {
-        const float y = 126.f + 30.f * b;
+    for (int k = 0; k < B_COUNT; ++k) {
+        const int b = kOrder[k];
+        const float y = 126.f + 28.f * k;   // [settings] 28 (was 30): four buttons clear the chat panel (top 256)
         g_btn[b] = {x0, y, 210.f, 24.f};
         const bool hover = g_btn[b].hit(mx, my);
         const bool conf = g_confirm == b;
-        if (hover || conf) {
+        const bool active = b == B_SETTINGS && g_view == 1;   // [settings]
+        if (hover || conf || active) {
             box(x0, y, 210.f, 24.f, kGoldFill);
             box(x0, y, 3.f, 24.f, kGold);
         }
         const std::string label = conf ? std::string("^3") + confirm[b] : labels[b];
-        txt(x0 + 12.f, y + 18.f, label, hover || conf ? kWhite : kDim, 0.40f);
+        txt(x0 + 12.f, y + 18.f, label, hover || conf || active ? kWhite : kDim, 0.40f);
     }
-    if (g_quit_step) txt(x0, 230.f, "^3Leaving the game...", kWhite, 0.26f);
-    else txt(x0, 230.f, "Esc  resume", kFaint, 0.24f);
+    const float hint_y = 126.f + 28.f * static_cast<float>(B_COUNT) + 10.f;
+    if (g_quit_step) txt(x0, hint_y, "^3Leaving the game...", kWhite, 0.26f);
+    else txt(x0, hint_y, g_view == 1 ? "Esc  back" : "Esc  resume", kFaint, 0.24f);
+
+    // [settings] The Settings view takes the whole right side; the chat and the friends
+    // panel come back with Esc or the Settings button.
+    if (g_view == 1) {
+        const float sx = x0 + 210.f + 24.f;
+        settings_tab::draw(sx, 36.f, (std::max)(200.f, g_vw - 36.f - sx), 480.f - 18.f - 36.f, mx, my);
+        if (g_mouse_in && g_mouse_x >= 0) {
+            if (void* cur = rd<void*>(kUiCursor)) {
+                reinterpret_cast<stretch_pic_t>(kRStretchPic)(
+                    (mx - 16.f) * g_pl.sx + g_pl.ox, (my - 16.f) * g_pl.sy + g_pl.oy, 32.f * g_pl.sx,
+                    32.f * g_pl.sy, 0, 0, 1, 1, kWhite, cur);
+            }
+        }
+        return;
+    }
 
     // ---- bottom left: the chat overlay's own panel, anchored in the menu
     chat_embed::draw_at(x0 + 3.f, 480.f - 44.f);
@@ -1003,7 +1099,116 @@ void post_esc() {
     post(WM_KEYUP, VK_ESCAPE, 1 | (sc << 16) | (1u << 30) | (1u << 31));
 }
 
+// [settings] ENW_ESC_MENU_SELFTEST=5: the Settings tab, driven by posted clicks and keys
+// on the controls it drew (settings_tab::control_point), with captures. In a box game the
+// Apply step runs a real vid_restart and the rest checks the menu and Esc come back.
+struct sstep { DWORD at; const char* op; const char* a; const char* b; float f; };
+const sstep kSettingsScript[] = {
+    {7000, "esc", nullptr, nullptr, 0},
+    {8000, "btn", "settings", nullptr, 0},
+    {8800, "shot", "settings-display", nullptr, 0},
+    {9000, "values", "before", nullptr, 0},
+    {9300, "slider", "fov", nullptr, 0.5455f},
+    {9900, "click", "showFps", "0", 0},
+    {10400, "click", "r_aspectRatio", "2", 0},
+    {10900, "set", "r_aspectRatio", "wide 16:9", 0},
+    {11400, "tab", "controls", nullptr, 0},
+    {12000, "shot", "settings-controls", nullptr, 0},
+    {12200, "slider", "sensitivity", nullptr, 0.2f},
+    {12800, "click", "bind:+activate", "0", 0},
+    {13200, "key", "G", nullptr, 0x47},
+    {13800, "shot", "settings-controls-changed", nullptr, 0},
+    {14000, "tab", "display", nullptr, 0},
+    {14600, "shot", "settings-display-changed", nullptr, 0},
+    {14800, "values", "after the changes", nullptr, 0},
+    {15400, "apply", nullptr, nullptr, 0},
+    {16000, "log", "after Apply", nullptr, 0},
+    {24000, "values", "after vid_restart", nullptr, 0},
+    {24200, "shot", "settings-after-restart", nullptr, 0},
+    {24600, "esc", nullptr, nullptr, 0},
+    {25200, "esc", nullptr, nullptr, 0},
+    {26000, "esc", nullptr, nullptr, 0},
+    {26800, "shot", "esc-menu-reopened-after-restart", nullptr, 0},
+    {27000, "btn", "settings", nullptr, 0},
+    {27600, "restrict", "1", nullptr, 0},
+    {28200, "shot", "settings-verified-view", nullptr, 0},
+    {28400, "restrict", "-1", nullptr, 0},
+    {28600, "esc", nullptr, nullptr, 0},
+    {29000, "esc", nullptr, nullptr, 0},
+    {29500, "values", "final", nullptr, 0},
+    {30000, "done", nullptr, nullptr, 0},
+};
+
+// =6: after a kill and a fresh launch, only read: are the values still what =5 set?
+const sstep kSettingsReadScript[] = {
+    {7000, "esc", nullptr, nullptr, 0},
+    {8000, "btn", "settings", nullptr, 0},
+    {8800, "values", "after a kill and a fresh launch", nullptr, 0},
+    {9000, "shot", "settings-after-relaunch", nullptr, 0},
+    {9400, "tab", "controls", nullptr, 0},
+    {10000, "shot", "settings-controls-after-relaunch", nullptr, 0},
+    {10400, "esc", nullptr, nullptr, 0},
+    {10800, "esc", nullptr, nullptr, 0},
+    {11200, "done", nullptr, nullptr, 0},
+};
+
+void settings_click(float vx, float vy, bool up = true) {
+    post(WM_MOUSEMOVE, 0, client_lp(vx, vy));
+    post(WM_LBUTTONDOWN, MK_LBUTTON, client_lp(vx, vy));
+    if (up) post(WM_LBUTTONUP, 0, client_lp(vx, vy));
+}
+
+void settings_selftest_tick() {
+    const bool read_only = g_selftest_mode == 6;
+    const sstep* script = read_only ? kSettingsReadScript : kSettingsScript;
+    const size_t n = read_only ? sizeof kSettingsReadScript / sizeof kSettingsReadScript[0]
+                               : sizeof kSettingsScript / sizeof kSettingsScript[0];
+    if (!g_first_draw || g_step >= n) return;
+    const DWORD t = ::GetTickCount() - g_first_draw;
+    const sstep& s = script[g_step];
+    if (t < s.at) return;
+    ++g_step;
+    const std::string op = s.op;
+    float vx = 0, vy = 0;
+    if (op == "esc") post_esc();
+    else if (op == "btn") settings_click(g_btn[B_SETTINGS].x + 100.f, g_btn[B_SETTINGS].y + 12.f);
+    else if (op == "shot") {
+        frame_capture::request(s.a);
+        ENW_INFO("pause_menu: selftest capture '%s' at +%lu ms (open=%d, view=%d)", s.a, t, g_open ? 1 : 0, g_view);
+    } else if (op == "values") settings_tab::log_values(s.a);
+    else if (op == "tab") {
+        if (settings_tab::control_point(std::string("tab:") + s.a, 0, 0, &vx, &vy)) settings_click(vx, vy);
+        else ENW_INFO("pause_menu: selftest: tab '%s' is not on screen", s.a);
+    } else if (op == "slider") {
+        if (settings_tab::control_point(s.a, 3, s.f, &vx, &vy)) settings_click(vx, vy);
+        else ENW_INFO("pause_menu: selftest: slider '%s' is not on screen", s.a);
+    } else if (op == "click") {
+        if (settings_tab::control_point(s.a, std::atoi(s.b), 0, &vx, &vy)) settings_click(vx, vy);
+        else ENW_INFO("pause_menu: selftest: control '%s' is not on screen", s.a);
+    } else if (op == "set") {
+        ENW_INFO("pause_menu: selftest: set %s = '%s' -> %d", s.a, s.b, settings_tab::set_by_id(s.a, s.b) ? 1 : 0);
+    } else if (op == "key") {
+        const UINT vk = static_cast<UINT>(s.f);
+        const UINT sc = ::MapVirtualKeyA(vk, MAPVK_VK_TO_VSC);
+        post(WM_KEYDOWN, vk, 1 | (sc << 16));
+        post(WM_KEYUP, vk, 1 | (sc << 16) | (1u << 30) | (1u << 31));
+    } else if (op == "apply") {
+        if (settings_tab::control_point("apply", 0, 0, &vx, &vy)) settings_click(vx, vy);
+        else ENW_INFO("pause_menu: selftest: no Apply button on screen (Play Local, or nothing pending)");
+    } else if (op == "restrict") {
+        settings_tab::set_restricted_override(std::atoi(s.a));
+        ENW_INFO("pause_menu: selftest: restricted override %s", s.a);
+    } else if (op == "log") {
+        ENW_INFO("pause_menu: selftest %s: open=%d view=%d input gate %s window 0x%p", s.a, g_open ? 1 : 0, g_view,
+                 input_gate::installed() ? "installed" : "NOT installed", static_cast<void*>(input_gate::window()));
+    } else if (op == "done") {
+        ENW_INFO("pause_menu: selftest done (settings): opens=%ld clicks=%ld open=%d input gate %s", g_opens, g_clicks,
+                 g_open ? 1 : 0, input_gate::installed() ? "installed" : "NOT installed");
+    }
+}
+
 void selftest_tick() {
+    if (g_selftest && (g_selftest_mode == 5 || g_selftest_mode == 6)) { settings_selftest_tick(); return; }   // [settings]
     const bool exit_run = g_selftest_mode == 3;
     const step* script = exit_run ? kExitScript : kScript;
     const size_t n = exit_run ? sizeof kExitScript / sizeof kExitScript[0] : sizeof kScript / sizeof kScript[0];
@@ -1125,11 +1330,16 @@ public:
     void post_init() override {
         if (!g_enabled) return;
         start_net();
+        settings_tab::init({&txt, &tw, &box});   // [settings] the stock-font drawing calls above
         frame::subscribe("pause_menu", [](uint64_t) {
             exit_tick();
+            settings_tab::frame_tick();   // [settings] write-through checks, bind flush
             // The map went away under an open menu (disconnect, a load, the overlay turning
             // itself off after faults): close it, so `enw_ui` cannot stay `paused`.
-            if (g_open && ::GetTickCount() - g_last_draw > 1000) close_menu("no map drawn for 1 s");
+            // [settings] Not while the Settings tab's vid_restart runs: the menu stays open
+            // across it, so the game stays paused and the menu is back with the picture.
+            if (g_open && ::GetTickCount() - g_last_draw > 1000 && !settings_tab::restart_in_progress())
+                close_menu("no map drawn for 1 s");
         });
     }
 

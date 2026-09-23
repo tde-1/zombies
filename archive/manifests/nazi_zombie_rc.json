@@ -1,0 +1,184 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_rc",
+  "title": "RECONTAMINATION",
+  "source": "custom",
+  "author": "smasher248",
+  "released": "2016-04-28",
+  "fs_game": "mods/nazi_zombie_rc",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_rc.iwd": "47a5ff2c21250f8962e3d4bb2a863bc0755326ab3603212b9839d09a33b41283"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 182,
+    "script_count": 182,
+    "entities": 1125,
+    "ee_candidates": [
+      "part"
+    ],
+    "ending_words": [
+      "endgame"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        40000,
+        "zombie_door",
+        "arm"
+      ],
+      [
+        5000,
+        "harrybo21_upgrade",
+        "?"
+      ],
+      [
+        4000,
+        "harrybo21_vending",
+        "?"
+      ],
+      [
+        3000,
+        "harrybo21_vending",
+        "?"
+      ],
+      [
+        2500,
+        "harrybo21_vending",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 40000,
+      "targetname": "zombie_door",
+      "target": "arm",
+      "next_highest": 5000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "47a5ff2c21250f8962e3d4bb2a863bc0755326ab3603212b9839d09a33b41283",
+    "map_specific_triggers": [
+      "claymore_purchase",
+      "endgame",
+      "huey_part1",
+      "huey_part2",
+      "huey_part3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Recontamination.exe",
+    "original_sha256": "3117ce6060f242d00576ac28ac958a3f52a38bec5fc68ffce0a8586456371857",
+    "original_size": 335503748,
+    "source_url": "http://www.mediafire.com/file/ncndk949z4g75xf/Recontamination.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:26:47Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "challenge",
+      "top_100"
+    ],
+    "catalogue_description": "Welcome to Recontamination , this is a remaster of my old map Decontamination, its been revamped with some new layout map detail, new weaponry and features, hope you enjoy Due to there only being a few months before bo3 beta release i am not working on a new map but rather polishing up old ones an re releasing, next will be Asylum v2 but it will take quite a lot longer than decontamination Credits: Harry bo21 Bluntstuffy arceus HitmanVere TheScotchGuy bwc66930 jzob123 steviewonder87 WARDOGSK93 DeathBringerZen elfenliedtopfan5 NGcaudle sammycustom Redspace200 rorke RadimaX thezombieproject DuaLVII Rollonmath42 GTTClan shippuden1592 YaPh1 Features: Lots of fun guns to use Buyable Ending that must be built Armory that must be oppened to access top tear guns gersch devices custom zombie models and lots more Weapons: ar: m4a1 \u2013 Mystifier 1 scar h \u2013 Agarthan Reaper 2 acr \u2013 Abdominal Cauterizing Rifle 3 m16 \u2013 Skullcrusher 4 ak12 \u2013 Reznov\u2019s Revenge 5 arx \u2013 The ARXtraD34D 6 mr28 \u2013 M0nst3r R4nch3r 7 cm901 \u2013 Painz Dispenser 8 fal \u2013 EPC WN 9 commando \u2013 Predator 10 famas \u2013 G16-GL35 11 smg: asm1 \u2013 Abnormal Sequencer 1 mp7 \u2013 The Mulcher 1 kf5 \u2013 KF-Zillion mp9 \u2013 Intestinal Blender 2 ripper \u2013 The Eviscerator 4 ump45 \u2013 ComeNGetMe 5 vector \u2013 The Dissasembler 6 fmg9 \u2013 Goblin 7 mp5k \u2013 MP115 Kollider 8 pistol: m9a1 \u2013 Stress Reliever 1 deserteagle \u2013 Dreadnaught 2 remington new model army \u2013 Sassafras 3 44 magnum \u2013 Dirty Harry 4 lmg: lsat \u2013 FSIRT 2 mk46 \u2013 The BoneSaw 3 sniper: intervention \u2013 Wrath of",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_x",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_rc.iwd:images/loadscreen_nazi_zombie_x.iwi",
+        "nazi_zombie_rc.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "nazi_zombie_rc.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "nazi_zombie_rc.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "nazi_zombie_rc.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_rc.iwd:images/weapon_red_cross_background_2.iwi",
+        "nazi_zombie_rc.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "nazi_zombie_rc.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_rc.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "nazi_zombie_rc.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "nazi_zombie_rc.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/recontamination/cover.jpeg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/recontamination-1.jpeg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.9,
+    "addon_iwds": [
+      {
+        "file": "moon_zombies.iwd",
+        "entries": 126,
+        "scripts": 53,
+        "bytes": 7828116
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_rc_patch.ff",
+      "nazi_zombie_rc.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

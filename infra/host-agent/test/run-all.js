@@ -10,8 +10,9 @@ import { ReplayWriter, verifyFile, readFooter, readChunk, readEvents } from '../
 import { issue, check, TokenGuard } from '../lib/tokens.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
-import { InstanceManager } from '../lib/instances.js'
+import { InstanceManager, devKnobsFor, safeLeaseDvars } from '../lib/instances.js'
 import { leaseList, planLeases } from '../lib/leases.js'
+import { SERVER_RULES, RULESET, effectiveFps } from '../lib/verified.js'
 
 const TMP = mkdirp(path.join(os.tmpdir(), 'enw-host-tests'))
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..')
@@ -598,6 +599,65 @@ t('a player the GAME reports and we never saw is carried through with no account
   ok(s.flags.includes('result_mismatch'), 'and the disagreement is flagged')
 })
 
+console.log('\n== stats: the game\'s own scoreboard counters (referee.md §16, bug 7) ==')
+
+// The exact sequence the §16 DLL sends for one real player: a baseline `stats` at connect,
+// `points` on every score change, `down` + `player_down` then `stats` on a down, `revive`
+// then `stats` on a revive, and `stats` on every kill. Every real result said 0 before
+// this, because nothing on the link carried a kill and `points` carries no `why`.
+function statsGame(r) {
+  bootGame(r, { players: 2 })
+  r.onEvent({ t: 'stats', ms: 1000, slot: 0, score: 500, kills: 0, headshots: 0, downs: 0, revives: 0, assists: 0 })
+  r.onEvent({ t: 'points', ms: 1000, slot: 0, score: 500 })
+  for (let k = 1; k <= 6; k++) {
+    r.onEvent({ t: 'points', ms: 2000 + k, slot: 0, score: 500 + k * 60, delta: 60 })
+    r.onEvent({ t: 'stats', ms: 2000 + k, slot: 0, score: 500 + k * 60, kills: k, headshots: k > 4 ? k - 4 : 0, downs: 0, revives: 0, assists: 0 })
+  }
+  r.onEvent({ t: 'down', ms: 3000, slot: 1 })
+  r.onEvent({ t: 'player_down', ms: 3000, slot: 1, name: 'P1', round: 1, downs: 1 })
+  r.onEvent({ t: 'stats', ms: 3000, slot: 1, score: 500, kills: 0, headshots: 0, downs: 1, revives: 0, assists: 0 })
+  r.onEvent({ t: 'revive', ms: 4000, slot: 1, by: 0 })
+  r.onEvent({ t: 'stats', ms: 4000, slot: 0, score: 860, kills: 6, headshots: 2, downs: 0, revives: 1, assists: 0 })
+}
+
+t('stats folds kills and headshots, and a down/revive edge plus its absolute value count once', () => {
+  const r = makeRef()
+  statsGame(r)
+  const p0 = r.players.get(0), p1 = r.players.get(1)
+  eq(p0.kills, 6, 'kills'); eq(p0.headshots, 2, 'headshots'); eq(p0.revives, 1, 'revives: the edge then the absolute value')
+  eq(p1.downs, 1, 'downs: the edge then the absolute value')
+  eq(p0.maxScore, 860, 'score from points'); eq(p0.pointsEarned, 360, 'points earned from the deltas')
+})
+
+t('the summary carries the reconciled counters in BOTH the row and its stats block', () => {
+  const r = makeRef()
+  statsGame(r)
+  // The game's own result says one more kill than the link folded (it landed in the frame
+  // of game over): the reconciled value is the game's, in the row AND in `stats`, which is
+  // the block web/server/lib/results.js reads first.
+  r.onEvent({ t: 'game_over', ms: 5000, round: 1, reason: 'end_game', kills_total: 7, players: [
+    { slot: 0, name: 'P0', steamid: '76561198000000000', identity: 'verified', score: 860, downs: 0, revives: 1, kills: 7, headshots: 2, assists: 0, alive: true },
+    { slot: 1, name: 'P1', steamid: '76561198000000001', identity: 'verified', score: 500, downs: 1, revives: 0, kills: 0, headshots: 0, assists: 0, alive: false },
+  ] })
+  const s = r.summary()
+  const p0 = s.players.find((x) => x.slot === 0)
+  eq(p0.kills, 7, 'row kills'); eq(p0.stats.kills, 7, 'stats kills')
+  eq(p0.headshots, 2); eq(p0.stats.headshots, 2)
+  eq(p0.revives, 1); eq(p0.stats.revives, 1)
+  eq(p0.score, 860)
+  const p1 = s.players.find((x) => x.slot === 1)
+  eq(p1.downs, 1); eq(p1.stats.downs, 1)
+  eq(s.reported.kills_total, 7)
+  ok(s.flags.includes('result_mismatch'), 'game > ours on kills is still flagged, as for every counter')
+})
+
+t('a game_over from a DLL without native stats leaves kills_total null, not 0', () => {
+  const r = makeRef()
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'game_over', ms: 5000, round: 1, reason: 'end_game', players: [{ slot: 0, name: 'P0', revives: 0, alive: true }] })
+  eq(r.summary().reported.kills_total, null)
+})
+
 console.log('\n== player_down (the system-line event, game-link-v0 2026-09-23) ==')
 
 t('player_down does NOT double-count a down: `down` is the counter, it is the sentence', () => {
@@ -721,6 +781,185 @@ t('a long pause does not come back as an AFK warning', () => {
   eq(r.phase, 'live')
   r.tickAfk(31 * MIN)
   ok(!r.players.get(0).afkWarned && !r.players.get(1).afkWarned, 'nobody is AFK-warned for having paused')
+})
+
+// ---- the Verified environment (2026-09-23, lib/verified.js, verified-rules.md) -----------
+console.log('\n== the Verified environment ==')
+
+// The stock values a real dedicated server printed (verified-rules.md §3).
+function stockServer(r, ms = 0) {
+  for (const [name, value] of Object.entries(SERVER_RULES)) r.onEvent({ t: 'dvar', ms, name, value })
+  r.onEvent({ t: 'dvar', ms, name: 'sv_fps', value: '20' })
+  r.onEvent({ t: 'dvar', ms, name: 'sv_maxRate', value: '25000' })
+}
+
+t('stock server + a steady 250 FPS client: eligible, and the result carries what was enforced', () => {
+  const r = makeRef()
+  stockServer(r)
+  r.onEvent({ t: 'client_dvar', ms: 0, slot: 0, name: 'com_maxfps', value: 250 })
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'client_dvar', ms: 1000, slot: 0, name: 'com_maxfps', value: 250 })   // a duplicate is not a change
+  r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 9, reason: 'end_game' })
+  const s = r.summary()
+  eq(s.records_eligible, true)
+  eq(s.verified_env.ok, true)
+  eq(s.verified_env.ruleset, RULESET)
+  eq(s.verified_env.enforced.server.sv_cheats, '0')
+  eq(s.verified_env.observed.server.sv_maxRate, '25000', 'info dvars are on the proof too')
+  eq(s.verified_env.observed.fps.P0.runs_at, 250)
+  ok(!r.cmds.some((c) => c.t === 'say' && /record-eligible/.test(c.text)), 'nothing to say')
+})
+
+t('sv_cheats 1 at any point refuses the record, even if it is put back', () => {
+  const r = makeRef()
+  stockServer(r)
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'dvar', ms: 2 * MIN, name: 'sv_cheats', value: '1' })
+  r.onEvent({ t: 'dvar', ms: 3 * MIN, name: 'sv_cheats', value: '0' })
+  r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 9, reason: 'end_game' })
+  const s = r.summary()
+  eq(s.records_eligible, false)
+  ok(s.verified_env.violations.some((v) => /sv_cheats was 1/.test(v)), s.verified_env.violations.join('; '))
+  ok(s.flags.includes('env_violation'))
+  eq(r.cmds.filter((c) => c.t === 'say' && /record-eligible/.test(c.text)).length, 1, 'said once, in game')
+})
+
+t('timescale and a movement constant are judged numerically ("1.0" is 1, "0.75" is not 0.7)', () => {
+  const r = makeRef()
+  stockServer(r)
+  r.onEvent({ t: 'dvar', ms: 0, name: 'timescale', value: '1.0' })
+  bootGame(r)
+  eq(r.verifiedEnv().ok, true, '1.0 == 1')
+  r.onEvent({ t: 'dvar', ms: MIN, name: 'player_backSpeedScale', value: '0.75' })
+  eq(r.verifiedEnv().ok, false)
+})
+
+t('FPS above 250, uncapped, or changed mid-game each refuse the record', () => {
+  for (const [label, vals] of [['333', [333]], ['uncapped', [0]], ['changed', [250, 125]]]) {
+    const r = makeRef()
+    stockServer(r)
+    bootGame(r, { players: 1 })
+    let ms = MIN
+    for (const v of vals) r.onEvent({ t: 'client_dvar', ms: ms++, slot: 0, name: 'com_maxfps', value: v })
+    r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 5, reason: 'end_game' })
+    eq(r.summary().records_eligible, false, label)
+  }
+})
+
+t('verifiedAllowFpsChange (b2\'s wording) lets a change inside 20–250 stand, but never 333', () => {
+  const r = makeRef({ config: { verifiedAllowFpsChange: true } })
+  stockServer(r)
+  bootGame(r)
+  r.onEvent({ t: 'client_dvar', ms: MIN, slot: 0, name: 'com_maxfps', value: 250 })
+  r.onEvent({ t: 'client_dvar', ms: 2 * MIN, slot: 0, name: 'com_maxfps', value: 125 })
+  eq(r.verifiedEnv().ok, true)
+  r.onEvent({ t: 'client_dvar', ms: 3 * MIN, slot: 0, name: 'com_maxfps', value: 333 })
+  eq(r.verifiedEnv().ok, false)
+})
+
+t('an FPS change BEFORE go-live (menu, load) is the start value, not a mid-game change', () => {
+  const r = makeRef()
+  stockServer(r)
+  r.onEvent({ t: 'hello', ms: 0, instance: 'test', role: 'server', pid: 1 })
+  r.onEvent({ t: 'map_loaded', ms: 0, map: 'nazi_zombie_prototype', mode: 'zombies', sv_maxclients: 4 })
+  r.onEvent({ t: 'player_connect', ms: 0, slot: 0, name: 'P0', steamid: '76561198000000000' })
+  r.onEvent({ t: 'client_dvar', ms: 10, slot: 0, name: 'com_maxfps', value: 85 })
+  r.onEvent({ t: 'client_dvar', ms: 20, slot: 0, name: 'com_maxfps', value: 250 })
+  r.onEvent({ t: 'round', ms: 100, n: 1 })
+  r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 5, reason: 'end_game' })
+  const s = r.summary()
+  eq(s.verified_env.ok, true, s.verified_env.violations.join('; '))
+  eq(s.verified_env.observed.fps.P0.first, 250)
+})
+
+t('no reports at all (an old DLL and client): "unknown", not a refusal, until the config says so', () => {
+  const r = makeRef()
+  bootGame(r)
+  r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 5, reason: 'end_game' })
+  const s = r.summary()
+  eq(s.records_eligible, true)
+  ok(s.verified_env.unknown.length >= 2, s.verified_env.unknown.join('; '))
+  const strict = makeRef({ config: { verifiedRequireFpsReport: true, verifiedRequireServerEnv: true } })
+  bootGame(strict)
+  strict.onEvent({ t: 'game_over', ms: 10 * MIN, round: 5, reason: 'end_game' })
+  eq(strict.summary().records_eligible, false, 'required and missing = refused')
+})
+
+t('a Custom game is judged and reported, but its eligibility is not the Verified rule\'s', () => {
+  const r = makeRef({ mode: 'custom' })
+  stockServer(r)
+  bootGame(r)
+  r.onEvent({ t: 'client_dvar', ms: MIN, slot: 0, name: 'com_maxfps', value: 333 })
+  r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 5, reason: 'end_game' })
+  const s = r.summary()
+  eq(s.verified_env.ok, false)
+  eq(s.records_eligible, true, 'custom mode keeps its own rules')
+  ok(!r.cmds.some((c) => c.t === 'say' && /record-eligible/.test(c.text)), 'and nobody is told off in a Custom game')
+})
+
+t('game_over\'s dvars fill in a server environment the stream lost', () => {
+  const r = makeRef()
+  bootGame(r)
+  r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 5, reason: 'end_game', dvars: { ...SERVER_RULES, sv_cheats: '1' } })
+  const s = r.summary()
+  eq(s.records_eligible, false)
+  eq(s.reported.dvars.sv_cheats, '1')
+})
+
+t('effectiveFps is the engine\'s whole-millisecond cap', () => {
+  eq([250, 240, 200, 125, 333, 400, 0].map(effectiveFps), [250, 250, 200, 125, 333, 500, 0])
+})
+
+t('a Verified lease never passes its own dvars to the server', () => {
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'vdvars'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  const v = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'verified', settings: { dvars: { sv_cheats: '1', timescale: '2' } } } })
+  const c = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'custom', settings: { dvars: { timescale: '2' } } } })
+  ok(!v.gameArgs().some((a) => /sv_cheats|timescale/.test(a)), v.gameArgs().join(' '))
+  ok(c.gameArgs().includes('+set timescale 2'), 'a Custom lease still gets its dvars')
+})
+
+// ---- dev knobs and lease-dvar injection (dedi.md §23, 2026-09-23) -----------------------
+t('enw_dev_knobs 1 (a dev-knob process, e.g. the soak god mode) refuses the record', () => {
+  const r = makeRef()
+  stockServer(r)
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'dvar', ms: 0, name: 'enw_dev_knobs', value: '1' })
+  r.onEvent({ t: 'game_over', ms: 10 * MIN, round: 9, reason: 'end_game' })
+  const s = r.summary()
+  eq(s.records_eligible, false)
+  ok(s.verified_env.violations.some((v) => /enw_dev_knobs was 1/.test(v)), s.verified_env.violations.join('; '))
+})
+
+t('a Custom lease dvar cannot inject command-line commands, and host-owned dvars stay the host\'s', () => {
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'vdvars2'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  const c = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'custom', settings: { dvars: {
+    timescale: '1 +set developer 1', 'g_speed +quit': '1', developer: '1', logfile: '0', net_port: '1', player_sustainAmmo: '1',
+  } } } })
+  const args = c.gameArgs()
+  ok(!args.some((a) => /developer|\+quit|logfile 0|net_port 1\b/.test(a)), args.join(' '))
+  ok(args.includes('+set player_sustainAmmo 1'), 'a plain one still passes')
+  const { ok: pass, refused } = safeLeaseDvars([['a b', '1'], ['sv_cheats', '1'], ['x', '"q"'], ['Dedicated', '0']])
+  eq(pass, [['sv_cheats', '1']])
+  eq(refused.length, 3)
+})
+
+t('dev knobs only for an AGENT lease in CUSTOM mode that asks, and explicitly empty otherwise', () => {
+  const dev = { god: true }
+  eq(devKnobsFor({ agent: true, mode: 'custom', settings: { dev } }), { ENW_DEV_KNOBS: '1', ENW_DEV_GOD: '1' })
+  for (const a of [
+    { agent: false, mode: 'custom', settings: { dev } },          // a player's Custom game
+    { mode: 'custom', settings: { dev } },                          // no agent flag (old site)
+    { agent: true, mode: 'verified', settings: { dev } },           // Verified, never
+    { agent: 'true', mode: 'custom', settings: { dev } },           // not a real boolean
+    { agent: true, mode: 'custom', settings: {} },                  // did not ask
+    null,
+  ]) eq(devKnobsFor(a), { ENW_DEV_KNOBS: '', ENW_DEV_GOD: '' }, JSON.stringify(a))
+  const quiet = { info() {}, warn() {}, debug() {}, error() {}, child() { return quiet } }
+  const m = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'vdvars3'), linkHost: '127.0.0.1', linkPort: 1, dryRun: true, log: quiet })
+  const g = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'verified', settings: {} } })
+  eq(g.gameEnv().ENW_DEV_KNOBS, '', 'a player game overrides anything inherited from the agent\'s env')
 })
 // ---- game copies by SLOT, not by id (dedi.md §19, 2026-09-23) --------------------------
 // MEASURED on the box 2026-09-22 23:27-23:32: ids grow for the agent's whole life, the copy

@@ -1,0 +1,209 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_projectx",
+  "title": "PROJECT X",
+  "source": "custom",
+  "author": "JV",
+  "released": "July 05, 2017, 11:44:13 pm",
+  "fs_game": "mods/nazi_zombie_projectx",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_projectx.iwd": "8220c264ac6aebfcd034669eb06a6b20a4849ed365f2592244fdd8e0cd3877b7"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "meteor_audio"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "meteor_audio look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 108,
+    "script_count": 108,
+    "entities": 2355,
+    "ee_candidates": [
+      "meteor_audio"
+    ],
+    "ending_words": [
+      "end_game",
+      "endgame_player_origins",
+      "inside_teleport",
+      "projectx_win",
+      "teleport_1_player_0",
+      "teleport_1_player_1",
+      "teleport_1_player_2",
+      "teleport_1_player_3",
+      "teleport_2_player_0",
+      "teleport_2_player_1",
+      "teleport_2_player_2",
+      "teleport_2_player_3",
+      "teleport_3_player_0",
+      "teleport_3_player_1",
+      "teleport_3_player_2",
+      "teleport_3_player_3",
+      "teleport_4_player_0",
+      "teleport_4_player_1",
+      "teleport_4_player_2",
+      "teleport_4_player_3"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "wachtzaal2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "testlab1extradoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "startingdoor1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "stairdoorblocker"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "powerroom2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "8220c264ac6aebfcd034669eb06a6b20a4849ed365f2592244fdd8e0cd3877b7",
+    "map_specific_triggers": [
+      "eegg_bookshelf_trig",
+      "eegg_bunker_trig",
+      "emergency_stair_trigger",
+      "engine_key",
+      "gatetrigger",
+      "ggatetrig1",
+      "hankey_teleporter",
+      "inside_teleport",
+      "inside_teleport1",
+      "inside_teleport2",
+      "inside_teleport3",
+      "keycard_pickup",
+      "keycarddoor",
+      "keydoor",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "laptopobj",
+      "music_box_player",
+      "section2doortrig",
+      "string",
+      "touchtrigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ProjectX.exe",
+    "original_sha256": "d94f041ae96efc5d5db962c4c136ed0dc3862b663d8eb52c0a5e46261cb20c63",
+    "original_size": 285920693,
+    "source_url": "https://www.mediafire.com/file/vxcwxe44phe9cu1/nazi_zombie_ProjectX.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T03:35:54Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_projectx",
+        "loadscreen_nazi_zombie_subway",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_projectx.iwd:images/loadscreen_nazi_zombie_projectx.iwi",
+        "nazi_zombie_projectx.iwd:images/logo1.iwi",
+        "nazi_zombie_projectx.iwd:images/logo2.iwi",
+        "nazi_zombie_projectx.iwd:images/logo_cod5.iwi",
+        "nazi_zombie_projectx.iwd:images/mainmenu_background_projectx.iwi",
+        "nazi_zombie_projectx.iwd:images/menu_background_coop.iwi",
+        "nazi_zombie_projectx.iwd:images/menu_map_nazi_zombie_ProjectX.iwi",
+        "nazi_zombie_projectx.iwd:images/me_cargocontainer_decal_logo01_col.iwi",
+        "nazi_zombie_projectx.iwd:images/me_cargocontainer_decal_logo02_col.iwi",
+        "nazi_zombie_projectx.iwd:images/me_cargocontainer_decal_logo03_col.iwi",
+        "nazi_zombie_projectx.iwd:images/xlogo.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_projectx"
+    },
+    "tranche": "2",
+    "cover": "media/catalogue/projectx/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/project-x-2-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 153.2,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_projectx.ff",
+      "nazi_zombie_projectx_patch.ff",
+      "nazi_zombie_projectx.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

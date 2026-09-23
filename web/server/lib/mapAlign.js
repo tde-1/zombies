@@ -20,8 +20,21 @@ function readGlb(file) {
     const a = j.accessors[i]
     const bv = j.bufferViews[a.bufferView]
     const off = (bv.byteOffset || 0) + (a.byteOffset || 0)
-    const n = { SCALAR: 1, VEC2: 2, VEC3: 3 }[a.type] * a.count
-    const T = { 5126: Float32Array, 5125: Uint32Array, 5123: Uint16Array }[a.componentType]
+    const comps = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[a.type]
+    const n = comps * a.count
+    const T = { 5126: Float32Array, 5125: Uint32Array, 5123: Uint16Array, 5121: Uint8Array }[a.componentType]
+    const item = comps * T.BYTES_PER_ELEMENT
+    // export_all.py's optimiser (gltf-transform) INTERLEAVES vertex attributes: POSITION is
+    // every `byteStride` bytes, not packed. Read element by element when it is.
+    if (bv.byteStride && bv.byteStride !== item) {
+      const out = new T(n)
+      const dv = new DataView(bin.buffer, bin.byteOffset)
+      const get = { 5126: 'getFloat32', 5125: 'getUint32', 5123: 'getUint16', 5121: 'getUint8' }[a.componentType]
+      for (let e = 0; e < a.count; e++) {
+        for (let c = 0; c < comps; c++) out[e * comps + c] = dv[get](off + e * bv.byteStride + c * T.BYTES_PER_ELEMENT, true)
+      }
+      return out
+    }
     const buf = bin.buffer.slice(bin.byteOffset + off, bin.byteOffset + off + n * T.BYTES_PER_ELEMENT)
     return new T(buf)
   }

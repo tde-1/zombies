@@ -2827,3 +2827,531 @@ capture, not the page.) `npm test` is green.
 **Not proven:** signed in (the "Your maps" row was not drawn with a real account); phone widths;
 the launcher's window. On the live DB the cards view is just Popular + View all maps until an admin
 publishes a playlist. **Needs a client build and a site restart.**
+
+## 2026-09-23 — map page: records tab, downloads pop-over, What's in it removed
+
+B: make `/maps/:id` (`/m/<map>`) look more like ENW Movement. Put the records in their own tab
+below, drawn like Movement's but a bit bigger, with a **Watch** button on the row ("not a
+complicated flow through multiple menus"). Keep the downloads at the bottom, behind a small
+pop-up. Keep About and the comments as they are. Get rid of "What's in it" for now.
+
+**Movement, read first.** `movement-client/src/components/MapDashboard.jsx` (the board under the
+banner, comments beside it), `RecordTable.jsx` `density="board"` (rank · player · time · points ·
+behind · date · Watch; `.rt-board` 44px rows, 13px text, 14.5px time, 9.5px mono head) and
+`replay3d/WatchButton.jsx` (Watch on the row, opens the viewer in one click).
+
+**What changed (`client/src/pages/MapPage.jsx`, new `MapPage.css`)**
+
+| Before | Now |
+|---|---|
+| "What's in it" tiles (perks, Pack-a-Punch, box, wall buys, wonder weapons, dogs, power...) | removed. `features` stays on the wire. The weapon-index idea is parked in `questions.md` → Parked ideas |
+| About · Records · Recent games · What counts as beating it · Download · Versions on the left, comments on the right | two tabs under the banner. **About** is the old split with About and Comments (and Live now / Friends who beat it) untouched. **Records** is the board on its own at full width. The Records tab shows the run count. `#records` opens the page on it, and switching tabs rewrites the hash with `replaceState` |
+| board: `table.data`, # · Players · Round, "Open challenges: ..." line | Movement's board grid a size up: **54px rows, 14.5px, 17px figure, 10.5px head**. Columns are # · Players (avatars) · Round · Time · Kills · Downs · Date · **Watch**. A time board leads with Time, then Round. Your own run is tinted in the map's colour |
+| every board as a chip, all four player counts, even empty ones | a chip only for boards **with runs** and a button only for player counts **with runs**. With one of each they are plain labels ("Highest round" · "Solo"). No runs anywhere: "No records yet." |
+| Download section (archived originals + every link + checker verdict) mid-page | **Files N** button at the foot. It opens a pop-over upward, with the install action (`DownloadButton`) on top, then one line per file: name, size, source (ENW archive / link health). It closes on Esc, a click outside, or the button again. No files: no button. Versions picker beside it when a map has more than one |
+| picture credit ("Screenshot from the release post"), "Creator unknown", "N games on this map now" under Play, Recent games, the referee's finish table with its Priority column, the scanner's "Scanner verdict: ..." readme line | removed. The generated card still says NO SCREENSHOT ON FILE on its face, Play still reads Join when a game is live, and Live now is still in the right column. "Beaten by ... by reaching round N" says what counts. The scanner line was the **whole** readme on all 5 maps that have one |
+
+**Which columns show.** Time is hidden when no row has a duration. **Kills and Downs are wired but
+hidden** until a row has a value over 0. `lib/records.js rowsFor` now returns `kills`/`downs`: the
+sums of that game's `game_players` rows, NULL when the game has none. Today every value is 0 (the
+box does not report them yet; another agent is on it). When they arrive the columns appear with
+no page change. Watch shows only where a row has `replay: true` (a `replays` row for the game).
+
+**Watch** is a `Link` to `/replay/<match_id>`, the route replay.md §7a serves, so it takes one
+click and there are no pages in between. Movement opens a modal over the page. Ours goes to the
+full-bleed viewer page, which already exists and already has Back.
+
+**Server (additive, no migration):** `rowsFor` adds `replay`, `kills`, `downs`. `GET /api/maps/:key`
+asks `forMap` for 25 rows a board instead of 10. `maps.sourcesFor` adds `size_bytes` (the column
+has existed since the storage pass) so the pop-over can show link sizes.
+
+**CSS.** Everything new is in `pages/MapPage.css`, scoped under `.mapdash` and built from existing
+tokens only. The global theme is another agent's and theme.css was not touched. So theme.css
+still carries `.mdfeat*`, `.mapdash-credit` and `.mapdash-live` with nothing using them.
+`.mapdash-feats` is still used by the Easter egg block.
+
+**Proof.** A private site on **:3461** against a `better-sqlite3` backup of the live DB (in
+`tmp/scratch-data`, read-only on the source), `ZM_REPLAY_PULL=off`, and headless Edge over CDP
+(`tmp/shoot.mjs`). Nacht (stock): 1 run, columns `# | Players | Round | Time | Date | Watch`, Watch →
+`/replay/m_0afb449b`, and the viewer drew Nacht and played. Minecraft Village Remastered (custom):
+2 runs, both with Watch; the Files pop-over listed 2 (the archived `.exe`, 593 MB, and the
+mediafire link, Held). "What's in it" appeared on neither page. Screenshots are in the worktree's
+`tmp/shots/`, not committed. `npm test` is green (143 + 41 + 15 + 19 + 12 + 10 + 12).
+
+**Not proven:** signed in (the "your run" tint and the rating were not drawn with a real account);
+phone widths; a board with several player counts or categories (the live data has one solo round
+board per map); Watch on a custom map's replay, because its `.enwr` is on the box and the scratch
+site had the pull turned off. The generated placeholder card is cropped at its edges in the
+banner, and that was already so before this change. **Needs a client build and a site restart**
+(the server fields).
+
+## 2026-09-23, ~04:30 UK — theme: black, logo, scrollbar (branch of the global layer)
+
+B: *"a lot black or dark as the theme. Black mainly. Use the map colours very sparingly, only on the
+map page. The rest of the site is dark, dark and black, very serious looking, but still a derivative
+of ENW Movement."* *"Use the ENW SVG logo everywhere."* *"Clean up the scroll bar on the right."*
+Global layer only: tokens, `theme.css` shared blocks, the shell, rail, nav, shared components, the
+launcher's own pages. Page markup of `/m/:key`, `/admin`, `/id/:who`, `/records` was not touched;
+those pages move through the tokens they inherit.
+
+### Tokens (`theme.css :root` and `themes.js`, kept identical)
+
+| Token | Was (Movement) | Now | How it was derived |
+|---|---|---|---|
+| `--bg` | `#101010` | `#080808` | Movement's ground, eight steps down |
+| `--bg-grad` | `#161616 → #101010 → #0a0a0a` | `#0e0e0e → #080808 → #040404` | same angle and stops, each stop eight down |
+| `--panel-solid` | `#1c1c1c` | `#141414` | `--panel` (.05 white) over the new `--bg`, resolved |
+| `--panel-deep` | `#0a0a0a` | `#040404` | the gradient's foot |
+| `--rail-grad` | — | white .028 → .008 → 0, top down | new: the rail's ground, what is left of the WaW default gradient (overnight decision 5) |
+| `--scroll-track` / `--scroll-thumb` / `--scroll-thumb-hover` | — | `#040404` / white .12 / white .22 | new |
+| `--panel`, `--panel-2`, `--line*`, `--text`, `--muted`, `--faint`, `--accent*`, signal colours | | unchanged | Movement's rule: the greys do not move |
+
+`index.html`: `theme-color` `#080808`, an inline `html,body{background:#080808}` so nothing paints
+before the CSS, and the favicon is now Movement's own (`movement-client/public/favicon.svg`: the
+white mark on its `#0a0a0a` rounded plate).
+
+**`.btn.primary` is Movement's `.btn-accent`**: near-white on the black, not `--hot` red. Red stays
+for refusals and destructive actions (`.btn.danger`, `.um-danger`, `.wc-close`, `.tag.np`).
+This changes Sign in, Continue and Download everywhere; the map page's own Play (`.playbtn`) keeps
+the map colour.
+
+### Map colour on the map page only
+
+* `ambience.js`: the backdrop and pour paint **only for the open map on `/m/<key>`**
+  (`onMapPage()`). Home's selected map, hover previews in the list and on cards, and a profile's
+  banner leave the ground black. The calls in `Home.jsx`, `Maps.jsx`, `MapCard.jsx`,
+  `MapListPanel.jsx` and `Profile.jsx` are untouched; restoring a tier is that one test.
+  With nothing open, `data-amb` is removed rather than pouring a near-neutral WaW pair. §11e's
+  "the site is grey and the map is the colour" still holds; the grey is now black.
+* Hue washes removed outside the map page: the rail's server card and its no-art plate, the list
+  view's row wash and art plate (`.mlrow`), the search panel's no-art plate, `/settings` installed
+  maps' no-art plate. Kept: `.map-card` / `.pl-cover` (map cards), `.fcard.has-map` (a lobby row
+  wearing its map's picture), the server card's picture, and everything on `.mapdash`.
+* The rail (`.prail`) takes `--rail-grad`: near-black, top-lit, gone by the middle.
+
+### The ENW mark
+
+* `client/src/assets/enw-mark.svg`: Movement's file, byte for byte (the corrected box that starts
+  at the E's ink, 319.75 × 156).
+* `components/Enw.jsx`: `EnwWord`, Movement's `EnwWord.jsx` verbatim (the mark as the word "ENW"
+  in a sentence: a mask over `currentColor`, cap height × 1.04), and `EnwName` (mark + "Zombies").
+  `.enw-inline` CSS is Movement's verbatim.
+* `Bits.jsx` `Mark` uses the corrected viewBox (`2.05 0 319.75 156`); the old `0 0 321.8 156` carried
+  2 units of air down the left. The nav mark takes Movement's `.enw-mark-link` hover (92% → 100%).
+* Text "ENW" replaced by the mark: account menu (launcher line, "Install the ENW client"), rail
+  invite box ("Type an ENW name"), `/settings` ENW hint, `/archive` "Not playable on ENW",
+  the name picker (both lines), `/download` heading (the mark is above it, so the heading is now
+  "Install the Zombies launcher"), the 404 (mark added), the server's sign-in problem page and its
+  no-build fallback (`server/lib/enwMark.js`, inline SVG, black), the launcher's loopback sign-in
+  page (`main.js signInPage`), the launcher's screens strip (`shell.html`) and its "site is not
+  answering" page (`placeholder.html`, the lockup and both prose mentions).
+* **Not a lockup with ZOMBIES under the mark.** B took that foot off (the plain ENW logo, above).
+  "ENW Zombies" in a line is the mark, a space, then "Zombies".
+* Left as text on purpose: `<title>`s, `aria-label`s, input placeholders ("ENW name…"), tooltips,
+  data values (`ENW-Verified`, `ENW-<fingerprint>`), Discord messages.
+* **Not changed, owned by other lanes tonight:** Admin's "ENW link" section title, Profile's "No
+  such player on ENW Zombies." and its banner tooltip. Each is a one-line `<EnwWord />` swap.
+
+### Scrollbars
+
+`theme.css`: one set of `::-webkit-scrollbar` rules for the whole document (Movement's rail thumb
+made global: a pill inset 2px by a transparent border, 10px, transparent track inside containers,
+`#040404` on the page itself) and, only where those pseudo-elements do not exist (Firefox),
+`scrollbar-color` + `scrollbar-width: thin` (inside `@supports not selector(::-webkit-scrollbar)`,
+because in Chromium 121+ `scrollbar-color` switches the pseudo-elements off). `color-scheme: dark`
+on `html` for native controls. Containers that hide their bar (`.maprow-track`, `.mv-nav-center`)
+still do. The launcher's site view is the site, so it inherits this; `shell.css` and
+`placeholder.html` carry the same rules for the launcher's own screens.
+
+Launcher leftovers of the old olive palette went at the same time: the boot art gradient
+(`#2d3021`), the toast (`#1a1c15`), the focus ring (`rgba(123,126,88)`), and both windows'
+`backgroundColor` (`#101010` → `#080808`).
+
+### Bug 14: "test server never came up on 33991"
+
+`test/_port.js`: `freePort(preferred)` takes 33991 when nothing holds it and an OS-assigned port
+when something does; `waitHttp()` polls with a jittered backoff (150 ms → 1 s) to a 60–90 s deadline
+and stops at once, with the child's stderr tail, if the child exits. `local-run.js` uses both,
+awaits the old child's exit before a restart, and respawns a child that died on `EADDRINUSE`.
+`launcher-signin.js` picks its three ports the same way (it used to poll 15 s and carry on
+regardless). Proof: with a dummy listener holding 33991 and **two `local-run.js` running at once**,
+both passed 41/0.
+
+### Verified (headless Edge over CDP, scratch site on :3471, `VACUUM INTO` copy of the live DB)
+
+Screenshots in the worktree's `tmp/shots/` (not committed): home signed out and signed in, home
+with a map open, `/maps` cards and list, `/m/nazi_zombie_ali`, `/records`, `/archive` scrolled
+(the page scrollbar), `/download`, the 404, `/settings`, the rail's invite box, the account menu,
+`/id/myu`, `/admin`, the name picker, the sign-in problem page, and the launcher's placeholder
+(opened as a file). Probed: `data-amb` is set on `/m/<key>` and absent on `/`, `/maps` and after a
+card hover. `web npm test` green (143 / 41 / 15 / 19 / 12 / 10 / 12). A second run at 04:15 had
+`map-align.js` at 4/6: it reads `ZombiesDev\maps\*.glb`, and `nazi_zombie_prototype.glb` was
+re-exported at 04:13 by another lane; main's own checkout fails it the same way. Launcher
+`run-all.js` 137/1, the one failure is the worktree having no built client DLL.
+
+**Not proven:** the real launcher window (frameless title bar over the black nav, the shell's
+screens); Firefox; phone widths. **Needs a client build and a site restart; the launcher pages ship
+with the next launcher build.**
+
+## 2026-09-23 — admin: parity with Movement and beyond
+
+B: "Really clean up the admin panel. Bring it up to parity with ENW Movement, and even beyond." `/admin`
+is rebuilt on Movement's operator console (`movement-client/src/pages/Admin.jsx`, `components/admin/*`,
+`server/lib/adminLog.js`), plus the pages Zombies needs and Movement does not have.
+
+**Shape (Movement's).** Header "ENW Zombies · Operator console / Administration" with live facts; one
+pill tab bar with counts, **grouped** Operate · People · Content · Log (ours has twice Movement's tabs);
+a to-do strip of clickable counts (at the door, reports open, key changed, no live playlists, flagged
+results, boxes offline); all state in the URL (`?tab=`, `?user=`, `?filter=`, `?flag=`), old tab names
+aliased. Movement's mapstaff `ConfirmDialog` guards **every** destructive action (Movement itself still
+uses `window.confirm` in most places): Esc/backdrop closes, optional/required reason, a typed phrase for
+the irreversible ones. Toasts after each action. One table component with search, sort and paging
+(client-side, or server-side for People, Maps, Games). CSS: `pages/admin/admin.css`, all `.adm-*`,
+global tokens only.
+
+### Parity table
+
+| Movement (tab / feature) | Ours | Notes |
+|---|---|---|
+| Now: health alerts, running servers, fleet, modes offline, replay gaps | **Now** (stats, boxes strip, latest log, lease a game, sweep) + **Boxes** | key-change alert is a banner on every tab |
+| ServerLogPanel (roster here/was, chat, say) | **Boxes** lease rows: players with seat state, slot, CPU/RAM/uptime, Watch | no "say": the protocol has no site-to-game line per match |
+| Log (lanes, search, actor, window, Load older) | **Log**, same, over `activity_log` | lanes boxes/people/moderation/records/content/other |
+| audit(): 49 explicit calls | explicit `audit()` on every admin write **plus** `adminLog.guard()` catch-all (`admin.action`) | beyond: no staff write goes unlogged; secrets redacted |
+| People: At the door (multi-select approve), Everyone | **People**: At the door (multi-select, approve pasted SteamID64s), Everyone (server search/filter/sort/paging), Active bans | the beta gate |
+| PersonSheet: standing, holdings, bans/warnings, their log | **Person sheet**: approved/mod/admin/archivist/VIP toggles, rename (admin), ban/infraction with duration + reason, lift, games, badges, log | no self-demotion, last admin stays (server-side, Movement's rule) |
+| Reports (Looking at it / Done / Dismiss, reply) | **Reports**, status chips, note, same answers | |
+| Maps: reports, offline, review queue, MapPanel | **Maps**: catalogue (health chips + counts, hidden, sort, paging), health select, Hide, map of the week, row/playlist membership, guide count, our-box level | broken asks first (it refuses leases) |
+| Records moderation (retire/unretire) | **Records**: replay grade, Verify vs pinned key, Void with reason, Watch | |
+| Mode home: playlists + badges | **Playlists** (editor), **Rows** (home shelves), **Badges** (holders, award/revoke, new staff badge) | |
+| — | **Games**: results filtered by referee flag (result_mismatch, instance_retired, …) with counts; summary JSON, DLL build, exe sha | Zombies-only |
+| — | **Chat**: global channel incl. removed, search, origin, system lines, Remove/Restore | party/DM stay private |
+| — | **Guides**: weakest first, Hide/Show/Delete (tombstone) | |
+| — | **Release**: latest.yml (version, date, installer present + size match, sha512, bucket, earlier), DLL per box | Zombies-only |
+| Videos (render/QC) | — | no equivalent |
+| roles user/mod/admin/owner | mod / admin (+ archivist) | no owner tier |
+
+### Zombies pages
+
+* **Boxes** (admin): reads `boxes.last_status_json` (agent heartbeat), live `assignments`, `lib/seats.js`
+  and `presence`. Per box: slots leased/max, agent reserve, protocol, connect address, key pin, last DLL
+  build heard; Settings edits address, max games, reserve; Enable/Disable (confirm). Per lease: players
+  and seat (in game / left / not joined / unknown), slot, CPU, RAM, uptime; **Retire** (cancel; the agent
+  retires an unlisted lease on its next poll, host.md §13.2) and **Restart** (fresh lease for the same
+  players, superseding theirs). **The guard is server-side** (`lib/adminBoxes.js`): while anybody is in,
+  both answer 409 with their names until `confirm` = exactly those SteamIDs; the panel lists the names and
+  wants "end it" typed. "In" = seat connected, or presence in that match < 90 s, or, for a `live` lease the
+  site has no seat data on since it started, everybody leased (marked unknown). The old
+  `POST /lease/:id/cancel` uses the same guard. Box creation stays in `tools/register-box.js` (secret).
+* **Playlists**: list (order, Publish/Unpublish) + editor (name, blurb, hidden/live/scheduled with UTC time,
+  drag or arrow order, remove, add by search, warnings for hidden/broken/not-on-our-box maps, Save/Revert,
+  Delete with typed slug, admin only). New playlists start hidden.
+* **Release**: `web/public/updates/latest.yml` (`ZM_UPDATES_DIR` overrides). The site is never told the
+  DLL's sha256; shown: build stamp + exe sha the referee heard (last game's `summary.hashes`),
+  `dll_sha256` if a future heartbeat sends it, and a **noted** deploy sha + commit (`settings` key
+  `box_dll:<box>`).
+
+### API added (`routes/admin.js`)
+
+`GET /log`, `/log/counts` · `GET /users` · `POST /approve {steam_ids, approved}` · `GET /bans` ·
+`GET /games`, `/games/:id` · `GET /chat`, `POST /chat/:id/remove|restore` · `GET /maps` ·
+`GET/POST/PUT/DELETE /playlists` (keys validated, 409 on slug) · `GET /boxes/live` ·
+`POST /boxes/:name/address` · `POST /leases/:matchId/retire|restart` · `GET /release`,
+`POST /release/box/:name` · `GET /badges/:id/holders`. Existing paths kept; previously unlogged writes
+(role, map edit, playlists, badges, report resolve, infraction, capacity, enable) now log.
+
+**CLI to panel.** approve.js → People; lease-cli.js → Now (lease) + Boxes (retire/restart);
+register-box `--address`/capacity → Boxes Settings. Stay CLI: register-box creation, wipe-demo,
+adopt-account, seed/align names, import-movement-profiles, live-bridge/local-run.
+
+### Seed the first playlists (coordinator)
+
+Live DB has 0 playlists. `web/tools/seed-playlists.js`: additive, idempotent (existing slug left alone;
+missing/broken/hidden keys skipped and named), `VACUUM INTO` backup before any write.
+
+```
+cd web
+node tools/seed-playlists.js                   # dry run against web/data
+node tools/seed-playlists.js --apply           # hidden; publish in Admin → Playlists
+node tools/seed-playlists.js --apply --live    # or publish at once
+```
+
+Set (all maps load on our box): Stock (4), Community classics (8), Minecraft (2), Small and fast (8),
+Big maps (8), Christmas (5). Proven on a copy: 6 created; second run "exists, left alone".
+
+### Tests, proof
+
+`test/admin.js` (in `npm test`, 23 checks): walks the router (61 routes all carry requireMod/Admin; all
+401 anon and 403 player; the 28 admin-only 403 for a mod); gate, roles, bans, playlist CRUD and public
+order, seed plan, map flags, chat, games by flag, release + DLL note (no secret in responses), the box
+guard (409 naming who, wrong list refused, restart supersedes, unknown seats on a live game, presence),
+the log (catch-all, filters, cursor, redaction). Full `npm test` green. Screenshots: headless Edge,
+private profile, scratch port 3587, copy of the live DB with the seed applied and a simulated online
+box-a with two leases: `tmp/admin-shots/admin-*.png` in the worktree (`admin-boxes-retire-who.png` is
+the names dialog).
+
+### Unproven
+
+The real box (Boxes saw a simulated heartbeat only); retire/restart against zombies-dev; a moderator's
+view (admin screens only); phone widths; the launcher window. Needs a client build and a site restart;
+the seed is the coordinator's to run.
+
+## 2026-09-23, early — profile/records/invites/chat dedupe
+
+Four jobs, each compared against Movement (`C:\Users\b\Desktop\CSGO-Matchmaker`; the invites are on
+**`origin/main`**. The local `main` there is 1,500 commits behind and does not have them).
+
+### Chat: the duplicate lines on joining a game (root cause first)
+
+B saw lines repeated in global chat when he joined a game. **The ring has no duplicate rows.** A
+`VACUUM INTO` copy of the live DB shows every message once. The duplicates happened on the display
+side, and three separate things caused them:
+
+1. **The overlay's first poll replayed the ring.** `/api/game-chat/feed?g=0` answered with
+   `chat.tail(20)`, and `chat_overlay.cpp` stamps each line with the moment it arrived
+   (`line_from_json`, `l.arrived = GetTickCount()`). So on joining a game, the HUD showed the last
+   five ring lines as if they had just been said. When B joined at 02:41, those five included two
+   copies of `76561198000000001 started a game on nazi_zombie_fear_mc_2` from earlier games, with his
+   own identical line under them. **Fix:** a first poll now returns the cursor and no lines. That is
+   the box drain's rule (`routes/gameserver.js`, since=0). The cursor is taken *before* the wait, so a
+   fresh client that waits gets exactly what was said after it asked. A client can still ask for the
+   backlog with `&history=1`; every backlog line then carries `backfill: true`. The current DLL never
+   asks, so its open window starts empty too. Showing history in the window but not on the HUD
+   needs a DLL change (client lane).
+2. **One game produced several system lines.** The live ring has `B's game … ended on round 1`,
+   then `somebody's game on Nacht ended`, then `somebody's game on Unknown map ended`, all for one
+   instance. The host resets its starter on the post-game `map_loaded`, and the teardown sends
+   `game_over` again with nobody to name. A post-game restart also re-announced the same player's
+   start. **Fix (`lib/chatSystem.js`):** started, joined and ended are said **once per match**, and
+   an end with nobody to name is not said at all. The 20 s key now includes the match. Before, it did
+   not, so two different games by the same player on the same map merged into one line.
+3. **The web dock's merge.** The dock already deduped by id. But its fill *reset* the list, which
+   dropped a live line that arrived before the backlog did, and a socket reconnect never caught up.
+   **Fix:** `client/src/chatLines.js` is one merge, keyed and ordered by ring id and capped. The
+   backlog, the socket, and a reconnect catch-up (`GET /api/chat?since=<newest id held>`, new) all go
+   through it.
+
+`test/chat-dedupe.js` reproduced all three first: **11 of 13 failed before the fix, 12/12 pass
+after** (one check was merged). It is in `npm test`. One existing `run-all` check now uses a second
+player for `joined`, because the player who started a match no longer also "joins" it.
+
+### Records: Watch beside the row
+
+Movement's `replay3d/WatchButton.jsx` is ported as `components/WatchButton.jsx` (`btn btn-sm
+r3d-watch`; the CSS comes from Movement's theme.css and lives in `components/watch.css`). **It links
+straight to `/replay/<match>`**, and the viewer route is unchanged (replay.md §7a). Movement's
+button opens a modal and pushes `/watch/…`. Ours is already a route, so the button is a link, and
+the browser's own right-click gives "copy link". The old flow went through the game page's "Watch in
+3D". The button renders nothing when there is no replay. It appears in four places:
+
+* `/records`
+* the map page's boards (`MapPage.jsx`: one import and one `<td>`)
+* the profile's Records, as Movement's `.rec-cell`, with the button beside the link rather than
+  inside it
+* the profile's best round
+
+On the server, `records.rowsFor`, `hub` and `heldBy` now carry `match_id` and `replay`, which comes
+from an `EXISTS` check on `replays`.
+
+### Profile: Movement's, trimmed
+
+* **Order:** Movement's head (banner and identity bar), then the rail, then **Most played /
+  Recently played** (Movement's titles), then **Records**, then Overall, then the wall.
+* **A stat with no value is hidden, not dashed.** This applies to the identity bar strip and to
+  Overall. Kills, downs and revives stay hidden while the server sends null.
+* **Removed as verbose, empty or duplicated:**
+  * Overall's Time played, Records held and Member since (the bar and rail already show them)
+  * the rail's Total time played
+  * "No badges yet"
+  * the empty tagline
+  * the `—` durations
+  * long empty-state and settings copy. Settings is now "Privacy", with "Played maps" and
+    "Comments".
+
+### Invites: Movement's party invites, on the zombies party row
+
+Zombies already had invite by name or SteamID, decline, cancel and the rail card. What was missing,
+and is now added (`lib/parties.js`, `routes/site.js`):
+
+| | Movement | here |
+|---|---|---|
+| accept | `POST /api/party/invites/:id/accept` | same; used, expired and withdrawn invites are each refused by name |
+| push | `invite_received`, `invite_withdrawn`, `party_updated{notice}` via `emitUser` | same names, to `user:<sid>` rooms (`parties.setEmitter`, `index.js`) |
+| notices | declined, left, closed, withdrawn, removed, kicked | same, plus joined |
+| party emptied | pending invitees told it closed | same |
+| expiry | none | **30 min**, because an invite here also opens a friends-only or private lobby; re-inviting restarts the clock |
+| link | none in movement-client (GOnext has custom-lobby join codes) | **invite link** `/party/<CODE>`: 8 characters from Movement's `codes.js` alphabet, in its own `link_code` column (not the public party code), leader can reset it, 20 lookups/min per account |
+
+**Routes:**
+
+* `POST /api/party/link` — any member; with no party yet, one is made from the stage
+* `POST /api/party/link/reset` — leader only
+* `GET /api/party/link/:code` — preview
+* `POST /api/party/link/:code/join` — approved accounts only; full parties refuse
+
+**Client:**
+
+* **`components/InviteToasts.jsx`**, rendered by the rail provider on every page:
+  * the invite toast shows who invited you, the map, size/4, time left, and Accept / Decline
+  * notice lines
+  * a Join card for `/party/<CODE>`, and for `/party/<id>` when an invite to that party is waiting.
+    The launcher's `enw-zombies://party/<x>` opens exactly these paths, so **no launcher change was
+    needed**.
+* **The rail:** refreshes on the three events, accepts by invite id, and "Copy link" replaces the
+  party code, which nothing could use.
+* **Accept and link-Join go through the play gate.** In a browser they lead to `/download`, whose
+  "Open in launcher" is `enw-zombies://party/<CODE>`.
+
+`test/invites.js`: 15 checks over HTTP through the real router, in `npm test`.
+
+### Tests and proof
+
+`npm test` passes: run-all 144, local-run 41, sign-in 15, game-chat 19, bucket 12, map-align 10,
+guides 12, chat-dedupe 12, invites 15. local-run was run with `ZM_TEST_PORT=34771`, because 33991
+was held by another agent's process. The screenshots come from a private site on **3473** running a
+`VACUUM INTO` copy of the live DB (jamie visiting, stew inviting). They are in
+`C:\Users\b\Desktop\Zombies\tmp\profile-records-invites\`:
+
+* `profile-myu-visitor.png`
+* `records.png`
+* `map-board-watch.png`
+* `invite-toast.png`
+* `invite-withdrawn-note.png`
+* `invite-link-card.png`
+
+### Unproven
+
+* **The in-game half of the chat fix has not been seen in a game.** The server change removes the
+  HUD replay whatever the DLL does, but nobody has joined a game since.
+* Two browsers exchanging an invite through Steam sign-in. The proof used test sign-in on the copy.
+* After a signed-out visitor signs in from the link card, they land on home, because `/auth/steam`
+  has no return path.
+* The Watch-to-viewer path on a map with no `.glb` export. The viewer handles it (replay.md §7e).
+
+**Needs a client build and a site restart.** No live data was written.
+
+## 2026-09-23, ~04:00–05:00 UK — bug 7: kills / downs / revives / score reach `game_players` (commit `872152b`)
+
+**What the live DB said** (a read-only copy of `web/data/zombies.db`, never the file itself):
+every real game has all-zero `game_players` rows — score, kills, headshots, downs, revives and
+points_earned are 0 on all 17 rows (11 of B's, verified). B's `m_8a0a8e75` `summary_json.reported`
+row has no score, downs or kills field at all.
+
+**The cause is upstream** (referee.md §16): the DLL could not read the counters. The site had one
+bug of its own on the path: `results.js` wrote `stats.<x>` in preference to `<x>`. A pre-fix host
+put its raw fold in `stats` and the value reconciled with the game's own result at the top level,
+so the reconciled value was thrown away.
+
+**Changes:**
+- `server/lib/results.js`: `game_players.kills/headshots/downs/revives` =
+  **max(`stats.x`, `x`)**. Both are lower bounds on a monotonic counter, so the larger is right
+  from either kind of host.
+- `server/routes/replay.js` `buildTrack`: each player now carries a **`counters`** timeline
+  `[[ms, kills, downs, revives, headshots], …]`, built from `stats` events and the snap fields a
+  §16 DLL sends, with one entry per change. It is `null` for older files. `revive.by` is kept in
+  the feed.
+- `client/src/replay3d/ReplayViewer.jsx` Tab scoreboard:
+  - uses `counters` when present, so kills are attributed per player even with company;
+  - otherwise the old rules. The **Revives** column counts `revive.by` (revives given, like
+    WaW's), falling back to `slot` for old sims.
+  - Points already switch on by themselves, because `has_score` becomes true once a snap carries
+    `score`.
+- `server/lib/profile.js`: comment only. The "show a column once any real game has a non-zero
+  value" rule turns Kills/Downs/Revives on by itself after the first real game on a §16 box.
+- Tests (`test/run-all.js`, +2):
+  - `game_players` takes the larger of `stats.x` and `x`;
+  - the track's counters are one entry per change, keep the reviver, and are null for a
+    pre-§16 file.
+  
+  **`npm test`: 145 / 41 / 15 / 19 / 12 / 10 / 12 passed, 0 failed** (no 33991 flake this time).
+
+**End to end on real data** (`ZombiesDev\bug7\e2e.mjs`, scratch `ZM_DATA_DIR`): the real local-dedi
+link transcript `bug7b` went through the real host `Referee` and then `results.ingest`. It gave
+`game_players` `score 500, downs 2, points_earned 30`, and `profile.overallFor` returned
+`recorded.downs true, downs 2`. Kills were **synthetic** (`--synthetic-kills 3`, clearly an
+injected `stats` event) and gave `kills 3` with `recorded.kills true`.
+
+**Needs:** a client build (`npm run build`) and a site restart for the viewer and route. The
+writer change only matters once a host posts counters. Existing zero rows are not rewritten: the
+games had no data to recover.
+
+## 2026-09-23, ~05:30 UK: copy audit, 1,580 strings reviewed, 99 changed, before/after
+
+B: "Do an audit over the entire site for any AI-looking over-explaining text and make sure
+everything is as concisely worded as possible." Voice matched to ENW Movement: short, plain,
+sentence case, British spelling, no hedging, no help text that restates its control, no prose
+em-dashes, one line per state.
+
+**Scope.** Every user-visible string in `web/client/src` (pages, components, admin, settings
+data, replay viewer), `web/server` (routes, lib, middleware: errors, notices, chat system lines,
+the sign-in problem pages) and `launcher/src/renderer` (shell, placeholder, password prompt).
+Extracted with a throwaway script (JSX text, string literals with words, template literals),
+then read file by file; multi-line JSX in the priority screens read directly. About 1,580
+strings after dropping SQL, class names and SVG paths. Left alone on purpose: keys, ids, dvar
+names, WaW's own menu labels, Movement's verbatim username verdicts, the host tool's replay
+verdicts (`VALID — …`, shared with `infra/host-agent`), and `launcher/src/main` (another lane
+owns the Steam boot-screen lines, which are already one line each). Em-dashes used as the
+empty-value placeholder in tables stay.
+
+**Already clean.** Most of the site: the name gate, `/download`, the party rail, invite toasts,
+the map page, records, admin tables and confirms had been written in Movement's voice tonight.
+Changes there are small.
+
+**Counts.** 99 strings changed: launcher renderer 35, site client 44, server messages 20.
+No text added. Two test assertions updated with their strings (`web/test/run-all.js`: the chat
+"went down" line, the unpinned-key reason).
+
+| # | Where | Before | After |
+|---|---|---|---|
+| 1 | launcher, setup | Keep ENW maps, saves, profiles and settings in that folder too — so plain Steam World at War never sees anything of ENW's, and ENW never writes to your own World at War data. / Keep ENW's game settings and logs in that folder. | Keep ENW maps, saves, profiles, settings and logs in that folder. |
+| 2 | launcher, settings | Lets ENW's own copy of the game use 4 GB instead of 2 GB - the big custom maps (ORBiT, UGX Requiem) run out of memory without it. It is two bytes in the header … puts those bytes straight back. | Needed for ORBiT and UGX Requiem. Only changes ENW's copy of the game. |
+| 3 | launcher, site down | Zombies lives on the site, so there is nothing to show until it is back. The launcher keeps checking when you press Try again (or Ctrl+R). | Zombies runs on the site. Try again, or press Ctrl+R. |
+| 4 | launcher, password | One shared password, sent to you with the launcher. It is not your account password. | The beta password sent with the launcher. Not your Steam password. |
+| 5 | launcher, password | That password was not accepted. | Wrong password. |
+| 6 | launcher, installed | Press Play on a map. Nothing here needs doing. | Press Play on a map. |
+| 7 | launcher, setup | What setting up will change | What this does |
+| 8 | launcher, setup | Install the ENW client there as binkw32.dll, keeping the original beside it. | Install the ENW client there as binkw32.dll. The original is kept. |
+| 9 | launcher, setup | You own World at War, but it is not installed / Install it through Steam. | World at War is not installed (body removed; the button says it) |
+| 10 | launcher, setup | We could not find World at War | World at War not found |
+| 11 | launcher, setup | It is somewhere else / Find it myself | Choose another folder / Choose folder |
+| 12 | launcher, settings | Off by default: with it on the game is capped to your monitor's refresh rate. | Caps FPS to your refresh rate. |
+| 13 | launcher, settings | Borderless uses the native size of that display and alt-tabs instantly. / Borderless always fills this display. | (removed) |
+| 14 | launcher, settings | Records allow up to 250; the server enforces allowed values. | Records allow up to 250. |
+| 15 | launcher, settings | WxH. Blank means the native size of the chosen display. | WxH. Blank for native. |
+| 16 | launcher, deep link | That link opened the launcher, but it did not name a map or a party. | That link has no map or party. |
+| 17 | launcher, updates | The update could not be checked. (…) | Update check failed: … |
+| 18 | launcher, setup | Done, but something in your install changed. Check the log. | Done, but your install changed. Check the log. |
+| 19 | /settings signed out | Sign in to keep your World at War settings on your account. They follow you to any PC you launch from. | Sign in to save your settings to your account. |
+| 20 | /settings ENW | saved to your account and applied at your next launch. changes you make in the game's own menus come back here after you quit. | saved to your account, applied at next launch. in-game changes sync back when you quit. |
+| 21 | /settings ENW | open this page in the ENW launcher to see the client here | open in the ENW launcher to see the client |
+| 22 | /settings omitted | options_sound drives it through ui_outputConfig and engine-evaluated visibility expressions that were not decoded; … PCGamingWiki's documented way to break sound. | The game auto-detects it. Forcing it can break sound. |
+| 23 | /settings omitted | Online options for Activision's own co-op and multiplayer. ENW games do not use them. | Not used in ENW games. |
+| 24 | /settings maps | no maps downloaded yet. a map's Download button puts one here. | no maps downloaded. |
+| 25 | /settings maps confirm | Remove X? 1.2 GB is freed. You can download it again. | Remove X? Frees 1.2 GB. |
+| 26 | map page, rail card | Download tooltip: Download now, play later | (removed) |
+| 27 | party rail | None of your friends are online. / Nobody else is online. | No friends online. / Nobody else online. |
+| 28 | party rail | The server is kept for you for about N more minutes | Kept for N more min |
+| 29 | profile comments | Nobody has posted on your profile yet. / No comments for X yet. | No comments yet. |
+| 30 | profile comments | Post comment | Post |
+| 31 | profile | Your banner is the one on your ENW Movement profile — change it there and it changes here | Your banner comes from ENW Movement |
+| 32 | badges | You can pin 3. Unpin one to make room. | Max 3 pinned. |
+| 33 | 404 | That page doesn't exist / Back to the home page | Page not found / Home |
+| 34 | chat system | X just went down on round 30 on Verrückt | X went down on round 30 on Verrückt |
+| 35 | sign-in page | Steam sent us back, but the answer did not check out. That is usually a sign-in that was left open too long, or Steam having a bad minute. | The sign-in was left open too long, or Steam had a problem. |
+| 36 | sign-in page | The launcher opened this page more than fifteen minutes ago, so it stopped waiting. | The launcher stopped waiting after 15 minutes. |
+| 37 | sign-in page | Steam did not sign you in, so nothing changed here. / … again when you are ready. | Nothing changed. / … again. |
+| 38 | Local game notice | Stored as a Local game. It earns no badge, no record and no XP, and its replay is not record evidence. | Stored as a Local game. No badges, records or XP. |
+| 39 | replay viewer | No world model for X yet — showing players and zombies over a grid at the floor they walked on. | No world model for X yet. Players and zombies only. |
+| 40 | admin, box | It stops authenticating: no new leases, and its games cannot post results until it is enabled again. | No new leases, and its games cannot post results. |
+
+Also changed, not in the table: the other admin confirms (restart, unknown seats, rename), the
+replay grade reasons (`lib/replays.js`), the launcher-cancel refusal, the stock-map download
+note, the replay scoreboard footnote, and every prose em-dash on those screens (tab titles,
+`Live` heading, badge tooltips, launcher candidate cards) turned into `·` or `:`.
+
+**Tests.** `web` `npm test`: all ten suites pass (144, 41, 15, 19, 12, 10, 12, 23, 12, 15).
+`launcher` `node test/run-all.js`: 165 passed, 1 failed, the pre-existing "this checkout must
+have a client DLL to ship" in a worktree; `waw-settings.js` 14/0, `modcompat.js` 6/0. Client
+`vite build` clean.
+
+**Needs a client build and a site restart; the launcher strings ship with the next launcher
+release.** No live data was written.

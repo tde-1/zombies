@@ -29,13 +29,20 @@ import json
 import os
 import re
 import subprocess
+import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 HOST = "zombies-dev"
-FAKE = "76561198000000001"
+FAKE = "76561198000000001"   # the popular-64 run; lane 2 uses it now, so --player overrides
+FAKES = {"76561198000000001", "76561198000000002", "76561198000000003"}
+# --player: tranche 2 leases as ...0002 (the agent-reserved slot) so it never collides with
+# lane 2's ...0001. --lease-repo: the checkout whose lease-cli (and web/data DB) the LIVE site
+# runs -- a worktree has no web/data, and its web/server may hold unmerged changes.
+PLAYER = [FAKE]
+LEASE_REPO = [REPO]
 ZDEV = "/home/waw/pfx/drive_c/zdev"
 MODS = "/home/waw/waw-en/mods"
 
@@ -55,6 +62,55 @@ def is_idle(line):
     return bool(re.search(r"assignment changed: idle\b", line))
 
 
+# ---- tranche 2 (2026-09-23): the box runs up to three instances now (dedi.md s19) ----------
+# "idle" is no longer the question (and s20.2 says journal idle was never safe on its own).
+# The question is: is a REAL, verified player in a live instance right now? If so we do not
+# lease at all -- the box has ~900 MB of free RAM and a second WaW beside a player's game
+# is how that game dies. Reconstructed from the host agent's own journal since it started:
+#   booted inst-N match=m_x kind=game map=<bsp>   -> live
+#   inst-N auth slot K <name> <id64>: ALLOW ... identity verified   -> a real player in it
+#   host/inst/inst-N exit code=...                 -> gone
+def live_instances():
+    since = ssh("systemctl show enw-host-agent -p ActiveEnterTimestamp --value").strip()
+    j = ANSI.sub("", ssh("journalctl -u enw-host-agent --since '%s' --no-pager -o cat | grep -E "
+                         "'booted |identity verified|exit code='" % since, timeout=90))
+    # (grep only on plain words: the agent colours its log, and an ANSI code sits between
+    # `host/inst/inst-N` and `exit` -- the regexes below run after ANSI is stripped)
+    live = {}
+    for ln in j.splitlines():
+        m = re.search(r"booted (inst-\d+) match=(m_[0-9a-f]+) kind=\S+ map=(\S+)", ln)
+        if m:
+            live[m.group(1)] = {"match": m.group(2), "map": m.group(3), "players": set()}
+            continue
+        m = re.search(r"(inst-\d+) auth slot \d+ .*?(\d{17}): ALLOW.*identity verified", ln)
+        if m and m.group(1) in live:
+            live[m.group(1)]["players"].add(m.group(2))
+            continue
+        m = re.search(r"host/inst/(inst-\d+) exit code=", ln)
+        if m:
+            live.pop(m.group(1), None)
+    return live
+
+
+def mem_available_mb():
+    out = ssh("awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo").strip()
+    return int(out) if out.isdigit() else 0
+
+
+def box_gate(min_mem_mb=650):
+    """(ok, why). No live instance may hold a verified player that is not one of our fakes,
+    and the box must have min_mem_mb available for our one instance."""
+    live = live_instances()
+    real = {i: v for i, v in live.items() if v["players"] - FAKES}
+    if real:
+        return False, "real player live: " + ", ".join("%s %s %s" % (i, v["map"], ",".join(sorted(v["players"])))
+                                                     for i, v in real.items())
+    mem = mem_available_mb()
+    if mem < min_mem_mb:
+        return False, "box MemAvailable %d MB < %d MB (%d live instance(s))" % (mem, min_mem_mb, len(live))
+    return True, "%d live instance(s), none with a real player; MemAvailable %d MB" % (len(live), mem)
+
+
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
@@ -69,8 +125,8 @@ def box_now():
 
 
 def lease(bsp):
-    p = subprocess.Popen(["node", os.path.join(REPO, "web", "tools", "lease-cli.js"), "--map", bsp,
-                          "--player", FAKE, "--proof"], cwd=REPO, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    p = subprocess.Popen(["node", os.path.join(LEASE_REPO[0], "web", "tools", "lease-cli.js"), "--map", bsp,
+                          "--player", PLAYER[0], "--proof"], cwd=LEASE_REPO[0], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          text=True)
     match = None
     t0 = time.time()
@@ -88,8 +144,8 @@ def lease(bsp):
 
 
 def cancel(match):
-    r = subprocess.run(["node", os.path.join(REPO, "web", "tools", "lease-cli.js"), "--match", match,
-                        "--cancel"], cwd=REPO, capture_output=True, text=True)
+    r = subprocess.run(["node", os.path.join(LEASE_REPO[0], "web", "tools", "lease-cli.js"), "--match", match,
+                        "--cancel"], cwd=LEASE_REPO[0], capture_output=True, text=True)
     return (r.stdout + r.stderr).strip()
 
 
@@ -112,11 +168,13 @@ def prove(bsp, hold, wait_busy, load_wait=150):
            "unproven": "no client joined; server-side load only"}
     t0 = time.time()
     while True:
-        line = last_assignment()
-        if is_idle(line):
+        ok, why = box_gate()
+        if ok:
+            res["gate"] = why
             break
+        print("  waiting: %s" % why, flush=True)
         if time.time() - t0 > wait_busy:
-            res.update(result="skipped", reason="box busy: " + line[-120:])
+            res.update(result="skipped", reason="box busy: " + why[-160:])
             return res
         time.sleep(60)
     since = box_now()
@@ -137,15 +195,23 @@ def prove(bsp, hold, wait_busy, load_wait=150):
             j = journal_since(since)
             # Somebody else's lease replaced ours (B, or another lane): the host SIGTERMs our
             # instance. That says nothing about the map (mr_freeze's first run, 22:33:43).
-            other = [x for x in re.findall(r"assignment changed: leased \S+ (m_[0-9a-f]+)", j) if x != match]
-            if other:
-                preempted = other[0]
-                break
-            # ...or our lease was dropped to idle by something other than us (23:27-23:33 on
-            # 2026-09-22 every lease on the box went idle 3 s after it was made).
-            after = j.split("leased %s %s" % (bsp, match), 1)
-            if len(after) == 2 and re.search(r"assignment changed: idle\b", after[1]):
+            # Multi-slot (dedi.md s19): another lane's lease no longer replaces ours, so the
+            # question is only whether OURS left the host's lease set before we cancelled it.
+            # `assignment changed: leased N: m_a (x), m_b (y)` lists every live lease.
+            seen = dropped = False
+            for ln in (x for x in j.splitlines() if "assignment changed:" in x):
+                if match in ln:
+                    seen = True
+                elif seen:
+                    dropped = True
+            if dropped:
                 preempted = "idle (our lease was dropped before we cancelled it)"
+                break
+            # A real player arrived on the box while we were testing: give the RAM back now.
+            realp = [x for x in re.findall(r"auth slot \d+ .*?(\d{17}): ALLOW.*identity verified", j)
+                     if x not in FAKES]
+            if realp:
+                preempted = "idle (a real player joined the box; our test yielded)"
                 break
             m = re.search(r"booted (inst-\d+) match=%s" % match, j)
             if m:
@@ -187,10 +253,10 @@ def prove(bsp, hold, wait_busy, load_wait=150):
         p.kill()
         t1 = time.time()
         while time.time() - t1 < 90:
-            if is_idle(last_assignment()):
+            if not inst or inst not in live_instances():
                 break
             time.sleep(5)
-        res["idle_after"] = is_idle(last_assignment())
+        res["idle_after"] = not inst or inst not in live_instances()
     return res
 
 
@@ -201,11 +267,61 @@ def main():
     ap.add_argument("--wait-busy", type=int, default=900)
     ap.add_argument("--load-wait", type=int, default=150,
                     help="seconds to wait for map_loaded (big zones can take >150 s on the box)")
+    ap.add_argument("--player", default=FAKE, help="fake SteamID to lease as (never a real one)")
+    ap.add_argument("--lease-repo", default=REPO, help="checkout whose web/tools/lease-cli.js the live site uses")
+    ap.add_argument("--report", default="boxproof.json", help="reports/<name> to merge results into")
+    ap.add_argument("--stage-from-bucket", action="store_true",
+                    help="box_stage.py --from-bucket before each lease, --remove after (rotating: the box disk is full)")
+    ap.add_argument("--map-list", help="file, one bsp per line (# comments)")
+    ap.add_argument("--skip-done", action="store_true", help="skip maps already pass/fail in the report")
     a = ap.parse_args()
-    path = os.path.join(WORK, "reports", "boxproof.json")
+    if a.player not in FAKES:
+        raise SystemExit("--player must be one of the fake IDs %s" % sorted(FAKES))
+    PLAYER[0], LEASE_REPO[0] = a.player, a.lease_repo
+    path = os.path.join(WORK, "reports", a.report)
     rep = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
-    for bsp in a.map:
+    maps = list(a.map)
+    if a.map_list:
+        for ln in open(a.map_list, encoding="utf-8"):
+            b = ln.split("#")[0].strip().split()
+            if b and b[0] not in maps:
+                maps.append(b[0])
+    stage_py = os.path.join(HERE, "box_stage.py")
+    for bsp in maps:
+        if a.skip_done and (rep.get(bsp) or {}).get("result") in ("pass", "fail"):
+            continue
+        staged_by_us = False
+        if a.stage_from_bucket:
+            ok, why = box_gate()
+            while not ok:
+                print("  waiting before staging %s: %s" % (bsp, why), flush=True)
+                time.sleep(60)
+                ok, why = box_gate()
+            s = subprocess.run([sys.executable, stage_py, "--map", bsp, "--from-bucket"], capture_output=True,
+                               text=True, timeout=1800)
+            line = (s.stdout.strip().splitlines() or ["{}"])[-1]
+            try:
+                st = json.loads(line)
+            except ValueError:
+                st = {"status": "fail", "error": (s.stdout + s.stderr)[-300:]}
+            if st.get("status") != "ok":
+                r = {"map": bsp, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "result": "skipped",
+                     "reason": "box stage from bucket failed: %s" % st.get("error"), "stage": st}
+                rep[bsp] = r
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(rep, fh, indent=1)
+                print(json.dumps({k: r.get(k) for k in ("map", "result", "reason")}), flush=True)
+                continue
+            staged_by_us = st.get("note") != "already installed"
         r = prove(bsp, a.hold, a.wait_busy, a.load_wait)
+        if a.stage_from_bucket:
+            r["staged_from_bucket"] = staged_by_us
+            # Rotate: take our copy off the box again, but never one that was there before us
+            # and never while our instance might still be running on it.
+            if staged_by_us and r.get("idle_after"):
+                rm = subprocess.run([sys.executable, stage_py, "--map", bsp, "--remove"], capture_output=True,
+                                    text=True)
+                r["removed_after"] = rm.stdout.strip()[-120:]
         rep[bsp] = r
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(rep, fh, indent=1)

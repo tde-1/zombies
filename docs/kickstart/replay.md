@@ -383,6 +383,7 @@ vocabularies meet.
 - **Lightmaps.** Husky does not export them (§4b), so the map is lit analytically from
   worldspawn rather than with the light the map was baked with. It is the single biggest
   remaining difference from how Nacht looks in game.
+- **(Superseded by §9, 2026-09-23: players and zombies are the game's own models now.)**
 - **Zombies are capsules.** The 297 xmodels in the zone include
   `char_ger_honorgd_body1_*` — the actual zombie — and it exports. Placing a skinned model
   per zombie and animating it from positions alone is a bigger job than it looks and is
@@ -983,9 +984,389 @@ What fills them:
 
 The side panel's points column also shows "—" instead of 0 when the score is not recorded.
 
+**2026-09-23 update (bug 7, referee.md §16):** the "DLL field needed" above is done. A §16 DLL reads
+score, kills, downs, revives and headshots from the game's own scoreboard fields. It puts them on
+snaps and on `stats` events, and the track carries a per-player `counters` timeline. With it,
+Points, Kills (attributed per player), Downs and Revives (revives given, `revive.by`) all come from
+the game. Files recorded before that keep the rules in this table.
+
 Screenshots (`docs/kickstart/ui/`): `replay-812-debug-0afb.png` / `-debug-6d80.png` (the
 `?r3ddebug` overlay with the numbers above), `replay-812-3p-6d80.png` (the player against the
 start-room wall), `replay-812-above-0afb.png`, `replay-812-fp-0afb.png`,
 `replay-812-fp-close-6d80.png` (zombie at 76 u under the crosshair), `replay-812-fp-far-6d80.png`
 (an ADS shot at 771 u), `replay-812-scoreboard.png`. The `replay-waw-*` shots from §8.11 were
 taken on the 2.54× shell.
+
+## 9. 2026-09-23 — player and zombie models: extraction, formats, sizes, viewer changes, what is not proven
+
+B's ask: "Rip the player model from the game as well as the zombie models and put them in the
+3D replays." Done for every stock character a zombies map dresses people in: the four generic
+Marines, the four heroes, the stock zombies of Nacht/Verrückt, Der Riese and Shi No Numa, and the
+hellhound. Textured, **rigged** (the xmodel skeleton is kept as a glTF skin), placed and turned by
+the recording, walking with a procedural gait. Capsules remain the fallback.
+
+### 9.1 Extraction — `tools/models/export_models.py`
+
+```
+python tools/models/export_models.py              # unlink if stale, build all 20, write models.json
+python tools/models/export_models.py --only zombie_nacht_1,dempsey
+python tools/models/export_models.py --force      # re-unlink and rebuild
+```
+
+| Tool | Licence | Version | Used for |
+|---|---|---|---|
+| OpenAssetTools Unlinker | GPL-3.0 | v0.33.0 (the same `ZombiesDev\tools\oat\` as §4; run, never vendored) | xmodel → skinned glTF, material, image → DDS, rawfile (the character scripts); `--list` on the custom maps |
+| numpy | BSD-3-Clause | 2.5.3 | accessor decode, bind-pose maths |
+| Pillow | MIT-CMU | 12.3.0 | DDS (DXT1/5) decode, resize, JPEG/PNG |
+| three.js `GLTFLoader`, `SkeletonUtils` | MIT | 0.185 (already a dependency) | loading, per-instance skeleton clones |
+
+What it runs (read-only over B's Steam install; nothing is written outside `ZombiesDev`; the game
+is never launched, the lock never taken; `Activision\CoDWaW` is not touched):
+
+```
+Unlinker.exe --model-format GLTF --image-format DDS --include-assets xmodel,material,image,rawfile
+  --search-path "<WaW>\main;<WaW>\zone\english" -o "ZombiesDev\modelwork\dump\?zone?"
+  "<WaW>\zone\english\nazi_zombie_{prototype,asylum,sumpf,factory}.ff"
+Unlinker.exe ... --include-assets rawfile  common.ff patch.ff nazi_zombie_{asylum,sumpf,factory}_patch.ff
+Unlinker.exe --list ... ZombiesDev\archive\mods\<map>\*.ff          # custom-map classification only
+```
+
+Work files: `ZombiesDev\modelwork\` (1.2 GB of dumps; disposable, re-created by the script).
+
+**Which parts make which character is read from the game's own scripts**, not guessed
+(`modelwork\dump\<zone>\character\*.gsc`, `xmodelalias\*.gsc`, `maps\_loadout.gsc`):
+
+* **Players.** `_loadout.gsc give_model`: on `nazi_zombie_sumpf/factory/asylum` (and coast, paris,
+  theater, test) it is `switch(self.entity_num)` → `char_zomb_player_0..3` = **Dempsey, Nikolai,
+  Takeo, Richtofen**; everywhere else, including Nacht and every custom map that ships the stock
+  loadout, it is `mptype\player_usa_marine` → `get_random_character(4)` → `char_usa_marine_player1..4`
+  (body + head + helmet + gear). Verrückt's own zone carries only the Marine models, so it gets the
+  Marines. Russian player bodies exist only in the campaign zones and no archived custom map carries
+  them (9.3), so they are not exported.
+* **Zombies.** `char_ger_honorguard(2)_zombies`: body alias (`body1_1`, `body2_1` / `body1_2`, `body2_2`;
+  Der Riese's `bodyz` alias) + `randomElement(zombieheadalias)` of 24 heads; Shi No Numa's
+  `char_jap_zombie`: `body5z_1/2` + one of 9 heads + `char_jap_impinf2_cap1`. Four variants per map
+  (three for Numa), each a different body/head pairing.
+* **Hellhound.** `character_sp_zombie_dog` → `zombie_wolf`.
+
+**Merging.** A character is several xmodels the engine attaches (`attach(head, "", true)` is a
+bone-merge). Each part's vertices are in its own root bone's frame, so every part is moved into
+the body's bind pose (`body_world(bone) · part_world(bone)⁻¹`, per dominant joint) and its joints
+re-pointed at the body's by name (a bone the body lacks goes to its nearest ancestor). The rig
+check: that correction must be the same matrix for every bone of a part; the largest disagreement
+over all 20 models is **0.001** (the parts are authored on the body's rig). Primitives sharing a
+colour texture are merged: **3–7 draw calls** per character. Normal/spec maps are dropped; colour
+maps go to **512 px** for the sheet covering ≥ 35 % of triangles, **256 px** otherwise, JPEG q82
+unless the alpha is used (then PNG + `alphaMode: MASK`). NORMAL is int8 (`KHR_mesh_quantization`),
+WEIGHTS u8 normalised, JOINTS u8. Budget **700 KB per model, enforced** (the build fails over it).
+Marines are lod0, everything else lod1.
+
+**Frame and scale.** Unlinker's glTF is Y-up with engine +X forward, in engine inches — exactly
+`scene.js toThree` — so nothing is rescaled. §8.12's 2.54× was Husky's centimetres; these never go
+through Husky. Check: model heights **71.2–73.5 u** (the 70-u hull + helmet/cap), the hellhound 59.9;
+in the pictures below they stand at the height of Nacht's doors and trucks.
+
+### 9.2 Where they are served (§7a)
+
+`C:\Users\b\ZombiesDev\maps\_models\` → **`/mapdata/_models/<id>.glb`** and
+`/mapdata/_models/models.json` (the existing `/mapdata` static mount, no server change; `_`
+directories are skipped by `listMaps`). `.glb` requests go through the same bucket 302 as the maps
+when the bucket holds a same-size copy under `mapdata/_models/` — **not uploaded** (the
+coordinator's call). Nothing is committed. Same IP posture as the map `.glb`s (§8, `ip-posture.md`):
+game-derived, closed-testing carve-out, gate-exempt like the rest of `/mapdata`.
+
+| Model | KB | tris | draws | joints | h (u) |
+|---|---:|---:|---:|---:|---:|
+| marine_1 / 2 / 3 / 4 | 336 / 386 / 364 / 361 | 9.0–10.6 k | 5–7 | 79 | 71.8–72.3 |
+| dempsey / nikolai / takeo / richtofen | 174 / 190 / 203 / 210 | 2.8–3.5 k | 3–4 | 79–106 | 71.2–73.5 |
+| zombie_nacht_1..4 | 159–170 | 2.4–2.5 k | 3–4 | 73 | 71.4–71.5 |
+| zombie_factory_1..4 | 161–166 | 2.4–2.5 k | 3–4 | 73 | 71.4–71.5 |
+| zombie_sumpf_1..3 | 151–185 | 2.2–2.5 k | 3 | 73 | 71.2–71.8 |
+| hellhound | 295 | 3.2 k | 3 | 58 | 59.9 |
+| **all 20 + models.json** | **4.4 MB** | | | | |
+
+A replay loads only what it can show: its players' models by slot, the map's zombie variants,
+and the dog only when the track marks one. Solo Nacht: **~1.0 MB**; two-player Der Riese: ~1.0 MB.
+
+### 9.3 Which set a map gets (`models.json`)
+
+1. **Stock map** → `maps[<bsp>]` (9.1).
+2. **Custom map** → `customs[<bsp>]`, decided at export time by what the custom's **own fastfiles**
+   carry (`Unlinker --list` of `mod.ff` + `<bsp>*.ff` in `ZombiesDev\archive\mods`, cached in
+   `modelwork\customs.json`): any hero body → the heroes by `entity_num`; else Marines by slot.
+   Zombies → Der Riese's if it carries `char_ger_honorgd_bodyz*`, Numa's if `char_jap_impinf_body5z*`,
+   else Nacht's. A custom's *own* characters (Minecraft, Mario…) are listed (`custom_characters`)
+   but never drawn — the stock set stands in. Of the 85 archived customs: 71 carry the heroes,
+   14 do not (→ Marines); zombies 73 Der Riese, 5 Nacht, 4 Numa, 3 with no stock body (→ Nacht).
+3. **Anything else** (not in the archive at the last export) → `default`: Marines by slot + Nacht
+   zombies. The bsp name is matched case-insensitively.
+
+### 9.4 Viewer changes
+
+* **`models.js`** (new): `loadModelSet`, `makeActor` (a `SkeletonUtils.clone` per instance, so every
+  actor has its own bones), `poseActor`, `variantOf`. Materials get a little of the albedo as
+  emission and no fog — the capsules' readability rule on a night map (§8.4).
+* **Motion.** The track has **no animation state** (position, yaw, stance bits, alive; §3/§8.4), so
+  the gait is procedural on the real skeleton: hips/knees/ankles/shoulders/spine swung about the
+  character's lateral axis (expressed in each bone's own frame, so it does not depend on the rig's
+  local conventions), phase = **inches walked along the track** (scrub-exact: the same instant is
+  always the same pose), amplitude from speed. Zombies lean and reach; players carry. Crouch bends
+  the legs and drops 18 u; prone lies face down; a player not alive lies on his back (the track does
+  not say downed vs dead). Idle breathes.
+* **Death.** A zombie track that ends within 1.5 s of a `kill` event for the same entity falls
+  backwards over 0.55 s, arms dropping, then sinks and is gone at 2 s. A track that ends otherwise
+  just vanishes. The HUD's "Zombies up" does not count the falling.
+* **`actors.js`**: models replace capsules for every player — including the focused one, whose
+  `scene.js` capsule is found and hidden (`scene.js` is still unedited) — and zombies come from a
+  per-model pool keyed by zombie track, so a zombie keeps its body for life. In first person the
+  focused player's model is hidden; the placeholder gun is unchanged. Yaw is the recorded yaw.
+* **Fallback.** No `models.json`, a failed `.glb`, or `?models=off` → the old capsules, unchanged.
+  `?r3ddebug` adds `window.__r3d.models()` (set, rule, who wears what) and `__r3d.seek(s)`.
+
+### 9.5 Proof (scratch site, headless Edge; the live site, 3200 and `web/data` untouched)
+
+Scratch instance on **3461** (this worktree's build, a `VACUUM INTO` copy of the live DB,
+`ZM_REPLAY_PULL=off`), replays from `ZombiesDev\replays`. Screenshots in the worktree's
+`tmp\shots\` (not committed):
+
+| File | What |
+|---|---|
+| `nacht-3p-zombie-74s.png`, `nacht-3p-zombie-68s.png` | `m_6d80aa20` (real DLL, Nacht): third person, the Marine at the window, an honour-guard zombie reaching through it 63 u away |
+| `nacht-3p-zombie-dies-81.4s.png` | the same, zombie 258 falling at its `kill` (81.1 s), a second zombie walking in behind |
+| `nacht-fp-74s.png` | first person: the zombie at the window, the placeholder gun, no body in the lens |
+| `nacht-3p-capsules-74s.png` | the same moment with `?models=off` |
+| `factory-3p-heroes-254s.png`, `factory-3p-slot1-nikolai-205s.png` | `m_2e346de4` (Der Riese, 2 players, simulator file): Dempsey (slot 0), Nikolai (slot 1), Der Riese zombies |
+| `custom-bloodsport-3p-25s.png` | `m_ce87b8c8` (`nazi_zombie_bloodsport`, real DLL, no world export): the custom fallback → Dempsey + Der Riese zombies over the grid |
+| `lineup-front.png`, `lineup-players-front.png`, `lineup-zombies-front.png`, `lineup-walk-side.png`, `lineup-crouch.png`, `lineup-down.png`, `lineup-death.png` | every model, and every pose, on a neutral stage (`tmp\modeltest\`) |
+
+`web` `npm test` passes (exit 0).
+
+### 9.6 What is not proven / not done
+
+* **No real animations.** OAT dumps the zones' xanims (582 in Der Riese: `ai_zombie_walk_v1`,
+  `ai_zombie_sprint_v1`, `ai_zombie_crawl`…), but only as the engine's binary (`version 17`; a test
+  dump is in `ZombiesDev\modelwork\xanimtest\`), which nothing here parses yet. That parser is the
+  next step and would replace the procedural gait; the rig it needs is already in every `.glb`.
+* **Walk vs run vs crawl is not recorded**, nor gibs/crawlers (§8.4 "anim state" is `re`-lane work);
+  a crawler is drawn walking.
+* **Hellhounds are never drawn**: the track does not say which AI is a dog (no `kind`); the model
+  and the `kind === 'dog'` path are ready for when the DLL records it.
+* **Marines by slot, not the game's pick** (`get_random_character(4)` is random per player and not
+  recorded). Heroes by slot = `entity_num` is the game's own rule, assuming slot = entity number.
+* **Downed vs dead** players look the same (on the back); last stand's pistol pose is not drawn.
+* **No weapon in the players' hands** (the `weapon_zombie_*` world models are in the zones; not
+  attached).
+* **Custom maps' own character models** are not exported; the stock set stands in (9.3).
+* **Not seen on the live site** (not deployed; the coordinator merges and restarts), and not on a
+  real GPU — every picture is SwiftShader.
+
+## 10. 2026-09-23 11:55 — lane 10's staged exports: checked, 7 promoted, Nacht kept
+
+The lane-10 export (`tools/maps/export_all.py`, merged `4adbf81`) wrote **108 map dirs** to
+`C:\Users\b\ZombiesDev\maps-staging\<bsp>\` before the PC froze (`_queue.txt` is tranche 2's
+75-map queue and is not an export). The 04:14 incident rule applies: staging goes live only after
+the align check and a viewer render check. Nothing was re-exported, the bucket was not touched,
+and neither 3200, `web/data` nor the tunnel was.
+
+### 10.1 What was checked, per map
+
+1. **The file.** The staged `.glb` is the **served** file (`EXT_meshopt_compression`,
+   `KHR_mesh_quantization`, WebP). It was decoded with gltf-transform + `MeshoptDecoder`, which is
+   what a browser gets. Checks: it parses; vertex and triangle counts; world-space bounds of the
+   scene and of `__world` inside ±65 536 u; strided (interleaved) buffer views counted. It is
+   **byte-identical** to `_work\raw\<bsp>\<bsp>.served.glb`, and its decoded bounds match the float
+   twin `_work\raw\<bsp>\<bsp>.opt.glb` to under 1 u (0.01–0.71 u on the shell maps; 16-bit
+   positions). The one exception is `nazi_zombie_pd`, at 1.42 u.
+2. **Align.** `mapAlign.check()` (the byteStride-aware one from `237ca5f`) on the float twin with
+   the staged sidecar, the same call `web/test/map-align.js` makes. `mapAlign` cannot read meshopt,
+   which is why the twin is used, and step 1 is what ties the twin to the served bytes. Pass means
+   a shell inside ±65 536 u, at least one spawn standing on the shell (−2..64 u), window goals
+   median ≤ 70 u and max ≤ 90 u from a wall (the Nacht test's limits), and no `script_model` anchor
+   more than 1 u off its map_ents origin. For Nacht, the 10/0 test itself was also run
+   (`node web/test/map-align.js <dir>`).
+3. **Render.** The §9.5 harness: a scratch site on **3471** (main's server and the 11:46 client
+   build, which carries the meshopt decoder), a `VACUUM INTO` copy of the live DB, `ZM_MAPS_DIR`
+   set to a scratch copy of the candidates, `ZM_REPLAY_PULL=off`, and headless Edge (SwiftShader)
+   over CDP. Stock maps opened their own replay (`m_6d80aa20` Nacht, `m_c645886a` Verrückt,
+   `m_08420c53` Der Riese). The other maps have no replay, so they opened `m_6d80aa20` with its
+   track response rewritten over CDP `Fetch` (map + `map_export`). The viewer then fetches
+   `/mapdata/<bsp>/<bsp>.glb` the same way it would for a real game there ("carrier" below).
+   Pass means `__world` is in the scene, meshes and textures are loaded, there is no "No world
+   model" note and no page exception, the in-browser `__world` box equals the align box to 1 u,
+   and an eye-level shot from the spawn in both directions shows the map (looked at, not only
+   measured).
+
+Scripts: `tmp\promote\{validate.cjs,render.mjs}` in the main checkout (untracked, not committed).
+Results: `tmp\promote\results.json`, `render.log`. Shots: `tmp\promote\shots\`.
+
+### 10.2 Result
+
+**108 checked. 107 decode clean. 8 pass align and render, and 7 of those were promoted.** The
+100 without a shell were not promoted.
+
+| Cause | Maps | Count |
+|---|---|---|
+| **No world shell.** Husky's game launch (`husky-map.ps1`, `waw-geo` copy) hit a Steam Error dialog, *"Application load error 5:0000065434"*, and the game exited before the map loaded. These are props + sky only, and align cannot pass without a shell | every custom map except the four below | 99 |
+| No world shell: another `CoDWaW.exe` held the lock | `nazi_zombie_beachtown` | 1 |
+| …and a node 200 490 u out (scene bounds fail ±65 536) | `nazi_zombie_pd` (one of the 100) | (1) |
+| Not staged at all (export failed; nothing to check) | `nazi_zombie_fear_mc_2` (optimize/prune), `bridge_zombie` (MemoryError), `water` (map_ents colour `'.77 .713 .713'`) | 3 |
+
+`bcast` is listed as "check, extent 1 333 696" in `_work\export_all\results.md`. The staged file is
+a later re-export made after `e0db3a0`'s ±65 536 cull, and it passes (9 408 × 15 936).
+
+**Promoted** to `C:\Users\b\ZombiesDev\maps\<bsp>\`: `nazi_zombie_asylum`, `nazi_zombie_sumpf`,
+`nazi_zombie_factory`, `aliendefense`, `bank_job`, `battlestar_galactica`, `bcast`. Each file was
+copied to a temp name and renamed into place, then `cmp`'d against staging. Backups of the files
+this replaced: `maps\_work\nazi_zombie_factory.pre-promote\` (the §8.10 props-only Der Riese,
+14.3 MB) and `maps\_work\nazi_zombie_prototype.pre-promote\` (the 8.12 Nacht, identical to
+`.pre-exportall`).
+
+**Der Riese has one outlier.** 28 of 29 window goals are 52 u (median) from a wall, but the goal
+at (982, −2462, 80) is 304 u from any wall and has no shell floor under it. The geometry around
+it sits at z 129–917, so this goal is probably an entry from below or outside what Husky exports.
+With 5/5 spawns and 41 anchors at 0.00 u it was promoted. The file it replaced had no shell at all.
+
+**Nacht did not change.** The staged Nacht (6.95 MB, meshopt) matches the live 8.12 export on
+every number: 12/0 on `map-align.js`, span 12 288 × 11 584, window goals 57.3 / 61.3 u, trucks
+0.00 u, first tick 1.0 u. Its render shows the window walls and frames at both window goals,
+matching the live file shot for shot (`nacht_new-*` vs `nacht_old-*`, mean pixel difference 3–8
+of 255). It was promoted and then **reverted within minutes**: `web/test/map-align.js` (part of
+`npm test`) reads the live `ZombiesDev\maps\nazi_zombie_prototype` file, and `mapAlign.js` has no
+meshopt or int16 reader, so the test crashed (`BYTES_PER_ELEMENT`). The live file is the 8.12
+export again, byte-identical to `.pre-exportall`, with its mtime kept so its URL version is
+unchanged. `map-align.js` is 12/0 again. **To ship the 7 MB Nacht,** either point
+`map-align.js` at `_work\raw\...\opt.glb` or give `mapAlign` a meshopt decode. Then copy
+`maps-staging\nazi_zombie_prototype\*` over.
+
+### 10.3 Live
+
+`https://zombies.enw.gg/mapdata/<bsp>/<bsp>.glb` with `Range: bytes=0-1023` → **206** and the
+promoted size, for all 7 maps, with **no password and no bucket 302** (the bucket holds none of
+them). `.meta.json` → the staged `built_at`, `encoding` meshopt. Nacht → `bytes 0-15/39499488`
+after the revert. The mount is the whole directory, so no restart was needed. `/replay/<id>` is
+401 behind the gate, as expected. **No promoted map was opened in the live viewer**, because the
+gate needs a typed password. The build that was rendered is the one the live process serves
+(`dist` 11:46).
+
+### 10.4 Not proven / for the coordinator
+
+* **IP.** `/mapdata` is gate-exempt, so four **custom** maps (`aliendefense`, `bank_job`,
+  `battlestar_galactica`, `bcast`) are now public geometry and textures, not just the stock four.
+  §8's carve-out was written for stock maps. Delete those four dirs if that is not wanted.
+* The 100 props + sky exports are viewer-ready (`Props and sky only.` + a grid, §8.10's old Der
+  Riese path) and position-checked where they have anchors, but are **not promoted**. Their shells
+  need Husky on a working `waw-geo` launch, which means a `game.lock` hold, and the Steam load
+  error has to be fixed first.
+* Carrier renders put Nacht's recorded actors in another map. Those shots test the geometry only.
+* Every picture is SwiftShader. A real GPU and B's eye remain the proof.
+
+| Map | MB | Align (spawns on shell · window goals median/max · anchors on origin/listed) | Render | Promoted | Why |
+|---|---|---|---|---|---|
+| nazi_zombie_prototype | 6.95 | spawns 5/5, windows 57.3/61.3 u, anchors 54/54 | ok: 1877 meshes, 149 tex | **no** (tried, reverted) | passes 12/0 and renders the window walls, but web/test/map-align.js reads the live file and crashes on meshopt; 8.12 export kept |
+| nazi_zombie_asylum | 10.50 | spawns 9/9, windows 48.1/61.5 u, anchors 60/64 | ok: 3154 meshes, 231 tex | **yes** | replaces nothing |
+| nazi_zombie_sumpf | 12.85 | spawns 5/5, windows 51.7/56.3 u, anchors 60/64 | ok: 7158 meshes, 192 tex (carrier) | **yes** | replaces nothing |
+| nazi_zombie_factory | 12.28 | spawns 5/5, windows 52.3/304 u, anchors 41/64 (1 of 29 goals 304 u) | ok: 1892 meshes, 188 tex | **yes** | replaces the props-only 8.10 export; one window goal off (see below) |
+| aliendefense | 1.53 | spawns 5/5, anchors 14/20 | ok: 84 meshes, 48 tex (carrier) | **yes** | new |
+| bank_job | 2.42 | spawns 5/5, windows 45/45 u, anchors 25/35 | ok: 174 meshes, 75 tex (carrier) | **yes** | new |
+| battlestar_galactica | 2.64 | spawns 5/5, anchors 40/40 | ok: 621 meshes, 76 tex (carrier) | **yes** | new |
+| bcast | 2.65 | spawns 5/5, windows 60/60 u, anchors 62/64 | ok: 448 meshes, 120 tex (carrier) | **yes** | new |
+| ahkanto | 0.56 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| batman | 1.83 | no shell; anchors 58/64 on origin | — | no | props + sky only: Husky could not start the game |
+| boxmap | 0.40 | no shell; anchors 14/14 on origin | — | no | props + sky only: Husky could not start the game |
+| castle | 0.78 | no shell; anchors 40/40 on origin | — | no | props + sky only: Husky could not start the game |
+| chal_dual_wield | 0.59 | no shell; anchors 11/11 on origin | — | no | props + sky only: Husky could not start the game |
+| chal_harambe | 0.44 | no shell; anchors 16/16 on origin | — | no | props + sky only: Husky could not start the game |
+| chickn | 1.02 | no shell; anchors 38/38 on origin | — | no | props + sky only: Husky could not start the game |
+| christmas_zombie | 1.04 | no shell; anchors 44/48 on origin | — | no | props + sky only: Husky could not start the game |
+| cryogenic | 1.09 | no shell; anchors 62/64 on origin | — | no | props + sky only: Husky could not start the game |
+| cube | 0.55 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| cxca | 0.80 | no shell; anchors 43/46 on origin | — | no | props + sky only: Husky could not start the game |
+| dead_palace | 0.63 | no shell; anchors 32/32 on origin | — | no | props + sky only: Husky could not start the game |
+| deadfactory | 0.75 | no shell; anchors 33/33 on origin | — | no | props + sky only: Husky could not start the game |
+| dpp | 2.68 | no shell; anchors 51/52 on origin | — | no | props + sky only: Husky could not start the game |
+| escape_asylum | 1.26 | no shell; anchors 53/59 on origin | — | no | props + sky only: Husky could not start the game |
+| futurama | 0.35 | no shell; anchors 14/22 on origin | — | no | props + sky only: Husky could not start the game |
+| hghrise | 0.78 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| island | 0.66 | no shell; anchors 45/45 on origin | — | no | props + sky only: Husky could not start the game |
+| jigsaw | 1.37 | no shell; anchors 47/64 on origin | — | no | props + sky only: Husky could not start the game |
+| killhouse | 2.45 | no shell; anchors 57/57 on origin | — | no | props + sky only: Husky could not start the game |
+| kingdom_hearts | 1.49 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| labrats2 | 0.67 | no shell; anchors 15/15 on origin | — | no | props + sky only: Husky could not start the game |
+| lewl | 1.35 | no shell; anchors 55/64 on origin | — | no | props + sky only: Husky could not start the game |
+| matrix | 0.68 | no shell; anchors 30/30 on origin | — | no | props + sky only: Husky could not start the game |
+| mr_freeze | 1.33 | no shell; anchors 35/42 on origin | — | no | props + sky only: Husky could not start the game |
+| mw2rust | 0.56 | no shell; anchors 15/15 on origin | — | no | props + sky only: Husky could not start the game |
+| nacht_der_toten | 0.54 | no shell; anchors 33/33 on origin | — | no | props + sky only: Husky could not start the game |
+| nacht_reimagined | 2.20 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| navidad_p_zombie | 1.46 | no shell; anchors 58/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_arena | 0.23 | no shell; anchors 5/5 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_arkham | 2.27 | no shell; anchors 41/48 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_beachtown | 0.72 | no shell; anchors 51/51 on origin | — | no | props + sky only: Husky could not start the game (game already running) |
+| nazi_zombie_bloodsport | 1.07 | no shell; anchors 40/40 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_blut | 0.73 | no shell; anchors 40/40 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_bored | 0.64 | no shell; anchors 12/12 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_cargo | 1.53 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_crazyplace | 1.03 | no shell; anchors 25/25 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_dcv2 | 1.09 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_denial2 | 1.02 | no shell; anchors 32/32 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_derberg | 1.87 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_dome_snow | 0.70 | no shell; anchors 30/30 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_dt2 | 1.44 | no shell; anchors 39/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_enclosed | 0.72 | no shell; anchors 40/40 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_fivenights | 0.63 | no shell; anchors 11/11 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_forest | 0.93 | no shell; anchors 45/47 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_hanoizom | 0.97 | no shell; anchors 56/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_herren | 1.58 | no shell; anchors 46/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_hex_tower | 0.42 | no shell; anchors 16/16 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_hijacked | 1.50 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_hotelv2 | 1.25 | no shell; anchors 39/39 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_illuminati_island | 1.71 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_ils | 2.09 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_inferno | 3.20 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_iplay2 | 0.63 | no shell; anchors 61/61 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_johndoe | 2.33 | no shell; anchors 62/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_legion | 2.19 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_leviathan | 2.09 | no shell; anchors 51/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_library | 1.41 | no shell; anchors 39/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_lorkeep | 1.71 | no shell; anchors 28/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_malibu | 2.72 | no shell; anchors 60/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_mine | 2.11 | no shell; anchors 52/52 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_monopoly | 0.71 | no shell; anchors 32/32 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_octogonal | 0.42 | no shell; anchors 16/16 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_orbit | 1.94 | no shell; anchors 57/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_path | 0.62 | no shell; anchors 13/13 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_pd | 2.74 | no shell; anchors 57/64 on origin | — | no | props-only AND a node 200 490 u out (bounds fail) |
+| nazi_zombie_perk | 0.98 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_pogreb | 1.34 | no shell; anchors 57/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_poke | 1.87 | no shell; anchors 55/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_prison | 1.75 | no shell; anchors 60/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_puns | 0.91 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_rats | 1.52 | no shell; anchors 61/61 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_rc | 0.89 | no shell; anchors 32/32 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_relax | 0.55 | no shell; anchors 24/24 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_rooms | 1.80 | no shell; anchors 25/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_school | 1.97 | no shell; anchors 61/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_shore | 0.74 | no shell; anchors 23/24 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_snowglobe | 2.34 | no shell; anchors 35/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_spruktbyl | 0.87 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_tank | 2.41 | no shell; anchors 56/57 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_temple | 1.79 | no shell; anchors 48/49 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_test | 2.97 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_test1 | 0.76 | no shell; anchors 26/34 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_v2beta | 1.42 | no shell; anchors 49/50 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_wahnsinn | 1.88 | no shell; anchors 59/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_zhunterz | 1.57 | no shell; anchors 51/59 on origin | — | no | props + sky only: Husky could not start the game |
+| nightclub | 3.54 | no shell; anchors 57/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nuketown | 3.23 | no shell; anchors 61/64 on origin | — | no | props + sky only: Husky could not start the game |
+| number2 | 1.02 | no shell; anchors 54/54 on origin | — | no | props + sky only: Husky could not start the game |
+| salaj_dust2 | 0.93 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| sanatorium | 2.72 | no shell; anchors 59/64 on origin | — | no | props + sky only: Husky could not start the game |
+| shinomori | 1.08 | no shell; anchors 46/58 on origin | — | no | props + sky only: Husky could not start the game |
+| thirty_seven | 2.16 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| ugx_artemovsk | 1.99 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| ugxm_garage | 0.64 | no shell; anchors 34/34 on origin | — | no | props + sky only: Husky could not start the game |
+| ut_box_map | 0.36 | no shell; anchors 11/11 on origin | — | no | props + sky only: Husky could not start the game |
+| zm_hospital | 1.35 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| zm_nuked | 1.64 | no shell; anchors 60/61 on origin | — | no | props + sky only: Husky could not start the game |
+| zombie_maze | 1.08 | no shell; anchors 38/39 on origin | — | no | props + sky only: Husky could not start the game |
+| zombie_town | 2.16 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |

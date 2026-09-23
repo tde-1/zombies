@@ -22,6 +22,10 @@
 //   "recorded" once ANY real (non-demo) game on the site has a non-zero value for it, and
 //   until then the profile does not print it at all. A zero printed beside a name reads as
 //   "this player killed nothing", which would be the site making something up.
+//   2026-09-23 (bug 7, referee.md §16): the cause was upstream — the DLL could not read the
+//   counters at all. A §16 box DLL reads them from the game's own scoreboard fields and
+//   the host folds them from `stats` events, so the first real game on such a box turns
+//   each column on by itself; nothing here needs to change when it does.
 
 const { db } = require('../db/database')
 

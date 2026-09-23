@@ -105,7 +105,7 @@ function forMap (bsp) {
       needs_download: false,
       files: [],
       size_bytes: 0,
-      note: 'This map ships with World at War. There is nothing to download.'
+      note: 'Ships with World at War.'
     }
   }
   if (!e || !e.files.length) {

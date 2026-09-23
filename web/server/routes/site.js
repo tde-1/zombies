@@ -26,6 +26,17 @@ const { safeJson } = require('../lib/util')
 const { db } = require('../db/database')
 const { requireUser, requireApproved } = require('../middleware/auth')
 
+// 20 invite-link lookups a minute per account (Movement's INVITE_RATE_LIMIT is 20/min per IP).
+const linkHits = new Map()
+function linkLimited(sid) {
+  const t = Date.now()
+  const list = (linkHits.get(sid) || []).filter((x) => t - x < 60_000)
+  list.push(t)
+  linkHits.set(sid, list)
+  if (linkHits.size > 5000) linkHits.clear()
+  return list.length > 20
+}
+
 function router() {
   const r = express.Router()
 
@@ -229,7 +240,28 @@ function router() {
     const stage = b.stage && typeof b.stage === 'object' ? b.stage : null
     return parties.invite(req.me.steam_id, to, stage)
   }))
+  // Movement's accept (`POST /api/party/invites/:id/accept`): the invite, not the party id,
+  // so an expired or withdrawn invite is refused by name rather than by the lobby's rules.
+  r.post('/party/invites/:id/accept', requireApproved, partyAction((req) => parties.acceptInvite(req.me.steam_id, Number(req.params.id))))
   r.post('/party/invites/:id/decline', requireUser, partyAction((req) => parties.declineInvite(req.me.steam_id, Number(req.params.id))))
+  // The invite LINK (lib/parties.js): get yours (any member; a party is made from the
+  // stage if there is none), change it (leader), look one up, join by one. Lookups are
+  // rate-limited per account: a code is a key, and guessing keys should be slow.
+  r.post('/party/link', requireApproved, partyAction((req) => {
+    const b = req.body || {}
+    return parties.link(req.me.steam_id, b.stage && typeof b.stage === 'object' ? b.stage : null)
+  }))
+  r.post('/party/link/reset', requireApproved, partyAction((req) => parties.resetLink(req.me.steam_id)))
+  r.get('/party/link/:code', requireUser, (req, res) => {
+    if (linkLimited(req.me.steam_id)) return res.status(429).json({ ok: false, error: 'slow down' })
+    const out = parties.linkPreview(req.params.code, req.me.steam_id)
+    res.status(out.ok ? 200 : 404).json(out)
+  })
+  r.post('/party/link/:code/join', requireApproved, (req, res) => {
+    if (linkLimited(req.me.steam_id)) return res.status(429).json({ ok: false, error: 'slow down' })
+    const out = parties.joinByLink(req.me.steam_id, req.params.code)
+    res.status(out.ok ? 200 : 400).json(out)
+  })
   r.post('/party/invites/:id/cancel', requireUser, partyAction((req) => parties.cancelInvite(req.me.steam_id, Number(req.params.id))))
   r.post('/party/kick', requireApproved, partyAction((req) => parties.kick(req.me.steam_id, String((req.body && req.body.steam_id) || ''))))
 
@@ -346,7 +378,14 @@ function router() {
   })
 
   // ---- global chat --------------------------------------------------------------
-  r.get('/chat', (req, res) => res.json({ chat: chat.tail(Number(req.query.limit || 40)), latest: chat.latest() }))
+  // `?since=<id>` is the dock's catch-up after a socket reconnect: only what it missed, in
+  // order, never the tail again. Without it, the backlog (the tail).
+  r.get('/chat', (req, res) => {
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 40))
+    const since = Number(req.query.since)
+    const rows = Number.isFinite(since) && since > 0 ? chat.since(since, { limit }) : chat.tail(limit)
+    res.json({ chat: rows, latest: chat.latest() })
+  })
 
   r.post('/chat', requireUser, (req, res) => {
     const text = (req.body && req.body.text) || ''

@@ -5,6 +5,7 @@ import { useRail } from '../rail'
 import { useSession } from '../session'
 import { prettyTitle, mapHue } from '../data/mapText'
 import { NotPlayable } from './Bits'
+import EnwWord from './Enw'
 import { DlBar, CardDownload } from './MapDownload'
 
 // ── The party rail ─────────────────────────────────────────────────────────
@@ -108,7 +109,7 @@ function Roster({ R }) {
     <div className="rblock">
       <div className="rlabel">
         <span>{p && p.members.length > 1 ? 'Party' : 'Your party'} · {p ? p.members.length : 1}</span>
-        {p && <span className="rlabel-code" title="Party code">{p.code}</span>}
+        {(!p || !p.full) && R.approved && <CopyInviteLink R={R} />}
       </div>
       {shown.map((r) => (
         <PlayerCard key={r.id} user={r.user} role={r.role} host={r.host} onRemove={r.onRemove} removeLabel={r.removeLabel} />
@@ -210,7 +211,7 @@ function InviteBox({ R }) {
         <button className="invite-close" title="Close search" aria-label="Close search" onClick={close}>×</button>
       </div>
       <div className="invite-list">
-        {results == null && <div className="sug-empty">Type an ENW name</div>}
+        {results == null && <div className="sug-empty">Type an <EnwWord /> name</div>}
         {results != null && list.length === 0 && <div className="sug-empty">No players found.</div>}
         {list.map((u) => (
           <div className="sug" key={u.steam_id} role="button" tabIndex={0}
@@ -223,6 +224,30 @@ function InviteBox({ R }) {
         ))}
       </div>
     </div>
+  )
+}
+
+// ── the invite link ───────────────────────────────────────────────────────
+// Copies `<site>/party/<CODE>` (lib/parties.js link). Whoever opens it gets one card with
+// Join (components/InviteToasts.jsx); in the launcher, enw-zombies://party/<CODE> does the
+// same. Sits where the party code used to, which nothing could use.
+function CopyInviteLink({ R }) {
+  const [done, setDone] = useState(false)
+  useEffect(() => {
+    if (!done) return undefined
+    const t = setTimeout(() => setDone(false), 1600)
+    return () => clearTimeout(t)
+  }, [done])
+  const copy = async () => {
+    const url = await R.shareLink()
+    if (!url) return
+    try { await navigator.clipboard.writeText(url); setDone(true) } catch { window.prompt('Copy the invite link', url) }
+  }
+  return (
+    <button className="rlabel-code" style={{ cursor: 'pointer', background: 'none', border: 0, padding: 0, font: 'inherit' }}
+            disabled={R.busy} onClick={copy} title="Copy an invite link to this party">
+      {done ? 'Copied' : 'Copy link'}
+    </button>
   )
 }
 
@@ -241,7 +266,7 @@ function Invites({ R }) {
             </div>
           </div>
           <div className="invite-acts">
-            <button className="btn small accent" disabled={R.busy} onClick={() => R.joinParty(i.party_id)}>Accept</button>
+            <button className="btn small accent" disabled={R.busy} onClick={() => R.acceptInvite(i.id, i.party_id)}>Accept</button>
             <button className="btn small" disabled={R.busy} onClick={() => R.decline(i.id)}>Decline</button>
           </div>
         </div>
@@ -261,7 +286,7 @@ function OnlineBlock({ R }) {
     <div className="rblock">
       <div className="rlabel"><span>{everyone ? 'Online' : 'Friends'} · {rows.length}</span></div>
       {rows.length === 0 && (
-        <div className="friends-empty">{everyone ? 'Nobody else is online.' : 'None of your friends are online.'}</div>
+        <div className="friends-empty">{everyone ? 'Nobody else online.' : 'No friends online.'}</div>
       )}
       {rows.map((f) => <FriendRow key={f.steam_id} R={R} f={f} />)}
     </div>
@@ -421,7 +446,7 @@ function ServerCard({ R }) {
     const mins = Math.max(1, Math.ceil((R.resumable.until - Date.now()) / 60_000))
     primary = (
       <button className="prail-server-launch" disabled={R.busy} onClick={() => R.resume()}
-              title={`The server is kept for you for about ${mins} more minute${mins === 1 ? '' : 's'}`}>
+              title={`Kept for ${mins} more min`}>
         Resume
       </button>
     )

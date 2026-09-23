@@ -18,16 +18,20 @@ const path = require('node:path')
 const fs = require('node:fs')
 const os = require('node:os')
 
-const PORT = 33993
-const BASE = `http://127.0.0.1:${PORT}`
+const { freePort, waitHttp } = require('./_port')
+
+// The preferred ports when free, any free ones when not (bug 14). Picked in main().
+let PORT = 33993
+let BASE = `http://127.0.0.1:${PORT}`
 // The second instance runs WITHOUT the test hook, exactly as zombies.enw.gg does, because
 // the checks that matter most are about what the browser sees when the STEAM leg goes
 // wrong, and about the hook not existing there.
 // `localhost` rather than 127.0.0.1 on purpose: it makes the public origin DIFFERENT
 // from the one a launcher reaching 127.0.0.1 would use, which is the mismatch under test.
-const STEAM_PORT = 33994
-const STEAM_BASE = `http://127.0.0.1:${STEAM_PORT}`
-const STEAM_PUBLIC = `http://localhost:${STEAM_PORT}`
+let STEAM_PORT = 33994
+let STEAM_BASE = `http://127.0.0.1:${STEAM_PORT}`
+let STEAM_PUBLIC = `http://localhost:${STEAM_PORT}`
+let PROD_PORT = 33995
 // Long enough that every happy-path check below finishes its own flow well inside it, short
 // enough that the one expiry check does not make the suite sleep. Both instances get it.
 const FLOW_TTL_MS = 1200
@@ -51,6 +55,13 @@ function get (p, opts = {}) {
 const auth = { authorization: 'Basic ' + Buffer.from('beta:' + PASSWORD).toString('base64') }
 
 async function main () {
+  PORT = await freePort(PORT)
+  BASE = `http://127.0.0.1:${PORT}`
+  STEAM_PORT = await freePort(STEAM_PORT, [PORT])
+  STEAM_BASE = `http://127.0.0.1:${STEAM_PORT}`
+  STEAM_PUBLIC = `http://localhost:${STEAM_PORT}`
+  PROD_PORT = await freePort(PROD_PORT, [PORT, STEAM_PORT])
+
   child = spawn(process.execPath, ['server/index.js'], {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env, ZM_PORT: String(PORT), ZM_DATA_DIR: DATA, ZM_SITE_PASSWORD: PASSWORD,
@@ -58,9 +69,7 @@ async function main () {
            ZM_LAUNCHER_FLOW_TTL_MS: String(FLOW_TTL_MS) },
     stdio: 'ignore',
   })
-  for (let i = 0; i < 60; i++) {
-    try { await fetch(BASE + '/api/health', { headers: auth }); break } catch { await new Promise(r => setTimeout(r, 250)) }
-  }
+  await waitHttp(BASE + '/api/health', { child, headers: auth, ok: () => true })
 
   const verifier = b64url(crypto.randomBytes(32))
   const challenge = sha256b64url(verifier)
@@ -218,9 +227,7 @@ async function main () {
            ZM_LAUNCHER_FLOW_TTL_MS: String(FLOW_TTL_MS) },
     stdio: 'ignore',
   })
-  for (let i = 0; i < 60; i++) {
-    try { await fetch(STEAM_BASE + '/api/health', { headers: auth }); break } catch { await new Promise(r => setTimeout(r, 250)) }
-  }
+  await waitHttp(STEAM_BASE + '/api/health', { child: steamChild, headers: auth, ok: () => true })
   const sget = (p, opts = {}) => fetch(STEAM_BASE + p, { redirect: 'manual', ...opts })
 
   await check('steam mode really is on, and /auth/steam goes to Steam', async () => {
@@ -269,7 +276,7 @@ async function main () {
     const out = await new Promise((resolve) => {
       const c = spawn(process.execPath, ['server/index.js'], {
         cwd: path.join(__dirname, '..'),
-        env: { ...process.env, ZM_PORT: '33995', ZM_DATA_DIR: DATA3, NODE_ENV: 'production', ZM_TEST_LOGIN: '1', ZM_MOVEMENT_URL: 'off', ZM_STEAM_AVATARS: 'off' },
+        env: { ...process.env, ZM_PORT: String(PROD_PORT), ZM_DATA_DIR: DATA3, NODE_ENV: 'production', ZM_TEST_LOGIN: '1', ZM_MOVEMENT_URL: 'off', ZM_STEAM_AVATARS: 'off' },
         stdio: ['ignore', 'ignore', 'pipe'],
       })
       let err = ''

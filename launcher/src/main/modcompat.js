@@ -36,7 +36,7 @@ const ENGINE_EXT = new Set(['.ff', '.iwd'])
 // Every dvar the launcher writes to the command line or config.cfg AND reads back after
 // the game. Settings keys map to their dvar so a read-back patch can be filtered.
 const SETTING_DVAR = {
-  resolution: 'r_mode', fov: 'cg_fov', maxFps: 'com_maxfps', vsync: 'r_vsync', volume: 'snd_volume',
+  resolution: 'r_mode', fov: 'cg_fov', maxFps: 'com_maxfps', vsync: 'r_vsync', volume: 'snd_menu_master',
   sensitivity: 'sensitivity', showFps: 'cg_drawfps', display: 'r_monitor', mode: 'r_fullscreen', fullscreen: 'r_fullscreen',
 }
 export const MANAGED_DVARS = new Set([

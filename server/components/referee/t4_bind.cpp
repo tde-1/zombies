@@ -24,6 +24,7 @@
 // THE RULE EVERY ACCESSOR STILL FOLLOWS: if it is not bound and proven, return
 // nothing. Never dereference on a hope.
 #include "t4_bind.hpp"
+#include "verified_env.hpp"
 
 #include <atomic>
 
@@ -628,6 +629,119 @@ __declspec(naked) void call_sv_game_send(int /*clientNum*/, const char* /*text*/
     }
 }
 
+// ------------------------------------------------- native client fields --
+//
+// referee.md §16 (2026-09-23). The co-op scoreboard counters are NOT script variables,
+// which is why `player_int("score")` returning nullopt (scriptvars=no) zeroed every real
+// game's score, kills, downs and revives since the first box game. They are gclient_s
+// fields that the engine exposes to GSC through a native field table, so `self.score`
+// in a script is a plain int store into the gclient.
+//
+// Every number below was read off our decrypted dump and is re-checked in THIS process
+// at bind time (verify_client_fields); nothing is read unless all of it holds.
+//
+//   client field table 0x83C568, entries of 0x18: {const char* name; int ofs; int type;
+//     int mask; setter; getter}, NUL-name terminated at 0x83C730 (19 entries).  [V]
+//     - walked by GScr_AddFieldsForClient 0x4ED1B0 (`mov edi,0x83C568 ... add edi,0x18`)
+//     - indexed by Scr_SetClientField 0x4ED200 (`lea eax,[eax*8+0x83C568]` on idx*3)
+//   the six entries we read, all type 0 (int), no mask:
+//     score 0x20BC (setter 0x4ECEB0), kills 0x20C0, assists 0x20C4, downs 0x20C8,
+//     revives 0x20CC, headshots 0x20D0.
+//   second signal for the offsets, independent of the table:
+//     0x4ECF25  89 B7 BC 20 00 00      mov [edi+0x20BC],esi   the score setter's store
+//     0x67CC1C  8B B4 28 D0 20 00 00   mov esi,[eax+ebp+0x20D0] the co-op scoreboard
+//               builder pushes 0x20D0/0x20CC/0x20C8/0x20C4/0x20C0 into " %x %x %x ..."
+//   gclient_s stride 0x2348: the same builder's `add ebp,0x2348` at 0x67CCB4, and the
+//     score setter divides (gclient - level.clients) by it (magic 0x74187D2B, sar 0xC).
+//   level.clients = *(gclient_s**)0x18F5D88 (level_locals_t+0; the setter's `mov ebx,[0x18F5D88]`).
+namespace cf {
+constexpr uintptr_t kTable = 0x83C568;
+constexpr size_t kEntry = 0x18;
+constexpr int kMaxEntries = 32;
+constexpr uintptr_t kScoreStoreSite = 0x4ECF25;
+constexpr uintptr_t kScoreboardSite = 0x67CC1C;
+constexpr uintptr_t kStrideSite = 0x67CCB4;
+constexpr size_t kGclientStride = 0x2348;
+constexpr size_t kScore = 0x20BC;   // the six ints are contiguous, in this order
+struct raw_stats {
+    int32_t score, kills, assists, downs, revives, headshots;
+};
+static_assert(sizeof(raw_stats) == 24, "raw_stats");
+}  // namespace cf
+
+bool bytes_at(uintptr_t vault_va, const uint8_t* want, size_t n) {
+    const uintptr_t p = at(vault_va);
+    if (!memory::is_readable(reinterpret_cast<void*>(p), n)) return false;
+    return std::memcmp(reinterpret_cast<const void*>(p), want, n) == 0;
+}
+
+// Re-read the field table and both code sites out of the running image. Returns false
+// and says which check failed on anything but an exact match, so a different exe
+// build reads nothing rather than reading the wrong ints.
+bool verify_client_fields() {
+    struct want { const char* name; int32_t ofs; bool seen; };
+    want w[] = {{"score", 0x20BC, false},   {"kills", 0x20C0, false},
+                {"assists", 0x20C4, false}, {"downs", 0x20C8, false},
+                {"revives", 0x20CC, false}, {"headshots", 0x20D0, false}};
+    for (int i = 0; i < cf::kMaxEntries; ++i) {
+        uint32_t e[3]{};
+        if (!peek(at(cf::kTable + i * cf::kEntry), &e)) {
+            ENW_WARN("referee/bind: client field table unreadable at entry %d", i);
+            return false;
+        }
+        if (e[0] == 0) break;
+        const std::string nm = peek_string(at(e[0]), 32);
+        for (auto& x : w) {
+            if (nm != x.name) continue;
+            if (static_cast<int32_t>(e[1]) != x.ofs || e[2] != 0) {
+                ENW_WARN("referee/bind: client field '%s' is ofs=%X type=%u, expected ofs=%X "
+                         "type=0 -- a different exe? native stats OFF",
+                         x.name, e[1], e[2], static_cast<unsigned>(x.ofs));
+                return false;
+            }
+            x.seen = true;
+        }
+    }
+    for (const auto& x : w) {
+        if (!x.seen) {
+            ENW_WARN("referee/bind: client field '%s' not in the table at %08X -- native stats OFF",
+                     x.name, static_cast<unsigned>(cf::kTable));
+            return false;
+        }
+    }
+    static const uint8_t store[] = {0x89, 0xB7, 0xBC, 0x20, 0x00, 0x00};
+    static const uint8_t board[] = {0x8B, 0xB4, 0x28, 0xD0, 0x20, 0x00, 0x00};
+    static const uint8_t stride[] = {0x81, 0xC5, 0x48, 0x23, 0x00, 0x00};
+    if (!bytes_at(cf::kScoreStoreSite, store, sizeof(store)) ||
+        !bytes_at(cf::kScoreboardSite, board, sizeof(board)) ||
+        !bytes_at(cf::kStrideSite, stride, sizeof(stride))) {
+        ENW_WARN("referee/bind: the score-store / scoreboard / stride code sites do not match "
+                 "-- native stats OFF");
+        return false;
+    }
+    return true;
+}
+
+// The player's gclient_s, cross-checked two ways: g_entities[slot].client (what
+// player_ent reads) must equal level.clients + slot * 0x2348. A disagreement means a
+// slot in transition or a wrong assumption, and either way nothing is read.
+uintptr_t gclient_for(int slot) {
+    uintptr_t via_ent = 0, clients = 0;
+    if (!peek(gentity_at(slot) + t4::gentity_off::client, &via_ent) || via_ent == 0) return 0;
+    if (!peek(at(t4::var::level), &clients) || clients == 0) return 0;
+    if (via_ent != clients + static_cast<size_t>(slot) * cf::kGclientStride) {
+        static bool said = false;
+        if (!said) {
+            said = true;
+            ENW_WARN("referee: slot %d gentity->client %08X != level.clients %08X + slot*0x2348 "
+                     "-- native stats not read for it", slot, static_cast<unsigned>(via_ent),
+                     static_cast<unsigned>(clients));
+        }
+        return 0;
+    }
+    return via_ent;
+}
+
 }  // namespace
 
 std::string binding_report::describe() const {
@@ -639,6 +753,7 @@ std::string binding_report::describe() const {
     };
     add("notify", notify_hook);
     add("scriptvars", script_vars);
+    add("clientfields", client_fields);
     add("entities", entities);
     add("clients", clients);
     add("servercmd", server_cmd);
@@ -666,6 +781,13 @@ const binding_report& bind() {
     g_report.clients = memory::is_readable(reinterpret_cast<void*>(client_at(0)), 0x100);
     g_report.entities =
         memory::is_readable(reinterpret_cast<void*>(at(t4::var::g_entities)), t4::gentity_off::stride);
+
+    // --- native client fields: score/kills/assists/downs/revives/headshots (§16) ---
+    g_report.client_fields = g_report.entities && verify_client_fields();
+    ENW_INFO("referee/bind: native client fields (score kills assists downs revives headshots "
+             "at gclient+0x20BC..0x20D0) %s",
+             g_report.client_fields ? "VERIFIED against the field table and two code sites"
+                                    : "NOT bound");
 
     // --- chat out: the REAL SV_GameSendServerCommand (0x5A9350) ---
     // Off unless asked for. The previous binding pointed at a HUD colour routine and
@@ -766,7 +888,43 @@ std::optional<float> level_map_float(const char*, const char*) { return std::nul
 bool set_level_int(const char*, int) { return false; }
 bool set_level_float(const char*, float) { return false; }
 bool set_level_map_float(const char*, const char*, float) { return false; }
-std::optional<int> player_int(int, const char*) { return std::nullopt; }
+// The native scoreboard fields answer; any other player field is a script variable and
+// still does not.
+std::optional<int> player_int(int slot, const char* field) {
+    if (!field) return std::nullopt;
+    const auto s = player_stats(slot);
+    if (!s) return std::nullopt;
+    if (std::strcmp(field, "score") == 0) return s->score;
+    if (std::strcmp(field, "kills") == 0) return s->kills;
+    if (std::strcmp(field, "assists") == 0) return s->assists;
+    if (std::strcmp(field, "downs") == 0) return s->downs;
+    if (std::strcmp(field, "revives") == 0) return s->revives;
+    if (std::strcmp(field, "headshots") == 0) return s->headshots;
+    return std::nullopt;
+}
+
+std::optional<client_stats> player_stats(int slot) {
+    if (!g_report.client_fields || slot < 0 || slot >= kMaxClients) return std::nullopt;
+    const uintptr_t gc = gclient_for(slot);
+    if (!gc) return std::nullopt;
+    cf::raw_stats r{};
+    if (!peek(gc + cf::kScore, &r)) return std::nullopt;
+    // Counters, so never negative, and a score of a billion is not a zombies game. A value
+    // outside that is a slot mid-reset or a wrong read, and a wrong number in a result is
+    // worse than a missing one.
+    const int32_t* v = &r.score;
+    for (int i = 0; i < 6; ++i) {
+        if (v[i] < 0 || v[i] > 100000000) return std::nullopt;
+    }
+    client_stats s;
+    s.score = r.score;
+    s.kills = r.kills;
+    s.assists = r.assists;
+    s.downs = r.downs;
+    s.revives = r.revives;
+    s.headshots = r.headshots;
+    return s;
+}
 std::optional<float> player_float(int, const char*) { return std::nullopt; }
 bool player_field_defined(int, const char*) { return false; }
 bool set_player_int(int, const char*, int) { return false; }
@@ -1063,7 +1221,38 @@ int current_round() { return g_current_round.load(std::memory_order_relaxed); }
 void set_recording(bool on) { g_recording.store(on, std::memory_order_relaxed); }
 bool recording() { return g_recording.load(std::memory_order_relaxed); }
 
-std::optional<std::string> dvar_get(const char*) { return std::nullopt; }
+// dvar_get: READ ONLY, bound 2026-09-23 for the Verified environment report
+// (verified_env.hpp, docs/kickstart/verified-rules.md). Everything it relies on is already
+// proven elsewhere in this DLL, not guessed here:
+//   * Dvar_FindVar 0x5EDE30 [V], called by dedicated.cpp and net_probe.cpp on this server;
+//     it returns null (not a fault) before Com_Init has registered the dvars.
+//   * dvar_s: type uint16 at +0x0A, current value (16 bytes) at +0x10 -- measured in
+//     dedicated.cpp (com_maxfps +0x10 = 85, fs_homepath +0x10 = char*), and net_probe.cpp
+//     reads sv_maxRate the same way.
+// Types other than int/enum/string are formatted per the CoD4 order those three match, and
+// an unknown type comes back raw ("?typeN:...") rather than as a guess.
+// dvar_set stays unbound: the referee reports the environment, it does not change it.
+std::optional<std::string> dvar_get(const char* name) {
+    if (!name || !*name) return std::nullopt;
+    static const bool ok = memory::looks_like_function(at(t4::fn::Dvar_FindVar));
+    if (!ok) return std::nullopt;
+    using find_t = void*(__cdecl*)(const char*);
+    void* d = reinterpret_cast<find_t>(at(t4::fn::Dvar_FindVar))(name);
+    if (!d) return std::nullopt;
+    const auto a = reinterpret_cast<uintptr_t>(d);
+    uint16_t type = 0;
+    uint8_t raw[16] = {};
+    if (!peek(a + 0x0A, &type)) return std::nullopt;
+    if (!memory::is_readable(reinterpret_cast<void*>(a + 0x10), sizeof raw)) return std::nullopt;
+    std::memcpy(raw, reinterpret_cast<const void*>(a + 0x10), sizeof raw);
+    std::string s;
+    if (type == verified::T_STRING) {
+        uint32_t p = 0;
+        std::memcpy(&p, raw, 4);
+        if (p) s = peek_string(p, 256);
+    }
+    return verified::format_value(type, raw, s);
+}
 bool dvar_set(const char*, const char*) { return false; }
 
 }  // namespace enw::referee

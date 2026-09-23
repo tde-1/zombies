@@ -9,6 +9,8 @@
 //   GET  /api/game-chat/me                      who the pass is for, party, DM contacts,
 //                                               and pause_on_chat (the pause contract's enw_pchat)
 //   GET  /api/game-chat/feed?g=&p=&wait=20      long-poll: global ring + party/DM lines
+//                                               (g=p=0: cursors only; &history=1 adds the
+//                                               backlog, each line `backfill: true`)
 //   POST /api/game-chat/send {channel,to?,text} channel = global | party | dm
 
 const express = require('express')
@@ -33,7 +35,8 @@ function router() {
     let closed = false
     req.on('close', () => { closed = true })
     const out = await gameChat.feed(req.chatUser, {
-      g: req.query.g, p: req.query.p, wait: req.query.wait, isClosed: () => closed,
+      g: req.query.g, p: req.query.p, wait: req.query.wait, history: req.query.history === '1',
+      isClosed: () => closed,
     })
     if (!out || closed) return
     res.json(out)

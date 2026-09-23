@@ -243,8 +243,24 @@ function tweenAmb(target) {
   if (!ambRaf) ambRaf = requestAnimationFrame(ambStep)
 }
 
+// THE MAP PAGE ONLY (B, 2026-09-23: "use the map colours very sparingly, only on the map
+// page; the rest of the site is dark and black"). The ambience paints for the open map on
+// /m/<key> and nothing else: home's selected map, a hover in a list or on a card, and a
+// profile's banner all leave the ground black. Their calls stay (the tiers are still
+// recorded), so putting a tier back is this one test, not a hunt through the pages.
+const onMapPage = () => typeof location !== 'undefined' && /^\/m\/[^/]+/.test(location.pathname)
+
+function clearAmbience() {
+  if (!bdEl) return
+  paintBackdropArt(null)
+  const root = document.documentElement
+  delete root.dataset.amb
+  delete root.dataset.ambStrong
+}
+
 function paintAmbience() {
-  const src = previewAmb || overrideAmb || baseAmb
+  if (!overrideAmb || !onMapPage()) { clearAmbience(); return }
+  const src = overrideAmb
   ensureAmbEls()
   paintBackdropArt(src)
   const c = colorOf(src, paintAmbience)
@@ -254,13 +270,10 @@ function paintAmbience() {
     hslToOklch(gradeAmbient({ h: c.h2, s: c.s2, l: c.l2 })),
   ])
   const root = document.documentElement
-  // Always on: unlike Movement, this site always has an atmosphere, because "no map" is a
-  // colour here rather than an absence.
+  // ~~Always on: "no map" is a colour here rather than an absence.~~ Retracted 2026-09-23:
+  // no map is black, Movement's absence. The open map cranks the strength to match its page.
   root.dataset.amb = '1'
-  // The open map cranks the strength to match its own page. A hover preview does not — you
-  // are looking at a list, not at that map.
-  if (overrideAmb && !previewAmb) root.dataset.ambStrong = '1'
-  else delete root.dataset.ambStrong
+  root.dataset.ambStrong = '1'
 }
 
 // A source is `{ key, art }`; a map row already is one. null clears that tier.
