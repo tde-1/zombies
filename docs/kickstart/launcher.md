@@ -2413,3 +2413,47 @@ since main's `54f7a95` — up to the files bucket when `infra/s3.env` has keys),
 `version: 0.2.12`. The site half needs `web/client` rebuilt and the site restarted; deploy the
 site first or together — a 0.2.11 launcher on the new site gets no chip (it lacks `updateNow`) and
 a Download that still works through `installMap`.
+
+## 2026-09-23 01:45 — the relaunch loop: a party match is followed at most once
+
+B: *"the client keeps booting you back into the game and being really annoying"*. His launcher
+started two clients for the same match 25 s apart (DLL logs `enw-35884` 01:03:38 and `enw-2200`
+01:04:03, both `m_506fba68`) and the box logged a new `SV_DirectConnect` every few seconds.
+
+**Root cause.** The party watcher (`main.js` `onPlay`) runs on **every** poll of
+`GET /api/launcher/play` (0.2 Hz, 1 Hz with a boot screen) and its only guard was `state.flow`.
+The site answers "your party is in-game with match X" for the whole life of the lease, so this was
+a level trigger: the poll after the player's game exited — `state.flow` back to null — launched X
+again, and again. A flow that gave up while the game was still running (a failed step runs
+`clear()` without the process dying) had the same hole with a second game beside the first.
+
+**Reproduced, then fixed, in a dev window** (the real `main.js`, invisible, own `ENW_ROOT`, the
+poll answered "in-game, `m_loop0001`" every time, the game a stand-in that exits after 5 s through
+`GameLaunch` → `BootFlow` → `ended`): HEAD launched **5 games in 45 s** (`party following
+m_loop0001` every 10 s); the fix launched **1** and then logged, once, *not launching: already
+launched m_loop0001 (followed, …, and that game ended at …); only Play or Resume sends the player
+back in*. `resumeMatch('m_loop0001')` from the site view launched exactly one more.
+
+**The rule** (`src/main/followgate.js`, used by `onPlay` and `startPlay`):
+- a match id is followed **at most once**; the ledger records every launch whose match id is known
+  (followed, Play, Play Local — `flow.on('update')`) and when it ended;
+- **never while a game this launcher started is alive** — the `GameLaunch.pids` set, which includes
+  a Steam-restarted pid the nanny adopted — whatever `state.flow` says. `startPlay` refuses too
+  (*World at War is still running. Close it first.*), so no button can start a second game either;
+- no match id, no follow;
+- only the player sends us back in: Play (not gated by the ledger), or the new bridge call
+  **`window.enw.resumeMatch(matchId)`** (IPC `resumeMatch`), which lifts the ledger for that match
+  and follows it at once if the last poll still names it. **The site's Resume button should call
+  it** (web lane);
+- every decision that changes is logged once (`party launching: …` / `party not launching: …`),
+  not once per poll.
+
+**The launcher's log** is still `%LOCALAPPDATA%\ENWZombies\logs\launcher.log` (`main.js` `LOG`,
+`P.logs`); the `enw-<pid>.log` files beside it are the client DLL's, one per game. Trap for agents:
+inside the Claude desktop app (MSIX) this path is overlaid by a stale twin at
+`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ENWZombies\logs\launcher.log`
+(written by an agent on 2026-09-22 20:23), so an agent reading it sees 16 KB from yesterday, not
+B's current log. B, or a process outside the container, reads the real one.
+
+`npm test` 137 + 14, 0 failed (three new: the loop sequence incl. a Steam-restarted pid and 60
+polls after exit; new match / Resume / no id; main.js wiring).

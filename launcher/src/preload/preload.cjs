@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld('enw', {
   playLocal: (session) => call('playLocal', session),
   cancelPlay: () => call('cancelPlay'),
   closeBoot: () => call('closeBoot'),
+  // The site's Resume: go back into a match this launcher already launched once.
+  resumeMatch: (matchId) => call('resumeMatch', matchId),
 
   // The shell.
   siteNav: (what) => call('siteNav', what),

@@ -36,6 +36,7 @@ import { AutoUpdater, resolveFeed } from './autoupdate.js'
 import { UpdateCheck, fakeUpdater } from './updatecheck.js'
 import * as deeplink from './deeplink.js'
 import { makeWindowRaiser } from './focusguard.js'
+import { makeFollowGate, FOLLOW_STATES } from './followgate.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
 
@@ -150,6 +151,11 @@ const raiser = makeWindowRaiser({
   log: (line) => log('focus', line),
 })
 const raiseWindow = (why) => raiser.raise(why)
+
+// Which matches this launcher has already started, and which of its games are still
+// running: the party watcher may follow a match at most once (followgate.js, B: "the
+// client keeps booting you back into the game").
+const followGate = makeFollowGate()
 
 // Anything unhandled is a crash report and a short plain message. Never a stack trace
 // in the player's face.
@@ -952,6 +958,13 @@ function wireIpc() {
 
   async function startPlay(opts = {}) {
     if (state.flow) throw new Error('A launch is already in progress.')
+    // Never a second World at War beside one we started, whoever asks: a flow that gave
+    // up (a failed step) clears `state.flow` while the game can still be running.
+    const alive = followGate.gameAlive()
+    if (alive) {
+      log('play', `refused to launch ${opts.map || '?'} (${opts.follow ? 'follow' : 'play'}): World at War (process ${alive}) that this launcher started is still running`)
+      throw new Error('World at War is still running. Close it first.')
+    }
 
     // The client DLL this launcher ships must be the one the game loads. An
     // auto-update replaces the copy beside the app and nothing else, so before
@@ -1047,6 +1060,19 @@ function wireIpc() {
       lockName: 'launcher',
     })
     state.flow = flow
+    // The ledger: this match has been launched (by the player or by following), and
+    // these are the processes to check before any later launch (followgate.js).
+    const how = opts.follow ? 'followed' : opts.local ? 'Play Local' : 'Play'
+    let noted = null
+    const noteMatch = (snap) => {
+      const id = snap?.matchId
+      if (!id || id === noted) return
+      noted = id
+      followGate.noteLaunch(id, how)
+      log('play', `launch ledger: ${id} launched (${how})`)
+    }
+    flow.on('update', noteMatch)
+    flow.on('launched', () => followGate.watchPids(flow.launch?.pids))
     state.gate.block('game', 'a game is starting or running')
     state.tray?.rebuild()
     showSite(false)
@@ -1104,6 +1130,9 @@ function wireIpc() {
       // then stop polling. Without the delay we stop the relay before the summary
       // exists and the replay pointer is never posted.
       if (local) setTimeout(() => local.run.stop(), 20_000).unref?.()
+      noteMatch(flow.snapshot())
+      followGate.noteEnded(flow.snapshot().matchId)
+      log('play', `the game ended (${p.phase}: ${p.detail || 'no detail'})${flow.snapshot().matchId ? `; ${flow.snapshot().matchId} will not be relaunched unless the player presses Play or Resume` : ''}`)
       state.flow = null
       state.gate.unblock('game')
       state.tray?.rebuild()
@@ -1205,6 +1234,17 @@ function wireIpc() {
   // again — which is how m_dca96c74 outlived the boot screen that made it.
   handle('cancelPlay', () => { state.flow?.cancel('you cancelled'); releaseLease('you cancelled'); showSite(true); return true })
   handle('closeBoot', () => { showSite(true); return true })
+  // The site's Resume (and anything else that is the PLAYER asking to go back into a
+  // match this launcher already launched once): lift the ledger for that match, then
+  // follow it now if the last poll still names it. followgate.js.
+  handle('resumeMatch', (matchId) => {
+    const id = String(matchId || state.lastPlay?.match?.match_id || '')
+    if (!id) throw new Error('No match to resume.')
+    followGate.allow(id)
+    log('party', `the player asked to resume ${id}`)
+    if (state.lastPlay?.match?.match_id === id) state.onPlay?.(state.lastPlay)
+    return { resumed: id }
+  })
 
   handle('setConfig', (patch) => {
     const next = cfg.save(patch)
@@ -1261,8 +1301,6 @@ function wireIpc() {
   // wrapped page (rather than the launcher's corner card) is in the same position as
   // everybody else: no flow running, a match waiting. The guard is `state.flow`, so
   // the player who pressed Play in the launcher is never followed into a second one.
-  const FOLLOW_STATES = ['reserving', 'loading', 'ready', 'in-game']
-
   function onPlay(p) {
     if (!p || p.signedOut) { state.lastPlay = null; return }
     state.lastPlay = p
@@ -1275,11 +1313,19 @@ function wireIpc() {
       ensureMapInstalled(bsp).catch((e) => log('party', `could not install ${bsp}: ${e.message}`))
     }
 
-    // 2. follow somebody else's Start
-    if (state.flow || !FOLLOW_STATES.includes(p.state)) return
-    if (!p.match || !bsp) return
+    // 2. follow somebody else's Start -- ONCE per match (followgate.js). This used to
+    // be `if (state.flow) return` on every poll: a level trigger on "the party is
+    // in-game with match X", so the poll after the player's game exited launched X
+    // again, and again (B, 2026-09-23). Every decision that changes is logged.
+    const d = followGate.decide(p, { flowRunning: !!state.flow })
+    if (d.key !== state.lastFollowKey) {
+      state.lastFollowKey = d.key
+      if (d.follow || FOLLOW_STATES.includes(p.state)) log('party', `${d.follow ? 'launching' : 'not launching'}: ${d.reason}`)
+    }
+    if (!d.follow) return
+    followGate.noteLaunch(d.matchId, 'followed')
     const who = p.party?.is_leader === false ? 'your party leader started a game' : 'a game was started for you'
-    log('party', `following ${p.match.match_id || '(no id yet)'} — ${who}`)
+    log('party', `following ${d.matchId} — ${who}`)
     startPlay({ map: bsp, mode: p.match.mode || p.party?.mode || 'custom', follow: true, followDetail: who })
       .catch((e) => log('party', `could not follow: ${e.message}`))
   }
@@ -1290,6 +1336,7 @@ function wireIpc() {
     w.on('poll', (p) => { try { onPlay(p) } catch (e) { log('party', `watch: ${e.message}`) } })
     w.on('error', () => {})     // a site that is down is not an error the player can act on
     state.playWatcher = w
+    state.onPlay = onPlay
     w.start()
     log('party', 'watching the site for the party, the staged map and somebody else pressing Start')
   }
