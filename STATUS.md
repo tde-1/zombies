@@ -184,6 +184,15 @@ direction from recorded health, a settings panel. Map clutter: alpha-cut foliage
 floating props hidden (scratch export only; live export unchanged). **DLL built, not deployed**:
 `cmd_ang`, stance bits 0x200/0x100 (were melee/use), kill counter blind above entnum 255.
 
+**Replay map scale (2026-09-23, replay.md §8.12).** B's "complete misalignment" was the Nacht
+world shell being **2.54× too big** — Husky exports in centimetres — while props and the
+recording are in engine inches; hidden until now because the start-room floor is at z = 0.
+Fixed in `export_map.py` and **re-exported live** (world 31 212 → 12 288 u across; window goals
+133.8 → 57.3 u from their walls; zombies 0.18 u above the floor; 22 of 23 aimed shots now have a
+clear line to their zombie). Map cache-busting hardened (versioned URL from built_at + mtime +
+size, `.glb` no-cache + ETag, track cache invalidated on re-export) — **needs a site restart**.
+New: hold Tab for a WaW scoreboard (points not recorded yet: DLL field `score` needed).
+
 ## Since the morning checklist was written (afternoon)
 
 - **Isolation rule, done and proven**: our session redirects the game's LocalAppData into `%LOCALAPPDATA%\ENWZombies\home\localappdata` (DLL `enw_localappdata.cpp`); maps, config, saves, profiles all live there; B's `Activision\CoDWaW` tree is byte-identical before/after a Play Local. B's own mods folder was cleaned into `ZombiesDevackup-user-mods-20260923\`.

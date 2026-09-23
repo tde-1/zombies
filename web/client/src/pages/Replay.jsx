@@ -16,7 +16,8 @@ const ReplayViewer = lazy(() => import('../replay3d/ReplayViewer.jsx'))
 // Exported map geometry, served from a git-ignored ZombiesDev path by
 // web/server/routes/replay.js. A stock map is a game asset and never enters the repo.
 //
-// `?v=<built_at>` is the cache key. The .glb is 38 MB and is served `immutable` for a
+// `?v=<version>` is the cache key (§8.12: built_at + the .glb's mtime and size; the .glb is
+// also served no-cache with an ETag now). Before that: the .glb was 38 MB and served `immutable` for a
 // year, which is right for a file that only changes when somebody re-exports the map —
 // and wrong the moment somebody does, because the URL would not have changed. The
 // sidecar's `built_at` comes down with the track (`map_export`), so a re-export is a new
@@ -63,7 +64,8 @@ export default function Replay() {
           // for. The viewer is told there is no geometry rather than being left to find
           // out by failing to fetch it.
           const ex = track.map_export || {}
-          const v = ex.built_at || null
+          // §8.12: the export's version (built_at + the .glb's mtime and size), not built_at alone.
+          const v = ex.version || ex.built_at || null
           return (
             <ReplayViewer
               track={track}

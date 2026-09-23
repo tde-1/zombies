@@ -89,6 +89,9 @@ PLACEABLE = {"script_model", "misc_model"}
 # each. The engine draws them; a replay viewer does not need them.
 MIN_PROP_SIZE = 12.0
 
+# Husky's OBJ unit: centimetres (engine inches x 2.54). See merge_world.
+HUSKY_OBJ_SCALE = 2.54
+
 MAX_TEX = 512          # px on the long edge; Nacht's props ship 1024 and nobody can tell
 JPEG_QUALITY = 86
 
@@ -371,17 +374,16 @@ def drop_origin_brushmodels(groups: dict):
     GfxWorld surface as-is, and a *brush model* (`script_brushmodel`, model "*N" -- the
     barricade planks, the debris piles, the hinged doors) is stored in GfxWorld in its
     OWN local space, centred on its entity origin. The engine moves it into place at
-    run time; Husky does not. On Nacht that is 39 islands / 1 139 triangles of
+    run time; Husky does not. On Nacht that is ~49 islands / ~1 200 triangles of
     `makin_door_wood2` planks, `peleliu_trim_concrete_broken` chunks and one
     `okinawa_door_wood_heavy` door, all straddling (0,0,0) -- which is the middle of
-    the start room, so a player walking across it walked "through" planks standing
-    140 units tall and 140 units deep into the floor.
+    the start room, so a player walking across it walked "through" planks.
 
     They cannot be put back where they belong: nothing in Husky's output says which
     island is which "*N", and 127 brushmodels share a handful of materials. So they are
     dropped. The rule is geometric and narrow on purpose: a connected island whose
-    bounding box is centred within 100 units of the origin in x and y, reaches below -8 (a
-    real floor piece near the origin stays at z >= 0), and is under 600 units across.
+    bounding box is centred within 60 units of the origin in x and y, reaches below -2 (a
+    real floor piece near the origin stays at z >= 0), and is under 250 units across.
     """
     dropped_islands = dropped_tris = 0
     for name, g in groups.items():
@@ -424,9 +426,9 @@ def drop_origin_brushmodels(groups: dict):
         bad = set()
         for r in lo:
             a, b = lo[r], hi[r]
-            # Centred on the origin (within 100 units in x and y -- brush models are
+            # Centred on the origin (within 60 units in x and y -- brush models are
             # built round their own origin, so their bounds are near-symmetric about it:
-            # a door hinged there spans x -175..0, the concrete trim faces sit at y = -10)
+            # a door hinged there spans x -69..0, the concrete trim faces sit at y = -4)
             # and reaching below the floor. Measured on Nacht: this catches the planks,
             # the trim chunks and their faces, the door and the "help" chalk sign, and
             # nothing else (replay.md 8.11).
@@ -434,9 +436,10 @@ def drop_origin_brushmodels(groups: dict):
             # A decal riding on one of those brush models (the blood splat on the "help"
             # sign, z 23..84) does not reach below the floor, so decals are matched by
             # material name instead.
-            below = a[2] < -8 and b[2] > 0
-            if (abs(cx) < 100 and abs(cy) < 100 and (below or name.startswith('decal'))
-                    and max(b[k] - a[k] for k in range(3)) < 600):
+            # (Engine units, after the 1/2.54 scale: a plank is +-42 x +-6 u about the origin.)
+            below = a[2] < -2 and b[2] > 0
+            if (abs(cx) < 60 and abs(cy) < 60 and (below or name.startswith('decal'))
+                    and max(b[k] - a[k] for k in range(3)) < 250):
                 bad.add(r)
         if not bad:
             continue
@@ -458,24 +461,13 @@ WALL_HUNG = ("weapon_", "chalk", "grenade_bag", "treasure")
 
 
 def count_unsupported_props(glb: 'Glb'):
-    """COUNT props with nothing under them (replay.md §8.11). It does not hide them any more.
+    """Count props with no shell surface under them (replay.md §8.11, §8.12). Nothing is hidden.
 
-    Written to hide them, and measured before shipping: on Nacht 764 of 1 351 placed props
-    have no shell surface from 40 units below to 8 above their origin. That is not 764
-    floating props: the wall-buy chalk weapons hang on walls by design, and many props sit
-    MORE than 8 units under the shell's floor -- the fastfile's own explosive barrels by 5-14
-    (map_ents, not Husky), the same depth the recorded zombies walk at -- so the shell's
-    floor and the engine's ground disagree by a few units in places. Hiding them would empty
-    the map, so the count goes into the sidecar as `props_unsupported` for the next export
-    to be judged against.
-
-    MEASURED on Nacht: the Husky shell is missing whole surfaces. Horizontal rays west from
-    x = -150 at 45 units high find no wall before x = -527 for y -750..+300, although the
-    map's own window goals (map_ents `exterior_goal`) put windows in a west wall at
-    x = -266; only two ~70-unit wall pieces exist there. Sandbags hang over the start room
-    the same way, which reads as missing upstairs floors. A prop counts as supported when
-    some world triangle lies under its origin (XY inside, top within 40 units below to 8
-    above); everything in HANGS is exempt. Needs numpy; without it nothing is counted."""
+    §8.11 hid 506 of them as "floating over missing floors". That was the shell being 2.54x
+    too big (§8.12), not missing floors. At the true scale 143 remain, and they are sandbags
+    stacked on sandbags, trees on terrain dips and props on brush models, so they are drawn
+    and only counted: `props_unsupported` (nothing within 40 u below) and
+    `props_unsupported_kept` (8-40 u under the shell's floor, or wall-hung)."""
     try:
         import numpy as np
     except ImportError:
@@ -533,8 +525,10 @@ def count_unsupported_props(glb: 'Glb'):
             keep.append(ni)
             unsupported[name] = unsupported.get(name, 0) + 1
         else:
-            # Nothing within 40 units below it: standing on a surface the shell does not
-            # have. Hidden, and counted.
+            # Nothing within 40 units below it. Counted, and KEPT (§8.12): with the shell at
+            # its true scale these are sandbags stacked on sandbags, trees on terrain
+            # dips, and props on brush models -- not props floating over missing floors.
+            keep.append(ni)
             hidden[name] = hidden.get(name, 0) + 1
     glb.j["scenes"][0]["nodes"] = keep
     glb.hidden_floating = hidden
@@ -545,6 +539,16 @@ def count_unsupported_props(glb: 'Glb'):
 def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
     """Fold a Husky world export into `glb` as one mesh. Returns the mesh index."""
     groups = read_obj(obj_path)
+    # THE SCALE (replay.md §8.12). Husky writes the world in CENTIMETRES: every vertex is the
+    # engine position x 2.54. Measured on Nacht against engine-unit anchors the fastfile
+    # itself carries: the upstairs floor is at z 368.3 in the OBJ and Husky's own .map puts
+    # the upstairs sandbags at z 145.0 (368.3 / 2.54 = 145.0); the 12 `exterior_goal` window
+    # goals sit 56-61 u outside the nearest wall at 1/2.54 and 99-483 u away at 1:1. Only the
+    # shell is scaled -- the .map placements, map_ents and the recording are already in
+    # engine units. Before this, a floor at z 0 matched (0 x 2.54 = 0) and everything else
+    # grew 2.54x away from the origin, which is what B saw.
+    for g in groups.values():
+        g['pos'] = [v / HUSKY_OBJ_SCALE for v in g['pos']]
     isl, tris = drop_origin_brushmodels(groups)
     glb.dropped_origin_brushmodels = (isl, tris)
     if isl:
@@ -848,8 +852,9 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
             log(f"world shell merged from {world.name}")
             floating = count_unsupported_props(glb)
             if floating:
-                log(f"hid {sum(floating.values())} props floating over missing floors; "
-                    f"{sum(glb.unsupported.values())} more sit under the shell's floor or on walls (kept)")
+                log(f"{sum(floating.values())} props have nothing under them within 40 u and "
+                    f"{sum(glb.unsupported.values())} sit under the shell's floor or on walls "
+                    f"(all kept, counted in the sidecar)")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     size = glb.write(out_dir / f"{bsp}.glb")
@@ -867,9 +872,10 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         "props_placed": placed,
         "props_missing_model": skipped,
         "props_hidden_small": hidden_small,
-        "props_hidden_floating": getattr(glb, "hidden_floating", {}),
+        "props_unsupported": getattr(glb, "hidden_floating", {}),
         "props_unsupported_kept": getattr(glb, "unsupported", {}),
         "min_prop_size": MIN_PROP_SIZE,
+        "world_obj_scale": HUSKY_OBJ_SCALE if (world and world.suffix.lower() == ".obj") else None,
         "world_origin_brushmodels_dropped": list(getattr(glb, "dropped_origin_brushmodels", (0, 0))),
         "sky_model": sky_name if sky_ok else None,
         "world_shell": bool(world and world.is_file()),
@@ -892,6 +898,17 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
                      if e.get("classname", "").startswith("actor_axis")],
         "brushmodels_unresolved": sum(1 for e in ents
                                       if e.get("classname") == "script_brushmodel"),
+        # Engine-unit anchors out of map_ents, for the alignment checks (replay.md §8.12):
+        # the viewer's ?r3ddebug overlay and web/test/map-align.js compare the recording and
+        # the .glb against these, so a unit or placement error in the shell is a number.
+        "spawns": [vec(e.get("origin")) for e in ents
+                   if e.get("classname") == "info_player_start"
+                   or e.get("targetname") == "initial_spawn_points"],
+        "window_goals": [vec(e.get("origin")) for e in ents
+                         if e.get("targetname") == "exterior_goal"],
+        "anchors": [{"model": e.get("model"), "origin": vec(e.get("origin"))} for e in ents
+                    if e.get("classname") == "script_model" and e.get("model")
+                    and not e.get("model", "").startswith("*")][:64],
     }
     (out_dir / f"{bsp}.meta.json").write_text(json.dumps(meta, indent=1))
     log(f"{bsp}.glb  {size / 1048576:.2f} MB  "

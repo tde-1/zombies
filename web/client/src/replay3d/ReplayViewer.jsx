@@ -57,7 +57,8 @@ const clock = (s) => {
 // Viewer settings (B's ask 3): each overlay can be switched off; all start ON. Per-viewer
 // convenience, so localStorage, wrapped: a private window has none and that is fine.
 const SETTINGS_KEY = 'enw.replay3d.settings'
-const DEFAULT_SETTINGS = { hud: true, xh: true, dmg: true }
+const DEFAULT_SETTINGS = { hud: true, xh: true, dmg: true, sb: true }
+const DEBUG = (() => { try { return new URLSearchParams(window.location.search).has('r3ddebug') } catch { return false } })()
 const loadSettings = () => {
   try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') } } catch { return { ...DEFAULT_SETTINGS } }
 }
@@ -139,6 +140,10 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const lowRef = useRef(null)
   const dmgRefs = useRef([])
   const gunRef = useRef(null)
+  // The Tab scoreboard (B's ask, §8.12): held, like the game's.
+  const [board, setBoard] = useState(false)
+  // ?r3ddebug: the alignment numbers (§8.12), computed once the map is in.
+  const [debugInfo, setDebugInfo] = useState(null)
 
   // THE TIMELINE'S ZERO IS THE FIRST SNAPSHOT, NOT THE FIRST EVENT.
   //
@@ -365,6 +370,41 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         skyRef.current = installSkyDome(api)
 
         const meta = await fetchJson([metaUrl]).catch(() => null)
+        if (DEBUG && meta) {
+          // Engine coordinates of three-space: (x, y, z)_engine = (x, -z, y)_three.
+          const T = api.THREE
+          const eng = (v) => [v.x, -v.z, v.y]
+          let world = null
+          api.scene.updateMatrixWorld(true)
+          api.scene.traverse((o) => { if (!world && o.name === '__world') world = o })
+          let ext = null
+          if (world) {
+            const b = new T.Box3().setFromObject(world)
+            ext = { lo: [b.min.x, -b.max.z, b.min.y].map(Math.round), hi: [b.max.x, -b.min.z, b.max.y].map(Math.round) }
+          }
+          const anchors = []
+          for (const a of (meta.anchors || []).filter((x) => /opel_blitz|treasure|couch/.test(x.model))) {
+            let best = Infinity
+            // GLTFLoader de-duplicates node names ("x", "x_1", "x_2", ...).
+            const same = (n) => n === a.model || (n.startsWith(a.model + '_') && /^\d+$/.test(n.slice(a.model.length + 1)))
+            api.scene.traverse((o) => {
+              if (!same(o.name)) return
+              const w = eng(o.getWorldPosition(new T.Vector3()))
+              best = Math.min(best, Math.hypot(w[0] - a.origin[0], w[1] - a.origin[1], w[2] - a.origin[2]))
+            })
+            anchors.push(`${a.model} @ ${a.origin.map(Math.round).join(',')}: node ${Number.isFinite(best) ? best.toFixed(2) + ' u off' : 'missing'}`)
+          }
+          const p0 = track.players[0]
+          let first = null
+          if (p0) {
+            const k = Math.max(0, p0.alive.indexOf(1))
+            const at = [p0.pos[k * 3], p0.pos[k * 3 + 1], p0.pos[k * 3 + 2]]
+            let d = Infinity
+            for (const sp of meta.spawns || []) d = Math.min(d, Math.hypot(at[0] - sp[0], at[1] - sp[1], at[2] - sp[2]))
+            first = { at, d }
+          }
+          setDebugInfo({ ext, scale: meta.world_obj_scale || null, built: meta.built_at, anchors, first, spawns: (meta.spawns || []).length })
+        }
         if (meta && meta.sun) {
           // The map author's own sun, straight out of worldspawn. Nacht's is a cold
           // blue moon (0.64 0.85 1) at 0.75 with 0.1 ambient, and using it is the
@@ -727,6 +767,12 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     const key = (e) => {
       if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return
       const api = sceneRef.current
+      if (e.code === 'Tab') {
+        // Hold to show, like the game's scoreboard. Tab would otherwise move focus.
+        e.preventDefault()
+        if (settingsRef.current.sb) setBoard(e.type === 'keydown')
+        return
+      }
       if (e.type === 'keyup') { api && api.state.keys.delete(e.code); return }
       api && api.state.keys.add(e.code)
       if (e.code === 'Space') { e.preventDefault(); setPlaying((p) => !p) }
@@ -768,6 +814,33 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     }
     return out.slice(-5)
   }, [track, hud.tick, feedByTick, tickMs])
+
+  // Points only where the recording has them (§8.12).
+  const scoreOf = (p) => {
+    const tp = track && track.players.find((x) => x.slot === p.slot)
+    return tp && tp.has_score === false ? '—' : p.score
+  }
+  const sbRows = () => {
+    const tMs = t0 + hud.t * 1000
+    const solo = track.players.length === 1
+    const kills = track.events.filter((e) => e.t === 'kill' && e.ms <= tMs)
+    return hud.players.map((p) => {
+      const tp = track.players.find((x) => x.slot === p.slot)
+      const own = kills.filter((e) => e.slot === p.slot).length
+      const unattributed = kills.filter((e) => e.slot === undefined).length
+      return {
+        slot: p.slot,
+        name: p.name,
+        points: tp && tp.has_score === false ? '—' : p.score,
+        // Solo: every kill is the one player's. With company, unattributed kills are not
+        // guessed at: attributed ones count, and none at all reads "—".
+        kills: solo ? own + unattributed : (own || (unattributed ? '—' : 0)),
+        downs: downs.filter((d) => d.slot === p.slot && d.ms <= tMs).length,
+        revives: track.events.filter((e) => e.t === 'revive' && e.slot === p.slot && e.ms <= tMs).length,
+        _pts: tp && tp.has_score === false ? -1 : p.score,
+      }
+    }).sort((a, b) => b._pts - a._pts || a.slot - b.slot)
+  }
 
   if (!track) return <div className="r3d"><Boot /></div>
 
@@ -835,7 +908,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
             <span className={'r3d-zm-hp' + (p.health < 50 ? ' hurt' : '')}>
               <i style={{ width: `${Math.max(0, Math.min(100, p.health))}%` }} />
             </span>
-            <span className="r3d-zm-pts">{p.score}</span>
+            <span className="r3d-zm-pts">{scoreOf(p)}</span>
           </div>
         ))}
       </div>
@@ -897,7 +970,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
               ))}
             </div>
             <div className="r3d-set-lab">WaW overlays</div>
-            {[['hud', 'Round + zombies left'], ['xh', 'Crosshair + grenade'], ['dmg', 'Damage effects']].map(([k, label]) => (
+            {[['hud', 'Round + zombies left'], ['xh', 'Crosshair + grenade'], ['dmg', 'Damage effects'], ['sb', 'Scoreboard (hold Tab)']].map(([k, label]) => (
               <button key={k} className={'r3d-set-tog' + (settings[k] ? ' on' : '')} onClick={() => toggle(k)} aria-pressed={settings[k]}>
                 <span className="r3d-set-box" />{label}
               </button>
@@ -922,6 +995,44 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
             else el && el.requestFullscreen && el.requestFullscreen()
           }}><IconFull /></button>
       </div>
+
+      {board && settings.sb && (() => {
+        // WaW's scoreboard columns are the game's own strings (code_post_gfx.ff CGAME_SB_*:
+        // Points, Kills, Downs, Revives). Only what the recording supports is filled in:
+        // points are NOT recorded by the real DLL yet (player_int("score") is unbound), so
+        // they read "—"; kills are the referee's unattributed `kill` events, credited to the
+        // player only when there is one; downs are inferred; revives only from `revive` events.
+        const rows = sbRows()
+        return (
+          <div className="r3d-waw-sb" role="dialog" aria-label="Scoreboard">
+            <div className="r3d-waw-sb-head">
+              <span>{track.map_name}</span>
+              <span>Round {hud.round || '—'}</span>
+            </div>
+            <table>
+              <thead><tr><th>Player</th><th>Points</th><th>Kills</th><th>Downs</th><th>Revives</th></tr></thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.slot} className={r.slot === focus ? 'on' : ''}>
+                    <td><i style={{ background: SLOT_COLORS[r.slot % SLOT_COLORS.length] }} />{r.name}</td>
+                    <td>{r.points}</td><td>{r.kills}</td><td>{r.downs}</td><td>{r.revives}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="r3d-waw-sb-foot">{rows.some((r) => r.points === '—') ? 'Points are not in this recording yet.' : ''}{rows.length > 1 && rows.some((r) => r.kills === '—') ? ' Kills are recorded unattributed in multiplayer.' : ''}</div>
+          </div>
+        )
+      })()}
+
+      {DEBUG && debugInfo && (
+        <pre className="r3d-waw-debug">{[
+          `export ${debugInfo.built}  obj scale 1/${debugInfo.scale || 1}`,
+          debugInfo.ext ? `world extent x ${debugInfo.ext.lo[0]}..${debugInfo.ext.hi[0]}  y ${debugInfo.ext.lo[1]}..${debugInfo.ext.hi[1]}  z ${debugInfo.ext.lo[2]}..${debugInfo.ext.hi[2]}  (span ${debugInfo.ext.hi[0] - debugInfo.ext.lo[0]} x ${debugInfo.ext.hi[1] - debugInfo.ext.lo[1]})` : 'no world shell',
+          debugInfo.first ? `first live tick ${debugInfo.first.at.join(',')}  -> nearest of ${debugInfo.spawns} spawns ${debugInfo.first.d.toFixed(1)} u ${debugInfo.first.d <= 20 ? 'OK' : 'FAIL'}` : '',
+          ...debugInfo.anchors,
+        ].join('\n')}</pre>
+      )}
 
       {err && <div className="r3d-state r3d-err">{err}</div>}
       <Boot state={boot} progress={progress} />

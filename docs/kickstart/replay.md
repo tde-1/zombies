@@ -691,6 +691,9 @@ identical build was driven in the verify instance. B's first look is the live pr
 
 ### 8.11 2026-09-22 (evening) — WaW HUD, crosshair, grenade, damage, and position accuracy
 
+> **Corrected by §8.12:** the Husky shell was 2.54× too big (centimetres). The position rows
+> below that blame the shell ("walls missing", "zombie z", "506 floating props") were that scale.
+
 Branch `replay-waw`. B's asks: maps clean, zombies visible and facing, WaW's round HUD with a
 zombies-left counter, a crosshair "very accurate to the real game", the grenade cook, obvious
 hits, and (via the coordinator) **positions that line up exactly**. Tested against the two real
@@ -893,3 +896,96 @@ classname census result.
   the recording; the map it is drawn in is not, around the windows.
 - The live map export and the DLL are not deployed from here.
 - Weapon indices other than #0/#7/#16, and every map but Nacht, fall back to the M1 Garand row.
+
+### 8.12 2026-09-23 — the world shell was 2.54x too big; cache-busting; the Tab scoreboard
+
+**Cause, in two sentences.** Husky writes the world OBJ in centimetres, so every vertex of the
+shell was the engine position × 2.54, while the props (Husky's `.map`), map_ents and the
+recording are in engine inches — the world grew 2.54× away from the map origin. Every earlier
+check (including §8.11's "player on the floor, median −1.4 u") passed because Nacht's start-room
+floor is at z ≈ 0, where 0 × 2.54 is still 0; it was never a cache problem.
+
+The bug is as old as the Husky export (the pre-§8.11 file has it too); §8.11's "walls missing
+around the windows", "zombies 8–12 u under the floor" and "506 props floating over missing
+floors" were all this one scale and are withdrawn.
+
+#### Numbers, live before vs now (`web/test/map-align.js`, `mapAlign.js`, `?r3ddebug`)
+
+| Check | Expected (engine truth) | Live before (built 21:12) | Now (built 00:06:49, live) |
+|---|---|---|---|
+| World shell extent x × y (z) | Nacht with terrain and sky ≈ 12 000 across | **31 212 × 29 423** (z −478..3 739) | **12 288 × 11 584** (z −188..1 472); ratio 2.540 |
+| Upstairs floor under the upstairs sandbags (Husky `.map` z 145.0) | 145 | 368.3 | 145.0 |
+| 12 `exterior_goal` window goals → nearest wall (goals stand ~55–60 u outside the window) | 55–60 | median **133.8**, max **320.3** | median **57.3**, max **61.3** |
+| Prop: truck `dest_opel_blitz_pristine` at map_ents (−1219, −991, −27), all 5 trucks | node at the origin | 0.00 u (props were always right) | 0.00 u |
+| Spawn: `initial_spawn_points` (0, 424, 17) → floor below | ~17 (script_structs float) | 14.5 | 16.0 |
+| First live tick of `m_0afb449b` (0, 424, 18) → nearest spawn | ≤ 20 u | 1.0 u | 1.0 u |
+| Player origin − floor, all in-game samples | ≈ 0 | `0afb` −1.4 (z=0 coincidence) | `0afb` **0.10**, `6d80` **0.10** (p5 −0.6) |
+| Zombie origin − floor | ≈ 0 | median +20.9, p5 −11.8 | median **0.18**, p95 1.1 (`6d80` 0.17 / 2.1) |
+| Zombie clearance to walls | ≥ 15 (hull) | min 0.6, 16 of 346 inside walls | min **17.7**, 0 of 346 (`6d80` 17.0, 0 of 436) |
+| Aimed shots (yaw within 2–3°) with a clear line from the eye (origin + 60) to the zombie | all | `0afb` 3 of 15 | `0afb` 12 of 13; `6d80` **10 of 10** |
+
+`m_6d80aa20` has view pitch (`cmd_ang`, the §8.11 DLL): over its aimed shots the recorded pitch is
+within 0.4–4° of the pitch to the target zombie's chest (1.4° or better beyond 700 u), so the
+spawn calibration holds on a real game.
+
+`map-align.js` is part of `npm test`: on a machine with the export it asserts world extent
+< 20 000, spawns on a floor, window goals within 70 u of a wall, trucks at their map_ents
+origins, and the first tick within 20 u of a spawn (10/10 now; the pre-fix export fails the
+extent and window checks). Without an export it prints "skipped".
+
+#### Export changes (`tools/maps/export_map.py`)
+
+- `HUSKY_OBJ_SCALE = 2.54`: the shell is divided by it on the way in; the sidecar says
+  `world_obj_scale: 2.54`. Only the shell — nothing else was ever wrong.
+- The origin-piled brush-model rule restated in engine units (centred within 60 u, reaching
+  below −2): still 49 islands / 1 236 triangles.
+- **Props are no longer hidden as "floating".** At the true scale 143 props have nothing within
+  40 u below them, and they are sandbags stacked on sandbags, trees on terrain dips and props on
+  brush models; they are drawn and counted (`props_unsupported`, `props_unsupported_kept`).
+  Tiny props (< 12 u) are still skipped.
+- The sidecar carries `spawns`, `window_goals` and `anchors` (script_model placements) for the
+  checks.
+- **Re-exported into the live `ZombiesDev\maps\nazi_zombie_prototype`** at 00:06:49; the
+  previous live export is kept at `maps\_work\nazi_zombie_prototype.pre-8.12\`. The running site
+  serves it now (`world_obj_scale 2.54`, 39 499 488 B).
+
+#### Cache-busting (the coordinator's item 1)
+
+The `.glb` is served from `/mapdata` (not `/media`), and was `immutable` for a year behind
+`?v=<built_at>`. Two holes, both closed:
+1. The server's in-memory track cache kept the **old** `map_export.built_at` after a re-export
+   until the site restarted, so every browser kept asking for — and served itself from cache —
+   the old URL. A cache hit is now only a hit when the export's version is unchanged.
+2. The version is now `built_at + .glb mtime + size` (`map_export.version`), and the `.glb` is
+   `Cache-Control: no-cache` with an ETag (an unchanged map is a 304, one round trip). The track
+   JSON is `no-cache` too.
+
+Proven against one running dev server, no restart: version A
+`2026-09-23T00:05:36Z.1790121936870.39499488` → rewrite the sidecar and touch the `.glb` →
+version B `2026-09-23T00:10:45Z.1790122245938.39499488`; `Cache-Control: no-cache` on both; a
+conditional GET with the ETag answers 304. Unit test: `mapVersion` differs for a new `built_at`
+and for a new mtime. **The live site needs a restart onto this build** for items 1–2 (its old
+process still has the old code); the geometry itself is already live.
+
+#### The Tab scoreboard (B's ask)
+
+Hold **Tab** (like the game) for a dark WaW panel in the round's red/Impact face; also a toggle
+("Scoreboard (hold Tab)") in the settings panel, on by default. Columns are the game's own
+strings (`code_post_gfx.ff` `CGAME_SB_POINTS / KILLS / DOWNS / REVIVES`), ranked by points.
+What fills them:
+
+| Column | Source | Status |
+|---|---|---|
+| Points | `snap.players[].score` | **not recorded by the real DLL** (`player_int("score")` is unbound) — shows "—" and says so; the track now carries `has_score` so zeros are never shown as points. **DLL field needed: per-player `score`.** |
+| Kills | `kill` events (`entity_gone`, unattributed) | recorded; credited to the player in a solo game only (4 after round 1 of `m_6d80aa20`, matching its 4 zombies); with company they need a `slot` on `kill` (DLL) |
+| Downs | `down` events, else the inferred last-stand weapon drop (§8.11) | inferred on both test files |
+| Revives | `revive` events | none recorded yet |
+
+The side panel's points column also shows "—" instead of 0 when the score is not recorded.
+
+Screenshots (`docs/kickstart/ui/`): `replay-812-debug-0afb.png` / `-debug-6d80.png` (the
+`?r3ddebug` overlay with the numbers above), `replay-812-3p-6d80.png` (the player against the
+start-room wall), `replay-812-above-0afb.png`, `replay-812-fp-0afb.png`,
+`replay-812-fp-close-6d80.png` (zombie at 76 u under the crosshair), `replay-812-fp-far-6d80.png`
+(an ADS shot at 771 u), `replay-812-scoreboard.png`. The `replay-waw-*` shots from §8.11 were
+taken on the 2.54× shell.
