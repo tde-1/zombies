@@ -72,12 +72,12 @@ try {
     Box "echo $Bots > $gameDir/enw_dev_bots.txt; chown waw:waw $gameDir/enw_dev_bots.txt; rm -f $gameDir/enw_dev_god.off" | Out-Null
     Say "lease $matchId on $slot ($($info.connect)); bots $Bots (lease-cli --dev-bots: $hasBots)"
 
-    'utc,t_s,cpu_cores,rss_mb,mem_avail_mb,load1,devbots_line,round,escapes,body_hz' | Set-Content -LiteralPath $csv -Encoding ascii
+    'utc,t_s,cpu_permille,rss_mb,mem_avail_mb,load1,devbots_line,round,escapes,body_hz' | Set-Content -LiteralPath $csv -Encoding ascii
     $probe = @"
 p=`$(pgrep -f '^CoDWaW.exe .*homes.$slot' | head -1); [ -z "`$p" ] && { echo GONE; exit; }
 a=`$(awk '{print `$14+`$15}' /proc/`$p/stat); sleep 10; b=`$(awk '{print `$14+`$15}' /proc/`$p/stat)
 L=`$(ls -t $gameDir/enw-*.log | head -1)
-echo "S `$(awk -v a=`$a -v b=`$b 'BEGIN{printf "%.3f",(b-a)/1000}') `$(awk '/VmRSS/{print int(`$2/1024)}' /proc/`$p/status) `$(awk '/MemAvailable/{print int(`$2/1024)}' /proc/meminfo) `$(cut -d' ' -f1 /proc/loadavg) `$L"
+c=`$((b-a)); echo S `$c `$(awk '/VmRSS/{print int(`$2/1024)}' /proc/`$p/status) `$(awk '/MemAvailable/{print int(`$2/1024)}' /proc/meminfo) `$(cut -d' ' -f1 /proc/loadavg) `$L
 grep 'dev_bots: bots' `$L | tail -1 | cut -c16-
 grep 'referee: ROUND' `$L | tail -1 | grep -oE 'ROUND [0-9]+'
 grep -c 'ESCAPED frame' `$L
