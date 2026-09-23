@@ -97,7 +97,10 @@ function Mount-EnwMap {
     # Flip it once the dedi/referee copies are rebuilt; the junctions are the only
     # thing that has to change, and `launch.ps1` already exports ENW_LOCALAPPDATA
     # under the same switch.
-    if ($env:ENW_USE_PRIVATE_LOCALAPPDATA -eq '1') {
+    # 2026-09-23 01:20 (coordinator): DEFAULT IS NOW PRIVATE, matching launch.ps1. A mount run
+    # without the switch put a mods\mw2rust junction into B's real %LOCALAPPDATA%\Activision\CoDWaW
+    # (removed). ENW_USE_PRIVATE_LOCALAPPDATA=0 is the opt-OUT for a deliberately stock run.
+    if ($env:ENW_USE_PRIVATE_LOCALAPPDATA -ne '0') {
         $home0 = if ($Homes.Count) { $Homes[0] } else { 'shared' }
         $localAppData = Join-Path $DevRoot "homes\$home0\localappdata\Activision\CoDWaW\mods"
         & $Log "fs_localAppData is REDIRECTED to $localAppData (ENW_USE_PRIVATE_LOCALAPPDATA=1); the DLL in this copy must carry enw_localappdata or the map-exists check will fail" 'Cyan'
