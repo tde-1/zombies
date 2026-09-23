@@ -81,6 +81,18 @@ Open-bug 16's `monkeytoy 1` point is moot for players now: nobody reaches the st
 18. **→ Closed 2026-09-23 13:35, cause `r_multiGpu 1`** (B: dual video cards OFF fixed the zombies and most of the mouse stutter; `mod-compat.md` §10.4, same fix as bug 1; the §10.3 A/B is no longer needed for this). Original entry: ~~**fear_mc_2 zombies invisible (AA4/spec/glow on) or garbled (off)** (B, 0.2.24, 12:49 and 13:15–13:21 UK): broken skinning on the client; B always had AA4/spec/glow on (the "settings changed at 01:45" theory in `mod-compat.md` §10 is withdrawn, §10.1). Not new in the DLL on the evidence: the 00:53 stretched Colt was the same class of bug; `r_multiGpu 1` has been pinned by the launcher since 09-22 04:13. Ruled out: map files, asset errors, write-through, DLL writes into entities, model-set mismatch. Local A/B ready: `tools/dev/z1-ab.ps1` (§10.3) — V0 must reproduce first. B's toggles (r_multiGpu, Discord overlay Off) are the fastest answer.~~
 19. **Asset audit (lane A1, 2026-09-23 13:40 UK, branch `worktree-agent-a4ffc5dfe41c8266c`)**: every logged `Could not load` on 157 hosted maps classified (`archive/asset_audit.py`, `archive.md` §13). Ours: two serve-filter drops — loose `.wav/.mp3` (203 files, 6 maps) and Neon Fighter's `HarryBos Mysterybox Pack V1..0.0.iwd` (`includes('..')`) — fixed in `mapfiles.js`, in the bucket; **live only after merge + site restart on B's word**, then `box_stage.py --map neon_fighter --add-missing` (queue step 0). Dedi lane: the dedicated server never loads `<bsp>_load.ff` (ray_chirstmas_map's zombies live only there). Everything else visible is the release's own; 5 hidden, gate in `asset_gate.py` / `precheck.py --gate` / `popular.py --apply` / `lib/assetgate.js`. Open: the 50 unproven live maps (re-proof queue), the client-check list (`archive.md` §13.6 recipe), a launcher publish for `.wav/.mp3`.
 
+19. **Lane C1 (2026-09-23 ~14:30, branch `worktree-agent-afa2e08ce5b4d56e3`, not shipped)**: B's
+    13:20 asks. (a) **A game started PAUSED under the map's blurred menu** — root cause in B's logs:
+    fear_mc_2's own start menu holds keyCatchers 0x10 from the load and the overlay's pause rule
+    read any 0x10 after 2 s in a map as the Esc menu → `enw_ui paused` at exactly +2.0 s → the
+    server froze the game. Fixed (`lockdown::start_menu`: never a pause, closed 1.5 s in, box games;
+    `ENW_MAP_START_MENU=keep`). (b) The ENW console: `/quit` (slash optional), `disconnect`,
+    `restart`, `apply`, `bind`/`unbind`/`binds`, `help <name>`, `list`, every setting by short name
+    and aliases, Tab completion, terse replies. (c) Every setting in every game, Verified included;
+    only max fps is locked there; Discord switches in game (needs a launcher release for the
+    read-back). Unit tests only (`lockdown_test` 196/0, `settings_model_test` 65/0); **the in-game
+    proof recipe is `esc-menu.md` §11.6** and needs the lock with B away. `esc-menu.md` §11.
+
 ## Decisions only B can make (`questions.md`, "Open at handoff")
 
 1. **Q-ip-1** — the name: keep ENW Zombies (recommended) or change before public. `ip-posture.md` §3.

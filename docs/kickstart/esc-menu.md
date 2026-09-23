@@ -306,7 +306,8 @@ itself (its `.enw-installed.json` `modDvars.owned`, launcher `modcompat.js`) is 
 "set by this map".
 
 **Verified game** = the invite token is present (`auth::token()`), or `ENW_SETTINGS_RESTRICTED=1`.
-Only `verified: true` rows are drawn at all (sensitivity, invert, volumes, FOV ≤ 120, brightness,
+*(Superseded by §11.3, lane C1: every row is shown in every game; a Verified game locks only max
+fps.)* Only `verified: true` rows are drawn at all (sensitivity, invert, volumes, FOV ≤ 120, brightness,
 show fps, crosshair, hud, subtitles, mature, anisotropy/mipmaps, raw input, every bind); nothing that
 restarts the renderer, not `com_maxfps`.
 
@@ -445,7 +446,9 @@ read-only; `settings::forbidden_dvar` → *"sv_cheats is locked."*), the value c
 catalogue (slider range, list values, toggles take on/off), then the tab's own `seta` +
 write-through. `;`, a second value, and anything that is not a setting are refused; **nothing typed
 is ever handed to the engine as a command** (`quit`, `exec`, `bind`, `connect`, `map` … all *"not
-available here"*). Binds and video stay in Esc > Settings.
+available here"*). Binds and video stay in Esc > Settings. *(Superseded by §11, lane C1: `quit`,
+`disconnect`, `restart`, `bind`, `unbind`, `apply` are console commands now, each on our own path,
+and every setting has a short name.)*
 
 **cg_fov was cheat-protected — found by the first run.** `l12a`: `seta cg_fov "100"` → *"cg_fov is
 cheat protected."* (flags `0x81`: archive + DVAR_CHEAT; IW3's `Dvar_SetVariant` refuses an external
@@ -515,3 +518,223 @@ twelve suites 0 failed (`record-notice` 7/0 new).
 * **Exclusive fullscreen**: not looked at.
 * A server that is alive but silent for 20 s in a map (a stall that would recover) is now ended by
   us; no such stall has been seen, but it is a behaviour change.
+
+---
+
+## 11. 2026-09-23 ~13:25–14:30 — the console grows up, settings everywhere, no more paused starts (lane C1, branch `worktree-agent-afa2e08ce5b4d56e3`, not shipped)
+
+B, 13:20, after playing 0.2.24: *`/quit` must work in our console, with or without the slash;
+cut the verbose text; many more commands with aliases (`aniso 16`, `fov 90`, `shadows off` ...);
+Tab completion and history; every setting changeable in the launcher must be changeable in the
+Esc menu and the console in EVERY game, Verified included (he could not change shadows /
+specular / glow / depth of field in a Verified game); and a game starts PAUSED under a blur until
+he presses Esc.*
+
+| File | What changed |
+|---|---|
+| `client-dll/components/console_model.hpp` | Rewritten: built-in commands with aliases, a short name + aliases for every catalogue setting, multi-word / quoted values, toggles take on/off/1/0/true/false/yes/no/enable/disable, list labels and values (`aa 4`, `aa 4x`, `aa off`, `refresh 144`, `aspect 16:9`), key names, Controls actions by alias / command / label, Tab completion of a whole line by position |
+| `client-dll/components/restricted_console.cpp` | The new verbs; terse replies; Tab = `complete_line` (keeps a leading `/`, completes at the caret); `restart` asks twice; `quit` / `disconnect` close the console and take the Esc menu's path; the selftest now ends with aliases, a bind, a filter and (=2) a real `/quit` |
+| `client-dll/components/settings_tab.cpp` + `.hpp` | `console_help/list/binds/bind/unbind/apply/schema`; binds read lazily when the tab was never shown; a console `apply` finishes its vid_restart from the frame tick; Apply allowed in Verified games |
+| `client-dll/components/settings_model.hpp` | `visibility()`: Verified locks (read-only), never hides; `command_of`, `unbind_commands` |
+| `client-dll/components/menu_lockdown_model.hpp` | `lockdown::start_menu` (§11.4) |
+| `client-dll/components/pause_menu.cpp` + `.hpp`, `chat_overlay.cpp` (1 line) | the start-menu tick and its close; `map_start_menu()`; `request_exit(then_quit)`, `request_restart_game()` for the console |
+| `web/client/src/data/wawSettings.js` → `shared/settings/ingame-settings.json` | INGAME: everything `verified: true` except `maxFps`; the two Discord switches in game (`enw_discord`, `enw_discordhook`, next launch). 83 items, 14 groups, **6 tabs** (ENW is new), 2 excluded (`ai_corpseCount`, `monkeytoy`) |
+| `launcher/src/main/wawcfg.js` | the Discord switches ride config.cfg like `enw_rawmouse`: written at launch, read back after the game |
+| `tools/dev/lockdown-proof.ps1` | `-ConsoleSelftest 2` |
+
+### 11.1 The console: commands
+
+A leading `/` or `\` is always dropped, so `/quit`, `\quit` and `quit` are the same line. `;` is
+refused (one command at a time). Quotes are optional: `fov "90"`, `aspect "wide 16:9"` and
+`aspect wide 16:9` all work.
+
+| Command | Aliases | Does |
+|---|---|---|
+| `help [name]` | `?`, `commands`, `cmdlist` | four lines of usage; `help fov` = range, value, apply mode, other names |
+| `list [filter]` | `ls`, `settings`, `cvarlist`, `dvarlist` | `fov 90` per setting; filter by short name, alias, dvar prefix or label words |
+| `binds [filter]` | `bindlist`, `keys` | `use F, MOUSE4` per Controls action |
+| `bind <key> [action]` | — | the tab's own bind path (WaW's two-key rule); no action = show the key |
+| `unbind <key>` | `clearbind` | `unbind KEY` (key from the model's list only) |
+| `reset <setting>` | `default` | back to the catalogue / ENW default; `<setting> default` does the same |
+| `apply` | `vid_restart` | Esc > Settings > Apply: `vid_restart` for pending video changes (box games; Play Local says next launch) |
+| `restart` | `map_restart`, `fast_restart` | the Esc menu's Restart game (`setu enw_req restart.<n>`), typed twice within 5 s; box games only |
+| `disconnect` | `dc`, `leave` | the Esc menu's Exit (the site is told it is a quit on purpose), then `disconnect`; the lockdown's end screen quits |
+| `quit` | `exit` | the Esc menu's Exit: site quit call, `disconnect`, `quit` |
+| `clear` | `cls` | clears the output |
+| `<setting> [value]`, `set/seta/sets <setting> <value>` | — | read or set a setting |
+
+### 11.2 The console: settings by short name
+
+Every console setting has a short name (unit-tested over the whole catalogue), then its aliases,
+its dvar and its catalogue id; no name is taken twice (unit-tested).
+
+| Short name | Also | dvar |
+|---|---|---|
+| `fov` | `fieldofview` | `cg_fov` |
+| `sens` | `sensitivity`, `mousesens`, `m_sens` | `sensitivity` |
+| `fps` | `maxfps`, `fpscap` | `com_maxfps` (locked in a Verified game) |
+| `showfps` | `drawfps`, `fpscounter` | `cg_drawFPS` |
+| `vsync` | `sync` | `r_vsync` (apply) |
+| `brightness` | `gamma` | `r_gamma` |
+| `resolution` | `res`, `vid_mode` | `r_mode` (apply) |
+| `refresh` | `hz`, `refreshrate` | `r_displayRefresh` (apply) |
+| `aspect` | `aspectratio` | `r_aspectRatio` (apply) |
+| `displaymode`, `monitor` | `window` / — | read only: the launcher's |
+| `aa` | `antialiasing`, `msaa` | `r_aaSamples` (apply) |
+| `shadows` | `shadow` | `sm_enable` |
+| `specular` | `spec` | `r_specular` |
+| `glow` | `bloom`, `r_glow` | `r_glow_allowed` |
+| `dof` | `depthoffield` | `r_dof_enable` |
+| `multigpu` | `sli`, `dualgpu` | `r_multiGpu` (apply) |
+| `impacts` | `marks`, `bulletimpacts` | `fx_marks` |
+| `foliage` / `ocean` | — / `water` | `r_gfxopt_dynamic_foliage` / `r_gfxopt_water_simulation` |
+| `aniso` | `anisotropic`, `anisotropy`, `af` | `r_texFilterAnisoMin` |
+| `mipmaps` | `mip`, `mipmap` | `r_texFilterMipMode` |
+| `texquality`, `texdetail`, `normaldetail`, `specdetail` | `texturequality`; `texture(s)`, `texturedetail`; `bumpdetail`, `normalmaps`; `speculardetail` | `r_picmip_manual`, `r_picmip`, `r_picmip_bump`, `r_picmip_spec` (apply) |
+| `volume` | `vol`, `master`, `mastervolume` | `snd_menu_master` |
+| `music` / `sfx` / `voice` / `cinematics` | `musicvolume` / `effects`, `sfxvolume` / `voicevolume`, `dialogue` / `cinematicvolume` | `snd_menu_music` / `_sfx` / `_voice` / `snd_cinematicVolumeScale` |
+| `occlusion` | — | `snd_losOcclusion` |
+| `invert` | `invertmouse`, `mouseinvert` | `ui_mousePitch` (+ `m_pitch`) |
+| `smoothmouse` | `mousesmoothing`, `smoothing` | `m_filter` |
+| `freelook` | — | `cl_freelook` |
+| `rawinput` | `raw`, `rawmouse`, `m_rawinput` | `enw_rawmouse` (next launch) |
+| `mature`, `subtitles`, `hud`, `crosshair` | `gore`, `blood`; `subs`; —; — | `cg_mature` (+ `cg_blood`), `cg_subtitles`, `hud_enable`, `cg_drawCrosshair` |
+| `discord` | `richpresence`, `presence` | `enw_discord` (next launch) |
+| `discordoverlay` | `overlay` | `enw_discordhook`: auto / on / off (next launch) |
+
+Controls actions for `bind`: the command with or without its `+` (`+activate`, `activate`), the
+/settings label (`reload weapon`), or `use fire shoot ads aim jump grenade special switch
+nextweapon crouch back left right scoreboard inventory equipment satchel`. Keys: `A`–`Z`, `0`–`9`,
+`F1`–`F12`, `KP_0`–`KP_9`, `SPACE SHIFT CTRL ALT TAB ENTER BACKSPACE`, the arrows (`up` works),
+`INS DEL HOME END PGUP PGDN PAUSE CAPSLOCK SEMICOLON - = [ ] ' , . / \`, `MOUSE1`–`MOUSE5`
+(`m4` works), `MWHEELUP MWHEELDOWN`. Never Esc or the console key.
+
+**Replies** are one short line: `fov 90`, `shadows off`, `aa 4x -- apply`, `rawinput off -- next
+launch`, `fov: 65-120`, `fps: locked in a Verified game`, `sv_cheats: locked`, `foo: unknown --
+help`. The opening line is `ENW console  --  help`.
+
+**Tab** completes the word at the caret by position: the first word over commands, aliases,
+short names and dvars; after `bind`/`unbind` a key name; after `bind <key>` an action; after
+`help` a command or setting; after `reset`/`set` a setting; after a toggle `on`/`off`; after a list
+its one-word labels/values (`aa` → `off 2x 4x`). More than one match: the common prefix, and the
+matches (at most 16) printed on one line. **Up/Down** walks the last 50 lines (unchanged).
+
+**Still true:** nothing typed is handed to the engine as text. The engine lines the console can
+cause are `seta <catalogue dvar> "<validated value>"` (+ the menu's companion dvars), `bind <key
+from the list> "<catalogue action>"`, `unbind <key from the list>`, `vid_restart`, `setu enw_req
+restart.<n>`, `disconnect`, `quit`. `forbidden_dvar` (sv_cheats, developer, cg_fovscale, ai_ / g_ /
+sv_ / player_ / bg_ / perk_ / scr_ ...) and the FOV cap of 120 (§10.2) are unchanged.
+
+### 11.3 Every setting in every game
+
+`settings::visibility()` no longer hides anything in a Verified game. The catalogue's `verified`
+flag now means "changeable in a Verified game"; `false` = shown but **locked** (read-only, "locked
+in a Verified game"). Exactly one item is `false`: **max fps** (`com_maxfps`), the records rule of
+`verified-rules.md` §4 (a mid-game change refuses the record; `fps_guard` still holds 20–250). FOV
+stays ≤ 120 (the slider's max and the DLL's cap). vid_restart settings apply in a Verified game
+through the same Apply button / `apply` command. So shadows, specular, glow, depth of field, AA,
+texture detail, occlusion, aspect, resolution, refresh, vsync and dual video cards are all
+changeable in B's Verified games now (next-session step 3a needs this). The launcher test's old
+"nothing in Verified restarts the renderer" assertion is replaced by "only max fps is locked".
+
+The Discord switches (the launcher's rich presence, the DLL's Discord-hook gate) were `apply:
+false`. They are now `next_launch` items on a sixth in-game tab, **ENW**, carried like raw input:
+the launcher writes `seta enw_discord` / `seta enw_discordhook` into config.cfg at launch, the game
+writes a change through, and `readBackAccount` returns `discordPresence` / `discordOverlay`
+(launcher `waw-settings` 20/0). **Needs a launcher release** for the read-back half; until then an
+in-game change is written to config.cfg but not saved to the account.
+
+### 11.4 The game that started paused — root cause and fix
+
+**Evidence (B's own logs, read only).** `enw-29660.log` (13:20), `enw-23396.log` (13:15),
+`enw-5840.log` (12:49), `enw-23916.log` (03:42), all fear_mc_2 on the box:
+
+```
+13:20:42.776 boot: FIRST IN-GAME FRAME ...
+13:20:44.794 chat_overlay: userinfo enw_ui paused (clc.state 10, keyCatchers 0x10)
+13:20:45.639 esc: Esc pressed (before the engine sees it): keyCatchers 0x10 ... enw_ui 'paused'
+13:20:45.641 chat_overlay: userinfo enw_ui clear (clc.state 10, keyCatchers 0x0)
+```
+
+`paused` is sent **exactly 2.0 s after the first in-game frame in every run** (42.776 → 44.794,
+01.797 → 03.814, 09.808 → 11.808, 04.588 → 06.595) with `keyCatchers 0x10` (an engine menu), and
+nothing of ours acts at that moment. 2.0 s is the chat overlay's own rule (`esc_menu_open()`): *any
+KEYCATCH_UI menu in a map that has drawn for 2 s is the player's Esc menu*. But the menu is **the
+map's**: it holds 0x10 from the load (`mouse_polling: ... the menu/console owns the mouse now` at
+the first in-map frame of `enw-5840`), and closing it runs the map's anti-cheat onClose (`mc_ac 1`,
+`cl_paused 0`, `exec dvar_locker.cfg` in `console-29660.log` at 13:20:45.640). So the overlay told
+the dedicated server the player was in a menu, the server paused the game (`solo_menu`, and
+`pause_hold` froze the picture), and the player sat under the map's blurred menu until his Esc
+closed it and `enw_ui clear` resumed the game. The lockdown (§10.1) is not involved: it logged only
+the clc.state climb, and its cover draws only after a session falls to state 0/2. (A 02:24 run on
+an older DLL, `enw-39816`, shows no paused start; the map's menu was not up 2 s in there.)
+
+**Fix** (`lockdown::start_menu`, fed by `pause_menu`'s frame tick):
+
+* a 0x10 menu that is up within **1.5 s** of the map's first frame (clc.state 10) is the map's
+  start menu. It **never counts as a pause**: `esc_menu_open()` now also requires
+  `!pause_menu::map_start_menu()`;
+* in a **box game** it is **closed for the player 1.5 s in**, with Esc sent straight to the engine's
+  WndProc (the player's own key, so the menu's onClose runs as it did for B), re-checked the same
+  frame, at most 3 tries 1 s apart. Play Local keeps the stock behaviour (the menu stays; it still
+  never pauses). `ENW_MAP_START_MENU=keep` leaves it up in a box game too;
+* a menu that opens later (the player's, or a map's mid-game menu) is judged exactly as before;
+  leaving the map (a restart, a map change) resets it.
+
+Unit tests (`lockdown_test`, "start menu"): B's timeline never pauses and is closed once at
++1.5 s; a menu that ignores Esc gets 3 tries then is left alone; a load-screen 0x10 that clears,
+then a map menu at +350 ms, is still the map's; a clean start plus the player's own menu at +5 s
+counts as a pause and is never closed; a map restart is judged afresh.
+
+### 11.5 Tests
+
+`lockdown_test` **196/0** (was 73: the alias table, B's 35 example lines, 6 range refusals, keys,
+actions, unbind, 17 completion cases, the start menu); `settings_model_test` **65/0** (was 55;
+counts: 6 tabs, 83 items, 2 excluded, exactly one item locked in Verified, every item shown in
+Verified); `mouse_tests` all passed; `client-dll/tests` `overlay_console_test` 60/0,
+`session_record_test` 44/0; web `npm test` every suite 0 failed (147, 41, 15, 19, 12 ×4, 23, 15, 8,
+record-notice 7, telemetry 36); launcher `test/run-all.js` **166/0**, `waw-settings` **20/0**,
+`modcompat` 6/0, `discord-presence` 22/0, `telemetry` 20/0. All after merging main `4563336`.
+DLL (lane build `build\lane-c1`, not shipped, not for the box): `enw_t4.dll` sha256
+`ff1b0558972be8e082ada05edb2652e16e5fd1b75914ae4f30182d28bdde507a`, 2 495 488 bytes.
+
+### 11.6 Local proof recipe (for the coordinator, when `game.lock` is free and B is not playing)
+
+Nothing here was run: B was playing and this lane took no lock. From a clean checkout of the merge
+(README rule 17), `tools\dev\build.ps1 -Name c1`, then:
+
+1. **Start-paused, the real case**: `tools\dev\jointest.ps1 -Tag c1a -ServerFrom dedi -ClientFrom c1
+   -Map nazi_zombie_fear_mc_2 -WatchSeconds 60` (fear_mc_2 must be in the dev copies' mods).
+   Client log: `pause_menu: the map started under an engine menu (keyCatchers 0x10, N ms into the
+   map)` then `pause_menu: CLOSING the map's start menu (try 1 ...)` ~1.5 s after `FIRST IN-GAME
+   FRAME`. (No `esc:` lines for this Esc: it bypasses the filter. Capture a frame at +3 s with
+   `ENW_FRAME_CAPTURE_AT`.) **Pass = no `chat_overlay: userinfo enw_ui paused` in the first 10 s
+   and no `PAUSED (solo_menu)` in the server log.** A/B: the same with
+   `$env:ENW_MAP_START_MENU='keep'` — the menu stays up, still no `paused`.
+2. **Stock map, nothing changes**: the same with the default map (`nazi_zombie_prototype`): no
+   close, no pause.
+3. **The console, Verified**: `tools\dev\lockdown-proof.ps1 ... -From c1 -ConsoleSelftest 2`
+   (§10.4's arguments; the invite token makes it a Verified game). Client log, in order:
+   `'shadows off' -> shadows off` (editable in Verified now), `'com_maxfps 125' -> fps: locked in a
+   Verified game`, `'fov 130' -> fov: 65-120`, `'sv_cheats 1' -> sv_cheats: locked`,
+   `'aa 4' -> aa 4x -- apply`, `'bind mouse4 use' -> use ..., MOUSE4`, `'list sh' -> N row(s)`,
+   `WRITE-THROUGH` lines for `sm_enable` and the bind, then `'/quit' -> quitting` →
+   `pause_menu: EXIT game` → `POST /api/party/quit -> 200` → `disconnect sent` → `quit`, and **the
+   client process ends on its own**. Capture `console-c1` shows the terse output.
+4. **Apply in Verified**: Esc > Settings, change AA, press Apply: `settings: APPLY: vid_restart`
+   and `vid_restart DONE` with the menu back (§9.4's path; only the Verified gate was removed).
+
+### 11.7 Not proven
+
+* **Everything in game.** No game was launched for this lane (B was playing). The console, the
+  aliases, Tab, the Verified settings, Apply in a Verified game and the start-menu close are unit
+  tested and compiled into the DLL, not run. §11.6 is the recipe.
+* **That the closed start menu is only decoration on every map.** fear_mc_2's is closed with the
+  same Esc B used, and the game played on after it in his logs; a map whose start menu the player
+  must answer (a character pick) would now be dismissed for him. `ENW_MAP_START_MENU=keep` is the
+  escape hatch; no such map is known.
+* **The Discord switches' round trip** needs a launcher release; `enw_discordhook` takes effect at
+  the next launch only (the DLL reads `ENW_DISCORD_HOOK` once).
+* **B's keyboard** for Tab / Up / Down in the console (posted keys only in every selftest so far).
+* `quit` in **Play Local** calls the site's quit route without a match id; by §5 the site then acts
+  on the player's current lease, and a Play Local player normally has none. Not run.
