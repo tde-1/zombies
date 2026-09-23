@@ -241,7 +241,10 @@
 #include "input_gate.hpp"
 #include "logger.hpp"
 #include "memory.hpp"
+#include "mouse_jitter.hpp"
+#include "raw_buffer.hpp"
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 
@@ -425,6 +428,59 @@ long g_buffered_reports = 0;
 bool g_bulk_read = true;
 long g_bulk_failures = 0;
 
+// ===========================================================================
+// 2026-09-23 -- THE WOW64 BUFFERED-READ BUG (client.md §1f). Read this first.
+// ===========================================================================
+// From 0.2.3 to 0.2.20 drain_raw_buffer() read `ri->data.mouse`, i.e. the
+// RAWMOUSE at sizeof(RAWINPUTHEADER) = 16. CoDWaW.exe is 32-bit, every player
+// runs it on 64-bit Windows, and under WOW64 GetRawInputBuffer lays its blocks
+// out with the 64-BIT header (24 bytes). So every report taken through the
+// buffered read was parsed 8 bytes early: lLastX read the real button flags
+// (0 for a move), lLastY read ulRawButtons (0), and usButtonFlags read the
+// top of the 64-bit wParam (0). Motion AND clicks in those reports were lost.
+// Proven by tools/dev/rawprobe.cpp on this box (injected moves carry a
+// dwExtraInfo marker: 0 of 1987 found at +16, 1987 of 1987 at +24) and by B's
+// own logs: 17-47 % of all raw reports in his 2026-09-22/23 sessions went
+// through the buffered read (e.g. enw-39816: 8,667 of 18,350), and every one
+// of them turned the view by zero. That is an uneven turn at a perfect frame
+// rate -- a micro-stutter that exists only while the mouse moves.
+// raw_buffer.hpp has the offset and its prior art (MSDN, SDL3).
+// ENW_RAW_MOUSE_WOW64FIX=0 reads at 16 again, for B's A/B run ONLY.
+unsigned g_rawbuf_off = sizeof(RAWINPUTHEADER);
+bool g_wow64fix = true;
+
+// Where the motion came from, per path. With the bug, `buffered` reports carry
+// zero motion however many there are -- one line in the log proves or clears it.
+long g_msg_reports = 0;
+double g_msg_motion = 0.0;
+long g_buf_reports = 0;
+double g_buf_motion = 0.0;
+
+// Test harness ONLY (never set by the launcher): RIDEV_INPUTSINK, so an
+// off-screen, never-activated test game receives WM_INPUT from a synthetic
+// SendInput mouse (tools/dev/mousebench.ps1). ClipCursor is skipped in this mode
+// so a test game can never trap the desktop cursor.
+bool g_sink = false;
+
+// ENW_FRAMETIME=1 (or ENW_MOUSE_JITTER=1): the view-turn meter (mouse_jitter.hpp)
+// plus the time our own input code costs per window. Nothing when off.
+bool g_probe = false;
+enw::mousejitter::meter g_jit;
+int64_t g_probe_last_qpc = 0;
+int64_t g_probe_window_qpc = 0;
+long g_probe_window = 0;
+double g_probe_cost_us = 0.0;      // in_mousemove + OnRawInput, this window
+double g_probe_cost_max_us = 0.0;  // worst single in_mousemove call
+long g_probe_frames = 0;
+long g_probe_msg_reports0 = 0, g_probe_buf_reports0 = 0;
+double g_probe_msg_motion0 = 0.0, g_probe_buf_motion0 = 0.0;
+
+inline int64_t qpc_now() {
+    LARGE_INTEGER n{};
+    ::QueryPerformanceCounter(&n);
+    return n.QuadPart;
+}
+
 // The third leg of the flood, and the one the port had kept: T4 calls
 // IN_RecenterMouse (SetCursorPos to the window centre) once per frame whenever
 // the game owns the mouse. SetCursorPos SYNTHESISES A WM_MOUSEMOVE, which goes
@@ -438,6 +494,7 @@ long g_recentres_skipped = 0;
 
 void clip_cursor_to_client(bool on) {
     if (on == g_cursor_clipped) return;
+    if (on && g_sink) return;  // harness: never clip the desktop to an off-screen game
     if (on) {
         if (!g_hwnd || !::IsWindow(g_hwnd)) return;
         RECT c = {};
@@ -489,7 +546,8 @@ bool register_raw(bool enable, bool nolegacy) {
     // messages kept. Foreground-only is what we want anyway -- a background
     // game must not read the mouse -- and it is why the counters go to
     // focus=no and stop.
-    rid[0].dwFlags = enable ? (nolegacy ? RIDEV_NOLEGACY : 0u) : RIDEV_REMOVE;
+    rid[0].dwFlags = enable ? (nolegacy ? RIDEV_NOLEGACY : 0u) | (g_sink ? RIDEV_INPUTSINK : 0u)
+                            : RIDEV_REMOVE;
     rid[0].hwndTarget = enable ? g_hwnd : nullptr;
     return ::RegisterRawInputDevices(rid, 1, sizeof rid[0]) == TRUE;
 }
@@ -819,7 +877,12 @@ long drain_raw_buffer() {
             // Same reasoning as OnRawInput: no `g_in_focus` gate. A stuck flag
             // silently discarded every report.
             if (ri->header.dwType == RIM_TYPEMOUSE) {
-                const RAWMOUSE& m = ri->data.mouse;
+                // NOT `ri->data.mouse`: under WOW64 that is 8 bytes early and
+                // reads zero motion and zero buttons (see g_rawbuf_off).
+                const RAWMOUSE& m = *enw::rawbuf::mouse_of(ri, g_rawbuf_off);
+                ++g_buf_reports;
+                g_buf_motion += std::fabs(static_cast<double>(m.lLastX)) +
+                                std::fabs(static_cast<double>(m.lLastY));
                 const bool absolute = (m.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
                 g_raw_x.Update(m.lLastX, absolute);
                 g_raw_y.Update(m.lLastY, absolute);
@@ -893,6 +956,9 @@ void OnRawInput(LPARAM lparam) {
     // for `g_first_raw_update`, which is what actually needs focus transitions
     // (upstream's alt-tab angle-snap fix).
 
+    ++g_msg_reports;
+    g_msg_motion += std::fabs(static_cast<double>(raw.data.mouse.lLastX)) +
+                    std::fabs(static_cast<double>(raw.data.mouse.lLastY));
     const bool absolute = (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
     g_raw_x.Update(raw.data.mouse.lLastX, absolute);
     g_raw_y.Update(raw.data.mouse.lLastY, absolute);
@@ -1006,7 +1072,13 @@ LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         return ::CallWindowProcA(g_prev_wndproc, hwnd, msg, rewrite_mask(wparam), lparam);
     }
     case WM_INPUT:
-        OnRawInput(lparam);
+        if (g_probe) {
+            const int64_t t0 = qpc_now();
+            OnRawInput(lparam);
+            g_probe_cost_us += 1e6 * static_cast<double>(qpc_now() - t0) / g_qpc_freq;
+        } else {
+            OnRawInput(lparam);
+        }
         break;  // and fall through to the engine/DefWindowProc, as MSDN requires
 
     // ---- the focus and capture flaps ------------------------------------
@@ -1091,6 +1163,8 @@ void __cdecl in_mousemove() {
     // turn the player.
     if (::GetForegroundWindow() != game_hwnd()) return;
 
+    const int64_t probe_t0 = g_probe ? qpc_now() : 0;
+
     // Drain whatever queued up behind the WM_INPUT messages the pump already
     // dispatched. One call for the lot instead of one GetRawInputData each --
     // and GetRawInputData takes a lock per call, which is the documented reason
@@ -1147,6 +1221,56 @@ void __cdecl in_mousemove() {
     // The clip belongs to gameplay, exactly like NOLEGACY. The menu, the
     // console and an unfocused window all get the cursor back.
     if (!g_nolegacy_now) clip_cursor_to_client(false);
+
+    if (g_probe) {
+        // The view-turn meter: what the engine was handed this frame, against
+        // how long the frame was. Gameplay frames only (the engine owns the
+        // mouse); a menu frame resets the neighbour window.
+        const int64_t now = qpc_now();
+        const double cost = 1e6 * static_cast<double>(now - probe_t0) / g_qpc_freq;
+        g_probe_cost_us += cost;
+        if (cost > g_probe_cost_max_us) g_probe_cost_max_us = cost;
+        ++g_probe_frames;
+        if (g_probe_last_qpc && recentre) {
+            const double dt = 1000.0 * static_cast<double>(now - g_probe_last_qpc) / g_qpc_freq;
+            g_jit.add(std::sqrt(static_cast<double>(dx) * dx + static_cast<double>(dy) * dy), dt);
+        }
+        g_probe_last_qpc = now;
+    }
+}
+
+// One line per ~10 s window when the probe is on. Called from the frame tick.
+void probe_report(bool final_line) {
+    if (!g_probe || !g_qpc_freq) return;
+    const int64_t now = qpc_now();
+    if (!g_probe_window_qpc) {
+        g_probe_window_qpc = now;
+        return;
+    }
+    const double secs = static_cast<double>(now - g_probe_window_qpc) / g_qpc_freq;
+    if (!final_line && secs < 10.0) return;
+    const long msg_r = g_msg_reports - g_probe_msg_reports0;
+    const long buf_r = g_buf_reports - g_probe_buf_reports0;
+    const double msg_m = g_msg_motion - g_probe_msg_motion0;
+    const double buf_m = g_buf_motion - g_probe_buf_motion0;
+    ENW_INFO("mouse_jitter: window %ld (%.1f s) -- view turn: %ld moving frames, jitter %.1f%%, "
+             "p50 err %d%%, p99 err %d%%, DROPOUTS %ld (a frame that turned by 0 between two that "
+             "moved) | counts handed to the engine %.0f (%.0f/s) | reports: dispatched %ld "
+             "carrying %.0f counts, buffered %ld carrying %.0f counts (RAWMOUSE @+%u, WOW64 fix "
+             "%s) | our input code: %.1f us/frame avg, %.1f us worst in_mousemove",
+             ++g_probe_window, secs, g_jit.moving_frames(), g_jit.jitter_pct(),
+             g_jit.pct_error_percentile(0.50), g_jit.pct_error_percentile(0.99), g_jit.dropouts(),
+             g_jit.delivered(), secs > 0 ? g_jit.delivered() / secs : 0.0, msg_r, msg_m, buf_r,
+             buf_m, g_rawbuf_off, g_wow64fix ? "ON" : "OFF (ENW_RAW_MOUSE_WOW64FIX=0, A/B only)",
+             g_probe_frames ? g_probe_cost_us / g_probe_frames : 0.0, g_probe_cost_max_us);
+    g_jit.reset();
+    g_probe_window_qpc = now;
+    g_probe_cost_us = g_probe_cost_max_us = 0.0;
+    g_probe_frames = 0;
+    g_probe_msg_reports0 = g_msg_reports;
+    g_probe_buf_reports0 = g_buf_reports;
+    g_probe_msg_motion0 = g_msg_motion;
+    g_probe_buf_motion0 = g_buf_motion;
 }
 
 // ------------------------------------------------------------------ component
@@ -1262,6 +1386,26 @@ public:
                      "per button prints every ~15 s and at shutdown. A drop is a raw transition "
                      "with no matching queued event; a double is two queued events for one "
                      "transition.");
+        // 2026-09-23 (client.md §1f): the buffered read's RAWMOUSE offset, the
+        // bulk-read switch, the harness sink, and the view-turn probe.
+        g_wow64fix = !env_off("ENW_RAW_MOUSE_WOW64FIX");
+        g_rawbuf_off = g_wow64fix ? enw::rawbuf::mouse_offset()
+                                  : static_cast<unsigned>(sizeof(RAWINPUTHEADER));
+        if (env_off("ENW_RAW_MOUSE_BUFFER")) g_bulk_read = false;
+        g_sink = env_on("ENW_RAW_MOUSE_INPUTSINK");
+        g_probe = env_on("ENW_MOUSE_JITTER") || env_on("ENW_FRAMETIME");
+        ENW_INFO("mouse_polling: GetRawInputBuffer blocks are read with the RAWMOUSE at +%u "
+                 "(%s). Bulk read %s.%s%s",
+                 g_rawbuf_off,
+                 g_wow64fix ? (g_rawbuf_off == 24 ? "WOW64: the 64-bit header layout, the fix"
+                                                  : "native header layout")
+                            : "ENW_RAW_MOUSE_WOW64FIX=0: the 0.2.3-0.2.20 BUG, every buffered "
+                              "report reads zero motion and zero buttons -- A/B only",
+                 g_bulk_read ? "on" : "OFF (ENW_RAW_MOUSE_BUFFER=0: every report via its WM_INPUT)",
+                 g_sink ? " HARNESS: RIDEV_INPUTSINK on (ENW_RAW_MOUSE_INPUTSINK=1), no ClipCursor."
+                        : "",
+                 g_probe ? " View-turn probe ON (mouse_jitter lines every 10 s)." : "");
+
         // DEFAULT ON since 0.2.3. `ENW_RAW_MOUSE_NOLEGACY=0` is the one-word
         // A/B back to 0.2.2's behaviour.
         g_nolegacy_wanted = !env_off("ENW_RAW_MOUSE_NOLEGACY");
@@ -1340,6 +1484,7 @@ public:
                 return;
             }
             if (!g_in_raw_input) return;  // passthrough: nothing to count
+            probe_report(false);
 
             // Ground truth for the trace, and cheap: two reads and a walk of
             // whatever the engine queued since the last frame. Only when asked.
@@ -1413,6 +1558,7 @@ public:
     void pre_destroy() override {
         // Nothing may be left held down in the engine's differ.
         release_all_buttons("shutdown");
+        if (g_in_raw_input) probe_report(true);
         if (g_trace) {
             drain_engine_event_ring();
             report_verdict("session total");

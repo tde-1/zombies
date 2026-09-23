@@ -47,6 +47,7 @@
 #include "frame.hpp"
 #include "logger.hpp"
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 
@@ -62,6 +63,7 @@ struct window {
     int hist[kBuckets];
     long frames;
     double sum_ms;
+    double sum_sq;  // for the standard deviation: pacing jitter, not just the tail
     double max_ms;
     long over16;  // missed a 60 Hz frame
     long over33;  // a visible hitch
@@ -71,6 +73,7 @@ struct window {
         std::memset(hist, 0, sizeof hist);
         frames = 0;
         sum_ms = 0.0;
+        sum_sq = 0.0;
         max_ms = 0.0;
         over16 = over33 = over50 = 0;
     }
@@ -82,6 +85,7 @@ struct window {
         ++hist[b];
         ++frames;
         sum_ms += ms;
+        sum_sq += ms * ms;
         if (ms > max_ms) max_ms = ms;
         if (ms > 16.7) ++over16;
         if (ms > 33.3) ++over33;
@@ -128,11 +132,16 @@ void report(const window& w, const char* what, long index) {
         return;
     }
     const double avg = w.sum_ms / static_cast<double>(w.frames);
+    // sd and p1 added 2026-09-23 (client.md §1f): a frame-pacing change moves the
+    // spread around the cap, which p99 alone does not show.
+    double var = w.sum_sq / static_cast<double>(w.frames) - avg * avg;
+    if (var < 0.0) var = 0.0;
     ENW_INFO("frametime: %s %ld -- %ld frames, %.1f fps avg | "
-             "p50 %.2f ms  p95 %.2f ms  p99 %.2f ms  max %.2f ms | "
+             "p1 %.2f ms  p50 %.2f ms  p95 %.2f ms  p99 %.2f ms  max %.2f ms  sd %.2f ms | "
              "over 16.7ms: %ld (%.2f%%)  over 33.3ms: %ld (%.2f%%)  over 50ms: %ld",
-             what, index, w.frames, avg > 0.0 ? 1000.0 / avg : 0.0, w.percentile(0.50),
-             w.percentile(0.95), w.percentile(0.99), w.max_ms, w.over16,
+             what, index, w.frames, avg > 0.0 ? 1000.0 / avg : 0.0, w.percentile(0.01),
+             w.percentile(0.50), w.percentile(0.95), w.percentile(0.99), w.max_ms, std::sqrt(var),
+             w.over16,
              100.0 * w.over16 / w.frames, w.over33, 100.0 * w.over33 / w.frames, w.over50);
 }
 

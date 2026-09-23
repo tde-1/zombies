@@ -126,6 +126,20 @@ add_executable(loadtest "${CMAKE_CURRENT_SOURCE_DIR}/tools/dev/loadtest.cpp")
 target_compile_definitions(loadtest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 set_target_properties(loadtest PROPERTIES FOLDER tools)
 
+# ------------------------------------------------------------- mouse_tests --
+# Unit tests for client-dll/components/raw_buffer.hpp and mouse_jitter.hpp
+# (client.md §1f). Pure headers, so no game and no lock. Exit code 0 = pass.
+add_executable(mouse_tests "${CMAKE_CURRENT_SOURCE_DIR}/tools/dev/mouse_tests.cpp")
+target_compile_definitions(mouse_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
+set_target_properties(mouse_tests PROPERTIES FOLDER tools)
+
+# rawprobe: the 32-bit harness that proved the WOW64 offset and that SendInput
+# at 1000 Hz reaches an RIDEV_INPUTSINK window. Not a test; a measuring tool.
+add_executable(rawprobe "${CMAKE_CURRENT_SOURCE_DIR}/tools/dev/rawprobe.cpp")
+target_compile_definitions(rawprobe PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
+target_link_libraries(rawprobe PRIVATE winmm)
+set_target_properties(rawprobe PROPERTIES FOLDER tools)
+
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES
     ${ENW_CORE_SOURCES} ${ENW_T4_SOURCES} ${ENW_COMPONENT_SOURCES} ${ENW_PROXY_DEF})
 
