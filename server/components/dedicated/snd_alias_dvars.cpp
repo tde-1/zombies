@@ -67,14 +67,14 @@ uint32_t read_u32(uintptr_t a) {
 
 // Dvar_RegisterBool 0x5EEE20: al = default, edi = name, then [esp] = flags, [esp+4] = desc;
 // the caller pops both (SND_Init: two calls, then `add esp, 0x10`). Returns the dvar_s*.
-uint32_t call_register_bool(const char* name, const char* desc) {
+uint32_t call_register_bool(const char* name, const char* desc, uint32_t flags, uint32_t value) {
     const uintptr_t fn = enw::at(kDvarRegisterBool);
     uint32_t out = 0;
     __asm {
         push edi
         push desc
-        push 0
-        xor eax, eax
+        push flags
+        mov eax, value
         mov edi, name
         call fn
         add esp, 8
@@ -85,9 +85,9 @@ uint32_t call_register_bool(const char* name, const char* desc) {
 }
 
 // SEH wrappers: no C++ objects with destructors in these.
-bool seh_register(const char* name, const char* desc, uint32_t* out) {
+bool seh_register(const char* name, const char* desc, uint32_t flags, uint32_t value, uint32_t* out) {
     __try {
-        *out = call_register_bool(name, desc);
+        *out = call_register_bool(name, desc, flags, value);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -152,28 +152,29 @@ void register_all(const char* when) {
                      s.name_text, static_cast<unsigned>(s.slot), before);
             break;
         case action::signature_mismatch:
-            ENW_ERROR("dedi_snd_alias_dvars: %s: NOT registering %s: SND_Init's bytes at 0x%08X / "
+            ENW_ERROR("dedi_snd_alias_dvars: %s: NOT registering %s: %s's bytes at 0x%08X / "
                       "0x%08X or the name at 0x%08X are not what this build expects. The slot stays "
-                      "NULL and a missing sound alias will fault (dedi.md §25).",
-                      when, s.name_text, static_cast<unsigned>(s.name_insn),
+                      "NULL and its readers will fault (dedi.md §25/§26).",
+                      when, s.name_text, s.registrar, static_cast<unsigned>(s.name_insn),
                       static_cast<unsigned>(s.store_insn), static_cast<unsigned>(s.name));
             break;
         case action::register_it: {
             uint32_t dv = 0;
             const bool ok = seh_register(reinterpret_cast<const char*>(enw::at(s.name)),
-                                         reinterpret_cast<const char*>(enw::at(s.desc)), &dv);
-            if (ok && dv) memory::write(enw::at(s.slot), dv);  // SND_Init's own store
+                                         reinterpret_cast<const char*>(enw::at(s.desc)), s.flags,
+                                         s.value, &dv);
+            if (ok && dv) memory::write(enw::at(s.slot), dv);  // the registrar's own store
             const uint32_t after = read_u32(s.slot);
             uint8_t enabled = 0xFF;
             if (after) memory::read(after + 0x10, &enabled);
             if (ok && after) {
                 ENW_INFO("dedi_snd_alias_dvars: %s: registered %s -> dvar_s %08X, current.enabled=%u "
-                         "([0x%08X] was NULL: SND_Init never runs on a dedicated server). A missing "
-                         "alias is now silent, as on a client (dedi.md §25).",
-                         when, s.name_text, after, enabled, static_cast<unsigned>(s.slot));
+                         "([0x%08X] was NULL: %s never runs on a dedicated server). Its readers now "
+                         "see a real dvar, as on a client (dedi.md §25/§26).",
+                         when, s.name_text, after, enabled, static_cast<unsigned>(s.slot), s.registrar);
             } else {
-                ENW_ERROR("dedi_snd_alias_dvars: %s: Dvar_RegisterBool(%s) %s; [0x%08X]=%08X. A missing "
-                          "sound alias will still fault (dedi.md §25).",
+                ENW_ERROR("dedi_snd_alias_dvars: %s: Dvar_RegisterBool(%s) %s; [0x%08X]=%08X. Its "
+                          "readers will still fault (dedi.md §25/§26).",
                           when, s.name_text, ok ? "returned NULL" : "raised an exception",
                           static_cast<unsigned>(s.slot), after);
             }
@@ -223,7 +224,16 @@ void probe() {
 void tick() {
     // Main thread. If post_init could not register (it ran off the main thread, or the dvar
     // system was not up), try again here; cheap when both slots are set.
-    if (!g_switched_off && (!read_u32(kSlots[0].slot) || !read_u32(kSlots[1].slot))) register_all("frame");
+    // At most three frame attempts: a signature mismatch must not log every frame.
+    static int attempts = 0;
+    if (!g_switched_off && attempts < 3) {
+        bool any_null = false;
+        for (const dvar_slot& s : kSlots) any_null |= read_u32(s.slot) == 0;
+        if (any_null) {
+            ++attempts;
+            register_all("frame");
+        }
+    }
     if (g_probed) return;
     const uint32_t ft = read_u32(kComFrameTime);
     if (!ft) return;

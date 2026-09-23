@@ -20,11 +20,19 @@ const express = require('express')
 const session = require('express-session')
 const { Server: IO } = require('socket.io')
 
+// infra/discord.env (only the keys code reads, lib/discordEnv.js KEYS): read here so a node
+// restart picks up B's Discord application id without restarting the keepalive loop.
+const discordEnvSet = require('./lib/discordEnv').load()
+
 const { db } = require('./db/database')
 // The site's own log file and incidents (lib/telemetry/siteLog.js, docs/kickstart/telemetry.md
 // §9): installed first, so every console line from here on is also on disk.
 const siteLog = require('./lib/telemetry/siteLog')
 siteLog.install()
+// Names only, never values. The id's last 4 digits so a restart can be checked from the log
+// without the beta password (the id is public anyway).
+console.log(`[discord] infra/discord.env: ${discordEnvSet.length ? discordEnvSet.join(', ') : 'nothing loaded'}` +
+  (/^\d{17,20}$/.test(process.env.ZM_DISCORD_CLIENT_ID || '') ? ` | launcher hello discord_client_id …${process.env.ZM_DISCORD_CLIENT_ID.slice(-4)}` : ' | launcher hello discord_client_id null'))
 // One-time repairs of stored account settings (r_multiGpu 1 -> 0, 2026-09-23). Idempotent,
 // backs the database up before it changes a row, never throws.
 require('./lib/settingsRepairs').run()

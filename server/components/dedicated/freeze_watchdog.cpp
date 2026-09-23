@@ -56,6 +56,7 @@
 #include "frame.hpp"
 #include "dedicated.hpp"
 #include "freeze_watch.hpp"
+#include "snd_alias_dvars.hpp"
 #include "../referee/game_over.hpp"
 
 #include <windows.h>
@@ -151,6 +152,10 @@ void log_fault(const fault_record& r, const char* why) {
               static_cast<unsigned>(r.code), r.eip, r.rw ? "writing" : "reading", r.touched,
               r.eax, r.ebx, r.ecx, r.edx, r.esi, r.edi, r.ebp, r.esp,
               text_chain(r.words, r.n).c_str());
+    // A fault we have already identified gets its name (snd_alias_dvars.hpp, crash review L1).
+    if (const char* known = enw::snd_alias_dvars::known_fault_name(r.eip))
+        ENW_ERROR("dedi_freeze_watchdog: fault #%ld at %08X is KNOWN: %s",
+                  static_cast<long>(r.seq), r.eip, known);
 }
 
 // Faults recorded since `since`, oldest first, at most `max`. A fault identical to the
