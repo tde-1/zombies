@@ -1553,3 +1553,17 @@ wrote `ZombiesDev\logs\nc\console-25180.log`, 2.3 MB, starting
 
 **Not proven:** a refusal against a real Discord attach (Discord did not try these pids); the
 tap on B's PC and at 2560x1440; Discord's retry behaviour after a refusal.
+
+**Revision ~11:00–12:00 (`dd8ac00`, `224f6ba`, merge `5e15d75`) — the guard no longer refuses Discord
+outright.** `ENW_DISCORD_HOOK=auto|allow|refuse` (replaces `ENW_ALLOW_DISCORD_HOOK`); auto (default)
+lets `DiscordHook.dll` load only while the largest free address block is ≥ 0x3210000 bytes (Discord's
+50 MB view, page-rounded and 64 KB-aligned), logs every decision with the measured block, and on a
+refusal puts one line in the chat Global tab ("Discord overlay off: not enough memory on this map").
+Setting "Discord overlay" Auto/On/Off (`discordOverlay`) on /settings → ENW, carried by the launcher
+as `ENW_DISCORD_HOOK` the same way as `ENW_RAW_MOUSE`. Test-only `ENW_OVERLAY_GUARD_PROBE(_AT)`.
+Unit test **60/0**. Proof `ovg5` (fear_mc_2, client pid 17356, lock 11:49:52–11:51:59): +4 s
+134.3 MB largest free, +64 s 34.9 MB, probe at +71 s **REFUSED** in auto, game ran on to the
+harness kill. DLL `build/overlayguard/enw_t4.dll` at `5e15d75`, sha256
+`9acc16d9e4fb21cf916be73e2d75c6c6cee0e669cd77e0c02b2b070670092fa9` (not published). Not proven: the
+chat line on screen, an ALLOWED decision in a game, a real Discord attach; no margin is kept for the
+game after an allow. Detail: `chat-overlay.md` §13.6.

@@ -816,3 +816,74 @@ evidence — see §13.5.
   game for every player. The switch is an environment variable only; a launcher/site toggle and B's
   call on the default are open.
 * The address-space number at 2560x1440 on B's PC (it will be in his next `enw-<pid>.log`).
+
+### 13.6 Revision, 2026-09-23 ~11:00–12:00: gate the hook on address space, a setting, a chat line
+
+The 04:00 guard refused `DiscordHook.dll` in every game, which took Discord's overlay, Go Live
+capture and Clips away from every player, including on the maps where it works (74 of 76 attaches
+since 09-22). Revised (`dd8ac00` DLL, `224f6ba` settings, merged with main in `5e15d75`):
+
+* **`ENW_DISCORD_HOOK=auto|allow|refuse`** (unset, empty or unknown = auto; `on`/`1`, `off`/`0`
+  accepted by hand). Replaces `ENW_ALLOW_DISCORD_HOOK`. Pure rule in `overlay_guard_rules.hpp`
+  (`parse_mode`, `allow_discord`).
+* **auto:** when Discord asks to load the hook, the detour measures the largest free address block
+  there and then. **Allowed if it is at least `0x3210000` bytes (50.06 MB), refused otherwise.**
+  That is "a 50 MB block", made exact: Discord's view is 52,428,872 bytes, rounded up to whole
+  pages (0x3201000) and placed on a 64 KB boundary, and a free region can start up to 60 KB short of
+  one. No margin is kept for the game's own later allocations (coordinator's call; see NOT proven).
+  Once the hook has been let in, a later load of the same name passes, so a refusal never claims to
+  have kept out a hook that is already mapped. The load-time measurement is the only gate: Discord
+  maps ~1 s later on its own thread and there is no version-proof point to re-check.
+* **Every decision is logged** (first 3 of each kind): `overlay_guard: ALLOWED|REFUSED '<path>'
+  (mode auto, load #n, +ms after process start, thread) Largest free address block X MB of Y MB
+  free …`; the per-minute line counts `refused N, allowed M`.
+* **An auto refusal puts one yellow system line in the chat Global tab**, once per session:
+  *"Discord overlay off: not enough memory on this map"* (`chat_notice::system_line` in
+  chat_overlay.cpp, written from the frame tick). `refuse` is the player's choice and says nothing.
+* **The setting:** "Discord overlay" Auto / On / Off (`discordOverlay`, values auto/allow/refuse,
+  default auto) in the catalogue `web/client/src/data/wawSettings.js`, drawn on /settings → ENW →
+  discord next to rich presence; site validator `web/server/lib/users.js`; launcher default +
+  `GAME_KEYS` + validation (`launcher/src/main/settings.js`); `launch.js` passes
+  `ENW_DISCORD_HOOK` only for allow/refuse, exactly like `ENW_RAW_MOUSE=0`. Not in the in-game
+  Settings tab (`INGAME` `apply:false`: the DLL reads it once at start). **Reaches B only with the
+  next launcher publish** (the DLL ships in the launcher).
+* **Test-only probe:** `ENW_OVERLAY_GUARD_PROBE=<any 32-bit DLL named DiscordHook.dll>` +
+  `ENW_OVERLAY_GUARD_PROBE_AT=<s after engine start>` make the main thread LoadLibrary it once, so
+  the gate decides against a real map's address space without waiting for Discord to attach.
+
+**Proof.** Unit test `client-dll/tests/overlay_console_test.cpp` **60 passed, 0 failed** (x86 `cl`,
+before and after the merge): modes and aliases, threshold at 0x3210000 (one byte under refused,
+exactly Discord's byte count and a flat 50 MiB refused, 12.3/39.1 MB refused, 64/127.6 MB allowed),
+allow/refuse ignore the number. `settings_model_test` 55/0 (4 excluded), launcher
+`waw-settings.js` 19/0, `discord-presence.js` 22/0, `modcompat.js` 6/0, web `run-all.js` 147/0
+(launcher `run-all.js` 165/1: "this checkout must have a client DLL to ship", a worktree without a
+staged DLL, unrelated).
+
+Local run **`ovg5`** (DLL `build/overlayguard/enw_t4.dll` at `5e15d75`, sha256
+`9acc16d9e4fb21cf916be73e2d75c6c6cee0e669cd77e0c02b2b070670092fa9`): `jointest` fear_mc_2, `nd`
+server pid 29032 + `nc` client pid 17356, invisible, `ENW_TEST_NO_ACTIVATE=1`,
+`ENW_BORDERLESS_COVER=0`, `com_maxfps 125`, private LocalAppData, `ENW_CHAT_SELFTEST=2`,
+`ENW_DISCORD_HOOK` unset (auto), probe at +70 s. Lock taken 11:49:52 (after lane 17's mousebench
+released it), released 11:51:59. Logs `ZombiesDev\logs\dedi\ovg5.*`, `ZombiesDev\logs\nc\enw-17356.log`.
+
+| time | client log |
+|---|---|
+| 11:50:08.654 | `gate armed, mode auto … at least 50.06 MB` |
+| 11:50:12.884 | +4 s: largest free **134.3 MB** of 337.3 MB (auto would allow here) |
+| 11:50:24–44 | selftest chat: `OPEN (key)`, `CLOSED (Enter)` 11:50:39.396, `OPEN`, `CLOSED (Esc)` |
+| 11:51:12.882 | +64 s: largest free **34.9 MB** of 107.8 MB |
+| 11:51:19.200 | **`REFUSED '…\ovgprobe\DiscordHook.dll' (mode auto, load #1, +71145 ms …) Largest free address block 34.9 MB`**; LoadLibrary → error 5 |
+| 11:51:58 | still running at 125 fps, killed by the harness (100 s watch), no fault |
+
+**NOT proven (revision)**
+
+* **The chat line on screen.** The refusal ran after the selftest's last capture, so no image
+  shows "Discord overlay off: …", and `add_local` writes no log line. Code path only.
+* **An ALLOWED decision in a game.** Only the unit test; the probe fired once, after the drop.
+  With a real Discord, the attach at ~+36 s decides; ovg5 had 134 MB at +4 s and 34.9 MB at +64 s,
+  so on fear_mc_2 it depends on when Discord comes.
+* **No margin.** Where auto allows (≥ 50.06 MB free), Discord's 50 MB is gone from the game for the
+  session. A map that later needs that block for itself would then fail in the engine instead of in
+  Discord. The previous draft wanted 64 MB for this reason; the coordinator set 50 MB. Watch B's
+  `enw-<pid>.log` per-minute lines after an ALLOWED.
+* **A real Discord attach**, allowed or refused (as 13.5), and Discord's behaviour after a refusal.
