@@ -3,13 +3,19 @@
 You are picking up an in-flight prototype. Read this page, then `../../STATUS.md`, then the one
 lane doc you are working in. Three minutes.
 
-## Where things stand (2026-09-22, evening)
+## Where things stand (2026-09-23, 03:30 UK handoff)
 
-**The dedicated server runs real games to game over, on the Hetzner box, with a real player, a
-signed replay and a result credited through the site's invite token.** The site is Movement's map
-browser, launcher 0.2.2 is on the feed, the client is isolated from the player's own WaW data.
-`next-session.md` has the one-page state; `../../STATUS.md` is the current truth; each lane doc's
-newest dated section is the detail.
+**Real games run on our dedicated servers.** The Hetzner box `zombies-dev` holds three games at once
+(one slot kept for agents), boots the stock four, Minecraft Village and 59 more "New" customs, and
+runs box DLL `6b1ccfc5` (the join gate that never refuses a start, and `sv_maxRate` 25000 so big maps
+no longer lag over the internet). Launcher **0.2.20** is on the feed: frameless, the site's nav is its
+title bar, joins boot straight into the map, WaW's own chat drawn in game, our own Esc menu (Resume /
+Restart / Exit, friends and invites), always the stock font, a hang watchdog. The site
+(`zombies.enw.gg`, on B's PC, kept alive by a detached keepalive loop that survived a PC crash tonight)
+is Movement's rail, map page, profile and mode-home `/maps`, Steam-only with an ENW username; installers
+and maps download from the `enw-zombies` bucket. **Pause is off on the box** until a write probe names
+a script-VM overflow. `next-session.md` has the one-page state, the open bugs and B's decisions;
+`../../STATUS.md` is the current truth; each lane doc's newest dated section is the detail.
 
 Corrections that pre-date you and will save you a wrong turn:
 
@@ -50,6 +56,27 @@ The source is `../dev-box.md`. This is the short list, and none of it is negotia
    loser only finds out from a log line. Use `enw::frame::subscribe`; never hook `Com_Frame`
    yourself. `dev-box.md` rule 12 has the detail.
 10. **Never write "CoolGombies"** — a voice-to-text artefact. The name is **ENW Zombies**.
+11. **Test game windows are invisible.** `ENW_TEST_NO_ACTIVATE=1`, parked off-screen (-4000,-4000),
+    `ENW_BORDERLESS_COVER=0`; never exclusive fullscreen or a desktop-sized window while B is at his PC.
+12. **The harness never writes B's own WaW profile.** `launch.ps1` and `mapmount.ps1` default to the
+    private LocalAppData (`ENW_USE_PRIVATE_LOCALAPPDATA=0` is the deliberate opt-out). Tonight a run
+    without it zeroed B's volume and another put a junction in his mods folder.
+13. **"Journal idle" is not a safe signal on its own.** Before restarting the box's host agent,
+    deploying a box DLL or leasing, also confirm no verified player is in a live instance.
+14. **Agent leases use the reserved slot.** `web/tools/lease-cli.js` is an agent lease unless
+    `--real`; use fake IDs `76561198000000001/2/3` (one per concurrent game — the same ID is the same
+    party and supersedes). Never B's SteamID.
+15. **The site restarts only on B's word while he is playing.** The keepalive loop reads
+    `infra\site.env` once at its own start: an env change needs the detached loop restarted (WMI),
+    not just node. Never `keepalive.ps1 -Once` as the only keepalive.
+16. **Publish a launcher by the recipe** in `next-session.md` ("How to run things"): explicit
+    `stage-client.js --from`, full `test/run-all.js` output, `publish-update.js`, commit `--only`,
+    a line in `launcher.md`'s release table.
+17. **Never build a box DLL from a worktree with untracked files.** CMake globs every `.cpp` in a
+    component folder, so another lane's uncommitted file ships (`f920bb39`). Build from a clean,
+    detached worktree at a main commit, and record sha + commit + rollback in `dedi.md`.
+18. **127.0.0.1 is LAN to the engine** and skips the server's rate code; internet pacing needs
+    `ENW_NET_FORCE_WAN=1` or a real remote client (`dedi.md` §22).
 
 One convenience, not a rule: `infra\firewall.ps1`, run **once, elevated** by B, stops Windows
 prompting to allow the game every time an agent makes a new dev copy. `-Remove` undoes it.
@@ -69,6 +96,13 @@ prompting to allow the game every time an agent makes a new dev copy. `-Remove` 
 | [`archive.md`](archive.md) | **archive** | `archive/` — the crawler, the catalogue and the link report |
 | [`vps.md`](vps.md) | **vps** | `infra/vps/` and the Hetzner box `zombies-dev` — the one Linux dev box, Wine, and the headless Windows Steam client. It is the project's **only** spend; read the cost section before touching anything there |
 | [`../re/t4-sp-map.md`](../re/t4-sp-map.md) | **re** | `shared/t4/`, `docs/re/`, `tools/re/`, `ZombiesDev\dumps` — the decrypted exe, verified addresses, structs, the security audit (Huffman / OOB handlers) |
+
+Feature docs written on the night of 2026-09-22/23 (each names its lanes in its first lines):
+[`chat-overlay.md`](chat-overlay.md) (in-game chat, the pause contract, stock font, hang watchdog),
+[`esc-menu.md`](esc-menu.md) (the ENW Esc menu, Restart/Exit, quit vs crash),
+[`mod-compat.md`](mod-compat.md) (a custom map gets exactly what the mod ships),
+[`storage.md`](storage.md) (the `enw-zombies` bucket), [`ip-posture.md`](ip-posture.md) (what of
+Activision's we may serve: nothing).
 
 Shared, and owned by nobody:
 

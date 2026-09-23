@@ -2541,3 +2541,27 @@ Also: `library.js ALLOWED_EXT` (and the site's `mapfiles.js ALLOWED`) take `.iwi
 .str` and extension-less weapon files — Futurama's 145 loose images/scripts, Arena's 65 and Five
 Nights' loose weapon files and three load videos were on the box and never reached a player
 (`mod-compat.md` §5).
+
+## 2026-09-23 03:30 — Releases 0.2.14–0.2.20 (written at the handoff; these had commit messages and no section here)
+
+Every one was packaged from main by the coordinator, published to the feed and uploaded to the bucket
+(`publish-update.js`). The DLL column is the first 8 hex of the staged `enw_t4.dll`'s sha256, as the
+release commit names it. The detail of each change is in the lane doc named.
+
+| Version | Commit (UK) | Client DLL | What it carried | Detail |
+|---|---|---|---|---|
+| 0.2.14 | `2f41011` 01:09 | `567b0321` | Esc pauses on a box (the refused load video no longer swallows Esc; `cl_paused` not local-only); client clock held while the server is frozen | `chat-overlay.md` §11 |
+| 0.2.15 | `ea7ac29` 01:13 | `567b0321` (same) | The relaunch loop is gone: each party match is followed at most once (`followgate.js`); `enw.resumeMatch` for the rail's Resume | this file, 2026-09-23 01:45 |
+| 0.2.16 | `afed591` 01:26 | `567b0321` (same) | Nav clickable straight after a game (strip hidden and painted before the site shows) | this file, 2026-09-23 02:30 |
+| 0.2.17 | `2e79ab3` 01:45 | `d26831d2` | ENW Esc menu; direct boot into zombies (no Online Service popup, no main menu); pre-launch map file check + repair; mod-owned dvars never saved from a map; loose map files | `esc-menu.md`, `client.md` §10, `mod-compat.md` |
+| 0.2.18 | `58e4842` 02:15 | `1b103258` | Overlay and Esc menu always in the stock WaW font (from the player's own files, hash-checked) | `chat-overlay.md` §12 |
+| 0.2.19 | `f0eff31` 02:45 | `f11dc67c` | Hang watchdog (stack + minidump after 8 s silent in a map); stock-font search on a worker thread, material span 8192 | `chat-overlay.md` §12.4 |
+| **0.2.20** | `071d4d8` 03:03 | **`03b04bc3`** | Join retry: a "not ready yet" refusal waits (*Waiting for the server...*, every 2 s for 60 s) instead of a fatal error. Same binary as the box's join-fix build (main `81086d4`) | `client.md` §11, `dedi.md` §21 |
+
+**On the feed at handoff: 0.2.20** (`https://zombies.enw.gg/updates/latest.yml`, installer 302 to
+`enw-zombies.nbg1.your-objectstorage.com/updates/…`, checked 03:27 UK).
+
+**Not in any release yet:** `net_probe_client.cpp` (main `fd29f8f`, client side of `dedi.md` §22) and
+the `rate 25000` / `snaps 30` / `cl_maxpackets 100` baseline that §22.4 asks this lane for. Also still
+wrong: the launcher's volume setting writes `snd_volume`, which is not a dvar in this exe (the real one
+is `snd_menu_master`; `client.md` §10).

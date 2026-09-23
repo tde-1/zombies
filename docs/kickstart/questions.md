@@ -564,3 +564,25 @@ name on the two sides.
   thing, and the blocklist copy has to be refreshed by hand when drops.ws edits it.
 
 **Assumed until you answer:** (b). Nothing needs undoing to switch to (a).
+
+## Open at handoff (2026-09-23 03:30) — the whole list for B, in one place
+
+Nothing new below except the gathering; each line points at where the question was first asked.
+
+1. **Q-ip-1** — the name (above; `ip-posture.md` §3).
+2. **Q-ip-2** — what ends closed testing, and the legal contact / US DMCA agent (above; `ip-posture.md` §9).
+3. **Q-id-1** — one ENW name store with drops.ws, or mirrored rules (above; `web.md` §13).
+4. **Replay `.glb` public?** — may game-derived map geometry go in the public bucket, and should
+   `/mapdata` go back behind the gate (Q-replay-2 note above; `storage.md` §1).
+5. **Profile "Overall"** — which stats the block lists (today games, rounds, best round, time,
+   records, member since; kills/downs/revives hidden until recorded). `web.md` profile section.
+6. **Quaternius "Ultimate Guns" (CC0 1.0)** as the replay's gun model instead of the procedural
+   placeholder; needs your OK to download. `replay.md` §8.7.
+7. **A fourth game on the box** — Steam without its browser (frees ~2.3 GB, risks the box's Steam
+   login) or a bigger box (money, rule 8). `dedi.md` §19.5.
+8. **Pause back on the box** — it is off (`ENW_NO_PAUSE=1`) since two paused games died of a
+   script-VM overflow; recommended: leave it off until the write probe names the writer.
+   `dedi.md` §18.6, `referee.md` §15.4.
+
+Older, still open: aim assist on Verified boards; solo on a dedicated server follows co-op rules
+(a records decision, vault 10); LICENSE files (GPL-3.0 client / AGPL-3.0 server, decided in principle).

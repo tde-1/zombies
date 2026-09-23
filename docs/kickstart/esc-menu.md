@@ -1,6 +1,10 @@
 # The ENW Esc menu
 
 > **Status: BUILT on branch `esc-menu`, 2026-09-23 ~00:50–01:40 UK. Not merged, not shipped.**
+> **Superseded 2026-09-23 03:30 (handoff): merged to main (`c72190f`), shipped in launcher 0.2.17, the
+> box runs `restart_request` since `c0986e5e` (now `6b1ccfc5`), and the site's `POST /api/party/quit`
+> exists (`web/server/routes/site.js`, `web.md` "Quit vs crash"). §8's bullets about the missing route
+> are history; the rest of §8 is still unproven.**
 > Esc in a box game opens ours instead of World at War's. §7 is what was run and what it showed;
 > §8 is what is not proven. The chat overlay's own doc (`chat-overlay.md`) is the base this
 > stands on: the draw hook, the input gate, the chat pass and the pause contract are all its.
@@ -159,7 +163,8 @@ made on the site, before the process exits:
 
 A crash or Alt+F4 sends nothing. **The absence of the call is the signal.**
 
-**Site (NOT built — the site lane owns `parties.js`/`assignments.js`):** `POST /api/party/quit`
+**Site (NOT built — the site lane owns `parties.js`/`assignments.js`):** `POST /api/party/quit` *(built
+the same night, `9d27958`, `lib/seats.js` + `routes/site.js`; `web.md` "Quit vs crash")*
 
 * **auth**: accept the chat pass (`gameChat.verifyPass`), because the game holds nothing else; it
   must be reachable past the beta gate for a Bearer request (like `/api/game-chat`), or live under
@@ -233,7 +238,7 @@ build before the 4:3 layout fix and the restart-detection fix; neither changes a
   A fake-ID lease on the box was not attempted: a real game was live there tonight.
 * **Co-op restart** (a second, unverified player refused; two verified players both carried): unit
   tests only.
-* **The quit route does not exist on the site yet** (§5). Until it does, Exit game quits after a
+* ~~**The quit route does not exist on the site yet** (§5).~~ It does since `9d27958` (handoff note). Until it does, Exit game quits after a
   404 and the launcher's watcher will boot the player straight back into a live lease — exactly
   B's complaint — so §5 is the site lane's next job.
 * **The restarted run's site-side life**: presence, live frames and the box heartbeat carry the

@@ -3126,6 +3126,9 @@ skips the rate code entirely** — that is why everything "played fine" here.
   `/home/waw/binkw32.rollback-03b04bc3.dll`. `ENW_NO_PAUSE=1` and `ENW_DEDI_WATCH_PROBE_SLOT=1` untouched,
   host agent not restarted. (`f920bb39`, deployed 01:40, was the same code built from `wt-pause` with the
   files untracked; superseded by `03b04bc3` and then by this.)
+  *Handoff check, 03:27 UK over ssh: all 9 `/home/waw/pfx/drive_c/zdev/waw-*/binkw32.dll` hash `6b1ccfc5`,
+  file mtime **02:04 UTC** (03:04 UK); the "01:59 box time" above does not match the files and is
+  probably the build or copy start — not resolved. `run-host.sh` still exports both switches.*
 
 ### 22.3 Measured (fear_mc_2 unless said; steady 5 s windows, player spawned, round 1)
 

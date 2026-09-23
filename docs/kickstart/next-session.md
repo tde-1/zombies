@@ -1,4 +1,155 @@
-# Next session — start here
+# Next session — start here (2026-09-23)
+
+Written 2026-09-23 ~03:30 UK at the end-of-session handoff (the session ran from 2026-09-22 19:00
+to here). If this page and `../../STATUS.md` disagree, STATUS wins. The vault
+(`C:\Users\b\Desktop\shared-notes\ENW COD Zombies`) carries the same state as a story in
+`19 - Build Log` ("2026-09-23 00:00–03:30") and B's decisions in `00 - Status`. Every lane doc has a
+dated section for tonight; read the newest one in your lane before you touch anything.
+
+## What is true now (checked at handoff, do not re-derive)
+
+| | State at 2026-09-23 03:30 UK | Evidence |
+|---|---|---|
+| **Launcher on the feed** | **0.2.20**, client DLL **`03b04bc3…`** (the same binary as the box's join-fix build, from main `81086d4`). `https://zombies.enw.gg/updates/latest.yml` says 0.2.20 and the installer 302s to the bucket | `071d4d8`; `launcher.md` "Releases 0.2.14–0.2.20" |
+| **Box `zombies-dev`** | Box DLL **`6b1ccfc5…`** in all 9 `pfx/drive_c/zdev/waw-*/binkw32.dll` (net_probe lane, `sv_maxRate` 25000, built from a clean worktree at main **`fd29f8f`**, which contains the join fix). Rollback `/home/waw/binkw32.rollback-03b04bc3.dll`. Host agent (systemd `enw-host-agent`, active) = several leases: **3 slots, 1 reserved for agent leases**, v2 pull protocol, `ready` at `map_loaded`, slot-based game copies and lobby ports (3074+slot), `lib/restart.js` (Esc menu Restart). `run-host.sh` exports **`ENW_NO_PAUSE=1`** (pause off) and **`ENW_DEDI_WATCH_PROBE_SLOT=1`** (data breakpoint on 0x3BFD478) | `dedi.md` §19, §21.5, **§22.2**; `host.md` §13; checked over ssh at 03:27 UK |
+| **Site `zombies.enw.gg`** | Live on B's PC (node on 3200 + cloudflared), kept up by the **detached keepalive loop + Startup shortcut**. **Proof that works:** B's PC crashed at ~03:16; the Startup shortcut restarted the loop at 03:19:53, the site was up at 03:20:36 and the tunnel at 03:20:36 (`infra\keepalive.log`). That restart put **everything merged through `b85ee4f` live** (client bundle built 03:07). Live DB: 26 Easter-egg guides imported, 6 Movement banners imported, **0 playlists**, zombies-dev `max_instances 3` | `infra\keepalive.log`; `web.md` newest sections |
+| **Storage** | One public Hetzner bucket **`enw-zombies`** (nbg1) serves installers (`updates/`) and maps (`mods/`); the site 302s to it. Replay `.glb` geometry is **not** in the bucket (B's call) | `storage.md` §1, §6 |
+| **Maps** | 78 listed; 5 five-gate proven with a real client (stock four + fear_mc_2); **59 more "New"** (boot on the box, no client has joined them); 5 of the popular 64 broken and hidden | `dedi.md` §20, `archive.md` §10 |
+| **Cloud bill** | The box €7.19/month + the bucket's base fee (~€5 net). Nothing else | README rule 8 |
+
+## What shipped tonight (2026-09-22 19:00 → 2026-09-23 03:30), one row per thing
+
+| UK time | What | Where it is written |
+|---|---|---|
+| 19:07 | Keepalive detached + Startup shortcut (the site had died with an agent shell); **launcher 0.2.7** (reload reconnects the site API) | STATUS "the site went down with its shell" |
+| 19:30 | `no_msgbox` on the box ("Set Optimal Settings?" auto-answered No) | `dedi.md` §17 |
+| 19:36 | **0.2.8**: a join waits for a safe menu; the map's load video is refused | `client.md` §7 |
+| 19:46 | **0.2.9**: frameless launcher, the site's nav is the title bar | `launcher.md` 0.2.9 |
+| 19:50 | Replay parity pass (Play/First person, zombies in the track, props upright, crosshair, grenades) | `replay.md` §8.10 |
+| 20:24 | **0.2.10**: nav clicks land; in-game name = ENW name. Site: **Steam-only sign-in + ENW username gate**; Movement's left rail | `launcher.md` 0.2.10; `web.md` §13 |
+| 20:27–21:00 | **Dedicated-server pause** (world frozen, clocks held); proven on the box | `dedi.md` §18, `referee.md` §15 |
+| 20:33 / 21:28 | `/settings` = WaW's Options menus mapped to dvars, then in Gaff's layout | `client.md` §8, `web.md` |
+| 21:10 | Replay WaW HUD + position accuracy; box DLL `86f12b12` | `replay.md` §8.11, `dedi.md` §18.5 |
+| 21:17 | **0.2.11**: in-game chat overlay (engine-drawn WaW chat, tabs, DMs, pause contract) | `chat-overlay.md` §9 |
+| 21:26–21:38 | Movement profile with banner; card → map page, Not playable tags, Steam avatars; **0.2.12** update chip, Download, installed maps | `web.md`, `launcher.md` 0.2.12 |
+| 22:34 | A picture for every map (1,449 covers / 19 own loadscreens / 880 cards / 0 stock) | `web.md`, `archive.md` §10 |
+| 23:05 | **One bucket `enw-zombies`**, 26.5 GB synced, downloads 302 there (~47 MB/s) | `storage.md` §6 |
+| 23:52 | **0.2.13**: chat overlay round 2 (clicks land, text box, clipboard, DM tabs) | `chat-overlay.md` §10 |
+| 00:48 | Three game servers per box (`lobby_port.cpp`, box `6fccc0e0`), copies by slot (fixed the inst-05 outage) | `dedi.md` §19 |
+| 00:58 | Popular 64 on the box: 59 pass, 5 broken; 59 offered as **New** | `dedi.md` §20 |
+| 01:09 | **0.2.14**: Esc pauses on a box; client clock held while frozen | `chat-overlay.md` §11 |
+| 01:11–01:20 | **Several games per box** (leases by party, 1 slot reserved for agents, launcher cancel can't end a live game, quit vs crash, Resume 10 min). **Pause OFF on the box** after two paused games died of the script-VM localVars overflow; guarded DLL + write probe | `web.md`, `host.md` §13, `dedi.md` §18.6, `referee.md` §15.4 |
+| 01:13 / 01:26 | **0.2.15** relaunch loop gone (follow gate); **0.2.16** nav clickable straight after a game | `launcher.md` 2026-09-23 |
+| 01:16 / 01:18 | Replay world 2.54× too big fixed, Tab scoreboard; **Easter egg guides** (26 on 20 maps, blurred) | `replay.md` §8.12; `web.md`, `archive.md` §11 |
+| 01:29–01:45 | Direct boot (no Online Service popup, no main menu); **ENW Esc menu** (Resume / Restart / Exit, chat, friends + invites) + `restart_request` + host `restart.js` (box `c0986e5e`); mod-compat (pre-launch file check, mod-owned dvars, loose files); **0.2.17** (DLL `d26831d2`) | `client.md` §10, `esc-menu.md`, `mod-compat.md` |
+| 02:15 | Overlay + Esc menu always in WaW's stock font; **0.2.18** (DLL `1b103258`); `mapmount.ps1` private LocalAppData by default | `chat-overlay.md` §12 |
+| 02:25 | Host reports `ready` at `map_loaded` | `dedi.md` §21.3 |
+| 02:45 | **0.2.19**: hang watchdog (stack + minidump after 8 s), stock-font search on a worker (DLL `f11dc67c`) | `chat-overlay.md` §12.4 |
+| 03:03 | **Join gate fixed in three layers** (dedi gate open from registration, client retries "not ready" for 60 s, host ready at map_loaded); box `03b04bc3`; **0.2.20** (DLL `03b04bc3`) | `dedi.md` §21, `client.md` §11 |
+| 03:07 | `/maps` opens on Movement's mode-home cards with a saved Cards \| List switch | `web.md` 2026-09-23 ~03:00 |
+| 03:26 | **fear_mc_2 lag = stock `sv_maxRate` 7000**; `net_probe` raises it to 25000 (20 snapshots/s, 0 fragments over the internet); box **`6b1ccfc5`** | `dedi.md` §22 |
+
+## Open bugs and unproven things (one line each, with the pointer)
+
+1. **Stretched Reapers Colt viewmodel on fear_mc_2**: not reproduced locally with identical files; the box server and B's session not ruled out. `mod-compat.md` §1, §9.
+2. **B's client writes no `console.log` since 2026-09-22 18:07** despite `+set logfile 2`, so B's reports have no engine evidence. `mod-compat.md` §1, `client.md` "2026-09-23 01:45".
+3. **zm_nuked hang (0.2.18)**: not reproduced on the box; the 0.2.19+ hang watchdog writes `hang-<pid>-<time>.dmp` + stack on the next one. `chat-overlay.md` §12.4.
+4. **fear_mc_2 network lag**: server side fixed and measured on the box (`dedi.md` §22.3). Still open: the launcher baseline should add `rate 25000`, `snaps 30`, `cl_maxpackets 100` (§22.4, not done, not published); client `net_probe_client.cpp` is in main but in **no published** launcher DLL; a real Play with several players is unmeasured.
+5. **Pause is off on the box** (`ENW_NO_PAUSE=1`): the script VM's localVars copy at 0x697B97 overran into 0x3BFD478 after pauses; whether pausing provokes it is unknown. The write probe is armed to name it. `dedi.md` §18.6, `referee.md` §15.4.
+6. **Replay geometry**: Nacht's window walls from the Husky shell are missing (shots pass through); Der Riese has props only, the shell needs a Husky export under `game.lock`. `replay.md` §8.8, §8.11.
+7. **Kills / downs / revives / score are not recorded** by the referee from a real game (every real game says 0); the Tab scoreboard and the profile hide or dash them. `replay.md` §8.12, `web.md` profile section.
+8. **Easter egg guides**: 26 on 20 maps; whether the steps are right and how many were missed (crawl coverage / recall) is unknown. `archive.md` §11.
+9. **Playlists**: none published in the live DB, so `/maps` cards view is only Popular + View all maps. `web.md` 2026-09-23 ~03:00.
+10. **Chat overlay / Esc menu in exclusive fullscreen**: never looked at. `chat-overlay.md` §9.8, `esc-menu.md` §8.
+11. **Co-op pause and typing with two real players**: unit tests and a single client only. `chat-overlay.md` §8, §11; `esc-menu.md` §8.
+12. **Four instances on the box**: needs ~300 MB more RAM (Steam's browser holds ~2.3 GB) — Steam without its browser or a bigger box (rule 8). `dedi.md` §19.5.
+13. **Vault git**: the vault is its own repo (`tde-1/shared-notes`); Obsidian's auto-backup commits and pushes it (last seen 03:07, level with origin). Agents never commit it by hand; check that the handoff edits were picked up by the next auto-backup.
+14. **Web test timing flake**: "test server never came up on 33991" under load; passes alone. Make the wait robust.
+15. **Launcher volume setting does nothing**: it writes `snd_volume`, which is not a dvar in this exe; the real one is `snd_menu_master`. `client.md` §10, `launcher/src/main/gamecfg.js`.
+16. **B's real WaW profile was written by the harness twice tonight** (`launch.ps1` 01:25, `mapmount.ps1` junction into his mods folder). Both now default to the private LocalAppData (`340ea09`, `e1797e8`); `monkeytoy 1` (a map's anti-cheat) was also saved into B's account settings, so **his console is off on every map until he changes it back** in Settings. `mod-compat.md` §3.
+17. Also unproven from tonight, lower: the Esc menu by B's own hand and on the box through the site (`esc-menu.md` §8); the 59 New maps with a client (19 have ≥110 MB zones; `dedi.md` §20.4); a real launcher Play against the join fix on the box (`client.md` §11b); the pre-launch mod file check through a signed-in launcher (`mod-compat.md` §9); grenade classname `grenade` on T4 (`replay.md` §8.6); four players in one game; round 2.
+
+## Decisions only B can make (`questions.md`, "Open at handoff")
+
+1. **Q-ip-1** — the name: keep ENW Zombies (recommended) or change before public. `ip-posture.md` §3.
+2. **Q-ip-2** — what ends closed testing, and the legal contact / US DMCA agent (small fee). `ip-posture.md` §9.
+3. **Q-id-1** — one ENW name store shared with drops.ws (needs a scoped secret) or mirrored rules (today). `web.md` §13.
+4. **Replay `.glb` public?** — may game-derived map geometry go in the public bucket (`storage.md` §1), and should `/mapdata` go back behind the gate (Q-replay-2 note).
+5. **Profile "Overall" list** — which stats that block shows (today: games, rounds, best round, time, records, member since). `web.md` profile section.
+6. **Quaternius "Ultimate Guns" (CC0)** as the replay's gun model instead of the procedural placeholder; needs B's OK to download. `replay.md` §8.7.
+7. **Four instances** — Steam without its browser (risks B's box login) or a bigger box (money, rule 8). `dedi.md` §19.5.
+8. **Pause back on the box** — only once the write probe names the localVars writer (or B accepts the risk). `dedi.md` §18.6.
+
+Older and still open: aim assist on Verified boards; solo-on-a-dedi follows co-op rules (a records decision); LICENSE files.
+
+## B's own next steps (nothing here needs an agent)
+
+1. Update to **0.2.20** (the chip top right, or restart the launcher).
+2. Settings → turn the console back on (a map saved `monkeytoy 1` into your account).
+3. Play fear_mc_2 on the box again: it should no longer lag. If it does, the box log now says why.
+4. If a game freezes, send `%LOCALAPPDATA%\ENWZombies\logs\hang-*.dmp` and the `enw-<pid>.log` beside it.
+
+## How to run things
+
+```powershell
+# builds (never from a tree with untracked files: CMake globs every .cpp in a component folder)
+tools\dev\build.ps1 -Name dedi ; tools\dev\deploy.ps1 d2 -From dedi
+tools\dev\jointest-proof.ps1 -Tag joinNN -Watch 300                 # five gates, local
+tools\dev\jointest.ps1 ... -ClientEarlyMs <ms> | -ServerLagMs <ms>   # join-race harness (dedi.md §21.4)
+cd launcher; node test/run-all.js; node test/waw-settings.js; node test/modcompat.js
+cd web; npm test                                                     # 33991 flake: rerun alone
+cd infra\host-agent; node test/run-all.js
+node web/tools/lease-cli.js --map nazi_zombie_prototype --player 76561198000000001   # AGENT lease (reserved slot)
+node web/tools/lease-cli.js --match <id> --cancel
+ssh zombies-dev 'systemctl status enw-host-agent; journalctl -u enw-host-agent -n 50'
+Get-CimInstance Win32_Process -Filter "name='powershell.exe'" | ? CommandLine -match 'keepalive.ps1'   # is the site loop alive?
+```
+
+**Publish a launcher (every release, in this order):** build the client DLL from a clean tree →
+`node tools/stage-client.js --from build/<lane>/enw_t4.dll` (explicit, never "whatever is newest") →
+bump `launcher/package.json` → `node test/run-all.js` (read the whole output, not `npm test`'s last
+line) → `electron-builder --win --publish never` → `node tools/publish-update.js` (copies to
+`web/public/updates` and uploads installer, blockmap, then `latest.yml` to the bucket) → check
+`https://zombies.enw.gg/updates/latest.yml` → `git commit --only launcher/package.json` with the DLL
+sha in the message → a dated line in `launcher.md`'s release table. The version test is a floor.
+
+**Deploy a box DLL:** `git worktree add C:\Users\b\ZombiesDev\wt-<name> <main sha>` (detached, **clean:
+`git status` must be empty**) → `tools\dev\build.ps1 -Name dedi` there → `sha256` → `scp` to
+`zombies-dev:/tmp` → on the box, only when the journal is idle **and** no verified player is in a live
+instance: copy the current DLL to `/home/waw/binkw32.rollback-<old8>.dll`, then for each of the 9
+`/home/waw/pfx/drive_c/zdev/waw-*/binkw32.dll` copy to a temp name and `mv` over (atomic), `chown
+waw:waw` → prove with a fake-ID agent lease (`map_loaded`, the component's log line) → cancel → write
+the sha, source commit, worktree and rollback into the newest `dedi.md` section and STATUS. A running
+game keeps its old DLL; new boots take the new one.
+
+**Merge an agent worktree:** docs conflicts = keep both sides; code conflicts = the lane that owns the
+file wins; run web `npm test`, host `test/run-all.js` and launcher `test/run-all.js` after every merge;
+a site restart is B's word while he plays.
+
+## Agent rules added tonight (README "Hard rules" 11–18 has the wording)
+
+- **Test windows are invisible**: `ENW_TEST_NO_ACTIVATE=1`, off-screen (-4000,-4000), `ENW_BORDERLESS_COVER=0`, never exclusive fullscreen or desktop-sized while B is at his PC.
+- **The harness uses a private LocalAppData by default** (`launch.ps1` since `340ea09`, `mapmount.ps1` since `e1797e8`); `ENW_USE_PRIVATE_LOCALAPPDATA=0` is the opt-out for a deliberately stock run, and a fresh private tree needs `players\profiles` seeded. B's `Activision\CoDWaW` is never written.
+- **"Journal idle" is not a safe signal alone**: also confirm no verified player is in a live instance before a box restart, deploy or lease.
+- **Agent leases use the reserved slot** (`lease-cli` is an agent lease unless `--real`), with fake IDs `76561198000000001/2/3` (one ID per concurrent game; the same ID is the same party and supersedes). Never B's SteamID.
+- **The site restarts only on B's word while he plays.** The keepalive loop reads `infra\site.env` once at its own start: an env change needs the detached loop restarted (WMI), not just node.
+- **Publish recipe** above, every time.
+- **Never build a box DLL from a worktree with untracked files** (`f920bb39` shipped another lane's uncommitted `net_probe` that way).
+
+## Traps that are still traps
+
+Never `+set developer 1`; `+set logfile` changes behaviour (script VM developer mode — keep
+`script_error_retail`); never `ENW_PRIVATE_PROFILE`; always pass `com_maxfps`; clear `__CoDWaW`
+before a deploy; `CS_CLIENTLOADING`, never `CS_PRIMED`; a status reply is not simulation (read
+`com_frameTime`); **127.0.0.1 is LAN and skips the server's rate code** — use `ENW_NET_FORCE_WAN=1`
+to test internet pacing; `SendInput` at 8 kHz is discarded; agents' writes under `%LOCALAPPDATA%` may
+be sandbox-redirected; the shared git index (`git commit --only <paths>`); `-Maps` must be a real
+array; a mod's own dvars (`monkeytoy`, `con_external`, `sv_cheats`) are never ours to set.
+
+---
+
+# Previous page (2026-09-22 evening), kept as written
+
 
 Rewritten 2026-09-22 (evening) by the coordinator. If this page and `../../STATUS.md` disagree,
 STATUS wins. The vault (`C:\Users\b\Desktop\shared-notes\ENW COD Zombies`, note `19 - Build Log`)

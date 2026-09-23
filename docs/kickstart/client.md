@@ -1272,6 +1272,8 @@ samples foreground, both round-2 runs). Never set by the launcher.
 
 ## 10. 2026-09-23 ~01:30 — straight into zombies: no "Online Service Error", no main menu (`components/boot_direct.cpp`, branch `boot-direct`)
 
+> Handoff note 03:30: merged (`340ea09`) and shipped in launcher 0.2.17.
+
 B: *"When the game boots up, it first says 'can't connect to online servers' before connecting into
 the game. Make it not show that — or not even show the main menu at all and not play the main menu
 music."* Pictures: `ui/boot-before-2026-09-23.jpg`, `ui/boot-before-popup-1280x720.jpg`,
@@ -1389,6 +1391,8 @@ CoDWaW process and no lock present): 01:04:08–01:05:10, 01:07:11–01:08:08, 0
 
 ## 2026-09-23 — the ENW Esc menu (`components/pause_menu.cpp`), branch `esc-menu`
 
+> Handoff note 03:30: merged (`c72190f`) and shipped in launcher 0.2.17.
+
 B: *"Replace the escape menu with our custom menu: Resume, Restart game (tells the dedicated server
 to restart), Exit game, the chat, and invites from your friends and friends online with what maps
 they're on."* Built; the write-up, the restart contract and every run are in **`esc-menu.md`**.
@@ -1483,7 +1487,9 @@ forward, so it asked every 1.0 s; fixed before the `final-*` runs.
 
 **Client DLL for the coordinator (not published): `build/client-lane/enw_t4.dll` =
 `03b04bc3414d12ceb7bb3c65bcb773a4424a438846a4bb3874e8670163e85db5`**, from a clean worktree at main
-`81086d4` — the same binary as the box's dedi DLL (one full build carries both halves).
+`81086d4` — the same binary as the box's dedi DLL (one full build carries both halves). *(Handoff
+note 03:30: published as launcher **0.2.20**, `071d4d8`. The box has since moved to `6b1ccfc5`, main
+`fd29f8f`, dedi.md §22.)*
 
 **Not proven:** a real launcher Play on the box against this build (the box half was proven with a
 scripted connect, dedi.md §21.4); B's machine; the line at 2560x1440 (drawn on scrPlaceFull, so it is

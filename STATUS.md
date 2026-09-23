@@ -1,38 +1,79 @@
-# Where things stand — 2026-09-23, morning
+# Where things stand — 2026-09-23, 03:30 UK (end-of-session handoff)
 
 > **This file is the current state of the code.** Design and decision history: the Obsidian vault at
 > `C:\Users\b\Desktop\shared-notes\ENW COD Zombies` (`19 - Build Log`). A new agent reads
 > `docs/kickstart/README.md`, then `docs/kickstart/next-session.md`. **Every lane doc has a dated
 > section for the night of 2026-09-22/23** — read the newest section of the lane you are in.
 
+## State at 2026-09-23 03:30 (handoff)
+
+The session ran from 2026-09-22 19:00 to here; the one-page version, with every row's evidence, is
+**`docs/kickstart/next-session.md`**. Everything is pushed (main through `e8850db`).
+
+| | State | Pointer |
+|---|---|---|
+| **Launcher on the feed** | **0.2.20**, client DLL **`03b04bc3`** (main `81086d4`). Tonight: 0.2.7 → 0.2.20 | `launcher.md` "Releases 0.2.14–0.2.20" and the dated 0.2.7–0.2.13 sections |
+| **Box DLL** | **`6b1ccfc5`** in all 9 copies (net_probe lane, `sv_maxRate` 25000, clean worktree at main `fd29f8f`, includes the join fix). Rollback `binkw32.rollback-03b04bc3.dll`. Tonight: `b36fe140` → `f8a835bb` → `86f12b12` → `6fccc0e0` → `79d4317d` → `c0986e5e` → `f920bb39` (unrecorded, reverted) → `03b04bc3` → `6b1ccfc5` | `dedi.md` §22.2 (+ handoff hash check) |
+| **Box host agent** | Several leases: 3 slots, 1 reserved for agents; v2 pull; `ready` at `map_loaded`; copies/lobby ports by slot; `restart.js`. `run-host.sh`: `ENW_NO_PAUSE=1`, `ENW_DEDI_WATCH_PROBE_SLOT=1` | `host.md` §13, `dedi.md` §18.6, §19, §21.3 |
+| **Site** | Live on B's PC; keepalive loop detached + Startup shortcut. **Proven by accident:** the PC crashed ~03:16, the loop was back 03:19:53, site + tunnel up 03:20:36. Everything merged through `b85ee4f` is live (bundle built 03:07). Live DB: 26 EE guides, 6 Movement banners, 0 playlists | `infra\keepalive.log`, `web.md` |
+| **Storage** | One bucket `enw-zombies` (installers + maps, 302 from the site); replay `.glb` not uploaded | `storage.md` §6 |
+
+**Shipped tonight** (detail in next-session.md's table): keepalive; launcher 0.2.7–0.2.20; no_msgbox;
+dedi pause (now OFF on the box); Steam-only sign-in + ENW name gate; Movement rail, map page, profile;
+`/settings`; chat overlay (4 rounds); one bucket; a picture for every map; three game servers per box
+and several games per box; 59 popular maps as New; Easter egg guides; replay accuracy + scale; direct
+boot; ENW Esc menu with Restart/Exit and quit-vs-crash; mod-compat; stock font; hang watchdog; the
+join gate in three layers; `/maps` cards view; the fear_mc_2 lag (`sv_maxRate`).
+
+**Open bugs** (one line each in next-session.md): stretched Colt on fear_mc_2 · B's client writes no
+`console.log` since 09-22 18:07 · zm_nuked hang (watchdog in 0.2.19+) · fear_mc_2 lag client half
+(launcher `rate`/`snaps`/`cl_maxpackets` baseline not done) · pause off on the box (localVars overflow)
+· Nacht window walls / Der Riese Husky shell · kills/downs/revives/score not recorded · EE crawl
+coverage · no playlists published · overlay in exclusive fullscreen · co-op pause with two real players
+· four instances need RAM · vault git (Obsidian auto-backup) · web test 33991 flake · launcher volume
+writes `snd_volume` (the dvar is `snd_menu_master`) · B's real profile touched twice by the harness
+(defaults fixed; his account has `monkeytoy 1`).
+
+**Decisions for B** (`questions.md` "Open at handoff"): Q-ip-1 name · Q-ip-2 phase gate + legal ·
+Q-id-1 shared name store · replay `.glb` public? · profile Overall list · Quaternius CC0 gun · four
+instances (Steam without browser vs bigger box) · pause back on (after the write probe names the writer).
+
+**Sections below that said "not merged / not deployed / not published"** and are now live were
+annotated in place with *(Handoff 03:30: …)*: the 59 New maps, one-game-per-box, relaunch loop,
+`/maps` view, EE guides import, nav after a game, direct boot, Esc menu, mod-compat, the join-fix
+client DLL, the morning checklist, 0.2.12, web-cleanup, web-settings-2, web-dock, identity, chat
+overlay, pause, profile, settings, replay WaW pass, replay scale, web-maps, no_msgbox.
+
 * **2026-09-23 03:15 UK — "extremely laggy on the Minecraft map" is fixed on the box (`dedi.md` §22).** Stock `sv_maxRate` is 7000 bytes/s and the server paces every internet client to it; a fear_mc_2 snapshot is 600–1,100 bytes, so B got 10, then 3 (once snapshots fragmented) snapshots a second instead of 20. Local tests never saw it: 127.0.0.1 counts as LAN and skips the rate code. `net_probe.cpp` raises `sv_maxRate` to 25000 (the engine maximum) and logs the wire per client; `net_probe_client.cpp` logs snapshot arrival. Measured B's PC → box over the internet on fear_mc_2: 3–10/s, 30 of 30 fragmented at the stock cap → **20.0/s, 0 delayed, 0 fragments, 50 ms gaps** at 25000. **Box DLL `6b1ccfc5`** (main `fd29f8f`, includes the join fix). Launcher lane should add `rate 25000`, `snaps 30`, `cl_maxpackets 100` to the baseline (not done, not published).
-* **2026-09-23 03:00 UK — "maps cannot be joined mid-game" at the very start is fixed in three layers (`dedi.md` §21, `client.md` §11).** The dedi opened its co-op join gate by polling every 16th frame, so a connect waiting when the map finished loading was refused; the stock client then gave up for good. Now: the dvar is on from registration and `SV_DirectConnect`'s gate is unconditional (`ENW_JOIN_GATE_STOCK=1` off); the client retries a "not ready yet" refusal every 2 s for 60 s with a *Waiting for the server...* line (`join_retry.cpp`, `ENW_JOIN_RETRY=0` off); and the host reports `ready` at `map_loaded` (`46fe734`, host lane). Proven locally on Nacht, bridge_zombie and fear_mc_2 with the client started before the server, plus a forced-race control that reproduces B's error; proven on the box with a scripted connect from before the lease (`connectResponse`, never the refusal). **Box DLL `03b04bc3`** (main `81086d4`; it replaced an unrecorded `f920bb39` that carried another lane's uncommitted `net_probe`, rollback kept). Client DLL `build/client-lane` = the same `03b04bc3`, **not published**.
-* **2026-09-23 ~00:00 — the popular 64 on the box (`docs/kickstart/dedi.md` §20, `archive.md` §10)**: **59 pass, 5 fail**. Pass = `map_loaded` + `com_frameTime` advancing on the box, server-side only. The failures are shore and cxca (missing script) and shinomori, dpp and inferno (out of `main` memory); they are `broken`, hidden and refused a lease. The site lists 78 maps (83 before). The 59 get a new party-leasable level, **New** ("loads on our servers, not yet played with a client"; `lib/maps.js` `BOX_PROVEN` ← `boxProven.json`). **Committed, not deployed**: it needs the client build and a site restart. No client has joined any of the 59, and 19 of them have ≥110 MB zones.
+* **2026-09-23 03:00 UK — "maps cannot be joined mid-game" at the very start is fixed in three layers (`dedi.md` §21, `client.md` §11).** The dedi opened its co-op join gate by polling every 16th frame, so a connect waiting when the map finished loading was refused; the stock client then gave up for good. Now: the dvar is on from registration and `SV_DirectConnect`'s gate is unconditional (`ENW_JOIN_GATE_STOCK=1` off); the client retries a "not ready yet" refusal every 2 s for 60 s with a *Waiting for the server...* line (`join_retry.cpp`, `ENW_JOIN_RETRY=0` off); and the host reports `ready` at `map_loaded` (`46fe734`, host lane). Proven locally on Nacht, bridge_zombie and fear_mc_2 with the client started before the server, plus a forced-race control that reproduces B's error; proven on the box with a scripted connect from before the lease (`connectResponse`, never the refusal). **Box DLL `03b04bc3`** (main `81086d4`; it replaced an unrecorded `f920bb39` that carried another lane's uncommitted `net_probe`, rollback kept). Client DLL `build/client-lane` = the same `03b04bc3`, ~~**not published**~~ *(Handoff 03:30: published as launcher **0.2.20**; the box moved on to `6b1ccfc5`, line above.)*
+* **2026-09-23 ~00:00 — the popular 64 on the box (`docs/kickstart/dedi.md` §20, `archive.md` §10)**: **59 pass, 5 fail**. Pass = `map_loaded` + `com_frameTime` advancing on the box, server-side only. The failures are shore and cxca (missing script) and shinomori, dpp and inferno (out of `main` memory); they are `broken`, hidden and refused a lease. The site lists 78 maps (83 before). The 59 get a new party-leasable level, **New** ("loads on our servers, not yet played with a client"; `lib/maps.js` `BOX_PROVEN` ← `boxProven.json`). ~~**Committed, not deployed**: it needs the client build and a site restart.~~ *(Handoff 03:30: live since the 01:12 site restart.)* No client has joined any of the 59, and 19 of them have ≥110 MB zones.
 * **2026-09-22 late — object storage (`docs/kickstart/storage.md`)**: the site can 302 installers, blockmaps, map files and replay `.glb`s to two public Hetzner buckets (`S3_BUCKET_FILES`/`S3_BUCKET_MAPS` in `infra\site.env`, off until set); `tools/s3/sync.js`/`check.js`; `publish-update.js` uploads too. **Not live yet: the keys in `infra\s3.env` see no buckets** (the names are not found in nbg1/fsn1/hel1). **Superseded 23:05: ONE bucket `enw-zombies` created by the coordinator on B's direct instruction, public-read, installers + 26.5 GB of maps synced, site switched over (keepalive loop restarted so it read the new `site.env`), installer and map downloads 302 to the bucket at ~47 MB/s; replay `.glb`s held back. `storage.md` §6.**
 
 * **2026-09-23 01:15 UK — several games per box, for real (host.md §13, web.md, dedi.md §19.6)**: a lease no longer supersedes anybody else's game. It replaces only the same party's or the same players' game. zombies-dev holds 3 games, and 1 slot is reserved for agent leases (lease-cli), which also give way to a real player. When the box is full, players see "No free server right now". Proven on the box: two fake-ID games up at once, the third refused, and each cancel retired only its own game. **Root cause of B's game going idle mid-round:** it was not a timer. His launcher's failed-rejoin path called `/api/launcher/cancel`, which cancelled his live match, and that route now refuses to cancel a live game. Quit from the Esc menu now cancels the server. After a crash, the rail offers **Resume** for 10 minutes. The launcher is no longer shown a follow state for a game the player is in or has left.
 
-* **2026-09-23 00:45 UK — the box runs three game servers at once (`dedi.md` §20).** The "3074 + one fallback" limit was wrong. The engine probes 100 lobby ports, and the new dedi DLL `6fccc0e0…` (`lobby_port.cpp`) logs every bind and takes `ENW_LOBBY_PORT` (3074+slot). Three servers were proven up together, all answering, ~304 MB and ~0.33 core each, ~300 MB RAM left. Four needs Steam without its browser or a bigger box. **Fixed an outage:** after four boots the host agent failed every lease, B's Play included (23:27–23:32 box time, "no game copy at waw-inst-05"). Copies now go by slot. **Still one game per box at the site**: a second Play supersedes the first, and that is the web lane's to change.
+* **2026-09-23 00:45 UK — the box runs three game servers at once (`dedi.md` §20).** The "3074 + one fallback" limit was wrong. The engine probes 100 lobby ports, and the new dedi DLL `6fccc0e0…` (`lobby_port.cpp`) logs every bind and takes `ENW_LOBBY_PORT` (3074+slot). Three servers were proven up together, all answering, ~304 MB and ~0.33 core each, ~300 MB RAM left. Four needs Steam without its browser or a bigger box. **Fixed an outage:** after four boots the host agent failed every lease, B's Play included (23:27–23:32 box time, "no game copy at waw-inst-05"). Copies now go by slot. ~~**Still one game per box at the site**: a second Play supersedes the first, and that is the web lane's to change.~~ *(Handoff 03:30: fixed at 01:15, several leases per box, live.)*
 
-* **2026-09-23 01:45 UK — launcher: the relaunch loop is fixed (branch `launcher-after-game`, not merged, not published).** The party watcher re-launched the same match on every poll after the game exited (B: "keeps booting you back into the game"). A match is now followed at most once, never beside a live game of ours; only Play or the site's Resume (`enw.resumeMatch`, needs a site button) goes back in. `launcher.md`, same date.
+* **2026-09-23 01:45 UK — launcher: the relaunch loop is fixed (branch `launcher-after-game`, not merged, not published).** *(Handoff 03:30: merged, shipped in **0.2.15**; the rail's Resume button exists and calls `enw.resumeMatch`.)* The party watcher re-launched the same match on every poll after the game exited (B: "keeps booting you back into the game"). A match is now followed at most once, never beside a live game of ours; only Play or the site's Resume (`enw.resumeMatch`, needs a site button) goes back in. `launcher.md`, same date.
 
-* **2026-09-23 ~03:00 UK — `/maps` Cards | List (branch `web-maps-view`, not merged; web.md, same date).** The collection rows are gone from the top of `/maps` (Home keeps them). The default is Movement's mode home: Popular, Your maps, a row per playlist, All playlists covers, and **View all maps**. Movement's `ModeViewSwitch` sits top right. List is the filter bar plus the rows and nothing else. The choice is saved (`zm_maps_view_v1`). `?view=` and any filter force a view for that visit without saving it. The live DB has no playlists, so the cards view there is Popular + View all maps until one is published. Needs a client build and a restart.
+* **2026-09-23 ~03:00 UK — `/maps` Cards | List (branch `web-maps-view`, not merged; web.md, same date).** *(Handoff 03:30: merged `b85ee4f`, live since the 03:20 restart; still 0 playlists in the live DB.)* The collection rows are gone from the top of `/maps` (Home keeps them). The default is Movement's mode home: Popular, Your maps, a row per playlist, All playlists covers, and **View all maps**. Movement's `ModeViewSwitch` sits top right. List is the filter bar plus the rows and nothing else. The choice is saved (`zm_maps_view_v1`). `?view=` and any filter force a view for that visit without saving it. The live DB has no playlists, so the cards view there is Popular + View all maps until one is published. Needs a client build and a restart.
 
 ## Box, 2026-09-23 01:20 (coordinator)
 
 Pause is OFF on the box (`ENW_NO_PAUSE=1`): two paused Nacht games died of the script-VM localVars overflow ~30-54 s after a resume (dedi 18.6, referee 15.4); guarded DLL `79d4317d` + write probe deployed. Launcher 0.2.14 (Esc pauses on a box, client clock held) and 0.2.15 (relaunch loop gone) on the feed. Site restarted 01:12 with several-games-per-box, the launcher-cancel guard, quit-vs-crash and the 59 New maps.
 
-* **2026-09-23 01:30 UK — Easter egg steps (branch `web-easter-eggs`, web.md + archive.md §11).** `archive/easter_eggs.py` read the cached release posts and threads without making requests and found **26 guides on 20 maps** (8 main quest). They go into a new `map_guides` table via `node web/server/db/import-archive.js --guides` (**not yet run on the live DB**). The map page shows them blurred under "What's in it" with **Show Easter egg steps**; the reveal is remembered per map, and each guide credits its author with a link. Cards and rows get an EE tag, and /admin → guides lists each guide with its confidence plus hide/delete. Unproven: whether the steps are right (they are the authors' release text), and recall.
+* **2026-09-23 01:30 UK — Easter egg steps (branch `web-easter-eggs`, web.md + archive.md §11).** `archive/easter_eggs.py` read the cached release posts and threads without making requests and found **26 guides on 20 maps** (8 main quest). They go into a new `map_guides` table via `node web/server/db/import-archive.js --guides` (~~not yet run on the live DB~~ *(Handoff 03:30: run — the live DB has 26 rows; merged `521d94a`, live.)*. The map page shows them blurred under "What's in it" with **Show Easter egg steps**; the reveal is remembered per map, and each guide credits its author with a link. Cards and rows get an EE tag, and /admin → guides lists each guide with its confidence plus hide/delete. Unproven: whether the steps are right (they are the authors' release text), and recall.
 
-* **2026-09-23 02:30 UK — launcher: the nav is clickable straight after a game (branch `launcher-after-game`, not merged, not published).** 0.2.10 hid the shell's drag strip *after* showing the site, but a covered shell page does not paint, so its drag region kept the nav (Maps, Update now, the account chip) dead. In a dev window the nav stayed dead for more than 2.4 s in 15/15 trials; now it is 0 ms in all 33. `launcher.md` and `ui/2026-09-23-launcher-after-game-timing.md`.
+* **2026-09-23 02:30 UK — launcher: the nav is clickable straight after a game (branch `launcher-after-game`, not merged, not published).** *(Handoff 03:30: merged `afed591`, shipped in **0.2.16**.)* 0.2.10 hid the shell's drag strip *after* showing the site, but a covered shell page does not paint, so its drag region kept the nav (Maps, Update now, the account chip) dead. In a dev window the nav stayed dead for more than 2.4 s in 15/15 trials; now it is 0 ms in all 33. `launcher.md` and `ui/2026-09-23-launcher-after-game-timing.md`.
 
-* **2026-09-23 01:30 UK — launcher joins boot straight into zombies (`client.md` §10, branch `boot-direct`, not merged).** The "can't connect" box is the menu `popup_cannot_connect_to_dw` ("Online Service Error"), opened by the Demonware log-on after our blocked DNS lookup; `boot_direct.cpp` refuses it and its three sibling popups at their three call sites (`ENW_SHOW_ONLINE_WARNING=1` shows them). A join now connects on the first frame, with that one menu frame painted black and `snd_menu_master` muted until the first in-game frame (`ENW_DIRECT_BOOT=0` is the old menu wait). Measured on a local dedi at 1280x720: process start → in game **~5.9 s → ~4.9 s**, no menu or popup in any captured frame. Not run through the launcher, on the box or on B's screen. Also found: `snd_volume` (the launcher's volume setting) is not a dvar in this exe.
+* **2026-09-23 01:30 UK — launcher joins boot straight into zombies (`client.md` §10, branch `boot-direct`, not merged).** *(Handoff 03:30: merged `340ea09`, shipped in **0.2.17**. The `snd_volume` finding is still open.)* The "can't connect" box is the menu `popup_cannot_connect_to_dw` ("Online Service Error"), opened by the Demonware log-on after our blocked DNS lookup; `boot_direct.cpp` refuses it and its three sibling popups at their three call sites (`ENW_SHOW_ONLINE_WARNING=1` shows them). A join now connects on the first frame, with that one menu frame painted black and `snd_menu_master` muted until the first in-game frame (`ENW_DIRECT_BOOT=0` is the old menu wait). Measured on a local dedi at 1280x720: process start → in game **~5.9 s → ~4.9 s**, no menu or popup in any captured frame. Not run through the launcher, on the box or on B's screen. Also found: `snd_volume` (the launcher's volume setting) is not a dvar in this exe.
 
-* **2026-09-23 ~01:40 UK — the ENW Esc menu (branch `esc-menu`, not merged, `docs/kickstart/esc-menu.md`).** Esc in a box game opens ours instead of World at War's: Resume, Restart game, Exit game, the chat panel embedded, friends online with the map they are on (Invite) and invites to you (Accept). The pause contract is unchanged (`enw_ui paused`). **Restart** is proven end to end on a local dedicated server with the real host agent: the run ends as abandoned (signed replay, `player_restart`), a new run `<lease>.r2` takes over on the same lease, the player is re-admitted. **Exit game** calls `POST /api/party/quit` then quits — **the site route does not exist yet** (contract in `esc-menu.md` §5, site lane): until it does, the launcher boots a quitting player back into a live lease. Not yet on the box or through the site.
+* **2026-09-23 ~01:40 UK — the ENW Esc menu (branch `esc-menu`, not merged, `docs/kickstart/esc-menu.md`).** *(Handoff 03:30: merged `c72190f`, shipped in **0.2.17**, box `restart_request` since `c0986e5e`, and `POST /api/party/quit` exists on the live site — the "route does not exist" sentence below is history.)* Esc in a box game opens ours instead of World at War's: Resume, Restart game, Exit game, the chat panel embedded, friends online with the map they are on (Invite) and invites to you (Accept). The pause contract is unchanged (`enw_ui paused`). **Restart** is proven end to end on a local dedicated server with the real host agent: the run ends as abandoned (signed replay, `player_restart`), a new run `<lease>.r2` takes over on the same lease, the player is re-admitted. **Exit game** calls `POST /api/party/quit` then quits — **the site route does not exist yet** (contract in `esc-menu.md` §5, site lane): until it does, the launcher boots a quitting player back into a live lease. Not yet on the box or through the site.
 
-* **2026-09-23 01:45 UK — mod compatibility (`docs/kickstart/mod-compat.md`).** B's stretched Reapers Colt on Minecraft Village is **not reproduced** locally with byte-identical files and B's settings; mod files, add-on IWDs, fastfile order and dvars are ruled out, the box server is not (no leases tonight), and B's client has written no `console.log` since 09-22 18:07. Fixed: the settings read-back no longer saves dvars a map sets itself (this map's anti-cheat put `monkeytoy 1` in B's account — his console is off on every map until he changes it back); a pre-launch check re-downloads files that differ from the server's; the site and launcher now ship loose `.iwi/.csc/.bik`/weapon files (Futurama, Arena, Five Nights, 3 load videos). All 57 box maps: no byte differences; box Futurama is missing 4 archive files. Branch `mod-compat`.
+* **2026-09-23 01:45 UK — mod compatibility (`docs/kickstart/mod-compat.md`).** B's stretched Reapers Colt on Minecraft Village is **not reproduced** locally with byte-identical files and B's settings; mod files, add-on IWDs, fastfile order and dvars are ruled out, the box server is not (no leases tonight), and B's client has written no `console.log` since 09-22 18:07. Fixed: the settings read-back no longer saves dvars a map sets itself (this map's anti-cheat put `monkeytoy 1` in B's account — his console is off on every map until he changes it back); a pre-launch check re-downloads files that differ from the server's; the site and launcher now ship loose `.iwi/.csc/.bik`/weapon files (Futurama, Arena, Five Nights, 3 load videos). All 57 box maps: no byte differences; box Futurama is missing 4 archive files. Branch `mod-compat`. *(Handoff 03:30: merged `cccce5c`, shipped in **0.2.17**; the stretched Colt is still unexplained.)*
 
 ## B: do this first (the morning checklist)
+
+*(Handoff 03:30: this checklist is from the 2026-09-22 morning and is superseded — B's steps now are in the handoff section at the top and in `docs/kickstart/next-session.md`.)*
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
    the feed is live). Sign in with Steam. It repairs the game-folder DLL on every Play now — the
@@ -54,6 +95,8 @@ Pause is OFF on the box (`ENW_NO_PAUSE=1`): two paused Nacht games died of the s
 
 ## 2026-09-22 (late evening): launcher 0.2.12 — update chip, Download, installed maps (branch `updates-downloads`, not merged, not published)
 
+*(Handoff 03:30: merged `337b461` and published as 0.2.12; the feed is now 0.2.20.)*
+
 * **Update chip, top right**: `Update 0.2.13` · Update now · Later → a bar → Restart now · Later. The
   check runs every launch; the download waits for Update now; Later hides it until next launch.
   The launcher's "site is not answering" page has the same chip.
@@ -66,6 +109,8 @@ Pause is OFF on the box (`ENW_NO_PAUSE=1`): two paused Nacht games died of the s
   tests green. **Not proven**: a real feed, a real restart. Write-ups: `launcher.md` and `web.md`, newest sections.
 
 ## 2026-09-22 (late): the rail cleaned up (branch `web-cleanup`, not merged)
+
+*(Handoff 03:30: merged `90e21bc`, live.)*
 
 * **The card opens the map page.** It works like Movement's, and the page has a Back that goes
   to the map list.
@@ -81,6 +126,8 @@ The full write-up is `web.md`, newest section.
 
 ## 2026-09-22 (late evening): `/settings` in Gaff's shape (branch `web-settings-2`, not merged)
 
+*(Handoff 03:30: merged `f7c3d63`, live.)*
+
 B asked for Gaff's settings menu. `/settings` is now a rail with search and six icon tabs (Display,
 Graphics, Audio, Controls, Game, ENW), small lowercase sections, one short row each: checkboxes,
 segmented buttons, selects, sliders; key capture and a reset per section kept. Every WaW dvar
@@ -89,6 +136,8 @@ chatting (solo)* (`pause_on_chat`). ENW tab is `EnwSection.jsx` with a slot for 
 Update. Proven on a dev port with a saved-value round trip; `web.md` last section.
 
 ## 2026-09-22 (evening): Movement's left rail on the site; the logo is just ENW (branch `web-dock`, not merged)
+
+*(Handoff 03:30: merged `5bd4932`, live.)*
 
 Movement's party rail is on the left of every page. It has four parts:
 * **Your party**, with invite by ENW name.
@@ -126,9 +175,11 @@ A signed-in account with no ENW name gets Movement's "Choose your name" picker a
 everything else server-side; rules, wording and the 754-term blocklist are drops.ws's, verbatim.
 `users.pub().name` is the ENW name, never the Steam persona. All seven approved accounts already have
 names, so nobody sees the picker. Open: Q-id-1 (shared store vs mirrored rules); `jamie` is `Jamie`
-on Movement (`tools/align-enw-names.js`). Not deployed. `docs/kickstart/web.md` §13.
+on Movement (`tools/align-enw-names.js`). ~~Not deployed.~~ *(Handoff 03:30: merged `72a4920`, live.)* `docs/kickstart/web.md` §13.
 
 ## In-game chat overlay (2026-09-22, evening) — built, not shipped
+
+*(Handoff 03:30: shipped in 0.2.11, round 2 in 0.2.13, round 3 in 0.2.14, round 4 (stock font) in 0.2.18.)*
 
 T opens World at War's own chat, drawn by the engine (its renderer, its fonts, its chat anchor
 `cg_hudChatPosition` 5,200), with Global / Party / DMs tabs, WaW's "Say:" line and the game's own
@@ -164,10 +215,12 @@ setting), co-op only when everyone is in the menu, typing never pauses co-op; a 
 as unpaused; no ceiling, logged. Engine-side and total (`G_RunFrame` gated, clocks held, snapshots
 flowing), paused time excluded from in-game time and records untouched (`dedi.md` §18,
 `referee.md` §15). **The client half is one userinfo key** (`chat-overlay.md` §8) — built with the chat overlay
-and measured against a local dedi (§9.5); it reaches players with the next client DLL. Box deploy/proof: see `dedi.md` §18.4. What a
+and measured against a local dedi (§9.5); it reaches players with the next client DLL *(Handoff 03:30: it did, 0.2.11/0.2.14)*. Box deploy/proof: see `dedi.md` §18.4. **Pause is OFF on the box since 01:20 (`ENW_NO_PAUSE=1`, `dedi.md` §18.6).** What a
 real client draws while frozen is unproven.
 
 ## Profile: Movement's, with their Movement banner (2026-09-22, late evening, branch `web-profile`, not merged)
+
+*(Handoff 03:30: merged `2880015`, live; `import-movement-profiles.js` has been run — 6 banners in the live DB.)*
 
 `/id/<name>` is Movement's profile: banner + identity bar, badge shelf, **Top maps / Recent maps**
 (map art, time, games, best round), **Overall** (games, rounds played, best round → its game/replay,
@@ -187,9 +240,9 @@ Show FPS, raw mouse, DOF/glow). Saved per SteamID on the site, pushed to the lau
 existing bridge, put on the `+set` line and merged into the engine's `config.cfg` every launch;
 in-game changes come back after exit. Proven by test, dev port and a preload harness; **in game
 unproven** — `client.md` §8 (dvar table, §8d = B's one-minute check), `web.md` newest section.
-Needs a launcher release + site deploy to reach players.
+Needs a launcher release + site deploy to reach players. *(Handoff 03:30: merged `fd73826`, live, in the launcher since 0.2.11.)*
 
-**WaW pass (2026-09-22 evening, branch `replay-waw`, not merged or deployed; replay.md §8.11).**
+**WaW pass (2026-09-22 evening, branch `replay-waw`, not merged or deployed; replay.md §8.11).** *(Handoff 03:30: merged `65addc6`, live; the DLL half went to the box in `86f12b12`, dedi.md §18.5.)*
 Positions checked against the Nacht shell: frame and axes were right; wrong were 49 brush-model
 islands piled on the engine origin (the start-room "walk-through" planks, dropped), Source eye/hull
 heights (now WaW 60/40/11, r15 × 70/50/30), CS:GO FOV (now cg_fov 65), zombies 50 ms behind and
@@ -208,7 +261,7 @@ recording are in engine inches; hidden until now because the start-room floor is
 Fixed in `export_map.py` and **re-exported live** (world 31 212 → 12 288 u across; window goals
 133.8 → 57.3 u from their walls; zombies 0.18 u above the floor; 22 of 23 aimed shots now have a
 clear line to their zombie). Map cache-busting hardened (versioned URL from built_at + mtime +
-size, `.glb` no-cache + ETag, track cache invalidated on re-export) — **needs a site restart**.
+size, `.glb` no-cache + ETag, track cache invalidated on re-export) — ~~**needs a site restart**~~ *(Handoff 03:30: merged `839bf93`, live.)*
 New: hold Tab for a WaW scoreboard (points not recorded yet: DLL field `score` needed).
 
 ## Since the morning checklist was written (afternoon)
@@ -222,7 +275,7 @@ New: hold Tab for a WaW scoreboard (points not recorded yet: DLL field `score` n
 - **Box redeployed with the identity build** (`403b150`): DLL `318dfd60…` in every game copy on the box, host agent shipped, 46/46, box idle, `play: true`. A forged token against the live key → `identity refused` → kicked in 129 ms. **Bug found**: `host.js` took `requireToken` from the `--site` argument, not `cfg.site`, so the env-configured box had been advisory-only all evening; running with `--require-token true` until the one-line fix lands (evening agent).
 - **Host rows** (`9506d04`): `identity` travels with the result, `steamid` only when verified; `end` carries the next match id; a warm instance took a second lease (integration 36/0).
 - **Evening (B, 2026-09-22)**: three agents running for a friends' party game in two hours — the real launcher path against the box, the replay viewer live on the site for Nacht, and cross-server chat (Movement's port + game-event lines + Discord link; in-game T overlay planned in `docs/kickstart/chat-overlay.md`). **Add-on IWD retest done, negative** (`18cf472`): all six maps are broken by the maps themselves (add-ons are hard dependencies; MW2 Rust's fatal `flag_wait` is the author's own line). Tonight's set = the stock four + Minecraft Village Remastered. Also fixed: `launch.ps1` had a committed parse error; the private LocalAppData tree needs `players\profiles` seeded. Read the newest section of `launcher.md`, `replay.md`, `web.md`, `archive.md`.
-- 22:35 web-maps (branch `web-maps`, not merged): **every map has a picture** — `tools/maps/map_art.py` (scraped cover > the map's own .iwd loading screen > WaW's stock loading screen > a generated NO SCREENSHOT ON FILE card; webp + thumb + manifest, `--write-db`); counts on the dev DB: site 1,256 / iwd 0 / stock 4 / placeholder 1,024 of 2,284 with `archive/fetch_art.py` still fetching catalogue covers (1,200/1,415). **Map page is Movement's MapDashboard** (banner two-up, figures, Play, a "What's in it" strip of perks/PaP/box/wall buys/wonder weapons/dogs read from the map's fastfile, board/thread split), web-cleanup's edits kept. npm test 121/41/15/19/12. Stock loadscreens must go before public: `--no-stock` (ip-posture.md §4). web.md + archive.md §10.
+- 22:35 web-maps (branch `web-maps`, not merged; *(Handoff 03:30: merged `b49cb48`, live)*): **every map has a picture** — `tools/maps/map_art.py` (scraped cover > the map's own .iwd loading screen > WaW's stock loading screen > a generated NO SCREENSHOT ON FILE card; webp + thumb + manifest, `--write-db`); counts on the dev DB: site 1,256 / iwd 0 / stock 4 / placeholder 1,024 of 2,284 with `archive/fetch_art.py` still fetching catalogue covers (1,200/1,415). **Map page is Movement's MapDashboard** (banner two-up, figures, Play, a "What's in it" strip of perks/PaP/box/wall buys/wonder weapons/dogs read from the map's fastfile, board/thread split), web-cleanup's edits kept. npm test 121/41/15/19/12. Stock loadscreens must go before public: `--no-stock` (ip-posture.md §4). web.md + archive.md §10.
 
 ## Evening (2026-09-22): the real launcher path reaches the box, and five breakers fell
 
@@ -335,7 +388,7 @@ a join. Proven in local join runs gate1..3; B's machine unproven. `client.md` §
 `no_msgbox.cpp` (dedi only, `ENW_NO_MSGBOX_HOOK=1` off) logs and auto-answers every engine
 MessageBox; the settings prompt gets **No = keep saved settings** (verified at `0x5FE250`/`0x59C7C0`,
 dedi.md §17). Dedi DLL `680ac0ae…` built from HEAD, staged on the box in `/tmp`; **box still runs
-`318dfd60…`** because B was in a live game. Host-agent Escape belt covers it meanwhile.
+`318dfd60…`** because B was in a live game. *(Handoff 03:30: deployed 19:32 (`ca96f33`); the box is on `6b1ccfc5` now.)* Host-agent Escape belt covers it meanwhile.
 
 ## 2026-09-22: IP posture decided — nothing of Activision's served by us before public
 
