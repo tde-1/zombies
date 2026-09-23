@@ -58,7 +58,10 @@ function read () {
       let missing = 0
       for (const f of m.files || []) {
         const rel = String(f.path).replace(/^mods[\\/][^\\/]+[\\/]/, '')
-        if (rel.includes('..') || path.isAbsolute(rel)) continue
+        // A `..` PATH SEGMENT is traversal; `..` inside a file name is not. Neon Fighter ships
+        // `HarryBos Mysterybox Pack V1..0.0.iwd` (the box's weapons), and `includes('..')`
+        // dropped it from every client and the box until 2026-09-23 (archive.md 13).
+        if (rel.split(/[\\/]/).includes('..') || path.isAbsolute(rel)) continue
         if (!ALLOWED.has(path.extname(rel).toLowerCase())) continue
         const full = path.join(m.dest, rel)
         let size = null
