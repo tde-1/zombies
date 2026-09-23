@@ -1,0 +1,4 @@
+# lane MAPS 2026-09-23: maps whose box results popular.py --apply --only publishes (grows per batch)
+nazi_zombie_leviathan
+nazi_zombie_ccube
+nazi_zombie_ccube_u

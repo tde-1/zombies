@@ -208,5 +208,57 @@
     "client_check": [],
     "static": {},
     "tool": "archive/asset_audit.py"
+  },
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/m7_launcher_zombie",
+        "from": "nazi_zombie_laboratory.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "ff210d2177dbd76bb408f95468040f1bd0651f316610aad34929756f0f8590b7",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/m7_launcher_zombie_upgraded",
+        "from": "nazi_zombie_laboratory.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "e9f994180f8fbb4410fc66f715799de4c33776c9d0b992eb79b60d7edaa3feba",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/panzerschrek_zombie",
+        "from": "nazi_zombie_laboratory.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "68dcdbc0a178b02d14a6382e1e4dbcab702a9ca8cb75f725d676e741d28959d7",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/panzerschrek_zombie_upgraded",
+        "from": "nazi_zombie_laboratory.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "06b11671b5f1bacb86c036e70cdfb6568c502ada0214fb898a78e5fa7c55391b",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/zombie_kar98k",
+        "from": "nazi_zombie_laboratory.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "92f68fd2b6b228a57db29c6962268d7ff6cbb066ae10cf1b360a6e454597300c",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/zombie_kar98k_upgraded",
+        "from": "nazi_zombie_laboratory.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "c577e027d0775c58c0ae8cf204377505fb11710ad18d231f44991e223b1d0a5d",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
   }
 }

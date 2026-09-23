@@ -208,5 +208,17 @@
     "client_check": [],
     "static": {},
     "tool": "archive/asset_audit.py"
+  },
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/zombie_bowie_flourish",
+        "from": "mod.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "c4b680d5cedcea3e3ac542709db0e9f85f77571bf9dd1e5670322522296bbc5b",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
   }
 }

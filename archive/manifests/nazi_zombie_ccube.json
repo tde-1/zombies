@@ -143,5 +143,64 @@
       "nazi_zombie_ccube_patch.ff"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T19:24:45",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 151,
+    "fatal": 2,
+    "visible": 2,
+    "visible_owner": {
+      "release": 2
+    },
+    "visible_names": [
+      "weapon:weapons/sp/zombie_mp40",
+      "weapon:weapons/sp/zombie_mp40_upgraded"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95176 ms over the hold",
+    "first_error": "Could not load xanim \"pb_hold_run_satchel\".",
+    "match": "m_ced36234",
+    "at": "2026-09-23T19:15:00",
+    "instance": "inst-58",
+    "com_frameTime_advance_ms": 95176,
+    "com_error": [],
+    "console_errors": [
+      "3151:Error: Could not load xanim \"pb_hold_run_satchel\".",
+      "3152:Error: Could not load xanim \"pb_sprint_hold_satchel\".",
+      "3153:Error: Could not load xanim \"pb_crouch_hold_idle_satchel\".",
+      "3154:Error: Could not load xanim \"pb_hold_idle_satchel\".",
+      "3155:Error: Could not load xanim \"pb_prone_hold_satchel\".",
+      "3156:Error: Could not load xanim \"pt_hold_prone_throw_satchel\"."
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: weapon:weapons/sp/zombie_mp40, weapon:weapons/sp/zombie_mp40_upgraded",
+  "dedi_status": "box_map_loaded",
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/zombie_mp40",
+        "from": "nazi_zombie_ccube.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "f5e1d7cba471d65f37458b3589829ed670499ac7bf89a8e74dd557b62ab028be",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/zombie_mp40_upgraded",
+        "from": "nazi_zombie_ccube.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "06b0016abd98c92850fb6a00ecc5e3a06cd1773322fbf2b3a32c286273d8b0ca",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
+  }
 }

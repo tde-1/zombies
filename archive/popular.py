@@ -39,6 +39,10 @@ def load(name, default):
 
 
 RANKING = ["popular.json"]   # --ranking popular2.json for tranche 2 (archive.md s12)
+# --only <file> (lane MAPS, 2026-09-23 evening): apply ONLY these maps' box results. Every other
+# entry already in boxProven.json is kept as it is and no other manifest is touched: boxproof.json
+# also holds tranche 2's 35 s passes, which one batch must not publish by accident.
+ONLY = [None]
 
 
 def rows():
@@ -215,12 +219,22 @@ def bucket_check(bsps):
 def write_box_proven(proof):
     """web/server/lib/boxProven.json: what lib/maps.js offers a party at the 'box' level."""
     out = {}
+    if ONLY[0] is not None:
+        try:
+            with open(BOX_PROVEN_JSON, encoding="utf-8") as fh:
+                out = dict(json.load(fh).get("maps") or {})
+        except (OSError, ValueError):
+            out = {}
+        proof = {b: r for b, r in proof.items() if b in ONLY[0]}
+        for b in proof:
+            out.pop(b, None)
     passing = [b for b, r in proof.items() if r.get("result") == "pass"]
     inb = bucket_check(set(passing))
     for bsp, r in sorted(proof.items()):
         if r.get("result") == "pass":
             out[bsp] = {"result": "pass", "at": r.get("at"), "match": r.get("match"),
                         "com_frameTime_advance_ms": r.get("frametime_advance_ms"),
+                        **({"watchdog_clean": r["watchdog_clean"]} if "watchdog_clean" in r else {}),
                         "in_bucket": inb[bsp]["in_bucket"], "bucket_bytes": inb[bsp]["bytes"]}
             if not inb[bsp]["in_bucket"]:
                 out[bsp]["bucket_missing"] = inb[bsp]["missing"]
@@ -233,7 +247,7 @@ def write_box_proven(proof):
                 "server-side only, no client joined (archive.md 10.5, dedi.md 20). in_bucket = every "
                 "served file HEAD-checked on the public bucket (lib/maps.js offers a pass only then; "
                 "archive.md 12). Do not hand-edit.",
-           "maps": out}
+           "maps": dict(sorted(out.items()))}
     with open(BOX_PROVEN_JSON, "w", encoding="utf-8") as fh:
         json.dump(doc, fh, indent=1)
         fh.write("\n")
@@ -243,6 +257,8 @@ def write_box_proven(proof):
 
 def apply():
     proof = load("boxproof.json", {})
+    if ONLY[0] is not None:
+        proof = {b: r for b, r in proof.items() if b in ONLY[0]}
     write_box_proven(proof)
     n = 0
     # The asset gate (archive.md 13): a pass un-hides a map only if nothing a player meets is
@@ -304,8 +320,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--ranking", default="popular.json", help="reports/<name>: popular2.json = tranche 2")
+    ap.add_argument("--only", help="file, one bsp per line (# comments): apply only these maps' results")
     a = ap.parse_args()
     RANKING[0] = a.ranking
+    if a.only:
+        ONLY[0] = set()
+        for ln in open(a.only, encoding="utf-8"):
+            b = ln.split("#")[0].strip().split()
+            if b:
+                ONLY[0].add(b[0])
     if a.apply:
         apply()
     rs = rows()

@@ -249,5 +249,17 @@
     "client_check": [],
     "static": {},
     "tool": "archive/asset_audit.py"
+  },
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/zombie_knuckle_crack",
+        "from": "mod.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "86d4c40057340dffaa44b0babba1bb54e543ecec413b0bb96f8bfc81165d34e1",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
   }
 }

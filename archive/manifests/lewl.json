@@ -236,5 +236,25 @@
       ]
     },
     "tool": "archive/asset_audit.py"
+  },
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/crossbow_exp",
+        "from": "localized_common.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "445b4576ea0ae906b0511bfa4aa924734185fde9c8f56d5d5a551c81ecdd727a",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      },
+      {
+        "file": "weapons/sp/crossbow_exp_upgraded",
+        "from": "localized_common.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "9a9f1d3d405d3889f83b6dffd2f44c57b8c39bb7607b10872f781243ebf2f711",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
   }
 }
