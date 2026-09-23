@@ -71,7 +71,13 @@ bool gate_bytes_ok() {
     return true;
 }
 
-// Returns the dvar's current value (0/1), or -1 when it cannot be read.
+// dvar_s: type byte at +0x0A (0 = bool), current at +0x10, latched at +0x20.
+bool is_bool_dvar(uintptr_t d) {
+    uint8_t type = 0xFF;
+    return d && memory::read(d + 0x0A, &type) && type == 0;
+}
+
+// Returns the dvar's value before the call (0/1), or -1 when it cannot be read.
 int force_off(const char* when) {
     if (!g_dvar) return -1;
     uint8_t cur = 0, lat = 0;
@@ -87,6 +93,35 @@ int force_off(const char* when) {
              "base heights put a water surface at z=0 over every map (dedi.md section 28).",
              when, cur, lat);
     return cur;
+}
+
+// THE ORDER (box DLL 3557aaa3, 2026-09-23 evening): post_init can run before the renderer's
+// dvar registrar (0x70BB50) has stored its dvar_s* into [0x42B721C]. A `seta
+// r_gfxopt_water_simulation` in the instance's config.cfg has already CREATED the dvar by then
+// (unregistered, so Dvar_FindVar finds it), but the slot the gate reads is still NULL. The
+// first version gave up on that ("NOT applied: [0x042B721C]=00000000"). Now the slot is polled
+// every frame until the registrar has filled it, and only a registered BOOL dvar is ever
+// written (a byte written into a string dvar's value would corrupt its char*). Until the slot
+// is filled nothing can ask for the water height through it (the gate dereferences it), so no
+// query runs with the sim on before this applies. post_init landing before or after the
+// registrar is a race, which lane S2's faster startup (memory.cpp image fast path) exposed.
+bool try_bind(const char* when) {
+    uint32_t slot = 0;
+    if (!memory::read(enw::at(kWaterSimSlot), &slot) || !slot) return false;
+    if (!is_bool_dvar(slot)) {
+        static bool said = false;
+        if (!said) {
+            said = true;
+            ENW_ERROR("dedi_water_sim_off: [0x%08X]=%08X is not a bool dvar_s; NOT writing it",
+                      static_cast<unsigned>(kWaterSimSlot), slot);
+        }
+        return false;
+    }
+    g_dvar = slot;
+    if (force_off(when) == 0)
+        ENW_INFO("dedi_water_sim_off: %s: r_gfxopt_water_simulation is already 0 (dvar_s %08X); held at 0", when,
+                 slot);
+    return true;
 }
 
 class water_sim_off_component final : public component {
@@ -107,17 +142,25 @@ public:
                       static_cast<unsigned>(kGateSite), memory::hex_dump(enw::at(kGateSite), 12).c_str());
             return;
         }
-        uint32_t slot = 0;
-        memory::read(enw::at(kWaterSimSlot), &slot);
-        const auto found = reinterpret_cast<uintptr_t>(game::find_dvar("r_gfxopt_water_simulation"));
-        if (!slot || slot != found) {
-            ENW_ERROR("dedi_water_sim_off: NOT applied: [0x%08X]=%08X but Dvar_FindVar(r_gfxopt_water_simulation)="
-                      "%08X", static_cast<unsigned>(kWaterSimSlot), slot, static_cast<unsigned>(found));
-            return;
+        // ENW_DEDI_WATER_SIM_LATE=1 (test only): skip the post_init bind, so the frame path that the
+        // box's ordering needs is exercised on a machine where post_init happens to come second.
+        if (std::getenv("ENW_DEDI_WATER_SIM_LATE") || !try_bind("post_init")) {
+            ENW_INFO("dedi_water_sim_off: post_init: [0x%08X] not filled yet (the renderer's dvar registrar has not "
+                     "run; Dvar_FindVar says %08X); binding on the first frame that has it",
+                     static_cast<unsigned>(kWaterSimSlot),
+                     static_cast<unsigned>(reinterpret_cast<uintptr_t>(game::find_dvar("r_gfxopt_water_simulation"))));
         }
-        g_dvar = slot;
-        force_off("post_init");
-        enw::frame::subscribe("dedi_water_sim_off", [this](uint64_t) {
+        enw::frame::subscribe("dedi_water_sim_off", [this](uint64_t n) {
+            if (!g_dvar) {
+                if (try_bind("first frame with the dvar")) {
+                    ENW_INFO("dedi_water_sim_off: bound at frame %llu", static_cast<unsigned long long>(n));
+                } else if (!warned_ && n > 600) {
+                    warned_ = true;
+                    ENW_ERROR("dedi_water_sim_off: NOT applied after %llu frames: [0x%08X] is still NULL",
+                              static_cast<unsigned long long>(n), static_cast<unsigned>(kWaterSimSlot));
+                }
+                return;
+            }
             const DWORD now = ::GetTickCount();
             if (now - last_ < 1000) return;
             last_ = now;
@@ -132,22 +175,20 @@ public:
 
 private:
     DWORD last_ = 0;
+    bool warned_ = false;
 };
 
 ENW_REGISTER_COMPONENT(water_sim_off_component)
 
 }  // namespace
 
-// For solo_parity's self-check: -1 unknown, else the current value.
+// For solo_parity's self-check: -1 unknown, else the current value (a registered bool only).
 int water_sim_value() {
-    if (!g_dvar) {
-        const auto d = reinterpret_cast<uintptr_t>(game::find_dvar("r_gfxopt_water_simulation"));
-        if (!d) return -1;
-        uint8_t v = 0;
-        return memory::read(d + 0x10, &v) ? v : -1;
-    }
+    uintptr_t d = g_dvar;
+    if (!d) d = reinterpret_cast<uintptr_t>(game::find_dvar("r_gfxopt_water_simulation"));
+    if (!is_bool_dvar(d)) return -1;
     uint8_t v = 0;
-    return memory::read(g_dvar + 0x10, &v) ? v : -1;
+    return memory::read(d + 0x10, &v) ? v : -1;
 }
 
 }  // namespace enw::dedi
