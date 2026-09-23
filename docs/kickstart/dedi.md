@@ -3600,6 +3600,26 @@ Host agent: main `9589c91` (UGX `gamemode.js`, the 31 `+`-command guard, S2 `set
 18:27 UTC in a gap in MAPS's queue; rollback `/home/waw/host-agent.rollback-20260923T1826Z.tgz`.
 Rollbacks for the DLL chain: `binkw32.rollback-{fd3039d2,2fda99fe,884dde5f,736236c8}.dll`.
 
+### 26.7 Addendum (lane REL, 18:50–19:20 UTC): RS + the G2 race fix on the box
+
+Order per lane RS: site (main `c99b346`, 19:52 UK), then host agent `c99b346` + DLL **`1b482aa2`** (clean
+`wt-rel8` at `c99b346`) into all 7 production copies in one gap with no game (18:58 UTC; rollbacks
+`host-agent.rollback-20260923T1857Z.tgz`, `binkw32.rollback-3557aaa3.dll`), then host `a2c330d` (S2 `3b5ffd8`)
+at 19:12 UTC (rollback `host-agent.rollback-20260923T1912Z.tgz`). The §26.6 regression is gone: it was
+G2's startup-order race (§28.9), not S2.
+
+* nacht_reimagined `m_35b82cb2`, nazi_zombie_ils `m_4bed9049` (fake …0006): `dedi_water_sim_off: post_init:
+  r_gfxopt_water_simulation is already 0 (dvar_s 021BAC04); held at 0`; 0 `solo_parity: MISMATCH` (the one
+  grep hit is the `armed` line quoting the word; no player, so no spawn checks); `restart_request: armed`
+  and `ui_gametype … slot [0x0208E8E8] was NULL … filled`. CPU over 60 s: nacht_reimagined 17.6 %, ILS
+  **17.9 %** of one core; `dedi_rate_probe` 60.9 Hz on both (S2's fast path holds).
+* UGX gungame, battlestar_galactica `m_86cc3964`: the host passed `+set enw_game_mode gungame:…` and the DLL
+  bound (`game_mode: bound (openMenu 004EF840)`), but no `ENWZombie;game_mode` event: with no client
+  connected the map never opens its vote menu, so there is nothing to answer. The answer itself is
+  unproven on the box (needs a real or harness client).
+* RS restart through the host path: unproven (needs a client sending `enw_req restart.<n>`).
+* RS idle auto-close, Nacht `m_07a483ce` left idle from 19:13 UTC: PROVEN: `19:18:02 host/inst-01 IDLE CLOSE: nobody joined within 300 s of the server being ready -- ending lease m_07a483ce (no_players)`; the game process was gone after.
+
 ## 28. 2026-09-23 evening — lane G2: the "one-hit downs" are a phantom water surface at z=0 on the dedicated server (`water_sim_off.cpp`), plus a solo-parity self-check (`solo_parity.cpp`)
 
 B, 14:00–14:27 UTC on box DLL `04a3ad6d`: Nuketown down the instant he spawned (game over in 1 s),
