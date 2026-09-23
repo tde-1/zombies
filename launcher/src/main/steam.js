@@ -33,7 +33,9 @@ export const MSG = {
   notInstalled: 'Steam isn\'t installed.',
   noStart: 'Steam didn\'t start.',
   notSignedIn: 'Not signed in to Steam.',
+  notRunning: 'Steam isn\'t running.',
   gameRunning: 'World at War is already running.',
+  gameStarting: 'World at War is still starting.',
 }
 
 // Timeouts. Starting: steam.exe up and writing its pid (a cold start with an update
@@ -127,11 +129,15 @@ export async function ensureSteam({
   timeouts = {},
   wait = sleep,
   now = () => Date.now(),
+  allowStart = true,
 } = {}) {
   const t = { ...TIMEOUTS, ...timeouts }
   const safeRead = async () => { try { return await read() } catch { return { running: false, signedIn: false } } }
   let s = await safeRead()
   if (s.signedIn) return { ok: true, waited: false, started: false }
+
+  // A dev tool (play-cli) never starts or waits on B's Steam client: it says so and stops.
+  if (!allowStart) return { ok: false, reason: s.running ? 'not_signed_in' : 'not_running', message: s.running ? MSG.notSignedIn : MSG.notRunning }
 
   let started = false
   if (!s.running) {

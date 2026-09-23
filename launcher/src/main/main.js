@@ -39,6 +39,7 @@ import * as deeplink from './deeplink.js'
 import { makeWindowRaiser } from './focusguard.js'
 import { makeFollowGate, FOLLOW_STATES } from './followgate.js'
 import * as steam from './steam.js'
+import * as gameproc from './gameproc.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
 
@@ -1032,24 +1033,51 @@ function wireIpc() {
       .catch((e) => log('play', `could NOT release the lease (${why}): ${e.message}`))
   }
 
+  // Games this launcher started this session (the last few), for gameproc.classify: did it
+  // connect, and did SteamStub leave it encrypted. A pid from an earlier session still
+  // counts as ours when its DLL log in OUR logs folder is newer than the process.
+  function ourGame(pid, createdAt = 0) {
+    const l = (state.launches || []).find((x) => x.pids?.has(pid))
+    let encrypted = false
+    try {
+      const f = path.join(P.logs, `enw-${pid}.log`)
+      if (fs.statSync(f).mtimeMs >= createdAt) encrypted = gameproc.dllLogSaysEncrypted(P.logs, pid)
+    } catch {}
+    if (!l) return encrypted ? { connected: false, encrypted: true, earlier: true } : null
+    return { connected: !!(l.mapUp || l._logSource || l.tokenPipe?.delivered), encrypted }
+  }
+
   async function startPlay(opts = {}) {
     if (state.flow) throw new Error('A launch is already in progress.')
     // Never a second World at War beside one we started, whoever asks: a flow that gave
     // up (a failed step) clears `state.flow` while the game can still be running.
     const alive = followGate.gameAlive()
-    if (alive) {
-      log('play', `refused to launch ${opts.map || '?'} (${opts.follow ? 'follow' : 'play'}): World at War (process ${alive}) that this launcher started is still running`)
-      push('toast', { kind: 'warn', text: steam.MSG.gameRunning })
-      throw new Error(steam.MSG.gameRunning)
+    // Any CoDWaW.exe on the PC is classified first (gameproc.js): a live game refuses the
+    // Play; a STUCK one (no window past the grace period, or ours with SteamStub's
+    // "STILL ENCRYPTED" in its log: a launch made while Steam was closed) is ended by pid
+    // and the Play goes on. A dedicated server, or a pid the dev lock names, is never
+    // touched. Every decision is logged.
+    const how0 = opts.follow ? 'follow' : 'play'
+    const lockNow = lock.enabled() ? lock.read() : null
+    const cleared = await gameproc.clearForPlay({
+      ctxFor: (p) => ({ ours: ourGame(p.pid, p.createdAt), lockPid: lockNow?.held && !lockNow.stale && lockNow.name !== 'launcher' ? lockNow.pid : null }),
+      log: (line) => log('play', line),
+    }).catch((e) => ({ ok: false, unknown: true, error: e }))
+    if (!cleared.ok) {
+      // Could not read the process list: refuse only if we know of one (the old rule).
+      if (cleared.unknown && !alive && !(await steam.gameProcesses().catch(() => [])).length) {
+        log('play', 'could not classify running games; none found by name, so going on')
+      } else {
+        const b = cleared.blocking
+        const started = (pid) => (state.launches || []).some((x) => x.pids?.has(pid))
+        const oursPid = b && started(b.proc.pid) ? b.proc.pid : (alive && (!b || b.proc.pid === alive) ? alive : null)
+        const text = b?.kind === 'starting' ? steam.MSG.gameStarting : steam.MSG.gameRunning
+        log('play', `refused to launch ${opts.map || '?'} (${how0}): ${b ? `CoDWaW.exe ${b.proc.pid} is ${b.kind} (${b.why})` : `World at War (process ${alive}) is still running`}`)
+        push('toast', { kind: 'warn', text, ...(oursPid ? { action: { label: 'End game', call: 'endGame', arg: oursPid } } : {}) })
+        throw new Error(text)
+      }
     }
-    // ...and not beside one we did not start either (a Steam launch of the stock game, a
-    // launcher that restarted mid-game). A second CoDWaW.exe is never what Play meant.
-    const others = await steam.gameProcesses().catch(() => [])
-    if (others.length) {
-      log('play', `refused to launch ${opts.map || '?'} (${opts.follow ? 'follow' : 'play'}): CoDWaW.exe is already running (process ${others.join(', ')})`)
-      push('toast', { kind: 'warn', text: steam.MSG.gameRunning })
-      throw new Error(steam.MSG.gameRunning)
-    }
+    if (cleared.killed?.length) push('toast', { kind: 'info', text: 'Closed a stuck World at War.' })
     // Remembered for the boot screen's Retry (a Steam that was not up or not signed in).
     state.lastPlayOpts = opts
 
@@ -1164,6 +1192,7 @@ function wireIpc() {
     }
     flow.on('update', noteMatch)
     flow.on('launched', () => followGate.watchPids(flow.launch?.pids))
+    flow.on('launched', () => { state.launches = [...(state.launches || []).slice(-4), flow.launch] })
     state.gate.block('game', 'a game is starting or running')
     state.tray?.rebuild()
     showSite(false)
@@ -1332,6 +1361,14 @@ function wireIpc() {
   // again — which is how m_dca96c74 outlived the boot screen that made it.
   handle('cancelPlay', () => { state.flow?.cancel('you cancelled'); releaseLease('you cancelled'); showSite(true); return true })
   handle('closeBoot', () => { showSite(true); return true })
+  // The toast's End game: only ever a game this launcher started (gameproc.js).
+  handle('endGame', (pid) => {
+    const l = (state.launches || []).find((x) => x.pids?.has(Number(pid)))
+    if (!l) throw new Error('Not a game this launcher started.')
+    log('play', `ending World at War (process ${pid}) from the toast`)
+    l.stop('ended by the player')
+    return true
+  })
   // The boot screen's Retry, after Steam was not up or not signed in: the same Play again.
   handle('retryPlay', () => {
     if (!state.lastPlayOpts) throw new Error('Nothing to retry.')

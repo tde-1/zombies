@@ -214,6 +214,7 @@ html.site-shown #chrome { display: none; }
 #bootClose { display: none; }
 #bootClose.on { display: inline-block; }
 #bootCancel.off { display: none; }
+.toast .toast-action { margin-left: 10px; padding: 2px 10px; font-size: 12px; }
 #bootRetry { display: none; }
 #bootRetry.on { display: inline-block; }
 /* Starting Steam / waiting for sign-in: a spinner in place of the step's dot. */

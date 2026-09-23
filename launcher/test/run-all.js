@@ -2282,7 +2282,7 @@ await test('steam: the wording stays terse', () => {
 await test('steam: main.js gates Play on Steam, refuses a second game, skips the lease on a Steam failure, and wires Retry', () => {
   const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
   assert.match(main, /steam: process\.env\.ENW_SKIP_STEAM_CHECK === '1' \? null[\s\S]{0,120}steam\.ensureSteam\(/)
-  assert.match(main, /steam\.gameProcesses\(\)[\s\S]{0,400}throw new Error\(steam\.MSG\.gameRunning\)/)
+  assert.match(main, /gameproc\.clearForPlay\([\s\S]{0,2000}throw new Error\(text\)/)
   assert.match(main, /if \(snap\.steamFailed\) \{[\s\S]{0,300}return\s*\}[\s\S]{0,200}AND THE LEASE HAS TO GO BACK/)
   assert.match(main, /handle\('retryPlay'[\s\S]{0,200}startPlay\(state\.lastPlayOpts\)/)
   const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
@@ -2292,6 +2292,145 @@ await test('steam: main.js gates Play on Steam, refuses a second game, skips the
   assert.match(shell, /window\.enw\.retryPlay\(\)/)
   const html = String(fs.readFileSync(new URL('../src/renderer/shell.html', import.meta.url)))
   assert.match(html, /<button id="bootRetry">Retry<\/button>/)
+})
+
+await test('steam: play-cli checks Steam without starting it; allowStart:false never starts or waits', async () => {
+  const f = fakeSteam([OFF])
+  const r = await steamMod.ensureSteam({ ...f.opts, allowStart: false })
+  assert.equal(r.reason, 'not_running'); assert.deepEqual(f.started, []); assert.equal(f.t, 0)
+  const g = fakeSteam([UP])
+  assert.equal((await steamMod.ensureSteam({ ...g.opts, allowStart: false })).reason, 'not_signed_in')
+  const cli = String(fs.readFileSync(new URL('../src/main/play-cli.js', import.meta.url)))
+  assert.match(cli, /steam: process\.env\.ENW_SKIP_STEAM_CHECK === '1' \? null : \(h\) => ensureSteam\(\{ \.\.\.h, allowStart: false \}\)/)
+})
+
+// ------------------------------------------------- no game before Steam, any path --
+group('No CoDWaW.exe before the Steam check passes, from every entry point')
+
+await test('order: a failing Steam check leaves every BootFlow path without a GameLaunch', async () => {
+  const no = async () => ({ ok: false, reason: 'no_start', message: steamMod.MSG.noStart })
+  let asked = 0
+  const api = { startPlay: async () => { asked++; return { ok: true } } }
+  const paths = {
+    local: { localMap: 'nazi_zombie_prototype' },
+    site: { map: 'x', api },
+    follow: { map: 'x', api, follow: true },
+    fallback: { map: 'x', siteUrl: 'http://127.0.0.1:9', requireSite: true },
+  }
+  for (const [name, o] of Object.entries(paths)) {
+    const f = new BootFlow({ ...o, steam: no })
+    const snap = await f.run()
+    assert.equal(f.launch, null, `${name}: a GameLaunch was made`)
+    assert.deepEqual(snap.steps.map((s) => s.id), ['steam'], `${name}: nothing ran after Steam`)
+  }
+  assert.equal(asked, 0)
+})
+
+await test('order: in bootflow.js the Steam gate is the first await of run(), before every new GameLaunch', () => {
+  const src = String(fs.readFileSync(new URL('../src/main/bootflow.js', import.meta.url)))
+  const run = src.slice(src.indexOf('  async run() {'))
+  const firstAwait = run.indexOf('await ')
+  assert.equal(run.indexOf('await this.steamGate()'), firstAwait, 'steamGate is the first await in run()')
+  assert.ok(run.indexOf('await this.steamGate()') < run.indexOf('this.runLocal()'))
+  assert.ok(run.indexOf('await this.steamGate()') < run.indexOf('this.runViaSite('))
+  // GameLaunch is only ever built inside BootFlow: nothing else in the launcher spawns the game
+  for (const f of ['main.js', 'deeplink.js', 'play-cli.js', 'localrun.js', 'hostagent.js']) {
+    const s = String(fs.readFileSync(new URL(`../src/main/${f}`, import.meta.url)))
+    assert.doesNotMatch(s, /new GameLaunch|\blaunch\(\{|spawn\([^)]*CoDWaW/i, `${f} starts the game itself`)
+  }
+})
+
+await test('order: deep links (enw-zombies://map|party) navigate the site and never press Play', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  const body = main.slice(main.indexOf('function handleDeepLink(raw) {'), main.indexOf('function openSitePath('))
+  assert.ok(body.length > 100)
+  assert.doesNotMatch(body, /startPlay|playLocal|new BootFlow|retryPlay/, 'a deep link starts a launch')
+  assert.match(body, /openSitePath\(`\/party\//)
+  assert.match(body, /openSitePath\(`\/m\//)
+  // and every launch goes through startPlay -> BootFlow with the steam gate wired
+  assert.match(main, /new BootFlow\(\{[\s\S]{0,4000}steam: process\.env\.ENW_SKIP_STEAM_CHECK === '1' \? null/)
+  assert.equal((main.match(/new BootFlow\(/g) || []).length, 1)
+})
+
+// ------------------------------------------------------ stuck vs live game --
+group('A CoDWaW.exe already running: live (refuse) or stuck (end it and go on)')
+
+const gameproc = await import('../src/main/gameproc.js')
+const NOW = 1_000_000_000
+const proc = (o = {}) => ({ pid: 100, createdAt: NOW - 5 * 60_000, commandLine: '"C:\\ENW\\game\\CoDWaW.exe" +set fs_game mods/enw', hasWindow: false, ...o })
+
+await test('classify: a window, or ours and connected, is live; a dedicated server or the lock holder is never touched', () => {
+  assert.equal(gameproc.classify(proc({ hasWindow: true }), { now: NOW }).kind, 'live')
+  assert.equal(gameproc.classify(proc({ hasWindow: true }), { now: NOW, ours: { encrypted: true } }).kind, 'live', 'a window always wins')
+  assert.equal(gameproc.classify(proc(), { now: NOW, ours: { connected: true } }).kind, 'live')
+  assert.equal(gameproc.classify(proc({ commandLine: 'CoDWaW.exe +set dedicated 1 +map x' }), { now: NOW }).kind, 'other')
+  assert.equal(gameproc.classify(proc(), { now: NOW, lockPid: 100 }).kind, 'other')
+  assert.equal(gameproc.classify(proc({ createdAt: NOW - 10_000 }), { now: NOW }).kind, 'starting', 'inside the grace period')
+})
+
+await test('classify: ours with STILL ENCRYPTED, or no window past the grace period, is stuck', () => {
+  assert.equal(gameproc.classify(proc({ createdAt: NOW - 1000 }), { now: NOW, ours: { encrypted: true } }).kind, 'stuck')
+  const s = gameproc.classify(proc(), { now: NOW })
+  assert.equal(s.kind, 'stuck'); assert.equal(s.ours, false); assert.match(s.why, /no window after 300 s, never connected/)
+  assert.equal(gameproc.classify(proc({ createdAt: 0 }), { now: NOW }).kind, 'stuck', 'unknown start time counts as old')
+})
+
+await test('dllLogSaysEncrypted reads the DLL log in our logs folder', () => {
+  const d = fs.mkdtempSync(path.join(TMP, 'logs-'))
+  fs.writeFileSync(path.join(d, 'enw-4242.log'), '=== enw_t4 log ===\n[E] steamstub: STILL ENCRYPTED after 60000 ms. first dword 9EF490B8\n')
+  fs.writeFileSync(path.join(d, 'enw-4243.log'), '[I] steamstub: decrypted after 97 ms\n')
+  assert.equal(gameproc.dllLogSaysEncrypted(d, 4242), true)
+  assert.equal(gameproc.dllLogSaysEncrypted(d, 4243), false)
+  assert.equal(gameproc.dllLogSaysEncrypted(d, 1), false)
+})
+
+await test('clearForPlay: a stuck process is ended by pid (after a re-read) and Play goes on; the decision is logged', async () => {
+  const lines = []
+  const ended = []
+  const r = await gameproc.clearForPlay({
+    list: async () => [proc({ pid: 555 })],
+    ctxFor: () => ({ now: NOW }),
+    end: async (pid) => { ended.push(pid); return true },
+    log: (l) => lines.push(l),
+  })
+  assert.equal(r.ok, true); assert.deepEqual(r.killed, [555]); assert.deepEqual(ended, [555])
+  assert.ok(lines.some((l) => /555: stuck/.test(l)) && lines.some((l) => /555: ended/.test(l)), lines.join(' | '))
+})
+
+await test('clearForPlay: a live game blocks and nothing is ended; a window appearing before the kill saves it', async () => {
+  const ended = []
+  const end = async (pid) => { ended.push(pid); return true }
+  let r = await gameproc.clearForPlay({ list: async () => [proc({ pid: 1, hasWindow: true }), proc({ pid: 2 })], ctxFor: () => ({ now: NOW }), end })
+  assert.equal(r.ok, false); assert.equal(r.blocking.proc.pid, 1); assert.equal(r.blocking.kind, 'live'); assert.deepEqual(ended, [])
+  let n = 0
+  r = await gameproc.clearForPlay({ list: async () => [proc({ pid: 3, hasWindow: n++ > 0 })], ctxFor: () => ({ now: NOW }), end })
+  assert.equal(r.ok, false); assert.equal(r.blocking.kind, 'live'); assert.deepEqual(ended, [])
+  r = await gameproc.clearForPlay({ list: async () => [proc({ pid: 4, createdAt: NOW - 5000 })], ctxFor: () => ({ now: NOW }), end })
+  assert.equal(r.blocking.kind, 'starting'); assert.deepEqual(ended, [])
+  r = await gameproc.clearForPlay({ list: async () => null, end })
+  assert.equal(r.unknown, true); assert.deepEqual(ended, [])
+  r = await gameproc.clearForPlay({ list: async () => [proc({ pid: 5 })], ctxFor: () => ({ now: NOW }), end: async () => false })
+  assert.equal(r.ok, false); assert.equal(r.blocking.endFailed, true)
+  r = await gameproc.clearForPlay({ list: async () => [], end })
+  assert.equal(r.ok, true); assert.deepEqual(r.killed, [])
+})
+
+await test('parseList: PowerShell output, one object or many, and junk', () => {
+  assert.deepEqual(gameproc.parseList('{"pid":7,"created":123,"cmd":"x","win":0}'), [{ pid: 7, createdAt: 123, commandLine: 'x', hasWindow: false }])
+  assert.equal(gameproc.parseList('[{"pid":7,"created":1,"cmd":"","win":656}]')[0].hasWindow, true)
+  assert.deepEqual(gameproc.parseList('[]'), [])
+  assert.equal(gameproc.parseList('garbage'), null)
+})
+
+await test('main.js: classifies before refusing, offers End game only for a game it started, ends only its own from the toast', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  assert.match(main, /gameproc\.clearForPlay\(\{[\s\S]{0,300}ours: ourGame\(p\.pid, p\.createdAt\)/)
+  assert.match(main, /const oursPid = b && started\(b\.proc\.pid\)/)
+  assert.match(main, /action: \{ label: 'End game', call: 'endGame', arg: oursPid \}/)
+  assert.match(main, /handle\('endGame'[\s\S]{0,200}state\.launches[\s\S]{0,120}if \(!l\) throw new Error\('Not a game this launcher started\.'\)/)
+  const shell = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
+  assert.match(shell, /action\.call === 'endGame'/)
+  assert.match(shell, /toast\(t\.text, t\.kind, t\.action\)/)
 })
 
 // ------------------------------------------------------------- volume (bug 15) --

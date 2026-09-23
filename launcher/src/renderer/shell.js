@@ -58,8 +58,15 @@ function show(name) {
 }
 function hideAll() { show(null) }
 
-function toast(text, kind = 'info') {
+function toast(text, kind = 'info', action = null) {
   const t = el('div', `toast ${kind === 'error' ? 'error' : ''}`, text)
+  // One small action, when the main process offers it (the "already running" toast's
+  // End game). Only calls the main process allows from a toast.
+  if (action && action.call === 'endGame' && window.enw.endGame) {
+    const b = el('button', 'toast-action', action.label || 'End game')
+    b.onclick = () => { b.disabled = true; window.enw.endGame(action.arg).then(() => t.remove()).catch((e) => { b.disabled = false; toast(e.message, 'error') }) }
+    t.append(b)
+  }
   $('toasts').append(t)
   setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(() => t.remove(), 450) }, 7000)
 }
@@ -624,7 +631,7 @@ function wire() {
     if (!p.done || !p.total || p.done < p.total) return
     if (p.file) toast(`${p.bsp}: ${p.file}`)
   })
-  window.enw.onToast((t) => toast(t.text, t.kind))
+  window.enw.onToast((t) => toast(t.text, t.kind, t.action))
   window.enw.onSession(() => refresh())
   window.enw.onSettings(() => refresh())
   window.enw.onSite(() => refresh())
