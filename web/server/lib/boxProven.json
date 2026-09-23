@@ -138,6 +138,15 @@
    "in_bucket": true,
    "bucket_bytes": 69250295
   },
+  "lewl": {
+   "result": "pass",
+   "at": "2026-09-23T21:20:41",
+   "match": "m_6b03a4bf",
+   "com_frameTime_advance_ms": 95139,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 270271963
+  },
   "mr_freeze": {
    "result": "pass",
    "at": "2026-09-22T23:32:46",
@@ -432,6 +441,15 @@
    "at": "2026-09-22T23:05:12",
    "match": "m_2d210819",
    "com_frameTime_advance_ms": 40097
+  },
+  "nazi_zombie_pogreb": {
+   "result": "pass",
+   "at": "2026-09-23T21:15:59",
+   "match": "m_fc4a1aab",
+   "com_frameTime_advance_ms": 95152,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 78585027
   },
   "nazi_zombie_poke": {
    "result": "pass",
