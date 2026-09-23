@@ -629,6 +629,12 @@ class Game extends EventEmitter {
       knobs: this.assignment?.settings?.knobs || {},
       players: this.assignment?.players || null,
       protocol: 'game-link-v0',
+      // What the DLL records (docs/protocol/replay-events-v1.md), copied from its own
+      // map_loaded so the header cannot claim more than the build sends. 0 = a pre-R1 DLL:
+      // snaps with zombies at 10 Hz and no weapon/fire/hit/damage/pap/powerup events.
+      replay_events: Number(mapEv.replay_events) || 0,
+      snap_hz: mapEv.snap_hz ?? null,
+      zombie_hz: mapEv.zombie_hz ?? null,
       self_reported: this.selfReported,
       host_info: hostInfo(),
     }

@@ -1370,3 +1370,62 @@ gate needs a typed password. The build that was rendered is the one the live pro
 | zm_nuked | 1.64 | no shell; anchors 60/61 on origin | — | no | props + sky only: Husky could not start the game |
 | zombie_maze | 1.08 | no shell; anchors 38/39 on origin | — | no | props + sky only: Husky could not start the game |
 | zombie_town | 2.16 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+
+---
+
+## 11. 2026-09-23 (lane R1) — the replay rate, and the events the viewer needs for guns, shots, hits and power-ups
+
+The contract is [`../protocol/replay-events-v1.md`](../protocol/replay-events-v1.md); this is the
+lane's summary. **Built and unit-tested; not deployed, not seen in a real game.**
+
+### 11.1 The rate B saw
+
+Read from 18 real box replays with `infra/host-agent/tools/replay-rate.js` (1,506 s of play):
+**players were already 20.0 Hz** (one sample per `SV_Frame`), **zombies were ~8 Hz** (every other
+frame, and absent between rounds), and the viewer asks the track endpoint for `?hz=10`
+(`web/client/src/pages/Replay.jsx:38`), so on screen **everything was 10 Hz**. Two changes are
+needed for 20 Hz on screen:
+
+1. **DLL (done here):** zombies and grenades on every frame. `replay.cpp`'s `zombie_frame` is now
+   always true.
+2. **Viewer (not this lane, R2/R3):** request `?hz=20`. `buildTrack` strides by snap count
+   (`routes/replay.js:105`, `stride = round(20 / hz)`), so `hz=20` is every snap; with a v1 file
+   every snap has zombies. On an old file `hz=20` gives zombies on every other tick only —
+   `replay_events` in the header says which.
+
+Size, like for like (host writer, zstd-10): **1.43 MB per game-hour before (real files) → about
+2.31 after** (x1.61: x1.48 for the 20 Hz zombies, the rest a synthetic load of the new events).
+The simulator's 4-player, 24-zombie hour: 8.04 → 11.31 MB/h. Compression unchanged; details and
+caveats in replay-events-v1.md §4.
+
+### 11.2 What is recorded now
+
+- `snap`: zombies every frame; a player's `weapon` is the engine name (`zombie_thompson_upgraded`)
+  instead of `"#37"`; new `clip` and `ammo`, omitted when unchanged.
+- Events: `weapon`, `fire`, `hit` (with `kill:true` on the lethal one), `damage` (with the
+  zombie that did it), `pap` (`start`/`done`), `powerup` (`spawn`/`pickup`/`expire`, `until`
+  for insta-kill and double points).
+- The `.enwr` header gains `replay_events: 1`, `snap_hz: 20`, `zombie_hz: 20`, copied by the host
+  from the DLL's own `map_loaded`.
+
+This closes §3 gap 5 (`weapon` disagreeing with itself) once the weapon table binds, and replaces
+§8.11's inferred damage direction (nearest zombie) with a recorded attacker.
+
+### 11.3 How, in one paragraph
+
+No new hook. After `SV_Frame` the sampler reads each player's `playerState` (weapon index,
+`bg_weaponDefs` name, clip/reserve through the weapon def's indices, the 4-slot event ring where
+`EV_FIRE_WEAPON` 0x1C / `_LASTSHOT` 0x1D land), each zombie's `sentient->lastAttacker` and
+`actor->damageHitLoc`, and every `script_model` whose model is a power-up. Each group turns on
+only if the instruction bytes that prove its offsets are in the running image (the table is in
+replay-events-v1.md §5: T4SP-Server-Plugin headers, then an instruction in our dump for every
+offset). The rules that turn two frames into events are pure
+(`server/components/replay/replay_events_model.hpp`), 59 checks in
+`server/tests/replay_events_test.cpp`.
+
+### 11.4 Not proven
+
+Everything that needs a player who shoots: an agent lease has no player, and B is playing, so no
+game ran. The coordinator's recipe (bind line, then B's next box game checked against the
+magazine arithmetic, the kills/headshots counters and the `entity_gone` kills) is
+replay-events-v1.md §7.1.

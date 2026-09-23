@@ -29,6 +29,8 @@ const LEVELS = String(a.levels ?? '10').split(',').map(Number)
 const PLAYER_COUNTS = String(a.players ?? '1,2,4').split(',').map(Number)
 const OUTDIR = a.dir || path.join(os.tmpdir(), 'enw-replay-measure')
 const R2_PER_GB_MONTH = 0.015
+// --zombie-hz 20: the replay-events-v1 zombie rate (lane R1). Default 10, the v0 rate.
+const ZOMBIE_HZ = Number(a['zombie-hz'] ?? 10)
 
 mkdirp(OUTDIR)
 const key = keys.loadOrCreate(path.join(OUTDIR, 'measure-key.json'))
@@ -40,7 +42,7 @@ const TIERS = {
 }
 
 function runOne({ players, hours, level, tier }) {
-  const sim = new ZombiesSim({ seed: 20260920, maxRound: 9999, map: 'nazi_zombie_factory', eeRound: null })
+  const sim = new ZombiesSim({ seed: 20260920, maxRound: 9999, map: 'nazi_zombie_factory', eeRound: null, zombieHz: ZOMBIE_HZ })
   const file = path.join(OUTDIR, `p${players}-${tier}-l${level}.enwr`)
   const w = new ReplayWriter({
     file,
@@ -91,7 +93,7 @@ function runOne({ players, hours, level, tier }) {
 }
 
 const results = []
-console.log(`Measuring ${HOURS} simulated game-hour(s) at 20 Hz players / 10 Hz zombies, zstd level(s) ${LEVELS.join(',')}`)
+console.log(`Measuring ${HOURS} simulated game-hour(s) at 20 Hz players / ${ZOMBIE_HZ} Hz zombies, zstd level(s) ${LEVELS.join(',')}`)
 console.log(`Output: ${OUTDIR}\n`)
 
 for (const players of PLAYER_COUNTS) {

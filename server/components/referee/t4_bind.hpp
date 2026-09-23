@@ -179,6 +179,56 @@ void classname_census(void (*fn)(const char* classname, int entnum));
 std::optional<std::string> ent_string_field(int entnum, const char* field);
 std::optional<int> ent_int_field(int entnum, const char* field);
 
+// ------------------------------------------------ replay-events-v1 reads --
+//
+// What the 3D viewer needs beyond positions: the gun in each player's hands, its ammo, the
+// shots, who hit which zombie where, who hit the player, and the power-up models. All of it
+// is plain memory read once per server frame; there is NO new hook. Every offset is proven
+// out of THIS process's image at bind time (the instruction bytes that use it), one flag per
+// group, and a group whose bytes do not match reads nothing. Addresses and sources:
+// docs/protocol/replay-events-v1.md section 5.
+struct combat_binding {
+    bool weapons = false;   // ps.weapon +0x104, bg_weaponDefs 0x8F6770, clip/stock indices
+    bool events = false;    // ps.eventSequence +0xD0, ps.events[4] +0xD4, EV_FIRE_WEAPON 0x1C/0x1D
+    bool attacker = false;  // gentity.sentient +0x188 -> sentient.lastAttacker +0x2C (G_Damage)
+    bool hitloc = false;    // gentity.actor +0x184 -> actor.damageHitLoc +0xD68 (script string)
+    bool models = false;    // gentity.model +0x198 -> model configstring script string 0x2350F40
+    std::string describe() const;
+};
+const combat_binding& combat_bound();
+
+struct player_combat {
+    int weapon = 0;              // ps.weapon, 0 = none
+    std::string weapon_raw;      // engine name ("zombie_thompson_upgraded"), empty = unresolved
+    bool have_ammo = false;
+    int clip = 0;                // ammoclip[def->iClipIndex] -- what getcurrentweaponclipammo returns
+    int ammo = 0;                // ammo[def->iAmmoIndex] -- getweaponammostock
+    bool have_events = false;
+    int event_seq = 0;
+    int events[4] = {0, 0, 0, 0};
+    int last_attacker = -1;      // entity number, -1 none / unbound
+};
+std::optional<player_combat> player_combat_state(int slot);
+
+// What can still be read about an entity (a live zombie, or one that just left the live
+// list): the last attacker G_Damage recorded and the actor's last hit location name.
+struct ent_damage_view {
+    int health = 0;
+    int last_attacker = -1;
+    std::string hitloc;          // "head", "helmet", "torso_upper", ... empty = unknown
+};
+ent_damage_view ent_damage(int entnum);
+
+// Entities of classname script_model whose model name `want` accepts, with the model name.
+// The model-index -> name cache is per match: call combat_new_match() when a match starts.
+struct model_ent_view {
+    int entnum = 0;
+    float origin[3] = {0, 0, 0};
+    const char* model = "";      // points into the engine's script-string table; copy it
+};
+size_t model_ents(bool (*want)(const char* model), model_ent_view* out, size_t max);
+void combat_new_match();
+
 // ------------------------------------------------------------------ output --
 
 // A chat line to everyone (slot < 0) or one client. Returns false if unbound.

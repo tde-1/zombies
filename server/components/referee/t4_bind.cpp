@@ -44,6 +44,7 @@ namespace enw::referee {
 
 void dispatch_notify(const notify_event& ev);
 void dispatch_frame(uint32_t ms);
+void bind_combat();   // replay-events-v1 reads, defined at the bottom of this file
 
 namespace {
 
@@ -841,6 +842,8 @@ const binding_report& bind() {
     // `re`: 0x473F10 was derived from the "%s: " formatter string; that string is
     // probably shared with something on the frame path.
 
+    bind_combat();
+
     ENW_INFO("referee/bind: %s", g_report.describe().c_str());
     if (!g_report.script_vars && !g_report.notify_hook) {
         ENW_WARN("referee/bind: no script-VM access and no notify hook yet, so rounds, flags and "
@@ -1254,5 +1257,273 @@ std::optional<std::string> dvar_get(const char* name) {
     return verified::format_value(type, raw, s);
 }
 bool dvar_set(const char*, const char*) { return false; }
+
+// ---------------------------------------------------------------------------
+// replay-events-v1 reads (lane R1, 2026-09-23). docs/protocol/replay-events-v1.md section 5.
+//
+// Offsets are T4SP-Server-Plugin `main` src/game/structs.hpp (playerState_s, gentity_s,
+// sentient_s, actor_s) and every one is ALSO read off an instruction in our own dump, which
+// is what bind_combat() re-checks in the running image before anything is read:
+//
+//   weapons  getcurrentweapon 0x4ED890 (method table 0x83C034):
+//              0x4ED906  8B B6 04 01 00 00      mov esi,[esi+0x104]        ps.weapon
+//              0x4ED910  8B 14 B5 70 67 8F 00   mov edx,[esi*4+0x8F6770]   bg_weaponDefs[w]
+//              then `mov eax,[edx]` -> Scr_AddString: szInternalName is WeaponDef+0
+//            getcurrentweaponclipammo 0x4ED960:
+//              0x4ED9F4  8B 88 FC 03 00 00      mov ecx,[eax+0x3FC]        def->iClipIndex
+//              0x4ED9FA  8B 94 8E FC 05 00 00   mov edx,[esi+ecx*4+0x5FC]  ps.ammoclip[]
+//            getweaponammostock 0x4F0B40:
+//              0x4F0C29  8B 88 F4 03 00 00      mov ecx,[eax+0x3F4]        def->iAmmoIndex
+//              0x4F0C2F  8B 84 8A 7C 01 00 00   mov eax,[edx+ecx*4+0x17C]  ps.ammo[]
+//   events   BG_AddPredictableEventToPlayerstate 0x410310 (eax = ps, cl = event):
+//              8B 90 D0 00 00 00 0F B6 C9 83 E2 03 89 8C 90 D4 00 00 00
+//              = events[eventSequence & 3] = ev; ... eventSequence = (seq + 1) & 0xFF
+//            the weapon-fire site 0x420C8A: B9 1D 00 00 00 75 05 B9 1C 00 00 00
+//              = ecx = lastShot ? 0x1D : 0x1C, then the no-parm add-event 0x412BF0
+//   attacker G_Damage 0x4F5D70 (takedamage +0x19B test first; world ent 0x184A000 = ent 1022):
+//              0x4F6511  8B 85 88 01 00 00 85 C0 74 03 89 70 2C
+//              = if (targ->sentient) targ->sentient->lastAttacker = attacker
+//   hitloc   Actor_Pain 0x4B6870: 0x4B6882 8B 9E 84 01 00 00 (ebx = self->actor),
+//              0x4B697D 66 89 83 68 0D 00 00 (actor->damageHitLoc = SL(hitLocName[loc]));
+//              Actor_Die 0x4B6AA0 stores the same field at 0x4B6BAD.
+//   models   G_SetModel 0x54AE60: 0x54AE78 66 89 86 98 01 00 00 (ent->model = G_ModelIndex)
+//            G_ModelIndex 0x54A480: 0x54A4B0 0F B7 0C 75 42 0F 35 02 -- compares the name's
+//              script string with word[0x2350F40 + i*2], i = 1..0x1FF, i.e. the model
+//              configstrings are script strings (SV_SetConfigstring(0x58E + i, name) follows).
+// ---------------------------------------------------------------------------
+namespace {
+combat_binding g_combat;
+
+constexpr uintptr_t kWeaponDefs = 0x8F6770;
+constexpr size_t kMaxWeapons = 128;          // ps.ammo[128] / ps.ammoclip[128]
+constexpr size_t kPsWeapon = 0x104;
+constexpr size_t kPsAmmo = 0x17C;
+constexpr size_t kPsAmmoClip = 0x5FC;
+constexpr size_t kDefAmmoIndex = 0x3F4;
+constexpr size_t kDefClipIndex = 0x3FC;
+constexpr size_t kPsEventSeq = 0xD0;
+constexpr size_t kPsEvents = 0xD4;
+constexpr size_t kEntActor = 0x184;
+constexpr size_t kEntSentient = 0x188;
+constexpr size_t kEntModel = 0x198;
+constexpr size_t kSentientLastAttacker = 0x2C;
+constexpr size_t kActorHitLoc = 0xD68;
+constexpr uintptr_t kModelNames = 0x2350F40;   // uint16 script-string id per model index
+constexpr int kMaxModels = 0x200;
+
+struct code_sig { uintptr_t va; std::vector<uint8_t> bytes; };
+
+bool sigs_match(const char* group, std::initializer_list<code_sig> sigs) {
+    for (const auto& s : sigs) {
+        if (!bytes_at(s.va, s.bytes.data(), s.bytes.size())) {
+            ENW_WARN("referee/bind: replay-events '%s' OFF -- the code at %08X is not what lane R1 "
+                     "read off the dump (%s). A different exe? Nothing in this group is read.",
+                     group, static_cast<unsigned>(s.va), memory::hex_dump(at(s.va), s.bytes.size()).c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+// Weapon names by index, per match (the defs are loaded with the map).
+std::string g_weapon_names[kMaxWeapons];
+bool g_weapon_named[kMaxWeapons] = {};
+// Model names by model index, per match; empty + resolved = not a name we could read.
+std::string g_model_names[kMaxModels];
+bool g_model_resolved[kMaxModels] = {};
+uint16_t g_script_model_cls = 0;   // the script-string id of "script_model", learned per match
+uint8_t g_cls_not_model[0x10000] = {};
+
+uintptr_t weapon_def(int w) {
+    if (w <= 0 || static_cast<size_t>(w) >= kMaxWeapons) return 0;
+    uintptr_t def = 0;
+    if (!peek(at(kWeaponDefs) + static_cast<size_t>(w) * 4, &def) || def == 0) return 0;
+    return def;
+}
+
+const std::string& weapon_name(int w) {
+    static const std::string none;
+    if (w <= 0 || static_cast<size_t>(w) >= kMaxWeapons) return none;
+    if (!g_weapon_named[w]) {
+        g_weapon_named[w] = true;
+        uintptr_t def = weapon_def(w), name = 0;
+        if (def && peek(def, &name) && name) {
+            std::string s = peek_string(name, 64);
+            bool ok = !s.empty();
+            for (char c : s) if (static_cast<unsigned char>(c) < 0x21 || static_cast<unsigned char>(c) > 0x7E) ok = false;
+            if (ok) g_weapon_names[w] = s;
+        }
+    }
+    return g_weapon_names[w];
+}
+
+int entnum_of_ptr(uintptr_t p) {
+    if (!p) return -1;
+    return entnum_of(reinterpret_cast<void*>(p));
+}
+
+int last_attacker_of(uintptr_t ent) {
+    if (!g_combat.attacker) return -1;
+    uintptr_t sent = 0, att = 0;
+    if (!peek(ent + kEntSentient, &sent) || !sent) return -1;
+    if (!peek(sent + kSentientLastAttacker, &att) || !att) return -1;
+    return entnum_of_ptr(att);
+}
+
+const std::string& model_name(int idx) {
+    static const std::string none;
+    if (idx <= 0 || idx >= kMaxModels) return none;
+    if (!g_model_resolved[idx]) {
+        uint16_t id = 0;
+        if (peek(at(kModelNames) + static_cast<size_t>(idx) * 2, &id) && id) {
+            g_model_names[idx] = sl_string_safe(id, 64);
+            // A slot not yet filled reads 0 and stays unresolved, so a model precached later
+            // in the match is still picked up the first time an entity uses it.
+            g_model_resolved[idx] = true;
+        }
+    }
+    return g_model_names[idx];
+}
+}  // namespace
+
+std::string combat_binding::describe() const {
+    std::string s;
+    auto add = [&s](const char* n, bool v) {
+        if (!s.empty()) s += ' ';
+        s += n;
+        s += v ? "=yes" : "=no";
+    };
+    add("weapons", weapons);
+    add("events", events);
+    add("attacker", attacker);
+    add("hitloc", hitloc);
+    add("models", models);
+    return s;
+}
+
+const combat_binding& combat_bound() { return g_combat; }
+
+void bind_combat() {
+    if (!g_report.entities) {
+        ENW_WARN("referee/bind: replay-events reads OFF (entities not bound)");
+        return;
+    }
+    g_combat.weapons = sigs_match("weapons", {
+        {0x4ED906, {0x8B, 0xB6, 0x04, 0x01, 0x00, 0x00}},
+        {0x4ED910, {0x8B, 0x14, 0xB5, 0x70, 0x67, 0x8F, 0x00}},
+        {0x4ED9F4, {0x8B, 0x88, 0xFC, 0x03, 0x00, 0x00}},
+        {0x4ED9FA, {0x8B, 0x94, 0x8E, 0xFC, 0x05, 0x00, 0x00}},
+        {0x4F0C29, {0x8B, 0x88, 0xF4, 0x03, 0x00, 0x00}},
+        {0x4F0C2F, {0x8B, 0x84, 0x8A, 0x7C, 0x01, 0x00, 0x00}},
+    });
+    g_combat.events = sigs_match("events", {
+        {0x410310, {0x8B, 0x90, 0xD0, 0x00, 0x00, 0x00, 0x0F, 0xB6, 0xC9, 0x83, 0xE2, 0x03,
+                    0x89, 0x8C, 0x90, 0xD4, 0x00, 0x00, 0x00}},
+        {0x420C8A, {0xB9, 0x1D, 0x00, 0x00, 0x00, 0x75, 0x05, 0xB9, 0x1C, 0x00, 0x00, 0x00}},
+    });
+    g_combat.attacker = sigs_match("attacker", {
+        {0x4F6511, {0x8B, 0x85, 0x88, 0x01, 0x00, 0x00, 0x85, 0xC0, 0x74, 0x03, 0x89, 0x70, 0x2C}},
+    });
+    g_combat.hitloc = sigs_match("hitloc", {
+        {0x4B6882, {0x8B, 0x9E, 0x84, 0x01, 0x00, 0x00}},
+        {0x4B697D, {0x66, 0x89, 0x83, 0x68, 0x0D, 0x00, 0x00}},
+    });
+    g_combat.models = sigs_match("models", {
+        {0x54AE78, {0x66, 0x89, 0x86, 0x98, 0x01, 0x00, 0x00}},
+        {0x54A4B0, {0x0F, 0xB7, 0x0C, 0x75, 0x42, 0x0F, 0x35, 0x02}},
+    });
+    ENW_INFO("referee/bind: replay-events reads: %s", g_combat.describe().c_str());
+}
+
+void combat_new_match() {
+    for (size_t i = 0; i < kMaxWeapons; ++i) { g_weapon_named[i] = false; g_weapon_names[i].clear(); }
+    for (int i = 0; i < kMaxModels; ++i) { g_model_resolved[i] = false; g_model_names[i].clear(); }
+    g_script_model_cls = 0;
+    std::memset(g_cls_not_model, 0, sizeof g_cls_not_model);
+}
+
+std::optional<player_combat> player_combat_state(int slot) {
+    if (slot < 0 || slot >= kMaxClients) return std::nullopt;
+    if (!g_combat.weapons && !g_combat.events && !g_combat.attacker) return std::nullopt;
+    const uintptr_t gc = gclient_for(slot);
+    if (!gc) return std::nullopt;
+    player_combat pc;
+    if (g_combat.weapons) {
+        uint32_t w = 0;
+        if (peek(gc + kPsWeapon, &w) && w < kMaxWeapons) {
+            pc.weapon = static_cast<int>(w);
+            pc.weapon_raw = weapon_name(pc.weapon);
+            if (const uintptr_t def = weapon_def(pc.weapon)) {
+                int32_t ci = -1, ai = -1, clip = 0, ammo = 0;
+                if (peek(def + kDefClipIndex, &ci) && peek(def + kDefAmmoIndex, &ai) &&
+                    ci >= 0 && ci < static_cast<int32_t>(kMaxWeapons) && ai >= 0 && ai < static_cast<int32_t>(kMaxWeapons) &&
+                    peek(gc + kPsAmmoClip + static_cast<size_t>(ci) * 4, &clip) &&
+                    peek(gc + kPsAmmo + static_cast<size_t>(ai) * 4, &ammo) &&
+                    clip >= 0 && clip < 100000 && ammo >= 0 && ammo < 100000) {
+                    pc.have_ammo = true;
+                    pc.clip = clip;
+                    pc.ammo = ammo;
+                }
+            }
+        }
+    }
+    if (g_combat.events) {
+        struct { int32_t seq; int32_t ev[4]; } raw{};
+        if (peek(gc + kPsEventSeq, &raw)) {
+            pc.have_events = true;
+            pc.event_seq = raw.seq & 0xFF;
+            for (int i = 0; i < 4; ++i) pc.events[i] = raw.ev[i];
+        }
+    }
+    pc.last_attacker = last_attacker_of(gentity_at(slot));
+    return pc;
+}
+
+ent_damage_view ent_damage(int entnum) {
+    ent_damage_view v;
+    if (!g_report.entities || entnum < 0 || entnum >= 1024) return v;
+    const uintptr_t ent = gentity_at(entnum);
+    peek(ent + t4::gentity_off::health, &v.health);
+    v.last_attacker = last_attacker_of(ent);
+    if (g_combat.hitloc) {
+        uintptr_t actor = 0;
+        uint16_t id = 0;
+        if (peek(ent + kEntActor, &actor) && actor && peek(actor + kActorHitLoc, &id) && id)
+            v.hitloc = sl_string_safe(id, 32);
+    }
+    return v;
+}
+
+size_t model_ents(bool (*want)(const char* model), model_ent_view* out, size_t max) {
+    if (!g_combat.models || !g_report.entities || !want || !out || max == 0) return 0;
+    // One readability check for the whole static entity array instead of one per field:
+    // this runs every server frame.
+    const uintptr_t base = gentity_at(0);
+    if (!memory::is_readable(reinterpret_cast<void*>(base), 1024 * t4::gentity_off::stride)) return 0;
+    size_t n = 0;
+    for (int e = kMaxClients; e < 1024 && n < max; ++e) {
+        const uintptr_t ent = base + static_cast<size_t>(e) * t4::gentity_off::stride;
+        const uint16_t cls = *reinterpret_cast<const uint16_t*>(ent + t4::gentity_off::classname);
+        if (cls == 0) continue;
+        if (g_script_model_cls == 0) {
+            // Learn the id once; remember every id that is NOT it, so a map with no
+            // script_model at all does not resolve 1,000 strings a frame.
+            if (g_cls_not_model[cls]) continue;
+            if (sl_string_safe(cls, 16) != "script_model") { g_cls_not_model[cls] = 1; continue; }
+            g_script_model_cls = cls;
+        } else if (cls != g_script_model_cls) {
+            continue;
+        }
+        const uint16_t mi = *reinterpret_cast<const uint16_t*>(ent + kEntModel);
+        const std::string& m = model_name(mi);
+        if (m.empty() || !want(m.c_str())) continue;
+        model_ent_view v;
+        v.entnum = e;
+        std::memcpy(v.origin, reinterpret_cast<const void*>(ent + t4::gentity_off::currentOrigin), sizeof v.origin);
+        v.model = m.c_str();
+        out[n++] = v;
+    }
+    return n;
+}
 
 }  // namespace enw::referee

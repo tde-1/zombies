@@ -559,8 +559,10 @@ export class ZombiesSim extends EventEmitter {
       score: p.score, weapon: p.weapon, stance: p.down ? 'down' : p.stance, alive: p.alive && !p.down,
     }))
     const ev = { t: 'snap', players }
-    // Zombies at 10 Hz — every other 20 Hz player tick, as the protocol allows.
-    if (this.tick % 2 === 0) ev.zombies = this.zombies.map((z) => ({ id: z.id, pos: z.pos, health: Math.round(z.health) }))
+    // Zombies at 10 Hz — every other 20 Hz player tick, as the protocol allows — unless
+    // `zombieHz: 20` (lane R1: a replay-events-v1 DLL records zombies on every frame).
+    const every = this.opts.zombieHz >= 20 ? 1 : 2
+    if (this.tick % every === 0) ev.zombies = this.zombies.map((z) => ({ id: z.id, pos: z.pos, health: Math.round(z.health) }))
     this.emitEv(ev)
   }
 
