@@ -216,6 +216,10 @@ export const ENW_ITEMS = [
     src: 'launcher: cg_drawFPS "Simple" / "Off" (an enum on T4, launcher.md 0.2.3)' },
   { id: 'rawMouse', section: 'enw', label: 'Raw Mouse Input', kind: 'toggle', to: 'key:rawMouse', def: true,
     src: 'client DLL mouse_polling (client.md 1, 5): ENW_RAW_MOUSE=0 in the environment turns it off' },
+  { id: 'discordOverlay', section: 'enw', label: 'Discord overlay', kind: 'select', to: 'key:discordOverlay', def: 'auto',
+    options: [{ label: 'Auto', value: 'auto' }, { label: 'On', value: 'allow' }, { label: 'Off', value: 'refuse' }],
+    src: 'client DLL overlay_guard (chat-overlay.md 13): ENW_DISCORD_HOOK=auto|allow|refuse. Auto lets Discord\'s hook in only while the game has a 50 MB block of address space free (it maps 50 MB and crashes the game without it)',
+    note: 'Off on maps where it would crash the game' },
   { id: 'r_dof_enable', section: 'enw', label: 'Depth of Field', kind: 'toggle', to: 'waw', dvar: 'r_dof_enable', def: '1',
     src: 'engine dvar, archived in the config.cfg the game writes (seta r_dof_enable "1" on every profile here). Not in WaW\'s menus.' },
   { id: 'r_glow_allowed', section: 'enw', label: 'Glow', kind: 'toggle', to: 'waw', dvar: 'r_glow_allowed', def: null,
@@ -316,7 +320,7 @@ export function withValue(game, it, value) {
 // The object the launcher's `settings.set()` takes (window.enw.setSettings). Every
 // catalogue dvar is sent explicitly: a value, `null` (game default: `reset <dvar>`), or
 // '' (no opinion: the launcher stops writing it).
-export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse']
+export const LAUNCHER_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordOverlay']
 export function toLauncherPatch(game) {
   const g = game || {}
   const out = {}

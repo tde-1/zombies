@@ -260,6 +260,11 @@ await test('the launch wires it: settingsArgs uses the account, start() merges t
   assert.match(src, /readBackAccount\(/)
   const off = settings.set({ rawMouse: false }, SID)
   assert.equal(off.rawMouse, false)
+  assert.match(src, /\['allow', 'refuse'\]\.includes\(o\.settings\.discordOverlay\) \? \{ ENW_DISCORD_HOOK: o\.settings\.discordOverlay \}/)
+  assert.equal(settings.get(SID).discordOverlay, 'auto', 'Discord overlay defaults to auto')
+  assert.equal(settings.set({ discordOverlay: 'refuse' }, SID).discordOverlay, 'refuse')
+  assert.equal(settings.set({ discordOverlay: 'maybe' }, SID).discordOverlay, 'refuse', 'a bad value keeps the saved one')
+  settings.set({ discordOverlay: 'auto' }, SID)
 })
 
 await test('with nothing saved from the site the launch line is exactly the old baseline', () => {

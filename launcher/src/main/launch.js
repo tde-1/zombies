@@ -478,6 +478,9 @@ export class GameLaunch extends EventEmitter {
         // The DLL's raw-input mouse (mouse_polling.cpp reads `ENW_RAW_MOUSE=0` as off).
         // Only an explicit "off" in the account turns it off; the default stays the DLL's.
         ...(o.settings && o.settings.rawMouse === false ? { ENW_RAW_MOUSE: '0' } : {}),
+        // The DLL's gate on Discord's overlay hook (overlay_guard.cpp reads
+        // ENW_DISCORD_HOOK=auto|allow|refuse; unset is auto). Only a non-default choice is passed.
+        ...(o.settings && ['allow', 'refuse'].includes(o.settings.discordOverlay) ? { ENW_DISCORD_HOOK: o.settings.discordOverlay } : {}),
         // Joining a server. Empty for a local game.
         ...connectEnv({ host: o.host, map: o.map }),
       }

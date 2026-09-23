@@ -49,10 +49,13 @@ export const DEFAULT_SETTINGS = {
   gameUpdatedAt: 0,
   // The client DLL's raw-input mouse (client.md 1, 5). Off = ENW_RAW_MOUSE=0.
   rawMouse: true,
+  // The client DLL's gate on Discord's in-game overlay hook (overlay_guard.cpp,
+  // chat-overlay.md 13): auto | allow | refuse, passed as ENW_DISCORD_HOOK.
+  discordOverlay: 'auto',
 }
 
 // The keys that are "how the game runs", so a change to any of them moves gameUpdatedAt.
-export const GAME_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'waw', 'wawBinds']
+export const GAME_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordOverlay', 'waw', 'wawBinds']
 
 function read(file, fallback) {
   try { return { ...fallback, ...JSON.parse(fs.readFileSync(file, 'utf8')) } } catch { return { ...fallback } }
@@ -127,6 +130,8 @@ export function get(steamid = null) {
 // Validation, in one place, because these values end up on a command line the engine
 // parses itself and in a config.cfg the engine execs. A bad `resolution` is not a
 // cosmetic problem: `+set r_mode 1920 x 1080` is three arguments.
+export const DISCORD_OVERLAY = ['auto', 'allow', 'refuse']
+
 export function validate(patch = {}) {
   const out = { ...patch }
   const notes = []
@@ -145,6 +150,7 @@ export function validate(patch = {}) {
   if ('mode' in out) out.fullscreen = out.mode === 'fullscreen'
   if ('volume' in out && out.volume !== null) out.volume = Math.min(1, Math.max(0, Number(out.volume) || 0))
   if ('rawMouse' in out) out.rawMouse = out.rawMouse !== false
+  if ('discordOverlay' in out && !DISCORD_OVERLAY.includes(out.discordOverlay)) { notes.push(`discordOverlay "${out.discordOverlay}" is not one of ${DISCORD_OVERLAY.join('/')}; kept the saved one`); delete out.discordOverlay }
   if ('sensitivity' in out && out.sensitivity !== null) {
     const n = Number(out.sensitivity)
     if (Number.isFinite(n) && n > 0 && n <= 100) out.sensitivity = Math.round(n * 1000) / 1000
