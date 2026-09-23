@@ -3373,3 +3373,120 @@ routes and the flag rules is in [telemetry.md](telemetry.md) (§3 for `/api/admi
   Admins get "Build digest".
 * `counts.incidents_p1` / `incidents_p2` (unreviewed, 30 days): tab badge, a to-do strip item and a Now
   stat, each opening Issues on unreviewed P1/P2. Games now also reads `?q=` from the URL.
+
+## 2026-09-23, ~17:40–19:30 UK — friends across ENW, the live online list, party chat and DMs in the dock (lane SOC, branch `soc-friends`)
+
+B: *"ENW friends need to carry over to ENW Zombies from the ENW main server, from Movement and from
+drops. The whole system needs to be connected friends-wise. Every single user who's on ENW Zombies
+right now should be able to see each other on the online list on the left, see if they're in a map,
+invite them to parties and receive invites. Update instantly in the launcher."* The launcher half
+(flash, chime, toast) is in `launcher.md` under the same date.
+
+### Where ENW's friends actually live (checked read-only, 2026-09-23)
+
+| Source | What is there | Imported |
+|---|---|---|
+| **ENW Movement** (`movement.enw.gg`, `matchmaker.db` on the web host) | `friendships` (requester/addressee/status), the table this site's own was copied from; **89 accepted pairs**. GOnext PvP already reads it read-only as its "main" DB (`pvp/server/shared.js`) | **yes** |
+| **drops.ws** (`/var/www/csgo-server/database.db` → `/home/deploy/database.db`) | **no friend table** (every table listed; the only "friend" in its source is whether the Steam bot is on your Steam friends list). drops shares SteamID and the ENW username, not friends | nothing to import |
+| **"The ENW main server"** | **Not identified with certainty.** Candidates checked: the enw.gg site (PHP + MySQL on shared hosting, vault `ENW.GG Website`) has no friends feature; the ENW Discord server has no friend list a bot can read. Both are identity (Steam sign-in, Discord link), not a friend graph. `questions.md` Q-soc-1 | nothing to import |
+
+So the ENW friend graph **is** Movement's. Measured against the live accounts (read-only, counts only):
+of **9** Zombies accounts, **7** have at least one Movement friend who is also here, **10** pairs in all;
+this site has **0** accepted friendships of its own. Until this lane every rail here was friendless.
+
+### The sync (`server/lib/friendSync.js`)
+
+* **Transport**: the site on B's PC runs `ssh -o BatchMode=yes <host> "sqlite3 -readonly -bail -csv '<db>'"`
+  with B's existing key and `~/.ssh/config` alias, and sends **one SELECT on stdin** (accepted pairs where
+  both ends are Zombies accounts; the IN lists are built from validated 17-digit SteamIDs). `-readonly` is
+  load-bearing: Movement's live DB runs `busy_timeout=0` and a plain open can write. Host and path are
+  validated (a host can never be an ssh option; the path is a fixed character class). Only SteamID64s
+  cross, both ways. Nothing on the Movement host is written, migrated, restarted or deployed.
+* **When**: at start, every `ZM_FRIENDS_SYNC_MIN` (10) minutes, and when a socket arrives for an account
+  that was not in the last sync's list (a first sign-in), 15 s floor. About 150 ssh logins a day.
+* **Stored**: `friend_edges(a, b, source, synced_at)` (pair low-first, one row per source) and
+  `friend_sync(source, tried_at, ok_at, edges, error, reason)`, additive `CREATE TABLE IF NOT EXISTS`,
+  the only schema change. A successful sync **replaces** that source's rows, so an unfriend on Movement
+  reaches us; a failed one keeps the last good rows and records the error.
+* **Used**: `users.friendIds` = this site's accepted `friendships` ∪ `friend_edges`, so everything that
+  asks "are these two friends" (the rail, friends-only lobbies, DMs, the Esc menu) gets both.
+  `users.friendSources(a,b)` → `['zombies','movement']`. A friendship that exists only on Movement cannot
+  be removed here ("You are friends on ENW Movement. Remove them there."); asking an imported friend is
+  already `friends`.
+* **Zombies-native requests** already existed (profile Add friend); they now push
+  `friend_request_received` / `friend_request_accepted` / `friend_removed` (Movement's event names), and
+  the rail has a **Friend requests** block with Accept / Decline (`GET /api/friends/requests`).
+* **Admin**: `GET /api/admin/friend-sync` (sources, last ok, pairs, last error, and the places checked
+  that hold no friend list), `POST /api/admin/friend-sync/run`.
+* **Config** (`infra/site.env`, documented in `site.env.example`): `ZM_FRIENDS_MOVEMENT_SSH=webbox`,
+  optional `ZM_FRIENDS_MOVEMENT_DB`, `ZM_FRIENDS_SYNC_MIN`. Unset = off (tests, other boxes).
+  `ZM_FRIENDS_MOVEMENT_LOCAL=<file>` reads a local copy instead (the tests).
+* **A cleaner follow-up for Movement's owner (not done, not ours):** a keyed, read-only
+  `GET /internal/friends?ids=` on Movement returning accepted pairs among the given SteamIDs would
+  replace the ssh read; Movement already has keyed internal reads (`routes/internal.js`).
+
+### The online list
+
+* **Everyone online, friends first.** `roster.forViewer` keeps Movement's rule (an approved account sees
+  every player online; anyone else only friends) and now sorts friends first. The rail draws two
+  blocks: **Friends online · n** then **Everyone else · n** (just **Online** when no friend is on).
+  Each row: avatar, name, a `FRIEND` tag (hover: "Friends on ENW Movement"), a pip (green online, gold
+  in a party, red in a game), one status line and the action (Invite +, Join a joinable lobby, Accept an
+  invite waiting, or `in party` / `invited` / `in game`).
+* **Status words** are the server's (`roster.statusOf`), the same in the rail, the Esc menu and the
+  launcher: `Online` / `In launcher` / `In game on <map>, round N` / `In party on <map> (n/4)`. The round
+  is the referee's live frame (`lib/live.js`), omitted when there is no fresh frame. `In launcher` comes
+  from the socket handshake (`auth.client`, set when `window.enw` exists); a connected launcher socket
+  counts as online even while its heartbeat is late (a hidden window).
+* **Pushed, not polled.** `server/index.js` emits `online_changed` 150 ms after any socket connects or
+  leaves, and once a second compares `presence.signature()` (who, from what, where, round) and emits
+  when it moved, so parties, box rosters and rounds need not announce themselves. The rail refetches its
+  own `/api/party/online` on the nudge (rows are per reader), coalesced; the 10 s poll became a 30 s
+  safety net. Measured in `test/friends.js` against a real `index.js` + socket.io: **153–157 ms** from a
+  second player's launcher socket connecting to the first player's `online_changed`.
+* **Esc menu** (`routes/gamemenu.js`): the words come from `statusOf` ("In game on Der Riese, round 12",
+  "In party on Verruckt (1/4)" instead of "In game: Der Riese" / "Lobby: …"); pip kinds unchanged; rows
+  carry `friend`. `test/game-menu.js` updated and added to `npm test` (it was not in it).
+
+### Party chat and DMs on the site (`ChatDock.jsx`)
+
+The launcher chimes on a DM or a party line, so the site must show one and answer it. They are the
+overlay's private ring (`lib/gameChat.js`, `chat_private`), not a new system: `GET/POST
+/api/chat/private` (session; DMs to friends and party members only, the ring's 5 lines / 10 s) and the
+existing `chat-private` socket event. The dock interleaves them with the global lines, tagged `[party]`
+(gold) / `[dm]`; clicking a name on a private line starts a DM; a chip row over the input says where the
+next line goes (All games / Party / @name ×). Private lines from others count toward the unread badge.
+
+### Settings
+
+`notifySound` ("Notification sound", ENW tab, group *notifications*, default on) in
+`client/src/data/wawSettings.js` + `settingsLayout.js`, `users.GAME_KEYS`, `LAUNCHER_KEYS`; `INGAME`
+policy `apply: false` (the launcher's chime, not the game's). `shared/settings/ingame-settings.json`
+regenerated: the item is in the excluded list, no group reaches the game.
+
+### Tests and proof
+
+* `test/friends.js` **16/0** (in `npm test`): the ssh argv (`-readonly`, BatchMode; option injection and
+  quoted paths refused), the SELECT, import of both-ends-ours accepted pairs only (pending and an
+  outsider dropped; the stand-in DB's email column never read), the union, removal rules, unfriend
+  reaching us, soft-fail, the rail order and words (`In launcher`, `In game on …, round 12`),
+  friend-request pushes, `/api/friends/requests`, `/api/chat/private` (friend yes, stranger 400), the
+  page-to-launcher mapping (`attentionEvents.js`), and part B on a real server: push latency, the row,
+  a DM reaching the recipient's socket.
+* Full `npm test` green: run-all 148, discord-env 3, local-run 41, launcher-signin 15, game-chat 19,
+  bucket 12, map-align 12, guides 12, admin 23, chat-dedupe 12, invites 15, box-maps 12, record-notice 7,
+  telemetry 40, replay-fx 16, replay-spectate 13, friends 16, game-menu 9.
+* The real read, read-only, from B's PC through node's `execFile('ssh')` (Windows OpenSSH): the count
+  query and the live-accounts overlap above.
+
+### Unproven
+
+* **The rail rendered in a browser** unless the addendum below says otherwise (memory rule: commit charge
+  was 88–89%, above the 85% the rule allows for a build + headless browser). The JSX is
+  syntax-checked with esbuild and the data it draws is tested.
+* **The sync on the live site** until `infra/site.env` has `ZM_FRIENDS_MOVEMENT_SSH=webbox` and the
+  keepalive loop is restarted (it reads site.env once). The ssh read itself is proven from this PC.
+* Two real people seeing each other through Steam sign-in (the tests use the test login).
+
+**Needs**: `npm run build` (client) + a site restart on B's word + the site.env line. No live data was
+written; the only schema change is two new tables, created on the next start.
