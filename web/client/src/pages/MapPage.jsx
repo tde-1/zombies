@@ -298,6 +298,12 @@ export function MapBody({ mapKey: key }) {
               {/* The finish scanner's own line ("Scanner verdict: …") is not the map's readme;
                   on 2026-09-23 it was the whole of every readme on the site. */}
               {readmeOf(m.readme) && <pre className="block" style={{ whiteSpace: 'pre-wrap' }}>{readmeOf(m.readme)}</pre>}
+              {/* Rows this map superseded (lib/catalogueTwins.js), kept as their own records. */}
+              {m.earlier_versions && m.earlier_versions.length > 0 && (
+                <p className="tiny" style={{ marginTop: 8, marginBottom: 0 }}>
+                  Earlier versions: {m.earlier_versions.map((v) => `${v.title}${v.year ? ` (${v.year})` : ''}`).join(' · ')}
+                </p>
+              )}
             </div>
           </Section>
 

@@ -369,6 +369,10 @@ function detail(key, { me = null } = {}) {
     guides: require('./guides').forMap(row.key),
     download: downloadOf(row.key, latest),
     redirected_from: redirectedFrom,
+    // Rows this map superseded (lib/catalogueTwins.js; an older version once iterative updates
+    // are linked the same way): kept as their own hidden records, listed on the map page.
+    earlier_versions: db.prepare('SELECT key, slug, title, year FROM maps WHERE superseded_by=? ORDER BY year, key')
+      .all(row.key).map((r) => ({ key: r.key, slug: r.slug || r.key, title: r.title, year: r.year })),
   }
 }
 

@@ -1,7 +1,7 @@
 'use strict'
-// Catalogue twins (lib/catalogueTwins.js, B 2026-09-23: "Cheese Cube Unlimited: not playable"
-// beside the real one). A visible real map hides the catalogue stub of the same map and links
-// it; the stub's old slug shows the real map; a mere name collision is reported, not hidden.
+// Catalogue twins (lib/catalogueTwins.js). B, 2026-09-23: "Cheese Cube Unlimited: not playable"
+// sat beside the real one; and then B's rule: MAPS IN A SERIES ARE DISTINCT MAPS. Only an exact
+// normalised title hides a stub; every looser match is a review row, never hidden.
 //
 //   node test/catalogue-twins.js
 
@@ -31,75 +31,81 @@ const add = (key, o) => db.prepare(`INSERT INTO maps (key, slug, title, author, 
   source: o.source || 'custom', health: o.health || 'playable', hidden: o.hidden ? 1 : 0,
   release_post: o.release_post || null, added_at: now(),
 })
+const cat = (key, o) => add(key, { ...o, source: 'catalogue', health: 'catalogued' })
+const mid = (k) => db.prepare('SELECT id FROM maps WHERE key=?').get(k).id
 
-// real maps
-add('nazi_zombie_ccube_u', { title: 'Cheese Cube Unlimited', author: 'ZK Studios', year: 2014, health: 'custom-only' })
+// real, visible maps
 add('nazi_zombie_ccube', { title: 'Cheese Cube', author: 'ZK Studios', year: 2013, release_post: 'https://callofdutyrepo.com/2013/04/18/cheese-cube/' })
+add('nazi_zombie_ccube_u', { title: 'Cheese Cube Unlimited', author: 'ZK Studios', year: 2014, health: 'custom-only' })
+add('ahkanto', { title: 'POKEMON KANTO CARNAGE - NIGHTTIME', author: 'someone', year: 2016 })
+add('nacht_reimagined', { title: 'Nacht der Untoten', author: 'A' })
 add('bunker', { title: 'Bunker', author: 'Alpha', year: 2012 })
-add('nazi_zombie_hiddenreal', { title: 'Hidden Real', hidden: true })
 add('town_a', { title: 'Town', author: 'A' })
 add('town_b', { title: 'Town', author: 'B' })
-// catalogue stubs
-const cat = (key, o) => add(key, { ...o, source: 'catalogue', health: 'catalogued' })
-cat('cat:cheesecubeunlimited', { title: 'CHEESE CUBE UNLIMITED', author: 'ZK Studios', year: 2014 })          // title
-cat('cat:cheesecube', { title: 'Cheese Cube (ZK)', release_post: 'https://callofdutyrepo.com/2013/04/18/cheese-cube/' }) // post
-cat('cat:cheesecubev1byzk', { title: 'Cheesecubev1-Byzk' })                                               // norm (extract)
-cat('cat:bunker', { title: 'BUNKER', author: 'Somebody Else', year: 2016 })                               // collision
-cat('cat:hiddenreal', { title: 'Hidden Real' })                                                           // real is hidden
-cat('cat:town', { title: 'Town' })                                                                        // two reals
-cat('cat:cheesecubeunlimitedcubeofcircles', { title: 'Cheese Cube Unlimited: Cube of Circles', author: 'ZK Studios' }) // subtitle
-add('nacht_reimagined', { title: 'Nacht der Untoten', author: 'Someone' })
-cat('cat:nachtreimagined2', { title: 'Nacht der Untoten Reimagined', author: 'Other Person' })          // prefix, other author
-cat('cat:ccubeexe', { title: 'Ccube Exe' })                                                                // size
-const mid = (k) => db.prepare('SELECT id FROM maps WHERE key=?').get(k).id
+add('nazi_zombie_hiddenreal', { title: 'Hidden Real', hidden: true })
 db.prepare(`INSERT INTO map_versions (map_id, version, latest, health, fs_game, size_bytes, added_at) VALUES (?,?,1,'playable','mods/x',?,?)`)
-  .run(mid('nazi_zombie_ccube'), 'v1', 78983876, now())
+  .run(mid('ahkanto'), 'v1', 273000000, now())
+
+// catalogue stubs
+cat('cat:cheesecube', { title: 'CHEESE CUBE', author: 'ZK Studios', year: 2013 })                                  // exact
+cat('cat:cheesecubeunlimited', { title: 'Cheese Cube Unlimited', author: 'ZK Studios', year: 2014 })               // exact
+cat('cat:cheesecubeunlimitedcubeofcircles', { title: 'Cheese Cube Unlimited: Cube of Circles', author: 'ZK Studios' }) // a third map
+cat('cat:pokemonkantocarnage', { title: 'Pokemon Kanto Carnage' })                                                  // the day edition
 db.prepare(`INSERT INTO archive_sources (url, site, kind, map_key, status, created_at, size_bytes) VALUES (?,?,?,?,?,?,?)`)
-  .run('https://archive.org/download/x/CheeseCubev1-byZK.exe', 'archive.org', 'download', 'cat:ccubeexe', 'alive', now(), 78983876)
+  .run('https://example.invalid/pkc.exe', 'mediafire.com', 'download', 'cat:pokemonkantocarnage', 'alive', now(), 273000000)
+cat('cat:ccubepost', { title: 'Cheese Cube Remastered', release_post: 'https://callofdutyrepo.com/2013/04/18/cheese-cube/' }) // post only
+cat('cat:nachtreimagined', { title: 'Nacht der Untoten Reimagined', author: 'A' })                                 // edition word
+cat('cat:nacht2', { title: 'Nacht der Untoten 2', author: 'A' })                                                   // sequel number
+cat('cat:bunker', { title: 'BUNKER', author: 'Somebody Else', year: 2016 })                                        // collision
+cat('cat:town', { title: 'Town' })                                                                                 // two reals
+cat('cat:hiddenreal', { title: 'Hidden Real' })                                                                    // real is hidden
 
-const p = twins.plan(db, { normOf: { nazi_zombie_ccube: 'cheesecubev1byzk' } })
+const p = twins.plan(db, { normOf: { nazi_zombie_ccube_u: 'cheesecubeunlimitedcubeofcircles' } })
 const hid = Object.fromEntries(p.hide.map((h) => [h.cat, h]))
-const amb = Object.fromEntries(p.ambiguous.map((a) => [a.cat, a]))
+const rev = Object.fromEntries(p.review.map((a) => [a.cat, a]))
 
-check('the same title, same author/year: the stub is a twin of the real map', () => {
-  eq(hid['cat:cheesecubeunlimited'] && hid['cat:cheesecubeunlimited'].real, 'nazi_zombie_ccube_u', 'real')
-  eq(hid['cat:cheesecubeunlimited'].why, 'title', 'signal')
+check('an exact normalised title (case and punctuation aside) hides the stub', () => {
+  eq(hid['cat:cheesecube'] && hid['cat:cheesecube'].real, 'nazi_zombie_ccube', 'Cheese Cube')
+  eq(hid['cat:cheesecubeunlimited'] && hid['cat:cheesecubeunlimited'].real, 'nazi_zombie_ccube_u', 'Cheese Cube Unlimited')
 })
-check('the same release post URL is enough on its own', () => {
-  eq(hid['cat:cheesecube'] && hid['cat:cheesecube'].real, 'nazi_zombie_ccube', 'real'); eq(hid['cat:cheesecube'].why, 'post', 'signal')
+check('Cheese Cube, Cheese Cube Unlimited and Cube of Circles are three maps', () => {
+  eq(hid['cat:cheesecubeunlimitedcubeofcircles'], undefined, 'Cube of Circles is not hidden')
+  eq(!!rev['cat:cheesecubeunlimitedcubeofcircles'], true, 'it is a review row (subtitle + fetched-from signal)')
 })
-check('the catalogue entry the release was fetched from (extract.json norm) is enough on its own', () => {
-  eq(hid['cat:cheesecubev1byzk'] && hid['cat:cheesecubev1byzk'].real, 'nazi_zombie_ccube', 'real'); eq(hid['cat:cheesecubev1byzk'].why, 'norm', 'signal')
+check('Pokemon Kanto Carnage and its Nighttime edition are two maps, even with the same bytes on a link', () => {
+  eq(hid['cat:pokemonkantocarnage'], undefined, 'not hidden'); eq(!!rev['cat:pokemonkantocarnage'], true, 'review')
 })
-check('a name that merely collides (another author, another year) is reported, never hidden', () => {
-  eq(hid['cat:bunker'], undefined, 'not hidden'); eq(!!amb['cat:bunker'], true, 'listed as ambiguous')
+check('a release post match alone is review, not a hide', () => {
+  eq(hid['cat:ccubepost'], undefined, 'not hidden'); eq(/same release post/.test(rev['cat:ccubepost'].why), true, 'names the signal')
 })
-check('a title two real maps share is ambiguous', () => {
-  eq(hid['cat:town'], undefined, 'not hidden'); eq(amb['cat:town'].reals.length, 2, 'both named')
+check('edition words (Reimagined, 2) are review, not a hide', () => {
+  eq(hid['cat:nachtreimagined'], undefined, 'Reimagined'); eq(hid['cat:nacht2'], undefined, '2')
+  eq(!!rev['cat:nachtreimagined'] && !!rev['cat:nacht2'], true, 'both listed')
 })
-check('a download link with exactly the real original\'s bytes is enough on its own', () => {
-  eq(hid['cat:ccubeexe'] && hid['cat:ccubeexe'].real, 'nazi_zombie_ccube', 'real'); eq(hid['cat:ccubeexe'].why, 'size', 'signal')
+check('an exact title with another author and year is review, not a hide', () => {
+  eq(hid['cat:bunker'], undefined, 'not hidden'); eq(!!rev['cat:bunker'], true, 'listed')
 })
-check('a subtitle of the real title by the same author is a twin; by another author it is not', () => {
-  eq(hid['cat:cheesecubeunlimitedcubeofcircles'] && hid['cat:cheesecubeunlimitedcubeofcircles'].real, 'nazi_zombie_ccube_u', 'Cube of Circles')
-  eq(hid['cat:nachtreimagined2'], undefined, 'Nacht der Untoten Reimagined is another map')
+check('a title two real maps share is review', () => {
+  eq(hid['cat:town'], undefined, 'not hidden'); eq(rev['cat:town'].reals.length, 2, 'both named')
 })
 check('a real map nobody can see supersedes nothing', () => {
-  eq(hid['cat:hiddenreal'], undefined, 'not hidden'); eq(amb['cat:hiddenreal'], undefined, 'not even ambiguous')
+  eq(hid['cat:hiddenreal'], undefined, 'not hidden')
 })
-check('apply hides the twins, links them, and is idempotent', () => {
-  eq(twins.apply(db, p), 5, 'five rows changed')
+check('apply hides only the exact twins, links them, and is idempotent', () => {
+  eq(twins.apply(db, p), 2, 'two rows changed')
   const r = db.prepare("SELECT hidden, superseded_by FROM maps WHERE key='cat:cheesecubeunlimited'").get()
   eq(r.hidden, 1, 'hidden'); eq(r.superseded_by, 'nazi_zombie_ccube_u', 'linked')
-  eq(db.prepare("SELECT hidden FROM maps WHERE key='cat:bunker'").get().hidden, 0, 'the collision stays visible')
-  twins.apply(db, p)
-  eq(db.prepare("SELECT superseded_by FROM maps WHERE key='cat:cheesecube'").get().superseded_by, 'nazi_zombie_ccube', 'unchanged')
+  eq(db.prepare("SELECT hidden FROM maps WHERE key='cat:cheesecubeunlimitedcubeofcircles'").get().hidden, 0, 'Cube of Circles stays visible')
+  eq(db.prepare("SELECT hidden FROM maps WHERE key='cat:pokemonkantocarnage'").get().hidden, 0, 'Kanto Carnage stays visible')
+  eq(twins.apply(db, p), 2, 'a re-run changes the same two rows to the same values')
 })
-check("the stub's old slug shows the real map and says where it came from", () => {
+check("the stub's old slug shows the real map; the real map lists it under Earlier versions", () => {
   const d = maps.detail('cat-cheesecubeunlimited')
   eq(d.key, 'nazi_zombie_ccube_u', 'the real map')
   eq(d.redirected_from && d.redirected_from.key, 'cat:cheesecubeunlimited', 'redirected_from')
-  eq(maps.detail('nazi_zombie_ccube_u').redirected_from, null, 'a real map is not redirected')
+  const real = maps.detail('nazi_zombie_ccube_u')
+  eq(real.redirected_from, null, 'a real map is not redirected')
+  eq(real.earlier_versions.map((v) => v.key).join(','), 'cat:cheesecubeunlimited', 'earlier versions')
 })
 
 console.log(`\ncatalogue-twins: ${pass} passed, ${fail} failed`)

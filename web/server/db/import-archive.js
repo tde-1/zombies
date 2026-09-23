@@ -428,8 +428,11 @@ function hideCatalogueTwins() {
     const r = db.prepare('SELECT hidden, superseded_by FROM maps WHERE key=?').get(h.cat)
     return r && (!r.hidden || r.superseded_by !== h.real)
   })
-  for (const h of fresh) console.log(`  catalogue twin ${DRY ? 'would be ' : ''}hidden: ${h.cat} -> ${h.real} (${h.why})`)
-  for (const a of p.ambiguous) console.log(`  catalogue twin AMBIGUOUS, left visible: ${a.cat} ~ ${a.reals.join(', ')} (${a.why})`)
+  for (const h of fresh) console.log(`  catalogue twin ${DRY ? 'would be ' : ''}hidden: ${h.cat} -> ${h.real} (exact title)`)
+  // B's rule: a series is distinct maps; anything but an exact title is for a person to decide.
+  const rp = path.join(WORK, 'reports', 'catalogue-twins-review.json')
+  try { fs.writeFileSync(rp, JSON.stringify({ at: new Date().toISOString(), review: p.review }, null, 1)) } catch { /* read-only work dir */ }
+  console.log(`  catalogue twins: ${p.review.length} for review, left visible (${rp})`)
   if (!DRY) twins.apply(db, { hide: fresh })
   stats.twins = fresh.length
 }
