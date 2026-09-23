@@ -51,7 +51,7 @@ inline const std::vector<builtin>& builtins() {
         {verb::unbind, "unbind", {"clearbind"}, "unbind <key>", "free a key"},
         {verb::reset, "reset", {"default"}, "reset <setting>", "back to the default"},
         {verb::apply, "apply", {"vid_restart"}, "apply", "restart the video for pending changes"},
-        {verb::restart, "restart", {"map_restart", "fast_restart"}, "restart", "restart the game (type it twice)"},
+        {verb::restart, "restart", {"map_restart", "fast_restart"}, "restart", "restart the game"},
         {verb::disconnect, "disconnect", {"dc", "leave"}, "disconnect", "leave the game"},
         {verb::quit, "quit", {"exit"}, "quit", "leave the game and close it"},
         {verb::clear, "clear", {"cls"}, "clear", "clear the console"},

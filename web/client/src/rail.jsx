@@ -344,8 +344,16 @@ export function RailProvider({ children }) {
     await loadParty()
   }), [run, resumable, party, loadParty])
 
+  // The server card's ×: close the party's game for everybody and KEEP the party (B
+  // 2026-09-23: "should close the server, not leave the party"). lib/seats.js `end`.
+  const closeServer = useCallback(() => run(async () => {
+    const id = (resumable && resumable.match_id) || (party && party.match_id)
+    await api.post('/api/party/end', { match_id: id })
+    await loadParty()
+  }), [run, resumable, party, loadParty])
+
   const value = useMemo(() => ({
-    me, signedIn, approved, endGame, requests, answerFriend,
+    me, signedIn, approved, endGame, closeServer, requests, answerFriend,
     party, launch, invites, online, pool, poolByKey, live,
     stage, map, mapKey, mode, visibility, editable, gameMode, gameModes,
     busy, err, say,
@@ -355,7 +363,7 @@ export function RailProvider({ children }) {
   }), [me, signedIn, approved, requests, answerFriend, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
     mode, visibility, editable, gameMode, gameModes, busy, err, say, stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick,
     leave, decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
-    endGame, loadParty, loadOnline])
+    endGame, closeServer, loadParty, loadOnline])
 
   // The invite toasts and the /party/<code> card sit here, above the router with the rail's
   // state, so they show on every page including the replay viewer (which hides the rail).

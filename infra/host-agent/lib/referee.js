@@ -794,6 +794,7 @@ export class Referee extends EventEmitter {
     if (this.crashGraceUntil && Date.now() >= this.crashGraceUntil) {
       this.crashGraceUntil = null
       this.flags.add('abandoned')
+      this.flags.add('no_players')   // [RS] idle auto-close, lib/idle.js "ALL GONE"
       this.finishGame('players_did_not_return')
       return
     }
@@ -809,7 +810,7 @@ export class Referee extends EventEmitter {
       // crash-paused game long before its grace window, so nobody could ever resume one.
       if (!any && this.startedMs != null && !this.crashGraceUntil) {
         if (this.emptySinceMs == null) this.emptySinceMs = now
-        else if (now - this.emptySinceMs >= this.cfg.emptyCloseMs) this.finishGame('empty')
+        else if (now - this.emptySinceMs >= this.cfg.emptyCloseMs) { this.flags.add('no_players'); this.finishGame('empty') }
       } else this.emptySinceMs = null
     }
   }

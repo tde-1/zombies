@@ -23,6 +23,8 @@
 // --gatecrash            seat one EXTRA player at the start with no invite token, so a box
 //                        that is enforcing has something to refuse. Their row still reaches
 //                        the result — with no account on it, which is the whole rule
+// --no-join              nobody joins: the map loads and the server sits empty (idle close)
+// --leave-ms MS          every player disconnects this far into the game (idle close)
 // --stdout               no socket; print NDJSON (handy for eyeballing the stream)
 import net from 'node:net'
 import { ZombiesSim, TICK_MS } from './engine.js'
@@ -137,7 +139,18 @@ function run() {
 function play() {
   send({ t: 'map_loaded', ms: 0, map: sim.map, fs_game: sim.fsGame, mode: 'zombies', sv_maxclients: 4 })
 
-  seatRoster()
+  if (a['no-join']) console.error(`[sim ${instance}] nobody joins (--no-join)`)
+  else seatRoster()
+  if (a['leave-ms']) {
+    const at = Number(a['leave-ms'])
+    const h = () => {
+      if (sim.ms < at) return
+      sim.off('event', h)
+      for (const slot of [...sim.players.keys()]) sim.disconnectPlayer(slot, 'left')
+      console.error(`[sim ${instance}] everybody left (--leave-ms ${at})`)
+    }
+    sim.on('event', h)
+  }
   // The gatecrasher joins with the lobby, not late: a late join flags the whole game
   // no-records (vault 4.4) and this is a test of IDENTITY, not of the late-join rule.
   if (a.gatecrash) {
