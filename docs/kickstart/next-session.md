@@ -78,6 +78,7 @@ Open-bug 16's `monkeytoy 1` point is moot for players now: nobody reaches the st
 15. **Launcher volume setting does nothing**: it writes `snd_volume`, which is not a dvar in this exe; the real one is `snd_menu_master`. `client.md` §10, `launcher/src/main/gamecfg.js`.
 16. **B's real WaW profile was written by the harness twice tonight** (`launch.ps1` 01:25, `mapmount.ps1` junction into his mods folder). Both now default to the private LocalAppData (`340ea09`, `e1797e8`); `monkeytoy 1` (a map's anti-cheat) was also saved into B's account settings, so **his console is off on every map until he changes it back** in Settings. `mod-compat.md` §3.
 17. Also unproven from tonight, lower: the Esc menu by B's own hand and on the box through the site (`esc-menu.md` §8); the 59 New maps with a client (19 have ≥110 MB zones; `dedi.md` §20.4); a real launcher Play against the join fix on the box (`client.md` §11b); the pre-launch mod file check through a signed-in launcher (`mod-compat.md` §9); grenade classname `grenade` on T4 (`replay.md` §8.6); four players in one game; round 2.
+18. **Invisible zombies on fear_mc_2** (B, 0.2.24, 12:49 UK; only their sun shadows drawn): **narrowed, not proven.** Map files, new asset errors, Settings write-through, client/server DLL writes and Discord ruled out with evidence; the one change that lines up is B's own renderer settings (`r_aaSamples 4`, `r_specular 1`, `r_glow_allowed 1`, set in game at 01:45) — the last game in which B actually met a zombie was 00:53 with 2 / 0 / 0 (`tools/replay-contact.js`). Secondary: 5 MB largest free address block at +65 s. B's two-minute in-game toggle test and the local repro matrix: `mod-compat.md` §10. No fix written until one of them names the dvar.
 
 ## Decisions only B can make (`questions.md`, "Open at handoff")
 
@@ -98,6 +99,7 @@ Older and still open: aim assist on Verified boards; solo-on-a-dedi follows co-o
 1a. Mouse: the three one-minute runs at 1000 Hz from `client.md` §1f ("What B tests"): run 1 `ENW_FRAMETIME=1`, run 2 `ENW_FRAMETIME=1 ENW_RAW_MOUSE_WOW64FIX=0`, run 3 `ENW_FRAMETIME=1 ENW_RAW_MOUSE_BUFFER=0`; turn steadily and flick; send the three `%LOCALAPPDATA%\ENWZombies\logs\enw-<pid>.log` files and which run felt best.
 2. Settings → turn the console back on (a map saved `monkeytoy 1` into your account).
 3. Play fear_mc_2 on the box again: it should no longer lag. If it does, the box log now says why.
+3a. fear_mc_2 invisible zombies (open bug 18): in the game, when a zombie is invisible, Esc → Settings → Graphics: specular map **off** → look; glow **off** → look; anti-aliasing **2x → Apply** → look. Tell us which step brought them back (or none). `mod-compat.md` §10.
 4. If a game freezes, send `%LOCALAPPDATA%\ENWZombies\logs\hang-*.dmp` and the `enw-<pid>.log` beside it.
 
 ## How to run things

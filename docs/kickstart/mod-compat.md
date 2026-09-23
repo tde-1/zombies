@@ -230,3 +230,75 @@ their next Play.
   through a signed-in launcher (the site must be on this code to serve the loose files at all).
 * **Mod-owned dvars from scripts inside `.iwd`s** are not scanned (zip). No archived map is known to
   need it; a mod that does would keep the old read-back behaviour for those dvars.
+
+## 10. Invisible zombies on fear_mc_2 (B, 2026-09-23 12:49–12:51 UK) — narrowed, not proven
+
+**What B saw** (`tmp/shot-invisible.png`, launcher 0.2.24, DLL `10ba8544` both sides, match
+`m_e0690140`, client pid 5840): from the start, zombies are drawn **only as their sun shadows**
+(`sm_enable 1` shadow-map shadows, arms-out Minecraft pose). The counter counts them, they down him,
+the replay has them at 30 units from him. No model.
+
+**What that picture already rules out.** A shadow-map shadow with the right shape, pose and position
+means the client has the entity, a loaded xmodel, a valid animated pose and a position: the server
+sent it, with a model, every snapshot. What is missing is only the **lit (main) pass** of those
+models. The engine hides an entity from a client either by not sending it or by EF_NODRAW-style
+flags, and both remove the shadow too. The map's scripts never hide zombies per player: the only
+`SetInvisibleToPlayer` callers in `mod.ff` and `nazi_zombie_fear_mc_2.ff` are the hacker, perks,
+box, betty, `ds.gsc` and the teleporter triggers (inflated both zones and searched).
+
+**Evidence, each checked, not assumed:**
+
+| # | suspect | verdict | evidence |
+|---|---|---|---|
+| a | map files differ client ↔ box | **ruled out** | SHA-256 of `fortress.iwd` (`704132f9…`), `gumball.ff`, `gumball_patch.ff`, `trxture_pack.iwd`, `_patch.ff` equal on B's PC and the box; `mod.ff` / map `.ff` equal already (brief). B's copies are unchanged since 09-22 17:49 |
+| b | a NEW asset error on the client | **ruled out** | every `Error/ERROR/WARNING` line of `logs\console-5840.log` against four of last night's fear_mc_2 client consoles (`final-fear-first`, `mcjoinB1/B5`, `net_fear_25000`): nothing new but our own `[enw]` lines and `enw_auth.cfg`. The `bo1_c_viet_zombie_*` / `c_viet_*` xmodel failures are chronic on both sides |
+| c | the Settings tab wrote a render dvar at launch | **ruled out** | `enw-5840.log` has one `settings:` line (schema loaded); no `apply`/`WRITE-THROUGH`. The write-through only runs on a change in the menu |
+| d | the launch line changed | **only by (h)** | 0.2.24's line equals last night's 03:41 line except `monkeytoy 1` and `snd_menu_master` for `snd_volume` (02:24 also had `cg_fov 120`). The render part (`r_aaSamples 4 r_specular 1 r_glow_allowed 1`, `sm_enable 1`, `r_multiGpu 1`) is identical; the 00:53 line (the last real sighting) carried none of the three, the profile then held 2 / 0 / 0 |
+| e | a new client DLL component touching the scene | **nothing found** | every code patch added since `81086d4` (diff of `client-dll/`): Cbuf text (fps_guard, settings, console), the `LdrLoadDll` detour, the `SCR_DrawScreenField` seam (existed in 0.2.20, now bound for every client), `Com_PrintMessage` tap, `recvfrom` IAT. None touches entities, models or the scene |
+| f | server DLL writes into AI entities | **nothing found** | the only new gentity write is soak's FL_GODMODE on **player** slots, and only with `ENW_DEV_KNOBS`; the replay of `m_e0690140` records `enw_dev_knobs 0`. `net_probe` writes `sv_maxRate` and (only with `ENW_NET_FORCE_WAN=1`) two call sites in the send path |
+| g | Discord's hook | **not the difference** | `discord_hook.log`: Discord attached at +6–7 s and hooked D3D9 in the good 00:53 and 02:24 sessions exactly as at +9.7 s today |
+| h | **B's renderer settings** | **the one change that lines up** | see below |
+| i | 2 GB address space | **open, secondary** | `overlay_guard`: largest free block 134.3 MB at +5 s, **5.0 MB of 74.1 MB free at +65 s** (the dev harness without Discord had 34.9 MB at +64 s, `client.md` 2026-09-23 revision). 4x MSAA at 2560x1440 and Discord's 50 MB view both eat into it |
+
+**(h) The timeline.** `infra/host-agent/tools/replay-contact.js` (new) on the box's four fear_mc_2
+replays:
+
+| match | when (UK) | closest zombie | verdict |
+|---|---|---|---|
+| `m_8a0a8e75` | 09-23 00:53 | 43 u, 61 samples < 150 u | **B met zombies** — last confirmed sighting |
+| `m_ba9c2775` | 02:24 | 1,644 u | never met a zombie (40 s, then Restart) |
+| `m_ee07e7e8` | 03:41 | 96 u, 3 samples at +27 s | B was in the Esc menu typing (03:42:27.9) and Discord crashed the game at 03:42:33 |
+| `m_e0690140` | 12:49 | 30 u, 92 samples | invisible |
+
+At 01:34 B's config still had `r_aaSamples 2`, `r_specular 0`, `r_glow_allowed 0` (`mcjoinB4`, §1).
+At **01:45** the launcher saved "1 in-game change to the account: waw" (`launcher.log`
+00:45:08Z, the bloodsport game), and from the 02:24 launch on the command line carries
+`r_aaSamples 4`, `r_specular 1`, `r_glow_allowed 1`. So **no fear_mc_2 game where B looked at a
+zombie was ever played with those three settings until today**, and "it worked last night" means
+00:53 with 2x AA, no specular, no glow. The DLL changes, `sv_maxRate 25000` (box since 03:04) and
+the settings all arrived after that sighting; only the settings act on how a model is drawn.
+
+**Not proven** — nobody may start a game on B's PC today, and a box lease has no rendering client.
+The lead is (h); which of the three dvars (or the address space, i) is unknown.
+
+**Repro, step 1 — B, in his own game, two minutes, no build:** play fear_mc_2; when a zombie is
+invisible, Esc → Settings → Graphics → quality: **specular map off** (live) → look; **glow off**
+(live) → look; **anti-aliasing 2x → Apply** (vid_restart) → look. Whichever step brings the zombies
+back is the cause (a vid_restart also frees address space, so an AA-only fix is (h) or (i); step 3
+below splits them).
+
+**Repro, step 2 — local, when B's PC is free** (game lock, invisible window, private profile, the
+d2+c1 recipe `jointest.ps1` exactly as `mcjoinB3/B4`, 2560x1440, `frame_capture_timer` shots at
+90–113 s; zombies reach a player standing at spawn by ~36 s on this map): run A = B's old set
+(`r_aaSamples 2 r_specular 0 r_glow_allowed 0`) → expect zombies drawn; run B = `4 / 1 / 1` →
+expect invisible. If B reproduces, bisect with one dvar per run. If B does NOT reproduce locally
+(a dev client has no Discord and a different address-space picture), step 3.
+
+**Step 3 — address space:** run B again with `ENW_DISCORD_HOOK=refuse` on B's machine (or Settings →
+ENW → Discord overlay Off) and read the `overlay_guard: address space` lines.
+
+**The fix, by outcome (not written — it would be a guess today):** if one dvar, the Settings
+catalogue gets a per-map override in the launcher's mod-compat layer (`launcher/src/main/modcompat.js`)
+that pins it for fear_mc_2 and says so on the Settings row, or a global cap if it reproduces on a
+stock map; if address space, lower AA automatically on maps whose largest free block after load is
+under a threshold (the `overlay_guard` measurement already exists).
