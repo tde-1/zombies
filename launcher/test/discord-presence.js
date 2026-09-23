@@ -308,7 +308,7 @@ await test('setting: on by default, one switch in the shared schema, persisted, 
   assert.equal(settings.get().discordPresence, true)
   const it = site.ALL.find((i) => i.id === 'discordPresence')
   assert.deepEqual([it.kind, it.to, it.def, it.section], ['toggle', 'key:discordPresence', true, 'enw'])
-  assert.equal(site.ALL.filter((i) => /discord/i.test(i.id)).length, 1, 'one switch')
+  assert.equal(site.ALL.filter((i) => /presence/i.test(i.id)).length, 1, 'one switch (discordOverlay is the DLL overlay gate, chat-overlay.md 13, not presence)')
   assert.ok(site.LAUNCHER_KEYS.includes('discordPresence'))
   const patch = site.toLauncherPatch({ ...site.allDefaults(), discordPresence: false })
   assert.equal(patch.discordPresence, false)
@@ -329,7 +329,8 @@ await test('main.js: presence created after the window, fed by the poll and the 
   const boot = String(fs.readFileSync(new URL('../src/main/bootflow.js', import.meta.url)))
   assert.doesNotMatch(boot, /discord|presence/i, 'the boot flow knows nothing about Discord')
   const launch = String(fs.readFileSync(new URL('../src/main/launch.js', import.meta.url)))
-  assert.doesNotMatch(launch, /discord/i)
+  // The launch path's only Discord word is the overlay gate's env (ENW_DISCORD_HOOK); nothing of presence.
+  assert.doesNotMatch(launch, /presence|discord\.js|Presence/)
 })
 
 await test('site: /hello names the application id from ZM_DISCORD_CLIENT_ID, /play carries the round, the map card is past the gate', () => {

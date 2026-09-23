@@ -1325,6 +1325,11 @@
    "id": "discordPresence",
    "dvar": "",
    "why": "the launcher's Discord rich presence, not a game setting: changed on the site or in the launcher"
+  },
+  {
+   "id": "discordOverlay",
+   "dvar": "",
+   "why": "chosen at launch: the client DLL reads ENW_DISCORD_HOOK once at start (overlay_guard, chat-overlay.md 13); changed on the site or in the launcher"
   }
  ]
 }

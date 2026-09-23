@@ -1159,3 +1159,214 @@ Scratch instance on **3461** (this worktree's build, a `VACUUM INTO` copy of the
 * **Custom maps' own character models** are not exported; the stock set stands in (9.3).
 * **Not seen on the live site** (not deployed; the coordinator merges and restarts), and not on a
   real GPU — every picture is SwiftShader.
+
+## 10. 2026-09-23 11:55 — lane 10's staged exports: checked, 7 promoted, Nacht kept
+
+The lane-10 export (`tools/maps/export_all.py`, merged `4adbf81`) wrote **108 map dirs** to
+`C:\Users\b\ZombiesDev\maps-staging\<bsp>\` before the PC froze (`_queue.txt` is tranche 2's
+75-map queue and is not an export). The 04:14 incident rule applies: staging goes live only after
+the align check and a viewer render check. Nothing was re-exported, the bucket was not touched,
+and neither 3200, `web/data` nor the tunnel was.
+
+### 10.1 What was checked, per map
+
+1. **The file.** The staged `.glb` is the **served** file (`EXT_meshopt_compression`,
+   `KHR_mesh_quantization`, WebP). It was decoded with gltf-transform + `MeshoptDecoder`, which is
+   what a browser gets. Checks: it parses; vertex and triangle counts; world-space bounds of the
+   scene and of `__world` inside ±65 536 u; strided (interleaved) buffer views counted. It is
+   **byte-identical** to `_work\raw\<bsp>\<bsp>.served.glb`, and its decoded bounds match the float
+   twin `_work\raw\<bsp>\<bsp>.opt.glb` to under 1 u (0.01–0.71 u on the shell maps; 16-bit
+   positions). The one exception is `nazi_zombie_pd`, at 1.42 u.
+2. **Align.** `mapAlign.check()` (the byteStride-aware one from `237ca5f`) on the float twin with
+   the staged sidecar, the same call `web/test/map-align.js` makes. `mapAlign` cannot read meshopt,
+   which is why the twin is used, and step 1 is what ties the twin to the served bytes. Pass means
+   a shell inside ±65 536 u, at least one spawn standing on the shell (−2..64 u), window goals
+   median ≤ 70 u and max ≤ 90 u from a wall (the Nacht test's limits), and no `script_model` anchor
+   more than 1 u off its map_ents origin. For Nacht, the 10/0 test itself was also run
+   (`node web/test/map-align.js <dir>`).
+3. **Render.** The §9.5 harness: a scratch site on **3471** (main's server and the 11:46 client
+   build, which carries the meshopt decoder), a `VACUUM INTO` copy of the live DB, `ZM_MAPS_DIR`
+   set to a scratch copy of the candidates, `ZM_REPLAY_PULL=off`, and headless Edge (SwiftShader)
+   over CDP. Stock maps opened their own replay (`m_6d80aa20` Nacht, `m_c645886a` Verrückt,
+   `m_08420c53` Der Riese). The other maps have no replay, so they opened `m_6d80aa20` with its
+   track response rewritten over CDP `Fetch` (map + `map_export`). The viewer then fetches
+   `/mapdata/<bsp>/<bsp>.glb` the same way it would for a real game there ("carrier" below).
+   Pass means `__world` is in the scene, meshes and textures are loaded, there is no "No world
+   model" note and no page exception, the in-browser `__world` box equals the align box to 1 u,
+   and an eye-level shot from the spawn in both directions shows the map (looked at, not only
+   measured).
+
+Scripts: `tmp\promote\{validate.cjs,render.mjs}` in the main checkout (untracked, not committed).
+Results: `tmp\promote\results.json`, `render.log`. Shots: `tmp\promote\shots\`.
+
+### 10.2 Result
+
+**108 checked. 107 decode clean. 8 pass align and render, and 7 of those were promoted.** The
+100 without a shell were not promoted.
+
+| Cause | Maps | Count |
+|---|---|---|
+| **No world shell.** Husky's game launch (`husky-map.ps1`, `waw-geo` copy) hit a Steam Error dialog, *"Application load error 5:0000065434"*, and the game exited before the map loaded. These are props + sky only, and align cannot pass without a shell | every custom map except the four below | 99 |
+| No world shell: another `CoDWaW.exe` held the lock | `nazi_zombie_beachtown` | 1 |
+| …and a node 200 490 u out (scene bounds fail ±65 536) | `nazi_zombie_pd` (one of the 100) | (1) |
+| Not staged at all (export failed; nothing to check) | `nazi_zombie_fear_mc_2` (optimize/prune), `bridge_zombie` (MemoryError), `water` (map_ents colour `'.77 .713 .713'`) | 3 |
+
+`bcast` is listed as "check, extent 1 333 696" in `_work\export_all\results.md`. The staged file is
+a later re-export made after `e0db3a0`'s ±65 536 cull, and it passes (9 408 × 15 936).
+
+**Promoted** to `C:\Users\b\ZombiesDev\maps\<bsp>\`: `nazi_zombie_asylum`, `nazi_zombie_sumpf`,
+`nazi_zombie_factory`, `aliendefense`, `bank_job`, `battlestar_galactica`, `bcast`. Each file was
+copied to a temp name and renamed into place, then `cmp`'d against staging. Backups of the files
+this replaced: `maps\_work\nazi_zombie_factory.pre-promote\` (the §8.10 props-only Der Riese,
+14.3 MB) and `maps\_work\nazi_zombie_prototype.pre-promote\` (the 8.12 Nacht, identical to
+`.pre-exportall`).
+
+**Der Riese has one outlier.** 28 of 29 window goals are 52 u (median) from a wall, but the goal
+at (982, −2462, 80) is 304 u from any wall and has no shell floor under it. The geometry around
+it sits at z 129–917, so this goal is probably an entry from below or outside what Husky exports.
+With 5/5 spawns and 41 anchors at 0.00 u it was promoted. The file it replaced had no shell at all.
+
+**Nacht did not change.** The staged Nacht (6.95 MB, meshopt) matches the live 8.12 export on
+every number: 12/0 on `map-align.js`, span 12 288 × 11 584, window goals 57.3 / 61.3 u, trucks
+0.00 u, first tick 1.0 u. Its render shows the window walls and frames at both window goals,
+matching the live file shot for shot (`nacht_new-*` vs `nacht_old-*`, mean pixel difference 3–8
+of 255). It was promoted and then **reverted within minutes**: `web/test/map-align.js` (part of
+`npm test`) reads the live `ZombiesDev\maps\nazi_zombie_prototype` file, and `mapAlign.js` has no
+meshopt or int16 reader, so the test crashed (`BYTES_PER_ELEMENT`). The live file is the 8.12
+export again, byte-identical to `.pre-exportall`, with its mtime kept so its URL version is
+unchanged. `map-align.js` is 12/0 again. **To ship the 7 MB Nacht,** either point
+`map-align.js` at `_work\raw\...\opt.glb` or give `mapAlign` a meshopt decode. Then copy
+`maps-staging\nazi_zombie_prototype\*` over.
+
+### 10.3 Live
+
+`https://zombies.enw.gg/mapdata/<bsp>/<bsp>.glb` with `Range: bytes=0-1023` → **206** and the
+promoted size, for all 7 maps, with **no password and no bucket 302** (the bucket holds none of
+them). `.meta.json` → the staged `built_at`, `encoding` meshopt. Nacht → `bytes 0-15/39499488`
+after the revert. The mount is the whole directory, so no restart was needed. `/replay/<id>` is
+401 behind the gate, as expected. **No promoted map was opened in the live viewer**, because the
+gate needs a typed password. The build that was rendered is the one the live process serves
+(`dist` 11:46).
+
+### 10.4 Not proven / for the coordinator
+
+* **IP.** `/mapdata` is gate-exempt, so four **custom** maps (`aliendefense`, `bank_job`,
+  `battlestar_galactica`, `bcast`) are now public geometry and textures, not just the stock four.
+  §8's carve-out was written for stock maps. Delete those four dirs if that is not wanted.
+* The 100 props + sky exports are viewer-ready (`Props and sky only.` + a grid, §8.10's old Der
+  Riese path) and position-checked where they have anchors, but are **not promoted**. Their shells
+  need Husky on a working `waw-geo` launch, which means a `game.lock` hold, and the Steam load
+  error has to be fixed first.
+* Carrier renders put Nacht's recorded actors in another map. Those shots test the geometry only.
+* Every picture is SwiftShader. A real GPU and B's eye remain the proof.
+
+| Map | MB | Align (spawns on shell · window goals median/max · anchors on origin/listed) | Render | Promoted | Why |
+|---|---|---|---|---|---|
+| nazi_zombie_prototype | 6.95 | spawns 5/5, windows 57.3/61.3 u, anchors 54/54 | ok: 1877 meshes, 149 tex | **no** (tried, reverted) | passes 12/0 and renders the window walls, but web/test/map-align.js reads the live file and crashes on meshopt; 8.12 export kept |
+| nazi_zombie_asylum | 10.50 | spawns 9/9, windows 48.1/61.5 u, anchors 60/64 | ok: 3154 meshes, 231 tex | **yes** | replaces nothing |
+| nazi_zombie_sumpf | 12.85 | spawns 5/5, windows 51.7/56.3 u, anchors 60/64 | ok: 7158 meshes, 192 tex (carrier) | **yes** | replaces nothing |
+| nazi_zombie_factory | 12.28 | spawns 5/5, windows 52.3/304 u, anchors 41/64 (1 of 29 goals 304 u) | ok: 1892 meshes, 188 tex | **yes** | replaces the props-only 8.10 export; one window goal off (see below) |
+| aliendefense | 1.53 | spawns 5/5, anchors 14/20 | ok: 84 meshes, 48 tex (carrier) | **yes** | new |
+| bank_job | 2.42 | spawns 5/5, windows 45/45 u, anchors 25/35 | ok: 174 meshes, 75 tex (carrier) | **yes** | new |
+| battlestar_galactica | 2.64 | spawns 5/5, anchors 40/40 | ok: 621 meshes, 76 tex (carrier) | **yes** | new |
+| bcast | 2.65 | spawns 5/5, windows 60/60 u, anchors 62/64 | ok: 448 meshes, 120 tex (carrier) | **yes** | new |
+| ahkanto | 0.56 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| batman | 1.83 | no shell; anchors 58/64 on origin | — | no | props + sky only: Husky could not start the game |
+| boxmap | 0.40 | no shell; anchors 14/14 on origin | — | no | props + sky only: Husky could not start the game |
+| castle | 0.78 | no shell; anchors 40/40 on origin | — | no | props + sky only: Husky could not start the game |
+| chal_dual_wield | 0.59 | no shell; anchors 11/11 on origin | — | no | props + sky only: Husky could not start the game |
+| chal_harambe | 0.44 | no shell; anchors 16/16 on origin | — | no | props + sky only: Husky could not start the game |
+| chickn | 1.02 | no shell; anchors 38/38 on origin | — | no | props + sky only: Husky could not start the game |
+| christmas_zombie | 1.04 | no shell; anchors 44/48 on origin | — | no | props + sky only: Husky could not start the game |
+| cryogenic | 1.09 | no shell; anchors 62/64 on origin | — | no | props + sky only: Husky could not start the game |
+| cube | 0.55 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| cxca | 0.80 | no shell; anchors 43/46 on origin | — | no | props + sky only: Husky could not start the game |
+| dead_palace | 0.63 | no shell; anchors 32/32 on origin | — | no | props + sky only: Husky could not start the game |
+| deadfactory | 0.75 | no shell; anchors 33/33 on origin | — | no | props + sky only: Husky could not start the game |
+| dpp | 2.68 | no shell; anchors 51/52 on origin | — | no | props + sky only: Husky could not start the game |
+| escape_asylum | 1.26 | no shell; anchors 53/59 on origin | — | no | props + sky only: Husky could not start the game |
+| futurama | 0.35 | no shell; anchors 14/22 on origin | — | no | props + sky only: Husky could not start the game |
+| hghrise | 0.78 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| island | 0.66 | no shell; anchors 45/45 on origin | — | no | props + sky only: Husky could not start the game |
+| jigsaw | 1.37 | no shell; anchors 47/64 on origin | — | no | props + sky only: Husky could not start the game |
+| killhouse | 2.45 | no shell; anchors 57/57 on origin | — | no | props + sky only: Husky could not start the game |
+| kingdom_hearts | 1.49 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| labrats2 | 0.67 | no shell; anchors 15/15 on origin | — | no | props + sky only: Husky could not start the game |
+| lewl | 1.35 | no shell; anchors 55/64 on origin | — | no | props + sky only: Husky could not start the game |
+| matrix | 0.68 | no shell; anchors 30/30 on origin | — | no | props + sky only: Husky could not start the game |
+| mr_freeze | 1.33 | no shell; anchors 35/42 on origin | — | no | props + sky only: Husky could not start the game |
+| mw2rust | 0.56 | no shell; anchors 15/15 on origin | — | no | props + sky only: Husky could not start the game |
+| nacht_der_toten | 0.54 | no shell; anchors 33/33 on origin | — | no | props + sky only: Husky could not start the game |
+| nacht_reimagined | 2.20 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| navidad_p_zombie | 1.46 | no shell; anchors 58/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_arena | 0.23 | no shell; anchors 5/5 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_arkham | 2.27 | no shell; anchors 41/48 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_beachtown | 0.72 | no shell; anchors 51/51 on origin | — | no | props + sky only: Husky could not start the game (game already running) |
+| nazi_zombie_bloodsport | 1.07 | no shell; anchors 40/40 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_blut | 0.73 | no shell; anchors 40/40 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_bored | 0.64 | no shell; anchors 12/12 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_cargo | 1.53 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_crazyplace | 1.03 | no shell; anchors 25/25 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_dcv2 | 1.09 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_denial2 | 1.02 | no shell; anchors 32/32 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_derberg | 1.87 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_dome_snow | 0.70 | no shell; anchors 30/30 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_dt2 | 1.44 | no shell; anchors 39/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_enclosed | 0.72 | no shell; anchors 40/40 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_fivenights | 0.63 | no shell; anchors 11/11 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_forest | 0.93 | no shell; anchors 45/47 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_hanoizom | 0.97 | no shell; anchors 56/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_herren | 1.58 | no shell; anchors 46/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_hex_tower | 0.42 | no shell; anchors 16/16 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_hijacked | 1.50 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_hotelv2 | 1.25 | no shell; anchors 39/39 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_illuminati_island | 1.71 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_ils | 2.09 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_inferno | 3.20 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_iplay2 | 0.63 | no shell; anchors 61/61 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_johndoe | 2.33 | no shell; anchors 62/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_legion | 2.19 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_leviathan | 2.09 | no shell; anchors 51/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_library | 1.41 | no shell; anchors 39/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_lorkeep | 1.71 | no shell; anchors 28/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_malibu | 2.72 | no shell; anchors 60/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_mine | 2.11 | no shell; anchors 52/52 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_monopoly | 0.71 | no shell; anchors 32/32 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_octogonal | 0.42 | no shell; anchors 16/16 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_orbit | 1.94 | no shell; anchors 57/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_path | 0.62 | no shell; anchors 13/13 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_pd | 2.74 | no shell; anchors 57/64 on origin | — | no | props-only AND a node 200 490 u out (bounds fail) |
+| nazi_zombie_perk | 0.98 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_pogreb | 1.34 | no shell; anchors 57/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_poke | 1.87 | no shell; anchors 55/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_prison | 1.75 | no shell; anchors 60/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_puns | 0.91 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_rats | 1.52 | no shell; anchors 61/61 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_rc | 0.89 | no shell; anchors 32/32 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_relax | 0.55 | no shell; anchors 24/24 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_rooms | 1.80 | no shell; anchors 25/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_school | 1.97 | no shell; anchors 61/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_shore | 0.74 | no shell; anchors 23/24 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_snowglobe | 2.34 | no shell; anchors 35/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_spruktbyl | 0.87 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_tank | 2.41 | no shell; anchors 56/57 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_temple | 1.79 | no shell; anchors 48/49 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_test | 2.97 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_test1 | 0.76 | no shell; anchors 26/34 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_v2beta | 1.42 | no shell; anchors 49/50 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_wahnsinn | 1.88 | no shell; anchors 59/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nazi_zombie_zhunterz | 1.57 | no shell; anchors 51/59 on origin | — | no | props + sky only: Husky could not start the game |
+| nightclub | 3.54 | no shell; anchors 57/64 on origin | — | no | props + sky only: Husky could not start the game |
+| nuketown | 3.23 | no shell; anchors 61/64 on origin | — | no | props + sky only: Husky could not start the game |
+| number2 | 1.02 | no shell; anchors 54/54 on origin | — | no | props + sky only: Husky could not start the game |
+| salaj_dust2 | 0.93 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| sanatorium | 2.72 | no shell; anchors 59/64 on origin | — | no | props + sky only: Husky could not start the game |
+| shinomori | 1.08 | no shell; anchors 46/58 on origin | — | no | props + sky only: Husky could not start the game |
+| thirty_seven | 2.16 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| ugx_artemovsk | 1.99 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |
+| ugxm_garage | 0.64 | no shell; anchors 34/34 on origin | — | no | props + sky only: Husky could not start the game |
+| ut_box_map | 0.36 | no shell; anchors 11/11 on origin | — | no | props + sky only: Husky could not start the game |
+| zm_hospital | 1.35 | no shell; anchors 63/64 on origin | — | no | props + sky only: Husky could not start the game |
+| zm_nuked | 1.64 | no shell; anchors 60/61 on origin | — | no | props + sky only: Husky could not start the game |
+| zombie_maze | 1.08 | no shell; anchors 38/39 on origin | — | no | props + sky only: Husky could not start the game |
+| zombie_town | 2.16 | no shell; anchors 64/64 on origin | — | no | props + sky only: Husky could not start the game |

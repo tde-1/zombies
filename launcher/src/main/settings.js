@@ -51,11 +51,14 @@ export const DEFAULT_SETTINGS = {
   rawMouse: true,
   // Discord Rich Presence (discord.js). Off clears it at once.
   discordPresence: true,
+  // The client DLL's gate on Discord's in-game overlay hook (overlay_guard.cpp,
+  // chat-overlay.md 13): auto | allow | refuse, passed as ENW_DISCORD_HOOK.
+  discordOverlay: 'auto',
 }
 
 // The keys the site's /settings page also holds (web wawSettings.js LAUNCHER_KEYS), so a
 // change to any of them moves gameUpdatedAt and the newer copy wins.
-export const GAME_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'waw', 'wawBinds']
+export const GAME_KEYS = ['mode', 'display', 'resolution', 'vsync', 'fov', 'maxFps', 'showFps', 'sensitivity', 'rawMouse', 'discordPresence', 'discordOverlay', 'waw', 'wawBinds']
 
 function read(file, fallback) {
   try { return { ...fallback, ...JSON.parse(fs.readFileSync(file, 'utf8')) } } catch { return { ...fallback } }
@@ -130,6 +133,8 @@ export function get(steamid = null) {
 // Validation, in one place, because these values end up on a command line the engine
 // parses itself and in a config.cfg the engine execs. A bad `resolution` is not a
 // cosmetic problem: `+set r_mode 1920 x 1080` is three arguments.
+export const DISCORD_OVERLAY = ['auto', 'allow', 'refuse']
+
 export function validate(patch = {}) {
   const out = { ...patch }
   const notes = []
@@ -149,6 +154,7 @@ export function validate(patch = {}) {
   if ('volume' in out && out.volume !== null) out.volume = Math.min(1, Math.max(0, Number(out.volume) || 0))
   if ('rawMouse' in out) out.rawMouse = out.rawMouse !== false
   if ('discordPresence' in out) out.discordPresence = out.discordPresence !== false
+  if ('discordOverlay' in out && !DISCORD_OVERLAY.includes(out.discordOverlay)) { notes.push(`discordOverlay "${out.discordOverlay}" is not one of ${DISCORD_OVERLAY.join('/')}; kept the saved one`); delete out.discordOverlay }
   if ('sensitivity' in out && out.sensitivity !== null) {
     const n = Number(out.sensitivity)
     if (Number.isFinite(n) && n > 0 && n <= 100) out.sensitivity = Math.round(n * 1000) / 1000

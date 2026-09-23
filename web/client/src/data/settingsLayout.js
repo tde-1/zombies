@@ -41,7 +41,7 @@ export const GROUPS = [
   { tab: 'controls', id: 'look', label: 'look', items: binds('look'), keys: true },
   { tab: 'game', id: 'game', label: 'game', items: ['cg_mature', 'cg_subtitles', 'hud_enable', 'cg_drawCrosshair', 'monkeytoy'] },
   // Drawn on the ENW tab under EnwSection (pages/Settings.jsx).
-  { tab: 'enw', id: 'discord', label: 'discord', items: ['discordPresence'] },
+  { tab: 'enw', id: 'discord', label: 'discord', items: ['discordPresence', 'discordOverlay'] },
 ]
 
 // Shorter, Gaff-style row labels. Anything not here uses the game's own label, lowercased.
@@ -84,6 +84,7 @@ export const LABELS = {
   cl_freelook: 'free look',
   rawMouse: 'raw input',
   discordPresence: 'rich presence',
+  discordOverlay: 'discord overlay',
   cg_mature: 'mature content',
   cg_subtitles: 'subtitles',
   hud_enable: 'hud',
@@ -98,6 +99,7 @@ export const HINTS = {
   r_picmip_manual: 'manual unlocks the three below',
   snd_losOcclusion: 'muffles sounds behind walls',
   rawMouse: 'fixes high polling rate mice',
+  discordOverlay: 'auto turns it off when a map is short of memory',
 }
 
 // Shorter words for the segmented buttons, keyed by item id then stored value.
@@ -106,6 +108,7 @@ export const OPTION_WORDS = {
   r_texFilterMipMode: { Unchanged: 'auto', 'Force Bilinear': 'bilinear', 'Force Trilinear': 'trilinear' },
   r_picmip_manual: { 0: 'auto', 1: 'manual' },
   maxFps: { 250: '250' },
+  discordOverlay: { auto: 'auto', allow: 'on', refuse: 'off' },
 }
 
 export const labelOf = (it) => LABELS[it.id] || String(it.label).toLowerCase()
