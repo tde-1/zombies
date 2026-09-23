@@ -95,6 +95,27 @@ export async function flush(endpoint) {
   return { sent, kept }
 }
 
+// Windows closes a "not responding" game with this exit code (0xCFFFFFFF). B's zombie_town
+// hang (2026-09-23) ended with it, after the player closed the frozen window.
+export const HUNG_EXIT_CODE = 3489660927
+
+// The one line the player sees when a game ends badly (lane CL, 2026-09-23: B's game froze
+// loading Town of the Dead and the launcher said nothing at all). `session` is the DLL's
+// session-<pid>.json; its `exit` is the verdict ('crash' | 'hang' | 'error' | 'quit').
+// Null when there is nothing to say: a normal quit, the launcher's own stop, or an engine
+// error the game already showed ('error': the lockdown screen told the player why).
+export function gameEndNotice({ session = null, exitCode = null, stoppedByUs = false, map = null } = {}) {
+  if (stoppedByUs) return null
+  const verdict = String(session?.exit || '')
+  const on = map ? ` on ${map}` : ''
+  const hung = verdict === 'hang' || exitCode === HUNG_EXIT_CODE || exitCode === -805306369
+  if (verdict === 'crash') return `World at War crashed${on}. We have the logs.`
+  if (hung) return `World at War froze${on}. We have the logs.`
+  if (verdict === 'quit' || verdict === 'error') return null
+  if (typeof exitCode === 'number' && exitCode !== 0) return `World at War closed unexpectedly${on}. We have the logs.`
+  return null
+}
+
 // The short plain message the player actually sees. No IDs, no stack, no apology loop.
 export function playerMessage(kind) {
   switch (kind) {

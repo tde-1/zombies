@@ -44,6 +44,7 @@ import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
 import { Presence, presenceFor } from './discord.js'
 import { Telemetry, defaultDirs as telemetryDirs } from './telemetry/index.js'
+import { readSession } from './telemetry/collect.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RENDERER = path.resolve(HERE, '..', 'renderer')
@@ -1330,6 +1331,25 @@ function wireIpc() {
         })
       }
       if (p.phase === 'failed') await reportCrash('game_crash', new Error(p.detail || 'the game ended unexpectedly'), { map: opts.map })
+      else if (tele.started?.pid) {
+        // A crash or a freeze gets one terse line (lane CL: B's zombie_town hang got none).
+        // The DLL's session-<pid>.json is the verdict; Steam's relaunch may own the record.
+        try {
+          const pidsSeen = [...(flow.launch?.pids || [tele.started.pid])]
+          const session = pidsSeen.map((x) => readSession(x, { logs: P.logs })).find((s) => s && s.exit && s.exit !== 'unknown') || null
+          const snap = flow.snapshot()
+          const text = crash.gameEndNotice({
+            session,
+            exitCode: tele.exit?.code ?? null,
+            stoppedByUs: /ended by the player|you cancelled|launcher is closing|stopped by the launcher/i.test(p.detail || ''),
+            map: snap.title || snap.map || opts.map || null,
+          })
+          if (text) {
+            log('play', `told the player: ${text} (session exit ${session?.exit || 'none'}, code ${tele.exit?.code ?? '?'})`)
+            push('toast', { kind: 'error', text })
+          }
+        } catch (e) { log('play', `end-of-game notice skipped: ${e.message}`) }
+      }
       // Give the referee a moment to notice the game is gone and write its footer,
       // then stop polling. Without the delay we stop the relay before the summary
       // exists and the replay pointer is never posted.
