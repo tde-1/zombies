@@ -7,7 +7,8 @@
 // 2026-09-23 (lane R1, B's ask "the replay rate looks too low"): zombies and grenades were
 // every OTHER frame (10 Hz); they are every frame now. Measured on the box's real games
 // before the change: players 20.0 Hz, zombies ~8 Hz average (10 Hz while any are up),
-// 1.25-2.17 MB per game-hour, mean 1.55. The size after is in replay-events-v1.md section 4.
+// 1.43 MB per game-hour pooled over 18 games (0.68-2.17 each). After: ~2.3 projected,
+// replay-events-v1.md section 4.
 //
 // The wire shape is `snap` from docs/protocol/game-link-v0.md; the new events are
 // docs/protocol/replay-events-v1.md. The event logic is pure and unit-tested
