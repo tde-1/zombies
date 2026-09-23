@@ -1183,11 +1183,17 @@ class HostAgent {
     })
     this.site?.status({ state: 'booting', match_id: asg.match_id, instance: game.instance.id, nonce: asg.nonce })
     game.referee.once('live', () => this.site?.status({ state: 'live', match_id: asg.match_id, instance: game.instance.id }))
-    const waitReady = setInterval(() => {
-      if (game.conn) { clearInterval(waitReady); this.site?.status({ state: 'ready', match_id: asg.match_id, instance: game.instance.id, port: game.instance.port }) }
-      if (game.finished) clearInterval(waitReady)
-    }, 250)
-    waitReady.unref?.()
+    // READY MEANS THE MAP IS LOADED, not "the link is up" (coordinator, 2026-09-23 02:30).
+    // The launcher launches the client the moment it sees `ready`, and since 0.2.17 the
+    // client connects on its first frame; on bridge_zombie B's connect reached SV_DirectConnect
+    // 140 ms BEFORE the dedi opened its join-in-progress gate (dedi.md 21) and was refused
+    // with "cannot join a game in progress". Saying `ready` at `map_loaded` puts the client's
+    // own ~3 s load after the gate opens on every map, however slowly the box loads it.
+    const sendReady = () => {
+      if (game.finished) return
+      this.site?.status({ state: 'ready', match_id: asg.match_id, instance: game.instance.id, port: game.instance.port })
+    }
+    game.once('map_loaded', sendReady)
   }
 
   async reportStatus() {
