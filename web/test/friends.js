@@ -331,5 +331,9 @@ async function partB() {
   try { await partB() } catch (e) { fail++; out.push(['FAIL', `part B crashed — ${e.stack}`]) }
   for (const [k, n] of out) console.log(`${k} ${n}`)
   console.log(`\nfriends: ${pass} passed, ${fail} failed`)
-  process.exit(fail ? 1 : 0)
+  // Not process.exit() straight away: on Windows (node 24) exiting while a handle from
+  // part A is still closing trips libuv's `!(handle->flags & UV_HANDLE_CLOSING)` assertion
+  // (0xC0000409), which breaks npm test's && chain after a green run. Let handles close first.
+  process.exitCode = fail ? 1 : 0
+  setTimeout(() => process.exit(process.exitCode), 500).unref()
 })()
