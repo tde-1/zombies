@@ -415,6 +415,26 @@ if (!GUIDES_ONLY) importPipelineMaps()
 if (args.has('--catalogue')) importCatalogue()
 if (args.has('--guides')) importGuides()
 
+// Catalogue twins (lib/catalogueTwins.js, 2026-09-23): a real map that is visible now hides
+// the catalogue stub of the same map and records the link, so "Cheese Cube Unlimited: not
+// playable" never sits beside the real one. Ambiguous title matches are listed, not hidden.
+function hideCatalogueTwins() {
+  const twins = require('../lib/catalogueTwins')
+  const normOf = {}
+  const ex = readJson(path.join(WORK, 'reports', 'extract.json'))
+  for (const e of Array.isArray(ex) ? ex : []) for (const m of e.mods || []) if (m.map && e.norm) normOf[m.map] = e.norm
+  const p = twins.plan(db, { normOf })
+  const fresh = p.hide.filter((h) => {
+    const r = db.prepare('SELECT hidden, superseded_by FROM maps WHERE key=?').get(h.cat)
+    return r && (!r.hidden || r.superseded_by !== h.real)
+  })
+  for (const h of fresh) console.log(`  catalogue twin ${DRY ? 'would be ' : ''}hidden: ${h.cat} -> ${h.real} (${h.why})`)
+  for (const a of p.ambiguous) console.log(`  catalogue twin AMBIGUOUS, left visible: ${a.cat} ~ ${a.reals.join(', ')} (${a.why})`)
+  if (!DRY) twins.apply(db, { hide: fresh })
+  stats.twins = fresh.length
+}
+if (!GUIDES_ONLY) hideCatalogueTwins()
+
 const c = (t, w) => db.prepare(`SELECT COUNT(*) c FROM ${t}${w ? ' WHERE ' + w : ''}`).get().c
 if (!GUIDES_ONLY) console.log(DRY ? '(dry run, nothing written)' : 'imported:',
   `+${stats.maps} maps, ${stats.updated} updated, ${stats.catalogued} catalogued, ` +

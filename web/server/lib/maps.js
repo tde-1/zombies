@@ -331,8 +331,15 @@ function list(o = {}) {
 
 // Everything the map page needs in one call, the way Movement's MapDashboard is fed.
 function detail(key, { me = null } = {}) {
-  const row = bySlug(key)
+  let row = bySlug(key)
   if (!row) return null
+  // A catalogue stub a real map superseded (lib/catalogueTwins.js): its old slug shows the
+  // real map, and says so, so the page can put the real URL in the address bar.
+  let redirectedFrom = null
+  if (row.superseded_by) {
+    const real = byKey(row.superseded_by)
+    if (real) { redirectedFrom = { key: row.key, slug: row.slug || row.key }; row = real }
+  }
   const versions = db.prepare('SELECT * FROM map_versions WHERE map_id=? ORDER BY latest DESC, id DESC').all(row.id)
   const latest = versions.find((v) => v.latest) || versions[0] || null
   const manifest = latest ? db.prepare('SELECT * FROM manifests WHERE map_version_id=?').get(latest.id) : null
@@ -361,6 +368,7 @@ function detail(key, { me = null } = {}) {
     // the map page draws no section at all.
     guides: require('./guides').forMap(row.key),
     download: downloadOf(row.key, latest),
+    redirected_from: redirectedFrom,
   }
 }
 
