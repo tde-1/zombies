@@ -1255,7 +1255,7 @@ windows are created `WS_EX_NOACTIVATE`, its startup `ShowWindow(SW_SHOW)` become
 samples foreground, both round-2 runs). Never set by the launcher.
 
 
-## 10. 2026-09-23 — the ENW Esc menu (`components/pause_menu.cpp`), branch `esc-menu`
+## 2026-09-23 — the ENW Esc menu (`components/pause_menu.cpp`), branch `esc-menu`
 
 B: *"Replace the escape menu with our custom menu: Resume, Restart game (tells the dedicated server
 to restart), Exit game, the chat, and invites from your friends and friends online with what maps

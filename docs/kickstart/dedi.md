@@ -2870,7 +2870,7 @@ service instance and booted on slot 0 with the new DLL and host code: `map_loade
 * The `linked (… Sep 22 2026 20:28:57)` build string in the journal is still stale (§17's cosmetic
   note).
 
-## 20. 2026-09-23 — a player's Restart game (`restart_request.cpp`, esc-menu lane)
+## 2026-09-23 — a player's Restart game (`restart_request.cpp`, esc-menu lane)
 
 `server/components/dedicated/restart_request.cpp`: userinfo `enw_req restart.<n>` (the ENW Esc
 menu's Restart) is acted on per slot, on a change only; with a host link it becomes
