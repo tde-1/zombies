@@ -113,6 +113,12 @@ export class ZombiesSim extends EventEmitter {
     // to any match are `wrong_match`, which is the safe direction.
     this.matchId = opts.matchId || null
     this.noMatchEnd = !!opts.noMatchEnd            // model a server that never says it is idle
+    // THE REAL DLL ON A WARM INSTANCE (host.md §15.4, box journal 2026-09-23 12:17-12:19):
+    // a client still connected when its game ended comes straight back into the restarted
+    // map with its old token, and an `end` then reports a result for that session if
+    // anybody connected since the last restart - round or no round. Off by default.
+    this.realWarm = !!opts.realWarm
+    this.connectedSinceRestart = 0
     this.startedMs = 0
     this.loadedMs = 0
 
@@ -173,6 +179,7 @@ export class ZombiesSim extends EventEmitter {
   /** A client connecting: announce it and (if it presented a token) wait for `auth`. */
   connectPlayer(spec) {
     const p = this.addPlayer(spec)
+    this.connectedSinceRestart++
     this.emitEv({
       t: 'player_connect', slot: p.slot, name: p.name,
       // `steamid`/`xuid` carry the id the SITE put in the invite token. It is sent on
@@ -678,6 +685,7 @@ export class ZombiesSim extends EventEmitter {
     // refuses every legitimate token with `wrong_match`, which is the worse failure
     // (referee.md §13.4). So does this.
     this.matchId = matchId || null
+    this.connectedSinceRestart = 0
     this.emitEv({ t: 'log', level: 'info', msg: 'map_restart (' + reason + ')' })
     this.emitEv({ t: 'map_loaded', map: this.map, fs_game: this.fsGame, mode: 'zombies', sv_maxclients: 4 })
     this.emit('restart', { reason, roster, matchId: this.matchId, simRoster: this.pendingSimRoster || null })
@@ -723,7 +731,7 @@ export class ZombiesSim extends EventEmitter {
         // also how a warm instance is told its next lease id, and an instance that has
         // never seen a round has no result to report; emitting one would post a game
         // nobody played.
-        if (ok && !this.over && this.round > 0) this.endGame(cmd.reason || 'host_end')
+        if (ok && !this.over && (this.round > 0 || (this.realWarm && this.connectedSinceRestart > 0))) this.endGame(cmd.reason || 'host_end')
         this.reply(cmd, ok, undefined, ok ? undefined : 'command buffer unavailable')
         // `sim_roster` is a SIMULATOR-ONLY field and a real DLL ignores it, which the
         // protocol's "unknown fields are ignored by both sides" rule guarantees. It exists

@@ -7,7 +7,9 @@ import path from 'node:path'
 import { Referee } from '../lib/referee.js'
 import { ManifestStore, ManifestEvaluator, defaultManifest } from '../lib/manifests.js'
 import { ReplayWriter, verifyFile, readFooter, readChunk, readEvents } from '../lib/replay.js'
-import { issue, check, TokenGuard } from '../lib/tokens.js'
+import { issue, check, TokenGuard, checkBinding } from '../lib/tokens.js'
+import { BootQueue } from '../lib/bootqueue.js'
+import { ramPlan, parseMeminfo, MB } from '../lib/memguard.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
 import { InstanceManager, devKnobsFor, safeLeaseDvars } from '../lib/instances.js'
@@ -1058,6 +1060,136 @@ t('replay-contact: a game where the zombies never came near is not a sighting', 
   ], { near: 150 })
   eq([met.seconds, met.minDist, met.nearSamples, met.firstNearS, met.kills, met.downs, met.met], [28, 30, 2, 27, 2, 1, true])
 })
+// ---- the boot queue, the RAM guard, the returning player (host.md §15) ---------------------
+console.log('\n== boot queue / RAM guard / returning player (host.md §15) ==')
+async function at(name, fn) {
+  try { await fn(); pass++; results.push(['ok', name]); console.log(`\x1b[32m ok  \x1b[0m ${name}`) }
+  catch (e) { fail++; results.push(['FAIL', name, e.message]); console.log(`\x1b[31mFAIL \x1b[0m ${name}\n        ${e.message}`) }
+}
+{
+  const tick = () => new Promise((r) => setImmediate(r))
+  const mkq = (o = {}) => {
+    const started = []
+    const q = new BootQueue({ gateMs: 60_000, retryMs: 20, ...o })
+    const E = (id, real = false, extra = {}) => ({ id, real, start: () => { started.push(id); return true }, ...extra })
+    return { q, started, E }
+  }
+  await at('boot queue: one boot at a time; the next starts only when the one before settles', async () => {
+    const { q, started, E } = mkq()
+    q.add(E('a')); q.add(E('b')); await tick()
+    eq(started, ['a']); eq(q.position('b'), 1)
+    q.settle('a', 'map_loaded'); await tick()
+    eq(started, ['a', 'b'])
+    q.clear()
+  })
+  await at('boot queue: a lease retired while its boot is QUEUED never starts (12:12:46 -> 12:13:36 orphan)', async () => {
+    const { q, started, E } = mkq()
+    q.add(E('inst-59')); q.add(E('inst-60')); q.add(E('inst-61')); await tick()
+    eq(q.cancel('inst-60', 'lease gone'), 'queued')
+    q.settle('inst-59', 'map_loaded'); await tick()
+    q.settle('inst-61', 'map_loaded'); await tick()
+    eq(started, ['inst-59', 'inst-61'])
+    q.clear()
+  })
+  await at('boot queue: cancelling the ACTIVE boot releases the gate at once', async () => {
+    const { q, started, E } = mkq()
+    q.add(E('a')); q.add(E('b')); await tick()
+    eq(q.cancel('a', 'retired'), 'active'); await tick()
+    eq(started, ['a', 'b'])
+    q.clear()
+  })
+  await at('boot queue: a real player\'s boot goes ahead of every queued agent boot, FIFO among players', async () => {
+    const { q, started, E } = mkq()
+    q.add(E('agent-1')); await tick()
+    q.add(E('agent-2')); q.add(E('agent-3'))
+    q.add(E('real-1', true)); q.add(E('real-2', true)); await tick()
+    eq(q.queue.map((e) => e.id), ['real-1', 'real-2', 'agent-2', 'agent-3'])
+    for (const id of ['agent-1', 'real-1', 'real-2', 'agent-2']) { q.settle(id); await tick() }
+    eq(started, ['agent-1', 'real-1', 'real-2', 'agent-2', 'agent-3'])
+    q.clear()
+  })
+  await at('boot queue: a player\'s boot queued while an agent\'s is still being admitted goes first', async () => {
+    const { q, started, E } = mkq()
+    q.add(E('agent-1')); q.add(E('real-1', true)); await tick(); await tick()
+    eq(started, ['real-1'])
+    q.clear()
+  })
+  await at('boot queue: the gate counts from a boot\'s START, not from when it was queued', async () => {
+    const { q, started, E } = mkq({ gateMs: 60 })
+    q.add(E('a')); q.add(E('b')); await tick()
+    await new Promise((r) => setTimeout(r, 40))
+    eq(started, ['a'], 'b must still be waiting at 40 ms')
+    await new Promise((r) => setTimeout(r, 40)); await tick()
+    eq(started, ['a', 'b'], 'the 60 ms gate let b go')
+    await new Promise((r) => setTimeout(r, 30))
+    eq(q.active?.id, 'b', 'b holds its own full gate, not what was left of a\'s')
+    q.clear()
+  })
+  await at('boot queue: admit -> wait retries, drop removes the entry and says why', async () => {
+    let n = 0
+    const dropped = []
+    const { q, started, E } = mkq({ admit: async (e) => (e.id === 'x' ? { drop: 'no memory' } : (++n < 3 ? { wait: 'low' } : { go: true })) })
+    q.on('dropped', (e, why) => dropped.push([e.id, why]))
+    q.add(E('x')); q.add(E('y'))
+    await new Promise((r) => setTimeout(r, 120))
+    eq(dropped, [['x', 'no memory']]); eq(started, ['y']); ok(n >= 3, 'asked again after each wait')
+    q.clear()
+  })
+  await at('boot queue: an entry whose start() refuses (its lease went) does not hold the gate', async () => {
+    const { q, started, E } = mkq()
+    q.add({ id: 'gone', start: () => false }); q.add(E('next')); await tick(); await tick()
+    eq(started, ['next'])
+    q.clear()
+  })
+
+  const G = (id, o = {}) => ({ id, rssBytes: 400 * MB, loaded: true, warm: false, agent: false, real: false, startedAt: 1, ...o })
+  t('RAM guard: enough memory -> boot', () => {
+    eq(ramPlan({ availBytes: 1500 * MB, floorBytes: 700 * MB, instances: [] }).action, 'go')
+  })
+  t('RAM guard: a booting game\'s growth still to come is counted (a boot 1 s old has not grown yet)', () => {
+    const p = ramPlan({ availBytes: 1000 * MB, floorBytes: 700 * MB, instances: [G('i1', { loaded: false, rssBytes: 50 * MB, agent: true })] })
+    eq(p.action, 'wait'); eq(Math.round(p.effective / MB), 600)
+  })
+  t('RAM guard: an AGENT boot under the floor waits; it may retire a warm instance but never a game', () => {
+    eq(ramPlan({ availBytes: 300 * MB, floorBytes: 700 * MB, instances: [G('a1', { agent: true }), G('r1', { real: true })] }).action, 'wait')
+    const p = ramPlan({ availBytes: 400 * MB, floorBytes: 700 * MB, instances: [G('w1', { warm: true }), G('a1', { agent: true })] })
+    eq([p.action, p.victims.map((v) => v.id)], ['evict', ['w1']])
+  })
+  t('RAM guard: a PLAYER under the floor evicts warm first, then the OLDEST agent game, never a player\'s', () => {
+    const p = ramPlan({ availBytes: 4 * MB, floorBytes: 700 * MB, real: true, instances: [
+      G('r1', { real: true, startedAt: 0 }), G('a-new', { agent: true, startedAt: 9 }), G('a-old', { agent: true, startedAt: 2 }), G('w1', { warm: true, startedAt: 5 }),
+    ] })
+    eq([p.action, p.victims.map((v) => v.id)], ['evict', ['w1', 'a-old']])
+  })
+  t('RAM guard: a player with nothing left to evict boots anyway (and it says so)', () => {
+    const p = ramPlan({ availBytes: 100 * MB, floorBytes: 700 * MB, real: true, instances: [G('r1', { real: true })] })
+    eq(p.action, 'go'); ok(/anyway/.test(p.why), p.why)
+  })
+  t('RAM guard: no /proc/meminfo (Windows) -> the guard is off', () => {
+    eq(ramPlan({ availBytes: null, floorBytes: 700 * MB, instances: [] }).action, 'go')
+  })
+  t('RAM guard: /proc/meminfo is parsed (MemAvailable, and the old-kernel fallback)', () => {
+    eq(parseMeminfo('MemTotal:        3884000 kB\nMemFree:          100000 kB\nMemAvailable:       4096 kB\n'), { availableBytes: 4096 * 1024, totalBytes: 3884000 * 1024 })
+    eq(parseMeminfo('MemTotal: 1000 kB\nMemFree: 100 kB\nBuffers: 10 kB\nCached: 20 kB\n').availableBytes, 130 * 1024)
+    eq(parseMeminfo('nonsense'), null)
+  })
+
+  const site = keys.generate()
+  t('returning player: a verified client\'s OLD token re-admits them (wrong_match, replayed and expired do not apply)', () => {
+    const tok = issue(site.privateKey, { steamid: '76561198126330106', matchId: 'm_78666e6c', now: Date.now() - 20 * MIN })
+    const g = new TokenGuard(site.publicKey)
+    eq(g.admit({ token: tok, steamid: '76561198126330106' }, 'm_20612b68').reason, 'expired')
+    eq(checkBinding(site.publicKey, tok, { matchIds: ['m_78666e6c'], steamid: '76561198126330106' }).ok, true)
+  })
+  t('returning player: never for another SteamID, another match, or a token the site did not sign', () => {
+    const tok = issue(site.privateKey, { steamid: '76561198126330106', matchId: 'm_a' })
+    eq(checkBinding(site.publicKey, tok, { matchIds: ['m_a'], steamid: '76561198000000001' }).reason, 'wrong_steamid')
+    eq(checkBinding(site.publicKey, tok, { matchIds: ['m_b'], steamid: '76561198126330106' }).reason, 'wrong_match')
+    const other = keys.generate()
+    const forged = issue(other.privateKey, { steamid: '76561198126330106', matchId: 'm_a' })
+    eq(checkBinding(site.publicKey, forged, { matchIds: ['m_a'], steamid: '76561198126330106' }).reason, 'bad_signature')
+  })
+}
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`)
 if (fail) { for (const [s, n, m] of results) if (s === 'FAIL') console.log(`  FAIL ${n}: ${m}`) }
 process.exit(fail ? 1 : 0)

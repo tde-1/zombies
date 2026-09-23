@@ -56,6 +56,7 @@ const sim = new ZombiesSim({
   maxRound: Number(a['max-round'] ?? process.env.ENW_SIM_MAX_ROUND ?? 15),
   endFails: !!a['end-fails'] || process.env.ENW_SIM_END_FAILS === '1',
   noMatchEnd: !!a['no-match-end'] || process.env.ENW_SIM_NO_MATCH_END === '1',
+  realWarm: !!a['real-warm'],
   // The lease this process was started for. The real referee reads exactly this variable,
   // once, at process start (game-link-v0 `end`.`match`).
   matchId: process.env.ENW_MATCH || a.match || null,
@@ -124,6 +125,15 @@ function connectAndRun() {
 
 function run() {
   send({ t: 'hello', v: 0, instance, role, pid: process.pid, exe_sha256: '732900D158982C33E3121F0B86D22230BE79839BBCBFE3BDFC1238F408A7D64D', dll_build: `sim-${process.version}` })
+  // A real map takes 5-10 s to load on the box, and one (nazi_zombie_displace, 12:12) never
+  // did. --load-ms / --never-loads model both, so the boot queue has something to wait on.
+  if (a['never-loads']) { console.error(`[sim ${instance}] linked; this map never loads (--never-loads)`); return }
+  const loadMs = Number(a['load-ms'] || 0)
+  if (loadMs > 0) { setTimeout(play, loadMs); return }
+  play()
+}
+
+function play() {
   send({ t: 'map_loaded', ms: 0, map: sim.map, fs_game: sim.fsGame, mode: 'zombies', sv_maxclients: 4 })
 
   seatRoster()
@@ -185,6 +195,14 @@ function run() {
     // what keeps a reused instance idle between leases instead of immediately replaying
     // the same party under a match id the site never issued.
     if (!matchId) {
+      // --real-warm: what the DLL on the box does instead (12:17:02). The clients were never
+      // disconnected by the map_restart, so they re-announce themselves with the tokens
+      // they joined the last match with, and the host has to decide what to do with them.
+      if (a['real-warm'] && back.length) {
+        console.error(`[sim ${instance}] map_restart (${reason}) — no match id, but ${back.length} client(s) still connected come back with their old tokens (--real-warm)`)
+        setTimeout(() => seatRoster(back), 50)
+        return
+      }
       console.error(`[sim ${instance}] map_restart (${reason}) — no match id: WARM and idle, admitting nobody`)
       return
     }

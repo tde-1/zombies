@@ -1084,6 +1084,12 @@ class HostAgent {
       if (s.endFails) simArgs.push('--end-fails')
       if (s.noMatchEnd) simArgs.push('--no-match-end')
       if (s.gatecrash) simArgs.push('--gatecrash')
+      // The box's real-game behaviours the boot queue and the warm handoff have to survive
+      // (host.md §15, test/boot-queue.js): a slow map load, one that never loads, and the
+      // DLL's warm-instance behaviour.
+      if (s.loadMs) simArgs.push('--load-ms', String(s.loadMs))
+      if (s.neverLoads) simArgs.push('--never-loads')
+      if (s.realWarm) simArgs.push('--real-warm')
     }
     const inst = this.instances.create({
       kind: opts.kind || 'sim',
@@ -1562,6 +1568,9 @@ class HostAgent {
         noMatchEnd: !!a['sim-no-match-end'],
         gatecrash: !!a['sim-gatecrash'],
         seed: Number(asg.sim?.seed ?? 1337),
+        loadMs: asg.sim?.load_ms ?? (a['sim-load-ms'] ? Number(a['sim-load-ms']) : null),
+        neverLoads: !!asg.sim?.never_loads,
+        realWarm: !!(asg.sim?.real_warm ?? a['sim-real-warm']),
       },
     })
     // QUEUED IS SAID OUT LOUD (host.md §15). A lease waiting behind another game's boot
