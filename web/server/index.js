@@ -25,6 +25,9 @@ const { db } = require('./db/database')
 // §9): installed first, so every console line from here on is also on disk.
 const siteLog = require('./lib/telemetry/siteLog')
 siteLog.install()
+// One-time repairs of stored account settings (r_multiGpu 1 -> 0, 2026-09-23). Idempotent,
+// backs the database up before it changes a row, never throws.
+require('./lib/settingsRepairs').run()
 const authRoutes = require('./routes/auth')
 const { attach } = require('./middleware/auth')
 const presence = require('./lib/presence')
