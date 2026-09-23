@@ -3631,6 +3631,19 @@ temp + `mv` with no real player live (S2's Nacht soak `m_bd4f87b4`, fake …0003
 image; `waw-tinst-*` untouched). Rollback `/home/waw/binkw32.rollback-1b482aa2.dll`. first new game on it pending at 19:34 UTC (the next lease, MAPS zombie_maze, was waiting on the RAM guard).
 Commit `d8b580c` is on local branches only (agent pushes blocked); main needs it pushed.
 
+### 26.9 Addendum (lane REL, 20:27 UTC): S2 `snapacknowledged` notify on the box
+
+DLL **`59577dbe`** (`59577dbe7b100450e5659248f684816ff1484768beabbf9190d345987a62573b`), clean `ZombiesDev\wt-rel10`
+at `4ead149` (= `70b28f5b` + S2 `52b2169`), built with `/m:2 /nodeReuse:false` (heavy.lock held by GEO; commit
+charge 84 %, 9.4 GB free). Gate reviewed: `notify_snapshot_acknowledged()` is called only from `think_bots()`,
+reached only through `bots_server_frame`, which `post_init` installs only with `ENW_DEV_KNOBS=1` and every
+prologue byte-checked (0x635760 included); inside, only when `bot_count() > 0` (test-client slots). A game
+without the dev knobs never reaches it. No unit harness exists for bots.cpp (engine-bound). The build warns
+C4405 (`add` is an asm reserved word); `dumpbin /disasm` of bots.obj shows `call dword ptr [ebp-18h]` =
+`at(0x69A8D0)`, so the call is correct, with esi/edi saved. Swapped into the 7 production copies by temp + `mv`
+(host not restarted; S2's ILS soak `m_2a9a49f4`, fake …0003, kept running on its loaded image). Rollback
+`/home/waw/binkw32.rollback-70b28f5b.dll`. Unproven until S2's next bot lease boots on it.
+
 ## 28. 2026-09-23 evening — lane G2: the "one-hit downs" are a phantom water surface at z=0 on the dedicated server (`water_sim_off.cpp`), plus a solo-parity self-check (`solo_parity.cpp`)
 
 B, 14:00–14:27 UTC on box DLL `04a3ad6d`: Nuketown down the instant he spawned (game over in 1 s),
