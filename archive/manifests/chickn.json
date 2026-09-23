@@ -236,12 +236,12 @@
       "chickn.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true,
+  "site_hidden": false,
   "asset_audit": {
-    "at": "2026-09-23T13:41:08",
+    "at": "2026-09-23T22:13:33",
     "verdict": "minor",
-    "map_loaded_runs": 1,
-    "misses": 191,
+    "map_loaded_runs": 2,
+    "misses": 192,
     "fatal": 1,
     "visible": 0,
     "visible_owner": {},
@@ -249,5 +249,37 @@
     "client_check": [],
     "static": {},
     "tool": "archive/asset_audit.py"
-  }
+  },
+  "install": {
+    "add": [
+      {
+        "file": "weapons/sp/zombie_knuckle_crack",
+        "from": "mod.ff weapon asset (OpenAssetTools Unlinker dump)",
+        "reason": "The release compiles this weapon into its zone but ships no raw weapons/sp file; with fs_game set the engine reads the raw file and otherwise gives defaultweapon under this name (retail too). archive.md s14.1.",
+        "sha256": "86d4c40057340dffaa44b0babba1bb54e543ecec413b0bb96f8bfc81165d34e1",
+        "applied": true,
+        "by": "archive/weapon_patch.py 2026-09-23"
+      }
+    ]
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95153 ms over the hold",
+    "first_error": "Could not load xanim \"pb_hold_idle_satchel\".",
+    "match": "m_59d44a8f",
+    "at": "2026-09-23T21:27:56",
+    "instance": "inst-22",
+    "com_frameTime_advance_ms": 95153,
+    "com_error": [],
+    "console_errors": [
+      "3220:Error: Could not load xanim \"pb_hold_idle_satchel\".",
+      "3221:Error: Could not load xanim \"pb_prone_hold_satchel\".",
+      "3222:Error: Could not load xanim \"pt_hold_prone_throw_satchel\".",
+      "3223:Error: Could not load xanim \"pt_hold_throw_satchel\".",
+      "3224:ERROR: Pathnode (Path) at (512 -2688 32) is in solid",
+      "3225:ERROR: Pathnode (Path) at (384 -2688 32) is in solid"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }

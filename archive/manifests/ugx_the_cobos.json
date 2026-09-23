@@ -1,0 +1,253 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ugx_the_cobos",
+  "title": "THE COBOS",
+  "source": "custom",
+  "author": "shippuden1592",
+  "released": "December 08, 2013, 11:41:21 pm",
+  "fs_game": "mods/ugx_the_cobos",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "83f3b06fb6dc3ab3efc14b0eb0fe56278e27e6778e846854d3d32fd3e5278f3f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1250,
+        1500,
+        1750,
+        2000,
+        2500,
+        3000,
+        4000,
+        4500,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_trigger name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 147,
+    "script_count": 147,
+    "entities": 3024,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500,
+      1750,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2500,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door8"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door7"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door6"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "83f3b06fb6dc3ab3efc14b0eb0fe56278e27e6778e846854d3d32fd3e5278f3f",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "door_lock_trig",
+      "end_trigger",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "laser_control",
+      "laser_hurt",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 43,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "The_Cobos.exe",
+    "original_sha256": "baa0d16d7ff9c757fc5dff380c8550b83fac2a66681b0d54a851ea5e08423873",
+    "original_size": 360207027,
+    "source_url": "https://www.mediafire.com/file/shptqbc05old6fx/The_Cobos.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T17:22:55Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_the_cobos.iwd:images/bar_menubackground.iwi",
+        "ugx_the_cobos.iwd:images/mc_customcodlogo.iwi",
+        "ugx_the_cobos.iwd:images/mc_zmlogo.iwi",
+        "ugx_the_cobos.iwd:images/menu_map_ugx_the_cobos.iwi",
+        "ugx_the_cobos.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugx_the_cobos.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_the_cobos.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_the_cobos.iwd:images/zm_farmacia_logo.iwi",
+        "ugx_the_cobos.iwd:images/zm_logo_caca1.iwi",
+        "ugx_the_cobos.iwd:images/zm_logo_coca2.iwi",
+        "ugx_the_cobos.iwd:images/zm_logo_corona.iwi",
+        "ugx_the_cobos.iwd:images/zm_logo_empe.iwi",
+        "ugx_the_cobos.iwd:images/zm_logo_empe2.iwi",
+        "ugx_the_cobos.iwd:images/zm_logo_sabri.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/thecobos/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/proxy-1-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 101.0,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 117,
+        "scripts": 30,
+        "bytes": 30611307
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78856387
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_ugx_the_cobos.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_the_cobos.ff",
+      "ugx_the_cobos_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T22:13:33",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 156,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95126 ms over the hold",
+    "first_error": null,
+    "match": "m_f1c81bb2",
+    "at": "2026-09-23T20:52:05",
+    "instance": "inst-12",
+    "com_frameTime_advance_ms": 95126,
+    "com_error": [],
+    "console_errors": [
+      "7390:Error: started from:",
+      "7394:Error: ************************************",
+      "7397:******* script runtime error *******",
+      "7401:Error: called from:",
+      "7405:Error: called from:",
+      "7409:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
+}

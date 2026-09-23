@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_complexx",
+  "title": "STRANDBURG",
+  "source": "custom",
+  "author": "Centric",
+  "released": "2017-03-14",
+  "fs_game": "mods/nazi_zombie_complexx",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_complexx.iwd": "f9dff160d7f1c785e02dbec09f212b51c0f6ab342eb164b82e242c9f4d7a998d"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_gen",
+        "ee_papdoor"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_gen, ee_papdoor look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 126,
+    "script_count": 126,
+    "entities": 1103,
+    "ee_candidates": [
+      "ee_gen",
+      "ee_papdoor"
+    ],
+    "ending_words": [
+      "doomsday_escape",
+      "fx_endgame"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf1880_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1097_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf421_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1883_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "pf528_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f9dff160d7f1c785e02dbec09f212b51c0f6ab342eb164b82e242c9f4d7a998d",
+    "map_specific_triggers": [
+      "dd_trig",
+      "doomsday_gas_trig",
+      "doomsday_radio_trig",
+      "doomsday_talk",
+      "doomsday_tower",
+      "ee_papdoor",
+      "gens_trig",
+      "grama",
+      "harrybo21_perk_trigger",
+      "shark_trig",
+      "simon_buttons",
+      "step5",
+      "switch_one",
+      "switches",
+      "wire"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Strandburg_Release_V1.2.exe",
+    "original_sha256": "cf61c6ec56f17ef31aaa62acecc0764312f9820456d1bfdfa5cd78947510f6ea",
+    "original_size": 310399343,
+    "source_url": "http://www.mediafire.com/file/1z6dm0wgkdfprnq/Strandburg_Release_V1.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T20:05:54Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending"
+    ],
+    "catalogue_description": "Disclaimer: This map was created by me in 2015 for the UGX and ZomMods contest, however the board where it was posted has since been removed and I figured that although its not the prettiest map out there, someone might have some fun with it so here ya go, enjoy also you may want to turn up your brightness ;p Strandburg is a small building complex set in the aprox. 60s-70s and consists of 3 buildings which have been put together in a way that makes getting around to certain areas rather time consuming considering the maps size. Very easy and uncomplicated layout, its just a fun little map to play maybe once and go for the Easter egg. Features: Decently complicated Easter Egg 1-4 players (although be aware some steps are quit random so if you get stuck refer to the tutorial at the bottom of this post) bo1-bo2 weapons , have fun upgrading all of them as some weapons have unique effects when upgraded. bo1-bo2 perks , 4 perk limit which can be shortened / removed with Easter Egg completion Special mystery weapon Custom wall weapon system , ammo becomes progressively more expensive And don\u2019t forget the dull and bland colors Hope you enjoy this ancient treasure :p note this is the same download as I provided in 2015 so any bugs still exist , currently the only two known bugs are 1. jumping from the ladder to the jeeps causes you to get stuck and jumping from the ladder ontop of the gate lets you leave the map. 2. fence by box near second power station can be passed through on one s",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "nazi_zombie_complexx.iwd:images/loadscreen.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/strandburg/cover.jpeg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/strandburg-3.jpeg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 77.6,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks v3.0.6.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      },
+      {
+        "file": "mp_rollon_stg44_t6.iwd",
+        "entries": 39,
+        "scripts": 0,
+        "bytes": 2991496
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_complexx_patch.ff",
+      "nazi_zombie_complexx.iwd:animscripts/death.gsc",
+      "nazi_zombie_complexx.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

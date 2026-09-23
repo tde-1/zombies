@@ -1,0 +1,199 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zombie_xmasnight",
+  "title": "NIGHT OF THE LIVING DEAD - XMAS",
+  "source": "custom",
+  "author": "MJPWGaming",
+  "released": "December 16, 2014, 05:06:34 am",
+  "fs_game": "mods/zombie_xmasnight",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nightofthelivingdeadxmas.iwd": "dfd1bad0f00ef4c90505858475cca2696c8f1c91c426e20628fc82922cdcd408"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "holder1_part",
+        "weap_part_true",
+        "weapon1_part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "holder1_part, weap_part_true, weapon1_part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 867,
+    "ee_candidates": [
+      "holder1_part",
+      "weap_part_true",
+      "weapon1_part"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      93500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_door",
+        "top"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "top"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "itzdoor"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "itzdoor"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "spawn"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "dfd1bad0f00ef4c90505858475cca2696c8f1c91c426e20628fc82922cdcd408",
+    "map_specific_triggers": [
+      "box_trig1",
+      "box_true1",
+      "holder1",
+      "holder_true1",
+      "radio2_trigger",
+      "radio3_trigger",
+      "radio4_trigger",
+      "radio5_trigger",
+      "radio6_trigger",
+      "radio8_trigger",
+      "scare_him_now",
+      "shoot_me1",
+      "shoot_me2",
+      "shoot_me3",
+      "shoot_me4",
+      "shoot_me5",
+      "shoot_me6",
+      "weapon_buying1",
+      "weapon_s1",
+      "weapon_trues1"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Night_of_the_Living_Dead_XMAS_v1.45_.exe",
+    "original_sha256": "ec376aac52a1b1378509900cac2f47e5cbca0d2d0a01d4fd7d980534f983ca86",
+    "original_size": 246153856,
+    "source_url": "https://www.mediafire.com/file/5qq3ieagl0x6ptz/Night_of_the_Living_Dead_XMAS_%28v1.45%29.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:08:53Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nightofthelivingdeadxmas.iwd:images/fnaf2menu.iwi",
+        "nightofthelivingdeadxmas.iwd:images/logofnaf2.iwi",
+        "nightofthelivingdeadxmas.iwd:images/logoonstripes.iwi",
+        "nightofthelivingdeadxmas.iwd:images/mmlogo.iwi",
+        "nightofthelivingdeadxmas.iwd:images/specialty_fastreload_zombies.iwi",
+        "nightofthelivingdeadxmas.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nightofthelivingdeadxmas.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nightofthelivingdeadxmas.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nightofthelivingdeadxmas.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/nightofthelivingdeadxmas/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2020/12/maxresdefault-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.5,
+    "addon_iwds": [
+      {
+        "file": "nightofthelivingdeadxmas.iwd",
+        "entries": 324,
+        "scripts": 22,
+        "bytes": 158723982
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 9911
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zombie_xmasnight.ff",
+      "zombie_xmasnight_patch.ff",
+      "nightofthelivingdeadxmas.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

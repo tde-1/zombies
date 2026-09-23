@@ -1,0 +1,233 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_hobo_vil",
+  "title": "HOBO VILLE",
+  "source": "custom",
+  "author": "Weezy428",
+  "released": "2014-09-04",
+  "fs_game": "mods/nazi_zombie_hobo_vil",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_hobo_vil.iwd": "7c4eaa3e568539762724a6d65be8a2f1393062f246e96320fe05085a4a73e6a8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        2750,
+        3000,
+        4000,
+        5000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 107,
+    "script_count": 107,
+    "entities": 2327,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      2750,
+      3000,
+      4000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2750,
+        "give_ammo",
+        "vending_ammo_matic"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door14"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door14"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "7c4eaa3e568539762724a6d65be8a2f1393062f246e96320fe05085a4a73e6a8",
+    "map_specific_triggers": [
+      "dvii_bench",
+      "give_ammo",
+      "handle_build_trig",
+      "handle_pick_trig",
+      "music_box_player",
+      "panel_build_trig",
+      "panel_pick_trig",
+      "secret_trigger",
+      "secret_trigger2",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "turn_power_on",
+      "wire_build_trig",
+      "wire_pick_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_hobo_vil.exe",
+    "original_sha256": "fdd93b2370da78774bc1cfab9978d7b4f898406e613d0134928e1186849ce859",
+    "original_size": 317246541,
+    "source_url": "http://www.mediafire.com/file/dp37lupfh18625a/nazi_zombie_hobo_vil.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T19:53:59Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Story: Agent Smith, the sewers of a nearby town have experienced many casualties in the fight against the undead. Many have tried and failed in this mission and we understand if you turn it down. Your mission should you choose to accept it is to infiltrate a village underground ridden with infested parasites and many infected. Clear the tunnels and make it safe for travel! Another team has been dispached to the oppisite side and will meet you in the tunnel on the other side of the parking garage. If they survive. Opportunities will be provided for you to assist in your mission. The first will be the aid from weapon drops that are placed for you convenience. BE CAUTIOUS!! AREAS HAVE BEEN QUARANTINED AND WILL HAVE TO BE REMOVED TO COMPLETE THIS MISSION. Second, we wish you the best of luck\u2026.. your going to need it. We have assembled your regular team for you and they are waiting to assist you in any capacity necessary. Agent Bishop- Documents specialist Agent Dozsa- Secret service specialist Agent Licht- explosive specialist You have been warned. Many have died in this mission\u2026 (Origianlly wanted the prototype voices since the story wasnt the heros. But It gave me runtime errors.) Some features: BO1 and BO2 weapons / including BO2 grenades BO1 and BO2 Zombies Custom sounds Custom main menu music Loads of edited effects Teleporters Custom weapon skins Hazmat Player models from BO2 8-perks soul chest (thanks to Bluntstuffy) (Also it gives you a RGM2 instead edited by me) custom w",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_hobo_vil",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/cdc_logo_glass.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/loadscreen_nazi_zombie_hobo_vil.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/menu_map_nazi_zombie_hobo_vil.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/nazi_zombie_hobo_vil_load.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/quarentine_logo.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/quarentine_logo_bad.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/weapon_red_cross_background.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/_-gp6_zm_nuked_shelter_logo_c.iwi",
+        "nazi_zombie_hobo_vil.iwd:Images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_hobo_vil"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/hoboville/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/07/proxy-11.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 122.3,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 62,
+        "scripts": 3,
+        "bytes": 3297233
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953563
+      },
+      {
+        "file": "hud_infinix.iwd",
+        "entries": 4,
+        "scripts": 0,
+        "bytes": 142891
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 12,
+        "scripts": 1,
+        "bytes": 580341
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_hobo_vil.ff",
+      "nazi_zombie_hobo_vil_patch.ff",
+      "nazi_zombie_hobo_vil.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

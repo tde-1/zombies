@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_devas",
+  "title": "A-Grand's Devastation",
+  "source": "custom",
+  "author": "A-Grand",
+  "released": "2013-09-11",
+  "fs_game": "mods/nazi_zombie_devas",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 144,
+    "script_count": 144,
+    "entities": 4444,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "plank"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "zone4_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "zone4_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "zone4_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "zone3_debris"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8",
+    "map_specific_triggers": [
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_devastation.exe",
+    "original_sha256": "247a7efe431d1339e793509d33c1c117b11e6daa2b170bdd6742568408974b2e",
+    "original_size": 217407653,
+    "source_url": "http://www.mediafire.com/file/7aw71nkt6c5st6w/nazi_zombie_devastation.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/09/11/a-grands-devastation/",
+    "fetched": "2026-09-23T18:07:35Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This map features UGX Mod v1.0.3! Hi everyone! I\u2019m happy to share with you a new zombie map. An idea from the map reviewer and zombie slayer (Tomikaze). He drew the layout of the map, highlighted where everything should be and how it should look like. All I did was make the map based on the layouts Features: -UGX MOD -A 20k buyable ending -Kino Style teleporter Mission: You\u2019re flying a plane, you suddenly got attacked and your plane is destroyed, you find yourself in an abandoned city possessed by zombies. Can you survive your way through to get to the middle tower, it\u2019s the only way to escape. Even if it\u2019s a zombie survival mode, the map feels like a single player in my opinion I hope you enjoy! Credits: Tomikaze for drawing the map layout. UGX team for sharing such an awesome mod. Tom_BMX for tools, tuts and (buyable ending script). Treminaor for detailed tutorial videos.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user"
+      ],
+      "iwd_images": [
+        "nazi_zombie_devas.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_devas.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/agrandsdevastation/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/agrands-devastation-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 87.7,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476820
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "mod.ff",
+      "nazi_zombie_devas.ff",
+      "nazi_zombie_devas_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}

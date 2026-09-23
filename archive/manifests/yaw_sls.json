@@ -1,0 +1,211 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "yaw_sls",
+  "title": "SANTA\u00b4S LITTLE SECRET (PUBLIC)",
+  "source": "custom",
+  "author": "IMTEHPRO123 & Yonkers 1v",
+  "released": "2014-12-25",
+  "fs_game": "mods/yaw_sls",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@yaw_sls.iwd": "5a3cdf4c661e63a1aa423ae0a3a497d56db08ad7879818e81cd2a1454d507bf7"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        40000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 40000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 117,
+    "script_count": 117,
+    "entities": 1150,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      40000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "door 44",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door 8"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door 60"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door 44"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door 244"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5a3cdf4c661e63a1aa423ae0a3a497d56db08ad7879818e81cd2a1454d507bf7",
+    "map_specific_triggers": [
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "gun_reward",
+      "snow_block",
+      "snow_block1",
+      "snow_trig1",
+      "snow_trig2",
+      "snow_trig3",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "wunderfizz_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 44,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    }
+  },
+  "archive": {
+    "original": "Santas_Little_Secret.exe",
+    "original_sha256": "d2c564a27e7dc59e09926375b6fd4a36e5746dfb2e5f78d7904fe532c69bc1f9",
+    "original_size": 588595898,
+    "source_url": "https://www.mediafire.com/file/sg8bvp5l4q6lnn0/Santas_Little_Secret.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-23T18:08:35Z",
+    "av": "clean",
+    "av_ran": true,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "christmas_map"
+    ],
+    "catalogue_description": "Santas Little Secret at the start of the competition we hit a huge error which took up 98% of the time we had to make the map and unfortanlty due to mine and Yonkers lack scripting ment no good eater egg the story did not turn out the way we wanted but were are planning a remake:) Story line: It is 5 day before Christmas the world has been infested with zombies a global out brake tears the world apart but fortunately before Santa be came well you know a Z he predicted the apocalypses and decided to make a nuke containing the T gas to save the world well what remained of it so he sent a letter to you because he knew your are the ones that could finish the mission to complete his quest you must investigate his factory and find location of the nuke and launch it can you do it the world is counting on you good luck solider\u2019s Normal Version Features: Features: \u2013 GrantDaddy007 freeze gun script \u2013 custom view hands made by me \u2013 Boss zombie \u2013 Jug fix \u2013 9 perks \u2013 wonderfizz \u2013 buyable ending \u2013 insta-kill removed \u2013 no dogs \u2013 Custom load screen\u2019s \u2013 all custom weaponry \u2013 Custom gun and equipment textures \u2013 Christmas hud \u2013 zombie counter \u2013 soul box \u2013 teleporters \u2013 easter egg \u2013 custom zombies UGX Version Features: UGXMOD GrantDaddy007 monkey and freeze gun script custom view hands made buy Yonkers his self \ud83d\ude42 Soul chest a end game YAW Play through of our map http://www.youtube.com/watch?v=m46Gq3iuXTc#ws Credits: me and Yonkers GrantDaddy007 You always win treminaor and the whole team",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_yaw_sls"
+      ],
+      "iwd_images": [
+        "yaw_sls.iwd:images/loadscreen_yaw_sls.iwi",
+        "yaw_sls.iwd:images/menu_background_coop.iwi",
+        "yaw_sls.iwd:images/menu_background_mp_tank.iwi",
+        "yaw_sls.iwd:images/specialty_fastreload_zombies.iwi",
+        "yaw_sls.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "yaw_sls.iwd:images/ugx_mod_menu_template.iwi",
+        "yaw_sls.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "yaw_sls.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "yaw_sls.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "yaw_sls.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_yaw_sls"
+    },
+    "tranche": "3",
+    "cover": "media/catalogue/santaslittlesecret/cover.jpg",
+    "cover_source_url": "https://callofdutyrepo.com/wp-content/uploads/2018/09/santas-little-secret-768x432.jpg"
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 133.9,
+    "addon_iwds": [
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 201,
+        "scripts": 0,
+        "bytes": 553798
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953507
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 10287
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "yaw_sls.ff",
+      "yaw_sls_patch.ff",
+      "yaw_sls.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "site_hidden": true
+}
