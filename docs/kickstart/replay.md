@@ -1155,7 +1155,8 @@ Scratch instance on **3461** (this worktree's build, a `VACUUM INTO` copy of the
   recorded). Heroes by slot = `entity_num` is the game's own rule, assuming slot = entity number.
 * **Downed vs dead** players look the same (on the back); last stand's pistol pose is not drawn.
 * **No weapon in the players' hands** (the `weapon_zombie_*` world models are in the zones; not
-  attached).
+  attached). *2026-09-23 R2:* extracted, with power-ups, sprites and sounds —
+  [`assets-pipeline.md`](assets-pipeline.md), `/mapdata/_assets.json`; attaching them is R3's.
 * **Custom maps' own character models** are not exported; the stock set stands in (9.3).
 * **Not seen on the live site** (not deployed; the coordinator merges and restarts), and not on a
   real GPU — every picture is SwiftShader.

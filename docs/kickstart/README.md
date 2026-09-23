@@ -93,6 +93,7 @@ prompting to allow the game every time an agent makes a new dev copy. `-Remove` 
 | [`launcher.md`](launcher.md) | **launcher** | `launcher/` — the Electron client: find WaW, install the ENW client, install maps, launch |
 | [`web.md`](web.md) | **web** | `web/` — the site at `zombies.enw.gg`, a port of ENW Movement |
 | [`replay.md`](replay.md) | **replay** | `web/client/src/replay3d/`, `web/client/src/pages/Replay.jsx`, `web/server/routes/replay.js`, `tools/maps/` — the 3D replay viewer ported from ENW Movement, and the WaW map export. Read §4 before trusting a map export: the world shell is not obtainable from a fastfile |
+| [`assets-pipeline.md`](assets-pipeline.md) | **replay assets** | `tools/models/export_assets.py`, `tools/models/assets-manifest.yml` — weapons, power-ups, muzzle/blood/HUD sprites and sounds for the replay, rebuilt from a game copy in one command (`ZombiesDev\maps\_assets.json`) |
 | [`archive.md`](archive.md) | **archive** | `archive/` — the crawler, the catalogue and the link report |
 | [`vps.md`](vps.md) | **vps** | `infra/vps/` and the Hetzner box `zombies-dev` — the one Linux dev box, Wine, and the headless Windows Steam client. It is the project's **only** spend; read the cost section before touching anything there |
 | [`../re/t4-sp-map.md`](../re/t4-sp-map.md) | **re** | `shared/t4/`, `docs/re/`, `tools/re/`, `ZombiesDev\dumps` — the decrypted exe, verified addresses, structs, the security audit (Huffman / OOB handlers) |
