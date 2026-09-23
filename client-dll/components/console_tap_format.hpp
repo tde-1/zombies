@@ -9,6 +9,7 @@
 
 #include <cstdio>
 #include <string>
+#include <vector>
 
 namespace enw::console_fmt {
 
@@ -47,6 +48,54 @@ public:
 
 private:
     bool at_line_start_ = true;
+};
+
+// Keeps a message the engine repeats every frame from drowning the file. Measured on
+// fear_mc_2 (ovg2, 2026-09-23): 12,703 of 48,598 lines in two minutes were "Failed to
+// log on." (the Demonware logon retry), and B's own console.log alternates it with a
+// mod's "dvar set cl_network_warning 0" -- so this counts per message, not "same as the
+// previous line". Each distinct message is written at most kPerWindow times per
+// kWindowMs; the rest are counted and summarised when the window rolls over.
+class repeat_filter {
+public:
+    static constexpr unsigned kPerWindow = 5;
+    static constexpr unsigned long long kWindowMs = 10000;
+    static constexpr size_t kTracked = 64;
+
+    // True when `msg` should be written. `summary` receives "(suppressed ...)" lines
+    // for the window that just ended (write them before `msg`).
+    bool admit(const char* msg, unsigned long long now_ms, std::string& summary) {
+        if (now_ms - window_start_ >= kWindowMs) roll(now_ms, summary);
+        for (auto& e : seen_) {
+            if (e.text == msg) {
+                if (e.count < kPerWindow) { ++e.count; return true; }
+                ++e.suppressed;
+                return false;
+            }
+        }
+        if (seen_.size() < kTracked) seen_.push_back({msg, 1, 0});
+        return true;
+    }
+
+private:
+    struct entry { std::string text; unsigned count; unsigned long long suppressed; };
+    void roll(unsigned long long now_ms, std::string& summary) {
+        for (auto& e : seen_) {
+            if (!e.suppressed) continue;
+            std::string t = e.text;
+            while (!t.empty() && (t.back() == '\n' || t.back() == '\r')) t.pop_back();
+            if (t.size() > 120) t.resize(120);
+            char head[64];
+            std::snprintf(head, sizeof head, "(suppressed %llu more in %llus: \"", e.suppressed, kWindowMs / 1000);
+            summary += head;
+            summary += t;
+            summary += "\")\n";
+        }
+        seen_.clear();
+        window_start_ = now_ms;
+    }
+    std::vector<entry> seen_;
+    unsigned long long window_start_ = 0;
 };
 
 // When the file passes this size it is renamed to console-<pid>.old.log (replacing an

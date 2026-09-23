@@ -50,6 +50,7 @@ HANDLE g_file = INVALID_HANDLE_VALUE;
 std::string g_path, g_old_path;
 unsigned long long g_bytes = 0;
 console_fmt::stamper g_stamp;
+console_fmt::repeat_filter g_repeat;
 std::string g_buf;
 unsigned long g_lines_dropped = 0;
 
@@ -108,7 +109,13 @@ void __cdecl print_message_detour(int channel, const char* msg, int type) {
             ::GetLocalTime(&t);
             const console_fmt::clock_hms now{t.wHour, t.wMinute, t.wSecond, t.wMilliseconds};
             g_buf.clear();
-            g_stamp.feed(msg, now, g_buf);
+            std::string summary;
+            const bool keep = g_repeat.admit(msg, ::GetTickCount64(), summary);
+            if (!summary.empty()) {
+                if (!g_stamp.at_line_start()) g_stamp.feed("\n", now, g_buf);
+                g_stamp.feed(summary.c_str(), now, g_buf);
+            }
+            if (keep) g_stamp.feed(msg, now, g_buf);
             // CRLF so Notepad shows lines; the engine prints bare \n.
             std::string out;
             out.reserve(g_buf.size() + 8);

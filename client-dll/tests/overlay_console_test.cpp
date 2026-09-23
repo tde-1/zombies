@@ -94,6 +94,33 @@ int main() {
     check(out == "^", "trailing lone ^ is kept, no stamp mid-line");
     check(console_fmt::kRotateBytes == 16ull * 1024 * 1024, "rotation at 16 MB");
 
+    // --- repeat limiter: B's alternating spam ---
+    {
+        console_fmt::repeat_filter rf;
+        std::string sum;
+        unsigned kept_a = 0, kept_b = 0, kept_c = 0;
+        unsigned long long t = 1000000;
+        for (int i = 0; i < 100; ++i, t += 8) {  // 100 frames at 125 fps, 0.8 s
+            if (rf.admit("Failed to log on.\n", t, sum)) ++kept_a;
+            if (rf.admit("      dvar set cl_network_warning 0\n", t, sum)) ++kept_b;
+        }
+        if (rf.admit("a new line\n", t, sum)) ++kept_c;
+        check(kept_a == 5 && kept_b == 5, "alternating repeats: 5 of each kept per window");
+        check(kept_c == 1, "a different message is always kept");
+        check(sum.empty(), "no summary before the window ends");
+        t += console_fmt::repeat_filter::kWindowMs;
+        const bool k = rf.admit("Failed to log on.\n", t, sum);
+        check(k, "new window: the message is written again");
+        check(sum.find("(suppressed 95 more in 10s: \"Failed to log on.\")\n") != std::string::npos,
+              "summary counts the first message");
+        check(sum.find("(suppressed 95 more in 10s: \"      dvar set cl_network_warning 0\")\n") != std::string::npos,
+              "summary counts the second message");
+        check(sum.find("a new line") == std::string::npos, "nothing suppressed, nothing summarised");
+        std::string sum2;
+        for (int i = 0; i < 200; ++i) rf.admit(("unique " + std::to_string(i) + "\n").c_str(), t, sum2);
+        check(rf.admit("unique 199\n", t, sum2), "past the tracking cap, messages are kept, not dropped");
+    }
+
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;
 }
