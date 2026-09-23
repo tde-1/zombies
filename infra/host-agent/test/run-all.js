@@ -12,7 +12,7 @@ import { BootQueue } from '../lib/bootqueue.js'
 import { ramPlan, parseMeminfo, MB } from '../lib/memguard.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
-import { InstanceManager, devKnobsFor, devBotsFor, safeLeaseDvars, countPlusCommands, ENGINE_PLUS_LIMIT, LAUNCH_PS1_PLUS } from '../lib/instances.js'
+import { InstanceManager, devKnobsFor, devBotsFor, soakBotConfig, safeLeaseDvars, countPlusCommands, ENGINE_PLUS_LIMIT, LAUNCH_PS1_PLUS } from '../lib/instances.js'
 import { gameModeDvars, gameModeId } from '../lib/gamemode.js'
 import { leaseList, planLeases } from '../lib/leases.js'
 import { SERVER_RULES, RULESET, effectiveFps } from '../lib/verified.js'
@@ -1098,6 +1098,9 @@ t('soak bots (dedi.md §26): agent Custom dev leases only, 1..4, and they get cl
   eq(g.gameEnv().ENW_DEV_BOTS, '3')
   const p = m.create({ kind: 'game', assignment: { map: 'nazi_zombie_prototype', mode: 'verified', slots: [{}], settings: { dev: { bots: 3 } } } })
   ok(p.gameArgs().includes('+set sv_maxclients 1'), 'a player lease ignores dev.bots')
+  eq(soakBotConfig(lease({ god: true, bots: 1 })).emptyCloseMs, 24 * 60 * 60 * 1000, 'a bot soak is not closed as empty')
+  eq(soakBotConfig(lease({ god: true })), {}, 'god alone keeps the empty close')
+  eq(soakBotConfig({ agent: false, mode: 'custom', settings: { dev: { bots: 2 } } }), {}, 'never a player lease')
 })
 
 // ---- game copies by SLOT, not by id (dedi.md §19, 2026-09-23) --------------------------

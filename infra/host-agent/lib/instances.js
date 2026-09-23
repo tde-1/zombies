@@ -110,6 +110,16 @@ export function devBotsFor(a) {
   return Number.isInteger(n) && n >= 1 && n <= 4 ? n : 0
 }
 
+/**
+ * A soak lease's bots (dedi.md §27) are server-side test clients the DLL's referee never reports
+ * as players, so to the host the game is empty -- and the empty close (two minutes) ended every
+ * bot soak at 2 m 00 s (`game over: empty`, 2026-09-23 18:52 UTC). Only an agent's Custom dev
+ * lease that asked for bots gets the empty close pushed out to the lease cap; nothing else changes.
+ */
+export function soakBotConfig(assignment) {
+  return devBotsFor(assignment) > 0 ? { emptyCloseMs: 24 * 60 * 60 * 1000 } : {}
+}
+
 function pidAlive(pid) {
   const n = Number(pid)
   if (!Number.isInteger(n) || n <= 0) return false
