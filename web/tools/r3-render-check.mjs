@@ -93,6 +93,9 @@ try {
       const r = await ev(`(() => { const b = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2] })()`)
       for (const type of ['mousePressed', 'mouseReleased']) await S('Input.dispatchMouseEvent', { type, x: r[0], y: r[1], button: 'left', clickCount: 1 })
     }
+    // The top rail's camera buttons (1 first person, 2 third, 3 free). Lane R4: the digit keys pick
+    // PLAYERS in a co-op replay now (this fixture has two), so the rail is clicked instead.
+    const cam = (n) => click(`.r3d-cams button:nth-child(${n})`)
     const shot = async (name) => {
       const { data } = await S('Page.captureScreenshot', { format: 'png' })
       fs.writeFileSync(path.join(OUT, `${name}.png`), Buffer.from(data, 'base64'))
@@ -102,12 +105,12 @@ try {
     // Third person, framed from in front and to the side (the fixture walks toward -Y from
     // Nacht's spawn, so the default camera behind him is inside the start-room wall).
     const third = async () => {
-      await key('Digit2', '2', 50)
+      await cam(2)
       await sleep(300)
       await ev(`Object.assign(window.__r3d.api.state, { orbitDist: 140, orbitYaw: 232, orbitPitch: -16 }); window.__r3d.redraw(); 1`)
       await sleep(600)
     }
-    return { S, ev, key, click, shot, at, third, exceptions, close: () => send('Target.closeTarget', { targetId }) }
+    return { S, ev, key, click, cam, shot, at, third, exceptions, close: () => send('Target.closeTarget', { targetId }) }
   }
 
   // ---- the FX replay --------------------------------------------------------------
@@ -158,7 +161,7 @@ try {
   await R.shot('r3-hitmarker-3p')
 
   // First person: the viewmodel is the mp40 placeholder at 3.6 s (a burst is on).
-  await R.key('Digit1', '1', 49)
+  await R.cam(1)
   await R.at(3.012)   // 3500 ms shot + 12 ms
   g = await R.ev('window.__r3d.fx().gear')
   check('first person: the MP40 in view, flashing', /_weapons\/mp40\.glb/.test(g.vm) && g.vmFlash, { vm: g.vm, flash: g.vmFlash })
@@ -169,11 +172,11 @@ try {
   await R.at(5.55)
   const blood = await R.ev(`(() => { const b = document.querySelector('.r3d-fx-blood'); return { a: +getComputedStyle(b).opacity, img: b.classList.contains('img') && /hurt_overlay/.test(b.style.backgroundImage) } })()`)
   check('blood overlay on the swipe, the game’s hurt vignette', blood.a > 0.4 && blood.img, blood)
-  await R.key('Digit2', '2', 50)
+  await R.cam(2)
   await R.at(5.55)
   g = await R.ev('window.__r3d.fx().gear')
   check('knuckle crack: empty hands (no gun drawn)', /proc:none/.test(g.slots.find((s) => s.slot === 0).key), g.slots)
-  await R.key('Digit1', '1', 49)
+  await R.cam(1)
   await R.at(5.55)
   await R.shot('r3-blood-fp')
 

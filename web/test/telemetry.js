@@ -233,6 +233,66 @@ async function main () {
     const n = ev({ reason: 'game_exit', exit_code: 0 }, { 'enw-1.log': '[1] [INFO] all good' })
     eq(n.flags.length, 0); eq(n.severity, 4)
   })
+  // Crash review L1 (2026-09-23, docs/kickstart/crash-review-2026-09-23.md): real lines.
+  await check('flags (L1): overlay_guard\'s start-up line is not a crash; its real UNHANDLED line still is', () => {
+    const ok = ev({ reason: 'game_exit', exit_code: 0 }, { 'enw-14556.log': "[14:42:17.313] [INFO ] overlay_guard: unhandled exceptions are named before the engine's filter (previous 005FF510). Address space at engine start: largest free block 914.8 MB of 1431.4 MB free." })
+    eq(ok.flags.includes('crash'), false, 'incident 37 was a false P1')
+    const bad = ev({ reason: 'game_exit' }, { 'enw-1.log': '[03:42:30.354] [ERROR] overlay_guard: UNHANDLED EXCEPTION 0xC0000005 at DiscordHook.dll+0x1F7FD on thread 2240, +35980 ms; largest free block 12.3 MB' })
+    truthy(bad.flags.includes('crash')); eq(bad.severity, 1)
+    const eng = ev({ kind: 'host', reason: 'instance_end' }, { 'enw-1384.log': '[22:46:28.741] [ERROR]   arg2 = 00883190 "Unhandled exception caught "' })
+    truthy(eng.flags.includes('crash'), 'the engine\'s own filter line is still a crash')
+  })
+  await check('flags (L1): launcher.log lines from before the session do not flag a client bundle', () => {
+    const log = [
+      '2026-09-22T18:07:58.788Z play released the lease (the launch failed): the site let the box go',
+      '2026-09-23T10:33:49.040Z update update failed — no feed reachable: 502 ',
+      '  "cf-ray": "a3f8e4a74accf826-MAN",',
+      '2026-09-23T13:42:16.000Z play launching nazi_zombie_fear_mc_2',
+    ].join('\n')
+    const m = { reason: 'game_exit', exit_code: 0, created_at: '2026-09-23T13:44:10.600Z', session: { started_at: '2026-09-23T13:42:17.046Z' } }
+    const r = ev(m, { 'launcher.log': log })
+    eq(r.flags.includes('lease_refused'), false, 'yesterday\'s lease line')
+    eq(r.flags.includes('launcher_update_failed'), false, 'this morning\'s 502')
+    const now = ev(m, { 'launcher.log': log + '\n2026-09-23T13:43:00.000Z update check failed: error code: 502\n2026-09-23T13:43:30.000Z play released the lease (the launch failed): x' })
+    truthy(now.flags.includes('launcher_update_failed') && now.flags.includes('lease_refused'), `in-window lines still flag: ${now.flags}`)
+    const nowin = ev({ reason: 'game_exit' }, { 'launcher.log': log })
+    truthy(nowin.flags.includes('lease_refused'), 'no created_at -> no window (old behaviour)')
+    const late = ev({ kind: 'launcher', reason: 'manual', created_at: '2026-09-23T17:44:10Z' }, { 'launcher.log': log })
+    eq(late.flags.includes('launcher_update_failed'), false, 'a launcher bundle made at 17:44 looks back 6 h, not to 10:33')
+    const soon = ev({ kind: 'launcher', reason: 'manual', created_at: '2026-09-23T13:44:10Z' }, { 'launcher.log': log })
+    truthy(soon.flags.includes('launcher_update_failed') && !soon.flags.includes('lease_refused'), `made at 13:44: the 10:33 502 is in, yesterday is out (${soon.flags})`)
+  })
+  await check('flags (L1): server_freeze is P1 and names the first fault (B\'s 13:43 fear_mc_2, incident 36)', () => {
+    const dll = [
+      '[13:43:40.241] [WARN ] dedi_freeze_watchdog: ESCAPED frame (1 now, 1 in all): the frame body was entered and did not return; com_frameTime 93584. Script VM NOT AT REST: function_count=5',
+      '[13:43:40.241] [ERROR] dedi_freeze_watchdog: escape fault #1 tid 3608 code=C0000005 eip=004F057E reading 00000010 | eax=00000000 ebx=0372AD24 ecx=00000001 edx=0372AD30 esi=0176C6F0 edi=00000000 ebp=00000000 esp=0031F44C | callers: 00695598 00690000 0060E48B 0068A11C ',
+      '[13:43:46.922] [ERROR] dedi_freeze_watchdog: escape fault #2 tid 3608 code=C0000005 eip=005FFE23 reading 0000090E | callers: 005FEDC4 0059B5B0',
+      '[13:43:51.910] [ERROR] dedi_freeze_watchdog: FREEZE -- com_frameTime 100226 has not moved for 5005 ms while 309 frames entered the body (310 escaped in all, 310 faults recorded). The server has stopped simulating; ending the match.',
+    ].join('\n')
+    const r = evaluate({ manifest: { kind: 'host', reason: 'instance_end', exit_reason: 'server_freeze' }, files: [], texts: new Map([['enw-3264.log', dll]]) })
+    eq(r.severity, 1); eq(r.flags[0], 'server_freeze')
+    has(r.hits.server_freeze.detail, 'eip 004F057E reading 00000010')
+    has(r.hits.server_freeze.detail, 'snd_errorOnMissing')
+    eq(r.flags.includes('frame_escape'), false, 'no separate escape flag on top of a freeze')
+    const h = evaluate({ manifest: { kind: 'host', reason: 'instance_end', summary_line: 'SUMMARY nazi_zombie_fear_mc_2 round 1 finish=none 1m18s flags=[server_freeze] eligible=true' }, files: [], texts: new Map() })
+    truthy(h.flags.includes('server_freeze'), 'the host\'s record alone is enough')
+    has(h.hits.server_freeze.detail, 'the host recorded server_freeze')
+    const e = evaluate({ manifest: { kind: 'host', reason: 'instance_end' }, files: [], texts: new Map([['enw-1.log', dll.split('\n')[1].replace('004F057E', '00123456')]]) })
+    truthy(e.flags.includes('frame_escape')); eq(e.severity, 2); has(e.hits.frame_escape.detail, 'unknown')
+  })
+  await check('flags (L1): asset pool limits (console and the DLL dump), snddriverglobals called out, map out of memory', () => {
+    const r = evaluate({ manifest: { kind: 'host', reason: 'instance_end' }, files: [], texts: new Map([
+      ['engine-console.log', "Error: Exceeded limit of 1600 'loaded_sound' assets.\nError: Need 59127143 more bytes of 'main' physical ram for alloc to succeed"],
+      ['enw-2228.log', [
+        '[00:45:07.565] [ERROR] === Com_Error TRAPPED ===',
+        "[00:45:07.566] [ERROR]   arg2 = 00852BB4 \"Exceeded limit of %d '%s' assets. \"",
+        '[00:45:07.566] [ERROR]   arg4 = 00852770 "snddriverglobals"',
+      ].join('\n')],
+    ]) })
+    for (const f of ['asset_limit', 'map_oom', 'com_error']) truthy(r.flags.includes(f), `flag ${f} in ${r.flags}`)
+    has(r.hits.asset_limit.detail, 'loaded_sound'); has(r.hits.asset_limit.detail, 'snddriverglobals'); has(r.hits.asset_limit.detail, '§11.4')
+    eq(r.severity, 2)
+  })
   await check('flags: record refused, excerpts capped at 300 lines per flag', () => {
     const lines = Array.from({ length: 2000 }, (_, i) => (i % 3 === 0 ? `[1] [WARN] fps_guard: com_maxfps 333 is outside the Verified rule (85..250) -> set to 250 ${i}` : `[1] [INFO] x ${i}`)).join('\n')
     const r = ev({}, { 'enw-1.log': lines })

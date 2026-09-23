@@ -18,6 +18,13 @@
 
   Output: ZombiesDev\logs\dedi\<Tag>.box.csv, <Tag>.txt, <Tag>.client*.enw.log, <Tag>.box-enw.log,
   <Tag>.journal.txt, <Tag>.summary.txt
+
+  -ServerOnly (lane S1, dedi.md §25.5): NO client, nothing launched on this PC, no game.lock. The
+  lease is held with nobody in it for -Minutes, or until the instance dies, freezes (the freeze
+  watchdog's FREEZE line) or is evicted by a real player's lease (RAM guard). Waits (does not
+  refuse) while a real player is live, per rule 13. Also saves the map's console.log, the
+  watchdog's lines, the telemetry bundle id the host queued, and a Wine `bt all` if the frame
+  body sits at 0 Hz. With no player the round never starts: this soaks the idle server only.
 #>
 [CmdletBinding()]
 param(
@@ -33,8 +40,10 @@ param(
     [switch]$Companion,
     [int]$WaitMinutes = 60,
     [string]$MainRepo = 'C:\Users\b\Desktop\Zombies',
-    [string]$DevRoot = 'C:\Users\b\ZombiesDev'
+    [string]$DevRoot = 'C:\Users\b\ZombiesDev',
+    [switch]$ServerOnly
 )
+if ($ServerOnly) { $RejoinAt = 0 }
 # Continue, not Stop: in PowerShell 5.1 any stderr line from ssh/node under `2>&1` becomes a
 # terminating NativeCommandError. Every real failure below throws explicitly.
 $ErrorActionPreference = 'Continue'
@@ -71,6 +80,15 @@ function Test-RealPlayer {
 }
 $rp = Test-RealPlayer
 Say "site live non-agent leases: $($rp.live); journal verified non-fake (10 min): '$($rp.journal)'"
+if ($ServerOnly) {
+    # Rule 13: never lease while a verified player is in a live instance. Wait, do not give up.
+    $waitUntil = (Get-Date).AddMinutes($WaitMinutes)
+    while ((($rp.live -and $rp.live -ne '[]') -or $rp.journal -match 'ALLOW') -and (Get-Date) -lt $waitUntil) {
+        Start-Sleep -Seconds 60
+        $rp = Test-RealPlayer
+        Say "  waiting for real players to clear: live=$($rp.live) journal='$($rp.journal)'"
+    }
+}
 if ($rp.live -and $rp.live -ne '[]') { throw "a real player's lease is live ($($rp.live)) - not leasing (rule 13)" }
 if ($rp.journal -match 'ALLOW') { throw "the journal shows a verified player in the last 10 min - not leasing" }
 $mem = Box "grep MemAvailable /proc/meminfo"
@@ -78,7 +96,9 @@ Say "box $mem"
 
 # ------------------------------------------------------------------------ lock --
 $ownLock = $null
-if ($Companion) {
+if ($ServerOnly) {
+    Say 'server-only: nothing runs on this PC, so no game.lock'
+} elseif ($Companion) {
     $held = if (Test-Path -LiteralPath $lockFile) { (Get-Content -LiteralPath $lockFile -Raw).Trim() } else { '' }
     $f = $held -split '\s+'
     if (-not ($f.Count -ge 2 -and $f[0] -eq 'soak' -and (Get-Process -Id ([int]$f[1]) -ErrorAction SilentlyContinue))) {
@@ -109,9 +129,11 @@ try {
     $slotName = 'inst-{0:D2}' -f ((($port - 28960) / 2) + 1)
 
     # ---------------------------------------------------------------- client --
-    if (-not $NoDeploy) { & (Join-Path $PSScriptRoot 'deploy.ps1') $ClientName -From $From | Out-Null; Say "deployed build\$From -> waw-$ClientName" }
-    . (Join-Path $PSScriptRoot 'mapmount.ps1')
-    if ($fsGame) { Mount-EnwMap -Bsp $Map -Homes @($ClientName) -DevRoot $DevRoot -Log { param($m, $c) Say $m $c } }
+    if (-not $ServerOnly) {
+        if (-not $NoDeploy) { & (Join-Path $PSScriptRoot 'deploy.ps1') $ClientName -From $From | Out-Null; Say "deployed build\$From -> waw-$ClientName" }
+        . (Join-Path $PSScriptRoot 'mapmount.ps1')
+        if ($fsGame) { Mount-EnwMap -Bsp $Map -Homes @($ClientName) -DevRoot $DevRoot -Log { param($m, $c) Say $m $c } }
+    }
     function Start-Client([string]$why) {
         $env:ENW_CLIENT_CONNECT = $Map; $env:ENW_CONNECT_ADDR = $info.connect; $env:ENW_RAW_SOCKETS = '1'
         $env:ENW_TEST_NO_ACTIVATE = '1'; $env:ENW_BORDERLESS_COVER = '0'; $env:ENW_BORDERLESS = '0'
@@ -126,11 +148,15 @@ try {
     if ($ownLock) {
         # launch.ps1 -Companion wants a lock; ours says boxsoak, which is fine for it.
     }
-    $clientPid = Start-Client 'first join'; $clientPids += $clientPid
-    Say "client PID $clientPid -> $($info.connect) ($slotName)" 'Green'
+    if ($ServerOnly) {
+        Say "server-only hold of $($info.connect) ($slotName): nobody joins" 'Green'
+    } else {
+        $clientPid = Start-Client 'first join'; $clientPids += $clientPid
+        Say "client PID $clientPid -> $($info.connect) ($slotName)" 'Green'
+    }
 
     # ---------------------------------------------------------------- sample --
-    'utc,t_s,box_rss_mb,box_cpu_s,mem_avail_mb,host_rss_mb,replay_bytes,body_hz,com_frameTime,snaps_per_s,child_vars,parent_vars,localvars,watch_hits,client_rss_mb,client_alive' |
+    'utc,t_s,box_rss_mb,box_cpu_s,mem_avail_mb,host_rss_mb,replay_bytes,body_hz,com_frameTime,snaps_per_s,child_vars,parent_vars,localvars,watch_hits,client_rss_mb,client_alive,vm_free,temp_guard_putbacks,escaped,freeze' |
         Set-Content -LiteralPath $csv -Encoding ascii
     $probe = @"
 p=`$(pgrep -f 'CoDWaW.exe.*home[s].$slotName' | head -1); h=`$(systemctl show -p MainPID --value enw-host-agent);
@@ -139,7 +165,8 @@ mem=`$(awk '/MemAvailable/{print int(`$2/1024)}' /proc/meminfo); hr=`$(awk '/VmR
 rep=`$(stat -c %s /home/waw/zdev-host/replays/$matchId*.enwr 2>/dev/null | awk '{s+=`$1} END{print s+0}');
 log=`$(ls -t /home/waw/pfx/drive_c/zdev/waw-$slotName/enw-*.log | head -1);
 echo "S `$rss `$cpu `$mem `$hr `$rep `$log";
-tail -n 300 `$log | grep -E 'dedi_rate_probe|net_probe: [0-9.]+s|varpool: child' | tail -n 6;
+tail -n 300 `$log | grep -E 'dedi_rate_probe|net_probe: [0-9.]+s|varpool: child|join_probe/vm|dedi_temp_guard: [0-9]' | tail -n 10;
+echo "W `$(grep -c 'ESCAPED frame' `$log) `$(grep -c 'FREEZE --' `$log)";
 grep -c 'WRITE #' `$log
 "@ -replace "`r", ''
     $t0 = Get-Date; $rejoined = $false; $boxLog = $null
@@ -157,7 +184,7 @@ grep -c 'WRITE #' `$log
             Say "t=${t}s REJOIN: client PID $clientPid" 'Yellow'
             continue
         }
-        if (-not $cp) {
+        if (-not $cp -and -not $ServerOnly) {
             $incidents.Add("t=${t}s client process gone unexpectedly; relaunching")
             Say "t=${t}s client GONE - relaunching" 'Red'
             $clientPid = Start-Client 'relaunch after loss'; $clientPids += $clientPid
@@ -176,14 +203,42 @@ grep -c 'WRITE #' `$log
         $child = if ($vp -match 'child (\d+)/') { $Matches[1] } else { '' }
         $parent = if ($vp -match 'parent (\d+)/') { $Matches[1] } else { '' }
         $lv = if ($vp -match 'localVars ([0-9A-F]+)') { $Matches[1] } else { '' }
+        $vm = $r | Where-Object { $_ -match 'join_probe/vm' } | Select-Object -Last 1
+        $tg = $r | Where-Object { $_ -match 'dedi_temp_guard: \d' } | Select-Object -Last 1
+        $w = ($r | Where-Object { $_ -match '^W ' } | Select-Object -First 1) -split ' '
+        $vmFree = if ($vm -match 'free=(\d+)') { $Matches[1] } else { '' }
+        $tgPut = if ($tg -match '(\d+) put back at the call, (\d+) put back at a frame') { [int]$Matches[1] + [int]$Matches[2] } else { '' }
+        $esc = if ($w.Count -ge 3) { $w[1] } else { '' }; $frz = if ($w.Count -ge 3) { $w[2] } else { '' }
+        if ($s.Count -ge 7 -and $s[6] -match 'enw-(\d+)\.log') { $winePid = [int]$Matches[1] }
         if (-not $s[1]) { $incidents.Add("t=${t}s box instance process not found"); Say "t=${t}s box instance GONE?" 'Red' }
-        $row = '{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}' -f (Get-Date).ToUniversalTime().ToString('HH:mm:ss'), $t,
-            $s[1], $s[2], $s[3], $s[4], $s[5], $bodyHz, $ft, $snaps, $child, $parent, $lv, $hits, [int]($cp.WorkingSet64 / 1MB), 1
+        $row = '{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19}' -f (Get-Date).ToUniversalTime().ToString('HH:mm:ss'), $t,
+            $s[1], $s[2], $s[3], $s[4], $s[5], $bodyHz, $ft, $snaps, $child, $parent, $lv, $hits, [int]($cp.WorkingSet64 / 1MB), [int][bool]$cp,
+            $vmFree, $tgPut, $esc, $frz
         Add-Content -LiteralPath $csv -Value $row -Encoding ascii
         if (($t % 300) -lt 60) { Say "t=${t}s $row" }
-        if ($bodyHz -eq '0.0') { $incidents.Add("t=${t}s box Com_Frame-body 0.0 Hz") }
+        if ($bodyHz -eq '0.0') {
+            $incidents.Add("t=${t}s box Com_Frame-body 0.0 Hz")
+            if ($ServerOnly -and $winePid -and -not $btTaken) {
+                $btTaken = $true
+                $hex = '{0:x}' -f $winePid
+                Say "t=${t}s frame body at 0 Hz: winedbg bt all on Wine pid $winePid (0x$hex)" 'Red'
+                Box "sudo -u waw env WINEPREFIX=/home/waw/pfx timeout 60 winedbg --command 'bt all' $hex" |
+                    Set-Content -LiteralPath (Join-Path $logDir "$Tag.winedbg-bt.txt") -Encoding utf8
+            }
+        }
         if ($hits -match '^\d+$' -and [int]$hits -gt 0) { $incidents.Add("t=${t}s localVars write watch fired ($hits)") }
+        if ($esc -match '^\d+$' -and [int]$esc -gt 0 -and -not $escSeen) { $escSeen = $true; $incidents.Add("t=${t}s freeze watchdog: $esc escaped frame(s)") }
+        if ($ServerOnly) {
+            if ($frz -match '^\d+$' -and [int]$frz -gt 0) { $incidents.Add("t=${t}s freeze watchdog FREEZE - the host ends the game"); Say "t=${t}s FREEZE" 'Red'; $ended = 'freeze'; break }
+            if (-not $s[1]) {
+                $why = Box "journalctl -u enw-host-agent --since '-5 min' --no-pager | grep -E '$slotName|$matchId' | grep -Ei 'retir|evict|game over|exit|disposition' | tail -4"
+                $why | ForEach-Object { Say "  journal: $_" }
+                $ended = if (($why -join ' ') -match 'yields to a player|RAM guard') { 'evicted' } else { 'instance gone' }
+                $incidents.Add("t=${t}s ended: $ended"); break
+            }
+        }
     }
+    if ($ServerOnly -and -not $ended) { $ended = "held $Minutes min" }
 
     # ------------------------------------------------------------- the end --
     $gameDir = "/home/waw/pfx/drive_c/zdev/waw-$slotName"

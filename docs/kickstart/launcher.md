@@ -2564,6 +2564,7 @@ release commit names it. The detail of each change is in the lane doc named.
 | **0.2.25** | `fb902e9` 13:49 (main `5696406`, built clean in `wt-coord2`) | **`974c2e8d`** | Lane C1: ENW console commands + aliases with Tab completion (`/quit`, `fov 90`, ...), every setting changeable in every game (Verified locks only `com_maxfps`), no paused start under a map's start menu; 17b mouse compensations; T1 telemetry; G1 `r_multiGpu` 0 for everyone (repaired on first launch, with Discord); A1 asset audit. Same binary as the box (all 9 copies). 169/0 | `esc-menu.md` §11, `mod-compat.md` §10.4 |
 | 0.2.26 | `dad44a2` 14:10 (main `5d4d2b1`) | `1fda51c5` | D1 (freeze watchdog, dedi `_load` zone: server-side), H1 launcher wording. Superseded 7 min later by 0.2.27. 171/0 | `dedi.md` §23.4–23.5 |
 | **0.2.27** | `32deb50` 14:17 (main `bde7e19`, built clean in `wt-coord2`) | **`04a3ad6d`** | R1 replay events (zombies at 20 Hz, weapon/fire/hit/damage/pap/powerup; server-side) on top of D1. Same binary as the box (all 9 copies). 171/0 | `dedi.md` §22.10 |
+| **0.2.28** | `f45f4a7` 17:05 (main `645649c`, DLL built clean in `ZombiesDev\wt-int` at `fa1784f`) | **`fd3039d2`** | Lane INT, 2026-09-23 evening: **DP1 — the game runs as `ENWZombies.exe`, so Discord stops saying "Call of Duty: World at War"** (first release with it); server-side S1 + INT NULL-dvar registration (the box freezes), F1 rate scale x4, L1 fault names. Same binary as the box (all 9 copies). `stage-client --from …\wt-int\build\int\enw_t4.dll --allow-stale` (the main checkout's mtime came from the fast-forward; DLL source diff `fa1784f..645649c` empty). run-all 171/0, waw-settings 20/0, modcompat 6/0; feed `latest.yml` 0.2.28 on the site and the bucket | `dedi.md` §26, "Discord shows ENW Zombies" |
 
 **On the feed at handoff: 0.2.20** (`https://zombies.enw.gg/updates/latest.yml`, installer 302 to
 `enw-zombies.nbg1.your-objectstorage.com/updates/…`, checked 03:27 UK).
@@ -2758,6 +2759,17 @@ every installed launcher at its next start, with no release.
    `ZM_DISCORD_CLIENT_ID=<id>`, then let the site cycle (keepalive). Every launcher picks it up at its
    next start. For one PC only, `state/config.json` `"discordClientId": "<id>"` also works.
 4. Open Discord, restart the launcher. Your profile should say *Playing ENW Zombies · Browsing maps*.
+
+**2026-09-23 evening (lane INT): the id now goes in `infra/discord.env`** (gitignored; template
+`infra/discord.env.example`), which the node server reads itself at every start
+(`web/server/lib/discordEnv.js`) — a plain site restart picks it up, no keepalive-loop restart. Only
+`ZM_DISCORD_CLIENT_ID` (and `ENW_DISCORD_INVITE`) are loaded; B's `ZM_DISCORD_PUBLIC_KEY` /
+`ZM_DISCORD_BOT_TOKEN` stay in the file and never reach the environment (nothing uses them). A value in
+`site.env` still wins. The launcher needs no rebuild: `refreshPresence()` runs after the site hello and
+`Presence.setClientId` reconnects when the id goes from empty to set. What only B can do in the
+Developer Portal: Rich Presence → Art Assets → upload the ENW mark (≥512 px PNG) named exactly **`enw`**
+(the small/large image key every state uses); the app's name must be **ENW Zombies** (Discord shows the
+app name). Map cards are https URLs — whether Discord accepts them as `large_image` is still unproven.
 
 ### Not proven
 
