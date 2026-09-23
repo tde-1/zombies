@@ -12,6 +12,10 @@
 // module hides that capsule for the focused slot (it would draw twice) and draws
 // every other slot itself.
 //
+// MODELS (replay.md §9). Once models.js has loaded the map's set, every player -- the
+// focused one too, standing in for scene.js's hidden capsule -- and every zombie is the
+// game's own skinned model, posed per frame; until then, or without them, capsules.
+//
 // COORDINATES. Everything here goes through scene.js's own `toThree`, which is
 // (x, y, z) -> (x, z, -y): engine Z-up, inches, into three's Y-up. Nothing is
 // scaled. A position out of `snap.players[].pos` is used exactly as recorded.
@@ -22,6 +26,7 @@ import {
 } from 'three'
 import { toThree } from './scene.js'
 import { HULL } from './waw.js'
+import { makeActor, poseActor, variantOf } from './models.js'
 
 // WaW's hull, not Source's (replay.md §8.11): r15 x 70 standing, 50 crouched, 30 prone
 // (bg_pmove). An AI zombie uses the same 15 x 70 box. Every actor below is sized from these.
@@ -71,7 +76,39 @@ export function createActors(api) {
   const group = new Group()
   scene.add(group)
 
-  const players = new Map()   // slot -> { group, capsule, plate, disc }
+  const players = new Map()   // slot -> { group, capsule, plate, disc, model }
+
+  // The game's own models (models.js, replay.md §9), once loaded. Until then -- and for
+  // good if models.json or a .glb is missing -- every actor stays the capsule it always was.
+  let models = null
+  let sceneCapsule = null
+  // scene.js's own capsule for the focused player. scene.js is Movement's file and is not
+  // edited, so it is found rather than exported: the child of the player group that is a
+  // capsule, beside the view line. Hidden (not removed) once a model stands in for it.
+  function findSceneCapsule() {
+    for (const o of scene.children) {
+      if (!o.isGroup || !o.children.some((c) => c.isLine)) continue
+      const cap = o.children.find((c) => c.isMesh && c.geometry && c.geometry.type === 'CapsuleGeometry')
+      if (cap) return cap
+    }
+    return null
+  }
+  function playerTemplate(slot) {
+    const ids = (models && models.set.players) || []
+    for (let k = 0; k < ids.length; k++) {
+      const t = models.templates.get(ids[(slot + k) % ids.length])
+      if (t) return t
+    }
+    return null
+  }
+  function attachPlayerModel(slot, rec) {
+    if (rec.model || !models) return
+    const tpl = playerTemplate(slot)
+    if (!tpl) return
+    rec.model = makeActor(tpl)
+    rec.group.add(rec.model.root)
+    rec.capsule.visible = false
+  }
 
   function player(slot, name) {
     if (players.has(slot)) return players.get(slot)
@@ -93,8 +130,9 @@ export function createActors(api) {
     plate.position.y = STAND_H + 26
     g.add(capsule, disc, plate)
     group.add(g)
-    const rec = { group: g, capsule, plate, disc, color }
+    const rec = { group: g, capsule, plate, disc, color, model: null }
     players.set(slot, rec)
+    attachPlayerModel(slot, rec)
     return rec
   }
 
@@ -126,6 +164,7 @@ export function createActors(api) {
    */
   function setPlayers(list, focus) {
     const seen = new Set()
+    const eyes = api.state && api.state.mode === 'eyes'
     for (const p of list) {
       seen.add(p.slot)
       const rec = player(p.slot, p.name)
@@ -134,6 +173,18 @@ export function createActors(api) {
       // Down but not out is drawn translucent rather than removed: where a
       // player went down is most of what a zombies replay is watched for.
       const dead = p.alive === false
+      if (rec.model) {
+        // The game's model, turned by the recorded yaw (engine yaw 0 = +X = the model's
+        // front; +yaw about three's Y, as the zombie wedge always did) and posed.
+        rec.model.root.rotation.y = (p.yaw || 0) * Math.PI / 180
+        poseActor(rec.model, { phase: p.phase || 0, speed: p.speed || 0, stance: p.stance || 'stand', down: dead, death: null, t: p.t || 0 })
+        rec.disc.visible = !dead && p.slot !== focus
+        // The focused player: scene.js's capsule is hidden, so this model IS that player in
+        // third person and free cam; in first person it would fill the lens.
+        rec.plate.visible = p.slot !== focus && rec.plate.userData.on !== false
+        rec.group.visible = !(p.slot === focus && eyes)
+        continue
+      }
       // Stance height (§8.11): the capsule is scaled to the pose's hull height, feet fixed.
       const h = p.height || STAND_H
       if (rec.capsule.userData.h !== h) {
@@ -150,8 +201,54 @@ export function createActors(api) {
     for (const [slot, rec] of players) if (!seen.has(slot)) rec.group.visible = false
   }
 
-  /** @param list [{ x, y, z, yaw }] in ENGINE coordinates; yaw in degrees, CCW from +X */
+  // Zombie models: one actor per zombie TRACK (its key), so a zombie keeps the body it was
+  // given for its whole life; actors of a finished track go back to a per-model free list.
+  const zActors = new Map()     // key -> actor
+  const zFree = new Map()       // template id -> [actor]
+  function zombieActor(z) {
+    let a = zActors.get(z.key)
+    if (a) return a
+    const ids = (z.kind === 'dog' ? models.set.dogs : models.set.zombies) || models.set.zombies || []
+    let tpl = null
+    const v = variantOf(z.key, ids.length)
+    for (let k = 0; k < ids.length && !tpl; k++) tpl = models.templates.get(ids[(v + k) % ids.length]) || null
+    if (!tpl) return null
+    const free = zFree.get(tpl.id)
+    a = (free && free.pop()) || makeActor(tpl)
+    zActors.set(z.key, a)
+    group.add(a.root)
+    return a
+  }
+
+  /**
+   * @param list [{ key, x, y, z, yaw, phase, speed, death, t, kind }] in ENGINE coordinates;
+   *   yaw in degrees, CCW from +X; death = seconds since the zombie was killed, else null
+   */
   function setZombies(list) {
+    if (models && models.set.zombies && models.set.zombies.length) {
+      zombies.count = 0
+      noses.count = 0
+      const used = new Set()
+      for (let i = 0; i < Math.min(list.length, MAX_ZOMBIES); i++) {
+        const z = list[i]
+        const a = zombieActor(z)
+        if (!a) continue
+        used.add(z.key)
+        toThree(z.x, z.y, z.z, a.root.position)
+        if (z.yaw != null && Number.isFinite(z.yaw)) a.root.rotation.y = z.yaw * Math.PI / 180
+        poseActor(a, { phase: z.phase || 0, speed: z.speed || 0, stance: 'stand', down: false, death: z.death, t: z.t || 0 })
+      }
+      for (const [key, a] of zActors) {
+        if (used.has(key)) continue
+        group.remove(a.root)
+        zActors.delete(key)
+        if (!zFree.has(a.id)) zFree.set(a.id, [])
+        zFree.get(a.id).push(a)
+      }
+      return
+    }
+    // Capsules: a killed zombie simply goes (the fall is a model's).
+    list = list.filter((z) => z.death == null)
     const n = Math.min(list.length, MAX_ZOMBIES)
     let m = 0
     for (let i = 0; i < n; i++) {
@@ -233,11 +330,30 @@ export function createActors(api) {
   }
 
   function setNameplatesVisible(on) {
-    for (const rec of players.values()) rec.plate.visible = on
+    for (const rec of players.values()) { rec.plate.visible = on; rec.plate.userData.on = on }
+  }
+
+  /** Switch every actor to the game's models (models.js loadModelSet's result). */
+  function setModels(ms) {
+    if (!ms || models) return
+    models = ms
+    sceneCapsule = findSceneCapsule()
+    if (sceneCapsule && playerTemplate(0)) sceneCapsule.visible = false
+    for (const [slot, rec] of players) attachPlayerModel(slot, rec)
+  }
+
+  function modelInfo() {
+    if (!models) return null
+    return {
+      source: models.source, rule: models.set.player_rule || null, why: models.set.why || null,
+      players: [...players.entries()].map(([slot, r]) => [slot, r.model ? r.model.id : 'capsule']),
+      zombies: zActors.size, loaded: [...models.templates.keys()],
+    }
   }
 
   function dispose() {
     scene.remove(group)
+    if (models) for (const t of models.templates.values()) group.add(t.gltf.scene)   // disposed below with the rest
     group.traverse((o) => {
       if (o.geometry) o.geometry.dispose()
       const mats = Array.isArray(o.material) ? o.material : [o.material]
@@ -249,7 +365,7 @@ export function createActors(api) {
     })
   }
 
-  return { group, setPlayers, setZombies, setNades, setExplosions, setNames, setNameplatesVisible, dispose }
+  return { group, setPlayers, setZombies, setNades, setExplosions, setNames, setNameplatesVisible, setModels, modelInfo, dispose }
 }
 
 /**

@@ -19,9 +19,11 @@
 //     speed cog, fullscreen.
 //
 // WHAT IS NEW:
-//   * four players instead of one (actors.js), each a coloured capsule with a
-//     nameplate, and any of them selectable as the first-person eye;
-//   * zombies as one instanced capsule mesh;
+//   * four players instead of one (actors.js), each with a nameplate, and any of them
+//     selectable as the first-person eye;
+//   * players and zombies drawn as the game's own models (models.js, replay.md §9: the
+//     Marines / the four heroes, the stock zombies, a procedural gait), falling back to
+//     coloured capsules and one instanced capsule mesh when the models are not there;
 //   * the scoreboard (points, health), the round counter, the body count, the event
 //     feed, and round markers on the scrubber.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -32,6 +34,7 @@ import {
   simulateSpread, reticleGeom, cookAt, roundGlyphs, trackClock,
 } from './waw.js'
 import { fetchAsset, fetchJson } from './assets.js'
+import { loadModelSet } from './models.js'
 import Boot from './Boot.jsx'
 import './r3d.css'
 
@@ -223,6 +226,37 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   }, [track])
   const yawRecorded = !!(track && track.zombies.some((z) => z.yaw))
 
+  // Distance walked, per tick, for every player and zombie (replay.md §9): the procedural
+  // gait's phase is this distance, so a scrubbed or paused frame is posed exactly as a played
+  // one. Horizontal only; a jump of 400 u in one tick is a teleport and walks nobody.
+  const walked = useMemo(() => {
+    const cum = (pos, n) => {
+      const out = new Float32Array(n)
+      for (let k = 1; k < n; k++) {
+        const dx = pos[k * 3] - pos[k * 3 - 3], dy = pos[k * 3 + 1] - pos[k * 3 - 2]
+        const d = Math.hypot(dx, dy)
+        out[k] = out[k - 1] + (d < 400 ? d : 0)
+      }
+      return out
+    }
+    if (!track) return { players: new Map(), zombies: [] }
+    const players = new Map()
+    for (const p of track.players) players.set(p.slot, cum(p.pos, track.ticks))
+    return { players, zombies: track.zombies.map((z) => cum(z.pos, z.pos.length / 3)) }
+  }, [track])
+  // Which zombie tracks end in a death: a `kill` event for that entity within 1.5 s of its
+  // last sample. Those fall; a track that ends any other way (cleanup, end of file) just goes.
+  const zombieDeathMs = useMemo(() => {
+    if (!track || !clk) return []
+    const kills = track.events.filter((e) => e.t === 'kill' && e.id != null)
+    return track.zombies.map((z) => {
+      const n = z.pos.length / 3
+      const endMs = clk.at(z.t0 + n - 1)
+      const k = kills.find((e) => e.id === z.id && Math.abs(e.ms - endMs) < 1500)
+      return k ? endMs : null
+    })
+  }, [track, clk])
+
   // Downs. A `down` event when the referee sends one; otherwise INFERRED from the weapon
   // index going to #0 (none) while the player was holding a real one -- last stand takes
   // the weapon away (§8.11: both replays have no down event and both show this).
@@ -316,11 +350,31 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     // (placing the free camera exactly). Nothing reads it; off unless asked for.
     try {
       if (new URLSearchParams(window.location.search).has('r3ddebug')) {
-        window.__r3d = { api, redraw: () => { dirtyRef.current = true } }
+        window.__r3d = {
+          api, redraw: () => { dirtyRef.current = true },
+          // Seek to replay seconds (screenshots, replay.md §9); the same as dragging the scrubber.
+          seek: (s) => { timeRef.current = Math.max(0, s); dirtyRef.current = true },
+        }
       }
     } catch { /* no window.location: not a browser */ }
     const actors = createActors(api)
     actorsRef.current = actors
+    // The game's player and zombie models (replay.md §9). Loaded beside the map, never in
+    // its way: until they arrive -- and for good if they are not there -- the capsules stay.
+    // `?models=off` keeps the capsules, for comparison.
+    let modelsOff = false
+    try { modelsOff = new URLSearchParams(window.location.search).get('models') === 'off' } catch { /* not a browser */ }
+    if (!modelsOff) {
+      loadModelSet(track.map, {
+        slots: track.players.map((p) => p.slot),
+        dogs: track.zombies.some((z) => z.kind === 'dog'),
+      }).then((ms) => {
+        if (dead || !ms) return
+        actors.setModels(ms)
+        if (window.__r3d) window.__r3d.models = () => actors.modelInfo()
+        dirtyRef.current = true
+      })
+    }
     const gun = createPlaceholderGun()
     gunRef.current = gun
     api.setViewmodel(gun.object)
@@ -507,8 +561,13 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       const pa = p.pitch ? (p.pitch[i] ?? 0) : p.ang[i * 2]
       const pb = p.pitch ? (p.pitch[j] ?? pa) : p.ang[j * 2]
       const stance = stanceOf(p.btn ? p.btn[i] : 0)
+      const wk = walked.players.get(p.slot)
+      const dtS = j > i ? (clk.at(j) - clk.at(i)) / 1000 : 0
       const rec = {
         slot: p.slot, name: p.name, x, y, z,
+        phase: wk ? wk[i] + (wk[j] - wk[i]) * ff : 0,
+        speed: wk && dtS > 0 ? (wk[j] - wk[i]) / dtS : 0,
+        t: timeRef.current,
         pitch: lerpAngle(pa, pb, ff),
         yaw: lerpAngle(p.ang[i * 2 + 1], p.ang[j * 2 + 1], ff),
         health: p.health[i], score: p.score[i], alive: p.alive[i] === 1,
@@ -525,19 +584,36 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     // Zombies, interpolated between samples exactly as the players are (they used to snap
     // from sample to sample at 10 Hz, §8.11), facing their recorded or travelled yaw.
     const zs = []
+    const nowMs = t0 + timeRef.current * 1000
+    let zDying = 0
     for (let zi = 0; zi < track.zombies.length; zi++) {
       const z = track.zombies[zi]
-      const k = i - z.t0
+      let k = i - z.t0
       const n = z.pos.length / 3
-      if (k < 0 || k >= n) continue
+      if (k < 0) continue
+      // A zombie killed in the track stays for 2 s after its last sample, falling (models.js).
+      let death = null
+      if (k >= n) {
+        const dm = zombieDeathMs[zi]
+        if (dm == null || nowMs - dm >= 2000 || nowMs < dm) continue
+        death = (nowMs - dm) / 1000
+        k = n - 1
+      }
       const k2 = Math.min(n - 1, k + 1)
       const zf = k2 > k ? f : 0
       const yw = zombieYaw[zi]
+      const wk = walked.zombies[zi]
+      const dtS = k2 > k ? (clk.at(z.t0 + k2) - clk.at(z.t0 + k)) / 1000 : 0
+      if (death != null) zDying++
       zs.push({
+        key: `${z.id}:${z.t0}`,
         x: z.pos[k * 3] + (z.pos[k2 * 3] - z.pos[k * 3]) * zf,
         y: z.pos[k * 3 + 1] + (z.pos[k2 * 3 + 1] - z.pos[k * 3 + 1]) * zf,
         z: z.pos[k * 3 + 2] + (z.pos[k2 * 3 + 2] - z.pos[k * 3 + 2]) * zf,
         yaw: Number.isFinite(yw[k]) ? (Number.isFinite(yw[k2]) ? lerpAngle(yw[k], yw[k2], zf) : yw[k]) : null,
+        phase: wk[k] + (wk[k2] - wk[k]) * zf,
+        speed: death == null && dtS > 0 ? (wk[k2] - wk[k]) / dtS : 0,
+        death, t: timeRef.current + zi * 0.37, kind: z.kind || null,
       })
     }
     actors.setZombies(zs)
@@ -575,8 +651,8 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
     // Zombies left: computed by the track from the round's stock total (lib/wawRules.js).
     const zl = track.zombies_left ? track.zombies_left[i] : null
-    return { fire, xh, zs, i, list, alive: zs.length, left: zl == null ? null : zl, round: roundAt[i] || 0 }
-  }, [track, clk, t0, roundAt, weaponNameAt, spread, zombieYaw])
+    return { fire, xh, zs, i, list, alive: zs.length - zDying, left: zl == null ? null : zl, round: roundAt[i] || 0 }
+  }, [track, clk, t0, roundAt, weaponNameAt, spread, zombieYaw, walked, zombieDeathMs])
 
   // ---- WaW overlays: crosshair, cook reticle, damage flash + direction, low health -----
   // All of it is a pure function of replay time and the track, so a paused or scrubbed
