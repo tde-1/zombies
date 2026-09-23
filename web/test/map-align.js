@@ -24,6 +24,53 @@ const ok = (name, cond, detail) => {
 // Read from the .enwr when the file is on this machine; otherwise the recorded value.
 const FIRST_TICK = { nazi_zombie_prototype: { match: 'm_0afb449b', pos: [0, 424, 18] } }
 
+// The reader itself, on a synthetic glb, so it runs on every machine. export_all.py's optimiser
+// (gltf-transform) INTERLEAVES vertex attributes: POSITION and NORMAL share one bufferView with
+// byteStride 24. A reader that ignored byteStride read normal bytes as positions and reported
+// a world 1e34 units across (2026-09-23 04:13, the Nacht staging export) -- the file was fine.
+function syntheticGlb(interleaved) {
+  const tri = [[0, 0, 0], [100, 0, 0], [0, 200, 50]]
+  const nrm = [[0, 0, 1], [0, 0, 1], [0, 0, 1]]
+  const vb = Buffer.alloc(interleaved ? 3 * 24 : 3 * 12 * 2)
+  tri.forEach((p, i) => p.forEach((v, k) => vb.writeFloatLE(v, interleaved ? i * 24 + k * 4 : i * 12 + k * 4)))
+  nrm.forEach((p, i) => p.forEach((v, k) => vb.writeFloatLE(v, interleaved ? i * 24 + 12 + k * 4 : 36 + i * 12 + k * 4)))
+  const ib = Buffer.alloc(8)
+  ;[0, 1, 2].forEach((v, i) => ib.writeUInt16LE(v, i * 2))
+  const bin = Buffer.concat([vb, ib])
+  const j = {
+    asset: { version: '2.0' },
+    nodes: [{ name: '__world', mesh: 0 }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2 }] }],
+    bufferViews: interleaved
+      ? [{ buffer: 0, byteOffset: 0, byteLength: 72, byteStride: 24 }, { buffer: 0, byteOffset: 72, byteLength: 6 }]
+      : [{ buffer: 0, byteOffset: 0, byteLength: 36 }, { buffer: 0, byteOffset: 36, byteLength: 36 }, { buffer: 0, byteOffset: 72, byteLength: 6 }],
+    accessors: interleaved
+      ? [{ bufferView: 0, componentType: 5126, count: 3, type: 'VEC3' },
+         { bufferView: 0, byteOffset: 12, componentType: 5126, count: 3, type: 'VEC3' },
+         { bufferView: 1, componentType: 5123, count: 3, type: 'SCALAR' }]
+      : [{ bufferView: 0, componentType: 5126, count: 3, type: 'VEC3' },
+         { bufferView: 1, componentType: 5126, count: 3, type: 'VEC3' },
+         { bufferView: 2, componentType: 5123, count: 3, type: 'SCALAR' }],
+    buffers: [{ byteLength: bin.length }],
+  }
+  let js = Buffer.from(JSON.stringify(j))
+  js = Buffer.concat([js, Buffer.alloc((4 - (js.length % 4)) % 4, 0x20)])
+  const binp = Buffer.concat([bin, Buffer.alloc((4 - (bin.length % 4)) % 4)])
+  const head = Buffer.alloc(12); head.writeUInt32LE(0x46546c67, 0); head.writeUInt32LE(2, 4); head.writeUInt32LE(12 + 8 + js.length + 8 + binp.length, 8)
+  const c1 = Buffer.alloc(8); c1.writeUInt32LE(js.length, 0); c1.writeUInt32LE(0x4e4f534a, 4)
+  const c2 = Buffer.alloc(8); c2.writeUInt32LE(binp.length, 0); c2.writeUInt32LE(0x004e4942, 4)
+  const f = path.join(require('node:os').tmpdir(), `zm-align-${interleaved ? 'i' : 'p'}-${process.pid}.glb`)
+  fs.writeFileSync(f, Buffer.concat([head, c1, js, c2, binp]))
+  return f
+}
+for (const inter of [false, true]) {
+  const f = syntheticGlb(inter)
+  const T = Array.from(align.worldTriangles(align.readGlb(f)))
+  fs.unlinkSync(f)
+  ok(`reader: ${inter ? 'interleaved (byteStride 24)' : 'packed'} POSITION reads back exactly`,
+    JSON.stringify(T) === JSON.stringify([0, 0, 0, 100, 0, 0, 0, 200, 50]), JSON.stringify(T))
+}
+
 ;(async () => {
   const bsp = 'nazi_zombie_prototype'
   const glb = path.join(MAPS, bsp, `${bsp}.glb`)
