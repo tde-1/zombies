@@ -129,6 +129,15 @@
    "match": "m_d72a17ef",
    "com_frameTime_advance_ms": 30077
   },
+  "kri": {
+   "result": "pass",
+   "at": "2026-09-23T21:07:16",
+   "match": "m_9146b23c",
+   "com_frameTime_advance_ms": 95167,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 69250295
+  },
   "mr_freeze": {
    "result": "pass",
    "at": "2026-09-22T23:32:46",
@@ -457,6 +466,15 @@
    "match": "m_77791ba6",
    "com_frameTime_advance_ms": 35059
   },
+  "nazi_zombie_room": {
+   "result": "pass",
+   "at": "2026-09-23T20:48:24",
+   "match": "m_b9925c4e",
+   "com_frameTime_advance_ms": 95143,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 71405647
+  },
   "nazi_zombie_shore": {
    "result": "fail",
    "at": "2026-09-22T22:43:07",
@@ -522,6 +540,33 @@
    "match": "m_9bc26cc6",
    "com_frameTime_advance_ms": 40147
   },
+  "trailer_park_christmas": {
+   "result": "pass",
+   "at": "2026-09-23T20:55:53",
+   "match": "m_fc48c2c5",
+   "com_frameTime_advance_ms": 95142,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 287589160
+  },
+  "ugx_bridge": {
+   "result": "pass",
+   "at": "2026-09-23T20:59:26",
+   "match": "m_6a21db6e",
+   "com_frameTime_advance_ms": 95151,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 432311992
+  },
+  "ugx_the_cobos": {
+   "result": "pass",
+   "at": "2026-09-23T20:52:05",
+   "match": "m_f1c81bb2",
+   "com_frameTime_advance_ms": 95126,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 359992603
+  },
   "ugxm_garage": {
    "result": "pass",
    "at": "2026-09-23T00:00:30",
@@ -533,6 +578,15 @@
    "at": "2026-09-22T22:05:45",
    "match": "m_f592ad24",
    "com_frameTime_advance_ms": 30072
+  },
+  "wfms_zombies": {
+   "result": "pass",
+   "at": "2026-09-23T21:03:14",
+   "match": "m_7d77059a",
+   "com_frameTime_advance_ms": 95141,
+   "watchdog_clean": true,
+   "in_bucket": true,
+   "bucket_bytes": 251793263
   },
   "xmas_refinery": {
    "result": "pass",

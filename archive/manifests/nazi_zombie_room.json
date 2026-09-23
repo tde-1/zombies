@@ -141,5 +141,44 @@
       "nazi_zombie_room.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": true,
+  "asset_audit": {
+    "at": "2026-09-23T21:15:17",
+    "verdict": "hide",
+    "map_loaded_runs": 1,
+    "misses": 193,
+    "fatal": 2,
+    "visible": 2,
+    "visible_owner": {
+      "release": 2
+    },
+    "visible_names": [
+      "item:zombie_perk_bottle_phd",
+      "weapon:weapons/sp/zombie_perk_bottle_phd"
+    ],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95143 ms over the hold",
+    "first_error": "WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_phd'",
+    "match": "m_b9925c4e",
+    "at": "2026-09-23T20:48:24",
+    "instance": "inst-11",
+    "com_frameTime_advance_ms": 95143,
+    "com_error": [],
+    "console_errors": [
+      "4204:WARNING: Could not load weapon file 'weapons/sp/zombie_perk_bottle_phd'",
+      "4206:******* script runtime error *******",
+      "4207:unknown item 'zombie_perk_bottle_phd': (file 'maps/byzmodz_paranormal_potion_perk_machine_standalone.gsc', line 9)",
+      "4210:Error: called from:",
+      "4214:Error: called from:",
+      "4218:Error: started from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "site_hidden_reason": "asset gate: hide -- missing: item:zombie_perk_bottle_phd, weapon:weapons/sp/zombie_perk_bottle_phd",
+  "dedi_status": "box_map_loaded"
 }

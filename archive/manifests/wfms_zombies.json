@@ -155,5 +155,38 @@
       "WFMSZombies.iwd:maps/_loadout.gsc"
     ]
   },
-  "site_hidden": true
+  "site_hidden": false,
+  "asset_audit": {
+    "at": "2026-09-23T21:15:17",
+    "verdict": "clean",
+    "map_loaded_runs": 1,
+    "misses": 149,
+    "fatal": 0,
+    "visible": 0,
+    "visible_owner": {},
+    "visible_names": [],
+    "client_check": [],
+    "static": {},
+    "tool": "archive/asset_audit.py"
+  },
+  "box_proof": {
+    "result": "pass",
+    "reason": "map_loaded; com_frameTime +95141 ms over the hold",
+    "first_error": null,
+    "match": "m_7d77059a",
+    "at": "2026-09-23T21:03:14",
+    "instance": "inst-15",
+    "com_frameTime_advance_ms": 95141,
+    "com_error": [],
+    "console_errors": [
+      "4109:Error: started from:",
+      "4113:Error: ************************************",
+      "4115:******* script runtime error *******",
+      "4119:Error: called from:",
+      "4123:Error: called from:",
+      "4127:Error: called from:"
+    ],
+    "unproven": "no client joined: server-side load under Wine only"
+  },
+  "dedi_status": "box_map_loaded"
 }
