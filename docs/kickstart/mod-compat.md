@@ -302,3 +302,64 @@ catalogue gets a per-map override in the launcher's mod-compat layer (`launcher/
 that pins it for fear_mc_2 and says so on the Settings row, or a global cap if it reproduces on a
 stock map; if address space, lower AA automatically on maps whose largest free block after load is
 under a threshold (the `overlay_guard` measurement already exists).
+
+### 10.1 Correction (13:25 UK) — (h) is WRONG; the symptom is broken skinning, not a hidden model
+
+B (13:20): he has **always** played with 4x AA, specular and glow on; the 01:34 `2 / 0 / 0` values
+were a harness profile's (`mcjoinB4` read the dev client's config, not his). With the three turned
+**off** (`m_b00b9202`, client pid 29660, `r_aaSamples 2 r_specular 0 r_glow_allowed 0` on the command
+line) the zombies are drawn but **garbled**: a stock SS zombie body with triangles stretched to
+spikes (`tmp/shot-garbled.png`). With them on (`m_e0690140` pid 5840, `m_78666e6c` pid 23396) they
+are invisible. That is skinned-mesh / bone-matrix / animation state going wrong on the client (or
+the pose data it is fed), and the settings only change how the wrong vertices end up on screen.
+The replay-contact timeline in §10 still stands (00:53 is the last real sighting), and so does
+B's stretched Reapers Colt at 00:53 (§1: "huge screen-covering triangles"), which now reads as the
+**same bug on a viewmodel**, already present with client build Sep 22 23:50 (launcher 0.2.13).
+
+Checked since: the set of xmodels that fail to load is identical (59 names) on today's client, the
+box server, and last night's local server and client — so the client and server resolve the same
+models; no model-mismatch skeleton swap.
+
+### 10.2 What is and is not new (13:40 UK)
+
+* **`r_multiGpu 1` is not new.** The launcher's `COMMUNITY_FIXES` baseline has pinned it since
+  `afc6276` (09-22 04:13, PCGW's stutter fix, `launcher/src/main/gamecfg.js`); the site catalogue
+  has `def 0`, `enw 1`. Every B launch since 09-22 04:55 carries it (32 launches listed from
+  `enw-*.log`), including the 00:53 fear_mc_2 game where zombies were met (`m_8a0a8e75`) — and
+  the stretched Colt of that same game. So it can be a *condition* of the bug, not the thing that
+  changed. The harness `mcjoinB3` ran it at 2560x1440 on this PC's GPU and drew the Colt correctly.
+  It is still variant R1 below, and B's toggle answer decides it.
+* **The huffman bounded decode** (`shared/core/components/huffman_guard.cpp`) is unchanged since
+  09-22 and was in the 00:53 game; `ENW_NO_HUFFMAN_GUARD=1` is variant C5.
+* **Two games today, same symptom set:** `m_78666e6c` (pid 23396, AA 4/spec/glow on) invisible;
+  `m_b00b9202` (pid 29660, off) garbled. Both: Discord's hook ALLOWED at +8.2/+8.6 s, largest free
+  block **5.0 MB / 7.8 MB at +65 s**; their `Error/WARNING` sets are identical to pid 5840's.
+* **Server side:** the replay records only positions, yaw and health for zombies (`replay.cpp`),
+  so it cannot show anim or model fields; there is no server-side evidence to build from it. The
+  zombie in the garbled shot holds a coherent upper body at the right place, which a corrupt
+  origin/angles would not.
+
+### 10.3 The local A/B (ready, not run — B's PC is in use): `tools/dev/z1-ab.ps1`
+
+One `jointest.ps1` d2+c1 game per variant on fear_mc_2, B's renderer dvars (window dvars left to
+the harness: invisible, parked, private profile), `ENW_NET_FORCE_WAN=1` (internet pacing),
+frames every 10 s from 30 to 120 s into `ZombiesDev\logs\z1\<tag>\`, an index in
+`logs\z1\index.txt`. It checks the two DLLs by hash (`build\jrfinal` = `03b04bc3`; `10ba8544` copied
+from the launcher's installed `binkw32.dll` into `build\z1-10ba8544`). Variants, one change each
+against V0:
+
+| id | change | id | change |
+|---|---|---|---|
+| V0 | 0.2.24, AA4/spec/glow (expect invisible) | C5 | `ENW_NO_HUFFMAN_GUARD=1` |
+| V0o | 0.2.24, AA2/off/off (expect garbled) | C6 | `ENW_NET_PROBE=0` |
+| V1 | DLL `03b04bc3` (0.2.20/0.2.21) | C7 | `ENW_ESC_MENU=0 ENW_CHAT_OVERLAY=0` |
+| C1 | `ENW_CONSOLE_TAP=0` | R1 | `r_multiGpu 0` |
+| C2 | `ENW_RAW_MOUSE=0` | R2 | `r_sse_skinning 0` |
+| C3 | `ENW_MAIN_MENU=1` (lockdown off) | R3 | `r_skinCache 0` |
+| C4 | `ENW_OVERLAY_GUARD=0` (no LdrLoadDll detour) | D1 / D2 | `ENW_DISCORD_HOOK=allow` / `refuse` |
+
+`powershell -File tools\dev\z1-ab.ps1` runs all (~15 × 3 min); `-Only V0,V0o,V1` first. **V0 must
+reproduce before anything else means anything** — the harness never reproduced the 00:53 Colt. If
+V0/V0o draw zombies correctly, the difference is B's environment (Discord actually attaching,
+address space, the internet path to the box), and D1 plus a real launcher game with Settings →
+ENW → Discord overlay **Off** are the tests; the C-variants are then moot.
