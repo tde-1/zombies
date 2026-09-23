@@ -102,7 +102,21 @@ try {
   await new Promise((r) => ws.addEventListener('open', r))
   let id = 0
   const pending = new Map()
-  ws.addEventListener('message', (ev) => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result) } })
+  const logs = []
+  let logCount = 0
+  ws.addEventListener('message', (ev) => {
+    const m = JSON.parse(ev.data)
+    if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); return }
+    if (m.method === 'Runtime.consoleAPICalled' || m.method === 'Runtime.exceptionThrown') {
+      logCount++
+      const t = m.method === 'Runtime.exceptionThrown'
+        ? 'exception: ' + String((m.params.exceptionDetails.exception || {}).description || m.params.exceptionDetails.text)
+        : m.params.type + ': ' + m.params.args.map((a) => a.value !== undefined ? a.value : a.description).join(' ')
+      if (logs.length < 8 && !logs.includes(t.slice(0, 400))) logs.push(t.slice(0, 400))
+    }
+  })
+  const NL = String.fromCharCode(10)
+  process.on('exit', () => { if (logCount) console.log('console: ' + logCount + ' messages; first distinct:' + NL + '  ' + logs.join(NL + '  ')) })
   const send = (method, params = {}, sessionId) => new Promise((res, rej) => { const m = { id: ++id, method, params }; if (sessionId) m.sessionId = sessionId; pending.set(m.id, { res, rej }); ws.send(JSON.stringify(m)) })
   const { targetId } = await send('Target.createTarget', { url: 'about:blank' })
   const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true })

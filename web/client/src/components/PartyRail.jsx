@@ -150,7 +150,7 @@ function PlayerCard({ user, role, host, onRemove, removeLabel }) {
       <Link to={profilePath(user)} className="pcard-link" title={`View ${name}'s profile`}>
         <span className="pcard-av">
           <Avatar user={user} />
-          <span className={'pdot on' + (game ? ' in-game' : lobby ? ' in-party' : '')} />
+          <span className="pdot on" />
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="pname">{name}</div>
