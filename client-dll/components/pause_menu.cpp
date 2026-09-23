@@ -608,8 +608,26 @@ void request_restart() {
 }
 
 DWORD g_rw_shot = 0;   // a picture of the new run a few seconds in (only when frame capture is armed)
+bool g_req_primed = false;
+
+// [RS] THE FIRST `setu` OF A NEW DVAR IS NEVER SENT. `setu` creates the dvar and only then
+// adds the userinfo flag, so the change that created it does not mark userinfo modified and
+// the client never re-sends it (Quake 3's Cvar_Set_f, before ioq3 fixed it). Measured in rs4:
+// the console's `restart.1` never reached the server; `restart.2`, a change of an existing
+// userinfo dvar, did, 136 ms later. The Esc menu's Restart only ever worked because closing
+// the menu changes `enw_ui` in the same frame, which re-sends the whole userinfo. B's
+// `restart` on bridge_zombie was a console `restart.1`. So `enw_req` is created at the first
+// frame, before the connect, and rides in the connect userinfo as `0` (restart_request.cpp's
+// baseline); every restart after that is a change and is sent.
+void prime_req() {
+    if (g_req_primed) return;
+    g_req_primed = true;
+    cbuf("setu enw_req 0\n");
+    ENW_INFO("pause_menu: userinfo enw_req created as 0 (so the first restart is a change the engine sends)");
+}
 
 void restart_tick() {
+    prime_req();
     if (g_rw_shot && ::GetTickCount() >= g_rw_shot) {
         g_rw_shot = 0;
         frame_capture::request("restart-new-run");

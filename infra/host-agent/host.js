@@ -271,7 +271,7 @@ class Game extends EventEmitter {
     this.onCloseBound = () => {
       this.conn = null
       this.log.info('game link closed')
-      this.graceOpen?.resolve('expired')   // [RS] no link, no restart: post the result now
+      this.graceOpen?.resolve('expired', 'the game link closed')   // [RS] no link, no restart: post the result now
       this.onLinkClosed()
     }
     conn.on('message', this.onMessageBound)
@@ -689,12 +689,13 @@ class Game extends EventEmitter {
     return new Promise((resolve) => {
       const t = setTimeout(() => done('expired'), ms)
       t.unref?.()
-      const done = (why) => {
+      const done = (why, cause = null) => {
         if (!this.graceOpen) return
         clearTimeout(t)
         this.graceOpen = null
         this.log.info(why === 'restart'
           ? 'restart grace: a player restarted - the lease goes on'
+          : cause ? `restart grace ended early (${cause}) - the result goes to the site now`
           : `restart grace: nobody restarted within ${ms} ms - the result goes to the site and the instance to its disposition`)
         resolve(why)
       }
@@ -1325,7 +1326,7 @@ class HostAgent {
     game.disposed = game.disposed || Promise.resolve({ action: 'terminate', why })
     // [RS] A run in its restart grace is being let go (its lease ended at the site, a
     // shutdown): the grace ends now and the result goes to the site without waiting.
-    game.graceOpen?.resolve('expired')
+    game.graceOpen?.resolve('expired', `retired: ${why}`)
     // A GAME STILL WAITING TO BOOT NEVER BOOTS (host.md §16). Out of the queue first, and
     // synchronously, so no `await` below can let its turn come round in between.
     const where = this.bootQueue.cancel(id, why)
