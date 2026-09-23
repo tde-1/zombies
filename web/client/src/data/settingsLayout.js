@@ -42,6 +42,7 @@ export const GROUPS = [
   { tab: 'game', id: 'game', label: 'game', items: ['cg_mature', 'cg_subtitles', 'hud_enable', 'cg_drawCrosshair', 'monkeytoy'] },
   // Drawn on the ENW tab under EnwSection (pages/Settings.jsx).
   { tab: 'enw', id: 'discord', label: 'discord', items: ['discordPresence', 'discordOverlay'] },
+  { tab: 'enw', id: 'notifications', label: 'notifications', items: ['notifySound'] },
 ]
 
 // Shorter, Gaff-style row labels. Anything not here uses the game's own label, lowercased.
@@ -85,6 +86,7 @@ export const LABELS = {
   rawMouse: 'raw input',
   discordPresence: 'rich presence',
   discordOverlay: 'discord overlay',
+  notifySound: 'notification sound',
   cg_mature: 'mature content',
   cg_subtitles: 'subtitles',
   hud_enable: 'hud',
@@ -100,6 +102,7 @@ export const HINTS = {
   snd_losOcclusion: 'muffles sounds behind walls',
   rawMouse: 'fixes high polling rate mice',
   discordOverlay: 'auto turns it off when a map is short of memory',
+  notifySound: 'invites, DMs and party chat while the launcher is not in front',
 }
 
 // Shorter words for the segmented buttons, keyed by item id then stored value.

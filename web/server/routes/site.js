@@ -283,6 +283,29 @@ function router() {
   r.get('/party/invite-search', requireUser, (req, res) => {
     res.json({ results: roster.search(req.me.steam_id, req.query.q) })
   })
+
+  // ---- friends (lane SOC, 2026-09-23) -------------------------------------------------
+  // Requests waiting on me, for the rail's Requests block. Accept / Decline are the
+  // profile's existing POST /api/players/:who/friend {action}; both push to the other side.
+  r.get('/friends/requests', requireUser, (req, res) => {
+    res.json({ requests: users.pendingRequests(req.me.steam_id) })
+  })
+
+  // ---- party chat and DMs from the site (lane SOC) ----------------------------------
+  // The same private ring the in-game overlay speaks (lib/gameChat.js, channel party|dm):
+  // the launcher chimes on a DM or a party line, so the site has to be able to show and
+  // answer one. Same rules as in game: DMs to friends and party members, 5 lines / 10 s.
+  r.get('/chat/private', requireUser, (req, res) => {
+    const gameChat = require('../lib/gameChat')
+    res.json({ lines: gameChat.privateFor(req.me.steam_id, Number(req.query.after) || 0, { tailN: 40 }) })
+  })
+  r.post('/chat/private', requireUser, (req, res) => {
+    const gameChat = require('../lib/gameChat')
+    const b = req.body && typeof req.body === 'object' ? req.body : {}
+    const channel = b.channel === 'dm' ? 'dm' : 'party'
+    const out = gameChat.send(req.me, { channel, to: b.to ? String(b.to) : null, text: b.text })
+    res.status(out.ok ? 200 : 400).json(out)
+  })
   r.post('/party/quick-join', requireApproved, partyAction((req) => parties.quickJoin(req.me.steam_id, (req.body && req.body.map_key) || null)))
 
   // ---- presets (the Custom knobs) ---------------------------------------------------

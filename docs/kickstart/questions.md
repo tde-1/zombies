@@ -587,6 +587,19 @@ Nothing new below except the gathering; each line points at where the question w
 Older, still open: aim assist on Verified boards; solo on a dedicated server follows co-op rules
 (a records decision, vault 10); LICENSE files (GPL-3.0 client / AGPL-3.0 server, decided in principle).
 
+## Q-soc-1 (2026-09-23, lane SOC) — what is "the ENW main server" for friends?
+
+B asked for friends to carry over "from the ENW main server, from Movement and from drops". Checked
+read-only: **Movement** has the friend graph (imported now, `web.md` "friends across ENW"); **drops.ws**
+has no friend table; the **enw.gg** site has no friends feature and the **ENW Discord** server has no
+friend list a bot can read. So "the ENW main server" is not identified: if it is a place with a friends
+list (another database, a Discord role, a Steam group), say which, and it is one more entry in
+`web/server/lib/friendSync.js` SOURCES. **Assumed until you answer:** Movement is the ENW friend graph
+(PvP already treats its DB as "main").
+
+Also for B: turning the sync on is one line in `infra\site.env` (`ZM_FRIENDS_MOVEMENT_SSH=webbox`) and
+a keepalive restart; it uses this PC's ssh key read-only.
+
 ## Parked ideas (not questions; B's, written down so they are not lost)
 
 * **Weapon index** (B, 2026-09-23, while removing the map page's "What's in it"): see every map a

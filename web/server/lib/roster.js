@@ -47,15 +47,21 @@ function forViewer(viewerId) {
     const u = users.publicById(id)
     if (!u || u.deleted) continue
     const where = presence.whereabouts(id) || { state: 'online' }
+    const isFriend = friends.has(id)
     const row = {
       ...u,
       online: true,
+      friend: isFriend,
+      // Where the friendship comes from ('zombies', 'movement'), so the rail can say
+      // "friend on Movement" and a remove button knows it is not ours to press.
+      friend_sources: isFriend ? users.friendSources(me, id) : [],
+      client: where.client || null,
       held: myMembers.has(id) ? 'member' : myInvited.has(id) ? 'invited' : null,
       lobby: null,
       game: null,
     }
     if (where.state === 'in-game' && where.match_id) {
-      row.game = { match_id: where.match_id, map_key: where.map_key, map_title: where.map_title, art: artOf(where.map_key) }
+      row.game = { match_id: where.match_id, map_key: where.map_key, map_title: where.map_title, art: artOf(where.map_key), round: where.round || null }
     } else if (where.party_id) {
       const p = db.prepare('SELECT * FROM parties WHERE id=?').get(where.party_id)
       if (p) {
@@ -82,14 +88,33 @@ function forViewer(viewerId) {
         }
       }
     }
+    row.status = statusOf(row)
     rows.push(row)
   }
 
-  // Somebody sitting on a map first (those rows are the ones with something to do), then
-  // by name, so the list does not reshuffle on every poll.
-  rows.sort((a, b) => (Number(!!(b.lobby || b.game)) - Number(!!(a.lobby || a.game)))
+  // FRIENDS FIRST (B, 2026-09-23: "friends first, then everyone else"), then somebody
+  // sitting on a map (those rows have something to do), then by name, so the list does not
+  // reshuffle on every push.
+  rows.sort((a, b) => (Number(b.friend) - Number(a.friend))
+    || (Number(!!(b.lobby || b.game)) - Number(!!(a.lobby || a.game)))
     || String(a.name).localeCompare(String(b.name)))
-  return { scope: everyone ? 'online' : 'friends', players: rows }
+  return { scope: everyone ? 'online' : 'friends', players: rows, friends: rows.filter((r) => r.friend).length }
+}
+
+// One line of where somebody is, worded once here so the rail, the Esc menu and the launcher
+// say the same thing. B's words: Online / In launcher / In game on <map> round N / In party.
+function statusOf(row) {
+  const pretty = (t, k) => t || k || null
+  if (row.game) {
+    const map = pretty(row.game.map_title, row.game.map_key) || 'a map'
+    return { kind: 'game', text: `In game on ${map}${row.game.round ? `, round ${row.game.round}` : ''}` }
+  }
+  if (row.lobby) {
+    const map = pretty(row.lobby.map_title, row.lobby.map_key)
+    return { kind: 'party', text: `In party${map ? ` on ${map}` : ''} (${row.lobby.members}/${parties.MAX_PLAYERS})` }
+  }
+  if (row.client === 'launcher') return { kind: 'launcher', text: 'In launcher' }
+  return { kind: 'online', text: 'Online' }
 }
 
 const artOf = (key) => {
@@ -120,4 +145,4 @@ function search(viewerId, q) {
     .slice(0, 8)
 }
 
-module.exports = { forViewer, search }
+module.exports = { forViewer, search, statusOf }

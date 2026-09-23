@@ -3058,3 +3058,60 @@ next site restart.
 
 **Unproven:** a real launch that performs the repair on B's PC (no game was launched), and a
 fear_mc_2 game on that launcher. The toggle itself is B's proof.
+
+## 2026-09-23 ~17:40–19:30 UK — flash, chime and toast for invites, DMs and party chat (lane SOC, branch `soc-friends`)
+
+B: *"Update instantly in the launcher — we have the tray icon. If ENW Zombies is minimised, it should
+flash the taskbar and make a noise. Same if you get a private message or party chat while not
+focused."* The site half (friends from Movement, the pushed online list, party/DM in the dock) is
+`web.md` under the same date.
+
+**Where the event comes from.** The wrapped site's own socket: inside the launcher that page IS the
+launcher's live connection, so an invite (`invite_received`) or a party/DM line (`chat-private`) reaches
+it the moment it is sent. The page (`web/client/src/attention.js`, mapping in `attentionEvents.js`)
+drops its own lines and system notices and calls **`window.enw.attention(ev)`** (preload, new).
+Nothing polls. The site view now has **`backgroundThrottling: false`**: minimised or in the tray, its
+socket and 30 s heartbeat keep full pace (Chromium otherwise stretches a hidden page's timers to once a
+minute, which dropped a tray launcher off everyone's online list).
+
+**What the launcher does** (`src/main/attention.js`, rules; `main.js setupAttention`, Electron):
+
+| Window | Invite | DM / party line |
+|---|---|---|
+| in front (visible, not minimised, focused) | nothing (the site's own toast) | nothing |
+| **a game running** (`state.flow`) | nothing: the in-game overlay shows it, and nothing may disturb a game (focusguard's rule) | nothing |
+| minimised or behind another window | `flashFrame(true)` until focused, chime, **Windows toast with Accept**, unread dot | flash, chime, unread dot |
+| closed to the tray (no taskbar button) | chime, toast with Accept, dot | chime, **toast once per burst**, dot |
+
+* **One chime per burst**: a signal within 4 s of the previous one is the same burst; a long
+  conversation still chimes every 30 s. **Notification sound** (default on; site `/settings` → ENW →
+  notifications, and the shell's Settings) turns only the chime off. The chime is two synthesised sine
+  tones (WebAudio in the shell page, ~0.35 s, quiet): no sound file, nothing for the CSP.
+* **The toast** is `toastXml` (Windows): `Accept` activates `enw-zombies://invite/<id>` (new route in
+  `deeplink.js`, digits only), which reaches the running launcher through the single-instance hand-off
+  and accepts through the site (`POST /api/party/invites/:id/accept`, the rail's Accept), then shows
+  home; a refused accept (expired, withdrawn) is a shell toast. The body opens the launcher
+  (`enw-zombies://open`). Silent (the chime is ours). **Streamer mode** hides who and what ("You have a
+  party invite").
+* **Unread**: the tray icon gets a red dot (drawn into its bitmap), the taskbar button an overlay dot,
+  the tray tooltip "ENW Zombies (n new)"; focus clears all three and stops the flash.
+* `app.setAppUserModelId('gg.enw.zombies.launcher')` (electron-builder's `appId`, which the installer's
+  shortcut carries) so Windows attributes the toasts.
+* Own messages never count; a double delivery of the same event id is one signal.
+
+**Tests.** `test/run-all.js` 184/0 with the client DLL artefact present (the one failure without it is
+the known "this checkout must have a client DLL" check in a fresh worktree): 13 new attention checks on
+a mocked BrowserWindow (focused, minimised, burst, 30 s re-chime, sound off, game running, tray, own and
+duplicate, focus clears, streamer mode, toast XML escaping + protocol Accept + deep-link parse, the dot
+bitmap, and the wiring: site view unthrottled, IPC, preload, chime, setting). `waw-settings` 20/0,
+`modcompat` 6/0, `discord-presence` 26/0, `telemetry` 20/0.
+
+**Unproven.** No real Electron run: a real `flashFrame`, a Windows toast and its Accept button through
+the protocol hand-off, the chime on real speakers, the tray dot on a real tray (memory rule; see the
+addendum if one ran). Whether `isVisible()` reports a minimised window as visible does not matter to the
+rules (minimised is treated as having a taskbar button either way). "Game running" is `state.flow`,
+i.e. a game this launcher started; a game focused but started some other way would still get a chime.
+
+**Ships in the next launcher** (not published by this lane) plus the site build and restart (without
+the site half the page never calls `attention`; without the launcher half the site's call is refused
+quietly, it is wrapped).

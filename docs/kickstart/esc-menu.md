@@ -131,6 +131,11 @@ a game, gold in a lobby, green online), the name, one line of where (`In game: D
 `Lobby: Verruckt (1/4)`, `Online`), and **Invite** / **Accept** / `IN PARTY` / `INVITED`.
 Invites to me are listed first with **Accept** and **x** (decline).
 
+*(2026-09-23, lane SOC)* The where-line now comes from `roster.statusOf`, the rail's own words:
+`In game on Der Riese, round 12` (round when the referee has a fresh frame), `In party on Verruckt (1/4)`,
+`In launcher`, `Online`. Pip kinds are unchanged (game / lobby / online). Friends come first and include
+the ones imported from ENW Movement (`web.md` "friends across ENW"); rows carry `friend`. No DLL change.
+
 * **Invite** = `parties.invite` (the rail's `requireApproved`, applied to the pass's account).
 * **Accept** = the rail's Accept: `parties.join` into the inviter's party.
 * **What Accept does NOT do: connect you anywhere.** The launcher's party watcher follows a match

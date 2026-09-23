@@ -39,7 +39,14 @@ function bearer(req, res, next) {
 const sidOf = (u) => String(u.steam_id || u.steamid || u.sid || '')
 
 // One short line per friend, worded for a 640x480 panel: where they are, not how.
+// Since SOC (2026-09-23) the words are roster.statusOf's, so the menu, the rail and the
+// launcher say the same thing ("In game on Der Riese, round 12", "In launcher"); the pip
+// kinds the DLL colours by stay game / lobby / online.
 function whereOf(p) {
+  if (p.status) {
+    const kind = p.status.kind === 'game' ? 'game' : p.status.kind === 'party' ? 'lobby' : 'online'
+    return { kind, text: p.status.text }
+  }
   if (p.game) return { kind: 'game', text: `In game: ${p.game.map_title || p.game.map_key || 'a map'}` }
   if (p.lobby && p.lobby.state === 'in-game') {
     return { kind: 'game', text: `In game: ${p.lobby.map_title || p.lobby.map_key || 'a map'}` }
@@ -63,6 +70,7 @@ function state(sid) {
       name: p.name,
       where: w.text,
       where_kind: w.kind,
+      friend: !!p.friend,
       held: p.held || null,                     // 'member' | 'invited' | null
       can_invite: !p.held,
       // They sit in a lobby that invited ME: the row's action is Accept, not Invite.

@@ -138,6 +138,7 @@ const GAME_KEYS = {
   rawMouse: (v) => v !== false,
   discordPresence: (v) => v !== false,
   discordOverlay: (v) => (['auto', 'allow', 'refuse'].includes(v) ? v : undefined),
+  notifySound: (v) => v !== false,
 }
 function sanitizeGame(g) {
   if (!g || typeof g !== 'object' || Array.isArray(g)) return undefined
@@ -186,7 +187,10 @@ function anonymise(steamId) {
 }
 
 // ---- friends -------------------------------------------------------------------------
-function friendIds(steamId) {
+// Friends made HERE (`friendships`, accepted) plus friends imported read-only from the rest
+// of ENW (`friend_edges`, lib/friendSync.js: Movement today). One list; every caller that
+// means "are these two friends" (the rail, lobby visibility, DMs, the Esc menu) gets both.
+function nativeFriendIds(steamId) {
   const sid = String(steamId)
   return db.prepare(`
     SELECT CASE WHEN requester_steam_id=? THEN addressee_steam_id ELSE requester_steam_id END AS id
@@ -194,29 +198,55 @@ function friendIds(steamId) {
      WHERE status='accepted' AND (requester_steam_id=? OR addressee_steam_id=?)
   `).all(sid, sid, sid).map((r) => r.id)
 }
+function friendIds(steamId) {
+  return [...new Set([...nativeFriendIds(steamId), ...require('./friendSync').importedFriendIds(steamId)])]
+}
+
+/** Where a friendship comes from: 'zombies' (made here) and/or the imported sources. */
+function friendSources(a, b) {
+  const out = []
+  if (db.prepare(`SELECT 1 FROM friendships WHERE status='accepted'
+                   AND ((requester_steam_id=? AND addressee_steam_id=?) OR (requester_steam_id=? AND addressee_steam_id=?))`)
+    .get(String(a), String(b), String(b), String(a))) out.push('zombies')
+  return [...out, ...require('./friendSync').sourcesOf(a, b)]
+}
 
 function friendState(a, b) {
   const row = db.prepare(`SELECT * FROM friendships
                            WHERE (requester_steam_id=? AND addressee_steam_id=?)
                               OR (requester_steam_id=? AND addressee_steam_id=?)`).get(a, b, b, a)
+  if (require('./friendSync').sourcesOf(a, b).length) return 'friends'
   if (!row) return 'none'
   if (row.status === 'accepted') return 'friends'
   return row.requester_steam_id === String(a) ? 'sent' : 'incoming'
 }
 
+// Movement's friend events (routes/friends.js emitUser), so a request, an accept or a removal
+// reaches the other person's rail at once. Set by index.js; a test without sockets has none.
+let friendEmit = null
+function setFriendEmitter(fn) { friendEmit = typeof fn === 'function' ? fn : null }
+function tell(ids, event, payload) {
+  if (!friendEmit) return
+  try { friendEmit(ids.map(String), event, payload) } catch { /* a dead socket never fails a request */ }
+}
+
 function requestFriend(from, to) {
   if (String(from) === String(to)) return { ok: false, error: 'that is you' }
+  if (require('./friendSync').sourcesOf(from, to).length) return { ok: true, state: 'friends' }
   const existing = db.prepare(`SELECT * FROM friendships
                                 WHERE (requester_steam_id=? AND addressee_steam_id=?)
                                    OR (requester_steam_id=? AND addressee_steam_id=?)`).get(from, to, to, from)
   if (existing && existing.status === 'accepted') return { ok: true, state: 'friends' }
   if (existing && existing.requester_steam_id === String(to)) {
     db.prepare('UPDATE friendships SET status=?, updated_at=? WHERE id=?').run('accepted', now(), existing.id)
+    // Asking somebody who already asked you IS an accept: both rails learn now.
+    tell([from, to], 'friend_request_accepted', { a: publicById(from), b: publicById(to) })
     return { ok: true, state: 'friends' }
   }
   if (existing) return { ok: true, state: 'sent' }
   db.prepare(`INSERT INTO friendships (requester_steam_id, addressee_steam_id, status, created_at, updated_at)
               VALUES (?,?, 'pending', ?, ?)`).run(String(from), String(to), now(), now())
+  tell([to], 'friend_request_received', { from: publicById(from) })
   return { ok: true, state: 'sent' }
 }
 
@@ -225,14 +255,22 @@ function respondFriend(me, other, accept) {
   if (!row) return { ok: false, error: 'no request' }
   if (accept) db.prepare('UPDATE friendships SET status=?, updated_at=? WHERE id=?').run('accepted', now(), row.id)
   else db.prepare('DELETE FROM friendships WHERE id=?').run(row.id)
+  tell([other, me], accept ? 'friend_request_accepted' : 'friend_removed', { by: publicById(me) })
   return { ok: true, state: accept ? 'friends' : 'none' }
 }
 
 function removeFriend(me, other) {
+  // An imported friendship is the other product's to end: removing it here would come back
+  // on the next sync. Say where, instead of pretending.
+  const elsewhere = require('./friendSync').sourcesOf(me, other)
+  if (elsewhere.length && friendSources(me, other).every((s) => s !== 'zombies')) {
+    return { ok: false, error: `You are friends on ENW ${elsewhere.includes('movement') ? 'Movement' : elsewhere[0]}. Remove them there.` }
+  }
   db.prepare(`DELETE FROM friendships WHERE (requester_steam_id=? AND addressee_steam_id=?)
                                           OR (requester_steam_id=? AND addressee_steam_id=?)`)
     .run(String(me), String(other), String(other), String(me))
-  return { ok: true, state: 'none' }
+  tell([other, me], 'friend_removed', { by: publicById(me) })
+  return { ok: true, state: friendState(me, other) }
 }
 
 function pendingRequests(steamId) {
@@ -245,5 +283,5 @@ function pendingRequests(steamId) {
 module.exports = {
   DEFAULT_SETTINGS, DELETED_NAME,
   ensure, byId, resolve, pub, publicById, settings, saveSettings, sanitizeGame, anonymise, isDemoId,
-  friendIds, friendState, requestFriend, respondFriend, removeFriend, pendingRequests,
+  friendIds, nativeFriendIds, friendSources, friendState, setFriendEmitter, requestFriend, respondFriend, removeFriend, pendingRequests,
 }

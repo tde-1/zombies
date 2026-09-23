@@ -5,6 +5,7 @@ import { useSession } from './session'
 import { socket } from './socket'
 import { usePlayGate } from './components/playGate'
 import InviteToasts from './components/InviteToasts'
+import { useLauncherAttention } from './attention'
 
 // THE RAIL'S STATE — Movement's `party.jsx`, with zombies' nouns.
 //
@@ -104,16 +105,50 @@ export function RailProvider({ children }) {
     try { setOnline(await api.get('/api/party/online')) } catch { /* keep the last list */ }
   }, [signedIn])
 
-  useEffect(() => { loadParty(); loadOnline() }, [loadParty, loadOnline])
+  // Friend requests waiting on me (Movement's rail has the same block above its friends).
+  // Inside the launcher: invites, DMs and party lines flash + chime when the window is not
+  // in front (attention.js; the launcher decides, the page only reports).
+  useLauncherAttention(signedIn && me ? me.steam_id : null)
+
+  const [requests, setRequests] = useState([])
+  const loadRequests = useCallback(async () => {
+    if (!signedIn) { setRequests([]); return }
+    try { setRequests((await api.get('/api/friends/requests')).requests || []) } catch { /* keep the last */ }
+  }, [signedIn])
+
+  useEffect(() => { loadParty(); loadOnline(); loadRequests() }, [loadParty, loadOnline, loadRequests])
   useEffect(() => {
     if (!signedIn) return undefined
     // Poll rather than push, the old panel's reasoning: the party changes when somebody else
     // clicks Ready, and a three-second poll of one small row is cheaper to get right than a
-    // per-party room. The online list moves slower and is polled slower.
+    // per-party room. The online list is PUSHED since SOC (below); the 30 s poll is only the
+    // net under a dropped socket.
     const a = setInterval(loadParty, 3000)
-    const b = setInterval(loadOnline, 10000)
+    const b = setInterval(loadOnline, 30000)
     return () => { clearInterval(a); clearInterval(b) }
   }, [signedIn, loadParty, loadOnline])
+
+  // THE ONLINE LIST IS PUSHED (lane SOC, 2026-09-23). The server nudges every socket with
+  // `online_changed` within ~1 s of anybody's line moving (server/index.js), and
+  // `friends_changed` when a sync from Movement changed who is whose friend. The rows are
+  // worked out per reader, so the nudge carries nothing and we refetch our own list, a burst
+  // of nudges coalesced into one fetch. A socket that reconnects refetches too: it may have
+  // missed nudges while it was down.
+  useEffect(() => {
+    if (!signedIn) return undefined
+    let t = null
+    const soon = () => { if (!t) t = setTimeout(() => { t = null; loadOnline() }, 120) }
+    const friends = () => { soon(); loadRequests() }
+    socket.on('online_changed', soon)
+    socket.on('connect', soon)
+    const fev = ['friends_changed', 'friend_request_received', 'friend_request_accepted', 'friend_removed']
+    for (const e of fev) socket.on(e, friends)
+    return () => {
+      clearTimeout(t)
+      socket.off('online_changed', soon); socket.off('connect', soon)
+      for (const e of fev) socket.off(e, friends)
+    }
+  }, [signedIn, loadOnline, loadRequests])
 
   // PUSH on top of the poll: Movement's party.jsx listens for these three and refreshes at
   // once, so an invite, an accept or a decline shows in the rail without waiting for the
@@ -283,6 +318,12 @@ export function RailProvider({ children }) {
 
   const cancel = useCallback(() => run(() => api.post('/api/party/cancel')), [run])
 
+  // A friend request, from the Requests block: the profile's own route, by SteamID.
+  const answerFriend = useCallback((steamId, accept) => run(async () => {
+    await api.post(`/api/players/${encodeURIComponent(steamId)}/friend`, { action: accept ? 'accept' : 'decline' })
+    await loadRequests(); loadOnline()
+  }), [run, loadRequests, loadOnline])
+
   // Back into the game this player crashed out of. The site hands out a fresh token and
   // puts the phase back to `in-game`; the launcher's party watcher does the launch once
   // `window.enw.resumeMatch` has lifted its once-per-match gate for it.
@@ -304,14 +345,14 @@ export function RailProvider({ children }) {
   }), [run, resumable, party, loadParty])
 
   const value = useMemo(() => ({
-    me, signedIn, approved, endGame,
+    me, signedIn, approved, endGame, requests, answerFriend,
     party, launch, invites, online, pool, poolByKey, live,
     stage, map, mapKey, mode, visibility, editable, gameMode, gameModes,
     busy, err, say,
     stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick, leave,
     decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
     refreshParty: loadParty, refreshOnline: loadOnline,
-  }), [me, signedIn, approved, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
+  }), [me, signedIn, approved, requests, answerFriend, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
     mode, visibility, editable, gameMode, gameModes, busy, err, say, stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick,
     leave, decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
     endGame, loadParty, loadOnline])
