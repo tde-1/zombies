@@ -66,7 +66,9 @@ everything comes from the stock fastfiles and `.iwd`s.
 6. **`maps\_assets.json`**: the one file the viewer reads (§3). It carries no timestamp.
 
 **Deterministic.** Two full builds — one with `--force` re-unlinking every zone — produced
-byte-identical output (85 files, 6 375 740 bytes, combined hash `e86ed776ad6ad40e`). A section
+byte-identical output (85 files, 6 375 744 bytes, combined hash `93610fedb1dcaa84` at commit
+`9311e1e`; `_assets.json`'s `build` field is a hash of the script + manifest, so any edit to
+either changes that one file). A section
 that is rebuilt owns its directory: a file this run did not write is deleted (logged).
 **Logged** to stdout and appended to `assetwork\export_assets.log`. **Budgets enforced** (the
 build exits non-zero): 450 KB per world/power-up `.glb`, 700 KB per viewmodel, 15 MB for the pack.
