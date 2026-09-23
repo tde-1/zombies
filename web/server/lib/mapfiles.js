@@ -29,7 +29,11 @@ const ARCHIVE = process.env.ZM_ARCHIVE ||
 // *.csc`, the load video `.bik`, and extension-less `weapons/sp/<name>` weapon files. Until
 // 2026-09-23 this list dropped them, so the box (staged with rsync) had them and every
 // client did not -- 145 of Futurama's files, 65 of Arena's.
-const ALLOWED = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc', '.csc', '.iwi', '.bik', '.menu', '.str', ''])
+// `.wav`/`.mp3` added 2026-09-23 (archive.md "asset audit"): loose `sound/**` files are what the
+// engine streams at runtime through the FS (a map's music box, weapon fire). Six releases ship
+// them loose (four_way_defense 93, nazi_zombie_house69 62, no_way_out 37, nazi_zombie_perk 5,
+// neon_fighter 5, bunker 1) and this list dropped every one, so no client and no box had them.
+const ALLOWED = new Set(['.ff', '.iwd', '.arena', '.csv', '.txt', '.cfg', '.gsc', '.csc', '.iwi', '.bik', '.menu', '.str', '.wav', '.mp3', ''])
 const CACHE_MS = 60_000
 
 let cache = null

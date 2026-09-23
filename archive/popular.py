@@ -168,7 +168,7 @@ def short_note(r, cause):
 
 BUCKET_BASE = "https://enw-zombies.nbg1.your-objectstorage.com/mods"
 # What web/server/lib/mapfiles.js serves (and so what tools/s3/sync.js uploads).
-SERVED_EXT = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik", ".menu", ".str", ""}
+SERVED_EXT = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik", ".menu", ".str", ".wav", ".mp3", ""}
 
 
 def bucket_check(bsps):

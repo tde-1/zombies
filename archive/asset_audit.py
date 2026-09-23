@@ -68,6 +68,13 @@ LOCAL_LOGS = os.path.join(DEV, "logs", "dedi")
 STOCK_ZONE = os.path.join(DEV, "waw-base", "zone", "english")
 STOCK_MAIN = os.path.join(DEV, "waw-base", "main")
 UNLINKER = os.path.join(DEV, "tools", "oat", "Unlinker.exe")
+# What the site serves of a map (web/server/lib/mapfiles.js ALLOWED; keep the two in step).
+SERVED_EXT = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik", ".menu", ".str",
+              ".wav", ".mp3", ""}
+# What the stock engine can read out of a mod folder at runtime with useFastFile 1: zones,
+# IWDs, loose images / streamed sounds / weapon files / scripts / string & sound tables.
+# (.tga/.psd/.map/.gdt/.efx/.atr are mod-tools SOURCE; the zone already holds the compiled asset.)
+ENGINE_EXT = {".ff", ".iwd", ".iwi", ".wav", ".mp3", "", ".gsc", ".csc", ".csv", ".str", ".menu", ".bik", ".arena"}
 CACHE = os.path.join(WORK, "cache", "asset-lists")
 MANIFESTS = os.path.join(HERE, "manifests")
 # The site DB the LIVE site uses. A worktree has no web/data; read the main checkout's.
@@ -87,7 +94,8 @@ RX_MISS = [
                 r'stringtable|localize|techniqueset|loadedsound|physpreset|font) "([^"]+)"'), None),
     (re.compile(r"WARNING: Could not load weapon file '([^']+)'"), "weapon"),
     (re.compile(r"ERROR: image '([^']+)' is missing"), "image"),
-    (re.compile(r"unknown item '([^']+)'"), "item"),
+    # unknown item 'napalmblob': (file 'maps/_loadout.gsc', line 419) -- the script is kept
+    (re.compile(r"unknown item '([^']+)'(?:: \(file '([^']+)')?"), "item"),
     (re.compile(r"Could not find zone '([^']+)'"), "zone"),
     (re.compile(r'Waited \d+ msec for missing asset "([^"]+)"'), "waited"),
     (re.compile(r"Couldn't find the sound alias '?([A-Za-z0-9_./-]+)"), "sound"),
@@ -104,14 +112,18 @@ def map_zone(z):
     return z
 
 
-def parse_log(path, hosted):
-    """-> {bsp: {"processes": n, "loaded": n, "miss": {(kind, name): count}}}"""
+def parse_log(path, hosted, seen=None):
+    """-> {bsp: {"processes": n, "loaded": n, "miss": {(kind, name): count}}}
+
+    `seen` (a set shared across files) drops a process already counted from another copy of
+    the same log -- a box proof's saved slice and a later pull of the same console.log."""
     out = {}
     try:
         fh = open(path, "rb")
     except OSError:
         return out
     proc = None
+    seen = seen if seen is not None else set()
 
     def flush():
         if not proc:
@@ -119,17 +131,24 @@ def parse_log(path, hosted):
         bsp = proc["map"] or proc["fs"]
         if not bsp or (hosted and bsp not in hosted):
             return
-        r = out.setdefault(bsp, {"processes": 0, "loaded": 0, "miss": collections.Counter()})
+        key = (proc["opened"], bsp, sum(proc["miss"].values())) if proc["opened"] else None
+        if key and key in seen:
+            return
+        if key:
+            seen.add(key)
+        r = out.setdefault(bsp, {"processes": 0, "loaded": 0, "miss": collections.Counter(), "ctx": {}})
         r["processes"] += 1
         r["loaded"] += 1 if proc["map"] else 0
         r["miss"].update(proc["miss"])
+        r["ctx"].update(proc["ctx"])
 
     with fh:
         for raw in fh:
             ln = raw.decode("latin-1").rstrip("\r\n")
             if RX_NEWPROC.search(ln) or proc is None:
                 flush()
-                proc = {"map": None, "fs": None, "miss": collections.Counter()}
+                proc = {"map": None, "fs": None, "miss": collections.Counter(), "ctx": {},
+                        "opened": ln.strip() if RX_NEWPROC.search(ln) else None}
                 if RX_NEWPROC.search(ln):
                     continue
             m = RX_LOADFF.search(ln)
@@ -139,7 +158,8 @@ def parse_log(path, hosted):
                     if proc["map"] and proc["map"] != z:
                         # a map_restart / next map inside one process: a new attribution unit
                         flush()
-                        proc = {"map": None, "fs": proc["fs"], "miss": collections.Counter()}
+                        proc = {"map": None, "fs": proc["fs"], "miss": collections.Counter(), "ctx": {},
+                                "opened": (proc["opened"] or "") + " +" + z}
                     proc["map"] = z
                 continue
             m = RX_FSGAME.search(ln)
@@ -155,6 +175,8 @@ def parse_log(path, hosted):
                         proc["miss"][(mm.group(1), mm.group(2))] += 1
                     else:
                         proc["miss"][(kind, mm.group(1))] += 1
+                        if kind == "item" and mm.group(2):
+                            proc["ctx"][(kind, mm.group(1))] = mm.group(2)
         flush()
     return out
 
@@ -163,7 +185,9 @@ def log_sources():
     """[(path, origin)] -- origin is 'box' (dedicated server only) or 'local' (a dev run; the
     archive/mods console.log is shared by the harness's server and client)."""
     src = []
-    for p in glob.glob(os.path.join(BOXLOGS, "*", "**", "console.log"), recursive=True):
+    # box-console/<date>/... = --pull-box copies; box-console/proof-<date>/<bsp>.<match>.console.log
+    # = box_proof.py --save-console slices (the map cache evicts a map dir, log and all)
+    for p in sorted(glob.glob(os.path.join(BOXLOGS, "**", "*console.log"), recursive=True)):
         src.append((p, "box"))
     for p in glob.glob(os.path.join(LOCAL_LOGS, "*console.log")):
         src.append((p, "local"))
@@ -202,27 +226,38 @@ def hosted_maps():
 
 
 # ---- what a file holds -----------------------------------------------------------------------
+REFS = {}   # zone path -> {(kind, name)} it REFERENCES but does not define
+
+
 def unlinker_list(ff):
-    """{(kind, name)} of the assets a zone DEFINES (OAT marks a mere reference with a leading
-    comma; those are skipped). Cached by path+size+mtime."""
+    """{(kind, name)} of the assets a zone DEFINES. OAT lists a mere reference (an asset of
+    this zone points at it; it must come from a zone loaded earlier) with a leading comma:
+    those go to REFS[ff]. Cached by path+size+mtime."""
     os.makedirs(CACHE, exist_ok=True)
     st = os.stat(ff)
     key = re.sub(r"[^A-Za-z0-9_.-]", "_", os.path.relpath(ff, DEV))[-150:]
     cp = os.path.join(CACHE, key + ".json")
     if os.path.exists(cp):
         c = json.load(open(cp, encoding="utf-8"))
-        if c.get("size") == st.st_size and c.get("mtime") == int(st.st_mtime):
+        if c.get("size") == st.st_size and c.get("mtime") == int(st.st_mtime) and "refs" in c:
+            REFS[ff] = {tuple(x) for x in c["refs"]}
             return {tuple(x) for x in c["assets"]}
     r = subprocess.run([UNLINKER, "--list", ff], capture_output=True, text=True, errors="replace",
                        cwd=os.path.dirname(ff), timeout=600)
-    assets = set()
+    assets, refs = set(), set()
     for ln in r.stdout.splitlines():
         m = re.match(r"^([a-z_]+), (.+)$", ln)
-        if m and not m.group(2).startswith(","):
-            assets.add((m.group(1), m.group(2).strip().lower()))
+        if not m:
+            continue
+        name = m.group(2).strip().lower()
+        if name.startswith(","):
+            refs.add((m.group(1), name[1:]))
+        else:
+            assets.add((m.group(1), name))
+    REFS[ff] = refs
     with open(cp, "w", encoding="utf-8") as fh:
         json.dump({"ff": ff, "size": st.st_size, "mtime": int(st.st_mtime),
-                   "assets": sorted(assets)}, fh)
+                   "assets": sorted(assets), "refs": sorted(refs)}, fh)
     return assets
 
 
@@ -263,25 +298,38 @@ class Index:
                 self.stock_iwd.update(iwd_names(p))
 
     def for_map(self, bsp, extract_entry):
+        """What this map actually gets. SHIPPED = the files the site serves for it
+        (extract.json's list through mapfiles.js ALLOWED, i.e. what the bucket, the box and a
+        player's launcher hold). UNSHIPPED = any engine-readable file of the original download
+        that is not in that set: the importer or the serve filter dropped it."""
         d = os.path.join(MODS, bsp)
-        shipped = {os.path.relpath(p, d).replace("\\", "/").lower(): p
-                   for p in glob.glob(os.path.join(d, "**", "*"), recursive=True) if os.path.isfile(p)}
+        shipped = {}
+        if extract_entry:
+            for m in extract_entry.get("mods", []):
+                if m["map"].lower() != bsp:
+                    continue
+                for f in m["files"]:
+                    rel = f["path"].split("/", 2)[2]
+                    if os.path.splitext(rel)[1].lower() in SERVED_EXT and os.path.isfile(os.path.join(d, rel)):
+                        shipped[rel.replace("\\", "/").lower()] = os.path.join(d, rel)
         orig = {}
         if extract_entry:
             root = os.path.join(EXTRACT, extract_entry["norm"])
             for p in glob.glob(os.path.join(root, "**", "*"), recursive=True):
-                if os.path.isfile(p):
+                if os.path.isfile(p) and "$pluginsdir" not in p.lower():
                     orig[p] = os.path.getsize(p)
         # a file of the original is "unshipped" when no shipped file has its name + size
         shipped_sig = {(os.path.basename(p).lower(), os.path.getsize(p)) for p in shipped.values()}
         unshipped = [p for p, sz in orig.items() if (os.path.basename(p).lower(), sz) not in shipped_sig
-                     and p.lower().endswith((".ff", ".iwd"))]
+                     and os.path.splitext(p)[1].lower() in ENGINE_EXT]
         ix = {"zones": {}, "iwd": {}, "unshipped_zones": {}, "unshipped_iwd": {}, "loose": set(shipped),
               "unshipped_files": [os.path.relpath(p, EXTRACT) for p in unshipped],
               "missingasset_csv": set()}
+        ix["refs"] = {}
         for rel, p in shipped.items():
             if rel.endswith(".ff") and self.trace:
                 ix["zones"][rel] = unlinker_list(p)
+                ix["refs"][rel] = REFS.get(p, set())
             elif rel.endswith(".iwd"):
                 ix["iwd"][rel] = set(iwd_names(p))
             elif os.path.basename(rel) == "missingasset.csv":
@@ -297,7 +345,50 @@ class Index:
                 ix["unshipped_zones"][rel] = unlinker_list(p)
             elif p.lower().endswith(".iwd"):
                 ix["unshipped_iwd"][rel] = set(iwd_names(p))
+        # Can this map put a hellhound on screen at all? Only if a zone it LOADS defines the
+        # dog's model; the community script set drags the dog animtree into maps that have
+        # no dogs, and their missing dog xanims can never play.
+        loaded = {z: a for z, a in ix["zones"].items() if not zone_unloaded(bsp, z)}
+        ix["has_dogs"] = any(k == "xmodel" and re.search(r"wolf|hellhound|(^|_)dog(_|$)", n)
+                             for a in loaded.values() for (k, n) in a)
+        ix["unloaded_zones"] = sorted(z for z in ix["zones"] if zone_unloaded(bsp, z))
+        ix["static"] = self.static_checks(bsp, ix)
         return ix
+
+    def static_checks(self, bsp, ix):
+        """What the zones alone say, no boot needed (so it covers maps with no log):
+
+        load_zone_only -- gameplay assets (xmodel/xanim/weapon/fx) defined ONLY in <bsp>_load.ff.
+            A real dedicated server never loads the load zone (nor `ui`): measured on every box
+            console.log of 2026-09-23, stock and custom, while a listen server (retail solo,
+            the 09-22 local "LAN server" runs) does. So the box's server lacks them.
+        unresolved_refs -- an asset of a zone the server loads points at an xmodel/xanim/weapon
+            that no loaded zone defines (OAT's `,name` entries): "Could not load" on every boot."""
+        b = bsp.lower()
+        server = {z: a for z, a in ix["zones"].items()
+                  if os.path.basename(z)[:-3] in ("mod", b, b + "_patch", "localized_" + b)}
+        load = {z: a for z, a in ix["zones"].items() if os.path.basename(z)[:-3] == b + "_load"}
+        have = set(self.stock_loaded)
+        for a in server.values():
+            have |= a
+        gameplay = ("xmodel", "xanim", "weapon", "fx")
+        load_only = sorted({(k, n) for a in load.values() for (k, n) in a if k in gameplay and (k, n) not in have})
+        unresolved = set()
+        for z in server:
+            for (k, n) in ix["refs"].get(z, ()):
+                if k in ("xmodel", "xanim", "weapon") and (k, n) not in have:
+                    unresolved.add((k, n))
+        return {"load_zone_only": ["%s:%s" % x for x in load_only],
+                "unresolved_refs": ["%s:%s" % x for x in sorted(unresolved)]}
+
+
+def zone_unloaded(bsp, rel):
+    """A zone in the mod folder that nothing loads: the engine loads mod.ff, <bsp>.ff,
+    <bsp>_patch.ff, <bsp>_load.ff and localized_<bsp>.ff for this map, nothing else
+    (mod-compat.md s2: `gumball.ff` in Minecraft Village is shipped and never loaded)."""
+    z = os.path.basename(rel).lower()[:-3]
+    b = bsp.lower()
+    return z not in ("mod", b, b + "_patch", b + "_load", "localized_" + b)
 
 
 def iwd_paths(kind, name):
@@ -317,9 +408,19 @@ def locate(kind, name, ix, index):
     """-> (where, detail)"""
     n = name.lower()
     kinds = UNL_KIND.get(kind, [kind])
+    unloaded = None
     for zone, assets in ix["zones"].items():
         if any((k, n) in assets for k in kinds):
+            if zone in ix["unloaded_zones"]:
+                unloaded = unloaded or zone
+                continue
+            if os.path.basename(zone).lower().endswith("_load.ff"):
+                # in the load zone, which the dedicated server never loads (static_checks)
+                return "load_zone_only", zone
             return "shipped_zone", zone
+    if unloaded:
+        # shipped, but in a zone the engine never loads for this map (gumball.ff)
+        return "shipped_unloaded_zone", unloaded
     for path in iwd_paths(kind, n):
         for iwd, names in ix["iwd"].items():
             if path in names:
@@ -349,49 +450,69 @@ def locate(kind, name, ix, index):
 
 
 # ---- role ------------------------------------------------------------------------------------
-# Names, not guesses about intent: each pattern was read off the misses the logs actually show.
-RX_CHAR = re.compile(r"(^|_)(char|c_zom|c_usa|c_jap|c_ger|c_rus|body|bodyz?\d|head|heads|zombie|zomb|zm|dog|"
-                     r"wolf|hellhound|player|viewhands|vh|arms|hands|gear|helmet|hat|torso|legs|"
-                     r"panzer|brutus|boss|crawler|monkey|george|napalm|shrieker)(_|\d|$)", re.I)
-RX_WEAPON_MODEL = re.compile(r"^(viewmodel_|weapon_|worldmodel_|wpn_|t\d_wpn|t4_wpn|zombie_wpn)|"
-                             r"(_view|_world|_vm|_wm|_w|_v|_stock|_clip|_mag)$", re.I)
-RX_AI_ANIM = re.compile(r"^(ai_zombie|ai_dog|ai_zomb|zombie_|dog_|ai_crawl|ai_boss|ai_panzer|ai_brutus|"
-                        r"ai_monkey|ai_napalm|ai_shrieker|ai_hellhound|pb_|pt_|ch_zombie)", re.I)
-RX_VIEW_ANIM = re.compile(r"^(viewmodel_|pv_|v_|vm_)", re.I)
-RX_HUD = re.compile(r"^(hud_|hud|specialty_|zom_icon|zombie_icon|menu_zombie|ui_|compass|perk|"
-                    r"waypoint|objective|score|rank|headicon|reticle|scope_overlay|overlay_|killiconheadshot|"
-                    r"killicon|zom_hud|zombie_hud|chalk|tally|minimap|map_)", re.I)
+# Each pattern was read off the misses the logs actually show (2026-09-23, 150+ maps), and
+# kept tight: "zombie_zapper_cagelight_green" and "lights_berlin_subway_hat_0" are props that
+# only LOOK like a zombie and a hat.
+RX_CHAR_MODEL = re.compile(
+    r"^(char_|c_(zom|usa|jap|ger|rus|nzv|t\d|bo\d)|body|head|zombie_wolf|zombie_dog|viewhands|"
+    r"viewmodel_hands|vh_|zom_player|zombie_player|player_)|"
+    r"(_body|_head|_torso|_legs|_viewhands|_viewarms|_hands|_arms|_zombie|_player)(_?\d+|_[a-z])?$|"
+    r"(^|_)(zombie|zomb)_(body|head|torso|legs|gib|eye)", re.I)
+RX_WEAPON_MODEL = re.compile(r"^(viewmodel_|weapon_|worldmodel_|wpn_|t\d_wpn|zombie_wpn|t\d_.+_(world|view)$)", re.I)
+RX_DOG_ANIM = re.compile(r"^(zombie_dog_|ai_dog_|dog_|ai_hellhound)", re.I)
+RX_AI_ANIM = re.compile(r"^(ai_zombie|ai_zomb|ai_crawl|ai_boss|ai_panzer|ai_brutus|ai_monkey|ai_napalm|"
+                        r"ai_shrieker|ch_zombie|zombie_(?!dog))", re.I)
+RX_VIEW_ANIM = re.compile(r"^(viewmodel_|pv_|vm_)", re.I)
+RX_HUD = re.compile(r"^(hud_|specialty_|zom_icon|zombie_icon|menu_zombie|compass_|waypoint|objective|"
+                    r"headicon|reticle|scope_overlay|overlay_|killicon|zom_hud|zombie_hud|chalk_|tally)", re.I)
 RX_AI_ANIM_CHRONIC = re.compile(r"^ai_flamethrower_", re.I)
 
 
-def role(kind, name):
+def role(kind, name, ctx=None):
+    """-> (role, fatal-candidate, why). `ctx`: has_dogs (a loaded zone defines a dog model),
+    zone_ref (a loaded zone of the map references this asset), script (for `unknown item`)."""
+    ctx = ctx or {}
     n = name.lower()
     if kind == "rawfile":
-        return "script" if n.endswith((".gsc", ".csc")) else "cosmetic"
+        if n.endswith((".gsc", ".csc")):
+            return "script", True, "a script the map calls is not in any loaded zone or iwd"
+        return "cosmetic", False, "non-script rawfile"
     if kind == "zone":
-        return "zone"
-    if kind in ("weapon", "item"):
-        return "weapon"
-    if kind in ("xmodel",):
+        return "zone", False, "an optional zone (localized_*, _load) the release does not ship"
+    if kind == "item":
+        if (ctx.get("script") or "").lower().endswith("maps/_loadout.gsc"):
+            return "loadout", False, ("PrecacheItem in the map's own _loadout.gsc for an item its zone "
+                                      "lacks: the campaign default loadout (a bsp not named nazi_zombie_*). "
+                                      "Identical in retail; the release's own script")
+        return "weapon", True, "a script gives/precaches a weapon the map's zones do not hold"
+    if kind == "weapon":
+        return "weapon", True, "a weapon file the map's scripts ask for is not shipped"
+    if kind == "xmodel":
         if RX_WEAPON_MODEL.search(n):
-            return "weapon"
-        if RX_CHAR.search(n):
-            return "character"
-        return "cosmetic"
+            if ctx.get("zone_ref"):
+                return "weapon", True, "a weapon in the map's own zone points at this model"
+            return "weapon_script", False, ("precached by script only; no weapon in the map's zones "
+                                            "uses it (loadout/wall-chalk leftovers)")
+        if RX_CHAR_MODEL.search(n):
+            return "character", True, "a character (player/zombie/dog) model"
+        return "cosmetic", False, "a prop / world model"
     if kind in ("xanim", "waited"):
         if RX_AI_ANIM_CHRONIC.search(n):
-            return "cosmetic"
+            return "cosmetic", False, "flamethrower-AI anims: no WaW zombies map has that AI"
+        if RX_DOG_ANIM.search(n):
+            if ctx.get("has_dogs"):
+                return "character", True, "a hellhound anim, and this map has hellhounds"
+            return "cosmetic", False, "a hellhound anim on a map with no hellhound model: dogs never spawn"
         if RX_VIEW_ANIM.search(n):
-            return "weapon"
+            return "weapon", True, "a first-person weapon anim"
         if RX_AI_ANIM.search(n):
-            return "character"
-        return "cosmetic"
+            return "character", True, "a zombie AI anim"
+        return "cosmetic", False, "a scripted / prop anim"
     if kind in ("material", "image"):
-        return "hud" if RX_HUD.search(n) else "cosmetic"
-    return "cosmetic"
-
-
-FATAL_ROLES = {"character", "weapon", "script", "hud"}
+        if RX_HUD.search(n):
+            return "hud", True, "a HUD material (client only)"
+        return "cosmetic", False, "a surface / fx material (client only)"
+    return "cosmetic", False, kind
 
 
 # ---- the audit -------------------------------------------------------------------------------
@@ -408,14 +529,16 @@ def audit(maps=None, trace=True):
     hosted = hosted_maps()
     want = [m.lower() for m in maps] if maps else sorted(hosted)
     per = {b: {"processes": 0, "loaded": 0, "miss": collections.Counter(), "sources": collections.Counter(),
-               "origins": set()} for b in hosted}
+               "origins": set(), "ctx": {}} for b in hosted}
     miss_src = collections.defaultdict(set)   # (bsp, kind, name) -> {origin}
+    seen = set()
     for path, origin in log_sources():
-        for bsp, r in parse_log(path, hosted).items():
+        for bsp, r in parse_log(path, hosted, seen).items():
             p = per[bsp]
             p["processes"] += r["processes"]
             p["loaded"] += r["loaded"]
             p["miss"].update(r["miss"])
+            p["ctx"].update(r["ctx"])
             p["origins"].add(origin)
             if r["processes"]:
                 p["sources"][os.path.relpath(path, DEV)] += r["processes"]
@@ -444,13 +567,21 @@ def audit(maps=None, trace=True):
         ix = index.for_map(bsp, ext.get(bsp)) if (trace and h["source"] != "stock") else None
         rows = []
         for (kind, name), cnt in sorted(p["miss"].items()):
-            r = {"kind": kind, "name": name, "count": cnt, "role": role(kind, name),
+            ctx = {"script": p["ctx"].get((kind, name))}
+            if ix is not None:
+                ctx["has_dogs"] = ix["has_dogs"]
+                ctx["zone_ref"] = any((k, name.lower()) in refs for z, refs in ix["refs"].items()
+                                      if z not in ix["unloaded_zones"] for k in UNL_KIND.get(kind, [kind]))
+            rl, cand, why = role(kind, name, ctx)
+            r = {"kind": kind, "name": name, "count": cnt, "role": rl, "why": why,
                  "chronic": (kind, name) in chronic, "maps_missing_it": prevalence[(kind, name)],
                  "seen_on": sorted(miss_src[(bsp, kind, name)])}
+            if ctx.get("script"):
+                r["script"] = ctx["script"]
             if ix is not None:
+                r["zone_ref"] = ctx["zone_ref"]
                 r["where"], r["where_detail"] = locate(kind, name, ix, index)
-            r["fatal"] = bool(r["role"] in FATAL_ROLES and not r["chronic"] and h["source"] != "stock"
-                              and kind != "zone")
+            r["fatal"] = bool(cand and not r["chronic"] and h["source"] != "stock")
             rows.append(r)
         fatal = [r for r in rows if r["fatal"]]
         report["maps"][bsp] = {
@@ -458,6 +589,9 @@ def audit(maps=None, trace=True):
             "hidden": h["hidden"], "processes": p["processes"], "map_loaded_runs": p["loaded"],
             "log_origins": sorted(p["origins"]), "log_files": dict(p["sources"].most_common(8)),
             "unshipped_files": ix["unshipped_files"] if ix else [],
+            "unloaded_zones": ix["unloaded_zones"] if ix else [],
+            "has_dogs": ix["has_dogs"] if ix else None,
+            "static": ix["static"] if ix else {},
             "misses": len(rows), "fatal": len(fatal),
             "fatal_by_role": dict(collections.Counter(r["role"] for r in fatal)),
             "fatal_where": dict(collections.Counter(r.get("where") for r in fatal)),

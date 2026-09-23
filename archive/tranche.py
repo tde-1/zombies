@@ -24,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 MANIFESTS = os.path.join(HERE, "manifests")
 QUEUE = os.environ.get("ENW_GEOMETRY_QUEUE", r"C:\Users\b\ZombiesDev\maps-staging\_queue.txt")
-SERVED_EXT = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik", ".menu", ".str", ""}
+SERVED_EXT = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik", ".menu", ".str", ".wav", ".mp3", ""}
 
 
 def read_list(path):

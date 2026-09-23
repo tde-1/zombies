@@ -238,7 +238,7 @@ def main():
         # Only what the site serves (mapfiles.js ALLOWED) is in the bucket; the rest of the
         # extract (readmes, installer junk) is not map data and the box does not need it.
         allowed = {".ff", ".iwd", ".arena", ".csv", ".txt", ".cfg", ".gsc", ".csc", ".iwi", ".bik",
-                   ".menu", ".str", ""}
+                   ".menu", ".str", ".wav", ".mp3", ""}
         spec["files"] = [f for f in spec["files"] if os.path.splitext(f["rel"])[1].lower() in allowed]
         spec.update(base=BUCKET_BASE, min_free_mb=a.min_free_mb)
         remote = REMOTE_BUCKET
