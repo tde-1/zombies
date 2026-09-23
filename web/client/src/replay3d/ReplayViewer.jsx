@@ -27,8 +27,15 @@
 //   * the scoreboard (points, health), the round counter, the body count, the event
 //     feed, and round markers on the scrubber.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createScene, isWebGL2Available, installWorldFov } from './scene.js'
-import { createActors, installSkyDome, createPlaceholderGun, SLOT_COLORS } from './actors.js'
+import { createScene, isWebGL2Available, installWorldFov, toThree, forwardOf } from './scene.js'
+import { createActors, installSkyDome, SLOT_COLORS } from './actors.js'
+// Lane R3 (replay.md §12): weapons in hands, muzzle flash, hit markers, blood, Pack-a-Punch,
+// power-ups and sound, from the R1 events. fx.js is the pure reducer; gear.js draws; sound.js plays.
+import {
+  buildFx, weaponAt, fireAge, hitMarkerAt, bloodAt, powerupsAt, chipsAt, displayName, POWERUP_LABEL,
+} from './fx.js'
+import { createGear, loadAssets } from './gear.js'
+import { ReplaySound } from './sound.js'
 import {
   CG_FOV, VIEW_HEIGHT, HULL, HUD, BTN, stanceOf, WEAPONS, DEFAULT_WEAPON, weaponRow,
   simulateSpread, reticleGeom, cookAt, roundGlyphs, trackClock,
@@ -60,7 +67,19 @@ const clock = (s) => {
 // Viewer settings (B's ask 3): each overlay can be switched off; all start ON. Per-viewer
 // convenience, so localStorage, wrapped: a private window has none and that is fine.
 const SETTINGS_KEY = 'enw.replay3d.settings'
-const DEFAULT_SETTINGS = { hud: true, xh: true, dmg: true, sb: true }
+const DEFAULT_SETTINGS = { hud: true, xh: true, dmg: true, sb: true, fx: true }
+// How many timed power-up chips the HUD can show at once (one per kind; fx.js CHIP_ORDER).
+const CHIP_SLOTS = 5
+function IconSound({ on }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M4.5 9.5h3l4-3.5v12l-4-3.5h-3z" />
+      {on
+        ? <path d="M14.5 9.2a4 4 0 0 1 0 5.6M17.2 6.8a7.6 7.6 0 0 1 0 10.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+        : <path d="M15 9.5l4.5 5M19.5 9.5l-4.5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />}
+    </svg>
+  )
+}
 const DEBUG = (() => { try { return new URLSearchParams(window.location.search).has('r3ddebug') } catch { return false } })()
 const loadSettings = () => {
   try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') } } catch { return { ...DEFAULT_SETTINGS } }
@@ -143,6 +162,14 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const lowRef = useRef(null)
   const dmgRefs = useRef([])
   const gunRef = useRef(null)
+  // Lane R3.
+  const gearRef = useRef(null)
+  const soundRef = useRef(null)
+  const hitRef = useRef(null)
+  const bloodRef = useRef(null)
+  const chipRefs = useRef([])
+  const [assets, setAssets] = useState(null)
+  const [snd, setSnd] = useState({ available: false, enabled: false, muted: false })
   // The Tab scoreboard (B's ask, §8.12): held, like the game's.
   const [board, setBoard] = useState(false)
   // ?r3ddebug: the alignment numbers (§8.12), computed once the map is in.
@@ -196,6 +223,32 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     if (!w.raw || w.raw === '#0') return null
     return DEFAULT_WEAPON
   }, [track])
+
+  // ---- lane R3: the FX index (fx.js), and the per-frame scratch it writes into ----------
+  // The asset manifest (lane R2). Missing is normal until R2 lands: then every weapon is a
+  // placeholder of its class, every power-up a stand-in, and the replay is silent.
+  useEffect(() => {
+    let dead = false
+    loadAssets().then((a) => { if (!dead) setAssets(a) })
+    return () => { dead = true }
+  }, [])
+  const F = useMemo(() => buildFx(track, assets), [track, assets])
+  // The snapshot column's weapon NAME (never the unproven-index fallback row): the fallback for
+  // "what is in his hands" on a file with no `weapon` events.
+  const colWeapon = useCallback((p, k) => {
+    if (!track || !p || !p.wpn || !track.weapons) return null
+    const w = track.weapons[p.wpn[k]]
+    return (w && w.name) || null
+  }, [track])
+  const tickRef = useRef(0)
+  // Per-slot weapon state, reused every frame: { name, pap, source, fireAge, fireMs }.
+  const gearState = useMemo(() => {
+    const m = new Map()
+    // `col` is the snapshot fallback for weaponAt, bound once per player (no closure per frame).
+    if (track) for (const p of track.players) m.set(p.slot, { name: null, pap: false, source: 'none', fireAge: Infinity, fireMs: 0, plate: '', col: () => colWeapon(p, tickRef.current) })
+    return m
+  }, [track, colWeapon])
+  const fxScratch = useMemo(() => ({ hit: {}, blood: {}, pups: [], chips: [], w: {} }), [])
 
   // aimSpreadScale per tick for every player, integrated once (scrub-exact). waw.js.
   const spread = useMemo(() => {
@@ -295,6 +348,8 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       add(e)
     }
     for (const d of downs) add({ t: 'down', ms: d.ms, slot: d.slot, inferred: d.inferred })
+    // Lane R3: power-up pickups and Pack-a-Punch (fx.js builds the lines).
+    for (const l of F.feed) add(l)
     for (const h of track.hits || []) add({ t: 'hit', ms: h.ms, slot: h.slot, delta: h.to - h.from })
     // Frags from the +frag press, when the file has no grenade entities to show the real one.
     if (!(track.nades && track.nades.length)) {
@@ -307,7 +362,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       }
     }
     return out
-  }, [track, clk, downs])
+  }, [track, clk, downs, F])
 
   const roundAt = useMemo(() => {
     // A flat array of round number per tick. `round` is an event, never a snap field
@@ -375,9 +430,13 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         dirtyRef.current = true
       })
     }
-    const gun = createPlaceholderGun()
-    gunRef.current = gun
-    api.setViewmodel(gun.object)
+    // Lane R3: gear.js owns the held weapons, the flashes, the power-ups and the first-person
+    // weapon (the §8.7 placeholder gun, now one per weapon class, or R2's glb when served).
+    const gear = createGear(api, actors, null)
+    gearRef.current = gear
+    gunRef.current = gear
+    api.setViewmodel(gear.viewmodel)
+    if (window.__r3d) window.__r3d.fx = () => ({ gear: gear.info(), sound: soundRef.current ? soundRef.current.info() : null })
     api.resize()
 
     // The floor to stand a gridded, model-less replay on: the lowest thing anybody or
@@ -526,14 +585,53 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
     return () => {
       dead = true
+      gear.dispose()
       actors.dispose()
       api.dispose()
       canvas.remove()
       sceneRef.current = null
       actorsRef.current = null
       gunRef.current = null
+      gearRef.current = null
     }
   }, [track, mapUrl, metaUrl])
+
+  // Lane R3: the manifest reaches the gear when it lands (glbs from then on).
+  useEffect(() => { if (gearRef.current) { gearRef.current.setAssets(assets); dirtyRef.current = true } }, [assets, track, mapUrl, metaUrl])
+
+  // Lane R3: the sound. Built per (track, manifest); silent until a gesture enables it.
+  useEffect(() => {
+    const api = sceneRef.current
+    if (!api || !track) return
+    const s = new ReplaySound(api, assets, F)
+    soundRef.current = s
+    setSnd({ available: s.available, enabled: false, muted: s.muted })
+    return () => { s.dispose(); if (soundRef.current === s) soundRef.current = null }
+  }, [track, assets, F, mapUrl, metaUrl])
+  // A gesture (Play, Space, the speaker button) is the only moment audio may start.
+  const enableSound = useCallback(() => {
+    const s = soundRef.current
+    if (!s || !s.available) return
+    if (!s.enabled) s.enable()
+    s.seek(t0 + timeRef.current * 1000)
+    setSnd({ available: true, enabled: s.enabled, muted: s.muted })
+  }, [t0])
+  const toggleMute = useCallback(() => {
+    const s = soundRef.current
+    if (!s || !s.available) return
+    if (!s.enabled) { s.enable(); s.setMuted(false) } else s.setMuted(!s.muted)
+    s.seek(t0 + timeRef.current * 1000)
+    setSnd({ available: true, enabled: s.enabled, muted: s.muted })
+  }, [t0])
+  const togglePlay = useCallback(() => {
+    enableSound()
+    setPlaying((p) => !p)
+  }, [enableSound])
+  const togglePlayRef = useRef(togglePlay)
+  const toggleMuteRef = useRef(toggleMute)
+  useEffect(() => { togglePlayRef.current = togglePlay; toggleMuteRef.current = toggleMute }, [togglePlay, toggleMute])
+  // Paused: whatever is queued stops now (Movement's rule: a pause may not leave a shot to fire later).
+  useEffect(() => { if (!playing && soundRef.current) soundRef.current.stopAll() }, [playing])
 
   // ---- sampling ---------------------------------------------------------------
   // Movement's sampler, with the one change a 20 Hz server track needs: the track is
@@ -662,6 +760,97 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     return { fire, xh, zs, i, list, alive: zs.length - zDying, left: zl == null ? null : zl, round: roundAt[i] || 0 }
   }, [track, clk, t0, roundAt, weaponNameAt, spread, zombieYaw, walked, zombieDeathMs])
 
+  // ---- lane R3: weapons in hands, flashes, the viewmodel's weapon, power-ups, name tags ----
+  // A pure function of replay time (fx.js), so a scrubbed or paused frame is what a played one
+  // would be. Writes into gearState / fxScratch; nothing is allocated here per frame.
+  const applyFx = useCallback((s, step) => {
+    const gear = gearRef.current
+    const actors = actorsRef.current
+    if (!gear || !track) return
+    const on = settingsRef.current.fx !== false
+    const nowMs = t0 + timeRef.current * 1000
+    const focus = focusRef.current
+    const eyes = camRef.current === 'eyes'
+    tickRef.current = s.i
+    for (const p of track.players) {
+      const g = gearState.get(p.slot)
+      if (!g) continue
+      weaponAt(F, p.slot, nowMs, g.col, fxScratch.w)
+      g.name = fxScratch.w.name
+      g.pap = fxScratch.w.pap
+      g.source = fxScratch.w.source
+      const fa = fireAge(F, p.slot, nowMs)
+      g.fireAge = fa
+      g.fireMs = nowMs - fa
+      // The name tag's weapon line, rebuilt only when the weapon changes (actors.js).
+      const key = `${g.name}|${g.pap}`
+      if (actors && actors.setPlateWeapon && g.plate !== key) {
+        g.plate = key
+        actors.setPlateWeapon(p.slot, p.name, on && g.name ? displayName(g.name, g.pap, assets) : null)
+      }
+    }
+    gear.root.visible = on
+    gear.update(s.list, (slot) => gearState.get(slot), focus, eyes)
+    powerupsAt(on ? F : null, nowMs, fxScratch.pups)
+    gear.setPowerups(fxScratch.pups, timeRef.current)
+    // First person: the watched player's weapon, kicked and flashed by his recorded shots; a
+    // file with no fire events for him kicks on the attack button, as §8.7 always did.
+    const fg = gearState.get(focus)
+    gear.setViewmodelWeapon(fg && fg.name, fg && fg.pap)
+    const recorded = F.fires.has(focus)
+    gear.updateViewmodel(recorded ? fg.fireAge : null, fg ? fg.fireMs : 0, playingRef.current && s.fire, step)
+  }, [track, t0, F, gearState, fxScratch, assets])
+
+  // What the sound needs from the viewer, one object for the life of the track: where a player
+  // was at a cue's time (a fire, the jingle), and whether his gun was upgraded then.
+  const sndCtx = useMemo(() => {
+    const w = {}
+    return {
+      focus: 0, mode: 'follow',
+      posOf: (pid, ms, out) => {
+        const p = track && track.players.find((q) => q.slot === pid)
+        if (!p || !clk) return false
+        const k = Math.max(0, Math.min(track.ticks - 1, Math.round(clk.index(ms))))
+        toThree(p.pos[k * 3], p.pos[k * 3 + 1], p.pos[k * 3 + 2] + 48, out)
+        return true
+      },
+      papAt: (pid, ms) => weaponAt(F, pid, ms, null, w).pap,
+    }
+  }, [track, clk, F])
+
+  // Where the crosshair (and the hit marker on it) sits: the middle of the screen in first
+  // person; in third person, the point the watched player aims at, projected. Called after the
+  // render, so the camera it projects with is this frame's.
+  const aimV = useMemo(() => ({ a: null, b: null }), [])
+  const placeAim = useCallback(() => {
+    const api = sceneRef.current
+    const wrap = wrapRef.current
+    if (!api || !wrap) return
+    const mode = camRef.current
+    let x = '50%'
+    let y = '50%'
+    let hide = mode === 'free'
+    if (mode === 'follow') {
+      const T = api.THREE
+      if (!aimV.a) { aimV.a = new T.Vector3(); aimV.b = new T.Vector3() }
+      const st = api.state
+      const eye = st.body ? st.body.eye : 60
+      toThree(st.origin.x, st.origin.y, st.origin.z + eye, aimV.a)
+      forwardOf(st.pitch, st.yaw, aimV.b)
+      aimV.a.addScaledVector(aimV.b, 2000).project(api.camera)
+      if (aimV.a.z > 1 || Math.abs(aimV.a.x) > 1.2 || Math.abs(aimV.a.y) > 1.2) hide = true
+      x = `${((aimV.a.x + 1) / 2 * wrap.clientWidth).toFixed(1)}px`
+      y = `${((1 - aimV.a.y) / 2 * wrap.clientHeight).toFixed(1)}px`
+    }
+    for (const el of [xhRef.current, hitRef.current]) {
+      if (!el) continue
+      el.style.left = x
+      el.style.top = y
+      if (hide) el.style.visibility = 'hidden'
+      else el.style.visibility = ''
+    }
+  }, [aimV])
+
   // ---- WaW overlays: crosshair, cook reticle, damage flash + direction, low health -----
   // All of it is a pure function of replay time and the track, so a paused or scrubbed
   // frame shows exactly what the player saw at that instant. Sources in waw.js.
@@ -692,7 +881,10 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     // Hip crosshair (B's ask 4): CG_DrawReticleSides with this weapon's numbers.
     const el = xhRef.current
     if (el) {
-      const on = cfg.xh && eyes && x && x.row && x.row.side && x.alive && !x.ads && !(cook && cook.holding)
+      // Lane R3: also in third person, over the point he aims at (placeAim), so a hit marker has
+      // somewhere to be. ADS still hides it, as in the game.
+      const follow = camRef.current === 'follow'
+      const on = cfg.xh && (eyes || follow) && x && x.row && x.row.side && x.alive && !x.ads && !(cook && cook.holding)
       el.style.display = on ? '' : 'none'
       if (on) {
         const g = reticleGeom(x.row, x.scale, x.stance, h)
@@ -760,7 +952,40 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       }
       lo.style.opacity = a.toFixed(3)
     }
-  }, [track, t0, downs])
+
+    // Lane R3. The hit marker (his shot landed: `hit`), the blood (he was swiped: `damage`) and
+    // the timed power-up chips. Marker and blood are the watched player's own, so they show
+    // while following him (first or third person), never in free cam.
+    const following = camRef.current !== 'free'
+    const fxOn = cfg.fx !== false
+    const hm = hitRef.current
+    if (hm) {
+      const m = hitMarkerAt(F, slot, tMs, fxScratch.hit)
+      const a = fxOn && following ? m.alpha : 0
+      hm.style.opacity = a.toFixed(3)
+      hm.classList.toggle('head', m.part === 'head')
+      hm.style.setProperty('--hm-s', (v * (m.part === 'head' ? 1.25 : 1)).toFixed(3))
+    }
+    const bl = bloodRef.current
+    if (bl) {
+      const b = bloodAt(F, slot, tMs, fxScratch.blood)
+      bl.style.opacity = (fxOn && cfg.dmg && following ? b.alpha : 0).toFixed(3)
+    }
+    const chips = chipsAt(fxOn && cfg.hud ? F : null, tMs, fxScratch.chips)
+    for (let k = 0; k < CHIP_SLOTS; k++) {
+      const el = chipRefs.current[k]
+      if (!el) continue
+      const c = chips[k]
+      if (!c) { if (el.style.display !== 'none') el.style.display = 'none'; continue }
+      el.style.display = ''
+      if (el.dataset.kind !== c.kind) {
+        el.dataset.kind = c.kind
+        el.firstChild.textContent = c.label
+      }
+      el.lastChild.textContent = c.text
+      el.classList.toggle('low', c.leftMs < 5000)
+    }
+  }, [track, t0, downs, F, fxScratch])
 
   // ---- frame loop -------------------------------------------------------------
   useEffect(() => {
@@ -793,11 +1018,18 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       if (s) {
         const moving = playingRef.current
         const step = moving ? dt * speedRef.current : 0
-        const g = gunRef.current
-        if (g) g.update(moving && s.fire, step)
+        applyFx(s, step)
         drawOverlays(s)
       }
       api.render()
+      placeAim()
+      // Lane R3: the sound scheduler rides the same clock (fx.js CueScheduler, sound.js).
+      const snd = soundRef.current
+      if (snd) {
+        sndCtx.focus = focusRef.current
+        sndCtx.mode = camRef.current
+        snd.update(t0 + timeRef.current * 1000, playingRef.current, speedRef.current, sndCtx)
+      }
 
       if (s && now - hudAt > 66) {
         hudAt = now
@@ -809,7 +1041,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [track, total, sample, drawOverlays])
+  }, [track, total, sample, drawOverlays, applyFx, placeAim, sndCtx, t0])
 
   // ---- input ------------------------------------------------------------------
   useEffect(() => {
@@ -859,7 +1091,8 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       }
       if (e.type === 'keyup') { api && api.state.keys.delete(e.code); return }
       api && api.state.keys.add(e.code)
-      if (e.code === 'Space') { e.preventDefault(); setPlaying((p) => !p) }
+      if (e.code === 'Space') { e.preventDefault(); togglePlayRef.current() }
+      else if (e.code === 'KeyM') toggleMuteRef.current()
       else if (e.code === 'Digit1') setCamMode('eyes')
       else if (e.code === 'Digit2') setCamMode('follow')
       else if (e.code === 'Digit3') setCamMode('free')
@@ -884,8 +1117,10 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
   const seek = useCallback((t) => {
     timeRef.current = Math.max(0, Math.min(total, t))
     dirtyRef.current = true
+    // Lane R3: a seek or a scrub drops every queued sound; nothing skipped is played late.
+    if (soundRef.current) soundRef.current.seek(t0 + timeRef.current * 1000)
     setHud((h) => ({ ...h, t: timeRef.current }))
-  }, [total])
+  }, [total, t0])
 
   // The event feed: whatever happened in the last four seconds before the playhead.
   const feed = useMemo(() => {
@@ -908,7 +1143,14 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     const tMs = t0 + hud.t * 1000
     const solo = track.players.length === 1
     const kills = track.events.filter((e) => e.t === 'kill' && e.ms <= tMs)
-    return hud.players.map((p) => {
+    // Lane R3: what each is holding at the playhead, by its display name (fx.js).
+    const withWeapon = (row) => {
+      const tp = track.players.find((x) => x.slot === row.slot)
+      const k = hud.tick == null ? 0 : hud.tick
+      const w = weaponAt(F, row.slot, tMs, () => colWeapon(tp, k), {})
+      return { ...row, weapon: w.name ? displayName(w.name, w.pap, assets) : null, pap: w.pap }
+    }
+    return hud.players.map((p) => withWeapon((() => {
       const tp = track.players.find((x) => x.slot === p.slot)
       // §16 (bug 7): the game's own counters, when the file has them — the same numbers
       // the in-game Tab scoreboard shows, kills attributed per player even with company.
@@ -940,7 +1182,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
         revives: track.events.filter((e) => e.t === 'revive' && (e.by !== undefined ? e.by === p.slot : e.slot === p.slot) && e.ms <= tMs).length,
         _pts: tp && tp.has_score === false ? -1 : p.score,
       }
-    }).sort((a, b) => b._pts - a._pts || a.slot - b.slot)
+    })())).sort((a, b) => b._pts - a._pts || a.slot - b.slot)
   }
 
   if (!track) return <div className="r3d"><Boot /></div>
@@ -983,6 +1225,18 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       </div>
       <div className="r3d-waw-cook" ref={cookRef} aria-hidden="true" style={{ display: 'none' }}>
         <i className="u" /><i className="d" /><i className="l" /><i className="r" />
+      </div>
+      {/* Lane R3: the hit marker (on the crosshair), the blood on a swipe, the power-up timers. */}
+      <div className="r3d-fx-blood" ref={bloodRef} aria-hidden="true" />
+      <div className="r3d-fx-hit" ref={hitRef} aria-hidden="true">
+        <i className="a" /><i className="b" /><i className="c" /><i className="d" />
+      </div>
+      <div className="r3d-fx-chips" aria-live="off">
+        {Array.from({ length: CHIP_SLOTS }, (_, k) => (
+          <div key={k} className="r3d-fx-chip" ref={(e) => { chipRefs.current[k] = e }} style={{ display: 'none' }}>
+            <span className="r3d-fx-chip-l" /><b className="r3d-fx-chip-t" />
+          </div>
+        ))}
       </div>
 
       {settings.hud && (
@@ -1029,6 +1283,8 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
             {e.t === 'hit' && <span>slot {e.slot} <b>hit {e.delta}</b></span>}
             {e.t === 'frag' && <span>frag <b>{e.cooked > 0 ? `cooked ${e.cooked.toFixed(1)}s` : 'thrown'}</b> · went off (inferred)</span>}
             {e.t === 'revive' && <span>slot {e.slot} <b>revived</b></span>}
+            {e.t === 'powerup' && <span>{e.slot == null ? 'power-up' : `slot ${e.slot}`} <b>{POWERUP_LABEL[e.kind] || 'Power-up'}</b></span>}
+            {e.t === 'pap' && <span>slot {e.slot} <b>{e.state === 'done' ? 'Pack-a-Punched' : 'Pack-a-Punch'}</b>{e.name ? ` · ${displayName(e.name, e.state === 'done', assets)}` : ''}</span>}
             {e.t === 'bleedout' && <span>slot {e.slot} <b>bled out</b></span>}
             {e.t === 'chat' && <span>slot {e.slot}: {e.text}</span>}
             {e.t === 'referee' && <span>{e.label || e.id}</span>}
@@ -1038,7 +1294,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       </div>
 
       <div className="r3d-bar">
-        <button className="r3d-play r3d-icon" onClick={() => setPlaying((p) => !p)} title="Play/pause (space)">
+        <button className="r3d-play r3d-icon" onClick={togglePlay} title="Play/pause (space)">
           {playing ? <IconPause /> : <IconPlay />}
         </button>
         <button className="r3d-skip r3d-icon" onClick={() => seek(timeRef.current - SKIP_S)} title={`-${SKIP_S}s`}><IconBack /></button>
@@ -1060,6 +1316,14 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
 
         <span className="r3d-clock">{clock(hud.t)} / {clock(total)}</span>
 
+        {/* Lane R3: sound. Off until Play is pressed (browsers allow audio only after a gesture);
+            this button mutes/unmutes (M). No manifest: no sounds, and the button says so. */}
+        <button className={'r3d-x r3d-icon r3d-snd' + (snd.available ? '' : ' off')} onClick={toggleMute}
+          disabled={!snd.available} aria-pressed={snd.enabled && !snd.muted}
+          title={!snd.available ? 'No sounds for this replay' : !snd.enabled ? 'Sound (starts with Play)' : snd.muted ? 'Unmute (M)' : 'Mute (M)'}>
+          <IconSound on={snd.available && snd.enabled && !snd.muted} />
+        </button>
+
         <button className="r3d-x r3d-icon r3d-speed-btn" onClick={() => setSpeedOpen((v) => !v)} title={`Replay settings · speed ${speed}x`}><IconCog /></button>
         {speedOpen && (
           <div className="r3d-menu r3d-menu-speed r3d-menu-settings">
@@ -1071,7 +1335,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
               ))}
             </div>
             <div className="r3d-set-lab">WaW overlays</div>
-            {[['hud', 'Round + zombies left'], ['xh', 'Crosshair + grenade'], ['dmg', 'Damage effects'], ['sb', 'Scoreboard (hold Tab)']].map(([k, label]) => (
+            {[['hud', 'Round + zombies left'], ['xh', 'Crosshair + grenade'], ['dmg', 'Damage effects'], ['fx', 'Weapons, hits + power-ups'], ['sb', 'Scoreboard (hold Tab)']].map(([k, label]) => (
               <button key={k} className={'r3d-set-tog' + (settings[k] ? ' on' : '')} onClick={() => toggle(k)} aria-pressed={settings[k]}>
                 <span className="r3d-set-box" />{label}
               </button>
@@ -1111,11 +1375,12 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
               <span>Round {hud.round || '—'}</span>
             </div>
             <table>
-              <thead><tr><th>Player</th><th>Points</th><th>Kills</th><th>Downs</th><th>Revives</th></tr></thead>
+              <thead><tr><th>Player</th><th>Weapon</th><th>Points</th><th>Kills</th><th>Downs</th><th>Revives</th></tr></thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.slot} className={r.slot === focus ? 'on' : ''}>
                     <td><i style={{ background: SLOT_COLORS[r.slot % SLOT_COLORS.length] }} />{r.name}</td>
+                    <td className={'r3d-waw-sb-wpn' + (r.pap ? ' pap' : '')}>{r.weapon || '—'}</td>
                     <td>{r.points}</td><td>{r.kills}</td><td>{r.downs}</td><td>{r.revives}</td>
                   </tr>
                 ))}

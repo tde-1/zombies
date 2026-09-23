@@ -182,7 +182,8 @@ function buildPowerupTemplates(M) {
  * @param actors  createActors()'s object (handOf)
  * @param assets  /mapdata/_assets.json or null
  */
-export function createGear(api, actors, assets) {
+export function createGear(api, actors, assetsIn) {
+  let assets = assetsIn || null
   const root = new Group()
   root.name = 'r3-gear'
   api.scene.add(root)
@@ -243,7 +244,14 @@ export function createGear(api, actors, assets) {
     }
     return texCache.get(u)
   }
-  const defaultFlashSprite = assets && assets.fx && (assets.fx.muzzle_flash || assets.fx.muzzleflash) ? spriteTex(assets.fx.muzzle_flash ? 'muzzle_flash' : 'muzzleflash') : flashTexture
+  // fx.muzzle_flash may be a file name/path ("_fx/muzzle_flash.png") or anything truthy (then the
+  // conventional _fx/muzzle_flash.png).
+  const manifestFlash = (a) => {
+    const v = a && a.fx && (a.fx.muzzle_flash || a.fx.muzzleflash)
+    if (!v) return null
+    return spriteTex(typeof v === 'string' ? v : 'muzzle_flash')
+  }
+  let defaultFlashSprite = manifestFlash(assets) || flashTexture
   const flashMat = (tex) => own(new SpriteMaterial({ map: tex, color: 0xffffff, blending: AdditiveBlending, transparent: true, depthWrite: false, fog: false }))
 
   // ---- glb templates (weapons and power-ups), loaded on first use, cached by URL
@@ -423,11 +431,13 @@ export function createGear(api, actors, assets) {
   }
   setViewmodelWeapon('m1garand', false)
   /**
-   * @param fireAge ms since the focused player's last recorded shot (Infinity: none); when the
-   *   file has no fire events, `held` (the attack button is down) kicks it the old way (§8.7).
+   * @param fireAge ms since the focused player's last recorded shot (Infinity: none yet), or
+   *   null when the file has no fire events for them -- then `held` (the attack button is down)
+   *   kicks it the old way (§8.7).
    */
   function updateViewmodel(fireAge, fireMs, held, dt) {
-    if (Number.isFinite(fireAge)) {
+    const recorded = fireAge !== null && fireAge !== undefined
+    if (recorded) {
       vmState.kick = fireAge < 90 ? 1 - fireAge / 90 : 0
     } else {
       if (held) { vmState.phase += dt; if (vmState.phase >= 0.1 || vmState.kick === 0) { vmState.phase = 0; vmState.kick = 1 } } else vmState.phase = 0
@@ -436,7 +446,7 @@ export function createGear(api, actors, assets) {
     const k = vmState.kick
     vm.position.set(VM_REST.x, VM_REST.y + k * 0.4, VM_REST.z + k * 2.2)
     vm.rotation.x = k * 0.12
-    const on = Number.isFinite(fireAge) ? fireAge < 60 : k > 0.6
+    const on = recorded ? fireAge < 60 : k > 0.6
     vmFlash.visible = on && !NO_FLASH.has(vmState.cls)
     if (vmFlash.visible) {
       const r = seeded(fireMs || 0)
@@ -502,8 +512,19 @@ export function createGear(api, actors, assets) {
     }
   }
 
+  /** The manifest arrived (or changed): glbs are looked up from now on; placeholders until they load. */
+  function setAssets(a) {
+    assets = a || null
+    const t = manifestFlash(assets)
+    if (t) {
+      defaultFlashSprite = t
+      for (const s of slots.values()) s.flash.material.map = t
+      vmFlash.material.map = t
+    }
+  }
+
   return {
-    root, update, setPowerups, dispose,
+    root, update, setPowerups, dispose, setAssets,
     viewmodel: vm, setViewmodelWeapon, updateViewmodel,
     info: () => ({ slots: [...slots.entries()].map(([k, s]) => [k, s.key]), vm: vmState.key, glbs: [...glbs.entries()].map(([u, e]) => [u, e.state]) }),
   }

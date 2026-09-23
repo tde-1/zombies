@@ -229,3 +229,40 @@ body:has(.r3d) .chatdock { display: none; }
 .r3d-waw-sb-foot { margin-top: 6px; font-family: system-ui, sans-serif; font-size: 11px; color: rgba(210, 190, 185, .6); letter-spacing: 0; min-height: 13px; }
 .r3d-waw-debug { position: absolute; left: 16px; top: calc(12px + var(--r3d-h) + 70px); z-index: 6; margin: 0; padding: 8px 10px; max-width: calc(100% - 32px);
   background: rgba(0, 0, 0, .78); color: #9fe39f; font: 11px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; pointer-events: none; }
+
+/* ---- Lane R3 (replay.md §12): hit marker, blood, power-up timers, sound, weapon column ---- */
+/* The hit marker: WaW's damage_feedback, four diagonal white ticks around the crosshair, full on
+   the hit and fading over a second. Placed by placeAim() (screen centre, or the aim point in
+   third person). Drawn with CSS, not the game's texture. */
+.r3d-fx-hit { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 4; opacity: 0; --hm-s: 1.5; }
+.r3d-fx-hit i { position: absolute; left: 0; top: 0; width: calc(9px * var(--hm-s)); height: calc(2px * var(--hm-s)); background: #fff;
+  box-shadow: 0 0 1px rgba(0, 0, 0, .9), 0 0 3px rgba(0, 0, 0, .6); transform-origin: 0 50%; }
+.r3d-fx-hit .a { transform: rotate(45deg) translateX(calc(5px * var(--hm-s))); }
+.r3d-fx-hit .b { transform: rotate(135deg) translateX(calc(5px * var(--hm-s))); }
+.r3d-fx-hit .c { transform: rotate(225deg) translateX(calc(5px * var(--hm-s))); }
+.r3d-fx-hit .d { transform: rotate(315deg) translateX(calc(5px * var(--hm-s))); }
+.r3d-fx-hit.head i { background: #ffe0d8; }
+/* Blood on a swipe: dark red at the edges, splattered, the middle clear. ENW's, procedural. */
+.r3d-fx-blood { position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: 2;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(120, 0, 0, .85) 0, rgba(120, 0, 0, 0) 16%),
+    radial-gradient(circle at 92% 20%, rgba(110, 0, 0, .8) 0, rgba(110, 0, 0, 0) 14%),
+    radial-gradient(circle at 14% 88%, rgba(100, 0, 0, .8) 0, rgba(100, 0, 0, 0) 15%),
+    radial-gradient(circle at 86% 84%, rgba(120, 4, 0, .85) 0, rgba(120, 4, 0, 0) 17%),
+    radial-gradient(ellipse 70% 66% at 50% 50%, rgba(140, 0, 0, 0) 45%, rgba(120, 0, 0, .55) 78%, rgba(70, 0, 0, .95) 100%); }
+/* Timed power-ups: one chip per kind, the time left in tenths of a second. Bottom centre, where
+   WaW puts its power-up icons. */
+.r3d-fx-chips { position: absolute; left: 50%; bottom: calc(16px + var(--r3d-h) + 14px); transform: translateX(-50%); z-index: 3;
+  display: flex; gap: 8px; pointer-events: none; }
+.r3d-fx-chip { display: flex; align-items: baseline; gap: 8px; padding: 5px 11px; border-radius: var(--pill, 999px);
+  background: rgba(8, 20, 6, .72); border: 1px solid rgba(110, 220, 80, .55); color: #d8f7cc; box-shadow: 0 0 14px rgba(80, 200, 60, .25);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif; letter-spacing: .03em; font-size: 15px; white-space: nowrap; }
+.r3d-fx-chip-t { font-family: var(--mono, ui-monospace, Consolas, monospace); font-weight: 700; font-size: 15px; min-width: 3.4em; text-align: right;
+  font-variant-numeric: tabular-nums; color: #fff; }
+.r3d-fx-chip.low { border-color: rgba(255, 190, 90, .8); }
+.r3d-fx-chip.low .r3d-fx-chip-t { color: #ffd27a; }
+.r3d-snd[disabled] { opacity: .45; cursor: default; }
+.r3d-waw-sb td.r3d-waw-sb-wpn { text-align: left; font-family: system-ui, sans-serif; font-size: 13px; color: rgba(232, 221, 214, .85); max-width: 180px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r3d-waw-sb td.r3d-waw-sb-wpn.pap { color: #c9a6ff; }
+.r3d-waw-sb th:nth-child(2) { text-align: left; }
