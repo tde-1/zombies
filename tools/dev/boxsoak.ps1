@@ -35,7 +35,9 @@ param(
     [string]$MainRepo = 'C:\Users\b\Desktop\Zombies',
     [string]$DevRoot = 'C:\Users\b\ZombiesDev'
 )
-$ErrorActionPreference = 'Stop'
+# Continue, not Stop: in PowerShell 5.1 any stderr line from ssh/node under `2>&1` becomes a
+# terminating NativeCommandError. Every real failure below throws explicitly.
+$ErrorActionPreference = 'Continue'
 if ($Player -eq '76561198126330106') { throw 'never B''s SteamID' }
 if ($Player -notmatch '^7656119800000000[1-9]$') { throw 'fake IDs only (76561198000000001..9)' }
 $logDir = Join-Path $DevRoot 'logs\dedi'
@@ -55,12 +57,15 @@ $fsGame = if ($stockMaps -contains $Map) { '' } else { "mods/$Map" }
 # ------------------------------------------------------------- is anyone playing? --
 function Test-RealPlayer {
     $env:ZM_DATA_DIR = Join-Path $MainRepo 'web\data'
-    $q = @"
-const {db}=require('$($MainRepo -replace '\\','/')/web/server/db/database');
-const r=db.prepare("SELECT match_id,map_key FROM assignments WHERE state IN ('leased','ready','live') AND (agent IS NULL OR agent=0)").all();
-console.log(JSON.stringify(r))
-"@
-    $live = (& node -e $q 2>&1 | Select-Object -Last 1)
+    # A file, not `node -e`: PowerShell 5.1 strips the double quotes out of a native argument.
+    $js = Join-Path $env:TEMP "boxsoak-live-$PID.cjs"
+    Set-Content -LiteralPath $js -Encoding ascii -Value (@(
+        "const {db}=require('$($MainRepo.Replace('\','/'))/web/server/db/database');",
+        "const r=db.prepare(`"SELECT match_id,map_key FROM assignments WHERE state IN ('leased','ready','live') AND (agent IS NULL OR agent=0)`").all();",
+        'console.log(JSON.stringify(r))') -join "`n")
+    $live = cmd /c "node `"$js`" 2>nul" | Select-Object -Last 1
+    Remove-Item -LiteralPath $js -Force -ErrorAction SilentlyContinue
+    if ($null -eq $live) { throw 'could not read the site''s live leases' }
     $j = Box "journalctl -u enw-host-agent --since '-10 min' --no-pager | grep 'ALLOW' | grep -v 7656119800000000 | tail -3"
     return @{ live = $live; journal = ($j -join ' | ') }
 }

@@ -61,6 +61,18 @@ $lockFile = Join-Path $DevRoot 'locks\game.lock'
 $launch = Join-Path $PSScriptRoot 'launch.ps1'
 $oob = Join-Path $PSScriptRoot 'oob.py'
 
+# The game holds its log open for writing; Get-Content -Tail then fails with a sharing
+# violation now and again (soak01 died of it). Read the last 256 KB with FileShare.ReadWrite.
+function Read-Tail([string]$path, [int]$bytes = 262144) {
+    try {
+        $fs = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
+        try {
+            $n = [Math]::Min($fs.Length, $bytes); $null = $fs.Seek(-$n, [IO.SeekOrigin]::End)
+            $buf = New-Object byte[] $n; $got = $fs.Read($buf, 0, $n)
+            return ([Text.Encoding]::UTF8.GetString($buf, 0, $got) -split "`r?`n")
+        } finally { $fs.Close() }
+    } catch { return @() }
+}
 function Say($msg, $colour = 'Gray') {
     Write-Host $msg -ForegroundColor $colour
     Add-Content -LiteralPath $transcript -Value ("[{0:HH:mm:ss}] {1}" -f (Get-Date), $msg) -Encoding utf8
@@ -206,7 +218,7 @@ try {
         # the server's own probes, last line of each
         $bodyHz = ''; $ft = ''; $snaps = ''; $child = ''; $parent = ''; $lv = ''; $clients = ''
         if (Test-Path -LiteralPath $enw) {
-            $tail = Get-Content -LiteralPath $enw -Tail 400
+            $tail = Read-Tail $enw
             $r = $tail | Where-Object { $_ -match 'dedi_rate_probe:' } | Select-Object -Last 1
             if ($r -match 'Com_Frame-body ([0-9.]+) Hz') { $bodyHz = $Matches[1] }
             if ($r -match 'com_frameTime=(\d+)') { $ft = $Matches[1] }
@@ -219,7 +231,8 @@ try {
             if ($v -match 'localVars ([0-9A-F]+)') { $lv = $Matches[1] }
         }
         if (Test-Path -LiteralPath $linkOut) {
-            $rl = Select-String -LiteralPath $linkOut -Pattern '"t":"round"' | Select-Object -Last 1
+            $rl = Read-Tail $linkOut 4194304 | Where-Object { $_ -match '"t":"round"' } | Select-Object -Last 1
+            if ($rl) { $rl = [pscustomobject]@{ Line = $rl } }
             if ($rl -and $rl.Line -match '"n":(\d+)') { $round = [int]$Matches[1] }
         }
         $linkBytes = if (Test-Path -LiteralPath $linkOut) { (Get-Item -LiteralPath $linkOut).Length } else { 0 }
