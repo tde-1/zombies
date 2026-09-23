@@ -71,6 +71,7 @@
 //
 // Clean room: our own code.
 
+#include "boot_direct.hpp"
 #include "component.hpp"
 #include "frame.hpp"
 #include "logger.hpp"
@@ -195,6 +196,7 @@ void try_connect() {
     g_connect_tick = ::GetTickCount64();
     const auto fn = reinterpret_cast<CL_ConnectLocal_t>(live);
     fn(g_map, 0);
+    boot_direct::note_connect();
     ENW_INFO("connect_local: returned; client state [0x305842C] = %d", clc_state());
 }
 
@@ -213,6 +215,11 @@ void gate_tick(uint64_t frame) {
     // menu has none.
     const bool menu_up = g_bink_memory > 0 || age >= 6000;
     const bool safe = videos == 0 && state != kCaCinematic && menu_up;
+    // boot_direct.cpp: an armed launcher join does not wait for the menu at all.
+    if (boot_direct::fire_now(frame, age, state, videos)) {
+        try_connect();
+        return;
+    }
     if (!safe) g_safe_since = 0;
     else if (!g_safe_since) g_safe_since = now;
 

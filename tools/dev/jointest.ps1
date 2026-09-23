@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Two-process join test: a headless dedicated server, then a client that connects to it.
 
@@ -73,6 +73,9 @@ param(
 
     # Skip deploying; use whatever is already in the copies.
     [switch]$NoDeploy,
+
+    # Extra +set pairs for the CLIENT only, appended last (e.g. '+set r_mode 1280x720').
+    [string[]]$ClientExtraArgs = @(),
 
     [string]$DevRoot = 'C:\Users\b\ZombiesDev'
 )
@@ -223,6 +226,7 @@ try {
     )
     # The client needs the same mod mounted or it cannot load the map it is sent to.
     if ($FsGame) { $clientArgs += @('+set', 'fs_game', $FsGame) }
+    if ($ClientExtraArgs.Count) { $clientArgs += $ClientExtraArgs }
     if ($ClientNameDvar) {
         $clientArgs += @('+set', 'name', $ClientNameDvar)
         # AND the env var the client DLL's `name_pin` reads, which re-issues

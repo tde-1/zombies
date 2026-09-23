@@ -9,6 +9,8 @@
 
 * **2026-09-23 00:45 UK — the box runs three game servers at once (`dedi.md` §19).** The "3074 + one fallback" limit was wrong. The engine probes 100 lobby ports, and the new dedi DLL `6fccc0e0…` (`lobby_port.cpp`) logs every bind and takes `ENW_LOBBY_PORT` (3074+slot). Three servers were proven up together, all answering, ~304 MB and ~0.33 core each, ~300 MB RAM left. Four needs Steam without its browser or a bigger box. **Fixed an outage:** after four boots the host agent failed every lease, B's Play included (23:27–23:32 box time, "no game copy at waw-inst-05"). Copies now go by slot. **Still one game per box at the site**: a second Play supersedes the first, and that is the web lane's to change.
 
+* **2026-09-23 01:30 UK — launcher joins boot straight into zombies (`client.md` §10, branch `boot-direct`, not merged).** The "can't connect" box is the menu `popup_cannot_connect_to_dw` ("Online Service Error"), opened by the Demonware log-on after our blocked DNS lookup; `boot_direct.cpp` refuses it and its three sibling popups at their three call sites (`ENW_SHOW_ONLINE_WARNING=1` shows them). A join now connects on the first frame, with that one menu frame painted black and `snd_menu_master` muted until the first in-game frame (`ENW_DIRECT_BOOT=0` is the old menu wait). Measured on a local dedi at 1280x720: process start → in game **~5.9 s → ~4.9 s**, no menu or popup in any captured frame. Not run through the launcher, on the box or on B's screen. Also found: `snd_volume` (the launcher's volume setting) is not a dvar in this exe.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:
