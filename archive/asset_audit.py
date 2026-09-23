@@ -569,6 +569,10 @@ def visible(r):
     k, n, rl = r["kind"], r["name"].lower(), r["role"]
     if not r["fatal"]:
         return False
+    if r.get("where") == "load_zone_only":
+        # dedi.md §23.4 `load_zone.cpp` is on the box (every run logs "dedi_load_zone: loaded
+        # <bsp>_load"), and a client always loaded it: an older run's miss is history (lewl)
+        return False
     if rl == "character" and k == "xmodel":
         return not RX_GIB.search(n) and not RX_PLAYER_SET.search(n)
     if rl == "character":           # xanim / waited

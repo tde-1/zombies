@@ -330,6 +330,11 @@ def prove(bsp, hold, wait_busy, load_wait=150):
             res.update(result="skipped", reason="pre-empted: %s%s" % (
                 preempted if preempted.startswith("idle") else "another lease (%s) replaced ours" % preempted,
                 " after map_loaded" if loaded_at else ""))
+        elif not loaded_at and not inst:
+            # The host never booted it: its RAM guard (700 MB floor) or one-boot-at-a-time queue
+            # held our lease behind another game for the whole --load-wait. Says nothing about
+            # the map (nazi_zombie_laboratory 21:10, behind an agent's ut_box_map): a retry.
+            res.update(result="skipped", reason="never booted within %d s (host RAM guard / boot queue)" % load_wait)
         elif not loaded_at:
             res.update(result="fail", reason="no map_loaded within %d s" % load_wait + (" (%s)" % exited if exited else "")
                        + ("; trapped: %s" % res["trapped"] if res.get("trapped") else ""))
