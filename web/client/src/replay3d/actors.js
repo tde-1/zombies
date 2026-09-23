@@ -41,30 +41,43 @@ export const SLOT_COLORS = ['#5ec6ff', '#ffd166', '#8ce99a', '#ff9ec6']
 const ZOMBIE_COLOR = 0xc8402c
 const MAX_ZOMBIES = 64        // the sampler's own cap (replay.cpp kMaxZombies)
 
-function nameplate(text, color) {
+function nameplate(text, color, sub) {
   // A canvas sprite rather than CSS overlay: it sorts with the scene, so a
   // nameplate behind a wall is behind the wall.
+  // Lane R3: `sub` is the held weapon's display name, a smaller second line.
   const pad = 10
+  const SUB_H = sub ? 34 : 0
+  const H = 56 + SUB_H
   const c = document.createElement('canvas')
   const ctx = c.getContext('2d')
   ctx.font = '600 34px Inter, Segoe UI, sans-serif'
-  const w = Math.ceil(ctx.measureText(text).width) + pad * 2
+  let w = Math.ceil(ctx.measureText(text).width) + pad * 2
+  if (sub) {
+    ctx.font = '500 24px Inter, Segoe UI, sans-serif'
+    w = Math.max(w, Math.ceil(ctx.measureText(sub).width) + pad * 2)
+  }
   c.width = w
-  c.height = 56
+  c.height = H
   const g = c.getContext('2d')
-  g.font = '600 34px Inter, Segoe UI, sans-serif'
   g.fillStyle = 'rgba(11,13,18,.72)'
-  g.fillRect(0, 0, w, 56)
+  g.fillRect(0, 0, w, H)
   g.fillStyle = color
-  g.fillRect(0, 52, w, 4)
+  g.fillRect(0, H - 4, w, 4)
   g.fillStyle = '#ffffff'
   g.textBaseline = 'middle'
+  g.font = '600 34px Inter, Segoe UI, sans-serif'
   g.fillText(text, pad, 26)
+  if (sub) {
+    g.font = '500 24px Inter, Segoe UI, sans-serif'
+    g.fillStyle = 'rgba(232, 221, 214, .82)'
+    g.fillText(sub, pad, 26 + 22 + 10)
+  }
   const tex = new CanvasTexture(c)
   const sp = new Sprite(new SpriteMaterial({ map: tex, depthTest: true, transparent: true }))
   // Sprite scale is world units, and the map is in inches: 56 px tall reads as
-  // about 22 inches, a little under a head.
-  sp.scale.set(w * 0.42, 56 * 0.42, 1)
+  // about 22 inches, a little under a head. A weapon line grows it downward from the same top.
+  sp.scale.set(w * 0.42, H * 0.42, 1)
+  sp.center.set(0.5, 1 - 28 / H)
   return sp
 }
 
@@ -342,6 +355,35 @@ export function createActors(api) {
     for (const [slot, rec] of players) attachPlayerModel(slot, rec)
   }
 
+  /**
+   * Lane R3: the bone a held weapon hangs from, for a player drawn as a model and visible
+   * this frame; null for a capsule (gear.js then uses a fixed offset from the origin).
+   */
+  function handOf(slot) {
+    const rec = players.get(slot)
+    if (!rec || !rec.model || !rec.model.hand) return null
+    return { bone: rec.model.hand, isTag: !!rec.model.handIsTag, root: rec.model.root }
+  }
+
+  /** Lane R3: the weapon line under a player's name ("Name" / "M1911"). Rebuilt on change only. */
+  function setPlateWeapon(slot, name, weapon) {
+    const rec = players.get(slot)
+    if (!rec) return
+    const key = `${name || ''}\n${weapon || ''}`
+    if (rec.plate.userData.key === key) return
+    const on = rec.plate.userData.on
+    const vis = rec.plate.visible
+    rec.group.remove(rec.plate)
+    if (rec.plate.material.map) rec.plate.material.map.dispose()
+    rec.plate.material.dispose()
+    rec.plate = nameplate(name || `Slot ${slot}`, rec.color, weapon)
+    rec.plate.position.y = (rec.capsule.userData.h || STAND_H) + 26
+    rec.plate.userData.key = key
+    rec.plate.userData.on = on
+    rec.plate.visible = vis
+    rec.group.add(rec.plate)
+  }
+
   function modelInfo() {
     if (!models) return null
     return {
@@ -365,7 +407,7 @@ export function createActors(api) {
     })
   }
 
-  return { group, setPlayers, setZombies, setNades, setExplosions, setNames, setNameplatesVisible, setModels, modelInfo, dispose }
+  return { group, setPlayers, setZombies, setNades, setExplosions, setNames, setNameplatesVisible, setModels, modelInfo, dispose, handOf, setPlateWeapon }
 }
 
 /**
