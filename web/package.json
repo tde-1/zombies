@@ -2,7 +2,7 @@
   "name": "enw-zombies-web",
   "version": "0.1.0",
   "private": true,
-  "description": "ENW Zombies — the website at zombies.enw.gg. A port of ENW Movement (CSGO-Matchmaker/server + movement-client) with the nouns changed.",
+  "description": "ENW Zombies â€” the website at zombies.enw.gg. A port of ENW Movement (CSGO-Matchmaker/server + movement-client) with the nouns changed.",
   "license": "AGPL-3.0-or-later",
   "engines": {
     "node": ">=20"
@@ -15,7 +15,7 @@
     "build": "npm --prefix client install && npm --prefix client run build",
     "client": "npm --prefix client run dev",
     "test": "npm run check",
-    "check": "node test/run-all.js && node test/local-run.js && node test/launcher-signin.js && node test/game-chat.js && node test/bucket.js && node test/map-align.js && node test/guides.js && node test/admin.js && node test/chat-dedupe.js && node test/invites.js && node test/box-maps.js && node test/record-notice.js && node test/telemetry.js && node test/replay-fx.js",
+    "check": "node test/run-all.js && node test/local-run.js && node test/launcher-signin.js && node test/game-chat.js && node test/bucket.js && node test/map-align.js && node test/guides.js && node test/admin.js && node test/chat-dedupe.js && node test/invites.js && node test/box-maps.js && node test/record-notice.js && node test/telemetry.js && node test/replay-fx.js && node test/replay-spectate.js",
     "check:record-notice": "node test/record-notice.js",
     "check:admin": "node test/admin.js",
     "seed:playlists": "node tools/seed-playlists.js",
@@ -29,7 +29,8 @@
     "check:signin": "node test/launcher-signin.js",
     "check:bucket": "node test/bucket.js",
     "check:telemetry": "node test/telemetry.js",
-    "check:replay-fx": "node test/replay-fx.js"
+    "check:replay-fx": "node test/replay-fx.js",
+    "check:replay-spectate": "node test/replay-spectate.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1138.0",
