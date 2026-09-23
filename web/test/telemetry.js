@@ -267,7 +267,8 @@ async function main () {
   const express = require('express')
   const app = express()
   app.use(express.json())
-  app.use((q, _r, next) => { const who = q.headers['x-test-user']; q.me = who ? users.byId(String(who)) : null; next() })
+  // x-test-user, or (for the launcher's own SiteApi, which only sends a cookie) zm_test=<id>.
+  app.use((q, _r, next) => { const who = q.headers['x-test-user'] || (/(?:^|;\s*)zm_test=(\d+)/.exec(q.headers.cookie || '') || [])[1]; q.me = who ? users.byId(String(who)) : null; next() })
   app.use(siteLog.middleware())
   app.use('/api/gs', require('../server/routes/gameserver').router())
   app.use('/api/telemetry', require('../server/routes/telemetry').router())
@@ -494,6 +495,39 @@ async function main () {
     const back = {}
     await tar.readTarGz(require('stream').Readable.from([bucket.get(row.bucket_key)]), (e) => { if (e.data) { back[e.name] = e.data.toString(); return } return { max: 1e6 } })
     lacks(back[`files/site-${day}.log`], process.env.ZM_SITE_PASSWORD)
+  })
+
+  // ---- 7. the other two lanes' real upload code against these real routes ---------------
+  await check('cross-lane: the launcher SiteApi.uploadBundle -> /api/telemetry/upload (cookie, streamed, no content-length surprises)', async () => {
+    const { SiteApi } = await import('../../launcher/src/main/siteapi.js')
+    const lb = path.join(TMP, 'from-launcher.tar.gz')
+    const b = await writeBundle(lb, { manifest: { kind: 'client', reason: 'game_crash', map: 'nazi_zombie_prototype' },
+      files: [{ name: 'enw-4242.log', text: '[1] [ERROR] overlay_guard: UNHANDLED EXCEPTION 0xC0000005 at 0x0041A2B3' }] })
+    const api = new SiteApi({ baseUrl: `http://127.0.0.1:${port}`, appVersion: '9.9.9', cookieProvider: async () => `zm_test=${NEWBIE}` })
+    const r = await api.uploadBundle(lb, { bundleId: b.bundle_id, kind: 'client', reason: 'game_crash' })
+    eq(r.status, 200, r.text); truthy(r.data.flags.includes('crash'), String(r.data.flags)); eq(r.data.severity, 1)
+    const again = await api.uploadBundle(lb, { bundleId: b.bundle_id, kind: 'client', reason: 'game_crash' })
+    eq(again.status, 200); eq(again.data.duplicate, true)
+    const out401 = await new SiteApi({ baseUrl: `http://127.0.0.1:${port}` }).uploadBundle(lb, { bundleId: b.bundle_id, kind: 'client', reason: 'game_crash' })
+    eq(out401.status, 401, 'signed out: 401, the launcher keeps it')
+    await store.idle()
+    const row = incidents.byRowId(r.data.id)
+    eq(row.steam_id, NEWBIE); truthy(row.bucket_key.startsWith('logs/client/'), row.bucket_key); eq(row.upload_state, 'uploaded')
+  })
+  await check('cross-lane: the host agent SiteClient.uploadTelemetry -> /api/gs/telemetry (x-match-secret, throttled stream)', async () => {
+    const { SiteClient } = await import('../../infra/host-agent/lib/siteclient.js')
+    const hb = path.join(TMP, 'from-host.tar.gz')
+    const b = await writeBundle(hb, { manifest: { kind: 'host', reason: 'pull_failed', match_id: 'm_x1', map: 'nazi_zombie_pull' },
+      files: [{ name: 'host-lease.log', text: '2026-09-23T12:00:00.000Z error host lease m_x1: could not prepare nazi_zombie_pull: sha256 mismatch' }] })
+    const quiet = { debug () {}, info () {}, warn () {}, error () {}, child () { return quiet } }
+    const sc = new SiteClient({ base: `http://127.0.0.1:${port}`, secret: BOXSECRET, boxName: 'box-t', log: quiet })
+    const r = await sc.uploadTelemetry(hb, { bundleId: b.bundle_id, kind: 'host', reason: 'pull_failed' })
+    eq(r.status, 200, r.text); truthy(r.json.flags.includes('host_pull_failed'), String(r.json.flags)); eq(r.json.severity, 2)
+    const bad = await new SiteClient({ base: `http://127.0.0.1:${port}`, secret: 'wrong', log: quiet }).uploadTelemetry(hb, { bundleId: b.bundle_id, kind: 'host', reason: 'pull_failed' })
+    eq(bad.status, 401)
+    await store.idle()
+    const row = incidents.byRowId(r.json.id)
+    eq(row.box, 'box-t'); truthy(row.bucket_key.startsWith('logs/host/') && row.bucket_key.includes('/box-t/'), row.bucket_key)
   })
 
   server.close()
