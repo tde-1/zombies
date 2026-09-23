@@ -614,9 +614,13 @@ try {
     # which is a PowerShell PARSE error -- launch.ps1 would not run at all, so no
     # harness that dot-sources or calls it could run either. Restored from the
     # comment above and from mapmount.ps1's matching switch.
-    if ($env:ENW_USE_PRIVATE_LOCALAPPDATA -eq '1') {
-        $env:ENW_LOCALAPPDATA = Join-Path $homeDir 'localappdata'
-    } else { $env:ENW_LOCALAPPDATA = $env:LOCALAPPDATA }
+    # 2026-09-23 01:35 (coordinator): DEFAULT IS NOW PRIVATE. A harness run at 01:25 wrote
+    # snd_menu_master "0" into B's own profile (%LOCALAPPDATA%\Activision\CoDWaW\players    # profiles\<his>\config.cfg) because this was opt-in and the boot-direct lane did not set
+    # it. Every dev copy now carries a DLL from 2026-09-22 or later, so the redirect works
+    # everywhere; ENW_USE_PRIVATE_LOCALAPPDATA=0 is the opt-OUT, for a deliberately stock run.
+    if ($env:ENW_USE_PRIVATE_LOCALAPPDATA -eq '0') {
+        $env:ENW_LOCALAPPDATA = $env:LOCALAPPDATA
+    } else { $env:ENW_LOCALAPPDATA = Join-Path $homeDir 'localappdata' }
     if ($PrivateProfile) { $env:ENW_PRIVATE_PROFILE = '1' } else { $env:ENW_PRIVATE_PROFILE = '0' }
     # ENW-only networking (client-dll/components/network.cpp). Activision and
     # Demonware are always blocked; strict mode denies everything else too.

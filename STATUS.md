@@ -22,6 +22,8 @@ Pause is OFF on the box (`ENW_NO_PAUSE=1`): two paused Nacht games died of the s
 
 * **2026-09-23 02:30 UK — launcher: the nav is clickable straight after a game (branch `launcher-after-game`, not merged, not published).** 0.2.10 hid the shell's drag strip *after* showing the site, but a covered shell page does not paint, so its drag region kept the nav (Maps, Update now, the account chip) dead. In a dev window the nav stayed dead for more than 2.4 s in 15/15 trials; now it is 0 ms in all 33. `launcher.md` and `ui/2026-09-23-launcher-after-game-timing.md`.
 
+* **2026-09-23 01:30 UK — launcher joins boot straight into zombies (`client.md` §10, branch `boot-direct`, not merged).** The "can't connect" box is the menu `popup_cannot_connect_to_dw` ("Online Service Error"), opened by the Demonware log-on after our blocked DNS lookup; `boot_direct.cpp` refuses it and its three sibling popups at their three call sites (`ENW_SHOW_ONLINE_WARNING=1` shows them). A join now connects on the first frame, with that one menu frame painted black and `snd_menu_master` muted until the first in-game frame (`ENW_DIRECT_BOOT=0` is the old menu wait). Measured on a local dedi at 1280x720: process start → in game **~5.9 s → ~4.9 s**, no menu or popup in any captured frame. Not run through the launcher, on the box or on B's screen. Also found: `snd_volume` (the launcher's volume setting) is not a dvar in this exe.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:

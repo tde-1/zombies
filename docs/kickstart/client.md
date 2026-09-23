@@ -1266,3 +1266,122 @@ samples foreground, both round-2 runs). Never set by the launcher.
   is pinned so the client clock stands still, and set once on resume so it continues without a jump.
   `ENW_PAUSE_HOLD=0` reverts.
 
+
+
+---
+
+## 10. 2026-09-23 ~01:30 — straight into zombies: no "Online Service Error", no main menu (`components/boot_direct.cpp`, branch `boot-direct`)
+
+B: *"When the game boots up, it first says 'can't connect to online servers' before connecting into
+the game. Make it not show that — or not even show the main menu at all and not play the main menu
+music."* Pictures: `ui/boot-before-2026-09-23.jpg`, `ui/boot-before-popup-1280x720.jpg`,
+`ui/boot-before-menu-1280x720.jpg`, `ui/boot-after-2026-09-23.jpg` (the profile name in the menu's
+top-right corner is blanked in all of them).
+
+### 10a. What the popup is — PROVEN (static read + back-buffer captures)
+
+It is the menu **`popup_cannot_connect_to_dw`**: title *Online Service Error*, text *Can not connect
+to Online Service.*, one Ok button. It is the engine's Demonware log-on state machine answering the
+DNS lookup our `net:` filter blocks:
+
+| Addr | What |
+|---|---|
+| `0x5FC870` | DW log-on frame (runs while `dw_active` — "Pumps Live_Frame (and hence DW) if true", dvar ptr `0x46E5098`). State from `0x57BDA0`; state 2 = the auth DNS lookup `0x57C320` |
+| `0x5FC951`/`0x5FC956` | lookup failed: prints *Failed to log on.* (`0x882670`), clears `dw_popup`, `mov eax,"popup_cannot_connect_to_dw"; call 0x5D7FD0` |
+| `0x5FC9BA`/`0x5FC9BF` | sibling: `popup_cannot_connect_to_dw_create_offline_profile` |
+| `0x5FDB10` | the `dw_popup` setter (dvar ptr `0x229A0E0`), name in EDI; opens the new one at **`0x5FDB57`** (`popup_connecting_dw`, `popup_dw_dns_lookup` — the "connecting…" boxes that precede it) |
+| `0x5D7FD0` | open menu by name: EAX = name; `Menus_FindByName(uiContext 0x208E920)` `0x5C0200` + `Menus_Open` `0x5C5180`; preserves ECX; none of the three callers reads EAX after |
+| `0x5D8000` | close menu by name (same shape) |
+
+The log-on retries: in every "before" run the four popups were opened 16 times in the first ~0.2 s
+(4× `popup_cannot_connect_to_dw`), and the capture at +3054 ms shows the box over the main menu.
+
+**The fix**: the three rel32 call sites above are retargeted (byte-checked first: all three must
+`call 0x5D7FD0` and `0x5D7FD0` must start `51 50 68 20 E9 08 02`, or nothing is touched) to a naked
+thunk that refuses exactly those four names and jumps to `0x5D7FD0` for anything else. `0x5D7FD0`
+itself is not hooked (it has other callers). The log-on machine is left alone: it still fails,
+retries and prints *Failed to log on.* in the console; nothing is shown. Applies to every client
+process (Play Local too). Off switch **`ENW_SHOW_ONLINE_WARNING=1`**: the thunk then passes every
+name through and logs `let through menu '…'`, which is how the before runs name it.
+
+### 10b. The direct boot — PROVEN against a local dedicated server
+
+`connect_local`'s gate waited for the main menu's Bink + 750 ms + a 2 s floor (§7). Its reason — a
+video over the HUD — was the map's load Bink, which is refused for a join anyway, and the Treyarch
+intro never opens with our args. So the gate now asks `boot_direct::fire_now()` first (the only
+change to `connect_local.cpp`, plus a `note_connect()` after the call): for an armed join it fires
+on the **first frame tick after post_init** if no file video is open and `clc.state != 1`.
+Measured: the first frame is the frame the menu's Bink opens (clc.state 2), and `CL_ConnectLocal`
+works there — clc.state 2 → 4 → 5 → 7 → 6 → 9 → 10, the same sequence as before, just earlier.
+`ENW_DIRECT_BOOT_MIN_FRAME=<n>` delays it (a measurement knob); **`ENW_DIRECT_BOOT=0`** restores the
+old gate exactly.
+
+**The one menu frame, and the black cover.** Our tick runs *after* frame 1's `Com_Frame`, which has
+already built the main menu (text over black; its Bink background not drawn yet): `boot-after1`
+captured it being presented once (~7 ms). So from the first tick until the connect has moved
+clc.state to 5, the back buffer is `ColorFill`ed black at `Present` (device slot 17 and swap chain
+slot 3; `frame_capture.cpp` found T4 presents through the swap chain). Measured: 2 frames painted,
+then lifted. The load screen after it is black anyway (load video refused, `ui_autoContinue 1`).
+Off switch `ENW_BOOT_COVER=0`.
+
+**The mute.** Not `snd_volume`: **that dvar does not exist in this SP build.** At the first in-game
+frame it is still the *external* dvar the command line's `+set` created (flags `0x4000`, tested by
+Dvar_RegisterVariant's inner `0x5EEA20`; type byte `+0xA` = 7, string). The registered volumes are
+the Options > Sound sliders, floats from the sound init `0x6B47C0` (`snd_menu_music` `0x6B4E18`,
+`snd_menu_master` `0x6B4E6A`, through Dvar_RegisterFloat `0x5EEF10`, type 1). So the mute is
+**`snd_menu_master`**, the one every dev harness already zeroes to keep test games silent. It is read
+at the first frame tick (post_init runs inside Com_Init, *before* the command line's `+set`s execute
+— `boot-after3` read the wrong value there), set to 0, and restored to the player's value at the
+first in-game frame. While muted, the dvar's own archive bit (flags word `+8` bit 0, which the
+config writer `0x59FAA0` tests; `Com_WriteConfiguration` is `0x59D8F0`) is held off, so a crash
+mid-mute can never write the 0 into config.cfg (and from there into the account via the launcher's
+read-back); it is given back after the restore. Nets: restore after 60 s without a game;
+`pre_destroy` puts the value and the bit back. `boot-after6` (`+set snd_menu_master 0.003`, i.e.
+inaudible): `muted (0.003 -> 0; type 1, flags 0x0001)` … `restoring to 0.003` … `0.003 again,
+archive bit given back (flags 0x0001)`. Off switch `ENW_BOOT_MUTE=0`.
+
+**Finding for the launcher lane:** `gamecfg.js` maps the account's *volume* to `snd_volume`, which
+this exe never registers, so that setting does nothing in game. `snd_menu_master` is the master.
+
+### 10c. Measured — process start → first in-game frame (clc.state 10), 1280x720 windowed
+
+Local dedicated `waw-bootd` + client `waw-boot` (own copies), `nazi_zombie_prototype`, off-screen at
+-4000,-4000, `ENW_TEST_NO_ACTIVATE=1`, `ENW_BORDERLESS_COVER=0`, `jointest.ps1 -ClientExtraArgs`
+(new: extra `+set`s for the client only). Timestamps are the DLL's own, ms since process creation.
+Logs: `ZombiesDev\logs\dedi\boot-*.client.enw.log`.
+
+| run | mode | CL_ConnectLocal | first in-game frame |
+|---|---|---|---|
+| boot-before1 | old gate, captures on | +3549 | +6657 |
+| boot-before-t1 | old gate | +2954 | **+5929** |
+| boot-before-t2 | old gate | +2913 | **+5919** |
+| boot-after1..6 | direct boot, captures on | +1739..+1904 | +4737..+4982 |
+| boot-after-t1 | direct boot | +1895 | **+4965** |
+| boot-after-t2 | direct boot | +1767 | **+4799** |
+
+**About 1.0–1.1 s faster** (the menu wait); the load itself (connect → in game, ~3.0 s) is
+unchanged. The picture fades in from black over the next ~1.5 s in both. Captures
+(`ui/boot-after-2026-09-23.jpg`): every frame from the first is black until the map fades in; no
+menu, no popup.
+
+### 10d. NOT proven
+
+* **Launcher Play → process start** is not in these numbers (seeding, config writes, spawn); the
+  launcher itself was not used, only the dev harness with the launcher's join environment.
+* **A box join** was not run: box leases are stopped (dedi.md §20) and the journal's idle line has
+  been unreliable tonight; a local dedicated server stood in.
+* **Audio**: nobody listened. The mute is proven only as dvar values in the log.
+* **B's machine** (2560x1440, borderless, 250 fps): not run. The cover and the gate do not depend
+  on size or mode, but that is an argument.
+* The engine's **startup splash window** (`CoD Splash Screen`, before any frame) is unchanged and
+  still shows for about a second.
+* The first frame is still built by the engine and painted over at Present.
+
+**Harness note (not fixed here):** without `ENW_USE_PRIVATE_LOCALAPPDATA=1`, `launch.ps1` lets a dev
+game write the box owner's own `%LOCALAPPDATA%\Activision\CoDWaW\players\profiles\…\config.cfg` — it
+was rewritten at 01:25:51 during these runs and carries the harness's `snd_menu_master "0"`.
+
+Lock holds (one per run, server + client, released by `jointest.ps1`; each started only with no
+CoDWaW process and no lock present): 01:04:08–01:05:10, 01:07:11–01:08:08, 01:10:29–01:11:21,
+01:14:03–01:14:49, 01:14:49–01:15:35, 01:15:35–01:16:22, 01:16:22–01:17:08, 01:17:08–01:17:54,
+01:19:00–01:19:47, 01:22:20–01:23:06, 01:24:56–01:25:42.
