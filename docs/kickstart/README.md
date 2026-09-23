@@ -102,6 +102,8 @@ Feature docs written on the night of 2026-09-22/23 (each names its lanes in its 
 [`chat-overlay.md`](chat-overlay.md) (in-game chat, the pause contract, stock font, hang watchdog),
 [`esc-menu.md`](esc-menu.md) (the ENW Esc menu, Restart/Exit, quit vs crash),
 [`mod-compat.md`](mod-compat.md) (a custom map gets exactly what the mod ships),
+[`game-modes.md`](game-modes.md) (a map's own mode vote, e.g. UGX Gun Game, picked on the site and
+answered by the server; records per mode),
 [`storage.md`](storage.md) (the `enw-zombies` bucket), [`ip-posture.md`](ip-posture.md) (what of
 Activision's we may serve: nothing).
 

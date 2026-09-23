@@ -270,7 +270,7 @@ export function MapBody({ mapKey: key }) {
 
       {tab === 'records' ? (
         <section className="mdrec-wrap" aria-label="Records">
-          <Records boards={d.boards} />
+          <Records boards={d.boards} modes={d.map && d.map.modes} />
           {/* ~~Recent games~~ removed 2026-09-23: on a played map it was a list of R0 games
               with nobody's name on them, under the board that already ranks the real runs.
               `recent` stays on the wire. */}
@@ -574,17 +574,38 @@ const day = (ms) => {
   return `${t.getDate()} ${MONTHS[t.getMonth()]} ${t.getFullYear()}`
 }
 
-function Records({ boards }) {
+// A map with its own game modes (docs/kickstart/game-modes.md: UGX's Classic / Gun Game / ...)
+// keeps a board per mode, and a mode is only ever ranked against itself, so the mode is the
+// first choice here: one tab per mode that has runs, in the map's own order.
+function Records({ boards, modes }) {
   const [pick, setPick] = useState(null)
   const [pc, setPc] = useState(null)
-  const shown = [...(boards || [])].filter(hasRuns)
-    .sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.category))
+  const [gm, setGm] = useState(null)
+  const withRuns = [...(boards || [])].filter(hasRuns)
+  const order = (modes && modes.modes ? modes.modes.map((m) => m.id) : [])
+  const modeIds = [...new Set(withRuns.map((b) => b.game_mode || ''))]
+    .sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99))
+  const modeName = (id) => (id ? ((withRuns.find((b) => b.game_mode === id) || {}).game_mode_label || id) : 'Before modes')
+  const curMode = modeIds.includes(gm) ? gm : (modeIds.includes(modes && modes.default) ? modes.default : modeIds[0])
+  const shown = withRuns.filter((b) => (b.game_mode || '') === (curMode || ''))
+    .sort((a, b) => ORDER.indexOf(a.base || a.category) - ORDER.indexOf(b.base || b.category))
   if (!shown.length) return <div className="mdrec-empty">No records yet.</div>
   const cur = shown.find((b) => b.category === pick) || shown[0]
   const counts = cur.counts.filter((c) => c.rows.length)
   const sel = counts.find((c) => c.player_count === pc) || counts[0]
   return (
     <div className="mdrec">
+      {modeIds.length > 1 || (modes && curMode) ? (
+        <div className="mdrec-bar mdrec-modes">
+          {modeIds.length > 1 ? (
+            <div className="mdscope" role="tablist" aria-label="Game mode">
+              {modeIds.map((id) => (
+                <button key={id || 'none'} type="button" role="tab" aria-selected={id === curMode} className={'mdscope-b' + (id === curMode ? ' on' : '')} onClick={() => { setGm(id); setPick(null); setPc(null) }}>{modeName(id)}</button>
+              ))}
+            </div>
+          ) : <span className="mdrec-label">{modeName(curMode)}</span>}
+        </div>
+      ) : null}
       <div className="mdrec-bar">
         {shown.length > 1 ? (
           <div className="mdboards" role="tablist" aria-label="Which board">

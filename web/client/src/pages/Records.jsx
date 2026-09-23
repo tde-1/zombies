@@ -58,7 +58,7 @@ export default function Records() {
                 <tr key={r.board_id}>
                   <td><Link to={`/m/${r.map_key}`}>{r.map_title}</Link></td>
                   <td className="tiny">
-                    {r.label}
+                    {r.label}{r.game_mode_label ? ` · ${r.game_mode_label}` : ''}
                     {!r.top.profile_ok && <> <span className="hot" title={r.top.profile_note}>rules mismatch</span></>}
                   </td>
                   <td className="tiny">{r.player_count === 1 ? 'Solo' : `${r.player_count}p`}</td>
@@ -66,7 +66,7 @@ export default function Records() {
                   <td className="num gold">{r.sort === 'time_asc' ? clock(r.top.value_ms) : `Round ${r.top.round}`}</td>
                   <td className="tiny num">{ago(r.top.at)}</td>
                   <td className="rt-watch">
-                    <WatchButton matchId={r.top.match_id} replay={r.top.replay} label={`${r.map_title} · ${r.label}`} />
+                    <WatchButton matchId={r.top.match_id} replay={r.top.replay} label={`${r.map_title} · ${r.label}${r.game_mode_label ? ` · ${r.game_mode_label}` : ''}`} />
                   </td>
                 </tr>
               ))}

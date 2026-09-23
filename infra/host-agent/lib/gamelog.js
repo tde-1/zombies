@@ -100,6 +100,10 @@ export class GameLog {
       case 'dvar':
         this.write(ev.ms, `${this.p};dvar;${clean(ev.name)};${clean(ev.value)}`)
         break
+      case 'game_mode':
+        // The map's own mode menu, answered by the server (game-modes.md).
+        this.write(ev.ms, `${this.p};game_mode;${clean(ev.state)};${clean(ev.mode || '')};${clean(ev.menu || '')};${clean(ev.response || ev.note || '')}`)
+        break
       case 'game_over':
         this.write(ev.ms, `${this.p};game_over;${ev.round ?? ''};${clean(ev.reason || '')}`)
         this.write(ev.ms, 'ExitLevel: executed')
