@@ -2761,8 +2761,9 @@ every installed launcher at its next start, with no release.
 
 ### Not proven
 
-- **A real Discord client.** Discord is not installed or running on this machine, and there is no
-  application id yet. Everything above was driven against a fake Discord on a real named pipe that
+- **A real Discord client.** *(DP1, 15:00: wrong — Discord is installed and B is signed in; the
+  wording, name override and ordering were watched on it, next section. Still no application id.)*
+  Discord is not installed or running on this machine, and there is no application id yet. Everything above was driven against a fake Discord on a real named pipe that
   speaks the same framing. So these have never been seen on a real profile:
   - the wording as Discord renders it;
   - an https **webp** URL accepted as `large_image`. Discord has proxied external https images for
@@ -2773,6 +2774,87 @@ every installed launcher at its next start, with no release.
   started, because B's launcher was running on this desktop.
 - **`match.round` on a live box game.** The code reads the same in-memory frame as `/live`. It has
   not been watched during a real game.
+
+## 2026-09-23 15:00 — Discord shows ENW Zombies, never "Call of Duty: World at War" (lane DP1)
+
+B (14:40): in World at War through our launcher, Discord must not say *Playing Call of Duty: World
+at War*; ENW Zombies must win. He suggested renaming the exe. **That is what works, and it is the
+only programmatic thing that does.** `src/main/gameexe.js`; tests in `test/discord-presence.js`
+(26 now); mock-ups in the vault, `assets/discord-mockups/`.
+
+### What Discord actually does (sources, not guesses)
+
+1. **Detection is by exe file name, any folder.** Discord's detectable list
+   (`GET https://discord.com/api/v9/applications/detectable`, 24,454 entries, fetched 14:33) has
+   World at War as application `363412728888557568` with executables `codwaw.exe`,
+   `codwawmp.exe`, `installers/pbsvc.exe`. B's own Discord log (`%APPDATA%\discord\logs\renderer_js.log`,
+   `[RunningGameStore]` / `handleRunningGamesChange`) shows it detecting
+   `c:/users/b/appdata/local/enwzombies/game/codwaw.exe` (his launcher game, 13:28 and again
+   14:42 while he played), and every harness copy `c:/users/b/zombiesdev/waw-*/codwaw.exe`. So every
+   ENW game so far has shown as World at War, and P1's proof runs showed on B's profile too.
+2. **An IPC activity is listed before the detected game, but does not replace it.** Discord's own
+   client code (`LocalActivityStore`, in `https://discord.com/assets/web.<hash>.js`, read 14:31): the
+   activity list is built as custom status → first-party → streaming → **every RPC activity** →
+   **the detected game** → Spotify, and `getPrimaryActivity()` is the first one. The detected game is
+   left out only when an RPC activity has the **same `name`** as the game, or the game's Discord
+   application lists ours in `linkedGames` (Discord-side, not ours to set). So:
+   - "last set wins" is false: order is structural, resending changes nothing — option (b) is dead;
+   - the `pid` we send is only used to tie a pid to the socket that set it — option (c) hides nothing;
+   - `SET_ACTIVITY` accepts `name` (1–128) and `status_display_type` (0 name / 1 state / 2 details);
+     the handler fills `name` with the application's name only when it is missing.
+3. **Watched on B's PC** (screenshots `C:\Users\b\Desktop\Zombies\tmp\dp1-evidence\`, crops in the
+   mock-ups 10–12): our dev copy as `CoDWaW.exe` → B's panel said *Call of Duty: World at War*
+   (detected in < 1 s, 14:37:51). Our activity set over IPC on top → the name line said *ENW Zombies*
+   but Discord's game panel still said *Call of Duty: World at War · Alt+C to clip*. The same game as
+   **`ENWZombies.exe`** (14:39:52–14:41:40) → **no detection line at all** in Discord's log, no game
+   panel, only *ENW Zombies*. The IPC test used a stand-in application id (MusicBee's public app,
+   `1453044191826415736`, with `name: "ENW Zombies"`) because ENW has no Discord application yet; B's
+   friends could have seen "Playing ENW Zombies" for about a minute.
+4. **The user-side switch** (Discord Settings → Activity Privacy / Registered Games → turn off
+   detection for World at War) also hides it, per player, per PC. Not needed any more; it stays the
+   answer for someone who opts back to `CoDWaW.exe`.
+
+### What the launcher does now
+
+- `ensureGameExe(<ENW>\game)`: `ENWZombies.exe` is a byte copy of **our** `CoDWaW.exe` in **our**
+  folder (hard rule 1 is checked on `CoDWaW.exe` before anything is written; the player's Steam
+  install is never touched). Re-copied whenever the sha1 differs, via a temp file + rename, so the
+  4 GB flag (which `setup.js` writes into `CoDWaW.exe`) and "Install it again" reach it at the next
+  Play. Any copy problem (e.g. the old copy still running) → start `CoDWaW.exe` and log
+  `game exe: … Discord may also list World at War`. A Play is never refused over a label.
+- Opt-out: `ENW_GAME_EXE=CoDWaW.exe` or `state/config.json` `"gameExe": "CoDWaW.exe"`. Nothing else
+  is accepted (never the MP exe, never a path).
+- Everything that looked for `CoDWaW.exe` by name now looks for both (`gameexe.GAME_IMAGES`):
+  `gameproc.listGameProcesses` (one WQL `OR`), `steam.gameProcesses`, crash dumps
+  (`ENWZombies.exe.<pid>.dmp`), the event-log probe, and WER LocalDumps (a second HKCU key,
+  `…\LocalDumps\ENWZombies.exe`, only when nothing covers it; `ensureWer().also`).
+- The game does not care: SteamStub decrypted in place (`steamstub: decrypted after 109 ms`, pid
+  unchanged, `steam_appid.txt` beside it), the DLL loaded (`enw_t4 loaded … pid 27280`, 68
+  components), Nacht began loading, 108 s alive, same as the `CoDWaW.exe` control. Nothing in the DLL
+  reads the exe's name (grep: comments only). Box/dedi scripts are unchanged: no Discord there.
+- Harness: `tools\dev\launch.ps1 -ExeName ENWZombies.exe` (default `CoDWaW.exe`); its "already
+  running" checks cover both names.
+
+### Side effects to know
+
+- **Windows Firewall**: a rule is per exe path. Both test runs created an inbound *Allow* rule
+  (`waw-dp1\codwaw.exe`, `waw-dp1\enwzombies.exe`), as every earlier copy did. A player may see one
+  firewall prompt for `ENWZombies.exe` on the first Play after this ships, like the first ENW launch.
+- **Discord's overlay and clips** attach to detected games (B's 14:42 game: `Hooked D3D9`,
+  `discord_hook.log`). An undetected `ENWZombies.exe` should get neither, which also retires the
+  DiscordHook crash class (`chat-overlay.md` §13), but the "Discord overlay" setting then does
+  nothing unless the player adds the game in Discord. **Unproven**: the test windows were
+  off-screen and never focused, and Discord did not hook the `CoDWaW.exe` control either.
+- Driver profiles keyed on `codwaw.exe` (NVIDIA/AMD) no longer match. Nothing for a 2008 D3D9 game
+  that we know of; unmeasured.
+
+### Unproven
+
+- A real launcher Play with ENW's own application id (B has not made the app yet: `ZM_DISCORD_CLIENT_ID`
+  is not in `infra/site.env`). Until then the launcher sends no activity and the fix only removes the
+  World at War line.
+- Discord's full profile / popout with two activities was read from the code, not opened: we did not
+  click in B's Discord while he was using it.
 
 ## 2026-09-23 — telemetry: what the launcher uploads
 
