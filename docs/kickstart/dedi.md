@@ -3574,6 +3574,32 @@ alias that killed B's games is missing on these maps too, and is now silent.
   be water from the surface-type test; the registration itself is proven.
 - ils lag with a real internet client (26.3).
 
+### 26.6 Addendum (lane REL, 2026-09-23 18:17–18:45 UTC): the evening merges on the box
+
+Every DLL built in a clean detached worktree at a main commit (rule 17), each deployed only to production
+copies not running a game (`waw-inst-01..04`, `waw-probe`, `waw-stock`, `waw-vps1`; `waw-tinst-*` never
+touched), copy-to-temp + `mv`, `chown waw:waw`. No real player was live for any step (B's idle zm_nuked
+lease `m_5a28dcbe` ended 18:11; lane MAPS's fake-`…0005` queue ran throughout and was worked around).
+
+| DLL | main / worktree | copies | proof |
+|---|---|---|---|
+| `2fda99fe` | `43f722f` / `wt-rel4` (CL+UGX+SOC+RV) | 6 of 7, 18:13 | - |
+| `884dde5f` | `499e254` / `wt-rel5` (+G2) | 6 of 7, 18:17 | nacht_reimagined `m_018c6208`: `dedi_water_sim_off: post_init: r_gfxopt_water_simulation 1 -> 0`, `map_loaded`, all 4 `dedi_snd_alias_dvars … registered`, `game_mode: bound`, no MISMATCH (no player) |
+| `736236c8` | `9589c91` / `wt-rel6` (+S2) | 7 of 7 (inst-01 at 18:27) | - |
+| **`3557aaa3`** | `0a03304` / `wt-rel7` (+G2 CLIENT FROZEN) | **7 of 7**, 18:29 + inst-01 18:35 | nacht_reimagined `m_adde3e93`: `map_loaded`, snd dvars registered, **`dedi_water_sim_off: NOT applied: [0x042B721C]=00000000 but Dvar_FindVar(r_gfxopt_water_simulation)=021BAC04`**; nazi_zombie_ils `m_077a1836`: **16.4 % of one core over 60 s, `dedi_rate_probe` 61.0–61.3 Hz** (S2's fix holds), and no `dedi_water_sim_off` line at all |
+
+**Open, for lanes G2 + S2:** the water fix applies on `884dde5f` (G2, no S2) and on G2's own `92b01569`, and
+fails on every build with S2 merged (`736236c8`: derberg; `3557aaa3`: nacht_reimagined, and silent on
+ILS). S2 added `bots.cpp` (inert without `ENW_DEV_KNOBS`), the `memory.cpp` image fast path, and
+`t4_bind`/`structs` fields; `read_raw` itself is unchanged in substance, so the cause is not proven.
+The A/B is `ENW_MEMORY_SLOW_READS=1` on one lease. Until then the box has S2's CPU fix but not G2's water
+fix; `/home/waw/binkw32.rollback-884dde5f.dll` is the build with the water fix and without S2 (REL did not
+roll back: that trade is the coordinator's call).
+
+Host agent: main `9589c91` (UGX `gamemode.js`, the 31 `+`-command guard, S2 `settings.dev.bots`) deployed
+18:27 UTC in a gap in MAPS's queue; rollback `/home/waw/host-agent.rollback-20260923T1826Z.tgz`.
+Rollbacks for the DLL chain: `binkw32.rollback-{fd3039d2,2fda99fe,884dde5f,736236c8}.dll`.
+
 ## 28. 2026-09-23 evening — lane G2: the "one-hit downs" are a phantom water surface at z=0 on the dedicated server (`water_sim_off.cpp`), plus a solo-parity self-check (`solo_parity.cpp`)
 
 B, 14:00–14:27 UTC on box DLL `04a3ad6d`: Nuketown down the instant he spawned (game over in 1 s),
