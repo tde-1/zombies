@@ -71,6 +71,8 @@ def acquire(why: str, wait_s: float = 3600, log=print):
     said = None
     while True:
         pid, txt = holder()
+        if pid is not None and str(pid) == os.environ.get("ZM_HEAVY_LOCK_PID") and pid_alive(pid):
+            return  # re-entrant: a parent (`heavylock.py run`) already holds it for us
         if pid is not None and pid != os.getpid() and pid_alive(pid):
             msg = f"heavy.lock held: {txt}"
         else:
@@ -122,7 +124,8 @@ def main(argv):
         if rest[:1] == ["--"]:
             rest = rest[1:]
         with heavy(why):
-            return subprocess.call(rest)
+            # Children that take the lock themselves (export_all.py per map) see it as theirs.
+            return subprocess.call(rest, env=dict(os.environ, ZM_HEAVY_LOCK_PID=str(os.getpid())))
     print(__doc__)
     return 2
 

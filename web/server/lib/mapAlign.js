@@ -177,8 +177,14 @@ function worldTriangles(glb) {
   return Float64Array.from(out)
 }
 
-/** Node `ni`'s mesh as world-space triangles (9 numbers each). */
+/** Node `ni`'s mesh as world-space triangles (9 numbers each). Cached on the glb. */
 function nodeTriangles(glb, ni) {
+  if (!glb.triCache) glb.triCache = new Map()
+  if (!glb.triCache.has(ni)) glb.triCache.set(ni, nodeTrianglesRaw(glb, ni))
+  return glb.triCache.get(ni)
+}
+
+function nodeTrianglesRaw(glb, ni) {
   const { j, acc } = glb
   const M = worldMatrix(j, ni)
   const out = []
@@ -333,6 +339,33 @@ async function check(glbFile, meta, firstTick) {
     ds.sort((a, b) => a - b)
     out.windows = { n: ds.length, median: +ds[ds.length >> 1].toFixed(1), max: +ds[ds.length - 1].toFixed(1), viaProps }
   }
+  // The map's own AI path nodes, which a mapper sets on the ground (Nacht: 28 u over the
+  // floor, v2beta 11-21 u). Spawn points are script_structs and can float -- dcv2's sit 85-130
+  // u up while 58 of 59 sampled path nodes stand on the shell -- so a spawn that floats is not
+  // a misplaced shell when the path nodes stand. Sampled (at most 60), shell first, then props.
+  const nodes = meta.pathnodes || []
+  if (nodes.length) {
+    const step = Math.ceil(nodes.length / 60)
+    let n = 0, on = 0, onProps = 0
+    for (let k = 0; k < nodes.length; k += step) {
+      const p = nodes[k]
+      n++
+      const f = T ? floorUnder(T, p[0], p[1], p[2]) : null
+      if (f !== null && p[2] - f >= -2 && p[2] - f <= 48) { on++; continue }
+      if (!boxes) {
+        boxes = []
+        glb.j.nodes.forEach((nd, i) => { if (nd.mesh !== undefined && !String(nd.name || '').startsWith('__')) boxes.push([i, nodeBox(glb, i)]) })
+      }
+      let top = null
+      for (const [i, b] of boxes) {
+        if (p[0] < b.lo[0] || p[0] > b.hi[0] || p[1] < b.lo[1] || p[1] > b.hi[1] || b.lo[2] > p[2] + 18) continue
+        const z = floorUnder(nodeTriangles(glb, i), p[0], p[1], p[2])
+        if (z !== null && (top === null || z > top)) top = z
+      }
+      if (top !== null && p[2] - top >= -2 && p[2] - top <= 48) { on++; onProps++ }
+    }
+    out.pathnodes = { sampled: n, onFloor: on, onProps }
+  }
   // Every script_model anchor must be a node at exactly its map_ents origin. In a served
   // (meshopt) file whose prop positions are quantized, the node translation carries the
   // dequantization, so there the anchor must lie inside (or within 1 u of) the node's world
@@ -357,13 +390,16 @@ async function check(glbFile, meta, firstTick) {
     if (size !== null) row.boxSize = +size.toFixed(1)
     out.anchors.push(row)
   }
-  // Nothing drawn may lie past the engine's +-65536 (nazi_zombie_pd shipped a prop 200 490 u
-  // out, which frames the camera on a void). The sky rides the camera and is exempt.
+  // Nothing may be PLACED past the engine's +-65536 (nazi_zombie_pd shipped a prop 200 490 u
+  // out, which frames the camera on a void). A backdrop centred inside that merely overhangs
+  // it (zm_nuked's desert mountain, projectx's jeepride terrain) is scenery and is allowed.
+  // The sky rides the camera and is exempt.
   out.farNodes = []
   glb.j.nodes.forEach((n, i) => {
     if (n.mesh === undefined || n.name === '__sky') return
     const b = nodeBox(glb, i)
-    if ([...b.lo, ...b.hi].some((v) => !Number.isFinite(v) || Math.abs(v) > 65536)) out.farNodes.push({ name: n.name, lo: b.lo.map(Math.round), hi: b.hi.map(Math.round) })
+    const c = [0, 1, 2].map((k) => (b.lo[k] + b.hi[k]) / 2)
+    if ([...b.lo, ...b.hi].some((v) => !Number.isFinite(v)) || c.some((v) => Math.abs(v) > 65536)) out.farNodes.push({ name: n.name, lo: b.lo.map(Math.round), hi: b.hi.map(Math.round) })
   })
   if (firstTick) {
     let best = Infinity, which = null

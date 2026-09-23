@@ -17,7 +17,7 @@ which is a *measurement* and not a guess:
   * Stock OAT can *write* xmodel, material, image and mapents, but not gfxworld for
     T4 -- and the **world shell of a WaW map (floors, walls, ceilings) lives in
     GfxWorld**, as do a stock map's static props (1506 on Nacht against map_ents' 54).
-  * SINCE 2026-09-23 (lane GEO, replay.md §16) we build OAT with our own T4 GfxWorld
+  * SINCE 2026-09-23 (lane GEO, replay.md §15) we build OAT with our own T4 GfxWorld
     dumper (tools/maps/oat-t4-world, GPL-3.0) and `--world auto` (the default) dumps
     the shell, its materials and every static-model placement straight out of the
     fastfile: `unlink_world()`, no game, no game.lock, about a second a map. On Nacht
@@ -73,7 +73,7 @@ WAW = Path(os.environ.get(
 DEV = Path(os.environ.get("ZOMBIES_DEV", r"C:\Users\b\ZombiesDev"))
 OAT = DEV / "tools" / "oat" / "Unlinker.exe"
 # The same Unlinker built with our T4 GfxWorld dumper (tools/maps/oat-t4-world). With it the
-# world shell comes out of the fastfile offline -- no game, no lock, no Husky (replay.md §16).
+# world shell comes out of the fastfile offline -- no game, no lock, no Husky (replay.md §15).
 OAT_GEO = Path(os.environ.get("ZM_OAT_GEO", DEV / "tools" / "oat-geo" / "Unlinker.exe"))
 
 # A prop is worth a draw call if it is big enough to see. Nacht's 31 explosive
@@ -265,6 +265,14 @@ def euler_to_quat(pitch, yaw, roll):
 # and floating (replay.md 8.3, B's report on m_0afb449b). Rx(+90) takes Y-up back to Z-up
 # and is applied BEFORE the placement's own angles.
 Y_UP_TO_Z_UP = [0.7071067811865476, 0.0, 0.0, 0.7071067811865476]
+
+
+def quat_to_mat(q):
+    """glTF quaternion [x, y, z, w] -> 3x3 rotation, rows."""
+    x, y, z, w = q
+    return [[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]]
 
 
 def quat_mul(a, b):
@@ -625,7 +633,7 @@ def material_leaf(name: str) -> str:
 SKY_MATERIAL = re.compile(r"^sky", re.I)
 
 
-def read_oat_world(json_path: Path, glb: 'Glb'):
+def read_oat_world(json_path: Path, glb: 'Glb', ents=None):
     """The OAT GfxWorld dump (tools/maps/oat-t4-world, `Unlinker --include-assets gfxworld`)
     -> ({material: {pos, nrm, uv, idx} as numpy}, {material: colour-map stem}, static-model ents).
 
@@ -633,11 +641,10 @@ def read_oat_world(json_path: Path, glb: 'Glb'):
     fastfile. Units are engine inches already (no 2.54 -- that was Husky's OBJ, §8.12), Z up.
 
     Left out, and why:
-      * brush-model surfaces (GfxWorld.models[1..], the `script_brushmodel`s: doors, debris,
-        barricade planks). They are stored in their own local space; Husky dumped them piled
-        on the engine origin and `drop_origin_brushmodels` guessed them back out (§8.11). The
-        world's own table says which surfaces they are, so none is emitted and nothing is
-        guessed. Counted in the sidecar.
+      * the brush models a game opens or tears down (doors, debris, window boards -- see
+        below); every other `script_brushmodel` is placed at its entity. Husky dumped them all
+        piled on the engine origin and `drop_origin_brushmodels` guessed them back out
+        (§8.11); here GfxWorld's own model table says which surfaces are which. Counted.
       * sky-box surfaces (material `sky*`). The map's sky is the `__sky` dome; its brush box
         drawn as geometry would wall the dome off.
     """
@@ -652,9 +659,45 @@ def read_oat_world(json_path: Path, glb: 'Glb'):
     V = raw[:nv * stride].view(np.float32).reshape(nv, stride // 4)
     I = raw[nv * stride:nv * stride + ni * 2].view(np.uint16)
     mats = info['materials']
+    # Brush models (`*N`) are stored in their entity's local space: the engine places each at
+    # its script_brushmodel's origin + angles (no origin brush -> origin 0 and the geometry is
+    # already in world space, so the same transform is right). Placed the same way here --
+    # cube is built from nothing else (3391 of 3407 surfaces) -- EXCEPT the ones a game opens
+    # or tears down: what a `zombie_door` / `zombie_debris` trigger targets, and the window
+    # boards an `exterior_goal` targets. Drawn shut, a replay would show players walking
+    # through doors they bought and zombies climbing through boarded windows (§8.11).
+    place = {}
+    opens = set()
+    for e in ents or []:
+        if e.get('targetname') in ('zombie_door', 'zombie_debris', 'exterior_goal') and e.get('target'):
+            opens.add(e['target'])
+    skipped_open = 0
+    for e in ents or []:
+        m = e.get('model', '')
+        if e.get('classname') != 'script_brushmodel' or not m.startswith('*'):
+            continue
+        if e.get('targetname') in opens or e.get('targetname') in ('zombie_door', 'zombie_debris'):
+            skipped_open += 1
+            continue
+        try:
+            place.setdefault(int(m[1:]), []).append(e)
+        except ValueError:
+            pass
+    placed_bm = set()
+    xf = {}   # brush model -> [(R 3x3, t)] one per placing entity
+
+    def xforms(bm):
+        if bm not in xf:
+            out = []
+            for e in place[bm]:
+                q = euler_to_quat(*vec(e.get('angles')))
+                out.append((np.asarray(quat_to_mat(q)), np.asarray(vec(e.get('origin')), dtype=np.float64)))
+            xf[bm] = out
+        return xf[bm]
+
     per, brush_surfs, sky_surfs, bad = {}, 0, 0, 0
     for fv, vc, bi, tc, mi, bm, _fl in info['surfaces']:
-        if bm is not None and bm >= 1:
+        if bm is not None and bm >= 1 and bm not in place:
             brush_surfs += 1
             continue
         if tc <= 0:
@@ -669,14 +712,36 @@ def read_oat_world(json_path: Path, glb: 'Glb'):
         if tri.max() >= nv or tri.min() < 0:
             bad += 1
             continue
-        per.setdefault(material_leaf(mats[mi]['name']) or f'material{mi}', []).append((mi, tri))
+        key = material_leaf(mats[mi]['name']) or f'material{mi}'
+        if bm is not None and bm >= 1:
+            # A placed brush model: its own vertex copy per placing entity, moved into place.
+            used, inv = np.unique(tri, return_inverse=True)
+            for R, t in xforms(bm):
+                per.setdefault(key, []).append((mi, None, (V[used, 0:3].astype(np.float64) @ R.T + t,
+                                                         V[used, 3:6] @ R.T.astype(np.float32),
+                                                         V[used, 6:8].copy(), inv.reshape(-1))))
+            placed_bm.add(bm)
+        else:
+            per.setdefault(key, []).append((mi, tri, None))
     groups, tex_of = {}, {}
     for name, parts in per.items():
-        idx = np.concatenate([t for _mi, t in parts])
-        used, inv = np.unique(idx, return_inverse=True)
-        groups[name] = {'pos': V[used, 0:3].astype(np.float64), 'nrm': V[used, 3:6].copy(),
-                        'uv': V[used, 6:8].copy(), 'idx': inv.reshape(-1).astype(np.int64)}
-        for mi, _t in parts:
+        P, N, U, X = [], [], [], []
+        base = 0
+        wtri = [t for _mi, t, _c in parts if t is not None]
+        if wtri:
+            idx = np.concatenate(wtri)
+            used, inv = np.unique(idx, return_inverse=True)
+            P.append(V[used, 0:3].astype(np.float64)); N.append(V[used, 3:6]); U.append(V[used, 6:8])
+            X.append(inv.reshape(-1).astype(np.int64))
+            base = len(used)
+        for _mi, _t, c in parts:
+            if c is None:
+                continue
+            P.append(c[0]); N.append(c[1].astype(np.float32)); U.append(c[2]); X.append(c[3].astype(np.int64) + base)
+            base += len(c[0])
+        groups[name] = {'pos': np.concatenate(P), 'nrm': np.concatenate(N).astype(np.float32),
+                        'uv': np.concatenate(U).astype(np.float32), 'idx': np.concatenate(X)}
+        for mi, _t, _c in parts:
             if mats[mi].get('colorMap'):
                 tex_of[name] = mats[mi]['colorMap']
                 break
@@ -692,6 +757,7 @@ def read_oat_world(json_path: Path, glb: 'Glb'):
                      'origin': ' '.join(f'{v:.4f}' for v in sm['origin']),
                      'modelscale': f"{sm.get('scale', 1.0):.4f}", '_quat': mat_to_quat(R)})
     glb.oat_world = {'surfaces': len(info['surfaces']), 'brushmodel_surfaces_skipped': brush_surfs,
+                     'brush_models_placed': len(placed_bm), 'brush_entities_left_open': skipped_open,
                      'sky_surfaces_skipped': sky_surfs, 'bad_surfaces': bad,
                      'vertices': nv, 'indices': ni, 'static_models': len(ents),
                      'brush_models': max(0, len(info.get('brushModels', [])) - 1)}
@@ -724,7 +790,7 @@ def mat_to_quat(R):
     return [float(c / n) for c in q]
 
 
-def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
+def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict, ents=None):
     """Fold a world shell into `glb` as one mesh. Returns the mesh index.
 
     `obj_path` is the OAT GfxWorld dump (`<bsp>.json` + `.bin`, read_oat_world -- offline,
@@ -732,7 +798,7 @@ def merge_world(glb: 'Glb', obj_path: Path, images_dir: Path, mat_cache: dict):
     import numpy as np
     oat = obj_path.suffix.lower() == '.json'
     if oat:
-        groups, tex_of, _ents = read_oat_world(obj_path, glb)
+        groups, tex_of, _ents = read_oat_world(obj_path, glb, ents)
         glb.dropped_origin_brushmodels = (0, 0)
     else:
         groups = read_obj(obj_path)
@@ -1079,6 +1145,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         if mesh_extent(mi) * s_ < MIN_PROP_SIZE:
             hidden_small[name] = hidden_small.get(name, 0) + 1
             continue
+        e["_placed"] = True   # the sidecar's anchors are placed script_models only
         node = {"name": name, "mesh": mi, "translation": vec(e.get("origin"))}
         if any(abs(v) > WORLD_LIMIT for v in node["translation"]):
             # Past the engine's world limit nothing is reachable or visible: nazi_zombie_pd
@@ -1116,7 +1183,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
             sky_ok = True
 
     if world and world.is_file():
-        mi = (merge_world(glb, world, images, mat_cache) if world.suffix.lower() in (".obj", ".json")
+        mi = (merge_world(glb, world, images, mat_cache, ents) if world.suffix.lower() in (".obj", ".json")
               else merge_model(glb, world, images, mat_cache))
         if mi is not None:
             glb.j["nodes"].append({"name": "__world", "mesh": mi})
@@ -1189,8 +1256,10 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
                    or e.get("targetname") == "initial_spawn_points"],
         "window_goals": [vec(e.get("origin")) for e in ents
                          if e.get("targetname") == "exterior_goal"],
+        # Only the ones actually drawn: a script_model skipped as tiny (projectx's cage lights)
+        # would otherwise be "found" at another instance of the same model hundreds of u away.
         "anchors": [{"model": e.get("model"), "origin": vec(e.get("origin"))} for e in ents
-                    if e.get("classname") == "script_model" and e.get("model")
+                    if e.get("classname") == "script_model" and e.get("model") and e.get("_placed")
                     and not e.get("model", "").startswith("*")][:64],
     }
     (out_dir / f"{bsp}.meta.json").write_text(json.dumps(meta, indent=1))
@@ -1199,7 +1268,7 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         f"{len(glb.j['images'])} textures, sky={'yes' if sky_ok else 'NO'}")
     if not meta["world_shell"]:
         log("NOTE: no world shell. Build the OAT geo Unlinker (tools/maps/oat-t4-world/"
-            "build-oat.ps1) or pass --world <husky.obj>; docs/kickstart/replay.md §16.")
+            "build-oat.ps1) or pass --world <husky.obj>; docs/kickstart/replay.md §15.")
     return meta
 
 

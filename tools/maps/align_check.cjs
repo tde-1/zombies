@@ -18,7 +18,8 @@ const problems = []
 if (!r.world) problems.push('no __world mesh')
 else {
   const span = [0, 1, 2].map((i) => r.world.hi[i] - r.world.lo[i])
-  if (span.some((v) => !Number.isFinite(v)) || Math.max(...span) > 65536) problems.push(`extent ${span} is not engine units`)
+  // Coordinates are culled to +-65536 at export, so a span may reach 131072 (terrain).
+  if (span.some((v) => !Number.isFinite(v)) || Math.max(...span) > 131072) problems.push(`extent ${span} is not engine units`)
 }
 const sp = r.spawns.filter((s) => s.floorBelow !== null || s.propBelow !== undefined)
 // T4 origins are at the feet; script_struct spawns float up to ~60 u (Nacht's sit 16 u up).
@@ -26,7 +27,11 @@ const within = (v) => v !== null && v !== undefined && v >= -2 && v <= 64
 const onShell = sp.filter((s) => within(s.floorBelow))
 // ...or on a prop's top (a map floored with xmodels, mapAlign `propBelow`).
 const onFloor = sp.filter((s) => within(s.floorBelow) || within(s.propBelow))
-if (r.spawns.length && !onFloor.length) problems.push(`no spawn of ${r.spawns.length} stands on a floor (${sp.map((s) => s.floorBelow).slice(0, 5)})`)
+// Path nodes are set on the ground by the mapper; spawns (script_structs) may float. Either
+// standing is evidence the shell is in the right place; neither is a problem.
+const pn = r.pathnodes
+const nodesStand = pn && pn.sampled >= 5 && pn.onFloor / pn.sampled >= 0.75
+if (r.spawns.length && !onFloor.length && !nodesStand) problems.push(`no spawn of ${r.spawns.length} stands on a floor (${sp.map((s) => s.floorBelow).slice(0, 5)}) and path nodes ${pn ? pn.onFloor + '/' + pn.sampled : 'none'}`)
 // Exterior goals stand ~55-60 u outside their window; a wrong-scale shell puts them 100s off.
 if (r.windows && r.windows.median > 120) problems.push(`window goals median ${r.windows.median} u from a wall`)
 // Box mode (quantized served bytes) is a sanity check against a gross misplacement: a model's
@@ -40,6 +45,7 @@ console.log(JSON.stringify({
   ok: !problems.length, problems, world: r.world, windows: r.windows,
   spawns_on_floor: `${onFloor.length}/${r.spawns.length}`,
   spawns_on_shell: `${onShell.length}/${r.spawns.length}`,
+  pathnodes_on_floor: pn ? `${pn.onFloor}/${pn.sampled}` : null,
   anchors_checked: r.anchors.filter((a) => a.nodeOffset !== null).length,
   anchors_on: r.anchors.filter((a) => a.nodeOffset !== null && a.nodeOffset <= tol(a)).length,
   anchor_mode: [...new Set(r.anchors.map((a) => a.mode))].join(','),

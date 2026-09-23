@@ -17,7 +17,7 @@ stopped run resumes where it stopped; --force redoes a map):
               No game, no lock.
   3. world    the world shell + static-model placements, OFFLINE: our OAT build with the
               T4 GfxWorld dumper (tools/maps/oat-t4-world; export_map.unlink_world) reads
-              GfxWorld straight out of the fastfile. No game, no game.lock (replay.md §16).
+              GfxWorld straight out of the fastfile. No game, no game.lock (replay.md §15).
               `--husky` is the old fallback for a zone the dumper cannot read: Husky
               (tools/maps/husky-map.ps1) out of the RUNNING game, game.lock per map.
   4. build    export_map.build(): props + sky + shell into one raw .glb in engine units,
@@ -217,7 +217,10 @@ def validate(glb_path: Path, meta: dict):
     res["bounds"] = [[round(float(x), 1) for x in lo], [round(float(x), 1) for x in hi]]
     ext = hi - lo
     res["extent"] = [round(float(x)) for x in ext]
-    if max(ext) > 65536 or max(ext) < 256:
+    # Coordinates are already inside +-65536 (export_map culls past it), so a span may reach
+    # 131072: chickn / derberg / water / cargo carry terrain that wide. Scale errors are caught
+    # by align_check's spawns, path nodes and window goals, not by the span.
+    if max(ext) > 131072 or max(ext) < 256:
         problems.append(f"extent {res['extent']} not a map-sized box")
     # The map's own pathnodes (map_ents, engine units) must sit inside the shell's box. A shell
     # at the wrong scale (the 2.54x of replay.md §8.12) or offset fails this at once.
@@ -226,7 +229,9 @@ def validate(glb_path: Path, meta: dict):
         inside = ((nodes >= lo - 64) & (nodes <= hi + 64)).all(1)
         res["pathnodes_inside"] = f"{int(inside.sum())}/{len(nodes)}"
         if inside.mean() < 0.9:
-            problems.append(f"only {res['pathnodes_inside']} pathnodes inside the shell box")
+            # A note, not a failure: a map can build whole areas from props (kingdom_hearts).
+            # align_check's path-node floor test (shell AND props) is the one that decides.
+            res.setdefault("notes", []).append(f"only {res['pathnodes_inside']} pathnodes inside the shell box")
     # Spawn on a floor: straight down from spawn+32, a shell triangle within 256 u.
     spawns = [s for s in (meta.get("spawns") or []) if any(s)] or ([meta["spawn"]] if meta.get("spawn") and any(meta["spawn"]) else [])
     a, b, c = T[:, 0], T[:, 1], T[:, 2]
@@ -261,7 +266,8 @@ def validate(glb_path: Path, meta: dict):
     if ok_sp:
         res["spawn_floor_gap_median"] = round(sorted(ok_sp)[len(ok_sp) // 2], 1)
     if hits and not ok_sp:
-        problems.append(f"no spawn of {len(hits)} has shell floor within 256 u below it")
+        # Also a note: spawns may stand on props or float (align_check decides, path nodes too).
+        res.setdefault("notes", []).append(f"no spawn of {len(hits)} has shell floor within 256 u below it")
     if not hits:
         res["spawn_note"] = "map_ents carry no spawn point"
     res["problems"] = problems
