@@ -38,6 +38,7 @@ import { UpdateCheck, fakeUpdater } from './updatecheck.js'
 import * as deeplink from './deeplink.js'
 import { makeWindowRaiser } from './focusguard.js'
 import { makeFollowGate, FOLLOW_STATES } from './followgate.js'
+import * as steam from './steam.js'
 import { hostAgent } from './hostagent.js'
 import { LocalRun } from './localrun.js'
 
@@ -1038,8 +1039,19 @@ function wireIpc() {
     const alive = followGate.gameAlive()
     if (alive) {
       log('play', `refused to launch ${opts.map || '?'} (${opts.follow ? 'follow' : 'play'}): World at War (process ${alive}) that this launcher started is still running`)
-      throw new Error('World at War is still running. Close it first.')
+      push('toast', { kind: 'warn', text: steam.MSG.gameRunning })
+      throw new Error(steam.MSG.gameRunning)
     }
+    // ...and not beside one we did not start either (a Steam launch of the stock game, a
+    // launcher that restarted mid-game). A second CoDWaW.exe is never what Play meant.
+    const others = await steam.gameProcesses().catch(() => [])
+    if (others.length) {
+      log('play', `refused to launch ${opts.map || '?'} (${opts.follow ? 'follow' : 'play'}): CoDWaW.exe is already running (process ${others.join(', ')})`)
+      push('toast', { kind: 'warn', text: steam.MSG.gameRunning })
+      throw new Error(steam.MSG.gameRunning)
+    }
+    // Remembered for the boot screen's Retry (a Steam that was not up or not signed in).
+    state.lastPlayOpts = opts
 
     // The client DLL this launcher ships must be the one the game loads. An
     // auto-update replaces the copy beside the app and nothing else, so before
@@ -1133,6 +1145,10 @@ function wireIpc() {
       instance: local?.matchId || undefined,
       fsGame: opts.fsGame || undefined,
       lockName: 'launcher',
+      // Steam up and signed in before anything else (steam.js). ENW_SKIP_STEAM_CHECK=1
+      // for a machine where the registry tells lies.
+      steam: process.env.ENW_SKIP_STEAM_CHECK === '1' ? null
+        : (hooks) => steam.ensureSteam({ ...hooks, openUrl: (u) => shell.openExternal(u) }),
     })
     state.flow = flow
     // The ledger: this match has been launched (by the player or by following), and
@@ -1230,6 +1246,13 @@ function wireIpc() {
       // launcher refuses every later Play with "a launch is already in progress".
       if (snap.failed) {
         clear()
+        // Steam was not ready: nothing was leased by us, and a follower's lease is the
+        // party's, so there is nothing to give back.
+        if (snap.steamFailed) {
+          log('play', `not launched: ${snap.steamFailed}`)
+          push('boot_done', { ...snap, phase: 'failed', detail: snap.steamFailed })
+          return
+        }
         // AND THE LEASE HAS TO GO BACK. A flow that failed after the site leased a box
         // left the lease `ready` and the instance parked with a map loaded for nobody:
         // measured on 2026-09-22 as m_dca96c74, still holding inst-01 three minutes
@@ -1309,6 +1332,11 @@ function wireIpc() {
   // again — which is how m_dca96c74 outlived the boot screen that made it.
   handle('cancelPlay', () => { state.flow?.cancel('you cancelled'); releaseLease('you cancelled'); showSite(true); return true })
   handle('closeBoot', () => { showSite(true); return true })
+  // The boot screen's Retry, after Steam was not up or not signed in: the same Play again.
+  handle('retryPlay', () => {
+    if (!state.lastPlayOpts) throw new Error('Nothing to retry.')
+    return startPlay(state.lastPlayOpts)
+  })
   // The site's Resume (and anything else that is the PLAYER asking to go back into a
   // match this launcher already launched once): lift the ledger for that match, then
   // follow it now if the last poll still names it. followgate.js.

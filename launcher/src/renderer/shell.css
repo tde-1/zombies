@@ -214,6 +214,11 @@ html.site-shown #chrome { display: none; }
 #bootClose { display: none; }
 #bootClose.on { display: inline-block; }
 #bootCancel.off { display: none; }
+#bootRetry { display: none; }
+#bootRetry.on { display: inline-block; }
+/* Starting Steam / waiting for sign-in: a spinner in place of the step's dot. */
+.step .dot.spin { display: inline-block; width: 12px; height: 12px; margin: 3px 2px 0; border: 2px solid var(--text-dim); border-top-color: var(--blood-bright); border-radius: 50%; animation: enw-spin .8s linear infinite; }
+@keyframes enw-spin { to { transform: rotate(360deg); } }
 #bootNotes { margin-top: 18px; }
 #detBtn { margin-top: 10px; width: 100%; }
 

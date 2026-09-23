@@ -2115,6 +2115,227 @@ await test('followgate: main.js follows through the gate, records every launch, 
   assert.match(main, /handle\('resumeMatch'/)
 })
 
+// -------------------------------------------------------------- Steam gate --
+group('Steam: started, waited for, and a Retry when it will not come (2026-09-23)')
+
+const steamMod = await import('../src/main/steam.js')
+
+// A fake Steam: a script of readings, one per poll, and a fake clock that the waits advance.
+function fakeSteam(readings, { exe = 'C:\\Steam\\steam.exe' } = {}) {
+  let t = 0
+  let i = 0
+  const states = []
+  const started = []
+  return {
+    states, started,
+    opts: {
+      read: async () => readings[Math.min(i++, readings.length - 1)],
+      findExe: async () => exe,
+      start: (e) => { started.push(e) },
+      onState: (s) => states.push(s.state),
+      wait: async (ms) => { t += ms },
+      now: () => t,
+      timeouts: { startMs: 60_000, signInMs: 150_000, settleMs: 6_000, pollMs: 1_000 },
+    },
+    get t() { return t },
+  }
+}
+const OFF = { running: false, signedIn: false }
+const UP = { running: true, signedIn: false }
+const IN = { running: true, signedIn: true }
+
+await test('steam: already running and signed in -> no state shown, no start, no wait', async () => {
+  const f = fakeSteam([IN])
+  const r = await steamMod.ensureSteam(f.opts)
+  assert.deepEqual(r, { ok: true, waited: false, started: false })
+  assert.deepEqual(f.states, [])
+  assert.deepEqual(f.started, [])
+  assert.equal(f.t, 0)
+})
+
+await test('steam: closed -> starts it once, "starting" then "signin" then settles, then ok', async () => {
+  const f = fakeSteam([OFF, OFF, UP, UP, IN])
+  const r = await steamMod.ensureSteam(f.opts)
+  assert.equal(r.ok, true)
+  assert.equal(r.started, true)
+  assert.deepEqual(f.started, ['C:\\Steam\\steam.exe'])
+  assert.deepEqual(f.states, ['starting', 'signin', 'settling'])
+  assert.ok(f.t >= 6_000, 'waits the settle time after a fresh sign-in')
+})
+
+await test('steam: up but ActiveUser 0 -> "signin" only, nothing started', async () => {
+  const f = fakeSteam([UP, UP, IN])
+  const r = await steamMod.ensureSteam(f.opts)
+  assert.equal(r.ok, true)
+  assert.deepEqual(f.started, [])
+  assert.deepEqual(f.states, ['signin', 'settling'])
+})
+
+await test('steam: never comes up -> no_start after the start timeout, short message, no throw', async () => {
+  const f = fakeSteam([OFF])
+  const r = await steamMod.ensureSteam(f.opts)
+  assert.equal(r.ok, false)
+  assert.equal(r.reason, 'no_start')
+  assert.equal(r.message, steamMod.MSG.noStart)
+  assert.ok(f.t >= 60_000 && f.t < 62_000, `gave up at ${f.t} ms`)
+})
+
+await test('steam: up but nobody signs in -> not_signed_in after the sign-in timeout', async () => {
+  const f = fakeSteam([UP])
+  const r = await steamMod.ensureSteam(f.opts)
+  assert.equal(r.reason, 'not_signed_in')
+  assert.equal(r.message, steamMod.MSG.notSignedIn)
+  assert.ok(f.t >= 150_000 && f.t < 152_000, `gave up at ${f.t} ms`)
+})
+
+await test('steam: not installed -> not_installed at once; a read that throws counts as closed', async () => {
+  const f = fakeSteam([OFF], { exe: null })
+  const r = await steamMod.ensureSteam(f.opts)
+  assert.equal(r.reason, 'not_installed')
+  assert.equal(f.t, 0)
+  const g = fakeSteam([IN])
+  g.opts.read = async () => { throw new Error('reg.exe missing') }
+  g.opts.findExe = async () => null
+  assert.equal((await steamMod.ensureSteam(g.opts)).reason, 'not_installed')
+})
+
+await test('steam: a start that throws falls back to steam://open/main', async () => {
+  const f = fakeSteam([OFF, IN])
+  const urls = []
+  const r = await steamMod.ensureSteam({ ...f.opts, start: () => { throw new Error('EACCES') }, openUrl: (u) => urls.push(u) })
+  assert.equal(r.ok, true)
+  assert.deepEqual(urls, ['steam://open/main'])
+  const g = fakeSteam([OFF])
+  assert.equal((await steamMod.ensureSteam({ ...g.opts, start: () => { throw new Error('x') } })).reason, 'no_start')
+})
+
+await test('steam: cancel while waiting stops the wait', async () => {
+  const f = fakeSteam([UP])
+  let n = 0
+  const r = await steamMod.ensureSteam({ ...f.opts, cancelled: () => ++n > 3 })
+  assert.equal(r.reason, 'cancelled')
+  assert.ok(f.t < 10_000)
+})
+
+await test('steam: readState trusts ActiveUser only when the registry pid IS a running steam.exe', async () => {
+  const q = (pid, user) => async () => ({ ok: true, values: { pid: { type: 'REG_DWORD', value: pid }, ActiveUser: { type: 'REG_DWORD', value: user } } })
+  let s = await steamMod.readState({ query: q('0x2424', '0x9e5f0fa'), processes: async () => [9252] })
+  assert.deepEqual(s, { running: true, signedIn: true, pid: 9252, user: 0x9e5f0fa })
+  s = await steamMod.readState({ query: q('0x2424', '0x0'), processes: async () => [9252] })
+  assert.equal(s.running, true); assert.equal(s.signedIn, false)
+  // closed: no steam.exe, stale key
+  s = await steamMod.readState({ query: q('0x2424', '0x9e5f0fa'), processes: async () => [] })
+  assert.deepEqual(s, { running: false, signedIn: false, pid: 0, user: 0 })
+  // a fresh start after a crash: new steam.exe, the key still names the old session
+  s = await steamMod.readState({ query: q('0x2424', '0x9e5f0fa'), processes: async () => [777] })
+  assert.equal(s.running, true); assert.equal(s.signedIn, false)
+  // no key at all
+  s = await steamMod.readState({ query: async () => ({ ok: false, values: {} }), processes: async () => [] })
+  assert.equal(s.running, false)
+})
+
+await test('steam: steamExe prefers the client own SteamExe, then SteamPath, and normalises slashes', async () => {
+  const vals = { SteamExe: 'c:/program files (x86)/steam/steam.exe', SteamPath: 'd:/steam' }
+  const get = async (_k, n) => vals[n] || null
+  assert.equal(await steamMod.steamExe({ get, exists: (p) => p === 'c:\\program files (x86)\\steam\\steam.exe' }), 'c:\\program files (x86)\\steam\\steam.exe')
+  assert.equal(await steamMod.steamExe({ get, exists: (p) => p === 'd:\\steam\\steam.exe' }), 'd:\\steam\\steam.exe')
+  assert.equal(await steamMod.steamExe({ get: async () => null, exists: () => false }), null)
+})
+
+await test('steam: the boot flow waits for Steam first, draws the step, then carries on', async () => {
+  const f = new BootFlow({
+    localMap: 'nazi_zombie_prototype', launch: false,
+    steam: async ({ onState }) => { onState({ state: 'starting', message: 'Starting Steam...' }); onState({ state: 'signin', message: 'Waiting for Steam sign-in' }); return { ok: true, waited: true } },
+  })
+  const seen = []
+  f.on('step', (s) => { if (s.id === 'steam') seen.push(`${s.state}:${s.detail}`) })
+  const snap = await f.run()
+  assert.deepEqual(seen, ['active:Starting Steam...', 'active:Waiting for Steam sign-in', 'done:signed in'])
+  assert.equal(snap.failed, false)
+  assert.equal(snap.retry, false)
+  assert.ok(snap.steps.find((s) => s.id === 'ready'), 'the rest of the flow ran')
+})
+
+await test('steam: Steam fine -> no steam step at all; Steam failing -> one failed step, retry, nothing else ran', async () => {
+  const ok = await new BootFlow({ localMap: 'x', launch: false, steam: async () => ({ ok: true, waited: false }) }).run()
+  assert.equal(ok.steps.some((s) => s.id === 'steam'), false)
+
+  let asked = false
+  const api = { startPlay: async () => { asked = true; return { ok: true } } }
+  const bad = await new BootFlow({ map: 'x', api, steam: async () => ({ ok: false, reason: 'not_signed_in', message: steamMod.MSG.notSignedIn }) }).run()
+  assert.equal(asked, false, 'the site was never asked for a server')
+  assert.equal(bad.failed, true)
+  assert.equal(bad.retry, true)
+  assert.equal(bad.steamFailed, 'Not signed in to Steam.')
+  assert.deepEqual(bad.steps.map((s) => s.id), ['steam'])
+
+  const thrown = await new BootFlow({ localMap: 'x', steam: async () => { throw new Error('boom\n    at stack') } }).run()
+  assert.equal(thrown.steamFailed, steamMod.MSG.noStart, 'a throw becomes the plain message, never a stack')
+})
+
+await test('steam: the wording stays terse', () => {
+  for (const [k, v] of Object.entries(steamMod.MSG)) assert.ok(v.length <= 36 && !/\n|error|exception/i.test(v), `${k}: "${v}"`)
+  assert.equal(steamMod.MSG.starting, 'Starting Steam...')
+  assert.equal(steamMod.MSG.signin, 'Waiting for Steam sign-in')
+})
+
+await test('steam: main.js gates Play on Steam, refuses a second game, skips the lease on a Steam failure, and wires Retry', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  assert.match(main, /steam: process\.env\.ENW_SKIP_STEAM_CHECK === '1' \? null[\s\S]{0,120}steam\.ensureSteam\(/)
+  assert.match(main, /steam\.gameProcesses\(\)[\s\S]{0,400}throw new Error\(steam\.MSG\.gameRunning\)/)
+  assert.match(main, /if \(snap\.steamFailed\) \{[\s\S]{0,300}return\s*\}[\s\S]{0,200}AND THE LEASE HAS TO GO BACK/)
+  assert.match(main, /handle\('retryPlay'[\s\S]{0,200}startPlay\(state\.lastPlayOpts\)/)
+  const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
+  assert.match(pre, /retryPlay: \(\) => call\('retryPlay'\)/)
+  const shell = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
+  assert.match(shell, /\$\('bootRetry'\)\.classList\.toggle\('on', !!snap\.retry\)/)
+  assert.match(shell, /window\.enw\.retryPlay\(\)/)
+  const html = String(fs.readFileSync(new URL('../src/renderer/shell.html', import.meta.url)))
+  assert.match(html, /<button id="bootRetry">Retry<\/button>/)
+})
+
+// ------------------------------------------------------------- volume (bug 15) --
+group('Volume is snd_menu_master, not snd_volume (bug 15)')
+
+await test('volume: the account volume goes out as snd_menu_master, never snd_volume, and comes back from it', async () => {
+  const pairs = gamecfg.baselineDvars({ volume: 0.4 }, null)
+  const m = new Map(pairs)
+  assert.equal(m.get('snd_menu_master'), '0.4')
+  assert.equal(m.has('snd_volume'), false)
+  const back = gamecfg.settingsFromConfig(gamecfg.parseConfigCfg('seta snd_menu_master "0.25"\r\nseta snd_volume "0.9"\r\n'))
+  assert.equal(back.volume, 0.25)
+  assert.equal(gamecfg.settingsFromConfig(gamecfg.parseConfigCfg('seta snd_volume "0.9"\r\n')).volume, undefined, 'snd_volume is not read')
+  const wawcfg = await import('../src/main/wawcfg.js')
+  const lines = wawcfg.accountConfigLines({ volume: 0.4 }, null)
+  assert.ok(lines.pairs.some(([d, v]) => d === 'snd_menu_master' && v === '0.4'), 'the volume reaches config.cfg, which beats +set')
+  // the site's own master slider still wins over the launcher's volume, in place
+  const both = new Map(wawcfg.launchDvars({ volume: 0.4, waw: { snd_menu_master: '0.7' } }, null))
+  assert.equal(both.get('snd_menu_master'), '0.7')
+  const modcompat = await import('../src/main/modcompat.js')
+  assert.ok(modcompat.MANAGED_DVARS.has('snd_menu_master'))
+  assert.equal(modcompat.MANAGED_DVARS.has('snd_volume'), false)
+})
+
+await test('volume: every sound dvar the launcher or site writes is registered by the exe (dump check when present)', () => {
+  const src = String(fs.readFileSync(new URL('../src/main/gamecfg.js', import.meta.url)))
+  assert.doesNotMatch(src.replace(/\/\/.*$/gm, ''), /'snd_volume'/, 'no code path writes snd_volume')
+  const SOUND = ['snd_menu_master', 'snd_menu_voice', 'snd_menu_music', 'snd_menu_sfx', 'snd_cinematicVolumeScale', 'snd_losOcclusion']
+  const dump = process.env.ENW_T4_DUMP || 'C:\\Users\\b\\ZombiesDev\\dumps\\codwaw-1.7-a.exe'
+  if (!fs.existsSync(dump)) { console.log('         (no decrypted dump on this machine; name check only)'); return }
+  const b = fs.readFileSync(dump)
+  // A registered dvar's name is loaded as `mov edi, <name>` (BF imm32) in the sound init;
+  // snd_volume's name is only ever referenced from data.
+  const regRef = (name) => {
+    const off = b.indexOf(Buffer.from(`\0${name}\0`)) + 1
+    if (off <= 0) return false
+    const va = Buffer.alloc(4); va.writeUInt32LE(0x400000 + off)
+    for (let i = b.indexOf(va); i >= 0; i = b.indexOf(va, i + 1)) if (b[i - 1] === 0xBF) return true
+    return false
+  }
+  for (const d of SOUND) assert.ok(regRef(d), `${d} is registered`)
+  assert.equal(regRef('snd_volume'), false, 'snd_volume is never registered')
+})
+
 console.log(`\n${pass} passed, ${fail} failed`)
 try { fs.rmSync(TMP, { recursive: true, force: true }) } catch {}
 process.exit(fail ? 1 : 0)

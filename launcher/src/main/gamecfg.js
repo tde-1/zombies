@@ -47,6 +47,9 @@ export const PROFILE = 'enw'
 
 export const MODES = ['borderless', 'fullscreen', 'windowed']
 
+// The account's `volume` (0..1). See baselineDvars for why it is not `snd_volume`.
+export const VOLUME_DVAR = 'snd_menu_master'
+
 // Spec §4.3: Borderless is the default. An account saved before Display settings
 // existed has only `fullscreen: true`, which was the OLD default rather than a
 // choice — so it does not pin the mode; only an explicit `fullscreen: false`
@@ -247,7 +250,13 @@ export function baselineDvars(settings = {}, display = null) {
   }
 
   // The account's own, last, so they win.
-  push('snd_volume', settings.volume)
+  // Volume is `snd_menu_master` (Options > Sound > Master Volume), NOT `snd_volume`: the
+  // name `snd_volume` sits in the image only in a string table (0x8819CC, referenced from
+  // data at 0x8E4DC0) and is never registered, so `+set snd_volume` made an inert
+  // external dvar and the setting did nothing (client.md §10b, bug 15). The six sound
+  // dvars the site writes are all registered by the sound init (mov edi,<name> at
+  // 0x6B4963..0x6B4EC1, Dvar_RegisterFloat 0x5EEF10).
+  push(VOLUME_DVAR, settings.volume)
   push('sensitivity', settings.sensitivity)
   // `cg_drawFPS` is a string ENUM on T4, not a bool: the engine's own config
   // writes `seta cg_drawFPS "Off"`. `1` is not one of its values.
@@ -629,8 +638,9 @@ export function settingsFromConfig({ dvars, binds } = {}) {
   const sens = Number(g('sensitivity'))
   if (Number.isFinite(sens) && sens > 0) patch.sensitivity = sens
 
-  const vol = Number(g('snd_volume'))
-  if (Number.isFinite(vol)) patch.volume = vol
+  const volRaw = g(VOLUME_DVAR)
+  const vol = Number(volRaw)
+  if (volRaw !== undefined && volRaw !== '' && Number.isFinite(vol)) patch.volume = Math.min(1, Math.max(0, vol))
 
   const fpsHud = g('cg_drawFPS')
   if (fpsHud !== undefined) patch.showFps = fpsHud !== '0' && fpsHud.toLowerCase() !== 'off'
@@ -658,7 +668,7 @@ const SETTING_DVAR = {
   fov: 'cg_fov',
   maxFps: 'com_maxfps',
   vsync: 'r_vsync',
-  volume: 'snd_volume',
+  volume: VOLUME_DVAR,
   sensitivity: 'sensitivity',
   showFps: 'cg_drawFPS',
   display: 'r_monitor',
