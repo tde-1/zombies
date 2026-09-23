@@ -2899,8 +2899,10 @@ client DLL; it stops the `&&` chain, so the rest were run one by one), waw-setti
 
 ### Unproven
 
-* **Against the real site route.** Tested against a local stand-in server only; the site's
-  `/api/telemetry/upload` was written in parallel by the web half of T1. Nothing was sent to port 3200.
+* ~~**Against the real site route.**~~ Proven 2026-09-23 (later the same day): `web/test/telemetry.js`
+  drives this `SiteApi.uploadBundle` against the site's real `/api/telemetry/upload` (throwaway DB,
+  fake bucket): 200 with the crash flag, duplicate on a resend, 401 signed out, the bucket key
+  `logs/client/...`. Still nothing sent to port 3200 (the live site).
 * **In the real Electron app.** No launcher window was started and no game was launched; the wiring
   is source-tested. That Electron's main-process `fetch` streams a file body with a `content-length`
   exactly as Node 24 does in the test is unproven.
