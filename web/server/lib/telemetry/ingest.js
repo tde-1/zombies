@@ -57,11 +57,13 @@ async function receive (req, { who, source }) {
     const dup = db.prepare(`SELECT id, severity, flags FROM incidents WHERE bundle_id=? AND ${col}=?`).get(bundleId, val)
     if (dup) { req.resume(); return { status: 200, body: { ok: true, id: dup.id, duplicate: true, severity: dup.severity, flags: JSON.parse(dup.flags || '[]') } } }
   }
-  if (!Number.isFinite(len) || len <= 0) { req.resume(); return { status: 411, body: { error: 'content-length is required' } } }
-  if (len > MAX_BYTES()) { req.resume(); return { status: 413, body: { error: `a bundle is at most ${MAX_BYTES() / MB} MB`, max_bytes: MAX_BYTES() } } }
+  // content-length is expected, but a chunked body is accepted too (a fetch that streams a
+  // file may not send one): the cap is then enforced while the bytes arrive.
+  const known = Number.isFinite(len) && len > 0
+  if (known && len > MAX_BYTES()) { req.resume(); return { status: 413, body: { error: `a bundle is at most ${MAX_BYTES() / MB} MB`, max_bytes: MAX_BYTES() } } }
   const lim = LIMITS[source]
   const day = db.prepare(`SELECT COUNT(*) n, COALESCE(SUM(size),0) b FROM incidents WHERE ${col}=? AND source=? AND received_at > ?`).get(val, source, now() - 86400_000)
-  if (day.n >= lim.n() || day.b + len > lim.bytes()) {
+  if (day.n >= lim.n() || day.b + (known ? len : 0) > lim.bytes()) {
     req.resume()
     const oldest = db.prepare(`SELECT MIN(received_at) t FROM incidents WHERE ${col}=? AND source=? AND received_at > ?`).get(val, source, now() - 86400_000).t || now()
     const retry = Math.max(60, Math.ceil((oldest + 86400_000 - now()) / 1000))
@@ -71,7 +73,7 @@ async function receive (req, { who, source }) {
   const publicId = newPublicId()
   const incoming = path.join(store.DIRS.incoming, `${publicId}.tar.gz`)
   try {
-    await toFile(req, incoming, Math.min(len, MAX_BYTES()))
+    await toFile(req, incoming, known ? Math.min(len, MAX_BYTES()) : MAX_BYTES())
   } catch (e) {
     try { fs.unlinkSync(incoming) } catch {}
     if (e instanceof HttpError) return { status: e.status, body: { error: e.message } }

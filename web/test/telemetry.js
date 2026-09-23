@@ -303,6 +303,23 @@ async function main () {
     truthy(bucket.get(row.bucket_key).equals(bytes), 'the bucket copy is the bundle as sent (nothing to re-scrub)')
     has(row.summary, 'player'); has(row.summary, 'Crash')
   })
+  await check('ingest: a chunked body with no content-length is accepted, and capped while it streams', async () => {
+    const chunked = (buf, id) => new Promise((resolve, reject) => {
+      const r = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/api/telemetry/upload', headers: { 'x-test-user': MOD, 'content-type': 'application/gzip', 'transfer-encoding': 'chunked', 'x-enw-bundle-id': id } }, (res) => {
+        let t = ''; res.on('data', (c) => { t += c }); res.on('end', () => resolve({ status: res.statusCode, text: t }))
+      })
+      r.on('error', reject)
+      for (let i = 0; i < buf.length; i += 1000) r.write(buf.subarray(i, i + 1000))
+      r.end()
+    })
+    const ok = await chunked(bytes, '1'.repeat(32))
+    eq(ok.status, 200, ok.text)
+    process.env.ZM_TELEMETRY_MAX_MB = '0.001'
+    const big = await chunked(Buffer.alloc(8192, 3), '2'.repeat(32)).catch((e) => ({ status: 'err ' + e.message }))
+    delete process.env.ZM_TELEMETRY_MAX_MB
+    eq(big.status, 413)
+    db.prepare('DELETE FROM incidents WHERE steam_id=?').run(MOD) // keep MOD's day budget for later checks
+  })
   await check('ingest: 413 over the cap (by content-length), 400 for junk, 400 for a box kind', async () => {
     process.env.ZM_TELEMETRY_MAX_MB = '0.001' // ~1 KB for this one check
     const big = await call('POST', '/api/telemetry/upload', { as: PLAYER, raw: Buffer.alloc(4096, 1), headers: { 'x-enw-bundle-id': 'f'.repeat(32) } }).catch((e) => ({ status: 'err ' + e.message }))
