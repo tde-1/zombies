@@ -55,7 +55,7 @@ except ImportError:
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from export_models import Gltf  # noqa: E402  (the glTF reader the player models use)
+from export_models import Gltf, q2m  # noqa: E402  (the glTF reader the player models use)
 
 DEV = Path(os.environ.get("ZOMBIES_DEV", r"C:\Users\b\ZombiesDev"))
 
@@ -368,6 +368,71 @@ def r6(v):
     return [round(float(x), 4) + 0.0 for x in v]
 
 
+def glb_node_worlds(path: Path):
+    """(names -> index, world matrices) of a .glb's nodes, from their TRS."""
+    b = path.read_bytes()
+    j = json.loads(b[20:20 + struct.unpack("<I", b[12:16])[0]])
+    nodes, parent = j["nodes"], {}
+    for i, nd in enumerate(nodes):
+        for c in nd.get("children", []):
+            parent[c] = i
+    world = {}
+
+    def w(i):
+        if i not in world:
+            nd, m = nodes[i], np.eye(4)
+            if "rotation" in nd:
+                m[:3, :3] = q2m(nd["rotation"])
+            if "translation" in nd:
+                m[:3, 3] = nd["translation"]
+            world[i] = (w(parent[i]) @ m) if i in parent else m
+        return world[i]
+    return {nd.get("name"): i for i, nd in enumerate(nodes)}, [w(i) for i in range(len(nodes))]
+
+
+def compute_grip(attach: dict):
+    """The engine's rule is tag_weapon -> tag_weapon_right, but tag_weapon_right is ANIMATED by
+    the game's xanims: in the bind pose (all the viewer has, replay.md §9.6) it sits 11.4 u off
+    the wrist, beside the hip. For a procedural pose the viewer needs a fixed grip in the hand:
+    tag_weapon at the palm (mean of j_wrist_ri, j_index_ri_1, j_mid_ri_1, 1 u down), the gun
+    level and pointing the character's way (+X) in the bind pose, expressed in j_wrist_ri's
+    frame so it follows the arm. Every T4 humanoid .glb here has the same rig (checked)."""
+    models = DEV / "maps" / "_models"
+    out = []
+    for f in sorted(models.glob("*.glb")):
+        names, W = glb_node_worlds(f)
+        if not all(k in names for k in ("j_wrist_ri", "j_index_ri_1", "j_mid_ri_1", attach["playerBone"])):
+            continue
+        wr = W[names["j_wrist_ri"]]
+        palm = np.mean([W[names[k]][:3, 3] for k in ("j_wrist_ri", "j_index_ri_1", "j_mid_ri_1")], axis=0)
+        palm[1] -= 1.0
+        g = np.eye(4); g[:3, 3] = palm
+        loc = np.linalg.inv(wr) @ g
+        out.append((f.stem, loc, W[names[attach["playerBone"]]][:3, 3], wr[:3, 3]))
+    if not out:
+        return None
+    ref = out[0][1]
+    spread = max(float(np.abs(o[1] - ref).max()) for o in out)
+    return {"bone": "j_wrist_ri", "palm": ref, "position": r6(ref[:3, 3]), "quaternion": mat_to_quat(ref[:3, :3]),
+            "from": [o[0] for o in out], "maxDisagreement": round(spread, 4),
+            "bindTagWeaponRight": r6(out[0][2]), "bindWrist": r6(out[0][3]),
+            "why": "tag_weapon_right is animated in-game; in the bind pose it is 11.4 u from the wrist. "
+                   "position/quaternion here are the PALM frame in j_wrist_ri (gun level, +X forward in the "
+                   "bind pose); each weapon's attach.gripLocal = palm x translate(-grip) is what to parent "
+                   "the weapon .glb with. Use playerBone + localQuaternion once real xanims drive the skeleton."}
+
+
+def grip_local(grip, point):
+    """The weapon root's transform in j_wrist_ri that puts the weapon's grip point in the palm."""
+    if not grip or point is None:
+        return None
+    t = np.eye(4)
+    t[:3, 3] = [-float(x) for x in point]
+    m = grip["palm"] @ t
+    return {"bone": grip["bone"], "position": r6(m[:3, 3]), "quaternion": mat_to_quat(m[:3, :3]),
+            "gripPoint": r6(point), "gripPointSource": "by eye, assets-manifest.yml"}
+
+
 def model_path(zone: str, xmodel: str) -> Path:
     for z in (zone, "nazi_zombie_factory"):
         p = dump(z) / "model_export" / f"{xmodel}_lod0.gltf"
@@ -486,8 +551,10 @@ def build_static(xmodel: str, zone: str, out_path: Path, name: str, kind: str, m
         if "baseColorTexture" not in mat["pbrMetallicRoughness"]:
             mat["pbrMetallicRoughness"]["baseColorFactor"] = [0.35, 0.33, 0.3, 1.0]
         if md["gold"]:
-            mat["pbrMetallicRoughness"]["metallicFactor"] = 1.0
-            mat["pbrMetallicRoughness"]["roughnessFactor"] = 0.35
+            # Half metallic, not 1.0: a fully metallic surface with no environment map (the
+            # replay viewer has none) renders near-black in three.js.
+            mat["pbrMetallicRoughness"]["metallicFactor"] = 0.5
+            mat["pbrMetallicRoughness"]["roughnessFactor"] = 0.4
             mat["extras"] = {"packAPunchCamo": True}
         j["materials"].append(mat)
         prims.append({"attributes": at, "indices": ia, "material": len(j["materials"]) - 1, "mode": 4})
@@ -643,6 +710,9 @@ def main():
         return
 
     only = set(a.only.split(",")) if a.only else None
+    grip = compute_grip(m["attach"])
+    if grip is None:
+        log("note: no player models in maps/_models (export_models.py): no hand grip computed")
     old = {}
     manifest_path = OUT / "_assets.json"
     if manifest_path.is_file():
@@ -728,6 +798,9 @@ def main():
                     if same_world:
                         info["note"] = "the game uses the base world model for the upgraded gun; only the viewmodel changes"
                     entry["pap"] = info
+            entry["attach"] = {"gripLocal": grip_local(grip, w.get("grip")),
+                               "engine": {"playerBone": m["attach"]["playerBone"], "weaponTag": "tag_weapon",
+                                          "localQuaternion": m["attach"]["localQuaternion"]}}
             # the shape R3 builds against: sounds.fire / sounds.fire_pap
             if entry.get("pap"):
                 entry["sounds"]["fire_pap"] = entry["pap"]["sounds"]["fire"]
@@ -761,7 +834,7 @@ def main():
         "base": "/mapdata/",
         "frame": "glTF Y-up, engine +X forward, engine inches (scene.js toThree); no scale",
         "build": fingerprint,
-        "attach": m["attach"],
+        "attach": dict(m["attach"], grip={k: v for k, v in grip.items() if k != "palm"} if grip else None),
         "weapons": weapons,
         "powerups": powerups,
         "fx": fx,

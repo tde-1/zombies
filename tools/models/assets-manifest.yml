@@ -30,12 +30,18 @@ attach:
   weaponTag: tag_weapon
   localQuaternion: [0.70710678, 0, 0, 0.70710678]
 
+# `grip` is where the right hand holds the gun, in the weapon's own frame (inches, glTF Y-up,
+# +X = muzzle), measured by eye on a side render with a 1-inch grid (the rear pistol grip / the
+# wrist of the stock). Every stock gun's origin sits ~10 u ahead of its grip -- the engine's
+# convention, matching tag_weapon_right's offset from the wrist.
+#
 # Weapons. `weapon` is the weapon file (dump/<zone>/weapons/<name>); the script cross-checks
 # worldModel / gunModel / flash effect against it and fails if they disagree, and takes the
 # display name from the weapon's displayName string (common.str / patch.str).
 weapons:
   colt:
     zone: nazi_zombie_factory
+    grip: [-11.3, -2.0, 0]
     weapon: zombie_colt
     world: weapon_zombie_colt45_pistol
     view: viewmodel_zombie_colt45_pistol
@@ -53,6 +59,7 @@ weapons:
       fire_plr: colt_pap_fire
   m1carbine:
     zone: nazi_zombie_factory
+    grip: [-11.0, -1.0, 0]
     weapon: zombie_m1carbine
     world: weapon_zombie_m1carbine_rifle
     view: viewmodel_zombie_m1carbine_rifle
@@ -70,6 +77,7 @@ weapons:
       fire_plr: uber_fire_plr
   thompson:
     zone: nazi_zombie_factory
+    grip: [-9.3, -2.5, 0]
     weapon: zombie_thompson
     world: weapon_zombie_thompson_smg
     view: viewmodel_zombie_thompson_smg
@@ -87,6 +95,7 @@ weapons:
       fire_plr: uber_fire_plr
   mp40:
     zone: nazi_zombie_factory
+    grip: [-11.5, -2.8, 0]
     weapon: zombie_mp40
     world: weapon_zombie_mp40_smg
     view: viewmodel_zombie_mp40_smg
@@ -104,6 +113,7 @@ weapons:
       fire_plr: uber_fire_plr
   ray_gun:
     zone: nazi_zombie_factory
+    grip: [-10.3, -2.5, 0]
     weapon: ray_gun
     world: weapon_usa_ray_gun
     view: viewmodel_usa_ray_gun
@@ -121,6 +131,7 @@ weapons:
       fire_plr: uber_fire_plr
   tesla_gun:
     zone: nazi_zombie_factory
+    grip: [-11.0, -1.5, 0]
     weapon: tesla_gun
     world: weapon_usa_tesla
     view: viewmodel_usa_tesla_gun
