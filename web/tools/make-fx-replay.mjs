@@ -7,6 +7,8 @@
 //   m_f0f0f0f0.enwr   every v1 event kind (web/test/fixtures/fx-events.js), Nacht, 2 players, with
 //                     the v1 header (replay_events 1, snap_hz 20, zombie_hz 20)
 //   m_f0f0f0f1.enwr   the same game with the v1 events and header fields removed: an "old" replay
+//   m_f0f0f0f2.enwr   lane R4: four players, slot 2 down 6-12 s, slot 3 down from 15 s (coop-events.js)
+//   m_f0f0f0f3.enwr   lane R4: the first game with slot 1 removed -- a solo replay
 //
 // Signed with a throwaway key made here. The sounds, models and sprites are lane R2's real pack
 // (ZombiesDev\maps\_assets.json and friends, assets-pipeline.md); this writes none of them.
@@ -53,3 +55,13 @@ write('m_f0f0f0f1', ev.filter((e) => !FX.has(e.t)).map((e) => {
   const { replay_events: _a, snap_hz: _b, zombie_hz: _c, ...rest } = e
   return rest
 }), false)
+// Lane R4 (replay.md §13): the same game with four players, two of them going down
+// (web/test/fixtures/coop-events.js), for the spectator-switching render check.
+const { coopEvents } = require(path.join(here, '..', 'test', 'fixtures', 'coop-events.js'))
+write('m_f0f0f0f2', coopEvents(), true)
+// ...and R3's game with slot 1 taken out: a SOLO replay, which must keep today's keys (1/2/3).
+write('m_f0f0f0f3', ev.filter((e) => e.slot !== 1).map((e) => {
+  if (e.t === 'snap') return { ...e, players: e.players.filter((p) => p.slot !== 1) }
+  if (e.t === 'powerup' && e.by === 1) return { ...e, by: 0 }
+  return e
+}), true)
