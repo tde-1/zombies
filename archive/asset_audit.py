@@ -396,7 +396,8 @@ def iwd_paths(kind, name):
     if kind == "image":
         return ["images/%s.iwi" % n]
     if kind in ("weapon", "item"):
-        return ["weapons/sp/%s" % n]
+        # a `weapon` miss is logged with its path ("weapons/sp/x"), an `item` by name ("x")
+        return ["weapons/sp/%s" % n.split("/")[-1]]
     if kind == "sound":
         return []
     if kind == "rawfile":
@@ -574,6 +575,10 @@ def visible(r):
         return bool(RX_CORE_AI_ANIM.search(n))
     if rl == "weapon":
         if n in HELPER_WEAPONS or n in UNCERTAIN_ITEMS:
+            return False
+        if k == "weapon" and r.get("where") == "shipped_iwd":
+            # the raw file is shipped NOW (weapon_patch.py added it after this log was
+            # written): an older run's "Could not load weapon file" is history, not a miss
             return False
         if k in ("item", "weapon"):
             return True
