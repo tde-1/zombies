@@ -51,6 +51,7 @@ web/public/updates/*.blockmap
 .env
 *.env
 !infra/site.env.example
+!infra/discord.env.example
 
 # Hetzner Cloud API token for the Zombies dev box (B supplies it; never commit)
 infra/hcloud.env

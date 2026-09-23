@@ -1182,6 +1182,20 @@ await test('the player message says nothing technical', () => {
   }
 })
 
+await test('a game that froze or crashed gets one terse line; a quit or our own stop gets none (lane CL)', () => {
+  // B's zombie_town hang: the DLL said 'hang', Windows closed the window with 0xCFFFFFFF.
+  assert.equal(crash.gameEndNotice({ session: { exit: 'hang' }, exitCode: 3489660927, map: 'Town of the Dead' }),
+    'World at War froze on Town of the Dead. We have the logs.')
+  assert.match(crash.gameEndNotice({ session: null, exitCode: crash.HUNG_EXIT_CODE }), /^World at War froze\. /)
+  assert.match(crash.gameEndNotice({ session: { exit: 'crash' }, exitCode: -1073741819, map: 'x' }), /crashed on x/)
+  assert.match(crash.gameEndNotice({ session: { exit: 'unknown' }, exitCode: -1073741819 }), /closed unexpectedly/)
+  assert.equal(crash.gameEndNotice({ session: { exit: 'quit' }, exitCode: 0 }), null)
+  assert.equal(crash.gameEndNotice({ session: { exit: 'error' }, exitCode: 0 }), null)
+  assert.equal(crash.gameEndNotice({ session: null, exitCode: 0 }), null)
+  assert.equal(crash.gameEndNotice({ session: { exit: 'hang' }, exitCode: 1, stoppedByUs: true }), null)
+  for (const s of ['hang', 'crash']) assert.equal(/0x|stack|exception|null|undefined/i.test(crash.gameEndNotice({ session: { exit: s } })), false)
+})
+
 // ------------------------------------------------------------------ settings --
 group('Settings')
 

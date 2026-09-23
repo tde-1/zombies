@@ -1884,3 +1884,142 @@ lane's `.cpp` under `client-dll/`, `server/`, `shared/`), sha256
 engine, since the filter is installed at `post_init`); a real hang record; that the engine's `quit`
 reaches `DLL_PROCESS_DETACH` in the game (if it `TerminateProcess`es, a quit reads `unknown`); the
 `error` classification against real box endings (which `com_errorMessage` a normal game-over leaves).
+
+---
+
+## 13. 2026-09-23 ~16:45–18:30 — lane CL: "my game crashed launching Town of the Dead" was a hang in the engine's GPU query wait (`components/gpu_query_guard.cpp`)
+
+B, 0.2.27 (client DLL `04a3ad6d`), `zombie_town`, 15:12:40 UK. **Not a crash.** The game froze
+~0.3 s after its first in-game frame; Windows closed the frozen window 30 s later (exit code
+`0xCFFFFFFF` = 3489660927, Event 1002 AppHang at 15:13:31). The first lease `m_8fe79035` (14:06 UTC)
+is not a second failure: no client process was started for it (no launch at 15:06 in
+`%LOCALAPPDATA%\ENWZombies\logs`); the site retired it (`lease … is no longer live at the site`,
+incident 55) while the 483 MB map was downloading, and the relaunch was `m_679dedb8` (incident 60).
+
+### 13.1 Evidence (read-only, B's PC)
+
+| Source | What it says |
+|---|---|
+| `logs\session-32100.json` | `exit:"hang"`, `frames:1023`, `hang_dump:null`, `largest_free_block_mb:221.3` — memory is not the class |
+| `logs\enw-32100.log` 15:13:00 | `hang_watchdog: the MAIN THREAD … has not ticked for 8000 ms`; stack `ntdll wait ← 0x70E370 ← 0x59DFC5 ← 0x59E4DC (Com_Frame)`; `MiniDumpWriteDump failed (0x8007001F)` |
+| `logs\console-32100.log` | last line 15:12:52.016; before it only the map's own CSC runtime errors (`_dual_wield.csc` line 136, non-fatal) |
+| Event log | 1001/1002 AppHang for CoDWaW.exe 1.7.0.0 at 15:13:30–31; no Event 1000; no WER dump in `CrashDumps` |
+| Site incident 60 (read-only) | `game_hang` P1 — and a false **Crash P1** from overlay_guard's start-up INFO line (fixed on main by crash review L1 at the same time) |
+
+`0x70E340` is the engine's **render lock** (recursive: `EnterCriticalSection(0x2298EA0)`, owner tid
+at `[0x46E56A0]`, count `[0x46E569C]`; released by `0x70E3A0`), taken by the screen update
+`0x479370`. In a WER dump of a healthy frame (`CoDWaW.exe.23916.dmp`) its owner is the **render
+thread**. So the main thread was waiting for the render thread; the old watchdog never looked there.
+
+### 13.2 Reproduced locally (invisible client + local dedi on `zombie_town`): 4 of 5 runs without the guard
+
+`jointest.ps1` (`d2` server, `c1` client, private LocalAppData, `ENW_TEST_NO_ACTIVATE=1`, -4000,-4000,
+`ENW_BORDERLESS_COVER=0`, 800×600 windowed, B's other renderer dvars from incident 60's launch line),
+game.lock taken and released by the harness (one leftover of mine after a harness exit was ended and
+its lock released by hand, `cl3`).
+
+| Run | DLL | Result |
+|---|---|---|
+| `cl1` 16:55 | B's exact `04a3ad6d` (both halves) | **hang** 0.4 s after the first frame; the identical main-thread stack; dump failed `0x8007001F` |
+| `cl2` 17:00 | lane CL watchdog (client) | **hang**; the new report names the holder (below); dump failed `0x80070008` |
+| `cl3` 17:04 | same, `ENW_CHAT_OVERLAY=0` | **hang** — not our overlay / stock font / frame capture |
+| `cl4` 17:14 | **the fix** (`b3be646a`, pre-merge; guard code as shipped) | guard timed out 3× at 0.30–0.43 s after the first frame and **tripped**; the game played on 90 s at 150–250 fps, no hang |
+| `cl5` 17:19 | final DLL `db909469`, `zm_nuked`, guard **off** | no hang in 60 s (200–240 fps): zm_nuked does not reproduce locally |
+| `cl6` 17:25 | same, `zm_nuked`, guard on | guard never needed (every query answered), 60 s at 222 fps — nothing changes on a healthy path |
+| `cl8` 17:24 | `db909469`, `zombie_town`, guard **off** | **hang** (4th); the watchdog's full report: holder tid, its stack, every thread's EIP via `NtGetNextThread`, `hang_where` in the session record; dump still failed `0x80070008` |
+| `cl9` 17:34 | final DLL `cc859f8a`, guard on | **crashed during the map load** (0xC0000005 read of NULL at `0x70F4D0`, 8 s in, before the first frame): `largest free address block 1.2 MB of 32.7 MB free` — address-space exhaustion, a different class (below). The guard had not engaged |
+| `cl10` 17:39 | `cc859f8a`, guard off | no hang in 30 s — but only 53 fps (other lanes' games were running); the hang is timing-dependent |
+| `cl12r2` 18:23 | **final DLL `cc859f8a`**, private copies `waw-clc`/`waw-cls`, guard on | guard timed out 3× at 0.56–0.70 s after the first frame and **tripped**; played on 90 s at 105–142 fps, no hang, no crash (largest free block 185 MB at +3 s) |
+| `cl7`, `cl11` | — | **discarded**: another lane deployed its own DLL (`a077f3ac`) into the shared `waw-c1` between my deploy and my launch. Later runs use private copies `waw-clc` / `waw-cls` |
+
+The render-lock holder, from the watchdog and from an external read-only probe of the live process:
+
+```
+render thread (entry 0x6FC6F0) holds CS 0x2298EA0, 3-13 waiters:
+  AMDXN32.DLL (SleepConditionVariableCS) <- d3d9.dll+0x498BD (IDirect3DQuery9::GetData)
+  <- 0x725605 (0x7255D0: while (q->GetData(&n,4,D3DGETDATA_FLUSH) == S_FALSE) Sleep(0);)
+  <- 0x72C721 (0x72C670, sun visibility occlusion query) <- 0x72CE95 (0x72CE70) <- 0x6E893B
+  <- 0x6E8BD0 <- 0x6FC4FD <- 0x6FC6F0 (render thread) <- 0x5A3099 (thread start)
+```
+
+Sampling the render thread's EIP 300 times: mostly ntdll/AMDXN32, and **`CoDWaW.exe+0x3255F6`
+(0x7255F6, the loop body) and `Sleep`** — GetData *returns* `S_FALSE` every time and the engine
+loops forever (≈1.4 cores busy, as `jointest` measured). The query never completes on B's driver
+(AMD RX 9070 XT, `amdxn32.dll`, 32.0.31041) and the loop has no way out. `0x72CE70` runs the sun
+query only when the map's world has a **sun flare** (`[[0x3BF392C]+0x194]`; the string
+`Sun sprite occlusion query calibration failed…` at `0x6D6AD0` names the subsystem).
+
+### 13.3 The fix: `gpu_query_guard.cpp`
+
+`0x7255D0` (query in ESI, answer in EAX, -1 = no answer) has exactly four call sites — `0x72C71C`
+(sun visibility), `0x725B71` / `0x725B7E` (sun sprite calibration pair), `0x72DF6B` — and **every
+caller already handles -1** (it is what the engine returns for a failed GetData; the sun code then
+keeps last frame's visibility, `[ebp+0x1C] = 1`). All four are retargeted (byte-checked: the
+function's 21-byte prologue and each rel32) to a naked thunk → `bounded_query_wait`: the same
+GetData(FLUSH) + Sleep(0) loop with a **50 ms budget**, then -1 and a WARN; after **3** timeouts it
+stops waiting at all (one GetData, -1 if not ready) — the sun flare may lag or hold still, the game
+runs. On a healthy machine nothing changes (a query issued 2N frames ago answers at once). Client
+only; off `ENW_GPU_QUERY_GUARD=0`; `ENW_GPU_QUERY_TEST=1` makes every wait time out (harness).
+It is generic: **any map, any GPU query, any driver** — a query that never answers can no longer
+freeze the game.
+
+### 13.4 The hang watchdog now names the culprit (`hang_watchdog.cpp`)
+
+It reads the render lock and logs the holder's stack (`… is HELD by tid N … -- the thread the main
+thread waits for`), every thread's EIP (via `NtGetNextThread`; Toolhelp failed inside the hang), and
+writes a one-line verdict into `session-<pid>.json` as **`hang_where`** (e.g. `main waits on the
+render lock; holder tid 30920 at 0x7779CD30 (KernelBase.dll+0x24CD30)`), which the site's Hang flag
+now shows in its detail. No loader lock on the report path (VirtualQuery + GetMappedFileName, stack
+scan for call-preceded return addresses under SEH, nothing allocated while a thread is suspended).
+The dump excludes threads whose context cannot be read, skips unreadable memory, falls back to a
+plain dump, and deletes a failed (empty) file. `ENW_HANG_TEST=2` makes a test thread hold the render
+lock for 12 s (the zombie_town shape) so the report can be seen on demand.
+
+### 13.5 The player is told (launcher) and telemetry agrees
+
+* `crash.gameEndNotice()` + `main.js` `flow.on('ended')`: a game that ends `hang` (DLL verdict or
+  exit `0xCFFFFFFF`) toasts **"World at War froze on <map>. We have the logs."**; `crash` →
+  "crashed on …"; an unexplained non-zero exit → "closed unexpectedly on …"; a quit, an engine error
+  the lockdown already explained, or our own stop → nothing. Before this, a hang at launch showed B
+  nothing at all.
+* `classifyGame` reads the DLL's `session.exit` (the watchdog now deletes an empty dump, which was the
+  only reason B's hang classified as `game_hang` rather than `game_crash`).
+
+### 13.6 Other maps in the same class
+
+All 68 hosted maps have an asset list in `ZombiesDev\archive\cache\asset-lists`; the world's sun
+flare sprite (`sun_flare` material) is in the map's own zone for **8**: `zombie_town`, `zm_nuked`,
+`sanatorium`, `nazi_zombie_temple`, `nazi_zombie_puns` (playable), `nazi_zombie_snowglobe`,
+`nazi_zombie_pogreb`, `nazi_zombie_rc` (custom-only); stock **`nazi_zombie_asylum`** (Verrückt) too.
+B's unexplained 0.2.18 hang on `zm_nuked` ~200 ms after the first frame (`chat-overlay.md` §12.4,
+item 3 in `next-session.md`) is very likely this class. The guard covers them all without a per-map
+list; nothing is gated.
+
+### 13.7 A second hazard on the same map: address space (not fixed here)
+
+`cl9` died in the load with the address space gone: at +3 s its largest free block was already
+127 MB of 478 MB (the runs that loaded had 197 of 549; B's had 221 of 578), and the map's load took
+the rest. This is the archive's `client_memory_risk` class (`zombie_town`'s zone is 201 MB, the
+largest of the 22 flagged; `dedi.md` §20.3), a 32-bit exe that cannot be made large-address-aware
+under SteamStub (`launcher.md`, "laaON … Steam Error"). What took the extra ~70 MB before the load in
+that run is unknown (other lanes' games were running on the same GPU). The telemetry already flags
+it (`low_address_space`, Crash with the overlay_guard exception line). Nothing in lane CL changes it;
+the next step is vault R14 (peak RSS) or a per-map gate on measured client headroom.
+
+### 13.8 Proof, and what is not proven
+
+* C++: `session_record_test` 48/0 and `overlay_console_test` 60/0 (x86 `cl /W4`), incl. `hang_where`. DLL builds clean (warnings are
+  main's `snd_alias_dvars.cpp`).
+* Launcher: `test/run-all.js` 172/0 (with a client DLL staged in `resources/client`),
+  `telemetry.js` 21/0, `waw-settings` 20/0, `modcompat` 6/0, `discord-presence` 26/0.
+* Web: `npm test` all suites 0 failed (telemetry 41/0 after main's L1 crash-rule fix was merged; my
+  identical fix was dropped in favour of main's).
+* **Client DLL for the next launcher: `build/clfinal/enw_t4.dll`, sha256 `cc859f8ac8d0b2e0ec84f35d4c97a0d19982f9e29467bc1f869cdc00fd87fe3d`** (branch
+  `worktree-agent-a022ed210c6d334f4`, main merged). Client-only change; the box DLL does not need it
+  (the guard is `is_supported() == !dedicated`).
+* **Not proven:** B's own PC with the fixed DLL (his AMD RX 9070 XT is the same machine as the harness,
+  so the driver is the same); whether the sun flare looks right after a trip (the harness window is
+  off-screen); the in-process minidump inside a real hang (`0x80070008` — the report text is now the
+  evidence instead); why the AMD driver never completes the query (driver-side, not investigated);
+  zm_nuked and the other six sun-flare maps hanging (only the asset evidence and B's 0.2.18 zm_nuked
+  hang link them).

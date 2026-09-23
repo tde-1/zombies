@@ -170,6 +170,17 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
   // ...and only by the box that holds that lease.
   if (leaseId && assignment && body.box && boxes.nameOf(assignment.box_id) !== String(body.box)) assignment = null
 
+  // The map's own game mode (game-modes.md) is the LEASE's, not the box's word: the site
+  // chose it. The box's part is the proof that it took (`game_mode_applied`, from the DLL's
+  // answer and the map's own "vote over" notify). A lease with a mode whose result does not
+  // prove it -- an old host agent, an old DLL, a menu somebody answered by hand, a different
+  // mode -- is kept, marked, and never a record, because nobody can say which board it is on.
+  const gameMode = assignment && assignment.game_mode ? String(assignment.game_mode) : null
+  const modeFlags = []
+  if (gameMode && (summary.game_mode_applied !== true || (summary.game_mode != null && String(summary.game_mode) !== gameMode))) {
+    modeFlags.push('game_mode_unconfirmed')
+  }
+
   const row = {
     match_id: String(summary.match_id),
     box: str(body.box, 64) || (assignment ? boxes.nameOf(assignment.box_id) : null),
@@ -191,8 +202,9 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
     duration_ms: int(summary.duration_ms, 0, { min: 0, max: MAX_MS }),
     duration_rta_ms: int(summary.duration_rta_ms, 0, { min: 0, max: MAX_MS }),
     paused_ms: int(summary.paused_ms, 0, { min: 0, max: MAX_MS }),
-    flags: JSON.stringify(summary.flags || []),
-    records_eligible: summary.records_eligible ? 1 : 0,
+    flags: JSON.stringify([...new Set([...(summary.flags || []), ...modeFlags])]),
+    records_eligible: summary.records_eligible && !modeFlags.length ? 1 : 0,
+    game_mode: gameMode,
     xp_multiplier: num(summary.xp_multiplier, 1, { min: 0, max: 10 }),
     end_reason: str(summary.end_reason, 40),
     started_at: parseWhen(summary.started_at),
@@ -238,11 +250,11 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
   const info = db.prepare(`INSERT INTO games (match_id, box, instance, mode, map_key, map_id, map_version_id, fs_game,
       party_id, settings_json, fingerprint, rounds, finish_kind, finish_label, badge_earned, player_count, solo,
       duration_ms, duration_rta_ms, paused_ms, flags, records_eligible, xp_multiplier, end_reason,
-      started_at, ended_at, received_at, self_reported, summary_json)
+      started_at, ended_at, received_at, self_reported, summary_json, game_mode)
     VALUES (@match_id,@box,@instance,@mode,@map_key,@map_id,@map_version_id,@fs_game,@party_id,@settings_json,
       @fingerprint,@rounds,@finish_kind,@finish_label,@badge_earned,@player_count,@solo,@duration_ms,
       @duration_rta_ms,@paused_ms,@flags,@records_eligible,@xp_multiplier,@end_reason,@started_at,@ended_at,
-      @received_at,@self_reported,@summary_json)`).run(row)
+      @received_at,@self_reported,@summary_json,@game_mode)`).run(row)
   const game = db.prepare('SELECT * FROM games WHERE id=?').get(info.lastInsertRowid)
 
   const insP = db.prepare(`INSERT OR REPLACE INTO game_players (game_id, steam_id, slot, name, score, kills, headshots,
@@ -499,6 +511,9 @@ function project(game, { withPlayers = true } = {}) {
     id: game.id,
     match_id: game.match_id,
     mode: game.mode,
+    // The map's own game mode (UGX's Gun Game ...), null for a map without modes.
+    game_mode: game.game_mode || null,
+    game_mode_label: game.game_mode ? require('./gameModes').label(game.map_key, game.game_mode) : null,
     map_key: game.map_key,
     map_title: (db.prepare('SELECT title FROM maps WHERE key=?').get(game.map_key) || {}).title || game.map_key,
     rounds: game.rounds,
@@ -563,10 +578,20 @@ function careerFor(steamId) {
   // different questions, and merging them is how the wrong one gets the wrong filter.
   const g = db.prepare(`SELECT COUNT(*) games, COALESCE(SUM(g.duration_ms),0) ms
                           FROM game_players gp JOIN games g ON g.id=gp.game_id WHERE gp.steam_id=?`).get(sid)
-  const best = db.prepare(`SELECT COALESCE(MAX(g.rounds),0) best
+  // Per map and game mode, because a round in Gun Game or Sharpshooter (game-modes.md) is not
+  // a round in the map's own default mode: only games in a map's DEFAULT mode (or on a map
+  // without modes) count toward the headline best round.
+  const gameModes = require('./gameModes')
+  const bestRows = db.prepare(`SELECT g.map_key, g.game_mode, COALESCE(MAX(g.rounds),0) best
                              FROM game_players gp JOIN games g ON g.id=gp.game_id
                             WHERE gp.steam_id=? AND g.mode='verified' AND COALESCE(g.self_reported,0)=0
-                              AND gp.late=0`).get(sid)
+                              AND gp.late=0
+                            GROUP BY g.map_key, g.game_mode`).all(sid)
+  const best = { best: 0 }
+  for (const r of bestRows) {
+    if (r.game_mode && r.game_mode !== gameModes.resolve(r.map_key, null)) continue
+    best.best = Math.max(best.best, r.best)
+  }
   const p = db.prepare(`SELECT COALESCE(SUM(kills),0) kills, COALESCE(SUM(downs),0) downs,
                                COALESCE(SUM(revives),0) revives, COALESCE(SUM(headshots),0) headshots
                           FROM game_players WHERE steam_id=?`).get(sid)

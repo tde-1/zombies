@@ -959,6 +959,9 @@ html[data-amb-strong] #amb-pour { --amb-a: 58; }
 .vis-seg.locked .vis-btn { cursor: default; }
 .vis-seg.locked .vis-btn:hover { color: var(--muted); background: transparent; }
 .vis-seg.locked .vis-btn.on:hover { color: var(--accent-ink); background: var(--accent); }
+.vis-select { width: 100%; padding: 6px 10px; color: var(--text); background: var(--panel); border: none; border-radius: var(--pill); font: inherit; font-size: 12px; cursor: pointer; }
+.vis-select:disabled, .vis-select.locked { cursor: default; color: var(--muted); }
+.prail-gamemode { margin-top: 4px; }
 
 /* roster cards. THE EDGE: every person in the rail wears the same 2px mark down their left
    side, stronger for the host. */
