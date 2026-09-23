@@ -18,6 +18,10 @@ const EXEMPT = [
   // and every route under it refuses without a chat pass, which only a signed-in
   // launcher can get (POST /api/launcher/chat-token, which IS behind the gate).
   /^\/api\/game-chat(\/|$)/,
+  // The in-game Esc menu's Exit game (routes/site.js POST /api/party/quit). Same reason
+  // and the same lock: the game cannot type a password, and the route refuses anything
+  // that is not a session or a valid chat pass.
+  /^\/api\/party\/quit$/,
   /^\/healthz$/,
   // The launcher's update feed. An installer is not a secret, and a silently dead updater
   // is much the worse failure: electron-updater would get a 401 it cannot answer, every

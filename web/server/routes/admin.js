@@ -181,6 +181,18 @@ function router() {
     res.json({ ok: true, box: boxes.create({ name: b.name, matchKey: b.match_key, region: b.region, note: b.note, maxInstances: b.max_instances || 4 }) })
   })
 
+  // How many games this box may hold, and how many of those only an agent may take
+  // (lib/assignments.js "SEVERAL GAMES PER BOX"). By NAME, like register-box.js.
+  //   { max_instances: 3 }   { reserve: 1 }   { reserve: null }  (null = the default)
+  r.post('/boxes/:name/capacity', requireAdmin, (req, res) => {
+    const b = req.body || {}
+    try {
+      const box = boxes.setCapacity(req.params.name, { maxInstances: b.max_instances, reserve: b.reserve })
+      if (!box) return res.status(404).json({ error: 'no such box' })
+      res.json({ ok: true, box: boxes.list().find((x) => x.name === box.name), capacity: assignments.capacity(box) })
+    } catch (e) { res.status(400).json({ error: e.message }) }
+  })
+
   r.post('/boxes/:id/enabled', requireAdmin, (req, res) => res.json({ ok: true, box: boxes.setEnabled(req.params.id, !!(req.body && req.body.enabled)) }))
   r.post('/boxes/:id/key/accept', requireAdmin, (req, res) => res.json(boxes.acceptPendingKey(req.params.id, req.me.steam_id)))
   r.post('/boxes/:id/key/reject', requireAdmin, (req, res) => res.json(boxes.rejectPendingKey(req.params.id, req.me.steam_id)))
@@ -195,6 +207,9 @@ function router() {
       mode: b.mode || 'verified',
       players: b.players || [{ steamid: req.me.steam_id, name: users.pub(req.me).name }],
       settings: b.settings || {},
+      // An operator's test lease is an agent lease unless they say otherwise: it may use
+      // the reserve, and a real player's Play takes its slot back.
+      agent: b.agent !== false,
       by: req.me.steam_id,
     })
     res.status(out.ok ? 200 : 400).json(out)

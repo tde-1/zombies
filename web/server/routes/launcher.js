@@ -31,6 +31,7 @@ const maps = require('../lib/maps')
 const presence = require('../lib/presence')
 const enw = require('../lib/enw')
 const live = require('../lib/live')
+const seats = require('../lib/seats')
 const { db, now } = require('../db/database')
 const { safeJson } = require('../lib/util')
 const { requireUser, requireApproved } = require('../middleware/auth')
@@ -154,7 +155,12 @@ function router() {
       // The boot screen's own steps, named the way 13 §4b-2 names them, decided here so
       // the site and the launcher cannot disagree about what state a game is in.
       //   idle → selected → ready-check → reserving → loading → ready → in-game
-      state: phaseOf(party, launch),
+      // plus two that the launcher's watcher does NOT follow (lib/seats.js), which is what
+      // stops the relaunch every ~25 s: `playing` (the box says this player is connected
+      // to this match right now) and `resumable` (they were, are not, and did not quit;
+      // the rail's server card offers Resume).
+      state: seats.phaseOf(party, launch, sid),
+      resume: seats.resumeInfo(launch, sid),
       party: party ? { id: party.id, code: party.code, mode: party.mode, visibility: party.visibility, members: party.members, all_ready: party.all_ready, is_leader: party.is_leader } : null,
       map: m ? mapPayload(m) : null,
       match: launch ? {
@@ -211,9 +217,23 @@ function router() {
     res.json({ ok: true, token: pass.token, expires_at: pass.expires_at, path: '/api/game-chat' })
   })
 
+  // "Give the box back" (launcher main.js releaseLease), for a launch that never got going.
+  //
+  // THE BUG (2026-09-23 00:50 BST, m_6d80aa20): B's game was live on the box at round 2. A
+  // second launch of his (a rejoin into the same match) failed when its game window
+  // closed, the launcher's failure path called this, and this cancelled whatever the
+  // party's CURRENT match was: B's live game. The box went idle and the next lease took
+  // the slot. Not a timer; the activity log has the cancel with his own SteamID as actor.
+  // So a launcher cancel is refused for a game the box reports LIVE (it ends on the box:
+  // game over, a Quit (POST /api/party/quit), or two minutes with nobody connected), and
+  // when the launcher names the match it is releasing, a cancel for another one is a no-op.
   r.post('/cancel', requireUser, (req, res) => {
     const party = parties.forPlayer(req.me.steam_id)
-    if (party && party.match_id) return res.json(require('../lib/assignments').cancel(party.match_id, req.me.steam_id))
+    const b = body(req)
+    if (party && party.match_id) {
+      const out = require('../lib/assignments').release(party.match_id, { by: req.me.steam_id, named: b.match_id || null, force: b.force === true })
+      return res.status(out.live ? 409 : 200).json(out)
+    }
     return res.json(parties.cancelReadyCheck(req.me.steam_id))
   })
 
@@ -425,15 +445,6 @@ function router() {
   return r
 }
 
-function phaseOf(party, launch) {
-  if (!party) return 'idle'
-  if (launch && launch.state === 'live') return 'in-game'
-  if (launch && launch.state === 'ready') return launch.connect ? 'ready' : 'loading'
-  if (launch && launch.match_id) return 'reserving'
-  if (party.state === 'ready-check') return 'ready-check'
-  if (party.map) return 'selected'
-  return 'idle'
-}
 
 // Everything the launcher needs to have the map on disk before it launches.
 //

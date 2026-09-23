@@ -50,6 +50,9 @@ export function RailProvider({ children }) {
   const { guard } = usePlayGate()
   const [party, setParty] = useState(null)
   const [launch, setLaunch] = useState(null)
+  // Set when this player crashed out of a game that is still up (lib/seats.js): the server
+  // card offers Resume for the site's ten-minute window.
+  const [resumable, setResumable] = useState(null)
   const [invites, setInvites] = useState([])
   const [online, setOnline] = useState({ scope: 'online', players: [] })
   const [stage, setStageState] = useState(readStage)
@@ -87,10 +90,10 @@ export function RailProvider({ children }) {
   }, [signedIn])
 
   const loadParty = useCallback(async () => {
-    if (!signedIn) { setParty(null); setLaunch(null); setInvites([]); return null }
+    if (!signedIn) { setParty(null); setLaunch(null); setResumable(null); setInvites([]); return null }
     try {
       const j = await api.get('/api/party')
-      setParty(j.party); setLaunch(j.launch); setInvites(j.invites || [])
+      setParty(j.party); setLaunch(j.launch); setResumable(j.resume || null); setInvites(j.invites || [])
       return j.party
     } catch { return null }
   }, [signedIn])
@@ -231,17 +234,24 @@ export function RailProvider({ children }) {
 
   const cancel = useCallback(() => run(() => api.post('/api/party/cancel')), [run])
 
+  // Back into the game this player crashed out of. The site hands out a fresh token and
+  // puts the phase back to `in-game`; the launcher's party watcher does the launch.
+  const resume = useCallback(() => run(async () => {
+    await api.post('/api/party/resume', { match_id: resumable && resumable.match_id })
+    await loadParty()
+  }), [run, resumable, loadParty])
+
   const value = useMemo(() => ({
     me, signedIn, approved,
     party, launch, invites, online, pool, poolByKey, live,
     stage, map, mapKey, mode, visibility, editable,
     busy, err, say,
     stageMap, setMode, setVisibility, invite, cancelInvite, kick, leave,
-    decline, joinParty, play, ready, go, cancel,
+    decline, joinParty, play, ready, go, cancel, resumable, resume,
     refreshParty: loadParty, refreshOnline: loadOnline,
   }), [me, signedIn, approved, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
     mode, visibility, editable, busy, err, say, stageMap, setMode, setVisibility, invite, cancelInvite, kick,
-    leave, decline, joinParty, play, ready, go, cancel, loadParty, loadOnline])
+    leave, decline, joinParty, play, ready, go, cancel, resumable, resume, loadParty, loadOnline])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

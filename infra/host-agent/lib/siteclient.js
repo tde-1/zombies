@@ -5,7 +5,8 @@
 // outbound HTTP from the box. That is what makes a game box behind NAT, with no inbound
 // firewall rules and no reachable RCON, work at all.
 //
-//   GET  /api/gs/assignment   what should this box be running right now?  (nonce-cached)
+//   GET  /api/gs/assignment   what should this box be running right now?  (nonce-cached;
+//                             `?v=2`: every live lease on the box, lib/leases.js)
 //   GET  /api/gs/keys         the site's invite-token public key
 //   POST /api/gs/status       booting / ready / live / idle heartbeat
 //   POST /api/gs/result       the game summary + where the replay went
@@ -16,6 +17,7 @@ import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import path from 'node:path'
 import { makeLog, sleep, mkdirp } from './util.js'
+import { describe as describeLeases } from './leases.js'
 
 export class SiteClient extends EventEmitter {
   constructor({ base, secret, boxName = 'box', pollMs = 3000, chatWaitS = 20, spoolDir = null, spoolMs = 15_000, liveHz = 4, log } = {}) {
@@ -34,6 +36,10 @@ export class SiteClient extends EventEmitter {
     if (spoolDir) mkdirp(spoolDir)
     this.log = log || makeLog('site')
     this.nonce = null
+    // Sent on EVERY status post, so the site's stored status always says what this box
+    // can run (web/server/lib/assignments.js capacity()): the protocol, and how many game
+    // copies it really has. The host fills in max_instances after checkSlotCopies().
+    this.statusExtra = { protocol: 2 }
     this.chatSince = 0
     this.running = false
     this.online = false
@@ -76,13 +82,13 @@ export class SiteClient extends EventEmitter {
   async loopAssignment() {
     while (this.running) {
       try {
-        const a = await this.req('/api/gs/assignment', { timeoutMs: 10_000 })
+        const a = await this.req('/api/gs/assignment?v=2', { timeoutMs: 10_000 })
         this.stats.polls++
         // Cache on the nonce, exactly like the CS box's assignment agent: the poll is
         // cheap and constant, and we only act when the site changes its mind.
         if (a && a.nonce !== this.nonce) {
           this.nonce = a.nonce
-          this.log.info(`assignment changed: ${a.status} ${a.map || ''} ${a.match_id || ''} (nonce ${a.nonce})`)
+          this.log.info(`assignment changed: ${describeLeases(a)} (nonce ${a.nonce})`)
           this.emit('assignment', a)
         }
         this.stats.lastError = null
@@ -103,7 +109,7 @@ export class SiteClient extends EventEmitter {
   }
 
   status(body) {
-    return this.req('/api/gs/status', { method: 'POST', body: { box: this.boxName, ...body } }).catch((e) => {
+    return this.req('/api/gs/status', { method: 'POST', body: { box: this.boxName, ...this.statusExtra, ...body } }).catch((e) => {
       this.log.debug(`status: ${e.message}`); return null
     })
   }

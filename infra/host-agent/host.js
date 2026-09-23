@@ -27,6 +27,7 @@ import { ReplayWriter } from './lib/replay.js'
 import { TokenGuard } from './lib/tokens.js'
 import * as keys from './lib/keys.js'
 import { SiteClient } from './lib/siteclient.js'
+import { leaseList, planLeases } from './lib/leases.js'
 import { Dashboard } from './lib/dashboard.js'
 import { hostInfo } from './lib/procstat.js'
 import { GameLog } from './lib/gamelog.js'
@@ -760,6 +761,8 @@ class HostAgent {
       this.site.liveFrames = () => [...this.byInstance.values()]
         .filter((g) => !g.finished && g.referee.phase !== 'boot')
         .map((g) => ({ instance: g.instance.id, match_id: g.matchId, state: g.referee.state() }))
+      // What this box can run, on every status post: the site's capacity() reads it.
+      this.site.statusExtra = { protocol: 2, max_instances: this.instances.maxInstances }
       this.site.on('assignment', (asg) => this.onAssignment(asg))
       this.site.on('chat', (e) => this.onNetworkChat(e))
       this.site.start()
@@ -1051,43 +1054,69 @@ class HostAgent {
   }
 
   // ---- the pull protocol ---------------------------------------------------------
-  onAssignment(asg) {
-    if (asg.status !== 'leased') return
-    if ([...this.byInstance.values()].some((g) => g.matchId === asg.match_id && !g.finished)) return
-    log.info(`lease ${asg.match_id}: ${asg.map} ${asg.mode} ${asg.players?.length || 0}p`)
+  /**
+   * SEVERAL LEASES PER BOX (2026-09-23, lib/leases.js, web/server/lib/assignments.js).
+   *
+   * The poll's answer is now EVERY live lease on this box (`?v=2`). One instance per lease,
+   * each in its own slot (game copy, homepath, lobby port: dedi.md §19). A game is retired
+   * only when ITS match id has left the list, never because some other lease arrived.
+   *
+   * THE OLD RULE, and why it went: the site kept one live lease per box, so an instance on
+   * a different match id was "by definition serving a lease that no longer exists" and was
+   * retired before the new one booted. That was right for one game per box and it is what
+   * kicked B out of his own game every time anybody else pressed Play (19:21 and after).
+   *
+   * What it got right is kept: the retire is AWAITED and followed by two seconds for Wine
+   * to hand the UDP ports back before anything boots (a replacement started in the same
+   * tick binds nothing and parks in Com_Init, measured on the box), and games still boot
+   * one at a time behind the 90 s map_loaded gate in `boot()`.
+   */
+  onAssignment(msg) {
+    this.latestLeases = leaseList(msg)
+    this.applyLeases()
+  }
 
-    // A SUPERSEDED LEASE'S INSTANCE IS STILL RUNNING, AND IT OWNS UDP 3074.
-    //
-    // The site keeps exactly one live lease per box (`assignments.lease` marks the previous
-    // one `superseded` before it inserts), so an instance sitting on a DIFFERENT match id is
-    // by definition serving a lease that no longer exists. Nothing retired it: `onAssignment`
-    // returned early on `idle`, and a cancelled lease never reaches the box at all.
-    //
-    // MEASURED, 2026-09-22 evening, three runs in a row: cancel a lease, press Start again,
-    // and the stale instance keeps 3074 while the new one is handed 3075's slot and binds
-    // NOTHING (vps.md §15) — the box reports `ready` on a port with no server behind it and
-    // every player's game dials into silence. Retiring it here makes the second Start work.
-    //
-    // The retire is AWAITED, and the boot is deferred until it finishes. Booting beside a
-    // dying instance is not the same thing: measured on the box, the new process started
-    // while the old one was still holding 3074 through its SIGTERM, bound NOTHING, and
-    // parked inside Com_Init with no `map_loaded` ever (that park is the engine's "Set Optimal
-    // Settings?" dialog - see `watchStartupDialog`). `retire()` removes the instance
-    // from `byInstance`, so the re-entry below sees an empty list and boots exactly once.
-    const stale = [...this.byInstance.values()].filter(
-      (g) => !g.finished && !this.warm.has(g.instance.id) && g.matchId !== asg.match_id)
-    if (stale.length) {
-      Promise.all(stale.map((g) => this.retire(g, `lease ${asg.match_id} supersedes ${g.matchId}`)))
-        // …and then LET THE SOCKETS GO. Wine hands the UDP ports back a moment after the
-        // process does; a replacement started in the same tick binds nothing and parks in
-        // Com_Init with `frames=0` (measured on the box). Two seconds is the difference
-        // between a second Start that works and one that leaves the box answering a port
-        // with no server behind it.
+  applyLeases() {
+    if (this.applyingLeases) { this.leasesDirty = true; return }
+    const list = this.latestLeases || []
+    this.startedMatches = this.startedMatches || new Set()
+    const { retire, boot } = planLeases(list, [...this.byInstance.values()],
+      { started: this.startedMatches, warm: new Set(this.warm.keys()) })
+    if (retire.length) {
+      this.applyingLeases = true
+      Promise.all(retire.map((g) => this.retire(g, `lease ${g.matchId} is no longer live at the site`)))
         .then(() => new Promise((r) => setTimeout(r, 2000)))
-        .then(() => this.onAssignment(asg))
-        .catch((e) => log.error(`could not retire the superseded instance: ${e.message}`))
+        .catch((e) => log.error(`could not retire an instance whose lease ended: ${e.message}`))
+        .finally(() => { this.applyingLeases = false; this.leasesDirty = false; this.applyLeases() })
       return
     }
+    for (const asg of boot) {
+      if (this.instances.instances.size >= this.instances.maxInstances) {
+        // The site should never lease past what this box reported it can run. If it did
+        // (a warm instance holding a slot, or the site ahead of our cap), free a warm
+        // instance if there is one, and look again shortly either way.
+        const spare = [...this.warm.values()].find((g) => !g.assignment)
+        log.warn(`no free instance slot for lease ${asg.match_id} (${this.instances.instances.size}/${this.instances.maxInstances})` +
+          (spare ? ` - retiring warm ${spare.instance.id} for it` : ' - will look again in 5 s'))
+        if (spare) {
+          this.applyingLeases = true
+          this.retire(spare, `lease ${asg.match_id} needs the slot`)
+            .then(() => new Promise((r) => setTimeout(r, 2000)))
+            .finally(() => { this.applyingLeases = false; this.applyLeases() })
+        } else {
+          clearTimeout(this.leaseRetry)
+          this.leaseRetry = setTimeout(() => this.applyLeases(), 5000); this.leaseRetry.unref?.()
+        }
+        return
+      }
+      this.startedMatches.add(asg.match_id)
+      this.startLease(asg)
+    }
+  }
+
+  /** Boot (or hand a warm instance to) ONE lease. `applyLeases` decides which. */
+  startLease(asg) {
+    log.info(`lease ${asg.match_id}: ${asg.map} ${asg.mode} ${asg.players?.length || 0}p`)
     // Boot, then say "ready". On the CS fleet the box announces readiness by its first
     // authenticated poll; here we say it explicitly so the site can time boot-to-joinable.
     // The roster the instance boots with: the real SteamIDs from the lobby, each with the
@@ -1117,7 +1146,7 @@ class HostAgent {
       warm.rebind(asg, tokens, roster).then((r) => {
         if (r.ok) return this.site?.status({ state: 'ready', match_id: asg.match_id, instance: warm.instance.id, port: warm.instance.port })
         log.warn(`the warm instance would not take lease ${asg.match_id} (${r.why}) — tearing it down and booting a fresh one`)
-        return this.retire(warm, `would not take a new lease: ${r.why}`).then(() => this.onAssignment(asg))
+        return this.retire(warm, `would not take a new lease: ${r.why}`).then(() => { this.startedMatches.delete(asg.match_id); this.applyLeases() })
       }).catch((e) => log.error(`rebind failed: ${e.message}`))
       return warm
     }
@@ -1165,7 +1194,12 @@ class HostAgent {
       state: live.length ? 'live' : 'idle',
       live_games: live.length,
       warm_instances: [...this.warm.keys()],
-      instances: this.instances.list().map((i) => i.info()),
+      // Per instance: the process (`state`) AND the game on it (`phase`, `map`, whether it
+      // has announced map_loaded), so the site and an operator can see each lease's game.
+      instances: this.instances.list().map((i) => {
+        const g = this.byInstance.get(i.id)
+        return { ...i.info(), phase: g?.referee?.phase || null, map: g?.referee?.map || null, map_loaded: !!g?.referee?.map, warm: this.warm.has(i.id), leased: !!g?.assignment }
+      }),
       host: hostInfo(),
       local_mode: cfg.local ? (cfg.adoptLocal ? 'adopt' : 'expect') : false,
       // Offer our replay-signing PUBLIC key on every heartbeat. The site pins it on first

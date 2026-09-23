@@ -11,6 +11,7 @@ import { issue, check, TokenGuard } from '../lib/tokens.js'
 import * as keys from '../lib/keys.js'
 import { mkdirp } from '../lib/util.js'
 import { InstanceManager } from '../lib/instances.js'
+import { leaseList, planLeases } from '../lib/leases.js'
 
 const TMP = mkdirp(path.join(os.tmpdir(), 'enw-host-tests'))
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..')
@@ -242,6 +243,20 @@ t('solo crash: the whole game pauses for the grace window, then saves', () => {
   eq(r.phase, 'over')
   ok(r.flags.has('abandoned'))
   eq(r.summary().rounds, 5, 'the rounds reached are still saved')
+})
+
+t('a solo crash hold is not ended by the two-minute empty close (B: resumable for ten minutes)', () => {
+  const r = makeRef({ mode: 'custom' })
+  eq(r.cfg.crashGraceMs, 10 * MIN, 'the default grace is the site\'s resume window')
+  bootGame(r, { players: 1 })
+  r.onEvent({ t: 'player_disconnect', ms: 3 * MIN, slot: 0, reason: 'connection lost' })
+  eq(r.phase, 'paused')
+  r.emptySinceMs = Date.now() - 5 * MIN        // five minutes with nobody connected
+  r.tick()
+  eq(r.phase, 'paused', 'still held, not closed as empty')
+  r.crashGraceUntil = Date.now() - 1           // the grace window runs out
+  r.tick()
+  eq(r.phase, 'over')
 })
 
 t('a player who comes back inside the grace window resumes the game, after a countdown', () => {
@@ -750,6 +765,43 @@ console.log('\n== game copies by slot (the inst-05 outage) ==')
   t('--lobby-base moves every instance\'s lobby port together', () => {
     const m2 = new InstanceManager({ root: TMP, logDir: path.join(TMP, 'slots2'), linkHost: '127.0.0.1', linkPort: 1, basePort: 28962, lobbyBase: 3075, dryRun: true, log: quiet })
     eq([m2.create({}), m2.create({})].map((i) => i.gameEnv().ENW_LOBBY_PORT), ['3075', '3076'])
+  })
+}
+// ---- several leases per box (2026-09-23, lib/leases.js) ----------------------------------
+// The old onAssignment retired every game whose match id was not the newest lease's. That
+// is what kicked B whenever anybody else pressed Play. test/multi-lease.js runs the same
+// rules against a real host agent; these are the planner's cases.
+console.log('\n== several leases per box ==')
+{
+  const L = (id) => ({ status: 'leased', match_id: id, map: 'nazi_zombie_prototype', nonce: `n_${id}` })
+  const G = (matchId, id, o = {}) => ({ matchId, finished: false, assignment: { match_id: matchId }, instance: { id }, ...o })
+  t('v2 answer -> every lease; old shape -> one; idle -> none', () => {
+    eq(leaseList({ v: 2, status: 'leased', assignments: [L('m_a'), L('m_b')] }).map((x) => x.match_id), ['m_a', 'm_b'])
+    eq(leaseList(L('m_a')).map((x) => x.match_id), ['m_a'])
+    eq(leaseList({ status: 'idle', nonce: 'idle' }), [])
+    eq(leaseList({ v: 2, status: 'idle', nonce: 'idle', assignments: [] }), [])
+  })
+  t('a second lease boots beside the first and retires NOTHING', () => {
+    const p = planLeases([L('m_a'), L('m_b')], [G('m_a', 'inst-01')], { started: new Set(['m_a']) })
+    eq(p.retire.length, 0, 'retired')
+    eq(p.boot.map((x) => x.match_id), ['m_b'])
+  })
+  t('a cancelled lease retires only its own game', () => {
+    const p = planLeases([L('m_a')], [G('m_a', 'inst-01'), G('m_b', 'inst-02')], { started: new Set(['m_a', 'm_b']) })
+    eq(p.retire.map((g) => g.matchId), ['m_b']); eq(p.boot.length, 0)
+  })
+  t('idle retires every leased game, but never a warm instance or a --boot sim', () => {
+    const warm = G('m_w', 'inst-03', { assignment: null })
+    const sim = G('m_s', 'inst-04', { assignment: null })
+    const p = planLeases([], [G('m_a', 'inst-01'), warm, sim], { warm: new Set(['inst-03']) })
+    eq(p.retire.map((g) => g.matchId), ['m_a'])
+  })
+  t('a lease whose game already finished is never booted again', () => {
+    const p = planLeases([L('m_a')], [G('m_a', 'inst-01', { finished: true })], { started: new Set(['m_a']) })
+    eq(p.boot.length, 0); eq(p.retire.length, 0)
+  })
+  t('after an agent restart, a live lease with no game is booted', () => {
+    eq(planLeases([L('m_a')], [], {}).boot.map((x) => x.match_id), ['m_a'])
   })
 }
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`)

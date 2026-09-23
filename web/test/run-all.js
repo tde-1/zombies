@@ -190,12 +190,246 @@ async function main() {
     truthy(a.manifest !== undefined, 'the manifest travels with the lease')
   })
 
-  check('leasing again supersedes rather than stacking', () => {
+  // ── several games per box (2026-09-23, lib/assignments.js "SEVERAL GAMES PER BOX") ──
+  // The old rule was "leasing again supersedes rather than stacking" — every live lease on
+  // the box, whoever's it was. That is what kicked B out of his own game. Fake IDs only.
+  const liveCount = (b) => db.prepare("SELECT COUNT(*) c FROM assignments WHERE box_id=? AND state IN ('leased','ready','live')").get(b.id).c
+  const stateOf = (m) => (db.prepare('SELECT state FROM assignments WHERE match_id=?').get(m) || {}).state
+  const P = (...ids) => ids.map((steamid) => ({ steamid }))
+
+  check('an OLD-protocol box holds one game: a different player is refused, nobody is kicked', () => {
     const b = boxes.byName('test-box')
-    assignments.lease({ box: b, mapKey: 'nazi_zombie_test', players: [{ steamid: '76561198000000002' }] })
-    const live = db.prepare("SELECT COUNT(*) c FROM assignments WHERE box_id=? AND state IN ('leased','ready','live')").get(b.id).c
-    eq(live, 1)
+    const first = db.prepare("SELECT match_id FROM assignments WHERE box_id=? AND state='leased'").get(b.id).match_id
+    eq(assignments.capacity(b).max, 1, 'no ?v=2 poll yet')
+    const r = assignments.lease({ box: b, mapKey: 'nazi_zombie_test', players: P('76561198000000002') })
+    eq(r.ok, false); eq(r.error, 'No free server right now'); eq(r.full, true)
+    eq(stateOf(first), 'leased', 'the first game is untouched')
+    eq(liveCount(b), 1)
   })
+
+  check('the same player pressing Play again replaces their OWN game', () => {
+    const b = boxes.byName('test-box')
+    const first = db.prepare("SELECT match_id FROM assignments WHERE box_id=? AND state='leased'").get(b.id).match_id
+    const r = assignments.lease({ box: b, mapKey: 'nazi_zombie_test', players: P('76561198000000001') })
+    truthy(r.ok, r.error)
+    eq(stateOf(first), 'superseded'); eq(stateOf(r.match_id), 'leased'); eq(liveCount(b), 1)
+    // Leave test-box empty for the checks further down, which lease on it themselves.
+    assignments.cancel(r.match_id, 'test')
+  })
+
+  boxes.create({ name: 'multi-box', matchKey: 'multi-secret', maxInstances: 3 })
+  const MB = () => boxes.byName('multi-box')
+  const lm = {}
+  check('a v=2 box of three: capacity 3, one slot kept for agents', () => {
+    assignments.notePoll(MB(), 2)
+    const c = assignments.capacity(MB())
+    eq(c.max, 3); eq(c.reserve, 1); eq(c.protocol, 2)
+  })
+
+  check('two agent leases (…0001, …0002) BOTH stay live; the first is not superseded', () => {
+    const a = assignments.lease({ box: MB(), mapKey: 'nazi_zombie_test', players: P('76561198000000001'), agent: true })
+    const b = assignments.lease({ box: MB(), mapKey: 'nazi_zombie_test', players: P('76561198000000002'), agent: true })
+    truthy(a.ok && b.ok, a.error || b.error)
+    lm.a = a.match_id; lm.b = b.match_id
+    eq(stateOf(a.match_id), 'leased'); eq(stateOf(b.match_id), 'leased'); eq(liveCount(MB()), 2)
+  })
+
+  check('the v=2 poll lists every live lease with its own nonce; the old shape is the newest alone', () => {
+    const v2 = assignments.forBox(MB(), { v: 2 })
+    eq(v2.v, 2); eq(v2.status, 'leased')
+    eq(v2.assignments.map((x) => x.match_id).join(), `${lm.a},${lm.b}`)
+    truthy(v2.assignments[0].nonce !== v2.assignments[1].nonce, 'two nonces')
+    truthy(v2.assignments[0].tokens['76561198000000001'], 'each lease carries its tokens')
+    eq(assignments.forBox(MB()).match_id, lm.b, 'v1 shape = the newest')
+    eq(assignments.forBox(boxes.byName('test-box'), { v: 2 }).nonce, 'idle')
+  })
+
+  check('a third agent lease is refused: it would take the last slot a player is owed', () => {
+    const c = assignments.lease({ box: MB(), mapKey: 'nazi_zombie_test', players: P('76561198000000003'), agent: true })
+    eq(c.ok, false); eq(c.error, 'No free server right now'); eq(c.why, 'the last free slot is kept for players')
+    eq(liveCount(MB()), 2)
+  })
+
+  check('a real player takes the free slot; the next one makes the OLDEST agent yield', () => {
+    const r1 = assignments.lease({ box: MB(), mapKey: 'nazi_zombie_test', players: P('76561190000000011') })
+    truthy(r1.ok, r1.error); lm.r1 = r1.match_id
+    eq(liveCount(MB()), 3)
+    const r2 = assignments.lease({ box: MB(), mapKey: 'nazi_zombie_test', players: P('76561190000000012') })
+    truthy(r2.ok, r2.error); lm.r2 = r2.match_id
+    eq(stateOf(lm.a), 'superseded', 'the oldest agent lease yields')
+    eq(stateOf(lm.b), 'leased', 'the other agent lease is untouched')
+    eq(stateOf(lm.r1), 'leased', 'the first real game is untouched')
+    eq(liveCount(MB()), 3)
+  })
+
+  check('real players never go past max - reserve, and a full box supersedes nobody', () => {
+    const r3 = assignments.lease({ box: MB(), mapKey: 'nazi_zombie_test', players: P('76561190000000013') })
+    eq(r3.ok, false); eq(r3.error, 'No free server right now')
+    for (const m of [lm.b, lm.r1, lm.r2]) eq(stateOf(m), 'leased', m)
+  })
+
+  check('re-pressing Play replaces only that player\'s game, on a full box too', () => {
+    const again = assignments.lease({ box: MB(), mapKey: 'nazi_zombie_test', players: P('76561190000000011') })
+    truthy(again.ok, again.error)
+    eq(stateOf(lm.r1), 'superseded'); eq(stateOf(again.match_id), 'leased')
+    for (const m of [lm.b, lm.r2]) eq(stateOf(m), 'leased', m)
+    lm.r1 = again.match_id
+  })
+
+  check('cancel is by match id: one game ends, the others do not', () => {
+    truthy(assignments.cancel(lm.r2, 'test').ok)
+    eq(stateOf(lm.r2), 'cancelled')
+    for (const m of [lm.b, lm.r1]) eq(stateOf(m), 'leased', m)
+    eq(assignments.cancel(lm.r2, 'test').already, 'cancelled', 'a second cancel changes nothing')
+  })
+
+  check('a late "ready" never takes a live game back, and an ended lease stays ended', () => {
+    assignments.ack(MB(), 'live', lm.r1)
+    assignments.ack(MB(), 'ready', lm.r1)
+    eq(stateOf(lm.r1), 'live')
+    assignments.ack(MB(), 'live', lm.r2)
+    eq(stateOf(lm.r2), 'cancelled')
+  })
+
+  // ── the launcher's "give the box back" (2026-09-23 00:50, m_6d80aa20) ─────────────
+  // Root cause of B's game going idle mid-round: not a timer — his launcher's failed rejoin
+  // called POST /api/launcher/cancel, which cancelled the party's current (live) match.
+  check('a launcher release never ends a LIVE game', () => {
+    const r = assignments.release(lm.r1, { by: '76561190000000011' })
+    eq(r.ok, false); eq(r.live, true)
+    eq(stateOf(lm.r1), 'live', 'still live')
+  })
+  check('a launcher release naming another match is a no-op', () => {
+    const r = assignments.release(lm.b, { by: 'x', named: 'm_somethingelse' })
+    eq(r.noop, true); eq(stateOf(lm.b), 'leased')
+  })
+  check('a launcher release of a lease nobody got into still gives the box back', () => {
+    truthy(assignments.release(lm.b, { by: 'x', named: lm.b }).ok)
+    eq(stateOf(lm.b), 'cancelled')
+    assignments.cancel(lm.r1, 'test')
+    eq(liveCount(MB()), 0)
+  })
+
+  check('a per-game status post keeps the heartbeat\'s instance list and protocol', () => {
+    boxes.recordStatus(MB(), { state: 'live', protocol: 2, max_instances: 3, instances: [{ id: 'inst-01', match_id: 'm_x', port: 28960 }] })
+    boxes.recordStatus(MB(), { state: 'ready', match_id: 'm_x', port: 28960 })
+    const st = JSON.parse(boxes.byName('multi-box').last_status_json)
+    eq(st.instances.length, 1); eq(st.protocol, 2); eq(st.state, 'ready')
+    // recordStatus stamps last_poll; the launch checks below need no box online.
+    db.prepare('UPDATE boxes SET last_poll=NULL WHERE name=?').run('multi-box')
+  })
+
+  // ── quit vs crash, and the launcher never relaunching into a game (lib/seats.js) ──────
+  // The launcher's watcher (launcher main.js onPlay) launches whenever the poll's phase is
+  // one of these and no launch of its own is running. Modelled here exactly, so the test
+  // fails the way B's launcher did: a relaunch every ~25 s after a quit, a crash, or a
+  // launch flow that ended while the game was still up.
+  {
+    const seats = require('../server/lib/seats')
+    const FOLLOW = ['reserving', 'loading', 'ready', 'in-game']
+    const watcher = (sid) => {
+      const w = { flow: true, launches: 0, phases: [] }
+      w.poll = () => {
+        const party = parties.forPlayer(sid)
+        const launch = parties.launchInfo(sid)
+        const ph = seats.phaseOf(party, launch, sid)
+        w.phases.push(ph)
+        if (!w.flow && FOLLOW.includes(ph) && launch) { w.launches++; w.flow = true }
+        return ph
+      }
+      return w
+    }
+    const frame = (players) => ({ phase: 'live', players: players.map(([steamid, connected], slot) => ({ slot, steamid, connected })) })
+    const startSolo = (sid) => {
+      db.prepare('UPDATE boxes SET last_poll=? WHERE name=?').run(now(), 'multi-box')
+      parties.leave(sid)
+      parties.create(sid, { mode: 'custom', mapKey: 'nazi_zombie_test', visibility: 'private' })
+      parties.startReadyCheck(sid, { force: true })
+      parties.setReady(sid, true)
+      const r = parties.launch(sid, {})
+      db.prepare('UPDATE boxes SET last_poll=NULL WHERE name=?').run('multi-box')
+      return r
+    }
+    const S = '76561198000000001'
+
+    check('a party polled 20 times after launch never asks for a second launch', () => {
+      const r = startSolo(S)
+      truthy(r.ok, r.error)
+      const w = watcher(S)
+      for (let i = 0; i < 3; i++) w.poll()                       // reserving, flow running
+      assignments.ack(MB(), 'live', r.match_id)
+      seats.observe(r.match_id, frame([[S, true]]))
+      // The launch flow ENDS while the game is still up (what 0.2.x did when it could not
+      // confirm the join): nothing of the launcher's own is running any more.
+      w.flow = false
+      for (let i = 0; i < 20; i++) eq(w.poll(), 'playing', `poll ${i}`)
+      eq(w.launches, 0, 'second launches')
+    })
+
+    check('a crash (no quit call) is resumable: no relaunch, Resume offered, lease kept', () => {
+      const party = parties.forPlayer(S)
+      const m = party.match_id
+      const w = watcher(S); w.flow = false
+      seats.observe(m, frame([[S, false]]))                       // the box: client gone
+      for (let i = 0; i < 20; i++) eq(w.poll(), 'resumable', `poll ${i}`)
+      eq(w.launches, 0, 'relaunches after a crash')
+      eq(stateOf(m), 'live', 'the lease stays up')
+      const info = seats.resumeInfo(parties.launchInfo(S), S)
+      truthy(info && info.until - info.left_at === seats.RESUME_MS, 'ten minutes to resume')
+    })
+
+    check('Resume puts the player back through the normal follow path, once, with a fresh token', () => {
+      const m = parties.forPlayer(S).match_id
+      const before = parties.launchInfo(S).token
+      truthy(seats.resume(S, m).ok)
+      truthy(parties.launchInfo(S).token !== before, 'a new invite token')
+      const w = watcher(S); w.flow = false
+      eq(w.poll(), 'in-game'); eq(w.launches, 1, 'the resume launch')
+      seats.observe(m, frame([[S, true]]))                        // they are back
+      for (let i = 0; i < 20; i++) w.poll()
+      eq(w.launches, 1, 'and only that one')
+    })
+
+    check('quitting on purpose (solo) cancels the server and dissolves the party: nothing to follow', () => {
+      const m = parties.forPlayer(S).match_id
+      const out = seats.quit(S, m)
+      truthy(out.ok && out.cancelled && out.left, JSON.stringify(out))
+      eq(stateOf(m), 'cancelled')
+      eq(parties.forPlayer(S), null, 'no party')
+      const w = watcher(S); w.flow = false
+      for (let i = 0; i < 20; i++) eq(w.poll(), 'idle')
+      eq(w.launches, 0)
+    })
+
+    check('quitting from a party leaves it; the game goes on for the others', () => {
+      const T = '76561198000000002'
+      const r = startSolo(S)
+      truthy(r.ok, r.error)
+      // T is in the game with S (a two-player lease on the same party).
+      const a = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(r.match_id)
+      db.prepare('UPDATE assignments SET players_json=? WHERE id=?').run(JSON.stringify([...JSON.parse(a.players_json), { steamid: T, name: 'P2' }]), a.id)
+      db.prepare('INSERT INTO party_members (party_id, steam_id, ready, joined_at) VALUES (?,?,1,?)').run(a.party_id, T, now())
+      const out = seats.quit(S, r.match_id)
+      eq(out.cancelled, false); eq(out.left, true)
+      eq(stateOf(r.match_id), 'leased', 'still up for T')
+      eq(parties.forPlayer(S), null)
+      truthy(parties.forPlayer(T), 'T still has the party')
+      assignments.cancel(r.match_id, 'test'); parties.leave(T)
+    })
+
+    check('ten minutes with everybody gone and nobody resuming cancels the lease', () => {
+      const r = startSolo(S)
+      seats.observe(r.match_id, frame([[S, true]]))
+      seats.observe(r.match_id, frame([[S, false]]))
+      eq(seats.sweep().length, 0, 'not yet')
+      // Wind the clock: the seat left eleven minutes ago.
+      const real = Date.now
+      Date.now = () => real() + 11 * 60_000
+      try { eq(seats.sweep().includes(r.match_id), true) } finally { Date.now = real }
+      eq(stateOf(r.match_id), 'cancelled')
+      parties.leave(S)
+    })
+  }
 
   // ── the key pin ────────────────────────────────────────────────────────────
   check('the first replay key a box presents is pinned', () => {

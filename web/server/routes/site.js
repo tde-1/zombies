@@ -17,6 +17,7 @@ const parties = require('../lib/parties')
 const results = require('../lib/results')
 const chat = require('../lib/chatNetwork')
 const live = require('../lib/live')
+const seats = require('../lib/seats')
 const replays = require('../lib/replays')
 const enw = require('../lib/enw')
 const users = require('../lib/users')
@@ -151,11 +152,46 @@ function router() {
   // ---- the party rail --------------------------------------------------------------
   r.get('/party', (req, res) => {
     if (!req.me) return res.json({ party: null })
+    const party = parties.forPlayer(req.me.steam_id)
+    const launch = parties.launchInfo(req.me.steam_id)
     res.json({
-      party: parties.forPlayer(req.me.steam_id),
-      launch: parties.launchInfo(req.me.steam_id),
+      party,
+      launch,
       invites: parties.invitesFor(req.me.steam_id),
+      // The same phase the launcher's poll is shown (lib/seats.js), and `resume` when the
+      // server card should offer Resume: this player crashed out of a game that is still up.
+      phase: seats.phaseOf(party, launch, req.me.steam_id),
+      resume: seats.resumeInfo(launch, req.me.steam_id),
     })
+  })
+
+  // QUIT ON PURPOSE (the in-game Esc menu's Exit game, B 2026-09-23): solo, the server is
+  // cancelled and the party dissolved, so the launcher has nothing to boot you back into;
+  // in a party, you leave it and the game goes on. A crash or Alt+F4 sends nothing, and
+  // that absence is what makes the game resumable (lib/seats.js).
+  //
+  // The game calls this with its CHAT PASS (the launcher mints it at launch; the game
+  // never holds the session), so it accepts that bearer as well as a session cookie.
+  r.post('/party/quit', (req, res) => {
+    let sid = req.me ? req.me.steam_id : null
+    if (!sid) {
+      const m = /^Bearer\s+(\S+)$/i.exec(String(req.headers.authorization || ''))
+      const u = m ? require('../lib/gameChat').verifyPass(m[1]) : null
+      sid = u ? u.steam_id : null
+    }
+    if (!sid) return res.status(401).json({ error: 'sign in, or send the game\'s chat pass' })
+    const b = req.body && typeof req.body === 'object' ? req.body : {}
+    res.json(seats.quit(sid, b.match_id ? String(b.match_id).slice(0, 40) : null))
+  })
+
+  // RESUME from the rail's server card: back into the game this player crashed out of.
+  // The launcher's watcher follows the phase this puts back (`in-game`), with a fresh token.
+  r.post('/party/resume', requireUser, (req, res) => {
+    const launch = parties.launchInfo(req.me.steam_id)
+    const matchId = (req.body && req.body.match_id) || (launch && launch.match_id)
+    if (!matchId) return res.status(400).json({ ok: false, error: 'there is nothing to resume' })
+    const out = seats.resume(req.me.steam_id, String(matchId))
+    res.status(out.ok ? 200 : 400).json(out)
   })
 
   const partyAction = (fn) => (req, res) => {

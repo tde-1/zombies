@@ -31,7 +31,10 @@ export const DEFAULTS = {
   allAfkPauseMs: 15 * MIN,   // everyone idle this long => pause the game
   allAfkCloseMs: 5 * MIN,    // ...then close it this long after the pause
   emptyCloseMs: 2 * MIN,     // nobody connected at all
-  crashGraceMs: 7 * MIN,     // vault 10 §5: 5–10 min, then a resume countdown
+  // vault 10 §5: 5–10 min, then a resume countdown. Ten since 2026-09-23: B's "resumable
+  // from the server card" window, which the site keeps for the same ten minutes
+  // (web/server/lib/seats.js RESUME_MS).
+  crashGraceMs: 10 * MIN,
   resumeCountdownMs: 10_000, // told to the players before the freeze lifts
   lateJoinGraceMs: 30_000,   // joining within this of go-live is not "late"
 }
@@ -680,7 +683,9 @@ export class Referee extends EventEmitter {
     }
     if (this.phase === 'live' || this.phase === 'paused') {
       const any = [...this.players.values()].some((p) => p.connected)
-      if (!any && this.startedMs != null) {
+      // Not while a crash hold is open: the empty close (two minutes) used to end a solo
+      // crash-paused game long before its grace window, so nobody could ever resume one.
+      if (!any && this.startedMs != null && !this.crashGraceUntil) {
         if (this.emptySinceMs == null) this.emptySinceMs = now
         else if (now - this.emptySinceMs >= this.cfg.emptyCloseMs) this.finishGame('empty')
       } else this.emptySinceMs = null

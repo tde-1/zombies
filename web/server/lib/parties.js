@@ -299,7 +299,10 @@ function connectFor(a) {
   const box = db.prepare('SELECT address, last_status_json FROM boxes WHERE id=?').get(a.box_id) || {}
   const st = safeJson(box.last_status_json, null)
   if (!st || !Array.isArray(st.instances)) return null
-  const inst = st.instances.find((i) => i.match_id === a.match_id) || st.instances[0]
+  // THIS match's instance and no other. Falling back to `instances[0]` was harmless while
+  // a box ran one game; with several (lib/assignments.js) it hands a player another
+  // party's server. No instance yet means no connect yet, and the launcher keeps waiting.
+  const inst = st.instances.find((i) => i.match_id === a.match_id)
   if (!inst || !inst.port) return null
   const host = box.address || (st.host && st.host.public_ip) || null
   return host ? `${host}:${inst.port}` : null

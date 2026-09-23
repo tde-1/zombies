@@ -49,6 +49,12 @@ if (!mapKey && !watchId) {
 // on the box at all. Only this process sees the override; see maps.js PROOF_MAPS.
 if (arg('proof') === true && mapKey) process.env.ZM_PROOF_MAPS = String(mapKey)
 
+// AN AGENT LEASE (lib/assignments.js "SEVERAL GAMES PER BOX"). Everything this tool leases
+// is an agent's unless `--real` says a person is going to play it: it may use the box's
+// reserve slot, it never takes the last slot a real player is entitled to, and a real
+// player's Play supersedes it when the box is full. `--real` is for leasing on B's behalf.
+if (arg('real') !== true) process.env.ZM_AGENT_LEASE = '1'
+
 const DATA_DIR = process.env.ZM_DATA_DIR || path.join(__dirname, '..', 'data')
 const DB_PATH = process.env.ZM_DB_PATH || path.join(DATA_DIR, 'zombies.db')
 if (!fs.existsSync(DB_PATH)) { console.error(`no database at ${DB_PATH}`); process.exit(1) }

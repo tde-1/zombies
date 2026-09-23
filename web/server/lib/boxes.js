@@ -60,8 +60,15 @@ function touch(box, patch = {}) {
 const LEASE_GRACE_MS = 90_000
 
 function recordStatus(box, body) {
+  // A per-game post (`{ state: 'ready', match_id, port }`) is not the box's whole picture.
+  // It used to REPLACE the heartbeat's, so for up to ten seconds after every ready the
+  // stored status had no instance list (no connect string) and no protocol (capacity 1).
+  // The heartbeat's box-wide fields are carried over until the next heartbeat.
+  const prev = safeJson((db.prepare('SELECT last_status_json FROM boxes WHERE id=?').get(box.id) || {}).last_status_json, null) || {}
+  const stored = { ...(body || {}) }
+  for (const k of ['instances', 'host', 'protocol', 'max_instances']) if (stored[k] === undefined && prev[k] !== undefined) stored[k] = prev[k]
   db.prepare('UPDATE boxes SET last_status_json=?, last_state=?, last_poll=? WHERE id=?')
-    .run(JSON.stringify(body || {}), (body && body.state) || null, now(), box.id)
+    .run(JSON.stringify(stored), (body && body.state) || null, now(), box.id)
   reapGhostLeases(box, body)
 }
 
@@ -170,6 +177,7 @@ function list() {
     note: b.note,
     enabled: !!b.enabled,
     max_instances: b.max_instances,
+    reserve: b.reserve == null ? null : b.reserve,
     online: !!(b.last_poll && now() - b.last_poll < STALE_MS),
     last_poll: b.last_poll,
     last_state: b.last_state,
@@ -213,7 +221,32 @@ function setEnabled(id, on) {
   return byId(id)
 }
 
-/** A box that has polled recently and has room. Used when leasing a game. */
+/** Enabled boxes that have polled recently, freshest first. `assignments.lease()` asks each one. */
+function online() {
+  return db.prepare('SELECT * FROM boxes WHERE enabled=1 AND last_poll > ? ORDER BY last_poll DESC').all(now() - STALE_MS)
+}
+
+/**
+ * How many games a box may hold, and how many of those are kept for agents
+ * (`assignments.capacity()`). `reserve` null means the default: 1 on a box of 3 or more.
+ */
+function setCapacity(name, { maxInstances, reserve } = {}) {
+  const b = byName(name)
+  if (!b) return null
+  if (maxInstances != null) {
+    const n = Math.floor(Number(maxInstances))
+    if (!(n >= 1 && n <= 16)) throw new Error('max_instances is 1..16')
+    db.prepare('UPDATE boxes SET max_instances=? WHERE id=?').run(n, b.id)
+  }
+  if (reserve !== undefined) {
+    const r = reserve === null || reserve === '' ? null : Math.floor(Number(reserve))
+    if (r != null && !(r >= 0 && r <= 16)) throw new Error('reserve is 0..16, or null for the default')
+    db.prepare('UPDATE boxes SET reserve=? WHERE id=?').run(r, b.id)
+  }
+  return byName(name)
+}
+
+/** A box that has polled recently and has room. Kept for callers outside the lease path. */
 function pickFree() {
   const cutoff = now() - STALE_MS
   const rows = db.prepare('SELECT * FROM boxes WHERE enabled=1 AND last_poll > ? ORDER BY last_poll DESC').all(cutoff)
@@ -231,6 +264,6 @@ function log(event, actor, meta) {
 
 module.exports = {
   STALE_MS, authenticate, touch, recordStatus, offerKey, keyMatchesPin,
-  acceptPendingKey, rejectPendingKey, byName, byId, nameOf, list, create, setEnabled, setAddress, pickFree,
+  acceptPendingKey, rejectPendingKey, byName, byId, nameOf, list, create, setEnabled, setAddress, pickFree, online, setCapacity,
   reapGhostLeases, LEASE_GRACE_MS,
 }

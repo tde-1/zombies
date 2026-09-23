@@ -396,6 +396,7 @@ function ServerCard({ R }) {
   const statusLabel = state === 'ready-check'
     ? `${readyN} of ${p.members.length} ready`
     : state === 'launching' ? 'Starting'
+      : R.resumable ? 'You left the game · still up'
       : state === 'in-game' ? `In game · ${MODE_WORD[R.mode] || 'Verified'}`
         : modeLabel
   const meRow = p && R.me ? p.members.find((m) => m.steam_id === R.me.steam_id) : null
@@ -413,6 +414,16 @@ function ServerCard({ R }) {
   let primary = null
   if (!map) {
     primary = null
+  } else if (R.resumable) {
+    // A crash or Alt+F4 out of a game that is still up (a Quit from the Esc menu never
+    // gets here: it cancels the server). Ten minutes, then the server goes.
+    const mins = Math.max(1, Math.ceil((R.resumable.until - Date.now()) / 60_000))
+    primary = (
+      <button className="prail-server-launch" disabled={R.busy} onClick={() => R.resume()}
+              title={`The server is kept for you for about ${mins} more minute${mins === 1 ? '' : 's'}`}>
+        Resume
+      </button>
+    )
   } else if (!R.approved) {
     primary = <button className="prail-server-launch" disabled>Approval required</button>
   } else if (!playable && (state === 'forming' || state === 'ready-check')) {

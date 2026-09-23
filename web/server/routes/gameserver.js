@@ -8,7 +8,8 @@
 // its side, so every route name, header, query parameter and response key below is theirs,
 // not ours:
 //
-//   GET  /api/gs/assignment              what should this box be running?  (nonce-cached)
+//   GET  /api/gs/assignment[?v=2]        what should this box be running?  (nonce-cached;
+//                                        v=2 lists every live lease, see lib/assignments.js)
 //   GET  /api/gs/keys                    the site's invite-token public key
 //   POST /api/gs/status                  booting / ready / live / idle heartbeat
 //   POST /api/gs/result                  the summary + where the replay went
@@ -44,6 +45,7 @@ const chatSystem = require('../lib/chatSystem')
 const presence = require('../lib/presence')
 const live = require('../lib/live')
 const siteKeys = require('../lib/siteKeys')
+const seats = require('../lib/seats')
 const { db, now } = require('../db/database')
 
 function router() {
@@ -63,7 +65,11 @@ function router() {
   // ---- assignment ------------------------------------------------------------------
   r.get('/assignment', (req, res) => {
     boxes.touch(req.box)
-    res.json(assignments.forBox(req.box))
+    // `?v=2`: every live lease on the box (lib/assignments.js forBox). No `v` is an old
+    // host agent, which gets the newest lease alone and a capacity of one.
+    const v = Number(req.query.v || 1) || 1
+    assignments.notePoll(req.box, v)
+    res.json(assignments.forBox(req.box, { v }))
   })
 
   // ---- keys ------------------------------------------------------------------------
@@ -93,7 +99,12 @@ function router() {
     const body = req.body || {}
     const items = Array.isArray(body.instances) ? body.instances : [body]
     let taken = 0
-    for (const it of items.slice(0, 16)) if (live.push(req.box.name, it)) taken++
+    for (const it of items.slice(0, 16)) {
+      // Who is connected to which match (lib/seats.js): what keeps the launcher from
+      // relaunching a player who is already in, or who has just left, a game.
+      try { if (it && it.match_id) seats.observe(it.match_id, it.state) } catch (e) { console.warn('[gs] seats:', e.message) }
+      if (live.push(req.box.name, it)) taken++
+    }
     res.json({ ok: true, taken, of: items.length, min_frame_ms: live.MIN_FRAME_MS })
   })
 
@@ -110,6 +121,8 @@ function router() {
     // Presence: the box roster beats the lobby seat (11 §9). Everything the box says is in
     // a game is in a game, whatever the site's parties table thinks.
     try { markRoster(req.box, body) } catch (e) { console.warn('[gs] presence:', e.message) }
+    // A lease everybody left ten minutes ago (and nobody resumed) is over (lib/seats.js).
+    try { seats.sweep() } catch (e) { console.warn('[gs] seats sweep:', e.message) }
 
     res.json({
       ok: true,
@@ -235,7 +248,7 @@ function markRoster(box, body) {
       if (!p.steamid || !p.connected) continue
       presence.markInGame(p.steamid, { matchId, mapKey: g.map, box: box.name })
     }
-    if (matchId) live.push(box.name, { instance: inst.id || g.instance, match_id: matchId, state: g })
+    if (matchId) { seats.observe(matchId, g); live.push(box.name, { instance: inst.id || g.instance, match_id: matchId, state: g }) }
   }
 }
 

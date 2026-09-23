@@ -767,6 +767,20 @@ function migrate() {
   // it is `127.0.0.1`.
   addColumn('boxes', 'address', 'TEXT')
 
+  // SEVERAL GAMES PER BOX (2026-09-23, lib/assignments.js "SEVERAL GAMES PER BOX").
+  // `reserve`: slots on this box only an agent lease may take (NULL = 1 on a box of 3 or
+  // more, else 0). `agent`: this lease is an agent's, so it may use the reserve and it is
+  // the one a real player's lease supersedes when the box is full.
+  //
+  // zombies-dev runs three instances since dedi.md §19 (three game copies, one lobby port
+  // each). Written ONCE, on the migration that adds the column, so an admin who changes
+  // it afterwards (POST /api/admin/boxes/:name/capacity) is never overruled by a restart.
+  if (addColumn('boxes', 'reserve', 'INTEGER')) {
+    const n = db.prepare("UPDATE boxes SET max_instances=3 WHERE name='zombies-dev'").run().changes
+    if (n) console.log('[db] zombies-dev: max_instances 3 (three instance slots, dedi.md §19)')
+  }
+  addColumn('assignments', 'agent', 'INTEGER DEFAULT 0')
+
   // Where a map's picture came from (2026-09-22, tools/maps/map_art.py): `site` (scraped
   // art), `iwd` (the map's own loading screen), `stock` (WaW's), or `placeholder` (a
   // generated card). The map page credits it, and a generated card must never pass for a
