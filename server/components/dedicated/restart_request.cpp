@@ -27,6 +27,7 @@
 #include "../../../shared/core/component.hpp"
 
 #include "../../../shared/core/frame.hpp"
+#include "../../../shared/core/game.hpp"
 #include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/logger.hpp"
 #include "../../../shared/core/memory.hpp"
@@ -45,9 +46,30 @@ constexpr uintptr_t kSvPausedDvar = 0x1F9645C;   // dvar_s* sv_paused; pause.cpp
 constexpr size_t kDvarCurrent = 0x10;
 constexpr int kSlots = 4;
 constexpr uint32_t kPollMs = 100;
-constexpr uint32_t kDebounceMs = 15000;          // one restart per 15 s, whoever asks
+constexpr uint32_t kDebounceMs = 3000;           // [RS] at most one request per 3 s, whoever asks,
+                                                 // and none while one is still pending (was 15 s:
+                                                 // a real second restart 10 s in was dropped)
 constexpr uint32_t kHostAnswerMs = 15000;
 constexpr uint32_t kLocalWaitMs = 5000;          // for the pause gate to let go
+
+// [RS] THE MAP_RESTART THAT FAULTED ON bridge_zombie (esc-menu.md §12.5, runs rs8-rs10: every
+// restart, 3 of 3 and 4 of 4). SV_SpawnServer's helper 0x5AA020 re-registers g_gametype on a
+// map_restart and, read from the dump:
+//     0x5AA078  call Dvar_FindVar("ui_gametype")          ; by NAME
+//     0x5AA0A9  eax = found->current.string
+//     0x5AA0AC  cmp byte [eax], 0 ; je -> "cmp"
+//     0x5AA0B7  mov ecx, [0x208E8E8]                      ; the UI's own ui_gametype POINTER
+//     0x5AA0BD  mov eax, [ecx+0x10]                       ; <- NULL on a dedicated server
+// The pointer is stored only by the UI's registrar (0x5D0549), which a dedicated server never
+// runs. A map whose scripts create `ui_gametype` by name (bridge_zombie: g_gametype `zombies`)
+// makes the lookup succeed and the NULL pointer is read: an access violation the engine's
+// abortframe swallows, a half-restarted server, no gamestate to the client, no round. Stock
+// Nacht never creates the dvar, takes the "cmp" branch and restarts fine. The listen server
+// has the pointer, so the fix is the listen server's state: when a dvar named ui_gametype
+// exists and the slot is still NULL, the slot gets that dvar. The engine then does exactly
+// what it does in a hosted game (g_gametype := ui_gametype). Same class as dedi.md §25/§26.
+constexpr uintptr_t kUiGametypeSlot = 0x208E8E8;
+constexpr uintptr_t kUiGametypeRead = 0x5AA0B7;   // 8B 0D E8 E8 08 02  mov ecx, [0x208E8E8]
 
 std::string userinfo_value(const std::string& info, const char* key) {
     // "\k\v\k\v": keys at odd positions after splitting on '\'.
@@ -131,15 +153,56 @@ private:
             if (v.rfind("restart.", 0) == 0) on_request(i, c->name, v);
         }
         pending_tick(now);
+        ui_gametype_tick();
+    }
+
+    // [RS] See kUiGametypeSlot. Checked once a second; cheap (one read, and a lookup only
+    // while the slot is NULL). Off switch: ENW_DEDI_NO_UI_GAMETYPE=1.
+    void ui_gametype_tick() {
+        if (ui_state_ == ui_state::done || ui_state_ == ui_state::off) return;
+        const uint32_t now = game_link::now_ms();
+        if (now - ui_last_ < 1000) return;
+        ui_last_ = now;
+        if (ui_state_ == ui_state::unchecked) {
+            if (std::getenv("ENW_DEDI_NO_UI_GAMETYPE")) {
+                ui_state_ = ui_state::off;
+                ENW_INFO("restart_request: ui_gametype slot fix OFF (ENW_DEDI_NO_UI_GAMETYPE)");
+                return;
+            }
+            const uint8_t want[6] = {0x8B, 0x0D, 0xE8, 0xE8, 0x08, 0x02};
+            uint8_t got[6] = {};
+            if (!memory::read_raw(at(kUiGametypeRead), got, sizeof got) || std::memcmp(got, want, sizeof want) != 0) {
+                ui_state_ = ui_state::off;
+                ENW_ERROR("restart_request: NOT touching the ui_gametype slot -- 0x%08X is not `mov ecx, "
+                          "[0x208E8E8]` in this exe", static_cast<unsigned>(kUiGametypeRead));
+                return;
+            }
+            ui_state_ = ui_state::watching;
+        }
+        uint32_t slot = 0;
+        if (!memory::read(at(kUiGametypeSlot), &slot)) return;
+        if (slot) {   // somebody (a listen server, a later build) already filled it
+            ui_state_ = ui_state::done;
+            return;
+        }
+        game::dvar_s* d = game::find_dvar("ui_gametype");
+        if (!d) return;   // the map never made one: the engine takes its "cmp" branch, no read
+        const uint32_t p = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(d));
+        if (memory::write(at(kUiGametypeSlot), p)) {
+            ui_state_ = ui_state::done;
+            ENW_INFO("restart_request: the map created ui_gametype by name (dvar_s %08X) and its slot [0x%08X] "
+                     "was NULL on this dedicated server -- filled, so a map_restart no longer faults at "
+                     "0x5AA0BD (esc-menu.md §12)", p, static_cast<unsigned>(kUiGametypeSlot));
+        }
     }
 
     void on_request(int slot, const std::string& who, const std::string& value) {
         const uint32_t now = game_link::now_ms();
         ++requests_;
-        if (last_restart_ && now - last_restart_ < kDebounceMs) {
-            ENW_INFO("restart_request: slot %d ('%s') asked again (%s) %u ms after the last restart: "
-                     "ignored (one per %u s)", slot, who.c_str(), value.c_str(), now - last_restart_,
-                     kDebounceMs / 1000);
+        if ((last_restart_ && now - last_restart_ < kDebounceMs) || (mode_ != pending::none && now - since_ < 5000)) {
+            ENW_INFO("restart_request: slot %d ('%s') asked again (%s) %u ms after the last request: "
+                     "ignored (%s)", slot, who.c_str(), value.c_str(), now - last_restart_,
+                     mode_ != pending::none ? "that one is still under way" : "one per 3 s");
             return;
         }
         auto& link = game_link::get();
@@ -231,6 +294,9 @@ private:
     int players_ = 0;
     int requests_ = 0;
     int restarts_ = 0;
+    enum class ui_state { unchecked, watching, done, off };
+    ui_state ui_state_ = ui_state::unchecked;
+    uint32_t ui_last_ = 0;
     pending mode_ = pending::none;
 };
 

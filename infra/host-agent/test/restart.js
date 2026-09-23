@@ -153,6 +153,8 @@ t('a second restart on the successor is run 3 of the same lease', () => {
   onRestartRequest(g, { slot: 0 })
   g.referee.onEvent({ t: 'game_over', ms: 5000, round: 3, reason: 'player_restart', players: [] })
   const n2 = handOver(g)
+  eq(onRestartRequest(n2, { slot: 0 }).ok, false, '[RS] not before the map is back (spam)')
+  n2.referee.onEvent({ t: 'map_loaded', ms: 0, map: 'nazi_zombie_prototype' })
   n2.referee.onEvent({ t: 'player_connect', ms: 0, slot: 0, name: 'p0', steamid: A, token: 'x' })
   n2.referee.setIdentity(0, 'verified')
   eq(onRestartRequest(n2, { slot: 0 }).ok, true)
@@ -207,6 +209,72 @@ t('nobody else is carried: another steamid, another lease, a forged token', () =
   eq(next.restartAdmit({ token: issue(site.privateKey, { steamid: B, matchId: LEASE }), steamid: B }), null, 'B was never verified')
   eq(next.restartAdmit({ token: issue(site.privateKey, { steamid: A, matchId: 'm_other' }), steamid: A }), null, 'wrong lease')
   eq(next.restartAdmit({ token: issue(other.privateKey, { steamid: A, matchId: LEASE }), steamid: A }), null, 'forged')
+})
+
+console.log('\n== [RS] a restart after the run ended on its own (the restart grace) ==')
+
+// What Game.finish leaves behind while it holds the instance: the run is finished, its
+// replay signed, and `graceOpen` waits for a restart or the timer.
+function ended(opts) {
+  const g = game(opts)
+  g.referee.onEvent({ t: 'game_over', ms: 35000, round: 1, reason: 'end_game notify', players: [] })
+  g.finished = true
+  g.matchEndSeen = true
+  g.graceResult = null
+  g.graceOpen = { until: Date.now() + 10000, resolve: (why) => { g.graceResult = why; g.graceOpen = null } }
+  return g
+}
+
+t('solo, a second after game over: accepted; successor r2 on the lease; `end` goes out on the new run', () => {
+  const host = makeHost()
+  const g = ended({ host })
+  const r = onRestartRequest(g, { t: 'restart_request', slot: 0, name: 'p0', players: 1 })
+  eq([r.ok, r.afterEnd], [true, true], 'accepted after the end')
+  eq(g.graceResult, 'restart', 'the grace ends with a restart (the result posts lease_continues)')
+  const next = host.byInstance.get('inst-01')
+  eq(next.matchId, `${LEASE}.r2`, 'run 2 of the lease')
+  eq(next.conn && next.conn.name, 'the socket', 'the link moved')
+  ok(next.absorbing, 'the new run absorbs until the map is back')
+  const end = next.sent.find((c) => c.t === 'end')
+  eq([end.reason, end.match], ['player_restart', LEASE], '`end` on the new run carries the lease')
+  eq(g.restartCmdId, end.id, 'the refusal watch keys on this command')
+  ok(!g.referee.flags.has('abandoned'), 'a run that ended on its own is not abandoned')
+  eq([...g.restartCarry], [A], 'the verified player is carried')
+})
+
+t('after the end, co-op: an unverified player is refused; the grace keeps waiting', () => {
+  const g = ended({ players: [[0, A, 'verified'], [1, B, 'claimed']] })
+  eq(onRestartRequest(g, { slot: 1 }).ok, false, 'refused')
+  ok(g.graceOpen, 'still open for somebody who may')
+  eq(onRestartRequest(g, { slot: 0 }).ok, true, 'the verified player may')
+})
+
+t('after the end with no grace (0, or expired): ignored as before', () => {
+  const g = ended()
+  g.graceOpen = null
+  eq(onRestartRequest(g, { slot: 0 }).ok, false)
+})
+
+t('after the end, spam: the second request is ignored (a restart is under way)', () => {
+  const host = makeHost()
+  const g = ended({ host })
+  eq(onRestartRequest(g, { slot: 0 }).ok, true)
+  eq(onRestartRequest(g, { slot: 0 }).ok, false, 'the finished run ignores the repeat')
+  const next = host.byInstance.get('inst-01')
+  eq(onRestartRequest(next, { slot: 0 }).ok, false, 'nor the new run before its map is back')
+  next.referee.onEvent({ t: 'map_loaded', ms: 0, map: 'nazi_zombie_prototype' })
+  next.referee.onEvent({ t: 'player_connect', ms: 0, slot: 0, name: 'p0', steamid: A, token: 'x' })
+  next.referee.setIdentity(0, 'verified')
+  eq(onRestartRequest(next, { slot: 0 }).ok, true, 'the new run takes its own restart once it is up')
+  clearTimeout(next.restartTimer)
+})
+
+t('after the end with the link gone: nothing handed over, the grace expires', () => {
+  const g = ended()
+  g.conn = null
+  eq(onRestartRequest(g, { slot: 0 }).ok, false)
+  eq(g.graceResult, 'expired')
+  eq(g.restarting, null, 'not left half-restarting')
 })
 
 console.log(`\nrestart: ${pass} passed, ${fail} failed`)

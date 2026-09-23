@@ -165,6 +165,10 @@ function router() {
       // the rail's server card offers Resume).
       state: seats.phaseOf(party, launch, sid),
       resume: seats.resumeInfo(launch, sid),
+      // [RS] The box closed this player's server for want of players (host lib/idle.js):
+      // `{match_id, rule, text}` for a few minutes, while there is no newer match. A launcher
+      // still waiting on that match shows `text` and stops (launcher bootflow.js).
+      closed: launch && launch.match_id ? null : seats.closedFor(sid),
       party: party ? { id: party.id, code: party.code, mode: party.mode, visibility: party.visibility, members: party.members, all_ready: party.all_ready, is_leader: party.is_leader } : null,
       map: m ? mapPayload(m) : null,
       match: launch ? {
@@ -201,6 +205,12 @@ function router() {
     }
     if (b.mode) {
       const set = parties.setMode(sid, String(b.mode))
+      if (!set.ok) return res.status(400).json(set)
+    }
+    // The map's own game mode (game-modes.md). Absent = whatever the party has (the map's
+    // default unless the leader picked one on the site).
+    if (b.game_mode) {
+      const set = parties.setGameMode(sid, String(b.game_mode))
       if (!set.ok) return res.status(400).json(set)
     }
     const party = parties.forPlayer(sid)

@@ -237,7 +237,9 @@ try {
     await Q.third()
     const rf = await Q.ev('window.__r3d.fx()')
     check(`real replay ${real}: plays, held weapons from its snapshot column`, rf && rf.gear.slots.length > 0, rf && rf.gear.slots)
-    check(`real replay ${real}: no FX cues, silent`, rf.sound.available === false, rf.sound)
+    // Lane RV (replay.md §14) retracted "an old replay is silent": B heard exactly that and called it
+    // broken. A file with no recorded cues now sounds from its attack presses and health drops.
+    check(`real replay ${real}: no recorded FX cues, so its sound comes from the attack button (§14)`, rf.sound.available === true && rf.sound.enabled === true, rf.sound)
     await Q.shot(`r3-real-${real}`)
     check(`no page exceptions (${real})`, Q.exceptions.length === 0, Q.exceptions)
     await Q.close()

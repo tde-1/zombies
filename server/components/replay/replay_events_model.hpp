@@ -29,8 +29,22 @@
 
 namespace enw::replay_ev {
 
-constexpr int kVersion = 1;                 // the `replay_events` value in map_loaded / the .enwr header
+// The `replay_events` value in map_loaded / the .enwr header. 1: replay-events-v1. 2 (2026-09-23,
+// lane RV): v1 + the per-player `ads` snap field (ps.fWeaponPosFrac, replay-events-v1.md section 3).
+// Additive: a v1 reader ignores the field, and nothing compares the number for equality.
+constexpr int kVersion = 2;
 constexpr int kMaxPlayers = 4;
+
+// ps.fWeaponPosFrac (0 = hip, 1 = fully aimed down the sights) as the snap writes it: tenths,
+// 0..10, so a 0.2-0.4 s transition is a handful of values and a held aim is one. -1 = unusable
+// (NaN, or a read that is not a fraction at all), and then nothing is written.
+inline int ads_tenths(float frac) {
+    if (!(frac == frac)) return -1;               // NaN
+    if (frac < -0.01f || frac > 1.01f) return -1; // not a fraction: the offset is wrong, say nothing
+    if (frac < 0.0f) frac = 0.0f;
+    if (frac > 1.0f) frac = 1.0f;
+    return static_cast<int>(frac * 10.0f + 0.5f);
+}
 constexpr int kMaxEnt = 1024;               // MAX_GENTITIES
 constexpr int kEvFireWeapon = 0x1C;         // [V] 0x420C8A: `mov ecx,0x1D / jne / mov ecx,0x1C / call BG_AddEvent`
 constexpr int kEvFireWeaponLastShot = 0x1D; // [V] same site; T4SP enums.hpp agrees

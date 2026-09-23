@@ -194,6 +194,14 @@ async function main () {
     const x = ev({ exit_code: 1 }, { 'enw-3.log': 'nothing' })
     eq(x.flags.join(), 'exit_abnormal'); eq(x.severity, 2)
   })
+  await check('flags (lane CL): overlay_guard\'s start-up INFO line is not a crash; the hang verdict reaches the detail', () => {
+    const quiet = ev({ reason: 'game_exit', exit_code: 0, session: { exit: 'quit' } }, { 'enw-5.log': "[15:12:40.694] [INFO ] overlay_guard: unhandled exceptions are named before the engine's filter (previous 005FF510)." })
+    eq(quiet.flags.includes('crash'), false, String(quiet.flags))
+    const real = ev({ reason: 'game_crash' }, { 'enw-6.log': '[1] [ERROR] overlay_guard: UNHANDLED EXCEPTION 0xC0000005 at 0x0041A2B3' })
+    truthy(real.flags.includes('crash'))
+    const h = ev({ reason: 'game_hang', session: { exit: 'hang', hang_where: 'main waits on the render lock; holder tid 7 at 0x0070E370 (CoDWaW.exe)' } }, { 'enw-7.log': '[1] [ERROR] hang_watchdog: the MAIN THREAD (tid 1) has not ticked for 8000 ms in a map.' })
+    has(h.hits.hang.detail, 'render lock; holder tid 7')
+  })
   await check('flags: host — instance crash, pull failure, lease refused, host errors, oom, box resources, result spooled', () => {
     const r = evaluate({ manifest: { kind: 'host', reason: 'pull_failed', host: { disk_free_gb: 1.2, mem_free_mb: 900 } }, files: [], texts: new Map([
       ['host.log', [
@@ -292,6 +300,18 @@ async function main () {
     for (const f of ['asset_limit', 'map_oom', 'com_error']) truthy(r.flags.includes(f), `flag ${f} in ${r.flags}`)
     has(r.hits.asset_limit.detail, 'loaded_sound'); has(r.hits.asset_limit.detail, 'snddriverglobals'); has(r.hits.asset_limit.detail, '§11.4')
     eq(r.severity, 2)
+  })
+  await check('flags: solo_parity MISMATCH from the server DLL (dedi.md section 28)', () => {
+    // Real lines, g2r1 (nacht_reimagined on a dedi without the water fix), enw-<pid>.log.
+    const r = ev({ kind: 'host' }, { 'enw-4412.log': [
+      '[17:36:49.178] [INFO ] solo_parity: slot 0 SPAWNED at (14.3 -914.0 -47.7) health 95/100 pm_type 0 on nothing gravity 800 speed 190 box (-15 -15 0)-(15 15 70)',
+      '[17:36:49.178] [WARN ] solo_parity: MISMATCH slot 0: spawned HURT: health 95 of 100 before the player could move',
+      '[17:36:54.180] [WARN ] solo_parity: MISMATCH slot 0: FLOATING: off the ground for 5000 ms at (14.3 -914.0 -48.6), vel z -3 -- a solo player stands on the floor',
+    ].join('\n') })
+    truthy(r.flags.includes('solo_parity'), `flags ${r.flags}`)
+    eq(r.severity, 2)
+    const clean = ev({}, { 'enw-1.log': '[1] [INFO ] solo_parity: slot 0 SPAWNED at (0.0 424.0 18.0) health 100/100 pm_type 0 on world' })
+    eq(clean.flags.includes('solo_parity'), false, 'a normal spawn line is not a flag')
   })
   await check('flags: record refused, excerpts capped at 300 lines per flag', () => {
     const lines = Array.from({ length: 2000 }, (_, i) => (i % 3 === 0 ? `[1] [WARN] fps_guard: com_maxfps 333 is outside the Verified rule (85..250) -> set to 250 ${i}` : `[1] [INFO] x ${i}`)).join('\n')

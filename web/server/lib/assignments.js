@@ -22,6 +22,7 @@ const tokens = require('./tokens')
 const boxes = require('./boxes')
 const enw = require('./enw')
 const maps = require('./maps')
+const gameModes = require('./gameModes')   // a map's own modes (game-modes.md)
 
 const nonceOf = (x) => sha256hex(canonical(x)).slice(0, 12)
 
@@ -182,11 +183,16 @@ function lease(o) {
     ? safeJson((db.prepare('SELECT json FROM manifests WHERE map_version_id=?').get(version.id) || {}).json, null)
     : null
 
+  // The map's own game mode (game-modes.md): the party's pick if the map offers it, else the
+  // map's default; nothing at all for a map without modes. The box gets the full answer spec
+  // (lib/gameModes.leaseSpec) and re-checks every token of it.
+  const gameMode = gameModes.resolve(map.key, o.gameMode)
   const core = {
     match_id: matchId,
     map: map.key,
     fs_game: (version && version.fs_game) || null,
     mode,
+    ...(gameMode ? { game_mode: gameModes.leaseSpec(map.key, gameMode) } : {}),
     settings,
     players,
     whitelist: players.map((p) => p.steamid),
@@ -225,14 +231,15 @@ function lease(o) {
   if (verdict.yieldRow) supersede(verdict.yieldRow, `agent lease yields to ${matchId}`, o.by)
 
   db.prepare(`INSERT INTO assignments (box_id, match_id, party_id, map_key, map_version_id, fs_game, mode,
-      settings_json, players_json, tokens_json, vip, kind, nonce, state, issued_at, agent)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 'leased', ?, ?)`)
+      settings_json, players_json, tokens_json, vip, kind, nonce, state, issued_at, agent, game_mode)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 'leased', ?, ?, ?)`)
     .run(box.id, matchId, o.partyId || null, map.key, version ? version.id : null, core.fs_game, mode,
-      JSON.stringify(settings), JSON.stringify(players), JSON.stringify(tok), vip ? 1 : 0, 'game', nonce, now(), agent ? 1 : 0)
+      JSON.stringify(settings), JSON.stringify(players), JSON.stringify(tok), vip ? 1 : 0, 'game', nonce, now(), agent ? 1 : 0,
+      gameMode)
 
   db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('assignment.lease', ?, ?, ?)")
     .run(o.by || null, JSON.stringify({
-      box: box.name, match_id: matchId, map: map.key, mode, players: players.length, agent,
+      box: box.name, match_id: matchId, map: map.key, mode, game_mode: gameMode, players: players.length, agent,
       replaced: own.map((r) => r.match_id), yielded: verdict.yieldRow ? verdict.yieldRow.match_id : null,
     }), now())
 
@@ -255,13 +262,22 @@ function forBox(box, { v = 1 } = {}) {
     return {
       v: 2,
       status: list.length ? 'leased' : 'idle',
-      nonce: list.length ? nonceOf(list.map((x) => x.nonce)) : 'idle',
+      // [RS] `hold_idle` changes without the lease changing, and the box only re-reads the
+      // list when this nonce moves, so it is part of it.
+      nonce: list.length ? nonceOf(list.map((x) => x.nonce + (x.hold_idle ? '+hold' : ''))) : 'idle',
       assignments: list,
     }
   }
   const a = rows[rows.length - 1]
   if (!a) return { status: 'idle', nonce: 'idle' }
   return shapeOf(a)
+}
+
+function joinHold(a) {
+  try {
+    const players = (safeJson(a.players_json, []) || []).map((p) => p && p.steamid).filter(Boolean)
+    return require('./seats').joinInProgress(a.match_id, a.party_id, players)
+  } catch { return false }
 }
 
 function shapeOf(a) {
@@ -271,11 +287,17 @@ function shapeOf(a) {
     map: a.map_key,
     fs_game: a.fs_game,
     mode: a.mode,
+    // Rebuilt from the catalogue by id, so the nonce the site computed at lease time and what
+    // the box receives describe the same answer. Absent for a map without modes.
+    ...(a.game_mode ? { game_mode: gameModes.leaseSpec(a.map_key, a.game_mode) } : {}),
     settings: safeJson(a.settings_json, {}),
     players: safeJson(a.players_json, []),
     whitelist: (safeJson(a.players_json, []) || []).map((p) => p.steamid),
     vip: !!a.vip,
     kind: a.kind,
+    // [RS] A join in progress (a download, a Resume on its way): the box must not close this
+    // lease for want of players yet (host lib/idle.js). Only present when true.
+    ...(joinHold(a) ? { hold_idle: true } : {}),
     // An agent's lease (lease-cli). The host needs it to allow `settings.dev` (dedi.md §23).
     agent: !!a.agent,
     tokens: safeJson(a.tokens_json, {}),
@@ -293,7 +315,7 @@ function manifestFor(a) {
 }
 
 /** The box said `ready` / `live` / `booting` / `preparing` / `failed` / `yielded`. */
-function ack(box, state, matchId, error = null) {
+function ack(box, state, matchId, error = null, extra = {}) {
   if (!matchId) return
   const a = db.prepare('SELECT * FROM assignments WHERE match_id=? AND box_id=?').get(String(matchId), box.id)
   if (!a) return
@@ -307,6 +329,19 @@ function ack(box, state, matchId, error = null) {
     if (a.party_id) db.prepare("UPDATE parties SET state='forming', match_id=NULL WHERE id=? AND match_id=?").run(a.party_id, a.match_id)
     db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('assignment.box_failed', ?, ?, ?)")
       .run(box.name, JSON.stringify({ match_id: a.match_id, error: error ? String(error).slice(0, 300) : null }), now())
+    return
+  }
+  // [RS] `no_players`: the box closed a lease whose map was ready and nobody joined (host
+  // lib/idle.js, esc-menu.md §13). Any lease still going ends here, the party goes back to
+  // forming, and a launcher that is still waiting is told why (seats.closedFor).
+  if (state === 'no_players') {
+    if (!['leased', 'ready', 'live'].includes(a.state)) return
+    db.prepare("UPDATE assignments SET state='cancelled', ended_at=? WHERE id=?").run(now(), a.id)
+    if (a.party_id) db.prepare("UPDATE parties SET state='forming', match_id=NULL, ready_since=NULL WHERE id=? AND match_id=?").run(a.party_id, a.match_id)
+    const players = (safeJson(a.players_json, []) || []).map((p) => p && p.steamid).filter(Boolean)
+    require('./seats').noteClosed(a.match_id, players, extra.rule || 'never_joined')
+    db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('assignment.idle_closed', ?, ?, ?)")
+      .run(box.name, JSON.stringify({ match_id: a.match_id, reason: 'no_players', rule: extra.rule || 'never_joined', detail: error ? String(error).slice(0, 300) : null, ready_at: a.ready_at || null }), now())
     return
   }
   // `yielded`: the box retired an AGENT's game to make room for a real player's - it was

@@ -291,3 +291,38 @@ frame; also a named node in the `.glb`), sprite `muzzle.spriteUrl`, additive.
 * **Sounds not listened to** (levels checked, formats decoded).
 * **Not run on another PC** or another game copy; the script's only machine-specific defaults
   are the paths above, all overridable.
+
+## 7. 2026-09-23 (lane RV): every stock gun, the first-person arms, viewmodel poses
+
+Same command. What changed (replay.md §14 has the why):
+
+* **Zones**: `nazi_zombie_factory` and `common` also unlink `xanim` (the Colt's viewmodel anims
+  live in `common`). `export_assets.py` also keeps `Unlinker --list` of each zone in
+  `assetwork\lists\` (stamped by the `.ff`'s size/mtime) — zone order is how a sound alias finds
+  its loaded sound, and this makes it part of the pipeline instead of R2's throwaway lists.
+* **Weapons listed by weapon file only.** A manifest weapon without `world`/`view`/`flash`/`fire`
+  gets them from its weapon file; `fire`/`fire_plr` resolve the weapon's `fireSound` /
+  `fireSoundPlayer` alias by zone order (`resolve_alias`: the `loadedsound` lines right before
+  `sound, <alias>`, in the weapon's zone, then every loadedsound zone). An upgraded gun whose alias
+  is `*_ubershot_*` uses `uber_fire(_plr)`. An alias the lists cannot name gets
+  `sound_stand_ins[cls]` (logged, and `soundStandIn` in `_assets.json`). No `grip` → the default
+  `DEFAULT_GRIP_POINT` [-10.5, -2, 0] (`gripPointSource` says so). `aliases:` add older maps' names
+  to `weaponByEngineName`.
+* **17 guns added, each with its PaP**: `sw_357 kar98k gewehr43 m1garand m1garand_gl stg44
+  type100_smg ppsh shotgun doublebarrel bar fg42 30cal mg42 ptrs41 panzerschrek m2_flamethrower`.
+  Stand-ins: Kar98k third-person fire, MG42 first-person fire; the flamethrower is silent (no
+  fire sound in its file). Not in the pack: Shi No Numa's Arisaka and sawed-off, Nacht's
+  Springfield (other zones; the viewer draws them as the fake gun).
+* **`viewhands:`** → `_weapons/viewhands_marine.glb`: `viewmodel_usa_marine_arms` (what every
+  stock zombies map's `_loadout.gsc` sets), skinned with `export_models.py`'s writer, 70 joints,
+  186 KB. `_assets.json`: `viewhands`, `viewhandsDefault`.
+* **`_weapons/fp_poses.json`** (`fpPoses`): for each weapon file's `idleAnim` its first frame, and
+  for its `adsUpAnim` EVERY frame (the engine scrubs it by the aim fraction), bone-local
+  `[quat|null, trans|null]` in the engine frame, only for the arms' bones and `j_gun`. Read with
+  `tools/models/xanim.py` (compiled xanim v17; 582/582 of Der Riese's parse to the last byte).
+  Each weapon variant gets `fp: { idle, ads, standMove, adsZoomFov, adsInMs, adsOutMs }`.
+* **Budget** 15 → 20 MB; the pack is **183 files, 17.4 MB**. The 84 files R2 built came out
+  byte-identical; the new ones are ADDED to `ZombiesDev\maps`, `_assets.json` replaced after a
+  backup in `assetwork\backup\`. Not uploaded (the pack is not in the bucket).
+* **Not proven**: a second full run for byte-determinism of the new files (not run: the PC was at
+  89 % commit); the default grip on the 17 new world models (not measured by eye).

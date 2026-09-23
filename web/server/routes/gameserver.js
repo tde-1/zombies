@@ -131,7 +131,7 @@ function router() {
     // to make, and the earliest possible moment we can know it.
     let key = null
     if (body.pub || body.key_id) key = boxes.offerKey(req.box, body.pub || null, body.key_id || null)
-    if (body.state && body.match_id) assignments.ack(req.box, body.state, body.match_id, body.error || null)
+    if (body.state && body.match_id) assignments.ack(req.box, body.state, body.match_id, body.error || null, { rule: typeof body.rule === 'string' ? body.rule.slice(0, 32) : null })
 
     // Presence: the box roster beats the lobby seat (11 §9). Everything the box says is in
     // a game is in a game, whatever the site's parties table thinks.

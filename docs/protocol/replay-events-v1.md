@@ -102,6 +102,10 @@ Examples:
   table is bound; the old `"#<usercmd index>"` only when it is not. Omitted when unchanged, as before.
 - New per-player fields, each omitted when unchanged: **`clip`** (rounds in the magazine, what
   `getcurrentweaponclipammo` returns) and **`ammo`** (reserve, `getweaponammostock`).
+- **`replay_events` 2** (lane RV, 2026-09-23, section 8): one more per-player field, **`ads`**,
+  `ps.fWeaponPosFrac` (0 hip .. 1 fully aimed down the sights, what `playerADS()` returns) as a
+  number with one decimal (`0.4`), omitted when unchanged. Everything else is v1; a v1 reader
+  ignores the field.
 
 ## 4. Rate and size, before and after
 
@@ -226,3 +230,27 @@ was touched. An agent lease boots a server with no player, so `fire`/`hit` canno
   G_Damage (a script setting health) is attributed to whoever hit the player last, if a zombie.
 - The pickup radius is a heuristic (110 u); a power-up that times out while a player stands on it
   would read as a pickup.
+
+## 8. `replay_events` 2 — aim down sights (lane RV, 2026-09-23)
+
+The 3D viewer's first person now aims down the sights (replay.md §14). The usercmd ADS button
+(`input` bit 0x800) is intent; the engine's own state is `ps.fWeaponPosFrac`.
+
+| Read | Offset | T4SP | Our dump (the bytes `bind_combat` checks, group `ads`) |
+|---|---|---|---|
+| `ps.fWeaponPosFrac` | gclient + `0x110` (float) | `playerState_s.fWeaponPosFrac`, asserted 0x110 | `PlayerCmd_PlayerADS` 0x4EEE00 (method table entry 0x83C160, name `playerads`): 0x4EEE69 `8B 96 80 01 00 00` (`mov edx,[esi+0x180]`, ent->client) then `D9 82 10 01 00 00` (`fld dword [edx+0x110]`) → `Scr_AddFloat` |
+
+Written as `ads` on the player's snap record, tenths (`replay_ev::ads_tenths`: rounded, clamped at
+the ends, a value outside -0.01..1.01 or NaN is never written), omitted when unchanged. The bind
+line gains `ads=yes|no`. `kVersion` = 2, so `map_loaded` and the `.enwr` header say
+`replay_events: 2`; nothing anywhere compares it for equality (checked: host.js, routes/replay.js,
+replay-rate.js all read it as a number). Size: one short field on the few frames an aim changes.
+
+**Tests**: `server/tests/replay_events_test.cpp` 66/66 (7 new: version, rounding, clamping, NaN,
+non-fractions). `t4_bind.cpp`, `replay.cpp` and `referee.cpp` pass `cl /Zs /W4 /permissive-`.
+
+**For the coordinator (not done here)**: build the box DLL from a clean detached worktree at the
+merge commit (rule 17), deploy by the usual recipe, then check the bind line says `ads=yes` and a
+real game's `.enwr` has `ads` values on the frames the ADS button (bit 0x800 in `input`) is held
+(expect 0 → 1 over the gun's `adsTransInTime`). The viewer uses the column when present and the
+button otherwise, so the DLL can land any time.

@@ -1368,6 +1368,11 @@
    "id": "monkeytoy",
    "dvar": "monkeytoy",
    "why": "mod-owned (mod-compat.md §3): a map's anti-cheat quits on it; never ours to set"
+  },
+  {
+   "id": "notifySound",
+   "dvar": "",
+   "why": "the launcher's chime, not the game's: in a game the overlay shows invites and chat and the launcher stays quiet"
   }
  ]
 }

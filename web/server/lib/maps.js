@@ -147,6 +147,9 @@ function project(row, { me = null } = {}) {
     // Playable on our boxes, as its own field rather than something every card has to
     // re-derive from `health`. The map browser filters on it and the list row prints it.
     on_server: onServer(row),
+    // The map's own game modes (docs/kickstart/game-modes.md), for the rail's picker before a
+    // party exists: {default, modes:[{id,label,note}]} or null.
+    modes: require('./gameModes').forMap(row.key),
     // 'box' = loads on our servers, not yet played with a client: the list tags it "New".
     server_level: serverLevel(row),
     // Why not, in a few words, for the tag's hover (lib/serverNotes.js). Null when it is.
@@ -352,6 +355,8 @@ function detail(key, { me = null } = {}) {
     files: latest ? db.prepare('SELECT path, sha256, size, kind FROM map_files WHERE map_version_id=?').all(latest.id) : [],
     loadscreen: loadscreenOf(row.art),
     features: featuresFor(row.key),
+    // The map's own game modes (game-modes.md): {default, modes:[{id,label,note}]} or null.
+    modes: require('./gameModes').forMap(row.key),
     // Easter egg / power / song guides from the archive (lib/guides.js). An empty list and
     // the map page draws no section at all.
     guides: require('./guides').forMap(row.key),

@@ -18,12 +18,16 @@ const { db, now } = require('../db/database')
 const ONLINE_MS = 70_000        // a socket heartbeats every 30s; two misses is offline
 const IN_GAME_MS = 90_000       // a box posts status every few seconds
 
-const sockets = new Map()       // steam_id -> { at, sockets:Set }
+const sockets = new Map()       // steam_id -> { at, sockets:Set, clients: Map(socketId -> 'site'|'launcher') }
 
-function connected(steamId, socketId) {
+// `client` is what the socket said it was at the handshake (web/client/src/socket.js sends
+// `launcher` when `window.enw` exists). It only chooses the words "In launcher" over
+// "Online" on somebody else's rail; nothing is gated on it, so a lie costs nothing.
+function connected(steamId, socketId, client = 'site') {
   const sid = String(steamId)
-  const e = sockets.get(sid) || { at: 0, sockets: new Set() }
+  const e = sockets.get(sid) || { at: 0, sockets: new Set(), clients: new Map() }
   e.sockets.add(socketId)
+  e.clients.set(socketId, client === 'launcher' ? 'launcher' : 'site')
   e.at = now()
   sockets.set(sid, e)
   mark(sid, { source: 'site' })
@@ -34,7 +38,15 @@ function disconnected(steamId, socketId) {
   const e = sockets.get(sid)
   if (!e) return
   e.sockets.delete(socketId)
+  e.clients.delete(socketId)
   if (!e.sockets.size) sockets.delete(sid)
+}
+
+/** 'launcher' when any live socket of theirs is the launcher, 'site' for a browser, else null. */
+function clientOf(steamId) {
+  const e = sockets.get(String(steamId))
+  if (!e || !e.sockets.size) return null
+  return [...e.clients.values()].includes('launcher') ? 'launcher' : 'site'
 }
 
 function heartbeat(steamId) {
@@ -71,7 +83,12 @@ function clearGame(steamId) {
 
 function onlineIds() {
   const cut = now() - ONLINE_MS
-  const live = [...sockets.entries()].filter(([, e]) => e.at > cut).map(([sid]) => sid)
+  // A launcher socket counts while it is connected, heartbeat or not: a launcher sitting in
+  // the tray is exactly "online, in launcher", and a hidden window's timers are throttled by
+  // Chromium, so its 30 s heartbeat can arrive late. socket.io's own ping drops a dead one.
+  const live = [...sockets.entries()]
+    .filter(([, e]) => e.at > cut || (e.sockets.size && [...e.clients.values()].includes('launcher')))
+    .map(([sid]) => sid)
   const fromBox = db.prepare("SELECT steam_id FROM presence WHERE source='box' AND seen_at > ?").all(now() - IN_GAME_MS).map((r) => r.steam_id)
   return [...new Set([...live, ...fromBox])]
 }
@@ -88,6 +105,7 @@ function whereabouts(steamId) {
   const online = isOnline(sid)
   if (!online && !(p && p.source === 'box' && now() - p.seen_at < IN_GAME_MS)) return null
 
+  const client = clientOf(sid)
   if (p && p.source === 'box' && p.match_id && now() - p.seen_at < IN_GAME_MS) {
     const map = p.map_key ? db.prepare('SELECT title FROM maps WHERE key=?').get(p.map_key) : null
     return {
@@ -95,7 +113,9 @@ function whereabouts(steamId) {
       match_id: p.match_id,
       map_key: p.map_key,
       map_title: map ? map.title : p.map_key,
+      round: roundOf(p.match_id),
       box: p.box,
+      client,
       since: p.seen_at,
     }
   }
@@ -103,16 +123,45 @@ function whereabouts(steamId) {
   const party = db.prepare(`SELECT p.* FROM party_members pm JOIN parties p ON p.id=pm.party_id WHERE pm.steam_id=?`).get(sid)
   if (party) {
     const map = party.map_key ? db.prepare('SELECT title FROM maps WHERE key=?').get(party.map_key) : null
+    const inGame = party.state === 'in-game'
     return {
-      state: party.state === 'in-game' ? 'in-game' : 'in-party',
+      state: inGame ? 'in-game' : 'in-party',
       party_id: party.id,
+      match_id: inGame ? party.match_id || null : null,
       map_key: party.map_key,
       map_title: map ? map.title : party.map_key,
+      round: inGame ? roundOf(party.match_id) : null,
       visibility: party.visibility,
+      client,
       since: party.updated_at || party.created_at,
     }
   }
-  return { state: 'online' }
+  return { state: 'online', client }
+}
+
+// The round a live game last reported (lib/live.js, the referee's 4 Hz frame). null when no
+// fresh frame: "In game on Der Riese" without a round is better than a stale round.
+function roundOf(matchId) {
+  if (!matchId) return null
+  try {
+    const f = require('./live').get(matchId)
+    const r = f && f.state && Number(f.state.round)
+    return r > 0 ? r : null
+  } catch { return null }
+}
+
+/**
+ * One string that changes whenever anybody's line on the online list would: who is online,
+ * from what, where, and the round. index.js compares it once a second and nudges every
+ * socket (`online_changed`) when it moves, so the rail is never more than ~1 s behind
+ * whatever moved it (a socket, a party, a box, a round) without each of those having to
+ * remember to announce itself.
+ */
+function signature() {
+  return onlineIds().sort().map((id) => {
+    const w = whereabouts(id) || {}
+    return [id, w.state, w.client, w.map_key, w.party_id, w.round, w.match_id].join(':')
+  }).join('|')
 }
 
 /** The friends rail: who of mine is online, and what they are doing. */
@@ -134,6 +183,6 @@ function stats() {
 
 module.exports = {
   ONLINE_MS, IN_GAME_MS,
-  connected, disconnected, heartbeat, mark, markInGame, clearGame,
+  connected, disconnected, heartbeat, mark, markInGame, clearGame, clientOf, signature,
   onlineIds, isOnline, whereabouts, friendsOnline, stats,
 }

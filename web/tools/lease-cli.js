@@ -54,7 +54,7 @@ const wantWatch = arg('watch') === true || (!!watchId && !wantCancel)
 const devGod = arg('dev-god') === true
 
 if (!mapKey && !watchId) {
-  console.error('usage: lease-cli.js --map <bsp> --player <id64>[,<id64>...] [--mode verified|custom] [--dev-god]')
+  console.error('usage: lease-cli.js --map <bsp> --player <id64>[,<id64>...] [--mode verified|custom] [--game-mode <id>] [--dev-god]')
   console.error('       lease-cli.js --match <match_id> [--watch | --cancel]')
   process.exit(2)
 }
@@ -139,6 +139,11 @@ if (watchId && wantWatch) {
   }
   parties.setMap(leader, mapKey)
   parties.setMode(leader, mode)
+  // --game-mode gungame: the map's own mode (game-modes.md), as a leader would pick it.
+  if (arg('game-mode') && arg('game-mode') !== true) {
+    const gm = parties.setGameMode(leader, String(arg('game-mode')))
+    if (!gm.ok) { console.error(`--game-mode: ${gm.error}`); process.exit(1) }
+  }
   if (devGod || devBots) {
     if (arg('real') === true) { console.error('--dev-god / --dev-bots are for agent leases only (drop --real)'); process.exit(2) }
     const dev = {}

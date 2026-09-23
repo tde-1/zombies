@@ -83,6 +83,8 @@ function router() {
         category: req.query.category || null,
         playerCount: req.query.players ? Number(req.query.players) : null,
         profile: req.query.profile || 'ENW-Verified',
+        // A map's own game mode (game-modes.md): e.g. `gungame`. Absent = every mode.
+        gameMode: req.query.game_mode ? String(req.query.game_mode).slice(0, 64) : null,
       }),
       categories: records.categories(),
       profiles: records.profiles(),
@@ -195,6 +197,14 @@ function router() {
     res.json(seats.quit(sid, b.match_id ? String(b.match_id).slice(0, 40) : null))
   })
 
+  // CLOSE THE SERVER from the rail's server card (its ×): the party's game ends for everybody
+  // and the party stays, back to forming with its map (lib/seats.js `end`). Host only.
+  r.post('/party/end', requireUser, (req, res) => {
+    const b = req.body && typeof req.body === 'object' ? req.body : {}
+    const out = seats.end(req.me.steam_id, b.match_id ? String(b.match_id).slice(0, 40) : null)
+    res.status(out.ok ? 200 : 400).json(out)
+  })
+
   // RESUME from the rail's server card: back into the game this player crashed out of.
   // The launcher's watcher follows the phase this puts back (`in-game`), with a fresh token.
   r.post('/party/resume', requireUser, (req, res) => {
@@ -210,11 +220,18 @@ function router() {
     res.status(out && out.ok === false ? 400 : 200).json(out)
   }
 
-  r.post('/party/create', requireApproved, partyAction((req) => ({ ok: true, party: parties.create(req.me.steam_id, req.body || {}) })))
+  r.post('/party/create', requireApproved, partyAction((req) => {
+    const b = req.body || {}
+    // `game_mode` is what the rail had staged before a party existed; create() keeps it only
+    // if the staged map offers it.
+    return { ok: true, party: parties.create(req.me.steam_id, { ...b, gameMode: b.game_mode ?? b.gameMode ?? null }) }
+  }))
   r.post('/party/join', requireApproved, partyAction((req) => parties.join(req.me.steam_id, Number((req.body && req.body.party_id) || 0))))
   r.post('/party/leave', requireUser, partyAction((req) => parties.leave(req.me.steam_id)))
   r.post('/party/map', requireApproved, partyAction((req) => parties.setMap(req.me.steam_id, (req.body && req.body.map_key) || null)))
   r.post('/party/mode', requireApproved, partyAction((req) => parties.setMode(req.me.steam_id, (req.body && req.body.mode) || 'verified')))
+  // The map's own game mode (game-modes.md): leader only, only a mode the map offers.
+  r.post('/party/game-mode', requireApproved, partyAction((req) => parties.setGameMode(req.me.steam_id, (req.body && req.body.game_mode) || '')))
   r.post('/party/visibility', requireApproved, partyAction((req) => parties.setVisibility(req.me.steam_id, (req.body && req.body.visibility) || 'friends')))
   r.post('/party/settings', requireApproved, partyAction((req) => parties.setSettings(req.me.steam_id, (req.body && req.body.settings) || {})))
   r.post('/party/ready-check', requireApproved, partyAction((req) => parties.startReadyCheck(req.me.steam_id, { force: !!(req.body && req.body.force) })))
@@ -273,6 +290,29 @@ function router() {
   })
   r.get('/party/invite-search', requireUser, (req, res) => {
     res.json({ results: roster.search(req.me.steam_id, req.query.q) })
+  })
+
+  // ---- friends (lane SOC, 2026-09-23) -------------------------------------------------
+  // Requests waiting on me, for the rail's Requests block. Accept / Decline are the
+  // profile's existing POST /api/players/:who/friend {action}; both push to the other side.
+  r.get('/friends/requests', requireUser, (req, res) => {
+    res.json({ requests: users.pendingRequests(req.me.steam_id) })
+  })
+
+  // ---- party chat and DMs from the site (lane SOC) ----------------------------------
+  // The same private ring the in-game overlay speaks (lib/gameChat.js, channel party|dm):
+  // the launcher chimes on a DM or a party line, so the site has to be able to show and
+  // answer one. Same rules as in game: DMs to friends and party members, 5 lines / 10 s.
+  r.get('/chat/private', requireUser, (req, res) => {
+    const gameChat = require('../lib/gameChat')
+    res.json({ lines: gameChat.privateFor(req.me.steam_id, Number(req.query.after) || 0, { tailN: 40 }) })
+  })
+  r.post('/chat/private', requireUser, (req, res) => {
+    const gameChat = require('../lib/gameChat')
+    const b = req.body && typeof req.body === 'object' ? req.body : {}
+    const channel = b.channel === 'dm' ? 'dm' : 'party'
+    const out = gameChat.send(req.me, { channel, to: b.to ? String(b.to) : null, text: b.text })
+    res.status(out.ok ? 200 : 400).json(out)
   })
   r.post('/party/quick-join', requireApproved, partyAction((req) => parties.quickJoin(req.me.steam_id, (req.body && req.body.map_key) || null)))
 

@@ -53,6 +53,7 @@ char g_started[25];
 char g_map[128];
 char g_error[512];
 char g_hang_dump[MAX_PATH];
+char g_hang_where[256];
 char g_exe_name[64];
 uintptr_t g_exe_base = 0;
 
@@ -84,6 +85,7 @@ session_fmt::fields base_fields(exit_kind exit, const char* ended_at) {
     f.frames = frame::count();
     f.largest_free_tenths_mb = g_largest_tenths;
     f.hang_dump = g_hang_dump;
+    f.hang_where = g_hang_where;
     f.discord_hook_refused = static_cast<uint32_t>(g_refused);
     return f;
 }
@@ -232,9 +234,10 @@ void note_error(const char* text) {
     ::InterlockedExchange(&g_error_end, session_fmt::is_error_end(text) ? 1 : 0);
 }
 
-void write_hang(const char* dump_path) {
+void write_hang(const char* dump_path, const char* where) {
     if (!g_enabled) return;
     copy_bounded(g_hang_dump, sizeof g_hang_dump, dump_path);
+    copy_bounded(g_hang_where, sizeof g_hang_where, where);
     write_normal(exit_kind::hang, true);
 }
 

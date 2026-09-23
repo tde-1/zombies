@@ -36,14 +36,41 @@ import { useSession } from '../session'
 //
 // ── What is deliberately NOT here ─────────────────────────────────────────────
 //
-// No channel picker, no DMs, no per-map rooms. One global channel is what tonight
-// asked for and what the ring holds; every one of those is a schema change wearing
-// a UI.
+// No per-map rooms. One global channel is what tonight asked for and what the ring holds.
+//
+// ── Party chat and DMs (lane SOC, 2026-09-23) ─────────────────────────────────
+//
+// The launcher now flashes and chimes on a DM or a party line (attention.js), so the site
+// has to be able to show one and answer it. They are the in-game overlay's private ring
+// (server lib/gameChat.js, `chat_private`), not a second system: `/api/chat/private` for
+// the backlog and sending, `chat-private` on the socket for live lines. Drawn in the same
+// log, tagged [party] / [dm], and a separate id space (their own table), so they are
+// merged separately and interleaved by time. Who you are talking to is the chip row over
+// the input: All games / Party / a DM, which clicking a name on a private line picks.
 
 const CAP = 200          // lines kept in the browser; the server ring keeps 500
 const MAX = 200          // matches chatNetwork.MAX_LEN's spirit; the server caps at 300
 
 const clock = (t) => (t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')
+
+/** A private line (party or DM): the same grammar, a tag saying which. */
+function PrivateLine({ e, me, onPick }) {
+  const mine = me && String(e.steamid) === String(me)
+  const tag = e.channel === 'dm' ? (mine ? `dm → ${e.to_name || 'them'}` : 'dm') : 'party'
+  const other = mine ? (e.channel === 'dm' ? { sid: e.to, name: e.to_name } : null) : { sid: e.steamid, name: e.from }
+  return (
+    <div className={'csc-line is-private is-' + e.channel}>
+      <span className="csc-time">{clock(e.at)}</span>
+      <span className="csc-tag">[{tag}]</span>
+      {other && other.sid && onPick
+        ? <button type="button" className="csc-name csc-pick" title={`Message ${other.name || 'them'}`}
+                  onClick={() => onPick({ channel: 'dm', to: String(other.sid), name: other.name })}>{e.from || 'unknown'}</button>
+        : <span className="csc-name">{e.from || 'unknown'}</span>}
+      <span className="csc-sep">:</span>
+      <span className="csc-msg">{e.text}</span>
+    </div>
+  )
+}
 
 /** One line. Two kinds: something a person typed, and a sentence the site composed. */
 export function ChatLine({ e }) {
@@ -70,7 +97,8 @@ export function ChatLine({ e }) {
 }
 
 export default function ChatDock() {
-  const { signedIn } = useSession()
+  const { signedIn, me } = useSession()
+  const meId = me ? me.steam_id : null
   // `#chat` on any URL opens the dock. It is the closest thing to the PAGE that
   // `web.md` §10i has been asking for and a better answer than one: a link somebody
   // pastes lands them on a real page of the site with the conversation open beside it,
@@ -86,6 +114,9 @@ export default function ChatDock() {
   const [state, setState] = useState('loading')   // loading | ready | offline
   const [unread, setUnread] = useState(0)
   const [busy, setBusy] = useState(false)
+  const [priv, setPriv] = useState([])                     // party + DM lines (chat_private)
+  const [target, setTarget] = useState({ channel: 'global' })
+  const [sayErr, setSayErr] = useState(null)
 
   const logRef = useRef(null)
   const pinned = useRef(true)
@@ -136,6 +167,31 @@ export default function ChatDock() {
     return () => socket.off('connect', onConnect)
   }, [append])
 
+  // Party lines and DMs: the backlog once signed in, then live; a reconnect refetches the tail.
+  const appendPriv = useCallback((incoming, { live = false } = {}) => {
+    const fresh = (incoming || []).filter((l) => l && (l.channel === 'party' || l.channel === 'dm'))
+    if (!fresh.length) return
+    setPriv((prev) => mergeLines(prev, fresh, CAP))
+    if (live && !openRef.current) {
+      const others = fresh.filter((l) => String(l.steamid) !== String(meId))
+      if (others.length) setUnread((n) => Math.min(99, n + others.length))
+    }
+  }, [meId])
+  useEffect(() => {
+    if (!signedIn) { setPriv([]); return undefined }
+    const fill = () => api.get('/api/chat/private').then((d) => appendPriv(d.lines || [])).catch(() => {})
+    fill()
+    const onLine = (l) => appendPriv([l], { live: true })
+    socket.on('chat-private', onLine)
+    socket.on('connect', fill)
+    return () => { socket.off('chat-private', onLine); socket.off('connect', fill) }
+  }, [signedIn, appendPriv])
+
+  const shown = priv.length
+    ? [...lines.map((l) => ({ k: `g${l.id}`, at: l.at || 0, l })), ...priv.map((l) => ({ k: `p${l.id}`, at: l.at || 0, l, p: true }))]
+        .sort((a, b) => a.at - b.at)
+    : null
+
   // Pin to the bottom only while the reader is already there (Movement's rule).
   const onScroll = () => {
     const el = logRef.current
@@ -144,7 +200,7 @@ export default function ChatDock() {
   useEffect(() => {
     const el = logRef.current
     if (el && pinned.current) el.scrollTop = el.scrollHeight
-  }, [lines, open])
+  }, [lines, priv, open])
 
   useEffect(() => {
     try { localStorage.setItem('zm.chat.open', open ? '1' : '0') } catch { /* private window */ }
@@ -156,6 +212,15 @@ export default function ChatDock() {
     const t = text.trim()
     if (!t || busy || !signedIn) return
     setBusy(true)
+    setSayErr(null)
+    if (target.channel !== 'global') {
+      // Party / DM: the POST, whose line comes back on `chat-private` like everybody's.
+      api.post('/api/chat/private', { channel: target.channel, to: target.to || null, text: t })
+        .then(() => setText(''))
+        .catch((e) => setSayErr(e.message || 'Not sent'))
+        .finally(() => setBusy(false))
+      return
+    }
     // Over the socket, not the POST route: the server pushes the line back to every
     // browser including this one, so echoing it here would draw it twice.
     try { socket.emit('chat', t); setText('') } finally { setBusy(false) }
@@ -174,12 +239,24 @@ export default function ChatDock() {
         <div className="chatdock-body" id="chatdock-body">
           <div className="csc">
             <div className="csc-log" ref={logRef} onScroll={onScroll}>
-              {lines.length
+              {shown
+                ? shown.map((x) => (x.p ? <PrivateLine e={x.l} key={x.k} me={meId} onPick={setTarget} /> : <ChatLine e={x.l} key={x.k} />))
+                : lines.length
                 ? lines.map((l) => <ChatLine e={l} key={l.id} />)
                 : <div className="csc-empty">
                     {state === 'loading' ? 'Loading…' : state === 'offline' ? 'Chat is offline.' : 'Nothing said yet.'}
                   </div>}
             </div>
+            {signedIn && (
+              <div className="csc-to" role="group" aria-label="Send to">
+                <button type="button" className={'csc-to-chip' + (target.channel === 'global' ? ' on' : '')} onClick={() => setTarget({ channel: 'global' })}>All games</button>
+                <button type="button" className={'csc-to-chip' + (target.channel === 'party' ? ' on' : '')} onClick={() => setTarget({ channel: 'party' })}>Party</button>
+                {target.channel === 'dm' && (
+                  <button type="button" className="csc-to-chip on" title="Back to all games" onClick={() => setTarget({ channel: 'global' })}>@{target.name || 'player'} ×</button>
+                )}
+                {sayErr && <span className="csc-to-err" role="status">{sayErr}</span>}
+              </div>
+            )}
             {signedIn ? (
               <form className="csc-say" onSubmit={send}>
                 <span className="csc-say-caret" aria-hidden="true">&gt;</span>
@@ -192,7 +269,7 @@ export default function ChatDock() {
                     box must never have. `stopPropagation` is the other half: a line you
                     just sent must not also page the map list behind the panel. */}
                 <input type="text" value={text} maxLength={MAX} disabled={busy}
-                       placeholder="Message every game"
+                       placeholder={target.channel === 'party' ? 'Message your party' : target.channel === 'dm' ? `Message ${target.name || 'them'}` : 'Message every game'}
                        onChange={(e) => setText(e.target.value)}
                        onKeyDown={(e) => {
                          e.stopPropagation()

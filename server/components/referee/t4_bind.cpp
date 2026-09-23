@@ -1294,6 +1294,10 @@ bool dvar_set(const char*, const char*) { return false; }
 //   hitloc   Actor_Pain 0x4B6870: 0x4B6882 8B 9E 84 01 00 00 (ebx = self->actor),
 //              0x4B697D 66 89 83 68 0D 00 00 (actor->damageHitLoc = SL(hitLocName[loc]));
 //              Actor_Die 0x4B6AA0 stores the same field at 0x4B6BAD.
+//   ads      PlayerCmd_PlayerADS 0x4EEE00 (method table entry 0x83C160, name "playerads"):
+//              0x4EEE69  8B 96 80 01 00 00      mov edx,[esi+0x180]        ent->client
+//              0x4EEE6F  D9 82 10 01 00 00      fld dword [edx+0x110]      ps.fWeaponPosFrac
+//              then Scr_AddFloat -- exactly what the script's playerADS() returns (lane RV)
 //   models   G_SetModel 0x54AE60: 0x54AE78 66 89 86 98 01 00 00 (ent->model = G_ModelIndex)
 //            G_ModelIndex 0x54A480: 0x54A4B0 0F B7 0C 75 42 0F 35 02 -- compares the name's
 //              script string with word[0x2350F40 + i*2], i = 1..0x1FF, i.e. the model
@@ -1309,6 +1313,7 @@ constexpr size_t kPsAmmo = 0x17C;
 constexpr size_t kPsAmmoClip = 0x5FC;
 constexpr size_t kDefAmmoIndex = 0x3F4;
 constexpr size_t kDefClipIndex = 0x3FC;
+constexpr size_t kPsWeaponPosFrac = 0x110;  // T4SP playerState_s.fWeaponPosFrac, asserted 0x110
 constexpr size_t kPsEventSeq = 0xD0;
 constexpr size_t kPsEvents = 0xD4;
 constexpr size_t kEntActor = 0x184;
@@ -1406,6 +1411,7 @@ std::string combat_binding::describe() const {
     add("attacker", attacker);
     add("hitloc", hitloc);
     add("models", models);
+    add("ads", ads);
     return s;
 }
 
@@ -1440,6 +1446,9 @@ void bind_combat() {
         {0x54AE78, {0x66, 0x89, 0x86, 0x98, 0x01, 0x00, 0x00}},
         {0x54A4B0, {0x0F, 0xB7, 0x0C, 0x75, 0x42, 0x0F, 0x35, 0x02}},
     });
+    g_combat.ads = sigs_match("ads", {
+        {0x4EEE69, {0x8B, 0x96, 0x80, 0x01, 0x00, 0x00, 0xD9, 0x82, 0x10, 0x01, 0x00, 0x00}},
+    });
     ENW_INFO("referee/bind: replay-events reads: %s", g_combat.describe().c_str());
 }
 
@@ -1452,7 +1461,7 @@ void combat_new_match() {
 
 std::optional<player_combat> player_combat_state(int slot) {
     if (slot < 0 || slot >= kMaxClients) return std::nullopt;
-    if (!g_combat.weapons && !g_combat.events && !g_combat.attacker) return std::nullopt;
+    if (!g_combat.weapons && !g_combat.events && !g_combat.attacker && !g_combat.ads) return std::nullopt;
     const uintptr_t gc = gclient_for(slot);
     if (!gc) return std::nullopt;
     player_combat pc;
@@ -1482,6 +1491,10 @@ std::optional<player_combat> player_combat_state(int slot) {
             pc.event_seq = raw.seq & 0xFF;
             for (int i = 0; i < 4; ++i) pc.events[i] = raw.ev[i];
         }
+    }
+    if (g_combat.ads) {
+        float f = 0.0f;
+        if (peek(gc + kPsWeaponPosFrac, &f)) { pc.have_ads = true; pc.ads = f; }
     }
     pc.last_attacker = last_attacker_of(gentity_at(slot));
     return pc;

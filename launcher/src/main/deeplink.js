@@ -9,6 +9,10 @@
 //
 //   enw-zombies://map/<key>     select <key> in the map browser, ready for Play / Start
 //   enw-zombies://party/<id>    open on that party (join it if the player is invited)
+//   enw-zombies://invite/<id>   ACCEPT invite <id> (the Windows toast's Accept, attention.js;
+//                               lane SOC 2026-09-23). Digits only; the site decides if it is
+//                               still yours, still pending and inside its half hour
+//   enw-zombies://open          the launcher, on home (the toast's body)
 //   anything else               home
 //
 // MEASURED, node 24, `new URL('enw-zombies://map/nazi_zombie_prototype')`:
@@ -64,6 +68,11 @@ export function parse(raw) {
     if (!arg) return { kind: 'home', why: 'a party link with no party id', url }
     return { kind: 'party', party: arg, url }
   }
+  if (head === 'invite') {
+    if (!arg || !/^\d{1,12}$/.test(arg)) return { kind: 'home', why: 'an invite link with no invite id', url }
+    return { kind: 'invite', invite: Number(arg), url }
+  }
+  if (head === 'open') return { kind: 'home', why: 'opened from a notification', url }
   if (!head) return { kind: 'home', why: 'no route in the link', url }
   return { kind: 'home', why: `unknown route "${head}"`, url }
 }

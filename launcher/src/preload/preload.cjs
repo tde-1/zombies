@@ -114,6 +114,13 @@ contextBridge.exposeInMainWorld('enw', {
   openScreen: (name) => call('openScreen', name),
   onOpenScreen: (fn) => on('openScreen', fn),
 
+  // The site heard an invite, a DM or a party line (lane SOC, 2026-09-23; web client
+  // attention.js). The launcher decides: flash, chime, toast, unread dot, or nothing.
+  // { kind: 'invite'|'dm'|'party', id, title, body, invite_id?, party_id? }
+  attention: (ev) => call('attention', ev),
+  // The shell's chime (renderer shell.js plays it).
+  onChime: (fn) => on('chime', fn),
+
   // Events.
   onBoot: (fn) => on('boot', fn),
   onBootDone: (fn) => on('boot_done', fn),

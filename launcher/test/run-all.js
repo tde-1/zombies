@@ -1182,6 +1182,20 @@ await test('the player message says nothing technical', () => {
   }
 })
 
+await test('a game that froze or crashed gets one terse line; a quit or our own stop gets none (lane CL)', () => {
+  // B's zombie_town hang: the DLL said 'hang', Windows closed the window with 0xCFFFFFFF.
+  assert.equal(crash.gameEndNotice({ session: { exit: 'hang' }, exitCode: 3489660927, map: 'Town of the Dead' }),
+    'World at War froze on Town of the Dead. We have the logs.')
+  assert.match(crash.gameEndNotice({ session: null, exitCode: crash.HUNG_EXIT_CODE }), /^World at War froze\. /)
+  assert.match(crash.gameEndNotice({ session: { exit: 'crash' }, exitCode: -1073741819, map: 'x' }), /crashed on x/)
+  assert.match(crash.gameEndNotice({ session: { exit: 'unknown' }, exitCode: -1073741819 }), /closed unexpectedly/)
+  assert.equal(crash.gameEndNotice({ session: { exit: 'quit' }, exitCode: 0 }), null)
+  assert.equal(crash.gameEndNotice({ session: { exit: 'error' }, exitCode: 0 }), null)
+  assert.equal(crash.gameEndNotice({ session: null, exitCode: 0 }), null)
+  assert.equal(crash.gameEndNotice({ session: { exit: 'hang' }, exitCode: 1, stoppedByUs: true }), null)
+  for (const s of ['hang', 'crash']) assert.equal(/0x|stack|exception|null|undefined/i.test(crash.gameEndNotice({ session: { exit: s } })), false)
+})
+
 // ------------------------------------------------------------------ settings --
 group('Settings')
 
@@ -2597,6 +2611,158 @@ await test('volume: every sound dvar the launcher or site writes is registered b
   }
   for (const d of SOUND) assert.ok(regRef(d), `${d} is registered`)
   assert.equal(regRef('snd_volume'), false, 'snd_volume is never registered')
+})
+
+// ------------------------------------------------------------ attention (SOC) --
+// Flash, chime, toast, unread dot for invites / DMs / party chat while the window is not in
+// front (attention.js). A mocked BrowserWindow: the Electron half is main.js setupAttention.
+group('Attention: flash, chime, toast (lane SOC)')
+const attention = await import('../src/main/attention.js')
+
+function fakeWin({ visible = true, minimized = false, focused = false } = {}) {
+  const w = { visible, minimized, focused, flashes: [] }
+  w.isVisible = () => w.visible
+  w.isMinimized = () => w.minimized
+  w.isFocused = () => w.focused
+  w.isDestroyed = () => false
+  w.flashFrame = (f) => w.flashes.push(f)
+  return w
+}
+function rig({ win, game = false, sound = true, streamer = false } = {}) {
+  const r = { chimes: 0, toasts: [], badges: [], t: 1_000_000 }
+  r.a = attention.makeAttention({
+    win: () => win, gameRunning: () => game, soundOn: () => sound, streamer: () => streamer,
+    chime: () => { r.chimes++ }, toast: (x) => r.toasts.push(x), badge: (n) => r.badges.push(n), now: () => r.t,
+  })
+  return r
+}
+
+await test('attention: a focused window is left alone (the site shows its own toast)', () => {
+  const w = fakeWin({ focused: true })
+  const r = rig({ win: w })
+  assert.equal(r.a.signal({ kind: 'invite', id: 'invite:1', invite_id: 1, title: 't' }).skipped, 'focused')
+  assert.deepEqual([w.flashes, r.chimes, r.toasts.length, r.badges], [[], 0, 0, []])
+})
+
+await test('attention: minimised -> flashFrame(true), one chime, a toast with the invite id, unread dot', () => {
+  const w = fakeWin({ minimized: true })
+  const r = rig({ win: w })
+  const out = r.a.signal({ kind: 'invite', id: 'invite:7', invite_id: 7, title: 'deadshot invited you', body: 'Party on Der Riese' })
+  assert.deepEqual(w.flashes, [true])
+  assert.equal(r.chimes, 1)
+  assert.equal(r.toasts.length, 1)
+  assert.equal(r.toasts[0].invite_id, 7)
+  assert.equal(r.toasts[0].title, 'deadshot invited you')
+  assert.deepEqual(r.badges, [1])
+  assert.equal(out.unread, 1)
+})
+
+await test('attention: a chat burst is one chime; the flash and the count still move; a quiet gap chimes again', () => {
+  const w = fakeWin({ visible: true, focused: false })
+  const r = rig({ win: w })
+  r.a.signal({ kind: 'party', id: 'chat:1', title: 'x' }); r.t += 1500
+  r.a.signal({ kind: 'party', id: 'chat:2', title: 'x' }); r.t += 1500
+  r.a.signal({ kind: 'dm', id: 'chat:3', title: 'x' })
+  assert.equal(r.chimes, 1, 'one chime for three lines 1.5 s apart')
+  assert.equal(w.flashes.length, 3)
+  assert.deepEqual(r.badges, [1, 2, 3])
+  assert.equal(r.toasts.length, 0, 'no toast for chat while the window has a taskbar button')
+  r.t += attention.BURST_MS + 1
+  r.a.signal({ kind: 'dm', id: 'chat:4', title: 'x' })
+  assert.equal(r.chimes, 2, 'a new burst chimes')
+})
+
+await test('attention: a long conversation still chimes every MAX_QUIET_MS', () => {
+  const r = rig({ win: fakeWin({ minimized: true }) })
+  for (let i = 0; i < 20; i++) { r.a.signal({ kind: 'party', id: `c${i}` }); r.t += 2000 }
+  assert.equal(r.chimes, 2, `20 lines 2 s apart over 40 s: ${r.chimes}`)
+})
+
+await test('attention: Notification sound off -> flash, dot and toast, no chime', () => {
+  const w = fakeWin({ minimized: true })
+  const r = rig({ win: w, sound: false })
+  const out = r.a.signal({ kind: 'invite', id: 'invite:2', invite_id: 2 })
+  assert.equal(r.chimes, 0)
+  assert.equal(out.flashed, true)
+  assert.equal(r.toasts.length, 1)
+})
+
+await test('attention: a game running -> nothing at all (the in-game overlay has it)', () => {
+  const w = fakeWin({ visible: true })
+  const r = rig({ win: w, game: true })
+  assert.equal(r.a.signal({ kind: 'dm', id: 'chat:9' }).skipped, 'in game')
+  assert.deepEqual([w.flashes, r.chimes, r.badges], [[], 0, []])
+})
+
+await test('attention: in the tray -> no flash (no button), a DM toasts once per burst', () => {
+  const w = fakeWin({ visible: false, minimized: false })
+  const r = rig({ win: w })
+  r.a.signal({ kind: 'dm', id: 'chat:20', title: 'staminup messaged you', body: 'gl' }); r.t += 500
+  r.a.signal({ kind: 'dm', id: 'chat:21', title: 'staminup messaged you', body: 'hf' })
+  assert.deepEqual(w.flashes, [])
+  assert.equal(r.toasts.length, 1)
+  assert.equal(r.chimes, 1)
+})
+
+await test('attention: own lines and double deliveries are refused', () => {
+  const r = rig({ win: fakeWin({ minimized: true }) })
+  assert.equal(r.a.signal({ kind: 'dm', id: 'chat:5', self: true }).skipped, 'own message')
+  r.a.signal({ kind: 'dm', id: 'chat:6' })
+  assert.equal(r.a.signal({ kind: 'dm', id: 'chat:6' }).skipped, 'duplicate')
+  assert.equal(r.a.signal({ kind: 'friend' }).skipped, 'unknown kind')
+})
+
+await test('attention: coming to the front stops the flash and clears the dot', () => {
+  const w = fakeWin({ minimized: true })
+  const r = rig({ win: w })
+  r.a.signal({ kind: 'dm', id: 'chat:30' })
+  r.a.focused()
+  assert.deepEqual(w.flashes, [true, false])
+  assert.deepEqual(r.badges, [1, 0])
+  assert.equal(r.a.unread, 0)
+})
+
+await test('attention: streamer mode hides who and what', () => {
+  const r = rig({ win: fakeWin({ minimized: true }), streamer: true })
+  r.a.signal({ kind: 'invite', id: 'invite:3', invite_id: 3, title: 'deadshot invited you', body: 'Party on Der Riese' })
+  assert.equal(r.toasts[0].title, 'You have a party invite')
+  assert.doesNotMatch(JSON.stringify(r.toasts[0]), /deadshot|Riese/)
+})
+
+await test('attention: the toast XML accepts by protocol, is silent, and escapes', () => {
+  const x = attention.toastXml({ kind: 'invite', title: '<b>"x"&', body: "it's", invite_id: 42 })
+  assert.match(x, /arguments="enw-zombies:\/\/invite\/42"/)
+  assert.match(x, /<audio silent="true"\/>/)
+  assert.match(x, /&lt;b&gt;&quot;x&quot;&amp;/)
+  assert.doesNotMatch(x, /<b>/)
+  assert.doesNotMatch(attention.toastXml({ kind: 'dm', title: 'a', body: 'b' }), /<actions>/)
+  assert.deepEqual({ ...deeplink.parse('enw-zombies://invite/42'), url: undefined }, { kind: 'invite', invite: 42, url: undefined })
+  assert.equal(deeplink.parse('enw-zombies://invite/42;rm').kind, 'home')
+  assert.equal(deeplink.parse('enw-zombies://open').kind, 'home')
+})
+
+await test('attention: the unread dot paints red into the tray bitmap, alpha on', () => {
+  const w = 16, h = 16
+  const out = attention.dotBitmap(Buffer.alloc(w * h * 4), w, h, { bgra: true })
+  const r = Math.max(2, Math.round(16 * 0.22)); const cx = w - r - 1, cy = r + 1
+  const i = (cy * w + cx) * 4
+  assert.deepEqual([out[i], out[i + 1], out[i + 2], out[i + 3]], [45, 55, 225, 255])
+  assert.equal(out[0 + 3], 0, 'a far corner untouched')
+})
+
+await test('attention: wired -- site view unthrottled, IPC + preload + chime + setting present', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  assert.match(main, /preload: PRELOAD, sandbox: false, backgroundThrottling: false \}/, 'the site view keeps running in the tray')
+  assert.match(main, /handle\('attention'/)
+  assert.match(main, /win\.on\('focus', \(\) => state\.attention\?\.focused\(\)\)/)
+  const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
+  assert.match(pre, /attention: \(ev\) => call\('attention', ev\)/)
+  const shell = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
+  assert.match(shell, /onChime\(\(\) => chime\(\)\)/)
+  assert.equal(settings.DEFAULT_SETTINGS.notifySound, true, 'on by default')
+  assert.ok(settings.GAME_KEYS.includes('notifySound'), 'synced with the site copy')
+  assert.equal(settings.validate({ notifySound: false }).patch.notifySound, false)
+  assert.equal(settings.validate({ notifySound: 'yes' }).patch.notifySound, true)
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

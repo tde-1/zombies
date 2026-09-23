@@ -140,6 +140,12 @@ await test('(b) classifyGame: dump -> crash, hang dump -> hang, code 0 -> exit, 
   assert.equal(T.classifyGame({ exitCode: -1073741819 }), 'game_crash')
 })
 
+await test('(b) classifyGame reads the DLL verdict session.exit (lane CL: a hang with no dump file is still a hang)', () => {
+  assert.equal(T.classifyGame({ exitCode: 3489660927, session: { exit: 'hang' } }), 'game_hang')
+  assert.equal(T.classifyGame({ exitCode: 0, session: { exit: 'crash' } }), 'game_crash')
+  assert.equal(T.classifyGame({ exitCode: 0, session: { exit: 'quit' } }), 'game_exit')
+})
+
 await test('(b) collectGameBundle noBinary leaves the dump out and says so', async () => {
   const out = path.join(TMP, 'b2.tar.gz')
   await T.collectGameBundle(gameCtx, { outPath: out, dirs, appVersion: '9.9.9', secrets: [BETA], probes, bundleId: 'cd'.repeat(16), noBinary: true })

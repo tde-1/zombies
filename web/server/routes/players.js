@@ -111,7 +111,7 @@ function router() {
     if (action === 'request') return res.json(users.requestFriend(req.me.steam_id, u.steam_id))
     if (action === 'accept') return res.json(users.respondFriend(req.me.steam_id, u.steam_id, true))
     if (action === 'decline') return res.json(users.respondFriend(req.me.steam_id, u.steam_id, false))
-    if (action === 'remove') return res.json(users.removeFriend(req.me.steam_id, u.steam_id))
+    if (action === 'remove') { const out = users.removeFriend(req.me.steam_id, u.steam_id); return res.status(out.ok ? 200 : 409).json(out) }
     res.status(400).json({ error: 'unknown action' })
   })
 
