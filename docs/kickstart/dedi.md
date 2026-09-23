@@ -3658,3 +3658,13 @@ Unit test `server/tests/solo_parity_test.cpp` 27/0 (rules + the six addresses ag
 - The listen reference ran with `r_gfxopt_water_simulation 0` (its profile's value), so a client
   *with* the sim on vs the fixed server is not measured; the sim only adds waves on real water.
 - Not on the box (lane INT deploys). The fix and the self-check need a box game on a below-zero map.
+
+### 28.7 Build (not deployed)
+
+`build\g2final\enw_t4.dll` from branch head `f67b11e` (main `27026f6`+ merged, no untracked
+sources), 2,677,760 bytes, sha256 **`e7efde2c8002ab9c6f2f858fe7905049d972f560861391b8b975990c75e61e5f`**.
+Proven with this exact file: g2r6, nacht_reimagined, spawn 100/100 on the world, stands on -87.6,
+one hit 60 → 40, second hit = down, 0 mismatches. It is a box DLL (server components); deploy per
+rule 17 from a clean worktree at the merge commit, rollback = the current box DLL `fd3039d2`. The
+first box game on a below-zero map should show `dedi_water_sim_off: post_init: r_gfxopt_water_simulation 1 -> 0`
+(or nothing, once an instance's config has archived the 0) and `solo_parity: slot 0 SPAWNED … on world`.
