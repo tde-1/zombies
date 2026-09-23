@@ -58,9 +58,17 @@ Wait-Lock
 Write-Host "[$(Get-Date -Format HH:mm:ss)] stamp (the launcher's per-launch merge)" -ForegroundColor Cyan
 & node "$repo\tools\dev\settings-roundtrip.mjs" stamp --home $clientHome
 $env:ENW_ESC_MENU_SELFTEST = '5'
-Write-Host "[$(Get-Date -Format HH:mm:ss)] jointest $Tag" -ForegroundColor Cyan
-& powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" -Tag $Tag -ServerFrom $From -ClientFrom $From `
-    -WatchSeconds $Watch -ClientExtraArgs @('+set', 'com_maxfps', '125')
+# Other agents queue on the same lock; losing the race between the wait and jointest's own
+# atomic take is not a failed run. Retry the take, never the run.
+for ($try = 1; $try -le 6; $try++) {
+    Write-Host "[$(Get-Date -Format HH:mm:ss)] jointest $Tag (take $try)" -ForegroundColor Cyan
+    $out = & powershell -ExecutionPolicy Bypass -File "$repo\tools\dev\jointest.ps1" -Tag $Tag -ServerFrom $From -ClientFrom $From `
+        -WatchSeconds $Watch -ClientExtraArgs @('+set', 'com_maxfps', '125') 2>&1
+    $out | ForEach-Object { Write-Host $_ }
+    if (($out -join "`n") -match 'took game.lock|server PID') { break }
+    Write-Host 'the lock was taken first; waiting again' -ForegroundColor Yellow
+    Wait-Lock
+}
 Write-Host "[$(Get-Date -Format HH:mm:ss)] read-back (the launcher, after the game is gone)" -ForegroundColor Cyan
 & node "$repo\tools\dev\settings-roundtrip.mjs" readback --home $clientHome | Tee-Object -FilePath "$dev\logs\dedi\$Tag.readback.json"
 
