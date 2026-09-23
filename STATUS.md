@@ -18,6 +18,8 @@
 
 Pause is OFF on the box (`ENW_NO_PAUSE=1`): two paused Nacht games died of the script-VM localVars overflow ~30-54 s after a resume (dedi 18.6, referee 15.4); guarded DLL `79d4317d` + write probe deployed. Launcher 0.2.14 (Esc pauses on a box, client clock held) and 0.2.15 (relaunch loop gone) on the feed. Site restarted 01:12 with several-games-per-box, the launcher-cancel guard, quit-vs-crash and the 59 New maps.
 
+* **2026-09-23 01:30 UK — Easter egg steps (branch `web-easter-eggs`, web.md + archive.md §11).** `archive/easter_eggs.py` read the cached release posts and threads without making requests and found **26 guides on 20 maps** (8 main quest). They go into a new `map_guides` table via `node web/server/db/import-archive.js --guides` (**not yet run on the live DB**). The map page shows them blurred under "What's in it" with **Show Easter egg steps**; the reveal is remembered per map, and each guide credits its author with a link. Cards and rows get an EE tag, and /admin → guides lists each guide with its confidence plus hide/delete. Unproven: whether the steps are right (they are the authors' release text), and recall.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:

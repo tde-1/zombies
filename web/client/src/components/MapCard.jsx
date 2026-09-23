@@ -52,6 +52,8 @@ export default function MapCard({ map, big = false, flag = null }) {
         {flag && <span className={'map-flag' + (flag === 'New' ? ' new' : '')}>{flag}</span>}
         {/* The one mark that earns its place on the picture, and only when it is true. */}
         {p && p.beaten ? <span className="map-flag done">Beaten</span> : null}
+        {/* The Easter egg steps are on the map page (lib/guides.js). */}
+        {map.ee_guide ? <span className="map-flag ee" title="Easter egg steps on the map page">EE</span> : null}
         <NotPlayable map={map} flag />
       </span>
       <span className="map-cap">

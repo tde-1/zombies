@@ -2713,3 +2713,68 @@ Rail Resume inside the launcher: after `POST /api/party/resume`, the button call
 "launch each match once".
 
 Box proof: dedi.md §19.6.
+
+---
+
+## 2026-09-23, early — Easter egg steps on the map page, blurred until asked for (branch `web-easter-eggs`)
+
+B: "Have an Easter egg guide section that is blurred/obscured by default, with 'Show Easter egg
+steps' ... If a map has no Easter egg steps, don't show the section."
+
+**Where the steps come from.** `archive/easter_eggs.py` (archive.md §11) reads release posts
+and threads we already hold, keeps the sections that are instructions, and writes
+`<archive work>/reports/map_guides.json`. Tonight: **26 guides on 20 maps**.
+
+**The table.** `map_guides` (db/database.js): `sig` (map|kind|title, unique), `map_key`, `kind`
+(`easter_egg`|`power`|`song`|`ending`|`other`), `title`, `reward`, `steps_json`, `source_url`,
+`source_site`, `source_author`, `source_file`, `confidence`, `evidence_json`, `origin`
+(`archive`; `script` later), `state` (`live`|`hidden`|`deleted`), `staff_by/at`. Only
+`lib/guides.js` writes it, and only from the importer or a mod's hide/delete.
+
+**Ingestion (for the coordinator, against the live DB):**
+
+```
+python archive/easter_eggs.py                          # re-make the report (no requests)
+cd web && node server/db/import-archive.js --guides --dry
+node server/db/import-archive.js --guides              # or: npm run import:guides
+```
+
+`--guides` alone imports only the guides; the map import does not run. Each guide lists the site
+keys it may belong to, most specific first (a pipeline bsp, then `cat:<norm>`), and the first one
+that exists wins. It is re-runnable: an unchanged guide stays as it is, a changed one updates in
+place, one the heuristic no longer finds is removed *unless staff touched it*, and a deleted one
+stays deleted. Scraped fields are re-typed and capped, and a non-http `source_url` is dropped.
+
+**The map page** (`MapPage.jsx` `Guides`). The section sits under "What's in it" and renders only
+when `map.guides` is non-empty. The steps are drawn blurred (CSS `filter: blur(7px)`, no select,
+no pointer, `aria-hidden`) under a centred **Show Easter egg steps** button. Revealing is
+remembered per map in this browser (`localStorage enw.ee.shown.<key>`, try/catch), with a
+**Hide** link to undo it. Steps are a numbered list: a titled step keeps its title in bold,
+location lists are sub-bullets, sub-headings are not numbered. Under it: "Gets you: …" (only
+when the guide says) and **From <author> on <site>**, linking to the post (ip-posture.md). Several
+guides are tabs: Main quest / Power / Song / Ending / Side quest. Two side quests use their own
+titles instead of a repeated tab name. Players never see the confidence.
+
+**The EE tag.** `project()` adds `ee_guide`: a live **main-quest** guide exists. That is a
+different claim from `has_ee` ("the map has one"). An EE flag sits top-left on the card picture,
+a gold EE tag on the list row, and the Archive row shows EE for either claim, with a tooltip that
+says which. All 8 main-quest maps are catalogue rows, so tonight the tag shows on `/archive` only.
+
+**Admin** (`/admin` → guides; `GET /api/admin/guides[?state=]`, `POST /api/admin/guides/:id
+{state}`, mods only). Every guide is listed weakest first, with its confidence (label, and the
+evidence on hover), map, source, state, and **Hide / Show / Delete**. A delete asks for
+confirmation, clears the steps, leaves a tombstone and writes to `activity_log`.
+
+**Proof.** Dev site on **:3457** against a backup copy of the live DB (`better-sqlite3` backup,
+read-only on the source). The media were junctioned and a throwaway mod `76561190000000999`
+existed only in that copy. Screenshots were taken with headless Edge over CDP:
+blurred (Escher), revealed, still revealed after reload, the side-quest tab, Unterwegs' three
+tabs, Battlestar Galactica (a playable map, Ending tab), **Leviathan with no section** (no guide),
+the Archive EE tag, and the admin list. `npm test` is green. The new `test/guides.js` (12 checks)
+covers ingestion (key resolution, unknown map, bad rows, a `javascript:` link dropped,
+idempotence, dry run, stale removal, the tombstone), the map-page payload and `ee_guide`, and the
+routes over HTTP (map detail, admin 401/403/200, hide/show/delete, 400/404). It also runs the
+extractor's `--selftest`.
+
+**Not proven:** phone widths; how the blur looks with a very long guide; and whether any of these
+steps are right. They are the map authors' own release text, and nobody has played them.

@@ -50,6 +50,7 @@ export default function MapListRow({ map, archive = false }) {
             a label printed on most of a list is furniture, and it is already a filter. */}
         {archive && <Health health={map.health} />}
         {p && p.beaten ? <span className="tag good">Beaten</span> : null}
+        {map.ee_guide ? <span className="tag gold" title="Easter egg steps on the map page">EE</span> : null}
         <NotPlayable map={map} />
       </span>
       {/* The two numbers, and only the ones that exist. Built as a list and joined rather

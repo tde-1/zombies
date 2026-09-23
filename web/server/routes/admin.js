@@ -23,6 +23,7 @@ const mapRecords = require('../lib/mapRecords')
 const presence = require('../lib/presence')
 const enw = require('../lib/enw')
 const replays = require('../lib/replays')
+const guides = require('../lib/guides')
 const { db, now } = require('../db/database')
 const { requireMod, requireAdmin } = require('../middleware/auth')
 
@@ -234,6 +235,15 @@ function router() {
     for (const f of fields) if (b[f] !== undefined) { sets.push(`${f}=?`); vals.push(b[f]) }
     if (sets.length) db.prepare(`UPDATE maps SET ${sets.join(', ')} WHERE id=?`).run(...vals, m.id)
     res.json({ ok: true, map: maps.detail(m.key) })
+  })
+
+  // Easter egg / power / song guides (lib/guides.js). The list carries each guide's
+  // confidence — the heuristic's own score, which players never see — so staff can read
+  // the weakest first. Hide is reversible; delete leaves a tombstone the importer respects.
+  r.get('/guides', requireMod, (req, res) => res.json(guides.adminList({ state: req.query.state ? String(req.query.state) : null })))
+  r.post('/guides/:id', requireMod, (req, res) => {
+    const out = guides.setState(Number(req.params.id), String((req.body && req.body.state) || ''), req.me.steam_id)
+    res.status(out.ok ? 200 : out.error === 'no such guide' ? 404 : 400).json(out)
   })
 
   r.post('/playlists', requireMod, (req, res) => {

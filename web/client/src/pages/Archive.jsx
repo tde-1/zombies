@@ -112,7 +112,10 @@ export default function Archive() {
                         <span>{m.author || 'author unknown'}{m.year ? ` · ${m.year}` : ''}</span>
                       </div>
                       <div className="row" style={{ gap: 5 }}>
-                        {m.has_ee && <span className="tag gold">EE</span>}
+                        {/* EE: the map has one (its tags), or we hold the steps for it (lib/guides.js). */}
+                        {(m.has_ee || m.ee_guide) && (
+                          <span className="tag gold" title={m.ee_guide ? 'Easter egg steps on the map page' : 'Has an Easter egg'}>EE</span>
+                        )}
                         {m.has_buyable && <span className="tag hot">BE</span>}
                       </div>
                       <Health health={m.health} />

@@ -256,6 +256,7 @@ export function MapBody({ mapKey: key }) {
       </div>
 
       {f && <Features f={f} />}
+      {m.guides && m.guides.length > 0 && <Guides key={m.key} mapKey={m.key} guides={m.guides} />}
 
       <div className="mapdash-split">
         <div className="mds-main">
@@ -461,6 +462,92 @@ function Features({ f }) {
         ))}
       </div>
     </section>
+  )
+}
+
+// ---- the Easter egg -----------------------------------------------------------------------
+// B (2026-09-23): the steps are there if you want them and hidden if you do not. The section
+// only exists when the archive found a guide (lib/guides.js; archive/easter_eggs.py reads the
+// release posts and threads we hold). The steps are blurred until asked for, and the answer
+// is remembered per map in this browser — somebody who opened them once does not want to
+// click again, and somebody who never has should not have them spoiled by a reload.
+//
+// Every guide is somebody else's words, so the line under it says whose and where, and
+// links out (ip-posture.md). Several guides are tabs: Main quest, Power, Song, and so on.
+const revealKey = (k) => `enw.ee.shown.${k}`
+function readShown(k) { try { return window.localStorage.getItem(revealKey(k)) === '1' } catch { return false } }
+function writeShown(k, on) {
+  try { if (on) window.localStorage.setItem(revealKey(k), '1'); else window.localStorage.removeItem(revealKey(k)) } catch { /* private window */ }
+}
+
+function Guides({ mapKey, guides }) {
+  const [shown, setShown] = useState(() => readShown(mapKey))
+  const [pick, setPick] = useState(0)
+  const cur = guides[Math.min(pick, guides.length - 1)]
+  // A tab says what KIND of guide it is; when two share a kind (two side quests) it says
+  // the guide's own title instead, so the tabs never read "Side quest, Side quest".
+  const tabName = (g) => (guides.filter((x) => x.tab === g.tab).length > 1 ? g.title : g.tab)
+  const show = (on) => { setShown(on); writeShown(mapKey, on) }
+  let n = 0
+  return (
+    <section className="mapdash-feats mdguide" aria-label="Easter egg">
+      <div className="mapdash-feats-head">
+        <div className="section-label">Easter egg</div>
+        {shown && <button type="button" className="mdguide-hide" onClick={() => show(false)}>Hide</button>}
+      </div>
+      {guides.length > 1 && (
+        <div className="mdboards" role="tablist" aria-label="Which guide">
+          {guides.map((g, i) => (
+            <button key={g.id} role="tab" aria-selected={cur === g} className={'mdboard' + (cur === g ? ' on' : '')} onClick={() => setPick(i)}>
+              {tabName(g)}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className={'mdguide-body' + (shown ? '' : ' veiled')}>
+        <div className="mdguide-inner" aria-hidden={!shown}>
+          <div className="mdguide-title">
+            <b>{cur.title}</b>
+            {cur.reward && <span className="tiny">Gets you: {cur.reward}</span>}
+          </div>
+          <ol className="mdguide-steps">
+            {cur.steps.map((s, i) => {
+              if (s.head) return <li key={i} className="mdguide-sub">{s.text}</li>
+              n += 1
+              return (
+                <li key={i} value={n}>
+                  {s.label && <b className="mdguide-label">{s.label}. </b>}
+                  {s.text}
+                  {s.details && (
+                    <ul className="mdguide-details">{s.details.map((d, j) => <li key={j}>{d}</li>)}</ul>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+          <GuideSource source={cur.source} />
+        </div>
+        {!shown && (
+          <div className="mdguide-veil">
+            <button type="button" className="btn" onClick={() => show(true)}>Show Easter egg steps</button>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function GuideSource({ source }) {
+  if (!source) return null
+  const who = source.author || 'the author'
+  const where = source.site || (source.url ? hostOf(source.url) : null)
+  return (
+    <p className="tiny mdguide-src">
+      From {who}{where ? ' on ' : ''}
+      {where && (source.url
+        ? <a href={source.url} target="_blank" rel="noreferrer noopener">{where}</a>
+        : <span>{where}</span>)}
+    </p>
   )
 }
 

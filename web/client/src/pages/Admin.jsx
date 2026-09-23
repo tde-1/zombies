@@ -15,7 +15,8 @@ import { Section, Empty, Loading, PlayerLink } from '../components/Bits'
 // morning — Playlists and Custom — are linked from that tab rather than getting tabs of
 // their own: they are whole pages, and a tab holding two links is a menu pretending to be a
 // workspace.
-const TABS = ['overview', 'rows', 'reports', 'records', 'boxes', 'waitlist']
+// `guides` (2026-09-23): the Easter egg / power / song guides the archive found, weakest first.
+const TABS = ['overview', 'rows', 'reports', 'records', 'guides', 'boxes', 'waitlist']
 
 export default function Admin() {
   const { isMod, isAdmin } = useSession()
@@ -58,6 +59,7 @@ export default function Admin() {
       {tab === 'rows' && <Collections isAdmin={isAdmin} />}
       {tab === 'reports' && <Reports onChange={load} />}
       {tab === 'records' && <RecordReview />}
+      {tab === 'guides' && <Guides />}
       {tab === 'boxes' && <Boxes d={d} onChange={load} isAdmin={isAdmin} />}
       {tab === 'waitlist' && <Waitlist onChange={load} />}
     </div>
@@ -126,6 +128,78 @@ function LeaseForm({ onChange }) {
         <button className="btn primary" onClick={go}>Lease</button>
       </div>
       {out && <pre className="block" style={{ marginTop: 8 }}>{JSON.stringify(out.error ? out : { ok: out.ok, box: out.box, match_id: out.match_id, nonce: out.nonce }, null, 1)}</pre>}
+    </Section>
+  )
+}
+
+// The guides the archive found (lib/guides.js, archive/easter_eggs.py). Sorted weakest
+// first, because the heuristic's mistakes are at the bottom of its confidence and that is
+// where a moderator's minute is best spent. The score is shown here and nowhere else.
+function Guides() {
+  const [d, setD] = useState(null)
+  const [state, setState] = useState('')
+  const [open, setOpen] = useState(null)
+  const [err, setErr] = useState(null)
+  const load = useCallback(() => {
+    api.get(`/api/admin/guides${state ? `?state=${state}` : ''}`).then(setD).catch((e) => setErr(e.message))
+  }, [state])
+  useEffect(() => { load() }, [load])
+  const act = async (g, to) => {
+    if (to === 'deleted' && !window.confirm(`Delete "${g.title}" on ${g.map_title || g.map_key}? The next import will not bring it back.`)) return
+    try { await api.post(`/api/admin/guides/${g.id}`, { state: to }); load() } catch (e) { setErr(e.message) }
+  }
+  if (err) return <Section title="Guides"><p className="tiny hot">{err}</p></Section>
+  if (!d) return <Loading />
+  return (
+    <Section
+      title="Guides"
+      right={(
+        <span className="row" style={{ gap: 8 }}>
+          <span className="tiny">{d.counts.live} live on {d.counts.maps} maps · {d.counts.hidden} hidden · {d.counts.deleted} deleted</span>
+          <select value={state} onChange={(e) => setState(e.target.value)} style={{ minWidth: 150 }}>
+            <option value="">Live + hidden</option>
+            <option value="live">Live</option>
+            <option value="hidden">Hidden</option>
+            <option value="deleted">Deleted</option>
+          </select>
+        </span>
+      )}
+    >
+      {d.guides.length === 0 ? <Empty>No guides. Run <code>python archive/easter_eggs.py</code>, then <code>node server/db/import-archive.js --guides</code>.</Empty> : (
+        <div className="listing">
+          <table className="data">
+            <thead><tr><th className="num">Conf.</th><th>Map</th><th>Guide</th><th>Source</th><th>State</th><th /></tr></thead>
+            <tbody>
+              {d.guides.map((g) => (
+                <tr key={g.id}>
+                  <td className="num"><span className={'tag' + (g.confidence_label === 'high' ? ' good' : g.confidence_label === 'low' ? ' hot' : '')} title={g.evidence ? JSON.stringify(g.evidence) : ''}>{g.confidence.toFixed(2)} {g.confidence_label}</span></td>
+                  <td><Link to={`/m/${g.map_key}`}>{g.map_title || g.map_key}</Link></td>
+                  <td>
+                    <button type="button" className="btn small ghost" onClick={() => setOpen(open === g.id ? null : g.id)}>{g.tab}: {g.title} ({g.steps.filter((s) => !s.head).length})</button>
+                    {open === g.id && (
+                      <ol className="tiny" style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                        {g.steps.map((s, i) => <li key={i} style={s.head ? { listStyle: 'none', fontWeight: 700 } : undefined}>{s.label ? `${s.label}. ` : ''}{s.text}</li>)}
+                      </ol>
+                    )}
+                  </td>
+                  <td className="tiny">
+                    {g.source.url ? <a href={g.source.url} target="_blank" rel="noreferrer noopener">{g.source.site || 'link'}</a> : (g.source.site || g.source.file || '—')}
+                    {g.source.author ? ` · ${g.source.author}` : ''}
+                  </td>
+                  <td className="tiny">{g.state}{g.staff_at ? ` ${ago(g.staff_at)}` : ''}</td>
+                  <td className="num">
+                    <span className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
+                      {g.state === 'live' && <button className="btn small ghost" onClick={() => act(g, 'hidden')}>Hide</button>}
+                      {g.state === 'hidden' && <button className="btn small ghost" onClick={() => act(g, 'live')}>Show</button>}
+                      {g.state !== 'deleted' && <button className="btn small ghost" onClick={() => act(g, 'deleted')}>Delete</button>}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Section>
   )
 }
