@@ -11,6 +11,8 @@
 
 * **2026-09-23 01:45 UK — launcher: the relaunch loop is fixed (branch `launcher-after-game`, not merged, not published).** The party watcher re-launched the same match on every poll after the game exited (B: "keeps booting you back into the game"). A match is now followed at most once, never beside a live game of ours; only Play or the site's Resume (`enw.resumeMatch`, needs a site button) goes back in. `launcher.md`, same date.
 
+* **2026-09-23 02:30 UK — launcher: the nav is clickable straight after a game (branch `launcher-after-game`, not merged, not published).** 0.2.10 hid the shell's drag strip *after* showing the site, but a covered shell page does not paint, so its drag region kept the nav (Maps, Update now, the account chip) dead. In a dev window the nav stayed dead for more than 2.4 s in 15/15 trials; now it is 0 ms in all 33. `launcher.md` and `ui/2026-09-23-launcher-after-game-timing.md`.
+
 ## B: do this first (the morning checklist)
 
 1. **Install the launcher 0.2.2** (0.2.1 auto-updates; Settings has a Check-for-updates button) from `https://zombies.enw.gg/download` (or let 0.2.0 auto-update:

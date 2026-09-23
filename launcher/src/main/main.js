@@ -270,11 +270,49 @@ function layout() {
 
 // The site is hidden, never covered: an overlay over a native view is exactly the
 // thing B said no to, and it also does not work reliably.
+//
+// ORDER MATTERS, and getting it wrong is B's "after a game, for a moment I can't click the
+// nav" (2026-09-23). The moment the site view is visible, Chromium marks the shell page
+// underneath it HIDDEN (`document.visibilityState` 'hidden', no requestAnimationFrame),
+// and a hidden page runs no lifecycle update -- which is where Electron sends a frame's
+// drag regions to the window. So `setVisible(true)` first and hide-the-strip second left
+// the strip's 62 px `drag` region in charge of the nav's hit test until the shell next
+// painted: in a dev window every Back to the site left Maps / Records / the account menu
+// answering HTCAPTION for as long as anyone waited (>2.4 s in 10/10 trials, >11 s once).
+// Now: the strip goes first, the shell paints that (two frames), and only then does the
+// site show. A later call supersedes a pending show, so "game ended -> boot screen" (show,
+// then hide 15 ms later) no longer flashes the site. And the shell keeps rendering while
+// covered (`backgroundThrottling: false`, createWindow), so the strip cannot be left
+// stale behind a visible site whatever the order. docs/kickstart/launcher.md 2026-09-23.
+let siteGen = 0
 function showSite(visible) {
   if (!state.siteView) return
-  state.siteView.setVisible(visible)
-  if (visible) layout()
-  shellStrip(!visible)
+  const gen = ++siteGen
+  if (!visible) {
+    state.siteShown = false
+    state.siteView.setVisible(false)
+    shellStrip(true)
+    return
+  }
+  if (state.siteShown) { state.siteView.setVisible(true); layout(); shellStrip(false); return }
+  stripGone().then(() => {
+    if (gen !== siteGen) return          // a later showSite() won
+    state.siteView.setVisible(true)
+    state.siteShown = true
+    layout()
+  })
+}
+
+// Hide the strip and resolve once the shell has painted without it and the new regions
+// have reached the window: two frames, then a 40 ms settle -- measured, the regions land
+// 15-40 ms after the second frame, not with it. Bounded, so a minimised window or a busy
+// renderer cannot keep the site hidden.
+function stripGone() {
+  const js = `new Promise((r) => { document.documentElement.classList.toggle('site-shown', true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => r(true), 40))); setTimeout(() => r(false), 300) })`
+  let p
+  try { p = state.win?.webContents.executeJavaScript(js) } catch {}
+  return Promise.race([Promise.resolve(p).catch(() => false), new Promise((r) => setTimeout(() => r(false), 400))])
 }
 
 // THE SHELL'S STRIP MUST NOT EXIST WHILE THE SITE SHOWS (0.2.10, B: "I can't click on
@@ -309,6 +347,9 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      // The shell must keep painting while the site view covers it, or a change to its
+      // drag regions (the `#chrome` strip) never reaches the window. See showSite().
+      backgroundThrottling: false,
     },
   })
   state.win = win
@@ -327,6 +368,7 @@ async function createWindow() {
   })
   state.siteView = view
   win.contentView.addChildView(view)
+  state.siteShown = true      // a new view is visible; showSite() keeps this true to it
   layout()
   win.on('resize', layout)
   // The site draws the maximise / restore glyph, so it has to be told which one.

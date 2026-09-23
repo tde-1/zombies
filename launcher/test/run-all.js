@@ -1926,9 +1926,25 @@ await test('0.2.10: the shell strip is hidden while the site shows (its drag reg
   const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
   const css = String(fs.readFileSync(new URL('../src/renderer/shell.css', import.meta.url)))
   const html = String(fs.readFileSync(new URL('../src/renderer/shell.html', import.meta.url)))
-  assert.match(main, /function showSite\(visible\)[\s\S]{0,200}shellStrip\(!visible\)/)
+  // Hiding the site shows the strip; showing the site goes through stripGone() (below).
+  assert.match(main, /function showSite\(visible\)[\s\S]{0,300}setVisible\(false\)\s*\n\s*shellStrip\(true\)/)
   assert.match(css, /html\.site-shown #chrome \{ display: none; \}/)
   assert.match(html, /<html lang="en" class="site-shown">/)
+})
+
+await test('2026-09-23: after a game the nav is clickable at once -- strip hidden and painted BEFORE the site shows', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  const fn = main.slice(main.indexOf('function showSite(visible)'), main.indexOf('function shellStrip('))
+  // The site view is made visible only inside stripGone().then(), and a later call wins.
+  const show = fn.indexOf('stripGone().then(')
+  assert.ok(show > 0, 'showSite(true) must wait for stripGone()')
+  assert.ok(fn.indexOf('state.siteView.setVisible(true)', show) > show, 'setVisible(true) must come after the strip is gone')
+  assert.match(fn, /if \(gen !== siteGen\) return/)
+  // stripGone: the class, two frames and a settle in the shell, and a bound in main.
+  assert.match(fn, /classList\.toggle\('site-shown', true\);[\s\S]{0,120}requestAnimationFrame\(\(\) => requestAnimationFrame\(/)
+  assert.match(fn, /Promise\.race\(/)
+  // The shell keeps painting while the site covers it (a hidden page sends no regions).
+  assert.match(main, /preload: PRELOAD,[\s\S]{0,400}backgroundThrottling: false/)
 })
 
 // ------------------------------------------------------------------ 0.2.11 --
