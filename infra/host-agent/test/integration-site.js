@@ -23,7 +23,13 @@ import { mkdirp, parseArgs } from '../lib/util.js'
 
 const a = parseArgs(process.argv.slice(2))
 const ROOT = path.resolve(import.meta.dirname, '..')
-const SITE = a.site || 'http://127.0.0.1:3200'
+// NO DEFAULT SITE (2026-09-23, host.md §16.8). This used to default to :3200, which is B's
+// LIVE site (README hard rule 7): run bare, it polled the live site as `box-a` and pinned a
+// replay key on the live DB's box-a row before the beta gate refused its party. A throwaway
+// site on another port (3399) is the only thing this may be pointed at.
+if (!a.site) { console.error('integration-site.js needs --site http://127.0.0.1:<port> of a THROWAWAY site (never 3200, the live one)'); process.exit(2) }
+if (/:3200\b/.test(String(a.site))) { console.error('refusing :3200 - that is B\'s live site (README hard rule 7)'); process.exit(2) }
+const SITE = a.site
 const SECRET = a.secret || 'devkey-a'
 const BOX = a.box || 'box-a'
 const RUN = mkdirp(path.join(os.tmpdir(), 'enw-integration-' + Date.now().toString(36)))
