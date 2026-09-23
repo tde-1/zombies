@@ -3179,3 +3179,15 @@ waw:waw`) with no game running and no live assignment; it replaced **`134a9d0f`*
 agent lease `m_d7ad16e5` (fake …0003, Nacht) → `linked (… Sep 23 2026 11:44:06)` → `map_loaded` in 6 s →
 `ready` → cancelled. The build string is the first of two builds (the second relinked only the test fix),
 so it is not a hash check; `sha256sum` on the box is. Same binary as launcher 0.2.22.
+
+### 22.7 Box DLL `06a2e1bd` (2026-09-23 12:35 UK, integrator)
+
+**`06a2e1bdb1e564e6302db70d6dc27ae58e5c4f6c20270b631e271f3f2108e4a6`** (2,387,968 B), clean detached
+worktree `C:\Users\b\ZombiesDev\wt-coord2` at main **`f8bc2d9`** (lane 1 Discord hook guard, lane 12
+menu/console lockdown; `lockdown_test` 73/0, `settings_model_test` 55/0). Installed into all 9 copies
+(temp name + `mv`, `chown waw:waw`) while lane 15's agent lease `m_abede789` (fake …0002) ran: a running
+game keeps its old DLL. Replaced `499b70c1`, rollback `/home/waw/binkw32.rollback-499b70c1.dll`. **Host
+agent not restarted** (no host-agent change since §22.6, and lane 15's agent game was live). Proof: agent
+lease `m_2c3cf1b8` (fake …0003, Nacht) booted after the swap → `map_loaded` in 6 s → `ready` → cancelled.
+The `linked` build string still reads 11:44:06 (the date TU is not rebuilt incrementally); `sha256sum`
+is the check. Same binary as launcher 0.2.23.
