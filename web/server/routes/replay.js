@@ -100,7 +100,7 @@ const COUNTER_KEYS = ['kills', 'downs', 'revives', 'headshots']
 // compacted to the fields the viewer reads. The kind comes from a string `t` (today's
 // convention) or `type`, the time from `ms` or a numeric `t`, the player from `pid` or `slot`.
 const FX_EVENTS = new Set(['weapon', 'fire', 'hit', 'damage', 'pap', 'powerup'])
-const FX_FIELDS = ['pid', 'slot', 'name', 'pap', 'raw', 'zid', 'part', 'dmg', 'by', 'hp', 'state', 'id', 'kind', 'until']
+const FX_FIELDS = ['pid', 'slot', 'name', 'pap', 'raw', 'zid', 'part', 'dmg', 'kill', 'by', 'hp', 'state', 'id', 'kind', 'until']
 function fxOf(e) {
   const kind = typeof e.t === 'string' ? e.t : (typeof e.type === 'string' ? e.type : null)
   if (!kind || !FX_EVENTS.has(kind)) return null
@@ -464,6 +464,11 @@ function buildTrack(file, replayLib, hz = 10) {
     hits,
     // Lane R3: the R1 events, time-ordered, [] for every file recorded before them.
     fx,
+    // replay-events-v1 §1: 1 on a file whose DLL wrote the events (header, copied from map_loaded);
+    // 0 on every older file. snap_hz / zombie_hz likewise (null when not announced).
+    replay_events: Number(header.replay_events) || 0,
+    snap_hz: header.snap_hz || null,
+    zombie_hz: header.zombie_hz || null,
   }
 }
 

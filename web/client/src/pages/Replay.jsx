@@ -35,7 +35,9 @@ export default function Replay() {
     let dead = false
     setTrack(null)
     setErr(null)
-    api.get(`/api/replay/${encodeURIComponent(matchId)}/track?hz=10`)
+    // 20 Hz: every snapshot (B, 2026-09-23: replays play back at the recording's own 20 Hz; the
+    // replay-events-v1 DLL records zombies at 20 Hz too). The track is ~2x the bytes of 10 Hz.
+    api.get(`/api/replay/${encodeURIComponent(matchId)}/track?hz=20`)
       .then((t) => !dead && setTrack(t))
       .catch((e) => !dead && setErr(e.message))
     return () => { dead = true }

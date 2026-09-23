@@ -60,7 +60,7 @@ export function normEvent(e) {
   if (!Number.isFinite(ms)) return null
   const pid = e.pid !== undefined ? e.pid : e.slot
   const out = { type, ms, pid: pid === undefined || pid === null ? null : Number(pid) }
-  for (const k of ['name', 'pap', 'raw', 'zid', 'part', 'dmg', 'by', 'hp', 'state', 'id', 'kind', 'until']) {
+  for (const k of ['name', 'pap', 'raw', 'zid', 'part', 'dmg', 'kill', 'by', 'hp', 'state', 'id', 'kind', 'until']) {
     if (e[k] !== undefined) out[k] = e[k]
   }
   if (Array.isArray(e.pos) && e.pos.length >= 3) { out.x = +e.pos[0]; out.y = +e.pos[1]; out.z = +e.pos[2] }
@@ -78,9 +78,38 @@ export function baseWeapon(name) {
   return s.replace(/_upgraded(_zm)?$/, '').replace(/_zm$/, '')
 }
 
+// NAMES (replay-events-v1 §2). An event's `name` is the engine name with `_upgraded`, a leading
+// `zombie_` and a trailing `_zombie` stripped (`zombie_thompson_upgraded` -> `thompson`, pap true;
+// `ptrs41_zombie` -> `ptrs41`); `raw` is the engine's own; a snapshot's `weapon` is the engine name;
+// `"#<index>"` means the weapon table was not bound. Tables here (waw.js WEAPONS, DISPLAY, the asset
+// manifest) are keyed by whichever form they were written in, so every lookup tries all of them.
+/** Lookup keys for a weapon, most specific first: raw, raw without _upgraded, the stripped core, zombie_core, core_zombie. */
+export function weaponKeys(name, raw) {
+  const out = []
+  const add = (k) => { if (k && !out.includes(k)) out.push(k) }
+  for (const n of [raw, name]) {
+    if (!n || /^#/.test(String(n))) continue
+    const full = String(n)
+    add(full)
+    const b = baseWeapon(full)
+    add(b)
+    const core = b.replace(/^zombie_/, '').replace(/_zombie$/, '')
+    add(core)
+    add('zombie_' + core)
+    add(core + '_zombie')
+  }
+  return out
+}
+/** `zombie_thompson_upgraded` / `thompson` -> `thompson`: the form v1 events use for `name`. */
+export const coreWeapon = (n) => baseWeapon(n).replace(/^zombie_/, '').replace(/_zombie$/, '')
+const pick = (table, keys) => { if (table) for (const k of keys) if (table[k]) return table[k]; return null }
+
 // What a weapon LOOKS like when there is no model for it: a class from waw.js's weapon table
-// when the name is there (its `cls`), else a guess from the name, else a rifle.
+// when the name is there (its `cls`), else a guess from the name, else a rifle. Two non-guns the
+// scripts put in players' hands (v1 §2) have their own: the Pack-a-Punch knuckle crack is empty
+// hands ('none'), a perk is a bottle.
 const CLASS_BY_NAME = [
+  [/knuckle_crack/, 'none'], [/perk_bottle|perk/, 'bottle'],
   [/ray_?gun|raygun/, 'raygun'], [/tesla|thunder|wunder/, 'wonder'],
   [/colt|walther|357|nambu|tokarev|pistol|luger|m1911/, 'pistol'],
   [/thompson|mp40|ppsh|type100|stg|mp44|smg/, 'smg'],
@@ -92,14 +121,16 @@ const CLASS_BY_NAME = [
   [/knife|melee|bowie/, 'melee'],
   [/kar98|springfield|garand|gewehr|carbine|mosin|svt|ptrs|arisaka|rifle/, 'rifle'],
 ]
-export function weaponClass(name, table) {
-  const base = baseWeapon(name)
-  const row = table && (table[name] || table[base] || table[base.replace(/^zombie_/, '')])
+export function weaponClass(name, table, raw) {
+  const keys = weaponKeys(name, raw)
+  const s = keys.join(' ').toLowerCase()
+  if (/knuckle_crack/.test(s)) return 'none'
+  if (/perk_bottle/.test(s)) return 'bottle'
+  const row = pick(table, keys)
   if (row && row.cls) {
-    if (/ray_?gun/.test(base)) return 'raygun'
+    if (/ray_?gun/.test(s)) return 'raygun'
     return row.cls === 'rocketlauncher' ? 'launcher' : row.cls === 'gas' ? 'flame' : row.cls
   }
-  const s = base.toLowerCase()
   for (const [re, cls] of CLASS_BY_NAME) if (re.test(s)) return cls
   return 'rifle'
 }
@@ -108,10 +139,10 @@ export function weaponClass(name, table) {
 // the fallback for the stock zombies weapons (the names the game's own HUD/wall-buys use), and
 // anything else is its file name made readable. Pack-a-Punch names are WaW's own.
 const DISPLAY = {
-  zombie_colt: 'M1911', colt: 'M1911', m1911: 'M1911', walther: 'Walther P38', sw_357: '.357 Magnum', nambu: 'Nambu',
+  zombie_colt: 'M1911', colt: 'M1911', knuckle_crack: 'Pack-a-Punch', zombie_knuckle_crack: 'Pack-a-Punch', m1911: 'M1911', walther: 'Walther P38', sw_357: '.357 Magnum', nambu: 'Nambu',
   m1carbine: 'M1A1 Carbine', m1garand: 'M1 Garand', m1garand_gl: 'M1 Garand w/ Launcher', kar98k: 'Kar98k',
   kar98k_scoped_zombie: 'Scoped Kar98k', springfield: 'Springfield', gewehr43: 'Gewehr 43', mosin_rifle: 'Mosin-Nagant',
-  svt40: 'SVT-40', type99_rifle: 'Arisaka', ptrs41_zombie: 'PTRS-41',
+  svt40: 'SVT-40', type99_rifle: 'Arisaka', ptrs41_zombie: 'PTRS-41', ptrs41: 'PTRS-41',
   thompson: 'Thompson', mp40: 'MP40', stg44: 'STG-44', ppsh: 'PPSh-41', type100_smg: 'Type 100',
   bar: 'BAR', '30cal_bipod': 'Browning M1919', mg42_bipod: 'MG42', fg42_bipod: 'FG42', dp28: 'DP-28', type99_lmg: 'Type 99',
   shotgun: 'M1897 Trench Gun', doublebarrel: 'Double-Barreled Shotgun', doublebarrel_sawed_grip: 'Sawed-Off Shotgun',
@@ -132,16 +163,21 @@ const pretty = (s) => String(s).replace(/^zombie_/, '').replace(/_zombie$/, '').
   .replace(/\b\w/g, (c) => c.toUpperCase())
 
 /** The name to show for a weapon, PaP'd or not. `assets` is /mapdata/_assets.json or null. */
-export function displayName(name, pap, assets) {
-  if (!name) return null
-  const base = baseWeapon(name)
-  const w = assets && assets.weapons && (assets.weapons[name] || assets.weapons[base])
+export function displayName(name, pap, assets, raw) {
+  if (!name && !raw) return null
+  if (/^#/.test(String(name || '')) && !raw) return null     // weapon table not bound: no name to show
+  const keys = weaponKeys(name, raw)
+  if (!keys.length) return null
+  if (/perk_bottle/.test(keys[0])) return 'Perk-a-Cola'
+  const w = pick(assets && assets.weapons, keys)
   if (w) {
     if (pap && w.pap && w.pap.displayName) return w.pap.displayName
     if (w.displayName) return pap && !w.pap ? `${w.displayName} (PaP)` : w.displayName
   }
-  if (pap) return DISPLAY_PAP[base] || `${DISPLAY[base] || pretty(base)} (PaP)`
-  return DISPLAY[base] || DISPLAY[name] || pretty(base)
+  const plain = pick(DISPLAY, keys)
+  const core = coreWeapon(keys[0])
+  if (pap) return pick(DISPLAY_PAP, keys) || `${plain || pretty(core)} (PaP)`
+  return plain || pretty(core)
 }
 
 /** Remaining time as the HUD shows it: tenths of a second, rounded DOWN (0.0 is the end). */
@@ -211,7 +247,7 @@ export function buildFx(track, assets = null) {
     switch (e.type) {
       case 'weapon': {
         if (e.pid === null) break
-        const pap = !!e.pap || /_upgraded(_zm)?$/.test(String(e.name || ''))
+        const pap = !!e.pap || /_upgraded(_zm)?$/.test(String(e.name || '')) || /_upgraded(_zm)?$/.test(String(e.raw || ''))
         const a = perPid(fx.weapons, e.pid)
         a.ms.push(e.ms); a.ev.push({ name: e.name || null, pap, raw: e.raw === undefined ? null : e.raw })
         break
@@ -226,7 +262,7 @@ export function buildFx(track, assets = null) {
       case 'hit': {
         if (e.pid === null) break
         const a = perPid(fx.hits, e.pid)
-        a.ms.push(e.ms); a.ev.push({ zid: e.zid === undefined ? null : e.zid, part: e.part === 'head' ? 'head' : 'body', dmg: +e.dmg || 0 })
+        a.ms.push(e.ms); a.ev.push({ zid: e.zid === undefined ? null : e.zid, part: e.part === 'head' ? 'head' : 'body', dmg: +e.dmg || 0, kill: e.kill === true })
         fx.cues.push({ ms: e.ms, kind: 'hit', pid: e.pid, part: e.part === 'head' ? 'head' : 'body' })
         break
       }
@@ -244,7 +280,7 @@ export function buildFx(track, assets = null) {
         a.ms.push(e.ms); a.ev.push({ name: e.name || null, state })
         if (state === 'start') fx.cues.push({ ms: e.ms, kind: 'pap', pid: e.pid, name: e.name || null })
         else fx.cues.push({ ms: e.ms, kind: 'pap_done', pid: e.pid, name: e.name || null })
-        fx.feed.push({ t: 'pap', ms: e.ms, slot: e.pid, name: e.name || null, state })
+        fx.feed.push({ t: 'pap', ms: e.ms, slot: e.pid, name: e.name || null, raw: e.raw || null, state })
         break
       }
       case 'powerup': {
@@ -308,24 +344,24 @@ export function buildFx(track, assets = null) {
  * Writes into `out` ({ name, pap, source }) and returns it: no allocation per frame.
  */
 export function weaponAt(fx, pid, ms, colName, out) {
-  out.name = null; out.pap = false; out.source = 'none'
+  out.name = null; out.pap = false; out.source = 'none'; out.raw = null
   const w = fx && fx.weapons.get(pid)
   const i = w ? lastLE(w.ms, ms) : -1
   if (i >= 0) {
     const e = w.ev[i]
-    out.name = e.name; out.pap = e.pap; out.source = 'event'
+    out.name = e.name; out.pap = e.pap; out.source = 'event'; out.raw = e.raw
     const p = fx.pap.get(pid)
     if (!out.pap && p && e.name) {
-      const base = baseWeapon(e.name)
+      const base = coreWeapon(e.name)
       for (let k = lastLE(p.ms, ms); k >= 0 && p.ms[k] >= w.ms[i]; k--) {
-        if (p.ev[k].state === 'done' && (!p.ev[k].name || baseWeapon(p.ev[k].name) === base)) { out.pap = true; break }
+        if (p.ev[k].state === 'done' && (!p.ev[k].name || coreWeapon(p.ev[k].name) === base)) { out.pap = true; break }
       }
     }
     return out
   }
   if (colName) {
     const n = colName(pid)
-    if (n) { out.name = n; out.pap = /_upgraded(_zm)?$/.test(n); out.source = 'snapshot' }
+    if (n) { out.name = n; out.raw = n; out.pap = /_upgraded(_zm)?$/.test(n); out.source = 'snapshot' }
   }
   return out
 }
@@ -495,8 +531,7 @@ export function soundsFor(cue, assets, pap) {
   const S = assets.sounds || {}
   switch (cue.kind) {
     case 'fire': {
-      const W = assets.weapons || {}
-      const w = W[cue.name] || W[baseWeapon(cue.name)]
+      const w = pick(assets.weapons, weaponKeys(cue.name, cue.raw))
       if (!w || !w.sounds) return null
       return [(pap && w.sounds.fire_pap) || w.sounds.fire || null]
     }

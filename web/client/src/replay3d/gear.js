@@ -25,7 +25,7 @@ import {
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { toThree } from './scene.js'
-import { weaponClass, baseWeapon } from './fx.js'
+import { weaponClass, weaponKeys } from './fx.js'
 import { WEAPONS } from './waw.js'
 
 export const MAPDATA = '/mapdata'
@@ -143,6 +143,10 @@ function buildGunTemplates(M) {
     flame: make([tube(0.7, 20, metal, 8, 0.6, 0), box(8, 2.6, 2, dark, 0, 0, 0), box(1.4, 3.6, 1.2, dark, -1, -2.2, 0)], 18, 0.6),
     grenade: make([new Mesh(new CylinderGeometry(1.3, 1.3, 4, 10), green), tube(0.45, 7, wood, 0, -3, 0)], 0, 0),
     melee: make([box(6, 0.9, 0.25, blade, 4, 0.3, 0), box(3.4, 1.2, 1, wood, -0.6, 0, 0)], 7, 0.3),
+    // v1 §2's non-guns: the Pack-a-Punch knuckle crack (empty hands) and a perk bottle.
+    none: make([], 0, 0),
+    bottle: make([(() => { const o = new Mesh(new CylinderGeometry(1.3, 1.3, 5, 10), M.bottle); o.position.set(1, 1.5, 0); return o })(),
+      (() => { const o = new Mesh(new CylinderGeometry(0.5, 0.8, 1.6, 8), M.bottle); o.position.set(1, 4.8, 0); return o })()], 0, 0),
   }
 }
 // The wonder weapon's bulb and the mg's drum sit at their positions after the fact.
@@ -154,7 +158,7 @@ function placeOddParts(T) {
 }
 
 // Classes that make no flash when they "fire".
-const NO_FLASH = new Set(['grenade', 'melee'])
+const NO_FLASH = new Set(['grenade', 'melee', 'none', 'bottle'])
 
 // ---------------------------------------------------------------- power-up stand-ins --
 
@@ -203,6 +207,7 @@ export function createGear(api, actors, assetsIn) {
     white: own(new MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.6, fog: false })),
     blade: own(new MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.25, metalness: 0.9, fog: false })),
     bulb: own(new MeshBasicMaterial({ color: 0x9fd8ff, fog: false })),
+    bottle: own(new MeshStandardMaterial({ color: 0x7a2418, roughness: 0.2, metalness: 0.1, emissive: new Color(0x2a0602), fog: false })),
   }
   const camo = own(camoTex())
   // Pack-a-Punch: every material of a gun gets a camo twin, made once per source material.
@@ -267,24 +272,36 @@ export function createGear(api, actors, assetsIn) {
     }
     return e
   }
-  const weaponEntry = (name) => {
+  const weaponEntry = (name, raw) => {
     const W = assets && assets.weapons
-    return W ? (W[name] || W[baseWeapon(name)] || null) : null
+    if (!W) return null
+    for (const k of weaponKeys(name, raw)) if (W[k]) return W[k]
+    return null
   }
 
-  // What to draw for (name, pap): a key that changes when the picture does, and a builder.
-  function visualFor(name, pap) {
-    const w = weaponEntry(name)
-    const cls = weaponClass(name, WEAPONS)
+  // What to draw for (name, pap, raw): a key that changes when the picture does, and what to build.
+  // Memoised per (name, raw, pap) so the per-frame call allocates nothing; an entry made while its
+  // glb was still loading is recomputed once the load settles, and all of it on setAssets().
+  const visCache = new Map()
+  function visualFor(name, pap, raw) {
+    const ck = `${name}|${raw}|${pap ? 1 : 0}`
+    const hit = visCache.get(ck)
+    if (hit && !(hit.pending && hit.pending.state !== 'loading')) return hit.v
+    const w = weaponEntry(name, raw)
+    const cls = weaponClass(name, WEAPONS, raw)
+    let v = null
+    let pending = null
     if (w) {
       const u = assetUrl(pap && w.pap && w.pap.glb ? w.pap.glb : w.glb)
       const e = glb(u)
       if (e && e.state === 'ready') {
         const camoIt = pap && !(w.pap && w.pap.glb)
-        return { key: `glb:${u}:${camoIt ? 'pap' : ''}`, cls, glbScene: e.scene, camo: camoIt, muzzleTag: (w.muzzle && w.muzzle.tag) || 'tag_flash', sprite: w.muzzle && w.muzzle.sprite }
-      }
+        v = { key: `glb:${u}:${camoIt ? 'pap' : ''}`, cls, glbScene: e.scene, camo: camoIt, muzzleTag: (w.muzzle && w.muzzle.tag) || 'tag_flash', sprite: w.muzzle && w.muzzle.sprite }
+      } else if (e && e.state === 'loading') pending = e
     }
-    return { key: `proc:${cls}:${pap ? 'pap' : ''}`, cls, glbScene: null, camo: !!pap, muzzleTag: null, sprite: w && w.muzzle && w.muzzle.sprite }
+    if (!v) v = { key: `proc:${cls}:${pap ? 'pap' : ''}`, cls, glbScene: null, camo: !!pap && cls !== 'none' && cls !== 'bottle', muzzleTag: null, sprite: w && w.muzzle && w.muzzle.sprite }
+    visCache.set(ck, { v, pending })
+    return v
   }
 
   function buildVisual(v) {
@@ -355,7 +372,7 @@ export function createGear(api, actors, assetsIn) {
       const st = state(p.slot)
       if (!st || !st.name || !p.alive || (eyes && p.slot === focus)) continue
       const s = slotGear(p.slot)
-      setGun(s, visualFor(st.name, st.pap))
+      setGun(s, visualFor(st.name, st.pap, st.raw))
       s.holder.visible = true
       const h = actors && actors.handOf ? actors.handOf(p.slot) : null
       const yaw = (p.yaw || 0) * Math.PI / 180
@@ -413,8 +430,8 @@ export function createGear(api, actors, assetsIn) {
   const VM_REST = { x: 6.5, y: -6.5, z: -10 }
   vm.position.set(VM_REST.x, VM_REST.y, VM_REST.z)
   const vmState = { key: '', gun: null, muzzle: null, cls: 'rifle', kick: 0, phase: 0 }
-  function setViewmodelWeapon(name, pap) {
-    const v = visualFor(name || 'm1garand', !!pap)
+  function setViewmodelWeapon(name, pap, raw) {
+    const v = visualFor(name || 'm1garand', !!pap, name ? raw : null)
     if (vmState.key === v.key) return
     if (vmState.gun) vmInner.remove(vmState.gun)
     const b = buildVisual(v)
@@ -423,7 +440,7 @@ export function createGear(api, actors, assetsIn) {
     vmState.cls = v.cls
     vmState.key = v.key
     // A long gun pulled back so its muzzle is in frame; a pistol pushed forward.
-    const back = { rifle: -10, mg: -12, spread: -9, launcher: -8, wonder: -6, flame: -6, smg: -4, pistol: 2, raygun: 2, grenade: 4, melee: 4 }[v.cls] || -6
+    const back = { none: 0, bottle: 4, rifle: -10, mg: -12, spread: -9, launcher: -8, wonder: -6, flame: -6, smg: -4, pistol: 2, raygun: 2, grenade: 4, melee: 4 }[v.cls] || -6
     vmState.gun.position.set(back, 0, 0)
     vmInner.add(vmState.gun)
     ;(vmState.muzzle || vmState.gun).add(vmFlash)
@@ -515,6 +532,7 @@ export function createGear(api, actors, assetsIn) {
   /** The manifest arrived (or changed): glbs are looked up from now on; placeholders until they load. */
   function setAssets(a) {
     assets = a || null
+    visCache.clear()
     const t = manifestFlash(assets)
     if (t) {
       defaultFlashSprite = t

@@ -779,14 +779,15 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       g.name = fxScratch.w.name
       g.pap = fxScratch.w.pap
       g.source = fxScratch.w.source
+      g.raw = fxScratch.w.raw
       const fa = fireAge(F, p.slot, nowMs)
       g.fireAge = fa
       g.fireMs = nowMs - fa
       // The name tag's weapon line, rebuilt only when the weapon changes (actors.js).
-      const key = `${g.name}|${g.pap}`
+      const key = `${g.name}|${g.raw}|${g.pap}`
       if (actors && actors.setPlateWeapon && g.plate !== key) {
         g.plate = key
-        actors.setPlateWeapon(p.slot, p.name, on && g.name ? displayName(g.name, g.pap, assets) : null)
+        actors.setPlateWeapon(p.slot, p.name, on && g.name ? displayName(g.name, g.pap, assets, g.raw) : null)
       }
     }
     gear.root.visible = on
@@ -796,7 +797,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
     // First person: the watched player's weapon, kicked and flashed by his recorded shots; a
     // file with no fire events for him kicks on the attack button, as §8.7 always did.
     const fg = gearState.get(focus)
-    gear.setViewmodelWeapon(fg && fg.name, fg && fg.pap)
+    gear.setViewmodelWeapon(fg && fg.name, fg && fg.pap, fg && fg.raw)
     const recorded = F.fires.has(focus)
     gear.updateViewmodel(recorded ? fg.fireAge : null, fg ? fg.fireMs : 0, playingRef.current && s.fire, step)
   }, [track, t0, F, gearState, fxScratch, assets])
@@ -1151,7 +1152,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
       const tp = track.players.find((x) => x.slot === row.slot)
       const k = hud.tick == null ? 0 : hud.tick
       const w = weaponAt(F, row.slot, tMs, () => colWeapon(tp, k), {})
-      return { ...row, weapon: w.name ? displayName(w.name, w.pap, assets) : null, pap: w.pap }
+      return { ...row, weapon: w.name ? displayName(w.name, w.pap, assets, w.raw) : null, pap: w.pap }
     }
     return hud.players.map((p) => withWeapon((() => {
       const tp = track.players.find((x) => x.slot === p.slot)
@@ -1287,7 +1288,7 @@ export default function ReplayViewer({ track, mapUrl, metaUrl, title, onClose })
             {e.t === 'frag' && <span>frag <b>{e.cooked > 0 ? `cooked ${e.cooked.toFixed(1)}s` : 'thrown'}</b> · went off (inferred)</span>}
             {e.t === 'revive' && <span>slot {e.slot} <b>revived</b></span>}
             {e.t === 'powerup' && <span>{e.slot == null ? 'power-up' : `slot ${e.slot}`} <b>{POWERUP_LABEL[e.kind] || 'Power-up'}</b></span>}
-            {e.t === 'pap' && <span>slot {e.slot} <b>{e.state === 'done' ? 'Pack-a-Punched' : 'Pack-a-Punch'}</b>{e.name ? ` · ${displayName(e.name, e.state === 'done', assets)}` : ''}</span>}
+            {e.t === 'pap' && <span>slot {e.slot} <b>{e.state === 'done' ? 'Pack-a-Punched' : 'Pack-a-Punch'}</b>{e.name ? ` · ${displayName(e.name, e.state === 'done', assets, e.raw)}` : ''}</span>}
             {e.t === 'bleedout' && <span>slot {e.slot} <b>bled out</b></span>}
             {e.t === 'chat' && <span>slot {e.slot}: {e.text}</span>}
             {e.t === 'referee' && <span>{e.label || e.id}</span>}
