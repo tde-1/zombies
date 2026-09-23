@@ -66,7 +66,7 @@ function recordStatus(box, body) {
   // The heartbeat's box-wide fields are carried over until the next heartbeat.
   const prev = safeJson((db.prepare('SELECT last_status_json FROM boxes WHERE id=?').get(box.id) || {}).last_status_json, null) || {}
   const stored = { ...(body || {}) }
-  for (const k of ['instances', 'host', 'protocol', 'max_instances']) if (stored[k] === undefined && prev[k] !== undefined) stored[k] = prev[k]
+  for (const k of ['instances', 'host', 'protocol', 'max_instances', 'mem', 'boot_queue', 'incidents', 'last_incident']) if (stored[k] === undefined && prev[k] !== undefined) stored[k] = prev[k]
   db.prepare('UPDATE boxes SET last_status_json=?, last_state=?, last_poll=? WHERE id=?')
     .run(JSON.stringify(stored), (body && body.state) || null, now(), box.id)
   reapGhostLeases(box, body)

@@ -21,6 +21,8 @@
 #include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/json.hpp"
 #include "../../../shared/core/logger.hpp"
+#include "../replay/replay_events_model.hpp"
+#include "game_over.hpp"
 #include "logprint_mirror.hpp"
 #include "name_lock.hpp"
 #include "t4_bind.hpp"
@@ -253,7 +255,16 @@ class referee_component final : public component {
 public:
     const char* name() const override { return "referee"; }
 
+    // The one instance, for referee::end_game_now() (game_over.hpp).
+    static referee_component*& self() { static referee_component* p = nullptr; return p; }
+    bool end_from_outside(const char* reason, const char* flag, bool server_alive) {
+        if (!armed_ || game_over_) return false;
+        emit_game_over(reason, flag, server_alive);
+        return true;
+    }
+
     void post_load() override {
+        self() = this;
         auto& link = game_link::get();
         link.on("snapshot_state",
                 [this](const json::value& msg) { reply_snapshot(msg.str_or("id")); },
@@ -304,6 +315,7 @@ public:
             return;
         }
         referee::bind();
+        armed_ = true;
         // THE NAME LOCK (B, 2026-09-23; name_lock.cpp). Armed with the rest of the
         // bindings and BEFORE any client can connect, because the first thing it has to
         // survive is a connect. It owns exactly one address, SV_UpdateUserinfo_f
@@ -1012,6 +1024,13 @@ private:
         if (!fs_game.empty()) w.str("fs_game", fs_game);
         w.str("mode", "zombies");
         w.integer("sv_maxclients", referee::max_clients());
+        // What the replay sampler in THIS build records, so the host can stamp it into the
+        // .enwr header and a viewer can tell an old file from a new one (lane R1,
+        // docs/protocol/replay-events-v1.md): the gameplay-event schema version (absent = 0,
+        // snaps and the v0 events only) and the snap rates.
+        w.integer("replay_events", replay_ev::kVersion);
+        w.integer("snap_hz", 20);
+        w.integer("zombie_hz", 20);
         game_link::get().send(w);
         ENW_INFO("referee: map_loaded map=%s fs_game=%s (from our own command line)",
                  map.empty() ? "unknown" : map.c_str(), fs_game.empty() ? "-" : fs_game.c_str());
@@ -1065,7 +1084,12 @@ private:
     //      do NOTHING: a server that restarted its own map would destroy the evidence
     //      of a game the host had not finished writing down. The exact contract is in
     //      referee.md.
-    void emit_game_over(const char* reason) {
+    //
+    // `flag` and `server_alive` exist for the freeze watchdog (dedi.md §23): a frozen
+    // server reports `flags:["server_freeze"]` so the host keeps the record and marks
+    // it, and `server_alive:false` so the host tears the process down instead of
+    // answering `end` with a map_restart the dead frame would never run.
+    void emit_game_over(const char* reason, const char* flag = nullptr, bool server_alive = true) {
         if (game_over_) return;
         game_over_ = true;
 
@@ -1152,6 +1176,11 @@ private:
             .integer("downs_total", total_downs)
             .integer("players_alive", alive);
         if (any_stats) w.integer("kills_total", total_kills);
+        if (flag && *flag) {
+            json::array fl;
+            fl.str(flag);
+            w.raw("flags", fl.done());
+        }
         w.raw("players", players.done())
          .raw("dvars", env.done());
         game_link::get().send(w);
@@ -1169,17 +1198,21 @@ private:
             .str("reason", reason)
             .integer("duration_ms", static_cast<long long>(duration))
             .boolean("replay_closed", true)
-            .boolean("server_alive", true)
-            .str("awaiting", "end|teardown");
+            .boolean("server_alive", server_alive)
+            .str("awaiting", server_alive ? "end|teardown" : "teardown");
         game_link::get().send(m);
 
-        ENW_INFO("referee: GAME OVER at round %d (%s) after %u ms; %d point(s) over %d player "
+        ENW_INFO("referee: GAME OVER at round %d (%s%s%s) after %u ms; %d point(s) over %d player "
                  "row(s), %d down(s), %d kill(s)%s, %d alive. Replay sampler stopped. match_end "
-                 "sent: the server is ALIVE and idle, waiting for the host to send `end` "
-                 "(map_restart) or to tear the instance down.",
-                 round_, reason, duration, total_points,
+                 "sent: %s",
+                 round_, reason, (flag && *flag) ? ", flag " : "", (flag && *flag) ? flag : "",
+                 duration, total_points,
                  static_cast<int>(rows), total_downs, total_kills,
-                 any_stats ? "" : " (native stats not bound)", alive);
+                 any_stats ? "" : " (native stats not bound)", alive,
+                 server_alive ? "the server is ALIVE and idle, waiting for the host to send `end` "
+                                "(map_restart) or to tear the instance down."
+                              : "server_alive:false -- the host must tear this process down; it "
+                                "cannot run another match.");
         ENW_INFO("referee: %zu distinct notifies seen, %llu suppressed", seen_.size(),
                  static_cast<unsigned long long>(suppressed_));
     }
@@ -1432,6 +1465,7 @@ private:
     bool map_announced_ = false;
     std::string map_;                        // the bsp name announced in map_loaded
     bool game_over_ = false;
+    bool armed_ = false;
     uint32_t game_ms_ = 0;
     uint64_t frames_ = 0;
     uint64_t core_frames_ = 0;
@@ -1446,6 +1480,12 @@ private:
 };
 
 }  // namespace
+
+bool referee::end_game_now(const char* reason, const char* flag, bool server_alive) {
+    referee_component* r = referee_component::self();
+    return r && r->end_from_outside(reason, flag, server_alive);
+}
+
 }  // namespace enw
 
 ENW_REGISTER_COMPONENT(enw::referee_component)
