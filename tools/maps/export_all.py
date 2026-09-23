@@ -15,12 +15,13 @@ stopped run resumes where it stopped; --force redoes a map):
               ZombiesDev/archive/mods-staged|mods/<bsp>/<bsp>.ff (archive.md §7)
   2. unlink   OpenAssetTools' Unlinker -> xmodels, materials, images (DDS), map_ents.
               No game, no lock.
-  3. husky    the world shell + static-model placements out of the RUNNING game
-              (tools/maps/husky-map.ps1): waits for game.lock, launches the `geo` dev copy
-              off-screen, calls HuskyLib with no window, kills its own pid, releases the
-              lock. The ONLY step that needs the game; the lock is free between maps.
+  3. world    the world shell + static-model placements, OFFLINE: our OAT build with the
+              T4 GfxWorld dumper (tools/maps/oat-t4-world; export_map.unlink_world) reads
+              GfxWorld straight out of the fastfile. No game, no game.lock (replay.md §16).
+              `--husky` is the old fallback for a zone the dumper cannot read: Husky
+              (tools/maps/husky-map.ps1) out of the RUNNING game, game.lock per map.
   4. build    export_map.build(): props + sky + shell into one raw .glb in engine units,
-              shell divided by Husky's 2.54 (replay.md §8.12), textures lossless.
+              textures lossless.
   5. optimize tools/maps/optimize_glb.cjs -- ENW Movement's recipe: dedup/prune, WebP
               textures <= 512 px (256 if the map is over budget), KHR_mesh_quantization on
               normals and UVs. Written to ZombiesDev/maps-staging/<bsp>/<bsp>.glb -- NOT
@@ -52,6 +53,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 import export_map as em  # noqa: E402
+import heavylock  # noqa: E402
 
 DEV = em.DEV
 # STAGING, never the served dir. ZombiesDev/maps is what the live site serves (replay.md §7a);
@@ -67,7 +69,7 @@ STOCK = ["nazi_zombie_prototype", "nazi_zombie_asylum", "nazi_zombie_sumpf", "na
 PROVEN = STOCK + ["nazi_zombie_fear_mc_2"]          # web/server/lib/maps.js SERVER_PROVEN
 BUDGET_MB = 20.0          # per-map hard ceiling (Movement's is 30); over it -> 256 px textures
 TARGET_TEX = 512
-PIPELINE = "oat-0.33.0+huskylib-0.5(husky-0.8.0.0)+export_map+gltf-transform-4+webp80+q8u16+meshopt-low"
+PIPELINE = "oat-0.33.0+enw-gfxworld-t4+export_map+gltf-transform-4+webp80+q8u16+meshopt-low"
 
 
 # ---------------------------------------------------------------------------
@@ -305,9 +307,11 @@ def step_build(bsp, dump: Path, obj, force: bool, log):
     out = RAW / bsp
     glb = out / f"{bsp}.glb"
     srcs = [dump / ".unlinked", Path(em.__file__)] + ([obj] if obj else [])
+    if obj and obj.suffix.lower() == ".json":
+        srcs.append(obj.with_suffix(".bin"))
     if glb.is_file() and not force and all(glb.stat().st_mtime > s.stat().st_mtime for s in srcs if s.exists()):
         meta = json.loads((out / f"{bsp}.meta.json").read_text("utf8"))
-        if meta.get("world_shell") == bool(obj):
+        if meta.get("world_shell") == bool(obj) and meta.get("world_source") == (obj.name if obj else None):
             log(f"build: raw glb is current ({glb.stat().st_size / 1048576:.1f} MB)")
             return glb, meta
     em.LOSSLESS_TEX = True
@@ -358,14 +362,17 @@ def export_one(bsp, st, a, log):
     except SystemExit as e:
         rec.update(status="failed", error=f"unlink: {e}")
         return
-    # 3 husky
-    obj = None
-    if not a.no_husky:
-        obj, err = step_husky(bsp, ff, a.force or a.force_husky, log)
-        if err:
-            notes.append(f"no shell: {err[:300]}")
-    elif husky_obj(bsp).is_file():
-        obj = husky_obj(bsp)
+    # 3 world shell -- offline first (OAT GfxWorld), Husky only when asked
+    obj = em.unlink_world(bsp, WORK, a.force)
+    if obj is None:
+        if not em.OAT_GEO.is_file():
+            notes.append(f"no shell: the OAT geo build is not installed ({em.OAT_GEO})")
+        else:
+            notes.append("no shell: the zone has no GfxWorld the dumper could read")
+        if a.husky:
+            obj, err = step_husky(bsp, ff, a.force or a.force_husky, log)
+            if err:
+                notes.append(f"husky: {err[:300]}")
     # 4 build
     raw, meta = step_build(bsp, dump, obj, a.force, log)
     # 5 optimize
@@ -399,6 +406,17 @@ def export_one(bsp, st, a, log):
         al = {"ok": False, "problems": ["align_check failed: " + (r.stderr or r.stdout)[-300:]]}
     log(f"align: {json.dumps(al)}")
     meta["align"] = al
+    # ...and on the SERVED bytes (meshopt + quantized), what a browser gets. mapAlign reads
+    # them since 2026-09-23 (lane GEO); anchors there are checked against the node box.
+    r = subprocess.run(["node", str(HERE / "align_check.cjs"), str(dst), str(mf)], capture_output=True, text=True)
+    try:
+        als = json.loads(r.stdout.strip().splitlines()[-1])
+    except Exception:
+        als = {"ok": False, "problems": ["align_check failed: " + (r.stderr or r.stdout)[-300:]]}
+    log(f"align (served): {json.dumps(als)}")
+    meta["align_served"] = als
+    if meta.get("world_shell") and not als.get("ok"):
+        al = dict(al, ok=False, problems=list(al.get("problems", [])) + ["served: " + p for p in als.get("problems", [])])
     mf.write_text(json.dumps(meta, indent=1), "utf8")
     if meta.get("world_shell") and not al.get("ok"):
         ok = False
@@ -413,8 +431,46 @@ def export_one(bsp, st, a, log):
         "tex_px": stats.get("texture_size"), "over_budget": stats.get("over_budget"),
         "problems": val.get("problems", []), "extent": val.get("extent"),
         "spawns": f"{val.get('spawns_on_floor', 0)}/{val.get('spawns_tested', 0)}",
+        "world_extractor": meta.get("world_extractor"),
+        "world_textures_missing": len(meta.get("world_missing_textures") or []),
+        "align_ok": bool(meta["align"].get("ok")), "align_served_ok": bool(als.get("ok")),
+        "align_windows": meta["align"].get("windows"), "align_spawns": meta["align"].get("spawns_on_floor"),
+        "align_anchors": f"{meta['align'].get('anchors_on', '?')}/{meta['align'].get('anchors_checked', '?')}",
         "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
     })
+
+
+def align_file(glb: Path, mf: Path):
+    r = subprocess.run(["node", str(HERE / "align_check.cjs"), str(glb), str(mf)], capture_output=True, text=True)
+    try:
+        return json.loads(r.stdout.strip().splitlines()[-1])
+    except Exception:
+        return {"ok": False, "problems": ["align_check failed: " + (r.stderr or r.stdout)[-300:]]}
+
+
+def recheck(bsp, st, log=print):
+    """Re-run only the two align checks on an already staged export (after a checker change),
+    and rewrite its sidecar + state row. Light: no unlink, build or optimise."""
+    rec = st.get(bsp)
+    mf = MAPS / bsp / f"{bsp}.meta.json"
+    if not rec or not mf.is_file():
+        return
+    meta = json.loads(mf.read_text("utf8"))
+    chk = RAW / bsp / f"{bsp}.opt.glb"
+    al = align_file(chk, mf) if chk.is_file() else {"ok": False, "problems": ["no float twin"]}
+    als = align_file(MAPS / bsp / f"{bsp}.glb", mf)
+    meta["align"], meta["align_served"] = al, als
+    mf.write_text(json.dumps(meta, indent=1), "utf8")
+    val_ok = not [p for p in (meta.get("validation") or {}).get("problems", []) if not p.startswith("align")]
+    ok = val_ok and al.get("ok") and als.get("ok")
+    rec["problems"] = [p for p in rec.get("problems", []) if not p.startswith("align")] + \
+        ["align: " + p for p in al.get("problems", []) + ["served: " + q for q in als.get("problems", [])]]
+    if meta.get("world_shell"):
+        rec["status"] = "ok" if ok else "check"
+    rec.update({"align_ok": bool(al.get("ok")), "align_served_ok": bool(als.get("ok")),
+                "align_windows": al.get("windows"), "align_spawns": al.get("spawns_on_floor"),
+                "align_anchors": f"{al.get('anchors_on', '?')}/{al.get('anchors_checked', '?')}"})
+    log(f"{bsp}: recheck -> {rec.get('status')} {rec['problems'][:2]}")
 
 
 def write_report(st, order):
@@ -443,16 +499,26 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--maps", default="proven", help="proven | new | archive | all | a,b,c (mixable)")
     ap.add_argument("--force", action="store_true", help="redo every step for these maps")
-    ap.add_argument("--force-husky", action="store_true", help="re-run only the game step")
-    ap.add_argument("--no-husky", action="store_true", help="never start the game (props+sky, or a cached shell)")
+    ap.add_argument("--husky", action="store_true",
+                    help="fall back to Husky (a game launch + game.lock) when the offline dumper gets no shell")
+    ap.add_argument("--force-husky", action="store_true", help="with --husky: re-run the game step")
     ap.add_argument("--skip-failed", action="store_true", help="do not retry maps whose last status was failed")
     ap.add_argument("--skip-done", action="store_true", help="skip maps already ok (default: re-check, cheap)")
     ap.add_argument("--budget-mb", type=float, default=BUDGET_MB)
     ap.add_argument("--report", action="store_true", help="only rewrite results.md from state.json")
+    ap.add_argument("--recheck", action="store_true",
+                    help="re-run only the align checks on already staged maps (after a checker change)")
     a = ap.parse_args()
 
     order = resolve(a.maps)
     st = load_state()
+    if a.recheck:
+        for bsp in order:
+            recheck(bsp, st)
+        save_state(st)
+        p, tot = write_report(st, order)
+        print(p, f"{tot / 1048576:.1f} MB")
+        return
     if a.report:
         p, tot = write_report(st, order)
         print(p, f"{tot / 1048576:.1f} MB")
@@ -497,7 +563,9 @@ def main():
             log(f"==== {bsp} ({i}/{len(order)}) ====")
             t = time.time()
             try:
-                with contextlib.redirect_stdout(Tee(sys.stdout, lf)):
+                # One heavy job machine-wide (heavylock.py): the lock and the memory gate are
+                # taken per map and released between maps, so other lanes interleave.
+                with heavylock.heavy(f"GEO lane export_all: {bsp}", log=log),                         contextlib.redirect_stdout(Tee(sys.stdout, lf)):
                     export_one(bsp, st, a, log)
             except Exception as e:
                 st.setdefault(bsp, {}).update(map=bsp, status="failed", error=f"{type(e).__name__}: {e}"[:400])
