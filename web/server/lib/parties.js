@@ -25,6 +25,7 @@ const bans = require('./bans')
 const progress = require('./partyProgress')
 const maps = require('./maps')
 const serverNotes = require('./serverNotes')
+const gameModes = require('./gameModes')   // a map's own modes (game-modes.md)
 
 const MAX_PLAYERS = 4       // World at War has four client slots. This is the engine, not a policy.
 
@@ -81,7 +82,12 @@ function project(p, viewer = null) {
       // The card's Play stands down for a map no box will run, and says why on hover.
       on_server: maps.onServer(map), server_level: maps.serverLevel(map),
       server_note: serverNotes.noteFor(map, maps.onServer(map), maps.serverLevel(map)),
+      // The map's own game modes (UGX's Classic / Gun Game / ...), for the leader's picker.
+      modes: gameModes.forMap(map.key),
     } : null,
+    // The mode this party will play: the leader's pick, or the map's default. Null for a map
+    // without modes.
+    game_mode: map ? gameModes.resolve(map.key, p.game_mode) : null,
     visibility: p.visibility,
     state: p.state,
     match_id: p.match_id || null,
@@ -111,7 +117,7 @@ function project(p, viewer = null) {
   }
 }
 
-function create(steamId, { mode = 'verified', mapKey = null, visibility = 'friends' } = {}) {
+function create(steamId, { mode = 'verified', mapKey = null, visibility = 'friends', gameMode = null } = {}) {
   const existing = forPlayer(steamId)
   if (existing) return existing
   // The rail sends what it had staged before a party existed (Movement's idle lobby), so
@@ -119,10 +125,12 @@ function create(steamId, { mode = 'verified', mapKey = null, visibility = 'frien
   if (!['verified', 'custom'].includes(mode)) mode = 'verified'
   if (!['private', 'friends', 'public'].includes(visibility)) visibility = 'friends'
   if (mapKey && !db.prepare('SELECT 1 FROM maps WHERE key=?').get(String(mapKey))) mapKey = null
+  // Only a mode the map offers is kept; anything else is the map's default (stored as NULL).
+  const gm = mapKey && gameMode != null && gameModes.resolve(mapKey, gameMode) === String(gameMode) ? String(gameMode) : null
   const code = shortCode(5)
-  const info = db.prepare(`INSERT INTO parties (code, leader, mode, map_key, visibility, state, created_at, updated_at)
-                           VALUES (?,?,?,?,?, 'forming', ?, ?)`)
-    .run(code, String(steamId), mode, mapKey, visibility, now(), now())
+  const info = db.prepare(`INSERT INTO parties (code, leader, mode, map_key, visibility, state, created_at, updated_at, game_mode)
+                           VALUES (?,?,?,?,?, 'forming', ?, ?, ?)`)
+    .run(code, String(steamId), mode, mapKey, visibility, now(), now(), gm)
   db.prepare('INSERT INTO party_members (party_id, steam_id, ready, joined_at) VALUES (?,?,0,?)').run(info.lastInsertRowid, String(steamId), now())
   return project(byId(info.lastInsertRowid), steamId)
 }
@@ -184,7 +192,10 @@ const forPlayerRow = (steamId) => db.prepare(`SELECT p.* FROM party_members pm J
 function setMap(steamId, mapKey) {
   const p = mustLead(steamId)
   if (!p.ok) return p
-  db.prepare('UPDATE parties SET map_key=?, updated_at=? WHERE id=?').run(mapKey ? String(mapKey) : null, now(), p.party.id)
+  // A new map starts on ITS default mode: another map's pick means nothing here.
+  const same = String(p.party.map_key || '') === String(mapKey || '')
+  db.prepare('UPDATE parties SET map_key=?, game_mode=?, updated_at=? WHERE id=?')
+    .run(mapKey ? String(mapKey) : null, same ? p.party.game_mode : null, now(), p.party.id)
   clearReady(p.party.id)
   // A different map means every member's download progress is about a file nobody is
   // going to play. Keeping it would show four green bars for the wrong map.
@@ -197,6 +208,21 @@ function setMode(steamId, mode) {
   if (!p.ok) return p
   if (!['verified', 'custom'].includes(mode)) return { ok: false, error: 'unknown mode' }
   db.prepare('UPDATE parties SET mode=?, updated_at=? WHERE id=?').run(mode, now(), p.party.id)
+  clearReady(p.party.id)
+  return { ok: true, party: project(byId(p.party.id), steamId) }
+}
+
+/**
+ * The leader picks the map's own game mode (game-modes.md). Verified and Custom alike: the
+ * mode is the map's content, not a setting, and records are kept per mode either way.
+ */
+function setGameMode(steamId, id) {
+  const p = mustLead(steamId)
+  if (!p.ok) return p
+  const offered = p.party.map_key ? gameModes.forMap(p.party.map_key) : null
+  if (!offered) return { ok: false, error: 'this map has no game modes' }
+  if (!offered.modes.some((m) => m.id === String(id))) return { ok: false, error: 'that mode is not on this map' }
+  db.prepare('UPDATE parties SET game_mode=?, updated_at=? WHERE id=?').run(String(id), now(), p.party.id)
   clearReady(p.party.id)
   return { ok: true, party: project(byId(p.party.id), steamId) }
 }
@@ -294,6 +320,7 @@ function launch(steamId, { force = false } = {}) {
   const res = assignments.lease({
     mapKey: party.map_key,
     mode: party.mode,
+    gameMode: party.game_mode,
     players,
     settings: safeJson(party.settings_json, {}) || {},
     partyId: party.id,
@@ -410,7 +437,7 @@ function invite(from, to, stage = null) {
   if (String(target.steam_id) === String(from)) return { ok: false, error: 'that is you' }
   if (!forPlayerRow(from)) {
     const st = stage || {}
-    create(from, { mode: st.mode || 'verified', mapKey: st.map_key || null, visibility: st.visibility || 'friends' })
+    create(from, { mode: st.mode || 'verified', mapKey: st.map_key || null, visibility: st.visibility || 'friends', gameMode: st.game_mode || null })
   }
   const party = forPlayerRow(from)
   if (db.prepare('SELECT 1 FROM party_members WHERE party_id=? AND steam_id=?').get(party.id, target.steam_id)) {
@@ -524,7 +551,7 @@ const isLinkCode = (s) => new RegExp(`^[${LINK_ALPHABET}]{${LINK_LEN}}$`).test(S
 function link(steamId, stage = null) {
   if (!forPlayerRow(steamId)) {
     const st = stage || {}
-    create(steamId, { mode: st.mode || 'verified', mapKey: st.map_key || null, visibility: st.visibility || 'friends' })
+    create(steamId, { mode: st.mode || 'verified', mapKey: st.map_key || null, visibility: st.visibility || 'friends', gameMode: st.game_mode || null })
   }
   const p = forPlayerRow(steamId)
   let code = p.link_code
@@ -585,7 +612,7 @@ function publicLobbies(mapKey = null) {
 
 module.exports = {
   MAX_PLAYERS, forPlayer, byId, byCode, project, create, ensure, join, leave,
-  setMap, setMode, setVisibility, setSettings,
+  setMap, setMode, setGameMode, setVisibility, setSettings,
   startReadyCheck, setReady, cancelReadyCheck, launch, launchInfo, reportProgress,
   invite, invitesFor, acceptInvite, declineInvite, cancelInvite, kick, quickJoin, publicLobbies, forPlayerRow,
   link, resetLink, linkPreview, joinByLink, isLinkCode, setEmitter, INVITE_TTL_MS,
