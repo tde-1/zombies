@@ -48,6 +48,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <cctype>
 #include <cstring>
 #include <string>
 #include <thread>
@@ -299,18 +300,21 @@ void report(DWORD main_tid, std::vector<DWORD>& unreadable) {
                   static_cast<unsigned long>(rl.count), rl.cs_recursion, waiters,
                   holder == main_tid ? " -- the MAIN thread itself" : " -- the thread the main thread waits for",
                   h.ok ? frames_text(h).c_str() : " <context unreadable>");
-        // The first frame outside ntdll/kernelbase/kernel32 names where the holder is parked.
-        std::string at = "?";
+        // Where the holder is parked: its first frame outside the system DLLs (a driver, d3d9,
+        // our DLL...) and its first frame in the engine (the call site to read against
+        // docs/re/t4-sp-map.md -- 0x725605 is the GPU query wait, client.md §13).
+        std::string at = "?", engine = "?";
         for (size_t i = 0; i < h.n; ++i) {
-            const std::string d = describe(h.frames[i]);
-            if (d.find("ntdll") == std::string::npos && d.find("KERNELBASE") == std::string::npos &&
-                d.find("kernelbase") == std::string::npos && d.find("KERNEL32") == std::string::npos &&
-                d.find("kernel32") == std::string::npos) {
-                at = d;
-                break;
-            }
+            std::string d = describe(h.frames[i]);
+            std::string low = d;
+            for (char& c : low) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            const bool sys = low.find("ntdll") != std::string::npos || low.find("kernelbase") != std::string::npos ||
+                             low.find("kernel32") != std::string::npos;
+            if (at == "?" && !sys) at = d;
+            if (engine == "?" && low.find("codwaw.exe") != std::string::npos) engine = d.substr(0, 10);
         }
-        g_where = "main waits on the render lock; holder tid " + std::to_string(holder) + " at " + at;
+        g_where = "main waits on the render lock; holder tid " + std::to_string(holder) + " at " + at +
+                  ", engine " + engine;
     }
 
     // Every thread, one line: where each one is right now.
