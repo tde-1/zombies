@@ -2043,3 +2043,181 @@ against the real `/api/gs/telemetry`.
 
 Not run on zombies-dev: the Wine log paths, `journalctl`, `nice`, `df`/`ps`, `/proc/meminfo`.
 The first deploy should be checked with `/state` → `telemetry` and the site's Issues page.
+
+## 16. 2026-09-23 — the boot queue, the RAM guard, players first, warm reuse (lane H1)
+
+Three incidents on the box, all from the `enw-host-agent` journal on 2026-09-23 (times are UTC, UK minus 1).
+The coordinator set `--after-game terminate` in `run-host.sh` at 13:25 UK as a stopgap. That flag is now the code's default too.
+
+### 16.1 What happened
+
+**(a) 12:12–12:15: orphans and 4 MB of free RAM.**
+
+1. Two agent leases were booting. `nazi_zombie_displace` (`inst-59`) never loaded its map.
+2. B's lease `m_3a672469` queued behind it.
+3. The site and launcher showed a silent "Reserving server". B pressed Cancel after 30 s (launcher.log 12:12:43), then did the same again with `m_1aae9518` at 12:13:27.
+4. The host "retired" both queued leases. The old promise chain in `boot()` could not cancel a queued boot, so both processes started anyway, at 12:13:36 and 12:13:42.
+5. Each process said `hello` and the host logged "hello from unknown instance … ignoring". The two orphaned fear_mc_2 servers held about 900 MB, and the box reached 4 MB available.
+6. At 12:15:09 they were killed as a side effect of another retire. The host then posted `server_crash` results for them and logged "out of restarts" for instances it had already forgotten.
+
+**(b) 12:19: the warm handoff cost B a minute and ended his lease.**
+
+1. B's lease `m_de1d40e6` was handed to warm `inst-64`. The warm `Game` was renamed to the lease in place.
+2. The `end` that carried the match id made the DLL report the warm session's `game_over` and `match_end`, because B's client had come back into that session (see (c)).
+3. The renamed referee took those events as the lease's own game ending. It posted a round-0 result for `m_de1d40e6`, which ended the lease at the site. It then chained three more reuses in 1.5 s, up to the five-game limit.
+4. The handoff was waiting for `map_loaded` on the `Game` that had just been disposed of, so it could only time out, after 60 s.
+5. B's next Play booted fresh and was ready in 11 s.
+
+**(c) 12:17:02 and 12:21:36: the returning player was refused.**
+
+1. A client stays connected through the `map_restart` that ends its game.
+2. It then re-announces itself to the warm instance with the token it joined with.
+3. The host checked that token against the warm instance's random match id and answered `DENY (wrong_match)`.
+
+### 16.2 What changed (host)
+
+- **`lib/bootqueue.js`** (new): `add`, `cancel`, `settle`.
+  - Real games boot one at a time.
+  - A player's boot goes ahead of every queued agent boot. Boots are first in, first out among players and among agents.
+  - The 90 s gate counts from a boot's **start**, not from when it was queued.
+  - `admit(entry)` is asked just before each boot starts, and answers go, wait (asked again in 5 s) or drop.
+- **A retired lease cancels its queued boot.** `retire()` takes the boot out of the queue synchronously, before any `await`. Two more checks back this up:
+  - `go()` refuses a game whose lease has gone.
+  - `Instance.start()` refuses an instance that has been `removed` (`lib/instances.js`).
+- **The exit of a removed instance is expected.** It triggers no restart, no `server_crash` and no "out of restarts".
+- **Players first, including over a booting agent game.** When a player's lease queues behind an agent game that is booting, the agent game is retired at once. The host posts `state: 'yielded'` for it, and the player's boot starts next. This is the host's half of the site's rule 4.
+- **Orphans.**
+  - A `hello` from an instance id this host created but no longer runs (live or removed in the last 32) is logged as `INCIDENT orphan_hello`. Its link is refused, and the process is killed by **our** spawned pid.
+  - A `hello` from an id this host never created is logged as `INCIDENT unknown_hello`, and its link is refused. It is not ours to kill (rule 4).
+  - Nothing is ignored silently any more.
+  - The last 20 incidents are listed in `/state` → `incidents`. The heartbeat carries `incidents` (a count) and `last_incident`.
+- **The RAM guard** (`lib/memguard.js`, new). `MemAvailable` is read from `/proc/meminfo` just before each boot. The guard is off on Windows.
+  - **The figure it uses:** MemAvailable, minus the growth still expected from games that have not loaded yet (450 MB minus their current RSS). A boot that is one second old has not grown yet.
+  - **Below the floor** (default 700 MB, `--ram-floor-mb` or `ENW_RAM_FLOOR_MB`):
+    - An **agent** boot retires warm instances if that is enough; otherwise it waits.
+    - An agent boot that waits longer than `--ram-wait-ms` (5 min) has its lease failed.
+    - A **player's** boot evicts warm instances first, then the oldest **agent** games. Each eviction is `yielded` and logged as `INCIDENT ram_evict`.
+    - If nothing is left to evict, a player's boot goes ahead anyway, and the log says so.
+    - A player's game is never evicted.
+  - The heartbeat carries `mem: { available_bytes, total_bytes, floor_bytes, at }` and `boot_queue: { booting, queued }`.
+- **A queued boot is reported as queued.** While it waits, the heartbeat lists its instance with `phase: 'queued'` and `preparing: { phase: 'queued', ahead, reason: 'boot'|'memory', since }`. A per-game post of `state: 'preparing'` carries the same object. Once the process starts, the host posts `booting`.
+- **Warm handoff rewritten** (`handWarm`):
+  - A **new** `Game` for the lease takes the socket, the same way `reuse()` hands over. The warm session is not renamed.
+  - Until `map_loaded`, the new game **absorbs** everything except `reply` and `log`, so the old session's `game_over` and `match_end` are dropped and logged.
+  - `--warm-rebind-ms` (5 s) covers the whole handshake.
+  - On failure:
+    - the lease's `Game` posts **no result**;
+    - the incident is logged as `warm_handoff_failed`;
+    - the instance is torn down at once;
+    - the lease goes back through `applyLeases` as a fresh boot, and is never offered a warm instance again.
+  - A warm instance's unleased session never posts a result (`noResult`). Its replay, if one was opened, is signed on the box.
+- **The returning player** (`Game.admitReturning`, `tokens.checkBinding`). A player the host **verified** on this process, and who was still connected when the game ended, is admitted as `verified` with reason `returning`. Three conditions must hold:
+  - the token is the site's, for that SteamID, for one of the matches they were verified in (expiry and single use do not apply to a connection that never went away);
+  - the SteamID is in the host's own record of who it verified;
+  - the game is unleased, or its lease names that SteamID. A warm instance handed to somebody else's lease still refuses them.
+- **`--after-game` defaults to `terminate`.** `--after-game end` (or `ENW_AFTER_GAME=end`) turns reuse back on. Keep it off until reuse is proven on the box with two consecutive agent games (§16.7).
+- **Crash watching after a handoff.** An instance's `exit` and `failed` handlers now act on the game currently on the instance, which may be a reuse or warm-handoff successor.
+- **Telemetry.** A boot cancelled while it was queued sends no telemetry bundle, because it has no process and no logs.
+
+### 16.3 Site and launcher
+
+- **`assignments.ack(box, 'yielded', …)`** supersedes an **agent** lease that is leased, ready or live. It never touches a player's lease.
+- **`parties.preparingFor`** passes `ahead` and `reason` through for `phase: 'queued'`, so `match.preparing` on `/api/launcher/play` carries them.
+- **`boxes.recordStatus`** carries `mem`, `boot_queue`, `incidents` and `last_incident` across per-game posts, the same way it carries `instances`.
+- **Admin → Boxes** shows three new facts: "RAM free X · floor Y" (in red when under the floor), "N boots queued", and "N incidents · last kind".
+- **Launcher `bootflow`.** On every poll, the boot screen's step detail says what the box is doing:
+  - "the server is starting another game first; yours is next";
+  - "… N games before yours, one at a time";
+  - "the server is freeing memory for your game";
+  - the map-pull phases.
+
+  The deadline is still `serverTimeoutMs`, 120 s. This change needs a launcher publish.
+
+### 16.4 Tests
+
+| Suite | Result |
+|---|---|
+| `node test/run-all.js` | **103/0** (86 before) |
+| `test/boot-queue.js` (new, `npm run test:boot-queue`) | PASS |
+| `test/mapcache.js` | 22/0 |
+| `test/telemetry.js` | 81/0 |
+| `test/restart.js` | 12/0 |
+| `test/multi-lease.js` | PASS |
+| `test/demo-network.js` | 0 failures |
+| `test/mapcache-host.js` | PASS |
+| web `npm test` | all green; `box-maps` 11/0 |
+| launcher `test/run-all.js` | 170/1 |
+
+**What the 17 new unit tests cover.** Boot queue: order, cancel while queued, cancel while active, players first, the gate counted from start, wait and drop, a refused start. RAM plan: go, wait, evict (warm first, then the oldest agent game, never a player's game), a player boots anyway, guard off, and parsing `/proc/meminfo`. `checkBinding`: the returning-player token check.
+
+**`test/boot-queue.js`** replays the incidents against a real agent. It runs sims through the queue (`--gate-sims`), uses a fake `/proc/meminfo`, and a stand-in v2 site with a real invite key.
+
+- **(A) Queue and priority.**
+  - An agent boot that never loads, with an agent lease queued behind it, then a player's lease.
+  - The booting agent game is `yielded` and the player's game boots first.
+  - The queued agent lease is dropped by the site and **never starts**.
+  - There is no orphan and no unknown hello.
+  - The heartbeat carries `mem`.
+- **(B) The RAM guard.**
+  - At 300 MB free, an agent boot waits (reason `memory`) and is failed after `--ram-wait-ms`.
+  - A player's lease evicts the agent game and is ready 2.8 s later.
+  - The other player's game is untouched.
+- **(C) Warm reuse, with `--real-warm`.**
+  - The returning player is re-admitted, with no `wrong_match`.
+  - The next lease takes the warm instance in 2 ms.
+  - The old session's `game_over` is dropped, and there is no round-0 result and no reuse cascade.
+  - Two consecutive games run on one process, each with its own real result.
+  - A warm instance that never brings the map back is torn down 6.4 s after the lease. The same lease then boots fresh with no result and no `failed`.
+
+The new sim options (`--load-ms`, `--never-loads`, `--real-warm`, `--stall-rebind N`) model the box's behaviour as read from the journal.
+
+**The one launcher failure** is "an updated launcher repairs the client DLL it did not install". This worktree has no built client DLL, so the failure is environmental and not from this change.
+
+### 16.5 Deploy (coordinator; not done by this lane)
+
+1. **Box.** `host.js` on main now imports the telemetry lane's `lib/telemetry*.js`, so copy the **whole** `infra/host-agent/` directory at the merged commit, not single files. Exclude `test/` and `node_modules`. Then `chown -R waw:waw`.
+2. **`run-host.sh`.** Leave `--after-game terminate`; it is also the default now. Optional: add `--ram-floor-mb 700` to make it explicit.
+3. **Restart.** Run `systemctl restart enw-host-agent` only under rule 13: no verified player in a live instance.
+4. **Site.** Deploy `web/server/lib/{assignments,parties,boxes,adminBoxes}.js` and rebuild the client (`Boxes.jsx`). Restart the site only on B's word (rule 15). Deploy order does not matter:
+   - An old site ignores `yielded`, and the ghost reaper ends that agent lease 90 s later.
+   - An old agent sends no `mem`, and the Boxes page just shows nothing.
+5. **Launcher.** The `bootflow` words ship with the next publish, following the recipe.
+6. **Verify on the box.**
+   - `journalctl -u enw-host-agent | grep -E 'RAM guard|queued to boot|INCIDENT|yield'`.
+   - Admin → Boxes shows "RAM free".
+   - Take two agent leases at once (`lease-cli`, fake IDs `…001` and `…002`). The second must say `queued to boot, 1 ahead` and must boot after the first has loaded its map.
+
+### 16.6 Unproven
+
+- **Nothing here has run on the box.** In particular:
+  - the RAM figures (the 700 MB floor, the 450 MB expected RSS);
+  - `/proc/meminfo` under Wine load;
+  - a real DLL's behaviour on a warm handoff and with a returning client. The sim's `--real-warm` is modelled on the journal lines, not on the DLL source.
+- **The launcher's words** have not been seen on B's screen.
+- **What a refused `unknown_hello` process does.** Its link is closed; whether it exits is untested.
+- **The old DLL build** may treat a `returning` auth reason differently from `ok`. Both are `allow: true`.
+
+### 16.7 Proving warm reuse before it goes back on
+
+`--after-game end` stays off until both of these pass:
+
+1. `test/boot-queue.js` C, which passes now.
+2. On the box, with `--after-game end`, two consecutive **agent** games on one instance. Use `lease-cli` with fake ID `…001`, round target 1:
+   - the second lease logs `took lease … in N ms` with N < 5000;
+   - there is no `wrong_match`;
+   - no result is posted for the second lease before it is played.
+
+   Then put `run-host.sh` back to `terminate`, or leave `end` on if B agrees.
+
+### 16.8 A mistake made in this lane
+
+`node test/integration-site.js` defaulted to `--site http://127.0.0.1:3200`, which is **B's live site**. I ran it bare at 12:42 UTC.
+
+It polled the live site as `box-a`, the dev box row with secret `devkey-a`. On the live DB it then:
+
+- pinned `box-a`'s replay key to `7e9a0b0621f3c345` (the row had none);
+- set `box-a` `last_poll` and `last_state='idle'`, and made it online for 30 s.
+
+Its party creation was refused by the beta gate (401). No lease was issued; I checked the `assignments` table read-only, and `zombies-dev` was untouched. I did not write to the DB to undo any of it.
+
+The test now has no default site and refuses `:3200`. `box-a`'s pinned key is a leftover the coordinator may clear from the admin page.

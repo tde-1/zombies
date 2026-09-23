@@ -59,6 +59,24 @@ capped at 120**, "Your record has been uploaded." (site `gameChat.notify` at ing
 feed), chat window starts with the backlog (`history=1`). `esc-menu.md` §10, `chat-overlay.md` §14.
 Open-bug 16's `monkeytoy 1` point is moot for players now: nobody reaches the stock console either way.
 
+**Lane H1, 2026-09-23 ~14:30 UK (branch `worktree-agent-a05a09733de8153ac`, main `996dbc2` merged in, NOT deployed):**
+the host agent's boot queue, RAM guard, players-first rule and warm handoff, after three incidents on the box between 12:12 and 12:21 UTC.
+The incidents were: queued boots whose leases had been retired started anyway as orphans, and took the box to 4 MB free; a warm handoff posted a round-0 result that ended B's lease; and B's still-connected client was refused `wrong_match`.
+What changed:
+
+- A retired lease cancels its queued boot.
+- A `hello` from one of our own orphaned instances kills it by our pid, and is logged as an incident.
+- A player's boot goes ahead of every agent boot, and retires an agent game that is still booting (`yielded`).
+- MemAvailable is checked against a 700 MB floor: agent boots wait, and a player's boot evicts warm instances, then agent games. The figure is in the heartbeat and on Admin → Boxes.
+- A warm instance must take a lease within 5 s, or it is torn down and the lease boots fresh with no result posted.
+- The returning player is re-admitted as `returning`.
+- `--after-game terminate` is the default.
+- The launcher's boot screen shows `queued` ("another game first; yours is next").
+
+Tests: host run-all 103/0, `test/boot-queue.js` PASS, web green, launcher 170/1 (environmental).
+Deploy steps: `host.md` §16.5. Proving warm reuse on the box before it goes back on: §16.7.
+**Trap found:** `infra/host-agent/test/integration-site.js` defaulted to B's live site on :3200. Run bare, it pinned a replay key on the live `box-a` row (§16.8). It now refuses to run without `--site`.
+
 ## Open bugs and unproven things (one line each, with the pointer)
 
 1. ~~**Stretched Reapers Colt viewmodel on fear_mc_2**: not reproduced locally with identical files; the box server and B's session not ruled out. `mod-compat.md` §1, §9.~~ **→ Closed 2026-09-23 13:35: `r_multiGpu 1`** (the launcher's old baseline) breaks skinned models on a single GPU; B's toggle fixed it. `r_multiGpu` is 0 for everyone, the old 1 repaired once (launcher + site). `mod-compat.md` §10.4, `launcher.md` "r_multiGpu is 0 for everyone". Ships with the next launcher; the site half on its next restart.
@@ -92,6 +110,7 @@ Open-bug 16's `monkeytoy 1` point is moot for players now: nobody reaches the st
     only max fps is locked there; Discord switches in game (needs a launcher release for the
     read-back). Unit tests only (`lockdown_test` 196/0, `settings_model_test` 65/0); **the in-game
     proof recipe is `esc-menu.md` §11.6** and needs the lock with B away. `esc-menu.md` §11.
+19. **Host boot queue, RAM guard, warm handoff (lane H1)**: proven in the sim only (`test/boot-queue.js`), not on the box. Warm reuse (`--after-game end`) stays off until two consecutive agent games pass on the box. The 700 MB floor is a guess from the 12:13 incident. `host.md` §16.6–16.7.
 
 ## Decisions only B can make (`questions.md`, "Open at handoff")
 

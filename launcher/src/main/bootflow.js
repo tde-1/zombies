@@ -28,6 +28,25 @@ const STEP_LABELS = {
   in_game: 'In game',
 }
 
+/**
+ * The boot screen's words for the box's `preparing` (site parties.preparingFor), or null.
+ * Exported for the test.
+ */
+export function preparingDetail(p) {
+  if (!p || typeof p !== 'object') return null
+  if (p.phase === 'queued') {
+    if (p.reason === 'memory') return 'the server is freeing memory for your game'
+    const n = Number(p.ahead) || 0
+    if (n === 1) return 'the server is starting another game first; yours is next'
+    return n > 1 ? `the server is starting ${n} games before yours, one at a time` : 'the server is starting your game'
+  }
+  const pct = Number.isFinite(Number(p.percent)) ? Math.round(Number(p.percent)) : null
+  if (p.phase === 'downloading') return `the server is downloading the map${pct != null ? ` (${pct}%)` : ''}`
+  if (p.phase === 'verifying' || p.phase === 'listing') return 'the server is checking the map'
+  if (p.phase === 'installing') return 'the server is installing the map'
+  return null
+}
+
 async function jsonFetch(url, { method = 'GET', body = null, timeoutMs = 5000 } = {}) {
   const ctl = new AbortController()
   const t = setTimeout(() => ctl.abort(), timeoutMs)
@@ -326,6 +345,19 @@ export class BootFlow extends EventEmitter {
           this.step('ready', 'done', `the server is ready on ${p.match.connect}`)
           resolve({ play: p })
         }
+      })
+      // SAY WHAT THE BOX IS DOING WHILE WE WAIT (host.md §16). The site passes the box's own
+      // word through as `match.preparing`: a map pull, or `queued` - the box has the lease
+      // and is waiting for the game booting ahead of it, or for memory. On 2026-09-23 a
+      // silent "Reserving server" made B cancel twice at ~30 s behind a queued boot. The
+      // deadline is still serverTimeoutMs (120 s); this only makes the wait visible.
+      // 'poll', not 'change': the watcher's change key does not include `preparing`.
+      watcher.on('poll', (p) => {
+        const d = preparingDetail(p?.match?.preparing)
+        if (!d || p?.match?.connect) return
+        const cur = this.steps.find((s) => s.id === 'reserving')
+        if (!cur || cur.state !== 'done') { if (cur?.detail !== d) this.step('reserving', 'active', d) }
+        else { const l = this.steps.find((s) => s.id === 'loading'); if (l?.detail !== d) this.step('loading', 'active', d) }
       })
       watcher.on('error', () => {})
       const timer = setInterval(() => {
