@@ -25,10 +25,13 @@
 // ============================================================================
 // The same key opens ours, in a map, when no menu and no chat is open. One line of input,
 // the last lines of output, WaW's stock font (pause_menu's drawing calls). What a line can do
-// is console_model.hpp: read or set a setting of the in-game catalogue (the Settings tab's
-// list), `list`, `help`, `reset`, `clear`. A set goes through settings_tab::console_set: the
-// same visibility (Verified game, mod-owned, forbidden) and the same `seta` + write-through
-// as a click in Esc > Settings. Nothing typed here is ever handed to the engine as a command.
+// is console_model.hpp: read or set any setting of the in-game catalogue by short name,
+// alias, dvar or id (`fov 90`, `aniso 16`, `shadows off`), `list`, `help [name]`, `reset`,
+// `binds`, `bind`, `unbind`, `apply`, `restart`, `disconnect`, `quit`, `clear` (esc-menu.md
+// §11). A set goes through settings_tab::console_set: the same visibility (Verified game,
+// mod-owned, forbidden) and the same `seta` + write-through as a click in Esc > Settings; a
+// bind through the tab's own bind path; quit / disconnect / restart through the Esc menu's.
+// Nothing typed here is ever handed to the engine as text.
 //
 // Selftest: ENW_CONSOLE_SELFTEST=1 drives it with posted keys in a map, captures it, then
 // knocks the engine's own console open past our filter to prove the catcher.
@@ -40,6 +43,7 @@
 
 #include "console_model.hpp"
 #include "input_gate.hpp"
+#include "pause_menu.hpp"   // [C1] quit / disconnect / restart take the Esc menu's own paths
 #include "restricted_console.hpp"
 #include "settings_tab.hpp"
 
@@ -122,7 +126,7 @@ void open_console(const char* why) {
     ++g_opens;
     g_hist_pos = -1;
     release_engine_keys();
-    if (g_out.empty()) out("^3ENW console.^7 Type help. Esc closes.");
+    if (g_out.empty()) out("^3ENW^7 console  --  help");
     ENW_INFO("console: OPEN (%s) -- ours; World at War's console never saw the key", why);
 }
 
@@ -132,56 +136,100 @@ void close_console(const char* why) {
     ENW_INFO("console: CLOSED (%s) after %lu ms", why, ::GetTickCount() - g_opened_at);
 }
 
+// [C1] `restart` asks twice (the Esc menu's Restart is two clicks too).
+DWORD g_restart_armed = 0;
+
 void execute(const std::string& line) {
-    const std::string t = ::enw::console::trim(line);
+    namespace con = ::enw::console;
+    const std::string t = con::trim(line);
     if (t.empty()) return;
     out("^5> ^7" + t);
     if (g_hist.empty() || g_hist.back() != t) g_hist.push_back(t);
     if (g_hist.size() > 50) g_hist.erase(g_hist.begin());
     ++g_commands;
-    const ::enw::console::command c = ::enw::console::parse(t);
+    const con::command c = con::parse(t);
     std::string reply;
-    switch (c.v) {
-    case ::enw::console::verb::none: return;
-    case ::enw::console::verb::help:
-        out("Change a setting: ^3sensitivity 4^7, ^3cg_fov 90^7. Read one: ^3cg_fov^7.");
-        out("^3list^7 shows every setting you can change here (^3list snd^7 filters). ^3reset cg_fov^7 restores one.");
-        out("Binds and video are in Esc > Settings. Nothing else runs from here.");
-        reply = "help";
-        break;
-    case ::enw::console::verb::list: {
-        const auto rows = settings_tab::console_list(c.name);
-        if (rows.empty()) out(c.name.empty() ? "No settings available." : "No setting starts with " + c.name + ".");
+    auto lines = [&](const std::vector<std::string>& rows, const char* none) {
+        if (rows.empty()) out(none);
         for (const auto& r : rows) out(r);
         reply = std::to_string(rows.size()) + " row(s)";
+    };
+    if (c.v != con::verb::restart) g_restart_armed = 0;
+    switch (c.v) {
+    case con::verb::none: return;
+    case con::verb::help:
+        if (!c.name.empty()) {
+            if (const con::builtin* b = con::find_builtin(c.name)) {
+                std::string also;
+                for (const char* a : b->aka) also += (also.empty() ? "" : ", ") + std::string(a);
+                out(std::string("^3") + b->usage + "^7 -- " + b->what);
+                if (!also.empty()) out("  also: " + also);
+                reply = std::string("help ") + b->name;
+            } else {
+                const auto rows = settings_tab::console_help(c.name);
+                for (const auto& r : rows) out(r);
+                reply = rows.empty() ? std::string("?") : rows[0];
+            }
+            break;
+        }
+        out("^3<setting> [value]^7  fov 90, sens 3, shadows off, aa 4, volume 0.5");
+        out("^3list^7 [filter]  ^3help^7 <name>  ^3reset^7 <setting>  ^3apply^7");
+        out("^3binds  bind^7 <key> <action>  ^3unbind^7 <key>");
+        out("^3restart  disconnect  quit  clear^7   Tab completes, Up/Down history");
+        reply = "help";
         break;
-    }
-    case ::enw::console::verb::clear:
+    case con::verb::list: lines(settings_tab::console_list(c.name), "no match"); break;
+    case con::verb::binds: lines(settings_tab::console_binds(c.name), "no match"); break;
+    case con::verb::clear:
         g_out.clear();
         reply = "cleared";
         break;
-    case ::enw::console::verb::get: reply = settings_tab::console_get(c.name); out(reply); break;
-    case ::enw::console::verb::set: reply = settings_tab::console_set(c.name, c.value); out(reply); break;
-    case ::enw::console::verb::reset: reply = settings_tab::console_reset(c.name); out(reply); break;
-    case ::enw::console::verb::refused: reply = c.why; out("^1" + reply); break;
+    case con::verb::get: reply = settings_tab::console_get(c.name); out(reply); break;
+    case con::verb::set: reply = settings_tab::console_set(c.name, c.value); out(reply); break;
+    case con::verb::reset: reply = settings_tab::console_reset(c.name); out(reply); break;
+    case con::verb::bind: reply = settings_tab::console_bind(c.name, c.value); out(reply); break;
+    case con::verb::unbind: reply = settings_tab::console_unbind(c.name); out(reply); break;
+    case con::verb::apply: reply = settings_tab::console_apply(); out(reply); break;
+    case con::verb::restart:
+        if (!g_restart_armed || ::GetTickCount() - g_restart_armed > 5000) {
+            g_restart_armed = ::GetTickCount();
+            reply = "restart again to confirm";
+            out("^3" + reply);
+            break;
+        }
+        g_restart_armed = 0;
+        if (pause_menu::request_restart_game()) { reply = "restarting"; out(reply); close_console("restart"); }
+        else { reply = "restart: box games only"; out("^1" + reply); }
+        break;
+    case con::verb::disconnect:
+    case con::verb::quit: {
+        const bool q = c.v == con::verb::quit;
+        if (pause_menu::request_exit(q)) { reply = q ? "quitting" : "leaving"; out(reply); close_console(q ? "quit" : "disconnect"); }
+        else { reply = "already leaving"; out(reply); }
+        break;
+    }
+    case con::verb::refused: reply = c.why; out("^1" + reply); break;
     }
     ENW_INFO("console: '%s' -> %s", t.c_str(), reply.c_str());
 }
 
 void complete_input() {
-    const size_t sp = g_input.find(' ');
-    if (sp != std::string::npos) return;   // only the name is completed
-    std::vector<std::string> names = settings_tab::console_names();
-    for (const char* w : {"help", "list", "clear", "reset"}) names.push_back(w);
-    std::vector<std::string> m;
-    const std::string c = ::enw::console::complete(names, g_input, &m);
-    if (m.size() > 1) {
+    const auto* s = settings_tab::console_schema();
+    if (!s) return;
+    const auto r = ::enw::console::complete_line(*s, g_input.substr(0, g_caret));
+    if (r.matches.size() > 1) {
         std::string l;
-        for (const auto& s : m) l += (l.empty() ? "" : "  ") + s;
+        size_t shown = 0;
+        for (const auto& m : r.matches) {
+            if (++shown > 16) { l += "  ..."; break; }
+            l += (l.empty() ? "" : "  ") + m;
+        }
         out("^7" + l);
     }
-    g_input = c + (m.size() == 1 ? " " : "");
-    g_caret = g_input.size();
+    const std::string tail = g_input.substr(g_caret);
+    g_input = r.line + tail;
+    g_caret = r.line.size();
+    if (g_input.size() > 120) { g_input.resize(120); g_caret = (std::min)(g_caret, g_input.size()); }
 }
 
 void paste() {
@@ -370,7 +418,9 @@ void selftest_tick() {
     struct st { DWORD at; int step; };
     static const st kPlan[] = {{8000, 1}, {9000, 2}, {9600, 3}, {10200, 4}, {10800, 5}, {11400, 6}, {12000, 7},
                                {12600, 8}, {13200, 9}, {14500, 10}, {15500, 11}, {16500, 12}, {18500, 13}, {19500, 14},
-                               {13800, 15}, {17500, 16}};
+                               {13800, 15}, {17500, 16},
+                               // [C1] reopen; aliases, a bind, a filter, a capture; =2: `/quit` for real
+                               {20000, 19}, {20600, 17}, {21200, 18}, {21800, 20}, {22400, 21}, {23500, 22}};
     for (const auto& p : kPlan) {
         if ((g_st_done & (1u << p.step)) || t < p.at) continue;
         g_st_done |= 1u << p.step;
@@ -382,12 +432,20 @@ void selftest_tick() {
         case 4: post_line("fov 130"); break;                   // out of range
         case 5: post_line("sv_cheats 1"); break;               // forbidden
         case 6: post_line("developer 1"); break;               // forbidden
-        case 7: post_line("quit"); break;                      // not a command here
+        case 7: post_line("shadows off"); break;               // [C1] an alias; editable in a Verified game now
         case 8: post_line("cg_fov 90; sv_cheats 1"); break;    // chaining
         case 9: post_line("cg_fov"); break;
         case 15: post_line("com_maxfps 125"); break;          // Verified: not a console setting in a Verified game
         case 16:                                               // a hand-edited bind: the FOV cap must hold
             if (g_cbuf_ok == 1) { ENW_INFO("console: SELFTEST: `set cg_fov 150` straight into the command buffer"); cbuf("set cg_fov 150\n"); }
+            break;
+        case 19: post_console_key(); break;
+        case 17: post_line("aa 4"); break;                     // vid_restart item: "-- apply"
+        case 18: post_line("bind mouse4 use"); break;
+        case 20: post_line("list sh"); break;
+        case 21: frame_capture::request("console-c1"); break;
+        case 22:
+            if (g_selftest >= 2) { ENW_INFO("console: SELFTEST: /quit for real (=2)"); post_line("/quit"); }
             break;
         case 10: frame_capture::request("console-open"); break;
         case 11: post_key(VK_ESCAPE, 0x01); break;             // closes ours

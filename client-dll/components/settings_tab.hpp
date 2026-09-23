@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+namespace enw::settings { struct schema; }   // settings_model.hpp
+
 namespace enw::client::settings_tab {
 
 // pause_menu's own drawing calls (stock WaW font, engine-drawn), so the two read as one.
@@ -57,15 +59,21 @@ std::string value_of(const std::string& id);
 void log_values(const char* why);
 void set_restricted_override(int v);   // -1 real, 0 off, 1 on (selftest only)
 
-// [console] The ENW console (restricted_console.cpp, esc-menu.md §10) sets settings through
-// exactly the tab's path: the same catalogue, the same visibility rules (Verified, mod-owned,
-// forbidden), the same `seta` + write-through. Each returns the one line the player reads.
+// [console] The ENW console (restricted_console.cpp, esc-menu.md §10.2 and §11) sets settings
+// and binds through exactly the tab's path: the same catalogue, the same visibility rules
+// (Verified, mod-owned, forbidden), the same `seta` / `bind` + write-through, the same
+// Apply. Each returns the line(s) the player reads, short: "fov 90", "aa 4x -- apply".
+const settings::schema* console_schema();   // for the console's Tab completion; null if not loaded
 std::string console_get(const std::string& name);
 std::string console_set(const std::string& name, const std::string& value);
 std::string console_reset(const std::string& name);
-// "cg_fov 90 (field of view, 65 to 120)" per setting the console accepts now, filtered by a
-// name prefix; and the bare names, for Tab completion.
-std::vector<std::string> console_list(const std::string& prefix);
-std::vector<std::string> console_names();
+std::vector<std::string> console_help(const std::string& name);
+// "fov 90" per setting, filtered by a name prefix (short name, alias, dvar) or label words.
+std::vector<std::string> console_list(const std::string& filter);
+// "use F, MOUSE4" per Controls action.
+std::vector<std::string> console_binds(const std::string& filter);
+std::string console_bind(const std::string& key, const std::string& action);   // empty action: show the key
+std::string console_unbind(const std::string& key);
+std::string console_apply();   // vid_restart for pending video changes, as Esc > Settings > Apply
 
 }  // namespace enw::client::settings_tab

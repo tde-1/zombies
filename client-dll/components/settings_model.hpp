@@ -453,4 +453,18 @@ inline std::vector<std::string> bind_commands(std::vector<std::pair<std::string,
     return out;
 }
 
+// The command a key holds in a table of (key, command), or "".
+inline std::string command_of(const std::vector<std::pair<std::string, std::string>>& table, const std::string& key) {
+    for (const auto& [k, c] : table) if (k == key) return c;
+    return {};
+}
+
+// Free one key (the ENW console's `unbind <key>`): `unbind KEY`, whatever it held; the
+// command's other key, if any, keeps it. Updates `table`. An empty key does nothing.
+inline std::vector<std::string> unbind_commands(std::vector<std::pair<std::string, std::string>>* table, const std::string& key) {
+    if (key.empty()) return {};
+    table->erase(std::remove_if(table->begin(), table->end(), [&](const auto& e) { return e.first == key; }), table->end());
+    return {"unbind " + key};
+}
+
 }  // namespace enw::settings
