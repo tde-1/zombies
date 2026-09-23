@@ -302,3 +302,20 @@ catalogue gets a per-map override in the launcher's mod-compat layer (`launcher/
 that pins it for fear_mc_2 and says so on the Settings row, or a global cap if it reproduces on a
 stock map; if address space, lower AA automatically on maps whose largest free block after load is
 under a threshold (the `overlay_guard` measurement already exists).
+
+### 10.1 Correction (13:25 UK) — (h) is WRONG; the symptom is broken skinning, not a hidden model
+
+B (13:20): he has **always** played with 4x AA, specular and glow on; the 01:34 `2 / 0 / 0` values
+were a harness profile's (`mcjoinB4` read the dev client's config, not his). With the three turned
+**off** (`m_b00b9202`, client pid 29660, `r_aaSamples 2 r_specular 0 r_glow_allowed 0` on the command
+line) the zombies are drawn but **garbled**: a stock SS zombie body with triangles stretched to
+spikes (`tmp/shot-garbled.png`). With them on (`m_e0690140` pid 5840, `m_78666e6c` pid 23396) they
+are invisible. That is skinned-mesh / bone-matrix / animation state going wrong on the client (or
+the pose data it is fed), and the settings only change how the wrong vertices end up on screen.
+The replay-contact timeline in §10 still stands (00:53 is the last real sighting), and so does
+B's stretched Reapers Colt at 00:53 (§1: "huge screen-covering triangles"), which now reads as the
+**same bug on a viewmodel**, already present with client build 22:50 (0.2.13-era DLL).
+
+Checked since: the set of xmodels that fail to load is identical (59 names) on today's client, the
+box server, and last night's local server and client — so the client and server resolve the same
+models; no model-mismatch skeleton swap.
