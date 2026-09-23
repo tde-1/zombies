@@ -64,7 +64,12 @@ try {
     $out = & node @largs 2>&1
     $out | ForEach-Object { Say "  lease-cli: $_" }
     $info = $out | Where-Object { $_ -match '^\{.*"connect"' } | Select-Object -Last 1 | ConvertFrom-Json
-    if (-not $info) { throw 'the lease never became ready' }
+    if (-not $info) {
+        # cancel what we leased even when it never became ready (a queued boot would start later)
+        $m = $out | Select-String -Pattern 'leased (m_[0-9a-f]+)' | Select-Object -First 1
+        if ($m) { $matchId = $m.Matches[0].Groups[1].Value }
+        throw 'the lease never became ready'
+    }
     $matchId = $info.match_id
     $port = [int](($info.connect -split ':')[1])
     $slot = 'inst-{0:D2}' -f ((($port - 28960) / 2) + 1)

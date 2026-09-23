@@ -144,6 +144,21 @@ constexpr uintptr_t kClientThink = 0x630BF0;        // SV_ClientThink(eax = clie
 constexpr uintptr_t kClDeltaMessage = 0xC;          // SV_BotUserMove 0x636047: = outgoingSequence - 1
 constexpr uintptr_t kClOutgoingSeq = 0x14;
 constexpr uintptr_t kClMessageAck = 0x110FC;        // snapshotacknowledged 0x527499 reads it
+// SV_PacketEvent 0x635760..0x635789, run for every client packet: the level notify
+// "snapacknowledged" that stock wait_network_frame() (common.ff _utility.gsc) waits on --
+//   Scr_AddConstString 0x69A8D0 (eax = inst 0, esi = scr_const.snapacknowledged [0x1F33E2A])
+//   Scr_ExecThread     0x699560 (edi = inst 0; CodeCallback_LevelNotify handle [0x190B5C0], 1)
+//   Scr_FreeThread     0x690040 (eax = thread, ecx = inst 0)
+// A bot sends no packets, so nothing ever raises it: every DLC3/UGX map's spawn loop calls
+// wait_network_frame() after each zombie and stopped after the first (dedi.md §27.6).
+constexpr uintptr_t kSnapAckSite = 0x635760;
+constexpr uintptr_t kScrConstSnapAck = 0x1F33E2A;
+constexpr uintptr_t kLevelNotifyHandle = 0x190B5C0;  // CodeCallback_LevelNotify (0x514858)
+constexpr uintptr_t kScrAddConstString = 0x69A8D0;
+constexpr uintptr_t kScrExecThread = 0x699560;
+constexpr uintptr_t kScrFreeThread = 0x690040;
+constexpr uintptr_t kScrActive = 0x3882B88;         // game_mode.cpp's guard pair
+constexpr uintptr_t kScrShutdown = 0x3882B7C;
 constexpr uintptr_t kPsOrigin = 0x20;               // gclient_s.ps (T4SP asserts)
 constexpr uintptr_t kPsDeltaAngles = 0x7C;
 constexpr uintptr_t kPsWeapon = 0x104;              // SV_BotUserMove 0x635E3D reads it for cmd.weapon
@@ -171,6 +186,9 @@ const prologue kPrologues[] = {
     {kGDamage, 11, {0x8B, 0x54, 0x24, 0x0C, 0x8B, 0x4C, 0x24, 0x08, 0x83, 0xEC, 0x0C}, "G_Damage"},
     {kBotFrame, 2, {0x51, 0x83}, "bot frame loop"},
     {kClientThink, 7, {0x51, 0x8B, 0x15, 0x84, 0x70, 0x54, 0x02}, "SV_ClientThink"},
+    // movzx esi,[0x1F33E2A]; xor eax,eax; call 0x69A8D0; mov edx,[0x190B5C0]; push 1; push edx
+    {kSnapAckSite, 12, {0x0F, 0xB7, 0x35, 0x2A, 0x3E, 0xF3, 0x01, 0x33, 0xC0, 0xE8, 0x62, 0x51},
+     "SV_PacketEvent snapacknowledged notify"},
 };
 
 using direct_connect_t = void(__cdecl*)(netadr_t);
@@ -511,8 +529,36 @@ void call_client_think(uintptr_t client, void* ucmd) {
 
 int16_t angle_short(float deg) { return static_cast<int16_t>(static_cast<int>(deg * 65536.0f / 360.0f) & 0xFFFF); }
 
+// The engine's own per-packet level notify, once per server frame on the bots' behalf.
+void notify_snapshot_acknowledged() {
+    uint32_t active = 0, shutdown = 0, handle = 0;
+    uint16_t sv = 0;
+    if (!peek(enw::at(kScrActive), &active) || !active || !peek(enw::at(kScrShutdown), &shutdown) ||
+        shutdown || !peek(enw::at(kScrConstSnapAck), &sv) || !sv ||
+        !peek(enw::at(kLevelNotifyHandle), &handle) || !handle)
+        return;
+    const uintptr_t add = enw::at(kScrAddConstString), exec = enw::at(kScrExecThread),
+                    freet = enw::at(kScrFreeThread);
+    const uint32_t sv32 = sv;
+    __asm {
+        mov esi, sv32
+        xor eax, eax
+        call add
+        mov edx, handle
+        push 1
+        push edx
+        xor edi, edi
+        call exec
+        add esp, 8
+        movzx eax, ax
+        xor ecx, ecx
+        call freet
+    }
+}
+
 void think_bots() {
     ++g.think_frames;
+    if (bot_count() > 0) notify_snapshot_acknowledged();
     int32_t svs_time = 0;
     peek(enw::at(kSvsTime), &svs_time);
     for (int s = 0; s < kMaxClients; ++s) {
