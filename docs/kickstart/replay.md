@@ -1430,3 +1430,171 @@ Everything that needs a player who shoots: an agent lease has no player, and B i
 game ran. The coordinator's recipe (bind line, then B's next box game checked against the
 magazine arithmetic, the kills/headshots counters and the `entity_gone` kills) is
 replay-events-v1.md §7.1.
+
+## 12. 2026-09-23 (~15:30 UK), lane R3: weapons, flashes, hits, blood, Pack-a-Punch, power-ups, sound
+
+B's asks (14:05). In the web replay, each player holds a weapon of the right class with its name
+shown. A shot shows a muzzle flash and plays the gun's sound, and a Pack-a-Punched gun sounds
+different and wears the camo. A hit shows a hit marker and plays its sound. There is a crosshair. A
+swipe shows the blood overlay and plays its sound. Pack-a-Punch use is shown. Power-ups are drawn as
+3D pickups where they spawn, with pickup and announcer sounds, and a HUD shows which timed power-ups
+are active and exactly how long each has left.
+
+Branch `worktree-agent-aef74e453358c99cc`. It is built against lane R1's `replay-events-v1.md` (§11,
+merged) and lane R2's asset pack (`assets-pipeline.md`, merged: `ZombiesDev\maps\_assets.json` plus
+`_weapons/_powerups/_fx/_sounds`), and has main merged in. The viewer now asks for the track at
+**20 Hz** (`pages/Replay.jsx`), at B's request. The live site, port 3200 and `web/data` were not
+touched, the game was not launched, and nothing was uploaded.
+
+### 12.1 What the viewer does, per event
+
+| Event (v1) | Viewer | Sound (R2's `_assets.json`) |
+|---|---|---|
+| `weapon {slot,name,pap,raw}` | R2's world `.glb` goes in the player's right hand: j_wrist_ri with R2's measured palm frame, the gun moved by its `gripPoint`, following the arm's swing. Upgraded guns use R2's gold `_pap.glb` (Colt, Carbine, Thompson, MP40). The Ray Gun and Wunderwaffe **keep their base model, as in the game** (`sameWorldModelAsBase`). Non-guns: `knuckle_crack` is empty hands, a perk bottle is a bottle. The display name (manifest, `weaponByEngineName` for engine names) goes on a second line of the player's name tag and in a new **Weapon** column in the Tab scoreboard. Before the first `weapon` event, and on old files, the snapshot's engine name is used. The first-person gun is the watched player's weapon | — |
+| `fire {slot,name}` | For **60 ms**, a muzzle flash at the gun's `tag_flash`: R2's sprite (`muzzle_rifle/pistol/raygun/tesla`), additive, with the sprite's own aspect. The first-person gun kicks. Size and roll come from a seed of the shot's time, so a paused frame looks the same every time | `sounds.fire`, positional at the shooter. The watched player's own shots in first person use `fire_plr`, 2D, as the game does. Upgraded: `pap.sounds.fire(_plr)` (the "ubershot") |
+| `hit {slot,zid,part,dmg,kill}` | The game's `damage_feedback` image (R2 `_fx/hit_marker.png`), 24×48 at (−12,−12) from the crosshair, the stock script's layout ([H], CoD4 `_damagefeedback.gsc`). Full on the hit, fading over 1 s. A head hit is drawn warm. It shows only while following that player (first or third person), never in free cam. `kill` is carried in the track but not drawn differently: WaW's marker does not tell kills apart | `general.hit_marker` (multiplayer's `MP_hit_alert`: stock zombies has none, R2 §5), 2D, watched player only |
+| `damage {slot,by,hp}` | The game's `overlay_low_health` vignette (R2 `_fx/hurt_overlay.png`), full on the swipe and gone by 1.2 s, stronger at lower `hp`. It shows for the watched player only and follows the "Damage effects" toggle. §8.11's flash and direction smear are unchanged | `general.zombie_swipe`, then `general.player_hit` 80 ms later, 2D, watched player only |
+| `pap {slot,name,raw,state}` | A feed line on `start` ("Pack-a-Punch · MP40") and on `done` (the upgraded name, "The Afterburner"). The gold model appears from `done`, or from the `weapon` event with `pap:true` | `start`: `general.pap_upgrade` (the machine, 6 s). `done`: `general.pap_ready`. Both positional. The 49 s `pap_jingle` is not played on use; it is the machine's idle music |
+| `powerup … spawn` | R2's model (`_powerups/<kind>.glb`: ammo can, skull, x2, bomb, hammer) at x,y,z inside the game's glow sprite (`powerup_glow`, R2's green tint). It hovers about 22 u up, bobs and spins, and blinks from 15 s until it goes at 26.5 s when nobody takes it (`groundLifeMs`, `blinkFromMs`; `expire` wins). Kinds R2 has no model for (fire sale, death machine: not in WaW; `other`) get a primitive stand-in | `powerups[kind].spawnSound`, positional |
+| `powerup … pickup` | The pickup is removed and a feed line is added ("slot 0 Insta-Kill"). A timed kind gets a **HUD chip** at the bottom centre that counts down in **tenths of a second**, rounded down, and turns amber under 5 s. v1 sends `until` for insta-kill and double points; the manifest's `durationMs` and then 30 s cover the rest. A second pickup of the same kind shows the **latest** `until` (v1 §2) | `pickup` positional. `announce` (the announcer) and `sting` (max ammo) are 2D |
+| timed effect ends | The chip goes | `powerups[kind].sounds.end` (`insta_kill_end`, `double_points_end`), once, when the last window of that kind runs out |
+| `powerup … expire` | Removes a drop nobody took. It also cuts a running effect, which v1 never sends but the reducer allows for | — |
+
+**Crosshair.** In first person it is WaW's reticle, as in §8.11. It is now also drawn in **third
+person**, at the point the watched player aims at: 2000 u along his recorded yaw and pitch, projected
+through this frame's camera. The hit marker sits on it there. The "follow player" camera the ask
+wanted is the existing Third person mode (key 2). Free cam (3) shows neither.
+
+**Scrub-exact.** Everything above is computed from the replay time alone (`fx.js`), in the same way as
+§8.11's overlays. A paused, scrubbed or played frame at the same time shows the same thing.
+
+### 12.2 Sound
+
+The pattern is Movement's `replay3d/audio.js` (CSGO-Matchmaker). A **250 ms lookahead** is scheduled
+from the viewer's own clock. Every queued sound is dropped on a pause, a seek, a jump, or a speed
+change, and a sound the clock skipped over is **never played late**, so scrubbing through a fight
+makes no noise. The scheduler (`fx.js` `CueScheduler`) is pure and unit-tested.
+
+The audio uses three.js's own classes. An `AudioListener` sits on the viewer camera, so the camera is
+the listener in every mode. A pool of 24 `PositionalAudio` objects is placed where each sound happened
+(ref distance 150 u, inverse rolloff, max 6000 u), and a pool of 8 `THREE.Audio` objects plays the 2D
+sounds. Playback speed stretches the schedule and does not change pitch, which is how Movement does it.
+Only the samples this replay's cues can play are fetched, and only after the gesture.
+
+**Off by default.** Nothing exists until a gesture. **Play** (the button or Space) creates the audio
+context. The new speaker button in the bar, or **M**, mutes and unmutes. The mute is saved per browser
+(`enw.replay3d.muted`). A replay with no cues, or no manifest, is silent, and the button is disabled
+with the tooltip "No sounds for this replay".
+
+### 12.3 Fallbacks (none of them can break the viewer)
+
+* **No `/mapdata/_assets.json`**, which is what `?assets=off` shows: every weapon is a procedural
+  placeholder of its class. `gear.js` has pistol, smg, rifle, mg, shotgun, launcher, ray gun, wonder
+  weapon, flamethrower, grenade, knife, empty hands and bottle. The class comes from `waw.js`
+  `WEAPONS[].cls`, then the name. The placeholder hangs in the same palm frame as R2's guns, using R2's
+  measured numbers as constants. PaP puts a procedural purple camo on it. Power-ups are primitive
+  stand-ins with a procedural glow, the hit marker and blood are CSS, and **there is no sound**.
+* **A glb that fails to load, or is still loading**: the placeholder is drawn, and the real model
+  replaces it once it lands. Models are preloaded when the manifest arrives, and a redraw is forced
+  when one lands. Without that redraw, a paused viewer kept the placeholder, which the render check
+  caught.
+* **An old replay** (no v1 events, `replay_events` 0): `track.fx` is `[]` and every query answers
+  "nothing". Held weapons still come from the snapshot column. On these files that is a `#index`:
+  one §8.11 proved (Nacht #7 colt, #16 carbine) is drawn with its name, and any other index draws
+  no gun. No marker, blood, pickups or chips are drawn, and it
+  is silent. This was proven on the fixture with the v1 events stripped, and on the real `m_6d80aa20`.
+* **Names**: every lookup tries the engine name, the name without `_upgraded`, v1's stripped name, and
+  `zombie_`/`_zombie` forms, with R2's `weaponByEngineName` tried first. `pid` or `slot` are both
+  accepted, as are `ms` or a numeric `t`.
+* **Settings**: a new toggle, "Weapons, hits + power-ups" (on by default), hides all of it.
+
+### 12.4 Files
+
+| File | What |
+|---|---|
+| `web/server/routes/replay.js` | `fxOf` and `track.fx`: the six v1 kinds, compacted and time-ordered, `slot` becomes `pid`, `kill` is kept. They are **not** feed lines. `track.replay_events`, `snap_hz` and `zombie_hz` come from the header |
+| `web/client/src/pages/Replay.jsx` | `/track?hz=20` |
+| `web/client/src/replay3d/fx.js` (new) | The event-to-scene-state reducer: `buildFx`, `weaponAt`, `fireAge`, `hitMarkerAt`, `bloodAt`, `papBusyAt`, `powerupsAt`, `chipsAt`, `fmtTenths`, `weaponKeys`/`assetWeapon`/`displayName` (WaW's upgraded names, "C-3000 b1at-ch35" for the Colt), `weaponClass`, `CueScheduler`, `soundsFor`, `soundUrl`. No three.js, no DOM. Outputs are pooled, so nothing is allocated per frame |
+| `web/client/src/replay3d/gear.js` (new) | Held weapons, flash sprites, the first-person weapon, PaP, power-up pickups (a pool of 12), the grip frame, loading `_assets.json` and glbs, and preloading. It replaces `actors.js createPlaceholderGun` in the viewer; the function is kept |
+| `web/client/src/replay3d/sound.js` (new) | `ReplaySound`: listener, pools, decode, mute, and the scheduler hookup |
+| `actors.js`, `models.js` | `handOf(slot)` (wrist + hand), `setPlateWeapon` (the name tag's weapon line, rebuilt only on a change), and the bone lookup |
+| `ReplayViewer.jsx`, `r3d.css` | Wiring, overlays, chips, the speaker button, feed lines, the Weapon column, and `?assets=off`. It also fixes the HUD: every paused frame now updates it. The 66 ms throttle had swallowed a seek that landed right after a camera switch, and the feed and Tab scoreboard then showed the previous instant |
+| `web/test/replay-fx.js` (new, in `npm test`) | **16** unit tests |
+| `web/test/fixtures/fx-events.js` (new) | 20 s of Nacht, 2 players, 2 zombies, every v1 kind in v1's shapes, all eight power-up kinds, a refreshed insta-kill, and a knuckle crack |
+| `web/tools/make-fx-replay.mjs` (new) | Signs the fixture into `m_f0f0f0f0.enwr` (v1 header) and `m_f0f0f0f1.enwr` (v1 stripped). It refuses the live replay dir |
+| `web/tools/r3-render-check.mjs` (new) | The headless check below. It refuses port 3200 and `zombies.enw.gg` |
+
+### 12.5 Proof
+
+**Unit tests** (`node web/test/replay-fx.js`, **16/16**) cover:
+
+* `fx` carries the six kinds and `kill`;
+* the snapshot column's engine names at 20 Hz;
+* `replay_events` and `snap_hz` from the header;
+* the old-replay emptiness;
+* both field conventions;
+* weapon at t: `name` + `raw`, the knuckle crack, PaP from the event or a later `done`;
+* a flash on at 59 ms and off at 61 ms;
+* the marker fade and the head/body part;
+* blood strength by hp;
+* PaP cues and feed lines;
+* pickups from spawn to pickup, expire or timeout, with pooled objects reused;
+* chips: exact time left, tenths, the latest `until` wins, the 30 s default, `expire` cuts, the
+  manifest `durationMs`, one end cue;
+* sounds read from R2's shape: `fire`, `fire_plr`, upgraded, `weaponByEngineName`, swipe plus pain,
+  pap, spawn, pickup, announce, sting, end;
+* the scheduler: lookahead, a scrub drops the queue and plays nothing skipped, a pause, a 4x
+  restretch;
+* display names and classes;
+* the state at t is identical whether reached by playing in 16 ms steps or by seeking.
+
+**Render check** (`node web/tools/r3-render-check.mjs http://127.0.0.1:3487 tmp/r3shots --real m_6d80aa20`, **27/27**).
+It ran against a scratch site on **3487** built from this worktree:
+
+* `ZM_DATA_DIR` was a fresh scratch dir, and there was no password.
+* `ZM_MAPS_DIR` was a scratch **copy** of Nacht's export, `_models`, and R2's pack.
+* `ZM_REPLAY_DIR` held the two fixtures and a copy of `m_6d80aa20`.
+* `ZM_REPLAY_PULL=off`.
+
+The browser was headless Edge with SwiftShader, driven over CDP. The checks:
+
+* Sound is off before any gesture. A real mouse click on Play gives a `running` context, R2's
+  samples decoded and sounds played. A 10 s scrub while playing played nothing it skipped.
+* R2's Colt and Ray Gun are in the hands. The flash is on at +20 ms and off at +100 ms.
+* The damage_feedback marker shows on a head hit in third person, on a crosshair at the projected
+  aim point.
+* In first person, R2's MP40 is flashing. The hurt vignette shows after a swipe. The knuckle crack is
+  empty hands.
+* R2's insta-kill and x2 models are drawn at their spawn. The upgraded MP40 is R2's gold model, and
+  every glb loaded.
+* The chips read exactly `Insta-Kill 20.5 · Double Points 20.1 · Fire Sale 28.5 · Death Machine 29.5`.
+* Tab shows `The Afterburner` / `Ray Gun`, and the feed has the pickups.
+* The old fixture with `?assets=off` is silent, with procedural class placeholders from the snapshot
+  column: the MP40 is `smg` with camo, the Ray Gun is `raygun`.
+* The real `m_6d80aa20` plays, silent, with no page exceptions anywhere.
+
+Screenshots are in the worktree's `tmp\r3shots\` (not committed): `r3-flash-3p`, `r3-hitmarker-3p`,
+`r3-flash-fp`, `r3-blood-fp`, `r3-powerups-3p`, `r3-pap-3p`, `r3-chips`, `r3-scoreboard`,
+`r3-old-3p`, `r3-real-m_6d80aa20`.
+
+The full web `npm test` passes after merging main: every suite reports 0 failed, and `replay-fx` is
+16/16.
+
+### 12.6 What is NOT proven
+
+* **No real v1 recording exists yet**, and R1's DLL is not deployed (§11). Everything was driven by
+  my fixture, written to v1's shapes. B's first box game after the R1 deploy is the proof: guns,
+  shots, hits, a swipe, a PaP on Der Riese, and a power-up.
+* **First shots after Play can be silent** while the samples decode (Ogg, ~100 ms locally). The audio
+  context may only be created by the gesture. Decoding earlier through an `OfflineAudioContext` would
+  fix this and has not been done.
+* **Heard by nobody.** Everything ran under SwiftShader with `--mute-audio`: the graph ran and sources
+  started, but no one listened. The same is true of R2's clips (R2 §6). Volumes are per-kind guesses
+  (`sound.js GAIN`), because the alias volumes were not dumped (R2 §5).
+* **Guns in the bind pose.** They hang at the wrist of relaxed arms, pointing the character's way:
+  there is no aiming pose until real xanims exist (§9.6). Capsules (`?models=off`) use a fixed offset.
+* **The first-person gun is the world model**, not R2's `viewGlb`. R2's 12 viewmodels are served and
+  unused; the world model is placed in view by its grip.
+* **Not done**: the zombie blood burst on a hit (R2 has the `blood_*` sprites; not asked), the ground
+  loop `powerup_loop` while a drop lies there, and the insta-kill/double-points loops while active.
+* **The live site** gets all this on merge plus a restart, on B's word (rule 15).
