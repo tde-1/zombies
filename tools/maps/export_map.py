@@ -14,27 +14,21 @@ which is a *measurement* and not a guess:
   * OpenAssetTools' Unlinker (GPL-3.0) loads a T4 fastfile completely -- `--list`
     on nazi_zombie_prototype.ff reports 1 gfxworld, 1 clipmap, 1 comworld, 297
     xmodels, 542 materials, 709 images, 1 mapents.
-  * It can *write* xmodel, material, image and mapents. It cannot write gfxworld,
-    clipmap or comworld for T4. Asking for them is not an error, it simply emits
-    nothing: `--include-assets gfxworld,clipmap,comworld -o <dir>` produced a
-    directory containing only the zone source file. Measured 2026-09-22 against
-    Unlinker v0.33.0.
-  * The **world shell of a WaW map -- the floors, the walls, the ceiling -- lives
-    in GfxWorld**, not in xmodels, so this script cannot export it. What is in
-    map_ents is 54 `script_model` placements (barrels, wall weapons, the mystery
-    box lid, a couch) and 127 `script_brushmodel`s, and a brushmodel is a
-    reference (`*2`, `*3`, ...) into the same GfxWorld we cannot read.
-  * Every tool that *does* export a WaW world -- Husky, C2M -- reads it out of the
-    running game's memory, so the shell needs one game.lock hold per map.
-    `--world <file.obj|.gltf>` is that seam: point it at a Husky export and this
-    script merges the shell AND reads the `<same-name>.map` beside it for the
-    static model placements, which is where a stock map keeps its props (1506 of
-    them on Nacht against map_ents' 54).
+  * Stock OAT can *write* xmodel, material, image and mapents, but not gfxworld for
+    T4 -- and the **world shell of a WaW map (floors, walls, ceilings) lives in
+    GfxWorld**, as do a stock map's static props (1506 on Nacht against map_ents' 54).
+  * SINCE 2026-09-23 (lane GEO, replay.md §16) we build OAT with our own T4 GfxWorld
+    dumper (tools/maps/oat-t4-world, GPL-3.0) and `--world auto` (the default) dumps
+    the shell, its materials and every static-model placement straight out of the
+    fastfile: `unlink_world()`, no game, no game.lock, about a second a map. On Nacht
+    it gives exactly what Husky read out of the running game (91002 vertices, 203895
+    indices, 3741 surfaces, 1506 static models).
+  * Husky / C2M (memory readers) remain a fallback: `--world <file.obj>` merges a
+    Husky OBJ and the `<same-name>.map` beside it (replay.md §4b, run-husky.ps1).
 
-Without --world the output is a correct, correctly-placed *prop and sky* export
-with the shell missing -- an honest partial, and what the viewer draws a floor
-grid for. With it, the output is the whole map. See replay.md section 4b for the
-Husky run itself, which is scripted in tools/maps/run-husky.ps1.
+Without a world (`--world none`, or no geo build installed) the output is a correct,
+correctly-placed *prop and sky* export with the shell missing -- what the viewer draws
+a floor grid for.
 
 COORDINATES
 -----------
@@ -50,7 +44,9 @@ LICENCES (also recorded in the vault's Reuse Register)
   * OpenAssetTools -- GPL-3.0 -- https://github.com/Laupetin/OpenAssetTools
     Release v0.33.0 (2026-08-31), prebuilt `oat-windows.zip`. Run as an external
     program only; nothing of it is linked or vendored, so its copyleft does not
-    reach this repo.
+    reach this repo. Our GfxWorld dumper (tools/maps/oat-t4-world) IS a derivative
+    of OAT and is GPL-3.0; it is compiled into a private OAT build
+    (ZombiesDev/tools/oat-geo) and nothing else links it.
   * Husky -- GPL-3.0 -- https://github.com/Scobalula/Husky, release 0.8.0.0.
     Also an external program; the world shell it produces is game-derived data
     and is subject to the same never-commit rule as everything else here.
@@ -1202,8 +1198,8 @@ def build(bsp: str, dump: Path, out_dir: Path, world: Path | None):
         f"{placed} props, {len(glb.j['meshes'])} meshes, "
         f"{len(glb.j['images'])} textures, sky={'yes' if sky_ok else 'NO'}")
     if not meta["world_shell"]:
-        log("NOTE: no world shell. GfxWorld is not exportable from a fastfile; see "
-            "docs/kickstart/replay.md §4. Pass --world <husky.gltf> to merge one.")
+        log("NOTE: no world shell. Build the OAT geo Unlinker (tools/maps/oat-t4-world/"
+            "build-oat.ps1) or pass --world <husky.obj>; docs/kickstart/replay.md §16.")
     return meta
 
 
