@@ -39,8 +39,8 @@
 // Mod-owned dvars (monkeytoy, con_external, sv_cheats), developer, cheats and gameplay
 // dvars: refused by settings::forbidden_dvar whatever the schema says. A dvar the running
 // map sets itself (its .enw-installed.json modDvars.owned, launcher modcompat.js) is shown
-// read-only. In a Verified game (the invite token is present) only items the catalogue
-// marks harmless are shown at all.
+// read-only. In a Verified game (the invite token is present) every item is shown and only
+// the records rule's own (com_maxfps, catalogue `verified: false`) is locked (§11.3).
 //
 // ============================================================================
 // VIDEO SETTINGS THAT NEED vid_restart
@@ -631,7 +631,7 @@ void draw(float x, float y, float w, float h, float mx, float my) {
     const float fy = y + h - foot;
     box(x, fy, w, foot, kStrip);
     float text_w = w - 12.f;
-    if (!g_pending.empty() && !g_ctx.listen_server && !g_ctx.restricted) {
+    if (!g_pending.empty() && !g_ctx.listen_server) {   // [C1] Verified games too (esc-menu.md §11.3)
         const std::string l = g_restart ? "Restarting..." : "Apply (restart video)";
         const float bw = tw(l, 0.24f) + 14.f;
         const float bx = x + w - bw - 3.f;
@@ -646,7 +646,7 @@ void draw(float x, float y, float w, float h, float mx, float my) {
     if (!g_capture_id.empty()) foot_text = "^3Press a key or mouse button.  Esc cancels, Delete clears.";
     else if (!g_hover_note.empty()) foot_text = g_hover_note;
     else if (!g_status.empty() && now - g_status_t < 8000) foot_text = g_status;
-    else if (g_ctx.restricted) foot_text = "Verified game: only settings that change nothing about the run";
+    else if (g_ctx.restricted) foot_text = "Verified game: max fps is locked; everything else is yours";
     else foot_text = "Saved as you change them. The site's /settings shows the same.";
     txt(x + 6.f, fy + 12.f, fit(foot_text, text_w, 0.22f), kDim, 0.22f);
 }
@@ -794,7 +794,7 @@ void frame_tick() {
 bool restart_in_progress() { return g_restart && ::GetTickCount() - g_restart_t < 30000; }
 
 bool apply_restart() {
-    if (g_pending.empty() || g_ctx.listen_server || g_ctx.restricted || g_restart) return false;
+    if (g_pending.empty() || g_ctx.listen_server || g_restart) return false;   // [C1] Verified too
     std::string ids;
     for (const auto& p : g_pending) ids += (ids.empty() ? "" : ", ") + p;
     g_restart_dev = rd<uint32_t>(kDxDevice);

@@ -177,9 +177,13 @@ struct context {
 
 enum class shown { hidden, editable, readonly };
 
+// B, 2026-09-23 (esc-menu.md §11.3): every setting is SHOWN in every game, Verified
+// included. A Verified game locks (read-only) only what the records rules pin: the items
+// the catalogue marks `verified: false` -- today com_maxfps alone (verified-rules.md §4).
+// `hidden` is kept for callers but nothing in the catalogue is hidden any more.
 inline shown visibility(const item& it, const context& c, std::string* why) {
-    if (c.restricted && !it.verified) { if (why) *why = "not in a Verified game"; return shown::hidden; }
     if (it.k == kind::info || it.a == apply::site) { if (why) *why = "set in the launcher"; return shown::readonly; }
+    if (c.restricted && !it.verified) { if (why) *why = "locked in a Verified game"; return shown::readonly; }
     const std::string d = lower(it.dvar);
     if (!d.empty() && std::find(c.mod_owned.begin(), c.mod_owned.end(), d) != c.mod_owned.end()) {
         if (why) *why = "set by this map";

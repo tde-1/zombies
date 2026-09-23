@@ -38,9 +38,10 @@ int main() {
     check(loaded, "the embedded schema loads", err);
     if (!loaded) return 1;
     check(err.empty(), "no item of the real schema is dropped", err);
-    check(s.tabs.size() == 5, "five tabs, the site's (display graphics audio controls game)", std::to_string(s.tabs.size()));
+    check(s.tabs.size() == 6, "six tabs, the site's (display graphics audio controls game enw)", std::to_string(s.tabs.size()));
     check(s.items.size() >= 70, "every catalogue item that is placed and allowed is here", std::to_string(s.items.size()));
-    check(s.excluded == 4, "four excluded: ai_corpseCount (gameplay), monkeytoy (mod-owned), discordPresence (launcher's), discordOverlay (launch-time env)", std::to_string(s.excluded));
+    check(s.excluded == 2, "two excluded: ai_corpseCount (gameplay), monkeytoy (mod-owned); the Discord switches are in game now (next launch)", std::to_string(s.excluded));
+    check(s.items.size() == 83, "83 items: every placed, allowed catalogue item (C1: + the two Discord switches)", std::to_string(s.items.size()));
     bool none_forbidden = true;
     for (const auto& it : s.items) if (!it.dvar.empty() && forbidden_dvar(it.dvar)) none_forbidden = false;
     check(none_forbidden, "no item writes a forbidden dvar");
@@ -59,7 +60,16 @@ int main() {
     const item* mode = s.find("mode");
     check(sens && sens->k == kind::slider && sens->min == 1 && sens->max == 30 && sens->dvar == "sensitivity", "sensitivity: slider 1..30 on `sensitivity`");
     check(fov && fov->dvar == "cg_fov" && fov->max == 120, "fov: cg_fov, capped at 120 (records rule)");
-    check(fps && fps->dvar == "com_maxfps" && !fps->verified, "max fps: com_maxfps, hidden in a Verified game");
+    check(fps && fps->dvar == "com_maxfps" && !fps->verified, "max fps: com_maxfps, the one item a Verified game locks");
+    {
+        size_t locked = 0;
+        for (const auto& it : s.items) if (!it.verified) ++locked;
+        check(locked == 1, "exactly one item is not `verified`: max fps (records rule)", std::to_string(locked));
+        const item* dp = s.find("discordPresence");
+        const item* dov = s.find("discordOverlay");
+        check(dp && dp->dvar == "enw_discord" && dp->a == apply::next_launch && dov && dov->dvar == "enw_discordhook" && dov->values.size() == 3,
+              "discord: enw_discord toggle and enw_discordhook auto/allow/refuse, next launch");
+    }
     check(aspect && aspect->a == apply::vid_restart, "aspect ratio needs a vid_restart");
     check(raw && raw->dvar == "enw_rawmouse" && raw->a == apply::next_launch, "raw input: enw_rawmouse, next launch");
     check(showfps && showfps->values.size() == 2 && showfps->values[1] == "Simple", "show fps writes cg_drawFPS Simple/Off");
@@ -74,13 +84,17 @@ int main() {
     std::string why;
     check(visibility(*fps, c, &why) == shown::editable, "Play Local / dev: max fps is editable");
     c.restricted = true;
-    check(visibility(*fps, c, &why) == shown::hidden, "Verified: max fps hidden", why);
-    check(visibility(*aspect, c, &why) == shown::hidden, "Verified: a vid_restart setting is hidden");
+    check(visibility(*fps, c, &why) == shown::readonly && why == "locked in a Verified game", "Verified: max fps shown, locked (records rule)", why);
+    check(visibility(*aspect, c, &why) == shown::editable && why == "needs Apply", "Verified: a vid_restart setting is editable, with Apply", why);
+    for (const char* id : {"sm_enable", "r_specular", "r_glow_allowed", "r_dof_enable", "snd_losOcclusion", "r_aaSamples", "vsync"}) {
+        const item* x = s.find(id);
+        check(x && visibility(*x, c, nullptr) == shown::editable, (std::string("Verified: editable: ") + id).c_str());
+    }
     check(visibility(*sens, c, &why) == shown::editable, "Verified: sensitivity stays");
     check(visibility(*fov, c, &why) == shown::editable, "Verified: FOV stays (the slider cannot pass 120)");
     size_t verified_n = 0;
     for (const auto& it : s.items) if (visibility(it, c, nullptr) != shown::hidden) ++verified_n;
-    check(verified_n > 40 && verified_n < s.items.size(), "Verified shows a harmless subset", std::to_string(verified_n));
+    check(verified_n == s.items.size(), "Verified shows every setting (B 2026-09-23)", std::to_string(verified_n));
     c = {};
     c.mod_owned = {"cg_fov"};
     check(visibility(*fov, c, &why) == shown::readonly && why == "set by this map", "a mod-owned dvar is read-only", why);
