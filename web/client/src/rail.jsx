@@ -149,7 +149,11 @@ export function RailProvider({ children }) {
   const stageMap = useCallback(async (key) => {
     if (!key) return
     if (!party) { setStage({ map_key: key }); return }
-    if (!editable) { say(party.is_leader ? 'Cancel the ready check to change the map' : 'The leader picks the map'); return }
+    if (!editable) {
+      say(!party.is_leader ? 'The leader picks the map'
+        : (party.state === 'ready-check' ? 'Cancel the ready check to change the map' : 'End the game to change the map'))
+      return
+    }
     if (party.map && party.map.key === key) return
     await run(() => api.post('/api/party/map', { map_key: key }))
   }, [party, editable, setStage, run, say])
@@ -209,7 +213,8 @@ export function RailProvider({ children }) {
         await api.post('/api/party/create', { mode: stage.mode, visibility: stage.visibility, mapKey: key })
         setStage({ map_key: key })
       } else if (!party.map || party.map.key !== key) {
-        if (!(party.is_leader && party.state === 'forming')) throw new Error('The leader picks the map')
+        if (!party.is_leader) throw new Error('The leader picks the map')
+        if (party.state !== 'forming') throw new Error(party.state === 'ready-check' ? 'Cancel the ready check to change the map' : 'End the game to change the map')
         await api.post('/api/party/map', { map_key: key })
       }
       const r = await api.post('/api/party/ready-check', {})
@@ -246,8 +251,16 @@ export function RailProvider({ children }) {
     await loadParty()
   }), [run, resumable, loadParty])
 
+  // End a game this player is not in (crashed out, or left it running): the server is
+  // cancelled and the party goes back to forming, so the leader can pick again.
+  const endGame = useCallback(() => run(async () => {
+    const id = (resumable && resumable.match_id) || (party && party.match_id)
+    await api.post('/api/party/quit', { match_id: id })
+    await loadParty()
+  }), [run, resumable, party, loadParty])
+
   const value = useMemo(() => ({
-    me, signedIn, approved,
+    me, signedIn, approved, endGame,
     party, launch, invites, online, pool, poolByKey, live,
     stage, map, mapKey, mode, visibility, editable,
     busy, err, say,
@@ -256,7 +269,7 @@ export function RailProvider({ children }) {
     refreshParty: loadParty, refreshOnline: loadOnline,
   }), [me, signedIn, approved, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
     mode, visibility, editable, busy, err, say, stageMap, setMode, setVisibility, invite, cancelInvite, kick,
-    leave, decline, joinParty, play, ready, go, cancel, resumable, resume, loadParty, loadOnline])
+    leave, decline, joinParty, play, ready, go, cancel, resumable, resume, endGame, loadParty, loadOnline])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

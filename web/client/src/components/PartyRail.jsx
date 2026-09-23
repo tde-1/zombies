@@ -412,6 +412,7 @@ function ServerCard({ R }) {
   // The primary action, by state. A refusal says why in the label rather than greying a
   // button that says "Play" — Movement's rule (approval first, because it is the outer gate).
   let primary = null
+  let secondary = null
   if (!map) {
     primary = null
   } else if (R.resumable) {
@@ -422,6 +423,12 @@ function ServerCard({ R }) {
       <button className="prail-server-launch" disabled={R.busy} onClick={() => R.resume()}
               title={`The server is kept for you for about ${mins} more minute${mins === 1 ? '' : 's'}`}>
         Resume
+      </button>
+    )
+    secondary = (
+      <button className="prail-server-launch as-link" disabled={R.busy} onClick={() => R.endGame()}
+              title="Cancel the server and pick again">
+        End game
       </button>
     )
   } else if (!R.approved) {
@@ -486,6 +493,7 @@ function ServerCard({ R }) {
             <div className="prail-live-booting"><span className="spinner" /> {state === 'launching' ? 'Starting…' : 'Connecting…'}</div>
           )}
           {primary}
+          {secondary}
         </div>
       </div>
     </div>
