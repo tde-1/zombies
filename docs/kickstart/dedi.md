@@ -2874,6 +2874,31 @@ service instance and booted on slot 0 with the new DLL and host code: `map_loade
 * The `linked (… Sep 22 2026 20:28:57)` build string in the journal is still stale (§17's cosmetic
   note).
 
+### 19.6 Addendum, 2026-09-23 00:12–00:15 UTC: the site now hands out all three slots (host.md §13, web.md)
+
+This closes the §19.5 bullet "the site hands out one game per box". The site leases per party.
+A box holds `max_instances` live leases, and zombies-dev is now 3, with 1 slot reserved for
+agents. The host agent polls `?v=2`, runs one instance per live lease, and retires only a game
+whose own lease has ended. Deployed at 00:12 UTC, when the box was idle.
+
+Proof, with fake IDs only:
+
+* `lease-cli --player …0001` (Nacht) got m_dba99e3b on inst-01, slot 0, lobby port 3074, connect
+  `:28960`. `map_loaded` was reached.
+* `lease-cli --player …0002` (Verruckt) got m_99ea8a4c on inst-02, slot 1, lobby 3075, connect
+  `:28962`. `map_loaded` was reached. **The first game was not retired or superseded.** The
+  journal logged `assignment changed: leased 2: m_dba99e3b …, m_99ea8a4c …`. The site status then
+  showed both instances `running` with `map_loaded: true`, both leases `ready`, and `protocol 2,
+  max_instances 3`. This also proves the old behaviour is gone: a lease for a different player
+  retired nothing.
+* `lease-cli --player …0003` was refused with `No free server right now`. The third slot is
+  the one real players are owed, and agents never take it.
+* Cancelling m_dba99e3b retired inst-01 only, and inst-02 kept running. Cancelling m_99ea8a4c
+  retired inst-02, and the box went `idle` with no CoDWaW processes left.
+
+Not proven on the box: a real player's lease making an agent lease yield, and three games at once
+with players connected. Both are covered by the tests in web/test/run-all.js.
+
 ## 20. 2026-09-22 evening / 23 early: the popular 64 on the box, server-side only
 
 The archive lane's popular run (`docs/kickstart/archive.md` §10) booted every one of its 64

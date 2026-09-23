@@ -235,9 +235,14 @@ export function RailProvider({ children }) {
   const cancel = useCallback(() => run(() => api.post('/api/party/cancel')), [run])
 
   // Back into the game this player crashed out of. The site hands out a fresh token and
-  // puts the phase back to `in-game`; the launcher's party watcher does the launch.
+  // puts the phase back to `in-game`; the launcher's party watcher does the launch once
+  // `window.enw.resumeMatch` has lifted its once-per-match gate for it.
   const resume = useCallback(() => run(async () => {
-    await api.post('/api/party/resume', { match_id: resumable && resumable.match_id })
+    const id = resumable && resumable.match_id
+    await api.post('/api/party/resume', { match_id: id })
+    // Inside the launcher: its follow gate launches each match once (followgate.js), so
+    // tell it this second launch of the same match is the player's own ask.
+    try { if (window.enw && window.enw.resumeMatch) await window.enw.resumeMatch(id) } catch { /* outside the launcher */ }
     await loadParty()
   }), [run, resumable, loadParty])
 

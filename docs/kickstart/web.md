@@ -2628,3 +2628,88 @@ inside the launcher** except Download, which in a browser goes to `/download` li
   :3471 with a DB copy; the settings shots are after the rebase onto the Gaff layout.
 * **Not proven:** phone widths; the chip against a real feed; a member's bar fed by a *second* real
   launcher (the shot is our own row, through the site's party-progress path).
+
+## 2026-09-23, ~01:00–02:00 UK — several games per box, the launcher cancel that ended B's game, quit vs crash
+
+### Several games per box (`lib/assignments.js`, "SEVERAL GAMES PER BOX")
+
+1. A player who presses Play again replaces **their own** game: a live lease of the same party, or
+   of exactly the same SteamIDs, is superseded. Nobody else's game is touched.
+2. Otherwise the lease takes a free slot. `capacity(box).max` is `boxes.max_instances`, capped by
+   the `max_instances` the box reports, and set to **1** for a box whose host agent does not poll
+   with `?v=2`.
+3. `boxes.reserve` (NULL means 1 on a box of 3 or more, else 0) is the number of slots only an
+   **agent lease** may use. `assignments.agent=1` comes from `agent: true`, from lease-cli (always,
+   unless `--real`), or from the admin lease route (unless `agent:false`). Real players get
+   `max - reserve` slots. An agent never takes the last slot a real player is still entitled to.
+   The exception is a one-slot box, where an agent may take an empty box.
+4. A real lease that finds the box full, while real players are under their share, supersedes
+   the **oldest agent lease**. This is the only cross-party supersede.
+5. Anything else answers `{ ok:false, full:true, error:'No free server right now' }` and
+   supersedes nothing. `parties.launch` passes the error through, and the launcher does not launch.
+
+`forBox(box, {v:2})` returns every live lease (host.md §13.1). `cancel` and `ack` work by match
+id. `ack` only moves forward, so a late `ready` never takes a `live` lease back. `recordStatus`
+keeps the heartbeat's `instances`, `host`, `protocol` and `max_instances` across per-game posts.
+`connectFor` no longer falls back to `instances[0]`, which would hand a player another party's port.
+The migration adds `boxes.reserve` and `assignments.agent`, and sets zombies-dev to
+`max_instances 3` once, when the column is added. `POST /api/admin/boxes/:name/capacity
+{max_instances, reserve}` changes both afterwards.
+
+### Why B's game went idle mid-round (m_6d80aa20, 23:50 UTC): not a TTL
+
+The activity log has `assignment.cancel` for m_6d80aa20 at 23:50:09 **with B's own SteamID as
+actor**. Nothing on the site expires a lease. A second launch of his, a rejoin into the same
+match, failed when its game window closed at 23:50:02. The launcher's failure path
+(`launcher/src/main/main.js` `releaseLease('the launch failed')`) then POSTed
+`/api/launcher/cancel`, and that route cancelled the party's current match, which was B's live
+game. The other "idle", m_abb67742, was an agent's `lease-cli --cancel`.
+**Fix:** `assignments.release()` refuses to cancel a `live` lease (409 `{live:true}`). If the body
+names a `match_id` that is not the party's current one, it does nothing. A live game ends on the
+box (game over, a Quit, or the crash window below). Launcher lane: send `{match_id}` with cancel.
+
+### Quit vs crash, and no relaunch loop (`lib/seats.js`)
+
+The launcher's watcher launches whenever the poll phase is `reserving|loading|ready|in-game` and
+no launch of its own is running. The site used to show `in-game` for as long as the lease was
+live. So once a player's game went away, by quit, crash, or a flow ending while the game was
+still up, the watcher launched again, about every 25 s. `seats.observe()` now records, from every
+live frame, which SteamIDs are connected to which match. The phase is decided per player:
+
+* connected → **`playing`**. This is not a follow state. Launcher lane: read `playing` as
+  "connected" wherever you read `in-game` for that.
+* was connected, is not, and did not quit → **`resumable`**. This is not a follow state either.
+  `GET /api/party` and `/api/launcher/play` carry `resume: {match_id, left_at, until}`, and the
+  rail's server card shows **Resume**.
+* `POST /api/party/resume` mints a fresh token (the old one expires after 5 min, and the box
+  refuses a replayed one) and sets the phase back to the lease's own (`in-game`), which the
+  watcher follows. A resume that has not connected within 2 min goes back to `resumable`.
+* `POST /api/party/quit {match_id}` is authenticated by the session **or the game's chat pass**,
+  and is exempt from the beta gate. It is called by the Esc menu's Exit game (the client lane's
+  `pause_menu.cpp`). Solo, it cancels the lease and dissolves the party. In a party, the player
+  leaves it and the game goes on.
+* `seats.sweep()` runs on every box status post. A live lease that everybody left 10 min ago,
+  with nobody resuming, is cancelled. The referee usually ends the game first (host.md §13.3).
+* The data is in memory. After a site restart, the worst case is one extra follow.
+
+### Tests
+
+`test/run-all.js` gained 23 checks: old-protocol refusal, own-game replace, two agent leases both
+live, the v2 list, third agent refused (reserve), real-lease yield, full box supersedes nobody,
+cancel by match id, forward-only ack, launcher release (live, other match, unclaimed), the status
+merge, **a party polled 20 times after launch never asks for a second launch**, crash =
+resumable with no relaunch, Resume once with a fresh token, solo quit, co-op quit, and the
+ten-minute sweep. Result: 142/142. The other suites also pass (`game-chat` 19, `launcher-signin` 15,
+`local-run` 41).
+
+### Deploy
+
+Restart the site and rebuild the client (the rail changed). Then deploy the host agent (host.md
+§13). A site on this code with an old agent is safe: the box counts as one slot, and an agent's
+lease is refused rather than kicking anybody.
+
+Rail Resume inside the launcher: after `POST /api/party/resume`, the button calls
+`window.enw.resumeMatch(match_id)`. That call is the launcher's `followgate.js` exception to
+"launch each match once".
+
+Box proof: dedi.md §19.6.

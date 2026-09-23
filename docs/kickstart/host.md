@@ -1672,3 +1672,58 @@ own signed replay, on the same process, with no second boot. What is still unpro
 **party** on a warm instance, which needs real clients connecting rather than a simulator that
 invents them; and `claimed` end to end, which a real box cannot produce because a real box always
 checks — it is covered as a unit in `run-all.js` and that is the honest place for it.
+
+## 13. Session 2026-09-23 — several leases per box, and the host is told all of them
+
+**The bug.** B asked for "multiple in reserve so while you're testing I can also play". The box has
+had three instance slots since dedi.md §19. It still ran one game at a time, because both ends
+assumed one lease per box. `assignments.lease()` superseded every live lease on the box, and
+`onAssignment` retired every game whose match id differed from the newest lease's. Any second
+Play kicked the first, whoever pressed it. It kicked B at 19:21 and several times after.
+
+### 13.1 The protocol: `GET /api/gs/assignment?v=2`
+
+```
+{ v: 2, status: 'leased'|'idle', nonce: <hash of the leases' nonces>, assignments: [ <old one-lease shape>, ... ] }
+```
+
+The agent polls with `?v=2`. An old site ignores the query and answers the old shape.
+`lib/leases.js leaseList()` reads that shape as a list of one lease, or none. An old agent does
+not send `v`. The site then gives it the newest lease alone, and holds that box to **one** live
+lease (`capacity()`), so the old agent never has a lease it cannot see. Every status post now
+carries `protocol: 2`, `max_instances` (after `checkSlotCopies`), and per-instance `phase`, `map`,
+`map_loaded`, `warm` and `leased` (`siteclient.statusExtra`, `reportStatus`).
+
+### 13.2 `onAssignment` → `applyLeases` (`lib/leases.js planLeases`)
+
+* A leased game whose match id is **not in the list** is retired, as before: awaited, then 2 s for
+  Wine to release the UDP ports. Warm instances and `--boot` sims are never retired this way.
+* A lease in the list with no game is started (`startLease`, which is the old body: warm handoff or
+  `boot()`). Each match starts **once per agent lifetime** (`startedMatches`), so a game that has
+  finished is not booted again while the site is still waiting for its result.
+* Games still boot one at a time behind the 90 s `map_loaded` gate in `boot()` (dedi §19). Each
+  instance gets the lowest free slot, which gives it its own game copy, homepath and lobby port.
+* If a lease arrives with every slot in use, the agent retires a warm instance to free one. If
+  there is no warm instance, it looks again every 5 s. The site should never lease past the
+  `max_instances` the box reports.
+* **New on idle:** a cancelled lease now retires its game. Before, idle was ignored and the game
+  ran on until the next lease superseded it. This is why the site's launcher-cancel guard
+  (web.md) has to be deployed **before** or **with** this agent. Without it, a launcher's failed
+  rejoin would end the player's live game at once.
+
+### 13.3 Referee: a crash is resumable for ten minutes
+
+`crashGraceMs` is 10 min (it was 7), which matches the site's resume window (`web/server/lib/seats.js`).
+The two-minute empty close no longer fires while a crash hold is open. Before, a solo crash was
+closed as `empty` at 2 min, so the 7-minute grace never applied.
+
+### 13.4 Tests
+
+* `test/run-all.js` "several leases per box": six planner cases, plus the crash-hold case. 68/68.
+* `test/multi-lease.js`: a real agent with sims against a v2 stand-in site. Two leases give two
+  instances on two ports. Cancelling one leaves the other on the same pid. A third boots beside it.
+  Idle retires everything. PASS.
+
+### 13.5 Proof on the box
+
+See dedi.md §19.6.
