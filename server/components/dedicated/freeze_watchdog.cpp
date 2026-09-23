@@ -42,6 +42,12 @@
 // It writes nothing to the game. ENW_DEDI_NO_FREEZE_WATCHDOG=1 turns it all off;
 // ENW_DEDI_FREEZE_MS=N changes the 5 s line (tests only).
 //
+// THE ONE EXCEPTION, FOR PROVING IT: ENW_DEDI_FREEZE_TEST=N (seconds) plants §23's
+// own value, 0x615B, into [0x3BFD478] N seconds after the watch arms. That is the
+// exact state the overrun left, so the next WSAEWOULDBLOCK in the packet receive
+// faults at 0x5FFE23 every frame and the server freezes the way B's did. Never set
+// it anywhere a real game runs.
+//
 // Clean room: our own code.
 
 #include "component.hpp"
@@ -147,7 +153,12 @@ void log_fault(const fault_record& r, const char* why) {
               text_chain(r.words, r.n).c_str());
 }
 
-// Faults recorded since `since`, oldest first, at most `max`.
+// Faults recorded since `since`, oldest first, at most `max`. A fault identical to the
+// last one printed (same code, eip and address) is counted, not printed: a frozen
+// server faults the same way sixty times a second.
+uint32_t g_last_sig_eip = 0, g_last_sig_addr = 0, g_last_sig_code = 0;
+uint64_t g_repeats = 0;
+
 LONG log_faults_since(LONG since, int max, const char* why) {
     const LONG now = g_fault_seq;
     LONG from = now - kRing + 1;
@@ -156,7 +167,17 @@ LONG log_faults_since(LONG since, int max, const char* why) {
     for (LONG s = from; s <= now && printed < max; ++s) {
         const fault_record& r = g_ring[(s - 1) % kRing];
         if (r.seq != s) continue;              // overwritten or half-written
+        if (r.eip == g_last_sig_eip && r.touched == g_last_sig_addr && r.code == g_last_sig_code) {
+            ++g_repeats;
+            continue;
+        }
+        if (g_repeats) {
+            ENW_ERROR("dedi_freeze_watchdog: (%llu more fault(s) identical to the last one printed)",
+                      static_cast<unsigned long long>(g_repeats));
+            g_repeats = 0;
+        }
         log_fault(r, why);
+        g_last_sig_eip = r.eip; g_last_sig_addr = r.touched; g_last_sig_code = r.code;
         ++printed;
     }
     return now;
@@ -279,6 +300,15 @@ public:
             if (v >= 500 && v <= 600000) stall_ms = static_cast<uint32_t>(v);
         }
         watch_ = fw::watch(stall_ms);
+        if (const char* e = std::getenv("ENW_DEDI_FREEZE_TEST")) {
+            const long v = std::strtol(e, nullptr, 10);
+            if (v > 0 && v < 3600) {
+                test_after_ms_ = static_cast<uint32_t>(v) * 1000u;
+                ENW_WARN("dedi_freeze_watchdog: ENW_DEDI_FREEZE_TEST=%ld -- will plant 0x615B in "
+                         "[0x3BFD478] %ld s after the watch arms, to freeze this server on purpose "
+                         "(dedi.md §23). TEST ONLY.", v, v);
+            }
+        }
         g_veh = ::AddVectoredExceptionHandler(1, &on_exception);
         enw::frame::subscribe("dedi_freeze_watchdog", [this](uint64_t) { tick(); });
         ENW_INFO("dedi_freeze_watchdog: armed. Ends the match with flag server_freeze if "
@@ -300,6 +330,18 @@ private:
         memory::read(enw::at(kBodyEntered), &s.entered);
         memory::read(enw::at(kBodyReturned), &s.body);
         const fw::result r = watch_.feed(s);
+
+        if (test_after_ms_ && watch_.armed()) {
+            if (!armed_at_ms_) armed_at_ms_ = s.now_ms;
+            if (!test_planted_ && s.now_ms - armed_at_ms_ >= test_after_ms_) {
+                test_planted_ = true;
+                uint32_t was = 0;
+                memory::read(enw::at(kProbeSlot), &was);
+                const bool ok = memory::write(enw::at(kProbeSlot), static_cast<uint32_t>(0x615B));
+                ENW_WARN("dedi_freeze_watchdog: TEST: [0x3BFD478] %08X -> 0000615B %s at "
+                         "com_frameTime %u", was, ok ? "planted" : "NOT written", s.frame_time);
+            }
+        }
 
         const fw::vm_state vm = read_vm();
         const bool rest = fw::vm_at_rest(vm);
@@ -351,7 +393,14 @@ private:
                   static_cast<unsigned long long>(watch_.escaped_total()),
                   static_cast<unsigned long long>(g_faults.load()));
         ENW_ERROR("dedi_freeze_watchdog: script VM %s", describe_vm(vm).c_str());
+        // The fault that kills every frame now, printed even if it was printed before.
+        g_last_sig_eip = g_last_sig_addr = g_last_sig_code = 0;
         log_faults_since(0, kRing, "freeze");
+        if (g_repeats) {
+            ENW_ERROR("dedi_freeze_watchdog: (%llu more fault(s) identical to the last one printed)",
+                      static_cast<unsigned long long>(g_repeats));
+            g_repeats = 0;
+        }
         log_thread_stacks();
         const bool sent = referee::end_game_now("server_freeze", "server_freeze",
                                                 /*server_alive=*/false);
@@ -369,6 +418,9 @@ private:
     bool vm_was_rest_ = true;
     bool overran_logged_ = false;
     bool resumed_logged_ = false;
+    uint32_t test_after_ms_ = 0;
+    uint32_t armed_at_ms_ = 0;
+    bool test_planted_ = false;
 };
 
 ENW_REGISTER_COMPONENT(freeze_watchdog)
