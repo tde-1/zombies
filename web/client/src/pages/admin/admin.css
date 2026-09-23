@@ -249,6 +249,17 @@ button.adm-stat:hover { background: var(--panel-2); }
 .adm-picker-list button:hover:not(:disabled) { background: var(--panel-2); }
 .adm-picker-list button:disabled { opacity: .5; cursor: default; }
 
+/* ---- issues (telemetry) ------------------------------------------------------------------- */
+.tag.adm-sev.faint { color: var(--faint); }
+.adm-sheet h2 .faint { font-size: 14px; font-family: var(--mono); }
+.adm-issue-summary { margin: 12px 0; font-size: 14px; line-height: 1.5; }
+.adm-sheet .adm-dl dd.hot { color: var(--hot); }
+.adm-hit { border-top: 1px solid var(--line); padding: 8px 0; }
+.adm-hit > summary { cursor: pointer; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.adm-hit > summary .adm-sub { margin: 0; }
+.adm-excerpt { margin-top: 8px; }
+.adm-excerpt .adm-pre { margin: 4px 0 0; max-height: 40vh; white-space: pre; }
+
 /* ---- chat, guides ------------------------------------------------------------------------- */
 .adm-chat { background: var(--panel-deep); border-radius: var(--radius-sm); padding: 6px 0; font-size: 13px; }
 .adm-chatline { display: grid; grid-template-columns: 70px 110px 120px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 4px 12px; }
