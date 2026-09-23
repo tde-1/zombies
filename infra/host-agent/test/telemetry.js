@@ -8,6 +8,9 @@
 //       500, busy deferral, the throttle
 //   (d) the daily journal on a platform without journalctl skips cleanly
 //   (e) retention: a bundle past the keep window goes
+//   (f) pull_failed, box_warning, a crashed instance -- each run through the SITE's own flag
+//       rules (web/server/lib/telemetry/flags.js); a restart between staging and building
+//   (g) host.js wiring, read from the source
 //
 //   node test/telemetry.js
 import fs from 'node:fs'
@@ -287,5 +290,104 @@ ok(tel.sidecars().length === 0, 'over the size cap: oldest first until under it'
 
 tel.stop()
 siteSrv.close()
+
+// ---- (f) -------------------------------------------------------------------------------
+console.log('\n── (f) a failed pull, a box warning, and a restart between staging and building')
+const { createRequire } = await import('node:module')
+const req = createRequire(import.meta.url)
+const { isTextName } = req('../lib/telemetry/scrub.cjs')
+// The SITE's own rules, run over what this agent really builds (web/server/lib/telemetry/
+// flags.js is pure: no DB, no network). ingest.js is not loaded: it opens the site's DB.
+const { evaluate } = req('../../../web/server/lib/telemetry/flags.js')
+async function flagsOf(file) {
+  const texts = new Map()
+  const files = []
+  let manifest = {}
+  await readTarGz(file, (e) => {
+    if (e.data) {
+      if (e.name === 'manifest.json') manifest = JSON.parse(e.data.toString('utf8'))
+      else texts.set(e.name.replace(/^files\//, ''), e.data.toString('latin1'))
+      return
+    }
+    const name = e.name.replace(/^files\//, '')
+    if (e.name !== 'manifest.json') files.push({ name, size: e.size, binary: !isTextName(name) })
+    return { max: 64 * 1024 * 1024 }
+  })
+  return { manifest, ...evaluate({ manifest, files, texts }) }
+}
+const fDir = path.join(RUN, 'tf')
+const tf = new Telemetry({ dir: fDir, boxName: 'test-box', secrets: () => [SECRET], tickMs: 3_600_000, uploadTickMs: 3_600_000, journal: false, log: quiet }).start()
+const fileOf = (t, id) => path.join(t.outbox, `${id}.tar.gz`)
+const builtId = (t, id) => until(() => fs.existsSync(fileOf(t, id)) && t.sidecars().some((s) => s.bundle_id === id))
+
+const mlog = makeLog('host/maps')
+mlog.info('m_pull_1: pulling nazi_zombie_pull 3 file(s), 412.0 MB')
+mlog.error(`m_pull_1: sha256 mismatch on mods/nazi_zombie_pull/mod.ff (secret ${SECRET})`)
+hlog.error('lease m_pull_1: could not prepare nazi_zombie_pull: sha256 mismatch')
+const idPull = await tf.pullFailed({ asg: { match_id: 'm_pull_1', map: 'nazi_zombie_pull', mode: 'custom', tokens: { 7656: TOKEN } }, error: 'sha256 mismatch', since: Date.now() - 5000 })
+ok(await builtId(tf, idPull), 'pull_failed: staged and built')
+const P = await readBundle(fileOf(tf, idPull))
+const PM = JSON.parse(P['manifest.json'] || '{}')
+ok(PM.kind === 'host' && PM.reason === 'pull_failed' && PM.match_id === 'm_pull_1' && PM.notes?.error === 'sha256 mismatch', 'pull_failed manifest: kind, reason, match, error')
+ok(/sha256 mismatch on mods\/nazi_zombie_pull/.test(P['files/host-lease.log'] || '') && /could not prepare nazi_zombie_pull/.test(P['files/host-lease.log'] || ''), 'host-lease.log has the map cache and lease lines')
+ok(!Object.values(P).join('\n').includes(SECRET) && !Object.values(P).join('\n').includes(TOKEN), 'pull_failed: no box secret, no invite token')
+const PF = await flagsOf(fileOf(tf, idPull))
+ok(PF.flags.includes('host_pull_failed') && PF.flags.includes('host_error') && PF.severity === 2, `the site flags it host_pull_failed + host_error, P2 (${PF.flags})`)
+
+const idWarn = await tf.boxWarning('disk_low', 'disk free 1.2 GB < 2.0 GB on /', { disk_free_gb: 1.2, mem_free_mb: 4000, load: [0, 0, 0] })
+ok(await builtId(tf, idWarn), 'box_warning: staged and built')
+const WF = await flagsOf(fileOf(tf, idWarn))
+ok(WF.manifest.reason === 'box_warning' && WF.manifest.notes?.condition === 'disk_low' && (await readBundle(fileOf(tf, idWarn)))['files/host-recent.log']?.length > 0, 'box_warning manifest + host-recent.log')
+ok(WF.flags.join() === 'box_resources', `the site flags it box_resources only: the pull error in host-recent.log is another bundle's (${WF.flags})`)
+tf.diskWarnBytes = Number.MAX_SAFE_INTEGER
+const c1 = tf.checkBox()
+const c2 = tf.checkBox()
+ok(c1.includes('disk_low') && tf.state.warned.disk_low > 0, 'checkBox: disk under the threshold is a warning')
+const nWarn = tf.sidecars().length + tf.jobs.length
+await delay(200)
+ok(c2.includes('disk_low') && tf.state.warned.disk_low === JSON.parse(fs.readFileSync(tf.stateFile, 'utf8')).warned.disk_low, 'checkBox: at most one bundle per condition per hour (state saved)')
+ok(nWarn <= tf.sidecars().length + tf.jobs.length + 1, 'checkBox twice in a row did not stage two bundles')
+tf.stop()
+
+// The site's rules over (b)'s instance-end bundle shape: an instance that crashed.
+const tc = new Telemetry({ dir: path.join(RUN, 'tc'), boxName: 'test-box', secrets: () => [SECRET], tickMs: 3_600_000, uploadTickMs: 3_600_000, journal: false, log: quiet }).start()
+const ilog = makeLog('host').child('inst-11')
+ilog.warn('instance exited unexpectedly - saving the game up to the crash')
+ilog.error('instance failed: exited 3 times in 60 s')
+const crashDir = mkdirp(path.join(RUN, 'waw-inst-11'))
+fs.writeFileSync(path.join(crashDir, 'enw-3100.log'), '[1] [ERROR] === Com_Error TRAPPED ===\n[1] [ERROR]   EXE_ERR_SERVER_TIMEOUT\n')
+fs.writeFileSync(path.join(crashDir, 'console.log'), '******* script runtime error *******\nundefined is not an array index\n')
+const idCrash = await tc.instanceEnd({ reason: 'instance_end', exit_reason: 'crashed', match_id: 'm_crash', instance: 'inst-11', pid: 3100, since: Date.now() - 5000,
+  logs: [{ name: 'enw-3100.log', path: path.join(crashDir, 'enw-3100.log') }, { name: 'engine-console.log', path: path.join(crashDir, 'console.log') }],
+  ring: { instance: 'inst-11', matches: ['m_crash'] } })
+ok(await builtId(tc, idCrash), 'a crashed instance: built')
+const CF = await flagsOf(fileOf(tc, idCrash))
+for (const f of ['crash', 'host_error', 'com_error', 'script_error']) ok(CF.flags.includes(f), `the site flags the crashed instance ${f}`)
+ok(CF.severity === 1, `a crashed instance is P1 (${CF.severity})`)
+tc.stop()
+
+// Restart between staging and building: the job waits on disk and the next start builds it.
+const rDir = path.join(RUN, 'tr')
+const tr1 = new Telemetry({ dir: rDir, boxName: 'test-box', busy: () => true, tickMs: 3_600_000, uploadTickMs: 3_600_000, journal: false, log: quiet }).start()
+const idR = await tr1.instanceEnd({ match_id: 'm_restart', instance: 'inst-12', since: Date.now() - 1000, exit_reason: 'retired', logs: [{ name: 'enw-3100.log', path: path.join(crashDir, 'enw-3100.log') }] })
+await delay(300)
+ok(!!idR && tr1.sidecars().length === 0 && fs.existsSync(path.join(rDir, 'staging', idR, 'job.json')), 'busy: staged only (job.json on disk), nothing built while a game boots')
+tr1.stop()
+const tr2 = new Telemetry({ dir: rDir, boxName: 'test-box', tickMs: 3_600_000, uploadTickMs: 3_600_000, journal: false, log: quiet }).start()
+ok(tr2.jobs.some((j) => j.id === idR), 'the next start recovers the staged job')
+tr2.pump()
+ok(await builtId(tr2, idR), 'and builds it into the outbox')
+tr2.stop()
+
+// ---- (g) -------------------------------------------------------------------------------
+console.log('\n── (g) host.js wiring (source)')
+const hostSrc = fs.readFileSync(path.join(ROOT, 'host.js'), 'utf8')
+ok(/this\.telemetryEnd\(game, \{ why \}\)/.test(hostSrc), 'retire() files the game (after the process is gone)')
+ok(/this\.disposed\.then\(\(plan\) => this\.host\.telemetryEnd\(this/.test(hostSrc), 'a reused / warm game is filed when it is disposed')
+ok(/this\.telemetry\?\.pullFailed\(/.test(hostSrc) && (hostSrc.match(/pullFailed\(/g) || []).length >= 2, 'both prepare-failure paths file a pull_failed bundle')
+ok(/busy: \(\) => \(this\.bootsPending \|\| 0\) > 0 \|\| this\.preparing\.size > 0/.test(hostSrc), 'busy = a game booting or a map preparing')
+ok(/secrets: \(\) => \[cfg\.secret, this\.hostKey\?\.priv\]/.test(hostSrc) && /forbiddenDirs: \[cfg\.keyDir\]/.test(hostSrc), 'the box secret and the replay key are scrub literals; the keys dir is refused')
+ok(/a\.telemetry === 'off'/.test(hostSrc) && /isOff\(env\.ENW_TELEMETRY\)/.test(fs.readFileSync(path.join(ROOT, 'lib', 'telemetry.js'), 'utf8')), 'ENW_TELEMETRY=off and --telemetry off turn it off')
+ok(/startTelemetry\(\) \{[\s\S]{0,900}catch \(e\) \{[\s\S]{0,200}this\.telemetry = null/.test(hostSrc), 'a telemetry that cannot start leaves the agent running without it')
 console.log(`\n${fail ? '\x1b[31mFAIL' : '\x1b[32mPASS'}\x1b[0m telemetry: ${pass} passed, ${fail} failed (${RUN})`)
 process.exit(fail ? 1 : 0)

@@ -29,10 +29,10 @@ const CONSOLE_LOG = /(^|\/)(console-\d+\.log|(engine-)?console\.log|(host-|engin
 const GAME_LOGS = /(^|\/)(enw-\d+\.log|console-\d+\.log|(engine-)?console\.log|(host-|engine-)?games_mp.*\.log|instance-stdout\.log)$/i
 const LAUNCHER_LOG = /(^|\/)(launcher\.log|.*-std(out|err)\.log)$/i
 // host-instance.log (this instance's own agent lines), host-lease.log (a failed pull's),
-// host-recent.log (a box warning's), journal-unit*.log / journal-kernel.log (the daily
-// journal). NOT host-box-context.log: it holds every instance's lines, so an error in it
-// belongs to some other game and must not flag this one.
-const HOST_LOG = /(^|\/)(host\.log|host-lines\.log|host-agent\.log|host-(instance|lease|recent)\.log|journal.*\.log|journal.*\.txt)$/i
+// journal-unit*.log / journal-kernel.log (the daily journal). NOT host-box-context.log nor
+// host-recent.log (a box warning's): they hold every instance's lines, so an error in them
+// belongs to some other game and must not flag this bundle.
+const HOST_LOG = /(^|\/)(host\.log|host-lines\.log|host-agent\.log|host-(instance|lease)\.log|journal.*\.log|journal.*\.txt)$/i
 const KERNEL_LOG = /(^|\/)(kernel.*\.(log|txt))$/i
 
 const num = (s) => { const n = Number(s); return Number.isFinite(n) ? n : null }
