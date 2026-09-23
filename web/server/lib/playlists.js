@@ -89,4 +89,39 @@ function update(id, patch) {
   return db.prepare('SELECT * FROM playlists WHERE id=?').get(Number(id))
 }
 
-module.exports = { mapsOf, project, live, bySlug, create, setMaps, update }
+// ---- admin (2026-09-23) --------------------------------------------------------------
+// Every playlist in every state, for the editor. `keys` is the member order as stored,
+// including a key whose map row has gone, so the editor can show it and let staff drop it
+// rather than silently losing it the way the JOIN in mapsOf() does.
+function all() {
+  return db.prepare('SELECT * FROM playlists ORDER BY sort_order, id').all().map((p) => {
+    const keys = db.prepare('SELECT map_key FROM playlist_maps WHERE playlist_id=? ORDER BY position').all(p.id).map((r) => r.map_key)
+    const known = new Map(keys.length ? db.prepare(`SELECT key, title, health, hidden FROM maps WHERE key IN (${keys.map(() => '?').join(',')})`).all(...keys).map((m) => [m.key, m]) : [])
+    return {
+      id: p.id, slug: p.slug, name: p.name, blurb: p.blurb || null, kind: p.kind, creator: p.creator || null,
+      state: p.state, live_from: p.live_from || null, sort_order: p.sort_order || 0, reward_badge: p.reward_badge || 0,
+      updated_at: p.updated_at, created_by: p.created_by || null,
+      maps: p.kind === 'creator'
+        ? mapsOf(p).map((m) => ({ key: m.key, title: m.title, health: m.health, hidden: !!m.hidden, missing: false }))
+        : keys.map((k) => { const m = known.get(k); return { key: k, title: m ? m.title : k, health: m ? m.health : null, hidden: m ? !!m.hidden : false, missing: !m } }),
+    }
+  })
+}
+
+const byId = (id) => db.prepare('SELECT * FROM playlists WHERE id=?').get(Number(id))
+
+function remove(id) {
+  const p = byId(id)
+  if (!p) return { ok: false, error: 'no such playlist' }
+  db.prepare('DELETE FROM playlist_maps WHERE playlist_id=?').run(p.id)
+  db.prepare('DELETE FROM playlists WHERE id=?').run(p.id)
+  require('./achievements').bind()
+  return { ok: true, slug: p.slug }
+}
+
+/** Keys that are not map rows. The editor refuses them rather than storing a dead member. */
+function unknownKeys(keys) {
+  return (keys || []).map(String).filter((k) => !db.prepare('SELECT 1 FROM maps WHERE key=?').get(k))
+}
+
+module.exports = { mapsOf, project, live, bySlug, create, setMaps, update, all, byId, remove, unknownKeys }
