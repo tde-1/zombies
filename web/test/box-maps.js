@@ -175,6 +175,46 @@ async function main () {
     eq(db.prepare('SELECT state FROM assignments WHERE match_id=?').get(g).state, 'live')
   })
 
+  // ---- host.md §15: a queued boot, `yielded`, and the RAM figure ------------------------
+  const S2 = '76561198000000002'
+  parties.create(S2, { mode: 'custom', mapKey: 'custom_rare', visibility: 'private' })
+  parties.startReadyCheck(S2, { force: true })
+  parties.setReady(S2, true)
+  const L2 = parties.launch(S2, {})
+  truthy(L2.ok, L2.error)
+  const qid = parties.launchInfo(S2).match_id
+  db.prepare('UPDATE assignments SET issued_at=? WHERE match_id=?').run(now() - 120_000, qid)
+
+  await check('a lease whose boot is QUEUED on the box survives the reaper, and /play says how many are ahead', async () => {
+    // The heartbeat lists the instance the box created for it (state `new`, no process yet)
+    // with `preparing: { phase: 'queued', ahead, reason }` (host.js reportStatus).
+    await post('/status', { state: 'live', protocol: 2, max_instances: 3, mem: { available_bytes: 900 * 1048576, total_bytes: 3800 * 1048576, floor_bytes: 700 * 1048576 },
+      instances: [{ id: 'inst-61', match_id: qid, state: 'new', phase: 'queued', port: 28960, preparing: { phase: 'queued', ahead: 1, reason: 'boot', since: new Date().toISOString() } }] })
+    eq(db.prepare('SELECT state FROM assignments WHERE match_id=?').get(qid).state, 'leased', 'not reaped')
+    const p = parties.launchInfo(S2).preparing
+    eq([p.phase, p.ahead, p.reason], ['queued', 1, 'boot'])
+    eq(parties.launchInfo(S2).connect, null, 'no connect string while queued')
+    // The per-game post the box sends while it waits for memory.
+    await post('/status', { state: 'preparing', match_id: qid, preparing: { phase: 'queued', ahead: 0, reason: 'memory' } })
+    eq(parties.launchInfo(S2).preparing.reason, 'memory')
+    eq(db.prepare('SELECT state FROM assignments WHERE match_id=?').get(qid).state, 'leased')
+  })
+
+  await check('the admin Boxes view carries the RAM figure, across per-game posts', async () => {
+    const d = require('../server/lib/adminBoxes').detail().find((x) => x.name === 'mc-box')
+    eq(Math.round(d.mem.available_bytes / 1048576), 900, 'available')
+    eq(Math.round(d.mem.floor_bytes / 1048576), 700, 'floor')
+  })
+
+  await check('`yielded` ends an AGENT lease the box retired for a player, never a player\'s', async () => {
+    const ag = lease('custom_agent', '76561198000000003', { agent: true })
+    assignments.ack(B(), 'live', ag)
+    await post('/status', { state: 'yielded', match_id: ag, error: 'a player\'s lease needs the boot slot' })
+    eq(db.prepare('SELECT state FROM assignments WHERE match_id=?').get(ag).state, 'superseded')
+    await post('/status', { state: 'yielded', match_id: qid })
+    eq(db.prepare('SELECT state FROM assignments WHERE match_id=?').get(qid).state, 'leased', 'a real lease is untouched')
+  })
+
   srv.close()
   console.log(`\n${pass} passed, ${fail} failed`)
   process.exit(fail ? 1 : 0)

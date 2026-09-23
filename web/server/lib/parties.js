@@ -342,7 +342,15 @@ function preparingFor(a) {
   const p = (st.state === 'preparing' && st.match_id === a.match_id ? st.preparing : null) || (inst && inst.preparing)
   if (!p || typeof p !== 'object') return null
   const n = (x) => (Number.isFinite(Number(x)) ? Math.max(0, Number(x)) : 0)
-  return { phase: String(p.phase || 'downloading').slice(0, 20), bytes_done: n(p.bytes_done), bytes_total: n(p.bytes_total), percent: Math.min(100, n(p.percent)) }
+  const out = { phase: String(p.phase || 'downloading').slice(0, 20), bytes_done: n(p.bytes_done), bytes_total: n(p.bytes_total), percent: Math.min(100, n(p.percent)) }
+  // `queued` (host.md §15): the box has the lease and is waiting to start its game - one game
+  // boots at a time, a player's first - or waiting for memory. `ahead` is how many boots go
+  // first; the launcher says so instead of a silent "Reserving server" (B cancelled at 30 s).
+  if (out.phase === 'queued') {
+    out.ahead = Math.min(16, n(p.ahead))
+    out.reason = p.reason === 'memory' ? 'memory' : 'boot'
+  }
+  return out
 }
 
 // The string the player's game dials. Two halves, from two different places on purpose:

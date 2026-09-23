@@ -111,6 +111,17 @@ function detail() {
       key: b.key,
       capacity: { max: cap.max, reserve: cap.reserve, protocol: cap.protocol, configured_max: b.max_instances, configured_reserve: b.reserve },
       host: status.host || null,
+      // The host agent's RAM guard (host.md §15): MemAvailable, and the floor below which it
+      // refuses agent boots. Null from an agent older than the guard, or a Windows box.
+      mem: status.mem && Number.isFinite(Number(status.mem.available_bytes)) ? {
+        available_bytes: Number(status.mem.available_bytes),
+        total_bytes: Number(status.mem.total_bytes) || null,
+        floor_bytes: Number(status.mem.floor_bytes) || null,
+        at: status.mem.at || null,
+      } : null,
+      boot_queue: status.boot_queue || null,
+      incidents: Number(status.incidents) || 0,
+      last_incident: status.last_incident || null,
       live_games: status.live_games ?? null,
       leases: leases.map((l) => leaseView(l, status)),
       // Instances the agent has that no live lease names: warm spares, or a game still
