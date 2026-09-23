@@ -55,7 +55,7 @@ export function DownloadButton({ mapKey, then = null }) {
   return (
     <span className="stack" style={{ gap: 4, alignItems: 'flex-end' }}>
       <button className="btn big" onClick={d.download} disabled={d.phase === 'unknown' || d.phase === 'theirs'}
-              title={d.phase === 'theirs' ? 'A copy that ENW did not install is already in its folder' : 'Download now, play later'}>
+              title={d.phase === 'theirs' ? 'A copy ENW did not install is already there' : undefined}>
         {d.phase === 'failed' ? 'Retry download' : 'Download'}
       </button>
       {d.phase === 'failed' && d.error && <span className="tiny hot dl-err">{d.error}</span>}
@@ -73,7 +73,7 @@ export function CardDownload({ mapKey }) {
   if (d.phase === 'theirs') return null
   return (
     <div className="prail-dl">
-      <button className="prail-dl-btn" onClick={d.download} title={d.error || 'Download now, play later'}>
+      <button className="prail-dl-btn" onClick={d.download} title={d.error || undefined}>
         {d.phase === 'failed' ? 'Retry download' : 'Download'}
       </button>
     </div>

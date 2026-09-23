@@ -194,7 +194,7 @@ export function PersonSheet({ who, isAdmin, onClose, onChange }) {
       if (ok && await act(() => api.post(`/api/admin/ban/${b.id}/lift`), 'Lifted')) done()
     }
     const doRename = async () => {
-      const ok = await confirm({ title: `Rename ${p.name} to ${rename}?`, lines: ['The only rename there is. Their next game token carries it.'], label: 'Rename' })
+      const ok = await confirm({ title: `Rename ${p.name} to ${rename}?`, lines: ['One rename only. Applies from their next game.'], label: 'Rename' })
       if (ok && await act(() => api.post(`/api/admin/player/${sid}/username`, { username: rename }), 'Renamed')) { setRename(''); done() }
     }
 

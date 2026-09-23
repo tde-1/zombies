@@ -226,10 +226,10 @@ export const ALL = [...ITEMS, ...BINDS, ...ENW_ITEMS]
 
 // Everything the page offers that a game menu has and we do NOT map, and why.
 export const OMITTED = [
-  { label: 'Speaker Configuration (Stereo / 5.1 / 7.1)', why: 'options_sound drives it through ui_outputConfig and engine-evaluated visibility expressions that were not decoded; the game auto-detects it and forcing it is PCGamingWiki\'s documented way to break sound.' },
-  { label: 'Voice chat, Multiplayer and Co-op option pages', why: 'Online options for Activision\'s own co-op and multiplayer. ENW games do not use them.' },
-  { label: 'Chat keys (chatmodepublic, +talk), Previous Weapon (weapprev)', why: 'Bound by default_controls.cfg but not items in any Options menu.' },
-  { label: 'Graphics "Set Recommended" / Apply buttons', why: 'Engine UI scripts (setRecommended, vid_restart). The launcher applies everything at the next launch instead.' },
+  { label: 'Speaker Configuration (Stereo / 5.1 / 7.1)', why: 'The game auto-detects it. Forcing it can break sound.' },
+  { label: 'Voice chat, Multiplayer and Co-op option pages', why: 'Not used in ENW games.' },
+  { label: 'Chat keys (chatmodepublic, +talk), Previous Weapon (weapprev)', why: 'Not in any Options menu.' },
+  { label: 'Graphics "Set Recommended" / Apply buttons', why: 'The launcher applies everything at next launch.' },
 ]
 
 // ---- values ----------------------------------------------------------------------------

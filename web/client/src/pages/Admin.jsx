@@ -119,7 +119,7 @@ function Console({ isAdmin }) {
         <div className="adm-alert bad">
           {d.key_warnings.map((b) => (
             <div key={b.id} className="adm-spread">
-              <span><b>{b.name}</b> presents replay key <code>{b.key.pending}</code>; <code>{b.key.pinned}</code> is pinned. Its replays are stored unpinned until this is settled.</span>
+              <span><b>{b.name}</b> presents replay key <code>{b.key.pending}</code>; <code>{b.key.pinned}</code> is pinned. Replays are stored unpinned until settled.</span>
               {isAdmin && (
                 <span className="adm-row">
                   <button className="btn small accent" onClick={async () => { await act(() => api.post(`/api/admin/boxes/${b.id}/key/accept`), 'Key accepted'); load() }}>Accept</button>

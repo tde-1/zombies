@@ -306,7 +306,7 @@ function router() {
       settings: users.settings(req.me.steam_id),
       // Said plainly so the launcher can put it on the boot screen rather than inventing
       // its own wording.
-      notice: 'Local game — untracked. No badges, no records and no XP.',
+      notice: 'Local game. No badges, records or XP.',
     })
   })
 
@@ -423,7 +423,7 @@ function router() {
       // it sent is the round that landed rather than assuming a 200 means agreement.
       stored: { rounds: (require('../lib/results').byId(out.game_id) || {}).rounds ?? null, map_key: row.map_key },
       url: `/game/${row.match_id}`,
-      notice: 'Stored as a Local game. It earns no badge, no record and no XP, and its replay is not record evidence.',
+      notice: 'Stored as a Local game. No badges, records or XP.',
     })
   })
 

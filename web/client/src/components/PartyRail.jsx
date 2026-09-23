@@ -286,7 +286,7 @@ function OnlineBlock({ R }) {
     <div className="rblock">
       <div className="rlabel"><span>{everyone ? 'Online' : 'Friends'} · {rows.length}</span></div>
       {rows.length === 0 && (
-        <div className="friends-empty">{everyone ? 'Nobody else is online.' : 'None of your friends are online.'}</div>
+        <div className="friends-empty">{everyone ? 'Nobody else online.' : 'No friends online.'}</div>
       )}
       {rows.map((f) => <FriendRow key={f.steam_id} R={R} f={f} />)}
     </div>
@@ -446,7 +446,7 @@ function ServerCard({ R }) {
     const mins = Math.max(1, Math.ceil((R.resumable.until - Date.now()) / 60_000))
     primary = (
       <button className="prail-server-launch" disabled={R.busy} onClick={() => R.resume()}
-              title={`The server is kept for you for about ${mins} more minute${mins === 1 ? '' : 's'}`}>
+              title={`Kept for ${mins} more min`}>
         Resume
       </button>
     )
