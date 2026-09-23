@@ -26,7 +26,7 @@ param(
     [string]$DevRoot = 'C:\Users\b\ZombiesDev'
 )
 $ErrorActionPreference = 'Continue'
-foreach ($p in @($Player) + $Members) { if ($p -notmatch '^7656119800000000[0-9]{2}$|^765611980000000[0-9]{2}$') { throw "fake IDs only: $p" } }
+foreach ($p in @($Player) + $Members) { if ($p -notmatch '^765611980000000[0-9]{2}$') { throw "fake IDs only: $p" } }
 if ($Bots -lt 1 -or $Bots -gt 4) { throw 'bots 1..4' }
 $logDir = Join-Path $DevRoot 'logs\dedi\s2'
 New-Item -ItemType Directory -Force $logDir | Out-Null
