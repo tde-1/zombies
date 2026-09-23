@@ -3286,3 +3286,87 @@ logged one.
 the zombie-kill → `giveRankXP` → `_hud_message::showNotifyMessage` chain was executing (its frames are
 the ones left behind), so a HUD-element or sound builtin that reaches renderer- or client-only data
 on a headless server is the first place to look. That is a lead, not a finding.
+
+### 23.4 `<bsp>_load.ff` on a dedicated server (coordinator's question, from lane A1's audit)
+
+**The engine skips it on purpose. It is not our 0x5FF4E0 renderer bypass.** In `SV_SpawnServer` 0x631F20:
+
+```
+00631FB1  mov ecx,[0x1F552FC] / cmp byte [ecx+0x10],0 / je 0x632038   ; useFastFile
+00631FBF  mov edx,[0x212B2F4] / cmp dword [edx+0x10],0 / jne 0x632038  ; com_dedicated -> skip
+00631FCA  cmp byte [esp+0x13],0 / jne 0x632038                         ; map_restart -> skip
+...        (usermaps search path, FS bookkeeping)
+00632031  call 0x59DFE0     ; sprintf "%s_load"; DB_LoadXAssets(alloc 0x20, free 0x160)
+0063203B  call 0x5AA020     ; both paths continue here
+```
+
+The `_load` zone is the loading-screen zone and a dedicated server has no screen. But some custom maps
+keep game assets there. `ray_chirstmas_map_load.ff` holds its zombie models, so on our server those
+zombies had none.
+
+**Fix (cheap, checked, off switch):** `server/components/dedicated/load_zone.cpp` retargets the shared
+`call 0x5AA020` at 0x63203B to a stub. The stub calls 0x59DFE0 with the map name first, but only when
+`com_dedicated` is set, fastfiles are on, and it is not a map_restart. Those are the same three tests,
+read from the same places. The listen path's FS bookkeeping stays skipped. All three sites are
+byte-checked before the write. `ENW_DEDI_NO_LOAD_ZONE=1` restores stock.
+
+| run (local, dedicated, 30 s hold) | `Could not load xmodel` | of them `bo2_c_zom_*` | all `Could not load` | simulating |
+|---|---|---|---|---|
+| `d1lz0` ray_chirstmas_map, `ENW_DEDI_NO_LOAD_ZONE=1` | 86 | 77 | 255 | +35,027 ms / 8 probes |
+| `d1lz1` ray_chirstmas_map, patched | **9** | **0** | 178 | +35,017 ms / 8 probes |
+| `d1lz2` Nacht, patched | — | — | — | +35,012 ms; `loaded nazi_zombie_prototype_load` |
+
+**Unproven:** a client seeing the models (no client was run), the map_restart path (skipped by
+design, not exercised), and memory on the box. The zone is 7.4 MB for this map, and the box runs close
+to its limit (§19.5).
+
+### 23.5 The fix: `freeze_watchdog.cpp` (the freeze is detected, reported and ended; its first cause is named next time)
+
+- **The rule** (`freeze_watch.hpp`, pure; `server/tests/freeze_watch_test.cpp` 134/0, including a
+  replay of §23.1's numbers):
+  - **ESCAPED**: `frame-body-entered` moved and `Com_Frame-body` did not.
+  - **FROZEN**: `com_frameTime` has not moved for more than 5 s while at least 30 frames were entered.
+    It is armed only after the clock has moved three times, so a booting server does not trip it, and
+    one long frame (a load) does not either.
+  - **VM at rest**: between frames, `function_count 0`, `function_frame 0x3BD4720`, `localVars
+    0x3BDDE10`, `top 0x3BD4A20`.
+- **The fault recorder**: a vectored handler that only records, never logs and never handles. For
+  error-class exceptions it keeps eip, the address touched, the registers and 48 stack words in an
+  8-slot ring. The frame subscriber prints the records, because logging inside a VEH re-enters it
+  (§12.1).
+- **What it logs**: every escaped frame with its fault and the VM state (the first 20, then 1 in
+  1,000; identical faults are collapsed to a count). The VM leaving rest, once per transition. An
+  overrun past `localVarsStack`. On FREEZE: the faults, and every other thread's eip, esp and the
+  codwaw return addresses on its stack. Nothing is allocated while a thread is suspended.
+- **What it does on FREEZE**: `referee::end_game_now("server_freeze", "server_freeze",
+  server_alive=false)` (`referee/game_over.hpp`). That sends the same `game_over` the scripts' ending
+  sends, plus `flags:["server_freeze"]`. The replay sampler stops. Then `match_end {server_alive:false,
+  awaiting:"teardown"}`, so the host signs the replay, posts the result and terminates the process.
+  The game link still works on a frozen server, because `core_pump` runs from WinMain.
+- **Host**: `lib/referee.js` copies known game flags (`GAME_FLAGS = {server_freeze}`) onto the
+  record. The record stays eligible; it is marked, not refused. Run-all has 2 new tests (105/0 after
+  the merge). `game-link-v0.md` documents both fields.
+- `ENW_DEDI_NO_FREEZE_WATCHDOG=1` turns it off. `ENW_DEDI_FREEZE_MS` changes the 5 s line.
+  **`ENW_DEDI_FREEZE_TEST=N`** plants §23's own 0x615B in `[0x3BFD478]` N s after arming. That is for
+  proof only.
+
+**Proof (local, Nacht, dedicated; a Node listener stood in for the host and fed each line to the
+host's real `Referee`):**
+
+| run | what happened |
+|---|---|
+| `d1f1` | Plant at `com_frameTime` 21286. `escape fault #1 … eip=005FFE23 reading 0000616B`, callers `0059B51A 0059B55F 005FEDC4 0059B6EB 0059DD95` (the same site and chain as B's game and §12.5). `FREEZE … not moved for 5008 ms while 298 frames entered`. `game_over {"reason":"server_freeze",…,"flags":["server_freeze"]}` + `match_end {"server_alive":false,"awaiting":"teardown"}`. Host summary `flags ["server_freeze"]`, eligible |
+| `d1f2` | Same after the log dedupe, at 5004 ms. The freeze dump is now 1 record + 2 count lines |
+| `d1h1` | **360 s healthy hold, no trigger**: 73 rate windows, 0 escaped frames, the VM never left rest, no FREEZE, no `game_over` |
+
+**Unproven:**
+- Not on the box. It needs this DLL on the box and a host-agent restart for the flag. Before that, an
+  older host ignores `flags`. It still posts the result and tears the process down on
+  `server_alive:false` (`host.js` disposition), so it is safe to ship the DLL first.
+- Not with a real client. What the player sees when the host closes the game (the launcher's end
+  screen) is the host and site's existing game-over path, which was not exercised here.
+- **The cause**: which access violation escaped B's frame at 12:33:00–04 is still unknown. The next
+  occurrence names it, in the `escape fault #1` line.
+- **A true fix** (not attempted, needs that name first): stop the abortframe from unwinding out of the
+  VM, or repair the VM after an escape. That means killing the stale threads the way
+  `VM_Execute`'s infinite-loop path does.
