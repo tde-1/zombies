@@ -2026,3 +2026,38 @@ The scripts that write these fields (`C:\Users\b\ZombiesDev\scripts`):
 - `game_players.name` in the e2e run is "Unknown Soldier", the engine name at connect. The
   host's roster name is not updated to the token's name (the name-lock lane). This is not
   bug 7.
+
+## 2026-09-24 cloud: disconnect pause + reconnect
+
+Built in a cloud container (no MSVC, no WaW): **not compiled as a DLL, not run in a game.** The
+logic is `server/components/referee/reconnect_rules.hpp` (pure) with 67 checks in
+`server/tests/reconnect_rules_test.cpp`; the engine glue is in `referee.cpp` (`poll_reconnect`,
+`do_restore`, `apply_restore`, `emit_disconnect`), `t4_bind.cpp` (`set_player_stats`) and
+`pause/pause.cpp`. Hand-back and the local run list: `cloud-handback-reconnect.md`.
+
+- **Spec**: vault `10 - Speedruns, Records & Crash Recovery` §5 (policy table), `15 - Policies`
+  "Games", `99 - Build Spec` §4.7. B 2026-09-24: "If someone disconnects from the game, it pauses
+  and allows people to reconnect and continue as if nothing happened."
+- **Drop detection**: `player_lost` after 5 s with no change in `client_s.lastUsercmd` (+0x11108,
+  [V] dedi.md §7h) while the world runs; `player_back` if input resumes (`reseated` when the
+  scoreboard counters went down); `player_ready` once a new connection's input flows. The silence
+  clock does not run while the world is frozen (`pause_state::world_frozen()`).
+- **State as of the last input** (score + the six counters, pos/ang/health, weapon/clip/ammo,
+  down, round) rides `player_lost` / `player_disconnect`; `snapshot_state` also lists departed
+  players (`connected:false`). Sampled only when input moves, never while lost.
+- **Same account back**: `steamid_already_seated` now kicks the old slot when it is a LOST link
+  (the ghost) and admits the new connection; a new `enw_token` on a seated slot is treated as a
+  new connection (same-slot re-seat) [unverified: whether T4 ever re-seats inside one frame].
+- **Restore**: `restore` is queued, applied after the new body is alive and 1.5 s of running world,
+  by writing gclient +0x20BC..+0x20D0 (score, kills, assists, downs, revives, headshots; [V] §16)
+  through `set_player_stats` (the same bind-time checks as `player_stats`; it writes only when the
+  current and new values are plausible counters); the edge detectors are re-baselined so the jump
+  is not read as downs/revives/points. **Weapons, perks and position are not restored**: they need
+  the co-loaded GSC of §3.3 (not built). `restored.not_restored` says so on the wire.
+- **Pause**: `ENW_PAUSE_HOST_ONLY=1` arms the gate for host holds only (disconnect, AFK, operator)
+  and ignores Esc/typing, so the box can take the disconnect pause back without the Esc pause.
+  §15.4's slot writer was pinned on an escaped frame, not on pausing (dedi.md §23.2 "pausing is not
+  the cause"; §25/§26 fixed the NULL-dvar escapes).
+- **Kill switches**: `ENW_NO_RECONNECT=1` (no lost/back/ready, no ghost eviction, `restore`
+  refused); `ENW_RECONNECT_LOST_MS` (1000–60000) moves the 5 s. `map_loaded.reconnect:1` tells the
+  host this DLL has it.

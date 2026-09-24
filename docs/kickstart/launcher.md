@@ -3160,3 +3160,21 @@ watcher ignores `.part` and reports once, wiring); `waw-settings` 20/0.
 
 **Unproven:** a real Electron run (a real toast and its buttons through the protocol hand-off,
 `showItemInFolder`, the watcher on a real Pictures folder, OneDrive-redirected Pictures).
+
+## 2026-09-24 cloud: disconnect pause + reconnect
+
+Cloud session, not run in Electron. Hand-back: `cloud-handback-reconnect.md`.
+
+- `src/main/rejoin.js` (pure): after the game this launcher watched ends, if the site's poll says
+  `resumable` for that match (the player left and did not quit; web `seats.js`), one warn toast
+  with a **Rejoin** button, once per match: "The game is paused for you. Rejoin within 2:05 and
+  carry on where you left off." (poll `hold` names this player) or "Your game is still up. Rejoin
+  within 2:50." Never while a launch or World at War runs, never for another match, never after
+  the window. **Never an automatic relaunch**: followgate.js's rule stands.
+- The toast stays 60 s (`action.sticky`); Rejoin -> IPC `rejoinMatch` -> `SiteApi.resume()` (POST
+  `/api/party/resume`: a fresh invite token, phase back to `in-game`) -> `followGate.allow(id)` ->
+  `PlayWatcher.pollNow()`, so the follow happens at once.
+- Tests: `test/run-all.js` 4 new "rejoin" checks; 192 passed, 5 failed. The 5 (isInside sibling,
+  junction removal, LocalAppData maps, client-DLL repair, engine-defaulted read-back) are
+  Windows-path/binary checks that fail identically on base `2116a43` (base: 187/6; the sixth,
+  "an in-game change is read back", passed in this run).

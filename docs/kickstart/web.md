@@ -3503,3 +3503,23 @@ charge < 85% and free RAM > 5 GB:
 * `cd launcher && npx electron test/attention-electron.mjs`: one invisible off-screen window, real
   `flashFrame`, the dot from the real tray image, the toast XML into a real `Notification` (never
   shown), the chime rendered offline (no speakers); prints `ATTENTION_ELECTRON {...}` and exits.
+
+## 2026-09-24 cloud: disconnect pause + reconnect
+
+Cloud session. Hand-back: `cloud-handback-reconnect.md`.
+
+- `POST /api/gs/live` now answers `quit:{<match_id>:[steamid]}` for posted matches with a player
+  who quit on purpose (`seats.quittersFor`, run ids `<lease>.r<n>` resolve to the lease), so the
+  box never holds a game for a quit (host `markQuit`).
+- `live.js` keeps the referee's `away[]` (clamped) and `players[].lost`; `live.hold(match, viewer)`
+  -> `hold:{paused, away:[{name, left_ms, returning, you}]}` on `GET /api/party` and
+  `GET /api/launcher/play`.
+- The rail's server card (`client/src/holdLabel.js`): "Bex disconnected · paused, waiting to
+  reconnect (2:41)", "Paused for you · 2:05 to rejoin", "Paused · Bex is loading back in"; without
+  "paused" when the box could not freeze. The away player's own card still offers Resume
+  (`seats` marks a lost player `left` from the live frame).
+- `records.js`: `rejoined_while_down` voids an ENW-Verified record (vault 10 §5).
+- Tests: `test/reconnect-hold.js` 6/0 (in `npm run check`). Every web test file passes run one by
+  one except `launcher-signin.js` 14/1 ("/auth/steam goes to Steam", 500 vs 302: the Steam OpenID
+  redirect needs outbound network), which fails identically on base `2116a43`; `map-align.js`
+  skips (no Windows export). `vite build` is clean.
