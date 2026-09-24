@@ -75,6 +75,8 @@ contextBridge.exposeInMainWorld('enw', {
   endGame: (pid) => call('endGame', pid),
   // The site's Resume: go back into a match this launcher already launched once.
   resumeMatch: (matchId) => call('resumeMatch', matchId),
+  // [reconnect] the launcher's Rejoin toast: the site's Resume, then follow the match now.
+  rejoinMatch: (matchId) => call('rejoinMatch', matchId),
 
   // The shell.
   siteNav: (what) => call('siteNav', what),

@@ -67,8 +67,15 @@ function toast(text, kind = 'info', action = null) {
     b.onclick = () => { b.disabled = true; window.enw.endGame(action.arg).then(() => t.remove()).catch((e) => { b.disabled = false; toast(e.message, 'error') }) }
     t.append(b)
   }
+  // [reconnect] Rejoin (rejoin.js): back into the game that is paused for this player. It stays
+  // up for a minute, not seven seconds: the player may be looking at a crash dialog first.
+  if (action && action.call === 'rejoinMatch' && window.enw.rejoinMatch) {
+    const b = el('button', 'toast-action', action.label || 'Rejoin')
+    b.onclick = () => { b.disabled = true; window.enw.rejoinMatch(action.arg).then(() => t.remove()).catch((e) => { b.disabled = false; toast(e.message, 'error') }) }
+    t.append(b)
+  }
   $('toasts').append(t)
-  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(() => t.remove(), 450) }, 7000)
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(() => t.remove(), 450) }, action && action.sticky ? 60_000 : 7000)
 }
 
 // ------------------------------------------------------------------ the rail --
