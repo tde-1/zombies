@@ -81,7 +81,12 @@ function clamp(s) {
     connected: p.connected !== false, late: !!p.late,
     downs: int(p.downs), revives: int(p.revives), weapon: str(p.weapon, 40),
     pos: vec(p.pos), ang: vec(p.ang, 2),
-    idle_ms: int(p.idle_ms), afk_warned: !!p.afk_warned,
+    idle_ms: int(p.idle_ms), afk_warned: !!p.afk_warned, lost: !!p.lost,
+  }))
+  // [reconnect] who the game is paused for (host lib/referee.js drop hold), and how long is left.
+  const away = (Array.isArray(s.away) ? s.away : []).slice(0, 4).map((a) => ({
+    name: str(a.name, 32), steamid: a.steamid ? str(a.steamid, 24) : null,
+    left_ms: Math.max(0, int(a.left_ms)), returning: !!a.returning,
   }))
   const zombies = (s.zombies || []).slice(0, MAX_ZOMBIES).map((z) => ({
     id: int(z.id), pos: vec(z.pos), health: int(z.health),
@@ -105,6 +110,7 @@ function clamp(s) {
     perf: s.perf || null,
     zombies_alive: zombies.length,
     players,
+    away,
     zombies,
     events: (s.events || []).slice(-MAX_EVENTS),
   }
@@ -132,6 +138,25 @@ function all() {
 }
 
 function drop(matchId) { frames.delete(String(matchId)) }
+
+/**
+ * [reconnect, 2026-09-24] Is this match paused because somebody dropped? What the rail's server
+ * card shows ("<name> disconnected · paused, waiting to reconnect (m:ss)"). `left_ms` is
+ * aged by the frame's age, so a card drawn between frames still counts down. `you` says
+ * whether the viewer is the one the game is waiting for. Null when nobody is away.
+ */
+function hold(matchId, viewerSteamId = null) {
+  const f = get(matchId) || get(String(matchId).replace(/\.r\d+$/, ''))
+  if (!f || !f.state || !Array.isArray(f.state.away) || !f.state.away.length) return null
+  const age = Math.max(0, Date.now() - f.at)
+  return {
+    paused: !!f.state.paused,
+    away: f.state.away.map((a) => ({
+      name: a.name, left_ms: Math.max(0, a.left_ms - age), returning: !!a.returning,
+      you: !!(viewerSteamId && a.steamid && String(a.steamid) === String(viewerSteamId)),
+    })),
+  }
+}
 
 // ---- who may watch -------------------------------------------------------------------
 /**
@@ -203,4 +228,4 @@ function list(viewerSteamId) {
 
 const stats = () => ({ games: frames.size, ttl_ms: TTL_MS, min_frame_ms: MIN_FRAME_MS })
 
-module.exports = { push, get, all, list, drop, canWatch, setEmitter, stats, TTL_MS, MIN_FRAME_MS }
+module.exports = { push, get, all, list, drop, hold, canWatch, setEmitter, stats, TTL_MS, MIN_FRAME_MS }

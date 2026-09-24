@@ -114,13 +114,20 @@ function router() {
     const body = req.body || {}
     const items = Array.isArray(body.instances) ? body.instances : [body]
     let taken = 0
+    const quit = {}
     for (const it of items.slice(0, 16)) {
       // Who is connected to which match (lib/seats.js): what keeps the launcher from
       // relaunching a player who is already in, or who has just left, a game.
       try { if (it && it.match_id) seats.observe(it.match_id, it.state) } catch (e) { console.warn('[gs] seats:', e.message) }
+      // [reconnect] and who quit it on purpose, so the box never holds the game for a quit
+      // (host lib/referee.js markQuit). Only when there is somebody to name.
+      try {
+        const q = it && it.match_id ? seats.quittersFor(it.match_id) : []
+        if (q.length) quit[String(it.match_id)] = q
+      } catch (e) { console.warn('[gs] quitters:', e.message) }
       if (live.push(req.box.name, it)) taken++
     }
-    res.json({ ok: true, taken, of: items.length, min_frame_ms: live.MIN_FRAME_MS })
+    res.json({ ok: true, taken, of: items.length, min_frame_ms: live.MIN_FRAME_MS, ...(Object.keys(quit).length ? { quit } : {}) })
   })
 
   // ---- status ------------------------------------------------------------------------

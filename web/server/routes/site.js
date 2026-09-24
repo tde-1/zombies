@@ -175,6 +175,9 @@ function router() {
       // server card should offer Resume: this player crashed out of a game that is still up.
       phase: seats.phaseOf(party, launch, req.me.steam_id),
       resume: seats.resumeInfo(launch, req.me.steam_id),
+      // [reconnect] the game is paused, waiting for a player who dropped (host drop hold):
+      // the server card says who and for how long.
+      hold: launch && launch.match_id ? live.hold(launch.match_id, req.me.steam_id) : null,
     })
   })
 
