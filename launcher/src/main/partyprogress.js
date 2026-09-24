@@ -110,6 +110,8 @@ export function attach(api, play, bsp, { log = null } = {}) {
   const partyId = Number(play.party?.id || 0)
   if (!(partyId > 0)) return null                       // not in a party: say nothing
   const staged = play.map?.key || play.map?.bsp || null
-  if (!staged || String(staged) !== String(bsp)) return null   // a different map: not this party's business
+  // The map the leader is switching to while a game runs (`pending_map`) is the party's too.
+  const pending = play.pending_map?.key || null
+  if ((!staged || String(staged) !== String(bsp)) && (!pending || String(pending) !== String(bsp))) return null   // a different map: not this party's business
   return new PartyProgress({ api, partyId, map: bsp, log })
 }

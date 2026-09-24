@@ -2245,12 +2245,82 @@ await test('followgate: main.js follows through the gate, records every launch, 
   assert.match(main, /const d = followGate\.decide\(p, \{ flowRunning: !!state\.flow \}\)/)
   assert.match(main, /followGate\.noteLaunch\(d\.matchId, 'followed'\)[\s\S]{0,400}startPlay\(\{ map: bsp[^\n]*follow: true/)
   assert.match(main, /flow\.on\('update', noteMatch\)/)
-  assert.match(main, /flow\.on\('launched', \(\) => followGate\.watchPids\(flow\.launch\?\.pids\)\)/)
+  assert.match(main, /flow\.on\('launched', \(\) => followGate\.watchPids\(flow\.launch\?\.pids, flow\.snapshot\(\)\?\.matchId \|\| noted\)\)/)
   assert.match(main, /async function startPlay\(opts = \{\}\) \{[\s\S]{0,400}followGate\.gameAlive\(\)/)
   assert.match(main, /followGate\.noteEnded\(/)
   const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
   assert.match(pre, /resumeMatch: \(matchId\) => call\('resumeMatch', matchId\)/)
   assert.match(main, /handle\('resumeMatch'/)
+})
+
+await test('followgate: a party member who joins while the leader is in a game follows that game (cloud-brief-parties task 2)', () => {
+  const g = followgate.makeFollowGate({ isAlive: () => false })
+  // The joiner's first poll after joining: the leader's live match, with the joiner's own token.
+  const p = pollInGame('m_leaders')
+  p.match.token = 'tok-for-joiner'
+  const d = g.decide(p)
+  assert.equal(d.follow, true, d.reason)
+  assert.equal(d.end, undefined, 'nothing to end')
+  g.noteLaunch(d.matchId, 'followed')
+  assert.equal(g.decide(p).follow, false, 'and only once')
+})
+
+await test('followgate: a map switch ends OUR game (the one it replaces) once, then follows the new match (task 3)', () => {
+  const alive = new Set([777])
+  const g = followgate.makeFollowGate({ isAlive: (pid) => alive.has(pid) })
+  g.noteLaunch('m_old', 'followed')
+  g.watchPids(new Set([777]))                       // tied to m_old (the newest noteLaunch)
+  const sw = pollInGame('m_new', 'reserving'); sw.match.switched_from = 'm_old'
+  // Even with the old game's launch flow still running.
+  let d = g.decide(sw, { flowRunning: true })
+  assert.equal(d.follow, false)
+  assert.equal(d.end, 777, d.reason)
+  assert.match(d.reason, /switched map: m_new replaces m_old/)
+  // Asked once: the next poll while it closes does not ask again.
+  d = g.decide(sw, { flowRunning: true })
+  assert.equal(d.end, null)
+  // The game is gone: the new match is followed.
+  alive.delete(777); g.noteEnded('m_old')
+  d = g.decide(sw, { flowRunning: false })
+  assert.equal(d.follow, true, d.reason)
+})
+
+await test('followgate: a game is NEVER ended for any other reason', () => {
+  const alive = new Set([888])
+  const g = followgate.makeFollowGate({ isAlive: (pid) => alive.has(pid) })
+  g.noteLaunch('m_mine', 'Play')
+  g.watchPids(new Set([888]), 'm_mine')
+  const cases = [
+    ['a new match with no switched_from', (() => { const x = pollInGame('m_x'); return x })()],
+    ['switched from somebody else\'s match', (() => { const x = pollInGame('m_y'); x.match.switched_from = 'm_other'; return x })()],
+    ['switched_from our match but the SAME match id', (() => { const x = pollInGame('m_mine'); x.match.switched_from = 'm_mine'; return x })()],
+  ]
+  for (const [what, poll] of cases) {
+    const d = g.decide(poll)
+    assert.equal(d.follow, false, what)
+    assert.ok(!d.end, `${what}: asked to end the game`)
+  }
+  // A game we cannot tie to a match is never ended either.
+  const g2 = followgate.makeFollowGate({ isAlive: () => true })
+  g2.watchPids(new Set([999]))
+  const sw = pollInGame('m_new'); sw.match.switched_from = 'm_old'
+  assert.ok(!g2.decide(sw).end, 'an unmatched game was ended')
+})
+
+await test('followgate: main.js ends a switched-from game through the End game path and pre-downloads the pending map', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  assert.match(main, /if \(d\.end\) \{[\s\S]{0,300}state\.launches[\s\S]{0,300}l\.stop\('the party switched map'\)/)
+  assert.match(main, /followGate\.watchPids\(flow\.launch\?\.pids, flow\.snapshot\(\)\?\.matchId \|\| noted\)/)
+  assert.match(main, /const pend = p\.pending_map\?\.key/)
+})
+
+await test('partyprogress: the pending map (a switch) is reported to the party; another map is not', async () => {
+  const pp = await import('../src/main/partyprogress.js')
+  const api = { req: async () => ({ ok: true }) }
+  const play = { party: { id: 3 }, map: { key: 'nazi_zombie_a' }, pending_map: { key: 'nazi_zombie_b' } }
+  assert.ok(pp.attach(api, play, 'nazi_zombie_a'), 'the current map')
+  assert.ok(pp.attach(api, play, 'nazi_zombie_b'), 'the pending map')
+  assert.equal(pp.attach(api, play, 'nazi_zombie_c'), null, 'any other map')
 })
 
 // -------------------------------------------------------------- Steam gate --

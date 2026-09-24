@@ -19,6 +19,14 @@
 //   * never while a game this launcher started (or adopted after a Steam restart) is
 //     still running, whatever `state.flow` says;
 //   * never without a match id -- a launch nobody can name is one nobody can dedupe.
+//
+// ONE EXCEPTION, AND ONLY ONE (2026-09-24, cloud-brief-parties.md task 3): the party's leader
+// switched map while our game was running. The site then names a NEW match whose
+// `switched_from` is the match OUR running game was launched for. decide() answers
+// `{ follow: false, end: <pid> }`: main.js ends that game (the toast's End game path) and the
+// next poll, with no game alive, follows the new match. A game is never ended for any other
+// reason: a different `switched_from`, a game we cannot tie to a match, or no `switched_from`
+// at all all leave it running.
 
 export const FOLLOW_STATES = ['reserving', 'loading', 'ready', 'in-game']
 
@@ -30,11 +38,22 @@ export function pidAlive(pid) {
 export function makeFollowGate({ isAlive = pidAlive, now = () => Date.now() } = {}) {
   const launched = new Map()     // matchId -> { at, how, endedAt }
   const pidSets = new Set()      // GameLaunch.pids of every game we started (Sets, live)
+  const setMatch = new Map()     // pid Set -> the match id it was launched for (or null)
+  let lastNoted = null           // the match of the newest noteLaunch, for watchPids
+  const endAsked = new Set()     // pids we have already asked main.js to end (once each)
 
   function gameAlive() {
     for (const set of pidSets) {
       const live = [...set].find((pid) => isAlive(pid))
       if (live) return live
+    }
+    return null
+  }
+  // The running game's pid AND the match it was launched for (null when we cannot say).
+  function aliveGame() {
+    for (const set of pidSets) {
+      const live = [...set].find((pid) => isAlive(pid))
+      if (live) return { pid: live, matchId: setMatch.get(set) || null }
     }
     return null
   }
@@ -49,9 +68,17 @@ export function makeFollowGate({ isAlive = pidAlive, now = () => Date.now() } = 
     if (!FOLLOW_STATES.includes(p.state)) return out(false, `the site says ${p.state || 'nothing'}`, `state-${p.state}`)
     if (!p.match || !p.map?.key) return out(false, 'no match or no map in the poll', 'nomatch')
     if (!matchId) return out(false, 'the site has not named the match yet', 'noid')
+    // Before the flow check: the launch flow of the game being replaced is still running
+    // while that game is up.
+    const game = aliveGame()
+    const from = p.match.switched_from || null
+    if (game && from && game.matchId && String(from) === String(game.matchId) && String(matchId) !== String(game.matchId)) {
+      const first = !endAsked.has(game.pid)
+      endAsked.add(game.pid)
+      return { ...out(false, `the party switched map: ${matchId} replaces ${from}, which our game (process ${game.pid}) is in; ending it, then following`, 'switch'), end: first ? game.pid : null }
+    }
     if (flowRunning) return out(false, 'a launch is already in progress', 'flow')
-    const pid = gameAlive()
-    if (pid) return out(false, `a game this launcher started is still running (process ${pid})`, 'alive')
+    if (game) return out(false, `a game this launcher started is still running (process ${game.pid})`, 'alive')
     const prev = launched.get(matchId)
     if (prev) {
       const when = new Date(prev.at).toISOString()
@@ -65,14 +92,21 @@ export function makeFollowGate({ isAlive = pidAlive, now = () => Date.now() } = 
     if (!matchId) return
     const prev = launched.get(matchId)
     launched.set(matchId, { at: prev?.at && prev.how === how ? prev.at : now(), how, endedAt: null })
+    lastNoted = matchId
   }
   function noteEnded(matchId) {
     const r = matchId && launched.get(matchId)
     if (r) r.endedAt = now()
   }
-  function watchPids(set) { if (set && typeof set[Symbol.iterator] === 'function') pidSets.add(set) }
+  // `matchId` defaults to the newest noteLaunch: main.js notes the launch, then the flow's
+  // `launched` event hands over its pids.
+  function watchPids(set, matchId = lastNoted) {
+    if (!set || typeof set[Symbol.iterator] !== 'function') return
+    pidSets.add(set)
+    if (!setMatch.has(set) || matchId) setMatch.set(set, matchId || null)
+  }
   // The player asked to go back in (Play, Resume): the ledger no longer stands in the way.
   function allow(matchId) { return launched.delete(matchId) }
 
-  return { decide, noteLaunch, noteEnded, watchPids, allow, gameAlive, get launched() { return new Map(launched) } }
+  return { decide, noteLaunch, noteEnded, watchPids, allow, gameAlive, aliveGame, get launched() { return new Map(launched) } }
 }

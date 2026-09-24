@@ -1382,7 +1382,7 @@ function wireIpc() {
       log('play', `launch ledger: ${id} launched (${how})`)
     }
     flow.on('update', noteMatch)
-    flow.on('launched', () => followGate.watchPids(flow.launch?.pids))
+    flow.on('launched', () => followGate.watchPids(flow.launch?.pids, flow.snapshot()?.matchId || noted))
     flow.on('launched', () => { state.launches = [...(state.launches || []).slice(-4), flow.launch] })
     // Telemetry: what the game bundle needs to know about this session, gathered as it
     // happens. The bundle itself is built after the game has gone (telemetry/index.js).
@@ -1716,6 +1716,18 @@ function wireIpc() {
     if (inParty && bsp && !library.mapReady(bsp) && !state.installs.has(bsp) && !state.flow) {
       ensureMapInstalled(bsp).catch((e) => log('party', `could not install ${bsp}: ${e.message}`))
     }
+    // 1b. the map the leader is switching to, while the current game goes on
+    // (cloud-brief-parties.md task 3). Downloaded now, even mid-game, and reported to the
+    // party: the site switches everybody when nobody is still downloading it.
+    const pend = p.pending_map?.key || null
+    if (inParty && pend && pend !== bsp) {
+      if (!library.mapReady(pend)) {
+        if (!state.installs.has(pend)) ensureMapInstalled(pend).catch((e) => log('party', `could not install ${pend}: ${e.message}`))
+      } else if (state.pendingReported !== `${p.party.id}:${pend}`) {
+        state.pendingReported = `${p.party.id}:${pend}`
+        partyprogress.attach(state.api, p, pend, { log: (m) => log('party', m) })?.installed()
+      }
+    }
 
     // 2. follow somebody else's Start -- ONCE per match (followgate.js). This used to
     // be `if (state.flow) return` on every poll: a level trigger on "the party is
@@ -1725,6 +1737,16 @@ function wireIpc() {
     if (d.key !== state.lastFollowKey) {
       state.lastFollowKey = d.key
       if (d.follow || FOLLOW_STATES.includes(p.state)) log('party', `${d.follow ? 'launching' : 'not launching'}: ${d.reason}`)
+    }
+    // 2b. the leader switched map (followgate.js, the one exception): end OUR game, the one
+    // the new match replaces, through the toast's End game path. The next poll follows.
+    if (d.end) {
+      const l = (state.launches || []).find((x) => x.pids?.has(Number(d.end)))
+      if (l) {
+        log('party', `ending World at War (process ${d.end}): ${d.reason}`)
+        push('toast', { kind: 'info', text: 'Switching map. Your game is closing; the new one starts next.' })
+        l.stop('the party switched map')
+      }
     }
     if (!d.follow) return
     followGate.noteLaunch(d.matchId, 'followed')
