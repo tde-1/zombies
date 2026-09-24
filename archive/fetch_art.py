@@ -182,7 +182,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--plan", action="store_true", help="resolve URLs only, fetch nothing")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--max-mb", type=int, default=3, help="per-image cap (2026-09-24: one cover was 3.4 MB)")
     args = ap.parse_args()
+    global MAX_BYTES
+    MAX_BYTES = args.max_mb * 1024 * 1024
     p = plan()
     todo = [k for k in sorted(p) if not have(k)]
     print("art plan: %d maps have a source image, %d already fetched, %d to fetch"

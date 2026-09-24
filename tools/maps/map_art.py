@@ -13,6 +13,19 @@ For each row in the site's `maps` table, the first of these that exists wins:
   iwd          the map's own loading screen, out of its own .iwd (a zip) — an .iwi texture
                decoded by `iwi.py`. Looked for in the archive's normalised installs and in
                the dev homes' mods folders. Read-only: the zip is opened, never written.
+  (linked)     2026-09-24: when a map has neither, the site / iwd picture of a row that is
+               THE SAME MAP (`linked_keys`: `maps.superseded_by` either way, or the exact
+               title AND author) — a real map borrows its hidden catalogue twin's cover. The
+               manifest says `"via": <that key>`; art_source stays the picture's own kind.
+               Also 2026-09-24: a real map reaches a catalogue cover through its bsp name
+               only when that catalogue entry also names it (title or author) —
+               `catalogue_names_map`; "Nuketown Remastered" wore 2010's Nuketown v1 cover.
+  ugx / youtube / archiveorg
+               the web tier, 2026-09-24: a picture `archive/fetch_art_web.py` took from the
+               map's own release page (its UGX thread's first post, the video that post or
+               its codrepo post embeds, its archive.org item), under that script's matching
+               rules (`<work>/media/web/<stem>/cover.* + .meta.json`). Own, then linked.
+               art_source is the kind (ugx | youtube | archiveorg).
   stock        WaW's own loading screens for the four Treyarch maps, out of the game's
                stock .iwd files. READ-ONLY, per hard rule 1: the Steam install is opened
                for reading and nothing is written anywhere under it.
@@ -68,6 +81,7 @@ WORK = os.environ.get("ZM_ARCHIVE_WORK", os.path.join(DEV, "archive"))
 ARCHIVE_MANIFESTS = os.path.join(REPO, "archive", "manifests")
 STEAM_WAW = r"C:\Program Files (x86)\Steam\steamapps\common\Call of Duty World at War"
 DEFAULT_OUT = os.path.join(REPO, "web", "public", "media", "maps")
+WEB_ART = os.path.join(WORK, "media", "web")      # archive/fetch_art_web.py's accepted pictures
 MEDIA_URL = "/media/maps"
 
 HERO = (960, 540)
@@ -110,7 +124,41 @@ def waw_main():
 
 
 # ---- sources ------------------------------------------------------------------------------
-def site_source(key):
+_CATALOGUE = None
+
+
+def _title_forms(t):
+    t = str(t or "").lower()
+    forms = {t, re.sub(r"\(.*?\)|\[.*?\]", " ", t)}
+    for f in list(forms):
+        f = re.sub(r"\b(v(ersion)?\s*)?\d+(\.\d+)+[a-z]?\b|\bv\d+\b", " ", f)    # v1.2, 1.0.4, v2
+        forms.add(f)
+        forms.add(re.sub(r"^\s*nazi[\s_]*zombies?[\s_]*", "", f))
+    return {re.sub(r"[^a-z0-9]", "", f) for f in forms} - {""}
+
+
+def catalogue_names_map(n, row):
+    """True when catalogue entry `n` names this real map: a title form in common, or the
+    same author (one containing the other, as lib/catalogueTwins.js sameAuthor does)."""
+    global _CATALOGUE
+    if row is None:
+        return True           # old callers; main() always passes the row
+    if _CATALOGUE is None:
+        try:
+            _CATALOGUE = {m["norm"]: m for m in json.load(open(os.path.join(WORK, "reports", "catalogue.json"), encoding="utf-8"))}
+        except Exception:
+            _CATALOGUE = {}
+    m = _CATALOGUE.get(n)
+    if not m:
+        return False
+    mine = _title_forms(row.get("title"))
+    if any(mine & _title_forms(x) for x in m.get("names") or []):
+        return True
+    a = _nt(row.get("author"))
+    return bool(a) and any(b and (a == b or a in b or b in a) for b in (_nt(x) for x in m.get("authors") or []))
+
+
+def site_source(key, row=None):
     """(bytes, origin) of the archive's scraped art for this map, or None."""
     # 1. a pipeline map's cover, named in its archive manifest
     mf = os.path.join(ARCHIVE_MANIFESTS, key + ".json")
@@ -126,6 +174,12 @@ def site_source(key):
                 return open(p, "rb").read(), a.get("cover_source_url") or cov
     # 2. a catalogue cover (archive/fetch_art.py)
     n = key[4:] if key.startswith("cat:") else norm(key)
+    # A real map reaches a catalogue entry only through its bsp name, which is a guess: the
+    # entry whose norm is `nuketown` is 2010's "Nazi Zombie Nuketown v1", and its cover sat
+    # on "Nuketown Remastered" (a different map, by different people) until 2026-09-24. So
+    # the entry must also name this map: the same title, or the same author.
+    if not key.startswith("cat:") and not catalogue_names_map(n, row):
+        return None
     d = os.path.join(WORK, "media", "catalogue", n)
     for meta in glob.glob(os.path.join(d, "*.meta.json")):
         try:
@@ -200,6 +254,68 @@ def stock_source(key, main_dir):
         return None
     raw = zipfile.ZipFile(p).read(entry)       # opened read-only; nothing is written
     return iwi.decode(raw), raw, "WaW main/%s!%s" % (iwd_name, entry)
+
+
+def web_source(key):
+    """(bytes, origin-url, kind) of a picture archive/fetch_art_web.py took from this map's own
+    release page (kind: ugx | youtube | archiveorg), or None. That script owns the matching
+    rules; this only reads what it accepted: `<work>/media/web/<stem>/cover.* + .meta.json`."""
+    d = os.path.join(WEB_ART, stem_of(key))
+    for meta in glob.glob(os.path.join(d, "*.meta.json")):
+        try:
+            m = json.load(open(meta, encoding="utf-8"))
+            if m.get("rejected"):
+                continue
+            return open(os.path.join(d, m["file"]), "rb").read(), m.get("url"), m.get("source") or "web"
+        except Exception:
+            continue
+    return None
+
+
+def _nt(t):
+    return re.sub(r"[^a-z0-9]", "", str(t or "").lower())
+
+
+def linked_keys(rows):
+    """key -> other rows that are THE SAME MAP, whose picture this one may borrow.
+
+    Two links only, both already the site's own identity rules (never a fuzzy guess; B's
+    rule of 2026-09-23: a series' maps are distinct maps):
+      1. `superseded_by` — a catalogue twin the real map replaced, or an earlier version of
+         an iterative update (lib/catalogueTwins.js and the map-series rule decide those;
+         this reads their verdict). Both directions, and siblings under one superseder.
+      2. the exact normalised title AND the exact normalised author, both present — the
+         twin rule's auto-hide test without its "one visible real map" condition.
+    """
+    stock = {r["key"] for r in rows if r.get("source") == "stock" or r["key"] in STOCK}
+    out = {}
+
+    def add(a, b):
+        if a != b and a not in stock and b not in stock:
+            lst = out.setdefault(a, [])
+            if b not in lst:
+                lst.append(b)
+
+    under = {}
+    for r in rows:
+        if r.get("superseded_by"):
+            add(r["key"], r["superseded_by"])
+            add(r["superseded_by"], r["key"])
+            under.setdefault(r["superseded_by"], []).append(r["key"])
+    for sibs in under.values():
+        for a in sibs:
+            for b in sibs:
+                add(a, b)
+    groups = {}
+    for r in rows:
+        t, a = _nt(r.get("title")), _nt(r.get("author"))
+        if len(t) >= 3 and a:
+            groups.setdefault((t, a), []).append(r["key"])
+    for ks in groups.values():
+        for a in ks:
+            for b in ks:
+                add(a, b)
+    return out
 
 
 # ---- drawing --------------------------------------------------------------------------------
@@ -421,8 +537,23 @@ def main():
 
     out = dict(old) if args.only else {}
     counts = {"site": 0, "iwd": 0, "stock": 0, "placeholder": 0}
+    print("web art: %s" % WEB_ART)
     written = 0
     t0 = time.time()
+    all_rows = [dict(r) for r in con.execute("SELECT key, title, author, source, superseded_by FROM maps")]
+    links = linked_keys(all_rows)
+    rowmap = {x["key"]: x for x in all_rows}
+    iwd_memo = {}
+
+    def own_iwd(k):
+        if k not in iwd_memo:
+            iwd_memo[k] = iwd_source(k)
+        return iwd_memo[k]
+
+    def fresh(key, st, fp):
+        return (not args.force and old.get(key, {}).get("sha256") == fp
+                and os.path.isfile(os.path.join(args.out, st + ".webp")))
+
     for i, r in enumerate(rows, 1):
         key = r["key"]
         st = stem_of(key)
@@ -431,38 +562,76 @@ def main():
         # A stock map never takes catalogue art. MEASURED on the first run: the catalogue
         # entry whose name normalises to `asylum` is "Asylum v2", a community remake, and its
         # cover went onto Verrückt. Treyarch's four have Treyarch's own loading screens.
-        s = None if (r.get("source") == "stock" or key in STOCK) else site_source(key)
-        own = iwd_source(key)
+        # (Nor linked or web art: no tier below site/iwd applies to them.)
+        is_stock = r.get("source") == "stock" or key in STOCK
+        own = own_iwd(key)
         game = own or (None if args.no_stock else stock_source(key, main_dir))
         game_kind = "iwd" if own else ("stock" if game else None)
-        if s:
-            raw, origin = s
+        # The order (2026-09-24, "an image for every single map"): the map's own scraped
+        # cover; its own loading screen; a linked row's cover, then loading screen (the same
+        # map under another row — see linked_keys); a picture from the map's own release page
+        # (web_source: UGX thread, the video that thread embeds, its archive.org item); a
+        # linked row's web picture. Then stock, then the generated card. Own before linked,
+        # so a map that already had a picture keeps it.
+        pick = None       # (kind, raw bytes, origin, image-or-None, via)
+        if not is_stock:
+            mine = [(key, None)]
+            others = [(k, k) for k in links.get(key, [])]
+            for tier, chain in (("site", mine), ("iwd", mine), ("site", others), ("iwd", others),
+                                ("web", mine), ("web", others)):
+                for k, via in chain:
+                    if tier == "site":
+                        s = site_source(k, rowmap.get(k))
+                        if s:
+                            pick = ("site", s[0], s[1], None, via)
+                    elif tier == "iwd":
+                        g = own if k == key else own_iwd(k)
+                        if g:
+                            pick = ("iwd", g[1], g[2], g[0], via)
+                    else:
+                        w = web_source(k)
+                        if w:
+                            pick = (w[2], w[0], w[1], None, via)
+                    if pick:
+                        break
+                if pick:
+                    break
+        if pick and pick[0] != "iwd":
+            kind, raw, origin, _, via = pick
             fp = sha(raw)
-            entry.update(source="site", origin=origin, sha256=fp)
-            if not args.force and old.get(key, {}).get("sha256") == fp and os.path.isfile(os.path.join(args.out, st + ".webp")):
+            entry.update(source=kind, origin=origin, sha256=fp)
+            if via:
+                entry["via"] = via
+            if fresh(key, st, fp):
                 hero = "keep"
             else:
                 try:
                     hero = cover(Image.open(io.BytesIO(raw)), HERO)
                 except Exception as exc:
                     print("  ! %s: scraped art will not decode (%s); falling through" % (key, exc))
-                    s = None
-        if s and game:
-            im, raw2, origin2 = game
-            entry["loadscreen"] = {"source": game_kind, "origin": origin2, "sha256": sha(raw2)}
-            loadscreen = stretch(im, HERO)
-        if not s and game:
+                    entry = {"source": None}
+                    pick = None
+            if pick and game:
+                im, raw2, origin2 = game
+                entry["loadscreen"] = {"source": game_kind, "origin": origin2, "sha256": sha(raw2)}
+                loadscreen = stretch(im, HERO)
+        if pick and pick[0] == "iwd":
+            _, raw2, origin2, im, via = pick
+            fp = sha(raw2)
+            entry.update(source="iwd", origin=origin2, sha256=fp)
+            if via:
+                entry["via"] = via
+            hero = "keep" if fresh(key, st, fp) else stretch(im, HERO)
+        if not entry["source"] and game and game_kind == "stock":
             im, raw2, origin2 = game
             fp = sha(raw2)
-            entry.update(source=game_kind, origin=origin2, sha256=fp)
-            hero = "keep" if (not args.force and old.get(key, {}).get("sha256") == fp
-                              and os.path.isfile(os.path.join(args.out, st + ".webp"))) else stretch(im, HERO)
+            entry.update(source="stock", origin=origin2, sha256=fp)
+            hero = "keep" if fresh(key, st, fp) else stretch(im, HERO)
         if not entry["source"]:
             fp = sha(json.dumps([key, r.get("title"), r.get("author"), r.get("year"), "ph4"]).encode())
             entry.update(source="placeholder", sha256=fp)
-            hero = "keep" if (not args.force and old.get(key, {}).get("sha256") == fp
-                              and os.path.isfile(os.path.join(args.out, st + ".webp"))) else placeholder(r)
-        counts[entry["source"]] += 1
+            hero = "keep" if fresh(key, st, fp) else placeholder(r)
+        counts[entry["source"]] = counts.get(entry["source"], 0) + 1
 
         if hero != "keep":
             hb = webp_bytes(hero, 80)
@@ -488,7 +657,8 @@ def main():
     total_counts = {"total": len(out), "site": 0, "iwd": 0, "stock": 0, "placeholder": 0,
                     "loadscreens": sum(1 for e in out.values() if e.get("loadscreen"))}
     for e in out.values():
-        total_counts[e["source"]] += 1
+        total_counts[e["source"]] = total_counts.get(e["source"], 0) + 1
+    total_counts["linked"] = sum(1 for e in out.values() if e.get("via"))
     json.dump({"generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                "tool": "tools/maps/map_art.py", "counts": total_counts, "maps": out},
               open(man_path, "w", encoding="utf-8"), indent=1, sort_keys=True)
