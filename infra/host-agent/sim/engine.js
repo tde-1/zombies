@@ -710,6 +710,7 @@ export class ZombiesSim extends EventEmitter {
   // ---- host -> game commands ------------------------------------------------------
   onCommand(cmd) {
     switch (cmd.t) {
+      case 'expected_players': this.expectedPlayers = Number(cmd.n) || 0; this.emitEv({ t: 'log', level: 'info', msg: `expected_players: the lease names ${this.expectedPlayers} player(s)` }); break
       case 'say': this.emit('say', cmd); this.emitEv({ t: 'log', level: 'info', msg: `[say] ${cmd.from ? `(${cmd.from}) ` : ''}${cmd.text}` }); break
       case 'tell': this.emit('tell', cmd); this.emitEv({ t: 'log', level: 'info', msg: `[tell ${cmd.slot}] ${cmd.text}` }); break
       case 'exec': this.reply(cmd, true, { ran: cmd.cmd }); break

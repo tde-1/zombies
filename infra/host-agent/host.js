@@ -291,6 +291,22 @@ class Game extends EventEmitter {
     conn.on('message', this.onMessageBound)
     conn.on('close', this.onCloseBound)
     for (const c of this.pending.splice(0)) conn.send(c)
+    this.tellExpectedPlayers('linked')
+  }
+
+  /**
+   * [EP] ROUND 1 WAITS FOR THE WHOLE PARTY (dedi.md §29-30). `_load.gsc` starts round 1 when
+   * getnumconnectedplayers() == getnumexpectedplayers(), and the stock builtin answers 1 on
+   * the box (onlinegame 1, no party), so round 1 began on the FIRST loaded player. The DLL
+   * (expected_players.cpp) answers with the lease's player count for 90 s instead; this is
+   * where it learns the count. Sent when the link comes up (a boot, or a warm instance's
+   * link handed to a new lease) and on every `map_loaded` (a restart re-runs _load.gsc).
+   */
+  tellExpectedPlayers(why) {
+    const n = (this.assignment?.players || []).length
+    if (!n) return
+    this.sendToGame({ t: 'expected_players', n })
+    this.log.info(`expected_players ${n} -> game for ${this.matchId} (${why})`)
   }
 
   /**
@@ -493,6 +509,7 @@ class Game extends EventEmitter {
     // [RS] The idle clock (lib/idle.js) starts when the map is READY: booting and loading
     // never count. Once per run: a restarted run starts its own.
     if (!this.readyAt) this.readyAt = Date.now()
+    this.tellExpectedPlayers('map_loaded')
     this.emit('map_loaded', ev)
     if (!this.deferReplay) this.openReplay(ev)
   }
@@ -1714,7 +1731,32 @@ class HostAgent {
    */
   onAssignment(msg) {
     this.latestLeases = leaseList(msg)
+    this.notePlayersAdded(this.latestLeases)
     this.applyLeases()
+  }
+
+  /**
+   * [PC] PLAYERS ADDED TO A RUNNING LEASE (cloud-brief-parties.md task 2). Somebody who joins a
+   * party whose game is running is added to that lease at the site (assignments.addPlayer):
+   * same match id, same per-lease nonce, a new token for them. Leases are keyed on the match
+   * id (lib/leases.js planLeases), so nothing is retired or booted; this only brings the
+   * running game's copy of the lease up to date: who it names (admitReturning, the result's
+   * roster) and how many round 1 waits for.
+   */
+  notePlayersAdded(list) {
+    for (const asg of list || []) {
+      for (const g of this.byInstance.values()) {
+        if (g.finished || !g.assignment || (g.leaseId || g.matchId) !== asg.match_id) continue
+        const had = new Set((g.assignment.players || []).map((p) => String(p.steamid)))
+        const added = (asg.players || []).filter((p) => !had.has(String(p.steamid)))
+        if (!added.length) continue
+        g.assignment = { ...g.assignment, players: asg.players, whitelist: asg.whitelist, tokens: asg.tokens }
+        g.instance.assignment = g.assignment
+        g.log.info(`lease ${asg.match_id}: ${added.map((p) => p.name || p.steamid).join(', ')} added mid-game (${asg.players.length} player(s) now) — no reboot`)
+        g.recordHostEvent?.({ t: 'players_added', match_id: asg.match_id, steamids: added.map((p) => String(p.steamid)) })
+        g.tellExpectedPlayers('players_added')
+      }
+    }
   }
 
   applyLeases() {
