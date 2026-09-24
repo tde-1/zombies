@@ -366,7 +366,9 @@ export class Referee extends EventEmitter {
     // The players' own pause (e.g. the last one left from the Esc menu) gives way to the
     // drop hold: close its accounting, then hold the game ourselves.
     if (this.phase === 'paused' && this.pauseSource === 'game') this.resume('a player left', { fromGame: true })
-    const holding = this.phase === 'paused' && this.pauseSource === 'host' && this.away.size > 0
+    // Already holding for somebody: frozen by our pause, or -- when the game cannot freeze
+    // (pauseUnavailable, ENW_NO_PAUSE on the box) -- waiting with the world running.
+    const holding = this.away.size > 0 && (this.pauseUnavailable || (this.phase === 'paused' && this.pauseSource === 'host'))
     if (this.phase !== 'live' && !holding) return
     const until = Date.now() + this.cfg.crashGraceMs
     const down = !!(state && (state.down || state.alive === false)) || !!p.down
@@ -375,13 +377,18 @@ export class Referee extends EventEmitter {
     this.crashGraceUntil = Math.max(...[...this.away.values()].map((a) => a.until))
     this.flags.add('crash_pause')
     const mins = Math.max(1, Math.round(this.cfg.crashGraceMs / MIN))
-    if (!holding) {
+    if (!holding && this.pauseUnavailable) {
+      // The game refused a freeze earlier in this match: wait for them, world running.
+      if (connected.length) this.say(`${p.name} lost connection. Keeping their place for up to ${mins} min while they reconnect.`)
+    } else if (!holding) {
       this.pause(connected.length ? `${p.name} lost connection` : 'player lost connection', { quiet: connected.length > 0 })
+      // Remembered so a refusal ("pause not armed") can be told from any other reply.
+      this.dropPauseId = this.recentCommands.at(-1)?.t === 'pause' ? this.recentCommands.at(-1).id : null
       this.resumeAt = null
       if (connected.length) this.say(`${p.name} lost connection. Paused for up to ${mins} min while they reconnect. Type !continue to play on without them.`)
     } else if (!prev) {
       this.resumeAt = null   // a countdown for someone else is off: another one just dropped
-      this.say(`${p.name} lost connection too. Still paused.`)
+      this.say(`${p.name} lost connection too. ${this.pauseUnavailable ? 'Keeping their place too.' : 'Still paused.'}`)
     }
     this.emit('player_away', { slot: p.slot, name: p.name, steamid: p.steamid || null, until: this.away.get(key).until })
   }
@@ -407,10 +414,12 @@ export class Referee extends EventEmitter {
       this.finishGame('players_did_not_return')
       return
     }
-    if (this.phase === 'paused' && this.pauseSource === 'host') this.countdown(this.cfg.resumeCountdownMs, why === 'continue' ? 'playing on' : `${a.name} did not come back`)
+    if ((this.phase === 'paused' && this.pauseSource === 'host') || this.pauseUnavailable) this.countdown(this.cfg.resumeCountdownMs, why === 'continue' ? 'playing on' : `${a.name} did not come back`)
   }
 
   countdown(ms, why) {
+    // Nothing to count down when the game never froze (pauseUnavailable): just say it.
+    if (this.phase !== 'paused') { this.say(`${why[0].toUpperCase()}${why.slice(1)}.`); return }
     const secs = Math.max(0, Math.round(ms / 1000))
     if (secs > 0) {
       this.say(`${why[0].toUpperCase()}${why.slice(1)}. Resuming in ${secs} seconds.`)
@@ -780,7 +789,29 @@ export class Referee extends EventEmitter {
 
   ev_log(ev) { if (ev.level === 'error') this.log.warn(`game: ${ev.msg}`) }
 
-  ev_reply(ev) { this.emit('reply', ev) }
+  ev_reply(ev) {
+    // [reconnect] Our drop-hold `pause` refused by the game ("pause not armed": the box's
+    // ENW_NO_PAUSE=1, a listen server, a gate that failed its byte check). The world is NOT
+    // frozen, so the referee must not account it as paused or tell the site it is: undo the
+    // accounting, keep waiting for the away players (held state, restore, kick at the end of
+    // the grace) without the freeze.
+    if (!ev.ok && ev.id && ev.id === this.dropPauseId) {
+      this.dropPauseId = null
+      this.pauseUnavailable = true
+      this.flags.add('pause_unavailable')
+      this.log.warn(`the game refused the drop-hold pause (${ev.error || 'no reason'}): waiting for the away player(s) WITHOUT a freeze`)
+      if (this.phase === 'paused' && this.pauseSource === 'host') {
+        const cur = this.pauses.at(-1)
+        if (cur && cur.toMs == null) this.pauses.pop()
+        this.phase = this.pausePhaseBefore || 'live'
+        this.pauseReason = null
+        this.pauseSource = null
+        this.resumeAt = null
+      }
+      if (this.away.size) this.say('This server cannot pause right now, so the game carries on while they reconnect.')
+    }
+    this.emit('reply', ev)
+  }
 
   touch(slot, ms) {
     const p = this.players.get(slot); if (!p) return

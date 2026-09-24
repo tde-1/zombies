@@ -554,6 +554,33 @@ t('drop hold: --drop-pause off keeps the old rule (solo only)', () => {
   eq(r.phase, 'paused', 'the last one out still holds it')
 })
 
+t('drop hold: a game that cannot freeze (ENW_NO_PAUSE) is not called paused, but still waits and restores', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 2)
+  const restores = []
+  r.on('restore_wanted', (x) => restores.push(x))
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, state: STATE1 })
+  const pauseCmd = r.cmds.find((c) => c.t === 'pause')
+  ok(pauseCmd, 'asked for the freeze')
+  r.onEvent({ t: 'reply', ms: 60_010, id: pauseCmd.id, ok: false, error: 'pause not armed (not dedicated, or the gate failed)' })
+  eq(r.phase, 'live', 'the world runs, so the referee says so')
+  eq(r.pauses.length, 0, 'and no paused time is excluded from in-game time')
+  eq(r.state().paused, false)
+  eq(r.state().away.length, 1, 'but P1 is still waited for')
+  ok(r.flags.has('pause_unavailable'))
+  ok(r.cmds.some((c) => c.t === 'say' && /cannot pause right now/.test(c.text)))
+  r.onEvent({ t: 'player_connect', ms: 90_000, slot: 2, name: 'P1', steamid: '76561198000000001' })
+  eq(restores.length, 1, 'their points still come back')
+  r.onEvent({ t: 'player_ready', ms: 95_000, slot: 2 })
+  eq(r.away.size, 0)
+  eq(r.phase, 'live')
+  // A second drop in the same match does not even ask.
+  const before = r.cmds.filter((c) => c.t === 'pause').length
+  r.onEvent({ t: 'player_lost', ms: 120_000, slot: 0 })
+  eq(r.cmds.filter((c) => c.t === 'pause').length, before, 'no second refused pause')
+  ok(r.cmds.some((c) => c.t === 'say' && /Keeping their place/.test(c.text)))
+})
+
 t('drop hold: an operator resume lets the away players go', () => {
   const r = makeRef({ mode: 'custom' })
   bootReconnect(r, 2)

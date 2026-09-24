@@ -33,7 +33,7 @@ export function rejoinOffer(p, { offered = new Set(), endedMatchId = null, flowR
   const mine = (p.hold?.away || []).find((a) => a && a.you)
   const leftMs = mine ? Number(mine.left_ms) || 0 : Math.max(0, (Number(p.resume.until) || now) - now)
   if (leftMs <= 0) return null
-  const text = mine
+  const text = mine && p.hold.paused !== false
     ? `The game is paused for you. Rejoin within ${clock(leftMs)} and carry on where you left off.`
     : `Your game is still up. Rejoin within ${clock(leftMs)}.`
   return { matchId, text, label: 'Rejoin' }

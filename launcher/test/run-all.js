@@ -2273,6 +2273,9 @@ await test('rejoin: "paused for you" when the box is holding the game for this p
   const p = pollLeft('m_r2', { hold: { paused: true, away: [{ name: 'Someone', left_ms: 50_000, you: false }, { name: 'Me', left_ms: 125_000, you: true }] } })
   const o = rejoin.rejoinOffer(p, { endedMatchId: 'm_r2', now: 1_000_000 })
   assert.match(o.text, /The game is paused for you\. Rejoin within 2:05/)
+  // The box could not freeze (ENW_NO_PAUSE): the place is kept, the world is not paused.
+  const q = rejoin.rejoinOffer({ ...p, hold: { ...p.hold, paused: false } }, { endedMatchId: 'm_r2', now: 1_000_000 })
+  assert.match(q.text, /still up\. Rejoin within 2:05/)
 })
 
 await test('rejoin: never for a quit, another match, a running game or launch, or an expired window', () => {

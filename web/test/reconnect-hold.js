@@ -93,6 +93,10 @@ async function main() {
     eq(holdLabel({ paused: true, away: [{ name: 'Bex', left_ms: 100_000, returning: true }] }), 'Paused · Bex is loading back in')
     eq(holdLabel({ paused: true, away: [{ name: 'Me', left_ms: 125_000, you: true }] }), 'Paused for you · 2:05 to rejoin')
     eq(holdLabel({ paused: true, away: [{ name: 'Me', left_ms: 125_000, you: true, returning: true }] }), 'Paused for you · loading back in')
+    // The box could not freeze (ENW_NO_PAUSE): never say paused.
+    eq(holdLabel({ paused: false, away: [{ name: 'Bex', left_ms: 161_000 }] }), 'Bex disconnected · waiting to reconnect (2:41)')
+    eq(holdLabel({ paused: false, away: [{ name: 'Me', left_ms: 125_000, you: true }] }), 'Your place is kept · 2:05 to rejoin')
+    eq(holdLabel({ paused: false, away: [{ name: 'Bex', left_ms: 1, returning: true }] }), 'Bex is loading back in')
   })
 
   await check('ENW-Verified: rejoining after dropping while down voids the record; a plain rejoin does not', () => {
