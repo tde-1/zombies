@@ -18,9 +18,10 @@
 export const FOLLOW_VIEWS = ['eyes', 'follow']
 export const MODES = ['eyes', 'follow', 'free']
 
+// Opens in FIRST PERSON (B, 2026-09-24: "make the 3D replayer default to the first person").
 export function initSpectate(track) {
   const p = track && Array.isArray(track.players) && track.players[0]
-  return { focus: p ? p.slot : 0, mode: 'follow', view: 'follow' }
+  return { focus: p ? p.slot : 0, mode: 'eyes', view: 'eyes' }
 }
 
 // Co-op is more than one player in the recording. A solo replay keeps the viewer's old keys
@@ -87,7 +88,7 @@ export function nextPlayer(players, focus, dir = 1, aliveOnly = false) {
 const following = (s) => (s.mode === 'free' ? s.view : s.mode)
 
 export function spectate(state, action) {
-  const s = state || { focus: 0, mode: 'follow', view: 'follow' }
+  const s = state || initSpectate(null)
   if (!action) return s
   switch (action.type) {
     // A click (or tap) on a panel row. From free cam it starts following, the "click to
