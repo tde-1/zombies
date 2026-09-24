@@ -2323,6 +2323,58 @@ await test('partyprogress: the pending map (a switch) is reported to the party; 
   assert.equal(pp.attach(api, play, 'nazi_zombie_c'), null, 'any other map')
 })
 
+// [reconnect, 2026-09-24] the Rejoin toast: once per match, only for the game this launcher
+// watched end, only when the site says it is still up and this player did not quit.
+const rejoin = await import('../src/main/rejoin.js')
+const pollLeft = (id, extra = {}) => ({ state: 'resumable', map: { key: 'nazi_zombie_sumpf' }, resume: { match_id: id, until: 1_000_000 + 170_000 }, ...extra })
+
+await test('rejoin: the game we watched end is still up -> one Rejoin offer, with the time left', () => {
+  const offered = new Set()
+  const o = rejoin.rejoinOffer(pollLeft('m_r1'), { offered, endedMatchId: 'm_r1', now: 1_000_000 })
+  assert.ok(o, 'offered')
+  assert.equal(o.matchId, 'm_r1')
+  assert.equal(o.label, 'Rejoin')
+  assert.match(o.text, /still up\. Rejoin within 2:50/)
+  offered.add(o.matchId)
+  assert.equal(rejoin.rejoinOffer(pollLeft('m_r1'), { offered, endedMatchId: 'm_r1', now: 1_000_000 }), null, 'once per match')
+})
+
+await test('rejoin: "paused for you" when the box is holding the game for this player', () => {
+  const p = pollLeft('m_r2', { hold: { paused: true, away: [{ name: 'Someone', left_ms: 50_000, you: false }, { name: 'Me', left_ms: 125_000, you: true }] } })
+  const o = rejoin.rejoinOffer(p, { endedMatchId: 'm_r2', now: 1_000_000 })
+  assert.match(o.text, /The game is paused for you\. Rejoin within 2:05/)
+  // The box could not freeze (ENW_NO_PAUSE): the place is kept, the world is not paused.
+  const q = rejoin.rejoinOffer({ ...p, hold: { ...p.hold, paused: false } }, { endedMatchId: 'm_r2', now: 1_000_000 })
+  assert.match(q.text, /still up\. Rejoin within 2:05/)
+})
+
+await test('rejoin: never for a quit, another match, a running game or launch, or an expired window', () => {
+  const at = { endedMatchId: 'm_r3', now: 1_000_000 }
+  assert.equal(rejoin.rejoinOffer({ ...pollLeft('m_r3'), state: 'selected' }, at), null, 'quit on purpose: the site says selected/idle')
+  assert.equal(rejoin.rejoinOffer({ ...pollLeft('m_r3'), state: 'playing' }, at), null, 'still connected')
+  assert.equal(rejoin.rejoinOffer(pollLeft('m_other'), at), null, 'not the game we watched end')
+  assert.equal(rejoin.rejoinOffer(pollLeft('m_r3'), { ...at, endedMatchId: null }), null, 'no game ended here')
+  assert.equal(rejoin.rejoinOffer(pollLeft('m_r3'), { ...at, flowRunning: true }), null, 'a launch is running')
+  assert.equal(rejoin.rejoinOffer(pollLeft('m_r3'), { ...at, gameAlive: true }), null, 'World at War is still up')
+  assert.equal(rejoin.rejoinOffer(pollLeft('m_r3'), { ...at, now: 2_000_000 }), null, 'the window is over')
+  assert.equal(rejoin.rejoinOffer({ signedOut: true }, at), null)
+  assert.equal(rejoin.clock(61_000), '1:01')
+})
+
+await test('rejoin: wired -- the poll offers it, the toast calls the site\'s Resume and follows now', () => {
+  const main = String(fs.readFileSync(new URL('../src/main/main.js', import.meta.url)))
+  assert.match(main, /const offer = rejoinOffer\(p, \{/)
+  assert.match(main, /state\.lastEndedMatchId = flow\.snapshot\(\)\.matchId/)
+  assert.match(main, /push\('toast', \{ kind: 'warn', text: offer\.text, action: \{ label: offer\.label, call: 'rejoinMatch', arg: offer\.matchId, sticky: true \} \}\)/)
+  assert.match(main, /handle\('rejoinMatch', async \(matchId\) => \{[\s\S]{0,400}state\.api\.resume\(id\)[\s\S]{0,300}followGate\.allow\(id\)[\s\S]{0,200}pollNow/)
+  const pre = String(fs.readFileSync(new URL('../src/preload/preload.cjs', import.meta.url)))
+  assert.match(pre, /rejoinMatch: \(matchId\) => call\('rejoinMatch', matchId\)/)
+  const shell = String(fs.readFileSync(new URL('../src/renderer/shell.js', import.meta.url)))
+  assert.match(shell, /action\.call === 'rejoinMatch' && window\.enw\.rejoinMatch/)
+  const api = String(fs.readFileSync(new URL('../src/main/siteapi.js', import.meta.url)))
+  assert.match(api, /async resume\(matchId\) \{\s*return this\.req\('\/api\/party\/resume', \{ method: 'POST', body: \{ match_id: matchId \} \}\)/)
+})
+
 // -------------------------------------------------------------- Steam gate --
 group('Steam: started, waited for, and a Retry when it will not come (2026-09-23)')
 

@@ -38,6 +38,7 @@ import { UpdateCheck, fakeUpdater } from './updatecheck.js'
 import * as deeplink from './deeplink.js'
 import { makeWindowRaiser } from './focusguard.js'
 import { makeFollowGate, FOLLOW_STATES } from './followgate.js'
+import { rejoinOffer } from './rejoin.js'
 import * as steam from './steam.js'
 import * as gameproc from './gameproc.js'
 import { hostAgent } from './hostagent.js'
@@ -1495,6 +1496,10 @@ function wireIpc() {
       if (local) setTimeout(() => local.run.stop(), 20_000).unref?.()
       noteMatch(flow.snapshot())
       followGate.noteEnded(flow.snapshot().matchId)
+      // [reconnect] the game this launcher just watched end: if the site says it is still up
+      // and this player did not quit it, the next poll offers Rejoin (rejoin.js).
+      state.lastEndedMatchId = flow.snapshot().matchId || null
+      state.playWatcher?.pollNow?.()
       log('play', `the game ended (${p.phase}: ${p.detail || 'no detail'})${flow.snapshot().matchId ? `; ${flow.snapshot().matchId} will not be relaunched unless the player presses Play or Resume` : ''}`)
       state.flow = null
       state.gameStartedAt = null
@@ -1626,6 +1631,21 @@ function wireIpc() {
   // The site's Resume (and anything else that is the PLAYER asking to go back into a
   // match this launcher already launched once): lift the ledger for that match, then
   // follow it now if the last poll still names it. followgate.js.
+  // [reconnect] the launcher's own Rejoin toast (rejoin.js): the site's Resume (a fresh invite
+  // token, the phase back to `in-game`), the ledger lifted, and an immediate poll so the
+  // watcher follows now rather than in five seconds.
+  handle('rejoinMatch', async (matchId) => {
+    const id = String(matchId || '')
+    if (!id) throw new Error('No match to rejoin.')
+    if (!state.api) throw new Error('The site is not reachable.')
+    const r = await state.api.resume(id)
+    if (!r || r.ok === false) throw new Error(r?.error ? `Could not rejoin: ${r.error}` : 'Could not rejoin.')
+    followGate.allow(id)
+    log('party', `the player pressed Rejoin for ${id}`)
+    state.playWatcher?.pollNow?.()
+    return { rejoined: id }
+  })
+
   handle('resumeMatch', (matchId) => {
     const id = String(matchId || state.lastPlay?.match?.match_id || '')
     if (!id) throw new Error('No match to resume.')
@@ -1708,6 +1728,20 @@ function wireIpc() {
   function onPlay(p) {
     if (!p || p.signedOut) { state.lastPlay = null; return }
     state.lastPlay = p
+
+    // 0. [reconnect] the game this launcher watched end is still up and waiting for this
+    // player: say so once, with a Rejoin button. Never a launch on its own (followgate.js).
+    const offer = rejoinOffer(p, {
+      offered: state.rejoinOffered || (state.rejoinOffered = new Set()),
+      endedMatchId: state.lastEndedMatchId || null,
+      flowRunning: !!state.flow,
+      gameAlive: !!followGate.gameAlive(),
+    })
+    if (offer) {
+      state.rejoinOffered.add(offer.matchId)
+      log('party', `offering Rejoin for ${offer.matchId}: ${offer.text}`)
+      push('toast', { kind: 'warn', text: offer.text, action: { label: offer.label, call: 'rejoinMatch', arg: offer.matchId, sticky: true } })
+    }
 
     const bsp = p.map?.key || null
     const inParty = Number(p.party?.id || 0) > 0

@@ -47,6 +47,9 @@ const PROFILES = {
       if (run.flags.includes('late_join')) bad.push('somebody joined late')
       if (run.flags.includes('all_afk')) bad.push('everyone went AFK')
       if (run.flags.includes('resumed')) bad.push('the game was resumed after a crash')
+      // [reconnect] vault 10 §5 "block rejoin-after-bleedout": a player who dropped while
+      // down and came back stood up without a revive (host lib/referee.js welcomeBack).
+      if (run.flags.includes('rejoined_while_down')) bad.push('a player rejoined after dropping while down')
       return bad
     },
   },

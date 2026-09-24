@@ -167,6 +167,10 @@ function router() {
       // the rail's server card offers Resume).
       state: seats.phaseOf(party, launch, sid),
       resume: seats.resumeInfo(launch, sid),
+      // [reconnect] the game is paused waiting for somebody who dropped (host drop hold):
+      // `{paused, away:[{name, left_ms, returning, you}]}`, or null. The launcher offers
+      // Rejoin when `you` is among them (main.js).
+      hold: launch && launch.match_id ? live.hold(launch.match_id, sid) : null,
       // [RS] The box closed this player's server for want of players (host lib/idle.js):
       // `{match_id, rule, text}` for a few minutes, while there is no newer match. A launcher
       // still waiting on that match shows `text` and stops (launcher bootflow.js).

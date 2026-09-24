@@ -3542,3 +3542,23 @@ party's launch supersedes its own running game with the old map. Not fixed (no t
 
 Tests: `node test/party-carryover.js` 21 passed, 0 failed (added to `npm run check`). `run-all.js` 154/0; every
 other file as on the base commit (`launcher-signin.js` 14/1 fails there too: Steam mode, no passport-steam).
+
+## 2026-09-24 cloud: disconnect pause + reconnect
+
+Cloud session. Hand-back: `cloud-handback-reconnect.md`.
+
+- `POST /api/gs/live` now answers `quit:{<match_id>:[steamid]}` for posted matches with a player
+  who quit on purpose (`seats.quittersFor`, run ids `<lease>.r<n>` resolve to the lease), so the
+  box never holds a game for a quit (host `markQuit`).
+- `live.js` keeps the referee's `away[]` (clamped) and `players[].lost`; `live.hold(match, viewer)`
+  -> `hold:{paused, away:[{name, left_ms, returning, you}]}` on `GET /api/party` and
+  `GET /api/launcher/play`.
+- The rail's server card (`client/src/holdLabel.js`): "Bex disconnected · paused, waiting to
+  reconnect (2:41)", "Paused for you · 2:05 to rejoin", "Paused · Bex is loading back in"; without
+  "paused" when the box could not freeze. The away player's own card still offers Resume
+  (`seats` marks a lost player `left` from the live frame).
+- `records.js`: `rejoined_while_down` voids an ENW-Verified record (vault 10 §5).
+- Tests: `test/reconnect-hold.js` 6/0 (in `npm run check`). Every web test file passes run one by
+  one except `launcher-signin.js` 14/1 ("/auth/steam goes to Steam", 500 vs 302: the Steam OpenID
+  redirect needs outbound network), which fails identically on base `2116a43`; `map-align.js`
+  skips (no Windows export). `vite build` is clean.

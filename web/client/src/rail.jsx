@@ -55,6 +55,7 @@ export function RailProvider({ children }) {
   // Set when this player crashed out of a game that is still up (lib/seats.js): the server
   // card offers Resume for the site's ten-minute window.
   const [resumable, setResumable] = useState(null)
+  const [hold, setHold] = useState(null)   // [reconnect] paused for a player who dropped
   const [invites, setInvites] = useState([])
   const [online, setOnline] = useState({ scope: 'online', players: [] })
   const [stage, setStageState] = useState(readStage)
@@ -92,10 +93,10 @@ export function RailProvider({ children }) {
   }, [signedIn])
 
   const loadParty = useCallback(async () => {
-    if (!signedIn) { setParty(null); setLaunch(null); setResumable(null); setInvites([]); return null }
+    if (!signedIn) { setParty(null); setLaunch(null); setResumable(null); setHold(null); setInvites([]); return null }
     try {
       const j = await api.get('/api/party')
-      setParty(j.party); setLaunch(j.launch); setResumable(j.resume || null); setInvites(j.invites || [])
+      setParty(j.party); setLaunch(j.launch); setResumable(j.resume || null); setHold(j.hold || null); setInvites(j.invites || [])
       return j.party
     } catch { return null }
   }, [signedIn])
@@ -371,12 +372,12 @@ export function RailProvider({ children }) {
     stage, map, mapKey, mode, visibility, editable, gameMode, gameModes,
     busy, err, say,
     stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick, leave,
-    decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
+    decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume, hold,
     switchNow, cancelSwitch,
     refreshParty: loadParty, refreshOnline: loadOnline,
   }), [me, signedIn, approved, requests, answerFriend, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
     mode, visibility, editable, gameMode, gameModes, busy, err, say, stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick,
-    leave, decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
+    leave, decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume, hold,
     switchNow, cancelSwitch, endGame, closeServer, loadParty, loadOnline])
 
   // The invite toasts and the /party/<code> card sit here, above the router with the rail's

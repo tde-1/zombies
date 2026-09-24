@@ -63,6 +63,7 @@
 #include "../dedicated/dedicated.hpp"
 #include "../referee/t4_bind.hpp"
 #include "pause_policy.hpp"
+#include "pause_state.hpp"
 
 #include <cstdlib>
 #include <string>
@@ -252,6 +253,14 @@ public:
                      "will be refused.");
             return;
         }
+        // ENW_PAUSE_HOST_ONLY=1 (2026-09-24): arm the gate for the HOST's hold only (a player
+        // lost their connection, everyone AFK, an operator) and ignore the players' Esc/typing
+        // pause, so the box can take back the disconnect pause without the Esc pause.
+        if (const char* v = std::getenv("ENW_PAUSE_HOST_ONLY"); v && *v && *v != '0') {
+            ui_enabled_ = false;
+            ENW_WARN("pause: HOST-ONLY (ENW_PAUSE_HOST_ONLY): Esc/typing will not pause; the "
+                     "host's hold (a lost connection, everyone AFK, an operator) will.");
+        }
         const uintptr_t site = at(kGRunFrameCall);
         const uintptr_t target = memory::call_target(site);
         if (target != at(kGRunFrame)) {
@@ -416,7 +425,7 @@ private:
     }
 
     void evaluate() {
-        reason want = pause_rule::decide(host_hold_, clients_, kSlots);
+        reason want = pause_rule::decide(host_hold_, clients_, kSlots, ui_enabled_);
         if (want == reason::none && operator_trigger()) want = reason::operator_file;
         if (force_release_) {
             // A tripped guard holds the world released until every asker has let go.
@@ -486,6 +495,7 @@ private:
 
     pause_rule::client_report clients_[kSlots] = {};
     bool host_hold_ = false;
+    bool ui_enabled_ = true;   // false under ENW_PAUSE_HOST_ONLY
     reason reason_ = reason::none;
     int connected_ = 0;
     uint32_t last_poll_ms_ = 0;
@@ -505,6 +515,9 @@ private:
 };
 
 }  // namespace
+
+bool pause_state::world_frozen() { return g_armed && g_frozen && g_frozen_applied; }
+
 }  // namespace enw
 
 ENW_REGISTER_COMPONENT(enw::pause)

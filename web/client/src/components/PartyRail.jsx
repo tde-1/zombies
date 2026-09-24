@@ -5,6 +5,7 @@ import { useRail } from '../rail'
 import { useSession } from '../session'
 import { prettyTitle, mapHue } from '../data/mapText'
 import { NotPlayable } from './Bits'
+import { holdLabel } from '../holdLabel'
 import EnwWord from './Enw'
 import { DlBar, CardDownload } from './MapDownload'
 
@@ -503,7 +504,10 @@ function ServerCard({ R }) {
   const state = p ? p.state : 'forming'
   const modeLabel = `${MODE_WORD[R.mode] || 'Verified'} · ${VIS.find((v) => v.key === R.visibility)?.label || 'Friends'}`
   const readyN = p ? p.members.filter((m) => m.ready).length : 0
-  const statusLabel = state === 'ready-check'
+  // [reconnect] a game paused for a player who dropped says so first, whoever is looking.
+  const held = holdLabel(R.hold)
+  const statusLabel = held ? held
+    : state === 'ready-check'
     ? `${readyN} of ${p.members.length} ready`
     : state === 'launching' ? 'Starting'
       : R.resumable ? 'You left the game · still up'

@@ -928,6 +928,31 @@ std::optional<client_stats> player_stats(int slot) {
     s.headshots = r.headshots;
     return s;
 }
+// The reconnect restore (reconnect_rules.hpp, 2026-09-24). The same 24 bytes player_stats()
+// reads, under the same checks: the field table verified at bind time, the gclient
+// cross-checked two ways (gclient_for), and every value ALREADY THERE a plausible counter --
+// so a slot mid-reset or a wrong layout is never written. A plain int store is what GSC's
+// `self.score = x` does into +0x20BC (the setter's store at 0x4ECF25, referee.md §16), so
+// the purchase checks and the Tab scoreboard see the new values at once. The points HUD is a
+// script hudelem and catches up on the next points change [unverified: not seen in a game].
+bool set_player_stats(int slot, const client_stats& v) {
+    if (!g_report.client_fields || slot < 0 || slot >= kMaxClients) return false;
+    const uintptr_t gc = gclient_for(slot);
+    if (!gc) return false;
+    cf::raw_stats cur{};
+    if (!peek(gc + cf::kScore, &cur)) return false;
+    const int32_t* c = &cur.score;
+    for (int i = 0; i < 6; ++i) {
+        if (c[i] < 0 || c[i] > 100000000) return false;
+    }
+    const cf::raw_stats next{v.score, v.kills, v.assists, v.downs, v.revives, v.headshots};
+    const int32_t* n = &next.score;
+    for (int i = 0; i < 6; ++i) {
+        if (n[i] < 0 || n[i] > 100000000) return false;
+    }
+    std::memcpy(reinterpret_cast<void*>(gc + cf::kScore), &next, sizeof(next));
+    return true;
+}
 std::optional<float> player_float(int, const char*) { return std::nullopt; }
 bool player_field_defined(int, const char*) { return false; }
 bool set_player_int(int, const char*, int) { return false; }

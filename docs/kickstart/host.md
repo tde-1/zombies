@@ -2247,3 +2247,35 @@ The test now has no default site and refuses `:3200`. `box-a`'s pinned key is a 
 - `sim/engine.js` accepts `expected_players`. New `test/party-carryover.js` (`npm run test:party-carryover`):
   count sent for a lease of 2; P3 added -> same instance + pid, `expected_players 3`, nothing retired or booted;
   switched lease -> old retired, new booted and told 3. PASS. `npm test`: 113 / 22 / 81 passed, 0 failed.
+
+## 2026-09-24 cloud: disconnect pause + reconnect
+
+Cloud session (no box, no WaW). `lib/referee.js` "drop hold", wired in `host.js` and
+`lib/siteclient.js`; the sim speaks the new events. Hand-back: `cloud-handback-reconnect.md`.
+
+- **Rule** (vault 10 §5, B 2026-09-24): any player who drops without quitting holds the WHOLE game
+  (co-op too; before, only a solo game was held), each away player on their own grace
+  (`crashGraceMs`, = `--idle-gone-ms` on the box, 3 min). `player_lost` (DLL, ~5 s of no input)
+  holds at once while the body is still seated; `player_back` (a blip) resumes after 3 s
+  (`backResumeMs`); a returning player (matched on SteamID, any slot, including past their own
+  lost ghost) is restored and counted down (10 s) only after `player_ready`, or after
+  `readyWaitMs` (90 s) if it never comes. Grace over: the ghost is kicked and the others play on
+  (solo: `players_did_not_return`, as before). `!continue` from a connected player stops the wait.
+- **Never a hold**: a quit on purpose (the site's `/api/gs/live` reply `quit:{match:[sid]}` ->
+  `markQuit`, which also releases a hold already open), our AFK kick, a refused identity.
+- **The game cannot freeze** (box `ENW_NO_PAUSE=1`: the DLL replies `pause not armed`): the
+  referee undoes the pause accounting, flags `pause_unavailable`, and still waits, restores and
+  kicks, world running. The site is never told "paused".
+- **State**: taken from `player_lost` / `player_disconnect.state`; `snapshot_state` only for an
+  older DLL. `state().away[]` (`name, steamid, slot, left_ms, returning`) and `players[].lost` for
+  the site. Replay host events: `player_away`, `player_returning`, `player_home`, `restored`.
+- **Flags**: `crash_pause`, `rejoined` (every return), `resumed` (only when restore is allowed:
+  records.js voids an ENW-Verified record on it), `rejoined_while_down` (vault "block
+  rejoin-after-bleedout"; also voids ENW-Verified), `pause_unavailable`.
+- **Switches**: `--drop-pause off` / `ENW_DROP_PAUSE=off` = the old solo-only rule;
+  `--ready-wait-ms`.
+- **Tests**: `test/run-all.js` 128/0 (15 new "drop hold" checks); `test/reconnect.js` (a real host
+  agent + sims + a stand-in site: crash+rejoin with restore and result flags, quit never holds,
+  never-back is kicked and play goes on) PASS; idle/idle-close/restart/multi-lease/boot-queue/
+  mapcache/telemetry/demo-network all pass. `test/demo-local.js` "hello ignored by default" fails
+  on base `2116a43` too (not this change).

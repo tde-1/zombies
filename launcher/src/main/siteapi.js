@@ -114,6 +114,12 @@ export class SiteApi extends EventEmitter {
     return { ok: false, status: r.status, error: r.data?.error || `the site answered ${r.status}`, party: r.data?.party || null }
   }
 
+  // [reconnect] the rail's Resume, from the launcher's Rejoin toast: a fresh invite token and
+  // the phase back to `in-game` for a match this player dropped out of (web lib/seats.js).
+  async resume(matchId) {
+    return this.req('/api/party/resume', { method: 'POST', body: { match_id: matchId } })
+  }
+
   async cancel() {
     const r = await this.req('/api/launcher/cancel', { method: 'POST', body: {} })
     return { ok: r.ok, ...(r.data || {}) }
@@ -214,6 +220,9 @@ export class PlayWatcher extends EventEmitter {
   }
 
   stop() { clearInterval(this.timer); this.timer = null }
+
+  // Poll now, and keep the cadence (a Rejoin should not wait five seconds).
+  pollNow() { if (this.timer) { this.stop(); this.start() } }
 }
 
 // Read the site's session cookie out of an Electron session so main-process calls are

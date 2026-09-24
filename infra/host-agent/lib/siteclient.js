@@ -272,6 +272,10 @@ export class SiteClient extends EventEmitter {
         const r = await this.req('/api/gs/live', { method: 'POST', body: { instances: frames.slice(0, 16) }, timeoutMs: 2500 })
         this.stats.liveSent += r?.taken || 0
         this.stats.liveDropped += Math.max(0, (r?.of ?? frames.length) - (r?.taken || 0))
+        // Who quit on purpose (the Esc menu's Exit game, POST /api/party/quit), per match
+        // posted: a quit must never hold the game the way a drop does (lib/referee.js
+        // markQuit). The reply is the fastest way the site has to say it, ~4x a second.
+        if (r?.quit && typeof r.quit === 'object') this.emit('quit', r.quit)
       } catch (e) {
         this.stats.liveDropped += frames.length
         this.log.debug(`live frame: ${e.message}`)

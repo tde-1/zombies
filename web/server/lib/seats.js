@@ -262,9 +262,24 @@ function joinInProgress(matchId, partyId, steamids) {
   } catch { return false }
 }
 
+/**
+ * [reconnect, 2026-09-24] Who quit this match ON PURPOSE (the Esc menu's Exit game, the × that
+ * closed the server, an idle close), for the box: a quit must never hold the game the way a
+ * drop does (infra/host-agent lib/referee.js markQuit). The box posts a run id, which for a
+ * restarted run is `<lease>.r<n>`; the seat is kept under the lease id.
+ */
+function quittersFor(matchId) {
+  const out = new Set()
+  for (const id of [String(matchId), String(matchId).replace(/\.r\d+$/, '')]) {
+    const m = seats.get(id)
+    for (const [sid, s] of m || []) if (s.quit) out.add(sid)
+  }
+  return [...out]
+}
+
 function forget(matchId) { seats.delete(String(matchId)) }
 
 /** Has the referee said anything about who is in this match since the site started? */
 const known = (matchId) => seats.has(String(matchId))
 
-module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, end, sweep, forget, known, noteClosed, closedFor, joinInProgress, CLOSED_TEXT, RESUME_MS }
+module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, end, sweep, forget, known, noteClosed, closedFor, joinInProgress, quittersFor, CLOSED_TEXT, RESUME_MS }
