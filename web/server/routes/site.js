@@ -165,6 +165,8 @@ function router() {
   // ---- the party rail --------------------------------------------------------------
   r.get('/party', (req, res) => {
     if (!req.me) return res.json({ party: null })
+    const row = parties.forPlayerRow(req.me.steam_id)
+    if (row && row.pending_map_key) parties.maybeSwitch(row.id)   // [PC] a pending map switch
     const party = parties.forPlayer(req.me.steam_id)
     const launch = parties.launchInfo(req.me.steam_id)
     res.json({
@@ -229,6 +231,11 @@ function router() {
   r.post('/party/join', requireApproved, partyAction((req) => parties.join(req.me.steam_id, Number((req.body && req.body.party_id) || 0))))
   r.post('/party/leave', requireUser, partyAction((req) => parties.leave(req.me.steam_id)))
   r.post('/party/map', requireApproved, partyAction((req) => parties.setMap(req.me.steam_id, (req.body && req.body.map_key) || null)))
+  // [PC] Change map while the party's game runs: switch the party's server (lib/parties.js
+  // switchMap). With no game running it is the same as /party/map.
+  r.post('/party/switch', requireApproved, partyAction((req) => parties.switchMap(req.me.steam_id, (req.body && req.body.map_key) || null)))
+  r.post('/party/switch/now', requireApproved, partyAction((req) => parties.switchNow(req.me.steam_id)))
+  r.post('/party/switch/cancel', requireApproved, partyAction((req) => parties.cancelSwitch(req.me.steam_id)))
   r.post('/party/mode', requireApproved, partyAction((req) => parties.setMode(req.me.steam_id, (req.body && req.body.mode) || 'verified')))
   // The map's own game mode (game-modes.md): leader only, only a mode the map offers.
   r.post('/party/game-mode', requireApproved, partyAction((req) => parties.setGameMode(req.me.steam_id, (req.body && req.body.game_mode) || '')))

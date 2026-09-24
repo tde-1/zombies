@@ -293,7 +293,16 @@ export function RailProvider({ children }) {
         setStage({ map_key: key })
       } else if (!party.map || party.map.key !== key) {
         if (!party.is_leader) throw new Error('The leader picks the map')
-        if (party.state !== 'forming') throw new Error(party.state === 'ready-check' ? 'Cancel the ready check to change the map' : 'End the game to change the map')
+        if (party.state === 'ready-check') throw new Error('Cancel the ready check to change the map')
+        if (party.state !== 'forming') {
+          // A game is running: switch the party's server (lib/parties.js switchMap). The site
+          // moves everybody once they have the map; nothing more to do here.
+          const t = (m && m.title) || key
+          if (!window.confirm(`Switch everyone to ${t}? This game ends when everyone has the map.`)) return
+          await api.post('/api/party/switch', { map_key: key })
+          await loadParty()
+          return
+        }
         await api.post('/api/party/map', { map_key: key })
       }
       const r = await api.post('/api/party/ready-check', {})
@@ -304,7 +313,11 @@ export function RailProvider({ children }) {
         }
       }
     })
-  }, [mapKey, poolByKey, party, stage, setStage, guard, run])
+  }, [mapKey, poolByKey, party, stage, setStage, guard, run, loadParty])
+
+  // A pending map switch (party.pending_map): the leader's Switch now and Cancel.
+  const switchNow = useCallback(() => run(async () => { await api.post('/api/party/switch/now'); await loadParty() }), [run, loadParty])
+  const cancelSwitch = useCallback(() => run(async () => { await api.post('/api/party/switch/cancel'); await loadParty() }), [run, loadParty])
 
   const ready = useCallback(() => {
     if (guard({ party: party && party.id, map: mapKey, then: '/' })) return
@@ -359,11 +372,12 @@ export function RailProvider({ children }) {
     busy, err, say,
     stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick, leave,
     decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
+    switchNow, cancelSwitch,
     refreshParty: loadParty, refreshOnline: loadOnline,
   }), [me, signedIn, approved, requests, answerFriend, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
     mode, visibility, editable, gameMode, gameModes, busy, err, say, stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick,
     leave, decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume,
-    endGame, closeServer, loadParty, loadOnline])
+    switchNow, cancelSwitch, endGame, closeServer, loadParty, loadOnline])
 
   // The invite toasts and the /party/<code> card sit here, above the router with the rail's
   // state, so they show on every page including the replay viewer (which hides the rail).

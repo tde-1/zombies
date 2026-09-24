@@ -246,6 +246,68 @@ function lease(o) {
   return { ok: true, box: box.name, match_id: matchId, nonce, assignment: { status: 'leased', ...core, nonce, tokens: tok } }
 }
 
+// ── A PLAYER JOINS A RUNNING GAME (cloud-brief-parties.md task 2) ───────────────────────
+//
+// B: "someone joining a party whose leader is in a game inherits that game". Tokens are minted
+// at lease time only, so a party member who joined after the lease had `token: null` and the
+// box refused them. This adds them to the lease in place: same match id, same row nonce, a new
+// token of their own. The box admits any site-signed token for (steamid, match)
+// (infra/host-agent/lib/tokens.js), and it keys leases on the match id (lib/leases.js
+// planLeases), so the running game is not rebooted; forBox's list nonce moves (it carries the
+// player list) so the host learns who was added (host.js notePlayersAdded).
+const JOINABLE_STATES = ['leased', 'booting', 'ready', 'live']
+const GAME_FULL = "the game is full; you'll be in the next one"
+
+function addPlayer(matchId, p, by = null) {
+  const a = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(String(matchId))
+  if (!a) return { ok: false, error: 'no such game' }
+  if (!JOINABLE_STATES.includes(a.state)) return { ok: false, error: 'that game is not running' }
+  const steamid = String(p && typeof p === 'object' ? p.steamid : p)
+  const players = safeJson(a.players_json, []) || []
+  const tok = safeJson(a.tokens_json, {}) || {}
+  const mine = players.find((x) => String(x.steamid) === steamid)
+  if (mine) {
+    if (!tok[steamid]) {
+      tok[steamid] = tokens.issue({ steamid, matchId: a.match_id, name: mine.name })
+      db.prepare('UPDATE assignments SET tokens_json=? WHERE id=?').run(JSON.stringify(tok), a.id)
+    }
+    return { ok: true, already: true, match_id: a.match_id, token: tok[steamid] }
+  }
+  if (players.length >= 4) return { ok: false, full: true, error: GAME_FULL }
+  // The name is the account's, never the caller's (see lease()).
+  const names = require('./names')
+  const name = names.hasEnforceableName(steamid) ? names.displayName(steamid) : `P${players.length + 1}`
+  players.push({ steamid, name })
+  tok[steamid] = tokens.issue({ steamid, matchId: a.match_id, name })
+  db.prepare('UPDATE assignments SET players_json=?, tokens_json=? WHERE id=?')
+    .run(JSON.stringify(players), JSON.stringify(tok), a.id)
+  db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('assignment.add_player', ?, ?, ?)")
+    .run(by || null, JSON.stringify({ match_id: a.match_id, steamid, players: players.length }), now())
+  return { ok: true, match_id: a.match_id, token: tok[steamid], players: players.length }
+}
+
+/**
+ * [PC] A joiner's token is minted when they join the party, and their launcher may then spend
+ * longer than the token's five minutes downloading the map. The launcher's poll
+ * (parties.launchInfo) asks for the token through here: an expired one is replaced, for a
+ * player the lease names, while the game is running. A token still in date is returned as it
+ * is (the box refuses a token it has already admitted, so a live one is never swapped).
+ */
+function freshToken(a, steamid) {
+  const tok = safeJson(a.tokens_json, {}) || {}
+  const sid = String(steamid)
+  const cur = tok[sid] || null
+  if (!cur || !JOINABLE_STATES.includes(a.state)) return cur
+  let exp = 0
+  try { exp = Number(JSON.parse(Buffer.from(String(cur).split('.')[0], 'base64url').toString('utf8')).exp) || 0 } catch { exp = 0 }
+  if (exp * 1000 > now()) return cur
+  const me = (safeJson(a.players_json, []) || []).find((x) => String(x.steamid) === sid)
+  if (!me) return cur
+  tok[sid] = tokens.issue({ steamid: sid, matchId: a.match_id, name: me.name })
+  db.prepare('UPDATE assignments SET tokens_json=? WHERE id=?').run(JSON.stringify(tok), a.id)
+  return tok[sid]
+}
+
 /**
  * What the box's poll sees. `idle` is a first-class answer, not an empty response.
  *
@@ -264,7 +326,9 @@ function forBox(box, { v = 1 } = {}) {
       status: list.length ? 'leased' : 'idle',
       // [RS] `hold_idle` changes without the lease changing, and the box only re-reads the
       // list when this nonce moves, so it is part of it.
-      nonce: list.length ? nonceOf(list.map((x) => x.nonce + (x.hold_idle ? '+hold' : ''))) : 'idle',
+      // [PC] So does the player list: a player added to a running lease (addPlayer) keeps the
+      // row's nonce, and the box has to re-read the list to learn about them.
+      nonce: list.length ? nonceOf(list.map((x) => x.nonce + (x.hold_idle ? '+hold' : '') + '+' + x.whitelist.join(','))) : 'idle',
       assignments: list,
     }
   }
@@ -452,4 +516,4 @@ function popular({ days = 30, limit = 40 } = {}) {
   return out.slice(0, Math.max(1, Math.min(200, Number(limit) || 40)))
 }
 
-module.exports = { lease, forBox, ack, cancel, release, live, nonceOf, capacity, notePoll, admit, popular, NO_FREE }
+module.exports = { lease, forBox, ack, cancel, release, live, nonceOf, capacity, notePoll, admit, popular, addPlayer, freshToken, NO_FREE, GAME_FULL }

@@ -149,6 +149,8 @@ function router() {
   // progress.
   r.get('/play', requireUser, (req, res) => {
     const sid = req.me.steam_id
+    const row = parties.forPlayerRow(sid)
+    if (row && row.pending_map_key) parties.maybeSwitch(row.id)   // [PC] a pending map switch
     const party = parties.forPlayer(sid)
     const launch = parties.launchInfo(sid)
     const mapKey = (launch && launch.map) || (party && party.map && party.map.key) || null
@@ -171,8 +173,14 @@ function router() {
       closed: launch && launch.match_id ? null : seats.closedFor(sid),
       party: party ? { id: party.id, code: party.code, mode: party.mode, visibility: party.visibility, members: party.members, all_ready: party.all_ready, is_leader: party.is_leader } : null,
       map: m ? mapPayload(m) : null,
+      // [PC] The map the leader is switching to while this game runs: the launcher downloads
+      // it now and reports progress; the site switches everybody when nobody is still
+      // downloading (lib/parties.js switchMap).
+      pending_map: party && party.pending_map ? (() => { const pm = maps.byKey(party.pending_map.key); return pm ? mapPayload(pm) : { key: party.pending_map.key } })() : null,
       match: launch ? {
         match_id: launch.match_id,
+        // [PC] The match this one replaced: the launcher ends ITS game for that match only.
+        switched_from: launch.switched_from || null,
         mode: launch.mode,
         fs_game: launch.fs_game,
         // THE PLAYER'S OWN TOKEN AND NOBODY ELSE'S. The launcher passes it to the game

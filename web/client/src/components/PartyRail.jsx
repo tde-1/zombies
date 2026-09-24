@@ -573,6 +573,26 @@ function ServerCard({ R }) {
     }
   }
 
+  // A map switch the leader asked for while this game runs (lib/parties.js switchMap).
+  const pend = p && p.pending_map
+  let switching = null
+  if (pend) {
+    const who = (pend.waiting || []).map((w) => nameOf(w)).filter(Boolean)
+    switching = (
+      <div className="prail-live-switch">
+        <span className="prail-live-switch-text">
+          Switching to {prettyTitle(pend.title, pend.key)}{who.length ? ` · waiting for ${who.join(', ')}` : ''}
+        </span>
+        {p.is_leader && (
+          <>
+            <button className="prail-sub-btn" disabled={R.busy} onClick={R.switchNow}>Switch now</button>
+            <button className="prail-sub-btn" disabled={R.busy} onClick={R.cancelSwitch}>Cancel</button>
+          </>
+        )}
+      </div>
+    )
+  }
+
   const booting = (state === 'launching' || state === 'in-game') && !(R.launch && R.launch.connect)
   return (
     <div className="prail-live">
@@ -604,6 +624,7 @@ function ServerCard({ R }) {
           {booting && (
             <div className="prail-live-booting"><span className="spinner" /> {state === 'launching' ? 'Starting…' : 'Connecting…'}</div>
           )}
+          {switching}
           {primary}
           {secondary}
         </div>

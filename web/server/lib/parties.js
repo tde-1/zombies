@@ -42,6 +42,21 @@ const { addColumn } = require('../db/database')
 // already show to everybody (publicLobbies): the link opens a private lobby, so its code is
 // handed out by the party and nowhere else, and the leader can change it.
 addColumn('parties', 'link_code', 'TEXT')
+// [PC] The map the leader is switching to while the party's game runs (switchMap), and when
+// they asked. The game goes on until the switch happens.
+addColumn('parties', 'pending_map_key', 'TEXT')
+addColumn('parties', 'pending_since', 'INTEGER')
+// [PC] The match a switched-to game replaces: the launcher ends ITS game for that one only.
+addColumn('assignments', 'switched_from', 'TEXT')
+
+// ── B's defaults for a party that carries over (cloud-brief-parties.md §3). B may change
+//    these; each is one named constant.
+// A map switch takes everyone straight into the new game (false: back to the ready check).
+const SWITCH_STRAIGHT_IN = true
+// A member whose launcher has said nothing about the pending map counts as having it after
+// this long (silence is not a refusal, partyProgress.pending). Somebody who IS downloading
+// holds the switch until they finish, or the leader presses Switch now.
+const SWITCH_SILENCE_MS = 30_000
 
 // Socket fan-out, set by server/index.js: (steamIds[], event, payload) => void. Movement's
 // realtime.emitUser, with the same event names: invite_received, invite_withdrawn,
@@ -91,6 +106,8 @@ function project(p, viewer = null) {
     visibility: p.visibility,
     state: p.state,
     match_id: p.match_id || null,
+    // [PC] The leader is switching the party's game to this map (switchMap); null otherwise.
+    pending_map: pendingView(p),
     settings: safeJson(p.settings_json, {}) || {},
     ready_since: p.ready_since || null,
     is_leader: viewer ? String(viewer) === String(p.leader) : false,
@@ -163,7 +180,16 @@ function join(steamId, partyId, { viaLink = false } = {}) {
   db.prepare("UPDATE party_invites SET state='used' WHERE party_id=? AND to_steam=? AND state='pending'").run(p.id, String(steamId))
   db.prepare('UPDATE parties SET updated_at=? WHERE id=?').run(now(), p.id)
   tellParty(p.id, { kind: 'joined', username: nameOf(steamId) }, steamId)
-  return { ok: true, party: project(byId(p.id), steamId) }
+  // [PC] The party's game is running: the joiner inherits it (cloud-brief-parties.md task 2).
+  // Their launcher follows the match as any member's does (seats.phaseOf -> `in-game`), now
+  // with a token of their own. A full game refuses them politely; they stay in the party.
+  let game = null
+  if (p.match_id) {
+    const r = assignments.addPlayer(p.match_id, { steamid: String(steamId) }, String(steamId))
+    game = r.ok ? { match_id: r.match_id, joined: true } : { match_id: p.match_id, joined: false, error: r.error }
+    if (r.ok && !r.already) tellParty(p.id, { kind: 'joined_game', username: nameOf(steamId), match_id: r.match_id })
+  }
+  return { ok: true, party: project(byId(p.id), steamId), ...(game ? { game } : {}) }
 }
 
 function leave(steamId) {
@@ -243,6 +269,123 @@ function setSettings(steamId, settings) {
   if (p.party.mode !== 'custom') return { ok: false, error: 'Verified games use the map’s stock settings' }
   db.prepare('UPDATE parties SET settings_json=?, updated_at=? WHERE id=?').run(JSON.stringify(settings || {}), now(), p.party.id)
   return { ok: true, party: project(byId(p.party.id), steamId) }
+}
+
+// ── [PC] SWITCHING MAP WHILE A GAME RUNS (cloud-brief-parties.md task 3) ───────────────────
+//
+// B: "changing map while a server is running switches the party's server, instead of
+// refusing." We close the old server and open a new one rather than changing map in place (a
+// custom map needs its own fs_game, so a fresh process anyway). The switch waits until nobody
+// is still downloading the new map, or the leader presses Switch now; then everybody is made
+// ready and the party launches with force. The new lease supersedes the old one (lease() rule
+// 1: the same party) and carries `switched_from`, which is the ONE thing that lets a member's
+// launcher end the game it is running (launcher followgate.js).
+
+/** The party's game, if one is running (a live-state lease), else null. */
+function runningGame(party) {
+  if (!party || !party.match_id) return null
+  const a = db.prepare('SELECT * FROM assignments WHERE match_id=?').get(party.match_id)
+  return a && ['leased', 'ready', 'live'].includes(a.state) ? a : null
+}
+
+function pendingView(p) {
+  if (!p || !p.pending_map_key) return null
+  const m = db.prepare('SELECT key, title FROM maps WHERE key=?').get(p.pending_map_key)
+  const ids = memberIds(p.id)
+  return { key: p.pending_map_key, title: (m && m.title) || p.pending_map_key, since: p.pending_since || null, waiting: switchWaiting(p, ids).map((w) => ({ ...users.publicById(w.steam_id), state: w.state, pct: w.pct == null ? null : w.pct })) }
+}
+
+// Who the switch is still waiting for: anybody downloading or failed, and, inside the silence
+// window, anybody whose launcher has not said it has the map. A stock map needs nobody.
+function switchWaiting(p, ids) {
+  const m = db.prepare('SELECT source FROM maps WHERE key=?').get(p.pending_map_key)
+  if (m && m.source === 'stock') return []
+  const out = progress.pending(p.id, ids)
+  if (now() - (p.pending_since || 0) >= SWITCH_SILENCE_MS) return out
+  const said = progress.forParty(p.id)
+  for (const sid of ids) if (!said[String(sid)]) out.push({ steam_id: String(sid), state: 'silent', pct: null })
+  return out
+}
+
+function switchMap(steamId, mapKey) {
+  const lead = mustLead(steamId)
+  if (!lead.ok) return lead
+  const party = lead.party
+  const key = mapKey ? String(mapKey) : ''
+  const map = key ? db.prepare('SELECT * FROM maps WHERE key=?').get(key) : null
+  if (!map) return { ok: false, error: 'no such map' }
+  if (!runningGame(party)) return setMap(steamId, key)        // no game running: an ordinary change
+  if (!maps.onServer(map)) return { ok: false, error: 'that map does not run on our servers yet' }
+  if (String(party.map_key) === key) return cancelSwitch(steamId)   // back to the map being played
+  db.prepare('UPDATE parties SET pending_map_key=?, pending_since=?, updated_at=? WHERE id=?').run(key, now(), now(), party.id)
+  // Progress is about the pending map from here on.
+  progress.clear(party.id)
+  tellParty(party.id, { kind: 'switch_pending', username: nameOf(steamId), map: key }, steamId)
+  const done = maybeSwitch(party.id, { by: String(steamId) })
+  return { ok: true, pending: !done.switched, ...(done.switched ? { match_id: done.match_id } : {}), ...(done.error ? { error_detail: done.error } : {}), party: project(byId(party.id), steamId) }
+}
+
+function cancelSwitch(steamId) {
+  const lead = mustLead(steamId)
+  if (!lead.ok) return lead
+  if (lead.party.pending_map_key) {
+    db.prepare('UPDATE parties SET pending_map_key=NULL, pending_since=NULL, updated_at=? WHERE id=?').run(now(), lead.party.id)
+    progress.clear(lead.party.id)
+    tellParty(lead.party.id, { kind: 'switch_cancelled', username: nameOf(steamId) }, steamId)
+  }
+  return { ok: true, party: project(byId(lead.party.id), steamId) }
+}
+
+function switchNow(steamId) {
+  const lead = mustLead(steamId)
+  if (!lead.ok) return lead
+  if (!lead.party.pending_map_key) return { ok: false, error: 'no map switch is pending' }
+  const done = maybeSwitch(lead.party.id, { force: true, by: String(steamId) })
+  if (done.error) return { ok: false, error: done.error }
+  return { ok: true, switched: !!done.switched, ...(done.match_id ? { match_id: done.match_id } : {}), party: project(byId(lead.party.id), steamId) }
+}
+
+/**
+ * Switch now if nobody is still downloading (or `force`). Called from switchMap, every
+ * progress report and every launcher/rail poll, so a switch happens within a poll of the last
+ * download finishing. Cheap and a no-op for a party with nothing pending.
+ */
+function maybeSwitch(partyId, { force = false, by = null } = {}) {
+  const party = byId(partyId)
+  if (!party || !party.pending_map_key) return { switched: false }
+  const old = runningGame(party)
+  if (!old) {
+    // The game ended on its own meanwhile: the pending map is simply the party's map now.
+    db.prepare('UPDATE parties SET map_key=?, game_mode=NULL, pending_map_key=NULL, pending_since=NULL, updated_at=? WHERE id=?')
+      .run(party.pending_map_key, now(), party.id)
+    return { switched: false, applied: true }
+  }
+  const ids = memberIds(party.id)
+  if (!force && switchWaiting(party, ids).length) return { switched: false, waiting: true }
+
+  const key = party.pending_map_key
+  const restore = db.prepare('UPDATE parties SET map_key=?, game_mode=?, pending_map_key=?, pending_since=?, state=?, updated_at=? WHERE id=?')
+  db.prepare('UPDATE parties SET map_key=?, game_mode=NULL, pending_map_key=NULL, pending_since=NULL, updated_at=? WHERE id=?').run(key, now(), party.id)
+  if (!SWITCH_STRAIGHT_IN) {
+    assignments.cancel(old.match_id, by || party.leader)
+    db.prepare("UPDATE parties SET state='forming', match_id=NULL, ready_since=NULL WHERE id=?").run(party.id)
+    clearReady(party.id)
+    tellParty(party.id, { kind: 'switched', map: key, match_id: null })
+    return { switched: true, match_id: null }
+  }
+  db.prepare('UPDATE party_members SET ready=1 WHERE party_id=?').run(party.id)
+  db.prepare("UPDATE parties SET state='ready-check', ready_since=? WHERE id=?").run(now(), party.id)
+  const r = launch(party.leader, { force: true })
+  if (!r.ok) {
+    restore.run(party.map_key, party.game_mode, key, party.pending_since, party.state, now(), party.id)
+    clearReady(party.id)
+    return { switched: false, error: r.error || 'the switch could not start the new game' }
+  }
+  db.prepare('UPDATE assignments SET switched_from=? WHERE match_id=?').run(old.match_id, r.match_id)
+  db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('party.switch_map', ?, ?, ?)")
+    .run(by || null, JSON.stringify({ party_id: party.id, from_match: old.match_id, from_map: party.map_key, to_match: r.match_id, to_map: key, forced: !!force }), now())
+  tellParty(party.id, { kind: 'switched', map: key, match_id: r.match_id })
+  return { switched: true, match_id: r.match_id }
 }
 
 function mustLead(steamId) {
@@ -348,7 +491,11 @@ function launchInfo(steamId) {
     fs_game: a.fs_game,
     mode: a.mode,
     state: a.state,
-    token: tokens[String(steamId)] || null,
+    // [PC] The match this one replaced (a map switch): the launcher ends that game, and only that.
+    switched_from: a.switched_from || null,
+    // [PC] A player who has never connected to this match (a party member who joined while
+    // it was running and is still downloading its map) gets their expired token replaced.
+    token: (require('./seats').stateOf(a.match_id, steamId) === 'never' ? assignments.freshToken(a, steamId) : tokens[String(steamId)]) || null,
     // The connect string is filled in by the box's status report; until the box says ready
     // there is nothing to connect to and the launcher shows "Reserving server".
     connect: a.state === 'ready' || a.state === 'live' ? connectFor(a) : null,
@@ -420,6 +567,7 @@ function reportProgress(steamId, partyId, body) {
   if (!out.ok) return out
   const ids = db.prepare('SELECT steam_id FROM party_members WHERE party_id=? ORDER BY joined_at').all(party.id).map((m) => m.steam_id)
   if (out.stored) progress.broadcast(party.id, ids)
+  if (party.pending_map_key) maybeSwitch(party.id)
   return { ok: true, stored: !!out.stored, progress: out.progress, installs_ok: progress.installsOk(party.id, ids) }
 }
 
@@ -616,4 +764,5 @@ module.exports = {
   startReadyCheck, setReady, cancelReadyCheck, launch, launchInfo, reportProgress,
   invite, invitesFor, acceptInvite, declineInvite, cancelInvite, kick, quickJoin, publicLobbies, forPlayerRow,
   link, resetLink, linkPreview, joinByLink, isLinkCode, setEmitter, INVITE_TTL_MS,
+  switchMap, switchNow, cancelSwitch, maybeSwitch, SWITCH_STRAIGHT_IN, SWITCH_SILENCE_MS,
 }
