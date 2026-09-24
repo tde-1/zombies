@@ -1,7 +1,8 @@
 # Kickstart — start here
 
-You are picking up an in-flight prototype. Read this page, then `../../STATUS.md`, then the one
-lane doc you are working in. Three minutes.
+You are picking up an in-flight prototype. Read this page, then the top table of `next-session.md`, then the **newest dated section** of the one
+lane doc you are working in (find it with `grep -n '^## ' <doc>`, read from there). Three minutes.
+The token rules are in the root `CLAUDE.md`.
 
 ## Where things stand (2026-09-23, 03:30 UK handoff)
 
@@ -15,7 +16,7 @@ Restart / Exit, friends and invites), always the stock font, a hang watchdog. Th
 is Movement's rail, map page, profile and mode-home `/maps`, Steam-only with an ENW username; installers
 and maps download from the `enw-zombies` bucket. **Pause is off on the box** until a write probe names
 a script-VM overflow. `next-session.md` has the one-page state, the open bugs and B's decisions;
-`../../STATUS.md` is the current truth; each lane doc's newest dated section is the detail.
+`next-session.md`'s top table is the current truth (STATUS.md points to it); each lane doc's newest dated section is the detail.
 
 Corrections that pre-date you and will save you a wrong turn:
 
