@@ -2231,3 +2231,19 @@ The test now has no default site and refuses `:3200`. `box-a`'s pinned key is a 
   the never-joined close (`46748e1`). Every other lease is unchanged. Live on the box as `9e9e86a`.
 - Proven: a bot lease ran 30 min to round 16. A real player's lease still evicts it (`INCIDENT
   ram_evict … real:true`, 22:01 UTC).
+
+## 2026-09-24 cloud — parties that carry over (cloud-brief-parties.md tasks 1-3)
+
+- `Game.tellExpectedPlayers(why)`: `{t:'expected_players', n: lease players}` to the game on `attach` (a boot's
+  link, or a warm instance's link handed to a lease), on every `map_loaded`, and on `players_added`. The DLL side
+  is `dedi.md` §30.
+- `Host.notePlayersAdded(list)` (called from `onAssignment`): when the site adds a player to a running lease
+  (`web assignments.addPlayer`: same match id, same per-lease nonce, a new token), the running game's
+  `assignment` gets the new players/whitelist/tokens, a `players_added` host event, and a new count. Leases are
+  keyed on the match id (`lib/leases.js planLeases`), so nothing is retired or booted. The site's v2 list nonce
+  now carries each lease's whitelist, which is what makes the box re-read the list.
+- A map switch is an ordinary supersede on this side: the old lease leaves the list, `applyLeases` retires it
+  (replay signed, `instance_retired`), the new match boots.
+- `sim/engine.js` accepts `expected_players`. New `test/party-carryover.js` (`npm run test:party-carryover`):
+  count sent for a lease of 2; P3 added -> same instance + pid, `expected_players 3`, nothing retired or booted;
+  switched lease -> old retired, new booted and told 3. PASS. `npm test`: 113 / 22 / 81 passed, 0 failed.

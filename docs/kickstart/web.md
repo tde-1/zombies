@@ -3503,3 +3503,42 @@ charge < 85% and free RAM > 5 GB:
 * `cd launcher && npx electron test/attention-electron.mjs`: one invisible off-screen window, real
   `flashFrame`, the dot from the real tray image, the toast XML into a real `Notification` (never
   shown), the chime rendered offline (no speakers); prints `ATTENTION_ELECTRON {...}` and exits.
+
+## 2026-09-24 cloud — parties that carry over (cloud-brief-parties.md tasks 2-4)
+
+**Task 2, joiners inherit the game.** `assignments.addPlayer(matchId, {steamid}, by)` for a lease in
+`leased|booting|ready|live`: 4 max (`GAME_FULL`: "the game is full; you'll be in the next one"; the member stays
+in the party), a token of their own, `players_json`/`tokens_json` updated, the row nonce kept. `parties.join()`
+calls it when the party has a `match_id` and tells the party `joined_game`. `forBox` v2's list nonce now includes
+each lease's whitelist (so the box learns of the new player; `host.md` 2026-09-24). `launchInfo` asks
+`assignments.freshToken()`, which re-mints an EXPIRED token for a player the lease names who has never connected
+(a joiner's map download can outlast the token's 5 min).
+
+**Task 3, switch map while a game runs.** Columns `parties.pending_map_key`, `pending_since`,
+`assignments.switched_from` (`addColumn`). `parties.switchMap/switchNow/cancelSwitch/maybeSwitch`, routes
+`POST /api/party/switch {map_key}`, `/party/switch/now`, `/party/switch/cancel`. Named constants (B's defaults):
+`SWITCH_STRAIGHT_IN = true`, `SWITCH_SILENCE_MS = 30000` (a launcher that said nothing stops holding the switch
+after that; somebody downloading or failed holds it until Switch now; a stock map needs nobody). The switch:
+map set, everyone ready, `launch({force:true})`, new row `switched_from` = old match (lease rule 1 supersedes the
+old). `maybeSwitch` runs on every progress report and every `/api/party` and `/api/launcher/play` poll. Party
+projection and `/api/launcher/play` carry `pending_map`; the play poll's `match.switched_from`. Rail: the throw at
+`rail.jsx` is now a confirm ("Switch everyone to X? This game ends when everyone has the map.") + `/party/switch`;
+the server card shows "Switching to X · waiting for …" with Switch now / Cancel (leader). Client `vite build` OK.
+
+**Task 4, where parties broke up** (all found by tests in `test/party-carryover.js`, then fixed):
+1. `seats.quit` (the Esc menu's Exit game, and the rail's "End game" on a resumable card) called
+   `parties.leave()`: a solo Quit deleted the party, a co-op Quit took the quitter out. Now nobody leaves; the seat
+   is `quit` (phase `selected`, not followed). Two `run-all.js` checks that encoded the old rule were updated.
+2. `results.closeAssignment` and `boxes.reapGhostLeases` reset the party with no match check, so a superseded
+   game's late result (a map switch, Play again) took the party out of its NEW game. Now `AND (match_id=? OR NULL)`.
+3. `create()` on an existing party ignored the rail's `mapKey` (a stale rail launched the old map). Now the leader
+   of a forming party gets the map and mode they pressed Play on; nobody else's create changes anything.
+Checked, not a break-up: `/party/leave` (Leave button with a confirm), kick (leader), `join()` leaving your old
+party (accepting an invite / link / quick join is explicit), launcher sign-out (local only), launcher quit (cancels
+its flow only), the in-game menu's invite accept (a join). Survives a site restart (party rows are in SQLite; a
+fresh process reads the same party). **Suspected, not proven:** a stale rail with `party` null while the server
+party is in-game: `create()` returns it unchanged, then `/party/ready-check` has no state check and a solo
+party's launch supersedes its own running game with the old map. Not fixed (no test reproduces a stale rail).
+
+Tests: `node test/party-carryover.js` 21 passed, 0 failed (added to `npm run check`). `run-all.js` 154/0; every
+other file as on the base commit (`launcher-signin.js` 14/1 fails there too: Steam mode, no passport-steam).

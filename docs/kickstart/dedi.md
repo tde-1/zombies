@@ -4017,3 +4017,30 @@ does it count clients with state > 1. The box runs `onlinegame 1`, `systemlink 0
 Separately, a real late joiner on Hijacked lands at the origin (the map has no usable fallback spawn), so the
 late-join path needs a rescue too. **Not fixed yet**: fix proposal (expected count from the lease via the
 game link, with a deadline; origin-spawn rescue) is waiting on B.
+
+## 30. 2026-09-24 cloud — round 1 waits for the lease's players; the late-spawn rescue (cloud-brief-parties.md task 1)
+
+Built in a cloud session from §29's proposal (B's go: the brief). **Not built or run on Windows yet**; the local
+session's steps are `cloud-handback-parties.md` §Local.
+
+- **`expected_players.cpp`** (dedicated only). Byte-checks `0x52E910` [V] = `A1 48 83 05 03`; on a mismatch logs
+  `NOT patching` and does nothing. Otherwise a 5-byte jmp to a naked stub `push ebx; push esi; call answer;
+  mov esi,eax; mov ebx,1; jmp 0x52E995` [V]. `answer()` = `expected_players_rules.hpp expected_players()`:
+  `max(1, lease, connecting)` for 90 s (`kRound1WaitMs`, B's default), then `max(1, connecting)`; lease unknown
+  (0) = `max(1, connecting)`, the stock non-online branch. `connecting` = `svs.clients` (`0x2547090` [V], stride
+  `0x58D30` [V]) with state > 1. The 90 s window opens at the first poll or when a lease count arrives (a warm
+  instance), closes on the level notify `all_players_connected`, and a poll after a > 5 s quiet gap post round 1
+  opens a new one (a `map_restart` re-running `_load.gsc`). Log once per change:
+  `expected_players: lease 2, connecting 1 -> 2`. Kill switch `ENW_NO_EXPECTED_PLAYERS=1`.
+- **The count** is the game-link message `{"t":"expected_players","n":N}` (`game-link-v0.md`), sent by the host on
+  link, on every `map_loaded` and when players are added to a running lease (`host.md`, 2026-09-24 section).
+- **`spawn_rescue.cpp`** (dedicated only). A spawn after `all_players_connected` is watched 3 s; at the origin
+  (x,y = 0,0), on nothing (still, 500 ms after spawning: `kOnNothingGraceMs`, a choice made here) or 128+ units
+  below its spawn point, the player is moved to the newest breadcrumb (every 250 ms while alive on the world, 8 s
+  ring) of a living teammate that is >= 1 s old and >= 40 units from every player now; velocity zeroed. One try
+  per spawn. Reads are `solo_parity.cpp`'s. **The WRITE is `[unverified]`:** `playerState.origin` (gclient +0x20)
+  and `.velocity` (+0x2C) — reading them is proven by solo_parity's logs; that pmove takes a written origin, and
+  that the client accepts the jump without a teleport bit in `eFlags`, is not. Kill switch `ENW_NO_SPAWN_RESCUE=1`.
+- **Tests:** `server/tests/expected_players_test.cpp`, 42 checks (answer, window incl. warm lease, restart and
+  tick wrap; rescue triggers; crumb ring; spot choice). `g++ -std=c++17`: 42 passed, 0 failed. The two .cpp files
+  were syntax-checked with clang (`-fms-extensions -fasm-blocks`, stub `windows.h`), not compiled by MSVC.

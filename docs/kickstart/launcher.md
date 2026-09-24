@@ -3160,3 +3160,21 @@ watcher ignores `.part` and reports once, wiring); `waw-settings` 20/0.
 
 **Unproven:** a real Electron run (a real toast and its buttons through the protocol hand-off,
 `showItemInFolder`, the watcher on a real Pictures folder, OneDrive-redirected Pictures).
+
+## 2026-09-24 cloud — follow a joined party's game; a map switch ends our game (cloud-brief-parties.md tasks 2-3)
+
+- `followgate.js`: `watchPids(set, matchId)` ties a game's pids to the match it was launched for (main.js passes
+  `flow.snapshot().matchId || noted`); `aliveGame()`. **The one case that ends a running game:** the poll names a
+  new match whose `match.switched_from` is the match OUR running game was launched for -> `decide()` returns
+  `{follow:false, end:pid}` once per pid (checked before the flow guard, since the old game's flow is still up).
+  A different `switched_from`, the same match id, no `switched_from`, or a game not tied to a match never ends
+  anything. main.js ends it through the End game path (`l.stop('the party switched map')`, toast "Switching map.
+  Your game is closing; the new one starts next."); the next poll, no game alive, follows the new match.
+- A party member who joins while the leader is in a game is followed in by the unchanged rule (never launched,
+  FOLLOW state); the site now gives them a token (`web.md` 2026-09-24).
+- `onPlay` 1b: the poll's `pending_map` is downloaded even mid-game and reported to the party
+  (`partyprogress.attach` accepts the pending map); already on disk -> one `installed` report.
+- Tests (`test/run-all.js`): 5 new (joiner follows once; switch ends once then follows; never ends otherwise; main.js
+  wiring; pending-map reporting). 193 passed, 5 failed — the same 5 fail on the base commit (Linux paths / the
+  client DLL / settings read-back); "an in-game change is read back" also flakes there (1 in 3 on the base).
+- **No release.** Needs a real Electron run and a publish by the recipe.
