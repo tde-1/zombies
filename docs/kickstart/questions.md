@@ -607,3 +607,13 @@ a keepalive restart; it uses this PC's ssh key read-only.
   EGX-based maps share guns). Half a start: `tools/maps/map_features.py` already reads each held
   map's `include_weapon` calls, but keeps only the wonder weapons in
   `web/server/data/map-features.json`; the full list would need keeping. Parked; nothing draws it.
+
+## Answered 2026-09-24 (B) — disconnect pause + reconnect
+
+- Drop hold: 5-10 min is fine; set to **5 min** (`--drop-hold-ms`, `ZM_DROP_HOLD_MS`).
+- `!continue` → a **Continue without** button, the party **host** only; the chat is up and the mouse free while paused.
+- Records: a rejoined run keeps its stats, XP and achievements; the leaderboard takes it **only up to the crash**
+  (`record_cut`), and players are told "Your record is no longer eligible for leaderboards, but your stats will
+  still track." `games.rejoined` flags it for a later decision.
+- Solo pause while typing in chat: wanted, as long as it does not hurt integrity (it does not: the freeze holds
+  game time). Blocked only by pause being off on the box (`local-brief-reconnect-parties.md` §4).

@@ -40,3 +40,4 @@ anything under `docs/kickstart/history/`.
 
 - 2026-09-24: No custom UIs for process/tooling — improvements land as skills, docs, hooks and CLI scripts that apply without B thinking about them.
 - 2026-09-24: B's pronouns are she/her. (Older docs say "his"; don't copy that into new text.)
+- 2026-09-24: In-game actions are UI buttons (e.g. "Continue without" on the pause screen), never chat commands like `!continue` — B: "instead of the chat command".
