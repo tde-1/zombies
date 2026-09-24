@@ -16,6 +16,9 @@ anything under `docs/kickstart/history/`.
 
 ## Saving tokens while working
 
+`node tools/ctx/ctx.js` does the lookups below cheaply (skill `find-code`). Skills `remember` and
+`handoff` fire on their own; `.claude/hooks/guard.cjs` blocks the unbreakable hard rules.
+
 - **Find, then read a span.** `grep -n` / `rg -n` for the symbol or `§` number, then read that range —
   not the whole file. Big files: every lane doc, `shared/t4/addresses.hpp`, `docs/re/t4-sp-map.md`.
 - **API before bodies.** To learn a file, list its signatures (`rg -n '^\s*(export |static |void |int |bool |function |class )' <file>`)
@@ -32,3 +35,8 @@ anything under `docs/kickstart/history/`.
 - At each handoff, move superseded next-session blocks into `docs/kickstart/history/next-session-history.md`
   so the top of the page stays short. `STATUS.md` stays a pointer.
 - One line per bug or decision, with its pointer. Evidence lives in the lane doc, not in the table.
+
+## Learned rules (skill `remember` appends here; one line each)
+
+- 2026-09-24: No custom UIs for process/tooling — improvements land as skills, docs, hooks and CLI scripts that apply without B thinking about them.
+- 2026-09-24: B's pronouns are she/her. (Older docs say "his"; don't copy that into new text.)
