@@ -257,54 +257,64 @@ export default function Maps() {
   )
 }
 
-// ── CARDS: the mode home ─────────────────────────────────────────────────────────────────
-// Movement's `ModeHome.jsx`, in its order, with the rows zombies has the data for:
+// ── CARDS: the mode home — and, since 4ebad8f, the site's front door ──────────────────
+// Movement's `ModeHome.jsx`, with the rows zombies has the data for:
 //
-//   Popular        Movement's "Popular on ENW" band, drawn as a card row: we count plays per
-//                  map, not a week, so the tiles' facts line would have nothing to say.
-//   Your maps      signed in only; Movement's empty line when you have played nothing.
-//   a row per playlist, then "All playlists" as covers — Movement: the playlists themselves
-//                  first, the index at the end. Same list /playlists draws.
+//   the lead rows  the first LEAD live curated playlists (web/tools/seed-playlists.js: the
+//                  best-known maps, stock mixed with the community's biggest). The first one
+//                  is drawn with larger cards.
+//   Your maps      signed in only, AFTER the lead rows: a returning player's own row is
+//                  useful, but not what the page should open on.
+//   the rest       every other live curated playlist, in sort order.
+//   All playlists  covers — Movement: the playlists themselves first, the index at the end.
 //   View all maps  Movement's `.mode-browse` button; it opens the list.
+//
+// ~~Popular~~ (by plays) is gone (B, 2026-09-24): a few hundred beta plays ranked the page by
+// who happened to test what. The order is the playlists' now.
 //
 // Every row is real or absent, Movement's rule: a row with nothing in it does not render.
 const ROW_N = 12
+const LEAD = 3
 
 function MapsHome({ onView, onAll, signedIn }) {
   const nav = useNavigate()
-  const [popular, setPopular] = useState(null)
+  const [total, setTotal] = useState(null)
   const [yours, setYours] = useState(null)
-  const [lists, setLists] = useState([])
+  const [lists, setLists] = useState(null)
 
   useEffect(() => {
     let dead = false
-    api.get(`/api/maps?sort=popular&limit=${ROW_N}`)
-      .then((d) => { if (!dead) setPopular(d) })
-      .catch(() => { if (!dead) setPopular({ maps: [], total: 0 }) })
-    api.get('/api/playlists').then((d) => { if (!dead) setLists((d && d.playlists) || []) }).catch(() => {})
+    api.get('/api/maps?limit=1').then((d) => { if (!dead) setTotal((d && d.total) || 0) }).catch(() => {})
+    api.get('/api/playlists')
+      .then((d) => { if (!dead) setLists((d && d.playlists) || []) })
+      .catch(() => { if (!dead) setLists([]) })
     if (signedIn) api.get(`/api/maps?progress=played&limit=${ROW_N}`).then((d) => { if (!dead) setYours(d) }).catch(() => {})
     else setYours(null)
     return () => { dead = true }
   }, [signedIn])
 
-  const withMaps = lists.filter((pl) => pl.maps && pl.maps.length)
+  const withMaps = (lists || []).filter((pl) => pl.maps && pl.maps.length)
   const curated = withMaps.filter((pl) => pl.kind !== 'creator')
+
+  const row = (pl, i) => (
+    <MapRow key={pl.id} title={pl.name} count={pl.map_count} className={i === 0 ? 'lead' : undefined}
+            blurb={pl.progress ? `${pl.progress.done} / ${pl.progress.total} beaten` : null}
+            onOpen={() => nav(`/playlists/${pl.slug}`)}>
+      {pl.maps.map((m) => <MapCard key={m.key} map={m} />)}
+    </MapRow>
+  )
 
   return (
     <div className="page wide">
       <div className="mk-head">
         <h2 className="mk-title">Maps</h2>
-        {popular && popular.total > 0 && <span className="mk-count num">{num(popular.total)}</span>}
+        {total > 0 && <span className="mk-count num">{num(total)}</span>}
         <ModeViewSwitch current="cards" onGo={onView} />
       </div>
 
-      {!popular ? <Loading /> : (
+      {!lists ? <Loading /> : (
         <>
-          {popular.maps.length > 0 && (
-            <MapRow title="Popular" count={popular.maps.length}>
-              {popular.maps.map((m) => <MapCard key={m.key} map={m} />)}
-            </MapRow>
-          )}
+          {curated.slice(0, LEAD).map(row)}
 
           {signedIn && yours && (yours.maps.length > 0 ? (
             <MapRow title="Your maps" count={yours.total}>
@@ -316,13 +326,7 @@ function MapsHome({ onView, onAll, signedIn }) {
             </MapRow>
           ))}
 
-          {curated.map((pl) => (
-            <MapRow key={pl.id} title={pl.name} count={pl.map_count}
-                    blurb={pl.progress ? `${pl.progress.done} / ${pl.progress.total} beaten` : null}
-                    onOpen={() => nav(`/playlists/${pl.slug}`)}>
-              {pl.maps.map((m) => <MapCard key={m.key} map={m} />)}
-            </MapRow>
-          ))}
+          {curated.slice(LEAD).map((pl, i) => row(pl, i + LEAD))}
 
           {withMaps.length > 0 && (
             <MapRow title="All playlists" count={withMaps.length}>
