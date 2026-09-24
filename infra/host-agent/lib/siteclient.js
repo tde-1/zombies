@@ -276,6 +276,9 @@ export class SiteClient extends EventEmitter {
         // posted: a quit must never hold the game the way a drop does (lib/referee.js
         // markQuit). The reply is the fastest way the site has to say it, ~4x a second.
         if (r?.quit && typeof r.quit === 'object') this.emit('quit', r.quit)
+        // The party host pressed Continue without (web lib/seats.js continueWithout), per
+        // match: `{ <match_id>: { by, at } }`, handed over once.
+        if (r?.continue && typeof r.continue === 'object') this.emit('continue', r.continue)
       } catch (e) {
         this.stats.liveDropped += frames.length
         this.log.debug(`live frame: ${e.message}`)

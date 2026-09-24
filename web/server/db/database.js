@@ -1005,6 +1005,9 @@ function migrate() {
   addColumn('parties', 'game_mode', 'TEXT')
   addColumn('assignments', 'game_mode', 'TEXT')
   addColumn('games', 'game_mode', 'TEXT')
+  // [reconnect] 1: somebody dropped and rejoined; 2: one of them had dropped while down.
+  // Not a record verdict (B 2026-09-24: decide later), lib/results.js.
+  addColumn('games', 'rejoined', 'INTEGER DEFAULT 0')
   addColumn('boards', 'game_mode', "TEXT NOT NULL DEFAULT ''")
 
   // ── Telemetry (docs/kickstart/telemetry.md, 2026-09-23) ─────────────────────────────

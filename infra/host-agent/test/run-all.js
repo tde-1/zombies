@@ -253,7 +253,7 @@ t('solo crash: the whole game pauses for the grace window, then saves', () => {
 
 t('a solo crash hold is not ended by the two-minute empty close (B: resumable for ten minutes)', () => {
   const r = makeRef({ mode: 'custom' })
-  eq(r.cfg.crashGraceMs, 10 * MIN, 'the default grace is the site\'s resume window')
+  eq(r.cfg.crashGraceMs, 5 * MIN, 'the default grace is the site\'s resume window (B 2026-09-24: 5 min)')
   bootGame(r, { players: 1 })
   r.onEvent({ t: 'player_disconnect', ms: 3 * MIN, slot: 0, reason: 'connection lost' })
   eq(r.phase, 'paused')
@@ -365,13 +365,13 @@ t('drop hold: a co-op player who drops holds the WHOLE game, and the others are 
   eq(r.phase, 'paused', 'co-op is held too, not only solo')
   eq(r.pauseSource, 'host')
   ok(r.cmds.some((c) => c.t === 'pause'), 'the game is told to freeze')
-  ok(r.cmds.some((c) => c.t === 'say' && /P1 lost connection\. Paused for up to 10 min/.test(c.text)), 'the others are told who and how long')
+  ok(r.cmds.some((c) => c.t === 'say' && /P1 lost connection\. Paused for up to 5 min/.test(c.text)), 'the others are told who and how long')
   eq(wanted.length, 0, 'the state came on the event, so nothing is asked for')
   eq(r.stateFor('76561198000000001').score, 12340, 'and it is held for them')
   const s = r.state()
   eq(s.away.length, 1)
   eq(s.away[0].name, 'P1')
-  ok(s.away[0].left_ms > 9 * MIN && s.away[0].left_ms <= 10 * MIN, 'the site can show the time left')
+  ok(s.away[0].left_ms > 4 * MIN && s.away[0].left_ms <= 5 * MIN, 'the site can show the time left')
 })
 
 t('drop hold: player_lost freezes the game while the body is still seated', () => {
@@ -495,18 +495,35 @@ t('drop hold: a quit on purpose never holds the game, and a late quit notice rel
   ok(!r.markQuit('76561198000000002'), 'once')
 })
 
-t('drop hold: !continue from a player still here stops the wait', () => {
+t('drop hold: the host\'s Continue without stops the wait; chat never does (B 2026-09-24)', () => {
   const r = makeRef({ mode: 'custom' })
   bootReconnect(r, 2)
   r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, silent_ms: 5000, state: STATE1 })
-  r.onEvent({ t: 'chat', ms: 61_000, slot: 1, text: '!continue' })
-  eq(r.away.size, 1, 'the away player cannot say it (their slot is lost)')
-  r.onEvent({ t: 'chat', ms: 62_000, slot: 0, text: 'hello' })
-  eq(r.away.size, 1, 'ordinary chat does nothing')
-  r.onEvent({ t: 'chat', ms: 63_000, slot: 0, text: ' !Continue ' })
+  ok(r.cmds.some((c) => c.t === 'say' && /The host can continue without them/.test(c.text)), 'the notice names the button, not a command')
+  r.onEvent({ t: 'chat', ms: 62_000, slot: 0, text: '!continue' })
+  eq(r.away.size, 1, 'the old chat command does nothing now')
+  ok(r.continueWithout('76561198000000001'))
   eq(r.away.size, 0)
+  ok(!r.continueWithout(), 'nothing to continue from twice')
   ok(r.cmds.some((c) => c.t === 'kick' && c.slot === 1))
   ok(r.cmds.some((c) => c.t === 'say' && /Playing on\. Resuming in 10 seconds/.test(c.text)))
+})
+
+t('record cut (B 2026-09-24): a rejoin keeps the run for stats, the leaderboard stops at the drop', () => {
+  const r = makeRef({ mode: 'custom', config: { resumeCountdownMs: 0 } })
+  bootReconnect(r, 2)
+  r.onEvent({ t: 'round', ms: 50_000, n: 4 })
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, silent_ms: 5000, state: STATE1 })
+  const cutRound = r.maxRound
+  r.onEvent({ t: 'player_disconnect', ms: 61_000, slot: 1, reason: 'timeout' })
+  r.onEvent({ t: 'player_connect', ms: 70_000, slot: 1, name: 'P1', steamid: '76561198000000001' })
+  ok(r.flags.has('rejoined') && r.flags.has('record_cut'), [...r.flags].join(','))
+  ok(r.cmds.some((c) => c.t === 'say' && /no longer eligible for leaderboards past round \d+, but your stats will still track/.test(c.text)), 'the players are told')
+  r.onEvent({ t: 'round', ms: 90_000, n: 9 })
+  const s = r.summary()
+  ok(s.record_cut, 'summary carries the cut')
+  eq(s.record_cut.round, cutRound, 'the cut is the round at the drop')
+  ok(s.rounds >= 9, 'the game itself goes on to round 9 for stats')
 })
 
 t('drop hold: dropping while down is flagged when they come back (vault 10 §5 rejoin-after-bleedout)', () => {
@@ -515,7 +532,7 @@ t('drop hold: dropping while down is flagged when they come back (vault 10 §5 r
   r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, state: { ...STATE1, down: true } })
   r.onEvent({ t: 'player_connect', ms: 90_000, slot: 2, name: 'P1', steamid: '76561198000000001' })
   ok(r.flags.has('rejoined_while_down'))
-  ok(r.cmds.some((c) => c.t === 'tell' && c.slot === 2 && /no longer counts for records/.test(c.text)))
+  ok(r.cmds.some((c) => c.t === 'tell' && c.slot === 2 && /The record stops where you dropped; your stats still track/.test(c.text)))
 })
 
 t('drop hold: a record game pauses in co-op too, but never restores and is not tagged Resumed', () => {

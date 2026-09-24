@@ -350,6 +350,66 @@ async function main() {
     eq(got, before)
   })
 
+  // ── reconnect: Continue without (B 2026-09-24), and the rejoin flag in the database ──────────
+  const live = require('../server/lib/live')
+  await check('Continue without: the party host only, while somebody is away, handed to the box once', async () => {
+    for (const s of [B, C]) parties.leave(s)
+    const m = liveParty([B])
+    eq(seats.continueWithout(A, m).ok, false, 'nobody away yet: refused')
+    live.push('carry-box', { instance: 'inst-01', match_id: m, state: { phase: 'paused', paused: true, players: [], away: [{ name: 'bravo_two', steamid: B, left_ms: 250000 }] } })
+    eq(seats.continueWithout(B, m).ok, false, 'a member cannot')
+    const r = seats.continueWithout(A, m)
+    truthy(r.ok, r.error)
+    const c = seats.takeContinue(m)
+    eq(c && c.by, A, 'the box gets it, with who asked')
+    eq(seats.takeContinue(m), null, 'and only once')
+  })
+
+  await check('a game with a rejoin is flagged in the database, and its record is not voided', async () => {
+    const m = parties.forPlayer(A).match_id
+    const r = result(m, [A, B])
+    truthy(r.ok !== false, r.error)
+    const g = db.prepare('SELECT rejoined FROM games WHERE match_id=?').get(m)
+    eq(g.rejoined, 0, 'a plain game: 0')
+    const m2 = liveParty([B])
+    const r2 = results.ingest({ box: 'carry-box', summary: { match_id: m2, mode: 'custom', map: 'nazi_zombie_carry', rounds: 3, finish: null,
+      players: [A, B].map((sid, i) => ({ slot: i, steamid: sid, name: 'p' + i, score: 1, stats: {} })), player_count: 2, solo: false, duration_ms: 1, flags: ['crash_pause', 'rejoined', 'rejoined_while_down'],
+      records_eligible: false, xp_multiplier: 0.25, started_at: new Date().toISOString(), ended_at: new Date().toISOString(), fingerprint: 'fpx' } })
+    truthy(r2.ok !== false, r2.error)
+    eq(db.prepare('SELECT rejoined FROM games WHERE match_id=?').get(m2).rejoined, 2, 'dropped while down: 2')
+  })
+
+  await check('record cut: a rejoined Verified run goes on the board up to the drop; the game keeps its full stats', async () => {
+    const records = require('../server/lib/records')
+    const verifiedResult = (m, flags, cut, extra = {}) => results.ingest({ box: 'carry-box', summary: {
+      match_id: m, mode: 'verified', map: 'nazi_zombie_carry', rounds: 20, finish: { kind: 'easter_egg', label: 'Egg' },
+      players: [A, B].map((sid, i) => ({ slot: i, steamid: sid, name: 'p' + i, identity: 'verified', score: 5000, stats: { kills: 300, downs: 1 } })),
+      player_count: 2, solo: false, duration_ms: 3_600_000, flags, records_eligible: true, xp_multiplier: 1,
+      started_at: new Date(Date.now() - 3_600_000).toISOString(), ended_at: new Date().toISOString(), fingerprint: 'fp' + m,
+      ...(cut ? { record_cut: cut } : {}), ...extra } })
+    const boardRows = (m) => db.prepare('SELECT b.category, r.round, r.value_ms FROM records r JOIN boards b ON b.id=r.board_id WHERE r.match_id=? AND b.profile=?').all(m, 'ENW-Verified')
+
+    const m1 = 'm_cut_' + Date.now().toString(36)
+    const r1 = verifiedResult(m1, ['crash_pause', 'rejoined', 'record_cut'], { round: 7, duration_ms: 900_000, finish: null })
+    truthy(r1.ok !== false, r1.error)
+    const g1 = db.prepare('SELECT * FROM games WHERE match_id=?').get(m1)
+    eq(g1.rounds, 20, 'the game itself: round 20')
+    eq(g1.rejoined, 1, 'flagged rejoined')
+    truthy(db.prepare('SELECT COUNT(*) c FROM game_players WHERE game_id=?').get(g1.id).c === 2, 'both players keep their stats rows')
+    const rows1 = boardRows(m1)
+    eq(rows1.filter((x) => x.category === 'round').map((x) => x.round).join(), '7', 'the round board takes round 7, not 20')
+    eq(rows1.filter((x) => x.category === 'ee_speedrun').length, 0, 'the Easter egg came after the rejoin: no speedrun entry')
+
+    const m2 = m1 + 'b'
+    verifiedResult(m2, ['crash_pause', 'rejoined'], null)
+    eq(boardRows(m2).length, 0, 'a rejoined game with no cut (an older box) goes on no board')
+
+    const m3 = m1 + 'c'
+    verifiedResult(m3, [], null)
+    truthy(boardRows(m3).some((x) => x.category === 'round' && x.round === 20), 'a game nobody rejoined posts as before')
+    eq(records.cutOf({ rejoined: 0 }, {}, []), null)
+  })
+
   for (const [a, b] of out) console.log(a, b)
   console.log(`\n${pass} passed, ${fail} failed`)
   process.exit(fail ? 1 : 0)

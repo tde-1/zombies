@@ -7,7 +7,7 @@
 //   * the live frame keeps the referee's `away` list, and live.hold() turns it into what the
 //     rail's server card shows (`hold` on GET /api/party and GET /api/launcher/play);
 //   * the card's words (client/src/holdLabel.js);
-//   * a player who rejoined after dropping while down voids an ENW-Verified record.
+//   * a rejoin does not void an ENW-Verified record (B 2026-09-24: flag it, decide later).
 //
 //   node test/reconnect-hold.js
 //
@@ -99,11 +99,13 @@ async function main() {
     eq(holdLabel({ paused: false, away: [{ name: 'Bex', left_ms: 1, returning: true }] }), 'Bex is loading back in')
   })
 
-  await check('ENW-Verified: rejoining after dropping while down voids the record; a plain rejoin does not', () => {
+  // B 2026-09-24: "put a rejoin flag on the database and decide later" -- no rejoin voids a
+  // record for now; games.rejoined holds it (test/party-carryover.js checks the column).
+  await check('ENW-Verified: no rejoin voids the record (yet): rejoined, resumed, rejoined_while_down', () => {
     const base = { mode: 'verified', flags: ['crash_pause', 'rejoined'] }
-    eq(records.PROFILES['ENW-Verified'].check(base), [], 'a vanilla rejoin is fine')
-    const bad = records.PROFILES['ENW-Verified'].check({ ...base, flags: [...base.flags, 'rejoined_while_down'] })
-    truthy(bad.some((x) => /dropping while down/.test(x)), JSON.stringify(bad))
+    eq(records.PROFILES['ENW-Verified'].check(base), [], 'a plain rejoin')
+    eq(records.PROFILES['ENW-Verified'].check({ ...base, flags: [...base.flags, 'resumed'] }), [], 'resumed')
+    eq(records.PROFILES['ENW-Verified'].check({ ...base, flags: [...base.flags, 'rejoined_while_down'] }), [], 'while down')
   })
 
   // ---- the route --------------------------------------------------------------------

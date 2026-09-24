@@ -317,6 +317,13 @@ export function RailProvider({ children }) {
   }, [mapKey, poolByKey, party, stage, setStage, guard, run, loadParty])
 
   // A pending map switch (party.pending_map): the leader's Switch now and Cancel.
+  // [reconnect] The party host plays on without whoever the game is paused for (B 2026-09-24:
+  // a button, not a chat command; lib/seats.js continueWithout).
+  const continueWithout = useCallback(() => run(async () => {
+    await api.post('/api/party/continue', { match_id: party && party.match_id })
+    await loadParty()
+  }), [run, party, loadParty])
+
   const switchNow = useCallback(() => run(async () => { await api.post('/api/party/switch/now'); await loadParty() }), [run, loadParty])
   const cancelSwitch = useCallback(() => run(async () => { await api.post('/api/party/switch/cancel'); await loadParty() }), [run, loadParty])
 
@@ -373,12 +380,12 @@ export function RailProvider({ children }) {
     busy, err, say,
     stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick, leave,
     decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume, hold,
-    switchNow, cancelSwitch,
+    switchNow, cancelSwitch, continueWithout,
     refreshParty: loadParty, refreshOnline: loadOnline,
   }), [me, signedIn, approved, requests, answerFriend, party, launch, invites, online, pool, poolByKey, live, stage, map, mapKey,
     mode, visibility, editable, gameMode, gameModes, busy, err, say, stageMap, setMode, setGameMode, setVisibility, invite, cancelInvite, kick,
     leave, decline, joinParty, acceptInvite, shareLink, joinByLink, play, ready, go, cancel, resumable, resume, hold,
-    switchNow, cancelSwitch, endGame, closeServer, loadParty, loadOnline])
+    switchNow, cancelSwitch, continueWithout, endGame, closeServer, loadParty, loadOnline])
 
   // The invite toasts and the /party/<code> card sit here, above the router with the rail's
   // state, so they show on every page including the replay viewer (which hides the rail).

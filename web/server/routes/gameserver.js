@@ -115,6 +115,7 @@ function router() {
     const items = Array.isArray(body.instances) ? body.instances : [body]
     let taken = 0
     const quit = {}
+    const cont = {}
     for (const it of items.slice(0, 16)) {
       // Who is connected to which match (lib/seats.js): what keeps the launcher from
       // relaunching a player who is already in, or who has just left, a game.
@@ -126,8 +127,13 @@ function router() {
         if (q.length) quit[String(it.match_id)] = q
       } catch (e) { console.warn('[gs] quitters:', e.message) }
       if (live.push(req.box.name, it)) taken++
+      // The party host pressed Continue without (lib/seats.js continueWithout): handed over once.
+      try {
+        const c = it && it.match_id ? seats.takeContinue(it.match_id) : null
+        if (c) cont[String(it.match_id)] = c
+      } catch (e) { console.warn('[gs] continue:', e.message) }
     }
-    res.json({ ok: true, taken, of: items.length, min_frame_ms: live.MIN_FRAME_MS, ...(Object.keys(quit).length ? { quit } : {}) })
+    res.json({ ok: true, taken, of: items.length, min_frame_ms: live.MIN_FRAME_MS, ...(Object.keys(quit).length ? { quit } : {}), ...(Object.keys(cont).length ? { continue: cont } : {}) })
   })
 
   // ---- status ------------------------------------------------------------------------

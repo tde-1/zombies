@@ -177,8 +177,13 @@ const cfg = {
   referee: {
     ...(() => {
       const g = Number(a['idle-gone-ms'] ?? process.env.ENW_IDLE_GONE_MS ?? 3 * 60_000)
-      return g > 0 ? { emptyCloseMs: g, crashGraceMs: g } : {}
+      // The empty close only: a DROPPED player's window is its own (--drop-hold-ms below).
+      return g > 0 ? { emptyCloseMs: g } : {}
     })(),
+    // [reconnect] B 2026-09-24: a player who drops holds the game 5 minutes ("five to ten is
+    // okay"); the party host can continue without them sooner. The site's Resume window is the
+    // same (web ZM_DROP_HOLD_MS). --crash-grace-ms is the old name and still wins.
+    crashGraceMs: Number(a['drop-hold-ms'] ?? process.env.ENW_DROP_HOLD_MS ?? 5 * 60_000),
     ...(a['cap-ms'] ? { capMs: Number(a['cap-ms']) } : {}),
     ...(a['cap-warn-ms'] ? { capWarnMs: String(a['cap-warn-ms']).split(',').map(Number) } : {}),
     ...(a['afk-warn-ms'] ? { afkWarnMs: Number(a['afk-warn-ms']) } : {}),
@@ -1092,6 +1097,7 @@ class HostAgent {
       this.site.on('assignment', (asg) => this.onAssignment(asg))
       this.site.on('chat', (e) => this.onNetworkChat(e))
       this.site.on('quit', (q) => this.onSiteQuit(q))
+      this.site.on('continue', (c) => this.onSiteContinue(c))
       this.site.start()
       this.statusTimer = setInterval(() => this.reportStatus(), 10_000); this.statusTimer.unref?.()
     }
@@ -2115,6 +2121,19 @@ class HostAgent {
         for (const sid of Array.isArray(q[id]) ? q[id] : []) {
           if (g.referee.markQuit(sid)) g.log.info(`${sid} quit ${id} on purpose (site): no drop hold for them`)
         }
+      }
+    }
+  }
+
+  /**
+   * [reconnect] The party host pressed Continue without (B 2026-09-24): `{ <match_id>: { by, at } }`
+   * off the live-frame reply. The site checked it was the host; the game stops waiting.
+   */
+  onSiteContinue(c) {
+    for (const g of this.byInstance.values()) {
+      if (g.finished) continue
+      for (const id of [g.matchId, g.leaseId].filter(Boolean)) {
+        if (c[id] && g.referee.continueWithout(c[id].by || null)) g.log.info(`Continue without from the party host (${c[id].by || '?'}) for ${id}`)
       }
     }
   }

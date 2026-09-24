@@ -211,6 +211,14 @@ function router() {
     res.status(out.ok ? 200 : 400).json(out)
   })
 
+  // CONTINUE WITHOUT from the rail's server card: the party host plays on without a player the
+  // game is paused for (lib/seats.js continueWithout). Host only.
+  r.post('/party/continue', requireUser, (req, res) => {
+    const b = req.body && typeof req.body === 'object' ? req.body : {}
+    const out = seats.continueWithout(req.me.steam_id, b.match_id ? String(b.match_id).slice(0, 40) : null)
+    res.status(out.ok ? 200 : 400).json(out)
+  })
+
   // RESUME from the rail's server card: back into the game this player crashed out of.
   // The launcher's watcher follows the phase this puts back (`in-game`), with a fresh token.
   r.post('/party/resume', requireUser, (req, res) => {

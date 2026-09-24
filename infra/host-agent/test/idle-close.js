@@ -9,7 +9,7 @@
 //      result is posted (no game was played);
 //   B. a join in progress (`hold_idle` on the lease: a download, a Resume): nothing closes
 //      while it is held; the close comes after the hold is lifted;
-//   C. the player joins and plays, then everybody leaves: the run ends --idle-gone-ms later,
+//   C. the player joins and plays, then everybody leaves: the run ends --idle-gone-ms later (a drop: --drop-hold-ms, set equal here),
 //      its result is posted with the `no_players` flag (the site's ingest ends the lease);
 //   D. a player who stays connected is never closed.
 //
@@ -82,7 +82,7 @@ const host = spawn(process.execPath, [path.join(ROOT, 'host.js'),
   '--link-port', String(PORTS.link), '--base-port', String(PORTS.base), '--dash', 'off',
   '--max-instances', '3', '--replay-dir', path.join(RUN, 'replays'), '--log-dir', path.join(RUN, 'logs'),
   '--key-dir', path.join(RUN, 'keys'), '--spool-dir', path.join(RUN, 'spool'),
-  '--idle-ready-ms', String(READY_MS), '--idle-gone-ms', String(GONE_MS), '--restart-grace-ms', '0',
+  '--idle-ready-ms', String(READY_MS), '--idle-gone-ms', String(GONE_MS), '--drop-hold-ms', String(GONE_MS), '--restart-grace-ms', '0',
 ], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
 let out = ''
 const tee = (d) => { out += d; if (a.verbose) process.stdout.write(`\x1b[90m[box]\x1b[0m ${d}`) }

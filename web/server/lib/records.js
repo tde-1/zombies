@@ -46,10 +46,9 @@ const PROFILES = {
       if (run.mode !== 'verified') bad.push('not a Verified game')
       if (run.flags.includes('late_join')) bad.push('somebody joined late')
       if (run.flags.includes('all_afk')) bad.push('everyone went AFK')
-      if (run.flags.includes('resumed')) bad.push('the game was resumed after a crash')
-      // [reconnect] vault 10 §5 "block rejoin-after-bleedout": a player who dropped while
-      // down and came back stood up without a revive (host lib/referee.js welcomeBack).
-      if (run.flags.includes('rejoined_while_down')) bad.push('a player rejoined after dropping while down')
+      // [reconnect] A rejoin (`rejoined`, `resumed`, `rejoined_while_down`: vault 10 §5's
+      // "rejoin-after-bleedout") does NOT void the record for now. B 2026-09-24: "put a rejoin
+      // flag on the database and decide later" -- games.rejoined (lib/results.js) holds it.
       return bad
     },
   },
@@ -176,6 +175,19 @@ function forMap(mapKey, { versionId = null, profile = 'ENW-Verified', limit = 10
  * Called from lib/results.ingest with the row already written. Returns the records created,
  * so the caller can write the feed lines and move the held record badges.
  */
+/**
+ * The leaderboard's view of a rejoined run: `null` = no rejoin (use the whole game), `false` =
+ * rejoined with no cut to go by (no board), else `{ round, duration_ms, finish }`.
+ */
+function cutOf(game, summary, flags) {
+  const rejoined = flags.includes('rejoined') || flags.includes('resumed') || Number(game.rejoined) > 0
+  const c = summary && summary.record_cut
+  if (c && typeof c === 'object' && Number.isFinite(Number(c.round)) && Number.isFinite(Number(c.duration_ms))) {
+    return { round: Math.max(0, Math.floor(Number(c.round))), duration_ms: Math.max(0, Number(c.duration_ms)), finish: c.finish && typeof c.finish === 'object' ? c.finish : null }
+  }
+  return rejoined ? false : null
+}
+
 function submitFromGame(game, summary) {
   if (!game.records_eligible) return []
   const roster = db.prepare('SELECT steam_id, slot FROM game_players WHERE game_id=? AND late=0 ORDER BY slot').all(game.id)
@@ -191,16 +203,27 @@ function submitFromGame(game, summary) {
     settings: safeJson(game.settings_json, {}) || {},
   }
 
+  // THE RECORD CUT (B 2026-09-24): somebody dropped and rejoined. The game counts in full for
+  // stats, XP and achievements, but the leaderboards take the run only up to the moment of the
+  // (earliest) drop they came back from: its round, its time, and a finish only if it had
+  // already happened. A rejoined game with no cut (a box from before the cut existed) goes on
+  // no board at all, rather than on one with the part after the rejoin in it.
+  const cut = cutOf(game, summary, run.flags)
+  if (cut === false) return []
+  const rounds = cut ? cut.round : game.rounds
+  const ms = cut ? cut.duration_ms : game.duration_ms
+  const finishKind = cut ? (cut.finish && cut.finish.kind) || null : game.finish_kind
+
   const made = []
   const cats = []
   // Every game posts to the round board for its player count.
-  cats.push({ category: 'round', round: game.rounds, value_ms: game.duration_ms })
+  if (rounds > 0) cats.push({ category: 'round', round: rounds, value_ms: ms })
   // A speedrun category only exists if the run actually finished that way.
-  if (game.finish_kind === 'easter_egg') cats.push({ category: 'ee_speedrun', round: game.rounds, value_ms: game.duration_ms })
-  if (game.finish_kind === 'buyable_ending') cats.push({ category: 'buyable_speedrun', round: game.rounds, value_ms: game.duration_ms })
+  if (finishKind === 'easter_egg') cats.push({ category: 'ee_speedrun', round: rounds, value_ms: ms })
+  if (finishKind === 'buyable_ending') cats.push({ category: 'buyable_speedrun', round: rounds, value_ms: ms })
   // A locked challenge preset posts to its own bracket as well as to the open one.
   const challenge = run.settings && run.settings.challenge
-  if (challenge && CATEGORY_LABEL[challenge]) cats.push({ category: challenge, round: game.rounds, value_ms: game.duration_ms })
+  if (challenge && CATEGORY_LABEL[challenge] && rounds > 0) cats.push({ category: challenge, round: rounds, value_ms: ms })
 
   for (const profile of Object.keys(PROFILES)) {
     const problems = PROFILES[profile].check(run)
@@ -306,6 +329,7 @@ const categories = () => Object.entries(CATEGORY_LABEL).map(([key, label]) => ({
 const profiles = () => Object.entries(PROFILES).map(([key, p]) => ({ key, label: p.label, note: p.note }))
 
 module.exports = {
+  cutOf,
   CATEGORY_LABEL, TIME_CATEGORIES, PROFILES,
   ensureBoard, rowsFor, forMap, submitFromGame, hub, heldBy, categories, profiles, baseCategory, categoryKey,
 }

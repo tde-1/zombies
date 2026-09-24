@@ -629,6 +629,10 @@ function ServerCard({ R }) {
             <div className="prail-live-booting"><span className="spinner" /> {state === 'launching' ? 'Starting…' : 'Connecting…'}</div>
           )}
           {switching}
+          {/* The game is paused for somebody who dropped: the party host can play on. */}
+          {R.hold && p && p.is_leader && !(R.hold.away || []).some((a) => a.you) && (
+            <button className="prail-sub-btn" disabled={R.busy} onClick={R.continueWithout}>Continue without</button>
+          )}
           {primary}
           {secondary}
         </div>

@@ -30,7 +30,7 @@ const a = parseArgs(process.argv.slice(2))
 const ROOT = path.resolve(import.meta.dirname, '..')
 const RUN = mkdirp(path.join(os.tmpdir(), 'enw-reconnect-' + Date.now().toString(36)))
 const PORTS = { site: 38951, link: 38952, base: 29850 }
-const GONE_MS = 6000   // --idle-gone-ms: also the crash grace (host.js)
+const GONE_MS = 6000   // --idle-gone-ms and --drop-hold-ms (separate settings since 2026-09-24)
 
 let failures = 0
 const ok = (m) => console.log(`  \x1b[32mok\x1b[0m   ${m}`)
@@ -89,7 +89,7 @@ const host = spawn(process.execPath, [path.join(ROOT, 'host.js'),
   '--link-port', String(PORTS.link), '--base-port', String(PORTS.base), '--dash', 'off',
   '--max-instances', '3', '--replay-dir', path.join(RUN, 'replays'), '--log-dir', path.join(RUN, 'logs'),
   '--key-dir', path.join(RUN, 'keys'), '--spool-dir', path.join(RUN, 'spool'),
-  '--idle-ready-ms', '60000', '--idle-gone-ms', String(GONE_MS), '--restart-grace-ms', '0',
+  '--idle-ready-ms', '60000', '--idle-gone-ms', String(GONE_MS), '--drop-hold-ms', String(GONE_MS), '--restart-grace-ms', '0',
 ], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
 let out = ''
 const tee = (d) => { out += d; if (a.verbose) process.stdout.write(`\x1b[90m[box]\x1b[0m ${d}`) }

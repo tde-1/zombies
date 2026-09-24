@@ -255,6 +255,13 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
       @fingerprint,@rounds,@finish_kind,@finish_label,@badge_earned,@player_count,@solo,@duration_ms,
       @duration_rta_ms,@paused_ms,@flags,@records_eligible,@xp_multiplier,@end_reason,@started_at,@ended_at,
       @received_at,@self_reported,@summary_json,@game_mode)`).run(row)
+  // [reconnect] B 2026-09-24: "put a rejoin flag on the database and decide later". A game in
+  // which somebody dropped and came back (`rejoined`, `resumed`: their state was put back) is
+  // marked here, 2 when one of them had dropped while down. Stats, XP and achievements count the
+  // whole game; the leaderboards take it only up to the drop (lib/records.js, the record cut).
+  const fl = new Set((summary.flags || []).map(String))
+  const rejoined = fl.has('rejoined_while_down') ? 2 : (fl.has('rejoined') || fl.has('resumed') || fl.has('record_cut')) ? 1 : 0
+  if (rejoined) db.prepare('UPDATE games SET rejoined=? WHERE id=?').run(rejoined, info.lastInsertRowid)
   const game = db.prepare('SELECT * FROM games WHERE id=?').get(info.lastInsertRowid)
 
   const insP = db.prepare(`INSERT OR REPLACE INTO game_players (game_id, steam_id, slot, name, score, kills, headshots,
@@ -368,8 +375,16 @@ function ingest(body, { selfReported = false, requireVerifiedIdentity = false } 
 // not a record, rather than letting the player believe it is.
 const RECORD_UPLOADED = 'Your record has been uploaded.'
 const GAME_SAVED = 'Your game has been saved. Not record-eligible.'
+// [reconnect] B 2026-09-24: somebody rejoined, so the leaderboard stops at the drop.
+const RECORD_CUT = (round) => `Someone rejoined, so your record counts up to round ${round} and no further. Your stats still track.`
+const REJOINED_SAVED = 'Your record is no longer eligible for leaderboards, but your stats will still track.'
 function noticeLine(game, p) {
-  return game.records_eligible && game.mode === 'verified' && !p.late ? RECORD_UPLOADED : GAME_SAVED
+  const eligible = game.records_eligible && game.mode === 'verified' && !p.late
+  if (Number(game.rejoined) > 0) {
+    const cut = (safeJson(game.summary_json, {}) || {}).record_cut
+    return eligible && cut && Number(cut.round) > 0 ? RECORD_CUT(Number(cut.round)) : REJOINED_SAVED
+  }
+  return eligible ? RECORD_UPLOADED : GAME_SAVED
 }
 function noticeSeated(game, seated) {
   const gameChat = require('./gameChat')   // lazy: gameChat pulls in the chat ring and parties

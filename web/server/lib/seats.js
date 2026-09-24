@@ -39,7 +39,10 @@ const { db, now } = require('../db/database')
 // B: resumable for ten minutes, then the server goes. [RS] B, 2026-09-23 19:10: "every player
 // has been gone for 3 minutes" ends the game (the host's --idle-gone-ms, lib/idle.js), so the
 // window the rail offers is the same three minutes. ZM_IDLE_GONE_MS moves both halves' default.
-const RESUME_MS = Number(process.env.ZM_IDLE_GONE_MS) > 0 ? Number(process.env.ZM_IDLE_GONE_MS) : 3 * 60_000
+// B 2026-09-24: a player who DROPS gets 5 minutes to come back ("five to ten minutes is okay");
+// the box holds the game that long (host --drop-hold-ms, ENW_DROP_HOLD_MS) and the rail offers
+// Resume for the same window. ZM_DROP_HOLD_MS moves it. (Was ZM_IDLE_GONE_MS, 3 min.)
+const RESUME_MS = Number(process.env.ZM_DROP_HOLD_MS) > 0 ? Number(process.env.ZM_DROP_HOLD_MS) : 5 * 60_000
 const RESUME_CONNECT_MS = 2 * 60_000  // a Resume must connect within this, or it is `left` again
 const seats = new Map()               // match_id -> Map(steamid -> { ever, connected, at, leftAt, quit, resumedAt })
 
@@ -268,6 +271,40 @@ function joinInProgress(matchId, partyId, steamids) {
  * drop does (infra/host-agent lib/referee.js markQuit). The box posts a run id, which for a
  * restarted run is `<lease>.r<n>`; the seat is kept under the lease id.
  */
+// ── CONTINUE WITHOUT (B 2026-09-24) ──────────────────────────────────────────────────────
+// While the game is paused for somebody who dropped, the party's HOST (its leader) can play on
+// without them: the button on the in-game pause screen (POST /api/game-chat/menu/continue) or
+// on the rail's server card (POST /api/party/continue). No chat command. The site hands the
+// box the ask once, on its next live-frame reply (`continue`, routes/gameserver.js); the box
+// releases the hold (host lib/referee.js continueWithout). The away players can still rejoin
+// the game as it has moved on.
+const continues = new Map()   // match_id -> { by, at }
+
+function continueWithout(steamid, matchId = null) {
+  const parties = require('./parties')
+  const party = parties.forPlayer(steamid)
+  if (!party) return { ok: false, error: 'not in a party' }
+  if (String(party.leader) !== String(steamid)) return { ok: false, error: 'only the party host can continue without them' }
+  const m = String(party.match_id || '')
+  if (!m) return { ok: false, error: 'no game is running' }
+  if (matchId && String(matchId) !== m && String(matchId).replace(/\.r\d+$/, '') !== m) return { ok: true, stale: true }
+  const h = require('./live').hold(m)
+  if (!h) return { ok: false, error: 'nobody is being waited for' }
+  continues.set(m, { by: String(steamid), at: now() })
+  db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('party.continue_without', ?, ?, ?)")
+    .run(String(steamid), JSON.stringify({ match_id: m, away: h.away.map((a) => a.name) }), now())
+  return { ok: true, match_id: m }
+}
+
+/** The box's next live-frame reply carries it, once. */
+function takeContinue(matchId) {
+  for (const id of [String(matchId), String(matchId).replace(/\.r\d+$/, '')]) {
+    const c = continues.get(id)
+    if (c) { continues.delete(id); return c }
+  }
+  return null
+}
+
 function quittersFor(matchId) {
   const out = new Set()
   for (const id of [String(matchId), String(matchId).replace(/\.r\d+$/, '')]) {
@@ -282,4 +319,4 @@ function forget(matchId) { seats.delete(String(matchId)) }
 /** Has the referee said anything about who is in this match since the site started? */
 const known = (matchId) => seats.has(String(matchId))
 
-module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, end, sweep, forget, known, noteClosed, closedFor, joinInProgress, quittersFor, CLOSED_TEXT, RESUME_MS }
+module.exports = { observe, stateOf, phaseOf, resumeInfo, resume, quit, end, sweep, forget, known, noteClosed, closedFor, joinInProgress, quittersFor, continueWithout, takeContinue, CLOSED_TEXT, RESUME_MS }

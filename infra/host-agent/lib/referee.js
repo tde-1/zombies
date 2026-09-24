@@ -38,7 +38,7 @@ export const DEFAULTS = {
   // vault 10 §5: 5–10 min, then a resume countdown. Ten since 2026-09-23: B's "resumable
   // from the server card" window, which the site keeps for the same ten minutes
   // (web/server/lib/seats.js RESUME_MS).
-  crashGraceMs: 10 * MIN,
+  crashGraceMs: 5 * MIN,     // a dropped player's window to come back (B 2026-09-24: 5-10 min)
   resumeCountdownMs: 10_000, // told to the players before the freeze lifts
   // DISCONNECT -> PAUSE -> RECONNECT (B 2026-09-24: "If someone disconnects from the game, it
   // pauses and allows people to reconnect and continue as if nothing happened"; vault 10 §5).
@@ -101,6 +101,7 @@ export class Referee extends EventEmitter {
     this.zombiesAliveMax = 0
     this.finish = null
     this.flags = new Set()
+    this.recordCut = null          // [reconnect] the leaderboard stops here (applyRecordCut)
     this.signals = new Set()      // per-map manifest signals seen (ticks on the badge card)
     this.warnedCaps = new Set()
     this.pauses = []                  // { fromMs, toMs, reason }
@@ -308,6 +309,8 @@ export class Referee extends EventEmitter {
     p.alive = true
     p.afkWarned = false
     this.flags.add('rejoined')
+    this.applyRecordCut(wasAway?.cut || p.dropCut || null, p.name)
+    p.dropCut = null
     // "Resumed" is the casual-game tag (vault 10 §5): the game was held and the player put
     // back. A record game's rejoin is vanilla and is not tagged (records.js voids `resumed`).
     if (this.restoreAllowed()) this.flags.add('resumed')
@@ -328,7 +331,7 @@ export class Referee extends EventEmitter {
     if (wasAway?.down) {
       this.flags.add('rejoined_while_down')
       this.log.warn(`${p.name} came back after dropping while down: game flagged rejoined_while_down`)
-      this.tell(slot, 'You dropped while down, so this game no longer counts for records.')
+      this.tell(slot, 'You dropped while down. The record stops where you dropped; your stats still track.')
     }
     if (!wasAway) { this.maybeResumeAfterCrash(); return }
     if (this.reconnectV >= 1) {
@@ -346,9 +349,37 @@ export class Referee extends EventEmitter {
   awayKey(p) { return p.steamid ? String(p.steamid) : `slot:${p.slot}` }
 
   /**
+   * [reconnect] A snapshot of the run for the leaderboard (B 2026-09-24): "rejoined runs should
+   * not be eligible to go onto the leaderboard ... you could submit the record up to the point
+   * that they crash, but not the point after they rejoin." The round the game was on, the game
+   * time and real time so far, and the finish only if it had already happened.
+   */
+  cutNow() {
+    return {
+      round: this.maxRound || 0,
+      duration_ms: this.elapsed(),
+      duration_rta_ms: this.elapsedRta(),
+      finish: this.finish ? { ...this.finish } : null,
+      at: new Date().toISOString(),
+    }
+  }
+
+  /** Keep the EARLIEST cut: the leaderboard stops at the first crash anybody came back from. */
+  applyRecordCut(cut, name) {
+    const c = cut || this.cutNow()
+    const first = !this.recordCut
+    if (first || c.duration_ms < this.recordCut.duration_ms) this.recordCut = c
+    if (first) {
+      this.flags.add('record_cut')
+      this.log.info(`${name} rejoined: the leaderboard takes this run up to round ${this.recordCut.round} (${this.recordCut.duration_ms} ms game time); stats go on`)
+      this.say(`${name} rejoined. Your record is no longer eligible for leaderboards past round ${this.recordCut.round}, but your stats will still track.`)
+    }
+  }
+
+  /**
    * The drop hold (vault 10 §5): a player who dropped without quitting holds the WHOLE game
    * for `crashGraceMs`, co-op included. The world is frozen by our `pause`; nothing moves
-   * until they are back, their grace runs out, or everyone left says `!continue`.
+   * until they are back, their grace runs out, or the party host presses Continue without.
    */
   holdForDrop(p, { lost = false, state = null } = {}) {
     if (this.phase === 'ending' || this.phase === 'over') return
@@ -373,7 +404,11 @@ export class Referee extends EventEmitter {
     const until = Date.now() + this.cfg.crashGraceMs
     const down = !!(state && (state.down || state.alive === false)) || !!p.down
     const prev = this.away.get(key)
-    this.away.set(key, { slot: p.slot, name: p.name, steamid: p.steamid || null, since: prev?.since || Date.now(), until: prev?.until || until, lost, down: prev?.down || down })
+    // THE RECORD CUT (B 2026-09-24): where the run stood the moment they dropped. If they come
+    // back, the leaderboard takes the run up to here and no further (welcomeBack).
+    const cut = prev?.cut || this.cutNow()
+    p.dropCut = p.dropCut || cut
+    this.away.set(key, { slot: p.slot, name: p.name, steamid: p.steamid || null, since: prev?.since || Date.now(), until: prev?.until || until, lost, down: prev?.down || down, cut })
     this.crashGraceUntil = Math.max(...[...this.away.values()].map((a) => a.until))
     this.flags.add('crash_pause')
     const mins = Math.max(1, Math.round(this.cfg.crashGraceMs / MIN))
@@ -385,7 +420,7 @@ export class Referee extends EventEmitter {
       // Remembered so a refusal ("pause not armed") can be told from any other reply.
       this.dropPauseId = this.recentCommands.at(-1)?.t === 'pause' ? this.recentCommands.at(-1).id : null
       this.resumeAt = null
-      if (connected.length) this.say(`${p.name} lost connection. Paused for up to ${mins} min while they reconnect. Type !continue to play on without them.`)
+      if (connected.length) this.say(`${p.name} lost connection. Paused for up to ${mins} min while they reconnect. The host can continue without them.`)
     } else if (!prev) {
       this.resumeAt = null   // a countdown for someone else is off: another one just dropped
       this.say(`${p.name} lost connection too. ${this.pauseUnavailable ? 'Keeping their place too.' : 'Still paused.'}`)
@@ -407,7 +442,7 @@ export class Referee extends EventEmitter {
     this.crashGraceUntil = null
     if (why === 'back') { this.maybeResumeAfterCrash(); return }
     if (why === 'blip') { this.countdown(this.cfg.backResumeMs, `${a.name}'s connection is back`); return }
-    // Gone for good (grace over, quit, !continue): if nobody is left at all, the game ends.
+    // Gone for good (grace over, quit, Continue without): if nobody is left at all, the game ends.
     if (![...this.players.values()].some((x) => x.connected)) {
       this.flags.add('abandoned')
       this.flags.add('no_players')   // [RS] idle auto-close, lib/idle.js "ALL GONE"
@@ -629,18 +664,23 @@ export class Referee extends EventEmitter {
   ev_chat(ev) {
     this.chatLines++
     this.touch(ev.slot, ev.ms)
-    // The players still here can stop waiting: `!continue` (or /continue, .continue) lets the
-    // world go and the away players rejoin later as the game has moved on (vanilla).
-    if (this.away.size && /^\s*[!/.]continue\s*$/i.test(String(ev.text || ''))) {
-      const who = this.players.get(ev.slot)
-      if (!who || !who.connected) return
-      this.log.info(`${who.name} typed !continue: no longer waiting for ${[...this.away.values()].map((a) => a.name).join(', ')}`)
-      for (const [key, a] of [...this.away]) {
-        this.releaseState(a.steamid)
-        this.kickGhost(a)
-        this.releaseAway(key, 'continue')
-      }
+  }
+
+  /**
+   * CONTINUE WITHOUT (B 2026-09-24; replaces the `!continue` chat command). The party's host
+   * pressed the button on the pause screen or the rail; the site checked it was the host
+   * (web lib/seats.js continueWithout) and handed it over on a live-frame reply. The world
+   * goes on, and the away players can still rejoin the game as it has moved on.
+   */
+  continueWithout(by = null) {
+    if (!this.away.size) return false
+    this.log.info(`the party host${by ? ` (${by})` : ''} pressed Continue without: no longer waiting for ${[...this.away.values()].map((a) => a.name).join(', ')}`)
+    for (const [key, a] of [...this.away]) {
+      this.releaseState(a.steamid)
+      this.kickGhost(a)
+      this.releaseAway(key, 'continue')
     }
+    return true
   }
 
   ev_input(ev) {
@@ -899,7 +939,7 @@ export class Referee extends EventEmitter {
     const src = this.pauseSource
     if (!fromGame && this.away.size) {
       // Our hold lifted with players still away (an operator, or the countdown after
-      // !continue): their bodies leave now, and they rejoin the game as it has moved on.
+      // Continue without): their bodies leave now, and they rejoin the game as it has moved on.
       for (const a of this.away.values()) { this.kickGhost(a); this.releaseState(a.steamid) }
       this.away.clear()
       this.crashGraceUntil = null
@@ -1262,6 +1302,9 @@ export class Referee extends EventEmitter {
       ended_at: this.endedAt ? new Date(this.endedAt).toISOString() : null,
       end_reason: this.endReason,
       flags: [...this.flags],
+      // [reconnect] Somebody dropped and rejoined: the leaderboard takes the run up to here
+      // (the earliest such drop) and no further. Stats, XP and achievements use the whole game.
+      record_cut: this.recordCut || null,
       records_eligible: eligible,
       verified_env: verifiedEnv,
       xp_multiplier: this.mode === 'verified' ? 1 : this.mode === 'custom' ? 0.25 : 0,

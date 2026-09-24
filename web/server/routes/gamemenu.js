@@ -15,6 +15,7 @@
 //   POST /api/game-chat/menu/invite {steam_id}      = POST /api/party/invite (approved only)
 //   POST /api/game-chat/menu/accept {invite_id}     = the rail's Accept: join that party
 //   POST /api/game-chat/menu/decline {invite_id}    = POST /api/party/invites/:id/decline
+//   POST /api/game-chat/menu/continue {match_id}    = POST /api/party/continue (party host only)
 //
 // Accepting from inside a game only moves the player into the other party on the site. The
 // LAUNCHER does the rest (launcher.md "Somebody else's Start is your launch"): its party
@@ -84,8 +85,13 @@ function state(sid) {
     map_title: i.map_title || i.map_key || null,
     mode: i.mode || null,
   }))
+  // [reconnect] The game is paused for somebody who dropped: the pause screen opens the chat,
+  // frees the mouse, and shows the host a Continue without button (B 2026-09-24).
+  const launch = party ? parties.launchInfo(sid) : null
+  const h = launch && launch.match_id ? require('../lib/live').hold(launch.match_id, sid) : null
   return {
     scope: on.scope,
+    hold: h ? { ...h, match_id: launch.match_id, can_continue: !!(party && party.is_leader) } : null,
     approved: !!(me && (me.approved || me.is_admin)),
     friends,
     invites,
@@ -114,6 +120,9 @@ function router() {
   }
   const body = (req) => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {})
   const reply = (res, out) => res.status(out && out.ok === false ? 400 : 200).json(out)
+
+  // The pause screen's Continue without (the party host only; lib/seats.js continueWithout).
+  r.post('/continue', (req, res) => reply(res, require('../lib/seats').continueWithout(sidOf(req.chatUser), body(req).match_id ? String(body(req).match_id).slice(0, 40) : null)))
 
   r.post('/invite', approved, (req, res) => {
     const to = String(body(req).steam_id || '')
