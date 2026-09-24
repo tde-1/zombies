@@ -25,6 +25,12 @@
 //                        the result — with no account on it, which is the whole rule
 // --no-join              nobody joins: the map loads and the server sits empty (idle close)
 // --leave-ms MS          every player disconnects this far into the game (idle close)
+// --reconnect            say `reconnect: 1` in map_loaded, like a DLL with reconnect_rules.hpp
+// --drop-ms MS           [reconnect] --drop-slot (default: the last seated) crashes this far
+//                        into the game: `player_lost`, the body stays seated
+// --rejoin-after MS      ...and comes back this much WALL time later (the sim clock stands
+//                        still while the host holds the pause) with --rejoin-token
+// --quit-ms MS           [reconnect] --drop-slot quits on purpose instead (a clean disconnect)
 // --stdout               no socket; print NDJSON (handy for eyeballing the stream)
 import net from 'node:net'
 import { ZombiesSim, TICK_MS } from './engine.js'
@@ -137,10 +143,33 @@ function run() {
 }
 
 function play() {
-  send({ t: 'map_loaded', ms: 0, map: sim.map, fs_game: sim.fsGame, mode: 'zombies', sv_maxclients: 4 })
+  send({ t: 'map_loaded', ms: 0, map: sim.map, fs_game: sim.fsGame, mode: 'zombies', sv_maxclients: 4, ...(a.reconnect ? { reconnect: 1 } : {}) })
 
   if (a['no-join']) console.error(`[sim ${instance}] nobody joins (--no-join)`)
   else seatRoster()
+  // [reconnect] a crash (and a relaunch), or a quit, of one seated player.
+  const dropSlot = () => (a['drop-slot'] != null ? Number(a['drop-slot']) : Math.max(...sim.players.keys()))
+  const at = (ms, fn) => { const h = () => { if (sim.ms >= ms) { sim.off('event', h); fn() } }; sim.on('event', h) }
+  if (a['drop-ms']) {
+    at(Number(a['drop-ms']), () => {
+      const p = sim.players.get(dropSlot()); if (!p) return
+      sim.losePlayer(p.slot)
+      console.error(`[sim ${instance}] slot ${p.slot} ${p.name} crashed (--drop-ms)`)
+      if (a['rejoin-after'] != null) {
+        setTimeout(() => {
+          sim.rejoinPlayer({ steamid: p.steamid, name: p.name, token: a['rejoin-token'] || null })
+          console.error(`[sim ${instance}] ${p.name} relaunched and reconnects (--rejoin-after)`)
+        }, Number(a['rejoin-after']))
+      }
+    })
+  }
+  if (a['quit-ms']) {
+    at(Number(a['quit-ms']), () => {
+      const slot = dropSlot()
+      sim.disconnectPlayer(slot, 'slot no longer active')
+      console.error(`[sim ${instance}] slot ${slot} quit (--quit-ms)`)
+    })
+  }
   if (a['leave-ms']) {
     const at = Number(a['leave-ms'])
     const h = () => {

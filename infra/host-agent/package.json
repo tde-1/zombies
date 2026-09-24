@@ -15,7 +15,8 @@
     "measure": "node tools/measure-replay.js",
     "test": "node test/run-all.js && node test/mapcache.js && node test/telemetry.js",
     "test:mapcache-host": "node test/mapcache-host.js",
-    "test:boot-queue": "node test/boot-queue.js"
+    "test:boot-queue": "node test/boot-queue.js",
+    "test:reconnect": "node test/reconnect.js"
   },
   "dependencies": {},
   "devDependencies": {}

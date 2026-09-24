@@ -342,6 +342,229 @@ t('held state goes stale when the grace window passes', () => {
   eq(r.stateFor('76561198000000001'), null, 'a stale snapshot is not handed back')
 })
 
+// ---- disconnect -> pause -> reconnect (2026-09-24, host.md "cloud: disconnect pause") ----
+// A game on a DLL that says `reconnect: 1` in map_loaded.
+function bootReconnect(r, players = 2) {
+  r.onEvent({ t: 'hello', ms: 0, instance: 'test', role: 'server', pid: 1 })
+  r.onEvent({ t: 'map_loaded', ms: 0, map: 'nazi_zombie_prototype', mode: 'zombies', sv_maxclients: 4, reconnect: 1 })
+  for (let i = 0; i < players; i++) {
+    r.onEvent({ t: 'player_connect', ms: 0, slot: i, name: `P${i}`, steamid: `7656119800000000${i}` })
+    r.onEvent({ t: 'player_spawn', ms: 0, slot: i })
+  }
+  r.onEvent({ t: 'round', ms: 0, n: 1 })
+  return r
+}
+const STATE1 = { slot: 1, steamid: '76561198000000001', score: 12340, kills: 210, downs: 3, revives: 5, headshots: 61, assists: 4, weapon: 'zombie_thompson_upgraded', down: false, alive: true, round: 7 }
+
+t('drop hold: a co-op player who drops holds the WHOLE game, and the others are told', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 3)
+  const wanted = []
+  r.on('snapshot_wanted', (x) => wanted.push(x))
+  r.onEvent({ t: 'player_disconnect', ms: 2 * MIN, slot: 1, reason: 'slot no longer active', state: STATE1 })
+  eq(r.phase, 'paused', 'co-op is held too, not only solo')
+  eq(r.pauseSource, 'host')
+  ok(r.cmds.some((c) => c.t === 'pause'), 'the game is told to freeze')
+  ok(r.cmds.some((c) => c.t === 'say' && /P1 lost connection\. Paused for up to 10 min/.test(c.text)), 'the others are told who and how long')
+  eq(wanted.length, 0, 'the state came on the event, so nothing is asked for')
+  eq(r.stateFor('76561198000000001').score, 12340, 'and it is held for them')
+  const s = r.state()
+  eq(s.away.length, 1)
+  eq(s.away[0].name, 'P1')
+  ok(s.away[0].left_ms > 9 * MIN && s.away[0].left_ms <= 10 * MIN, 'the site can show the time left')
+})
+
+t('drop hold: player_lost freezes the game while the body is still seated', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 2)
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, silent_ms: 5000, state: STATE1 })
+  eq(r.phase, 'paused')
+  eq(r.players.get(1).connected, false, 'to us they are gone (the site offers them Resume)')
+  eq(r.players.get(1).lost, true)
+  ok(r.stateFor('76561198000000001'), 'state as of their last input held')
+  // The engine drops the ghost 35 s later: nothing new is decided.
+  const pausesBefore = r.pauses.length
+  r.onEvent({ t: 'player_disconnect', ms: 95_000, slot: 1, reason: 'slot no longer active' })
+  eq(r.phase, 'paused')
+  eq(r.pauses.length, pausesBefore, 'the drop was decided at player_lost')
+  eq(r.away.size, 1)
+})
+
+t('drop hold: a network blip (player_back) resumes after a short countdown and restores nothing', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 2)
+  const restores = []
+  r.on('restore_wanted', (x) => restores.push(x))
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, silent_ms: 5000, state: STATE1 })
+  r.onEvent({ t: 'player_back', ms: 68_000, slot: 1, lost_ms: 8000 })
+  eq(r.players.get(1).connected, true)
+  eq(r.away.size, 0)
+  ok(r.cmds.some((c) => c.t === 'say' && /connection is back\. Resuming in 3 seconds/.test(c.text)), 'short countdown')
+  eq(r.stateFor('76561198000000001'), null, 'the body kept everything: nothing to restore')
+  r.resumeAt = Date.now() - 1
+  r.tick()
+  eq(r.phase, 'live')
+  eq(restores.length, 0)
+  ok(!r.flags.has('rejoined'), 'a blip is not a rejoin')
+})
+
+t('drop hold: a returning player (new slot) is restored, and the countdown waits for player_ready', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 2)
+  const restores = []
+  r.on('restore_wanted', (x) => restores.push(x))
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, silent_ms: 5000, state: STATE1 })
+  // Relaunched; the ghost is still in slot 1, so they land in slot 2.
+  r.onEvent({ t: 'player_connect', ms: 120_000, slot: 2, name: 'P1', steamid: '76561198000000001' })
+  eq(r.players.size, 2, 'the same person, not a new row')
+  eq(r.players.get(2).steamid, '76561198000000001')
+  eq(r.players.get(1), undefined, 'their record moved with them')
+  eq(restores.length, 1, 'restore sent at connect (the DLL queues it until the spawn)')
+  eq(restores[0].slot, 2)
+  eq(restores[0].state.score, 12340)
+  eq(r.phase, 'paused', 'still held: they are on the loading screen')
+  ok(!r.cmds.some((c) => c.t === 'say' && /Resuming in/.test(c.text)), 'no countdown yet')
+  ok(r.cmds.some((c) => c.t === 'say' && /P1 is back and loading in/.test(c.text)))
+  // The DLL kicks the ghost; its disconnect for slot 1 finds no record.
+  r.onEvent({ t: 'player_disconnect', ms: 120_100, slot: 1, reason: 'slot no longer active' })
+  eq(r.players.size, 2)
+  r.onEvent({ t: 'player_ready', ms: 130_000, slot: 2 })
+  ok(r.cmds.some((c) => c.t === 'say' && /Everyone is back\. Resuming in 10 seconds/.test(c.text)), 'counted down once in the world')
+  r.resumeAt = Date.now() - 1
+  r.tick()
+  eq(r.phase, 'live')
+  ok(r.flags.has('rejoined') && r.flags.has('resumed'), 'a casual game is tagged Resumed')
+  r.onEvent({ t: 'restored', ms: 131_000, slot: 2, ok: true, score: 12340, kills: 210, not_restored: ['weapons', 'perks', 'position'] })
+})
+
+t('drop hold: a returning player who never sends input is counted down after readyWaitMs', () => {
+  const r = makeRef({ mode: 'custom', config: { readyWaitMs: 1000 } })
+  bootReconnect(r, 1)
+  r.onEvent({ t: 'player_disconnect', ms: 60_000, slot: 0, reason: 'slot no longer active' })
+  r.onEvent({ t: 'player_connect', ms: 90_000, slot: 0, name: 'P0', steamid: '76561198000000000' })
+  eq(r.phase, 'paused')
+  r.away.get('76561198000000000').returnedAt -= 2000
+  r.tick()
+  ok(r.cmds.some((c) => c.t === 'say' && /Resuming in 10 seconds/.test(c.text)))
+})
+
+t('drop hold: in co-op, a player who does not come back is kicked and the others play on', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 2)
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, silent_ms: 5000, state: STATE1 })
+  r.away.get('76561198000000001').until = Date.now() - 1
+  r.tick()
+  ok(r.cmds.some((c) => c.t === 'kick' && c.slot === 1), 'their seated body leaves before the world moves')
+  eq(r.stateFor('76561198000000001'), null, 'their state is not kept past the grace')
+  ok(r.cmds.some((c) => c.t === 'say' && /P1 did not come back\. Resuming in 10 seconds/.test(c.text)))
+  eq(r.phase, 'paused', 'counting down')
+  r.resumeAt = Date.now() - 1
+  r.tick()
+  eq(r.phase, 'live', 'the game goes on, it does not end')
+  // The kicked ghost's disconnect is not a new drop.
+  r.onEvent({ t: 'player_disconnect', ms: 61_000, slot: 1, reason: 'slot no longer active' })
+  eq(r.phase, 'live')
+})
+
+t('drop hold: two away at once, each on their own clock', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 3)
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, silent_ms: 5000 })
+  r.onEvent({ t: 'player_lost', ms: 61_000, slot: 2, silent_ms: 5000 })
+  eq(r.away.size, 2)
+  ok(r.cmds.some((c) => c.t === 'say' && /P2 lost connection too/.test(c.text)))
+  eq(r.cmds.filter((c) => c.t === 'pause').length, 1, 'one freeze')
+  r.onEvent({ t: 'player_back', ms: 62_000, slot: 1 })
+  eq(r.phase, 'paused', 'still waiting for P2')
+  ok(!r.resumeAt, 'no countdown while anyone is away')
+})
+
+t('drop hold: a quit on purpose never holds the game, and a late quit notice releases it', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 3)
+  r.markQuit('76561198000000001')
+  r.onEvent({ t: 'player_disconnect', ms: 60_000, slot: 1, reason: 'slot no longer active' })
+  eq(r.phase, 'live', 'the Esc menu Exit is a quit, not a drop')
+  // The quit notice reaches us after the drop this time.
+  r.onEvent({ t: 'player_disconnect', ms: 70_000, slot: 2, reason: 'slot no longer active', state: { ...STATE1, slot: 2, steamid: '76561198000000002' } })
+  eq(r.phase, 'paused')
+  ok(r.markQuit('76561198000000002'))
+  eq(r.away.size, 0)
+  eq(r.stateFor('76561198000000002'), null)
+  ok(r.cmds.some((c) => c.t === 'say' && /Resuming in 10 seconds/.test(c.text)), 'the hold is let go')
+  ok(!r.markQuit('76561198000000002'), 'once')
+})
+
+t('drop hold: !continue from a player still here stops the wait', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 2)
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, silent_ms: 5000, state: STATE1 })
+  r.onEvent({ t: 'chat', ms: 61_000, slot: 1, text: '!continue' })
+  eq(r.away.size, 1, 'the away player cannot say it (their slot is lost)')
+  r.onEvent({ t: 'chat', ms: 62_000, slot: 0, text: 'hello' })
+  eq(r.away.size, 1, 'ordinary chat does nothing')
+  r.onEvent({ t: 'chat', ms: 63_000, slot: 0, text: ' !Continue ' })
+  eq(r.away.size, 0)
+  ok(r.cmds.some((c) => c.t === 'kick' && c.slot === 1))
+  ok(r.cmds.some((c) => c.t === 'say' && /Playing on\. Resuming in 10 seconds/.test(c.text)))
+})
+
+t('drop hold: dropping while down is flagged when they come back (vault 10 §5 rejoin-after-bleedout)', () => {
+  const r = makeRef({ mode: 'custom', config: { resumeCountdownMs: 0 } })
+  bootReconnect(r, 2)
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, state: { ...STATE1, down: true } })
+  r.onEvent({ t: 'player_connect', ms: 90_000, slot: 2, name: 'P1', steamid: '76561198000000001' })
+  ok(r.flags.has('rejoined_while_down'))
+  ok(r.cmds.some((c) => c.t === 'tell' && c.slot === 2 && /no longer counts for records/.test(c.text)))
+})
+
+t('drop hold: a record game pauses in co-op too, but never restores and is not tagged Resumed', () => {
+  const r = makeRef({ mode: 'verified', config: { resumeCountdownMs: 0 } })
+  r.recordProfile = 'ZWR-WaW-2025-09'
+  bootReconnect(r, 2)
+  const restores = []
+  r.on('restore_wanted', (x) => restores.push(x))
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, state: STATE1 })
+  eq(r.phase, 'paused', 'ZWR: back before the round changes -- the pause guarantees it')
+  eq(r.stateFor('76561198000000001'), null, 'nothing held for a record game')
+  r.onEvent({ t: 'player_connect', ms: 90_000, slot: 2, name: 'P1', steamid: '76561198000000001' })
+  r.onEvent({ t: 'player_ready', ms: 95_000, slot: 2 })
+  eq(r.phase, 'live')
+  eq(restores.length, 0)
+  ok(r.flags.has('rejoined') && !r.flags.has('resumed'), 'a vanilla rejoin, not a restored one')
+})
+
+t('drop hold: our own AFK kick is not a drop', () => {
+  const r = makeRef({ mode: 'custom', config: { afkWarnMs: 1000, afkKickMs: 2000 } })
+  bootReconnect(r, 2)
+  r.players.get(0).lastInputMs = r.now()
+  r.players.get(1).lastInputMs = r.now() - 5000
+  r.tickAfk(r.now())
+  ok(r.cmds.some((c) => c.t === 'kick' && c.slot === 1))
+  r.onEvent({ t: 'player_disconnect', ms: r.now(), slot: 1, reason: 'slot no longer active' })
+  eq(r.away.size, 0)
+})
+
+t('drop hold: --drop-pause off keeps the old rule (solo only)', () => {
+  const r = makeRef({ mode: 'custom', config: { dropPause: false } })
+  bootReconnect(r, 2)
+  r.onEvent({ t: 'player_disconnect', ms: 60_000, slot: 1, reason: 'slot no longer active' })
+  eq(r.phase, 'live', 'co-op not held')
+  r.onEvent({ t: 'player_disconnect', ms: 61_000, slot: 0, reason: 'slot no longer active' })
+  eq(r.phase, 'paused', 'the last one out still holds it')
+})
+
+t('drop hold: an operator resume lets the away players go', () => {
+  const r = makeRef({ mode: 'custom' })
+  bootReconnect(r, 2)
+  r.onEvent({ t: 'player_lost', ms: 60_000, slot: 1, state: STATE1 })
+  r.resume('operator')
+  eq(r.phase, 'live')
+  eq(r.away.size, 0)
+  ok(r.cmds.some((c) => c.t === 'kick' && c.slot === 1))
+  eq(r.state().away.length, 0)
+})
+
 t('the summary is the row the website stores', () => {
   const r = makeRef({ manifest: manifests.get('nazi_zombie_factory'), mode: 'custom' })
   bootGame(r, { players: 2, map: 'nazi_zombie_factory' })

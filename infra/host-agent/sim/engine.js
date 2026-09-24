@@ -204,6 +204,38 @@ export class ZombiesSim extends EventEmitter {
     const a = this.rng() * Math.PI * 2
     p.pos = [round2(p.centre[0] + Math.cos(a) * p.radius), round2(p.centre[1] + Math.sin(a) * p.radius), 32]
     this.emitEv({ t: 'player_spawn', slot: p.slot })
+    // A returning player's input starts to flow once they are in the world (the real DLL's
+    // player_ready, reconnect_rules.hpp).
+    if (p.rejoining) { p.rejoining = false; this.emitEv({ t: 'player_ready', slot: p.slot }) }
+  }
+
+  // ---- disconnect -> pause -> reconnect (reconnect_rules.hpp, 2026-09-24) ----------
+  /** The state as of a player's last input, the shape the DLL carries on player_lost. */
+  lastInputState(p) {
+    return {
+      slot: p.slot, ...(p.steamid ? { steamid: p.steamid } : {}), score: p.score, kills: p.kills || 0,
+      downs: p.downs || 0, revives: p.revives || 0, headshots: 0, assists: 0,
+      pos: p.pos, ang: p.ang, health: p.health, alive: p.alive, weapon: p.weapon, down: !!p.down, round: this.round,
+    }
+  }
+
+  /** The game crashed on the player's PC: no input any more, the body stays seated. */
+  losePlayer(slot) {
+    const p = this.players.get(slot); if (!p || p.lost) return
+    p.lost = true
+    this.emitEv({ t: 'player_lost', slot, silent_ms: 5000, state: this.lastInputState(p) })
+  }
+
+  /** The same person back, relaunched with a fresh invite token, in the first free slot. */
+  rejoinPlayer({ steamid, name, token }) {
+    let slot = 0
+    while (this.players.has(slot) && slot < 8) slot++
+    const ghost = [...this.players.values()].find((x) => x.lost && x.steamid === steamid)
+    const p = this.connectPlayer({ slot, name, steamid, token })
+    p.rejoining = true
+    // The DLL kicks the lost body once the same account is seated again.
+    if (ghost) this.disconnectPlayer(ghost.slot, 'reconnected in another slot')
+    return p
   }
 
   disconnectPlayer(slot, reason) {

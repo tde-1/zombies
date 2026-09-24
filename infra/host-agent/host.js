@@ -187,6 +187,11 @@ const cfg = {
     ...(a['all-afk-close-ms'] ? { allAfkCloseMs: Number(a['all-afk-close-ms']) } : {}),
     ...(a['crash-grace-ms'] ? { crashGraceMs: Number(a['crash-grace-ms']) } : {}),
     ...(a['empty-close-ms'] ? { emptyCloseMs: Number(a['empty-close-ms']) } : {}),
+    // [reconnect] --drop-pause off (or ENW_DROP_PAUSE=off): only a solo game is held when a
+    // player drops (the rule before 2026-09-24). --ready-wait-ms: how long a returning
+    // player's loading screen may hold the countdown back (lib/referee.js readyWaitMs).
+    ...((a['drop-pause'] ?? process.env.ENW_DROP_PAUSE) === 'off' ? { dropPause: false } : {}),
+    ...(a['ready-wait-ms'] ? { readyWaitMs: Number(a['ready-wait-ms']) } : {}),
   },
 }
 
@@ -268,7 +273,9 @@ class Game extends EventEmitter {
       this.recordHostEvent({ t: 'restore', slot, steamid, id: cmd.id, keys: Object.keys(state || {}) })
       this.log.info(`restoring ${steamid} into slot ${slot} (${state?.players?.length ? 'full state' : 'partial'})`)
     })
-    for (const k of ['cap_warning', 'afk_warn', 'afk_kick', 'finish', 'signal', 'paused', 'resumed', 'resume_countdown', 'state_held']) {
+    for (const k of ['cap_warning', 'afk_warn', 'afk_kick', 'finish', 'signal', 'paused', 'resumed', 'resume_countdown', 'state_held',
+      // [reconnect] the drop hold, in the replay, so "Resumed" is auditable
+      'player_away', 'player_returning', 'player_home', 'restored']) {
       this.referee.on(k, (d) => this.recordHostEvent({ t: 'referee', kind: k, ...(typeof d === 'object' ? d : { value: d }) }))
     }
     this.gameLog = new GameLog({ file: path.join(cfg.logDir, `${instance.id}.games_mp.log`), enabled: cfg.gameLog, prefix: cfg.gameLogPrefix })
@@ -1067,6 +1074,7 @@ class HostAgent {
       this.startTelemetry()
       this.site.on('assignment', (asg) => this.onAssignment(asg))
       this.site.on('chat', (e) => this.onNetworkChat(e))
+      this.site.on('quit', (q) => this.onSiteQuit(q))
       this.site.start()
       this.statusTimer = setInterval(() => this.reportStatus(), 10_000); this.statusTimer.unref?.()
     }
@@ -1232,6 +1240,12 @@ class HostAgent {
       if (s.leaveMs) simArgs.push('--leave-ms', String(s.leaveMs))
       if (s.realWarm) simArgs.push('--real-warm')
       if (s.stallRebind) simArgs.push('--stall-rebind', String(s.stallRebind))
+      // [reconnect] a crash + relaunch, or a quit, of one player (test/reconnect.js)
+      if (s.reconnect) simArgs.push('--reconnect')
+      if (s.dropMs != null) simArgs.push('--drop-ms', String(s.dropMs))
+      if (s.rejoinAfter != null) simArgs.push('--rejoin-after', String(s.rejoinAfter))
+      if (s.rejoinToken) simArgs.push('--rejoin-token', String(s.rejoinToken))
+      if (s.quitMs != null) simArgs.push('--quit-ms', String(s.quitMs))
     }
     const inst = this.instances.create({
       kind: opts.kind || 'sim',
@@ -1851,6 +1865,11 @@ class HostAgent {
         leaveMs: asg.sim?.leave_ms ?? null,
         realWarm: !!(asg.sim?.real_warm ?? a['sim-real-warm']),
         stallRebind: asg.sim?.stall_rebind ?? null,
+        reconnect: !!asg.sim?.reconnect,
+        dropMs: asg.sim?.drop_ms ?? null,
+        rejoinAfter: asg.sim?.rejoin_after ?? null,
+        rejoinToken: asg.sim?.rejoin_token ?? null,
+        quitMs: asg.sim?.quit_ms ?? null,
       },
     })
     // QUEUED IS SAID OUT LOUD (host.md §16). A lease waiting behind another game's boot
@@ -2039,6 +2058,23 @@ class HostAgent {
       match_id: game.matchId || null,
       instance: game.instance.id,
     })
+  }
+
+  /**
+   * [reconnect, 2026-09-24] The site's live-frame reply: `{ <match_id>: [steamid, ...] }`, the
+   * players who quit a match on purpose. A quit must not hold the game the way a drop does
+   * (lib/referee.js markQuit); a hold already open for them is released.
+   */
+  onSiteQuit(q) {
+    for (const g of this.byInstance.values()) {
+      if (g.finished) continue
+      const ids = [g.matchId, g.leaseId].filter(Boolean)
+      for (const id of ids) {
+        for (const sid of Array.isArray(q[id]) ? q[id] : []) {
+          if (g.referee.markQuit(sid)) g.log.info(`${sid} quit ${id} on purpose (site): no drop hold for them`)
+        }
+      }
+    }
   }
 
   /** The site's global channel said something. Push it into every live game here. */

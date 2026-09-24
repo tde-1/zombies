@@ -40,6 +40,19 @@ export const DEFAULTS = {
   // (web/server/lib/seats.js RESUME_MS).
   crashGraceMs: 10 * MIN,
   resumeCountdownMs: 10_000, // told to the players before the freeze lifts
+  // DISCONNECT -> PAUSE -> RECONNECT (B 2026-09-24: "If someone disconnects from the game, it
+  // pauses and allows people to reconnect and continue as if nothing happened"; vault 10 §5).
+  // Any player who drops without quitting holds the WHOLE game -- co-op too, not only solo --
+  // for `crashGraceMs`, each on their own clock. `dropPause:false` (host --drop-pause off,
+  // ENW_DROP_PAUSE=off) is the old rule: only a solo game is held.
+  dropPause: true,
+  // A returning player on a DLL that sends `player_ready` (map_loaded.reconnect >= 1) is
+  // counted down only once their input flows, i.e. they are past the loading screen. If it
+  // never comes, the countdown starts anyway after this.
+  readyWaitMs: 90_000,
+  // A player whose connection came back by itself (`player_back`, a network blip) was never
+  // gone from the world: a short countdown, not the full one.
+  backResumeMs: 3_000,
   lateJoinGraceMs: 30_000,   // joining within this of go-live is not "late"
   // The Verified environment (lib/verified.js, verified-rules.md). Both OFF until the
   // 2026-09-23 DLL (server dvars) and a client with fps_guard are what everyone runs; a
@@ -116,6 +129,11 @@ export class Referee extends EventEmitter {
     // Keyed to the person, not the slot, and dropped when the grace window expires.
     this.held = new Map()
     this.resumeAt = null
+    // Who the game is being held for: SteamID (or `slot:N` for a solo player with no account)
+    // -> { slot, name, since, until, lost, down }. The drop hold lasts while this is not empty.
+    this.away = new Map()
+    this.quitters = new Set()      // SteamIDs the site says quit on purpose (no hold for them)
+    this.reconnectV = 0            // map_loaded.reconnect: the DLL's reconnect support
     this.hashes = {}
     this.reported = null       // the game's own final result, verbatim (enriched game_over)
     this.matchEnd = null       // the game's "I am idle" (match_end)
@@ -203,6 +221,7 @@ export class Referee extends EventEmitter {
     this.map = ev.map
     this.fsGame = ev.fs_game || null
     this.maxClients = ev.sv_maxclients
+    this.reconnectV = Number(ev.reconnect) || 0
     this.emit('manifest_wanted', ev.map)
     this.phase = 'loading'
     this.log.info(`map_loaded ${ev.map} -> manifest "${this.manifest.title}" (${this.manifest._default ? 'built-in default' : this.manifest.confidence || 'unknown confidence'})`)
@@ -234,22 +253,7 @@ export class Referee extends EventEmitter {
         returning.slot = slot
         this.players.set(slot, returning)
       }
-      returning.connected = true
-      returning.reconnects++
-      returning.disconnectedMs = null
-      returning.lastInputMs = nowMs
-      returning.alive = true
-      this.flags.add('resumed')
-      this.log.info(`slot ${slot} ${returning.name} reconnected (${returning.reconnects})`)
-      const state = this.restoreAllowed() ? this.stateFor(returning.steamid) : null
-      if (state) {
-        this.emit('restore_wanted', { slot, steamid: returning.steamid, state })
-        this.releaseState(returning.steamid)
-        this.tell(slot, 'Welcome back — your points, weapons and perks have been restored.')
-      } else if (!this.restoreAllowed()) {
-        this.tell(slot, 'Welcome back. This is a record game, so nothing is restored — you rejoin as the game left you.')
-      }
-      this.maybeResumeAfterCrash()
+      this.welcomeBack(returning, slot, nowMs)
       return
     }
     const late = this.phase === 'live' && this.startedMs != null && nowMs - this.startedMs > this.cfg.lateJoinGraceMs
@@ -276,6 +280,9 @@ export class Referee extends EventEmitter {
       tokenOk: ev.token ? null : false, // resolved by the host's TokenGuard
     }
     this.players.set(slot, p)
+    // A solo game with no account (Local/dev) cannot match its player coming back: whoever
+    // connects is them.
+    for (const [k, a] of [...this.away]) if (!a.steamid) this.releaseAway(k, 'back')
     if (late) {
       this.flags.add('late_join')
       // Vault 4.4: late joiners can join, but the GAME earns no achievements and no
@@ -285,6 +292,205 @@ export class Referee extends EventEmitter {
       this.tell(slot, 'You joined a game in progress: no records or badges from this one.')
     }
     this.emptySinceMs = null
+  }
+
+  /**
+   * The same person, back in `slot` (a new connection, or the engine re-seating their old
+   * slot). Restore what the policy allows, and release the hold once they are in the world.
+   */
+  welcomeBack(p, slot, nowMs) {
+    const wasAway = this.away.get(this.awayKey(p))
+    p.connected = true
+    p.lost = false
+    p.reconnects++
+    p.disconnectedMs = null
+    p.lastInputMs = nowMs
+    p.alive = true
+    p.afkWarned = false
+    this.flags.add('rejoined')
+    // "Resumed" is the casual-game tag (vault 10 §5): the game was held and the player put
+    // back. A record game's rejoin is vanilla and is not tagged (records.js voids `resumed`).
+    if (this.restoreAllowed()) this.flags.add('resumed')
+    this.log.info(`slot ${slot} ${p.name} reconnected (${p.reconnects})`)
+    const state = this.restoreAllowed() ? this.stateFor(p.steamid) : null
+    if (state) {
+      this.emit('restore_wanted', { slot, steamid: p.steamid, state })
+      this.releaseState(p.steamid)
+      this.tell(slot, this.reconnectV >= 1
+        ? 'Welcome back. Your points and scoreboard are being put back.'
+        : 'Welcome back — your points, weapons and perks have been restored.')
+    } else if (!this.restoreAllowed()) {
+      this.tell(slot, 'Welcome back. This is a record game, so nothing is restored — you rejoin as the game left you.')
+    }
+    // Vault 10 §5, "Always: block rejoin-after-bleedout". The server cannot stop the level's
+    // own spawn script from standing a returning player up, so a player who dropped while
+    // down (or dead) gets that for free -- the b2-banned ghost-spawn trick. The game says so.
+    if (wasAway?.down) {
+      this.flags.add('rejoined_while_down')
+      this.log.warn(`${p.name} came back after dropping while down: game flagged rejoined_while_down`)
+      this.tell(slot, 'You dropped while down, so this game no longer counts for records.')
+    }
+    if (!wasAway) { this.maybeResumeAfterCrash(); return }
+    if (this.reconnectV >= 1) {
+      // Still on the loading screen: the countdown waits for their input (`player_ready`).
+      wasAway.returnedAt = Date.now()
+      wasAway.slot = slot
+      wasAway.awaitingReady = true
+      this.say(`${p.name} is back and loading in.`)
+      this.emit('player_returning', { slot, name: p.name, steamid: p.steamid })
+    } else {
+      this.releaseAway(p, 'back')
+    }
+  }
+
+  awayKey(p) { return p.steamid ? String(p.steamid) : `slot:${p.slot}` }
+
+  /**
+   * The drop hold (vault 10 §5): a player who dropped without quitting holds the WHOLE game
+   * for `crashGraceMs`, co-op included. The world is frozen by our `pause`; nothing moves
+   * until they are back, their grace runs out, or everyone left says `!continue`.
+   */
+  holdForDrop(p, { lost = false, state = null } = {}) {
+    if (this.phase === 'ending' || this.phase === 'over') return
+    const key = this.awayKey(p)
+    if (p.steamid && this.quitters.has(String(p.steamid))) {
+      this.log.info(`${p.name} quit on purpose: no hold`)
+      return
+    }
+    if (p.kickedByUs || p.identity === 'refused') return
+    const connected = [...this.players.values()].filter((x) => x.connected)
+    // The old rule, kept behind the switch: only a solo game is held.
+    if (!this.cfg.dropPause && connected.length > 0) return
+    // A co-op hold needs to know who comes back; a solo one does not (anyone back is them).
+    if (connected.length > 0 && !p.steamid) return
+    // The players' own pause (e.g. the last one left from the Esc menu) gives way to the
+    // drop hold: close its accounting, then hold the game ourselves.
+    if (this.phase === 'paused' && this.pauseSource === 'game') this.resume('a player left', { fromGame: true })
+    const holding = this.phase === 'paused' && this.pauseSource === 'host' && this.away.size > 0
+    if (this.phase !== 'live' && !holding) return
+    const until = Date.now() + this.cfg.crashGraceMs
+    const down = !!(state && (state.down || state.alive === false)) || !!p.down
+    const prev = this.away.get(key)
+    this.away.set(key, { slot: p.slot, name: p.name, steamid: p.steamid || null, since: prev?.since || Date.now(), until: prev?.until || until, lost, down: prev?.down || down })
+    this.crashGraceUntil = Math.max(...[...this.away.values()].map((a) => a.until))
+    this.flags.add('crash_pause')
+    const mins = Math.max(1, Math.round(this.cfg.crashGraceMs / MIN))
+    if (!holding) {
+      this.pause(connected.length ? `${p.name} lost connection` : 'player lost connection', { quiet: connected.length > 0 })
+      this.resumeAt = null
+      if (connected.length) this.say(`${p.name} lost connection. Paused for up to ${mins} min while they reconnect. Type !continue to play on without them.`)
+    } else if (!prev) {
+      this.resumeAt = null   // a countdown for someone else is off: another one just dropped
+      this.say(`${p.name} lost connection too. Still paused.`)
+    }
+    this.emit('player_away', { slot: p.slot, name: p.name, steamid: p.steamid || null, until: this.away.get(key).until })
+  }
+
+  /** One away player is dealt with (back, gone for good, quit). Resume when none is left. */
+  releaseAway(p, why) {
+    const key = typeof p === 'string' ? p : this.awayKey(p)
+    const a = this.away.get(key)
+    if (!a) return
+    this.away.delete(key)
+    this.emit('player_home', { name: a.name, steamid: a.steamid, why })
+    if (this.away.size) {
+      this.crashGraceUntil = Math.max(...[...this.away.values()].map((x) => x.until))
+      return
+    }
+    this.crashGraceUntil = null
+    if (why === 'back') { this.maybeResumeAfterCrash(); return }
+    if (why === 'blip') { this.countdown(this.cfg.backResumeMs, `${a.name}'s connection is back`); return }
+    // Gone for good (grace over, quit, !continue): if nobody is left at all, the game ends.
+    if (![...this.players.values()].some((x) => x.connected)) {
+      this.flags.add('abandoned')
+      this.flags.add('no_players')   // [RS] idle auto-close, lib/idle.js "ALL GONE"
+      this.finishGame('players_did_not_return')
+      return
+    }
+    if (this.phase === 'paused' && this.pauseSource === 'host') this.countdown(this.cfg.resumeCountdownMs, why === 'continue' ? 'playing on' : `${a.name} did not come back`)
+  }
+
+  countdown(ms, why) {
+    const secs = Math.max(0, Math.round(ms / 1000))
+    if (secs > 0) {
+      this.say(`${why[0].toUpperCase()}${why.slice(1)}. Resuming in ${secs} seconds.`)
+      this.resumeAt = Date.now() + ms
+      this.resumeWhy = why
+      this.emit('resume_countdown', { seconds: secs })
+    } else this.resume(why)
+  }
+
+  /**
+   * The site says this player quit on purpose (the Esc menu's Exit game, POST
+   * /api/party/quit; host.js reads it off the live-frame reply). A quit never holds the game;
+   * if it already did (the quit reached us after the drop), let go.
+   */
+  markQuit(steamid) {
+    const sid = String(steamid || '')
+    if (!sid || this.quitters.has(sid)) return false
+    this.quitters.add(sid)
+    this.releaseState(sid)
+    if (this.away.has(sid)) {
+      const a = this.away.get(sid)
+      this.log.info(`${a.name} quit on purpose: the hold for them is released`)
+      this.kickGhost(a)
+      this.releaseAway(sid, 'quit')
+    }
+    return true
+  }
+
+  /** A lost player's body is still seated; take it out before the world moves again. */
+  kickGhost(a) {
+    const p = this.players.get(a.slot)
+    if (p && p.lost && (!a.steamid || String(p.steamid) === String(a.steamid))) {
+      p.kickedByUs = true
+      this.send({ t: 'kick', slot: a.slot, reason: 'did not reconnect' })
+    }
+  }
+
+  /**
+   * `player_lost` (reconnect_rules.hpp): no input from this slot for ~5 s, world running. The
+   * body is still in the engine's slot; to us the player is gone, and the game is held now,
+   * before the zombies finish what the drop started.
+   */
+  ev_player_lost(ev) {
+    const p = this.players.get(ev.slot); if (!p || !p.connected) return
+    p.connected = false
+    p.lost = true
+    p.disconnectedMs = ev.ms ?? this.now()
+    p.disconnectReason = 'lost connection'
+    this.log.info(`slot ${ev.slot} ${p.name} LOST (no input for ${ev.silent_ms ?? '?'} ms)`)
+    if (ev.state && this.restoreAllowed() && p.steamid) this.holdState(p.steamid, ev.state)
+    this.holdForDrop(p, { lost: true, state: ev.state || null })
+  }
+
+  /** `player_back`: the lost slot's input moves again. A blip, unless the engine re-seated it. */
+  ev_player_back(ev) {
+    const p = this.players.get(ev.slot); if (!p || !p.lost) return
+    if (ev.reseated) { this.welcomeBack(p, ev.slot, ev.ms ?? this.now()); return }
+    p.connected = true
+    p.lost = false
+    p.disconnectedMs = null
+    p.lastInputMs = ev.ms ?? this.now()
+    // Never left the world: the body kept everything, so nothing is restored.
+    if (p.steamid) this.releaseState(p.steamid)
+    this.log.info(`slot ${ev.slot} ${p.name}: connection back after ${ev.lost_ms ?? '?'} ms`)
+    this.releaseAway(p, 'blip')
+  }
+
+  /** `player_ready`: a new connection's input flows -- they are in the world. */
+  ev_player_ready(ev) {
+    const p = this.players.get(ev.slot); if (!p) return
+    const a = this.away.get(this.awayKey(p))
+    if (a && a.awaitingReady) this.releaseAway(p, 'back')
+  }
+
+  /** `restored`: the DLL applied (or could not apply) a restore. Recorded, not ruled on. */
+  ev_restored(ev) {
+    const p = this.players.get(ev.slot)
+    if (ev.ok) this.log.info(`slot ${ev.slot} ${p?.name || ''} restored: score ${ev.score}, kills ${ev.kills}${ev.not_restored ? ` (not restored: ${ev.not_restored.join(', ')})` : ''}`)
+    else this.log.warn(`slot ${ev.slot} ${p?.name || ''} NOT restored: ${ev.error || 'unknown'}`)
+    this.emit('restored', { slot: ev.slot, ok: !!ev.ok, error: ev.error || null, not_restored: ev.not_restored || [] })
   }
 
   /**
@@ -308,15 +514,28 @@ export class Referee extends EventEmitter {
 
   ev_player_disconnect(ev) {
     const p = this.players.get(ev.slot); if (!p) return
+    if (p.lost) {
+      // The body of a player we already called lost: the engine's own timeout, or our kick.
+      // Everything about the drop was decided at `player_lost`.
+      p.lost = false
+      p.alive = false
+      p.disconnectReason = ev.reason || p.disconnectReason
+      if (ev.state && this.restoreAllowed() && p.steamid && !this.held.has(String(p.steamid))) this.holdState(p.steamid, ev.state)
+      this.log.info(`slot ${ev.slot} ${p.name}: the lost connection's slot is free (${ev.reason || 'unknown'})`)
+      return
+    }
     p.connected = false
     p.alive = false
     p.disconnectedMs = ev.ms ?? this.now()
     p.disconnectReason = ev.reason || null
     this.log.info(`slot ${ev.slot} ${p.name} disconnected (${p.disconnectReason || 'unknown'})`)
-    // Ask for the restorable state NOW, while the level still has it. A snapshot taken
-    // ten seconds later is a snapshot of a game that has moved on.
-    if (this.restoreAllowed()) this.emit('snapshot_wanted', { slot: ev.slot, steamid: p.steamid, reason: 'disconnect' })
-    this.maybePauseForCrash(p)
+    if (this.restoreAllowed()) {
+      // The DLL now carries the state as of the player's last input on the event itself; an
+      // older one is asked, NOW, while the level may still have it.
+      if (ev.state && p.steamid) this.holdState(p.steamid, ev.state)
+      else this.emit('snapshot_wanted', { slot: ev.slot, steamid: p.steamid, reason: 'disconnect' })
+    }
+    this.holdForDrop(p, { state: ev.state || null })
   }
 
   /**
@@ -398,7 +617,22 @@ export class Referee extends EventEmitter {
     p.sawStats = true
   }
 
-  ev_chat(ev) { this.chatLines++; this.touch(ev.slot, ev.ms) }
+  ev_chat(ev) {
+    this.chatLines++
+    this.touch(ev.slot, ev.ms)
+    // The players still here can stop waiting: `!continue` (or /continue, .continue) lets the
+    // world go and the away players rejoin later as the game has moved on (vanilla).
+    if (this.away.size && /^\s*[!/.]continue\s*$/i.test(String(ev.text || ''))) {
+      const who = this.players.get(ev.slot)
+      if (!who || !who.connected) return
+      this.log.info(`${who.name} typed !continue: no longer waiting for ${[...this.away.values()].map((a) => a.name).join(', ')}`)
+      for (const [key, a] of [...this.away]) {
+        this.releaseState(a.steamid)
+        this.kickGhost(a)
+        this.releaseAway(key, 'continue')
+      }
+    }
+  }
 
   ev_input(ev) {
     if (!ev.moved && !ev.turned && !ev.buttons) return
@@ -600,7 +834,7 @@ export class Referee extends EventEmitter {
    * their unpausing could never release. Every pause, whoever asked, is excluded from in-game
    * time the same way (referee.md §15).
    */
-  pause(reason = 'manual', { fromGame = false } = {}) {
+  pause(reason = 'manual', { fromGame = false, quiet = false } = {}) {
     if (this.phase === 'paused' || this.phase === 'over') return false
     this.pausePhaseBefore = this.phase
     this.phase = 'paused'
@@ -610,7 +844,7 @@ export class Referee extends EventEmitter {
     this.flags.add('paused')
     if (!fromGame) {
       this.send({ t: 'pause' })
-      this.say(`Game paused (${reason}).`)
+      if (!quiet) this.say(`Game paused (${reason}).`)
     }
     this.log.info(`paused: ${reason}${fromGame ? ' (the players)' : ''}`)
     this.emit('paused', reason)
@@ -632,6 +866,13 @@ export class Referee extends EventEmitter {
       if (this.allAfkSinceMs != null) this.allAfkSinceMs += cur.wallMs
     }
     const src = this.pauseSource
+    if (!fromGame && this.away.size) {
+      // Our hold lifted with players still away (an operator, or the countdown after
+      // !continue): their bodies leave now, and they rejoin the game as it has moved on.
+      for (const a of this.away.values()) { this.kickGhost(a); this.releaseState(a.steamid) }
+      this.away.clear()
+      this.crashGraceUntil = null
+    }
     this.phase = this.pausePhaseBefore || 'live'
     this.pauseReason = null
     this.pauseSource = null
@@ -671,31 +912,17 @@ export class Referee extends EventEmitter {
     p.pauseOnChat = ev.pchat !== false
   }
 
-  maybePauseForCrash(p) {
-    // The players' own pause (e.g. the last one left from the Esc menu) gives way to the
-    // crash pause: close its accounting, then hold the game ourselves for the grace window.
-    if (this.phase === 'paused' && this.pauseSource === 'game') this.resume('a player left', { fromGame: true })
-    if (this.phase !== 'live') return
-    if (this.mode === 'verified' && this.recordProfile) return // record games: pause allowed, no restore
-    const connected = [...this.players.values()].filter((x) => x.connected)
-    if (connected.length === 0) {
-      // Solo crash: hold the WHOLE game paused for the grace window. Nobody has this today.
-      this.pause('player lost connection')
-      this.crashGraceUntil = Date.now() + this.cfg.crashGraceMs
-      this.flags.add('crash_pause')
-    }
-  }
-
+  /** Everyone the drop hold was for is back: count down, then let the world go. */
   maybeResumeAfterCrash() {
-    if (this.phase !== 'paused' || !this.crashGraceUntil) return
+    if (this.phase !== 'paused' || this.pauseSource !== 'host' || this.away.size) return
     this.crashGraceUntil = null
-    this.flags.add('resumed')
     // A countdown, not a jump cut: unfreezing a player who is still reading the loading
     // screen hands them to a zombie. Vault 10 §5 calls this "a resume countdown".
     const secs = Math.max(0, Math.round(this.cfg.resumeCountdownMs / 1000))
     if (secs > 0) {
       this.say(`Everyone is back. Resuming in ${secs} seconds.`)
       this.resumeAt = Date.now() + this.cfg.resumeCountdownMs
+      this.resumeWhy = null
       this.emit('resume_countdown', { seconds: secs })
     } else this.resume('player is back')
   }
@@ -770,6 +997,7 @@ export class Referee extends EventEmitter {
       }
       if (idle >= this.cfg.afkKickMs && !p.afkKicked) {
         p.afkKicked = true
+        p.kickedByUs = true   // our kick is not a drop: no hold for it
         this.flags.add('afk_kick')
         this.send({ t: 'kick', slot: p.slot, reason: 'AFK' })
         this.log.warn(`AFK kick: slot ${p.slot} ${p.name}`)
@@ -789,14 +1017,27 @@ export class Referee extends EventEmitter {
   }
 
   tickGrace(now) {
-    if (this.resumeAt && Date.now() >= this.resumeAt) { this.resumeAt = null; this.resume('everyone is back') }
-    // Crash grace expired with nobody back: close the game and save what we have.
-    if (this.crashGraceUntil && Date.now() >= this.crashGraceUntil) {
+    if (this.resumeAt && Date.now() >= this.resumeAt) { this.resumeAt = null; this.resume(this.resumeWhy || 'everyone is back'); this.resumeWhy = null }
+    // The drop hold: each away player has their own grace. A returning player who never gets
+    // past the loading screen is counted down anyway after readyWaitMs. When the last grace
+    // runs out with nobody connected, releaseAway closes the game and saves what we have.
+    if (this.away.size) {
+      const t = Date.now()
+      const all = this.crashGraceUntil != null && t >= this.crashGraceUntil
+      for (const [key, a] of [...this.away]) {
+        if (a.awaitingReady && t - a.returnedAt >= this.cfg.readyWaitMs) {
+          this.log.warn(`${a.name} came back but sent no input for ${Math.round(this.cfg.readyWaitMs / 1000)} s: counting down anyway`)
+          this.releaseAway(key, 'back')
+        } else if (!a.awaitingReady && (all || t >= a.until)) {
+          this.log.info(`${a.name} did not come back within the grace window`)
+          this.releaseState(a.steamid)
+          this.kickGhost(a)
+          this.releaseAway(key, 'gone')
+        }
+        if (this.phase === 'over') return
+      }
+    } else if (this.crashGraceUntil && Date.now() >= this.crashGraceUntil) {
       this.crashGraceUntil = null
-      this.flags.add('abandoned')
-      this.flags.add('no_players')   // [RS] idle auto-close, lib/idle.js "ALL GONE"
-      this.finishGame('players_did_not_return')
-      return
     }
     if (this.allAfkPausedAt && Date.now() - this.allAfkPausedAt >= this.cfg.allAfkCloseMs) {
       this.allAfkPausedAt = null
@@ -1020,7 +1261,14 @@ export class Referee extends EventEmitter {
         alive: p.alive, down: p.down, connected: p.connected, late: p.late,
         downs: p.downs, revives: p.revives, weapon: p.weapon, pos: p.pos, ang: p.ang,
         idle_ms: Math.max(0, this.now() - (p.lastInputMs ?? this.now())), afk_warned: p.afkWarned,
-        ui: p.ui || 'clear',
+        ui: p.ui || 'clear', lost: !!p.lost,
+      })),
+      // The drop hold: who the game is paused for, and for how much longer (the site's rail
+      // shows "<name> disconnected: paused, waiting to reconnect (m:ss)").
+      away: [...this.away.values()].map((a) => ({
+        name: a.name, steamid: a.steamid, slot: a.slot,
+        left_ms: Math.max(0, a.until - Date.now()),
+        returning: !!a.awaitingReady,
       })),
       zombies: this.zombies,
     }
