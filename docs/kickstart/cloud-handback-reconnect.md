@@ -146,3 +146,29 @@ Engine BEHAVIOUR the design assumes, all [unverified]:
 
 Not done here: a `board.md` line (left for the merge, to avoid an end-of-file conflict with the
 parallel parties branch), `next-session.md` (per the brief).
+
+## B's answers (2026-09-24, late) and what changed (commit `0248131`, on `claude/awesome-mccarthy-v1krwc`)
+
+1. **Grace: 5 min** ("five to ten minutes is okay"). Its own setting now: host `--drop-hold-ms` /
+   `ENW_DROP_HOLD_MS` (default 300000), site `ZM_DROP_HOLD_MS` (the rail's Resume window). The 3-min
+   empty close (`--idle-gone-ms`) no longer sets it.
+2. **Records: stats count, the leaderboard stops at the crash.** B: "rejoined runs should not be eligible
+   to go onto the leaderboard ... you could submit the record up to the point that they crash, but not
+   the point after they rejoin." The referee snapshots round / game time / finish at every drop
+   (`cutNow`); on a rejoin the earliest becomes `summary.record_cut`, the game is flagged `record_cut`,
+   and everyone is told *"<name> rejoined. Your record is no longer eligible for leaderboards past round
+   N, but your stats will still track."* The site (`records.cutOf`) posts boards from the cut only (no
+   speedrun if the finish came after it; a rejoined game with no cut goes on no board); stats, XP,
+   achievements use the whole game. `games.rejoined` = 1, or 2 if they dropped while down. The
+   end-of-game notice: *"Someone rejoined, so your record counts up to round N and no further. Your stats
+   still track."* No rejoin voids ENW-Verified outright any more (item 2 and 6 above are superseded).
+3. **`!continue` is gone.** B: a button, "continue without", and "the host is the one that should
+   continue". The party host presses it on the rail's server card (built) or on the in-game pause
+   screen (client DLL, **not built**: `local-brief-reconnect-parties.md` §3). Site checks host
+   (`seats.continueWithout`), box gets it once on the live-frame reply (`continue`),
+   `referee.continueWithout` lets go. `GET /api/game-chat/menu/state` carries `hold` + `can_continue`.
+4. **While the game is paused the chat is up and the mouse is free** (client DLL, not built; same brief).
+5. **Solo pause while typing** is already built (`enw_pchat`, `solo_chat`, chat-overlay.md §8) and
+   worked on 0.2.13; it is off because the box runs `ENW_NO_PAUSE=1` since the 00:02 localVars
+   overwrite (dedi.md ~2703). Integrity: the freeze holds `level.time`, so a pause adds nothing to a
+   run's game time (referee.md §15); stock solo WaW pauses on Esc too.

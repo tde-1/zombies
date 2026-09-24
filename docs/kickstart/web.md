@@ -3562,3 +3562,13 @@ Cloud session. Hand-back: `cloud-handback-reconnect.md`.
   one except `launcher-signin.js` 14/1 ("/auth/steam goes to Steam", 500 vs 302: the Steam OpenID
   redirect needs outbound network), which fails identically on base `2116a43`; `map-align.js`
   skips (no Windows export). `vite build` is clean.
+
+## 2026-09-24 cloud (late) — Continue without, the record cut, the rejoin flag (B's answers)
+
+`seats.continueWithout` (party host only, only while `live.hold` names somebody) + `takeContinue` (the box
+gets it once, `continue` on the `/api/gs/live` reply); routes `POST /api/party/continue` (rail) and
+`POST /api/game-chat/menu/continue` (pause screen); `menu/state` carries `hold` + `can_continue`. Rail: a
+"Continue without" button on the server card for the host. `seats.RESUME_MS` = `ZM_DROP_HOLD_MS`, default
+5 min. `games.rejoined` (1, or 2 if dropped while down); `records.cutOf` + `submitFromGame`: a rejoined run's
+boards come from `summary.record_cut` (round, time, finish only if before the drop); stats, XP, achievements
+from the whole game; the end-of-game notice says so. `test/party-carryover.js` 24/0, `reconnect-hold.js` 6/0.

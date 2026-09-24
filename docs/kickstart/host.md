@@ -2279,3 +2279,11 @@ Cloud session (no box, no WaW). `lib/referee.js` "drop hold", wired in `host.js`
   never-back is kicked and play goes on) PASS; idle/idle-close/restart/multi-lease/boot-queue/
   mapcache/telemetry/demo-network all pass. `test/demo-local.js` "hello ignored by default" fails
   on base `2116a43` too (not this change).
+
+## 2026-09-24 cloud (late) — Continue without, `--drop-hold-ms`, the record cut
+
+`!continue` removed; `referee.continueWithout(by)` from the site's live-frame reply (`siteclient` emits
+`continue`, `host.onSiteContinue`). `--drop-hold-ms` / `ENW_DROP_HOLD_MS` (default 5 min) is the drop hold;
+`--idle-gone-ms` is now only the empty close. `cutNow()` at every drop, `applyRecordCut()` on a rejoin:
+`summary.record_cut`, flag `record_cut`, the players told. run-all 129/0; reconnect, idle-close (now passes
+`--drop-hold-ms`), party-carryover, restart PASS.
