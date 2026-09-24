@@ -3997,3 +3997,23 @@ powershell -ExecutionPolicy Bypass -File tools\dev\leasesoak.ps1 -Tag s2-factory
 # 4 bots: -Bots 4 -Player 76561198000000004 -Members 76561198000000014,76561198000000015,76561198000000016
 ```
 Output: `ZombiesDev\logs\dedi\s2\<tag>.{txt,csv,enw.log,journal.txt}`.
+
+## 29. 2026-09-24 22:10 UK — "my friend spawned outside the map, invincible" (Hijacked, 2 players): round 1 starts on the FIRST loaded player
+
+B + Moldy on `nazi_zombie_hijacked`, match `m_10ca7b6b`, inst-03, log `waw-inst-01/enw-1744.log` on the box.
+`21:07:16.326` slot 0 CS_ACTIVE → `21:07:16.466 referee: ROUND 1 (all_players_connected)` while slot 1 was
+still CS_CLIENTLOADING → `21:07:18.014 solo_parity: slot 1 SPAWNED at (0.0 0.0 -4.0) … on nothing`, then it
+settled at z −271.9 under the map (B at z −22…−60): zombies cannot path there, hence "invincible".
+`solo_parity: MISMATCH player_damageMultiplier 0.3226` (the 1-player value; 2 players = 0.3584) is the same
+bug: the game was set up for one player.
+
+**Cause (every map, every 2+ player game on the dedi):** `_load.gsc:4291 all_players_connected()` fires when
+`getnumconnectedplayers() == getnumexpectedplayers()`. `getnumexpectedplayers` = `0x52E910` [V, dump]:
+if `onlinegame` (`[0x3058348]`) or `[0x30520E0]` is set it counts **party** members (`[0x4DAB174]` = party
+active, member bytes `0x4DAAA28 + 0xC0·i` ≥ 3) and returns **1** when there is no party; only with both off
+does it count clients with state > 1. The box runs `onlinegame 1`, `systemlink 0`, and has no party → 1.
+`getnumconnectedplayers` = `0x52E9E0` (state 4 and load state 10, see `bots.cpp:120`).
+
+Separately, a real late joiner on Hijacked lands at the origin (the map has no usable fallback spawn), so the
+late-join path needs a rescue too. **Not fixed yet**: fix proposal (expected count from the lease via the
+game link, with a deadline; origin-spawn rescue) is waiting on B.
