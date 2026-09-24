@@ -247,9 +247,6 @@ html.in-launcher .mv-nav-right { right: 0; }
 .wc-close:active { background: var(--hot-deep); }
 .wc-btn:focus-visible { outline-offset: -2px; }
 /* The launcher's line in the account menu: client + update state, one quiet row. */
-.um-launcher { padding: 8px 16px 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }
-.um-launcher b { color: var(--text); font-weight: 600; }
-.um-launcher .warn { color: var(--gold); }
 .um-signed-out { display: flex; align-items: center; gap: 8px; }
 .um-cog {
   width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;

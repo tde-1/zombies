@@ -14,7 +14,9 @@ import EnwWord from '../Enw'
 // headings, one short row each).
 
 export default function EnwSection({ onStatus }) {
-  const inLauncher = !!bridge()
+  const enw = bridge()
+  const inLauncher = !!enw
+  const openScreen = (name) => { try { enw.openScreen(name) } catch { /* older launcher */ } }
   const launcher = describeLauncher(useLauncherStatus())
   const { session, refresh } = useSession()
   const saved = session && session.user && session.user.settings
@@ -43,6 +45,12 @@ export default function EnwSection({ onStatus }) {
             <div className="set-item"><div className="set-row"><span className="set-label">client</span><span className="set-value">{launcher.installed ? 'installed' : 'not installed'}</span></div></div>
             {launcher.version && <div className="set-item"><div className="set-row"><span className="set-label">version</span><span className="set-value">{launcher.version}</span></div></div>}
             {/* ~~an `update` line here~~ — the "update" section below (LauncherBoxes) says it, with the button. */}
+            {/* Moved here from the account menu (B 2026-09-24): the launcher's own screen
+                (folders, logs, remove the client) and, when missing, the client install. */}
+            <div className="set-item"><div className="set-row">
+              {!launcher.installed && <button type="button" className="btn small" onClick={() => openScreen('firstRun')}>Install the <EnwWord /> client</button>}
+              <button type="button" className="btn small" onClick={() => openScreen('settings')}>Folders, logs, uninstall</button>
+            </div></div>
           </>
         ) : (
           <div className="set-hint">open in the <EnwWord /> launcher to see the client</div>

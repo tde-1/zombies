@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, SIGN_IN } from '../api'
 import { useSession } from '../session'
 import { Level } from './Bits'
-import EnwWord from './Enw'
-import { bridge, useLauncherStatus, describeLauncher } from './launcherBridge'
+import { bridge } from './launcherBridge'
 
 // Top-right account chip: avatar + name, click for a dropdown → Profile / Badges / Settings /
 // Sign out. Copied from Movement (`movement-client/src/components/UserMenu.jsx`), including
@@ -32,11 +31,9 @@ export default function UserMenu() {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const nav = useNavigate()
-  // Inside the launcher this menu also carries what the launcher's old top bar did:
-  // Settings, the client / update status, and sign-in through the launcher's own Steam
-  // round trip (the wrapped view cannot follow Steam's OpenID page itself).
+  // Inside the launcher, signed out, this corner is sign-in through the launcher's own Steam
+  // round trip (the wrapped view cannot follow Steam's OpenID page itself) and its cog.
   const enw = bridge()
-  const launcher = describeLauncher(useLauncherStatus())
   const [signingIn, setSigningIn] = useState(false)
   const [avFailed, setAvFailed] = useState(false)
   useEffect(() => (enw && enw.onSession ? enw.onSession(() => refresh()) : undefined), [enw, refresh])
@@ -115,25 +112,9 @@ export default function UserMenu() {
               asked for World at War's own Options menus, every item, which is a page
               (pages/Settings.jsx). The profile keeps privacy, chat and badges. */}
           <button className="um-item" role="menuitem" onClick={() => go('/settings')}>Settings</button>
-          {launcher && (
-            <>
-              <div className="um-sep" />
-              <div className="um-launcher">
-                <div className={launcher.installed ? '' : 'warn'}><EnwWord /> client {launcher.installed ? 'installed' : 'not installed'}</div>
-                <div>Launcher <b>{launcher.version || '?'}</b>{launcher.update ? ` · ${launcher.update}` : ''}</div>
-              </div>
-              {!launcher.installed && (
-                <button className="um-item" role="menuitem" onClick={() => openScreen('firstRun')}>Install the <EnwWord /> client</button>
-              )}
-              {launcher.updateReady && (
-                <button className="um-item" role="menuitem" onClick={() => { setOpen(false); enw.restartAndUpdate().catch(() => {}) }}>Restart to update</button>
-              )}
-              {launcher.updateAvailable && enw.updateNow && (
-                <button className="um-item" role="menuitem" onClick={() => { setOpen(false); enw.updateNow().catch(() => {}) }}>Update now</button>
-              )}
-              <button className="um-item" role="menuitem" onClick={() => openScreen('settings')}>Launcher settings</button>
-            </>
-          )}
+          {/* ~~The launcher block~~ (client installed, launcher version, update buttons,
+              Launcher settings) — gone, B 2026-09-24: the menu is Profile, Badges, Settings.
+              All of it is on /settings → ENW; updates also have the nav's UpdateChip. */}
           <div className="um-sep" />
           <button className="um-item um-danger" role="menuitem" onClick={signOut}>Sign out</button>
         </div>

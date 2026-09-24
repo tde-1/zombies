@@ -59,6 +59,10 @@ import UpdateChip from './UpdateChip'
 //
 // The invite is Movement's own constant, `https://discord.enw.gg`, served by the API so
 // the "already linked" rule lives in exactly one place. `ENW_DISCORD_INVITE` overrides.
+// Donate (B, 2026-09-24): ENW's own store page, where any whole-pound amount goes through
+// ENW's PayPal checkout (same channel as Movement's VIP). Opens in the player's browser.
+const DONATE_URL = 'https://enw.gg/donations/'
+
 const DISCORD_SNOOZE_KEY = 'zm.discordNav.dismissedAt'
 const DISCORD_SNOOZE_MS = 24 * 60 * 60 * 1000
 
@@ -131,6 +135,7 @@ export default function Nav() {
         <div className="mv-nav-right">
           {/* Inside the launcher only: "Update 0.2.11 · Update now / Restart now / Later". */}
           <UpdateChip />
+          <a className="mv-inv" href={DONATE_URL} target="_blank" rel="noopener noreferrer">Donate<span className="ext-arrow">↗</span></a>
           <DiscordNavLink />
           <UserMenu />
           {/* Inside the launcher only: the window is frameless and this bar is its title
