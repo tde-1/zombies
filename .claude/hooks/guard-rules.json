@@ -5,5 +5,9 @@
   { "re": "\\+set\\s+developer\\s+1", "why": "Hard rule 5: never +set developer 1 on a game you want to keep running." },
   { "re": "steamapps[\\\\/]+common[\\\\/]+Call of Duty World at War[^\\n]*(Copy-Item|Move-Item|Remove-Item|Set-Content|Out-File|\\bdel\\b|\\bcopy\\b.*\\S+\\s*$|>)", "why": "Hard rule 1: B's Steam install is read-only. Copy out, never write in." },
   { "re": "keepalive\\.ps1[^\\n]*-Once", "why": "Hard rule 15: never keepalive.ps1 -Once as the only keepalive." },
-  { "re": "CoolGombies", "why": "Hard rule 10: the name is ENW Zombies." }
+  { "re": "CoolGombies", "why": "Hard rule 10: the name is ENW Zombies." },
+  { "re": "\\b(Copy-Item|Move-Item|copy|move|xcopy|cp|mv)\\b[^\\n;|&]*\\s[\"']?[^\"'\\n;|&]*steamapps[\\\\/]+common[\\\\/]+Call of Duty World at War[^\"'\\n;|&]*[\"']?\\s*(?=[;\\n|&]|$)", "why": "Hard rule 1: B's Steam install is read-only. Copy out, never write in." },
+  { "re": "-Destination\\s+[\"']?[^\"'\\n]*steamapps[\\\\/]+common[\\\\/]+Call of Duty World at War", "why": "Hard rule 1: B's Steam install is read-only. Copy out, never write in." },
+  { "re": "\\b(Set-Content|Add-Content|Out-File|Remove-Item|New-Item|Rename-Item|del|rm)\\b[^\\n;|&]*steamapps[\\\\/]+common[\\\\/]+Call of Duty World at War", "why": "Hard rule 1: B's Steam install is read-only. Copy out, never write in." },
+  { "re": ">>?\\s*[\"']?[^\"'\\n]*steamapps[\\\\/]+common[\\\\/]+Call of Duty World at War", "why": "Hard rule 1: B's Steam install is read-only. Copy out, never write in." }
 ]
