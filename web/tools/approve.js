@@ -24,7 +24,7 @@
 
 const path = require('node:path')
 
-// The seven accounts B named on 2026-09-22 for the morning.
+// The seven accounts B named on 2026-09-22 for the morning, plus the ones added after.
 const BETA = [
   ['76561198126330106', 'B', { admin: true }],
   ['76561198805847033', 'jamie'],
@@ -33,6 +33,8 @@ const BETA = [
   ['76561199013523774', 'jacob'],
   ['76561199074074176', 'air'],
   ['76561199559696300', 'toku'],
+  // Added 2026-09-24 (steamcommunity.com/profiles/76561198335411273). Play access only.
+  ['76561198335411273', null],
 ]
 
 const OWNER = BETA[0][0]
