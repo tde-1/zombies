@@ -1,0 +1,9 @@
+[
+  { "re": "CoDWaWmp\\.exe", "why": "Hard rule 2: never launch CoDWaWmp.exe (only CoDWaW.exe, localhost/LAN)." },
+  { "re": "taskkill[^\\n]*/IM\\s+\"?CoDWaW", "why": "Hard rule 4: kill only your own PIDs (taskkill /PID <yours>)." },
+  { "re": "Stop-Process[^\\n]*-Name", "why": "Hard rule 4: kill only your own PIDs (Stop-Process -Id <yours>)." },
+  { "re": "\\+set\\s+developer\\s+1", "why": "Hard rule 5: never +set developer 1 on a game you want to keep running." },
+  { "re": "steamapps[\\\\/]+common[\\\\/]+Call of Duty World at War[^\\n]*(Copy-Item|Move-Item|Remove-Item|Set-Content|Out-File|\\bdel\\b|\\bcopy\\b.*\\S+\\s*$|>)", "why": "Hard rule 1: B's Steam install is read-only. Copy out, never write in." },
+  { "re": "keepalive\\.ps1[^\\n]*-Once", "why": "Hard rule 15: never keepalive.ps1 -Once as the only keepalive." },
+  { "re": "CoolGombies", "why": "Hard rule 10: the name is ENW Zombies." }
+]
