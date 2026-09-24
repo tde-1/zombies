@@ -408,18 +408,22 @@ async function main() {
       eq(w.launches, 1, 'and only that one')
     })
 
-    check('quitting on purpose (solo) cancels the server and dissolves the party: nothing to follow', () => {
+    // B 2026-09-24 (cloud-brief-parties.md task 4): parties persist across games, so a Quit no
+    // longer dissolves the party. It used to (`out.left`, no party, phase idle).
+    check('quitting on purpose (solo) cancels the server and KEEPS the party: nothing to follow', () => {
       const m = parties.forPlayer(S).match_id
       const out = seats.quit(S, m)
-      truthy(out.ok && out.cancelled && out.left, JSON.stringify(out))
+      truthy(out.ok && out.cancelled && !out.left, JSON.stringify(out))
       eq(stateOf(m), 'cancelled')
-      eq(parties.forPlayer(S), null, 'no party')
+      truthy(parties.forPlayer(S), 'the party is still there')
+      eq(parties.forPlayer(S).state, 'forming')
       const w = watcher(S); w.flow = false
-      for (let i = 0; i < 20; i++) eq(w.poll(), 'idle')
+      for (let i = 0; i < 20; i++) eq(w.poll(), 'selected')
       eq(w.launches, 0)
     })
 
-    check('quitting from a party leaves it; the game goes on for the others', () => {
+    // B 2026-09-24 (cloud-brief-parties.md task 4): quitting a game is not leaving the party.
+    check('quitting from a party KEEPS you in it; the game goes on for the others', () => {
       const T = '76561198000000002'
       const r = startSolo(S)
       truthy(r.ok, r.error)
@@ -428,11 +432,12 @@ async function main() {
       db.prepare('UPDATE assignments SET players_json=? WHERE id=?').run(JSON.stringify([...JSON.parse(a.players_json), { steamid: T, name: 'P2' }]), a.id)
       db.prepare('INSERT INTO party_members (party_id, steam_id, ready, joined_at) VALUES (?,?,1,?)').run(a.party_id, T, now())
       const out = seats.quit(S, r.match_id)
-      eq(out.cancelled, false); eq(out.left, true)
+      eq(out.cancelled, false); eq(out.left, false)
       eq(stateOf(r.match_id), 'leased', 'still up for T')
-      eq(parties.forPlayer(S), null)
+      truthy(parties.forPlayer(S), 'S is still in the party')
+      eq(seats.phaseOf(parties.forPlayer(S), parties.launchInfo(S), S), 'selected', 'and is not sent back in')
       truthy(parties.forPlayer(T), 'T still has the party')
-      assignments.cancel(r.match_id, 'test'); parties.leave(T)
+      assignments.cancel(r.match_id, 'test'); parties.leave(T); parties.leave(S)
     })
 
     check('ten minutes with everybody gone and nobody resuming cancels the lease', () => {

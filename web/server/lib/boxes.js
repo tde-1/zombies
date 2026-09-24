@@ -98,7 +98,8 @@ function reapGhostLeases(box, body) {
   for (const a of rows) {
     if (alive.has(a.match_id)) continue
     db.prepare("UPDATE assignments SET state='ended', ended_at=? WHERE id=?").run(now(), a.id)
-    if (a.party_id) db.prepare("UPDATE parties SET state='forming', match_id=NULL WHERE id=?").run(a.party_id)
+    // Only a party still on this match (a newer game of the party's is not this ghost's).
+    if (a.party_id) db.prepare("UPDATE parties SET state='forming', match_id=NULL WHERE id=? AND (match_id=? OR match_id IS NULL)").run(a.party_id, a.match_id)
     log('assignment.ghost', box.name, { match_id: a.match_id, why: 'the box is not running it' })
   }
 }

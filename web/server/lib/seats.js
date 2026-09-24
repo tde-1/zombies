@@ -23,8 +23,9 @@
 //   was connected, is not, did not quit -> `resumable` (a crash or Alt+F4, B 2026-09-23:
 //                                          "resumable from the server card"). NOT a phase
 //                                          the watcher follows; the rail shows Resume.
-//   quit on purpose (POST /api/party/quit) -> the lease is cancelled (solo) or they left
-//                                          the party (co-op); either way no match for them.
+//   quit on purpose (POST /api/party/quit) -> the lease is cancelled (the last player in it)
+//                                          or goes on (co-op); they stay in the party
+//                                          either way, and are not sent back in (`selected`).
 //   never connected                     -> the lease's own phase, unchanged (`in-game` for a
 //                                          live game: a party member whose leader pressed
 //                                          Start, or a Resume, still gets followed in).
@@ -131,9 +132,13 @@ function resume(steamid, matchId) {
 }
 
 /**
- * Quit on purpose (the Esc menu's Exit game, POST /api/party/quit). Solo: the lease is
- * cancelled and the party dissolved, so the launcher has nothing to follow. In a party:
- * this player leaves the party, and the game goes on for the others.
+ * Quit on purpose (the Esc menu's Exit game, POST /api/party/quit). The last player in the
+ * game: the lease is cancelled, so the launcher has nothing to follow. Otherwise the game goes
+ * on for the others. EITHER WAY THE PARTY STAYS (B 2026-09-24, cloud-brief-parties.md task 4:
+ * "parties persist across games"): quitting a game is not leaving the party. The seat is
+ * marked `quit`, so the launcher is not sent back in (phaseOf -> `selected`); Leave in the
+ * party menu is how somebody leaves. (Until 2026-09-24 this called parties.leave(), which
+ * dissolved a solo party and took a co-op quitter out of theirs.)
  */
 function quit(steamid, matchId) {
   const parties = require('./parties')
@@ -150,9 +155,7 @@ function quit(steamid, matchId) {
   if (a && mine && ['leased', 'ready', 'live'].includes(a.state) && !others.length) {
     cancelled = !!assignments.cancel(a.match_id, String(steamid)).ok
   }
-  // Dissolve a solo party; leave a shared one. `leave()` deletes a party whose last member
-  // goes, so both are the same call.
-  const left = party ? !!parties.leave(steamid).ok : false
+  const left = false
   db.prepare("INSERT INTO activity_log (event, actor, metadata, logged_at) VALUES ('party.quit', ?, ?, ?)")
     .run(String(steamid), JSON.stringify({ match_id: m || null, cancelled, left, party_size: members }), now())
   return { ok: true, match_id: m || null, cancelled, left }

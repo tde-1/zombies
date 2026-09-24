@@ -136,7 +136,20 @@ function project(p, viewer = null) {
 
 function create(steamId, { mode = 'verified', mapKey = null, visibility = 'friends', gameMode = null } = {}) {
   const existing = forPlayer(steamId)
-  if (existing) return existing
+  if (existing) {
+    // The rail calls this when it thinks there is no party yet (its state was stale: a party
+    // made in another tab, or restored after a site restart) with the map the player just
+    // pressed Play on. That map used to be dropped silently and the party's old one launched
+    // (cloud-brief-parties.md task 4). The leader of a forming party gets their pick; nobody
+    // else's create changes anything.
+    const row = forPlayerRow(steamId)
+    if (row && String(row.leader) === String(steamId) && row.state === 'forming') {
+      if (mapKey && String(mapKey) !== String(row.map_key || '') && db.prepare('SELECT 1 FROM maps WHERE key=?').get(String(mapKey))) setMap(steamId, String(mapKey))
+      if (['verified', 'custom'].includes(mode) && mode !== row.mode) setMode(steamId, mode)
+      return forPlayer(steamId)
+    }
+    return existing
+  }
   // The rail sends what it had staged before a party existed (Movement's idle lobby), so
   // these arrive from a request body and are checked here rather than trusted.
   if (!['verified', 'custom'].includes(mode)) mode = 'verified'

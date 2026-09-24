@@ -180,10 +180,11 @@ function router() {
     })
   })
 
-  // QUIT ON PURPOSE (the in-game Esc menu's Exit game, B 2026-09-23): solo, the server is
-  // cancelled and the party dissolved, so the launcher has nothing to boot you back into;
-  // in a party, you leave it and the game goes on. A crash or Alt+F4 sends nothing, and
-  // that absence is what makes the game resumable (lib/seats.js).
+  // QUIT ON PURPOSE (the in-game Esc menu's Exit game, B 2026-09-23): the last player in the
+  // game cancels the server, so the launcher has nothing to boot you back into; in a co-op game
+  // it goes on for the others. You STAY in the party either way (B 2026-09-24: parties persist
+  // across games; lib/seats.js quit). A crash or Alt+F4 sends nothing, and that absence is
+  // what makes the game resumable (lib/seats.js).
   //
   // The game calls this with its CHAT PASS (the launcher mints it at launch; the game
   // never holds the session), so it accepts that bearer as well as a session cookie.

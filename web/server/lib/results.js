@@ -497,9 +497,13 @@ function recountBeaten(mapKey) {
 function closeAssignment(assignment, game) {
   if (!assignment) return
   db.prepare("UPDATE assignments SET state='done', ended_at=? WHERE id=?").run(now(), assignment.id)
+  // Only a party still on THIS match goes back to forming. A superseded game's result (a map
+  // switch, a second Play: the box retires the old game and posts it) arrives after the party
+  // has moved on to its new match, and resetting it then took the party out of the game it is
+  // in (cloud-brief-parties.md task 4).
   if (assignment.party_id) {
-    db.prepare("UPDATE parties SET state='forming', match_id=NULL, ready_since=NULL, updated_at=? WHERE id=?")
-      .run(now(), assignment.party_id)
+    db.prepare("UPDATE parties SET state='forming', match_id=NULL, ready_since=NULL, updated_at=? WHERE id=? AND (match_id=? OR match_id IS NULL)")
+      .run(now(), assignment.party_id, assignment.match_id)
   }
   void game
 }

@@ -37,6 +37,8 @@ const parties = require('../server/lib/parties')
 const progress = require('../server/lib/partyProgress')
 const seats = require('../server/lib/seats')
 const tokens = require('../server/lib/tokens')
+const results = require('../server/lib/results')
+const { execFileSync } = require('child_process')
 
 const A = '76561198000000501'   // leads
 const B = '76561198000000502'
@@ -235,6 +237,117 @@ async function main() {
     truthy(r.ok, r.error)
     eq(parties.forPlayer(A).map.key, 'nazi_zombie_carry')
     eq(parties.forPlayer(A).pending_map, null)
+  })
+
+  // ── task 4: a party keeps its members, leader and settings through everything ────────────
+  // The party as the people in it would describe it: who, who leads, and what they picked.
+  const shape = () => {
+    const p = parties.forPlayer(A)
+    if (!p) return 'NO PARTY'
+    return JSON.stringify({ id: p.id, leader: p.leader, members: p.members.map((m) => m.steam_id).sort(), mode: p.mode, visibility: p.visibility, map: p.map && p.map.key, settings: p.settings })
+  }
+  const result = (m, players) => results.ingest({ box: 'carry-box', summary: {
+    match_id: m, mode: 'custom', map: 'nazi_zombie_carry', rounds: 3, finish: null,
+    players: players.map((sid, i) => ({ slot: i, steamid: sid, name: 'p' + i, score: 10, stats: { kills: 1, downs: 1 } })),
+    player_count: players.length, solo: players.length === 1, duration_ms: 60000, flags: [], records_eligible: false, xp_multiplier: 0.25,
+    started_at: new Date(Date.now() - 60000).toISOString(), ended_at: new Date().toISOString(), fingerprint: 'fp' + m,
+  } })
+  const fresh3 = () => {
+    const m = liveParty([B, C])
+    parties.setSettings(A, { dvars: { player_sustainAmmo: '1' } })
+    return m
+  }
+
+  await check('through a game over: back to forming, same people, same picks', async () => {
+    const m = fresh3()
+    const before = shape()
+    const r = result(m, [A, B, C])
+    truthy(r.ok !== false, r.error)
+    eq(shape(), before)
+    eq(parties.forPlayer(A).state, 'forming')
+  })
+
+  await check('through a new launch (Play again)', async () => {
+    const before = shape()
+    online(); parties.startReadyCheck(A, { force: true })
+    const r = parties.launch(A, { force: true })
+    truthy(r.ok, r.error)
+    eq(shape(), before)
+  })
+
+  await check('through the × (close the server)', async () => {
+    const m = parties.forPlayer(A).match_id
+    assignments.ack(BOX(), 'live', m)
+    const before = shape()
+    truthy(seats.end(A, m).ok)
+    eq(shape(), before)
+    eq(parties.forPlayer(A).state, 'forming')
+  })
+
+  await check('through an in-game Quit (a member, co-op): the quitter STAYS in the party and is not relaunched', async () => {
+    const m = fresh3()
+    const before = shape()
+    const q = seats.quit(B, m)
+    truthy(q.ok)
+    eq(shape(), before, 'the party')
+    eq(stateOf(m), 'live', 'the game goes on for the others')
+    eq(seats.phaseOf(parties.forPlayer(B), parties.launchInfo(B), B), 'selected', 'B is not followed back in')
+  })
+
+  await check('through an in-game Quit (the last player in the game): the server goes, the party stays', async () => {
+    for (const s of [B, C]) parties.leave(s)
+    const m = liveParty([])
+    const before = shape()
+    const q = seats.quit(A, m)
+    truthy(q.ok && q.cancelled, JSON.stringify(q))
+    eq(shape(), before, 'the party of one')
+    eq(parties.forPlayer(A).state, 'forming')
+    eq(seats.phaseOf(parties.forPlayer(A), parties.launchInfo(A), A), 'selected', 'nothing to follow')
+  })
+
+  await check('through a map switch, and the OLD game\'s late result does not knock the party out of the new one', async () => {
+    const old = fresh3()
+    truthy(parties.switchNow(A).ok === false, 'nothing pending yet')
+    truthy(parties.switchMap(A, 'nazi_zombie_prototype').ok)
+    const now1 = parties.forPlayer(A).match_id
+    truthy(now1 && now1 !== old, 'switched')
+    const before = shape()
+    // The box retires the superseded game and posts its result (host: instance_retired).
+    result(old, [A, B, C])
+    eq(parties.forPlayer(A).match_id, now1, 'the party still points at its NEW game')
+    eq(parties.forPlayer(A).state, 'launching', 'and is still launching it')
+    eq(shape(), before)
+  })
+
+  await check('a ghost-reaped OLD lease does not reset a party that is in a newer game', async () => {
+    const cur = parties.forPlayer(A).match_id
+    // An older live lease of the same party that the box no longer runs (a race the reaper sees).
+    db.prepare(`INSERT INTO assignments (box_id, match_id, party_id, map_key, mode, settings_json, players_json, tokens_json, vip, kind, nonce, state, issued_at)
+                VALUES (?, 'm_ghost_old', ?, 'nazi_zombie_carry', 'custom', '{}', '[]', '{}', 0, 'game', 'n', 'live', ?)`).run(BOX().id, pid(), now() - 3600_000)
+    boxes.recordStatus(BOX(), { state: 'live', protocol: 2, max_instances: 4, instances: [{ id: 'inst-09', match_id: cur, port: 28960 }] })
+    eq(stateOf('m_ghost_old'), 'ended', 'the ghost was reaped')
+    eq(parties.forPlayer(A).match_id, cur, 'the party keeps its current game')
+  })
+
+  await check('create() with a party already there applies the leader\'s staged map instead of ignoring it', async () => {
+    const m = parties.forPlayer(A).match_id
+    assignments.cancel(m, 'test')
+    const before = parties.forPlayer(A)
+    const p = parties.create(A, { mapKey: 'nazi_zombie_carry2', mode: 'custom' })
+    eq(p.id, before.id, 'the same party')
+    eq(p.map.key, 'nazi_zombie_carry2', 'with the map the rail asked for')
+    eq(p.members.length, before.members.length, 'and its members')
+    // A member's create never changes the leader's pick.
+    const q = parties.create(B, { mapKey: 'nazi_zombie_carry' })
+    eq(q.map.key, 'nazi_zombie_carry2', 'a member cannot change the map through create')
+  })
+
+  await check('through a site restart (a new process on the same database)', async () => {
+    const before = shape()
+    const js = `process.env.ZM_STEAM_AVATARS='off';const p=require(${JSON.stringify(path.join(__dirname, '..', 'server', 'lib', 'parties'))});const x=p.forPlayer(${JSON.stringify(A)});` +
+      `console.log(JSON.stringify({id:x.id,leader:x.leader,members:x.members.map(m=>m.steam_id).sort(),mode:x.mode,visibility:x.visibility,map:x.map&&x.map.key,settings:x.settings}))`
+    const got = execFileSync(process.execPath, ['-e', js], { env: process.env, encoding: 'utf8' }).trim().split('\n').pop()
+    eq(got, before)
   })
 
   for (const [a, b] of out) console.log(a, b)
