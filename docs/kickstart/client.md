@@ -2163,12 +2163,36 @@ round trip, the folder watcher, Settings > Screenshots, toast after a game.
 
 F12 is posted 8 s after live, again ~300 ms later (must be refused), and 3 s after the game over.
 
-SS_PROOF_TABLE
+| Run | DLL | Bind | Result |
+|---|---|---|---|
+| ss1 Nacht | `build\ss` (one-step grab) | `+bind F12 enw_screenshot` | **Pass.** F12 mid-game → `ENW Zombies Nacht der Untoten 2026-09-24 00-37-00.jpg`, **2560×1440, 1.30 MB**, MSAA resolved, encode+write 22 ms on the worker; second press 0.36 s later refused (500 ms); F12 3 s after the game over → the intermission scoreboard, 0.12 MB; no Com_Error; end screen → clean quit. Render thread 8.87 / 7.07 ms (all at one Present). Looked at both: the whole frame, HUD, colours right (the top-left console lines are the harness's `con_minicon 1`) |
+| ss2 Cheese Cube | `build\ss` (two Presents, blocking lock) | the profile's (ss1's archived `enw_screenshot`) | **Pass.** 0.68 MB and 0.35 MB at 2560×1440, no drop through the game over. Breakdown: P1 0.10 ms; P2 GetRenderTargetData 0.01 ms, **LockRect 5.2–7.0 ms** (the wait is the lock, not the readback) |
+| **ss3 Nacht, the shipped DLL `a02958f8`** | clean `ZombiesDev\wt-rel11` at `3d5ce16` | **`+bind F12 screenshotJPEG`** (WaW's) | **Pass.** `'screenshotJpeg (engine command, redirected)'` → our shot, 1.30 MB / 0.12 MB, 2560×1440, no EXIF, second press refused, no Com_Error, end screen → quit. `LockRect(DONOTWAIT)` landed on try 1 and still blocked (4.6 / 9.05 ms): this driver ignores DONOTWAIT for a SYSTEMMEM surface |
+
+**The hitch.** Game (main) thread: the command costs **0.02–0.43 ms**; the 8 main-thread frame periods after
+each press were 31.7–34.1 ms against a 32.9–33.0 ms median (com_maxfps 30), i.e. no visible change. Render
+thread: **one Present of 4.6–9 ms** per shot (the DMA of a 14.7 MB frame; the rest < 0.3 ms). At 30 fps it is
+hidden in the frame; at 250 fps it would be one ~9 ms frame per shot — **the < 2 ms target is met on the game
+thread, NOT on the render thread**. Not measured uncapped (coordinator: ship). A fix, if it matters: keep a
+ring of 2 SYSTEMMEM surfaces and lock a frame later only after an event query (`D3DQUERYTYPE_EVENT`) reports
+the copy done.
+
+**Quality/size at 1440p:** JPEG q95 4:4:4, 0.7–1.3 MB for a lit in-game frame (0.12–0.35 MB for the dark
+scoreboard). PNG not run in game (unit-tested format switch only).
+
+**Documents:** after each run nothing of ours under `C:\Users\b\Documents` (the only new file was
+`Documents\Medal\MedalLog20260923.txt`, Medal's own log). CE's three test JPEGs in `Documents\Activision` are still
+there (not deleted by this lane).
 
 ### 15.3 CE's pending proofs (§14.6), with this DLL
 
-CE_PROOF_TABLE
+ce5 (Cheese Cube, stock path) and ce6 (Nacht rerun): **not run** — coordinator: ship first. `ce-proof.ps1` now sets `ENW_SCREENSHOT_STOCK=1` and `+bind F12 screenshotJPEG`, so it still exercises the ENGINE writer (guard + the Documents redirect) with any DLL from this one on; run with `-From <build>`. With `screenshot.cpp` shipped, the engine writer is unreachable by F12 for players, so the Documents redirect matters only for other engine writes.
 
 ### 15.4 Not proven
 
-SS_NOT_PROVEN
+* ce5/ce6 (above); PNG in game; an uncapped-fps hitch measurement; exclusive fullscreen (the gamma-ramp path) and
+  borderless on a real monitor; multi-GPU; a real player's F12 on B's PC through launcher 0.2.36 (the launcher's
+  config rewrite + toast + Settings list have no Electron run, `launcher.md` 2026-09-24 SS); `ENW_MAP_TITLE`
+  from a real launch (the harness names files by bsp or the stock title).
+* Shipped: launcher **0.2.36**, client DLL **`a02958f8`** (sha256 `a02958f81eb40e9f1c24d0d5ab1da89fb3c135044dbb08bfc2bdaff695b5713b`),
+  built clean in `ZombiesDev\wt-rel11` at main `3d5ce16`; client-only (the box does not need it).

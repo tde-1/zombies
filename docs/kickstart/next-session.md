@@ -22,6 +22,17 @@ guard-on on Nacht through game over → end screen → clean quit (ce4). Branch 
 `0657d9f2`, next launcher publish. **Open:** Cheese Cube run + the Documents redirect run (refused by the agent's permission
 guard), and **delete `C:\Users\b\Documents\Activision`** (three test JPEGs this lane's runs created; the engine writes shots there).
 
+**SS (2026-09-24 01:25 UK, `client.md` §15, `launcher.md` 2026-09-24 SS): launcher 0.2.36 is on the feed** (client DLL
+`a02958f8`, clean `ZombiesDev\wt-rel11` at main `3d5ce16`; version commit `380cda5`). F12 is now ENW's own screenshot
+(`enw_screenshot`; WaW's `screenshotJPEG`/`screenshot` are redirected to it, so the §14 drop and the Documents writes are
+gone for players): the finished frame at Present, JPEG q95 4:4:4 (≈0.7–1.3 MB at 1440p) or PNG, to
+`%USERPROFILE%\Pictures\ENW Zombies\ENW Zombies <map> <date time>.jpg`, "Screenshot saved" in game; launcher Settings >
+Screenshots (Open image / Show in folder / Open screenshots folder) and a toast after a game. Proven locally at a real
+2560×1440 back buffer on Nacht (ss1 our bind, ss3 WaW's bind, shipped DLL) and Cheese Cube (ss2): no drop, files right.
+**Open:** render thread still pays one 4.6–9 ms Present per shot (game thread 0.02–0.4 ms; DONOTWAIT is ignored by the
+driver — fix = event-query ring, `client.md` §15.2); ce5/ce6 not run (ce-proof now forces the stock path); no real
+Electron run of the toast/list; `settings_model_test` fixed (3 excluded). CE's three JPEGs in B's `Documents\Activision`
+are still there. `git push origin main` is B's.
 # Next session — earlier (2026-09-23 03:30 handoff)
 
 Written 2026-09-23 ~03:30 UK at the end-of-session handoff (the session ran from 2026-09-22 19:00
