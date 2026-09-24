@@ -6,10 +6,10 @@ import Nav from './components/Nav'
 import PartyRail from './components/PartyRail'
 import ChatDock from './components/ChatDock'
 import { GameSettingsSync } from './components/launcherBridge'
-import Home from './pages/Home'
-// NOT lazy: home renders `MapBody` out of this module, so it lands in the first chunk
-// whatever this line says, and a lazy route over a module that is already loaded only buys
-// a Suspense boundary nobody ever sees.
+// ~~import Home from './pages/Home'~~ — HOME IS THE MAPS CARD VIEW FOR NOW (B, 2026-09-24:
+// "remove the default homepage ... it should straight away go into the map card view").
+// The launcher loads `/` on boot and the ENW lockup links to `/`, so both land on the cards.
+// `pages/Home.jsx` is kept, unrouted, until the real homepage that links everything replaces it.
 import MapPage from './pages/MapPage'
 // NOT lazy either: it is the first thing every new account sees, and a spinner in front of
 // the one screen standing between a player and the site is a spinner too many.
@@ -75,15 +75,17 @@ function Shell() {
           <div className="shell-page">
           <Suspense fallback={<div className="page"><div className="loading"><span className="spinner" /></div></div>}>
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/home" element={<Navigate to="/" replace />} />
+              {/* `?view=cards` states the view without saving it (Maps.jsx), so the front door
+                  is always the cards even for someone who saved the list. */}
+              <Route path="/" element={<Navigate to="/maps?view=cards" replace />} />
+              <Route path="/home" element={<Navigate to="/maps?view=cards" replace />} />
               {/* `enw-zombies://party/<id>` opens /party/<id> in the launcher's wrapped view
                   (docs/protocol/launcher-v0.md §7), and the party lives in the rail, on every
                   page — there is no page of its own to send it to. So the route exists and lands on
-                  home rather than on a 404. It does NOT try to join anything: the launcher
+                  the front door (the cards) rather than on a 404. It does NOT try to join anything: the launcher
                   says joining is the site's decision, and the site's decision is made by the
                   invite the person already holds. */}
-              <Route path="/party/:id" element={<Home />} />
+              <Route path="/party/:id" element={<Navigate to="/maps?view=cards" replace />} />
               <Route path="/maps" element={<Maps />} />
               {/* /m/<map> is the deep link YouTubers put in a description (13 §2d). It is
                   short on purpose and must never change. */}
