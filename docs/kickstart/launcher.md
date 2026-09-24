@@ -3120,3 +3120,42 @@ i.e. a game this launcher started; a game focused but started some other way wou
 **Ships in the next launcher** (not published by this lane) plus the site build and restart (without
 the site half the page never calls `attention`; without the launcher half the site's call is refused
 quietly, it is wrapped).
+
+## 2026-09-24 — ENW's screenshots: F12 is ours, Open image / Open screenshots folder (lane SS)
+
+B: *"Unbind their screenshot and use our own ... And have Open image / Open screenshots folder."* The game
+half (the grab, the encode, the file) is the client DLL, `client.md` §15. This is the launcher half
+(`src/main/screenshots.js`, rules; `main.js` "screenshots", Electron).
+
+* **The bind.** `wawcfg.js`: the catalogue's Screenshot row is `enw_screenshot` (was `screenshotjpeg`).
+  Every launch's config merge rewrites any `bind <key> "screenshotJPEG"` / `"screenshot"` to
+  `bind <key> "enw_screenshot"` on the same key (so the stock F12 becomes ours); an account that moved
+  the key owns it and the stock line goes; an old account row saved under `screenshotjpeg` is read as
+  `enw_screenshot`. The DLL also redirects the engine's two commands, so a config we never touched
+  still takes our picture.
+* **The format.** `screenshotFormat` `jpg` (default: q95, 4:4:4) | `png`: account setting, site
+  /settings ENW > screenshots, the shell's Settings, and in game (Esc > Settings, console `shotformat`).
+  It travels as the archived dvar `enw_shotformat` (written every launch, read back after a game) and as
+  `ENW_SCREENSHOT_FORMAT`; the DLL reads the dvar at each shot, so an in-game change is live.
+* **The folder.** `<Pictures>\ENW Zombies` (`app.getPath('pictures')` = FOLDERID_Pictures, the same known
+  folder the DLL asks for); `ENW_SCREENSHOT_DIR` overrides it (tests). The launcher puts the folder it
+  chose into `process.env.ENW_SCREENSHOT_DIR`, so the game writes exactly where it watches. The launch
+  also passes the map's title (`ENW_MAP_TITLE`) for the file name.
+* **Being told.** The launcher watches the folder (`fs.watch`, debounced; the DLL renames `.part` to
+  the final name, so a shot appears whole). SOC's attention rules, applied to screenshots:
+  a game running → nothing (the in-game line said it), the shot is counted; **when the game ends** →
+  one Windows toast "N screenshots saved" with **Open image** (the newest) and **Open folder**
+  (`enw-zombies://screenshot/open|folder`, new deeplink route, no path in the link); no game and the
+  launcher in front → the Settings list updates; no game, not in front → the same toast for one shot.
+* **Settings → Screenshots** (shell): the newest 8 with **Open image** (`shell.openPath`) and **Show in
+  folder** (`shell.showItemInFolder`), by bare file name only (`resolveShot` refuses anything that is
+  not a shot's name inside the folder), plus an **Open screenshots folder** button
+  (`openFolder('screenshots')`). Preload: `screenshots()`, `openScreenshot`, `showScreenshot`,
+  `onScreenshot`.
+
+Tests: `test/run-all.js` group "Screenshots" (8: bind rewrite, owned key, old row + format dvar +
+settings, in-game format read-back, names/folder/traversal, feedback rules + toast XML + deeplinks, the
+watcher ignores `.part` and reports once, wiring); `waw-settings` 20/0.
+
+**Unproven:** a real Electron run (a real toast and its buttons through the protocol hand-off,
+`showItemInFolder`, the watcher on a real Pictures folder, OneDrive-redirected Pictures).

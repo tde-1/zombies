@@ -2134,3 +2134,41 @@ read). Check on the first run: `(N of them Documents …)` > 0 and no new file u
 * Not proven: B's real F12 at 2560×1440 on his PC (the grab from a real back buffer is the engine's
   unchanged `0x70C980`); the ce3 device loss; the test window reported `720x1280` in ce4 (vidConfig,
   with `r_mode 640x480` asked) — harness oddity, not investigated.
+
+## 15. 2026-09-24 — lane SS: ENW's own screenshot key replaces World at War's F12 (`components/screenshot.cpp`)
+
+B, 2026-09-24: *"Take over the screenshots. Unbind their screenshot and use our own, a common screenshotting
+approach that works with World at War: capture the whole screen, industry-standard compression but not too
+much, so the images look beautiful on people's computers. And have Open image / Open screenshots folder."*
+Follows §14: the stock `screenshotJpeg` drops the game above ~3.4 MP, writes into the player's Documents,
+refuses a window partly off-screen, and is 4:2:0 libjpeg.
+
+### 15.1 Design as built
+
+| Part | What |
+|---|---|
+| Approach | ReShade's shape (BSD-3-Clause, `runtime::save_screenshot`: finished back buffer at Present → MSAA resolve by StretchRect → GetRenderTargetData into system memory → encode on a worker), **reimplemented**, no code copied; Windows Imaging Component instead of stb, so no new dependency |
+| Key | Our own command **`enw_screenshot`**, linked into the engine's command list (`cmd_functions` 0x1F416F4; node layout `next/name/dir/ext/function` read out of the inlined Cmd_AddCommand at 0x72540C: `mov [node+4],name; mov [node+0x10],fn; mov [node],head; mov head,node`). Catalogue row `bind:enw_screenshot`, default F12, rebindable in /settings, Esc > Settings and the ENW console (`bind f11 screenshot`) |
+| The stock path | `screenshot` 0x725150 and `screenshotJpeg` 0x725160 (both `push n; call 0x70D0A0; pop ecx; ret`, registered by R_RegisterCmds 0x725170 from static nodes, removed by 0x725440) get a 5-byte `jmp` to ours at their first byte (byte-checked). Any stale `bind F12 "screenshotJPEG"` takes OUR picture; the engine writer (hunk, Documents) is unreachable. The ENW console refuses them as actions (`bind f12 screenshotJPEG` → no such action; typing `screenshotJPEG` → *"press F12 (bind <key> screenshot)"*). Harness only: `ENW_SCREENSHOT_STOCK=1` |
+| Grab | frame_capture's Present hook (`run_at_present`), render thread, before the real Present, spread over Presents so none waits: **P1** StretchRect back buffer → plain RT (queued GPU copy; resolves MSAA) + make the SYSTEMMEM surface; **P2** GetRenderTargetData (returns in 0.01 ms); **P2…** `LockRect(READONLY \| DONOTWAIT)` each Present until the DMA has landed (blocking after 60 tries). The locked surface goes to the worker as is (no copy), and a last Present job unlocks/releases it. Fullscreen: the device gamma ramp is applied to the pixels (hardware applies it to the screen, not the buffer). Never the hunk |
+| Encode | Worker thread, WIC. **JPEG quality 0.95, `JpegYCrCbSubsampling` 4:4:4** (falls back to 4:2:0 with a log note on a Windows without the option), or **PNG** when `enw_shotformat` is `png` (read at every shot, so the in-game setting is live; also `ENW_SCREENSHOT_FORMAT`). A zero-copy `IWICBitmapSource` over the lock converts BGRX (and A2R10G10B10) to 24-bit rows as the encoder asks. No metadata → **no EXIF**. Written to `<name>.part`, then renamed |
+| Where | `%USERPROFILE%\Pictures\ENW Zombies\` (SHGetKnownFolderPath FOLDERID_Pictures) or `ENW_SCREENSHOT_DIR` (the launcher passes the folder it watches; tests pass a scratch one). Name `ENW Zombies <map> <yyyy-mm-dd hh-mm-ss>.jpg`, ` (2)` in the same second; `<map>` = the launcher's title (`ENW_MAP_TITLE`) for the launched map, else the stock four by name, else the bsp (`screenshot_name.hpp`) |
+| Feedback | *"Screenshot saved"* (or *"Screenshot failed"*) as a system line in the chat overlay's HUD feed. One press per 500 ms; a press while one is being written is dropped (logged) |
+| Off | `ENW_SCREENSHOT=0` (the engine's commands stay the engine's). `screenshot_guard.cpp` (§14) stays for the savegame thumbnail and `ENW_SCREENSHOT_STOCK` runs |
+
+Launcher half: `launcher.md` (2026-09-24, SS): config binds rewritten to `enw_screenshot`, `enw_shotformat`
+round trip, the folder watcher, Settings > Screenshots, toast after a game.
+
+### 15.2 Proof — `tools\dev\ss-proof.ps1` (local dedi + real host agent + invisible client at a REAL 2560×1440 back buffer: `r_mode 2560x1440` windowed at -4000,-4000, `ENW_TEST_NO_ACTIVATE=1`, private LocalAppData, com_maxfps 30, game.lock by jointest, heavy.lock by me; shots to `ZombiesDev\logs\ss\<tag>\pictures`)
+
+F12 is posted 8 s after live, again ~300 ms later (must be refused), and 3 s after the game over.
+
+SS_PROOF_TABLE
+
+### 15.3 CE's pending proofs (§14.6), with this DLL
+
+CE_PROOF_TABLE
+
+### 15.4 Not proven
+
+SS_NOT_PROVEN
