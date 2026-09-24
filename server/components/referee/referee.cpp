@@ -21,10 +21,12 @@
 #include "../../../shared/core/game_link.hpp"
 #include "../../../shared/core/json.hpp"
 #include "../../../shared/core/logger.hpp"
+#include "../pause/pause_state.hpp"
 #include "../replay/replay_events_model.hpp"
 #include "game_over.hpp"
 #include "logprint_mirror.hpp"
 #include "name_lock.hpp"
+#include "reconnect_rules.hpp"
 #include "t4_bind.hpp"
 #include "verified_env.hpp"
 
@@ -286,6 +288,21 @@ public:
         link.on("exec",
                 [this](const json::value& msg) { do_exec(msg.str_or("id"), msg.str_or("cmd")); },
                 /*want_game_thread=*/true);
+
+        // DISCONNECT -> PAUSE -> RECONNECT (reconnect_rules.hpp, 2026-09-24). The host holds
+        // the pause and decides the policy; this side notices the drop early, keeps the
+        // state as of the last input, lets the same account back in past its own ghost and
+        // puts the counters back. ENW_NO_RECONNECT=1 turns all of that off.
+        reconnect_on_ = env_str("ENW_NO_RECONNECT") != "1";
+        if (const std::string v = env_str("ENW_RECONNECT_LOST_MS"); !v.empty()) {
+            const long ms = std::strtol(v.c_str(), nullptr, 10);
+            if (ms >= 1000 && ms <= 60000) link_cfg_.lost_ms = static_cast<uint32_t>(ms);
+        }
+        link.on("restore",
+                [this](const json::value& msg) { do_restore(msg); },
+                /*want_game_thread=*/true);
+        ENW_INFO("referee: reconnect %s (lost after %u ms of no input)",
+                 reconnect_on_ ? "ON" : "OFF (ENW_NO_RECONNECT)", link_cfg_.lost_ms);
 
         // The answer to a player_connect's token check. See do_auth().
         link.on("auth",
@@ -746,6 +763,20 @@ private:
         auto c = referee::client(slot);
         const bool active = c && c->active;
 
+        // A slot the engine re-seated without it ever reading inactive: a reconnect from the
+        // same address can reuse the slot inside one frame. The invite token is per launch
+        // (the site mints a fresh one for a Resume), so a different token on a seated slot
+        // is a different connection -- close the old one and let the edge below open the
+        // new one, token check and all. [unverified: whether T4 re-seats in one frame]
+        if (active && p.connected && reconnect_on_ && !p.token_seen.empty()) {
+            const std::string tok = connect_token(c->userinfo);
+            if (!tok.empty() && tok != p.token_seen) {
+                ENW_INFO("referee: slot %d presents a new invite token while seated -- a new "
+                         "connection in the same slot", slot);
+                emit_disconnect(slot, ms, "re-seated with a new token");
+            }
+        }
+
         if (active && !p.connected) {
             p.connected = true;
             p.spawned = false;
@@ -769,9 +800,12 @@ private:
             p.have_downs = false;
             p.have_stats = false;
             p.is_down = false;
-            const std::string token = userinfo_value(c->userinfo, "enw_token").empty()
-                                          ? userinfo_value(c->userinfo, "token")
-                                          : userinfo_value(c->userinfo, "enw_token");
+            const std::string token = connect_token(c->userinfo);
+            p.token_seen = token;
+            // Whoever held this slot before is not this connection.
+            p.have_snap = false;
+            p.restore = reconnect::pending_restore{};
+            p.link = reconnect::link_slot{};
 
             // THE IDENTITY BIND. Everything the engine offers is a name; the account
             // is in the token and nowhere else. Parse it, refuse the two things a
@@ -792,11 +826,23 @@ private:
                     // presenting the same token is refused here even if the host link
                     // is down.
                     refuse(slot, "replayed_token");
-                } else if (const int other = slot_holding_sid(tc.sid, slot); other >= 0) {
+                } else if (const int other = slot_holding_sid(tc.sid, slot);
+                           other >= 0 &&
+                           reconnect::seat_conflict(other, players_[other].link.phase,
+                                                    reconnect_on_) != reconnect::seat_action::evict_ghost) {
                     ENW_WARN("referee: slot %d presents a steamid already seated in slot %d",
                              slot, other);
                     refuse(slot, "steamid_already_seated");
                 } else {
+                    if (other >= 0) {
+                        // The same account, back while its crashed body is still seated
+                        // (a LOST link: the world is frozen, or the engine's ~40 s timeout
+                        // has not run). The old slot is the ghost; it goes, this one stays.
+                        ENW_INFO("referee: slot %d is %s coming back; slot %d is their lost "
+                                 "connection and is kicked", slot, tc.sid.c_str(), other);
+                        kick_slot(other, "reconnected in another slot");
+                        players_[other].steamid.clear();   // one account, one row
+                    }
                     p.steamid = tc.sid;   // the token's sid IS the canonical steamid64
                     p.jti = tc.jti;
                     p.party_slot = tc.slot;
@@ -864,20 +910,269 @@ private:
             }
         }
 
-        if (!active && p.connected) {
-            p.connected = false;
-            p.spawned = false;
-            json::writer w;
-            w.str("t", "player_disconnect").integer("ms", ms).integer("slot", slot);
-            w.str("reason", "slot no longer active");
-            game_link::get().send(w);
-            ENW_INFO("referee: player_disconnect slot %d ('%s')", slot, p.name.c_str());
-            referee::lp_player_event(slot, "player_disconnect", p.name);
-            // The slot is free. Whoever lands in it next is a different account and gets
-            // its own lock (or none), so a lock left behind here would rename them.
-            namelock::unlock_slot(slot);
-            p.token_name.clear();
+        if (!active && p.connected) emit_disconnect(slot, ms, "slot no longer active");
+    }
+
+    static std::string connect_token(const std::string& userinfo) {
+        const std::string t = userinfo_value(userinfo, "enw_token");
+        return t.empty() ? userinfo_value(userinfo, "token") : t;
+    }
+
+    void emit_disconnect(int slot, uint32_t ms, const char* reason) {
+        auto& p = players_[slot];
+        p.connected = false;
+        p.spawned = false;
+        json::writer w;
+        w.str("t", "player_disconnect").integer("ms", ms).integer("slot", slot);
+        w.str("reason", reason);
+        // The state as of this player's last input (reconnect_rules.hpp): the host holds it
+        // for a restore, keyed to the account. Only on a row that still names one.
+        if (reconnect_on_) {
+            if (p.link.phase == reconnect::link_phase::lost) w.boolean("lost", true);
+            if (p.have_snap && !p.steamid.empty()) w.raw("state", snapshot_json(slot));
         }
+        game_link::get().send(w);
+        ENW_INFO("referee: player_disconnect slot %d ('%s', %s)", slot, p.name.c_str(), reason);
+        referee::lp_player_event(slot, "player_disconnect", p.name);
+        // The slot is free. Whoever lands in it next is a different account and gets
+        // its own lock (or none), so a lock left behind here would rename them.
+        namelock::unlock_slot(slot);
+        p.token_name.clear();
+        p.token_seen.clear();
+        // The snapshot stays (reply_snapshot reports it for the account that left) until the
+        // next connection in this slot replaces it; a queued restore and the watch do not.
+        p.restore = reconnect::pending_restore{};
+        p.link = reconnect::link_slot{};
+    }
+
+    // --------------------------------------------------------- reconnect --
+    // reconnect_rules.hpp has the rules; this is the engine half, run once per server frame
+    // per slot, after the roster edge and before the scoreboard counters are read.
+    void poll_reconnect(int slot, uint32_t ms) {
+        auto& p = players_[slot];
+        if (!reconnect_on_) return;
+        const bool frozen = pause_state::world_frozen();
+        bool have_cmd = false;
+        uint64_t sig = 0;
+        if (p.connected) {
+            if (auto u = referee::last_usercmd(slot)) {
+                have_cmd = true;
+                sig = reconnect::cmd_signature(u->server_time, u->buttons, u->view_pitch,
+                                               u->view_yaw, u->forwardmove, u->rightmove);
+            }
+        }
+        const auto edge = reconnect::step(p.link, p.connected, have_cmd, sig, ms, frozen, link_cfg_);
+        switch (edge) {
+            case reconnect::link_edge::ready: {
+                json::writer w;
+                w.str("t", "player_ready").integer("ms", ms).integer("slot", slot);
+                game_link::get().send(w);
+                ENW_INFO("referee: player_ready slot %d ('%s'): input is flowing", slot,
+                         p.name.c_str());
+                break;
+            }
+            case reconnect::link_edge::lost: {
+                const uint32_t silent = ms - p.link.last_change_ms;
+                json::writer w;
+                w.str("t", "player_lost").integer("ms", ms).integer("slot", slot)
+                    .integer("silent_ms", silent);
+                if (p.have_snap && !p.steamid.empty()) w.raw("state", snapshot_json(slot));
+                game_link::get().send(w);
+                ENW_WARN("referee: player_lost slot %d ('%s'): no input for %u ms -- the "
+                         "connection is gone or the game froze. The host decides the pause.",
+                         slot, p.name.c_str(), silent);
+                break;
+            }
+            case reconnect::link_edge::back: {
+                // The same connection, input moving again. If the scoreboard counters went
+                // DOWN meanwhile, the engine re-seated the slot (a new game on the same
+                // address) and this is a returning player, not a network blip.
+                bool reseated = false;
+                if (auto st = referee::player_stats(slot)) {
+                    reconnect::counters now{true, st->score, st->kills, st->assists,
+                                            st->downs, st->revives, st->headshots};
+                    reseated = reconnect::counters_reset(p.snap, now);
+                }
+                json::writer w;
+                w.str("t", "player_back").integer("ms", ms).integer("slot", slot)
+                    .integer("lost_ms", ms - p.link.lost_at_ms);
+                if (reseated) w.boolean("reseated", true);
+                game_link::get().send(w);
+                ENW_INFO("referee: player_back slot %d ('%s') after %u ms%s", slot,
+                         p.name.c_str(), ms - p.link.lost_at_ms,
+                         reseated ? " -- RE-SEATED (counters went down): a new connection" : "");
+                break;
+            }
+            default:
+                break;
+        }
+        if (p.connected && reconnect::should_sample(p.link, p.have_snap, p.last_sample_ms, ms))
+            take_sample(slot, ms);
+
+        // A queued restore waits for the new body to spawn and the spawn scripts to finish.
+        bool alive = false;
+        if (p.connected && p.restore.active) {
+            if (auto e = referee::player_ent(slot)) alive = e->alive;
+        }
+        const auto rs = reconnect::step_restore(p.restore, p.connected, alive, frozen, ms);
+        if (rs == reconnect::restore_step::apply) apply_restore(slot, ms);
+        if (rs == reconnect::restore_step::expire) {
+            json::writer w;
+            w.str("t", "restored").integer("ms", ms).integer("slot", slot)
+                .boolean("ok", false).str("error", "the player never spawned");
+            game_link::get().send(w);
+            ENW_WARN("referee: restore for slot %d dropped: the player never spawned", slot);
+        }
+    }
+
+    // The state as of the last input, kept per slot. Everything here is a read the replay
+    // sampler already makes every frame; nothing new is read from the engine.
+    void take_sample(int slot, uint32_t ms) {
+        auto& p = players_[slot];
+        auto st = referee::player_stats(slot);
+        if (!st) return;
+        p.snap = reconnect::counters{true, st->score, st->kills, st->assists,
+                                     st->downs, st->revives, st->headshots};
+        p.snap_have_ent = false;
+        if (auto e = referee::player_ent(slot)) {
+            p.snap_have_ent = true;
+            for (int i = 0; i < 3; ++i) { p.snap_pos[i] = e->origin[i]; p.snap_ang[i] = e->angles[i]; }
+            p.snap_health = e->health;
+            p.snap_alive = e->alive;
+        }
+        p.snap_weapon.clear();
+        p.snap_clip = p.snap_ammo = -1;
+        if (auto cs = referee::player_combat_state(slot)) {
+            p.snap_weapon = cs->weapon_raw;
+            if (cs->have_ammo) { p.snap_clip = cs->clip; p.snap_ammo = cs->ammo; }
+        }
+        p.snap_down = p.is_down;
+        p.snap_round = round_;
+        p.have_snap = true;
+        p.last_sample_ms = ms;
+    }
+
+    std::string snapshot_json(int slot) const {
+        const auto& p = players_[slot];
+        json::writer w;
+        w.integer("slot", slot);
+        if (!p.steamid.empty()) w.str("steamid", p.steamid);
+        w.integer("score", p.snap.score).integer("kills", p.snap.kills)
+            .integer("assists", p.snap.assists).integer("downs", p.snap.downs)
+            .integer("revives", p.snap.revives).integer("headshots", p.snap.headshots);
+        if (p.snap_have_ent) {
+            w.raw("pos", vec3(p.snap_pos));
+            w.raw("ang", vec3(p.snap_ang));
+            w.integer("health", p.snap_health);
+            w.boolean("alive", p.snap_alive);
+        }
+        if (!p.snap_weapon.empty()) w.str("weapon", p.snap_weapon);
+        if (p.snap_clip >= 0) w.integer("clip", p.snap_clip).integer("ammo", p.snap_ammo);
+        w.boolean("down", p.snap_down);
+        w.integer("round", p.snap_round);
+        w.integer("age_ms", game_ms_ - p.last_sample_ms);
+        return w.done();
+    }
+
+    // `restore {id, slot, state}` -- host->game. Queued, and applied once the slot's body has
+    // spawned and the world has run `settle_ms` (the level's own spawn scripts set the score
+    // first; we write after them). The reply goes at once and says what WILL be restored;
+    // `restored` follows when it was.
+    void do_restore(const json::value& msg) {
+        const std::string id = msg.str_or("id");
+        const int slot = static_cast<int>(msg.int_or("slot", -1));
+        auto fail = [&](const char* why) {
+            if (!id.empty()) game_link::get().send_reply(id, false, why);
+            ENW_WARN("referee: restore refused: %s", why);
+        };
+        if (!reconnect_on_) return fail("reconnect off (ENW_NO_RECONNECT)");
+        if (slot < 0 || slot >= kMaxPlayers) return fail("bad slot");
+        if (!players_[slot].connected) return fail("slot not connected");
+        if (!referee::bound().client_fields) return fail("native client fields not verified");
+        const json::value* s = msg.find("state");
+        if (!s || s->type != json::kind::object) return fail("no state");
+        reconnect::counters v;
+        v.have = true;
+        const long long in[6] = {s->int_or("score", -1),   s->int_or("kills", 0),
+                                 s->int_or("assists", 0),  s->int_or("downs", 0),
+                                 s->int_or("revives", 0),  s->int_or("headshots", 0)};
+        for (long long x : in)
+            if (!reconnect::plausible_counter(x)) return fail("implausible counter in state");
+        v.score = static_cast<int>(in[0]);
+        v.kills = static_cast<int>(in[1]);
+        v.assists = static_cast<int>(in[2]);
+        v.downs = static_cast<int>(in[3]);
+        v.revives = static_cast<int>(in[4]);
+        v.headshots = static_cast<int>(in[5]);
+        auto& r = players_[slot].restore;
+        r = reconnect::pending_restore{};
+        r.active = true;
+        r.values = v;
+        r.id = id;
+        r.queued_ms = game_ms_;
+        r.last_ms = game_ms_;
+        if (!id.empty()) {
+            json::writer val;
+            val.boolean("queued", true);
+            json::array will, wont;
+            for (const char* k : {"score", "kills", "assists", "downs", "revives", "headshots"})
+                will.str(k);
+            // Needs the co-loaded GSC (referee.md §3.3); not built. Said, not faked.
+            for (const char* k : {"weapons", "perks", "position"}) wont.str(k);
+            val.raw("will_restore", will.done()).raw("not_restored", wont.done());
+            game_link::get().send_reply(id, true, {}, val.done());
+        }
+        ENW_INFO("referee: restore queued for slot %d: score %d, kills %d, downs %d -- applied "
+                 "after the spawn", slot, v.score, v.kills, v.downs);
+    }
+
+    void apply_restore(int slot, uint32_t ms) {
+        auto& p = players_[slot];
+        const auto cur = referee::player_stats(slot);
+        bool ok = false;
+        reconnect::counters m;
+        if (cur) {
+            const reconnect::counters now{true, cur->score, cur->kills, cur->assists,
+                                          cur->downs, cur->revives, cur->headshots};
+            m = reconnect::merge_restore(now, p.restore.values);
+            referee::client_stats w;
+            w.score = m.score; w.kills = m.kills; w.assists = m.assists;
+            w.downs = m.downs; w.revives = m.revives; w.headshots = m.headshots;
+            ok = referee::set_player_stats(slot, w);
+        }
+        if (ok) {
+            // Re-baseline the edge detectors so the jump is not read as 3 downs, 5 revives and
+            // an 11,840-point kill streak: `points` and `stats` go out as absolutes instead.
+            p.score = m.score;
+            p.have_score = false;
+            p.downs = m.downs;
+            p.downs_sent = m.downs;
+            p.have_downs = true;
+            p.revives_native = m.revives;
+            p.kills = m.kills;
+            p.headshots = m.headshots;
+            p.assists = m.assists;
+            p.have_stats = false;
+            p.snap = m;
+        }
+        json::writer w;
+        w.str("t", "restored").integer("ms", ms).integer("slot", slot).boolean("ok", ok);
+        if (ok) {
+            w.integer("score", m.score).integer("kills", m.kills).integer("downs", m.downs);
+            json::array wont;
+            for (const char* k : {"weapons", "perks", "position"}) wont.str(k);
+            w.raw("not_restored", wont.done());
+        } else {
+            w.str("error", "the scoreboard fields could not be written safely");
+        }
+        game_link::get().send(w);
+        if (ok)
+            ENW_INFO("referee: RESTORED slot %d: score %d, kills %d, downs %d, revives %d "
+                     "(weapons/perks/position not restored: referee.md §3.3)",
+                     slot, m.score, m.kills, m.downs, m.revives);
+        else
+            ENW_WARN("referee: restore for slot %d NOT applied: the counters did not read back "
+                     "as plausible, nothing written", slot);
     }
 
     void poll_players(uint32_t ms) {
@@ -886,6 +1181,7 @@ private:
             auto& p = players_[slot];
 
             poll_roster(slot, ms);
+            poll_reconnect(slot, ms);
 
             // THE SCOREBOARD COUNTERS (referee.md §16). One 24-byte read of the player's
             // gclient per server frame: score, kills, assists, downs, revives, headshots,
@@ -1029,6 +1325,10 @@ private:
         // docs/protocol/replay-events-v1.md): the gameplay-event schema version (absent = 0,
         // snaps and the v0 events only) and the snap rates.
         w.integer("replay_events", replay_ev::kVersion);
+        // This build sends player_lost / player_back / player_ready, carries `state` on
+        // player_disconnect and answers `restore` (reconnect_rules.hpp). A host that sees it
+        // waits for player_ready before counting a returning player down.
+        if (reconnect_on_) w.integer("reconnect", 1);
         w.integer("snap_hz", 20);
         w.integer("zombie_hz", 20);
         game_link::get().send(w);
@@ -1288,7 +1588,18 @@ private:
                 pw.integer("health", e->health);
                 pw.boolean("alive", e->alive);
             }
+            if (players_[slot].link.phase == reconnect::link_phase::lost) pw.boolean("lost", true);
             players.raw(pw.done());
+        }
+        // A player who has already dropped is no longer `active`, so the live read above has
+        // nothing for them -- which is exactly the player the host asks about. Their state as
+        // of their last input is kept until the slot is reused (reconnect_rules.hpp).
+        for (int slot = 0; reconnect_on_ && slot < kMaxPlayers; ++slot) {
+            const auto& p = players_[slot];
+            if (p.connected || !p.have_snap || p.steamid.empty()) continue;
+            std::string j = snapshot_json(slot);
+            j.insert(j.size() - 1, ",\"connected\":false");
+            players.raw(j);
         }
         json::writer v;
         v.integer("round", round_).raw("players", players.done());
@@ -1400,6 +1711,23 @@ private:
         int fps = -1;
         int fps_first = -1;
         int fps_changes = 0;    // changes after the first report
+        // --- disconnect -> pause -> reconnect (reconnect_rules.hpp, 2026-09-24) ---
+        std::string token_seen;           // the invite token this connection presented
+        reconnect::link_slot link;        // the input watch: loading / playing / lost
+        bool have_snap = false;           // the state as of the last input:
+        uint32_t last_sample_ms = 0;
+        reconnect::counters snap;
+        bool snap_have_ent = false;
+        float snap_pos[3] = {0, 0, 0};
+        float snap_ang[3] = {0, 0, 0};
+        int snap_health = 0;
+        bool snap_alive = false;
+        std::string snap_weapon;
+        int snap_clip = -1;
+        int snap_ammo = -1;
+        bool snap_down = false;
+        int snap_round = 0;
+        reconnect::pending_restore restore;   // a host `restore` waiting for the spawn
     };
 
     // ------------------------------------------------ the Verified environment --
@@ -1474,6 +1802,8 @@ private:
     bool dev_knobs_ = false;
     std::string match_id_;                   // ENW_MATCH: the lease this process serves
     std::map<std::string, int> jti_seen_;    // single-use invite tokens, per match
+    bool reconnect_on_ = true;               // ENW_NO_RECONNECT=1 turns it off
+    reconnect::link_cfg link_cfg_;           // ENW_RECONNECT_LOST_MS moves lost_ms
     verified::change_tracker env_;           // server dvars as last reported
     uint32_t last_env_ms_ = 0;
     uint32_t last_client_env_ms_ = 0;

@@ -127,6 +127,16 @@ int main() {
         check(decide(true, a, 4) == reason::host, "the UI cannot release a host hold");
     }
 
+    // --- ENW_PAUSE_HOST_ONLY (2026-09-24): the disconnect pause without the Esc pause ------
+    {
+        client_report a[4] = {c("paused"), gone(), gone(), gone()};
+        check(decide(false, a, 4, false) == reason::none, "host-only: a solo Esc menu does not pause");
+        check(decide(true, a, 4, false) == reason::host, "host-only: the host's drop hold still pauses");
+        client_report b[4] = {c("paused"), c("paused"), gone(), gone()};
+        check(decide(false, b, 4, false) == reason::none, "host-only: everyone in the menu does not pause");
+        check(decide(false, b, 4) == reason::all_menu, "the default is unchanged");
+    }
+
     // --- the write guards (2026-09-23) ---------------------------------------------------
     check(plausible_svs_time(25750, 25700), "svs.time one frame past frozen: write");
     check(plausible_svs_time(25700, 25700), "svs.time already frozen: write (no-op)");

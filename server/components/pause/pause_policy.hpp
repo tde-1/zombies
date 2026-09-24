@@ -112,8 +112,14 @@ inline reason ui_wants(const client_report* clients, int n) {
 }
 
 // The effective decision. A host hold wins and is reported as such.
-inline reason decide(bool host_hold, const client_report* clients, int n) {
+//
+// `ui_enabled` false is ENW_PAUSE_HOST_ONLY=1 (2026-09-24, disconnect pause): the gate is armed,
+// the HOST's hold (a player lost their connection, everyone AFK) freezes the world, and the
+// players' Esc/typing pause does not. It exists so the box can take the disconnect pause back
+// without also taking back the Esc pause that was switched off with ENW_NO_PAUSE (dedi.md §18.6).
+inline reason decide(bool host_hold, const client_report* clients, int n, bool ui_enabled = true) {
     if (host_hold) return reason::host;
+    if (!ui_enabled) return reason::none;
     return ui_wants(clients, n);
 }
 

@@ -125,6 +125,10 @@ struct client_stats {
     int headshots = 0;
 };
 std::optional<client_stats> player_stats(int slot);
+// Write the same six counters back (the reconnect restore). False, and nothing written, unless
+// the field table verified, the gclient cross-checks, and both the current and the new values
+// are plausible counters. Main thread only.
+bool set_player_stats(int slot, const client_stats& v);
 
 // ----------------------------------------------------------------- clients --
 
