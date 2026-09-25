@@ -1353,3 +1353,89 @@ now treats it as skipped). Never let an apply hide a map that was visible before
 Tranche-3 originals are on `C:` (`ZombiesDev\archive\originals`); `E:\ZombiesArchive\` was
 cleared for bulk downloads but not used. One download failed: `thebunker` (MediaFire answered
 with a captcha interstitial, which we do not solve).
+
+## 15. 2026-09-25 — the mass archive run: MEGA, mirror fallback, the browser lane, and the plan (cloud session)
+
+B, 2026-09-25: *"mass download and archive and add maps … ZombieModding, UGX-Mods … hundreds and
+hundreds … in parallel: one agent downloading, one converting geometry for replays, one on
+descriptions/details/compatibility and testing launches on a test server … if bot measures block
+you, give me the links and a prompt for a browser session."*
+
+**Where this was written, and why it did no downloading.** A claude.ai cloud container, not B's PC.
+Its egress policy refused every host the run needs (MEGA, MediaFire, UGX, ZombieModding,
+archive.org, the bucket, `zombies.enw.gg`), it holds no SSH key for `zombies-dev`, no catalogue
+(`catalogue.sqlite` and the originals are on B's `C:`) and 30 GB of disk against ~280 GB of
+originals. So this session built the missing pieces offline, with tests, and the run itself is
+a **local** session on B's PC following 15.4. Nothing here was run against a real host.
+
+### 15.1 MEGA is fetchable (`archive/lib/mega.py`)
+
+Q-arc-3 deferred it as "half a day before the real archive run"; this is that run. File links
+(`/file/<h>#<k>`, `#!h!k`) and folder links (`/folder/<h>#<k>[/file/<node>]`, `#F!h!k[!node]`):
+key split, attribute decrypt (the real file name), AES-CTR decrypt while streaming, and the
+**meta-MAC check** (MEGA's chunked CBC-MAC) before a file is kept — written as `.part`, renamed
+only on a match, so a truncated or wrong-key download never becomes an original. A multi-file
+folder is listed and refused (`folder with N files: …`; an original is one file, never repacked)
+and goes to the browser lane. Over-quota (API -17 or HTTP 509) stops MEGA for 6 h of the run
+instead of retrying. **Needs `pip install cryptography` on B's PC.**
+`check_links.py` now also answers MEGA **folder** links (alive/dead + total size; were all
+`unknown`) and records a MEGA file's real name.
+
+Tests (offline, synthetic files encrypted exactly as MEGA's client does):
+`python archive/test/test_mega.py` — 10 OK: every MAC chunk boundary (128 KiB … 1 MiB steps, odd
+tails), old link form, one flipped byte refused with no `.part` left, wrong key, EBLOCKED,
+EOVERQUOTA stops further API traffic, 509, cap, single-file folder with a sub-path, multi-file
+folder refused, node-targeted folder link. **Unproven against the real API** — first real MEGA
+fetch is the proof; compare its sha256 with any other mirror of the same map.
+
+### 15.2 `fetch.py` tries the next mirror
+
+`fetch_one` took only the best-ranked link, so one link that rotted since the last check lost the
+map while a second mirror was alive. It now tries up to `--max-mirrors` (3) in rank order,
+skipping known-dead, unfetchable and keyless-MEGA links, and records the failed attempts in
+`tried`. MEGA ranks last among fetchable hosts (quota). `archive/test/test_fetch_mirrors.py`:
+a 404 archive.org mirror falls through to MEGA, the sidecar names the MEGA link, the keyless MEGA
+link is never touched, a re-run reuses the stored original with no traffic.
+
+### 15.3 The browser lane (`browser_queue.py`, `ingest_browser.py`)
+
+What the robot must not fetch: ZombieModding (`robots.txt: Disallow: /` for us; **B, 2026-09-25,
+wants its maps**, which supersedes the Q-arc-1 "stay skipped" for B's *own browsing*, not the
+crawler), Google Drive / OneDrive (sign-in walls), MediaFire captcha interstitials (e.g.
+`thebunker`), multi-file MEGA folders. `browser_queue.py` writes
+`reports/browser-queue.{md,json}`: a checklist by host of every unfetched map whose only live
+links are browser-only, with the folder to save into (`browser-drop/<norm>/`), plus the list of
+maps with no link at all to look up by name on ZombieModding. `ingest_browser.py` hashes,
+AV-scans and moves what B saved into `originals/<norm>/` with the same sidecar
+(`"fetched_by": "browser"`), matching loose files by exact size. Tests:
+`archive/test/test_browser_tools.py`.
+
+### 15.4 The run (for the local coordinator on B's PC)
+
+Bottleneck first, because it decides everything else: **box proofs are serial** (one agent
+slot, 4 GB box, one lease at a time, ~185 s hold + boot ≈ 5 min a map ≈ 12/hour). Downloads,
+extraction, static gates, geometry and metadata are all faster than that. So the order is:
+keep the box busy every minute with maps that have already passed every static gate, and do
+everything else in parallel behind it. A second box would double the rate and costs money —
+B's call (hard rule 8; CX33 is already on her list).
+
+| Lane | Owns | Does, in a loop |
+|---|---|---|
+| **FETCH** | `archive/` crawlers, `fetch.py`, `check_links.py` | (1) finish the catalogue: `crawlers/codrepo.py --pass c` (the ~1,012 unread posts are the biggest source of new links), then `crawlers/ugx.py` for anything newer than the last crawl, then `check_links.py` over everything unchecked or checked > 3 days ago; (2) `rank_popular.py` → shortlists of ~40 by popularity; (3) `fetch.py --shortlist … --budget-gb 60 --max-maps 40` wave after wave; (4) after each wave `browser_queue.py` and hand B the checklist; `ingest_browser.py` whenever she says she has saved some |
+| **PLAYABLE** | `tranche.py`, `extract.py`, `precheck.py`, `asset_gate.py`, `weapon_patch.py`, `box_proof.py`, `popular.py`, `import-archive.js` | first drain the two queues that already exist (14.8: `resume-new-maps.txt` 62, `resume-reproof-t2.txt` 34) so maps reach players today; then per wave: `tranche.py extract/list/manifests` → `precheck` + `asset_gate` + `weapon_patch` (static; a map that fails here never takes a box slot) → `box_proof.py` one at a time → `popular.py --apply --only` → `import-archive.js`. Publish every ~10 passes, not at the end |
+| **GEOMETRY** | `tools/maps/oat-t4-world`, `/mapdata` | each newly extracted map through the OAT GfxWorld dumper (`replay.md` §15, ~1 s/map, no game launch); runs behind PLAYABLE and never blocks it — a map is playable before its replay shell exists |
+| **DETAILS** | `fetch_art.py`, `fetch_art_web.py`, `easter_eggs.py`, `scan_modes.py`, `catalogueTwins` review, manifests' descriptions | description, author, release date, cover art, EE guide, game-mode menu, series/twin links for every map PLAYABLE publishes; mostly cache reads, no box |
+
+Rules the lanes share: one lease at a time on fake `76561198000000005` (hard rules 13–14, check
+no real player is live first); originals on `E:\ZombiesArchive` once `C:` has < 100 GB free
+(keep the path under `ZombiesDev` a junction so no code changes); never run a downloaded `.exe`;
+AV every original; a **bsp collision** (`extract.py:290`, two different releases shipping the
+same `mods/<bsp>`) is not overwritten and not guessed — list them in `reports/bsp-collisions.json`
+for the coordinator; B's series rule (series maps are distinct, never auto-merged) for twins; a
+status line to B at every publish (maps new on the site, box passes, fetched GB, browser queue
+size). The paste-ready prompt that starts this is in the vault / B's chat (2026-09-25); the
+prompt is short and points here.
+
+**Trap found while writing this:** `archive.md` says it is regenerated by `make_doc.py` from
+`archive.md.tmpl`, but §13–§15 exist only in `archive.md`. Running `make_doc.py` now would drop
+them. Append §13–§15 to the template before the next regeneration.

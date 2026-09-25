@@ -607,3 +607,9 @@ a keepalive restart; it uses this PC's ssh key read-only.
   EGX-based maps share guns). Half a start: `tools/maps/map_features.py` already reads each held
   map's `include_weapon` calls, but keeps only the wonder weapons in
   `web/server/data/map-features.json`; the full list would need keeping. Parked; nothing draws it.
+
+### 2026-09-25 — B on ZombieModding (supersedes the Q-arc-1 "stay skipped" for downloads)
+B wants ZombieModding's maps archived and offered her own browser for sites that block bots. The
+crawler still never fetches from zombiemodding.com (its `robots.txt` bans us); the maps come in
+through the browser lane (`archive.md` §15.3): B, or a browser session she drives, downloads
+into `browser-drop/<norm>/`, and `ingest_browser.py` hashes, AV-scans and files them.

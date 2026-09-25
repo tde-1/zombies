@@ -114,8 +114,28 @@ def probe_mega(ps, url):
     out = {"url": url, "status": None, "size": None, "final_url": None,
            "content_type": None, "error": None, "filename": None}
     if MEGA_FOLDER.search(url):
-        out["error"] = "folder link (needs the folder key to enumerate)"
-        return out, "unknown"
+        from . import mega
+        link = mega.parse(url)
+        if not link:
+            out["error"] = "folder link without its key"
+            return out, "unknown"
+        try:
+            files = mega.list_folder(ps, link["handle"], link["key"])
+        except mega.MegaError as exc:
+            out["error"] = str(exc)
+            return out, ("dead" if exc.code in mega.DEAD else "unknown")
+        except net.Dropped as exc:
+            out["error"] = str(exc)
+            return out, "blocked"
+        if link["node"]:
+            files = [f for f in files if f["node"] == link["node"]]
+        if not files:
+            out["error"] = "folder is empty"
+            return out, "dead"
+        out["size"] = sum(f["size"] for f in files)
+        out["status"] = 200
+        out["filename"] = files[0]["name"] if len(files) == 1 else "%d files" % len(files)
+        return out, "alive"
     m = MEGA_ID.search(url)
     if not m:
         out["error"] = "no file handle in URL"
@@ -139,6 +159,14 @@ def probe_mega(ps, url):
         if isinstance(d, dict) and "s" in d:
             out["size"] = int(d["s"])
             out["status"] = 200
+            from . import mega
+            link = mega.parse(url)
+            if link and d.get("at"):
+                try:
+                    attrs = mega.decrypt_attrs(d["at"], mega.split_file_key(link["key"])[0])
+                    out["filename"] = (attrs or {}).get("n")
+                except Exception:
+                    pass
             return out, "alive"
     out["error"] = "unexpected api shape"
     return out, "unknown"

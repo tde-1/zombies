@@ -28,7 +28,7 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib import catalogue, linkcheck, net  # noqa: E402
+from lib import catalogue, linkcheck, mega, net  # noqa: E402
 
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 QUARANTINE = os.path.join(WORK, "quarantine")
@@ -36,14 +36,13 @@ ORIGINALS = os.path.join(WORK, "originals")
 
 # Hosts we can actually pull bytes from, in preference order.
 HOST_RANK = {"mediafire.com": 0, "archive.org": 1, "onedrive.live.com": 2, "1drv.ms": 2,
-             "moddb.com": 3, "dropbox.com": 4}
+             "moddb.com": 3, "dropbox.com": 4, "mega.nz": 6, "mega.co.nz": 6}
 # Hosts we cannot fetch from, and why. They are still catalogued and still counted in
 # the link report -- they are just never chosen when another mirror exists, because
 # choosing one is choosing to fail.
+# MEGA left this list on 2026-09-25 (lib/mega.py decrypts and MAC-checks); it ranks
+# last among fetchable hosts because its anonymous transfer quota is small.
 UNFETCHABLE = {
-    "mega.nz": "MEGA encrypts client-side; the key is in the URL fragment and the file "
-               "needs an AES-CTR decrypt we have not built",
-    "mega.co.nz": "same as mega.nz",
     "drive.google.com": "drive.usercontent.google.com is robots.txt Disallow: /",
     "docs.google.com": "redirects to the Drive endpoint, which is robots-disallowed",
 }
@@ -64,7 +63,9 @@ def link_rank(r):
     host = (r["host"] or "").removeprefix("www.")
     base = ".".join(host.split(".")[-2:])
     name = (r["filename"] or r["url"]).lower()
-    return (1 if (host in UNFETCHABLE or base in UNFETCHABLE) else 0,
+    # a MEGA link without its key in the fragment can never be decrypted
+    keyless_mega = "mega." in host and not mega.parse(r["url"])
+    return (1 if (host in UNFETCHABLE or base in UNFETCHABLE or keyless_mega) else 0,
             0 if r["verdict"] == "alive" else 1 if r["verdict"] is None else 2,
             HOST_RANK.get(base, 5),
             0 if name.endswith(GOOD_EXT) else 1,
@@ -99,7 +100,7 @@ def resolve(ps, url):
             return None, p.get("error") or ("mediafire: %s" % verdict), False
         return p["final_url"], None, True
     if "mega" in host:
-        return None, UNFETCHABLE["mega.nz"], False
+        return None, "mega links go through lib/mega.py, not resolve()", False
     if "drive.google.com" in host or "docs.google.com" in host:
         return None, UNFETCHABLE["drive.google.com"], False
     return url, None, False
@@ -222,17 +223,14 @@ def fetch_one(db, ps, norm, budget, args):
         for link in all_links(db, row["key"]):
             cands.append((link_rank(link), row, link))
     cands.sort(key=lambda t: t[0])
-    best = (cands[0][1], cands[0][2]) if cands else None
-    if best is None:
+    if not cands:
         return {"norm": norm, "status": "no download link in any source",
                 "names": [r["name"] for r in rows]}
-    row, link = best
-    out = {"norm": norm, "name": row["name"], "source": row["source"],
-           "source_url": row["source_url"], "link": link["url"],
-           "link_verdict": link["verdict"]}
     have = os.path.join(ORIGINALS, SAFE.sub("_", norm))
     existing = [f for f in os.listdir(have)] if os.path.isdir(have) else []
     if any(f.endswith(".meta.json") for f in existing):
+        out = {"norm": norm, "name": rows[0]["name"], "source": rows[0]["source"],
+               "source_url": rows[0]["source_url"]}
         meta = json.load(open(os.path.join(have, [f for f in existing
                                                   if f.endswith(".meta.json")][0]),
                               encoding="utf-8"))
@@ -240,16 +238,58 @@ def fetch_one(db, ps, norm, budget, args):
                     "size": meta["size"], "sha256": meta["sha256"],
                     "av": (meta.get("av") or {}).get("result"), "reused": True})
         return out
+    # Try mirrors in rank order until one lands. Stopping at the first cost maps whose
+    # best-ranked link had rotted since the last link check while a second was alive.
+    tried, seen = [], set()
+    for rank, row, link in cands:
+        if link["url"] in seen or link["verdict"] == "dead" or rank[0] == 1:
+            continue
+        seen.add(link["url"])
+        out = {"norm": norm, "name": row["name"], "source": row["source"],
+               "source_url": row["source_url"], "link": link["url"],
+               "link_verdict": link["verdict"]}
+        try:
+            res = _fetch_link(ps, norm, row, link, budget, args, out)
+        except net.Dropped as exc:
+            res = dict(out, status="host dropped: %s" % exc)
+        if res["status"] == "ok" or len(seen) >= args.max_mirrors:
+            if tried:
+                res["tried"] = tried
+            return res
+        tried.append({"link": link["url"], "status": res["status"]})
+    if tried:
+        out["tried"] = tried[:-1]
+        return out
+    row, link = cands[0][1], cands[0][2]
+    return {"norm": norm, "name": row["name"], "source": row["source"],
+            "source_url": row["source_url"], "link": link["url"],
+            "link_verdict": link["verdict"],
+            "status": "no fetchable link: every mirror is dead or on an unfetchable host"}
+
+
+def _fetch_link(ps, norm, row, link, budget, args, out):
+    dest_dir = os.path.join(QUARANTINE, SAFE.sub("_", norm))
+    cap = min(args.max_file_mb * 2**20, budget[0])
+    host = (link["host"] or catalogue.host_of(link["url"]) or "").lower()
+    if "mega." in host:
+        direct = link["url"]
+        try:
+            path, err = mega.download(ps, link["url"], dest_dir, cap,
+                                      lambda n: SAFE.sub("_", n))
+        except Exception as exc:
+            path, err = None, "%s: %s" % (exc.__class__.__name__, exc)
+        if not path:
+            out["status"] = "download failed: " + (err or "?")
+            return out
+        return _store(norm, row, link, direct, path, budget, out)
     direct, err, from_landing = resolve(ps, link["url"])
     if not direct:
         out["status"] = "cannot resolve: " + (err or "?")
         return out
-    dest_dir = os.path.join(QUARANTINE, SAFE.sub("_", norm))
     path = err = None
     for attempt in (1, 2):
         try:
-            path, err = download(ps, direct, dest_dir,
-                                 min(args.max_file_mb * 2**20, budget[0]),
+            path, err = download(ps, direct, dest_dir, cap,
                                  SAFE.sub("_", row["name"]) + ".bin",
                                  from_landing=from_landing)
         except Exception as exc:
@@ -269,6 +309,10 @@ def fetch_one(db, ps, norm, budget, args):
     if not path:
         out["status"] = "download failed: " + (err or "?")
         return out
+    return _store(norm, row, link, direct, path, budget, out)
+
+
+def _store(norm, row, link, direct, path, budget, out):
     size = os.path.getsize(path)
     budget[0] -= size
     digest = sha256_of(path)
@@ -302,6 +346,8 @@ def main():
     ap.add_argument("--budget-gb", type=float, default=10.0)
     ap.add_argument("--max-file-mb", type=int, default=1500)
     ap.add_argument("--max-maps", type=int, default=15)
+    ap.add_argument("--max-mirrors", type=int, default=3,
+                    help="mirrors tried per map before giving up (rank order)")
     args = ap.parse_args()
 
     names = list(args.map)
