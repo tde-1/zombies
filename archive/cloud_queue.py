@@ -73,6 +73,12 @@ def build(db):
             continue
         if browser_queue.held(norm):
             stats["held_here"] += 1
+            # fetched here but not yet uploaded (the original is still on disk): first in line,
+            # so the pipeline frees the disk before it fetches anything new
+            d = os.path.join(fetch.ORIGINALS, fetch.SAFE.sub("_", norm))
+            if any(not f.endswith(".meta.json") for f in os.listdir(d)):
+                out.append({"norm": norm, "name": rows[0]["name"], "pop": 10**12, "size": 0})
+                stats["local_unprocessed"] = stats.get("local_unprocessed", 0) + 1
             continue
         if not any(fetchable(l) for l in links):
             stats["no_robot_link"] += 1

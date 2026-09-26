@@ -54,6 +54,21 @@ from lib import catalogue, net  # noqa: E402
 WORK = fetch.WORK
 REPORTS = os.path.join(WORK, "reports")
 STATUS = os.path.join(REPORTS, "cloud_pipeline.json")
+CLAIMS = os.path.join(REPORTS, "cloud_claims.json")   # bsp -> norm, written BEFORE its upload
+
+
+def load_claims():
+    try:
+        return json.load(open(CLAIMS, encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_claims(c):
+    os.makedirs(REPORTS, exist_ok=True)
+    with open(CLAIMS + ".tmp", "w", encoding="utf-8") as fh:
+        json.dump(c, fh, indent=1, sort_keys=True)
+    os.replace(CLAIMS + ".tmp", CLAIMS)
 LOG_LOCK = threading.Lock()
 STATE_LOCK = threading.Lock()
 
@@ -162,7 +177,7 @@ def push_state(s3):
 
 
 # --------------------------------------------------------------------- per map
-def process_map(s3, norm, res, taken, args):
+def process_map(s3, norm, res, taken, args, claims):
     """Steps 2-7 for one fetched map. Returns the status record."""
     rec = {"norm": norm, "name": res.get("name"), "link": res.get("link"),
            "original": os.path.basename(res["file"]), "size": res.get("size"),
@@ -185,11 +200,14 @@ def process_map(s3, norm, res, taken, args):
     for m in out["mods"]:
         bsp = m["map"]
         with STATE_LOCK:
-            if bsp in taken:
+            # a bsp this same map claimed on an interrupted run is its own, not a collision
+            if bsp in taken and claims.get(bsp) != norm:
                 rec["errors"].append("bsp collision: mods/%s already in the bucket" % bsp)
                 continue
             taken.add(bsp)
             extract.OWNERS[bsp] = norm
+            claims[bsp] = norm
+            save_claims(claims)
         if args.static:
             try:
                 r = subprocess.run([args.static, norm, bsp], capture_output=True, text=True,
@@ -239,6 +257,9 @@ def main():
     extract.HARDLINK = True          # mods/<bsp>/ hard-linked into extract/: half the disk
     s3 = s3client()
     taken = bucket_bsps(s3)
+    claims = load_claims()
+    for b, n in claims.items():          # our own earlier claims own their bsp in extract too
+        extract.OWNERS[b] = n
     log("[start] bucket holds %d bsps; free %.1f GB" % (len(taken), free_gb()))
     status = load_status()
     names = []
@@ -261,7 +282,7 @@ def main():
                 return
             norm, res = item
             try:
-                rec = process_map(s3, norm, res, taken, args)
+                rec = process_map(s3, norm, res, taken, args, claims)
             except Exception as exc:
                 rec = {"norm": norm, "ok": False, "stage": "process",
                        "errors": ["%s: %s" % (exc.__class__.__name__, exc)],
