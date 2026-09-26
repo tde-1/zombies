@@ -40,3 +40,4 @@ anything under `docs/kickstart/history/`.
 
 - 2026-09-24: No custom UIs for process/tooling — improvements land as skills, docs, hooks and CLI scripts that apply without B thinking about them.
 - 2026-09-24: B's pronouns are she/her. (Older docs say "his"; don't copy that into new text.)
+- 2026-09-26: Do the work yourself in the cloud session (download, process, upload) rather than handing it to a session on B's PC; hand off only what truly needs her PC or her browser. If the cloud is blocked, say exactly which setting unblocks it.
