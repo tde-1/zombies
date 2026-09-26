@@ -1,0 +1,255 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ghouse",
+  "title": "Greenhouse Survive & Defuse Realism Mod 3.0",
+  "source": "custom",
+  "author": "BluntStuffy",
+  "released": "2017-11-10",
+  "fs_game": "mods/nazi_zombie_ghouse",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@new_realism_core_ghouse.iwd": "f123116c47bb25dc9078401dd94d0de4707fb37f09b443374c71e1c854c3d204"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_goliath",
+        "ed209_part_arm",
+        "ed209_part_battery",
+        "ed209_part_leg",
+        "extra_boss_spawner",
+        "wall_parts"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_goliath, ed209_part_arm, ed209_part_battery, ed209_part_leg, extra_boss_spawner, wall_parts look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 175,
+    "script_count": 175,
+    "entities": 3297,
+    "ee_candidates": [
+      "boss_goliath",
+      "ed209_part_arm",
+      "ed209_part_battery",
+      "ed209_part_leg",
+      "extra_boss_spawner",
+      "wall_parts"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "mech_escape_trigger",
+      "player_endgame_0",
+      "player_endgame_1",
+      "player_endgame_2",
+      "player_endgame_3"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "debris_zone_7"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "debris_zone_7"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "debris_zone_6_b"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "debris_zone_6_b"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "debris_zone_6_a"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f123116c47bb25dc9078401dd94d0de4707fb37f09b443374c71e1c854c3d204",
+    "map_specific_triggers": [
+      "acid_lab_area",
+      "airlock_touch",
+      "airlock_trigger",
+      "airlock_trigger_2",
+      "ammo_trig",
+      "auto_door_excluder",
+      "auto_door_trig",
+      "breach_point",
+      "bunker_fence_trig",
+      "bunker_touch",
+      "document_trigger",
+      "ed209_trig",
+      "ed_bunker_door_trig",
+      "gersch_obj",
+      "mech_escape_trigger",
+      "mirror_barn_trig",
+      "soul_tree_1",
+      "soul_tree_2",
+      "soul_tree_3",
+      "soul_tree_excluder",
+      "spawn_wall_breach",
+      "spec_breach_point",
+      "start_bossfight",
+      "supply_drop_radio",
+      "tower_key_drop_corpse",
+      "toxic_water",
+      "turbine_trig",
+      "turbines_aoe",
+      "turbines_kill_trig",
+      "wall_buy_touch",
+      "wall_buy_use",
+      "zone_1a_trigger",
+      "zone_b_trigger",
+      "zone_c_trigger",
+      "zone_d_trigger",
+      "zone_e_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:05:13Z"
+    }
+  },
+  "archive": {
+    "original": "New_Realism_Greenhouse.exe",
+    "original_sha256": "e185f5b76bae76a189abb963d823c6c7a585081e749cb85cc8bbe8761d6f5863",
+    "original_size": 642041756,
+    "source_url": "http://www.mediafire.com/file/2r6y2gp7mt91g3e/New_Realism_Greenhouse.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/11/10/greenhouse-survive-defuse/",
+    "fetched": "2026-09-26T02:46:28Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "top100",
+      "t4m_req",
+      "top_100"
+    ],
+    "catalogue_description": "If the map is crashing for you, read this!!! If the map is crashing when it\u2019s loading OR when you have weird textures/lag going on, look at this: -Make sure you have T4m, and it\u2019s working ( version in the bottom right of the main menu should start with 2. ) -change your texture quality settings, useally it\u2019s best to lower them. So set all of them to \u2018high\u2019 or even \u2018normal\u2019 -make sure there\u2019s no loose files or folders that dont belong there in the folder where the custom-mods are installed -set the \u2018corpse count\u2019 option to \u2018Tiny\u2019 If you did all of these and it\u2019s still not working, i\u2019m affraid i cant do much to help you.. Greenhouse",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_ghouse"
+      ],
+      "iwd_images": [
+        "nazi_zombie_ghouse_images.iwd:images/ecbc_logo.iwi",
+        "nazi_zombie_ghouse_images.iwd:images/ecbc_logo_blend.iwi",
+        "nazi_zombie_ghouse_images.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_ghouse_images.iwd:images/timer_background.iwi",
+        "new_realism.iwd:images/1motd_camo_menu_img.iwi",
+        "new_realism.iwd:images/3motd_camo_menu_img.iwi",
+        "new_realism.iwd:images/almagro_loadout_a_col.iwi",
+        "new_realism.iwd:images/almagro_loadout_b_col.iwi",
+        "new_realism.iwd:images/dark_mat_camo_menu_img.iwi",
+        "new_realism.iwd:images/devgru_loadout_a_col.iwi",
+        "new_realism.iwd:images/devgru_loadout_a_nml.iwi",
+        "new_realism.iwd:images/devgru_loadout_bd_col.iwi",
+        "new_realism.iwd:images/devgru_loadout_b_nml.iwi",
+        "new_realism.iwd:images/devgru_loadout_ed_col.iwi",
+        "new_realism.iwd:images/devgru_loadout_e_nml.iwi",
+        "new_realism.iwd:images/future_camo_menu_img.iwi",
+        "new_realism.iwd:images/ganja_camo_menu_img.iwi",
+        "new_realism.iwd:images/icefire_camo_menu_img.iwi",
+        "new_realism.iwd:images/lava_camo_menu_img.iwi",
+        "new_realism.iwd:images/menu_backgr.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ghouse"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 148.9,
+    "addon_iwds": [
+      {
+        "file": "new_realism.iwd",
+        "entries": 963,
+        "scripts": 0,
+        "bytes": 306452159
+      },
+      {
+        "file": "new_realism_core_ghouse.iwd",
+        "entries": 86,
+        "scripts": 74,
+        "bytes": 4480013
+      },
+      {
+        "file": "nr_combined.iwd",
+        "entries": 94,
+        "scripts": 11,
+        "bytes": 49750165
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "new_realism_core_ghouse.iwd:animscripts/death.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,284 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_house",
+  "title": "ZOMBIE HOUSE",
+  "source": "custom",
+  "author": "ToX1k_GhOsT",
+  "released": "2024-03-08",
+  "fs_game": "mods/nazi_zombie_house",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_house.iwd": "75d32148bae52df89c50bcd5460469cf646b77797951718aafda89eaa2d5c27f",
+    "maps/payload_zombiemode.gsc@nazi_zombie_house.iwd": "56a2d40167db4292fbea411576a9bb0176495aee09f2639a8e2fe63a3c605129"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "bb_escape_ison"
+        }
+      },
+      "candidates": [
+        "bb_escape_ison",
+        "crawler_round_ending",
+        "end_game",
+        "ending_in_position",
+        "ending_tank_ready",
+        "grace_period_ending",
+        "match_ending_pretty_soon",
+        "match_ending_soon",
+        "match_ending_very_soon",
+        "tank_guards_escape",
+        "we_win"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "bb_escape_ison, crawler_round_ending, end_game, ending_in_position, ending_tank_ready, grace_period_ending name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 899,
+    "script_count": 899,
+    "entities": 383,
+    "ee_candidates": [],
+    "ending_words": [
+      "bb_escape_ison",
+      "crawler_round_ending",
+      "end_game",
+      "ending_in_position",
+      "ending_tank_ready",
+      "grace_period_ending",
+      "match_ending_pretty_soon",
+      "match_ending_soon",
+      "match_ending_very_soon",
+      "tank_guards_escape",
+      "we_win"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "give_ammo",
+        "?"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto6"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto5"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto4"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "75d32148bae52df89c50bcd5460469cf646b77797951718aafda89eaa2d5c27f",
+    "map_specific_triggers": [
+      "give_ammo"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:05:49Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_house.exe",
+    "original_sha256": "6a51a99d87ba47e676abcbb5e38bbb3506e957f1bc30a2eb8d29c72ccf9706c0",
+    "original_size": 79232794,
+    "source_url": "https://www.mediafire.com/file/cdisyu3whumchks/nazi_zombie_house.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:51:54Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 79.7,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985211
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_house.ff",
+      "nazi_zombie_house_patch.ff",
+      "nazi_zombie_house.iwd:maps/ber1.gsc",
+      "nazi_zombie_house.iwd:maps/ber2_fx.gsc",
+      "nazi_zombie_house.iwd:maps/ber3b.gsc",
+      "nazi_zombie_house.iwd:maps/mp/gametypes/_battlechatter_mp.gsc",
+      "nazi_zombie_house.iwd:maps/mp/gametypes/_class.gsc",
+      "nazi_zombie_house.iwd:maps/mp/gametypes/_missions.gsc",
+      "nazi_zombie_house.iwd:maps/mp/gametypes/_spawning.gsc",
+      "nazi_zombie_house.iwd:maps/mp/gametypes/_weapons.gsc",
+      "nazi_zombie_house.iwd:maps/sniper.gsc",
+      "nazi_zombie_house.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_house.iwd:maps/_menus.gsc",
+        "menus": [
+          "uiScript_startMultiplayer"
+        ],
+        "responses": [
+          "BUTTON_A",
+          "BUTTON_B",
+          "DPAD_DOWN",
+          "DPAD_LEFT",
+          "DPAD_RIGHT",
+          "DPAD_UP"
+        ],
+        "note": null
+      },
+      {
+        "script": "nazi_zombie_house.iwd:maps/mp/gametypes/_menus.gsc",
+        "menus": [
+          "changeclass_marines_splitscreen",
+          "changeclass_opfor_splitscreen"
+        ],
+        "responses": [
+          "allies",
+          "autoassign",
+          "axis",
+          "back",
+          "changeclass_marines",
+          "changeclass_marines_splitscreen",
+          "changeclass_opfor",
+          "changeclass_opfor_splitscreen",
+          "changeteam",
+          "createsquad",
+          "deathIconToggle",
+          "endgame",
+          "endround",
+          "joinsquad",
+          "leavesquad",
+          "locksquad",
+          "showsquadinfo",
+          "spectator",
+          "unlocksquad",
+          "waypointToggle",
+          "xpTextToggle"
+        ],
+        "note": null
+      },
+      {
+        "script": "nazi_zombie_house.iwd:maps/training.gsc",
+        "menus": [
+          "select_difficulty"
+        ],
+        "responses": [
+          "continue",
+          "tryagain"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

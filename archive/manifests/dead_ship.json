@@ -1,0 +1,136 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "dead_ship",
+  "title": "Dead Ship",
+  "source": "custom",
+  "author": "ZCTxCHAOSx",
+  "released": "2014-10-03",
+  "fs_game": "mods/dead_ship",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@dead_ship.iwd": "228b391265b67119b108dfb8ad65c68cc0df5d1bee746446d725f768b8e24e76"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 1500",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 60,
+    "script_count": 60,
+    "entities": 0,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "228b391265b67119b108dfb8ad65c68cc0df5d1bee746446d725f768b8e24e76",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:59:06Z"
+    }
+  },
+  "archive": {
+    "original": "dead_ship.rar",
+    "original_sha256": "daa90473217cd8f9d1d03e72e0eca8df17f1c2533dcfc176fbfe4c15c85fbf95",
+    "original_size": 378058838,
+    "source_url": "https://archive.org/download/custom-zombie-maps/dead_ship.rar",
+    "source_page": "https://archive.org/details/custom-zombie-maps",
+    "fetched": "2026-09-26T02:42:02Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "rar",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "top100",
+      "top_100",
+      "archive_file"
+    ],
+    "catalogue_description": "Featuring: \u2013 Quizz Mod \u2013 Dead Ship Edition \u2013 Special Minigame designed by Quizz \u2013 Multi Pack a Punch \u2013 This will also refill your current PAP gun ammo \u2013 Buyable Ending \u2013 After earning it \u2013 Many custom sounds (Turn everything UP) \u2013 One \u201cTrap\u201d \u2014 Captains Curse Many thanks to: Quizz: Quizz mod and hours of transferring and tweaking to make work for Dead Ship. Mini Game. Nukem: Trapdoor and Menu/Music help CoDMapper: Map Pieces / Script help TomBMX: Buried zombie models / All his wonderful tools YaPhil: Scripts used in the Quizz Mod Theme: Laggin24x \u2013 https://www.youtube.com/user/Laggin24x Testers: Zebba, YodaJdiMstr, Nukem, Quizz, TomBMX, Vek70r, @Laggin_",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_dead_ship"
+      ],
+      "iwd_images": [
+        "dead_ship.iwd:images/chaos_logo.iwi",
+        "dead_ship.iwd:images/loadscreen_dead_ship.iwi",
+        "dead_ship.iwd:images/menu_background_mp_tank.iwi"
+      ],
+      "loadscreen": "loadscreen_dead_ship"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": null,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "dead_ship_patch.ff",
+      "dead_ship.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

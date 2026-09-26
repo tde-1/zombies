@@ -1,0 +1,231 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "dawnville",
+  "title": "DAWNVILLE",
+  "source": "custom",
+  "author": "ConvictioNDR",
+  "released": "2016-05-22",
+  "fs_game": "mods/dawnville",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@dawnville.iwd": "696354d8580e6e70bb34a4c891f863353564fe05f19a67cf8fc317417a15f61d"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 140,
+    "script_count": 140,
+    "entities": 1123,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "to_intersection_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "small_house_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "pap_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "destroyed_building_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "arch_gate"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "696354d8580e6e70bb34a4c891f863353564fe05f19a67cf8fc317417a15f61d",
+    "map_specific_triggers": [
+      "crate",
+      "evac",
+      "gnome_1",
+      "gnome_2",
+      "gnome_3",
+      "hammer1",
+      "hammer2",
+      "hammer3",
+      "hammer4",
+      "headshots_true",
+      "hide1",
+      "hide2",
+      "hide3",
+      "hide_reward",
+      "hide_seek",
+      "kills_true",
+      "melee_true",
+      "monkey_reward",
+      "perks_true",
+      "points_true",
+      "reward_trig",
+      "rounds_true",
+      "staff_build",
+      "staff_pickup",
+      "target1",
+      "target10",
+      "target11",
+      "target12",
+      "target2",
+      "target3",
+      "target4",
+      "target5",
+      "target6",
+      "target7",
+      "target8",
+      "target9",
+      "targets_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:58:16Z"
+    }
+  },
+  "archive": {
+    "original": "Dawnville_R1.1.exe",
+    "original_sha256": "bd71937158a6d380e6204accb16473102f33a98609f913fbbc1a78fa71172366",
+    "original_size": 413009169,
+    "source_url": "https://www.mediafire.com/file/bn1w6037la4krd4/Dawnville_R1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:40:53Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "top100",
+      "challenge",
+      "top_100"
+    ],
+    "catalogue_description": "The download includes 5 maps. Dawnville: \u201cGood map, tough!\u201d \u2013 Spiderbite \u201cJesus the map is tough!!\u201d \u2013 Laggin24x \u201cIt\u2019s more than tough.\u201d \u2013 DeathBringerZen Return to WWII for a more classic World at War Nazi Zombies experience as you slay the undead using an arsenal of weaponry that would be available during the time. The challenge system enjoyed by many players in SOG and Backlot returns. Complete the challenges to unlock more perks, then survive the end game to beat the map. Samantha will not go easy on you. You\u2019ve been warned. Dawnville Low Detail: \u201cThis is something all mappers should do.\u201d \u2013 various people The same as Dawnville, except all unnecessary detail has been removed from the map. The map has been covered in fog, and anything inside the fog will not be rendered. I recognize there is a significant amount of players that use laptops/lower end computers to play custom zombies. This low detail version of the map was made in an effort to make the map more playable to those players. I\u2019ve done all I can to increase the FPS without removing any gameplay elements, but do recognize that it will not be exactly the same experience as the normal version. If this version does not run well for you, then you may want to look into purchasing a new PC. If this is the only version of the map you can run, you still might want to look into purchasing a new PC. Trainstation Survival: For those of you that like to do first room challenges, this is for you. Bouncing betties, bowie knife, a",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_dawnville_lowlod",
+        "loadscreen_graveyard_shift",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_trainstation_survival",
+        "loadscreen_trench_defense",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "dawnville.iwd:images/loadscreen_dawnville_lowlod.iwi",
+        "dawnville.iwd:images/loadscreen_graveyard_shift.iwi",
+        "dawnville.iwd:images/loadscreen_trainstation_survival.iwi",
+        "dawnville.iwd:images/loadscreen_trench_defense.iwi",
+        "dawnville.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 126.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "dawnville.ff",
+      "dawnville_lowlod.ff",
+      "dawnville_lowlod_patch.ff",
+      "dawnville_patch.ff",
+      "graveyard_shift.ff",
+      "graveyard_shift_patch.ff",
+      "mod.ff",
+      "trainstation_survival.ff",
+      "trainstation_survival_patch.ff",
+      "trench_defense.ff",
+      "trench_defense_patch.ff",
+      "dawnville.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

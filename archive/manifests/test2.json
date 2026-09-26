@@ -1,0 +1,228 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "test2",
+  "title": "DOOM E1M2 - NUCLEAR PLANT",
+  "source": "custom",
+  "author": "dextro62",
+  "released": "2016-05-24",
+  "fs_game": "mods/test2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@test2.iwd": "6dd741ec42ac6b58c0cb484635c43e29f79248b671e555069d71eebcb6b61a5b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        40000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 40000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 112,
+    "script_count": 112,
+    "entities": 2176,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      40000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf1277_auto2",
+        "?"
+      ],
+      [
+        4000,
+        "pf1842_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1259_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1265_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1256_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6dd741ec42ac6b58c0cb484635c43e29f79248b671e555069d71eebcb6b61a5b",
+    "map_specific_triggers": [
+      "end_game",
+      "harrybo21_perk_trigger",
+      "music_box_player",
+      "shoot_me"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:01:01Z"
+    }
+  },
+  "archive": {
+    "original": "e1m2v1.0.2.exe",
+    "original_sha256": "31629f7f354ec69d0986778a55814c5b6c6dd76dccf5f28d967b5c6ec7fc1020",
+    "original_size": 312385799,
+    "source_url": "https://www.mediafire.com/file/omgkf0x10twmhee/e1m2v1.0.2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:17:15Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "t4m_req"
+    ],
+    "catalogue_description": "You are the legendary doomguy, hells\u2019 demons are defeated, your job is done and you have triumphed over hell itself\u2026\u2026but what\u2019s this. Zombies? No one said anything about zombies. But hey, Demons? Zombies? What\u2019s the difference? You pick up your weapon\u2019s and get ready for the horde. This map will require T4M The map is called test2 when you install it. To play the map solo you have to open console and type \u201cmap test2\u201d Features: Harry Bo21\u2019s perks Natesmithzombies weapons Shootable door (you\u2019ll need to remember this) Music box with doom music Buyable ending No Dogs Doom textures Custom start and end round music Credits: Harry Bo21-perks and help with various problems natesmithzombies \u2013 weapons and help with various problems TomBMX \u2013 buyable ending, music box ZK- tutorials, shootable door thezombiekilla6- fixed a problem with zk\u2019s shootable door script ADDICTED \u2013 Co-op loadscreen and mission screen MJPWGaming \u2013 Custom start and end round music The members of UGX-mods for all their help fixing things I was stuck with. If I\u2019ve forgotten anyone please tell me and I\u2019ll add your name. Beta testers: B00mld Cameron",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_test2",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "harrybo21_perks v3.0.7.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "test2.iwd:images/loadscreen_test2.iwi"
+      ],
+      "loadscreen": "loadscreen_test2"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 73.8,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_perks v3.0.7.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      },
+      {
+        "file": "nsz_bo2_weapons_v1.3.2.iwd",
+        "entries": 330,
+        "scripts": 12,
+        "bytes": 87125413
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "test2_patch.ff",
+      "nsz_bo2_weapons_v1.3.2.iwd:maps/_loadout.gsc",
+      "test2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "test2.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

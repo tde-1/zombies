@@ -1,0 +1,255 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_energy",
+  "title": "ZOMBIE ENERGY",
+  "source": "custom",
+  "author": "Nathiri",
+  "released": "2015-07-09",
+  "fs_game": "mods/nazi_zombie_energy",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zombieenergy.iwd": "593198201a5ae2d931a123ebf9eef4284a5b4eb885d004fd8aa58254ffacae1b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1250,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        15000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 1949,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      15000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "stairs"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "stairs"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "top"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "top"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "593198201a5ae2d931a123ebf9eef4284a5b4eb885d004fd8aa58254ffacae1b",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "elevator_antijump",
+      "end_game",
+      "give_ammo",
+      "music_box_player",
+      "rounds_survive_doors",
+      "trigdoora"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:01:57Z"
+    }
+  },
+  "archive": {
+    "original": "ZombieEnergy.exe",
+    "original_sha256": "9544e0b4d9285456fbb0b93e94309426a7b8c343ef73b83fbccb59cfd2d43972",
+    "original_size": 226295226,
+    "source_url": "http://www.mediafire.com/file/21gn16ov3b9cjxz/ZombieEnergy.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:20:32Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Hello, this is my first proper zombies map, Energy. I started work on this right after I finished my basic map to learn Radiant. At about the 2nd week of January or so is about when I started on it. It\u2019s really be done by March/April, but I was waiting on a script for a more objective-style ending. The script was never completed and so I just scrapped it and decided to just release the map. The map also originally had a more 2 route from spawn, but was changed because of some issues and so is the map that is released here today. The map plays quite well and has been considered quite hard for some zombie players as I have had this tested frequently on several different test versions. You will probably spend most of your time on the above areas and not in the spawn region. Most of the map was made with default waw models, but towards the ending of development I started to port models for a few CoDs and so you will see some around the map. There is maybe 1 or 2 minor bugs but shouldnt affect gameplay very much at all. Most of the testers enjoyed playing the map and it is possible to beat this map at around 22 or 23. It is possible to do it a few rounds before but you would really have to work at it. Story The Zombie Outbreak has spread across the world and their devastation is increasing every day. The scientists that are left think they can cure the outbreak if they can get enough of the research that was done by previous scientists and researchers around the world that caused ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_energy",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "zombieenergy.iwd:images/apec_acm_powerloader_lower_c.iwi",
+        "zombieenergy.iwd:images/apex_acm_powerloader_grate_c.iwi",
+        "zombieenergy.iwd:images/apex_acm_powerloader_upper_c.iwi",
+        "zombieenergy.iwd:images/loadscreen_nazi_zombie_energy.iwi",
+        "zombieenergy.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_energy"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 138.4,
+    "addon_iwds": [
+      {
+        "file": "bo1_pap_camo.iwd",
+        "entries": 4,
+        "scripts": 0,
+        "bytes": 484890
+      },
+      {
+        "file": "die_rise.iwd",
+        "entries": 49,
+        "scripts": 9,
+        "bytes": 9988039
+      },
+      {
+        "file": "nuketown.iwd",
+        "entries": 43,
+        "scripts": 7,
+        "bytes": 9753450
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      },
+      {
+        "file": "zombieenergy.iwd",
+        "entries": 578,
+        "scripts": 22,
+        "bytes": 105902402
+      },
+      {
+        "file": "zz_sal_chalkmakers.iwd",
+        "entries": 6,
+        "scripts": 0,
+        "bytes": 31042
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_energy.ff",
+      "nazi_zombie_energy_patch.ff",
+      "zombieenergy.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "zombieenergy.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

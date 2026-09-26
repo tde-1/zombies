@@ -1,0 +1,183 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_killswitch",
+  "title": "KILLSWITCH",
+  "source": "custom",
+  "author": "iBarnett",
+  "released": "2014-02-16",
+  "fs_game": "mods/nazi_zombie_killswitch",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_killswitch.iwd": "bef3b96c363cdba98f668316090f671e65f5d9cab7080dd7dff784b50350e7f8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        45000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 45000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 1203,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      45000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0"
+    ],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door8"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "bef3b96c363cdba98f668316090f671e65f5d9cab7080dd7dff784b50350e7f8",
+    "map_specific_triggers": [
+      "end_game",
+      "shoot_me1"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:08:39Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_killswitch.exe",
+    "original_sha256": "14f3460237e6eb63dea1f25a432941dc1e06b76855edb83e16f15db0e0630785",
+    "original_size": 66910199,
+    "source_url": "https://www.mediafire.com/file/ua945o47a3edr89/nazi_zombie_killswitch.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:51:40Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is my 3rd map called Nazi Zombie Killswitch. It takes place in a excavation desert site where all has gone wrong and zombies have appeared. Features: \u2013 **JUGG works** (first time) Wooo \u2013 All perks from WaW/Blops \u2013 Double Tap 2.0 \u2013 Blops Quick Revive \u2013 Limited weapons (sort of a challenge map) \u2013 Hidden Mule Kick (broke down and actually added it\u2026. no troll) (shootable) \u2013 No dogs \u2013 One-way Teleporter \u2013 Maze like areas for some perks \u2013 End game \u2013 Not a lot of detail\u2026 but its a desert Issues: \u2013 2 doors have 1000 points to buy but are actually free \u2013 If theres a bunch of zombies when entering the tele it may take a couple seconds for the zombies to reach the end game area Thanks to: \u2013 Zk (script/tuts) \u2013 Treminaor (zoning help/tuts) \u2013 YaPh1l (scripts) \u2013 Tom_bmx (scripts) \u2013 Bamskater (scripts/prefabs) \u2013 Other friendly people from UGX ***Turn off Specular Maps in game graphics settings***",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.8,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_killswitch.ff",
+      "nazi_zombie_killswitch_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,219 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_discovery",
+  "title": "DISCOVERY ISLAND",
+  "source": "custom",
+  "author": "CreepersAreEpic",
+  "released": "2015-02-08",
+  "fs_game": "mods/nazi_zombie_discovery",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_discovery.iwd": "97df59215c8c7d621f10b2506c7f1b127eedf07f09466a0ba946987469753e4e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        5000,
+        41150
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 41150",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 115,
+    "script_count": 115,
+    "entities": 2307,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      4000,
+      5000,
+      41150
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2500,
+        "give_ammo",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "vulturedoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "stamindoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "speeddoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "revivedoor"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "97df59215c8c7d621f10b2506c7f1b127eedf07f09466a0ba946987469753e4e",
+    "map_specific_triggers": [
+      "dig_site",
+      "end_game",
+      "give_ammo",
+      "paneltrig1",
+      "paneltrig2",
+      "paneltrig3",
+      "saw_trigger",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:00:18Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_discovery.exe",
+    "original_sha256": "6c6d980efde8e3e1be04b4828b88c5891085d94c452cdc1c9ba4bf86a9f0490a",
+    "original_size": 127528567,
+    "source_url": "http://www.mediafire.com/file/n8xoffef6p0ewch/nazi_zombie_discovery.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:50:34Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "WARNING: Any glitches must, I repeat, MUST be reported to me, whether it be in a PM or a comment. Thank you. Discovery Island \u201cWelcome to Disney\u2019s Discovery Island! A very zombiefied zoological park\u2026\u201d Hi there I\u2019m Ping998! Thank you for viewing my new map! There is a few things I want to say first: Yes, this map is based from the actual Disney\u2019s Discovery Island which was abandoned in 1999 due to\u2026reasons.These reasons consist of the fact that a dangerous type of amoeba was found in the waters of Bay Lake, this disease attacks the brain and has around a 95% fatality rate \u2013 and no, I\u2019m NOT making this up! So I thought: \u201cHey! What a good excuse for a zombie map!\u201d. So this is what I made.This isn\u2019t a replica of Discovery Island, due to the fact that VERY little images of the island exists. Take my advice though, DON\u2019T GO THERE IN REAL LIFE! It\u2019s EXTREMELY dangerous and against the law so don\u2019t! The map is based 3 years exactly after its closure in 1999, on the 8th of April, 2002. OBJECTIVES: 1. Find and activate all three power switches 2. Find and activate all hidden perk doors 3. Gain all 9 perks (Optional) 4. Complete all soul chests 5. Unlock the tomb 6. Buy the ending FEATURES: |Black Ops Weapons |Black Ops 2 Weapons |Vulture-Aid |A VERY special gun reward (After completion of soul chests) |Black Ops Perks (Mule Kick, Staminup, PHD Flopper, Deadshot Daiquiri) |World at War Perks (Quick Revive, Speed Cola, Juggernog) |Double Tap 2.0 (DOUBLES THE ROF/DAMAGE, Costs 3500 points)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_zombie_factory"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_discovery.iwd:images/dilogo.iwi",
+        "nazi_zombie_discovery.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_discovery.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_discovery.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_discovery.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_zombie_discovery.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 87.5,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 51,
+        "scripts": 3,
+        "bytes": 2461106
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 556980
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_discovery.ff",
+      "nazi_zombie_discovery_patch.ff",
+      "nazi_zombie_discovery.iwd:maps/_loadout.gsc",
+      "nazi_zombie_discovery.iwd:maps_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

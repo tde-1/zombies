@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_yard",
+  "title": "INDUSTRIAL ESTATE",
+  "source": "custom",
+  "author": "steviewonder87",
+  "released": "2015-08-03",
+  "fs_game": "mods/nazi_zombie_yard",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_yard.iwd": "f213374a35c74f244fa4b42df8526ed2ad9aa37c64d3e85cfcd202c7d3083261"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "gersh_teleport"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        6000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, gersh_teleport name an ending and are this map's own; script hardcodes cost 6000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 161,
+    "script_count": 161,
+    "entities": 698,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "gersh_teleport"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "zone_grate_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "staminup_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "speed_zone_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "phd_zone_barrels"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "pap_zone_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f213374a35c74f244fa4b42df8526ed2ad9aa37c64d3e85cfcd202c7d3083261",
+    "map_specific_triggers": [
+      "claymore_purchase",
+      "galvaknuckles",
+      "workbench"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:08:11Z"
+    }
+  },
+  "archive": {
+    "original": "Industrial_Estate.exe",
+    "original_sha256": "6fe79afe1fde1718cb9419c874f80824b998492857f8a0bcf5211c995c69029d",
+    "original_size": 401321207,
+    "source_url": "http://www.mediafire.com/file/m50nx5os3lhq7b3/Industrial_Estate.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:17:54Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "top100",
+      "t4m_req",
+      "top_100"
+    ],
+    "catalogue_description": "Features: Nova crawlers (teleporting, EMP, jumping, kamikazes) Juggernaut Bosses BO1 Perks + Ammomatic + Electric Cherry + Widows Wine Buildable Zombie Shield Buildable Sliquifier Baby Gun Galvaknuckles Sidestepping/Barrel rolling zombies Super sprinters Zombie Cash, Zombie Blood, Death Machine and Random gun drops Crawling when downed in Co-op Shangri La Geyser Weapons List: Pistols \u2013 MR6 RK5 (Akimbo & Single Wield) Executioner Five Seven (Akimbo) Desert Eagle (Akimbo) RE45 (Akimbo) SMGs \u2013 MP5 ASM1 PDW Skorpion EVO AK12 Vesper Weevil ARs/Rifles \u2013 AUG M16A1 SMR Scar H Galil M8A1 FN FAL AN94 MK14 G2A4 XR2 KN44 M8A7 ICR-1 Snipers \u2013 DSR Drakon LMGs \u2013 LSAT HAMR RPD M27-IAR Shotguns \u2013 Remington 870 KSG Bulldog Haymaker 12 Wunderweapons \u2013 Gershes QEDs Ray Gun Ray Gun Mark 2 31-79 JGb215 (Baby Gun) Sliquifier Misc \u2013 Zombie Shield Galvaknuckles Claymores Credits: Bluntstuffy RadimaX AwesomePieman redspace offthewall Tito YaPhil Ege115 Ronan Merriman Pro FTW JBird632 Addicted Make Cents HarryBO21 Seth Norris Pro Revenge Jiffy Noodles CHN Tom BMX Rollonmath Hitmanvere A Few Things: Rounds starting immediately is intentional as it speeds up the gameplay. PHD will protect you from all Nova/EMP explosions except \u2018Kamikazes\u2019 (and you won\u2019t lose your perks if hit by one) You can only have one wonder weapon at a time, and if you\u2019re currently holding one you won\u2019t see another in the box. Juggernauts are not affected by the Sliquifier or Baby Gun. Novas don\u2019t spawn until the power is turned on",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_yard",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_yard.iwd:images/ammo_background.iwi",
+        "nazi_zombie_yard.iwd:images/ammo_background2.iwi",
+        "nazi_zombie_yard.iwd:images/custom_zombies_menu.iwi",
+        "nazi_zombie_yard.iwd:images/loadscreen_nazi_zombie_yard.iwi",
+        "nazi_zombie_yard.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_yard.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_yard.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_yard.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_zombie_yard.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_yard"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 65.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 162,
+        "scripts": 0,
+        "bytes": 440052
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_yard_patch.ff",
+      "nazi_zombie_yard.iwd:animscripts/death.gsc",
+      "nazi_zombie_yard.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

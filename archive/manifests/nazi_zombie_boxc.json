@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_boxc",
+  "title": "Fort Canada",
+  "source": "custom",
+  "author": "GTTClan",
+  "released": "2016-05-22",
+  "fs_game": "mods/nazi_zombie_boxc",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@boxchallenge.iwd": "8fc680efc0423739c69c6556202a9ff2e1ac9139040a7ac1b62f350ee78ba230"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        75000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 75000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 112,
+    "script_count": 112,
+    "entities": 3426,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf4103_auto2",
+        "?"
+      ],
+      [
+        4000,
+        "pf20_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf29_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf44_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf26_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "8fc680efc0423739c69c6556202a9ff2e1ac9139040a7ac1b62f350ee78ba230",
+    "map_specific_triggers": [
+      "end_game",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:04:15Z"
+    }
+  },
+  "archive": {
+    "original": "FortCanadaV.1.1.exe",
+    "original_sha256": "e3d052e8ff8587fddfbea2ec09c0e8041a52d2e9cf7eeeb820a87072f46baf75",
+    "original_size": 345848678,
+    "source_url": "http://www.mediafire.com/file/065xtdjr3a59dtq/FortCanadaV.1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/05/22/fort-canada/",
+    "fetched": "2026-09-26T02:46:44Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "After a world wide sandstorm, you find yourself in an abandoned Canadian military base. Your objectives are to fight, survive and escape. Features: \u2013 PHD Flopper W/ Dolphine Dive Explosion \u2013 12 Perks [Solo quick revive, Working Vultures Aid, etc] \u2013 Over 34 weapons [BO3, BO1, AW, MW3, MW2, GHOSTS] W/ REAL DESIGNATIONS to the firearms used by Military/LAW Enforcements and Civilians \u2013 A lot of custom stuff [Textures, Characters, Models, Viewhands, Etc] \u2013 Buyable Ending \u2013 Open Map [Lots of running space with MANY spawners EVERYWHERE] \u2013 All weapons have as close to REAL damage as possible when it comes to Calibers/Ammo Type Ex. 5,56 NATO will be weaker than 7,62 but will have better range or what ever depending on the gun itself. \u2013 And MUCH MORE",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_boxc"
+      ],
+      "iwd_images": [
+        "boxchallenge.iwd:images/loadscreen_nazi_zombie_boxc.iwi",
+        "boxchallenge.iwd:images/weapon_red_cross_background - Copie.iwi",
+        "boxchallenge.iwd:images/weapon_red_cross_background.dds",
+        "boxchallenge.iwd:images/weapon_red_cross_background.iwi",
+        "boxchallenge.iwd:images/weapon_red_cross_background_2.iwi",
+        "boxchallenge.iwd:images/weapon_red_cross_background_iw5.dds",
+        "boxchallenge.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_boxc"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 105.3,
+    "addon_iwds": [
+      {
+        "file": "boxchallenge.iwd",
+        "entries": 585,
+        "scripts": 29,
+        "bytes": 126657584
+      },
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_boxc.ff",
+      "nazi_zombie_boxc_patch.ff",
+      "boxchallenge.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

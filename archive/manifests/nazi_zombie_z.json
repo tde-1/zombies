@@ -1,0 +1,234 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_z",
+  "title": "ICARUS",
+  "source": "custom",
+  "author": "tudark",
+  "released": "2016-09-01",
+  "fs_game": "mods/nazi_zombie_z",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_z.iwd": "ee7775b1729fb99bc8aaa4286fd0f3e81caf80810ba089c01bf2d2bce971b8ea"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_a1",
+        "ee_a1_trig",
+        "ee_a2",
+        "ee_a2_trig",
+        "ee_a3",
+        "ee_a3_trig"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_a1, ee_a1_trig, ee_a2, ee_a2_trig, ee_a3, ee_a3_trig look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 121,
+    "script_count": 121,
+    "entities": 4456,
+    "ee_candidates": [
+      "ee_a1",
+      "ee_a1_trig",
+      "ee_a2",
+      "ee_a2_trig",
+      "ee_a3",
+      "ee_a3_trig"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      150000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf10115_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf9804_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf9468_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf9411_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf9816_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ee7775b1729fb99bc8aaa4286fd0f3e81caf80810ba089c01bf2d2bce971b8ea",
+    "map_specific_triggers": [
+      "auto_door_trig",
+      "cliff_trig",
+      "ee_a1_trig",
+      "ee_a2_trig",
+      "ee_a3_trig",
+      "end_game",
+      "freakshowee",
+      "harrybo21_perk_trigger",
+      "hatch",
+      "hiveeat_trig",
+      "satchel_build_trig",
+      "satchel_exp_damage_trig",
+      "satchel_pick_trig",
+      "satchel_pick_trig_2",
+      "satchel_pick_trig_3",
+      "satchel_pick_trig_4",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "shoot_door",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "zombie_whos_who"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:07:32Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_z1.2.exe",
+    "original_sha256": "a62556de82f8a68b1d6cd5673189692dcf5f4253897ccce893dbf7844d19335f",
+    "original_size": 836225692,
+    "source_url": "https://mega.nz/file/W5dQXLTD#cO8EsktlI2XIwIMVfHvbzWZP_-4mdrIm5HafSvszpHs",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:16:37Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "t4m_req"
+    ],
+    "catalogue_description": "Testing lab where scientists have been genetically modifying strains of the zombie virus with bio samples of plants from an unknown origin Please note there are assets in game ready for the update ,i.e afterlife hud as this will be a part of the new EE when I get round to it. if recording gameplay maybe turn music sound down due to the song choice. : IMPORTANT! If playing this in window mode your brightness will have to be raised as window mode makes it really dark. Fix Log \u2013ohm upgrade removed \u2013glitch spot \u2013more debris added to endgame area This update requires T4M to run, you MUST download this in order to play the map, this is not optional. You will NEED to turn off spec maps before launching the map, otherwise you will get messed up models/textures. Once the map is loaded feel free to turn spec maps back on.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "nazi_zombie_z.iwd:images/custom_zombies_menu.iwi",
+        "nazi_zombie_z.iwd:images/custom_zombies_menu2.iwi",
+        "nazi_zombie_z.iwd:images/custom_zombies_menu3.iwi",
+        "nazi_zombie_z.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "nazi_zombie_z.iwd:images/spacelogo.iwi",
+        "nazi_zombie_z.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 140.6,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.3.iwd",
+        "entries": 474,
+        "scripts": 0,
+        "bytes": 99456265
+      },
+      {
+        "file": "nuketown.iwd",
+        "entries": 43,
+        "scripts": 7,
+        "bytes": 9753450
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 12387
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_z_patch.ff",
+      "nazi_zombie_z.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

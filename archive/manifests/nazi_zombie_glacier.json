@@ -1,0 +1,216 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_glacier",
+  "title": "FIREBASE GLACIER",
+  "source": "custom",
+  "author": "Gogeta22344",
+  "released": "2018-04-11",
+  "fs_game": "mods/nazi_zombie_glacier",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_glacier.iwd": "7d11c36d8b8b311e6931b499d2f828b8a1f0ac345f1ab1ab7e9ea4a2d88f651b"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_spawn"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_spawn look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 110,
+    "script_count": 110,
+    "entities": 589,
+    "ee_candidates": [
+      "boss_spawn"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      10000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        500,
+        "weapon_upgrade",
+        "pf963_auto43"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "7d11c36d8b8b311e6931b499d2f828b8a1f0ac345f1ab1ab7e9ea4a2d88f651b",
+    "map_specific_triggers": [
+      "annihilator",
+      "aw_power_station_trigger_1",
+      "aw_power_station_trigger_2",
+      "aw_power_station_trigger_3",
+      "aw_power_station_trigger_4",
+      "aw_teleporter_triggers_1",
+      "aw_teleporter_triggers_2",
+      "aw_teleporter_triggers_3",
+      "aw_teleporter_triggers_4",
+      "aw_teleporter_triggers_5",
+      "aw_teleporter_triggers_6",
+      "aw_teleporter_triggers_7",
+      "aw_teleporter_triggers_8",
+      "d_tp_2",
+      "d_tp_4",
+      "d_tp_6",
+      "d_tp_8",
+      "escort_mission_trig_0",
+      "escort_mission_trig_1",
+      "gravity_spikes",
+      "hack_mission_trigger",
+      "hack_mission_trigger1",
+      "hack_mission_trigger2",
+      "hack_mission_trigger3",
+      "krogan_trigger",
+      "liara_trigger",
+      "machine",
+      "me3_backpack_drop_point",
+      "me3_end_game",
+      "me3_geth_trigger",
+      "me3_geth_trigger_1",
+      "me3_geth_trigger_2",
+      "me3_geth_trigger_3",
+      "me3_hack_trigger",
+      "me3_hack_trigger1",
+      "me3_hack_trigger2",
+      "me3_hack_trigger3",
+      "minigun",
+      "pap_area",
+      "quarian_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:05:12Z"
+    }
+  },
+  "archive": {
+    "original": "Firebase_Glacier_v1.2_.exe",
+    "original_sha256": "58b6919e51b0892872ba4e4d66899849601315b74ff40bbc9d612ecf0e5c2d46",
+    "original_size": 540281392,
+    "source_url": "http://www.mediafire.com/file/g3djigpcb1klq78/Firebase_Glacier%255Bv1.2%255D.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:16:52Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "This map is a remake of Firebase Glacier from mass effect 3 and i have nothing more to say about it so enjoy. FEATURES",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_glacier"
+      ],
+      "iwd_images": [
+        "nazi_zombie_glacier.iwd:images/dukip_menu.iwi",
+        "nazi_zombie_glacier.iwd:images/dukip_menu2.iwi",
+        "nazi_zombie_glacier.iwd:images/loadscreen_nazi_zombie_glacier.iwi",
+        "nazi_zombie_glacier.iwd:images/m1_irons_speedloader_base_col.iwi",
+        "nazi_zombie_glacier.iwd:images/m1_irons_speedloader_base_nml.iwi",
+        "nazi_zombie_glacier.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_glacier.iwd:images/mtl_mts255_loader_col.iwi",
+        "nazi_zombie_glacier.iwd:images/mtl_mts255_loader_nml.iwi",
+        "nazi_zombie_glacier.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_glacier.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_glacier.iwd:images/_-gzombie_vending_three_gun_logo_on.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_glacier"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 107.0,
+    "addon_iwds": [
+      {
+        "file": "bo3_original_iwi.iwd",
+        "entries": 261,
+        "scripts": 0,
+        "bytes": 97084810
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_glacier_patch.ff",
+      "nazi_zombie_glacier.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_glacier.iwd:maps/ccm_mod_menu.gsc",
+        "menus": [],
+        "responses": [],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

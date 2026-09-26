@@ -1,0 +1,240 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_darkwoods",
+  "title": "DARK WOODS",
+  "source": "custom",
+  "author": "Corey",
+  "released": "2014-08-08",
+  "fs_game": "mods/nazi_zombie_darkwoods",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_DarkWoods.iwd": "4a960c41db676acf454ebcca165f27c559eaa26bc5d9cb0577202d72f3ec6807"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "ending_zone",
+        "ending_zone_spawners",
+        "ending_zone_spawners_rise"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        9000,
+        66600
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, ending_zone, ending_zone_spawners, ending_zone_spawners_rise name an ending and are this map's own; script hardcodes cost 66600",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 116,
+    "script_count": 116,
+    "entities": 3453,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "ending_zone",
+      "ending_zone_spawners",
+      "ending_zone_spawners_rise"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      9000,
+      66600
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "door8"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door5"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "4a960c41db676acf454ebcca165f27c559eaa26bc5d9cb0577202d72f3ec6807",
+    "map_specific_triggers": [
+      "end_game",
+      "handle_build_trig",
+      "handle_pick_trig",
+      "move_trigger",
+      "move_trigger2",
+      "panel_build_trig",
+      "panel_pick_trig",
+      "scare_him_now",
+      "scare_him_now2",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "shoot1",
+      "shoot2",
+      "shoot3",
+      "shoot4",
+      "shoot5",
+      "shoot_me",
+      "turn_power_on",
+      "walk_in",
+      "wire_build_trig",
+      "wire_pick_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:57:32Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_DarkWoods.exe",
+    "original_sha256": "85cbc2022fc3a7c7b7ad3578244918a089ba33e0bc55bd819bd9ebb77faa4eba",
+    "original_size": 117644587,
+    "source_url": "https://www.mediafire.com/file/9i1325h86i48d6i/nazi_zombie_DarkWoods.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:51:48Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Background I have only made 1 map prior to this, and it was pretty lame. This one takes place deep in a forest, where the undead have risen up from the ground. Some say it\u2019s because of the witches and demons that lurk in the forest. Progress through the map and unlock secret doors to gain access to new areas. (nothing too difficult) Features :9 perks: 4 Cod WaW 4 Black Ops 1 Black Ops 2 :Guns: Most Cod WaW guns Mp5 Stoner Scorpion CZ75 RPK :Elements: Eerie gameplay Thick Fog Cornfield (not a maze) Unlockables Buildable :Other Features: Buyable ending Custom sounds Custom PaP camo Zombie Counter No dogs Easter egg leading to the ending Unlock perk slots (start off with 4) :Credits: coddmodd: All the help he\u2019s given me with trouble shooting and tutorials ZK: Youtube tutorials, buildables, shootable door Mrhankey91: zombie counter Bamskater: black ops perks, electric cherry YaPh1l: Intro text, guidence help RayxZombie: Black ops 2 weapon glow DualVII: Round Sound template FreeCodCinematics: Bridge prefab gamer9294: Secret 3 button door Pashan: Moving object script Treminaor: Zone_fixer TomBmx: Lime Beta Testers: Diego xjonesy421 HitmanVere If I forgot anyone in the credits, let me know and I\u2019ll add you. Type in console \u201cmap nazi_zombie_darkwoods\u201d to play Sidenote: The map sort of broke on me when I was attempting to fix the gun sounds, so the BO guns don\u2019t have any reload sounds. But they do have their correct fire sounds.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_darkwoods",
+        "loadscreen_nazi_zombie_oldtown"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_DarkWoods.iwd:images/loadscreen_nazi_zombie_darkwoods.iwi",
+        "nazi_zombie_DarkWoods.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_darkwoods"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 96.0,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273488
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 557060
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019295
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_darkwoods.ff",
+      "nazi_zombie_darkwoods_patch.ff",
+      "nazi_zombie_DarkWoods.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

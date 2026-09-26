@@ -1,0 +1,224 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_egypt",
+  "title": "Egypt Zombies",
+  "source": "custom",
+  "author": "GearZ469",
+  "released": "2015-07-22",
+  "fs_game": "mods/nazi_zombie_egypt",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@egyptzombies.iwd": "584991b654eff86ec3058e1a6ca91d9e8899d2978be1f79935d68c230c021044"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": []
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "no easter-egg wording, but a numbered series part1..5 (4 members) and 1 series overall - the shape of a collect-N quest; confirm",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 1901,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4200,
+      5000,
+      70000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        99999999,
+        "zombie_door",
+        "part5"
+      ],
+      [
+        9999999,
+        "zombie_door",
+        "buildop2"
+      ],
+      [
+        9999999,
+        "zombie_door",
+        "buildop1"
+      ],
+      [
+        9999999,
+        "zombie_door",
+        "buildop"
+      ],
+      [
+        9999999,
+        "zombie_door",
+        "build1"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 99999999,
+      "targetname": "zombie_door",
+      "target": "part5",
+      "next_highest": 9999999
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "584991b654eff86ec3058e1a6ca91d9e8899d2978be1f79935d68c230c021044",
+    "map_specific_triggers": [
+      "end_game",
+      "endoftheline",
+      "goals",
+      "hideout",
+      "noobtrigdead",
+      "noobtrigdew",
+      "noobtrigdouble",
+      "noobtrigjug",
+      "noobtrigmule",
+      "noobtrigphd",
+      "noobtrigquick",
+      "noobtrigspeed",
+      "noobtrigstam",
+      "outofmap",
+      "tomb1",
+      "tombafter",
+      "tombhell",
+      "welcometo"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:00:57Z"
+    }
+  },
+  "archive": {
+    "original": "EgyptZombiesV2.0.exe",
+    "original_sha256": "ea3b4c1c79358946cb30151edfcc6db0945b91e7b06ca5721cdcb7a7e8aeb496",
+    "original_size": 371939024,
+    "source_url": "http://www.mediafire.com/file/i4y9or7xt8sd9ke/EgyptZombiesV2.0.exe",
+    "source_page": "https://callofdutyrepo.com/2015/07/22/egypt-zombies/",
+    "fetched": "2026-09-26T02:51:25Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "FEATURES: -A few WaW weapons -BO1 Weapons -BO2 Weapons -MW2 Weapons(THEY DO AIM NOW) -COD4 Weapons -BO1 Perks -WaW Perks -One Custom Perk -3 Main Easter Eggs -1 Mini Easter Egg -Every Packapunched Gun Has A Custom Camo(Try Them All!) -6 Wonder Weapons(including the blundergat, scavenger, the cure, thundergun, raygun mark2, and raygun) -Double Tap 2.0 -Nuketown zombie models -Drops Spawning out of map(This is on purpose, if you play the right way then you get drops ) -Buyable Ending YOUTUBE: IF ANY ONE UPLOADS THIS TO YOUTUBE PLEASE LET ME KNOW STORY: Our Four main players, show up in this hole in the ground in the middle of nowhere. They have no idea why they are here but a voice calls out to them and tells them what to do. You either listen or die, your choice but your fate may bring you gold and riches or death and despair. Is this really egypt, is this not just another trick of the mind? No matter, this map has a huge story behind it and it is waiting to be unlocked. The crazyplace was just to test your tastebuds for adventure, this map is just the begining. If you would like to make your own predictions then look for caulk writings ingame and other theory worthy items. KNOW BUGS: -While in ice chamber spawners don\u2019t spawn as much as they should. -All perk Machines give you the power must be active text event when power already is active.(just look up at the top left conor of your screen the first time you walk up to a perk and it will tell you the perk, the cost, and the ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_Nazi_zombie_Egypt",
+        "loadscreen_nazi_zombie_egypt"
+      ],
+      "iwd_images": [
+        "egyptzombies.iwd:images/Egypt_menu.iwi",
+        "egyptzombies.iwd:images/loadscreen_nazi_zombie_Egypt.iwi",
+        "egyptzombies.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_egypt"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 106.5,
+    "addon_iwds": [
+      {
+        "file": "egyptzombies.iwd",
+        "entries": 4253,
+        "scripts": 18,
+        "bytes": 254826035
+      },
+      {
+        "file": "mp_rollon_stg44_t6.iwd",
+        "entries": 39,
+        "scripts": 0,
+        "bytes": 2991496
+      },
+      {
+        "file": "nuketown.iwd",
+        "entries": 43,
+        "scripts": 7,
+        "bytes": 9753450
+      },
+      {
+        "file": "trem_hintstrings.iwd",
+        "entries": 1,
+        "scripts": 1,
+        "bytes": 1108
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 11064
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_egypt_patch.ff",
+      "nazi_zombie_egypt.ff",
+      "egyptzombies.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

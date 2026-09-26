@@ -1,0 +1,181 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "asylum_zm",
+  "title": "Asylum Zombies Map Pack",
+  "source": "custom",
+  "author": "ConvictioNDR",
+  "released": "2018-04-10",
+  "fs_game": "mods/asylum_zm",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@asylum_zm.iwd": "923901edb8bc1c8c3b8639e46960be529f246f6419c096132b09a00807324e7b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 150,
+    "script_count": 150,
+    "entities": 151,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_3"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "923901edb8bc1c8c3b8639e46960be529f246f6419c096132b09a00807324e7b",
+    "map_specific_triggers": [
+      "weapon_dumpster"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:56:34Z"
+    }
+  },
+  "archive": {
+    "original": "Asylum_Zombies.exe",
+    "original_sha256": "add36de8d63c97858ec3412691c1253e1f85562743eb88160d2890180e11f279",
+    "original_size": 668936745,
+    "source_url": "http://www.mediafire.com/file/sxxz4exwv8k296w/Asylum_Zombies.exe",
+    "source_page": "https://callofdutyrepo.com/2018/04/10/asylum-zombies-map-pack/",
+    "fetched": "2026-09-26T02:47:49Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Includes 4 maps. Asylum, the main map with all the features you\u2019d expect in one of my WaW maps. 1st Room Challenge, just the Starting room of the map. Courtyard Survival, sorta like Town or Farm, but for this map. Asylum Defense, the return of my streaks defense mode updated to behave like it did in my BO3 version of the mode instead of how it did in Trench Defense in the Dawnville map pack. The pack includes 8 game mode options and 2 more gameplay options. Survival: Your Standard Survival mode. Gun Game: Get a certain amount of kills to move on to the next gun. Go through every gun to win. Everyone knows this mode. One in the Chamber Survival: Start the game with one bullet. For every kill, you get a bullet added to your magazine until your magazine is full. Make your shots count and survive for as long as you can. Sharpshooter Survival: Every 1 minute 15 seconds (115) players are given a new random weapon. Survive as long as you can. One in the Chamber Competitive: Same as the Survival version, except the first person to 250 Kills wins. Sharpshooter Competitive: The same as the Survival version, except the first person to 350 kills wins. Ragtime Mode: Solo only. Makes the game sepia and plays little piano music, like an old time film before they had sound so someone just played a piano in the theater. The pack also introduces a new perk inspired by the One in the Chamber game mode, Cacheback. For every ZOMBIE killed it will add 2 BULLETS to the magazine of the equipped weap",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_asylum_1st",
+        "loadscreen_asylum_first_zm",
+        "loadscreen_courtyard_1",
+        "loadscreen_courtyard_defense_zm",
+        "loadscreen_courtyard_survival_zm",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "asylum_zm.iwd:images/loadscreen_asylum_1st.iwi",
+        "asylum_zm.iwd:images/loadscreen_courtyard_1.iwi",
+        "asylum_zm.iwd:images/specialty_fastreload_zombies.iwi",
+        "asylum_zm.iwd:images/weapon_red_cross_background.iwi",
+        "asylum_zm.iwd:images/weapon_red_cross_background_2.iwi",
+        "asylum_zm.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 159.2,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "asylum_first_zm.ff",
+      "asylum_first_zm_patch.ff",
+      "asylum_zm.ff",
+      "asylum_zm_patch.ff",
+      "courtyard_defense_zm.ff",
+      "courtyard_defense_zm_patch.ff",
+      "courtyard_survival_zm.ff",
+      "courtyard_survival_zm_patch.ff",
+      "mod.ff",
+      "asylum_zm.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}
