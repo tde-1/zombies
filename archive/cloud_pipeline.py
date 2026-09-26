@@ -256,6 +256,9 @@ def main():
                     help="command run as <cmd> <norm> <bsp> after extraction")
     ap.add_argument("--keep-originals", action="store_true")
     ap.add_argument("--retry-failed", action="store_true")
+    ap.add_argument("--force", action="store_true",
+                    help="re-open every listed release whatever its status (extractor fixes); "
+                         "originals come back from the bucket, its own bsps pass via claims")
     ap.add_argument("--retry-match", default=r"^(?!.*(w3x|Wc3)).*(Unsupported Method|upload failed|unar|too big|Errno 28)",
                     help="with --retry-failed: only failures whose error matches this regex")
     args = ap.parse_args()
@@ -324,7 +327,7 @@ def main():
         retry = (args.retry_failed and not prev.get("ok")
                  and re.search(args.retry_match, " ".join(e or "" for e in prev.get("errors") or [])))\
             if prev else False
-        if prev and (prev.get("ok") or prev.get("final")) and not retry:
+        if prev and (prev.get("ok") or prev.get("final")) and not retry and not args.force:
             continue
         todo.put(norm)
     log("[start] %d maps to do, %d fetchers, %d workers" % (todo.qsize(), args.fetchers, args.workers))
@@ -362,7 +365,7 @@ def main():
                     save_status(status)
                 log("[fetch] %-24s %s" % (norm, res.get("status")))
                 return
-            if not os.path.exists(res.get("file", "")) and args.retry_failed:
+            if not os.path.exists(res.get("file", "")) and (args.retry_failed or args.force):
                 # processed before and freed, but it failed after the fetch: its original is
                 # in the bucket (step 2 runs first), so take it from there, not the host
                 key = "archive/originals/%s/%s" % (fetch.SAFE.sub("_", norm),
