@@ -40,7 +40,7 @@ WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 ORIGINALS = os.path.join(WORK, "originals")
 EXTRACT = os.path.join(WORK, "extract")
 MODS = os.path.join(WORK, "mods")
-SEVENZIP = r"C:\Program Files\7-Zip\7z.exe"
+SEVENZIP = r"C:\Program Files\7-Zip\7z.exe" if os.name == "nt" else (shutil.which("7z") or "7z")
 
 JUNK_DIRS = re.compile(r"^\$PLUGINSDIR$|^\$_OUTDIR$|^\$TEMP$|^\$INSTDIR$", re.I)
 # NSIS puts the uninstaller and its own runtime in the archive root; they are not map data.

@@ -42,6 +42,14 @@ LOCK_STALE = 30 * 60         # a lock older than this is assumed abandoned
 def _pid_alive(pid):
     if pid <= 0:
         return False
+    if os.name != "nt":      # Linux (the cloud run, the box): signal 0 probes without killing
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
     try:
         import ctypes
         h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)
