@@ -1,0 +1,172 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_albtraumv3",
+  "title": "Albtraum",
+  "source": "custom",
+  "author": "HYBRIDGAMERGUY",
+  "released": "2012-06-26",
+  "fs_game": "mods/nazi_zombie_albtraumv3",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_albtraumv3.iwd": "c1cab56acea4f53c6696bd648ff65e953f99fa2adef8bc81eb43714b5c48a9f5"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 499,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "auto141"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "auto171"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "auto158"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto172"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c1cab56acea4f53c6696bd648ff65e953f99fa2adef8bc81eb43714b5c48a9f5",
+    "map_specific_triggers": [
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "secret_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:59:32Z"
+    }
+  },
+  "archive": {
+    "original": "albtraum.exe",
+    "original_sha256": "3547e1e22c40f242284425ca395a54d41c43e293b9069039420948d505c672d8",
+    "original_size": 86572107,
+    "source_url": "https://www.mediafire.com/file/jxtdvh348kvl6mv/albtraum.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/06/26/albtraum/",
+    "fetched": "2026-09-26T14:57:30Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "\u201cWhen the giant finally fell, all that was left was Z-D, an enclosed are through the wall of Z-C. Once they blasted through the wall of Z-C they found an area covered by bricks. To this day we do not know what research went on below Z-D. Would it become their final resting place, or would it become an unending nightmare?\u201d",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_albtraumv3.iwd:images/albtraum_menu.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 92.8,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_albtraumv3.ff",
+      "nazi_zombie_albtraumv3.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

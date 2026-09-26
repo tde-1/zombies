@@ -1,0 +1,219 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "dbs_tournament_of_power",
+  "title": "Dragon Ball Super Tournament Of Power",
+  "source": "custom",
+  "author": "AllMoDs",
+  "released": "2022-11-24",
+  "fs_game": "mods/dbs_tournament_of_power",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@dbs_tournament_of_power_patch.ff": "0555d1b15d48978f2497501186441109d5b8d0e2668c94c117453df99accabcc"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "caulifla_boss",
+        "cobba_boss",
+        "jiren_boss",
+        "kefla_boss",
+        "pic_boss",
+        "top_boss"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "caulifla_boss, cobba_boss, jiren_boss, kefla_boss, pic_boss, top_boss look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 130,
+    "script_count": 130,
+    "entities": 2130,
+    "ee_candidates": [
+      "caulifla_boss",
+      "cobba_boss",
+      "jiren_boss",
+      "kefla_boss",
+      "pic_boss",
+      "top_boss"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9999
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "0555d1b15d48978f2497501186441109d5b8d0e2668c94c117453df99accabcc",
+    "map_specific_triggers": [
+      "playable_area22",
+      "playable_areazz",
+      "playable_die",
+      "rock_zone",
+      "start_zone"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:58:18Z"
+    }
+  },
+  "archive": {
+    "original": "dbs_tournament_of_power_1.7_full_.zip.exe",
+    "original_sha256": "5e3fc0cb320cdade7bf70cfcdaaa345aa40d13d453cedc50f39b9ca043d10cca",
+    "original_size": 323938175,
+    "source_url": "https://www.mediafire.com/file/i9k6yc3bb4dgyvm/dbs_tournament_of_power_%255B1.7_full%255D.zip.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/11/24/dragon-ball-super-tournament-of-power/",
+    "fetched": "2026-09-26T14:56:29Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "4 years in the makeing of dragon ball super map dragon ball z map hit a memory limit to all my testers over the years could not have done it without the consent coop testing big thanks i had 5 ingame cutscene but can\u2019t keep but 3 kales transformation is gon and you win will do 2nd ver with them in and others out credits always there to help scripting menu anima models OFFtheWALL__ BluntStuffy HitmanVere redspace200 testers WyeOnline ZProject115 Lightning132 MLGBLOKE Captain-Drix MajorPwnege1 if i did not add your credits pm me warning do not play with 4 players it\u2019s possible but with the amount of stuff going on has risk of problems its simple beat the bosses before the pillar reaches the floor or game over you don\u2019t spectate you go to the bleachers instead until next round there are 4 perks in all three are custom don\u2019t fall off the map or get thrown out by a boss and yes they can grab you and pick you up the player not a model go to dragon ball settings and set buttons or you can\u2019t use a custom perk instant transmission perk set a location with the button you set in dragon ball settings press it again to go back to the firts spot it was presed same image in perk shader will show on you hud when you set a spot and goway after use no limit of uses ki cola increase ki charge rate by 50% 50% off of ki usedge you need over 1000 ki to go ultra instinct no wall gus DPS increases with super saiyan level key pad codes 4126 fov slider 2378 3dfx",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_dbs_tournament_of_power",
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "dbs_tournament_of_power.iwd:images/caulifla_menu_icon.iwi",
+        "dbs_tournament_of_power.iwd:images/caulifla_menu_icon_2.iwi",
+        "dbs_tournament_of_power.iwd:images/kale_menu_icon.iwi",
+        "dbs_tournament_of_power.iwd:images/kale_menu_icon_2.iwi",
+        "dbs_tournament_of_power.iwd:images/loadscreen_dbs_tournament_of_power.iwi",
+        "dbs_tournament_of_power.iwd:images/logo_cod2.iwi",
+        "dbs_tournament_of_power.iwd:images/menu_br.iwi",
+        "dbs_tournament_of_power.iwd:images/menu_button_backing_right.iwi",
+        "dbs_tournament_of_power.iwd:images/menu_db_raydar.iwi",
+        "dbs_tournament_of_power.iwd:images/menu_db_scaner.iwi",
+        "dbs_tournament_of_power.iwd:images/sslmenu.iwi"
+      ],
+      "loadscreen": "loadscreen_dbs_tournament_of_power"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 50.2,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3202
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "dbs_tournament_of_power_patch.ff",
+      "mod.ff",
+      "dbs_tournament_of_power.iwd:animscripts/death.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "mod.ff:maps/_gsc_dbz_models.gsc",
+        "menus": [
+          "AllMoDs",
+          "allmodsingamechar"
+        ],
+        "responses": [
+          "allmodsgscnotify",
+          "dbs_settings",
+          "devmenu",
+          "devmenu_down_ssj",
+          "devmenu_down_ssj_team",
+          "devmenu_fly",
+          "devmenu_fly_team",
+          "devmenu_maprestart",
+          "devmenu_sc",
+          "devmenu_ss_bean",
+          "devmenu_ss_bean_team",
+          "devmenu_up_ssj",
+          "devmenu_up_ssj_team",
+          "devmenuteam",
+          "devmenuteam_sc",
+          "gtate_apes",
+          "jiren",
+          "join_game",
+          "picked_broly",
+          "picked_caulifla",
+          "picked_cobba",
+          "picked_goku",
+          "picked_kale",
+          "picked_kefla",
+          "picked_piccolo",
+          "picked_toppo",
+          "picked_vegeta",
+          "picked_zeno",
+          "radaronoff",
+          "scaneronoff",
+          "sound_broly",
+          "sound_gohon",
+          "sound_goku",
+          "sound_picolo",
+          "sound_vegeta"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

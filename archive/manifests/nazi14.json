@@ -1,0 +1,198 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi14",
+  "title": "Project 14",
+  "source": "custom",
+  "author": "Revan#4020",
+  "released": "2021-04-08",
+  "fs_game": "mods/nazi14",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi14.iwd": "aaa40981eaf26b079191a6b79267857f3d1708186d0b5a40ed5fb42aaf7c2907"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_head"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_head look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 2136,
+    "ee_candidates": [
+      "ee_head"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "pouli"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "kanapes"
+      ],
+      [
+        3000,
+        "give_ammo",
+        "?"
+      ],
+      [
+        3000,
+        "give_ammo",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "kanapes2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "aaa40981eaf26b079191a6b79267857f3d1708186d0b5a40ed5fb42aaf7c2907",
+    "map_specific_triggers": [
+      "agelada",
+      "ee_head",
+      "end_game",
+      "give_ammo",
+      "roloi",
+      "secret_trigger",
+      "shoot_door",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:53:41Z"
+    }
+  },
+  "archive": {
+    "original": "nazi14.exe",
+    "original_sha256": "ebd5b604ed897dd8d279f8a4a2cef56341335150c7d98353a09ef1d40e9912c9",
+    "original_size": 145848820,
+    "source_url": "https://www.mediafire.com/file/kvic3fqahw7gy8u/nazi14.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/04/08/project-14/",
+    "fetched": "2026-09-26T14:52:48Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello everybody, this map is recovered from 2014 and reworked for 3 months until release. Made by Revan(aka daddy) and Kirby. PLEASE TURN SPECULAR MAP \u201cOFF\u201d FOR THE BEST EXPERIENCE. Features: -7 Perks including ( Juggernog, Quick Revive,Double Tap Beer, Speed Cola, Mule Kick, Stamina Up and Electric Cherry) -Zombie Counter -Buyable Ammo -Dogs -Power Switch -Custom Bank (credits to Trembank) -Pack A Punch -All Original CoD WaW Weapons -Mystery Boxes -Multiple Damage Triggered Easter Eggs and of course -Buyable Ending Known Bugs : When a player is dead and doesn\u2019t get revived, the next round he respawns without a weapon or knife. Although, after buying a weapon, everything works fine. Modding/Mapping : Kirby and Revan Special Thanks To UGX Mods Discord and Forum for their helpful information.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 122.9,
+    "addon_iwds": [
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 234,
+        "scripts": 7,
+        "bytes": 46703127
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi14.ff",
+      "nazi14_patch.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc",
+      "nazi14.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi14.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

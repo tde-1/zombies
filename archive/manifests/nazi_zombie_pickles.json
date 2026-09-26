@@ -1,0 +1,189 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_pickles",
+  "title": "Pickles Tower",
+  "source": "custom",
+  "author": "Kielrgz",
+  "released": "2022-10-12",
+  "fs_game": "mods/nazi_zombie_pickles",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_pickles.iwd": "b4218bc37026d0c67513c84b0482a237a5e651e7e8257fb6a8e5ff278ed93df9"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 1541,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_door",
+        "piso9"
+      ],
+      [
+        10000,
+        "zombie_door",
+        "piso11"
+      ],
+      [
+        9000,
+        "zombie_door",
+        "piso8"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "piso7"
+      ],
+      [
+        7000,
+        "zombie_door",
+        "piso6"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b4218bc37026d0c67513c84b0482a237a5e651e7e8257fb6a8e5ff278ed93df9",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:57:29Z"
+    }
+  },
+  "archive": {
+    "original": "Pickles_Tower.exe",
+    "original_sha256": "8e9bd0d72ba0c9069c4b92fed95770f0436437c2e4522c4b47840677b9826605",
+    "original_size": 468171044,
+    "source_url": "https://www.mediafire.com/file/0j2jgasdgnybngt/Pickles_Tower.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/10/12/pickles-tower/",
+    "fetched": "2026-09-26T14:55:36Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "First of all my greetings to you, I bring a bo3 map to waw, it is the pickle tower map, my friend Klaudeh gave me a hand with the base of the map, that is, the prefab to be able to continue and add the textures, weapons, etc. \u2026 well I hope you enjoy the map. below I will leave a clarification of some bugs. As they know how to map it is not something easy and there is always one bug or another but hey\u2026 I hope you enjoy it. what does my map bring? Black Ops 3 Weapons 2 special weapons And the rest look at you!! Enjoy! Bugs Info Readme!!:",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_pickles.iwd:images/m1_irons_speedloader_base_col.iwi",
+        "nazi_zombie_pickles.iwd:images/m1_irons_speedloader_base_nml.iwi",
+        "nazi_zombie_pickles.iwd:images/~m1_irons_speedloader_base_sp~06651435.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 76.9,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100467103
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_pickles.ff",
+      "nazi_zombie_pickles_patch.ff",
+      "nazi_zombie_pickles.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

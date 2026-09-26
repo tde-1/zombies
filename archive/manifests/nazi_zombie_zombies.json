@@ -1,0 +1,205 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_zombies",
+  "title": "2020 Zombies Map",
+  "source": "custom",
+  "author": "tobin_g1213",
+  "released": "2020-04-18",
+  "fs_game": "mods/nazi_zombie_zombies",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zombies.iwd": "fd21c2141021ca69bedab69e464600fede42646f00dec02a3cc5d8be449ff863"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 114,
+    "script_count": 114,
+    "entities": 360,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      30000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        8000,
+        "zombie_debris",
+        "debris12"
+      ],
+      [
+        5000,
+        "pf436_auto2",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "debris7"
+      ],
+      [
+        3000,
+        "pf427_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "debris1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "fd21c2141021ca69bedab69e464600fede42646f00dec02a3cc5d8be449ff863",
+    "map_specific_triggers": [
+      "end_game",
+      "handle_build_trig",
+      "handle_pick_trig",
+      "harrybo21_perk_trigger",
+      "moon_teleporter_a_trigger",
+      "moon_teleporter_b_trigger",
+      "panel_build_trig",
+      "panel_pick_trig",
+      "pick_up_cord_trig",
+      "place_cord_trig",
+      "shoot_me"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:57:00Z"
+    }
+  },
+  "archive": {
+    "original": "zombies.zip.exe",
+    "original_sha256": "2f4c67b2e4cdf28dd3ce552144c6880f27521b094d40dee94412491b463a95f6",
+    "original_size": 250597526,
+    "source_url": "https://www.mediafire.com/file/v2gjjp0ut6dzic2/zombies.zip.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/04/18/2020-zombies-map/",
+    "fetched": "2026-09-26T14:54:51Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Description This map I made about 2 years ago i never uploaded and its fun to play. I didnt upload it because there were too many people to credit so if you see something from you just put I helped. Theres cool guns, build-able power, end game buy, cool pap camo, and fun secrets!",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "zombies.iwd:images/m1_irons_speedloader_base_col.iwi",
+        "zombies.iwd:images/m1_irons_speedloader_base_nml.iwi",
+        "zombies.iwd:images/weapon_red_cross_background.iwi",
+        "zombies.iwd:images/~m1_irons_speedloader_base_sp~06651435.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 63.0,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      },
+      {
+        "file": "zombies.iwd",
+        "entries": 418,
+        "scripts": 27,
+        "bytes": 78051179
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_zombies.ff",
+      "nazi_zombie_zombies_patch.ff",
+      "zombies.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

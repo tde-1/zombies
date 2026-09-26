@@ -1,0 +1,196 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_der2",
+  "title": "PROJEKT DER TOTEN",
+  "source": "custom",
+  "author": "777TONES",
+  "released": "2024-12-20",
+  "fs_game": "mods/nazi_zombie_der2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_der2.iwd": "c6a5ed4c1b0d9d24dd59b77656c77afba952f1403049c81caa50f90d730eca57"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_shoot_part1",
+        "ee_shoot_part2",
+        "ee_shoot_part3",
+        "ee_trigger_part1",
+        "ee_trigger_part2",
+        "ee_trigger_part3",
+        "end_game_part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_shoot_part1, ee_shoot_part2, ee_shoot_part3, ee_trigger_part1, ee_trigger_part2, ee_trigger_part3 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 97,
+    "script_count": 97,
+    "entities": 803,
+    "ee_candidates": [
+      "ee_shoot_part1",
+      "ee_shoot_part2",
+      "ee_shoot_part3",
+      "ee_trigger_part1",
+      "ee_trigger_part2",
+      "ee_trigger_part3",
+      "end_game_part"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "ending_trigger",
+      "start_endgame"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000,
+      45000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "papdoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "papdoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "finaldoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "finaldoor"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "topdoor"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c6a5ed4c1b0d9d24dd59b77656c77afba952f1403049c81caa50f90d730eca57",
+    "map_specific_triggers": [
+      "ee_trigger_part1",
+      "ee_trigger_part2",
+      "ee_trigger_part3",
+      "end_game",
+      "ending_trigger",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "radio_1_trigger",
+      "radio_2_trigger",
+      "radio_3_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:55:45Z"
+    }
+  },
+  "archive": {
+    "original": "PROJEKT_DER_TOTEN.exe",
+    "original_sha256": "e70f37dbff722bdad8adef0ff201b944acc3697ed9efdfc287ea91c7c357a1d8",
+    "original_size": 92272309,
+    "source_url": "https://www.mediafire.com/file/300hq4fjpaentqz/PROJEKT_DER_TOTEN.exe/file",
+    "source_page": "https://callofdutyrepo.com/2024/12/20/projekt-der-toten/",
+    "fetched": "2026-09-26T14:54:14Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "nazi_zombie_der2.iwd:images/nazi_zombie_der2_load.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 115.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_der2.ff",
+      "nazi_zombie_der2_patch.ff",
+      "nazi_zombie_der2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

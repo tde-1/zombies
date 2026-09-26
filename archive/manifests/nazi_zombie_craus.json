@@ -1,0 +1,136 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_craus",
+  "title": "Nazi Zombie_Craus",
+  "source": "custom",
+  "author": "ville88",
+  "released": "2024-06-16",
+  "fs_game": "mods/nazi_zombie_craus",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_craus.ff": "9a260a45270fc7119342ce16ea867762352bc6a94affee531dc3f0a16305d031"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 35,
+    "script_count": 35,
+    "entities": 838,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "hut_magicbox_blocker"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker_barricade_outside"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "blocker_barricade_magicbox"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto78"
+      ],
+      [
+        1500,
+        "weapon_upgrade",
+        "pf2184_auto38"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "9a260a45270fc7119342ce16ea867762352bc6a94affee531dc3f0a16305d031",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:57:24Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_craus.exe",
+    "original_sha256": "88c6108035b575251d0606ef0f2617851910385d81dd0adf34f3f21aa5b03ab9",
+    "original_size": 44929601,
+    "source_url": "https://www.mediafire.com/file_premium/20xyoym0o503z5s/nazi_zombie_craus.exe/file",
+    "source_page": "https://callofdutyrepo.com/2024/06/16/nazi_zombie_craus/",
+    "fetched": "2026-09-26T14:55:37Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "my new fan map style prototype hidden door trigger to open explosive barrels radio magic box WaW stock weapons Proto + ppsh",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_craus",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_craus.iwd:images/loadscreen_nazi_zombie_craus.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_craus"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 79.0,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_craus.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

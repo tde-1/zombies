@@ -1,0 +1,312 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "origins",
+  "title": "935 Bunker",
+  "source": "custom",
+  "author": "OdoHd",
+  "released": "2017-06-19",
+  "fs_game": "mods/origins",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000,
+        6000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 6000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 164,
+    "script_count": 164,
+    "entities": 282,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_debris",
+        "Door_Debris16"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "Door_Debris15"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "Door_Debris11"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "Door_Debris1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1",
+    "map_specific_triggers": [
+      "ugx_wallweapon"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:01:01Z"
+    }
+  },
+  "archive": {
+    "original": "ORIGINS.exe",
+    "original_sha256": "08667f7c0f4024c6f63945fd9db3d20c5519c7dfe1a42e5de85860bb927c22b1",
+    "original_size": 342708447,
+    "source_url": "https://www.mediafire.com/file/e833s6zk8w5vwj0/ORIGINS.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/06/19/935-bunker/",
+    "fetched": "2026-09-26T14:58:18Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Information: This is a new zombies map I have been working on for the last couple weeks. This will be my first zombies map I am going to release that\u2019s finished. Story: A group of 4 marine\u2019s were sent on a rescue misson to save the soldier \u201cTank Dempsey\u201d, on this misson they found traces leading them to the group 935. They desided to go to the group 935\u2019s bunker in west germany to see if Tank was there, but instead they were surprised with a outbreak of a zombie hoard, they barricaded themselves in the bunker, but they didn\u2019t know they were placed in a endless loop of pain and suffering by the shadow man.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_camp.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_temp_background.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_template.iwi",
+        "ugxm_guns.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugxm_guns.iwd:images/ugx_logo_menu.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_arrow.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_overlay.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 50.7,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 218,
+        "scripts": 71,
+        "bytes": 29147861
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 1137,
+        "scripts": 2,
+        "bytes": 183248876
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "origins_patch.ff",
+      "mod.ff",
+      "ugx_mod.iwd:animscripts/death.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": {
+      "mechanism": "ugx_vote_11",
+      "calls_vote": true,
+      "default": "classic",
+      "modes": [
+        {
+          "id": "classic",
+          "label": "Classic",
+          "response": "cl",
+          "note": "Stock zombies with the UGX weapons and perks."
+        },
+        {
+          "id": "gungame",
+          "label": "Gun Game",
+          "response": "gg",
+          "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch."
+        },
+        {
+          "id": "arcademode",
+          "label": "Arcade Mode",
+          "response": "ar",
+          "note": "Classic plus UGX power-ups and boss rounds."
+        },
+        {
+          "id": "sharpshooter",
+          "label": "Sharpshooter",
+          "response": "ss",
+          "note": "Everyone's gun changes on a timer; 15-minute game; no buying."
+        },
+        {
+          "id": "bountyhunter",
+          "label": "Bounty Hunter",
+          "response": "bh",
+          "note": "Points race with a 15-minute limit."
+        },
+        {
+          "id": "kingofthehill",
+          "label": "King of the Hill",
+          "response": "kh",
+          "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds."
+        },
+        {
+          "id": "chaosmode",
+          "label": "Chaos Mode",
+          "response": "cm",
+          "note": "UGX's chaos rules with a time limit."
+        }
+      ],
+      "options_off": [
+        "objectives",
+        "timed_gameplay"
+      ],
+      "source": {
+        "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+        "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+        "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+      }
+    },
+    "other": [
+      {
+        "script": "ugx_mod.iwd:maps/ugx_elemental.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "buy_button",
+          "clear_tree",
+          "close",
+          "mg",
+          "pistol",
+          "rifle",
+          "skill_elemental",
+          "smg",
+          "spread"
+        ],
+        "note": "in game: UGX elemental skill tree"
+      },
+      {
+        "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      },
+      {
+        "script": "ugx_mod.iwd:maps/ugxm_character.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)"
+      },
+      {
+        "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc",
+        "menus": [
+          "ugxm_vote_teams"
+        ],
+        "responses": [
+          "captured",
+          "close",
+          "contested",
+          "moved",
+          "switch"
+        ],
+        "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

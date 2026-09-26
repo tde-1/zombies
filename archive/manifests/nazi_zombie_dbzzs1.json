@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_dbzzs1",
+  "title": "Dragon Ball Z (Nazi Zombie Dbzz)",
+  "source": "custom",
+  "author": "AllMoDs",
+  "released": "2018-08-31",
+  "fs_game": "mods/nazi_zombie_dbzzs1",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_dbzzs1.iwd": "6c638a9810b855f9e5eb41279f3af3d2f22e41db02ee87146d49840abd57dac8"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "freeze_boss"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "freeze_boss look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 128,
+    "script_count": 128,
+    "entities": 660,
+    "ee_candidates": [
+      "freeze_boss"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9999
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1000,
+        "zombie_debris",
+        "rock_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6c638a9810b855f9e5eb41279f3af3d2f22e41db02ee87146d49840abd57dac8",
+    "map_specific_triggers": [
+      "atm_one",
+      "ball1",
+      "ball2",
+      "ball3",
+      "ball4",
+      "ball5",
+      "ball6",
+      "ball7",
+      "kinkki_spot_down",
+      "rock_door11",
+      "start_zone",
+      "upto_kinkki",
+      "water",
+      "with_atm",
+      "zone3_spawn",
+      "zonetwo_spawn"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:59:08Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_dbzzs1.exe",
+    "original_sha256": "6f5f2fb1ab8137960e320a3c9030f1ee13a4608e9ef08ada063b0cffb2e95f9d",
+    "original_size": 396976200,
+    "source_url": "https://www.mediafire.com/file/745o3e7777edhx3/nazi_zombie_dbzzs1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2018/08/31/dragon-ball-z-nazi-zombie-dbzz/",
+    "fetched": "2026-09-26T14:56:50Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "In this demo there is 5 perks 4 ARE a Easter Egg find all 7 dragonballs super meter active 2 boss fights 1 power up 2 ATM\u2019s for player to give other players money here is the demo creds offthewall / rigging goku and more & allways there to help BluntStuffy / zombie anime ai boss help & allways there to help Josemassacre / rigging and more Harry Bo21 /allways there to help and help me on using fx ed to make kamehameha and perk files HitmanVere /allways there to help help me with where to look to make my hud right and more jei9363 / helped me fix my zombie boss redspace200/ help Dr.GiggleZ / help and more UGX /never would have started if i never saw this site alaurenc9 / used his tut to make my 1st perk DidUknowiPwn/ used his hud perk tut codmoddd1234 / zombie help testers Son-Goku MajorPwnege01 fatal_uzi",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "nazi_zombie_dbzzs1.iwd:images/dbzloadscrean.iwi",
+        "nazi_zombie_dbzzs1.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_dbzzs1.iwd:images/mtl_zombie_vending_sleight_logo_dark.iwi",
+        "nazi_zombie_dbzzs1.iwd:images/mtl_zombie_vending_sleight_logo_lit.iwi",
+        "z_hud.iwd:images/specialty_fastreload_zombies.iwi",
+        "z_hud.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "z_hud.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "z_hud.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "z_hud.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "z_hud.iwd:images/logo_cod2.iwi",
+        "z_hud.iwd:images/mtl_zombie_vending_sleight_logo_dark.iwi",
+        "z_hud.iwd:images/mtl_zombie_vending_sleight_logo_lit.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 8,
+        "scripts": 0,
+        "bytes": 14547
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 121,
+        "scripts": 0,
+        "bytes": 4976686
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_dbzzs1.ff",
+      "nazi_zombie_dbzzs1_patch.ff",
+      "nazi_zombie_dbzzs1.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

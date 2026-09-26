@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "anguish",
+  "title": "Anguish v1.1",
+  "source": "custom",
+  "author": "Edboy_Rolf",
+  "released": "2024-11-18",
+  "fs_game": "mods/anguish",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@anguish.iwd": "09589f78d2d6a0071d9970a63c60e7f06c70a826f10c6ab06d37e699e5aa0dd9"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "relic"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "relic look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 116,
+    "script_count": 116,
+    "entities": 4640,
+    "ee_candidates": [
+      "relic"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        0,
+        "zombie_door",
+        "auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "09589f78d2d6a0071d9970a63c60e7f06c70a826f10c6ab06d37e699e5aa0dd9",
+    "map_specific_triggers": [
+      "ascension",
+      "campfire",
+      "defect",
+      "drunkard",
+      "easy",
+      "gachi",
+      "gamer",
+      "ironchad",
+      "leave_random1",
+      "leave_random2",
+      "leave_random3",
+      "leave_random4",
+      "leave_random5",
+      "leave_random6",
+      "leave_random7a",
+      "leave_random7b",
+      "leave_rest",
+      "leave_shop",
+      "physician",
+      "random_room_decide_6",
+      "relic",
+      "rules",
+      "sblocker1",
+      "sblocker2",
+      "sblocker3",
+      "sblocker4",
+      "sblocker5",
+      "sblocker6",
+      "sblocker7",
+      "silent",
+      "smith",
+      "split",
+      "start_game",
+      "trash",
+      "ttw_health2",
+      "watcher"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:59:03Z"
+    }
+  },
+  "archive": {
+    "original": "Anguish.exe",
+    "original_sha256": "83e1220adcb1968fda2ff4ceb12cdf66cad14fa12c2910cb17da664e214971bb",
+    "original_size": 491424635,
+    "source_url": "https://www.mediafire.com/file/w6q35pm9lmsb3eu/Anguish.exe/file",
+    "source_page": "https://callofdutyrepo.com/2024/11/18/anguish-v1-1/",
+    "fetched": "2026-09-26T14:56:19Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Welcome to Anguish How To Play \u2013 This map is heavily based on the roguelike genre -The basic premise of the map is to fight through 30 rounds of zombie rooms, elite rooms, shops, and event rooms -There is definitely not a boss at the end hint hint wink wink -When you spawn in you have the option of picking 1 of 7 classes. Each class excels at a different playstyle -You will spawn with 80 hp. Zombies do 1 damage, explosives 3, and fall damage 5. You will not regen as you normally do -To regain health you can either rest at campfires or gain relics that alter your health -Throughout the map you will be presented with choices at the end of each round. 3 items will spawn from normal zombie rounds and you will only be able to pick up 1. 1 item will spawn from elite rooms as well -Items consist of weapons, stackable relics, and one time use relics -Relics are items that vastly improve your stats or give you new abilities. You will always get a relic from elite rooms but they are much rarer in zombie rooms -The zombie rooms you will face require different playstyles to conquer. Some require good training and others require highly proactive camping -The elite rooms are often very unfair and will often result in you losing health -At the end of each round you will be given choice of where to advance. Fedoras take you to zombie rooms, Skulls take you to elite rooms, Coats take you to shops, the mystery box takes you to an event room, and campfires take you to a rest room -In rest rooms",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 108.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "anguish.ff",
+      "anguish_patch.ff",
+      "mod.ff",
+      "anguish.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "anguish.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

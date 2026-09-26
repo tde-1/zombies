@@ -1,0 +1,211 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "megacreep",
+  "title": "Tower Mix",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2022-09-22",
+  "fs_game": "mods/megacreep",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@megacreep.iwd": "c55416b8e15b434fe51fddb38de8e0cbdfca26260b0569e61157c46f158534ce"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "mech_escape_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, mech_escape_trigger name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 128,
+    "script_count": 128,
+    "entities": 1131,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "auto99"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto152"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto151"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto98"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto97"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c55416b8e15b434fe51fddb38de8e0cbdfca26260b0569e61157c46f158534ce",
+    "map_specific_triggers": [
+      "dubstep_trigger",
+      "end_game",
+      "mech_escape_trigger",
+      "song2"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:52:57Z"
+    }
+  },
+  "archive": {
+    "original": "Tower_Mix.exe",
+    "original_sha256": "c57a1fdc21cd46accbb2c79091ed44b53c307c2737d8315ef3feae78da97bc5a",
+    "original_size": 466791993,
+    "source_url": "https://www.mediafire.com/file/aqxma4mn1xz99n1/Tower_Mix.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/09/22/tower-mix/",
+    "fetched": "2026-09-26T14:50:56Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "3 maps in one. . . Thats all what you need to know. This time i bring a collab with my friend Crepp115 who was so kind to give me the files of some of my favorite and maybe some of the favorite towers of the community hehe. Unlike my others maps this one needs T4M because the use of fx\u2019s by the wonder weapons and the bosses. So if the map gives you an error while loading just spam the play button haha. With this map i just make a \u201cmix\u201d of Minecraft Tower, The Gray Tower And Color Tower with some improvements as: New and updated textures for the Minecraft tower, fix of some bugs with colisions, new lightning and a lot of weapons from bo3, bo2, bo1 and iw. Also you have 2 songs easter eggs in the map which can be activated shooting some hiding creepers in minecraft towers and a couple of bears on color tower. \u00a1Nothing more to say about this map except i hope you enjoy it and good luck making your way up to the top of the towers! This map features: \u2013 Custom Weapons from BO3, BO2, BO1 and IW \u2013 3 wonder weapons per tower (Forge Freeze, Freeze gun and the Apothicon Servant) \u2013 PanzerSoldat \u2013 Zombie Hazmat \u2013 Bo1, Bo2 and Bo3 Perks \u2013 3 hits system \u2013 Mob Of The Dead Zombies (Alcatraz) \u2013 Minecraft Zombies \u2013 Bo3 HUD (kinda) \u2013 Power ups customs (Money Power Up and Pack and Punch Power Up) \u2013 Custom Player Model and Hands \u2013 Sprinters \u2013 Hug Fix and Bo1 knife \u2013 Buyable ending \u2013 Custom Camos \u2013 Custom Perk Icons \u2013 Hitmarkers \u2013 Colored zombie counter \u2013 2 easter egg songs Credits: \u2013 Crepp115 (Map",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "megacreep.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 67.2,
+    "addon_iwds": [
+      {
+        "file": "BlSt_PanzerSoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4281188
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 235,
+        "scripts": 7,
+        "bytes": 46705180
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "megacreep.ff",
+      "megacreep_patch.ff",
+      "mod.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc",
+      "megacreep.iwd:animscripts/death.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

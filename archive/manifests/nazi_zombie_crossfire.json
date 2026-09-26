@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_crossfire",
+  "title": "Crossfire HALF LIFE 1 Remake",
+  "source": "custom",
+  "author": "kielrgz",
+  "released": "2023-02-01",
+  "fs_game": "mods/nazi_zombie_crossfire",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_crossfire.iwd": "75a34fd40ddc6021a2b1f21de39d679fbdd210ba08e3e41364bbbff0d8f63c36"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        55000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 55000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 844,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      55000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_4"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_3"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "75a34fd40ddc6021a2b1f21de39d679fbdd210ba08e3e41364bbbff0d8f63c36",
+    "map_specific_triggers": [
+      "armor",
+      "end_game",
+      "secret_trigger",
+      "soul_triggers"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:02:38Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_crossfire.exe",
+    "original_sha256": "cda1817f99515e47016d6e08d0fd954851f1a79345f933231f4d744e5040695b",
+    "original_size": 361796883,
+    "source_url": "https://www.mediafire.com/file/lv0ibl0byw5aldx/nazi_zombie_crossfire.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/02/01/crossfire-half-life-1-remake/",
+    "fetched": "2026-09-26T14:59:29Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello everyone, today I bring a map that is currently in beta, I\u2019m uploading it now because I want you to try it and apart from the fact that with university studies it will take time to bring updates but there will be updates because it is a favorite map of mine that I wanted to recreate and share .",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_crossfire"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_crossfire.iwd:images/loadscreen_nazi_zombie_crossfire.iwi",
+        "nazi_zombie_crossfire.iwd:images/menu_hud_grenade.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_crossfire"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 97.5,
+    "addon_iwds": [
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100277737
+      },
+      {
+        "file": "gympie6_wunderfizz.iwd",
+        "entries": 31,
+        "scripts": 0,
+        "bytes": 5479386
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_crossfire.ff",
+      "nazi_zombie_crossfire_patch.ff",
+      "nazi_zombie_crossfire.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,184 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "little_town",
+  "title": "Little Town",
+  "source": "custom",
+  "author": "BacONMOnst3r",
+  "released": "2020-04-23",
+  "fs_game": "mods/little_town",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@little_town.iwd": "b6436768f21e78a12d63a7a25f3555858886383f4270125cdfad1cfe902c419f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        40000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 40000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 882,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      40000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf2127_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf1531_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf315_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf977_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf769_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b6436768f21e78a12d63a7a25f3555858886383f4270125cdfad1cfe902c419f",
+    "map_specific_triggers": [
+      "end_game",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:55:21Z"
+    }
+  },
+  "archive": {
+    "original": "little_town.exe",
+    "original_sha256": "2c7bf85d144d240a46c48049e676e6f0baf08c29e4a62b380ce6bafa5f7a28ef",
+    "original_size": 260710735,
+    "source_url": "https://www.mediafire.com/file/08yncs50hd7hlwg/little_town.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/04/23/little-town/",
+    "fetched": "2026-09-26T14:53:55Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features: 11 perks weapons from MW2, MW3, and AW! Buyable ending hidden bears napalm zombie Full weapon list MW2 ak47 desert eagle fal famas fn2000 intervention m4a1 m93 m1014 pp2000 scarh spas 12 ump 45 acr cm901 mk14 ebr striker Advanced Warfare ASM1 bal 27 kf5 mp11 MW3 fad pp90m1 g36 m16 mp9 msr CREDITS! this map wouldnt be possible without the help of the amazing: pashan - miscellaneous models asus891110 - der reise prefabs MakeCents, BluntStuffy, fanmagic - napalm zombie harrybo21 - perks Jake (apex) - bleacher model ricko0z - THE CUSTOM WEAPONS! THANK YOU SO MUCH! cpt_johnson1 - bunker prefab This map requires T4M Enjoy! tell me what you think and send me youtube videos of it if you make some! edit: i finally learned how to add pictures to posts so..enjoy! should i go back and add wall wepons?",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 87.8,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "little_town.ff",
+      "little_town_patch.ff",
+      "mod.ff",
+      "little_town.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

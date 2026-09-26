@@ -1,0 +1,211 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "bigroom",
+  "title": "Big Room",
+  "source": "custom",
+  "author": "Avalebor",
+  "released": "2019-10-08",
+  "fs_game": "mods/bigroom",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@bigroom.iwd": "6780e8d94f5eac6b233dc925dedf03fd85481603865b57b851e9e280c7db5596"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        125000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 125000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 130,
+    "script_count": 130,
+    "entities": 361,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      125000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf197_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf386_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf362_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf378_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf188_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6780e8d94f5eac6b233dc925dedf03fd85481603865b57b851e9e280c7db5596",
+    "map_specific_triggers": [
+      "end_game",
+      "enter",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:58:57Z"
+    }
+  },
+  "archive": {
+    "original": "bigroom.exe",
+    "original_sha256": "61d03dcd27ad65b84c16cc84d5695655c618ad85c7b4c2831cbeb08175dd04ce",
+    "original_size": 341735151,
+    "source_url": "http://www.mediafire.com/file/l3gxhzy13ubi8o1/bigroom.exe/file",
+    "source_page": "https://callofdutyrepo.com/2019/10/08/big-room/",
+    "fetched": "2026-09-26T14:56:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "The map is small (one room) and simple. Run until you collect the amount at the end of the game or until you get bored) Features: - tranzit zombies - zombie counter - 12 perks - purchased end of the game (THE END) - standard weapon - no dogs Credits: HarryBO21 - BO perks MakeCents - Zombie Counter shippuden1592, deper - Zombies Tranzit nukem - easy_teleporter scripts",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_bigroom",
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "bigroom.iwd:images/loadscreen_bigroom.iwi",
+        "bigroom.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "bigroom.iwd:images/specialty_fastreload_zombies.iwi",
+        "bigroom.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": "loadscreen_bigroom"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 67.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "bigroom_patch.ff",
+      "mod.ff",
+      "bigroom.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

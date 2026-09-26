@@ -1,0 +1,204 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "creepymansion",
+  "title": "Creepy Mansion",
+  "source": "custom",
+  "author": "ToothSmasher",
+  "released": "2021-02-18",
+  "fs_game": "mods/creepymansion",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@CreepyMansion.iwd": "5124c36432eb42a1f363933b29d770947ce5ae05887ca864c49f0239a798b7c8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 1154,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf910_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf880_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2819_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf885_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2827_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5124c36432eb42a1f363933b29d770947ce5ae05887ca864c49f0239a798b7c8",
+    "map_specific_triggers": [
+      "bear1",
+      "bear2",
+      "bear3",
+      "bear4",
+      "bear5",
+      "end_game",
+      "harrybo21_perk_trigger",
+      "pap_door",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:01:07Z"
+    }
+  },
+  "archive": {
+    "original": "CreepyMansion.exe",
+    "original_sha256": "3c425d10323d56d2f99c5ffc4d9040c1695f0a4776fc725e770315ced9a916bd",
+    "original_size": 451498128,
+    "source_url": "http://www.mediafire.com/file/w3791rx5vt8hg77/CreepyMansion.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/02/18/creepy-mansion/",
+    "fetched": "2026-09-26T14:58:04Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description READ THE TEXT BELOW! REQUIRES T4M NO SOLO BUTTON Ok so this map was created less than a week after i uploaded my last map (English Manor Hoos) this map is a level higher than my last map it includes all of bo1 bo2 and bo3 perks and mob of the dead pap and yes you can pap more than once to get thunder wall etc. This map also includes 5 teddy bears you got to shoot to open pap room. Fill up all soul chests to get a free ray gun and a extra gun slot. So i am truely sorry for the people who want me to update anything in this map\u2026i cant i lost all my maps on my pc because i had to reinstall everything. FEATURES LIST //((Soul chests)) to get ray gun and a free gun slot yes you can get 4 guns with mule kick also after these are completed //Fixed WAW knifing system. //No grabbing zombies or sticky zombies //5 Teddy bears // Buyable ending of course //CUSTOM TEXTURES FOR MY MANSION //Ambient sound track //NO PERK LIMIT //Faster STAMIN UP //Widows wine has ((INSAAAANE KNIFING DAMAGE)) i customised that of course CREDIT FOR THIS ONE GUY. fgfgfgfgt#3356 He fixed the sound quality for my sound track it was terribe before he fixed it and also i could bearly hear it he also troubleshooted the sound loudness so its suitable for the game. Add him on discord and message him for soundtracks thats his job in general sound editing for games etc.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 103.8,
+    "addon_iwds": [
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "Harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "creepymansion.ff",
+      "creepymansion_patch.ff",
+      "mod.ff",
+      "CreepyMansion.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

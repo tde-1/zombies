@@ -1,0 +1,181 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_demise",
+  "title": "Zombie Realism 2.2 Map Pack",
+  "source": "custom",
+  "author": "Damian2452",
+  "released": "2015-02-11",
+  "fs_game": "mods/nazi_zombie_demise",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_cimetiere.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 180,
+    "script_count": 180,
+    "entities": 4854,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris98"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris70"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris25"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "couch1"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf4958_auto2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:01:57Z"
+    }
+  },
+  "archive": {
+    "original": "zombie_realism_v2.2_map_pack_4_2_of_5_.exe",
+    "original_sha256": "8a637c3c39764aa1406572915b36eaa690b63498514d369b98e1071a1a6071af",
+    "original_size": 494912971,
+    "source_url": "https://www.mediafire.com/file/nxrre3gmcqih017/zombie_realism_v2.2_map_pack_4_%282_of_5%29.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/02/11/zombie-realism-2-2-map-pack/",
+    "fetched": "2026-09-26T14:58:56Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "t4m_req"
+    ],
+    "catalogue_description": "Zombie Realism is a mod that adds a full ranking system to around 50 maps! ALL compatible maps are included in these .exe files in Map Pack. Instructions : How to launch a Zombie Realism 2.2 Map in Solo: You need to open console in game and type ui_mapname [mapname] to open console use ` (button under esc) if after click ` (char under esc) console won\u2019t open , you have to enter in : Option & Controls / game oprtions / and set enable console = yes, for example : ui_mapname dead_sand_elite and press enter , after this game will set this map open console , type : map [mapname] for example : map nazi_zombie_subway and press enter after this map will be loaded How to launch a Zombie Realism 2.2 Map in Coop: __________________________________________________________________________________ \u2013 Go to MODs at main menu \u2013 Then launch ZombieRealism_mapPACK4 \u2013 Go to host online / game setup and select CAMPAIGN MODE. \u2013 Then scroll down and you will see a giant list of zombie maps to choose from. (ALL the Zombie Realism 2.2 maps are stored within the Zombie_Realism MapPack4 mod) Included Maps: Zombie Realism 2.2 * nazi_zombie_afterwar_mw * nazi_zombie_anzio * nazi_zombie_cimetiere * nazi_zombie_cor * nazi_zombie_demise * nazi_zombie_doom * nazi_zombie_fruchurch * nazi_zombie_frumansion * nazi_zombie_fruxtreme * nazi_zombie_gould * nazi_zombie_hm * nazi_zombie_labo * nazi_zombie_rage * nazi_zombie_subway * nazi_zombie_the_river * nazi_zombie_tun * nazi_zombie_western * chemplant_elite_v2.01 ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_cimetiere",
+        "loadscreen_nazi_zombie_col",
+        "loadscreen_nazi_zombie_const",
+        "loadscreen_nazi_zombie_demise"
+      ],
+      "iwd_images": [
+        "nazi_zombie_cimetiere.iwd:images/loadscreen_nazi_zombie_cimetiere.iwi",
+        "nazi_zombie_const.iwd:images/loadscreen_nazi_zombie_const.iwi",
+        "nazi_zombie_crazed.iwd:images/loadscreen_nazi_zombie_crazed.iwi",
+        "nazi_zombie_demise.iwd:images/menu_map_nazi_zombie_demise.iwi",
+        "nazi_zombie_demise.iwd:images/loadscreen_nazi_zombie_demise.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_demise"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 114.9,
+    "addon_iwds": [
+      {
+        "file": "nazi_zombie_cimetiere.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 528978
+      },
+      {
+        "file": "nazi_zombie_const.iwd",
+        "entries": 8,
+        "scripts": 0,
+        "bytes": 1582168
+      },
+      {
+        "file": "nazi_zombie_crazed.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 932778
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_cimetiere.ff",
+      "nazi_zombie_col.ff",
+      "nazi_zombie_const.ff",
+      "nazi_zombie_const_patch.ff",
+      "nazi_zombie_cor.ff",
+      "nazi_zombie_core2.ff",
+      "nazi_zombie_corrosion.ff",
+      "nazi_zombie_corrosive_patch.ff",
+      "nazi_zombie_demise.ff",
+      "nazi_zombie_demise_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

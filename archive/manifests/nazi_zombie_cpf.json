@@ -1,0 +1,126 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_cpf",
+  "title": "Campfire",
+  "source": "custom",
+  "author": "xnickx",
+  "released": "2010-02-27",
+  "fs_game": "mods/nazi_zombie_cpf",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@Camp_Fire.iwd": "5d7fc46012d2092937cb60be4a301356985b11954c82f9607e1cb40a6f36e36d"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 36,
+    "script_count": 36,
+    "entities": 397,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1050,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1050,
+        "treasure_chest_use",
+        "auto14"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "5d7fc46012d2092937cb60be4a301356985b11954c82f9607e1cb40a6f36e36d",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "cure_spot1",
+      "cure_spot2",
+      "cure_spot3",
+      "cure_spot4",
+      "cure_spot5",
+      "cure_spot6"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:59:05Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_cpf.exe",
+    "original_sha256": "98c4fdf26d2c0810581fbce5e66f39d8d9e24ea0cc75cf8d9e604518b39e0523",
+    "original_size": 63956233,
+    "source_url": "http://www.mediafire.com/file/u6817xld76vu6nl/nazi_zombie_cpf.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/02/27/campfire/",
+    "fetched": "2026-09-26T14:57:09Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Special Notes: Dropping in the ZCT Mod will not work for this map, as the mod.ff file is larger than the required maximum. To play this map with ZCT mod, download the _beta and then drop in the mod.ff. This download is larger than some of the average because it has extra sounds that are custom added. If you want, you can remove these sounds from the .IWD file and make it smaller and saving space, but you won\u2019t hear any custom music ingame. Description: Campfire is a very close quartered map, with lots of foliage. The zombies come from all directions; North, South, West, East, and any other legitimate direction you can think of (besides vertically)! It is prototype-styled and and therefore, somewhat basic. Any questions, bugs, problems, etc, please post on the download page. Special Thanks to: HOGRampage \u2013 Co-op ranking, main menu editting, and some other scripting things. vT-Ownage \u2013 General advice, skinning, misc [ZCT]Titan \u2013 Crosshairs [FaRT] Flame \u2013 Testing, misc advice/ideas, some custom sounds [FaRT] Tom_BMX \u2013 Custom Sounds, testing [ZCT]CoDMapper \u2013 Testing [The]Sniperbolt \u2013 Testing, original idealist for custom sounds [ZCT]xCHAOSx \u2013 Testing hOly \u2013 Scripting _x stuff If I missed anyone else or something that someone did, I apologize. NOTE There are some glitches I am aware of (they will remain un-named, and if you find any, please PRIVATE MESSAGE ME!!!), and things to fix still, and they will be in the next version, which will be the final version!!!",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: buy_powerup, cure_spot1, cure_spot2, cure_spot3, cure_spot4, cure_spot5, cure_spot6. ",
+  "precheck": {
+    "map_zone_inflated_mb": 78.9,
+    "addon_iwds": [
+      {
+        "file": "Camp_Fire.iwd",
+        "entries": 30,
+        "scripts": 7,
+        "bytes": 17762894
+      }
+    ],
+    "flags": [
+      "no_patch_ff",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_cpf.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

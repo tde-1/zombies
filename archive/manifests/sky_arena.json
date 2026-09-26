@@ -1,0 +1,187 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "sky_arena",
+  "title": "Sky Arena",
+  "source": "custom",
+  "author": "Lava_Wills",
+  "released": "2024-03-10",
+  "fs_game": "mods/sky_arena",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@sky_arena.iwd": "0d81d89369129daef221f06d3c9a81cb3690fcb7439534ca0a88accca9c1cf5a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        60000,
+        70000,
+        80000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 80000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 143,
+    "script_count": 143,
+    "entities": 3643,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      60000,
+      70000,
+      80000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "auto12"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "auto12"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "auto12"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "auto12"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "auto11"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0d81d89369129daef221f06d3c9a81cb3690fcb7439534ca0a88accca9c1cf5a",
+    "map_specific_triggers": [
+      "c4_purchase",
+      "end_point",
+      "harrybo21_perk_trigger",
+      "pap_box_trig",
+      "player_fall",
+      "sky_weapons"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:57:48Z"
+    }
+  },
+  "archive": {
+    "original": "Sky_ArenaV1.5.4.exe",
+    "original_sha256": "fbf59bf9ad645aac141509e8a89067a561d3d9492ba52ec6fa8c4c0c3a6abbcf",
+    "original_size": 472626279,
+    "source_url": "https://www.mediafire.com/file_premium/k8ssxnle3d722o3/Sky_ArenaV1.5.4.exe/file",
+    "source_page": "https://callofdutyrepo.com/2024/03/10/sky_arena/",
+    "fetched": "2026-09-26T14:55:52Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hi everyone, l\u2019m a scripter and a while ago l posted the bosses and wonder weapons packs l put together, but no one use them. So I thought why not make a map to show them? This is the map l spent a lot of time making. lt\u2019s an octagon-like map but with completely different terrain, which took me a lot of time because l did all scripting and radiant work by myself(of course, tis would not be possible without the help of many people) It\u2019s a hard map but not impossible, Testers and I played through Nightmare Difficulty in Time Mode Tips: \u2013 Remember to buy armor, it will make your game easier \u2013 goliath will strengthen the surrounding zombies when smash, don\u2019t let them survive all the time \u2013 ADS fire gain more points \u2013 Deadshot give extra points when you do headshot kill \u2013 Zombies within 500 range of Brutus are immune to the effects of the wonder Weapon. You can end this protection by knocking Brutus\u2019s hat off \u2013 phd can reduce boss damage you take Features: \u2013 Custom Weapons from BO1\u3001BO2\u3001BO3\u3001MW3\u3001Ghost\u3001IW(127 weapon files !) \u2013 Harrybo21 perks (all bugs fixed.\u2014-maybe;) ) \u2013 numan custom powerups \u2013 7 types of bosses (every boss is dangerous) \u2013 16 types of wonder-weapons(they damage bosses instead of killing them directly) \u2013 adolf hitler(a special zombie) \u2013 2 types of Special zombies(electric and fire) \u2013 tranzit_sprinter \u2013 mortar strike(air raid) \u2013 armor system(You can buy armor by holding melee button for a while(require 3000 points). When the armor durability is greater than 0, you gai",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "sky_arena.iwd:images/menu_mp_weapons_an94.iwi",
+        "sky_arena.iwd:images/menu_zm_weapons_mg08.iwi",
+        "sky_arena.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "sky_arena.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "sky_arena.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "sky_arena.iwd:images/specialty_fastreload_zombies.iwi",
+        "sky_arena.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "sky_arena.iwd:images/ugx_mod_menu_template.iwi",
+        "sky_arena.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "sky_arena.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "sky_arena.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "sky_arena.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 61.9,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "sky_arena_patch.ff",
+      "sky_arena.iwd:animscripts/death.gsc",
+      "sky_arena.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

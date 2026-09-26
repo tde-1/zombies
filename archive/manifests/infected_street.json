@@ -1,0 +1,186 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "infected_street",
+  "title": "Infected Street",
+  "source": "custom",
+  "author": "Dark_Ninja",
+  "released": "2021-04-01",
+  "fs_game": "mods/infected_street",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@infected_street.iwd": "110ef85289bf29b712bcf7d426964f324f1229f7226e2459a74bf4ef1583206b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 1357,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "debris1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto8"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto12"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto11"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto10"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "110ef85289bf29b712bcf7d426964f324f1229f7226e2459a74bf4ef1583206b",
+    "map_specific_triggers": [
+      "s_triggers"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:53:34Z"
+    }
+  },
+  "archive": {
+    "original": "infected_streetv1.2.exe",
+    "original_sha256": "fe8cc4ff61513cdf2150f370234c79bf8b897700e371e89ad4a42570fd2cd55a",
+    "original_size": 250282264,
+    "source_url": "https://www.mediafire.com/file/9qlkirko6rgbj65/infected_streetv1.2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/04/01/infected-street/",
+    "fetched": "2026-09-26T14:51:01Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "After some tweaking, a small update is ready. This will add more weapons, changes to lighting and some other environmental changes, all of which I eagerly await feedback on. Explore between two houses as familys rise from the soil around, head down the alley and slay the lines of undead, or head into the open field and keep yourself open to options Credits: Cristian_M \u2013 Winter\u2019s Howl tobin_g1213 \u2013 Modern Warfare Weapons gympie6 \u2013 Black Ops Perks shippuden1592 \u2013 Black Ops Weapons Features: MW1 / BO1 Weapons Winter\u2019s Howl 13 Perks (NOTE: this is an earlier build of the map and I will be working on a new and better looking one with more features. I am still new to this so if there are any bugs or issues I haven\u2019t come across post below and I\u2019ll do my best to fix them.)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "infected_street.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 85.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 235,
+        "scripts": 7,
+        "bytes": 46705256
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "infected_street.ff",
+      "infected_street_patch.ff",
+      "mod.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc",
+      "infected_street.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

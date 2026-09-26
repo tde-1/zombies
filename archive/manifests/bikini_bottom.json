@@ -1,0 +1,289 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "bikini_bottom",
+  "title": "Spongebob Bikini Bottom",
+  "source": "custom",
+  "author": "playingtowin89",
+  "released": "2015-01-12",
+  "fs_game": "mods/bikini_bottom",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "ending"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, ending name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 142,
+    "script_count": 142,
+    "entities": 467,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "ending"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "auto9"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto8"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto7"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto5"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto239"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8",
+    "map_specific_triggers": [
+      "ammo_mart",
+      "challenge",
+      "ending",
+      "exchange_bank",
+      "ice_cream",
+      "squidward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:59:41Z"
+    }
+  },
+  "archive": {
+    "original": "bikini_bottom.exe",
+    "original_sha256": "ed5bdabdf6bdc695a59bfa7731025828ac9d707bbf89b85fabcaef83def644e1",
+    "original_size": 230063981,
+    "source_url": "http://www.mediafire.com/file/mio3uaz3af8r3er/bikini_bottom.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/01/12/spongebob-bikini-bottom/",
+    "fetched": "2026-09-26T14:57:34Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description by: DeathBringerZen The Basics: Come on along on a magical adventure through the colorful city of Bikini Bottom as you take control of Spongebob, Patrick and lots of guns. Can you survive wave after wave of zombie Bubble Buddies and squash your way through a Plankton infestation in order to help out your friends or will you get turned into chum and eaten alive? What We Like: Playing as Spongebob and Patrick is hilarious especially watching them reload their guns with their ridiculous arms. The world is straight from the Spongebob universe and is captured in all of its colorful cartoony glory. There is a unique point system that has you collect coins from fallen enemies in order to refill ammo for your guns. At the end of every round you are graded on weapon accuracy and given rewards for doing well so players will be rewarded for placing their shots. There are also characters who you need to help out, a helpful bank and much more. What We Didn\u2019t Like: It would have been cool to be able to explore the insides of some of the buildings and it would have been nice to have more perks as well. Final Word: With the system that rewards your accuracy, the perfect character models, the coin collecting and the world itself that looks just like the show it\u2019s easy to find a lot to like here. Remember, you\u2019re playing in a cartoon world so have fun.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "bikini_bottom.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "bikini_bottom.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 61.1,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476914
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      },
+      {
+        "file": "viewhands_m14_patch.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 3002
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "bikini_bottom_patch.ff",
+      "localized_bikini_bottom.ff",
+      "localized_common.ff",
+      "localized_nazi_zombie_fivenights.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": {
+      "mechanism": "ugx_vote_1",
+      "calls_vote": true,
+      "default": "classic",
+      "modes": [
+        {
+          "id": "classic",
+          "label": "Classic",
+          "response": "cl",
+          "note": "Stock zombies with the UGX weapons and perks."
+        },
+        {
+          "id": "gungame",
+          "label": "Gun Game",
+          "response": "gg",
+          "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch."
+        },
+        {
+          "id": "arcademode",
+          "label": "Arcade Mode",
+          "response": "ar",
+          "note": "Classic plus UGX power-ups and boss rounds."
+        },
+        {
+          "id": "sharpshooter",
+          "label": "Sharpshooter",
+          "response": "ss",
+          "note": "Everyone's gun changes on a timer; 15-minute game; no buying."
+        },
+        {
+          "id": "bountyhunter",
+          "label": "Bounty Hunter",
+          "response": "bh",
+          "note": "Points race with a 15-minute limit."
+        }
+      ],
+      "options_off": [
+        "objectives"
+      ],
+      "source": {
+        "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+        "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+        "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+      }
+    },
+    "other": [
+      {
+        "script": "ugx_mod.iwd:maps/ugxm_character.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)"
+      },
+      {
+        "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc",
+        "menus": [
+          "ugxm_customize_char"
+        ],
+        "responses": [
+          "CLOSE",
+          "CUSTOM_CHAR_CAT1",
+          "CUSTOM_CHAR_CAT2",
+          "CUSTOM_CHAR_CAT3",
+          "CUSTOM_CHAR_CAT4",
+          "NONE_ACCESSORY",
+          "NONE_BODY",
+          "NONE_HAT",
+          "NONE_HEAD",
+          "RESET",
+          "THIRDPERSON"
+        ],
+        "note": "only in UGX's separate customize-room map"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

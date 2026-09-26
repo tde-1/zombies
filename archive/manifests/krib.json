@@ -1,0 +1,184 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "krib",
+  "title": "3 CHAINZ\u00b4S KRIB",
+  "source": "custom",
+  "author": "pashan",
+  "released": "April 11, 2015, 12:53:50 am",
+  "fs_game": "mods/krib",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@3_chainzs_krib.iwd": "384f5cfc7e086268513727e59ddb844be449081da6e53b114fdc1171efaf95c1"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 1189,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door8"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door7"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "384f5cfc7e086268513727e59ddb844be449081da6e53b114fdc1171efaf95c1",
+    "map_specific_triggers": [
+      "pick_pic_four_trigger",
+      "pick_pic_one_trigger",
+      "pick_pic_three_trigger",
+      "pick_pic_two_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:52:54Z"
+    }
+  },
+  "archive": {
+    "original": "3_Chainzs_Krib.exe",
+    "original_sha256": "02bde2b3cb0b79c04ae17c9e0647bf082f672ae9a4445b296c3c1dc65edcc6d2",
+    "original_size": 61761101,
+    "source_url": "https://www.mediafire.com/file/r3adb30v1da6vde/3_Chainzs_Krib.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T14:51:24Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "3_chainzs_krib.iwd:images/menu.iwi",
+        "3_chainzs_krib.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 79.6,
+    "addon_iwds": [
+      {
+        "file": "3_chainzs_krib.iwd",
+        "entries": 123,
+        "scripts": 15,
+        "bytes": 2746346
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "krib.ff",
+      "krib_patch.ff",
+      "mod.ff",
+      "3_chainzs_krib.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

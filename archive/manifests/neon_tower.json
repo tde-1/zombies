@@ -1,0 +1,205 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "neon_tower",
+  "title": "Neon Tower Challenge",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2023-05-10",
+  "fs_game": "mods/neon_tower",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@neon_tower.iwd": "96b6cc3e0a9e901365bf75978666a3ab0d2a534691eb38d20c286b0afa23399b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "mech_escape_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, mech_escape_trigger name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 2600,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "auto50"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto49"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto48"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto48"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto47"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "96b6cc3e0a9e901365bf75978666a3ab0d2a534691eb38d20c286b0afa23399b",
+    "map_specific_triggers": [
+      "bolt_door_trigg",
+      "bolt_trigg",
+      "end_game",
+      "fire_door_trigg",
+      "fire_trigg",
+      "ice_door_trigg",
+      "ice_trigg",
+      "mech_escape_trigger",
+      "player_fall",
+      "wind_door_trigg",
+      "wind_trigg"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:57:17Z"
+    }
+  },
+  "archive": {
+    "original": "Neon_Tower_1.0.1.exe",
+    "original_sha256": "8cb5f11ada12edb68aa091346524a6762975090fa76509823db9603929f3d657",
+    "original_size": 315845194,
+    "source_url": "https://www.mediafire.com/file_premium/l45f0mfaywukmcz/Neon_Tower_1.0.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/05/10/neon-tower-challenge/",
+    "fetched": "2026-09-26T14:55:18Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "I know i know, another Tower map, but listen, i tried my best to do something diferent and unique with an very brief idea i have on my mind so there here is! Neon Tower! So far i think this is my hardest map to date so i\u2019ll hope you enjoy a good challenge to play . This map present some tranzit Sprinters, custom zombie models (my first time trying custom zombie models lol) , a little easter egg at the final and a lot of dificulty , so good luck and i recommend you to bring a friend to play it! With this map i tried for the first time to script something to give it a different final to it and to learn how to do some new stuff Maybe im being very optimistic about the difficulty of this one and is more easy than i think, but way i learned a lot doing this and trying new stuff to add to my future maps, any feedback will be very welcome! Honestly i don\u2019t know what more to say. . . So enjoy! This map features: \u2013 Custom Weapons from BO1, BO2, MW3 and BO3. \u2013 Bo1, Bo2 and Bo3 Perks \u2013 BO2 Nuke \u2013 3 hits system \u2013 Tron Zombies \u2013 Bo2 HUD (kinda) \u2013 Power up customs (Random Perk Power Up, Pack and Punch Power Up, Money Power Up) \u2013 Custom Player Model and Hands \u2013 Tranzit Sprinters \u2013 Hug Fix and Bo1 knife \u2013 Buyable ending \u2013 Custom Camo \u2013 Hitmarkers \u2013 Added recoil and balance to weapon movement \u2013 Elemental Staffs \u2013 Shootable ending \u2013 PanzerSoldat \u2013 Brutus from MOTD \u2013 New Vision File For The Map \u2013 Moving Platforms Credits: \u2013 Shippuden1592 (Power up Money, Brutus Scripts and Models, Elemental Sta",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "neon_tower.iwd:images/neon_tower_background.iwi",
+        "neon_tower.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 78.4,
+    "addon_iwds": [
+      {
+        "file": "BlSt_PanzerSoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4280867
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 237,
+        "scripts": 7,
+        "bytes": 46717921
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "neon_tower.ff",
+      "neon_tower_patch.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc",
+      "neon_tower.iwd:animscripts/death.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

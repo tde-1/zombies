@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_alley",
+  "title": "ALLEY",
+  "source": "custom",
+  "author": "pashan",
+  "released": "2014-03-07",
+  "fs_game": "mods/nazi_zombie_alley",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_alley.iwd": "42b8537096f3ebff83849b2e4bd8760cb3a51888558d61979983198fb8df2ebd"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 469,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door 5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door 4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door 3"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door 2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door 1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "42b8537096f3ebff83849b2e4bd8760cb3a51888558d61979983198fb8df2ebd",
+    "map_specific_triggers": [
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:52:54Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_alley.zip",
+    "original_sha256": "7c92f93e07e8d7a589aa5a2b67312483b12bc11ed5da08614ec667724c8866c2",
+    "original_size": 66769918,
+    "source_url": "https://www.mediafire.com/file/rerzxlnrxwp2q2k/nazi_zombie_alley.zip/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T14:51:51Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "zip",
+    "shipped_executables": [
+      "_inner/$PLUGINSDIR/System.dll",
+      "_inner/$PLUGINSDIR/nsDialogs.dll",
+      "nazi_zombie_alley.exe"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Things Fixed : No frame rate drop when playing a song. Frame rate issues around the map. Features: Black Ops Perks Modded Weapon Medium sized map NO dogs Credits : ProGamerzFTW (Music Box Fix) bamskater33 (BO Perks) \u2013 Pashan",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 3 executable(s): _inner/$PLUGINSDIR/System.dll, _inner/$PLUGINSDIR/nsDialogs.dll, nazi_zombie_alley.exe. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.9,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_alley.ff",
+      "nazi_zombie_alley_patch.ff",
+      "nazi_zombie_alley.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_alley.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

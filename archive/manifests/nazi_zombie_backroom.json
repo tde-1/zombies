@@ -1,0 +1,196 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_backroom",
+  "title": "Backroom Edition Zero",
+  "source": "custom",
+  "author": "kielrgz",
+  "released": "2022-09-24",
+  "fs_game": "mods/nazi_zombie_backroom",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_backroom.iwd": "0b7ced21faeb2dc4ca308cca9393b66b2e3d861ddb63f9c6ed63ab3e8b9c168f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        55000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 55000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 126,
+    "script_count": 126,
+    "entities": 2450,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      55000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "zona3"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "zona2"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "zona1"
+      ],
+      [
+        2000,
+        "zombie_keydoor",
+        "hola"
+      ],
+      [
+        1000,
+        "weapon_upgrade",
+        "mp5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0b7ced21faeb2dc4ca308cca9393b66b2e3d861ddb63f9c6ed63ab3e8b9c168f",
+    "map_specific_triggers": [
+      "acid_build_trigger",
+      "blunder_trigg",
+      "end_game",
+      "soul_triggers",
+      "soulboxes_reward_weapon_point",
+      "trigger_key",
+      "zombie_keydoor"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:56:48Z"
+    }
+  },
+  "archive": {
+    "original": "Backroom_Edition_Zero.exe",
+    "original_sha256": "fb7e3b24f8458c9de9c6dca88be20d3b6a254787b8a07e673e3007517bfa9d72",
+    "original_size": 358946521,
+    "source_url": "https://www.mediafire.com/file/56a8c48naux2sck/Backroom_Edition_Zero.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/09/24/backroom-edition-zero/",
+    "fetched": "2026-09-26T14:55:05Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_backroom.iwd:images/backroomlogo.iwi",
+        "nazi_zombie_backroom.iwd:images/menu_button_backing_right.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 90.0,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100381819
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_backroom.ff",
+      "nazi_zombie_backroom_patch.ff",
+      "nazi_zombie_backroom.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

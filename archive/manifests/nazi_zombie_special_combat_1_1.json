@@ -1,0 +1,140 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_special_combat_1_1",
+  "title": "Special Combat Weapons Mod",
+  "source": "custom",
+  "author": "TiozzoPro",
+  "released": "2010-11-03",
+  "fs_game": "mods/nazi_zombie_special_combat_1_1",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@Special_Combat_1.iwd": "52911d939da4dbf97d848b1f507808293bd7e09b5fba2b6954510d5411143c51"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 29,
+    "script_count": 29,
+    "entities": 0,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "52911d939da4dbf97d848b1f507808293bd7e09b5fba2b6954510d5411143c51",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:01:19Z"
+    }
+  },
+  "archive": {
+    "original": "Nazi_Zombie_Special_Combat_1.1.exe",
+    "original_sha256": "87594bdd8936049e2622db6c9ea664cc2908699f366992adde3e322d1631d81c",
+    "original_size": 90133912,
+    "source_url": "https://www.mediafire.com/file/awuu9zhb9uswq8c/Nazi_Zombie_Special_Combat_1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/11/03/special-combat-weapons-mod/",
+    "fetched": "2026-09-26T14:58:36Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Nazi Zombie SPECIAL COMBAT 1.1 This mod will change CODWaW zombie mode with high quality retextured modern weapons from Way2Evil modern weapons mod and other new custom features. You can also play the great ZCT Mod 2 included in the download package. Current version: 1.1 Compatibility: all Prototype Style Maps -Main features: \u2013 Special weapons: \u2013 Usp Laser \u2013 Raythrower \u2013 Nuke Launcher \u2013 M60 High Explosive Incendiary ammo \u2013 High quality retextured weapons \u2013 Enhanced weapons fx effects \u2013 Laser pointer \u2013 Slightly increased rocket and granade launcher explosion&range damages for more realism \u2013 Overall balanced weapons damage, increased knife damage (only for last stand weapons, see chart below) \u2013 ZCT Mod 2 support -Weapons Chart: -TIPS! \u2013 With m60heis shot at feet! but not yours.. \u2013 Pay attention to your rocket explosions! \u2013 Do not overheat USP laser\u2026 \u2013 Special Combat knife will save your life!! \u2013 Cabinets seem now more interesting\u2026 : ) -Recommended compatible maps: Custom maps: airport castle chatedral CB fun park nazi zombie 420 panic center zct castle zm mars zombie rich Prototype maps: anzio axfactory dv (dead valley) fruchurch frumansion gefangnis island labo lost prototype (natch der untoten) rage shore station streets subway the river tun (tunnels) village2 Installation Instructions (ZM installer exe): \u2014Make sure you have updated the game to 1.7 patch\u2014 1- Install the mod. 2- Go to mods folder: (XP)C:/Documents and Settings/YOUR_PROFILE/Local Settings/Applicatio",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_factory",
+        "loadscreen_nazi_zombie_maze",
+        "loadscreen_nazi_zombie_maze2",
+        "loadscreen_nazi_zombie_maze3",
+        "loadscreen_nazi_zombie_maze4",
+        "loadscreen_nazi_zombie_maze5",
+        "loadscreen_nazi_zombie_mp2_1",
+        "loadscreen_nazi_zombie_mp2_3",
+        "loadscreen_nazi_zombie_ott",
+        "loadscreen_nazi_zombie_subway"
+      ],
+      "iwd_images": [
+        "Special_Combat_1.iwd:images/menu_zct_mod.iwi",
+        "Special_Combat_1.iwd:images/menu_zct_mod_wide.iwi",
+        "Special_Combat_1.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": null,
+    "addon_iwds": [
+      {
+        "file": "Special_Combat_1.iwd",
+        "entries": 269,
+        "scripts": 27,
+        "bytes": 59003319
+      }
+    ],
+    "flags": [
+      "no_patch_ff",
+      "addon_iwd_with_scripts",
+      "no_map_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "Special_Combat_1.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}
